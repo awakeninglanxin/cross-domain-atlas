@@ -455,6 +455,11 @@ x = R·cos θ ,  y = R·sin θ ,  z = u          其中 θ ∈ [0, 2π)，u 取�
 
 <div class="warnbox">
 <b>关于"波纹盘"的一处更正（2026-10-18）：</b>本页早先把波纹盘画成 <code>z=A·sin(nθ)</code>，那是<b>沿圆周</b>起皱，不对。真正的方程在 <code>代码_波纹盘/22_双波纹盘最佳截面曲线.py</code>：<b>蛋的 x、y 两个分量各自变成一条截面曲线</b>（蓝 A、绿 B），绕轴旋成一张<b>双面</b>盘，波纹沿<b>半径</b>方向、振幅按 <code>1/[(1+t/2π)·ln(n+1)]</code> 递减。本页已按这个方程重写「波纹」模式；要看 n、k、b 与"衰减内化（27 号）"的完整调节，去 <a href="AAA_PKS代码族_3D参数台.html">六族代码参数台 · ① 双波纹盘</a>。
+<br><br>
+<b>2026-10-19 再改（渲染方式）：</b>旧实现把 A、B 两条截面曲线首尾拼成<b>一个闭合轮廓</b>再旋成<b>实体</b>（橙色不透明外壳）——
+那样只看得见最外层，两条曲线各自的形状被包在里面。现在改成
+<b>A 曲线、B 曲线各绕竖直轴旋转 360°，各自得到一张半透明曲面</b>（蓝 A / 绿 B，默认 opacity 0.26），
+中间那层"厚度"就能直接看见；剖面小图里的两条曲线，就是这两张面各自的母线。
 </div>
 
 <div class="okbox">
@@ -601,23 +606,37 @@ function build(){
       thk=Math.max(thk,Math.abs(p2.A-p2.B));
       pa.push({r:rr,z:p2.A*zs}); pb.push({r:rr,z:p2.B*zs});
     }
-    var prof=pa.concat(pb.slice().reverse());
-    var M=prof.length, NS=84, pos=[], idx=[], j2, k2;
-    for(j2=0;j2<NS;j2++){
-      var th=Math.PI*2*j2/NS, cs=Math.cos(th), sn=Math.sin(th);
-      for(k2=0;k2<M;k2++) pos.push(prof[k2].r*cs,prof[k2].z,prof[k2].r*sn);
-    }
-    for(j2=0;j2<NS;j2++){
-      var jn=(j2+1)%NS;
-      for(k2=0;k2<M;k2++){
-        var k1=(k2+1)%M;
-        idx.push(j2*M+k2, jn*M+k2, j2*M+k1, j2*M+k1, jn*M+k2, jn*M+k1);
+    /* 🔴 2026-10-19 老师：「3D 的波纹盘应该是参数卡里绿色和蓝色曲线绕轴旋转 360° 得到的
+       默认半透明盘」。
+       旧实现把 A、B 两条曲线首尾拼成**一个闭合轮廓**再旋成实体（橙色不透明外壳）——
+       那样只看得见最外层，两条曲线各自的形状被包在里面。
+       现在改成：**A 曲线、B 曲线各自绕竖直轴旋转一圈**，得到两张半透明曲面，
+       中间那层"厚度"就看得见了；默认就是半透明，不需要额外切换。
+       旋转轴 = 场景的竖直轴（页面坐标里是 y；几何上即"绕对称轴转 360°"）。 */
+    function revolveY(pts, NS, mat){
+      var M=pts.length, pos=[], idx=[], j, k;
+      for(j=0;j<=NS;j++){
+        var th=Math.PI*2*j/NS, cs=Math.cos(th), sn=Math.sin(th);
+        for(k=0;k<M;k++) pos.push(pts[k].r*cs, pts[k].z, pts[k].r*sn);
       }
+      for(j=0;j<NS;j++){
+        for(k=0;k<M-1;k++){
+          var a0=j*M+k, b0=(j+1)*M+k;
+          idx.push(a0,b0,a0+1, a0+1,b0,b0+1);
+        }
+      }
+      var g=new THREE.BufferGeometry();
+      g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+      g.setIndex(idx); g.computeVertexNormals();
+      return new THREE.Mesh(g,mat);
     }
-    var gm=new THREE.BufferGeometry();
-    gm.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
-    gm.setIndex(idx); gm.computeVertexNormals();
-    root.add(new THREE.Mesh(gm,solid(0xc9803a,0.97)));
+    function shell(c,o){
+      return new THREE.MeshPhongMaterial({color:c,shininess:35,specular:0x667788,
+        transparent:true,opacity:o,side:THREE.DoubleSide,
+        depthWrite:false});   /* 不写深度缓冲：两张面才能互相透过去 */
+    }
+    root.add(revolveY(pa,120,shell(0x1f4fa8,0.26)));   /* 蓝 A */
+    root.add(revolveY(pb,120,shell(0x1c7a3e,0.26)));   /* 绿 B */
     // θ=0 处的两条截面曲线（原脚本配色：蓝 A、绿 B）
     var la=[],lb=[];
     for(k2=0;k2<pa.length;k2++){ la.push(new THREE.Vector3(pa[k2].r*1.004,pa[k2].z*1.02,0));
