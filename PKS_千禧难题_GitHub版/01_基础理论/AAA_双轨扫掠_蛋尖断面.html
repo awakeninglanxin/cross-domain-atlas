@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>双轨扫掠 · 蛋尖断面 × 弹簧螺旋</title>
+<style>
+  :root{--ink:#12161c;--ink2:#46506a;--ink3:#6b7683;--line:#dde3ec;
+        --accent:#2f6fb5;--soft:#f7f9fd;--ok:#17724a;--warn:#b3261e;--gold:#9a6b12}
+  *{box-sizing:border-box}
+  body{margin:0;background:#fff;color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    font-size:15px;line-height:1.7;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1060px;margin:0 auto;padding:34px 22px 70px}
+  h1{font-size:25px;margin:0 0 8px}
+  .sub{color:var(--ink3);font-size:13.4px;margin:0 0 18px}
+  a.back{display:inline-block;margin-bottom:8px;color:var(--accent);text-decoration:none;font-size:13px}
+  .stage{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fbfcfe}
+  canvas{display:block;width:100%;height:560px;cursor:grab}
+  .hint{position:absolute;right:10px;bottom:8px;font-size:11.5px;color:#8b98ab;
+    background:rgba(255,255,255,.82);padding:2px 8px;border-radius:6px}
+  .ctl{display:flex;flex-wrap:wrap;gap:16px 24px;margin:14px 0 6px;
+    padding:12px 16px;border:1px solid var(--line);border-radius:10px;background:var(--soft);align-items:flex-end}
+  .ctl label{font-size:13px;color:var(--ink2);display:flex;flex-direction:column;gap:4px}
+  .ctl b{font-family:Consolas,monospace;color:var(--accent);font-size:13px}
+  .ctl input[type=range]{width:150px;accent-color:var(--accent)}
+  .seg{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--ink2)}
+  .seg button{font:inherit;font-size:12.5px;padding:4px 10px;border:1px solid #cfd6e0;
+    background:#fff;border-radius:7px;cursor:pointer;color:var(--ink2)}
+  .seg button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .legend{display:flex;flex-wrap:wrap;gap:14px 26px;margin:12px 0;font-size:13px;color:var(--ink2)}
+  .legend i{display:inline-block;width:22px;height:3px;border-radius:2px;vertical-align:3px;margin-right:6px}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.4px}
+  th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+  th{background:var(--soft);font-size:13px}
+  td.n{font-family:Consolas,monospace;text-align:right;white-space:nowrap}
+  .box{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 15px;margin:16px 0;background:#fbfaff;font-size:13.6px}
+  .box.num{border-left-color:var(--ok);background:#f6fbf8}
+  .box.warn{border-left-color:var(--warn);background:#fdf6f5}
+  .box .t{display:block;font-weight:700;margin-bottom:5px;color:var(--accent);font-size:13.4px}
+  .box.num .t{color:var(--ok)} .box.warn .t{color:var(--warn)}
+  .foot{margin-top:34px;padding-top:14px;border-top:1px solid var(--line);color:var(--ink3);font-size:12.5px}
+  .foot a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<a class="back" href="AAA_E盘程序族_去重账本与分类地图.html">← 回「E 盘程序族 · 去重账本」</a>
+
+<h1>双轨扫掠 · 蛋尖断面 × 弹簧螺旋</h1>
+<p class="sub">
+  复现 <code>DXF生成程序集/02_双轨扫掠螺旋/弹簧管中心线与蛋尖双轨+多断面 -dxf 样条线 - 阴阳-t平方 简化.py</code><br>
+  断面 = <code>E:/pythonProject/program/spline_points.csv</code>（36 点蛋尖形）· 标架 = 数值切向/二阶导/副法向 · 扭转可调
+</p>
+
+<div class="stage">
+  <canvas id="cv"></canvas>
+  <div class="hint">拖动旋转 · 滚轮缩放</div>
+</div>
+
+<div class="ctl">
+  <label>圈数 n <b id="vn">4</b><input type="range" id="rn" min="2" max="8" value="4" step="1"></label>
+  <label>断面 amp <b id="va">0.30</b><input type="range" id="ra" min="0.08" max="0.55" value="0.30" step="0.01"></label>
+  <label>扭转 twist <b id="vt">1.00</b><input type="range" id="rt" min="-2" max="2" value="1" step="0.05"></label>
+  <label>总高 H <b id="vh">5.2</b><input type="range" id="rh" min="2.5" max="8" value="5.2" step="0.1"></label>
+  <div class="seg">阴阳（sign）
+    <span><button data-sg="1" class="on" id="bSignP">+1</button>
+    <button data-sg="-1" id="bSignN">−1</button></span></div>
+  <div class="seg">旋向（r）
+    <span><button data-dr="1" class="on" id="bDirP">+1</button>
+    <button data-dr="-1" id="bDirN">−1</button></span></div>
+  <button id="btnSpin" style="font:inherit;font-size:12.5px;padding:5px 10px;border:1px solid #cfd6e0;
+    background:#fff;border-radius:7px;cursor:pointer;color:#46506a">暂停自转</button>
+</div>
+
+<div class="legend">
+  <span><i style="background:#2f6fb5"></i>扫掠面（36 点断面沿中心线）</span>
+  <span><i style="background:#b3261e"></i><b>蛋尖轨</b>（断面第 0 点的轨迹 = 第二条轨）</span>
+  <span><i style="background:#b9c5d6"></i>断面肋（每 20 条留一条，脚本原样）</span>
+  <span><i style="background:#17724a"></i>中心线</span>
+</div>
+
+<div class="box num">
+  <span class="t">"双轨"到底是哪两条</span>
+  不是我原先以为的两条等宽边界，而是：<b>① 中心线</b>（螺旋本身）+ <b>② 蛋尖轨</b>——
+  断面第 0 个点（那个尖）随扫掠走出来的轨迹。脚本里它写成
+  <code>spline = msp.add_spline(egghead_points)</code>，颜色单独给了 5 号。
+  所以「双轨」= 中心线 + 特征点轨，不是"左右两条边"。
+</div>
+
+<h2 style="font-size:18px;margin:26px 0 6px;padding-top:14px;border-top:1px solid var(--line)">方程（逐项对应脚本）</h2>
+<table>
+  <thead><tr><th style="width:130px">量</th><th>表达式</th><th style="width:150px">脚本位置</th></tr></thead>
+  <tbody>
+    <tr><td>中心线</td><td class="n">x = d·sin t · r　y = d·cos t　z = t·z<sub>v</sub></td>
+      <td><code>calculate_spiral_coords()</code></td></tr>
+    <tr><td>切向 T</td><td class="n">dC/dt 归一化</td><td><code>generate_spiral_curves()</code></td></tr>
+    <tr><td>"法向" N</td><td class="n">d²C/dt² 归一化（<b>二阶导</b>，不是主法线）</td><td>同上</td></tr>
+    <tr><td>副法向 B</td><td class="n">B = T × N</td><td>同上</td></tr>
+    <tr><td>断面缩放</td><td class="n">a(t) = amp（本版为常数）</td><td><code>change_section()</code></td></tr>
+    <tr><td>扭转</td><td class="n">ψ(t) = twist · t<sub>length</sub>/2 · u（线性）</td><td><code>set_default_psi()</code></td></tr>
+    <tr><td>断面点</td><td class="n">P = C + R(ψ, T)·( sign·s<sub>y</sub>·N + sign·s<sub>x</sub>·B )</td>
+      <td><code>sweep_section()</code></td></tr>
+  </tbody>
+</table>
+
+<div class="box">
+  <span class="t">两个容易看错的点</span>
+  <b>① 这里的 N 不是主法线</b>，是<b>二阶导数方向</b>（加速度方向）。两者一般不重合，
+  这决定了断面的"朝向"，也是各家脚本形状差异的来源之一。<br>
+  <b>② ψ 是线性增长</b>，不是 t²。文件名写"阴阳-t平方"，但 <code>set_default_psi()</code> 里是
+  <code>np.linspace(0, twist·t_length/2, num_t)</code>——直的。t² 那一支要看别的版本
+  （<code>…-t平方.py</code> 系列），本页复原的是<b>简化版</b>。
+</div>
+
+<div class="box warn">
+  <span class="t">本页与原脚本的差别</span>
+  原脚本用 Rhino/ezdxf 输出<b>样条线</b>（中心线、蛋尖轨、若干断面），是"线框"；
+  本页把断面连成<b>曲面</b>以便看形体，另外保留了蛋尖轨与断面肋这两层线框。
+  数值上：z<sub>v</sub> 由"总高 H ÷ 总弧长"反推，<code>d=1</code> 归一，其余符号（sign / r / twist）原样保留。
+</div>
+
+<div class="box" style="border-left-color:#5b3fa8;background:#fbfaff;margin-top:26px">
+  <b>这一页是「形」；与之配对的「数」在另一组：</b><br><a href="../../anu与milnor7维流形/AAA_φ1680与X1750_同一个1680吗.html" style="color:#5b3fa8"><b>↔ 那边是「数」：φ(1680) 与 X(1750)，那两个 1680 是同一件事吗</b></a>
+  <br><span style="font-size:12.8px;color:#6b7683">那边论证「1680 匝是计数、1680 MeV 是质量，两者不成立」；这边把「匝」画成可量的管——但这里的 1680 仍然只是匝数。</span>
+</div>
+
+<div class="foot">
+  <b>来源</b>：<code>02_双轨扫掠螺旋/弹簧管中心线与蛋尖双轨+多断面 -dxf 样条线 - 阴阳-t平方 简化.py</code>（270 行）·
+  断面 <code>E:/pythonProject/program/spline_points.csv</code>。<br>
+  <b>相关</b>：<a href="AAA_螺旋管族_3D对照.html">螺旋管族 3D 对照</a> ·
+  <a href="AAA_E盘程序族_去重账本与分类地图.html">E 盘程序族 · 去重账本</a> ·
+  <a href="AAA_蛋形与双锥_3D参数台.html">蛋形与双锥 3D 参数台</a>
+</div>
+</div>
+
+<script src="../_vendor/three.min.js"></script>
+<script>
+(function(){
+  var PAR = {n:4, amp:0.30, twist:1, H:5.2};
+  var SIGN = 1, DIR = 1, SPIN = true;
+
+  /* 断面：spline_points.csv 36 点，已归一化到宽 1.0（与螺旋管页同一份数据） */
+  var SECTION = [[0.46111,0.00670],[0.39014,0.03331],[0.31684,0.05319],[0.24510,0.07813],[0.18213,0.11982],[0.13428,0.17878],[0.09114,0.24126],[0.03883,0.29614],[-0.02620,0.33487],[-0.09982,0.35301],[-0.17523,0.35062],[-0.24813,0.32869],[-0.31718,0.29731],[-0.37928,0.25382],[-0.43109,0.19834],[-0.47000,0.13332],[-0.49355,0.06120],[-0.50000,-0.01436],[-0.48350,-0.08789],[-0.44881,-0.15574],[-0.40065,-0.21391],[-0.34214,-0.26252],[-0.27626,-0.29985],[-0.20522,-0.32699],[-0.13145,-0.34466],[-0.05592,-0.35301],[0.01997,-0.35145],[0.09537,-0.34213],[0.16987,-0.32724],[0.24222,-0.30423],[0.31117,-0.27236],[0.37637,-0.23345],[0.43712,-0.18782],[0.48277,-0.12785],[0.50000,-0.05418],[0.46111,0.00670]];
+
+  var cv = document.getElementById('cv');
+  var renderer = new THREE.WebGLRenderer({canvas:cv, antialias:true, alpha:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(40, 1, 0.1, 300);
+  var root = new THREE.Group(); scene.add(root);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.88));
+  var l1 = new THREE.DirectionalLight(0xffffff, 0.6); l1.position.set(6,8,7); scene.add(l1);
+  var l2 = new THREE.DirectionalLight(0xbcd4f0, 0.34); l2.position.set(-7,-5,-6); scene.add(l2);
+
+  /* ---------- 核心：中心线 + 标架 + 断面放样 ---------- */
+  function build(){
+    while(root.children.length) root.remove(root.children[0]);
+
+    var n = PAR.n, H = PAR.H, amp = PAR.amp, twist = PAR.twist;
+    var NT = 260, NS = SECTION.length;
+    var tmax = Math.PI*2*n, d = 1.0;
+    var zPer = H/tmax;
+
+    var U = [], i, u, t;
+    for (i=0;i<=NT;i++) U.push(i/NT);
+
+    /* 中心线 C(t)（页面里 y 是竖直轴，所以脚本的 z 放到 y） */
+    function C(t){
+      return new THREE.Vector3(d*Math.sin(t)*DIR, (t - tmax/2)*zPer, d*Math.cos(t));
+    }
+    function D1(t){
+      var h = 1e-4;
+      return C(t+h).sub(C(t-h)).divideScalar(2*h);
+    }
+    function D2(t){
+      var h = 1e-4;
+      var a = D1(t-h), b = D1(t+h);
+      return b.sub(a).divideScalar(2*h);
+    }
+
+    var centers = [], frames = [];
+    for (i=0;i<=NT;i++){
+      t = U[i]*tmax;
+      var P = C(t);
+      var T = D1(t).normalize();
+      var N = D2(t);
+      if (N.length() < 1e-9) N = new THREE.Vector3(0,1,0);   /* 直线段兜底 */
+      N.normalize();
+      var B = new THREE.Vector3().crossVectors(T, N).normalize();
+      centers.push(P); frames.push({T:T, N:N, B:B});
+    }
+
+    var psiMax = twist * tmax/2;      /* set_default_psi：线性到 twist·t_length/2 */
+    var rings = [], eggTip = [];
+
+    for (i=0;i<=NT;i++){
+      u = U[i];
+      var f = frames[i], P0 = centers[i];
+      var psi = psiMax*u;
+      var R = new THREE.Matrix4().makeRotationAxis(f.T, psi);
+
+      var ring = [];
+      for (var j=0;j<NS;j++){
+        var sx = SECTION[j][0]*amp, sy = SECTION[j][1]*amp;
+        var v = new THREE.Vector3()
+          .addScaledVector(f.N, SIGN*sy)
+          .addScaledVector(f.B, SIGN*sx);
+        v.applyMatrix4(R);
+        v.add(P0);
+        ring.push(v);
+      }
+      rings.push(ring);
+      eggTip.push(ring[0].clone());       /* 断面第 0 点 = 蛋尖 ⇒ 第二条轨 */
+    }
+
+    /* 曲面 */
+    var pos = [], idx = [], a1, b1, c1, d1;
+    for (i=0;i<=NT;i++) for (var k=0;k<NS;k++){
+      pos.push(rings[i][k].x, rings[i][k].y, rings[i][k].z);
+    }
+    for (i=0;i<NT;i++){
+      for (k=0;k<NS;k++){
+        var k2 = (k+1)%NS;
+        a1 = i*NS+k; b1 = (i+1)*NS+k; c1 = (i+1)*NS+k2; d1 = i*NS+k2;
+        idx.push(a1,b1,d1, b1,c1,d1);
+      }
+    }
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
+    g.setIndex(idx); g.computeVertexNormals();
+    root.add(new THREE.Mesh(g, new THREE.MeshPhongMaterial({
+      color:0x2f6fb5, shininess:60, specular:0x8899aa, side:THREE.DoubleSide,
+      transparent:true, opacity:0.48 })));
+
+    /* 两条轨 + 肋：depthTest 关掉、renderOrder 抬高，保证永远画在面之上
+       —— 半透明面会把线挡掉，"第二条轨"就看不见了 */
+    function overlayLine(pts, color, w, order){
+      var ln = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints(pts),
+        new THREE.LineBasicMaterial({color:color, depthTest:false, transparent:true, opacity:1}));
+      ln.renderOrder = order;
+      return ln;
+    }
+    root.add(overlayLine(centers, 0x17724a, 1, 20));   /* 中心线 */
+    root.add(overlayLine(eggTip, 0xb3261e, 1, 21));    /* 蛋尖轨 = 第二条轨 */
+
+    /* 断面肋：脚本里 (i%20==0 or i==0) 才存 */
+    for (i=1;i<=NT;i+=20){
+      var ringPts = rings[i].concat([rings[i][0]]);
+      var rib = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints(ringPts),
+        new THREE.LineBasicMaterial({color:0x8fa3bb, depthTest:false, transparent:true, opacity:0.55}));
+      rib.renderOrder = 10;
+      root.add(rib);
+    }
+  }
+
+  /* ---------- 相机 ---------- */
+  var rotY = 0.7, rotX = 0.22, zoom = 1.0;
+  function sync(){
+    var r = 8.4*zoom;
+    camera.position.set(r*Math.sin(rotY)*Math.cos(rotX), r*Math.sin(rotX), r*Math.cos(rotY)*Math.cos(rotX));
+    camera.lookAt(0,0,0);
+  }
+  var drag=false, lx=0, ly=0;
+  cv.addEventListener('pointerdown', function(e){ drag=true; lx=e.clientX; ly=e.clientY;
+    if(cv.setPointerCapture) cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove', function(e){
+    if(!drag) return;
+    rotY += (e.clientX-lx)*0.008;
+    rotX = Math.max(-1.2, Math.min(1.2, rotX + (e.clientY-ly)*0.006));
+    lx=e.clientX; ly=e.clientY; sync();
+  });
+  cv.addEventListener('pointerup', function(){ drag=false; });
+  cv.addEventListener('wheel', function(e){
+    e.preventDefault();
+    zoom = Math.max(0.45, Math.min(2.6, zoom*(e.deltaY>0?1.07:0.93)));
+    sync();
+  }, {passive:false});
+
+  /* ---------- 参数 ---------- */
+  function bind(id, labId, key, fx){
+    var el=document.getElementById(id), lab=document.getElementById(labId);
+    el.addEventListener('input', function(){
+      PAR[key]=parseFloat(this.value);
+      lab.textContent = fx===undefined ? this.value : parseFloat(this.value).toFixed(fx);
+      build();
+    });
+  }
+  bind('rn','vn','n');
+  bind('ra','va','amp',2);
+  bind('rt','vt','twist',2);
+  bind('rh','vh','H',1);
+
+  function setSign(v){
+    SIGN=v;
+    document.getElementById('bSignP').className = v===1?'on':'';
+    document.getElementById('bSignN').className = v===-1?'on':'';
+    build();
+  }
+  function setDir(v){
+    DIR=v;
+    document.getElementById('bDirP').className = v===1?'on':'';
+    document.getElementById('bDirN').className = v===-1?'on':'';
+    build();
+  }
+  document.getElementById('bSignP').onclick=function(){setSign(1);};
+  document.getElementById('bSignN').onclick=function(){setSign(-1);};
+  document.getElementById('bDirP').onclick=function(){setDir(1);};
+  document.getElementById('bDirN').onclick=function(){setDir(-1);};
+  document.getElementById('btnSpin').onclick=function(){
+    SPIN=!SPIN; this.textContent = SPIN?'暂停自转':'继续自转';
+  };
+
+  function resize(){
+    var w=cv.clientWidth||900;
+    renderer.setSize(w,560,false);
+    camera.aspect=w/560; camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+
+  function loop(){
+    requestAnimationFrame(loop);
+    if(SPIN && !drag) rotY += 0.0035;
+    sync();
+    renderer.render(scene, camera);
+  }
+
+  resize(); build(); sync(); requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

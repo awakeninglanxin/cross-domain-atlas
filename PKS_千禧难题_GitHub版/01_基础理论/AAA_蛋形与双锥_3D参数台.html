@@ -383,7 +383,7 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
 
     <div class="row">
       <label>锥倾角 a <b id="va">33.7°</b></label>
-      <input type="range" id="ra" min="0" max="70" value="33.7" step="0.1">
+      <input type="range" id="ra" min="0" max="70" value="33.7" step="0.001">
     </div>
     <div class="row">
       <label>截距 b <b id="vb">1.666</b></label>
@@ -392,6 +392,26 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
     <div class="row" id="rowRip" style="display:none">
       <label>用户数 n（双截面波纹） <b id="vn">5</b></label>
       <input type="range" id="rn" min="1" max="12" value="5" step="1">
+    </div>
+    <div class="row" id="rowForm" style="display:none">
+      <label>截面公式 <b id="vform">22 · 双面</b></label>
+      <div class="stepRow" id="formSeg">
+        <button data-f="22" class="on">22 双面</button>
+        <button data-f="27">27 内化衰减</button>
+        <button data-f="30a">30 第1组</button>
+        <button data-f="30b">30 第2组</button>
+        <button data-f="30c">30 第3组</button>
+        <button data-f="30d">30 第4组</button>
+        <button data-f="pw">素数·加权</button>
+        <button data-f="pe">素数·平等</button>
+      </div>
+      <div class="note" style="margin-top:2px" id="formNote">x 分量做上截面、y 分量做下截面；k、b 取本页的 a、b。</div>
+    </div>
+    <div class="row" id="rowGap" style="display:none">
+      <label>两面间距 amp <b id="vgap">1.00</b></label>
+      <input type="range" id="rgap" min="0.4" max="3" value="1" step="0.05">
+      <div class="note" style="margin-top:2px">A 线整体下移 <code>amp·t_min</code>、B 线整体上移同样的量
+        ⇒ <b>两面只会越离越开，永不重叠</b>。amp=1 即 22 号原脚本；amp=2 就是 30 号里的 amp2 那一组。</div>
     </div>
 
     <div class="readout">
@@ -407,7 +427,8 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
     <div class="presets">
       <button data-p="sphere">球（a=0）</button>
       <button data-p="sb">舒伯格蛋 a=33.7° b=1.666</button>
-      <button data-p="gold">b = φ（黄金）</button>
+      <button data-p="gold">b = φ（只换 b，a 仍 33.7°）</button>
+      <button data-p="goldlim">★ 黄金比极限蛋（k=1/φ, b=φ, a=31.72°）</button>
       <button data-p="long">极限拉长</button>
     </div>
   </div>
@@ -474,6 +495,8 @@ x = R·cos θ ,  y = R·sin θ ,  z = u          其中 θ ∈ [0, 2π)，u 取�
 
 <div class="foot">
 基准目录 <code>D:/AAA我的文件/PKS_千禧难题_GitHub版/01_基础理论</code> ｜ 三维用 <code>../_vendor/three.min.js</code> 实时计算 ｜
+  <a href="AAA_螺旋管族_3D对照.html" style="color:#2f6fb5"><b>螺旋管族 · 五种中心线 3D 对照 →</b></a> ｜
+  <a href="AAA_E盘程序族_去重账本与分类地图.html" style="color:#2f6fb5">E 盘程序族 · 去重账本 →</a> ｜
 公式取自 <code>01_基础理论/16_schauberger系数学与书籍与出dxf图的程序/舒伯格公式/舒伯格蛋形公式 曲面方程.txt</code> ｜ 2026-10-18 建
 </div>
 </div>
@@ -508,26 +531,141 @@ function eggMaxR(a,b,u0,u1){
   return m;
 }
 
-/* 双波纹盘的两条截面曲线（复制自 代码_波纹盘/22_双波纹盘最佳截面曲线.py） */
-function ripSec(n){
-  var TAU=Math.PI*2,k=2/3,b=5/3,m=2/3,A=TAU;
-  var tmin=A/(n+1), tmax=A+2*n*A, out=[], N=260, i;
+/* ============================================================================
+   波纹盘 · 全部来自 代码_波纹盘/（2026-10-19 老师：「4 组平面截面曲线都可以做成旋转体示意」）
+     22   双波纹盘最佳截面曲线   —— x 分量做上截面、y 分量做下截面
+     27   双曲线比切四象限       —— 衰减内化：k、b 随 t 变（k=1/T，b=2√t/T）
+     30a  4 种波纹 第1组         —— amp1，未旋转
+     30b  4 种波纹 第2组         —— amp2，平面内顺时针转 90°
+     30c  4 种波纹 第3组         —— amp1，转 180°
+     30d  4 种波纹 第4组         —— amp2，转 270°
+     pw / pe  波纹盘线(加权/平等求和) —— 原脚本是一维波形，这里旋成单张盘作对照
+   30 号的四组：曲线在平面内旋转后 (x,y)→(y,−x)，所以每组的"半径分量 / 高度分量"都换了，
+   这正是它们形状不同的原因；每组各旋成一张盘，可单独切换。
+   ============================================================================ */
+var RFORM='22';
+var GAPA=1;        /* 两面间距 amp：A 下移 amp·t_min、B 上移同样的量 ⇒ 永不重叠 */
+
+function _wx(t,b,k){
+  var den=b+Math.sqrt(Math.max(0,b*b-4*k*Math.cos(t)));
+  return Math.abs(den)<1e-10?0:(2*Math.sin(t)/den);
+}
+function _wt1(t,b,k){
+  if(k<1e-9) return -2/b;
+  var q1=Math.sqrt(Math.max(0,b*b-4*k)), q3=Math.sqrt(Math.max(0,b*b-4*k*Math.cos(t)));
+  return -((Math.sqrt(1+k*k)*(-q1+q3))/(2*k));
+}
+function _wt1c(b,k){
+  if(k<1e-9) return -2/b;
+  var q1=Math.sqrt(Math.max(0,b*b-4*k)), q2=Math.sqrt(Math.max(0,b*b+4*k));
+  return -((Math.sqrt(1+k*k)*(-q1+q2))/(2*k));
+}
+function _wt2(t,b,k){
+  if(k<1e-9) return (1-Math.cos(t))/b;
+  var q1=Math.sqrt(Math.max(0,b*b-4*k)), q3=Math.sqrt(Math.max(0,b*b-4*k*Math.cos(t)));
+  return (1/(2*Math.sqrt(1+k*k)))*(((k*k-1)/k)*b+((k*k+1)/k)*q3)
+       -(b*(-1+k*k)+q1*(1+k*k))/(2*k*Math.sqrt(1+k*k));
+}
+
+/* 30 号的四组：(amp, 平面内旋转矩阵) —— rotate_90(x,y)=(y,−x) */
+var R30 = {
+  '30a': {amp:1, rot:[1,0, 0,1],   name:'amp1 · 0°'},
+  '30b': {amp:2, rot:[0,1, -1,0],  name:'amp2 · 90°'},
+  '30c': {amp:1, rot:[-1,0, 0,-1], name:'amp1 · 180°'},
+  '30d': {amp:2, rot:[0,-1, 1,0],  name:'amp2 · 270°'}
+};
+
+var PRIMES=[1,1,2,5,13,89,233,1597,28657,514229];
+function primeCurve(form){
+  var PH=Math.PI*2, N=420, pts=[], i, j, u, x, y, mx=0;
   for(i=0;i<=N;i++){
-    var t=tmin+(tmax-tmin)*i/N;
-    var amp=1/((1+t/A)*Math.log(n+1));
-    var s=b*b-4*k*Math.cos(t);
-    if(s<=0){ out.push(null); continue; }
-    var q1=Math.sqrt(b*b-4*k), q2=Math.sqrt(b*b+4*k), q3=Math.sqrt(s);
-    var term1=-((Math.sqrt(1+k*k)*(-q1+q2))/(2*k));
-    var term2=(1/(2*Math.sqrt(1+k*k)))*(((k*k-1)/k)*b+((k*k+1)/k)*q3)
-              -(b*(-1+k*k)+q1*(1+k*k))/(2*k*Math.sqrt(1+k*k));
-    out.push({
-      r:i/N,
-      A:A*((2*Math.sin(t)/(b+q3))-tmin)*amp,
-      B:A*((m*term1+term2)+tmin)*amp
-    });
+    u=i/N;
+    if(form==='pw'){ x=1+29*u; y=0; for(j=0;j<PRIMES.length;j++) y+=PRIMES[j]*Math.sin(PRIMES[j]*x)/x; }
+    else{ x=PH*(1+29*u); var q=x/PH; y=0; for(j=0;j<PRIMES.length;j++) y+=Math.sin(PRIMES[j]*q)/q; }
+    pts.push({r:u, z:y});
+    if(Math.abs(y)>mx) mx=Math.abs(y);
   }
-  return {pts:out, tmax:tmax};
+  if(mx>0) for(i=0;i<pts.length;i++) pts[i].z/=mx;   /* 不加权那版最大项 5.1e5，不归一化会把其余压平 */
+  return [{key:'P', color:0x6a3fa8, alpha:0.30, pts:pts}];
+}
+
+function sections(n, z0, tanA, gap){
+  var PH=Math.PI*2, m=2/3;
+  var k0=(tanA==null?2/3:tanA), b=(z0==null?5/3:z0);
+  var kmax=Math.max(1e-9, b*b/4-1e-9);          /* k ≤ b²/4 才有实数解 */
+  var k=Math.min(k0, kmax), kClamped=(k<k0-1e-12);
+  var g=(gap==null?1:gap);                      /* 两面间距倍率：1 = 脚本原样 */
+  var tmin=PH/(n+1), tmax=PH+2*n*PH, N=260, i, t;
+  var res={tmax:tmax, k:k, k0:k0, kClamped:kClamped, kmax:kmax, form:RFORM};
+
+  if(RFORM==='pw'||RFORM==='pe'){ res.curves=primeCurve(RFORM); return res; }
+
+  function ampOf(tt){ return 1/((1+tt/PH)*Math.log(n+1)); }
+
+  /* 每种公式给出一个"组"：gen(t) → [上分量, 下分量]（未拉开） */
+  var gen=null;
+  if(RFORM==='27'){
+    gen=function(tt){
+      var bt=2*Math.sqrt(tt)/PH, kt=1/PH;
+      var xa=PH*((_wx(tt,bt,kt)) - tmin/2);                       /* 27 号用 t_min/2，无 amp 衰减 */
+      var yb=PH*((m*_wt1c(bt,kt)+_wt2(tt,bt,kt)) + tmin/2);
+      return [xa, yb];
+    };
+  }else if(R30[RFORM]){
+    var cfg=R30[RFORM], amp=cfg.amp, R=cfg.rot;
+    gen=function(tt){
+      /* 30 号自带的 amp1/amp2 属于"该组的固有特征"，保留在 t_min 项里 */
+      var xa=PH*((_wx(tt,b,k)) - amp*tmin)*ampOf(tt);
+      var yb=PH*((m*_wt1(tt,b,k)+_wt2(tt,b,k)) + amp*tmin)*ampOf(tt);
+      return [R[0]*xa + R[1]*yb, R[2]*xa + R[3]*yb];              /* 平面内旋转 */
+    };
+  }else{
+    gen=function(tt){
+      var xa=PH*((_wx(tt,b,k)) - tmin)*ampOf(tt);
+      var yb=PH*((m*_wt1(tt,b,k)+_wt2(tt,b,k)) + tmin)*ampOf(tt);
+      return [xa, yb];
+    };
+  }
+
+  /* 🔴 间距统一在这里做：中点 ± |差|·g/2。
+     —— 为什么不能用"上 +amp·t、下 −amp·t"那套：30 号的第 2/4 组在平面内转了 90°，
+        两条母线互换角色，那个 amp 恰好被抵消（实测 g 对它们完全无效），而且两条线会交叉。
+        用中点法后：g=1 与脚本原样一致；g>1 只是把两线从各自中点对称拉开，
+        所以**任何公式、任何旋转角度都不会重叠**（A 永远在中点下方、B 永远在上方）。 */
+  var raw=[], A2, B2, i2, q2;
+  for(i=0;i<=N;i++){
+    t=tmin+(tmax-tmin)*i/N;
+    var p2=gen(t);
+    if(!p2 || !isFinite(p2[0]) || !isFinite(p2[1])) continue;   /* 27 号 t 很小时 √ 内为负 */
+    raw.push({r:i/N, a:p2[0], b:p2[1]});
+  }
+
+  /* 🔴 2026-10-19 老师：「那 4 组等所有波纹盘自动调两种波纹盘间距，让曲线不重叠交合」。
+     两步保证：
+       ① 中点法：A = mid − half、B = mid + half ⇒ **A 恒在 B 下方，绝无交叉**（数学保证）；
+       ② 最小间距：原始两条线若在某处贴合（|A−B|→0，30b/30d 本来就交叉 21 次），
+          只靠 ① 会退化成"两条线贴在一起"，仍算交合 ⇒ 再加一个下限 half ≥ 1% 的 z 尺度。
+     两遍采样是先拿到 z 的量级，再定这个下限（不写死数字，换 n/a/b 也成立）。 */
+  var zScale=1e-9;
+  for(i2=0;i2<raw.length;i2++){
+    zScale=Math.max(zScale, Math.abs(raw[i2].a), Math.abs(raw[i2].b));
+  }
+  var minHalf=0.01*zScale;
+
+  var curves=[], mid, half;
+  for(i2=0;i2<raw.length;i2++){
+    q2=raw[i2];
+    mid=(q2.a+q2.b)/2;
+    half=Math.max(Math.abs(q2.a-q2.b)*g/2, minHalf);
+    curves.push({r:q2.r, a:mid-half, b:mid+half});
+  }
+
+  res.curves=[
+    {key:'A', color:0x1f4fa8, alpha:0.26, pts:curves.map(function(q){ return {r:q.r, z:q.a}; })},
+    {key:'B', color:0x1c7a3e, alpha:0.26, pts:curves.map(function(q){ return {r:q.r, z:q.b}; })}
+  ];
+  if(curves.length<=2) res.curves=[];
+  return res;
 }
 
 /* ---------- three ---------- */
@@ -535,6 +673,16 @@ var canvas=document.getElementById('cv3d'),box=document.getElementById('cvbox');
 var renderer,scene,camera,root;
 var drag=false,lx=0,ly=0,rotX=0.12,rotY=0.6,zoom=1;
 var mode='egg',A=33.7*Math.PI/180,B=1.666,RIP=5;
+/* 黄金比 φ：黄金极限蛋的 k、b 都由它精确给出（见 舒伯格公式/黄金极限蛋_k与b极限推导） */
+var PHI=(1+Math.sqrt(5))/2;
+/* 只读自检接口：滑块显示是圆整过的（31.717°/1.618），要验「k·b=1」必须读内部精确值。
+   也方便以后用探针核对任意预设。 */
+window.__egg = function(){
+  return { mode:mode, n:RIP,
+           aRad:A, aDeg:A*180/Math.PI, b:B,
+           k:Math.tan(A), kb:Math.tan(A)*B, phi:PHI,
+           kExact:1/PHI };
+};
 
 function surf(fn,nu,nv,mat){
   var pos=[],idx=[],i,j,p;
@@ -597,22 +745,9 @@ function build(){
     L=2.7; W=2*0.28*Math.exp(0.27*3.1*Math.PI*2);
   }
   if(mode==='ripple'||mode==='all'){
-    /* 双波纹盘：蛋的两个分量各自成为一条截面曲线（蓝 A / 绿 B），绕轴旋成双面盘。
-       方程取自 代码_波纹盘/22_双波纹盘最佳截面曲线.py —— 波纹沿半径方向，不是沿圆周。 */
-    var S=ripSec(RIP), zs=8/S.tmax, pa=[], pb=[], i2, p2, thk=0;
-    for(i2=0;i2<S.pts.length;i2++){
-      p2=S.pts[i2]; if(!p2) continue;
-      var rr=0.05+0.95*p2.r;
-      thk=Math.max(thk,Math.abs(p2.A-p2.B));
-      pa.push({r:rr,z:p2.A*zs}); pb.push({r:rr,z:p2.B*zs});
-    }
-    /* 🔴 2026-10-19 老师：「3D 的波纹盘应该是参数卡里绿色和蓝色曲线绕轴旋转 360° 得到的
-       默认半透明盘」。
-       旧实现把 A、B 两条曲线首尾拼成**一个闭合轮廓**再旋成实体（橙色不透明外壳）——
-       那样只看得见最外层，两条曲线各自的形状被包在里面。
-       现在改成：**A 曲线、B 曲线各自绕竖直轴旋转一圈**，得到两张半透明曲面，
-       中间那层"厚度"就看得见了；默认就是半透明，不需要额外切换。
-       旋转轴 = 场景的竖直轴（页面坐标里是 y；几何上即"绕对称轴转 360°"）。 */
+    /* 波纹盘：按当前公式取 N 条母线，每条各自绕竖直轴旋成一张半透明曲面 */
+    var S=sections(RIP, B, Math.tan(A), GAPA), zs=8/S.tmax;
+    var zmin=1e9, zmax=-1e9, i2, curv=S.curves;
     function revolveY(pts, NS, mat){
       var M=pts.length, pos=[], idx=[], j, k;
       for(j=0;j<=NS;j++){
@@ -632,21 +767,33 @@ function build(){
     }
     function shell(c,o){
       return new THREE.MeshPhongMaterial({color:c,shininess:35,specular:0x667788,
-        transparent:true,opacity:o,side:THREE.DoubleSide,
-        depthWrite:false});   /* 不写深度缓冲：两张面才能互相透过去 */
+        transparent:true,opacity:o,side:THREE.DoubleSide,depthWrite:false});
     }
-    root.add(revolveY(pa,120,shell(0x1f4fa8,0.26)));   /* 蓝 A */
-    root.add(revolveY(pb,120,shell(0x1c7a3e,0.26)));   /* 绿 B */
-    // θ=0 处的两条截面曲线（原脚本配色：蓝 A、绿 B）
-    var la=[],lb=[];
-    for(k2=0;k2<pa.length;k2++){ la.push(new THREE.Vector3(pa[k2].r*1.004,pa[k2].z*1.02,0));
-                                 lb.push(new THREE.Vector3(pb[k2].r*1.004,pb[k2].z*1.02,0)); }
-    root.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(la),
-      new THREE.LineBasicMaterial({color:0x1f4fa8})));
-    root.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(lb),
-      new THREE.LineBasicMaterial({color:0x1c7a3e})));
+    curv.forEach(function(cv){
+      var pts=[], la=[];
+      for(i2=0;i2<cv.pts.length;i2++){
+        var p2=cv.pts[i2];
+        var rr=0.05+0.95*p2.r;
+        pts.push({r:rr, z:p2.z*zs});
+        la.push(new THREE.Vector3(rr*1.004, p2.z*zs*1.02, 0));
+        if(p2.z<zmin) zmin=p2.z;
+        if(p2.z>zmax) zmax=p2.z;
+      }
+      if(pts.length<3) return;
+      root.add(revolveY(pts,120,shell(cv.color, cv.alpha)));
+      root.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(la),
+        new THREE.LineBasicMaterial({color:cv.color})));
+    });
+    var thk=(zmax>zmin)?(zmax-zmin):0;
     L=thk/S.tmax; W=2.0;
-    document.getElementById('badge').textContent='双波纹盘（n='+RIP+' · 厚径比 '+L.toFixed(3)+' : 1 · 双截面旋成）';
+    var FNAME={'22':'22 双面','27':'27 内化衰减','30a':'30 第1组 amp1·0°',
+               '30b':'30 第2组 amp2·90°','30c':'30 第3组 amp1·180°','30d':'30 第4组 amp2·270°',
+               'pw':'素数·加权','pe':'素数·平等'};
+    document.getElementById('badge').textContent='双波纹盘 · '+(FNAME[S.form]||S.form)+
+      '（n='+RIP+' · k=tan a='+Math.tan(A).toFixed(3)+
+      (S.kClamped?('→ 实取 '+S.k.toFixed(3)+'（受 b²/4='+S.kmax.toFixed(3)+' 限制）'):'')+
+      ' · b='+B.toFixed(3)+' · amp='+GAPA.toFixed(2)+' · 厚径比 '+L.toFixed(3)+' : 1 · '+
+      curv.length+' 条母线各旋一张面）';
   }
   updateReadout(L,W);
   drawProfile();
@@ -687,25 +834,32 @@ function drawProfile(){
   g.strokeStyle='#cfd8e5';
   g.beginPath();g.moveTo(W/2,6);g.lineTo(W/2,H-6);g.stroke();
   if(mode==='ripple'){
-    var S=ripSec(RIP), mx=0.001, i2;
-    for(i2=0;i2<S.pts.length;i2++){ if(S.pts[i2]) mx=Math.max(mx,Math.abs(S.pts[i2].A),Math.abs(S.pts[i2].B)); }
+    /* 剖面小图：与 3D 用同一公式、同一 k/b/amp，画全部母线 */
+    var S=sections(RIP, B, Math.tan(A), GAPA), mx=0.001, i2, c2, o2;
+    for(c2=0;c2<S.curves.length;c2++)
+      for(o2=0;o2<S.curves[c2].pts.length;o2++)
+        mx=Math.max(mx,Math.abs(S.curves[c2].pts[o2].z));
     var lft=34, rgt=W-10, tp=14, bt=H-24, sw=rgt-lft, sh=bt-tp;
     g.strokeStyle='#eef1f6';g.lineWidth=1;
     for(i2=0;i2<=4;i2++){var yy2=tp+sh*i2/4;g.beginPath();g.moveTo(lft,yy2);g.lineTo(rgt,yy2);g.stroke();}
     g.strokeStyle='#dde3ec';g.beginPath();g.moveTo(lft,tp+sh/2);g.lineTo(rgt,tp+sh/2);g.stroke();
-    function drawSec(key,col){
-      g.beginPath();var st=false;
-      for(var q=0;q<S.pts.length;q++){
-        var pt=S.pts[q]; if(!pt){st=false;continue;}
-        var X=lft+pt.r*sw, Y=tp+sh/2-pt[key]/mx*sh/2;
-        if(!st){g.moveTo(X,Y);st=true;}else g.lineTo(X,Y);
+    S.curves.forEach(function(cv){
+      g.beginPath();
+      for(var q=0;q<cv.pts.length;q++){
+        var pt=cv.pts[q];
+        var X=lft+pt.r*sw, Y=tp+sh/2-pt.z/mx*sh/2;
+        if(q===0) g.moveTo(X,Y); else g.lineTo(X,Y);
       }
-      g.strokeStyle=col;g.lineWidth=1.7;g.stroke();
-    }
-    drawSec('A','#1f4fa8'); drawSec('B','#1c7a3e');
+      g.strokeStyle='#'+('000000'+cv.color.toString(16)).slice(-6);
+      g.lineWidth=1.7; g.stroke();
+    });
     g.fillStyle='#8a95a5';g.font='11px sans-serif';
     g.fillText('盘心',lft-2,10); g.fillText('外缘',rgt-22,10);
-    g.fillText('蓝=A(t)　绿=B(t)（22 号原脚本配色）',lft,H-7);
+    var PN={'22':'22 双面（蓝A/绿B）','27':'27 内化衰减（蓝A/绿B）',
+            '30a':'30 第1组 amp1·0°','30b':'30 第2组 amp2·90°',
+            '30c':'30 第3组 amp1·180°','30d':'30 第4组 amp2·270°',
+            'pw':'素数加权','pe':'素数平等'};
+    g.fillText((PN[RFORM]||'')+'　amp='+GAPA.toFixed(2),lft,H-7);
     return;
   }
   if(mode!=='egg'){ 
@@ -750,12 +904,14 @@ function initUI(){
     mode=b.dataset.m;
     [].forEach.call(mbox.children,function(x){x.className=(x===b?'on':'');});
     document.getElementById('rowRip').style.display=(mode==='ripple'||mode==='all')?'block':'none';
+    document.getElementById('rowForm').style.display=(mode==='ripple'||mode==='all')?'block':'none';
+    document.getElementById('rowGap').style.display=(mode==='ripple'||mode==='all')?'block':'none';
     build();
   });
   var ra=document.getElementById('ra'),rb=document.getElementById('rb'),rn=document.getElementById('rn');
   ra.addEventListener('input',function(){
     A=(+ra.value)*Math.PI/180;
-    document.getElementById('va').textContent=(+ra.value).toFixed(1)+'°';
+    document.getElementById('va').textContent=(+ra.value).toFixed(3)+'°';
     if(mode==='cone'||mode==='helix') mode='egg';
     build();
   });
@@ -769,17 +925,52 @@ function initUI(){
     document.getElementById('vn').textContent=RIP;
     build();
   });
+  /* 截面公式切换（2026-10-19：22 / 27 / 30 四组 / 素数两种） */
+  Array.prototype.forEach.call(document.querySelectorAll('#formSeg button'),function(b){
+    b.addEventListener('click',function(){
+      RFORM=b.dataset.f;
+      Array.prototype.forEach.call(document.querySelectorAll('#formSeg button'),function(x){
+        x.className=(x===b?'on':'');
+      });
+      var VF={'22':'22 · 双面','27':'27 · 内化衰减','30a':'30 · 第1组 amp1·0°',
+              '30b':'30 · 第2组 amp2·90°','30c':'30 · 第3组 amp1·180°',
+              '30d':'30 · 第4组 amp2·270°','pw':'素数 · 加权','pe':'素数 · 平等'};
+      document.getElementById('vform').textContent=VF[RFORM]||RFORM;
+      var NT={'22':'x 分量做上截面、y 分量做下截面；k、b 取本页的 a、b。',
+              '27':'衰减内化：k=1/T、b=2√t/T 随 t 演化，不再用外部 amp(t)。',
+              '30a':'第1组：amp1，平面内不旋转。',
+              '30b':'第2组：amp2，平面内顺时针转 90°（(x,y)→(y,−x)）。',
+              '30c':'第3组：amp1，转 180°。',
+              '30d':'第4组：amp2，转 270°。',
+              'pw':'一维波形 Σ nᵢ·sin(nᵢx)/x 旋成单张盘，只作形态对照。',
+              'pe':'一维波形 Σ sin(nᵢx/2π)/(x/2π)，不加权，只作形态对照。'};
+      document.getElementById('formNote').textContent=NT[RFORM]||'';
+      build();
+    });
+  });
+  /* 两面间距 amp：A 整体下移、B 整体上移 ⇒ 只会越离越开，永不重叠 */
+  var rgap=document.getElementById('rgap');
+  rgap.addEventListener('input',function(){
+    GAPA=+this.value;
+    document.getElementById('vgap').textContent=GAPA.toFixed(2);
+    build();
+  });
   document.querySelectorAll('.presets button').forEach(function(b){
     b.addEventListener('click',function(){
       var p=b.dataset.p;
       if(p==='sphere'){ A=0; B=1.666; }
       if(p==='sb'){ A=33.7*Math.PI/180; B=1.666; }
-      if(p==='gold'){ A=33.7*Math.PI/180; B=1.6180339887; }
+      if(p==='gold'){ A=33.7*Math.PI/180; B=PHI; }        /* 只换 b：a 仍是八度蛋的 33.7° */
+      /* 🔴 黄金比极限蛋（2026-10-19 老师要求补这一档）：
+         精确解 k = tanα = 1/φ、b = z₀ = φ，且满足恒等式 k·b = 1；
+         α = arctan(1/φ) = 31.717474411461°（不是八度蛋的 33.69°）。
+         与上一档「只换 b」差的就是这 2° —— 蛋形度 k_E 在极限档才等于 1.93708724。 */
+      if(p==='goldlim'){ A=Math.atan(1/PHI); B=PHI; }
       if(p==='long'){ A=62*Math.PI/180; B=1.45; }
       mode='egg';
       [].forEach.call(document.querySelectorAll('#modes button'),function(x){x.className=(x.dataset.m==='egg'?'on':'');});
-      ra.value=(A*180/Math.PI).toFixed(1);
-      document.getElementById('va').textContent=(A*180/Math.PI).toFixed(1)+'°';
+      ra.value=(A*180/Math.PI).toFixed(3);
+      document.getElementById('va').textContent=(A*180/Math.PI).toFixed(3)+'°';
       rb.value=B.toFixed(3);
       document.getElementById('vb').textContent=B.toFixed(3);
       build();

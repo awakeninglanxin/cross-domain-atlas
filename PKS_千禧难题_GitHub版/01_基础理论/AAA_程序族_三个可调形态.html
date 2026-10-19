@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>程序族 · 三个可调形态（拉瓦尔蛋族 / 舒伯格锥 / π与数列）</title>
+<style>
+  :root{--ink:#12161c;--ink2:#46506a;--ink3:#6b7683;--line:#dde3ec;
+        --accent:#2f6fb5;--soft:#f7f9fd;--ok:#17724a;--warn:#b3261e;--gold:#9a6b12}
+  *{box-sizing:border-box}
+  body{margin:0;background:#fff;color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    font-size:15px;line-height:1.7;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1040px;margin:0 auto;padding:34px 22px 70px}
+  h1{font-size:24px;margin:0 0 8px}
+  .sub{color:var(--ink3);font-size:13.4px;margin:0 0 16px}
+  a.back{display:inline-block;margin-bottom:8px;color:var(--accent);text-decoration:none;font-size:13px}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+  .tabs button{font:inherit;font-size:13.5px;padding:6px 14px;border:1px solid #cfd6e0;
+    background:#fff;border-radius:8px;cursor:pointer;color:var(--ink2)}
+  .tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .stage{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fbfcfe}
+  canvas{display:block;width:100%;height:520px;cursor:grab}
+  #cv2d{height:420px;cursor:default}
+  .hint{position:absolute;right:10px;bottom:8px;font-size:11.5px;color:#8b98ab;
+    background:rgba(255,255,255,.82);padding:2px 8px;border-radius:6px}
+  .ctl{display:flex;flex-wrap:wrap;gap:16px 24px;margin:12px 0 6px;
+    padding:12px 16px;border:1px solid var(--line);border-radius:10px;background:var(--soft);align-items:flex-end}
+  .ctl label{font-size:13px;color:var(--ink2);display:flex;flex-direction:column;gap:4px}
+  .ctl b{font-family:Consolas,monospace;color:var(--accent);font-size:13px}
+  .ctl input[type=range]{width:150px;accent-color:var(--accent)}
+  .box{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;
+    padding:11px 15px;margin:14px 0;background:#fbfaff;font-size:13.5px}
+  .box.num{border-left-color:var(--ok);background:#f6fbf8}
+  .box.warn{border-left-color:var(--warn);background:#fdf6f5}
+  .box .t{display:block;font-weight:700;margin-bottom:4px;color:var(--accent);font-size:13.3px}
+  .box.num .t{color:var(--ok)} .box.warn .t{color:var(--warn)}
+  code{font-family:Consolas,monospace;background:var(--soft);padding:1px 5px;border-radius:4px;font-size:12.6px}
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13.3px}
+  th,td{border:1px solid var(--line);padding:6px 9px;text-align:left}
+  th{background:var(--soft);font-size:12.8px}
+  td.n{font-family:Consolas,monospace;text-align:right;white-space:nowrap}
+  .hide{display:none}
+  .foot{margin-top:32px;padding-top:14px;border-top:1px solid var(--line);color:var(--ink3);font-size:12.5px}
+  .foot a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<a class="back" href="AAA_E盘程序族_去重账本与分类地图.html">← 回「E 盘程序族 · 去重账本」</a>
+<h1>程序族 · 三个可调形态</h1>
+<p class="sub">
+  <b>② 拉瓦尔喷蛋族</b>（等体积 × 八度蛋，`aaa波纹盘侧面满足等体积拉瓦尔喷形态…py`）·
+  <b>③ 舒伯格锥面</b>（`Schaubergercone.py`）·
+  <b>④ π 与数列</b>（`AAAlocas数列的倒数…条形统计图.py` 一族）
+</p>
+
+<div class="tabs">
+  <button data-m="laval" class="on">② 拉瓦尔喷蛋族</button>
+  <button data-m="cone">③ 舒伯格锥面</button>
+  <button data-m="nums">④ π 与数列</button>
+</div>
+
+<div class="stage" id="stage3d">
+  <canvas id="cv"></canvas>
+  <div class="hint">拖动旋转 · 滚轮缩放</div>
+</div>
+<div class="stage hide" id="stage2d">
+  <canvas id="cv2d"></canvas>
+</div>
+
+<div class="ctl" id="ctl3d">
+  <span id="pLaval" style="display:flex;gap:22px;flex-wrap:wrap;align-items:flex-end">
+    <label>段数 N <b id="vN">5</b><input type="range" id="rN" min="2" max="8" value="5" step="1"></label>
+    <label>首段半径 a₀ <b id="vA">0.62</b><input type="range" id="rA" min="0.20" max="1.20" value="0.62" step="0.02"></label>
+    <label>旋成圈数 <b id="vK">1</b><input type="range" id="rK" min="1" max="3" value="1" step="1"></label>
+  </span>
+  <span id="pCone" class="hide" style="display:none;gap:22px;flex-wrap:wrap;align-items:flex-end">
+    <label>c（旋转系数） <b id="vC">0.50</b><input type="range" id="rC" min="0.1" max="1.5" value="0.5" step="0.05"></label>
+    <label>z 范围下限 <b id="vZ0">0.10</b><input type="range" id="rZ0" min="0.02" max="0.28" value="0.10" step="0.01"></label>
+  </span>
+  <span id="pNums" class="hide" style="display:none;gap:22px;flex-wrap:wrap;align-items:flex-end">
+    <label>项数 <b id="vT">10</b><input type="range" id="rT" min="5" max="16" value="10" step="1"></label>
+  </span>
+</div>
+
+<!-- ===== 说明区 ===== -->
+<div id="docLaval">
+  <div class="box num">
+    <span class="t">② 拉瓦尔喷蛋族：等体积 × 八度蛋</span>
+    原脚本生成 <b>N 个八度蛋</b>，第 i 个的
+    <code>k = 2·2ⁱ/3</code>、<code>b = 5·2ⁱ/3</code>——<b>k/b 恒为 2/5，绝对尺度每段翻倍</b>；
+    然后按 <code>a_i</code> 缩放，使<b>每段截面积相等</b>（脚本用 <code>scipy.quad</code> 数值积分）。
+    一串等体积蛋首尾相接，侧面看就是<b>收缩—喉道—扩张</b>的拉瓦尔喷管轮廓。
+  </div>
+  <div class="box warn">
+    <span class="t">本页的近似</span>
+    本页取 <code>a_i = a₀ / 2ⁱ</code>（面积 ∝ a²·尺度² ⇒ 等面积要求 a ∝ 1/尺度），
+    是<b>等体积的一阶近似</b>，不是把 <code>quad</code> 的结果搬过来。
+    所以相邻段的"体积相等"会有几个百分点的偏差；要看严格等体积，得回原脚本跑。
+  </div>
+</div>
+
+<div id="docCone" class="hide">
+  <div class="box num">
+    <span class="t">③ 舒伯格锥面：R(θ, z) 的参数曲面</span>
+    原脚本一行公式（<code>a=161.8, b=100, c=0.5</code>）：
+    <br>
+    <code>R = π(1/a − 1/b) / [ (z − 1/a)(z − (1/b)·sin(cθ)e^{cθ}) + ((1/b)³ − (1/a)³)·c·cos²(cθ)·e^{cθ} / 3 ]</code>
+    <br>
+    注意 <b>a = 161.8 = 100φ</b>，是黄金比的整数倍——这不是随手取的数。
+    面在 <code>z = 1/a</code> 与 <code>z = (1/b)sin(cθ)e^{cθ}</code> 两条线附近会<b>发散</b>，
+    本页把 |R| > 8 的点剔掉（原脚本没剔，靠 z 范围避开）。
+  </div>
+</div>
+
+<div id="docNums" class="hide">
+  <div class="box num">
+    <span class="t">④ 单弦律：倒数的占比</span>
+    原脚本一族算的是 <b>Lucas 数列 / 太阳数列的倒数</b>，以及"等体积线"（lcm）。
+    核心是一个很朴素的观察：把 <code>1/a, 1/b, 1/c…</code> 归一到 100%，谁占多少——
+    这是毕达哥拉斯单弦琴 <code>l·f = 1</code> 的离散版本：<b>弦长与频率互为倒数</b>。
+    <br>
+    本页画两组柱：<span style="color:#17724a"><b>Lucas 倒数</b></span> 与
+    <span style="color:#9a6b12"><b>太阳数列倒数</b></span>，横轴为项序，纵轴为归一化占比（%）。
+  </div>
+</div>
+
+<div class="box" style="border-left-color:#5b3fa8;background:#fbfaff;margin-top:26px">
+  <b>这一页是「形」；与之配对的「数」在另一组：</b><br><a href="../../anu与milnor7维流形/AAA_φ1680与X1750_同一个1680吗.html" style="color:#5b3fa8"><b>↔ 那边是「数」：φ(1680) 与 X(1750)，那两个 1680 是同一件事吗</b></a>
+  <br><span style="font-size:12.8px;color:#6b7683">那边论证「1680 匝是计数、1680 MeV 是质量，两者不成立」；这边把「匝」画成可量的管——但这里的 1680 仍然只是匝数。</span>
+</div>
+
+<div class="foot">
+  <b>来源</b>：<code>E:/pythonProject/program/aaa波纹盘侧面满足等体积拉瓦尔喷形态用不同八度蛋形  加中间线.py</code> ·
+  <code>Schaubergercone.py</code> · <code>AAAlocas数列的倒数占总比条形统计图.py</code><br>
+  <b>相关</b>：<a href="AAA_双轨扫掠_蛋尖断面.html">双轨扫掠</a> ·
+  <a href="AAA_螺旋管族_3D对照.html">螺旋管族</a> ·
+  <a href="AAA_E盘程序族_去重账本与分类地图.html">E 盘去重账本</a>
+</div>
+</div>
+
+<script src="../_vendor/three.min.js"></script>
+<script>
+(function(){
+  var MODE='laval';
+  var PAR={N:5, A:0.62, K:1, C:0.5, Z0:0.10, T:10};
+
+  /* ================= 3D ================= */
+  var cv=document.getElementById('cv');
+  var renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  var scene=new THREE.Scene();
+  var camera=new THREE.PerspectiveCamera(40,1,0.05,400);
+  var root=new THREE.Group(); scene.add(root);
+  scene.add(new THREE.AmbientLight(0xffffff,0.88));
+  var L1=new THREE.DirectionalLight(0xffffff,0.62); L1.position.set(6,8,7); scene.add(L1);
+  var L2=new THREE.DirectionalLight(0xbcd4f0,0.34); L2.position.set(-7,-5,-6); scene.add(L2);
+
+  /* --- ② 拉瓦尔蛋族 --- */
+  function eggXY(t,b,k,a,m){
+    var den=b+Math.sqrt(Math.max(0,b*b-4*k*Math.cos(t)));
+    var x=Math.abs(den)<1e-10?0:a*(2*Math.sin(t)/den);
+    var q1=Math.sqrt(Math.max(0,b*b-4*k)), q3=Math.sqrt(Math.max(0,b*b-4*k*Math.cos(t)));
+    var t1=-((Math.sqrt(1+k*k)*(-q1+q3))/(2*k));
+    var t2=(1/(2*Math.sqrt(1+k*k)))*(((k*k-1)/k)*b+((k*k+1)/k)*q3)
+          -(b*(-1+k*k)+q1*(1+k*k))/(2*k*Math.sqrt(1+k*k));
+    return [x, a*(m*t1+t2)];
+  }
+  function buildLaval(){
+    var N=PAR.N, a0=PAR.A, K=PAR.K, m=2/3;
+    for (var i=0;i<N;i++){
+      var k=2*Math.pow(2,i)/3, b=5*Math.pow(2,i)/3;
+      var a=a0/Math.pow(2,i)*(1+K*0.0);     /* a_i = a0/2^i（等面积一阶近似） */
+      var t1=2*i*Math.PI, t2=2*(i+1)*Math.PI, M=90, NS=48;
+      var pos=[], idx=[], j, s, th, cs, sn;
+      var rr=[], zz=[];
+      for (j=0;j<=M;j++){
+        var t=t1+(t2-t1)*j/M;
+        var p=eggXY(t,b,k,a,m);
+        rr.push(Math.abs(p[0])); zz.push(p[1]);
+      }
+      /* 每段各自归一化（否则 k、b 每段翻倍会把后段撑爆），
+         段直径再按 a₀/2ⁱ 递减 —— 这样 5 段排起来看得出"收缩"的喷管轮廓。 */
+      var mxR=1e-9, zLo=1e9, zHi=-1e9;
+      for(j=0;j<=M;j++){
+        mxR=Math.max(mxR, rr[j]);
+        zLo=Math.min(zLo, zz[j]); zHi=Math.max(zHi, zz[j]);
+      }
+      var zSpan=(zHi-zLo)||1;
+      var segR = a0/Math.pow(2,i) * 1.6;        /* 段的整体口径：逐段减半 */
+      var segH = 0.92;                           /* 每段占的轴向高度 */
+      var zc = (i-(N-1)/2)*1.0;
+      for (j=0;j<=M;j++){
+        var rj = rr[j]/mxR * segR;
+        var zj = (zz[j]-zLo)/zSpan*segH - segH/2;
+        for (s=0;s<=NS;s++){
+          th=Math.PI*2*s/NS; cs=Math.cos(th); sn=Math.sin(th);
+          pos.push(rj*cs, zj + zc, rj*sn);
+        }
+      }
+      for (j=0;j<M;j++) for (s=0;s<NS;s++){
+        var a1=j*(NS+1)+s, b1=(j+1)*(NS+1)+s;
+        idx.push(a1,b1,a1+1, b1,b1+1,a1+1);
+      }
+      var g=new THREE.BufferGeometry();
+      g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+      g.setIndex(idx); g.computeVertexNormals();
+      var col=new THREE.Color().setHSL(0.58-0.06*i, 0.55, 0.52);
+      root.add(new THREE.Mesh(g,new THREE.MeshPhongMaterial({
+        color:col, shininess:55, specular:0x8899aa, side:THREE.DoubleSide, transparent:true, opacity:0.82})));
+    }
+  }
+
+  /* --- ③ 舒伯格锥面 --- */
+  function buildCone(){
+    var a=161.8, b=100, c=PAR.C, z0=PAR.Z0, z1=0.30;
+    var NT=96, NZ=44, pos=[], idx=[], i, j, th, z, R;
+    for (i=0;i<=NT;i++){
+      th=Math.PI*2*i/NT;
+      for (j=0;j<=NZ;j++){
+        z=z0+(z1-z0)*j/NZ;
+        var den=(z-1/a)*(z-(1/b)*Math.sin(c*th)*Math.exp(c*th))
+                + (Math.pow(1/b,3)-Math.pow(1/a,3))*c*Math.pow(Math.cos(c*th),2)*Math.exp(c*th)/3;
+        R=Math.PI*(1/a-1/b)/(Math.abs(den)<1e-9?1e-9:den);
+        if (Math.abs(R)>8) R=8*Math.sign(R);
+        var s=2.2;
+        pos.push(R*Math.cos(th)*s, (z-z0)*18-2.6, R*Math.sin(th)*s);
+      }
+    }
+    for (i=0;i<NT;i++) for (j=0;j<NZ;j++){
+      var a1=i*(NZ+1)+j, b1=(i+1)*(NZ+1)+j;
+      idx.push(a1,b1,a1+1, b1,b1+1,a1+1);
+    }
+    var g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+    g.setIndex(idx); g.computeVertexNormals();
+    root.add(new THREE.Mesh(g,new THREE.MeshPhongMaterial({
+      color:0x2f6fb5, shininess:70, specular:0x99aabb, side:THREE.DoubleSide,
+      transparent:true, opacity:0.78 })));
+  }
+
+  function build(){
+    while(root.children.length) root.remove(root.children[0]);
+    if (MODE==='laval') buildLaval();
+    else if (MODE==='cone') buildCone();
+  }
+
+  /* ================= ④ 2D 数列 ================= */
+  var cv2=document.getElementById('cv2d');
+  function lucas(n){ var a=2,b=1,o=[a,b]; for(var i=2;i<n;i++){ var t=a+b; o.push(t); a=b; b=t; } return o.slice(0,n); }
+  function sun(n){ var o=[1,2]; for(var i=2;i<n;i++) o.push(o[i-1]+o[i-2]); return o.slice(0,n); }
+  function drawNums(){
+    var c=cv2, g=c.getContext('2d');
+    var W=c.width, H=c.height;
+    var dpr=Math.min(window.devicePixelRatio||1,2);
+    c.width=(c.clientWidth||860)*dpr; c.height=(c.clientHeight||420)*dpr;
+    W=c.width; H=c.height;
+    g.setTransform(1,0,0,1,0,0);
+    g.fillStyle='#fff'; g.fillRect(0,0,W,H);
+    var n=PAR.T;
+    var L=lucas(n).map(function(v){return 1/v;});
+    var S=sun(n).map(function(v){return 1/v;});
+    var Lsum=L.reduce(function(a,b){return a+b;},0), Ssum=S.reduce(function(a,b){return a+b;},0);
+    var Lp=L.map(function(v){return v/Lsum*100;}), Sp=S.map(function(v){return v/Ssum*100;});
+
+    var l=54*dpr, r=W-18*dpr, t=26*dpr, b=H-42*dpr;
+    var sh=b-t, sw=(r-l)/n;
+    g.strokeStyle='#eef1f6'; g.lineWidth=1*dpr;
+    for (var q=0;q<=4;q++){ var y=t+sh*q/4; g.beginPath(); g.moveTo(l,y); g.lineTo(r,y); g.stroke(); }
+    var mx=Math.max.apply(null,Lp.concat(Sp));
+    function Y(v){ return b-(v/mx)*sh; }
+
+    for (var i=0;i<n;i++){
+      var x=l+sw*i;
+      var h1=(b-Y(Lp[i])), h2=(b-Y(Sp[i]));
+      var w=sw*0.34;
+      g.fillStyle='#17724a'; g.fillRect(x+sw*0.08, Y(Lp[i]), w, h1);
+      g.fillStyle='#9a6b12'; g.fillRect(x+sw*0.52, Y(Sp[i]), w, h2);
+      if (n<=12){
+        g.fillStyle='#46506a'; g.font=(10.5*dpr)+'px Consolas,monospace'; g.textAlign='center';
+        g.fillText(Lp[i].toFixed(1), x+sw*0.25, Y(Lp[i])-4*dpr);
+        g.fillText(Sp[i].toFixed(1), x+sw*0.69, Y(Sp[i])-4*dpr);
+      }
+      g.fillStyle='#8b98ab'; g.font=(10*dpr)+'px sans-serif'; g.textAlign='center';
+      g.fillText(String(i+1), x+sw*0.5, b+16*dpr);
+    }
+    g.fillStyle='#46506a'; g.font=(11.5*dpr)+'px sans-serif'; g.textAlign='left';
+    g.fillText('归一化占比 %', l-44*dpr, t+10*dpr);
+    g.fillStyle='#17724a'; g.fillRect(r-210*dpr, t-14*dpr, 12*dpr, 10*dpr);
+    g.fillStyle='#46506a'; g.fillText('Lucas 1/Lₙ', r-192*dpr, t-4*dpr);
+    g.fillStyle='#9a6b12'; g.fillRect(r-110*dpr, t-14*dpr, 12*dpr, 10*dpr);
+    g.fillStyle='#46506a'; g.fillText('太阳数列 1/Sₙ', r-92*dpr, t-4*dpr);
+  }
+
+  /* ================= 相机与交互 ================= */
+  var rotY=0.42, rotX=0.20, zoom=1.0;
+  function sync(){
+    var r=8.2*zoom;
+    camera.position.set(r*Math.sin(rotY)*Math.cos(rotX), r*Math.sin(rotX), r*Math.cos(rotY)*Math.cos(rotX));
+    camera.lookAt(0,0,0);
+  }
+  var drag=false, lx=0, ly=0;
+  cv.addEventListener('pointerdown',function(e){ drag=true; lx=e.clientX; ly=e.clientY;
+    if(cv.setPointerCapture) cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove',function(e){
+    if(!drag) return;
+    rotY+=(e.clientX-lx)*0.008;
+    rotX=Math.max(-1.2,Math.min(1.2,rotX+(e.clientY-ly)*0.006));
+    lx=e.clientX; ly=e.clientY; sync();
+  });
+  cv.addEventListener('pointerup',function(){drag=false;});
+  cv.addEventListener('wheel',function(e){
+    e.preventDefault();
+    zoom=Math.max(0.45,Math.min(2.6,zoom*(e.deltaY>0?1.07:0.93)));
+    sync();
+  },{passive:false});
+
+  /* ================= 切换 ================= */
+  function setMode(m){
+    MODE=m;
+    [].forEach.call(document.querySelectorAll('.tabs button'),function(b){
+      b.className=(b.dataset.m===m?'on':'');
+    });
+    document.getElementById('stage3d').className = (m==='nums')?'stage hide':'stage';
+    document.getElementById('stage2d').className = (m==='nums')?'stage':'stage hide';
+    document.getElementById('ctl3d').style.display = (m==='nums')?'none':'flex';
+    document.getElementById('pLaval').style.display = (m==='laval')?'flex':'none';
+    document.getElementById('pCone').style.display  = (m==='cone')?'flex':'none';
+    document.getElementById('docLaval').className = (m==='laval')?'':'hide';
+    document.getElementById('docCone').className  = (m==='cone')?'':'hide';
+    document.getElementById('docNums').className  = (m==='nums')?'':'hide';
+    if (m==='nums') drawNums(); else build();
+    if (m!=='nums') resize3d();
+  }
+  [].forEach.call(document.querySelectorAll('.tabs button'),function(b){
+    b.onclick=function(){ setMode(b.dataset.m); };
+  });
+
+  /* ================= 参数 ================= */
+  function bind(id,lab,key,fx,after){
+    var e=document.getElementById(id), l=document.getElementById(lab);
+    e.addEventListener('input',function(){
+      PAR[key]=parseFloat(this.value);
+      l.textContent = fx===undefined?this.value:parseFloat(this.value).toFixed(fx);
+      if (after) after(); else build();
+    });
+  }
+  bind('rN','vN','N');
+  bind('rA','vA','A',2);
+  bind('rK','vK','K');
+  bind('rC','vC','C',2);
+  bind('rZ0','vZ0','Z0',2);
+  bind('rT','vT','T',undefined,function(){ drawNums(); });
+
+  function resize3d(){
+    var w=cv.clientWidth||900;
+    renderer.setSize(w,520,false);
+    camera.aspect=w/520; camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize',function(){ resize3d(); if(MODE==='nums') drawNums(); });
+
+  function loop(){
+    requestAnimationFrame(loop);
+    if (MODE!=='nums' && !drag) rotY += 0.0032;
+    sync();
+    renderer.render(scene,camera);
+  }
+
+  resize3d(); build(); sync(); requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>螺旋管族 · 五种中心线 3D 对照</title>
+<style>
+  :root{--ink:#12161c;--ink2:#46506a;--ink3:#6b7683;--line:#dde3ec;
+        --accent:#2f6fb5;--soft:#f7f9fd;--gold:#9a6b12}
+  *{box-sizing:border-box}
+  body{margin:0;background:#fff;color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    font-size:15px;line-height:1.7;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto;padding:36px 22px 70px}
+  h1{font-size:25px;margin:0 0 8px}
+  .sub{color:var(--ink3);font-size:13.5px;margin:0 0 20px}
+  .stage{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fbfcfe}
+  canvas{display:block;width:100%;height:520px;cursor:grab}
+  canvas:active{cursor:grabbing}
+  .hint{position:absolute;right:10px;bottom:8px;font-size:11.5px;color:#8b98ab;
+    background:rgba(255,255,255,.82);padding:2px 8px;border-radius:6px}
+  .ctl{display:flex;flex-wrap:wrap;gap:18px 26px;margin:14px 0 6px;
+    padding:12px 16px;border:1px solid var(--line);border-radius:10px;background:var(--soft)}
+  .ctl label{font-size:13px;color:var(--ink2);display:flex;flex-direction:column;gap:4px}
+  .ctl b{font-family:Consolas,monospace;color:var(--accent);font-size:13px}
+  .ctl input[type=range]{width:170px;accent-color:var(--accent)}
+  .ctl button{font:inherit;font-size:12.5px;padding:4px 10px;border:1px solid #cfd6e0;
+    background:#fff;border-radius:7px;cursor:pointer;color:var(--ink2)}
+  .ctl button:hover{border-color:var(--accent);color:var(--accent)}
+  .ctl button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:8px 22px;margin:16px 0}
+  .lg{display:flex;gap:9px;align-items:flex-start;font-size:13.2px;line-height:1.55}
+  .lg i{flex:0 0 12px;height:12px;border-radius:3px;margin-top:5px;display:block}
+  .lg code{font-family:Consolas,monospace;font-size:12px;color:var(--ink3)}
+  .box{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;
+    padding:11px 15px;margin:16px 0;background:#fbfaff;font-size:13.6px}
+  .box.num{border-left-color:#17724a;background:#f6fbf8}
+  .box .t{display:block;font-weight:700;margin-bottom:4px;color:var(--accent);font-size:13.4px}
+  .box.num .t{color:#17724a}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.4px}
+  th,td{border:1px solid var(--line);padding:7px 10px;text-align:left}
+  th{background:var(--soft);font-size:13px}
+  td.n{font-family:Consolas,monospace;text-align:right;white-space:nowrap}
+  .foot{margin-top:36px;padding-top:14px;border-top:1px solid var(--line);color:var(--ink3);font-size:12.5px}
+  .foot a{color:var(--accent)}
+  a.back{display:inline-block;margin-bottom:10px;font-size:13px;color:var(--accent);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+<a class="back" href="AAA_蛋形与双锥_3D参数台.html">← 回「蛋形与双锥 3D 参数台」</a>
+<a class="back" href="AAA_E盘程序族_去重账本与分类地图.html" style="margin-left:18px">E 盘程序族 · 去重账本 →</a>
+
+<h1>螺旋管族 · 五种中心线 3D 对照</h1>
+<p class="sub">
+  从 <code>16_schauberger系数学与书籍与出dxf图的程序/DXF生成程序集/</code> 与 <code>舒伯格公式/波纹盘代码演化/</code> 里
+  挑出的<b>公式自包含、参数可调</b>的五族中心线，按同一套参数实时生成管体。
+  拖动可旋转、滚轮缩放。
+</p>
+
+<div class="stage">
+  <canvas id="cv"></canvas>
+  <div class="hint">拖动旋转 · 滚轮缩放</div>
+</div>
+
+<div class="ctl">
+  <label>圈数 n <b id="vn">8</b><input type="range" id="rn" min="2" max="24" value="8" step="1"></label>
+  <label>管径 <b id="vt">0.070</b><input type="range" id="rt" min="0.015" max="0.11" value="0.07" step="0.005"></label>
+  <label>总高 H <b id="vh">3.6</b><input type="range" id="rh" min="1.6" max="6.5" value="3.6" step="0.1"></label>
+  <label>扭转 twist <b id="vw">1.00</b><input type="range" id="rw" min="0.2" max="2.2" value="1" step="0.05"></label>
+  <div style="display:flex;flex-direction:column;gap:4px;font-size:13px;color:#46506a">
+    <span>断面 <b id="vs" style="font-family:Consolas,monospace;color:#2f6fb5;font-size:13px">圆管</b></span>
+    <span>
+      <button data-s="round" class="on" id="bsRound">圆管</button>
+      <button data-s="egg" id="bsEgg">蛋尖断面</button>
+    </span>
+  </div>
+  <button id="btnSpin">暂停自转</button>
+  <button id="btnReset">复位视角</button>
+</div>
+
+<div class="legend" id="legend"></div>
+
+<div class="box">
+  <span class="t">这页画的是什么、不是什麼</span>
+  <b>是</b>：五族中心线方程的可旋转管体，参数实时可调；断面可选
+  <b>圆管</b> 或 <b>蛋尖断面</b>（36 点，取自 <code>E:/pythonProject/program/spline_points.csv</code>，
+  就是原 py 里 <code>spline_data_path</code> 吃的那份样条），后者用 Frenet 标架沿中心线放样。<br>
+  <b>不是</b>：完整的<b>双轨扫掠</b>（Rhino 的 <code>AddSweep2</code>：一根中心线 + <b>两条</b>边界轨 + 若干断面）。
+  这里只有一根中心线 + 一条断面，所以是"<b>单轨 + 真断面</b>"——
+  断面形状对了，但那条"第二边界轨"带来的扭转/收放没有。
+  旋叶、斜流泵那几族还用到外部样条与干涉检查，仍需回 Rhino 跑。<br>
+  <b>注意</b>：<code>sin/t</code> 那一族的中心线在半径→0 处切线剧变，Frenet 标架会退化（管子会断），
+  所以它固定用等圆管；这不是偷懒，是这条曲线本身的奇点。
+</div>
+
+<h2 style="font-size:18px;margin:26px 0 6px;padding-top:14px;border-top:1px solid var(--line)">五族中心线</h2>
+<table>
+  <thead><tr><th style="width:120px">名称</th><th>中心线方程（u∈[0,1]，n=圈数）</th><th style="width:250px">来源</th></tr></thead>
+  <tbody>
+    <tr><td><b>直锥螺旋</b></td>
+      <td class="n">r = R·(1−0.72u)　z = H(u−½)　φ = 2πnu</td>
+      <td><code>01_直锥螺旋管/最简原始模版…py</code></td></tr>
+    <tr><td><b>等角螺旋</b></td>
+      <td class="n">r = R·e<sup>−3.2u</sup>　z = H(u−½)　φ = 2πnu</td>
+      <td>对数螺旋（与主页面「螺旋」模式同族）</td></tr>
+    <tr><td><b>sin/t 螺旋</b></td>
+      <td class="n">x = sin t / t　y = −cos t / t　t = t<sub>min</sub>+(t<sub>max</sub>−t<sub>min</sub>)u</td>
+      <td><code>21_sin除t螺旋线.py</code></td></tr>
+    <tr><td><b>蛋面螺旋</b></td>
+      <td class="n">ρ = √(1/(b−z·sinα)² − (z·cosα)²)，z 沿蛋轴　φ = 2πnu</td>
+      <td>舒伯格蛋曲面（本族与蛋形页同一方程）</td></tr>
+    <tr><td><b>羚羊角（先扩后收）</b></td>
+      <td class="n">r = R·sin(πu)<sup>0.7</sup>　z = H(u−½)　φ = 2πnu</td>
+      <td><code>07_参数化螺旋锥/羚羊角管中心线…py</code></td></tr>
+  </tbody>
+</table>
+
+<div class="box num">
+  <span class="t">为什么挑这五个</span>
+  判据是<b>「公式自包含 + 参数少」</b>：不依赖外部样条数据（<code>spline_data_path</code>）、不依赖 Rhino 的扫掠 API，
+  一条参数方程就能画出来。DXF 程序集里另有一批「双轨扫掠 + 多断面 + 阴阳 t²」的脚本（旋叶、斜流泵、花洒水龙头等），
+  它们的<b>断面</b>由外部样条给出，搬过来只能得到半成品，所以没有纳入。
+</div>
+
+<div class="box" style="border-left-color:#5b3fa8;background:#fbfaff;margin-top:26px">
+  <b>这一页是「形」；与之配对的「数」在另一组：</b><br><a href="../../anu与milnor7维流形/AAA_φ1680与X1750_同一个1680吗.html" style="color:#5b3fa8"><b>↔ 那边是「数」：φ(1680) 与 X(1750)，那两个 1680 是同一件事吗</b></a>
+  <br><span style="font-size:12.8px;color:#6b7683">那边论证「1680 匝是计数、1680 MeV 是质量，两者不成立」；这边把「匝」画成可量的管——但这里的 1680 仍然只是匝数。</span>
+</div>
+
+<div class="foot">
+  <b>口径</b>：本页只复现中心线并等圆成管；断面、扫掠、干涉检查均在原 py 中完成，本页不替代。<br>
+  相关页：<a href="AAA_蛋形与双锥_3D参数台.html">蛋形与双锥 3D 参数台</a> ·
+  <a href="../AAA_跨界总入口_总网页.html">跨界总入口</a>
+</div>
+</div>
+
+<script src="../_vendor/three.min.js"></script>
+<script>
+(function(){
+  var PAR = {n:8, tube:0.07, H:3.6, twist:1};
+  var SHAPE = 'round';   /* round | egg */
+  var SPIN = true;
+
+  var cv = document.getElementById('cv');
+  var renderer = new THREE.WebGLRenderer({canvas:cv, antialias:true, alpha:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(38, 1, 0.1, 200);
+  var root = new THREE.Group(); scene.add(root);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.86));
+  var d1 = new THREE.DirectionalLight(0xffffff, 0.62); d1.position.set(5,7,6); scene.add(d1);
+  var d2 = new THREE.DirectionalLight(0xbcd4f0, 0.34); d2.position.set(-6,-4,-5); scene.add(d2);
+
+  /* ---------------- 断面 ----------------
+     🔴 来自 E:/pythonProject/program/spline_points.csv（36 点，(12,0) 出发绕一圈回到原点）。
+        这就是原 py 里 spline_data_path 吃的那份断面：蛋尖/水滴形。
+        已按最大跨度等比归一化到宽 1.0，用时可乘"管径×2"。
+     原脚本是**双轨扫掠**（两根边界轨 + 多断面）；这里只有一根中心线，
+     所以复现的是"断面形状 + 单轨扫掠"，不是完整双轨。 */
+  var SECTION = [[0.46111,0.00670],[0.39014,0.03331],[0.31684,0.05319],[0.24510,0.07813],[0.18213,0.11982],[0.13428,0.17878],[0.09114,0.24126],[0.03883,0.29614],[-0.02620,0.33487],[-0.09982,0.35301],[-0.17523,0.35062],[-0.24813,0.32869],[-0.31718,0.29731],[-0.37928,0.25382],[-0.43109,0.19834],[-0.47000,0.13332],[-0.49355,0.06120],[-0.50000,-0.01436],[-0.48350,-0.08789],[-0.44881,-0.15574],[-0.40065,-0.21391],[-0.34214,-0.26252],[-0.27626,-0.29985],[-0.20522,-0.32699],[-0.13145,-0.34466],[-0.05592,-0.35301],[0.01997,-0.35145],[0.09537,-0.34213],[0.16987,-0.32724],[0.24222,-0.30423],[0.31117,-0.27236],[0.37637,-0.23345],[0.43712,-0.18782],[0.48277,-0.12785],[0.50000,-0.05418],[0.46111,0.00670]];
+
+  /* ---------------- 五族中心线 ---------------- */
+  var R = 1.0;
+  var SPECS = [
+    {key:'cone', color:0x1f4fa8, name:'直锥螺旋', src:'01_直锥螺旋管/最简原始模版'},
+    {key:'log',  color:0x17724a, name:'等角螺旋', src:'对数螺旋（e^-3.2u）'},
+    {key:'egg',  color:0x9a6b12, name:'蛋面螺旋', src:'舒伯格蛋曲面'},
+    {key:'oryx', color:0x6a3fa8, name:'羚羊角', src:'07_参数化螺旋锥/羚羊角管'},
+    {key:'sint', color:0xb3261e, name:'sin/t 螺旋', src:'21_sin除t螺旋线.py'}
+  ];
+
+  /* 蛋曲面：x²+z² = 1/(b−y·sinα)² − (y·cosα)² */
+  var EGG = {a: 33.7*Math.PI/180, b: 1.666};
+  function eggR(y){
+    var s = EGG.b - y*Math.sin(EGG.a);
+    if (Math.abs(s) < 1e-6) return 0;
+    var v = 1/(s*s) - Math.pow(y*Math.cos(EGG.a), 2);
+    return v > 0 ? Math.sqrt(v) : 0;
+  }
+
+  function centerline(key, u){
+    var n = PAR.n, H = PAR.H, tp = PAR.twist;
+    var phi = Math.PI*2*n*u*tp;
+    var cs = Math.cos(phi), sn = Math.sin(phi);
+    var z = H*(u-0.5);
+    if (key === 'cone'){
+      var r = R*(1 - 0.72*u);
+      return [r*cs, z, r*sn];
+    }
+    if (key === 'log'){
+      var r2 = R*Math.exp(-3.2*u);
+      return [r2*cs, z, r2*sn];
+    }
+    if (key === 'sint'){
+      /* 21 号是 2D 曲线 (sin t/t, −cos t/t)；这里保持平面形状，沿 z 拉起成管 */
+      var tmin = Math.PI/9, tmax = 9*Math.PI;
+      var t = tmin + (tmax-tmin)*u;
+      var s = Math.sin(t)/t, c = -Math.cos(t)/t;
+      var k = 0.52;                      /* 1/t 最大 2.86，乘 0.52 ≈ 1.5，与其它几根同尺度 */
+      /* 半径 1/t 衰减极快：竖直拉伸会变成"一根杆"，所以只给很小的 z 起伏，
+         让它保持"收缩螺旋盘"的样子（这是 21 号原曲线本身的性质，不是画错） */
+      return [s*k, z*1.0, c*k];
+    }
+    if (key === 'egg'){
+      /* 蛋曲面在 y = ±b/sinα = ±3.0 处半径归零，所以轴向要走满 ±2.4 才看得出"蛋" */
+      var y = -2.4 + 4.8*u;
+      var rr = eggR(y);
+      return [rr*cs, y*0.42, rr*sn];
+    }
+    /* oryx */
+    var ro = R*Math.pow(Math.max(0, Math.sin(Math.PI*u)), 0.7);
+    return [ro*cs, z, ro*sn];
+  }
+
+  /* 用 Frenet 标架把 2D 断面沿中心线放样（相当于单轨 sweep） */
+  function sweepShape(curve, sec, size, segs){
+    var frames = curve.computeFrenetFrames(segs, false);
+    var M = sec.length, pos = [], idx = [], i, j;
+    for (i=0;i<=segs;i++){
+      var P = curve.getPointAt(i/segs);
+      var Nv = frames.normals[i], Bv = frames.binormals[i];
+      for (j=0;j<M;j++){
+        var a = sec[j][0]*size, b = sec[j][1]*size;
+        pos.push(P.x + Nv.x*a + Bv.x*b,
+                 P.y + Nv.y*a + Bv.y*b,
+                 P.z + Nv.z*a + Bv.z*b);
+      }
+    }
+    for (i=0;i<segs;i++){
+      for (j=0;j<M;j++){
+        var j1 = (j+1)%M;
+        var a1=i*M+j, b1=(i+1)*M+j, c1=(i+1)*M+j1, d1=i*M+j1;
+        idx.push(a1,b1,d1, b1,c1,d1);
+      }
+    }
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
+    g.setIndex(idx); g.computeVertexNormals();
+    return g;
+  }
+
+  function buildOne(spec, idx){
+    var N = 420, pts = [], i, p;
+    for (i=0;i<=N;i++){
+      p = centerline(spec.key, i/N);
+      pts.push(new THREE.Vector3(p[0], p[1], p[2]));
+    }
+    var curve = new THREE.CatmullRomCurve3(pts);
+    var geo;
+    /* sin/t 的中心线在半径→0 处切线方向剧变，Frenet 标架会退化（管子会断成两截），
+       所以这一根无论选什么断面都用等圆管。 */
+    if (SHAPE === 'round' || spec.key === 'sint'){
+      geo = new THREE.TubeGeometry(curve, 380, PAR.tube, 10, false);
+    }else{
+      geo = sweepShape(curve, SECTION, PAR.tube*2*1.35, 300);
+    }
+    var mat = new THREE.MeshPhongMaterial({color:spec.color, shininess:70,
+      specular:0x8899aa, side:THREE.DoubleSide});
+    var m = new THREE.Mesh(geo, mat);
+    m.position.x = (idx - (SPECS.length-1)/2) * 2.45;   /* 并排 */
+    return m;
+  }
+
+  function build(){
+    while(root.children.length) root.remove(root.children[0]);
+    SPECS.forEach(function(s, i){ root.add(buildOne(s, i)); });
+  }
+
+  /* ---------------- 相机与交互 ---------------- */
+  var rotY = 0.40, rotX = 0.16, zoom = 1.0;
+  function sync(){
+    camera.position.set(
+      12.6*zoom*Math.sin(rotY)*Math.cos(rotX),
+      12.6*zoom*Math.sin(rotX),
+      12.6*zoom*Math.cos(rotY)*Math.cos(rotX));
+    camera.lookAt(0,0,0);
+  }
+  var drag = false, lx = 0, ly = 0;
+  cv.addEventListener('pointerdown', function(e){
+    drag = true; lx = e.clientX; ly = e.clientY;
+    if (cv.setPointerCapture) cv.setPointerCapture(e.pointerId);
+  });
+  cv.addEventListener('pointermove', function(e){
+    if (!drag) return;
+    rotY += (e.clientX-lx)*0.008;
+    rotX = Math.max(-1.2, Math.min(1.2, rotX + (e.clientY-ly)*0.006));
+    lx = e.clientX; ly = e.clientY; sync();
+  });
+  cv.addEventListener('pointerup', function(){ drag = false; });
+  cv.addEventListener('wheel', function(e){
+    e.preventDefault();
+    zoom = Math.max(0.45, Math.min(2.4, zoom * (e.deltaY>0 ? 1.07 : 0.93)));
+    sync();
+  }, {passive:false});
+
+  /* ---------------- 参数 ---------------- */
+  function bind(id, valId, key, fixed, after){
+    var el = document.getElementById(id), lab = document.getElementById(valId);
+    el.addEventListener('input', function(){
+      var v = parseFloat(this.value);
+      PAR[key] = v;
+      lab.textContent = fixed ? v.toFixed(fixed) : v;
+      if (after) after(v);
+      build();
+    });
+  }
+  bind('rn','vn','n',0);
+  bind('rt','vt','tube',3);
+  bind('rh','vh','H',1);
+  bind('rw','vw','twist',2);
+
+  /* 断面切换：圆管（TubeGeometry）↔ 蛋尖断面（Frenet 放样，数据来自 spline_points.csv） */
+  function setShape(k){
+    SHAPE = k;
+    document.getElementById('vs').textContent = (k === 'round') ? '圆管' : '蛋尖断面';
+    document.getElementById('bsRound').className = (k === 'round') ? 'on' : '';
+    document.getElementById('bsEgg').className   = (k === 'egg')   ? 'on' : '';
+    build();
+  }
+  document.getElementById('bsRound').onclick = function(){ setShape('round'); };
+  document.getElementById('bsEgg').onclick   = function(){ setShape('egg'); };
+
+  document.getElementById('btnSpin').onclick = function(){
+    SPIN = !SPIN;
+    this.textContent = SPIN ? '暂停自转' : '继续自转';
+  };
+  document.getElementById('btnReset').onclick = function(){
+    rotY = 0.40; rotX = 0.16; zoom = 1.0; sync();
+  };
+
+  /* ---------------- 图例 ---------------- */
+  var lg = document.getElementById('legend');
+  lg.innerHTML = SPECS.map(function(s){
+    return '<div class="lg"><i style="background:#'+('000000'+s.color.toString(16)).slice(-6)+'"></i>' +
+           '<span><b>'+s.name+'</b><br><code>'+s.src+'</code></span></div>';
+  }).join('');
+
+  /* ---------------- 尺寸与循环 ---------------- */
+  function resize(){
+    var w = cv.clientWidth || 900, h = 520;
+    renderer.setSize(w, h, false);
+    camera.aspect = w/h;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+
+  var last = 0;
+  function loop(t){
+    requestAnimationFrame(loop);
+    if (SPIN && !drag) rotY += 0.0032;
+    sync();
+    renderer.render(scene, camera);
+  }
+
+  resize(); build(); sync(); requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

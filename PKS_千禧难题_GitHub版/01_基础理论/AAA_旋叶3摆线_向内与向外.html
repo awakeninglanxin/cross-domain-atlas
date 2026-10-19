@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>旋叶 3 摆线 · 向内 / 向外</title>
+<style>
+  :root{--ink:#12161c;--ink2:#46506a;--ink3:#6b7683;--line:#dde3ec;
+        --accent:#2f6fb5;--soft:#f7f9fd;--ok:#17724a;--warn:#b3261e;--purple:#5b3fa8}
+  *{box-sizing:border-box}
+  body{margin:0;background:#fff;color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    font-size:15px;line-height:1.7;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1040px;margin:0 auto;padding:34px 22px 70px}
+  h1{font-size:24px;margin:0 0 8px}
+  .sub{color:var(--ink3);font-size:13.4px;margin:0 0 16px}
+  a.back{display:inline-block;margin-bottom:8px;color:var(--accent);text-decoration:none;font-size:13px}
+  .stage{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fbfcfe}
+  canvas{display:block;width:100%;height:540px;cursor:grab}
+  .hint{position:absolute;right:10px;bottom:8px;font-size:11.5px;color:#8b98ab;
+    background:rgba(255,255,255,.82);padding:2px 8px;border-radius:6px}
+  .ctl{display:flex;flex-wrap:wrap;gap:16px 24px;margin:12px 0 6px;
+    padding:12px 16px;border:1px solid var(--line);border-radius:10px;background:var(--soft);align-items:flex-end}
+  .ctl label{font-size:13px;color:var(--ink2);display:flex;flex-direction:column;gap:4px}
+  .ctl b{font-family:Consolas,monospace;color:var(--accent);font-size:13px}
+  .ctl input[type=range]{width:150px;accent-color:var(--accent)}
+  .ctl button{font:inherit;font-size:12.5px;padding:5px 11px;border:1px solid #cfd6e0;
+    background:#fff;border-radius:7px;cursor:pointer;color:var(--ink2)}
+  .ctl button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .legend{display:flex;flex-wrap:wrap;gap:14px 26px;margin:10px 0;font-size:13px;color:var(--ink2)}
+  .legend i{display:inline-block;width:22px;height:3px;border-radius:2px;vertical-align:3px;margin-right:6px}
+  .box{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;
+    padding:11px 15px;margin:14px 0;background:#fbfaff;font-size:13.5px}
+  .box.num{border-left-color:var(--ok);background:#f6fbf8}
+  .box.warn{border-left-color:var(--warn);background:#fdf6f5}
+  .box .t{display:block;font-weight:700;margin-bottom:4px;color:var(--accent);font-size:13.3px}
+  .box.num .t{color:var(--ok)} .box.warn .t{color:var(--warn)}
+  code{font-family:Consolas,monospace;background:var(--soft);padding:1px 5px;border-radius:4px;font-size:12.6px}
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13.3px}
+  th,td{border:1px solid var(--line);padding:6px 9px;text-align:left}
+  th{background:var(--soft);font-size:12.8px}
+  td.n{font-family:Consolas,monospace;text-align:right;white-space:nowrap}
+  .foot{margin-top:30px;padding-top:14px;border-top:1px solid var(--line);color:var(--ink3);font-size:12.5px}
+  .foot a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<a class="back" href="AAA_E盘程序族_去重账本与分类地图.html">← 回「E 盘程序族 · 去重账本」</a>
+<h1>旋叶 3 摆线 · 向内 / 向外</h1>
+<p class="sub">
+  复现 <code>02_双轨扫掠螺旋/旋叶3摆线螺旋向内+多断面 -dxf 样条线 - 阴阳-t平方.py</code>（244 行）<br>
+  中心线 = <b>三次谐波 + 七次谐波</b>叠成的三叶形 × 指数放大 2<sup>t/π</sup>；断面 = <code>aπ·sin(t)/t</code>（半径 1/t 的螺线）
+</p>
+
+<div class="stage">
+  <canvas id="cv"></canvas>
+  <div class="hint">拖动旋转 · 滚轮缩放</div>
+</div>
+
+<div class="ctl">
+  <label>扫掠角（×π） <b id="vT">0.33</b><input type="range" id="rT" min="0.10" max="0.66" value="0.333" step="0.01"></label>
+  <label>断面 amp <b id="vA">0.28</b><input type="range" id="rA" min="0.08" max="0.60" value="0.28" step="0.01"></label>
+  <label>扭转 twist <b id="vW">1.00</b><input type="range" id="rW" min="-2" max="2" value="1" step="0.05"></label>
+  <label>z 拉伸 <b id="vZ">1.00</b><input type="range" id="rZ" min="0.2" max="3" value="1" step="0.05"></label>
+  <span style="display:flex;flex-direction:column;gap:4px;font-size:13px;color:#46506a">方向
+    <span><button data-d="-1" class="on" id="bIn">向内 −1</button>
+    <button data-d="1" id="bOut">向外 +1</button></span></span>
+  <span style="display:flex;flex-direction:column;gap:4px;font-size:13px;color:#46506a">阴阳
+    <span><button data-s="1" class="on" id="bSp">+1</button>
+    <button data-s="-1" id="bSn">−1</button></span></span>
+</div>
+
+<div class="legend">
+  <span><i style="background:#2f6fb5"></i>扫掠面</span>
+  <span><i style="background:#17724a"></i>中心线（三叶摆线）</span>
+  <span><i style="background:#b3261e"></i>叶尖轨（断面第 0 点）</span>
+</div>
+
+<div class="box num">
+  <span class="t">这族"3 摆线"是什么</span>
+  中心线是 <b>1 次 + 7 次谐波、按 1/3 加权</b>的叠加：
+  <br><code>x = −(cos t + cos7t/3)·2^(t/π)·r</code><br>
+  <code>y = (sin t + sin7t/3)·2^(t/π)</code><br>
+  <code>z = t</code>
+  <br><br>
+  ⚠ <b>默认只走 <code>2π/6</code></b>（原脚本的 <code>t_max</code>），此时 7 次谐波只完成 <b>1.17 个周期</b>，
+  所以画面里是<b>一个 S 弯的卷片</b>，不是"三瓣"——这是<b>公式本身</b>的结果，不是画漏了。
+  想看多瓣，把上面「扫掠角」拉到 <b>0.66π</b>（= 2π/3），7 次谐波会走 2.3 个周期，叶形才展开。
+  另：断面是<b>半径 1/t 的螺线</b>（不是闭合管），扫出来本来就是"卷起的叶片"，不是圆管。
+  指数项 <code>2^(t/π)</code> 让每一转半径翻倍（对数螺旋），所以整体是<b>向外张开</b>的喇叭。
+</div>
+<div class="box warn">
+  <span class="t">向内 / 向外 只是 r 的符号</span>
+  脚本里叫 <code>sign_spiral_dir</code>（本页 r=±1），它只把 x 取反 ⇒ <b>整体镜像</b>，
+  不是"往里缩"。真正的"向内"来自断面半径 <code>aπ/t</code> 随 t 递减（断面越走越小）。
+</div>
+
+<h2 style="font-size:18px;margin:24px 0 6px;padding-top:14px;border-top:1px solid var(--line)">参数对应</h2>
+<table>
+  <thead><tr><th style="width:150px">脚本</th><th>本页</th><th style="width:200px">说明</th></tr></thead>
+  <tbody>
+    <tr><td><code>t_max = 2π/6</code></td><td>"扫掠角（×π）" 1/3</td><td>默认 0.333π = 2π/6，与脚本一致</td></tr>
+    <tr><td><code>amp = 0.25</code>，<code>a = linspace(amp, amp/3)</code></td>
+      <td>"断面 amp"</td><td>断面随 t 线性缩小到 1/3（本页按比例保留）</td></tr>
+    <tr><td><code>psi = linspace(0, twist·π/2)</code></td><td>"扭转 twist"</td><td>线性扭转</td></tr>
+    <tr><td><code>z_v = 0.3487·1.08</code></td><td>"z 拉伸"</td><td>按总高归一化后乘此系数</td></tr>
+    <tr><td>断面 <code>aπ·sin(t)/t, aπ·cos(t)/t</code>，<code>t∈[π,3π]</code></td>
+      <td>（自动）</td><td>半径 1/t 的螺线，100 点</td></tr>
+  </tbody>
+</table>
+
+<div class="box">
+  <span class="t">与原脚本的差别</span>
+  原脚本用 ezdxf 输出<b>样条线框</b>（中心线 + 叶尖轨 + 若干断面）；本页连成曲面以便看形体，
+  并保留中心线与叶尖轨两层线框。半径按最大值归一化——原脚本是绝对单位（d=4.31）。
+</div>
+
+<div class="foot">
+  <b>来源</b>：<code>02_双轨扫掠螺旋/旋叶3摆线螺旋向内+多断面 -dxf 样条线 - 阴阳-t平方.py</code><br>
+  <b>相关</b>：<a href="AAA_双轨扫掠_蛋尖断面.html">双轨扫掠 · 蛋尖断面</a> ·
+  <a href="AAA_程序族_三个可调形态.html">程序族 · 三个可调形态</a> ·
+  <a href="AAA_E盘程序族_去重账本与分类地图.html">E 盘去重账本</a>
+</div>
+</div>
+
+<script src="../_vendor/three.min.js"></script>
+<script>
+(function(){
+  var PAR={T:0.333, A:0.28, W:1.00, Z:1.00};
+  var DIR=-1, SIGN=1, SPIN=true;
+
+  var cv=document.getElementById('cv');
+  var renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  var scene=new THREE.Scene();
+  var camera=new THREE.PerspectiveCamera(40,1,0.05,400);
+  var root=new THREE.Group(); scene.add(root);
+  scene.add(new THREE.AmbientLight(0xffffff,0.88));
+  var L1=new THREE.DirectionalLight(0xffffff,0.6); L1.position.set(6,8,7); scene.add(L1);
+  var L2=new THREE.DirectionalLight(0xbcd4f0,0.34); L2.position.set(-7,-5,-6); scene.add(L2);
+
+  /* 断面：aπ·sin(t)/t, aπ·cos(t)/t，t∈[π,3π] */
+  function section(a){
+    var p=[], i, t, M=100;
+    for (i=0;i<=M;i++){
+      t=Math.PI+(2*Math.PI)*i/M;
+      p.push([a*Math.PI*Math.sin(t)/t, a*Math.PI*Math.cos(t)/t]);
+    }
+    return p;
+  }
+
+  function build(){
+    while(root.children.length) root.remove(root.children[0]);
+
+    var tmax=PAR.T*Math.PI, NT=240;
+    var SEC=section(1.0);           /* 先归一，再按 amp·(1→1/3) 缩放 */
+    var NS=SEC.length;
+
+    function C(t){
+      var e=Math.pow(2, t/Math.PI);
+      return new THREE.Vector3(
+        -(Math.cos(t)+Math.cos(7*t)/3)*e*DIR,
+        t*PAR.Z,
+        (Math.sin(t)+Math.sin(7*t)/3)*e);
+    }
+    function D1(t){ var h=1e-5; return C(t+h).sub(C(t-h)).divideScalar(2*h); }
+    function D2(t){ var h=1e-5; var a=D1(t-h), b=D1(t+h); return b.sub(a).divideScalar(2*h); }
+
+    var centers=[], frames=[], i, j, t, u;
+    for (i=0;i<=NT;i++){
+      t=tmax*i/NT;
+      var P=C(t), T=D1(t).normalize(), N=D2(t);
+      if (N.length()<1e-9) N=new THREE.Vector3(0,1,0);
+      N.normalize();
+      var B=new THREE.Vector3().crossVectors(T,N).normalize();
+      centers.push(P); frames.push({T:T,N:N,B:B});
+    }
+    /* 归一化到视野 */
+    var mx=0; for(i=0;i<=NT;i++) mx=Math.max(mx, Math.abs(centers[i].x), Math.abs(centers[i].z));
+    var sc=1.9/(mx||1);
+    for(i=0;i<=NT;i++){ centers[i].x*=sc; centers[i].z*=sc; centers[i].y*=sc; }
+
+    var psiMax=PAR.W*tmax/2;
+    var rings=[], tip=[];
+    for (i=0;i<=NT;i++){
+      u=i/NT;
+      var amp=PAR.A*(1 - (2/3)*u);       /* 与脚本 linspace(amp, amp/3) 一致 */
+      var f=frames[i], P0=centers[i];
+      var R=new THREE.Matrix4().makeRotationAxis(f.T, psiMax*u);
+      var ring=[];
+      for (j=0;j<NS;j++){
+        var v=new THREE.Vector3()
+          .addScaledVector(f.N, SIGN*SEC[j][1]*amp*sc)
+          .addScaledVector(f.B, SIGN*SEC[j][0]*amp*sc);
+        v.applyMatrix4(R); v.add(P0);
+        ring.push(v);
+      }
+      rings.push(ring); tip.push(ring[0].clone());
+    }
+
+    var pos=[], idx=[];
+    for (i=0;i<=NT;i++) for (j=0;j<NS;j++) pos.push(rings[i][j].x, rings[i][j].y, rings[i][j].z);
+    for (i=0;i<NT;i++) for (j=0;j<NS-1;j++){
+      var a1=i*NS+j, b1=(i+1)*NS+j;
+      idx.push(a1,b1,a1+1, b1,b1+1,a1+1);
+    }
+    var g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+    g.setIndex(idx); g.computeVertexNormals();
+    root.add(new THREE.Mesh(g,new THREE.MeshPhongMaterial({
+      color:0x2f6fb5, shininess:65, specular:0x99aabb, side:THREE.DoubleSide,
+      transparent:true, opacity:0.55})));
+
+    function over(pts,color,order){
+      var ln=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+        new THREE.LineBasicMaterial({color:color, depthTest:false}));
+      ln.renderOrder=order; return ln;
+    }
+    root.add(over(centers, 0x17724a, 20));
+    root.add(over(tip, 0xb3261e, 21));
+  }
+
+  var rotY=0.55, rotX=0.26, zoom=1.0;
+  function sync(){
+    var r=6.4*zoom;
+    camera.position.set(r*Math.sin(rotY)*Math.cos(rotX), r*Math.sin(rotX), r*Math.cos(rotY)*Math.cos(rotX));
+    camera.lookAt(0,0.4,0);
+  }
+  var drag=false,lx=0,ly=0;
+  cv.addEventListener('pointerdown',function(e){drag=true;lx=e.clientX;ly=e.clientY;
+    if(cv.setPointerCapture) cv.setPointerCapture(e.pointerId);});
+  cv.addEventListener('pointermove',function(e){
+    if(!drag)return;
+    rotY+=(e.clientX-lx)*0.008;
+    rotX=Math.max(-1.2,Math.min(1.2,rotX+(e.clientY-ly)*0.006));
+    lx=e.clientX;ly=e.clientY;sync();
+  });
+  cv.addEventListener('pointerup',function(){drag=false;});
+  cv.addEventListener('wheel',function(e){
+    e.preventDefault();
+    zoom=Math.max(0.45,Math.min(2.6,zoom*(e.deltaY>0?1.07:0.93)));
+    sync();
+  },{passive:false});
+
+  function bind(id,lab,key,fx){
+    var e=document.getElementById(id), l=document.getElementById(lab);
+    e.addEventListener('input',function(){
+      PAR[key]=parseFloat(this.value);
+      l.textContent=fx===undefined?this.value:parseFloat(this.value).toFixed(fx);
+      build();
+    });
+  }
+  bind('rT','vT','T',2); bind('rA','vA','A',2);
+  bind('rW','vW','W',2); bind('rZ','vZ','Z',2);
+
+  document.getElementById('bIn').onclick=function(){ DIR=-1;
+    this.className='on'; document.getElementById('bOut').className=''; build(); };
+  document.getElementById('bOut').onclick=function(){ DIR=1;
+    this.className='on'; document.getElementById('bIn').className=''; build(); };
+  document.getElementById('bSp').onclick=function(){ SIGN=1;
+    this.className='on'; document.getElementById('bSn').className=''; build(); };
+  document.getElementById('bSn').onclick=function(){ SIGN=-1;
+    this.className='on'; document.getElementById('bSp').className=''; build(); };
+
+  function resize(){
+    var w=cv.clientWidth||900;
+    renderer.setSize(w,540,false);
+    camera.aspect=w/540; camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize',resize);
+  function loop(){
+    requestAnimationFrame(loop);
+    if(SPIN && !drag) rotY+=0.0034;
+    sync(); renderer.render(scene,camera);
+  }
+  resize(); build(); sync(); requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
