@@ -1188,5 +1188,91 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
 })();
 
 </script><!--/FXCTL:JS-->
+
+<!-- 自动演示序列（2026-10-19 老师）：等文字弹框消失 → 生长动画 → 逐级放大播放 → 自动旋转。
+     不用固定时长：动画总长是运行时算的（zoomScriptC.total），所以一律按**按钮状态**判定"播完"。 -->
+<script>
+(function(){
+  var LOG = [];
+  function log(x){ LOG.push(x); try{ console.log('[autoDemo]', x); }catch(e){} }
+
+  /* 等 toast 的 show 类消失（最多 30s，防卡死） */
+  function waitToastGone(cb){
+    var t = document.getElementById('toast');
+    if (!t){ log('无 #toast，直接开始'); return cb(); }
+    var t0 = Date.now();
+    (function chk(){
+      if (!t.classList.contains('show')){ log('弹框已消失，用时 ' + (Date.now()-t0) + 'ms'); return cb(); }
+      if (Date.now()-t0 > 30000){ log('弹框等待超时，强行开始'); return cb(); }
+      setTimeout(chk, 100);
+    })();
+  }
+
+  /* 等某个条件成立（轮询 200ms） */
+  function waitUntil(fn, maxMs, cb, label){
+    var t0 = Date.now();
+    (function chk(){
+      if (fn()){ log((label||'条件') + ' 完成，用时 ' + ((Date.now()-t0)/1000).toFixed(1) + 's'); return cb(); }
+      if (Date.now()-t0 > maxMs){ log((label||'条件') + ' 超时'); return cb(); }
+      setTimeout(chk, 200);
+    })();
+  }
+
+  /* 「生长动画」是否还在播：按钮带 on 类，或文字变成「⏸ 暂停」 */
+  function growPlaying(){
+    var b = document.getElementById('btnPlay');
+    if (!b) return false;
+    return b.classList.contains('on') || /暂停/.test(b.textContent);
+  }
+  /* 「逐级放大播放」是否还在播：按钮带 on 类 */
+  function zoomPlaying(){
+    var b = document.getElementById('btnZoomPlay');
+    return !!(b && b.classList.contains('on'));
+  }
+
+  function enableRotate(){
+    var c = document.getElementById('chkRotate');
+    if (!c){ log('无 #chkRotate'); return; }
+    if (!c.checked){ c.checked = true; c.dispatchEvent(new Event('change', {bubbles:true})); log('已勾选自动旋转'); }
+    else { log('自动旋转本来已开'); }
+  }
+
+  function run(){
+    var play = document.getElementById('btnPlay');
+    var zoom = document.getElementById('btnZoomPlay');
+    if (!play || !zoom){ log('按钮缺失，终止'); return; }
+
+    /* ① 生长动画 */
+    play.click(); log('已点：生长动画');
+    setTimeout(function(){
+      /* 先确认它真的进入了"播放中"，否则会立刻误判为播完 */
+      if (!growPlaying()){ log('警告：生长动画未进入播放态'); }
+      waitUntil(function(){ return !growPlaying(); }, 120000, function(){
+        /* ② 逐级放大播放 */
+        setTimeout(function(){
+          zoom.click(); log('已点：逐级放大播放');
+          setTimeout(function(){
+            waitUntil(function(){ return !zoomPlaying(); }, 180000, function(){
+              /* ③ 自动旋转 */
+              setTimeout(enableRotate, 400);
+            }, '逐级放大');
+          }, 600);
+        }, 600);
+      }, '生长动画');
+    }, 800);
+  }
+
+  /* 对外暴露，方便手动重放或调试 */
+  window.__autoDemo = { run: run, log: function(){ return LOG.slice(); } };
+
+  /* 入口：等弹框消失后再跑 */
+  if (document.readyState === 'complete' || document.readyState === 'interactive'){
+    setTimeout(function(){ waitToastGone(run); }, 600);
+  } else {
+    window.addEventListener('load', function(){ setTimeout(function(){ waitToastGone(run); }, 600); });
+  }
+})();
+</script>
+
 </body>
 </html>
