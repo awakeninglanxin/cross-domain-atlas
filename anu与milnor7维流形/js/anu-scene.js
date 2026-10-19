@@ -63,7 +63,10 @@
      一个点就糊满全屏，把螺旋线一起冲成白茫茫一片（老师：「螺旋线太亮了，看不到 koilon 泡泡」）。
      改成**绑定到几何尺度**后，气泡尺寸随阶自动缩放，深度放大时也不会爆。
      系数 0.55 ⇒ 相邻泡泡之间**留出可见缝隙**（等于点间距就会连成一条平滑的管，看不出"泡泡"）。 */
-  var BUBBLE_OF_SPACING = 0.55;
+  /* 🔴 2026-10-19 老师：「最终 L7 螺旋线上的散点（代表 koilon）不够大，要双倍调大」
+     ⇒ 0.55 → 1.10（正好 ×2）。这条系数是**散点直径 / 该阶平均点间距**的比，
+        只影响 Points（koilon 珍珠），不影响曲线本身。 */
+  var BUBBLE_OF_SPACING = 1.10;
 
   /* 🔴 2026-10-08 老师：「螺旋线你是不是没有用 bspline 连接散点，一点不丝滑，像 dna」
    *             ＋「螺旋线放大看像很多折线」
@@ -99,7 +102,7 @@
          ⇒ 阶梯第 7 阶 7 匝 × 7 = 49 颗；爱心第 D 阶 7 匝 × 7 = 49 颗/丝。
          其它各级一律不画散点 —— 老师：「只要求能看到明显发亮的 spirillae 曲线」。 */
       pearlsPerTurn: (opts.pearlsPerTurn == null ? 7 : opts.pearlsPerTurn),
-      lineBright: (opts.lineBright == null ? 0.55 : opts.lineBright),
+      lineBright: (opts.lineBright == null ? 0.92 : opts.lineBright),
       dimInactive: (opts.dimInactive == null ? 0.12 : opts.dimInactive),
       rotate: opts.rotate !== false, autoSpeed: 0.22,
       growth: 1,
@@ -266,6 +269,9 @@
 
     function disposeWire(w) {
       w.levelObjs.forEach(function (o) {
+        /* 🔴 叠加层与主线**共享 lineGeo** ⇒ 只能 remove + 删材质，绝不能 dispose 几何，
+           否则会把主线一起弄坏。必须在 o.lineGeo.dispose() 之前处理。 */
+        if (o.halo) { o.halo.material.dispose(); gWires.remove(o.halo); o.halo = null; }
         o.lineGeo.dispose();
         o.line.material.dispose();
         gWires.remove(o.line);
@@ -413,12 +419,34 @@
       /* 线亮度 = 层级不透明度 × 全局线亮度（老师可调：调低才看得见泡泡） */
       var lineMat = new THREE.LineBasicMaterial({
         vertexColors: true, transparent: true, opacity: opacity * state.lineBright,
-        depthWrite: false, blending: THREE.AdditiveBlending
+        depthWrite: false, blending: THREE.AdditiveBlending,
+        /* 🔴 2026-10-19 老师：「七级螺旋线太细」。
+           WebGL 里 LineBasicMaterial.linewidth 在多数平台被忽略（永远 1px），写上无害；
+           真正让它"看起来粗"的是下面那条**叠加层**（同几何再画一遍，additive 叠加 ⇒ 更亮更厚）。 */
+        linewidth: 2
       });
       var line = new THREE.Line(lineGeo, lineMat);
       line.frustumCulled = false;
       line.renderOrder = 1;
       gWires.add(line);
+
+      /* ---- 叠加层（模拟"加粗"）----
+         同一条几何再画一遍，用更低的 opacity 做 additive 叠加：
+         两条 1px 线完全重合 ⇒ 亮度相加，视觉上更实、更"粗"，
+         且**不会像 scale 那样让不居中的曲线错位**。
+         只在最细一级（kind==='thin' 且该级为 L7）额外加，避免把所有层级一起点亮。 */
+      if (state.lineHalo !== false) {
+        var haloMat = new THREE.LineBasicMaterial({
+          vertexColors: true, transparent: true,
+          opacity: Math.min(1, opacity * state.lineBright * 0.55),
+          depthWrite: false, blending: THREE.AdditiveBlending, linewidth: 2
+        });
+        var halo = new THREE.Line(lineGeo, haloMat);
+        halo.frustumCulled = false;
+        halo.renderOrder = 1;
+        halo.name = 'halo';
+        gWires.add(halo);
+      }
 
       /* ---------------- ③ koilon 珍珠（**只有最细一级**才建） ----------------
          🔴 老师 2026-10-08 深夜：「你这个动态演示图**只需要到最后 7th-order spirillae**
@@ -441,7 +469,7 @@
         spacing = pr.spacing; npPearl = pr.npPearl;
       }
 
-      return { lineGeo: lineGeo, ptsGeo: ptsGeo, line: line, points: points,
+      return { lineGeo: lineGeo, ptsGeo: ptsGeo, line: line, points: points, halo: (typeof halo!=='undefined'?halo:null),
                count: sm.count, rawCount: npPearl, logical: n, sub: sub,
                rawArr: rawArr, pos: pos, closed: closed, color: color,
                mat: lineMat, pmat: pMat, base: opacity, spacing: spacing, kind: kind,
