@@ -825,7 +825,17 @@ function updateReadout(L,W){
 /* 2D 剖面 */
 function drawProfile(){
   var c=document.getElementById('prof'),g=c.getContext('2d');
-  var W=c.width,H=c.height;
+  /* 🔴 等轴（equal axis）：canvas 的 width/height 属性是"逻辑像素"，而 CSS 是 width:100% ——
+     两者不一致时浏览器会把画面横向拉伸（320 逻辑宽拉成 380 显示宽 = 拉伸 19%）。
+     现在改成：缓冲 = 实际显示尺寸 × dpr，绘制坐标 = CSS 像素，
+     这样 1 个 CSS 像素在两个方向永远等长，蛋不会被压扁或拉长。 */
+  if (!c.clientWidth || !c.clientHeight) return;   /* 面板隐藏时别改缓冲 */
+  var dpr=Math.min(window.devicePixelRatio||1,2);
+  var cw=c.clientWidth, ch=c.clientHeight;
+  var bw=Math.round(cw*dpr), bh=Math.round(ch*dpr);
+  if (c.width!==bw || c.height!==bh){ c.width=bw; c.height=bh; }
+  g.setTransform(dpr,0,0,dpr,0,0);          /* 之后一律用 CSS 像素坐标 */
+  var W=cw, H=ch;
   g.clearRect(0,0,W,H);
   g.fillStyle='#fff';g.fillRect(0,0,W,H);
   // 网格
@@ -869,7 +879,7 @@ function drawProfile(){
   var rg=eggRange(A,B),u0=rg[0],u1=rg[1];
   var maxR=eggMaxR(A,B,u0,u1)||1;
   var pad=16, hh=H-2*pad, ww=W/2-8;
-  var sc=Math.min(ww/maxR, hh/(u1-u0));   // 等比，别拉伸
+  var sc=Math.min(ww/maxR, hh/(u1-u0));   /* 横（半径）与纵（高度）共用同一个 sc ⇒ 等轴 */
   var um=(u0+u1)/2;
   g.beginPath();
   for(var i=0;i<=200;i++){
@@ -992,7 +1002,10 @@ function initGL(){
   resize();
 }
 function resize(){
-  var w=box.clientWidth,h=box.clientHeight;
+  /* 🔴 等轴：必须用 canvas 自身的 clientWidth/clientHeight，不能用外层 box ——
+     box 与 canvas 尺寸不一致时（box 674 宽、canvas 被 CSS 拉到 1100），
+     缓冲按 674 建、显示拉到 1100 ⇒ 横向拉伸 63%，3D 里的蛋被压扁/拉长。 */
+  var w=canvas.clientWidth||box.clientWidth, h=canvas.clientHeight||box.clientHeight;
   renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();
 }
 canvas.addEventListener('mousedown',function(e){drag=true;lx=e.clientX;ly=e.clientY;});
@@ -1014,6 +1027,11 @@ function loop(){
 }
 initGL();initUI();build();loop();
 window.addEventListener('resize',resize);
+  /* 🔴 首次 load 时 canvas 的 CSS 尺寸还没算完（会取到外层 box 的 674），
+     之后没有 resize 事件就不会重算 ⇒ 缓冲与显示永远不一致。
+     用 rAF + 一次延时各补调一次，确保按最终尺寸重建。 */
+  if (window.requestAnimationFrame) requestAnimationFrame(resize);
+  setTimeout(resize,120); setTimeout(resize,400);
 </script>
 <!--FXCTL:JS--><script id="fxctl-js">
 /* ============================================================
