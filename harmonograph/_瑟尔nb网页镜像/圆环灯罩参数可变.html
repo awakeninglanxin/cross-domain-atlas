@@ -1,0 +1,1583 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>圆环灯罩参数可变（nb 网页版）</title>
+<style>
+:root{
+  --bg:#0e0c14; --panel:#171426; --panel2:#1d1930; --line:#2c2544;
+  --txt:#e8e4f5; --dim:#9a92b8; --acc:#a97bff; --acc2:#6ee7ff; --warn:#ffcf6b;
+  --green:#3ddc84;
+}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{
+  margin:0;background:radial-gradient(1200px 700px at 30% 0%,#1a1530 0%,var(--bg) 60%);
+  color:var(--txt);font:14px/1.5 "Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+}
+header{padding:13px 18px 9px 18px;border-bottom:1px solid #221c38;
+  position:sticky;top:0;z-index:40;background:rgba(14,12,20,.86);backdrop-filter:blur(6px)}
+h1{margin:0;font-size:17px;font-weight:600;letter-spacing:.3px}
+h1 .en{color:var(--dim);font-size:12.5px;font-weight:400;margin-left:8px;letter-spacing:0}
+.sub{margin:3px 0 0;color:var(--dim);font-size:12px}
+.sub b{color:#c9b8ff;font-weight:600}
+
+#transport{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:9px}
+#transport .sp{color:var(--dim);font-size:11.8px}
+#bar{flex:1 1 180px;min-width:140px;height:5px;border-radius:4px;background:#332a52;
+  position:relative;cursor:pointer}
+#barfill{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:4px;
+  background:linear-gradient(90deg,var(--acc),var(--acc2))}
+#tnum,#rvTag{font-family:Consolas,Menlo,monospace;color:var(--acc2);font-size:12px}
+#tnum{min-width:52px;text-align:right}
+#gifNote{color:var(--warn);font-size:11.6px;max-width:38ch;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+
+main{padding:14px 374px 46px 16px;transition:padding .22s ease}
+body.off main{padding-right:20px}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(392px,1fr));gap:14px;align-items:start}
+.vc{background:linear-gradient(180deg,var(--panel),#141126);border:1px solid var(--line);
+  border-radius:12px;padding:11px 12px 12px;box-shadow:0 10px 26px rgba(0,0,0,.38)}
+.vc.full{grid-column:1/-1}
+.vc h3{margin:0 0 3px;font-size:13.6px;font-weight:600;color:#e4ddf6;display:flex;
+  align-items:center;gap:7px;flex-wrap:wrap}
+.vc h3 .src{font-size:11px;font-weight:400;color:var(--dim)}
+.vc .cap{margin:0 0 8px;font-size:11.6px;color:#8f87ab;line-height:1.6}
+.vc .cap code,.note code,.eq code{color:#cbb6ff;background:#221b3a;padding:0 4px;
+  border-radius:4px;font-family:Consolas,Menlo,monospace;font-size:11.3px}
+canvas{display:block;width:100%;border-radius:8px;background:#0b0912;
+  box-shadow:0 4px 14px rgba(0,0,0,.4)}
+canvas.c11{aspect-ratio:1/1}
+canvas.c43{aspect-ratio:4/3}
+#cvMain{cursor:grab;touch-action:none}
+#cvMain.drag{cursor:grabbing}
+.eq{margin:9px 0 0;font-size:11.4px;font-family:Consolas,Menlo,monospace;color:#c9c1e6;
+  background:#120f20;border:1px solid #2a2342;border-radius:8px;padding:8px 10px;
+  white-space:pre-wrap;line-height:1.75;overflow-x:auto}
+.eq b{font-weight:600;color:#d9c9ff}
+.mini{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:3px 12px;font-size:11.5px;
+  font-family:Consolas,Menlo,monospace;margin-top:8px}
+.mini .k{color:var(--dim)}
+.mini .v{color:var(--acc2)}
+.mini .v.big{color:#ffd98a}
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:11.4px;color:var(--dim)}
+.legend i{display:inline-block;width:15px;height:9px;border-radius:2px;margin-right:5px;
+  vertical-align:middle}
+.seq{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.seq figure{margin:0}
+.seq figcaption{font-size:11px;color:var(--dim);text-align:center;margin-top:4px;
+  font-family:Consolas,Menlo,monospace}
+.seq figcaption b{color:var(--acc2);font-weight:400}
+.sptab{width:100%;border-collapse:collapse;font-family:Consolas,Menlo,monospace;font-size:11.4px;
+  margin-top:6px}
+.sptab td{padding:1.5px 5px;border-bottom:1px solid #241e3a;color:var(--dim)}
+.sptab td.n{color:var(--acc2);text-align:right}
+.sptab td.b{color:#ffd98a;text-align:right}
+.sptab td.tag{color:#c9b8ff}
+
+.panel{position:fixed;top:12px;right:12px;width:352px;max-height:calc(100vh - 24px);
+  overflow-y:auto;overflow-x:hidden;padding:11px;z-index:50;
+  background:linear-gradient(180deg,var(--panel),#141126);
+  border:1px solid var(--line);border-radius:13px;
+  box-shadow:0 16px 40px rgba(0,0,0,.55);
+  transition:transform .22s ease,opacity .22s ease}
+body.off .panel{transform:translateX(calc(100% + 26px));opacity:0;pointer-events:none}
+.panel::-webkit-scrollbar{width:9px}
+.panel::-webkit-scrollbar-thumb{background:#372a58;border-radius:9px}
+.panel::-webkit-scrollbar-track{background:transparent}
+.panel h2{margin:0 0 8px;font-size:12.5px;cursor:pointer;user-select:none;
+  display:flex;align-items:center;gap:6px;color:#cfc6ea}
+.panel h2::after{content:"\25BE";color:var(--dim);font-size:10px;transition:transform .18s}
+.panel h2 .badge{margin-left:auto;font-size:10.5px;font-weight:400;color:var(--dim);
+  font-family:Consolas,Menlo,monospace}
+.card{background:var(--panel2);border:1px solid #251f3c;border-radius:10px;
+  padding:9px 11px;margin-bottom:8px}
+.card.fold h2{margin-bottom:0}
+.card.fold h2::after{transform:rotate(-90deg)}
+.card.fold > *:not(h2){display:none}
+
+#ptoggle{position:fixed;top:50%;right:374px;transform:translateY(-50%);z-index:60;
+  width:26px;height:52px;border-radius:9px 0 0 9px;cursor:pointer;
+  background:var(--panel);border:1px solid var(--line);border-right:none;
+  color:var(--acc);font-size:13px;line-height:1;transition:right .22s ease}
+body.off #ptoggle{right:0}
+#ptoggle:hover{color:#fff;background:#221c3a}
+
+.row{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.grow{display:grid;grid-template-columns:104px 1fr 62px;gap:7px;align-items:center;margin:7px 0}
+.grow .nm{color:var(--dim);font-size:12px;white-space:nowrap;display:flex;align-items:center;gap:5px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:3px;
+  background:#332a52;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;
+  background:var(--acc);border:2px solid #241c3d;cursor:pointer;
+  box-shadow:0 0 0 3px rgba(169,123,255,.18)}
+input[type=number]{width:100%;padding:3px 5px;font:12.5px/1.3 Consolas,Menlo,monospace;
+  color:var(--txt);background:#120f20;border:1px solid #332a52;border-radius:6px;text-align:right}
+input[type=number]:focus{border-color:var(--acc);background:#171331}
+select{padding:3px 7px;font-size:12.2px;color:var(--txt);background:#120f20;
+  border:1px solid #332a52;border-radius:7px;cursor:pointer;outline:none;max-width:100%}
+select:focus{border-color:var(--acc)}
+button{padding:4px 9px;font-size:12.2px;color:var(--txt);cursor:pointer;
+  background:#241d3c;border:1px solid #332a52;border-radius:7px;transition:.14s}
+button:hover{background:#2f2650;border-color:#4a3d75}
+button.on{background:linear-gradient(180deg,#6d43c9,#5a34ab);border-color:#8b63e0;color:#fff}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.gg{padding:3px 7px;font-size:11.6px}
+label.nm{color:var(--dim);font-size:12.2px;display:inline-flex;align-items:center;gap:5px;cursor:pointer}
+input[type=checkbox]{accent-color:var(--acc);width:14px;height:14px;cursor:pointer}
+
+.note{font-size:11.6px;line-height:1.65;color:#a49cc0;margin:7px 0 0}
+.tag{display:inline-block;padding:0 6px;border-radius:20px;font-size:11px;
+  border:1px solid #3a3159;color:#c9b8ff;background:#1e1836;font-family:Consolas,Menlo,monospace}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>圆环灯罩参数可变<span class="en">Variable Lamp-Shade of Ring Disks</span></h1>
+  <p class="sub">把一张 <b>带孔月牙环片</b>绕 z 轴复制 <b>m</b> 份、每片倾 <b>tilt</b> —— 红的一组朝一侧倾、
+     黄的一组朝另一侧倾，两组交错，就编出一只<b>灯罩</b>。默认 tilt=1, d=0.77, shift=1.1, n=20, m=24。</p>
+  <div id="transport">
+    <button id="bGif" title="把 tilt 从 0 到 90° 的成型过程存成一张 GIF（单张 &lt; 5 MB）">🎞 导出 GIF</button>
+    <button id="bPng" class="gg" title="主视窗存一张 PNG">🖼 存 PNG</button>
+    <button id="bPlay">▶ 播放旋转</button>
+    <button id="bReset">⟲ 复位</button>
+    <button id="bLoop" class="on">🔁 循环</button>
+    <span class="sp">速度</span>
+    <input type="range" id="sSpd" min="0.2" max="3" step="0.1" value="1" style="width:88px">
+    <div id="bar"><div id="barfill"></div></div>
+    <span id="tnum">0°</span>
+    <span id="rvTag">tilt=1 · d=0.77 · shift=1.1 · n=20 · m=24</span>
+    <span id="gifNote"></span>
+  </div>
+</header>
+
+<main>
+  <div class="grid">
+
+    <div class="vc full" id="cardMain">
+      <h3>主视窗 · 交错灯罩<span class="src">nb: Graphics3D[{Red, k1, Yellow, k2}]</span>
+        <span class="tag" id="rvTag2">…</span></h3>
+      <p class="cap">红片（<code>+tilt</code>）与黄片（<code>−tilt</code>）绕 z 轴各排 <b>m</b> 份、相位相同，
+        所以每对红黄片在同一个方位角上朝相反方向翻开 —— 这就是灯罩的「编织」。
+        整个场景按<b>离视点远近</b>排序后绘制（远的先画）。<br>
+        <b>鼠标拖动旋转 · 滚轮缩放 · 双击回到 nb 原版视角。</b></p>
+      <canvas id="cvMain" class="c11"></canvas>
+      <div class="legend">
+        <span><i style="background:#ff0000"></i>k1（红）倾角 <b>+tilt</b></span>
+        <span><i style="background:#ffff00"></i>k2（黄）倾角 <b>−tilt</b></span>
+        <span>每片都是「外 <b>n</b> 边形 − 内切孔圆 <b>d</b>」的月牙</span>
+      </div>
+      <div class="mini" id="mMain"></div>
+    </div>
+
+    <div class="vc full" id="cardSeq">
+      <h3>四个倾角定格<span class="src">同一场景，tilt 从 0 抬到 90°</span></h3>
+      <p class="cap">倾角是这只灯罩的<b>成型参数</b>：tilt=0 时所有片都平躺在 xy 平面里（只剩一圈放射状的月牙），
+        越往上抬越立起来，到 90° 就变成一只正圆筒形的罩。四个定格用同一组 n/d/shift/m。</p>
+      <div class="seq">
+        <figure><canvas id="cvQ0" class="c43"></canvas><figcaption><b>tilt=0°</b> 平躺</figcaption></figure>
+        <figure><canvas id="cvQ1" class="c43"></canvas><figcaption><b>tilt=30°</b></figcaption></figure>
+        <figure><canvas id="cvQ2" class="c43"></canvas><figcaption><b>tilt=60°</b></figcaption></figure>
+        <figure><canvas id="cvQ3" class="c43"></canvas><figcaption><b>tilt=90°</b> 立起</figcaption></figure>
+      </div>
+    </div>
+
+    <div class="vc" id="cardSpec">
+      <h3>场景账本<span class="src">片数 / 四边形数 / 顶点数</span></h3>
+      <p class="cap">每片月牙被拆成 <b>n 条不自交四边形</b>（这是在纯 Canvas2D 上既精确、又能参与深度排序的关键）。</p>
+      <table class="sptab" id="stTab"></table>
+      <p class="note" id="stNote"></p>
+    </div>
+
+    <div class="vc" id="cardInfo">
+      <h3>nb 原文<span class="src">这一页的全部内容就是下面这一条 Manipulate</span></h3>
+      <div class="eq" id="eqBox"></div>
+      <p class="note" id="eqNote"></p>
+    </div>
+
+  </div>
+</main>
+
+<aside class="panel" id="panel">
+  <h2>⚙ 参数<span class="badge" id="pbadge">nb 五个控件</span></h2>
+
+  <div class="card" id="cardParam">
+    <h2>① tilt / d / shift / n / m<span class="badge">nb 的全部输入</span></h2>
+    <div class="grow">
+      <span class="nm">tilt 倾角</span>
+      <input type="range" id="sTilt" min="0" max="1.5707963267948966" step="0.01" value="1">
+      <input type="number" id="vTilt" min="0" max="1.5707963267948966" step="0.01" value="1">
+    </div>
+    <div class="grow">
+      <span class="nm">d 孔大小</span>
+      <input type="range" id="sD" min="0.7" max="0.99" step="0.01" value="0.77">
+      <input type="number" id="vD" min="0.7" max="0.99" step="0.01" value="0.77">
+    </div>
+    <div class="grow">
+      <span class="nm">shift 平移</span>
+      <input type="range" id="sShift" min="-2" max="2" step="0.05" value="1.1">
+      <input type="number" id="vShift" min="-2" max="2" step="0.05" value="1.1">
+    </div>
+    <div class="grow">
+      <span class="nm">n 多边形</span>
+      <input type="range" id="sN" min="3" max="40" step="1" value="20">
+      <input type="number" id="vN" min="3" max="40" step="1" value="20">
+    </div>
+    <div class="grow">
+      <span class="nm">m 片数</span>
+      <input type="range" id="sM" min="10" max="40" step="1" value="24">
+      <input type="number" id="vM" min="10" max="40" step="1" value="24">
+    </div>
+    <p class="note">原版：<code>{{tilt,1},0,Pi/2}</code>、<code>{{d,0.77},0.7,0.99,0.01}</code>、<code>{{shift,1.1},-2,2}</code>、
+      <code>{{n,20},3,40,1}</code>、<code>{{m,24},10,40,1}</code>。
+      <code>tilt</code> 以<b>弧度</b>计（1 rad ≈ 57.3°）。</p>
+    <div class="row" style="margin-top:6px">
+      <button class="gg" data-preset="1,0.77,1.1,20,24">nb 默认</button>
+      <button class="gg" data-preset="0,0.77,1.1,20,24">tilt=0 平躺</button>
+      <button class="gg" data-preset="1.5707963267948966,0.77,1.1,20,24">tilt=90° 立起</button>
+      <button class="gg" data-preset="1,0.70,1.1,20,24">d=0.70 厚月牙</button>
+      <button class="gg" data-preset="1,0.99,1.1,20,40">d=0.99 m=40 细密</button>
+      <button class="gg" data-preset="1,0.77,1.1,3,24">n=3 三角片</button>
+    </div>
+  </div>
+
+  <div class="card" id="cardCam">
+    <h2>② 视角<span class="badge" id="bCam">3/4 正交</span></h2>
+    <div class="grow">
+      <span class="nm">方位 yaw</span>
+      <input type="range" id="sYaw" min="-180" max="180" step="1" value="-58">
+      <input type="number" id="vYaw" min="-180" max="180" step="1" value="-58">
+    </div>
+    <div class="grow">
+      <span class="nm">仰角 pit</span>
+      <input type="range" id="sPit" min="-89" max="89" step="1" value="26">
+      <input type="number" id="vPit" min="-89" max="89" step="1" value="26">
+    </div>
+    <div class="grow">
+      <span class="nm">缩放 zoom</span>
+      <input type="range" id="sZom" min="0.4" max="3.2" step="0.02" value="1">
+      <input type="number" id="vZom" min="0.4" max="3.2" step="0.02" value="1">
+    </div>
+    <div class="row" style="margin-top:2px">
+      <button class="gg" id="bCamNb">nb 原版（沿 z 正交）</button>
+      <button class="gg" data-cam="iso">3/4 等轴测</button>
+      <button class="gg" data-cam="3q">另一侧 3/4</button>
+      <button class="gg" data-cam="front">正视 z</button>
+      <button class="gg" data-cam="top">俯视</button>
+    </div>
+    <p class="note">原版 <code>ViewPoint→{0,0,100}</code>（配 <code>ViewAngle→0.01</code> 的近正交）⇒ 相机在 <b>+z</b> 上沿 <b>−z</b> 看，
+      即<b>正上方俯视</b>（nb 默认就是这一帧）。<br>
+      本页全部视角都用<b>正交投影</b>（和 nb 一样）；默认给 3/4 视角，因为俯视时看不出片立起来的高度。双击画布等于「nb 原版」。</p>
+  </div>
+
+  <div class="card" id="cardShow">
+    <h2>③ 显示</h2>
+    <div class="row" style="margin:6px 0">
+      <span class="nm" style="font-size:12px">配色</span>
+      <select id="selScheme" style="flex:1 1 120px">
+        <option value="nb">nb 原色（红 + 黄）</option>
+        <option value="wheel">彩虹环序（按片号）</option>
+        <option value="mono">单色银</option>
+      </select>
+    </div>
+    <div class="row" style="margin:6px 0">
+      <label class="nm"><input type="checkbox" id="ckEdge" checked> 片轮廓</label>
+      <label class="nm"><input type="checkbox" id="ckWire"> 线框</label>
+      <label class="nm"><input type="checkbox" id="ckHalf"> 半透明</label>
+    </div>
+    <p class="note">「nb 原色」就是原版的 <code>Red</code> 与 <code>Yellow</code>（Mathematica 具名色是纯色
+      <code>RGB(1,0,0)</code> / <code>RGB(1,1,0)</code>）。
+      「片轮廓」对应原版的 <code>EdgeForm[Thin]</code> —— 每片月牙的内外边界描一条细线。</p>
+  </div>
+
+  <div class="card" id="cardHow">
+    <h2>④ 怎么读这张图</h2>
+    <p class="note">
+      ① <b>先停在 nb 默认</b>（tilt=1, d=0.77, shift=1.1, n=20, m=24）：红黄两组各 24 片，交错编成一只罩。<br>
+      ② <b>把 d 拉到 0.70</b>：孔变小、月牙变厚，片子看起来"实"了；<b>拉到 0.99</b>：孔几乎撑满外圆，月牙细如刀刃。<br>
+      ③ <b>把 tilt 从 0 推到 90°</b>：看这只罩怎么从"平铺的放射片"立成"圆筒"。<br>
+      ④ <b>把 n 从 20 降到 3</b>：外边界退化成三角形，能看清"用多边形近似圆"这件事。<br>
+      ⑤ <b>把 shift 推大</b>：片整体外移，中间露出空洞；<b>推到负值</b>：片越过轴心，两只对穿的罩套在一起。<br>
+      ⑥ <b>把 m 拉到 40</b>：片变密，红黄交错的"编织"更明显，代价是四边形数翻倍。<br>
+      ⑦ <b>GIF 扫的是「倾角成型」，不是相机公转</b>。场景由 m 片等角排列构成 —— 绕 z 轴每转 360/m 度就自重合，
+      做旋转 GIF 的话 30 帧只能挤在一个扇区里（m=24 时仅 15°），画面几乎不动；反过来扫满 360° 又会有 m 段完全重复。
+      所以改成 <b>tilt 从 0 抬到 90°</b> 的成型过程，既无重复帧、又正好是本页的主题。
+    </p>
+  </div>
+
+  <div class="card" id="cardNb">
+    <h2>⑤ 与 nb 的对照</h2>
+    <p class="note">
+      <b>一字未改</b>：<code>frame</code>（单位圆 n 边形，<code>i=1..n+1</code>）与 <code>hole</code>
+      （半径 d、圆心 <code>(d−1,0)</code>）的取点；<code>Polygon[Join[frame,hole]]</code> 的合成顺序；
+      <code>k1/k2</code> 的三级变换 <code>Translate→Rotate[x,±tilt]→Rotate[z,i·2π/m]</code>；
+      <code>Graphics3D[{Red,k1,Yellow,k2}]</code> 的配色与顺序；<code>Boxed→False</code>；
+      <code>SphericalRegion→True</code>（自动适配包围球）；<code>ViewPoint→{0,0,100}</code> + <code>ViewAngle→0.01</code> 的正交投影；
+      五个控件与默认值。<br>
+      <b>网页版另加</b>：拖动旋转、缩放、按倾角配色、线框 / 半透明 / 片轮廓、场景账本、四个倾角定格、GIF/PNG 导出。<br>
+      <b>要说明的三点</b>：① <code>Polygon[Join[frame,hole]]</code> 里内外两圈<b>同向</b>，
+      若按非零环绕填充会把孔填实、使 d 控件失效；本页按该 demo 的<b>设计意图</b>取「月牙（孔为真空）」，
+      与 <code>d</code>＝孔大小的语义一致。② 原版用 Mathematica 自己的 3D 合成，本页是画家算法逐面排序，
+      遮挡关系一致但抗锯齿细节不同。③ 外圈是<b>内接</b>于单位圆的正 n 边形，只在 270° 是采样角
+      （即 <b>n 为 4 的倍数</b>）时它才在 (−1,0) 方向有顶点；否则半径 d 的孔会有几个顶点<b>探出外圈之外</b>
+      —— 这是几何必然（页面账本会在这种情况下给出提示）。<br>
+      <b>GIF 的扫描范围</b>：原版没有这个功能。本页不再扫相机公转（m 片等角排列使绕 z 转 360/m 就自重合，
+      公转 GIF 要么几乎静止、要么必然重复），改扫 <b>tilt 的成型过程</b>（0 → 90°），帧帧都是新画面。
+    </p>
+  </div>
+</aside>
+
+<button id="ptoggle" title="收起 / 展开参数面板">▸</button>
+
+<script>
+
+/* === mini3d.js === */
+/* =====================================================================
+   mini3d.js —— 极简 3D 内核（纯 Canvas2D，零依赖）
+   ---------------------------------------------------------------------
+   用途：ChartForATorus / DiagonalsOfPolyhedra / RecursiveExercisesVITori 三页共用。
+
+   管线：世界坐标 → lookAt 正交基 → 透视/正交投影 → 深度排序(painter) → 绘制
+   光照：把法向变换到相机空间（光固定随相机），环境光 + 双方向光 Lambert
+   图元：四边形 / 线段 / 折线 / 球 / 文字标签，统一进一个列表按深度排序
+   ===================================================================== */
+var M3 = (function () {
+  'use strict';
+
+  /* ---------------------------------------------------------- 向量小工具 */
+  function sub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+  function add(a, b) { return [a[0] + b[0], a[1] + b[1], a[2] + b[2]]; }
+  function mul(a, k) { return [a[0] * k, a[1] * k, a[2] * k]; }
+  function dot(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+  function cross(a, b) {
+    return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  }
+  function len(a) { return Math.sqrt(dot(a, a)); }
+  function unit(a) {
+    var L = len(a);
+    return L > 1e-15 ? [a[0] / L, a[1] / L, a[2] / L] : [0, 0, 0];
+  }
+  function clamp01(x) { return x < 0 ? 0 : (x > 1 ? 1 : x); }
+
+  /* ---------------------------------------------------------------- 相机 */
+  /* cam(W, H, fovYdeg, eye, target, up) → 相机对象
+     cam.ortho = true 时改用正交投影，cam.scale = 每世界单位的像素数 */
+  function cam(W, H, fovYdeg, eye, target, up) {
+    up = up || [0, 0, 1];
+    var f = unit(sub(target, eye));
+    var s = unit(cross(f, up));
+    var u = cross(s, f);
+    var fov = (fovYdeg === undefined ? 32 : fovYdeg);
+    return {
+      W: W, H: H, eye: eye, target: target, up: up,
+      s: s, u: u, f: f,
+      focal: (H / 2) / Math.tan(fov * Math.PI / 360),
+      fovY: fov, ortho: false, scale: H / 8
+    };
+  }
+
+  function camOrtho(W, H, eye, target, up, scale) {
+    var c = cam(W, H, 32, eye, target, up);
+    c.ortho = true;
+    c.scale = scale;
+    return c;
+  }
+
+  /* 视图坐标 */
+  function view(c, p) {
+    var d = sub(p, c.eye);
+    return [dot(d, c.s), dot(d, c.u), dot(d, c.f)];
+  }
+
+  /* 投影 → [sx, sy, zv]（zv 越大越远）
+     支持 proj(cam, [x,y,z]) 或 proj(cam, x, y, z) */
+  function proj(c, x, y, z) {
+    var p = Array.isArray(x) ? x : [x, y, z];
+    var v = view(c, p);
+    if (c.ortho) return [c.W / 2 + v[0] * c.scale, c.H / 2 - v[1] * c.scale, v[2]];
+    if (v[2] < 1e-6) return [NaN, NaN, v[2]];
+    var k = c.focal / v[2];
+    return [c.W / 2 + v[0] * k, c.H / 2 - v[1] * k, v[2]];
+  }
+
+  /* 世界半径 r 在屏幕上的近似像素半径 */
+  function pxRadius(c, p, r) {
+    if (c.ortho) return r * c.scale;
+    var zv = view(c, p)[2];
+    if (zv < 1e-6) return 0;
+    return r * c.focal / zv;
+  }
+
+  /* --------------------------------------------------------------- 光照 */
+  /* 光固定随相机（Mathematica 的默认三点光就是挂在相机上的）。
+     相机空间约定：x 右、y 上、z 指向远方 ⇒ 光源的 z 分量必须为负（朝相机一侧）。 */
+  var AMB = 0.26;
+  var LIGHTS = [
+    { d: [0.42, 0.55, -0.72], i: 0.58, c: [1.00, 1.00, 1.00] },   /* 右上主光 */
+    { d: [-0.62, 0.30, -0.72], i: 0.24, c: [0.86, 0.92, 1.00] }   /* 左上冷补光 */
+  ];
+
+  function setLights(list) { LIGHTS = list; }
+
+  /* nrm 世界法向（会被转到相机空间），rgb 基色 [0..1]³ → 'rgba(...)'
+     at = 图元中点（世界坐标），用来判断该面朝不朝相机；缺省回退到场景中心 */
+  function shade(c, nrm, rgb, alpha, at) {
+    var n = nrm;
+    if (len(n) < 1e-14) n = [0, 0, 1];
+    n = unit(n);
+    var anchor = at || c.center || c.target;
+    if (dot(n, sub(c.eye, anchor)) < 0) n = mul(n, -1);   /* 双面：翻到朝相机一侧 */
+    var nv = [dot(n, c.s), dot(n, c.u), dot(n, c.f)];
+    var r = AMB * rgb[0], g = AMB * rgb[1], b = AMB * rgb[2];
+    for (var i = 0; i < LIGHTS.length; i++) {
+      var L = LIGHTS[i].d;
+      var k = LIGHTS[i].i * Math.max(0, nv[0] * L[0] + nv[1] * L[1] + nv[2] * L[2]);
+      r += k * rgb[0] * LIGHTS[i].c[0];
+      g += k * rgb[1] * LIGHTS[i].c[1];
+      b += k * rgb[2] * LIGHTS[i].c[2];
+    }
+    return 'rgba(' + (clamp01(r) * 255 | 0) + ',' + (clamp01(g) * 255 | 0) +
+      ',' + (clamp01(b) * 255 | 0) + ',' + (alpha === undefined ? 1 : alpha) + ')';
+  }
+
+  /* ------------------------------------------------------------- 绘制列表 */
+  function List() { this.items = []; }
+  var P = List.prototype;
+
+  P.quad = function (pts, rgb, opt) {
+    opt = opt || {};
+    var n = cross(sub(pts[1], pts[0]), sub(pts[2], pts[0]));
+    this.items.push({
+      t: 'q', p: pts, n: n, rgb: rgb, alpha: opt.alpha === undefined ? 1 : opt.alpha,
+      stroke: opt.stroke || null, lw: opt.lw || 0.6, seal: !!opt.seal, depth: opt.depth || 0
+    });
+    return this;
+  };
+  P.line = function (a, b, opt) {
+    opt = opt || {};
+    this.items.push({
+      t: 'l', p: [a, b], rgb: opt.rgb || [0, 0, 0],
+      alpha: opt.alpha === undefined ? 1 : opt.alpha,
+      lw: opt.lw === undefined ? 1 : opt.lw, depth: opt.depth || 0
+    });
+    return this;
+  };
+  P.polyline = function (pts, opt) {
+    opt = opt || {};
+    this.items.push({
+      t: 'pl', p: pts, rgb: opt.rgb || [0, 0, 0],
+      alpha: opt.alpha === undefined ? 1 : opt.alpha,
+      lw: opt.lw === undefined ? 1 : opt.lw, close: !!opt.close, depth: opt.depth || 0
+    });
+    return this;
+  };
+  P.sphere = function (c, r, opt) {
+    opt = opt || {};
+    this.items.push({
+      t: 's', c: c, r: r, rgb: opt.rgb || [1, 1, 1],
+      alpha: opt.alpha === undefined ? 1 : opt.alpha, depth: opt.depth || 0
+    });
+    return this;
+  };
+  P.text = function (p, txt, opt) {
+    opt = opt || {};
+    this.items.push({
+      t: 'tx', c: p, txt: txt, rgb: opt.rgb || [0.9, 0.9, 0.9],
+      size: opt.size || 12, depth: opt.depth || 0, dx: opt.dx || 0, dy: opt.dy || 0
+    });
+    return this;
+  };
+  P.count = function () { return this.items.length; };
+
+  /* 每个图元的代表深度（视图 zv） */
+  function itemDepth(it, c) {
+    var sum = 0, n = 0, i;
+    if (it.t === 'q' || it.t === 'l' || it.t === 'pl') {
+      for (i = 0; i < it.p.length; i++) { sum += view(c, it.p[i])[2]; n++; }
+    } else {
+      sum = view(c, it.c)[2]; n = 1;
+    }
+    return (n ? sum / n : 0) - (it.depth || 0);
+  }
+
+  P.flush = function (ctx, c) {
+    var arr = this.items, i, it;
+    for (i = 0; i < arr.length; i++) arr[i]._d = itemDepth(arr[i], c);
+    arr.sort(function (a, b) { return b._d - a._d; });   /* 远的先画 */
+    for (i = 0; i < arr.length; i++) {
+      it = arr[i];
+      if (it.t === 'q') drawQuad(ctx, c, it);
+      else if (it.t === 'l') drawSeg(ctx, c, it.p[0], it.p[1], it);
+      else if (it.t === 'pl') drawPoly(ctx, c, it);
+      else if (it.t === 's') drawSphere(ctx, c, it);
+      else if (it.t === 'tx') drawText(ctx, c, it);
+    }
+    return arr.length;
+  };
+
+  function drawQuad(ctx, c, it) {
+    var i, pts = it.p, sp = [];
+    for (i = 0; i < pts.length; i++) {
+      var q = proj(c, pts[i]);
+      if (!isFinite(q[0])) return;
+      sp.push(q);
+    }
+    /* ⚠ 面可以是任意 n 边形（三角形 / 五边形 / 六边形 / 十边形…），
+       质心必须按 pts.length 求平均 —— 写死 pts[3] 会在三角形面上读越界。 */
+    var cx = 0, cy = 0, cz = 0, np = pts.length;
+    for (i = 0; i < np; i++) { cx += pts[i][0]; cy += pts[i][1]; cz += pts[i][2]; }
+    cx /= np; cy /= np; cz /= np;
+    ctx.beginPath();
+    ctx.moveTo(sp[0][0], sp[0][1]);
+    for (i = 1; i < sp.length; i++) ctx.lineTo(sp[i][0], sp[i][1]);
+    ctx.closePath();
+    ctx.fillStyle = shade(c, it.n, it.rgb, it.alpha, [cx, cy, cz]);
+    ctx.fill();
+    if (it.stroke) {
+      ctx.strokeStyle = it.stroke;
+      ctx.lineWidth = it.lw;
+      ctx.stroke();
+    } else if (it.alpha >= 0.999 || it.seal) {
+      /* 补一圈同色描边，盖掉相邻多边形之间的抗锯齿细缝。
+         不透明面恒做；半透明面只有显式传 seal:true 才做
+         （半透明面上描边会在边界处二次混合、显出边框，所以由调用方决定）。 */
+      ctx.strokeStyle = ctx.fillStyle;
+      ctx.lineWidth = it.alpha >= 0.999 ? 0.8 : 0.55;
+      ctx.stroke();
+    }
+  }
+
+  function drawSeg(ctx, c, a, b, it) {
+    var p = proj(c, a), q = proj(c, b);
+    if (!isFinite(p[0]) || !isFinite(q[0])) return;
+    ctx.strokeStyle = 'rgba(' + (it.rgb[0] * 255 | 0) + ',' + (it.rgb[1] * 255 | 0) +
+      ',' + (it.rgb[2] * 255 | 0) + ',' + it.alpha + ')';
+    ctx.lineWidth = it.lw;
+    ctx.beginPath();
+    ctx.moveTo(p[0], p[1]);
+    ctx.lineTo(q[0], q[1]);
+    ctx.stroke();
+  }
+
+  function drawPoly(ctx, c, it) {
+    var i, sp = [], pts = it.p;
+    for (i = 0; i < pts.length; i++) {
+      var q = proj(c, pts[i]);
+      if (!isFinite(q[0])) return;
+      sp.push(q);
+    }
+    ctx.strokeStyle = 'rgba(' + (it.rgb[0] * 255 | 0) + ',' + (it.rgb[1] * 255 | 0) +
+      ',' + (it.rgb[2] * 255 | 0) + ',' + it.alpha + ')';
+    ctx.lineWidth = it.lw;
+    ctx.beginPath();
+    ctx.moveTo(sp[0][0], sp[0][1]);
+    for (i = 1; i < sp.length; i++) ctx.lineTo(sp[i][0], sp[i][1]);
+    if (it.close) ctx.closePath();
+    ctx.stroke();
+  }
+
+  function drawSphere(ctx, c, it) {
+    var p = proj(c, it.c);
+    if (!isFinite(p[0])) return;
+    var R = pxRadius(c, it.c, it.r);
+    if (!(R > 0.2)) return;
+    var rgb = it.rgb, a = it.alpha;
+    var g = ctx.createRadialGradient(p[0] - R * 0.34, p[1] - R * 0.36, R * 0.06,
+      p[0], p[1], R);
+    g.addColorStop(0, 'rgba(' + (clamp01(rgb[0] * 0.55 + 0.5) * 255 | 0) + ',' +
+      (clamp01(rgb[1] * 0.55 + 0.5) * 255 | 0) + ',' +
+      (clamp01(rgb[2] * 0.55 + 0.5) * 255 | 0) + ',' + a + ')');
+    g.addColorStop(0.62, 'rgba(' + (clamp01(rgb[0]) * 255 | 0) + ',' +
+      (clamp01(rgb[1]) * 255 | 0) + ',' + (clamp01(rgb[2]) * 255 | 0) + ',' + a + ')');
+    g.addColorStop(1, 'rgba(' + (clamp01(rgb[0] * 0.30) * 255 | 0) + ',' +
+      (clamp01(rgb[1] * 0.30) * 255 | 0) + ',' + (clamp01(rgb[2] * 0.30) * 255 | 0) + ',' + a + ')');
+    ctx.beginPath();
+    ctx.arc(p[0], p[1], R, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+  }
+
+  function drawText(ctx, c, it) {
+    var p = proj(c, it.c);
+    if (!isFinite(p[0])) return;
+    ctx.font = it.size + 'px "Segoe UI",system-ui,sans-serif';
+    ctx.fillStyle = 'rgba(' + (it.rgb[0] * 255 | 0) + ',' + (it.rgb[1] * 255 | 0) +
+      ',' + (it.rgb[2] * 255 | 0) + ',' + it.alpha + ')';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(it.txt, p[0] + it.dx, p[1] + it.dy);
+  }
+
+  /* ------------------------------------------------------------ 包围球 / 适配 */
+  function bboxOf(points) {
+    var mn = [1e300, 1e300, 1e300], mx = [-1e300, -1e300, -1e300];
+    for (var i = 0; i < points.length; i++) {
+      for (var k = 0; k < 3; k++) {
+        if (points[i][k] < mn[k]) mn[k] = points[i][k];
+        if (points[i][k] > mx[k]) mx[k] = points[i][k];
+      }
+    }
+    return { mn: mn, mx: mx };
+  }
+  function sphereOf(points) {
+    var b = bboxOf(points);
+    var c = [0, 0, 0];
+    for (var k = 0; k < 3; k++) c[k] = (b.mn[k] + b.mx[k]) / 2;
+    var r = 0;
+    for (var i = 0; i < points.length; i++) r = Math.max(r, len(sub(points[i], c)));
+    if (!(r > 0)) r = 1;
+    return { c: c, r: r };
+  }
+
+  /* 用世界空间的「轨道角」摆相机：yaw 绕世界 z 轴，pitch 从 xy 平面抬起 */
+  function orbit(center, dist, yaw, pitch) {
+    var cp = Math.cos(pitch), sp = Math.sin(pitch);
+    return [center[0] + dist * cp * Math.cos(yaw),
+      center[1] + dist * cp * Math.sin(yaw),
+      center[2] + dist * sp];
+  }
+
+  return {
+    sub: sub, add: add, mul: mul, dot: dot, cross: cross, len: len, unit: unit,
+    cam: cam, camOrtho: camOrtho, view: view, proj: proj, pxRadius: pxRadius,
+    shade: shade, setLights: setLights, List: List,
+    bboxOf: bboxOf, sphereOf: sphereOf, orbit: orbit
+  };
+})();
+
+
+
+/* === gifcodec.js === */
+/* =====================================================================
+   共用 GIF89a 编码核（自 ngon 页抽取，三页共用）
+   ---------------------------------------------------------------------
+   blobToBase64  用于把 Blob 转 base64（CDP 分片归档用）
+   buildPalette  6bit 直方图 + 中位切分 256 色
+   makeQuant     惰性最近色缓存量化器（避免逐像素暴力搜索）
+   lzwEncode     GIF LZW（9→12 位码宽，与 gif.js 时序对齐）
+   encodeGif     组装 GIF89a：GCT + NETSCAPE2.0 无限循环 + 255 字节子块
+   ===================================================================== */
+function blobToBase64(blob) {
+  return new Promise(function (res, rej) {
+    var fr = new FileReader();
+    fr.onload = function () { res(String(fr.result).split(',')[1]); };
+    fr.onerror = rej;
+    fr.readAsDataURL(blob);
+  });
+}
+
+function buildPalette(frames, maxColors) {
+  var H = new Uint32Array(32768), SR = new Float64Array(32768),
+      SG = new Float64Array(32768), SB = new Float64Array(32768);
+  for (var fi = 0; fi < frames.length; fi++) {
+    var d = frames[fi];
+    for (var i = 0; i < d.length; i += 4) {
+      var r = d[i], g = d[i + 1], b = d[i + 2];
+      var k = ((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3);
+      H[k]++; SR[k] += r; SG[k] += g; SB[k] += b;
+    }
+  }
+  var items = [];
+  for (var kk = 0; kk < 32768; kk++) {
+    if (!H[kk]) continue;
+    items.push({ c: H[kk], r: SR[kk] / H[kk], g: SG[kk] / H[kk], b: SB[kk] / H[kk] });
+  }
+  if (!items.length) return [[0, 0, 0]];
+
+  function mkBox(from, to) {
+    var rmin = 255, rmax = 0, gmin = 255, gmax = 0, bmin = 255, bmax = 0, n = 0;
+    for (var i = from; i < to; i++) {
+      var it = items[i];
+      if (it.r < rmin) rmin = it.r; if (it.r > rmax) rmax = it.r;
+      if (it.g < gmin) gmin = it.g; if (it.g > gmax) gmax = it.g;
+      if (it.b < bmin) bmin = it.b; if (it.b > bmax) bmax = it.b;
+      n += it.c;
+    }
+    var dr = rmax - rmin, dg = gmax - gmin, db = bmax - bmin;
+    var axis = (dr >= dg && dr >= db) ? 'r' : (dg >= db ? 'g' : 'b');
+    return { from: from, to: to, n: n, axis: axis, range: Math.max(dr, dg, db) };
+  }
+
+  var boxes = [mkBox(0, items.length)];
+  while (boxes.length < maxColors) {
+    var bi = -1, bs = 0;
+    for (var i2 = 0; i2 < boxes.length; i2++) {
+      var b2 = boxes[i2];
+      if (b2.to - b2.from < 2 || b2.range <= 0) continue;
+      var sc = b2.range * Math.log(b2.n + 1);
+      if (sc > bs) { bs = sc; bi = i2; }
+    }
+    if (bi < 0) break;
+    var bb = boxes[bi], ax = bb.axis;
+    var sub = items.slice(bb.from, bb.to);
+    sub.sort(function (A, B) { return A[ax] - B[ax]; });
+    for (var i3 = 0; i3 < sub.length; i3++) items[bb.from + i3] = sub[i3];
+    var half = bb.n / 2, acc = 0, cut = 0;
+    for (var i4 = bb.from; i4 < bb.to; i4++) {
+      acc += items[i4].c;
+      if (acc >= half) { cut = i4 + 1; break; }
+    }
+    if (cut <= bb.from) cut = bb.from + 1;
+    if (cut >= bb.to) cut = bb.to - 1;
+    boxes.splice(bi, 1, mkBox(bb.from, cut), mkBox(cut, bb.to));
+  }
+
+  var pal = [];
+  for (var i5 = 0; i5 < boxes.length; i5++) {
+    var b5 = boxes[i5];
+    var sr = 0, sg = 0, sb = 0, n5 = 0;
+    for (var j5 = b5.from; j5 < b5.to; j5++) {
+      var it5 = items[j5];
+      sr += it5.r * it5.c; sg += it5.g * it5.c; sb += it5.b * it5.c; n5 += it5.c;
+    }
+    pal.push([Math.round(sr / n5), Math.round(sg / n5), Math.round(sb / n5)]);
+  }
+  return pal;
+}
+
+function makeQuant(pal) {
+  var cache = new Int16Array(262144).fill(-1), n = pal.length;
+  return function (r, g, b) {
+    var key = ((r >> 2) << 12) | ((g >> 2) << 6) | (b >> 2);
+    var hit = cache[key];
+    if (hit >= 0) return hit;
+    var best = 0, bd = 1e18;
+    for (var i = 0; i < n; i++) {
+      var p = pal[i];
+      var dr = r - p[0], dg = g - p[1], db = b - p[2];
+      var d = dr * dr * 3 + dg * dg * 6 + db * db;
+      if (d < bd) { bd = d; best = i; }
+    }
+    cache[key] = best;
+    return best;
+  };
+}
+
+function lzwEncode(px, minCodeSize) {
+  var CLEAR = 1 << minCodeSize, EOI = CLEAR + 1;
+  var dict = new Int32Array(4096 * 256);
+  var out = new Uint8Array(1 << 16), olen = 0, cur = 0, bits = 0;
+  var codeSize = minCodeSize + 1, next = EOI + 1;
+
+  function putByte(b) {
+    if (olen === out.length) { var nb = new Uint8Array(out.length << 1); nb.set(out); out = nb; }
+    out[olen++] = b;
+  }
+  function emit(code) {
+    cur |= code << bits; bits += codeSize;
+    while (bits >= 8) { putByte(cur & 255); cur >>= 8; bits -= 8; }
+    if (next > (1 << codeSize) - 1 && codeSize < 12) codeSize++;
+  }
+
+  dict.fill(-1);
+  emit(CLEAR);
+  var n = px.length;
+  if (n <= 1) {
+    if (n === 1) emit(px[0]);
+    emit(EOI);
+  } else {
+    var prefix = px[0];
+    for (var i = 1; i < n; i++) {
+      var k = px[i], key = (prefix << 8) | k, v = dict[key];
+      if (v >= 0) { prefix = v; continue; }
+      emit(prefix);
+      if (next < 4096) { dict[key] = next++; }
+      else { emit(CLEAR); dict.fill(-1); codeSize = minCodeSize + 1; next = EOI + 1; }
+      prefix = k;
+    }
+    emit(prefix);
+    emit(EOI);
+  }
+  if (bits > 0) putByte(cur & 255);
+  return out.subarray(0, olen);
+}
+
+function encodeGif(frames, W, H, delayCs) {
+  var pal = buildPalette(frames, 256);
+  var quant = makeQuant(pal);
+  var bits = 2;
+  while ((1 << bits) < pal.length) bits++;
+  var gctSize = 1 << bits;
+  var mcs = Math.max(2, bits);
+
+  var chunks = [], push = function (a) { chunks.push(a); };
+  function b1(v) { push(new Uint8Array([v & 255])); }
+  function u16(v) { push(new Uint8Array([v & 255, (v >> 8) & 255])); }
+  function asc(s) {
+    var a = new Uint8Array(s.length);
+    for (var i = 0; i < s.length; i++) a[i] = s.charCodeAt(i);
+    push(a);
+  }
+
+  asc('GIF89a');
+  u16(W); u16(H);
+  b1(0x80 | 0x70 | (bits - 1));
+  var bg = 0, bd = 1e18;
+  for (var i2 = 0; i2 < pal.length; i2++) {
+    var dr = 255 - pal[i2][0], dg = 255 - pal[i2][1], db = 255 - pal[i2][2];
+    var d2 = dr * dr + dg * dg + db * db;
+    if (d2 < bd) { bd = d2; bg = i2; }
+  }
+  b1(bg); b1(0);
+  var gct = new Uint8Array(gctSize * 3);
+  for (var i3 = 0; i3 < gctSize; i3++) {
+    var c = pal[i3] || pal[pal.length - 1];
+    gct[i3 * 3] = c[0]; gct[i3 * 3 + 1] = c[1]; gct[i3 * 3 + 2] = c[2];
+  }
+  push(gct);
+  b1(0x21); b1(0xFF); b1(0x0B); asc('NETSCAPE2.0');
+  b1(0x03); b1(0x01); u16(0); b1(0x00);
+
+  var idx = new Uint8Array(W * H);
+  for (var f = 0; f < frames.length; f++) {
+    var df = frames[f];
+    for (var p = 0, i4 = 0; p < idx.length; p++, i4 += 4) {
+      idx[p] = quant(df[i4], df[i4 + 1], df[i4 + 2]);
+    }
+    b1(0x21); b1(0xF9); b1(0x04); b1(0x04); u16(delayCs); b1(bg); b1(0x00);
+    b1(0x2C); u16(0); u16(0); u16(W); u16(H); b1(0x00);
+    b1(mcs);
+    var raw = lzwEncode(idx, mcs);
+    for (var i5 = 0; i5 < raw.length; i5 += 255) {
+      var len = Math.min(255, raw.length - i5);
+      b1(len); push(raw.subarray(i5, i5 + len));
+    }
+    b1(0x00);
+  }
+  b1(0x3B);
+  return new Blob(chunks, { type: 'image/gif' });
+}
+
+
+
+
+/* === app.js === */
+/* =====================================================================
+   圆环灯罩参数可变 —— 网页版应用层（纯 Canvas2D + 自写 mini3d 内核）
+   ---------------------------------------------------------------------
+   nb 原文就一条 Manipulate（5 个控件）：
+     frame=Table[{Sin[i 2Pi/n],Cos[i 2Pi/n],0},{i,n+1}]
+     hole =Table[{d Sin[i 2Pi/n]-1+d,d Cos[i 2Pi/n],0},{i,n+1}]
+     disk ={EdgeForm[Thin],Polygon[Join[frame,hole]]}
+     k1=Table[Rotate[Rotate[Translate[disk,{shift,0,0}], tilt,{1,0,0}],i 2Pi/m,{0,0,1}],{i,m}]
+     k2=Table[Rotate[Rotate[Translate[disk,{shift,0,0}],-tilt,{1,0,0}],i 2Pi/m,{0,0,1}],{i,m}]
+     Graphics3D[{Red,k1,Yellow,k2},Boxed->False,SphericalRegion->True,ViewPoint->{0,0,100},ViewAngle->0.01]
+
+   两处关键设计（详见 ref.py 注释）：
+   ① hole 圆心 C=(d-1,0)、半径 d ⇒ 与单位圆内切于 (-1,0)；且 B_i = d*A_i + C。
+   ② 月牙 = {在 frame 内} ∩ {在 hole 外}。因为 B_i = d*A_i + C 是相似变换（保序），
+      条带四边形 [A_i, A_{i+1}, B_{i+1}, B_i] 永不自交，n 条的并集恰好拼出月牙 ——
+      这样既能逐面参与深度排序，又不需要 even-odd 填充。
+   ===================================================================== */
+(function () {
+  'use strict';
+
+  var TAU = Math.PI * 2;
+  var D2R = Math.PI / 180;
+  var PAD = 0.07;                 /* 画布内边距比例 */
+  var NB_W = 400, NB_H = 400;     /* nb 的 ImageSize->400（正方形） */
+  var ORTHO_DIST = 1e4;           /* 正交相机放在很远处 */
+
+  /* ---------------------------------------------------------- 状态 */
+  var S = {
+    tilt: 1, d: 0.77, shift: 1.1, n: 20, m: 24,
+    yaw: -58, pit: 26, zoom: 1,
+    scheme: 'nb', edge: true, wire: false, half: false,
+    playing: false, spd: 1, loop: true
+  };
+  var CAM_PRESETS = {
+    nb:    { yaw: -90, pit: 88 },
+    iso:   { yaw: -58, pit: 26 },
+    '3q':  { yaw: 122, pit: 26 },
+    front: { yaw: -90, pit: 0 },
+    top:   { yaw: -90, pit: 88 }
+  };
+
+  /* ---------------------------------------------------------- 几何
+     —— 与 ref.py 的函数一一对应，逐字复刻 nb 的取点与变换 */
+
+  function framePts(n) {
+    var a = [], i;
+    for (i = 1; i <= n + 1; i++) a.push([Math.sin(i * TAU / n), Math.cos(i * TAU / n), 0]);
+    return a;
+  }
+  function holePts(n, d) {
+    var a = [], i;
+    for (i = 1; i <= n + 1; i++) {
+      a.push([d * Math.sin(i * TAU / n) - 1 + d, d * Math.cos(i * TAU / n), 0]);
+    }
+    return a;
+  }
+  /* 月牙的条带分解：n 个四边形（去掉 A/B 的重复末点） */
+  function diskBaseQuads(n, d) {
+    var A = framePts(n), B = holePts(n, d), q = [], i, j;
+    for (i = 0; i < n; i++) { j = (i + 1) % n; q.push([A[i], A[j], B[j], B[i]]); }
+    return q;
+  }
+  function rotX(p, t) {
+    var c = Math.cos(t), s = Math.sin(t);
+    return [p[0], p[1] * c - p[2] * s, p[1] * s + p[2] * c];
+  }
+  function rotZ(p, phi) {
+    var c = Math.cos(phi), s = Math.sin(phi);
+    return [p[0] * c - p[1] * s, p[0] * s + p[1] * c, p[2]];
+  }
+  function place(p0, shift, tilt, ang) {
+    return rotZ(rotX([p0[0] + shift, p0[1], p0[2]], tilt), ang);
+  }
+  /* 预计算三角函数的批量放置器（默认场景 3840 个点，省下大量重复 cos/sin） */
+  function makePlacer(shift, tilt, ang) {
+    var ct = Math.cos(tilt), st = Math.sin(tilt);
+    var ca = Math.cos(ang), sa = Math.sin(ang);
+    return function (p) {
+      var x = p[0] + shift, y = p[1], z = p[2];
+      var y1 = y * ct - z * st, z1 = y * st + z * ct;
+      return [x * ca - y1 * sa, x * sa + y1 * ca, z1];
+    };
+  }
+
+  /* -------------------------------------------------- 场景（= k1 / k2） */
+  function sceneOf(p) {
+    var n = p.n | 0, d = p.d, shift = p.shift, tilt = p.tilt, m = p.m | 0;
+    var A = framePts(n), B = holePts(n, d);
+    var baseQ = diskBaseQuads(n, d);
+    var red = [], yel = [];
+    var mn = [1e300, 1e300, 1e300], mx = [-1e300, -1e300, -1e300];
+    var i, k, pts;
+
+    function acc(pt) {
+      for (var t = 0; t < 3; t++) {
+        if (pt[t] < mn[t]) mn[t] = pt[t];
+        if (pt[t] > mx[t]) mx[t] = pt[t];
+      }
+    }
+
+    function buildDisk(f, ang) {
+      var dk = { quads: [], ring: [], hole: [], ang: ang, sgn: 0 };
+      var q, t, a1, a2, a3, a4;
+      for (k = 0; k < n; k++) {
+        q = baseQ[k];
+        a1 = f(q[0]); a2 = f(q[1]); a3 = f(q[2]); a4 = f(q[3]);
+        dk.quads.push([a1, a2, a3, a4]);
+        acc(a1); acc(a2); acc(a3); acc(a4);
+      }
+      for (k = 0; k < n; k++) { dk.ring.push(f(A[k])); dk.hole.push(f(B[k])); }
+      for (k = 0; k < n; k++) { acc(dk.ring[k]); acc(dk.hole[k]); }
+      return dk;
+    }
+
+    var diskListR = [], diskListY = [];
+    for (i = 0; i < m; i++) {
+      var ang = i * TAU / m;
+      var fr = makePlacer(shift, tilt, ang), fy = makePlacer(shift, -tilt, ang);
+      var dr = buildDisk(fr, ang); dr.sgn = 1; dr.idx = i;
+      var dy = buildDisk(fy, ang); dy.sgn = -1; dy.idx = i;
+      red.push(dr); yel.push(dy);
+    }
+    /* 包围球：中心 = 顶点包围盒中心，半径 = 到中心的最大距离（与 ref.py 同口径） */
+    var c = [(mn[0] + mx[0]) / 2, (mn[1] + mx[1]) / 2, (mn[2] + mx[2]) / 2];
+    var R = 0, dx;
+    function far(dk) {
+      var j, q2, P;
+      for (j = 0; j < dk.quads.length; j++) {
+        q2 = dk.quads[j];
+        for (var u = 0; u < 4; u++) {
+          P = q2[u];
+          dx = Math.sqrt((P[0] - c[0]) * (P[0] - c[0]) + (P[1] - c[1]) * (P[1] - c[1]) +
+            (P[2] - c[2]) * (P[2] - c[2]));
+          if (dx > R) R = dx;
+        }
+      }
+    }
+    for (i = 0; i < red.length; i++) { far(red[i]); far(yel[i]); }
+    if (!(R > 0)) R = 1;
+
+    return {
+      red: red, yellow: yel, n: n, d: d, shift: shift, tilt: tilt, m: m,
+      info: { c: c, R: R, mn: mn, mx: mx },
+      stats: {
+        disks: 2 * m, quadsPerDisk: n, quads: 2 * m * n, verts: 8 * m * n,
+        ringPts: 2 * m * n, holeR: d, holeC: [d - 1, 0]
+      }
+    };
+  }
+
+  /* 供桩测独立复算用：只返回包围球 */
+  function sceneInfo(sc) { return sc.info; }
+
+  /* ---------------------------------------------------------- 相机 */
+  function camFor(W, H, sc) {
+    var inf = sc.info;
+    var scale = Math.min(W, H) * (1 - 2 * PAD) / (2 * inf.R) * S.zoom;
+    var yaw = S.yaw * D2R, pit = Math.max(-88, Math.min(88, S.pit)) * D2R;
+    var eye = M3.orbit(inf.c, ORTHO_DIST, yaw, pit);
+    return M3.camOrtho(W, H, eye, inf.c, [0, 0, 1], scale);
+  }
+
+  /* ---------------------------------------------------------- 配色 */
+  function hsv2rgb(h, s, v) {
+    h = ((h % 1) + 1) % 1;
+    var i = Math.floor(h * 6), f = h * 6 - i, p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s);
+    switch (i % 6) {
+      case 0: return [v, t, p];
+      case 1: return [q, v, p];
+      case 2: return [p, v, t];
+      case 3: return [p, q, v];
+      case 4: return [t, p, v];
+      default: return [v, p, q];
+    }
+  }
+  function colorOf(grp, diskIdx, m) {
+    if (S.scheme === 'mono') {
+      return grp === 'red' ? [0.82, 0.84, 0.90] : [0.56, 0.59, 0.67];
+    }
+    if (S.scheme === 'wheel') {
+      var h = diskIdx / Math.max(1, m) + (grp === 'red' ? 0 : 0.5);
+      return hsv2rgb(h, 0.78, 1.0);
+    }
+    return grp === 'red' ? [1, 0, 0] : [1, 1, 0];   /* nb 原色：Red / Yellow */
+  }
+
+  /* ---------------------------------------------------------- 绘制 */
+  function paintInto(ctx, W, H, sc, cam, opt) {
+    var L = new M3.List();
+    var alpha = opt.alpha === undefined ? 1 : opt.alpha;
+    var groups = [['red', sc.red], ['yellow', sc.yellow]];
+    var g, gi, di, dk, k, q, rgb;
+
+    if (!opt.wire) {
+      for (gi = 0; gi < 2; gi++) {
+        g = groups[gi][0];
+        for (di = 0; di < groups[gi][1].length; di++) {
+          dk = groups[gi][1][di];
+          rgb = colorOf(g, di, sc.m);
+          for (k = 0; k < dk.quads.length; k++) {
+            q = dk.quads[k];
+            L.quad(q, rgb, { alpha: alpha });
+          }
+        }
+      }
+    } else {
+      for (gi = 0; gi < 2; gi++) {
+        g = groups[gi][0];
+        for (di = 0; di < groups[gi][1].length; di++) {
+          dk = groups[gi][1][di];
+          rgb = colorOf(g, di, sc.m);
+          for (k = 0; k < dk.quads.length; k++) {
+            q = dk.quads[k];
+            L.polyline(q, { rgb: rgb, lw: 0.8, alpha: alpha, close: true });
+          }
+        }
+      }
+    }
+    /* EdgeForm[Thin]：每片月牙的内外边界描一条细线 */
+    if (opt.edge) {
+      for (gi = 0; gi < 2; gi++) {
+        for (di = 0; di < groups[gi][1].length; di++) {
+          dk = groups[gi][1][di];
+          L.polyline(dk.ring, { rgb: [0, 0, 0], lw: 0.75, close: true, depth: 0.02 });
+          L.polyline(dk.hole, { rgb: [0, 0, 0], lw: 0.75, close: true, depth: 0.02 });
+        }
+      }
+    }
+    L.flush(ctx, cam);
+    return L.count();
+  }
+
+  function fitCanvas(cv, aspect) {
+    var cssW = cv.clientWidth || 400;
+    var cssH = cv.clientHeight || Math.round(cssW / aspect);
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = Math.max(1, Math.round(cssW * dpr));
+    cv.height = Math.max(1, Math.round(cssH * dpr));
+    return [cv.width, cv.height];
+  }
+
+  var lastQuads = 0, lastMs = 0, lastWH = [600, 600];
+
+  function drawMain() {
+    var cv = ELS.cvMain; if (!cv) return;
+    var wh = fitCanvas(cv, NB_W / NB_H);
+    lastWH = wh;
+    var ctx = cv.getContext('2d');
+    ctx.fillStyle = '#0b0912'; ctx.fillRect(0, 0, wh[0], wh[1]);
+    var t0 = (window.performance && window.performance.now) ? window.performance.now() : Date.now();
+    var sc = sceneOf(S);
+    var cam = camFor(wh[0], wh[1], sc);
+    lastQuads = paintInto(ctx, wh[0], wh[1], sc, cam,
+      { alpha: S.half ? 0.55 : 1, wire: S.wire, edge: S.edge });
+    var t1 = (window.performance && window.performance.now) ? window.performance.now() : Date.now();
+    lastMs = t1 - t0;
+    refreshReadouts(sc);
+    refreshLedger(sc);
+    refreshBar();
+  }
+
+  var SEQ_TILTS = [0, Math.PI / 6, Math.PI / 3, Math.PI / 2];
+  function drawSeq() {
+    for (var i = 0; i < 4; i++) {
+      var cv = ELS['cvQ' + i]; if (!cv) continue;
+      var wh = fitCanvas(cv, 4 / 3);
+      var ctx = cv.getContext('2d');
+      ctx.fillStyle = '#0b0912'; ctx.fillRect(0, 0, wh[0], wh[1]);
+      var sp = { tilt: SEQ_TILTS[i], d: S.d, shift: S.shift, n: S.n, m: S.m };
+      var sc = sceneOf(sp);
+      var cam = camFor(wh[0], wh[1], sc);
+      paintInto(ctx, wh[0], wh[1], sc, cam,
+        { alpha: S.half ? 0.55 : 1, wire: S.wire, edge: S.edge });
+    }
+  }
+
+  /* ---------------------------------------------------- 离屏渲染（导出用） */
+  function renderAt(W, H, over) {
+    var cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    var ctx = cv.getContext('2d');
+    ctx.fillStyle = '#0b0912'; ctx.fillRect(0, 0, W, H);
+    var sv = {};
+    for (var k in over) { sv[k] = S[k]; S[k] = over[k]; }
+    var sc = sceneOf(S);
+    var cam = camFor(W, H, sc);
+    paintInto(ctx, W, H, sc, cam, { alpha: S.half ? 0.55 : 1, wire: S.wire, edge: S.edge });
+    for (k in sv) S[k] = sv[k];
+    return cv;
+  }
+
+  /* ---------------------------------------------------------------- GIF
+     ⚠ 本页的 GIF 扫的是「倾角成型」而不是相机公转：
+       场景由 m 片等角排列构成 ⇒ 绕 z 轴每转 360/m 度就自重合，
+       做旋转 GIF 的话 30 帧必须挤在一个 360/m 的扇区里（m=24 时只有 15°），
+       画面几乎不动；反过来扫满 360° 又会有 m 段完全重复。
+       ⇒ 改用 tilt 从 0 到 π/2 的成型过程，既无重复、又正好是本页的主题。 */
+  var GIFW = 880, GIGH = 880, GIFF = 30;
+  var GIFCH = '', GIFOUT = null;
+  function gifFramesOf(W, H, nF) {
+    var frames = [], i;
+    for (i = 0; i < nF; i++) {
+      var cv = renderAt(W, H, { tilt: (Math.PI / 2) * (i / nF), playing: false });
+      frames.push(cv.getContext('2d').getImageData(0, 0, W, H).data);
+    }
+    return frames;
+  }
+  /* ⚠ 文件名必须把「所有会变的量」都写进去（d/n/m/shift/配色）——
+     漏一个就会出现两个 case 同名、后者静默覆盖前者，比对时会把 A 当成 B。 */
+  function gifName() {
+    return '圆环灯罩_d' + fmt(S.d) + '_n' + S.n + '_m' + S.m +
+      '_s' + fmt(S.shift) + (S.scheme !== 'nb' ? '_' + S.scheme : '');
+  }
+  /* ⚠ 必须 async：blobToBase64 返回 Promise，直接赋值会让 gifChunk 对 Promise 调 .substr 而崩 */
+  async function gifPrepOne() {
+    var W = GIFW, H = GIGH, nF = GIFF;
+    var frames = gifFramesOf(W, H, nF);
+    var blob = encodeGif(frames, W, H, 7);
+    var b64 = await blobToBase64(blob);
+    GIFOUT = blob; GIFCH = b64;
+    return {
+      name: gifName(),
+      w: W, h: H, frames: nF, bytes: blob.size, b64len: b64.length
+    };
+  }
+  function gifChunk(off, len) { return GIFCH.substr(off, len); }
+  function gifClear() { GIFOUT = null; GIFCH = ''; }
+
+  function download(blob, name) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a); a.click();
+    window.setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  }
+
+  /* ---------------------------------------------------------- UI 工具 */
+  function $(id) { return document.getElementById(id); }
+  var ELS = {};
+
+  function fmt(x) {
+    if (Math.abs(x - Math.round(x)) < 1e-9) return String(Math.round(x));
+    return String(Math.round(x * 1000) / 1000);
+  }
+
+  function refreshReadouts(sc) {
+    sc = sc || sceneOf(S);
+    var box = ELS.mMain; if (!box) return;
+    var rows = [
+      ['tilt 倾角', fmt(S.tilt) + ' rad = ' + fmt(S.tilt / Math.PI * 180) + '°'],
+      ['d 孔大小', fmt(S.d)],
+      ['shift 平移', fmt(S.shift)],
+      ['n 多边形', String(S.n)],
+      ['m 片数', String(S.m)],
+      ['片数', String(sc.stats.disks) + '（红 ' + S.m + ' + 黄 ' + S.m + '）'],
+      ['四边形', String(sc.stats.quads)],
+      ['顶点', String(sc.stats.verts)],
+      ['孔圆心', '(' + fmt(sc.stats.holeC[0]) + ', 0) 半径 ' + fmt(sc.stats.holeR)],
+      ['包围球 R', fmt(sc.info.R)],
+      ['本次绘制', lastQuads + ' 面 · ' + lastMs.toFixed(1) + ' ms']
+    ];
+    box.innerHTML = rows.map(function (r) {
+      return '<span class="k">' + r[0] + '</span><span class="v">' + r[1] + '</span>';
+    }).join('');
+  }
+
+  /* 外圈是「内接于单位圆」的正 n 边形：只有 270° 是采样角（n 为 4 的倍数）时
+     它才在 (−1,0) 方向有顶点，孔圆（半径 d、圆心 (d−1,0)）才完全落在外圈内。
+     否则孔会从左边探出去一小块 —— 这是几何必然，不是 bug，页面上要标出来。
+     返回「伸出外圈之外的孔顶点个数」。 */
+  function holeOutsideCount(n, d) {
+    var A = framePts(n), k, i, cnt = 0, px, py, inside, ax, ay, bx, by;
+    for (k = 0; k < n; k++) {
+      px = d * A[k][0] + d - 1; py = d * A[k][1];
+      inside = true;
+      for (i = 0; i < n; i++) {          /* A 是顺时针凸多边形：内部 ⟺ 所有边 cross ≤ 0 */
+        ax = A[i][0]; ay = A[i][1]; bx = A[i + 1][0]; by = A[i + 1][1];
+        if ((bx - ax) * (py - ay) - (by - ay) * (px - ax) > 1e-12) { inside = false; break; }
+      }
+      if (!inside) cnt++;
+    }
+    return cnt;
+  }
+
+  function refreshLedger(sc) {
+    var tab = ELS.stTab; if (!tab) return;
+    sc = sc || sceneOf(S);
+    var n = S.n, m = S.m, d = S.d;
+    var rows = [
+      ['每片月牙条数', String(n), 'n'],
+      ['红片 k1（+tilt）', String(m), '张'],
+      ['黄片 k2（−tilt）', String(m), '张'],
+      ['四边形合计', String(2 * m * n), '面'],
+      ['顶点合计', String(8 * m * n), '点'],
+      ['孔圆心 / 半径', fmt(d - 1) + ' / ' + fmt(d), ''],
+      ['孔圆左端', fmt(d - 1 - d), '切于单位圆'],
+      ['主圆（外圈）半径', '1', '固定'],
+      ['绕 z 自对称周期', fmt(360 / m) + '°', 'm 片等角']
+    ];
+    tab.innerHTML = rows.map(function (r) {
+      return '<tr><td class="tag">' + r[0] + '</td><td class="b">' + r[1] +
+        '</td><td>' + (r[2] || '') + '</td></tr>';
+    }).join('');
+    var nt = ELS.stNote;
+    if (nt) {
+      var out = holeOutsideCount(n, d);
+      nt.innerHTML = '每片月牙 = {在 <code>frame</code>（单位圆 ' + n + ' 边形）内} ∩ {在 <code>hole</code>（半径 '
+        + fmt(d) + ' 的圆）外}。<code>d</code> 越大孔越大、月牙越薄；<code>d</code> 趋近 0.99 时细如刀刃。'
+        + (out
+          ? '<br><b style="color:#ffcf6b">⚠ n = ' + n + ' 不是 4 的倍数</b>：外圈在 (−1,0) 方向没有顶点'
+            + '（内接多边形在那里内缩），所以半径 d 的孔会有 <b>' + out + ' 个顶点探出外圈之外</b> —— '
+            + '这是几何必然，不是 bug。把 n 取 4 的倍数（4/8/12/16/20/24/28/32/36/40）即可消掉。'
+          : '');
+    }
+  }
+
+  function refreshTransTag() {
+    var s = 'tilt=' + fmt(S.tilt) + ' · d=' + fmt(S.d) + ' · shift=' + fmt(S.shift) +
+      ' · n=' + S.n + ' · m=' + S.m;
+    if (ELS.rvTag) ELS.rvTag.textContent = s;
+    if (ELS.rvTag2) ELS.rvTag2.textContent = S.m * 2 + ' 片 · ' + (2 * S.m * S.n) + ' 面';
+  }
+
+  function refreshBar() {
+    var pct = ((S.yaw + 180) / 360) * 100;
+    if (ELS.barfill) ELS.barfill.style.width = pct.toFixed(1) + '%';
+    if (ELS.tnum) ELS.tnum.textContent = Math.round(S.yaw) + '°';
+  }
+
+  function refreshAll(sc) {
+    refreshReadouts(sc);
+    refreshLedger(sc);
+    refreshTransTag();
+    refreshBar();
+  }
+
+  /* 把整个 S 推回界面控件并重绘 —— 供实拍/自动化驱动（humanoid 一次改多个状态） */
+  function syncAll() {
+    setPair('sTilt', S.tilt); setPair('sD', S.d); setPair('sShift', S.shift);
+    setPair('sN', S.n); setPair('sM', S.m);
+    setPair('sYaw', S.yaw); setPair('sPit', S.pit); setPair('sZom', S.zoom);
+    if (ELS.selScheme) ELS.selScheme.value = S.scheme;
+    if (ELS.ckEdge) ELS.ckEdge.checked = !!S.edge;
+    if (ELS.ckWire) ELS.ckWire.checked = !!S.wire;
+    if (ELS.ckHalf) ELS.ckHalf.checked = !!S.half;
+    drawMain(); drawSeq(); refreshTransTag();
+  }
+  var DEF = { tilt: 1, d: 0.77, shift: 1.1, n: 20, m: 24,
+              yaw: -58, pit: 26, zoom: 1,
+              scheme: 'nb', edge: true, wire: false, half: false };
+  function resetAll() {
+    for (var k in DEF) S[k] = DEF[k];
+    syncAll();
+  }
+
+  /* ---------------------------------------------------------- 事件绑定 */
+  var _bound = false;
+
+  function syncPair(sid, vid) {
+    var s = $(sid), v = $(vid);
+    if (!s || !v) return;
+    s.addEventListener('input', function () {
+      v.value = s.value;
+      readUI();
+    });
+    v.addEventListener('change', function () {
+      var x = parseFloat(v.value);
+      var lo = parseFloat(s.min), hi = parseFloat(s.max);
+      if (!isFinite(x)) x = parseFloat(s.value);
+      if (x < lo) x = lo; if (x > hi) x = hi;
+      s.value = x; v.value = x;
+      readUI();
+    });
+  }
+
+  function readUI() {
+    S.tilt = clampN('sTilt', 0, Math.PI / 2);
+    S.d = clampN('sD', 0.7, 0.99);
+    S.shift = clampN('sShift', -2, 2);
+    S.n = Math.round(clampN('sN', 3, 40));
+    S.m = Math.round(clampN('sM', 10, 40));
+    S.yaw = clampN('sYaw', -180, 180);
+    S.pit = clampN('sPit', -88, 88);
+    S.zoom = clampN('sZom', 0.4, 3.2);
+    drawMain(); drawSeq(); refreshTransTag();
+  }
+  function clampN(id, lo, hi) {
+    var e = $(id); if (!e) return lo;
+    var x = parseFloat(e.value);
+    if (!isFinite(x)) x = lo;
+    return Math.max(lo, Math.min(hi, x));
+  }
+  function setPair(id, val) {
+    var s = $('s' + id.slice(1)), v = $('v' + id.slice(1));
+    if (s) s.value = val;
+    if (v) v.value = val;
+  }
+
+  function applyCam(name) {
+    var p = CAM_PRESETS[name]; if (!p) return;
+    S.yaw = p.yaw; S.pit = p.pit;
+    setPair('sYaw', S.yaw); setPair('sPit', S.pit);
+    drawMain();
+  }
+
+  function applyPreset(str) {
+    var a = str.split(',').map(parseFloat);
+    S.tilt = a[0]; S.d = a[1]; S.shift = a[2]; S.n = Math.round(a[3]); S.m = Math.round(a[4]);
+    setPair('sTilt', S.tilt); setPair('sD', S.d); setPair('sShift', S.shift);
+    setPair('sN', S.n); setPair('sM', S.m);
+    drawMain(); drawSeq(); refreshTransTag();
+  }
+
+  function doPng() {
+    var cv = renderAt(lastWH[0], lastWH[1], {});
+    cv.toBlob(function (b) { download(b, '圆环灯罩_' + S.n + 'x' + S.m + '.png'); });
+  }
+  function doGif() {
+    var note = ELS.gifNote;
+    if (note) note.textContent = '正在渲染 ' + GIFF + ' 帧…';
+    window.setTimeout(async function () {
+      try {
+        var meta = await gifPrepOne();
+        if (note) {
+          note.textContent = meta.name + '.gif · ' + GIFF + ' 帧 · ' +
+            (meta.bytes / 1048576).toFixed(2) + ' MB';
+        }
+        download(GIFOUT, meta.name + '.gif');
+      } catch (ex) {
+        if (note) note.textContent = '导出失败：' + ex.message;
+      }
+    }, 30);
+  }
+
+  /* 播放：绕 z 轴公转 */
+  var RAF = 0, LAST = 0;
+  function tick(ts) {
+    if (!S.playing) { RAF = 0; return; }
+    if (!LAST) LAST = ts;
+    var dt = Math.min(0.05, (ts - LAST) / 1000); LAST = ts;
+    S.yaw += 60 * S.spd * dt;
+    if (S.yaw > 180) { S.yaw = S.loop ? -180 : 180; if (!S.loop) { S.playing = false; } }
+    setPair('sYaw', Math.round(S.yaw));
+    drawMain();
+    if (ELS.bPlay) ELS.bPlay.textContent = S.playing ? '⏸ 暂停旋转' : '▶ 播放旋转';
+    RAF = window.requestAnimationFrame(tick);
+  }
+
+  function bindAll() {
+    if (_bound) return;              /* ⚠ 幂等：boot 调两次不能让监听器叠两遍 */
+    _bound = true;
+
+    ['Tilt', 'D', 'Shift', 'N', 'M', 'Yaw', 'Pit', 'Zom'].forEach(function (k) {
+      syncPair('s' + k, 'v' + k);
+    });
+
+    var pn = ELS.panel;
+    if (pn) {
+      pn.addEventListener('click', function (ev) {
+        var t = ev.target;
+        if (!t || !t.closest) return;
+        var card = t.closest('.card');
+        if (card) {
+          var h = card.querySelector('h2');
+          if (h && (h === t || h.contains(t) || t.contains(h))) card.classList.toggle('fold');
+          return;
+        }
+        if (t.tagName === 'H2') togglePanel();
+      });
+    }
+    if (ELS.ptoggle) ELS.ptoggle.addEventListener('click', togglePanel);
+    if (ELS.bReset) {
+      ELS.bReset.addEventListener('click', function () {
+        S.tilt = 1; S.d = 0.77; S.shift = 1.1; S.n = 20; S.m = 24;
+        S.yaw = -58; S.pit = 26; S.zoom = 1;
+        setPair('sTilt', 1); setPair('sD', 0.77); setPair('sShift', 1.1);
+        setPair('sN', 20); setPair('sM', 24);
+        setPair('sYaw', -58); setPair('sPit', 26); setPair('sZom', 1);
+        drawMain(); drawSeq(); refreshTransTag();
+      });
+    }
+    if (ELS.bCamNb) ELS.bCamNb.addEventListener('click', function () { applyCam('nb'); });
+    if (ELS.bPng) ELS.bPng.addEventListener('click', doPng);
+    if (ELS.bGif) ELS.bGif.addEventListener('click', doGif);
+    if (ELS.bPlay) {
+      ELS.bPlay.addEventListener('click', function () {
+        S.playing = !S.playing;
+        ELS.bPlay.classList.toggle('on', S.playing);
+        ELS.bPlay.textContent = S.playing ? '⏸ 暂停旋转' : '▶ 播放旋转';
+        if (S.playing) { LAST = 0; RAF = window.requestAnimationFrame(tick); }
+        else if (RAF) { window.cancelAnimationFrame(RAF); RAF = 0; }
+      });
+    }
+    if (ELS.bLoop) {
+      ELS.bLoop.classList.add('on');
+      ELS.bLoop.addEventListener('click', function () {
+        S.loop = !S.loop;
+        ELS.bLoop.classList.toggle('on', S.loop);
+      });
+    }
+    if (ELS.sSpd) ELS.sSpd.addEventListener('input', function () { S.spd = parseFloat(ELS.sSpd.value) || 1; });
+    if (ELS.bar) {
+      ELS.bar.addEventListener('click', function (ev) {
+        var r = ELS.bar.getBoundingClientRect();
+        var f = r.width > 0 ? Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)) : 0.5;
+        S.yaw = -180 + 360 * f;
+        setPair('sYaw', Math.round(S.yaw));
+        drawMain();
+      });
+    }
+    if (ELS.selScheme) {
+      ELS.selScheme.addEventListener('change', function () { S.scheme = ELS.selScheme.value; drawMain(); drawSeq(); });
+    }
+    if (ELS.ckEdge) ELS.ckEdge.addEventListener('change', function () { S.edge = ELS.ckEdge.checked; drawMain(); drawSeq(); });
+    if (ELS.ckWire) ELS.ckWire.addEventListener('change', function () { S.wire = ELS.ckWire.checked; drawMain(); drawSeq(); });
+    if (ELS.ckHalf) ELS.ckHalf.addEventListener('change', function () { S.half = ELS.ckHalf.checked; drawMain(); drawSeq(); });
+
+    /* 画布拖动 / 滚轮 / 双击 */
+    var cv = ELS.cvMain;
+    if (cv) {
+      var drag = null;
+      cv.addEventListener('mousedown', function (ev) {
+        drag = { x: ev.clientX, y: ev.clientY, yaw: S.yaw, pit: S.pit };
+        cv.classList.add('drag');
+      });
+      window.addEventListener('mousemove', function (ev) {
+        if (!drag) return;
+        S.yaw = clampW(drag.yaw + (ev.clientX - drag.x) * 0.45, -180, 180);
+        S.pit = clampW(drag.pit + (ev.clientY - drag.y) * 0.35, -88, 88);
+        setPair('sYaw', Math.round(S.yaw)); setPair('sPit', Math.round(S.pit));
+        drawMain();
+      });
+      window.addEventListener('mouseup', function () { drag = null; cv.classList.remove('drag'); });
+      cv.addEventListener('wheel', function (ev) {
+        ev.preventDefault();
+        S.zoom = clampW(S.zoom * (ev.deltaY > 0 ? 0.92 : 1.08), 0.4, 3.2);
+        setPair('sZom', Math.round(S.zoom * 100) / 100);
+        drawMain();
+      }, { passive: false });
+      cv.addEventListener('dblclick', function () { applyCam('nb'); });
+    }
+    /* 面板里的预设 / 相机按钮（事件委托） */
+    document.addEventListener('click', function (ev) {
+      var t = ev.target;
+      if (!t || !t.getAttribute) return;
+      var pre = t.getAttribute('data-preset');
+      if (pre) { applyPreset(pre); return; }
+      var cam = t.getAttribute('data-cam');
+      if (cam) { applyCam(cam); }
+    });
+    window.addEventListener('resize', function () { drawMain(); drawSeq(); refreshReadouts(); refreshLedger(); });
+  }
+  function clampW(x, lo, hi) { return x < lo ? lo : (x > hi ? hi : x); }
+
+  function togglePanel() {
+    document.body.classList.toggle('off');
+    var off = document.body.classList.contains('off');
+    if (ELS.ptoggle) ELS.ptoggle.textContent = off ? '◂' : '▸';
+    window.setTimeout(function () { drawMain(); drawSeq(); }, 240);
+  }
+
+  /* ---------------------------------------------------------- 启动 */
+  var _booted = false;
+  function boot() {
+    ['cvMain', 'cvQ0', 'cvQ1', 'cvQ2', 'cvQ3', 'q', 'mMain', 'stTab', 'stNote',
+      'eqBox', 'eqNote', 'panel', 'ptoggle', 'pbadge', 'rvTag', 'rvTag2', 'gifNote',
+      'bGif', 'bPng', 'bPlay', 'bReset', 'bLoop', 'sSpd', 'bar', 'barfill', 'tnum',
+      'selScheme', 'ckEdge', 'ckWire', 'ckHalf', 'bCamNb'].forEach(function (id) {
+        ELS[id] = $(id);
+      });
+    ['Tilt', 'D', 'Shift', 'N', 'M', 'Yaw', 'Pit', 'Zom'].forEach(function (k) {
+      ELS['s' + k] = $('s' + k); ELS['v' + k] = $('v' + k);
+    });
+    if (ELS.eqBox && !ELS.eqBox.textContent.trim()) {
+      ELS.eqBox.innerHTML = [
+        'frame = Table[ {Sin[i 2Pi/n], Cos[i 2Pi/n], 0}, {i, n+1} ]',
+        'hole  = Table[ {d Sin[i 2Pi/n] - 1 + d, d Cos[i 2Pi/n], 0}, {i, n+1} ]',
+        'disk  = { EdgeForm[Thin], Polygon[ Join[frame, hole] ] }',
+        '',
+        'k1 = Table[ Rotate[ Rotate[ Translate[disk, {shift,0,0}],  tilt, {1,0,0} ], i 2Pi/m, {0,0,1} ], {i, m} ]',
+        'k2 = Table[ Rotate[ Rotate[ Translate[disk, {shift,0,0}], -tilt, {1,0,0} ], i 2Pi/m, {0,0,1} ], {i, m} ]',
+        '',
+        'Graphics3D[ {Red, k1, Yellow, k2}, Boxed->False, SphericalRegion->True,',
+        '            ImageSize->400, ViewPoint->{0,0,100}, ViewAngle->0.01 ]',
+        '',
+        '控件：{{tilt,1},0,Pi/2}  {{d,0.77},0.7,0.99,0.01}  {{shift,1.1},-2,2}',
+        '      {{n,20},3,40,1}  {{m,24},10,40,1}      TrackedSymbols->{n,tilt,shift,m,d}'
+      ].join('\n');
+    }
+    if (ELS.eqNote) {
+      ELS.eqNote.innerHTML = '正上方俯视（<code>ViewPoint->{0,0,100}</code>）配 <code>ViewAngle->0.01</code> 的近正交投影，' +
+        '所以画布保持 <code>400:400</code> 正方形。';
+    }
+    bindAll();
+    if (_booted) return;             /* ⚠ 幂等 */
+    _booted = true;
+    drawMain(); drawSeq();
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+
+  /* ---------------------------------------------------------- 导出（桩测用） */
+  window.__RL__ = {
+    S: S, TAU: TAU, PAD: PAD, NB_W: NB_W, NB_H: NB_H,
+    framePts: framePts, holePts: holePts, diskBaseQuads: diskBaseQuads,
+    rotX: rotX, rotZ: rotZ, place: place, makePlacer: makePlacer,
+    sceneOf: sceneOf, sceneInfo: sceneInfo, camFor: camFor,
+    holeOutsideCount: holeOutsideCount,
+    colorOf: colorOf, hsv2rgb: hsv2rgb, paintInto: paintInto,
+    fitCanvas: fitCanvas, drawMain: drawMain, drawSeq: drawSeq,
+    renderAt: renderAt, gifFramesOf: gifFramesOf, gifPrepOne: gifPrepOne,
+    gifChunk: gifChunk, gifClear: gifClear, gifName: gifName,
+    readUI: readUI, setPair: setPair, syncAll: syncAll, resetAll: resetAll,
+    applyCam: applyCam, applyPreset: applyPreset,
+    bindAll: bindAll, boot: boot, ELS: ELS, CAM_PRESETS: CAM_PRESETS,
+    seqTilts: SEQ_TILTS, gifWHF: function () { return [GIFW, GIGH, GIFF]; }
+  };
+})();
+
+
+</script>
+</body>
+</html>

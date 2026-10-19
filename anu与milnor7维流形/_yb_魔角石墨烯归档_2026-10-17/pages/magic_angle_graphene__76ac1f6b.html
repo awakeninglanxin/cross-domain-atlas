@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>魔角石墨烯 · 1.1° 超导夹角交互模拟器</title>
+<style>
+  :root{
+    --bg:#080c18; --bg2:#0d1426; --card:#121b31; --card2:#17223c;
+    --line:#243250; --txt:#e6ecff; --dim:#93a2c4; --dim2:#6b7b9e;
+    --cyan:#4fd1c5; --warm:#ffa15b; --hot:#ff6b6b; --purple:#a78bfa; --blue:#5b9dff;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{
+    margin:0;padding:0;background:radial-gradient(1200px 700px at 20% -10%,#152040 0%,var(--bg) 60%) fixed,var(--bg);
+    color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;
+    line-height:1.65;font-size:15px;
+  }
+  .wrap{max-width:820px;margin:0 auto;padding:18px 14px 60px}
+  h1{font-size:22px;margin:6px 0 4px;letter-spacing:.5px}
+  h1 .hl{background:linear-gradient(90deg,var(--warm),var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{color:var(--dim);font-size:13px;margin-bottom:16px}
+  .card{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);
+    border-radius:16px;padding:14px;margin-bottom:14px;box-shadow:0 6px 24px rgba(0,0,0,.35)}
+  .card h2{font-size:15px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+  .card h2 .num{width:22px;height:22px;border-radius:7px;background:rgba(79,209,197,.15);color:var(--cyan);
+    font-size:12px;display:flex;align-items:center;justify-content:center;font-weight:700}
+  .card h3{font-size:13px;margin:14px 0 6px;color:var(--cyan)}
+  p{margin:6px 0}
+  .dim{color:var(--dim);font-size:13px}
+  .tiny{color:var(--dim2);font-size:11.5px}
+  b{color:#fff}
+  .k{color:var(--warm);font-weight:600}
+  code{background:rgba(255,255,255,.07);padding:1px 5px;border-radius:5px;font-size:12.5px;color:#cfe0ff}
+
+  /* 控制区 */
+  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+  .label{font-size:12.5px;color:var(--dim);min-width:56px}
+  .seg{display:flex;gap:4px;background:rgba(0,0,0,.28);padding:3px;border-radius:11px;flex-wrap:wrap}
+  .seg button{border:0;background:transparent;color:var(--dim);padding:6px 11px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit}
+  .seg button.on{background:linear-gradient(180deg,rgba(79,209,197,.28),rgba(79,209,197,.14));color:#fff;box-shadow:inset 0 0 0 1px rgba(79,209,197,.45)}
+  input[type=range]{width:100%;accent-color:var(--cyan);height:26px}
+  .sliderBox{background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:12px;padding:8px 12px;margin:8px 0}
+  .sliderHead{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;color:var(--dim)}
+  .sliderHead .val{font-size:17px;color:#fff;font-weight:700;font-variant-numeric:tabular-nums}
+  .sliderHead .val small{font-size:11px;color:var(--dim);font-weight:400}
+
+  /* 读数 */
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px;margin-top:10px}
+  .stat{background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:11px;padding:8px 9px}
+  .stat .t{font-size:10.5px;color:var(--dim2);letter-spacing:.3px}
+  .stat .v{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.35}
+  .stat .u{font-size:10.5px;color:var(--dim);font-weight:400;margin-left:2px}
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:20px;font-size:12.5px;font-weight:600;margin-top:10px}
+  .dot{width:8px;height:8px;border-radius:50%}
+  .hint{background:rgba(167,139,250,.10);border-left:3px solid var(--purple);padding:8px 11px;border-radius:0 9px 9px 0;font-size:12.5px;color:#d9d2ff;margin-top:10px}
+
+  canvas{display:block;width:100%;border-radius:12px;background:#060a14}
+  .cap{font-size:11.5px;color:var(--dim2);margin-top:6px;text-align:center}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--dim);margin-top:6px;justify-content:center}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+
+  /* 堆叠示意 */
+  .stack{display:flex;flex-direction:column;align-items:center;gap:5px;margin:10px 0 2px}
+  .layer{display:flex;align-items:center;gap:9px;width:100%;justify-content:center}
+  .cell{width:112px;height:17px;border-radius:5px;border:1px solid rgba(255,255,255,.28);
+    background:linear-gradient(135deg,rgba(91,157,255,.30),rgba(167,139,250,.30));transition:transform .25s}
+  .iface{font-size:11px;color:var(--warm);background:rgba(255,161,91,.12);border-radius:6px;padding:1px 7px;
+    margin:1px 0;display:inline-block}
+  .lname{font-size:11px;color:var(--dim);width:66px;text-align:right}
+
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+  th,td{border-bottom:1px solid var(--line);padding:6px 4px;text-align:center}
+  th{color:var(--dim);font-weight:600;font-size:11.5px}
+  td.hl{background:rgba(79,209,197,.13);color:#fff;font-weight:700}
+  .foot{text-align:center;color:var(--dim2);font-size:11.5px;margin-top:18px}
+  .chip{display:inline-block;background:rgba(255,255,255,.06);border:1px solid var(--line);
+    border-radius:8px;padding:2px 8px;font-size:12px;margin:3px 4px 0 0;cursor:pointer}
+  .chip.on{background:rgba(255,161,91,.18);border-color:rgba(255,161,91,.5);color:#ffd9b3}
+  .eq{background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:10px;padding:9px 11px;
+    font-family:"SFMono-Regular",Menlo,Consolas,monospace;font-size:12px;color:#bcd0f5;overflow-x:auto;margin:8px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1><span class="hl">1.1°</span> 魔角石墨烯 · 超导夹角模拟器</h1>
+  <div class="sub">两层石墨烯转一个"刚刚好"的角度，电子就慢下来、抱成库珀对 —— 拖动角度，亲眼看看这件事怎么发生。</div>
+
+  <!-- 原理 -->
+  <div class="card">
+    <h2><span class="num">1</span>原理：四步从"转角"到"超导"</h2>
+
+    <h3>① 转角 → 莫尔超晶格</h3>
+    <p class="dim">两层石墨烯晶格错开 <b>θ</b>，原子排列的干涉会生成一个比原子间距大几十倍的新周期图案（莫尔条纹）。周期
+      <code>L = a / 2sin(θ/2)</code>，θ=1.1° 时 <b>L ≈ 12.8 nm</b>，是碳原子间距的 50 多倍。电子其实生活在这个"人工大晶格"里。</p>
+
+    <h3>② 狄拉克锥杂化 → 能带被折进小布里渊区</h3>
+    <p class="dim">转动让两层的狄拉克锥在动量空间分开 <code>k_θ = 2k_D sin(θ/2)</code>，形成一个极小的迷你布里渊区；层间隧穿 <b>w</b> 把两个锥杂化，打开杂化能隙。角越小，迷你区越小，电子的"跑道"越短。</p>
+
+    <h3>③ 魔角 → 平带（费米速度归零）</h3>
+    <p class="dim">一切由一个无量纲参数决定：<code>α = w / ℏv<sub>F</sub>k_θ</code>。Bistritzer–MacDonald 给出重整化后的费米速度
+      <code>v*/v₀ = (1−3α²)/(1+6α²)</code>。当 <b>α → 1/√3 ≈ 0.58</b>，<b>v* 恰好归零</b>，中央两条能带被压成宽度仅 ~10 meV 的平带 —— 这就是 θ ≈ 1.1°。</p>
+
+    <h3>④ 平带 → 强关联 → 超导</h3>
+    <p class="dim">平带里电子动能耗尽，库仑排斥 <code>U ≈ e²/(4πε₀ε_r L) ≈ 10–20 meV</code> 反而压过带宽 <code>W</code>。<b>U &gt; W</b> 时电子不得不"集体决策"：半填充处出现莫特型关联绝缘体，稍微掺一点载流子就冒出超导穹顶（T<sub>c</sub> ≈ 1.7 K），相图和铜氧化物高温超导惊人相似，但一切都能用栅压原位调节。</p>
+    <div class="hint">直觉版：动能想让电子"跑起来"（波），库仑排斥想让电子"站住别挤"（粒子）。魔角把天平掰向了排斥，于是电子只能靠自旋/谷的微妙配合重新排队 —— 其中一种排队方式就是超导。</div>
+  </div>
+
+  <!-- 模拟器 -->
+  <div class="card">
+    <h2><span class="num">2</span>交互模拟器</h2>
+
+    <div class="row">
+      <span class="label">堆叠方式</span>
+      <div class="seg" id="modeSeg">
+        <button data-mode="alt" class="on">交替转角 ±θ</button>
+        <button data-mode="hel">螺旋堆叠 +θ</button>
+      </div>
+    </div>
+    <div class="tiny" id="modeNote" style="margin:-2px 0 6px"></div>
+
+    <div class="row">
+      <span class="label">层数 N</span>
+      <div class="seg" id="nSeg"></div>
+    </div>
+
+    <div class="sliderBox">
+      <div class="sliderHead"><span>转角 θ（层间）</span><span class="val" id="thVal">1.100<small>°</small></span></div>
+      <input type="range" id="thSlider" min="0.30" max="3.60" step="0.005" value="1.1">
+      <div class="tiny" id="magicChips" style="margin-top:2px"></div>
+    </div>
+
+    <div class="sliderBox">
+      <div class="sliderHead"><span>视场宽度</span><span class="val" id="zoomVal">38<small> nm</small></span></div>
+      <input type="range" id="zoomSlider" min="8" max="200" step="1" value="38">
+    </div>
+
+    <div class="sliderBox">
+      <div class="sliderHead"><span>晶格弛豫强度</span><span class="val" id="relaxVal">1.00</span></div>
+      <input type="range" id="relaxSlider" min="1" max="3" step="0.05" value="1">
+      <div class="tiny">真实样品会结构弛豫：AA 区收缩、AB/BA 域扩大，等效魔角随之移动。</div>
+    </div>
+
+    <div class="grid">
+      <div class="stat"><div class="t">莫尔周期 L</div><div class="v" id="oL">—<span class="u">nm</span></div></div>
+      <div class="stat"><div class="t">耦合参数 α</div><div class="v" id="oA">—</div></div>
+      <div class="stat"><div class="t">费米速度 v*/v₀</div><div class="v" id="oV">—</div></div>
+      <div class="stat"><div class="t">平带带宽 W</div><div class="v" id="oW">—<span class="u">meV</span></div></div>
+      <div class="stat"><div class="t">库仑能 U</div><div class="v" id="oU">—<span class="u">meV</span></div></div>
+      <div class="stat"><div class="t">相互作用 U/W</div><div class="v" id="oR">—</div></div>
+    </div>
+
+    <div id="badge" class="badge"><span class="dot"></span><span id="badgeTxt">—</span></div>
+    <div class="hint" id="verdict"></div>
+
+    <h3>莫尔图案（真实空间）</h3>
+    <canvas id="moire" width="460" height="460"></canvas>
+    <div class="legend">
+      <span><i style="background:#ffc178"></i>AA 区（电子局域、态密度最高）</span>
+      <span><i style="background:#2b4f8f"></i>AB/BA 区（伯纳尔堆叠）</span>
+    </div>
+    <div class="cap" id="moireCap"></div>
+
+    <h3>原子尺度放大（相邻两层真实晶格）</h3>
+    <div class="two">
+      <div>
+        <canvas id="atoms" width="300" height="300"></canvas>
+        <div class="cap"><span style="color:#7fd3ff">●</span> 上层 &nbsp; <span style="color:#ff9c6b">●</span> 下层</div>
+      </div>
+      <div>
+        <div class="stack" id="stack"></div>
+        <div class="cap">层取向（角度已放大约 6× 以便肉眼观察）</div>
+      </div>
+    </div>
+
+    <h3>费米速度重整化曲线 · 魔角在何处</h3>
+    <canvas id="band" width="820" height="300"></canvas>
+    <div class="cap">曲线触零处 = 平带 = 潜在超导夹角；竖线为当前 θ</div>
+
+    <h3>魔角相图示意（温度 vs 填充因子 ν）</h3>
+    <canvas id="phase" width="820" height="280"></canvas>
+    <div class="sliderBox" style="margin-top:8px">
+      <div class="sliderHead"><span>填充因子 ν（每莫尔原胞电子数）</span><span class="val" id="nuVal">−2.20</span></div>
+      <input type="range" id="nuSlider" min="-4" max="4" step="0.05" value="-2.2">
+    </div>
+    <div class="hint" id="phaseVerdict"></div>
+  </div>
+
+  <!-- 多层 -->
+  <div class="card">
+    <h2><span class="num">3</span>多层叠加：一整个"魔角家族"</h2>
+    <p class="dim">关键结论来自 Khalaf 等人的手性极限理论：<b>N 层交替转角 (±θ, ±θ, …) 石墨烯会分裂成若干个"TBG 子系统"</b>，每个子系统各有一套平带，各对应一个魔角 —— 层数越多，超导夹角越多。</p>
+    <div class="eq">θ<sub>N,k</sub> = 2 θ<sub>TBG</sub> · cos( kπ / (N+1) ) ,&nbsp; k = 1, 2, … , ⌊N/2⌋&nbsp;&nbsp;(θ<sub>TBG</sub> = 1.1°)</div>
+    <p class="dim">等价地说，子系统 k 的等效层间耦合被放大了 <code>g<sub>k</sub> = 2cos(kπ/(N+1))</code>，所以魔角也比双层大 <code>g<sub>k</sub></code> 倍：3 层 → √2 倍 ≈ <b>1.56°</b>，4 层 → 黄金比例 φ ≈ <b>1.78°</b> 与 φ⁻¹ ≈ <b>0.68°</b>，5 层 → √3 倍 ≈ <b>1.90°</b> 外加 1.10°。</p>
+    <table id="magicTable"></table>
+    <div class="tiny" style="margin-top:6px">表中为手性极限解析值；真实体系（w<sub>AA</sub>≠0、晶格弛豫）会略有偏移，实验报道的 3/4/5 层最大魔角约 1.57° / 1.77° / 1.95°。螺旋堆叠（同向 +θ）另有一族：3 层 ≈ 1.8°、4 层 ≈ 2.3°，且多个莫尔图案互相干涉会形成更大的 super-moiré —— 把上面的开关拨到"螺旋堆叠"即可看到。</div>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">4</span>别忘了这些前提</h2>
+    <p class="dim">· <b>超导很冷</b>：T<sub>c</sub> 只有 1.7 K 上下（3 层体系可达 ~2.9 K），但 T<sub>c</sub>/T<sub>F</sub> 极高，属于已知最强耦合的超导体之一。<br>
+    · <b>角度极挑剔</b>：偏离 0.1° 平带就没了，这也是为什么实验要用"切-转"技术。<br>
+    · <b>魔角不止一个</b>：双层在更小的角度（≈0.5°、0.35°…）还有高阶魔角，但它们对模型参数和扰动敏感得多、远不如第一个稳健，因此本页只计算各子系统的第一魔角。<br>
+    · <b>压力也能调</b>：加静水压可增大层间耦合，把魔角推向更大的角度（Yankowitz et al., Science 2019）。<br>
+    · <b>本页是教学示意</b>：莫尔图案、曲线与 U/W 用 BM 连续模型和手性极限解析式实时计算，量级可信；相图穹顶为定性示意，非第一性原理结果。</p>
+  </div>
+
+  <div class="foot">参数：a = 0.246 nm，ℏv<sub>F</sub>/a ≈ 2.135 eV，ε<sub>r</sub> ≈ 6（hBN 环境），α<sub>c</sub> = 1/√3</div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  // ---------- 常数 ----------
+  var A_CC = 0.246;                       // nm 石墨烯晶格常数
+  var KD = 4*Math.PI/(3*A_CC);            // nm^-1 狄拉克动量
+  var HBARVF = 2.135*A_CC;                // eV·nm
+  var THETA_TBG = 1.1;                    // deg 双层第一魔角
+  var ALPHA_C = 1/Math.sqrt(3);           // 0.5774
+  var E2_4PIE0 = 1.44;                    // eV·nm
+  var EPS_R = 6;
+  var GMAG = 4*Math.PI/(Math.sqrt(3)*A_CC); // 最短倒格矢 |G|
+
+  // ---------- 状态 ----------
+  var S = { mode:'alt', N:2, theta:1.1, zoom:38, relax:1.0, nu:-2.2 };
+
+  // ---------- 物理 ----------
+  function ktheta(th){ return 2*KD*Math.sin(th*Math.PI/360); }
+  function Lmoire(th){ return A_CC/(2*Math.sin(th*Math.PI/360)); }
+  // α 以 θ=1.1° 时等于 1/√3 标定
+  function alphaBase(th){ return ALPHA_C*Math.sin(THETA_TBG*Math.PI/360)/Math.sin(th*Math.PI/360); }
+  function vRatio(a){ return Math.abs(1-3*a*a)/(1+6*a*a); }
+
+  // 返回子系统列表 [{k, g, thetaMagic, label}]
+  function subsystems(N, mode){
+    var out=[];
+    if(mode==='alt'){
+      for(var k=1;k<=Math.floor(N/2);k++){
+        var g=2*Math.cos(k*Math.PI/(N+1));
+        out.push({k:k,g:g,thetaMagic:THETA_TBG*g,label:'子系统 '+k});
+      }
+    }else{
+      var tbl={2:[1.10],3:[1.80],4:[2.30]};
+      var arr=tbl[N]||[];
+      for(var i=0;i<arr.length;i++){
+        out.push({k:i+1,g:arr[i]/THETA_TBG,thetaMagic:arr[i],label:(arr.length>1?('子系统 '+(i+1)):'螺旋魔角')});
+      }
+    }
+    return out;
+  }
+
+  function physics(){
+    var th=S.theta, L=Lmoire(th), a0=alphaBase(th);
+    var subs=subsystems(S.N,S.mode);
+    var items=subs.map(function(s){
+      var a=s.g*a0;
+      return {k:s.k,g:s.g,tm:s.thetaMagic,label:s.label,alpha:a,v:vRatio(a)};
+    });
+    var lead=items.length?items[0]:{alpha:a0,v:vRatio(a0),tm:THETA_TBG,g:1};
+    var vmin=items.length?Math.min.apply(null,items.map(function(x){return x.v;})):vRatio(a0);
+    var flat = vmin<0.55;
+    var W=Math.sqrt(Math.pow(vmin*HBARVF*ktheta(th)*1000,2)+4); // meV，含 ~2meV 下限
+    var U=E2_4PIE0/(EPS_R*L)*1000;                              // meV
+    return {L:L,alpha0:a0,items:items,lead:lead,vmin:vmin,W:W,U:U,ratio:U/W,th:th,flat:flat};
+  }
+
+  // ---------- DOM ----------
+  function $(id){return document.getElementById(id);}
+  var modeSeg=$('modeSeg'), nSeg=$('nSeg'), thS=$('thSlider'), zoomS=$('zoomSlider'),
+      relaxS=$('relaxSlider'), nuS=$('nuSlider');
+
+  function buildN(){
+    var maxN = S.mode==='hel'?4:7;
+    if(S.N>maxN) S.N=maxN;
+    nSeg.innerHTML='';
+    for(var n=2;n<=maxN;n++){
+      var b=document.createElement('button');
+      b.textContent=n+' 层'; b.dataset.n=n;
+      if(n===S.N) b.className='on';
+      nSeg.appendChild(b);
+    }
+  }
+
+  modeSeg.addEventListener('click',function(e){
+    var b=e.target.closest('button'); if(!b) return;
+    S.mode=b.dataset.mode;
+    Array.prototype.forEach.call(modeSeg.children,function(x){x.classList.toggle('on',x===b);});
+    buildN(); update();
+  });
+  nSeg.addEventListener('click',function(e){
+    var b=e.target.closest('button'); if(!b) return;
+    S.N=parseInt(b.dataset.n,10);
+    Array.prototype.forEach.call(nSeg.children,function(x){x.classList.toggle('on',x===b);});
+    update();
+  });
+  thS.addEventListener('input',function(){ S.theta=parseFloat(this.value); update(); });
+  zoomS.addEventListener('input',function(){ S.zoom=parseFloat(this.value); update(); });
+  relaxS.addEventListener('input',function(){ S.relax=parseFloat(this.value); update(); });
+  nuS.addEventListener('input',function(){ S.nu=parseFloat(this.value); update(); });
+
+  // ---------- 莫尔图案渲染 ----------
+  var moire=$('moire'), mctx=moire.getContext('2d');
+  var MW=460;
+  function drawMoire(){
+    var view=S.zoom, th=S.theta, thr=th*Math.PI/180;
+    var s2=2*Math.sin(th*Math.PI/360);
+    var p=mctx.createImageData(MW,MW), d=p.data;
+    // 界面：交替 => 单一莫尔；螺旋 => N-1 个互相旋转 θ 的莫尔（super-moiré）
+    var ifaces=[];
+    if(S.mode==='alt'){ ifaces.push({ang:thr/2, w:1}); }
+    else { for(var i=1;i<=S.N-1;i++){ ifaces.push({ang:(i-0.5)*thr, w:1}); } }
+    var norm=ifaces.length||1;
+    var G=GMAG, phi=[Math.PI/2, Math.PI/2+2*Math.PI/3, Math.PI/2+4*Math.PI/3];
+    for(var y=0;y<MW;y++){
+      var ry=(y-MW/2+0.5)/MW*view;
+      for(var x=0;x<MW;x++){
+        var rx=(x-MW/2+0.5)/MW*view;
+        var u=0;
+        for(var q=0;q<ifaces.length;q++){
+          var ca=Math.cos(ifaces[q].ang), sa=Math.sin(ifaces[q].ang);
+          // 在层对坐标系内的坐标
+          var X= ca*rx + sa*ry, Y=-sa*rx + ca*ry;
+          var dx=-s2*Y, dy=s2*X;           // 相对位移 δ ≈ θ ẑ×r
+          var su=Math.cos(G*(dx*Math.cos(phi[0])+dy*Math.sin(phi[0])))
+                +Math.cos(G*(dx*Math.cos(phi[1])+dy*Math.sin(phi[1])))
+                +Math.cos(G*(dx*Math.cos(phi[2])+dy*Math.sin(phi[2])));
+          u+=su;
+        }
+        var s=(u/norm+1.5)/4.5;
+        if(s<0)s=0; if(s>1)s=1;
+        s=Math.pow(s,S.relax);             // 弛豫：AA 区收缩
+        // 配色：AB 深蓝 -> AA 暖橙
+        var r,g,b;
+        if(s<0.5){
+          var t=s/0.5;
+          r=18+ (60-18)*t; g=32+(95-32)*t; b=72+(190-72)*t;
+        }else{
+          var t2=(s-0.5)/0.5;
+          r=60+(255-60)*t2; g=95+(190-95)*t2; b=190+(120-190)*t2;
+        }
+        var o=(y*MW+x)*4;
+        d[o]=r; d[o+1]=g; d[o+2]=b; d[o+3]=255;
+      }
+    }
+    mctx.putImageData(p,0,0);
+    // 比例尺
+    var barNm = view/5, px = MW/5;
+    mctx.strokeStyle='rgba(255,255,255,.85)'; mctx.lineWidth=2;
+    mctx.beginPath(); mctx.moveTo(16,MW-20); mctx.lineTo(16+px,MW-20);
+    mctx.moveTo(16,MW-24); mctx.lineTo(16,MW-16); mctx.moveTo(16+px,MW-24); mctx.lineTo(16+px,MW-16);
+    mctx.stroke();
+    mctx.fillStyle='rgba(255,255,255,.9)'; mctx.font='12px -apple-system,sans-serif';
+    mctx.fillText((barNm<10?barNm.toFixed(1):barNm.toFixed(0))+' nm', 18+px, MW-15);
+  }
+
+  // ---------- 原子尺度放大 ----------
+  var atoms=$('atoms'), actx=atoms.getContext('2d');
+  function drawAtoms(){
+    var W=300, view=6.0; // nm
+    actx.clearRect(0,0,W,W);
+    actx.fillStyle='#060a14'; actx.fillRect(0,0,W,W);
+    var a=A_CC, a1=a/Math.sqrt(3);      // 碳碳键长
+    var thr=S.theta*Math.PI/180;
+    var layers=[{ang:-thr/2,col:'#ff9c6b',sub:'#ffbe8f'},{ang:thr/2,col:'#7fd3ff',sub:'#b3e6ff'}];
+    var cands=[];
+    // 三角格子
+    var t1x=a, t1y=0, t2x=a/2, t2y=a*Math.sqrt(3)/2;
+    var R=view*0.75;
+    var nMax=Math.ceil(R/a)+2;
+    for(var L=0;L<layers.length;L++){
+      var la=layers[L].ang, ca=Math.cos(la), sa=Math.sin(la);
+      for(var i=-nMax;i<=nMax;i++){
+        for(var j=-nMax;j<=nMax;j++){
+          var bx=i*t1x+j*t2x, by=i*t1y+j*t2y;
+          // 两个子格沿键方向错开 a/√3
+          var o1x=a1,b1y=0;
+          var px=ca*bx-sa*by, py=sa*bx+ca*by;
+          var qx=ca*(bx+o1x)-sa*(b1y), qy=sa*(bx+o1x)+ca*(b1y);
+          if(Math.abs(px)<R&&Math.abs(py)<R) cands.push([px,py,L,0]);
+          if(Math.abs(qx)<R&&Math.abs(qy)<R) cands.push([qx,qy,L,1]);
+        }
+      }
+    }
+    var sc=W/view;
+    actx.lineWidth=0.7;
+    for(var c=0;c<cands.length;c++){
+      var X=W/2+cands[c][0]*sc, Y=W/2-cands[c][1]*sc, li=cands[c][2];
+      actx.fillStyle = cands[c][3]===0 ? layers[li].col : layers[li].sub;
+      actx.beginPath(); actx.arc(X,Y,3.0,0,6.2832); actx.fill();
+    }
+    actx.strokeStyle='rgba(255,255,255,.12)'; actx.lineWidth=1;
+    actx.strokeRect(0.5,0.5,W-1,W-1);
+    actx.fillStyle='rgba(255,255,255,.55)'; actx.font='11px -apple-system,sans-serif';
+    actx.fillText('6 nm', 8, W-8);
+  }
+
+  // ---------- v*/v0 曲线 ----------
+  var band=$('band'), bctx=band.getContext('2d');
+  function drawBand(P){
+    var Wc=820,Hc=300,pad={l:52,r:16,t:18,b:38};
+    bctx.clearRect(0,0,Wc,Hc);
+    bctx.fillStyle='#080d1a'; bctx.fillRect(0,0,Wc,Hc);
+    var subs=P.items;
+    var maxT=3.6;
+    subs.forEach(function(s){ if(s.tm*1.25>maxT) maxT=Math.min(6,s.tm*1.25); });
+    var x0=pad.l, x1=Wc-pad.r, y0=pad.t, y1=Hc-pad.b;
+    function X(t){ return x0+(t-0.2)/(maxT-0.2)*(x1-x0); }
+    function Y(v){ return y1-v*(y1-y0); }
+    // 网格
+    bctx.strokeStyle='rgba(255,255,255,.08)'; bctx.lineWidth=1;
+    bctx.fillStyle='#6b7b9e'; bctx.font='11px -apple-system,sans-serif';
+    for(var v=0;v<=1.001;v+=0.25){
+      bctx.beginPath(); bctx.moveTo(x0,Y(v)); bctx.lineTo(x1,Y(v)); bctx.stroke();
+      bctx.textAlign='right'; bctx.fillText(v.toFixed(2),x0-6,Y(v)+4);
+    }
+    var stepT = maxT>4?1:0.5;
+    for(var t=0;t<=maxT+1e-9;t+=stepT){
+      if(t<0.2) continue;
+      bctx.beginPath(); bctx.moveTo(X(t),y0); bctx.lineTo(X(t),y1); bctx.stroke();
+      bctx.textAlign='center'; bctx.fillText(t.toFixed(1)+'°',X(t),y1+16);
+    }
+    bctx.textAlign='left'; bctx.fillStyle='#93a2c4';
+    bctx.fillText('v*/v₀',x0-46,y0+4);
+    bctx.textAlign='right'; bctx.fillText('转角 θ',x1,y1+30);
+
+    var cols=['#4fd1c5','#ffa15b','#a78bfa','#5b9dff','#ff6b6b'];
+    subs.forEach(function(s,i){
+      var col=cols[i%cols.length];
+      bctx.strokeStyle=col; bctx.lineWidth=2.2; bctx.beginPath();
+      var first=true;
+      for(var px=0;px<=400;px++){
+        var th=0.2+(maxT-0.2)*px/400;
+        var a=s.g*alphaBase(th);
+        var v=vRatio(a);
+        var xx=X(th), yy=Y(v);
+        if(first){bctx.moveTo(xx,yy);first=false;}else bctx.lineTo(xx,yy);
+      }
+      bctx.stroke();
+      // 魔角标记
+      var mx=X(s.tm), my=Y(0);
+      bctx.setLineDash([4,4]); bctx.strokeStyle='rgba(255,255,255,.25)';
+      bctx.beginPath(); bctx.moveTo(mx,my); bctx.lineTo(mx,y1); bctx.stroke(); bctx.setLineDash([]);
+      bctx.fillStyle=col; bctx.beginPath(); bctx.arc(mx,my,5,0,6.2832); bctx.fill();
+      bctx.font='bold 11px -apple-system,sans-serif'; bctx.textAlign='center';
+      bctx.fillText(s.tm.toFixed(2)+'°',mx,my-10);
+    });
+    if(!subs.length){
+      bctx.fillStyle='#93a2c4'; bctx.font='13px -apple-system,sans-serif'; bctx.textAlign='center';
+      bctx.fillText('该螺旋构型暂无公认的魔角数值',(x0+x1)/2,(y0+y1)/2);
+    }
+    // 当前 θ 游标
+    var cx=X(S.theta);
+    bctx.strokeStyle='#fff'; bctx.lineWidth=1.6;
+    bctx.beginPath(); bctx.moveTo(cx,y0); bctx.lineTo(cx,y1); bctx.stroke();
+    bctx.fillStyle='#fff'; bctx.font='bold 11px -apple-system,sans-serif'; bctx.textAlign='left';
+    bctx.fillText('当前 θ',cx+4,y0+12);
+    bctx.textAlign='center';
+    bctx.fillText('θ = '+S.theta.toFixed(2)+'° → v*/v₀ = '+P.vmin.toFixed(3), (x0+x1)/2, y0+12);
+  }
+
+  // ---------- 相图 ----------
+  var phase=$('phase'), pctx=phase.getContext('2d');
+  function drawPhase(P){
+    var Wc=820,Hc=280,pad={l:48,r:16,t:16,b:34};
+    pctx.clearRect(0,0,Wc,Hc);
+    pctx.fillStyle='#080d1a'; pctx.fillRect(0,0,Wc,Hc);
+    var x0=pad.l,x1=Wc-pad.r,y0=pad.t,y1=Hc-pad.b;
+    var TMAX=3.2;
+    function X(n){ return x0+(n+4)/8*(x1-x0); }
+    function Y(T){ return y1-T/TMAX*(y1-y0); }
+    // 网格
+    pctx.strokeStyle='rgba(255,255,255,.08)';pctx.lineWidth=1;
+    pctx.fillStyle='#6b7b9e';pctx.font='11px -apple-system,sans-serif';
+    for(var n=-4;n<=4;n++){
+      pctx.beginPath();pctx.moveTo(X(n),y0);pctx.lineTo(X(n),y1);pctx.stroke();
+      pctx.textAlign='center';pctx.fillText((n>0?'+':'')+n,X(n),y1+16);
+    }
+    for(var T=0;T<=TMAX;T+=0.8){
+      pctx.beginPath();pctx.moveTo(x0,Y(T));pctx.lineTo(x1,Y(T));pctx.stroke();
+      pctx.textAlign='right';pctx.fillText(T.toFixed(1),x0-6,Y(T)+4);
+    }
+    pctx.fillStyle='#93a2c4';pctx.textAlign='left';
+    pctx.fillText('T (K)',x0-42,y0+4);
+    pctx.textAlign='right';pctx.fillText('填充因子 ν',x1,y1+30);
+
+    // 超导强度：v* 越小越强
+    var strength=Math.max(0,1-Math.pow(P.vmin/0.30,2));
+    var Tc=1.7*strength*(S.mode==='alt'&&S.N>=3?1.5:1.0);
+    // 关联绝缘体（半填充 ±2）
+    if(strength>0.12){
+      [-2,2].forEach(function(v){
+        var w=0.16*8*(x1-x0)/8*1.6;
+        pctx.fillStyle='rgba(255,107,107,'+(0.18+0.32*strength)+')';
+        pctx.fillRect(X(v)-w/2,y0,w,y1-y0);
+        pctx.fillStyle='rgba(255,180,180,.9)';pctx.font='10px -apple-system,sans-serif';pctx.textAlign='center';
+        pctx.fillText('关联绝缘体',X(v),y0+14);
+      });
+    }
+    // 超导穹顶
+    if(Tc>0.06){
+      for(var s=-1;s<=1;s+=1){
+        var center=-2.75*s;
+        pctx.beginPath();
+        var started=false;
+        for(var nu=center-1.1;nu<=center+1.1;nu+=0.02){
+          var tc=Tc*(1-Math.pow((nu-center)/1.05,2));
+          if(tc<=0) continue;
+          var xx=X(nu), yy=Y(tc);
+          if(!started){pctx.moveTo(xx,yy);started=true;}else pctx.lineTo(xx,yy);
+        }
+        pctx.lineTo(X(center+1.05),Y(0)); pctx.lineTo(X(center-1.05),Y(0)); pctx.closePath();
+        pctx.fillStyle='rgba(79,209,197,.28)'; pctx.fill();
+        pctx.strokeStyle='rgba(79,209,197,.9)';pctx.lineWidth=1.6;pctx.stroke();
+        pctx.fillStyle='#7ff0e6';pctx.font='bold 11px -apple-system,sans-serif';pctx.textAlign='center';
+        pctx.fillText('超导',X(center),Y(Tc)-8);
+      }
+    }else{
+      pctx.fillStyle='#6b7b9e';pctx.font='13px -apple-system,sans-serif';pctx.textAlign='center';
+      pctx.fillText('远离魔角：v* 未被压制，U/W 太小，没有超导穹顶',(x0+x1)/2,(y0+y1)/2);
+    }
+    // 当前 ν 游标
+    var cx=X(S.nu);
+    pctx.strokeStyle='#fff';pctx.lineWidth=1.4;
+    pctx.beginPath();pctx.moveTo(cx,y0);pctx.lineTo(cx,y1);pctx.stroke();
+    pctx.fillStyle='#fff';pctx.font='bold 11px -apple-system,sans-serif';
+    pctx.textAlign=(S.nu>2.6?'right':'left');
+    pctx.fillText('ν='+S.nu.toFixed(2),(S.nu>2.6?cx-4:cx+4),y0+12);
+  }
+
+  // ---------- 层堆叠示意 ----------
+  function drawStack(){
+    var host=$('stack'); host.innerHTML='';
+    var K=6, th=S.theta;
+    for(var i=0;i<S.N;i++){
+      var ang = (S.mode==='alt') ? ((i%2===0)?-th/2:th/2) : (i- (S.N-1)/2)*th;
+      var row=document.createElement('div'); row.className='layer';
+      var nm=document.createElement('div'); nm.className='lname'; nm.textContent='第 '+(i+1)+' 层';
+      var cell=document.createElement('div'); cell.className='cell';
+      cell.style.transform='rotate('+(ang*K)+'deg)';
+      row.appendChild(nm); row.appendChild(cell);
+      var tg=document.createElement('div'); tg.className='lname'; tg.style.textAlign='left';
+      tg.style.color='#93a2c4'; tg.style.fontSize='10.5px';
+      tg.textContent=(ang>=0?'+':'')+ang.toFixed(2)+'°';
+      row.appendChild(tg);
+      host.appendChild(row);
+      if(i<S.N-1){
+        var ifc=document.createElement('div'); ifc.className='iface';
+        ifc.textContent = (S.mode==='alt')
+          ? ('界面 '+(i+1)+'：'+(i%2===0?'+θ':'−θ'))
+          : ('界面 '+(i+1)+'：+θ');
+        host.appendChild(ifc);
+      }
+    }
+  }
+
+  // ---------- 表格 ----------
+  function buildTable(){
+    var rows='';
+    for(var n=2;n<=7;n++){
+      var subs=subsystems(n,'alt').map(function(s){return s.thetaMagic.toFixed(2)+'°';});
+      var cls=(n===S.N&&S.mode==='alt')?'hl':'';
+      rows+='<tr><td class="'+cls+'">'+n+' 层</td><td class="'+cls+'">'+(n-1)+'</td><td class="'+cls+'">'+
+             (subs.length?subs.join(' , '):'—')+'</td><td class="'+cls+'">'+subs.length+'</td></tr>';
+    }
+    $('magicTable').innerHTML=
+      '<tr><th>层数 N</th><th>界面数</th><th>理论魔角（手性极限）</th><th>超导夹角数</th></tr>'+rows;
+  }
+
+  // ---------- 主更新 ----------
+  var raf=null;
+  function update(){
+    if(raf) cancelAnimationFrame(raf);
+    raf=requestAnimationFrame(function(){
+      var P=physics();
+      // 读数
+      $('thVal').innerHTML=S.theta.toFixed(3)+'<small>°</small>';
+      $('zoomVal').innerHTML=S.zoom.toFixed(0)+'<small> nm</small>';
+      $('relaxVal').textContent=S.relax.toFixed(2);
+      $('nuVal').textContent=S.nu.toFixed(2);
+      $('oL').innerHTML=P.L.toFixed(1)+'<span class="u">nm</span>';
+      $('oA').textContent=P.alpha0.toFixed(3);
+      $('oV').textContent=P.vmin.toFixed(3);
+      $('oW').innerHTML = P.flat ? (P.W.toFixed(1)+'<span class="u">meV</span>') : '<span class="u" style="font-size:13px">无平带</span>';
+      $('oU').innerHTML=P.U.toFixed(1)+'<span class="u">meV</span>';
+      $('oR').textContent = P.flat ? P.ratio.toFixed(1) : '< 1';
+      // 状态
+      var st, col, txt;
+      if(P.vmin<0.10){ st='magic'; col='#4fd1c5'; txt='★ 魔角区：平带已形成'; }
+      else if(P.vmin<0.28){ st='near'; col='#ffa15b'; txt='接近魔角：v* 开始被压制'; }
+      else { st='normal'; col='#6b7b9e'; txt='常规体系：能带仍有明显色散'; }
+      var bg=$('badge');
+      bg.style.background = st==='magic'?'rgba(79,209,197,.16)':(st==='near'?'rgba(255,161,91,.14)':'rgba(107,123,158,.14)');
+      bg.style.color = col;
+      bg.querySelector('.dot').style.background=col;
+      $('badgeTxt').textContent=txt;
+      $('verdict').innerHTML = (P.vmin<0.10)
+        ? ('v* 已被压到几乎为零（'+P.vmin.toFixed(3)+' v₀），带宽 W ≈ '+P.W.toFixed(1)+' meV 远小于库仑能 U ≈ '+P.U.toFixed(1)+' meV（U/W ≈ '+P.ratio.toFixed(1)+'）。电子动能耗尽、库仑排斥主导 —— 这正是关联绝缘体与超导穹顶出现的条件。')
+        : ('此时 α = '+P.alpha0.toFixed(2)+'（临界值 0.58），电子仍有 '+P.vmin.toFixed(2)+' v₀ 的速度，U/W ≈ '+P.ratio.toFixed(1)+'。把 θ 调到 '+P.items.map(function(s){return s.tm.toFixed(2)+'°';}).join(' 或 ')+' 试试。');
+
+      // 魔角快捷芯片
+      var chips='';
+      P.items.forEach(function(s){
+        chips+='<span class="chip" data-th="'+s.tm.toFixed(3)+'">跳到 '+s.tm.toFixed(2)+'°</span>';
+      });
+      if(!P.items.length) chips='<span class="tiny">该构型暂无魔角数值</span>';
+      $('magicChips').innerHTML='魔角：'+chips;
+      Array.prototype.forEach.call($('magicChips').querySelectorAll('.chip'),function(c){
+        c.onclick=function(){ S.theta=parseFloat(c.dataset.th); thS.value=S.theta; update(); };
+      });
+
+      $('modeNote').innerHTML = (S.mode==='alt')
+        ? '相邻层交替扭转 +θ/−θ，保持镜面对称；N 层会分解成若干 TBG 子系统，每个子系统贡献一个魔角。'
+        : '每层同向旋转 +θ，产生 N−1 个方向各异的莫尔图案，互相干涉形成 super-moiré（仅 2–4 层有公认魔角数值）。';
+
+      $('moireCap').textContent = (S.mode==='alt')
+        ? ('N = '+S.N+' 层交替堆叠：单一莫尔周期 L = '+P.L.toFixed(1)+' nm，共 '+(S.N-1)+' 个层间界面')
+        : ('N = '+S.N+' 层螺旋堆叠：'+(S.N-1)+' 个莫尔图案相互旋转，大视场下可见 super-moiré 调制');
+
+      drawMoire(); drawAtoms(); drawBand(P); drawPhase(P); drawStack(); buildTable();
+      raf=null;
+    });
+  }
+
+  buildN();
+  update();
+})();
+</script>
+</body>
+</html>

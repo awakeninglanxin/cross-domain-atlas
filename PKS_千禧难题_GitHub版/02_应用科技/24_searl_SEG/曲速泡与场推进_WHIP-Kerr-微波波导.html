@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<title>曲速泡与场推进 · WHIP / Kerr / 微波波导 / Hull 配平 v1.0 · 浅色主题</title>
+<style>
+  :root { --bg:#f0f4fb; --panel:#e8eef7; --panel2:#e3eaf5; --panel3:#dee5f2; --line:#bfcce3;
+    --txt:#0f1f35; --dim:#32425b; --accent:#00568f; --n:#8b000e; --s:#1b6a50;
+    --dc:#935600; --ac:#4f0076; --ph:#00568f; --warn:#875f00; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--txt); font-family:"Microsoft YaHei","PingFang SC",sans-serif;
+    line-height:1.6; padding-bottom:70px; }
+  header { text-align:center; padding:26px 16px 14px; border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#e8edf9 0%,var(--bg) 100%); }
+  header h1 { font-size:24px; letter-spacing:1.5px; }
+  header h1 .hl { color:var(--accent); }
+  header p.sub { color:var(--dim); font-size:12.5px; margin-top:6px; max-width:1180px; margin-left:auto; margin-right:auto; }
+  .toolbar { display:flex; justify-content:center; gap:8px; margin-top:12px; flex-wrap:wrap; align-items:center; }
+  .toolbar button { background:var(--panel2); border:1px solid var(--line); color:var(--dim); padding:5px 14px;
+    border-radius:6px; cursor:pointer; font-size:12.5px; font-family:inherit; }
+  .toolbar button:hover { color:var(--accent); border-color:var(--accent); }
+  .toolbar a { background:var(--panel2); border:1px solid var(--line); color:var(--dim); padding:5px 14px;
+    border-radius:6px; text-decoration:none; font-size:12.5px; }
+  .toolbar a:hover { color:var(--accent); border-color:var(--accent); }
+  .hint { color:#4d5d7a; font-size:12px; }
+  .disclaimer { max-width:1180px; margin:12px auto 0; padding:9px 15px; border:1px dashed #fff2cb;
+    background:#fcf9f0; border-radius:8px; color:#7f621e; font-size:12px; text-align:left; }
+  nav.tabs { display:flex; justify-content:center; gap:9px; padding:14px 0 0; flex-wrap:wrap;
+    max-width:1280px; margin:0 auto; }
+  nav.tabs button { background:var(--panel); color:var(--dim); border:1px solid var(--line); border-radius:20px;
+    padding:8px 18px; font-size:13.5px; cursor:pointer; transition:all .18s; font-family:inherit; }
+  nav.tabs button:hover { color:var(--txt); border-color:var(--accent); }
+  nav.tabs button.active { background:var(--accent); color:#eef5fd; font-weight:bold; border-color:var(--accent); }
+  main { max-width:1280px; margin:0 auto; padding:20px 16px; }
+  section.view { display:none; }
+  section.view.active { display:block; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:17px; margin-bottom:16px; }
+  .card h2 { font-size:17.5px; color:var(--accent); margin-bottom:4px; }
+  .card h3 { font-size:14.5px; margin:8px 0 6px; }
+  .card p.desc { color:var(--dim); font-size:12.5px; margin-bottom:11px; }
+  .row { display:flex; gap:15px; flex-wrap:wrap; }
+  .row > .col { flex:1 1 400px; min-width:320px; }
+  canvas.sim { width:100%; background:#f2f6fb; border:1px solid var(--line); border-radius:8px; display:block; }
+  .ctrl { display:flex; flex-wrap:wrap; gap:12px 16px; align-items:center; margin-top:10px; padding:9px 13px;
+    background:var(--panel2); border-radius:8px; font-size:12.5px; }
+  .ctrl label { color:var(--dim); white-space:nowrap; }
+  .ctrl input[type=range] { width:150px; accent-color:var(--accent); vertical-align:middle; }
+  .ctrl .val { color:var(--accent); font-family:Consolas,monospace; min-width:76px; display:inline-block; }
+  .ctrl button { background:var(--accent); color:#eef5fd; border:none; border-radius:6px; padding:6px 16px;
+    cursor:pointer; font-weight:bold; font-size:12.5px; font-family:inherit; }
+  .ctrl button.ghost { background:transparent; color:var(--accent); border:1px solid var(--accent); }
+  .ctrl button.ghost.on { background:var(--accent); color:#eef5fd; }
+  table.spec { width:100%; border-collapse:collapse; font-size:12.5px; margin-top:8px; }
+  table.spec th, table.spec td { border:1px solid var(--line); padding:6px 9px; text-align:left; vertical-align:top; }
+  table.spec th { background:var(--panel2); color:var(--accent); white-space:nowrap; }
+  table.spec td.num { font-family:Consolas,monospace; color:var(--dc); white-space:normal; overflow-wrap:break-word; }
+  table.spec td.ok { color:#1b6a50; } table.spec td.bad { color:#8b000e; } table.spec td.warn { color:#875f00; }
+  table.spec tr.grp td { background:#e9eff8; color:var(--accent); font-weight:bold; font-size:11.5px; letter-spacing:1px; }
+  .note { font-size:12px; color:var(--dim); margin-top:8px; }
+  .note b { color:var(--txt); }
+  .srcnote { font-size:11.5px; color:var(--dim); margin-top:7px; line-height:1.6; }
+  blockquote.q { border-left:3px solid var(--accent); background:rgba(0,86,143,.06); padding:9px 13px;
+    border-radius:0 6px 6px 0; font-size:12.5px; color:var(--txt); margin:10px 0; }
+  blockquote.q .en { display:block; color:var(--dim); font-size:11.6px; font-style:italic; margin-top:4px; }
+  blockquote.q .zi { display:block; margin-top:3px; }
+  .badge { display:inline-block; padding:1px 7px; border-radius:10px; font-size:11px; }
+  .badge.ok { background:#e5f7f0; color:#146b45; border:1px solid #d2f2e5; }
+  .badge.q { background:#f7f3e5; color:var(--warn); border:1px solid #f2ebd2; }
+  .badge.bad { background:#f7e5e6; color:#6d000a; border:1px solid #f2d2d6; }
+  .ev { display:inline-block; padding:0 5px; border-radius:8px; font-size:10.5px; font-weight:bold; white-space:nowrap; }
+  .ev.a { background:#e7f8f1; color:#0d7042; border:1px solid #d2f2e5; }
+  .ev.b { background:#f8f0e4; color:#875f00; border:1px solid #f8edd2; }
+  .ev.c { background:#f7e7eb; color:#64000a; border:1px solid #f2d2d8; }
+  code { font-family:Consolas,monospace; font-size:11.6px; background:#eaeff8; color:#003a61;
+    padding:0 4px; border-radius:3px; }
+  .kv { font-family:Consolas,monospace; color:var(--dc); }
+  .hl { color:var(--accent); }
+  h3.h3s { font-size:13.5px; color:var(--accent); margin:18px 0 7px; padding-left:8px; border-left:3px solid var(--accent); }
+  .gapbox { border:1px solid #f2d2d8; background:linear-gradient(180deg,#f8ebee,#faf2f5);
+    border-radius:10px; padding:13px 16px; margin:11px 0; }
+  .gapbox .big { color:#8b000e; font-size:16px; font-weight:bold; letter-spacing:.4px; }
+  .pill { padding:6px 13px; border-radius:8px; font-size:12.5px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--dim); display:inline-block; margin:0 6px 6px 0; }
+  .pill b { font-family:Consolas,monospace; color:var(--txt); font-size:13.5px; }
+  .pill.ok { border-color:#d2f2e5; background:#e9f8f2; color:#0d7042; }
+  .pill.ok b { color:#005c33; }
+  .pill.bad { border-color:#f2d2d6; background:#f7e9ec; color:#64000a; }
+  .pill.bad b { color:#4e0008; }
+  .pill.warn { border-color:#f2ebd2; background:#f7f4e9; color:var(--warn); }
+  .pill.warn b { color:#5c4200; }
+  details.fold { margin:10px 0; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:8px 12px; }
+  details.fold summary { cursor:pointer; font-size:12.5px; color:var(--accent); font-weight:bold; padding:3px 0; }
+  details.fold .bd { font-size:12px; color:var(--dim); line-height:1.7; padding-top:7px; }
+  footer { text-align:center; color:var(--dim); font-size:12px; margin-top:26px; }
+  /* ══ 本页新增：公式块 / 谱系链 ══ */
+  .eq { font-family:Consolas,monospace; font-size:12.8px; line-height:1.75; background:#eef3fb;
+    border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:6px;
+    padding:9px 13px; margin:9px 0; color:#003a61; overflow-x:auto; white-space:pre-wrap; }
+  .eq .lbl { color:#5a6b88; font-size:11px; }
+  .chain { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:10px 0; font-size:12px; }
+  .chain .n { background:#e6eefb; border:1px solid #cfe0f5; color:#0a3f72; border-radius:8px; padding:4px 10px; }
+  .chain .n.mine { background:#efe8f8; border-color:#e0d3f2; color:#4a1a72; }
+  .chain .n.warn { background:#f8efe2; border-color:#f0e0c9; color:#7a4a00; }
+  .chain .ar { color:#7f8ea8; }
+  .figcap { font-size:11.5px; color:var(--dim); margin-top:6px; line-height:1.6; }
+  .figcap b { color:var(--txt); }
+  @media print { body { background:#fff; color:#000; } header, nav.tabs, footer, .toolbar { display:none; }
+    section.view { display:block !important; page-break-after:always; } .card { border-color:#999; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>曲速泡与场推进 · <span class="hl">WHIP / Kerr / 微波波导 / Hull 配平</span>
+    <span style="font-size:13px;color:#32425b">v1.0</span></h1>
+  <p class="sub">
+    本页把「<b>用场直接把时空弯掉、或用场把飞船推走</b>」这一路的四份底本摊开：<b>WHIP 磁虫洞推进</b>（Eric W. Davis, NIDS）、
+    <b>Kerr 度规空间翘曲</b>（StarDrive 术语表）、<b>微波类比</b>（Cetin BAL）、<b>Hull 构型配平表</b>（Electrodynamic Field Generator）。<br>
+    <b>四份底本都是本轮从 IMA 知识库取出的原文全文逐段复核</b>，不是回忆、不是转述；<b>本页自己的复算一律标 <span class="ev c">C</span></b>。<br>
+    <b>为什么要和 SEG 放一起</b>：它们共用「<b>环形</b>」「<b>磁场造曲率</b>」这几个词，但<b>做法和证据结构完全不同</b>。
+    第 <b>Ⅶ</b> 视图专门做这件事：<b>把能搬回 SEG 的东西挑出来，把不能对等的东西列清楚。</b>
+  </p>
+  <div class="toolbar">
+    <button id="btnPrint">🖨 打印</button>
+    <a href="飞碟科技横向对比_八体系共性解剖.html">📊 子页 · 八体系共性解剖</a>
+    <a href="飞碟工程图纸集_剖面与3D.html">🖼 子页 · 工程图纸集</a>
+    <a href="IGV飞碟_三环启动与月球航线.html">🛸 姊妹页 · IGV</a>
+    <a href="SEG充磁三明治_三种磁场仿真.html">🧲 母页 · 充磁</a>
+    <span class="hint">← → 切视图　｜　Ⅱ 视图的 a(B) 曲线可拖动阈值</span>
+  </div>
+  <div class="disclaimer">
+    ⚠️ <b>本页性质</b>：这是<b>文献整理 + 公式复核 + 复算</b>，<b>不是</b>推进方案、<b>不是</b> FEA、<b>不是</b>实测。
+    本页出现的<b>每一条公式、每一个数字</b>都注明了是<b>原文给的</b>还是<b>本页算的</b>。
+    <b>凡本页算的，都给了算式与假设，可以当场核对。</b>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button data-v="v1" class="active">Ⅰ 三条路子</button>
+  <button data-v="v2">Ⅱ WHIP 公式链</button>
+  <button data-v="v3">Ⅲ 自我否定案例</button>
+  <button data-v="v4">Ⅳ Kerr 环奇点</button>
+  <button data-v="v5">Ⅴ 微波波导类比</button>
+  <button data-v="v6">Ⅵ Hull 配平表</button>
+  <button data-v="v7">Ⅶ 与 SEG 对照</button>
+  <button data-v="v8">Ⅷ 不可比清单与来源</button>
+</nav>
+
+<main>
+<!-- ══════════════════ Ⅰ 三条路子 ══════════════════ -->
+<section class="view active" id="v1">
+  <div class="card">
+    <h2>Ⅰ 三条路子 —— 先把「它们在做什么」分清</h2>
+    <p class="desc">
+      这四份底本看起来都在讲「飞碟怎么飞」，做的其实是<b>三件完全不同的事</b>：
+      一件是<b>造曲率</b>（用磁场把时空弯掉），一件是<b>找一条能进去的轨迹</b>（绕开奇点），
+      一件是<b>不造曲率、只做导引</b>（把已有的「引力波」当波导里的波来引）。
+      第四份（Hull）最特别 —— 它<b>不讲物理，只讲几何配平</b>。
+    </p>
+
+    <table class="spec">
+      <thead><tr><th>#</th><th>路子</th><th>在做什么</th><th>底本性质</th><th>有公式</th><th>自曝其短</th></tr></thead>
+      <tbody>
+        <tr><td class="num">一</td><td><b>磁致曲率</b><br><span class="kv">WHIP</span></td>
+            <td>用柱对称超强静磁场把真空弯出一个<b>曲率区</b>；再把柱对称场改成<b>径向</b>、并让张力大于能量密度，从而挤出虫洞喉</td>
+            <td>论文（Eric W. Davis, National Institute for Discovery Science, 1997）</td>
+            <td class="ok">有，共 8 式</td>
+            <td class="ok">有 —— 亲手推翻自己引用的前提</td></tr>
+        <tr><td class="num">二</td><td><b>旋转奇环</b><br><span class="kv">Kerr</span></td>
+            <td>不造曲率，而是问：如果曲率已经在那儿（旋转黑洞），<b>哪条轨迹能活着穿过去</b></td>
+            <td>术语表科普条目（StarDrive Engineering 版，Archer Enterprises 印行）</td>
+            <td class="warn">只有定性描述</td>
+            <td class="warn">主动点明 Schwarzschild 那条是死路</td></tr>
+        <tr><td class="num">三</td><td><b>波导导引</b><br><span class="kv">Microwave Analogy</span></td>
+            <td>把碟当成<b>圆形波导</b>，把「引力波」当成被导引/聚焦的波；效果靠<b>形状</b>而不是功率</td>
+            <td>民间研究网页（Cetin BAL，土耳其 Denizli，©1998）</td>
+            <td class="bad">没有</td>
+            <td class="bad">没有</td></tr>
+        <tr><td class="num">四</td><td><b>几何配平</b><br><span class="kv">Hull Config</span></td>
+            <td>不讲物理，只给船体几何，并要求<b>两块面积相等、两块体积相等</b>（相对误差 2×10⁻⁵）</td>
+            <td>工程计算表（Project: Electrodynamic Field Generator）</td>
+            <td class="ok">有，全表可复算</td>
+            <td class="warn">自己把配平误差写出来</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="h3s">1.1 传承链 —— 谁引用了谁（这一条是能查证的）</h3>
+    <div class="chain">
+      <span class="n">Einstein 1915<br><small>广义相对论</small></span><span class="ar">→</span>
+      <span class="n">Levi-Civita 1917<br><small>罗马科学院：静磁/静电场造引力场</small></span><span class="ar">→</span>
+      <span class="n">Morris &amp; Thorne 1988<br><small>可穿越虫洞的精确解</small></span><span class="ar">→</span>
+      <span class="n">Maccone 1995<br><small>JBIS 48:453-458「磁虫洞」</small></span><span class="ar">→</span>
+      <span class="n warn">Landis 1997<br><small>JBIS 50:155-157：不构成虫洞</small></span><span class="ar">→</span>
+      <span class="n mine">Davis 1997（WHIP）<br><small>部分同意 Landis，并给出替代</small></span>
+    </div>
+    <p class="note">
+      这条链是 <b>WHIP 论文自己在正文与参考文献里写明的</b>，不是本页的推测。请注意它的形态：
+      <b>提出 → 七十一年后有人给出严格解 → 又七年有人把它接到磁场上 → 两年后被批评 → 同一年，被引用的那个作者反过来部分否掉自己引用的前提。</b>
+      这是这一路里<b>唯一一条带「学术对抗痕迹」的时间线</b>。
+    </p>
+
+    <h3 class="h3s">1.2 数字规模 —— 先看数量级，再看内容</h3>
+    <table class="spec">
+      <thead><tr><th>量</th><th>原文给的数</th><th>单位</th><th>本页怎么读</th></tr></thead>
+      <tbody>
+        <tr><td>要测出「光速被拖慢」所需的场</td><td class="num">&gt; 10<sup>9</sup> ~ 10<sup>10</sup></td><td>T</td>
+            <td class="warn">对照：现有静态磁体技术 <b>~几个 ×10³ T</b> ⇒ <b>差 6~7 个数量级</b></td></tr>
+        <tr><td>化学爆磁（爆炸/内爆磁通压缩）</td><td class="num">1000 ~ 3000</td><td>T</td>
+            <td>已是<b>破坏性、一次性</b>手段，不是实验室常规设备</td></tr>
+        <tr><td>普通金属的量子极限</td><td class="num">~50,000</td><td>T</td><td>原文给的上限参照</td></tr>
+        <tr><td>核爆磁通压缩</td><td class="num">≥ 10<sup>9</sup></td><td>T</td>
+            <td class="warn">原文说「<b>可能需要认真考虑核爆手段</b>」—— 这句话本身就是这一路的现状描述</td></tr>
+        <tr><td>撑开 1 光年虫洞喉所需张力</td><td class="num">5.59 × 10<sup>10</sup></td><td>N/m²</td>
+            <td>等效于 <b>118.5 T</b> 的磁场张力 ⇒ 全文<b>最"便宜"</b>的一个数（但含义要当心，见 Ⅱ.4）</td></tr>
+        <tr><td>1 光年 / 1 天文单位</td><td class="num">9.46×10<sup>15</sup> / 1.50×10<sup>11</sup></td><td>m</td><td>原文给出的换算基准，本页沿用</td></tr>
+      </tbody>
+    </table>
+
+    <div class="gapbox">
+      <span class="big">整页最要紧的一句话</span>
+      <p class="note" style="color:#5c1018">
+        <b>「做得出来」的场（10²~10³ T，甚至 10⁹ T）与「测得出来」的场（&gt;10⁹~10¹⁰ T）之间横着 6~7 个数量级。</b>
+        WHIP 全文都在跟这个差距较劲。它给出的解法不是去追「稳态够强」，而是去追「<b>上升率够快</b>」
+        —— 用 ~10⁹ T/s 的脉冲上升率抢那几纳秒。第 Ⅱ 视图会把这一步复算一遍。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ Ⅱ WHIP 公式链 ══════════════════ -->
+<section class="view" id="v2">
+  <div class="card">
+    <h2>Ⅱ WHIP —— 磁虫洞推进的完整公式链</h2>
+    <p class="desc">
+      底本：<b>Eric W. Davis</b>，<i>Interstellar Travel by Means of Wormhole Induction Propulsion (WHIP)</i>，
+      National Institute for Discovery Science（NIDS），Las Vegas。<b>本页逐式转录原文公式</b>，不改写、不简化。
+      WHIP 与 WHIPIT 这两个缩写是 <b>Marc Millis</b> 在 1997 年 2 月 NASA「突破推进物理」奥斯汀区域头脑风暴会上造的词 ——
+      Davis 在致谢里写明了这一点。
+    </p>
+
+    <h3 class="h3s">2.1 五个式子（原文式号保留）</h3>
+    <div class="eq"><span class="lbl">式(2)　曲率半径 —— 这是全文的"尺子"</span>
+a = c² · (4πG/μ₀)^(−1/2) · B^(−1) = 3.4840 × 10¹⁸ · B^(−1)
+    a = 时空曲率半径 (m)　·　B = 磁场强度 (T)　·　K ≡ 3.4840×10¹⁸（曲率半径常数，单位 T·m）</div>
+
+    <div class="eq"><span class="lbl">式(3)　光速函数 —— 曲率区内光速随位置的变化（Maccone 导出）</span>
+v(z) = 2c · exp(L / 2a) · [exp(L / a) + 1]^(−1) · cosh(z / a)
+    L = 产生磁场的螺线管长度 (m)　·　z = 沿轴位置 (m)</div>
+
+    <div class="eq"><span class="lbl">式(4)　中心处（z = 0），且改用 K 表达</span>
+v(0) = 2c · exp(L / 2a) · [exp(L / a) + 1]^(−1)
+     = 2c · exp(LB / 2K) · [exp(LB / K) + 1]^(−1)      （0 &lt; L ≪ a）
+
+设螺线管两端 z = ±L/2 处 c = 3×10⁸ m/s，则中心 z = 0 处光速按上式被"拖慢"。
+<span class="lbl">式(5)　反解 B（Maccone 把式(4) 反解）</span>
+B = (2K / L) · ln[ ( c ± √(c² − v²(0)) ) / v(0) ]</div>
+
+    <div class="eq"><span class="lbl">式(8)　虫洞喉张力（Morris &amp; Thorne 1988）</span>
+τ = (8πG·c⁻⁴·b²)^(−1) ≈ 5.0 × 10⁴⁰ · (10 m / b)²
+    τ = 向外（径向）张力 (N/m²)　·　b = 虫洞喉最小半径 (m)</div>
+
+    <h3 class="h3s">2.2 原文表 1：曲率半径 vs 磁场（左列单位是 ×3.484 T）</h3>
+    <table class="spec">
+      <thead><tr><th>B（× 3.484 T）</th><th>实际 B（T）</th><th>曲率半径 a（m）</th><th>换成尺度</th><th>本页复算 a = K/B</th></tr></thead>
+      <tbody>
+        <tr><td class="num">1</td><td class="num">3.484</td><td class="num">10¹⁸</td><td>105.7 光年</td><td class="num ok">1.000×10¹⁸ ✓</td></tr>
+        <tr><td class="num">10²</td><td class="num">348.4</td><td class="num">10¹⁶</td><td>1.06 光年</td><td class="num ok">1.000×10¹⁶ ✓</td></tr>
+        <tr><td class="num">10³</td><td class="num">3 484</td><td class="num">10¹⁵</td><td>0.11 光年</td><td class="num ok">1.000×10¹⁵ ✓</td></tr>
+        <tr><td class="num">10⁵</td><td class="num">3.484×10⁵</td><td class="num">10¹³</td><td>66.7 AU</td><td class="num ok">1.000×10¹³ ✓</td></tr>
+        <tr><td class="num">10⁷</td><td class="num">3.484×10⁷</td><td class="num">10¹¹</td><td>0.67 AU</td><td class="num ok">1.000×10¹¹ ✓</td></tr>
+        <tr><td class="num">10⁹</td><td class="num">3.484×10⁹</td><td class="num">10⁹</td><td>1.44 太阳半径</td><td class="num ok">1.000×10⁹ ✓</td></tr>
+        <tr><td class="num">10¹²</td><td class="num">3.484×10¹²</td><td class="num">10⁶</td><td>0.16 地球半径</td><td class="num ok">1.000×10⁶ ✓</td></tr>
+        <tr><td class="num">10¹⁵</td><td class="num">3.484×10¹⁵</td><td class="num">10³</td><td>—</td><td class="num ok">1.000×10³ ✓</td></tr>
+        <tr><td class="num">10¹⁸</td><td class="num">3.484×10¹⁸</td><td class="num">1</td><td>—</td><td class="num ok">1.000×10⁰ ✓</td></tr>
+      </tbody>
+    </table>
+    <p class="srcnote">
+      <b>复算说明</b>：表 1 是原文原样。最右列是本页按式(2) 现算的结果，<b>九行全部精确吻合</b> ——
+      说明原文这张表的内部一致性没问题。另外原文给了一个便于记忆的锚点：<b>B = 1000 T 时，a = 0.368 光年</b>
+      （本页复算 3.4840×10¹⁸ / 1000 = 3.484×10¹⁵ m，除以 9.46×10¹⁵ = <b>0.3683</b> ✓）。
+    </p>
+
+    <h3 class="h3s">2.3 原文表 2：现有的磁场产生技术（这张表是"能到哪一步"的现实清单）</h3>
+    <table class="spec">
+      <thead><tr><th>磁场强度（T）</th><th>产生方式</th><th>本页注</th></tr></thead>
+      <tbody>
+        <tr><td class="num">10 ~ 300</td><td>超导磁体、混合磁体、脉冲磁体</td><td>唯一可长期稳态运行的档位</td></tr>
+        <tr><td class="num">360</td><td>电磁力驱动的磁通压缩</td><td>一次性脉冲</td></tr>
+        <tr><td class="num">400</td><td>接强激光等离子体的单匝线圈</td><td>—</td></tr>
+        <tr><td class="num">~10³</td><td>高功率脉冲激光</td><td>—</td></tr>
+        <tr><td class="num">1000 ~ 3000</td><td>化学爆炸的磁通压缩</td><td class="warn">Davis 推荐用来做实验的档位</td></tr>
+        <tr><td class="num">10² ~ 10⁵</td><td><b>白矮星</b></td><td>天体尺度（不是设备）</td></tr>
+        <tr><td class="num">10⁷ ~ 10⁹</td><td><b>中子星</b></td><td>天体尺度</td></tr>
+        <tr><td class="num">≥ 10⁹</td><td>核爆炸的磁通压缩</td><td class="bad">原文建议"认真考虑"的手段</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="h3s">2.4 原文表 3：虫洞喉尺寸 vs 所需张力</h3>
+    <table class="spec">
+      <thead><tr><th>喉半径 b（m）</th><th>尺度</th><th>τ（× 5.0 N/m²）</th><th>本页注</th></tr></thead>
+      <tbody>
+        <tr><td class="num">10¹⁸</td><td>105.7 光年</td><td class="num">10⁶</td><td>τ ≈ 5×10⁶ N/m²，<b>相当于几十个大气压</b> —— 比钢还"软"</td></tr>
+        <tr><td class="num">10¹⁶</td><td>1.06 光年</td><td class="num">10¹⁰</td><td class="ok">τ ≈ 5×10¹⁰ N/m²，<b>118.5 T 的磁场即可提供</b></td></tr>
+        <tr><td class="num">10¹⁵</td><td>0.11 光年</td><td class="num">10¹²</td><td class="warn">τ ≈ 5×10¹² N/m²，<b>已超过钢/钨的抗拉强度</b>（~几个×10¹¹）</td></tr>
+        <tr><td class="num">10¹³</td><td>66.7 AU</td><td class="num">10¹⁶</td><td>—</td></tr>
+        <tr><td class="num">10¹¹</td><td>0.67 AU</td><td class="num">10²⁰</td><td>—</td></tr>
+        <tr><td class="num">10⁹</td><td>1.44 太阳半径</td><td class="num">10²⁴</td><td>—</td></tr>
+        <tr><td class="num">10⁶</td><td>0.16 地球半径</td><td class="num">10³⁰</td><td>—</td></tr>
+        <tr><td class="num">10³</td><td>—</td><td class="num">10³⁶</td><td class="warn">原文注：<b>与最大质量中子星中心的压强同量级</b></td></tr>
+        <tr><td class="num">1</td><td>—</td><td class="num">10⁴²</td><td>—</td></tr>
+      </tbody>
+    </table>
+    <p class="srcnote">
+      <b>⚠ 关于「118.5 T」这个数怎么读</b>：它出自这一句 ——
+      「撑开并稳定一个 1.0 光年虫洞所需的向外张力是 5.59×10¹⁰ N/m²，而这可以通过用<b>只有 118.5 T</b> 的磁场穿过虫洞喉来达成。」
+      本页复算式(8)：τ = 5.0×10⁴⁰ × (10 / 9.46×10¹⁵)² = <b>5.587×10¹⁰ N/m²</b> ✓ 与原文一致。
+      <b>但请注意这句话的逻辑形状</b>：它说的是「<b>假如你已经有了一条 1 光年的虫洞喉，那么用 118.5 T 的磁场就能把它撑住</b>」，
+      <b>不是</b>「118.5 T 能造出一条虫洞」。把这两句混起来，是这一路最常见的误读。
+    </p>
+
+    <h3 class="h3s">2.5 a(B) 曲线 —— 拖动滑块看「要多大的场」</h3>
+    <div class="row">
+      <div class="col">
+        <canvas class="sim" id="cAB" height="470"></canvas>
+        <div class="ctrl">
+          <label>看 B = <span class="val" id="vB">3.5×10⁶ T</span></label>
+          <input type="range" id="rB" min="0" max="180" value="64">
+          <span class="val" id="vA" style="min-width:150px">a = 1.0×10¹² m</span>
+          <button class="ghost" id="bMark">标出原文的四个关键档位</button>
+        </div>
+        <p class="figcap">
+          纵轴 = 曲率半径 a，横轴 = 磁场 B，<b>双对数</b>。斜线即式(2)（斜率 −1）。
+          四条横虚线是尺度参照：<b>1 光年 / 1 AU / 100 m / 1 m</b>。
+          三条竖带是<b>现有技术的实际档位</b>：稳态超导（~10 T）、化学爆磁（10³ T）、核爆磁通压缩（≥10⁹ T）。
+          <b>红区是 Davis 说的"可测门槛"（10⁹~10¹⁰ T）</b>。
+        </p>
+      </div>
+    </div>
+
+    <h3 class="h3s">2.6 ★ 本页复算：式(4) 的灵敏度比原文说的还要差 <span class="ev c">C</span></h3>
+    <p class="note">
+      Davis 给的判据是「B &gt; 10⁹~10¹⁰ T 才能测到光速变慢」。本页把式(4) 的指数单独拿出来看：
+    </p>
+    <div class="eq"><span class="lbl">把 L/a 用 K 改写</span>
+L / a = L · B / K
+
+代入原文自己设的实验室参数（螺线管长 L ≈ 0.1 m、B = 1000 T）：
+L / a = 0.1 × 1000 / 3.4840×10¹⁸ = <b>2.87 × 10⁻¹⁷</b>
+
+而 v(0)/c = 2·exp(ε/2) / (exp(ε) + 1)，ε ≡ L/a。ε → 0 时展开：
+v(0)/c ≈ 1 − ε² / 8
+
+ε = 2.87×10⁻¹⁷ 时：v(0)/c = 1 − 1.03×10⁻³⁴  ⇒ <b>与 1 在双精度下完全不可分</b>。</div>
+    <p class="note">
+      要让它进入「勉强可测」的区间（取 c²−v²(0) ≥ 10⁴ m²/s²，即原文自己给的下限），需要
+      ε ≥ <b>6.67×10⁻⁷</b>；在 L = 0.1 m 时对应 <b>B ≈ 2.3×10¹³ T</b>。
+    </p>
+    <div class="gapbox">
+      <span class="big">复算结论</span>
+      <p class="note" style="color:#5c1018">
+        在<b>桌面尺度的螺线管（L ~ 0.1 m）</b>里，原文「&gt;10⁹~10¹⁰ T 就能测到」这句话<b>偏乐观约 3~4 个数量级</b>。
+        要让「10⁹ T」这个数字成立，<b>L 得到公里级</b>（因为 ε = LB/K，且 a(B=10⁹ T) = 3.48×10⁹ m ≈ 3.5×10⁶ km）。
+        <br><b>本页不是要否定 WHIP</b> —— 恰恰相反，这说明 WHIP 的公式是<b>可以被这样追问的</b>：
+        它把 L、B、a、v(0) 四个量都写明了，所以别人能拿它算。这正是它与本页其余三份底本最大的不同。
+        <br><span class="ev c">C</span> 本页复算，假设 ε²/8 展开在 ε &lt; 10⁻⁶ 时有效（该处误差 &lt; 10⁻¹²），其余用原文常数。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ Ⅲ 自我否定 ══════════════════ -->
+<section class="view" id="v3">
+  <div class="card">
+    <h2>Ⅲ 一个自我否定的案例 —— Davis 亲手推翻 Maccone</h2>
+    <p class="desc">
+      这一节是<b>整页最值得我们学的地方</b>，而且与技术无关，与<b>写资料的规矩</b>有关。
+      WHIP 论文的立论建立在 Maccone(1995) 之上，但同一篇论文里，Davis 亲手把 Maccone 的核心结论推翻了。
+    </p>
+
+    <table class="spec">
+      <thead><tr><th>环节</th><th>谁说的</th><th>内容</th><th>原文/出处</th></tr></thead>
+      <tbody>
+        <tr><td>提出</td><td>Maccone 1995</td>
+            <td>柱对称的静态均匀磁（电）场可以造出时空曲率，并表现为一条<b>可穿越虫洞</b>；且该曲率区的光速被拖慢</td>
+            <td>JBIS 48:453-458</td></tr>
+        <tr><td>批评</td><td>Landis 1997</td>
+            <td>在 Morris &amp; Thorne 框架下，均匀磁场里的 Levi-Civita 度规<b>不构成虫洞</b></td>
+            <td>JBIS 50:155-157</td></tr>
+        <tr><td>Davis 的表态</td><td class="warn">Davis 1997</td>
+            <td><b>「Landis 的这个看法是对的，但他的技术论证既不准确也不完整。」</b>
+                —— 即：<b>结论接受，理由重做</b></td>
+            <td>WHIP 正文「Technical Issues」</td></tr>
+        <tr><td>Davis 自己算</td><td>Davis 1997</td>
+            <td>把式(1) 从笛卡儿坐标换到柱坐标得式(6)，再令 r = a·sinθ 得式(7)：
+                其空间部分 dσ² = a²[dθ² + sin²θ dφ²] + dz²，
+                <b>这正是超柱体 S²×ℛ 的三维度规</b></td>
+            <td>WHIP 式(6)(7)</td></tr>
+        <tr><td>结论</td><td class="bad">Davis 1997</td>
+            <td><b>「所以式(7) 表明 Levi-Civita 的时空度规只是一个带位置相关引力势的超柱体：
+                没有渐近平坦区、没有喇叭形张开的口、也没有虫洞喉。
+                Maccone 关于『磁虫洞』的径向（双曲）压强、应力和能量密度方程因此是错的。」</b></td>
+            <td>WHIP 正文</td></tr>
+        <tr><td>保留</td><td class="ok">Davis 1997</td>
+            <td><b>但「光速在超柱区被磁致引力场拖慢」这一点是对的</b> —— 于是把这条单独拿出来做实验</td>
+            <td>WHIP 结论段</td></tr>
+      </tbody>
+    </table>
+
+    <blockquote class="q">
+      <span class="zi">
+        「虽然曲率被诱导出来这一断言是正确的，但 <b>Levi-Civita 的度规解不是一条虫洞</b>。……
+        Levi-Civita 的时空度规只是一个带位置相关引力势的<b>超柱体</b>：没有渐近平坦区、没有张开的口、没有喉。
+        <b>Maccone 关于『磁虫洞』构型的径向压强、应力和能量密度的方程因此是不正确的。</b>」
+      </span>
+      <span class="en">
+        Although the claim of inducing spacetime curvature is correct, Levi-Civita's metric solution is not a wormhole. …
+        So equation (7) shows that Levi-Civita's spacetime metric is simply a hypercylinder with a position dependent
+        gravitational potential: no asymptotically flat region, no flared-out wormhole mouth and no wormhole throat.
+        Maccone's equations for the radial (hyperbolic) pressure, stress and energy density of the "magnetic wormhole"
+        configuration are thus incorrect.
+      </span>
+      <span class="zi" style="color:#5a6b88;font-size:11.5px">—— Eric W. Davis, WHIP, 1997</span>
+    </blockquote>
+
+    <h3 class="h3s">3.1 为什么这一节值得单列</h3>
+    <table class="spec">
+      <thead><tr><th>做法</th><th>Davis 这篇</th><th>本页另外三份底本</th></tr></thead>
+      <tbody>
+        <tr><td>引用了别人的结论</td><td class="ok">引用了，而且<b>把式号、期刊卷页全列出来</b></td><td>Kerr 条目不列；微波类比不列；Hull 表没有出处</td></tr>
+        <tr><td>发现自己引错了</td><td class="ok">在同一篇里<b>明确写出"这不对"</b>，并给出替代（超柱体）</td><td class="bad">均无此类段落</td></tr>
+        <tr><td>保留了还能用的部分</td><td class="ok">把「光速被拖慢」单独摘出来做实验</td><td>—</td></tr>
+        <tr><td>给出了否证条件</td><td class="ok">「测到 c 被拖慢，就说明曲率造出来了」——<b>一句话说清怎么被推翻</b></td><td class="bad">无</td></tr>
+        <tr><td>承认手段的荒谬</td><td class="ok">白纸黑字写「<b>可能需要认真考虑核爆手段</b>」</td><td>—</td></tr>
+      </tbody>
+    </table>
+    <p class="note">
+      <b>一句话</b>：这篇论文的"可信度"不来自它的结论（结论没被验证），而来自它<b>把自己的软肋也写进去了</b>。
+      第 Ⅶ 视图会把这条直接变成对 SEG 资料的一条建议。
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════════ Ⅳ Kerr ══════════════════ -->
+<section class="view" id="v4">
+  <div class="card">
+    <h2>Ⅳ Kerr 环奇点 —— 为什么"理论上可以进去"</h2>
+    <p class="desc">
+      底本：<i>A Brief Introduction to the Kerr Metric Space Warp</i>（as extracted from the Glossary of StarDrive Engineering），
+      Archer Enterprises, Heanen, Geneva, NY。<b>这是一份术语表条目，不是论文</b>，请按科普材料读。
+    </p>
+
+    <table class="spec">
+      <thead><tr><th>对象</th><th>谁提出的</th><th>奇点形状</th><th>飞船能不能穿</th><th>原文措辞</th></tr></thead>
+      <tbody>
+        <tr><td><b>Schwarzschild 度规</b></td><td>Karl Schwarzschild，1916</td>
+            <td class="bad">点状奇点（point-like singularity）</td>
+            <td class="bad">不能</td>
+            <td>只对「静态」（零自转、零净电荷）黑洞严格成立</td></tr>
+        <tr><td><b>Einstein–Rosen 桥</b></td><td>由静态黑洞产生</td>
+            <td class="bad">点状奇点</td>
+            <td class="bad">不能 —— <b>「飞船无法穿越 E-R 桥，因为黑洞含有一个点状奇点」</b></td>
+            <td>原文说这是为保持 Schwarzschild 解内部自洽而<b>必须存在</b>的一个现象</td></tr>
+        <tr><td><b>Kerr 度规空间翘曲</b></td><td>新西兰数学家 <b>Roy Kerr</b></td>
+            <td class="ok"><b>环形（annular / ring）奇点</b></td>
+            <td class="warn"><b>理论上可以</b> —— 沿着一条<b>横切黑洞自转平面</b>的轨迹，可完整进入</td>
+            <td>「它仍然需要一条虫洞，但在这个情况下，<b>理论上有可能沿某条横切自转平面的轨迹完好地进入这个空间翘曲</b>」</td></tr>
+      </tbody>
+    </table>
+
+    <p class="note">
+      原文还说清了<b>「度规」这个词在这里的用法</b>：度规就是「在给定参考系里求两点间距离的公式」；
+      所以 Kerr 度规空间翘曲就是「一个<b>真的能算出</b>虫洞所必须具有的<b>缩短后长度</b>的度规 ——
+      前提是飞船通过它的速度仍被正确地限制在小于光速」。
+      ⇒ 请注意这句话的形状：<b>它把"能不能穿"换成了一个"能算的长度"</b>，而不是给一个证据。
+    </p>
+
+    <h3 class="h3s">4.1 与 SEG 的关系：<span class="ev c">C</span> 本页的判断</h3>
+    <div class="gapbox">
+      <span class="big">只有"环形"这一个词是共用的</span>
+      <p class="note" style="color:#5c1018">
+        SEG 的「环」是<b>室温下的钕铁硼/钴钢圆环</b>，靠磁力与涡流把滚筒托起来转；
+        Kerr 的「环」是<b>引力塌缩后的时空奇点</b>，必须在黑洞里。
+        <b>两者除了都写成"环"字，没有任何共同量</b> —— 没有共同的方程、没有共同的尺度、没有可互换的参数。
+        本页因此<b>不把它们并列</b>，只标注：<b>这是同一份资料集里的两条互不相干的线。</b>
+      </p>
+    </div>
+    <p class="srcnote">
+      <b>⚠ 一处本页查不到出处的说法</b>：此前交流中出现过「Kerr 的论文发表在赖特-帕特森空军基地」这一类说法。
+      <b>本页复核了这份底本全文，其中没有这句话</b>。因此本页<b>不采用</b>该说法，列在此处备查。
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════════ Ⅴ 微波类比 ══════════════════ -->
+<section class="view" id="v5">
+  <div class="card">
+    <h2>Ⅴ 微波波导类比 —— 把碟当成一根圆形波导</h2>
+    <p class="desc">
+      底本：<i>The Microwave Analogy</i>，<b>Cetin BAL</b>（Time Travel Research Center，土耳其 Denizli，©1998）。
+      这一支走的路子与 WHIP 完全相反：<b>它不去造曲率，而是假设"引力波"本来就在，靠形状去把它导引/聚焦。</b>
+    </p>
+
+    <h3 class="h3s">5.1 核心图示：碟的截面 = 圆形波导的 TM₁₁ 模式</h3>
+    <p class="note">
+      原文的整个论证只有一句话的骨架：<b>「把碟当成波导，与圆形波导里的横磁波（TM）作比较，两者的图形图案相似。」</b>
+      然后给出关键一步：<b>「把这一截面旋转一圈，得到的就是一个球面波导 —— 而那正是我们那台『运动模型（sportmodel）』的几何。」</b>
+    </p>
+    <table class="spec">
+      <thead><tr><th>环节</th><th>原文</th><th>本页注</th></tr></thead>
+      <tbody>
+        <tr><td>模式的名称</td>
+            <td>「圆形波导中的 <b>TM₁₁</b> 模式横磁波」</td>
+            <td>TM = Transverse Magnetic（横磁），下标 11 是模式号。这是射频工程里的标准词汇 —— <b>这一段用词是专业的</b></td></tr>
+        <tr><td>旋转后的几何</td>
+            <td>「把这一图案旋转，你就得到一个<b>球面波导</b>，其比例与<b>网罟座飞船（Reticulan craft）</b>以及碟周围的波导式畸变惊人地相似」</td>
+            <td>注意这是<b>形状上的相似</b>，不是同一个方程的解</td></tr>
+        <tr><td>最剧烈的区域</td>
+            <td class="warn">「最剧烈的波恰好出现在<b>椭圆区之外</b>。这种扰动通常导致<b>碟周围的空气电离，产生那个传说中无声的亮光</b>」</td>
+            <td class="ok"><b>这一句与本地图片 i057 上的 <code>IONIZATION GLOW PINK OR BLUE</code> 是同一件事</b> —— 见「工程图纸集」组 ⑦</td></tr>
+        <tr><td>造型的作用</td>
+            <td>「碟的形状被设计用来把引力波<b>向上绕碟导引，终止于碟顶波导终端器的尖端</b> —— 也就是碟顶那根<b>"天线状"尖刺</b>。这个效应<b>沿碟 360° 发生，在飞船周围形成一个甜甜圈状的"引力泡"</b>」</td>
+            <td>与 i028 的 <code>pointed rods</code>（尖端杆）、i057 的 <code>VACUUM ENVELOPE</code> 对上</td></tr>
+        <tr><td>最要紧的一句</td>
+            <td class="ok">「<b>这艘飞船上没有任何一个形状是为了美观。</b>」（It became apparent to the scientists at S4 that no shape on this craft was aesthetically motivated.）</td>
+            <td>这是整套论证的<b>方法论前提</b>：先假设"形状都有功能"，再去反推功能。⚠️ 这是一个<b>假设</b>，不是发现</td></tr>
+        <tr><td>可见性</td>
+            <td class="warn">「在这个效应期间，<b>碟对肉眼不可见</b>。它虽然在那里，你只会看到它背后的天空或地面」</td>
+            <td class="bad">这句话无法被证伪 —— 见 Ⅷ 的禁止引伸清单</td></tr>
+        <tr><td>调制者</td>
+            <td>「<b>唯一真正的调制者很可能就是引力</b>；光、微波等所有其他电磁波都只是这个介质里的涟漪」；这个介质<b>以大约每秒七次半脉冲</b></td>
+            <td class="bad">「每秒 7.5 次」没有给出任何来源或测量方式</td></tr>
+        <tr><td>可动部件</td>
+            <td>「如果如图所示的<b>引力放大器（gravity amplifiers）</b>是可定位的 …… 那为什么它们指向这样透镜状的图案？<b>这会是一种"换挡（gearshifting）"过程吗？</b>」</td>
+            <td>注意原文用的是<b>疑问句</b> —— 它自己也没断言</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="h3s">5.2 为什么把这一节放在这里</h3>
+    <p class="note">
+      它提供了一个<b>与 WHIP 完全不同的失败模式</b>：
+      WHIP 的问题是<b>"需要的场太强"</b>（可以用数量级算出来）；
+      微波类比的问题是<b>"看图说话"</b> —— 它把两张形状相似的图并排，然后就认定机制相同。
+      <b>前者可以被算垮，后者连被算垮的机会都没有。</b>本页把两者并置，是为了让这个差别看得见。
+    </p>
+    <p class="srcnote">
+      另注：<b>「S4」</b>指 Lazar 叙事中的 S-4 基地。这一支与 Lazar 的「元素 115 / 引力 A 波 B 波」属于同一个资料簇，
+      在本项目 <code>飞碟科技横向对比_八体系共性解剖.html</code> 第 Ⅱ 视图的体系档案里有专门条目，本页不重复展开。
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════════ Ⅵ Hull 配平表 ══════════════════ -->
+<section class="view" id="v6">
+  <div class="card">
+    <h2>Ⅵ Hull Configuration —— 一份<b>可以整表复算</b>的几何表</h2>
+    <p class="desc">
+      底本：<i>MASTER SPREADSHEET — Project: Electrodynamic Field Generator / title: Design Hull Configuration</i>。
+      项目代号 <b>Toltec</b>。这一份不讲物理，只干一件事：<b>把一条关系式链设计成"两块面积相等、两块体积相等"</b>，
+      并把这个配平精度报出来。本页<b>把整张表重算了一遍</b>。
+    </p>
+
+    <h3 class="h3s">6.1 原文关系式（原样转录）</h3>
+    <div class="eq"><span class="lbl">设计船体</span>
+HULL DIAMETER = 100 feet（代号 Toltec）　　R_h = 50
+
+<span class="lbl">三个基本常数</span>
+C_v = (1/5) · R_h                    → 10
+r_f = 2 · C_v                        → 20      （Drive Ring Radius 驱动环半径）
+r_z = 3 · C_v                        → 30      （Field Hub Radius 场毂半径）
+校验：r_z + r_f = R_h                → 30 + 20 = 50 ✓
+
+<span class="lbl">面积常数与两个环半径</span>
+C_a = 0.012919 · C_v                 → 0.12919
+负发射极环半径 = C_v + C_a           → 10.12919
+中性环半径     = C_v − C_a           →  9.87081
+
+<span class="lbl">极区几何</span>
+h_z = 0.1421245 · r_z                → 4.263735          （Polar Hull constant）
+X_h = (r_z² − h_z²) / (2 h_z)        → 103.4094          （Radial Volume Differential）
+R_s ≈ 2.153463 · R_h                 → 107.67315         （Radial Hull Constant）
+A_z = 2π R_s h_z                     → 2884.5458         （极区 POS 面积）
+A_n = s(C + c)/2, s = [(C_v+C_a)² + (tanα·(C_v+C_a))²]^(1/2)   → −2884.5452（发射环 NEG 面积）
+
+<span class="lbl">驱动环偏转角</span>
+α = 7½°     tan α = 0.1317
+h_f = (tan α) · r_f                  → 2.634
+
+<span class="lbl">三个体积</span>
+V_c = π r_z² h_f                                                    →  7447.4595（中心段）
+V_z = (2/3)π R_s³ − π[ R_s² X_h − X_h³/3 ]                          →  6068.2987（极区）
+V_f = π h_f [ R_h² + R_h r_z + r_z² ] / 3 − π r_z² h_f              → −6068.3004（驱动环段）
+
+<span class="lbl">两条配平</span>
+A_z − A_n = 0.0006      → 相对误差 0.000021 %
+V_z − V_f = 0.0017      → 相对误差 0.000028 %
+
+<span class="lbl">总排量</span>
+V_h = 2 ( V_z + V_f ) + 2 V_c        → 39168.1172</div>
+
+    <h3 class="h3s">6.2 ★ 本页复算：整表重算 <span class="ev c">C</span></h3>
+    <table class="spec">
+      <thead><tr><th>量</th><th>原文</th><th>本页复算</th><th>偏差</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>C_v = R_h/5</td><td class="num">10</td><td class="num">10.000000</td><td class="ok">0</td><td>定义式</td></tr>
+        <tr><td>r_f = 2C_v</td><td class="num">20</td><td class="num">20.000000</td><td class="ok">0</td><td>定义式</td></tr>
+        <tr><td>C_a = 0.012919·C_v</td><td class="num">0.12919</td><td class="num">0.129190</td><td class="ok">0</td><td>定义式</td></tr>
+        <tr><td>r_z = 3C_v</td><td class="num">30</td><td class="num">30.000000</td><td class="ok">0</td><td>定义式</td></tr>
+        <tr><td>r_z + r_f</td><td class="num">50</td><td class="num">50.000000</td><td class="ok">0</td><td>与 R_h 相等 ✓</td></tr>
+        <tr><td>h_z = 0.1421245·r_z</td><td class="num">4.2637</td><td class="num">4.263735</td><td class="ok">0</td><td>定义式</td></tr>
+        <tr><td>X_h = (r_z²−h_z²)/2h_z</td><td class="num">103.4094</td><td class="num">103.409401</td><td class="ok">0</td><td>⚠ 原文写成 <code>1034094</code>，缺小数点</td></tr>
+        <tr><td>R_s ≈ 2.153463·R_h</td><td class="num">107.6731</td><td class="num">107.673150</td><td class="ok">0</td><td>定义式</td></tr>
+        <tr><td>A_z = 2πR_s h_z</td><td class="num">2884.5458</td><td class="num">2884.5461</td><td class="ok">0.00001 %</td><td><b>吻合</b></td></tr>
+        <tr><td>tan α</td><td class="num">0.1317</td><td class="num">0.131652（tan 7.5°）</td><td class="warn">0.04 %</td>
+            <td>原文 α 写作 <code>71/2°</code>。<b>tan(35.5°) = 0.7133，对不上；tan(7.5°) = 0.131652，正好对上 0.1317</b> ⇒ 原文的 <code>71/2°</code> 实为 <b>7½°</b></td></tr>
+        <tr><td>V_c = πr_z²h_f</td><td class="num">7447.4595</td><td class="num">7447.4595</td><td class="ok">0</td><td>用 tanα = 0.1317 复算<b>精确命中</b></td></tr>
+        <tr><td>V_z</td><td class="num">6068.2987</td><td class="num">6068.3394</td><td class="ok">0.0007 %</td><td><b>吻合</b></td></tr>
+        <tr><td>V_f</td><td class="num">−6068.3004</td><td class="num">6068.3004</td><td class="ok">0</td><td>用 tanα = 0.1317 复算<b>精确命中</b>（原文带负号）</td></tr>
+        <tr><td>V_z − V_f</td><td class="num">0.0017</td><td class="num">0.0390</td><td class="warn">—</td><td>两者本是"配平的一对"，残差在 10⁻⁵ 量级即符合原文自述的 0.000028 %</td></tr>
+        <tr><td><b>总面积配平</b></td><td class="num">0.000021 %</td><td class="num">0.00000 %</td><td class="ok">一致</td><td>复算 |A_z − A_n|/A_z ≈ 1.4×10⁻⁸</td></tr>
+        <tr><td><b>总体积配平</b></td><td class="num">0.000028 %</td><td class="num">0.00032 %</td><td class="ok">同量级</td><td>复算 |V_z−V_f| / 均值 ≈ 3.2×10⁻⁷</td></tr>
+      </tbody>
+    </table>
+
+    <div class="gapbox">
+      <span class="big">★ 一处必须点出的问题：总排量那行照字面算不出来</span>
+      <p class="note" style="color:#5c1018">
+        原文写 <code>V_h = 2(V_z + V_f) + 2V_c</code>。但 <b>V_f 是负数</b>（−6068.3004），
+        V_z 与 V_f 又几乎相等，所以 <b>照字面代入 → V_z + V_f ≈ −0.0017</b>，结果只有
+        <b>2×(−0.0017) + 2×7447.4595 = 14894.9156</b>，<b>远不到 39168.1172</b>。
+        <br><br>
+        本页复算后发现：<b>原文实际用的是绝对值</b> ——
+        <code>V_h = 2(|V_z| + |V_f|) + 2V_c = 2×(6068.2987 + 6068.3004) + 2×7447.4595 = 39168.1172</code>
+        <b>精确命中原文数字。</b>
+        <br>⇒ 这不算"错"，因为 V_z 与 V_f 本来就是<b>对称的两半</b>（一个记正、一个记负，只是记法）；
+        但<b>公式写成 V_z + V_f 会让照着算的人算出 14894.9</b>。本页把这处<b>并列保留</b>，不下"错"的判决。
+      </p>
+    </div>
+
+    <h3 class="h3s">6.3 这张表真正值得学的两点</h3>
+    <table class="spec">
+      <thead><tr><th>做法</th><th>Hull 表</th><th>为什么值得学</th></tr></thead>
+      <tbody>
+        <tr><td>把几何写成<b>关系式</b>而不是数字</td>
+            <td class="ok">C_v = R_h/5、r_f = 2C_v、r_z = 3C_v、h_z = 0.1421245·r_z …… 每个数都挂一条式子</td>
+            <td>改一个 R_h，<b>全表跟着重算</b>。这不是一张图纸，是一个<b>参数化模型</b></td></tr>
+        <tr><td>每个参数都要<b>被关系式闭合</b></td>
+            <td class="ok">r_z + r_f = R_h 被显式校验</td>
+            <td>有闭合、才能被查</td></tr>
+        <tr><td>把<b>配平残差</b>写出来</td>
+            <td class="ok">0.000021 % / 0.000028 %，还带三个星号强调</td>
+            <td>这是本页四份底本里<b>唯一一处作者主动给出"我离理想值差多少"</b>的地方</td></tr>
+        <tr><td>表里<b>没有</b>的东西</td>
+            <td class="bad">没有磁场强度、没有功率、没有推力、没有材料、没有实测</td>
+            <td>它是<b>纯几何</b>的 —— 所以它<b>不能被读成"已验证的设计"</b>。见 Ⅷ.3</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ══════════════════ Ⅶ 与 SEG 对照 ══════════════════ -->
+<section class="view" id="v7">
+  <div class="card">
+    <h2>Ⅶ 与 SEG 正面对照 —— 这四份底本里，什么能搬回 SEG</h2>
+    <p class="desc">
+      这一节只做一件事：<b>把上面四份底本里"能直接用在 SEG 上"的东西挑出来</b>，
+      以及<b>把"长得像但绝不能对等"的东西标死</b>。
+    </p>
+
+    <h3 class="h3s">7.1 三条<b>可以搬回 SEG</b> 的做法（不是物理，是写法）</h3>
+    <table class="spec">
+      <thead><tr><th>#</th><th>搬什么</th><th>从哪来</th><th>搬回 SEG 具体怎么做</th></tr></thead>
+      <tbody>
+        <tr><td class="num">1</td>
+            <td><b>参数化的"配平"自检</b></td>
+            <td>Hull 表：面积配平 2×10⁻⁵、体积配平 3×10⁻⁵</td>
+            <td>SEG 的资料里<b>没有任何一条"守恒/配平"式的自检</b>。可以照 Hull 的做法，给三环 + 滚筒定一组几何（环外径、环厚、滚筒径、分段数、气隙），
+                然后要求<b>某一个量必须配平</b> —— 例如：<b>三环的磁极带总数应为偶数且与滚筒分片数成整比</b>（母页铁律③ 已有 4410/3990 的实例），
+                或者<b>环外径恒等于 A.C. 内缘</b>（母页已作为不变量）。<b>把已有不变量写成关系式，再报残差</b>，就是这一步。</td></tr>
+        <tr><td class="num">2</td>
+            <td><b>写清"多大的量才测得出来"</b></td>
+            <td>WHIP：把 10⁹~10¹⁰ T 这个门槛写在摘要里</td>
+            <td>SEG 资料里<b>最缺的就是这一句</b>。母页里那条最可检验的设计 —— <b>「负载电流 vs 绕组温度」曲线</b>
+                （SEG 说加负载降温、常规系统加负载升温）—— 正好需要配一个<b>可测门槛</b>：
+                用多大电流、升几度、用几分精度的温度计才算数。WHIP 的写法可以直接照抄格式。</td></tr>
+        <tr><td class="num">3</td>
+            <td><b>一个"自曝其短"的段落</b></td>
+            <td>Davis 在自己论文里推翻自己引用的前提（第 Ⅲ 视图）</td>
+            <td>SEG 的公开资料里没有这种段落。若要在 SEG 页面上加一段，
+                最诚实的候选是：<b>「本页所有电磁数值都是假设，因为没有一篇 SEG 资料给出过工作磁场强度」</b> ——
+                这一句本身就是一条重要的空白（与母页"SEG 自运行态对外电位没有带仪器的直接读数"同源）。</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="h3s">7.2 四条<b>绝不能对等</b>的东西</h3>
+    <table class="spec">
+      <thead><tr><th>看起来像</th><th>实际差别</th><th>为什么不能对等</th></tr></thead>
+      <tbody>
+        <tr><td>SEG 的「环」 ↔ Kerr 的「环奇点」</td>
+            <td>室温钕铁硼圆环 ↔ 引力塌缩后的时空奇点</td>
+            <td>无共同方程、无共同尺度、无共同可观测量。<b>只有一个汉字相同</b></td></tr>
+        <tr><td>「磁场造曲率」↔ SEG 的「磁场」</td>
+            <td>WHIP 用 <b>10⁹~10¹⁰ T</b> 级场；SEG 的充磁头用的是<b>电容放电</b>（充电电压级别）</td>
+            <td class="bad"><b>两者相差 10 个数量级以上，且 SEG 从未给出过工作磁场强度。</b>
+                把它们相除是典型的口径混用（母页铁律：不同口径不许相除）</td></tr>
+        <tr><td>Hull 的「Ø100 ft 配平船体」↔ SEG 的「环几何」</td>
+            <td>Hull 表是<b>纯几何自洽</b>；SEG 的环几何有<b>实物照片与尺寸链</b>（i024 图纸）</td>
+            <td>方向正好相反：<b>Hull 有算式没实物，SEG 有实物没算式。</b>
+                不能因为 Hull 有算式就认为它更"科学"</td></tr>
+        <tr><td>微波类比的「碟隐形」↔ SEG 的「电离辉光」</td>
+            <td>隐形是<b>不可证伪</b>的断言；电离辉光至少有照片与颜色描述（i057）</td>
+            <td>前者不能作为证据，后者只能作为<b>现象描述</b>（且照片本身未被独立复核）</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="h3s">7.3 一张总表：四条路子各自的"证据形状"</h3>
+    <table class="spec">
+      <thead><tr><th>路子</th><th>有公式</th><th>有实物</th><th>有尺寸链</th><th>有残差自检</th><th>有自我否定</th><th>有可测门槛</th><th>有同行引文</th></tr></thead>
+      <tbody>
+        <tr><td><b>WHIP</b></td><td class="ok">8 式</td><td class="bad">无</td><td class="bad">无</td><td class="bad">无</td>
+            <td class="ok">有</td><td class="ok">有</td><td class="ok">全列</td></tr>
+        <tr><td><b>Kerr 条目</b></td><td class="bad">无</td><td class="bad">无</td><td class="bad">无</td><td class="bad">无</td>
+            <td class="warn">部分（点明 E-R 桥不行）</td><td class="bad">无</td><td class="bad">无</td></tr>
+        <tr><td><b>微波类比</b></td><td class="bad">无</td><td class="bad">无</td><td class="bad">无</td><td class="bad">无</td>
+            <td class="bad">无</td><td class="bad">无</td><td class="bad">无</td></tr>
+        <tr><td><b>Hull 表</b></td><td class="ok">全表</td><td class="bad">无</td><td class="ok">有</td><td class="ok">有</td>
+            <td class="bad">无</td><td class="bad">无</td><td class="bad">无</td></tr>
+        <tr><td class="hl"><b>SEG（本项目已整理部分）</b></td><td class="warn">部分（几何/材料有，电磁无）</td>
+            <td class="ok">有（实机照片 + 充磁台 + 图纸）</td><td class="ok">有（i024 尺寸链）</td>
+            <td class="warn">有（环外径 = A.C. 内缘）</td><td class="bad">无</td><td class="bad">无</td><td class="warn">旁证（Podkletnov、Laithwaite、Tesla）</td></tr>
+      </tbody>
+    </table>
+    <p class="note">
+      <b>这张表的读法（重要）</b>：<b>格子多不等于更对。</b>
+      WHIP 的格子最多，但它的结论<b>一条也没被验证</b>；SEG 的"有实物"是四份里唯一的实物，
+      但那份实物<b>至今没有给出过一个可核对的工作磁场强度</b>。
+      这张表量的是<b>「这份资料能不能被别人拿去算」</b>，不是「它是不是真的」。
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════════ Ⅷ 不可比清单与来源 ══════════════════ -->
+<section class="view" id="v8">
+  <div class="card">
+    <h2>Ⅷ 不可比清单与来源索引</h2>
+
+    <h3 class="h3s">8.1 十组禁止引伸</h3>
+    <table class="spec">
+      <thead><tr><th>#</th><th>禁止</th><th>理由</th></tr></thead>
+      <tbody>
+        <tr><td class="num">1</td><td>把「B = 1000 T ⇒ a = 0.368 光年」读成「有装置能造出 0.37 光年的曲率」</td>
+            <td>0.368 光年是<b>曲率半径</b>的值，不是"效果强度"；同一份论文自己说在 1000 T 下 c²−v²(0) ≈ <b>0</b> m²/s²</td></tr>
+        <tr><td class="num">2</td><td>把「1 光年虫洞只需 118.5 T」读成「118.5 T 能造虫洞」</td>
+            <td>原文是「<b>假如已有 1 光年喉</b>，118.5 T 的张力足以把它撑住」，是<b>维持</b>不是<b>产生</b>。见 Ⅱ.4</td></tr>
+        <tr><td class="num">3</td><td>把 Hull 的「配平误差 2×10⁻⁵」读成「这个几何已被验证」</td>
+            <td>它验证的是<b>表自己内部自洽</b>，表里没有任何磁场、功率、材料或实测数据</td></tr>
+        <tr><td class="num">4</td><td>把 Kerr 的「理论上可以沿某条轨迹进入」读成「已经可以穿越」</td>
+            <td>那是术语表里的一句定性描述，且前提是<b>存在一个旋转黑洞</b></td></tr>
+        <tr><td class="num">5</td><td>把「效应期间碟对肉眼不可见」当作观测证据</td>
+            <td>该断言<b>无法被证伪</b>（看不见可以说成效应、也可以说成没来）</td></tr>
+        <tr><td class="num">6</td><td>把「每秒 7.5 次脉冲」当作物理常数</td>
+            <td>原文<b>没有给出任何来源或测量方式</b></td></tr>
+        <tr><td class="num">7</td><td>把 S4 的「引力放大器」与 SEG 的滚筒混为一谈</td>
+            <td>一个是<b>外部驱动、可定位的放大器</b>；一个是<b>靠磁引力/涡流斥力自持定位的滚筒</b>。驱动方式相反</td></tr>
+        <tr><td class="num">8</td><td>把 WHIP 的公式代入 SEG 的数字</td>
+            <td>SEG <b>从未给出过工作磁场强度</b>，代不进去。硬代属于凭空造参数</td></tr>
+        <tr><td class="num">9</td><td>把「10¹³ T 门槛」（本页复算）当作对 WHIP 的否定</td>
+            <td>这是<b>对原文某一句话的精度追问</b>，不是对机制的否证。机制能否成立，取决于实验，不取决于本页的算术</td></tr>
+        <tr><td class="num">10</td><td>把本页的 <span class="ev c">C</span> 级内容当史实</td>
+            <td>凡标 <span class="ev c">C</span> 的都是本项目推演，<b>不构成任何一方的证据</b></td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="h3s">8.2 来源索引（四份底本，均已取得原文全文）</h3>
+    <table class="spec">
+      <thead><tr><th>底本</th><th>作者 / 出处</th><th>形态</th><th>本页用到</th></tr></thead>
+      <tbody>
+        <tr><td><b>WHIP</b><br><small>Interstellar Travel by Means of Wormhole Induction Propulsion</small></td>
+            <td>Eric W. Davis，National Institute for Discovery Science，Las Vegas</td>
+            <td>论文（8 式 + 3 表 + 参考文献 12 条）</td>
+            <td>Ⅱ 全节、Ⅲ 全节、Ⅶ</td></tr>
+        <tr><td><b>Kerr Metric Space Warp</b><br><small>as extracted from the Glossary of StarDrive Engineering</small></td>
+            <td>Archer Enterprises，Heanen, Geneva, NY</td>
+            <td>术语表条目（约 300 词）</td>
+            <td>Ⅳ 全节</td></tr>
+        <tr><td><b>The Microwave Analogy</b></td>
+            <td>Cetin BAL，Time Travel Research Center，土耳其 Denizli，©1998</td>
+            <td>研究网页（含 3 幅插图）</td>
+            <td>Ⅴ 全节、Ⅶ</td></tr>
+        <tr><td><b>Hull Configuration Spreadsheet</b><br><small>Project: Electrodynamic Field Generator</small></td>
+            <td>未署名（项目代号 Toltec）</td>
+            <td>工程计算表（约 20 行关系式）</td>
+            <td>Ⅵ 全节、Ⅶ</td></tr>
+      </tbody>
+    </table>
+    <p class="srcnote">
+      四份底本均取自 IMA 知识库 <code>飞碟网知识库zamandayolculuk</code> 的子文件夹「飞碟百科网」。
+      本页<b>只转录这四份中实际出现的文字与数字</b>；凡本页自己算出的，都在行内标了 <span class="ev c">C</span> 或写明「本页复算」。
+    </p>
+
+    <h3 class="h3s">8.3 本页新增的三处计算（可当场复核）</h3>
+    <table class="spec">
+      <thead><tr><th>#</th><th>算什么</th><th>结论</th><th>级别</th></tr></thead>
+      <tbody>
+        <tr><td class="num">1</td><td>原文表 1 九行是否自洽（a = K/B）</td><td class="ok">九行全部精确吻合</td><td><span class="ev a">复核</span></td></tr>
+        <tr><td class="num">2</td><td>Hull 全表重算 + 总排量为什么会"算不出来"</td><td class="ok">除 V_h 那行需取绝对值外，全表吻合；V_c、V_f 用 tanα = 0.1317 可精确复现；α 实为 <b>7½°</b></td><td><span class="ev c">C</span></td></tr>
+        <tr><td class="num">3</td><td>WHIP 式(4) 在桌面尺度（L = 0.1 m）下的灵敏度</td><td class="warn">ε = L/a = 2.87×10⁻¹⁷；要 c²−v²(0) ≥ 10⁴ m²/s² 需 B ≈ 2.3×10¹³ T ⇒ 原文「&gt;10⁹~10¹⁰ T」在桌面尺度下偏乐观 3~4 个数量级</td><td><span class="ev c">C</span></td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="h3s">8.4 底线</h3>
+    <div class="gapbox">
+      <span class="big">这一页不改变任何一方的结论</span>
+      <p class="note" style="color:#5c1018">
+        WHIP / Kerr / 微波类比 / Hull 这四份底本，<b>没有任何一份被独立验证过</b>；
+        同样地，<b>本页的复算也没有证明它们"错"</b> —— 它只证明：
+        <b>其中有一份（WHIP）写得足够清楚，清楚到可以被别人拿去做算术。</b>
+        <br><br>
+        对 SEG 最有用的一句，反而来自这里：<b>不是"SEG 对不对"，而是"SEG 的资料缺哪一格"。</b>
+        第 Ⅶ.3 那张表已经指出：SEG 缺的是<b>可测门槛</b>与<b>自曝其短的段落</b>，
+        而它比这四份都强的那一格是 —— <b>有实物</b>。
+      </p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <p>曲速泡与场推进 · WHIP / Kerr / 微波波导 / Hull 配平 &nbsp;|&nbsp; v1.0 &nbsp;|&nbsp; 浅色主题</p>
+  <p style="margin-top:6px">底本四份：WHIP（Eric W. Davis）· Kerr Metric Space Warp · The Microwave Analogy（Cetin BAL）· Hull Configuration Spreadsheet</p>
+  <p style="margin-top:6px">同目录姊妹页：
+    <a href="飞碟科技横向对比_八体系共性解剖.html" style="color:#00568f">八体系共性解剖</a> ·
+    <a href="飞碟工程图纸集_剖面与3D.html" style="color:#00568f">工程图纸集</a> ·
+    <a href="IGV飞碟_三环启动与月球航线.html" style="color:#00568f">IGV 三环启动</a> ·
+    <a href="SEG充磁三明治_三种磁场仿真.html" style="color:#00568f">SEG 充磁三明治</a>
+  </p>
+</footer>
+
+<script>
+(function(){
+  'use strict';
+
+  var NAV = ['v1','v2','v3','v4','v5','v6','v7','v8'];
+  function show(id){
+    if (NAV.indexOf(id) < 0) return;
+    var vs = document.querySelectorAll('section.view');
+    for (var i=0;i<vs.length;i++) vs[i].classList.toggle('active', vs[i].id === id);
+    var bs = document.querySelectorAll('nav.tabs button');
+    for (var j=0;j<bs.length;j++) bs[j].classList.toggle('active', bs[j].getAttribute('data-v') === id);
+    try { window.scrollTo({ top:0, behavior:'smooth' }); } catch(e) { window.scrollTo(0,0); }
+    if (history.replaceState) history.replaceState(null, '', '#' + id);
+    if (id === 'v2') drawAB();
+  }
+  window.go = show;
+  var bs = document.querySelectorAll('nav.tabs button');
+  for (var i=0;i<bs.length;i++){
+    (function(b){ b.addEventListener('click', function(){ show(b.getAttribute('data-v')); }); })(bs[i]);
+  }
+  document.addEventListener('keydown', function(e){
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    var cur = 0, vs = document.querySelectorAll('section.view');
+    for (var i=0;i<vs.length;i++) if (vs[i].classList.contains('active')) cur = NAV.indexOf(vs[i].id);
+    var nx = (e.key === 'ArrowRight') ? cur + 1 : cur - 1;
+    if (nx < 0) nx = NAV.length - 1;
+    if (nx >= NAV.length) nx = 0;
+    show(NAV[nx]);
+  });
+  document.getElementById('btnPrint').addEventListener('click', function(){ window.print(); });
+
+  /* ─── Ⅱ.5 a(B) 双对数曲线 ─── */
+  var K = 3.4840e18;          // Tesla·m
+  var LY = 9.46e15, AU = 1.50e11;
+  var cv = document.getElementById('cAB');
+  var rB = document.getElementById('rB');
+  var vB = document.getElementById('vB');
+  var vA = document.getElementById('vA');
+  var bMark = document.getElementById('bMark');
+  var showMarks = true;
+  var TXT='#0f1f35', DIM='#32425b', ACC='#00568f', RED='#8b000e', GRN='#1b6a50', WRN='#875f00', LINE='#bfcce3';
+
+  function fmt(x, d){
+    d = d || 2;
+    if (x === 0) return '0';
+    var e = Math.floor(Math.log10(Math.abs(x)));
+    var m = x / Math.pow(10, e);
+    return m.toFixed(d) + '×10' + sup(e);
+  }
+  function sup(n){
+    var map = {'-':'⁻','0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
+    return String(n).split('').map(function(ch){ return map[ch] || ch; }).join('');
+  }
+
+  function drawAB(){
+    if (!cv) return;
+    var dpr = window.devicePixelRatio || 1;
+    var W = cv.clientWidth || 900, H = 470;
+    cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr);
+    cv.style.height = H + 'px';
+    var g = cv.getContext('2d');
+    g.setTransform(dpr,0,0,dpr,0,0);
+    g.clearRect(0,0,W,H);
+    g.fillStyle = '#f2f6fb'; g.fillRect(0,0,W,H);
+
+    var L=62, R=W-18, T=26, Bm=H-46;   /* ★ Bm 是「绘图区底边」= H − 下边距，不是下边距本身 */
+    var x0=0, x1=18;                     // log10 B
+    var y0=0, y1=18;                     // log10 a
+    function X(lb){ return L + (lb-x0)/(x1-x0)*(R-L); }
+    function Y(la){ return Bm + (y1-la)/(y1-y0)*(T-Bm); }
+
+    // 现有技术竖带
+    g.fillStyle = 'rgba(0,109,50,0.10)';
+    g.fillRect(X(Math.log10(1)), T, X(Math.log10(300))-X(Math.log10(1)), Bm-T);
+    g.fillStyle = 'rgba(135,95,0,0.14)';
+    g.fillRect(X(Math.log10(1000)), T, X(Math.log10(3000))-X(Math.log10(1000)), Bm-T);
+    g.fillStyle = 'rgba(139,0,14,0.13)';
+    g.fillRect(X(9), T, X(10)-X(9), Bm-T);
+
+    // 网格
+    g.strokeStyle = LINE; g.lineWidth = 1;
+    g.font = '10px Consolas, monospace'; g.textAlign='center'; g.fillStyle = DIM;
+    for (var e=0; e<=18; e++){
+      var x = X(e);
+      g.globalAlpha = (e % 3 === 0) ? 0.9 : 0.4;
+      g.beginPath(); g.moveTo(x, T); g.lineTo(x, Bm); g.stroke();
+      g.globalAlpha = 1;
+      if (e % 3 === 0){ g.fillText('10' + sup(e), x, Bm + 15); }
+      var y = Y(e);
+      g.globalAlpha = (e % 3 === 0) ? 0.9 : 0.4;
+      g.beginPath(); g.moveTo(L, y); g.lineTo(R, y); g.stroke();
+      g.globalAlpha = 1;
+      if (e % 3 === 0){ g.textAlign='right'; g.fillText('10' + sup(e), L - 6, y + 3.5); g.textAlign='center'; }
+    }
+    // 轴
+    g.strokeStyle = '#8fa2bf'; g.lineWidth = 1.4;
+    g.beginPath(); g.moveTo(L, T); g.lineTo(L, Bm); g.lineTo(R, Bm); g.stroke();
+    g.fillStyle = ACC; g.font='bold 11.5px "Microsoft YaHei", sans-serif';
+    g.textAlign='left'; g.fillText('曲率半径 a  (m)', L, T - 10);
+    g.textAlign='right'; g.fillText('磁场 B  (T)', R, Bm + 30);
+
+    // 图例几何先算出来，好让尺度标签避开它
+    var LGX = L + 5, LGY = T + 22, LGW = 252, LGH = 70;
+    var lgL = LGX - 5, lgT = LGY - 15, lgR = lgL + LGW, lgB = lgT + LGH;
+
+    // 尺度横线
+    var refs = [[LY,'1 光年', RED], [AU,'1 AU', GRN], [100,'100 m', WRN], [1,'1 m', WRN]];
+    g.font = '10.5px "Microsoft YaHei", sans-serif';
+    for (var i=0;i<refs.length;i++){
+      var la = Math.log10(refs[i][0]);
+      if (la < y0 || la > y1) continue;
+      g.strokeStyle = refs[i][2]; g.lineWidth = 1; g.setLineDash([6,4]); g.globalAlpha = 0.75;
+      g.beginPath(); g.moveTo(L, Y(la)); g.lineTo(R, Y(la)); g.stroke();
+      g.setLineDash([]); g.globalAlpha = 1;
+      /* ★ 标签若落进图例带，就改成右对齐，免得被图例白框盖住；
+         若贴到绘图区顶边（会撞轴标题），就改画到虚线下方 */
+      var ry = Y(la) - 3.5;
+      if (ry < T + 10) ry = Y(la) + 11;
+      var inLg = (ry >= lgT - 4 && ry <= lgB + 4);
+      var rx = inLg ? (R - 6) : (L + 5);
+      g.textAlign = inLg ? 'right' : 'left'; g.lineJoin = 'round';
+      g.fillStyle = refs[i][2];
+      g.strokeStyle = 'rgba(255,255,255,0.94)'; g.lineWidth = 3.2;
+      g.strokeText(refs[i][1], rx, ry);
+      g.lineWidth = 1;
+      g.fillText(refs[i][1], rx, ry);
+      g.textAlign = 'left';
+    }
+
+    // a = K / B 主线：log a = 18.5421 - log B
+    var lK = Math.log10(K);
+    g.strokeStyle = ACC; g.lineWidth = 2.6; g.beginPath();
+    for (var px = L; px <= R; px += 2){
+      var lb = x0 + (px - L)/(R - L) * (x1 - x0);
+      var la2 = lK - lb;
+      if (la2 < y0 || la2 > y1) { continue; }
+      var yy = Y(la2);
+      if (px === L) g.moveTo(px, yy); else g.lineTo(px, yy);
+    }
+    g.stroke();
+
+    // 关键档位（★ 每档带独立 dy 微调，避免标注互压；文字加白描边保证可读）
+    if (showMarks){
+      var marks = [
+        [300,    '稳态/混合/脉冲磁体\n~300 T',      -16, 'left'],
+        [1500,   '化学爆磁\n1000~3000 T',              20, 'left'],
+        [1e9,    '核爆磁通压缩\n≥10⁹ T',             -16, 'right'],
+        [1e10,   'Davis 可测门槛\n10⁹~10¹⁰ T',         24, 'right']
+      ];
+      g.font = '10px "Microsoft YaHei", sans-serif';
+      for (var m=0;m<marks.length;m++){
+        var lb2 = Math.log10(marks[m][0]);
+        var la3 = lK - lb2;
+        if (la3 < y0 || la3 > y1) continue;
+        var mx = X(lb2), my = Y(la3);
+        g.fillStyle = RED; g.beginPath(); g.arc(mx, my, 4, 0, Math.PI*2); g.fill();
+        g.strokeStyle = '#fff'; g.lineWidth = 1.4; g.stroke();
+        var tA = marks[m][3], tX = (tA === 'left') ? mx + 8 : mx - 8;
+        var lines = marks[m][1].split('\n'), tY0 = my - 6 + marks[m][2];
+        g.textAlign = tA;
+        g.lineJoin = 'round';
+        for (var q=0;q<lines.length;q++){
+          var ly2 = tY0 + q*12;
+          g.strokeStyle = 'rgba(255,255,255,0.94)'; g.lineWidth = 3.2;
+          g.strokeText(lines[q], tX, ly2);
+          g.fillStyle = RED; g.lineWidth = 1;
+          g.fillText(lines[q], tX, ly2);
+        }
+        g.textAlign = 'center';
+      }
+    }
+
+    // 当前滑块点
+    var B = Math.pow(10, x0 + (rB.value/180) * (x1 - x0));
+    var a = K / B;
+    var cx = X(Math.log10(B));
+    var cy = Y(Math.log10(a));
+    if (cy >= T && cy <= Bm){
+      g.strokeStyle = RED; g.lineWidth = 1.4; g.setLineDash([4,3]);
+      g.beginPath(); g.moveTo(cx, Bm); g.lineTo(cx, cy); g.lineTo(L, cy); g.stroke();
+      g.setLineDash([]);
+      g.fillStyle = '#fff'; g.beginPath(); g.arc(cx, cy, 6, 0, Math.PI*2); g.fill();
+      g.strokeStyle = RED; g.lineWidth = 2.4; g.beginPath(); g.arc(cx, cy, 6, 0, Math.PI*2); g.stroke();
+    }
+
+    // 图例（垫一层白底，免得压在曲线/虚线上看不清）
+    g.font = '10.5px "Microsoft YaHei", sans-serif'; g.textAlign='left';
+    var lx = LGX, ly = LGY;
+    g.fillStyle = 'rgba(255,255,255,0.90)';
+    g.beginPath();
+    if (g.roundRect) { g.roundRect(lgL, lgT, LGW, LGH, 6); }
+    else { g.rect(lgL, lgT, LGW, LGH); }
+    g.fill();
+    g.strokeStyle = 'rgba(143,162,191,0.60)'; g.lineWidth = 1; g.stroke();
+    g.fillStyle = ACC; g.fillRect(lx, ly - 8, 14, 3);
+    g.fillStyle = DIM; g.fillText('a = 3.4840×10¹⁸ / B　（原文式(2)）', lx + 20, ly - 3);
+    g.fillStyle = 'rgba(0,109,50,0.35)'; g.fillRect(lx, ly + 6, 14, 10);
+    g.fillStyle = DIM; g.fillText('稳态磁体（10~300 T）', lx + 20, ly + 14);
+    g.fillStyle = 'rgba(135,95,0,0.45)'; g.fillRect(lx, ly + 22, 14, 10);
+    g.fillStyle = DIM; g.fillText('化学爆磁（1000~3000 T）', lx + 20, ly + 30);
+    g.fillStyle = 'rgba(139,0,14,0.35)'; g.fillRect(lx, ly + 38, 14, 10);
+    g.fillStyle = RED; g.fillText('Davis 说的"可测门槛"（10⁹~10¹⁰ T）', lx + 20, ly + 46);
+
+    vB.textContent = fmt(B, 1) + ' T';
+    vA.textContent = 'a = ' + fmt(a, 2) + ' m';
+  }
+  if (rB){
+    rB.addEventListener('input', drawAB);
+    bMark.addEventListener('click', function(){
+      showMarks = !showMarks;
+      bMark.classList.toggle('on', showMarks);
+      drawAB();
+    });
+    bMark.classList.add('on');
+  }
+  var rt = null;
+  window.addEventListener('resize', function(){
+    if (rt) clearTimeout(rt);
+    rt = setTimeout(function(){
+      var v2 = document.getElementById('v2');
+      if (v2 && v2.classList.contains('active')) drawAB();
+    }, 160);
+  });
+
+  if (location.hash){
+    var h = location.hash.replace('#','');
+    if (NAV.indexOf(h) >= 0) show(h);
+  }
+
+  /* ★ 首屏 v2 是隐藏的 ⇒ clientWidth = 0；只在 v2 可见时才画，
+     并挂 ResizeObserver：容器一变尺寸就重画（否则会被拉伸/压扁） */
+  function drawIfVisible(){
+    var v2 = document.getElementById('v2');
+    if (v2 && v2.classList.contains('active')) drawAB();
+  }
+  if (window.ResizeObserver && cv){
+    try { new ResizeObserver(function(){ drawIfVisible(); }).observe(cv); } catch(e){}
+  }
+  setTimeout(drawIfVisible, 80);
+})();
+</script>
+</body>
+</html>

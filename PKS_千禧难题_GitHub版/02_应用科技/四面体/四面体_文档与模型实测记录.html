@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>四面体内嵌倒四面体 · 文档精读与 Shapr3D 模型实测记录</title>
+<link rel="stylesheet" href="_katex/katex.min.css">
+<style>
+:root{
+  --bg:#f4f7fb; --card:#ffffff; --line:#e2e8f2; --line2:#eef2f8;
+  --ink:#1c2534; --ink2:#495a72; --ink3:#7d8ca3;
+  --blue:#3457d5; --blue2:#5b7bf0; --amber:#e08a17; --teal:#0e9c8e;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15.5px/1.86 -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif}
+a{color:var(--blue);text-decoration:none;border-bottom:1px solid rgba(52,87,213,.28)}
+a:hover{color:#22409f;border-bottom-color:var(--blue)}
+code,kbd{font-family:ui-monospace,Consolas,"Cascadia Mono",Menlo,monospace}
+
+/* ---- 顶栏 ---- */
+.bar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:12px;
+  padding:9px 20px;background:rgba(255,255,255,.94);border-bottom:1px solid var(--line);
+  backdrop-filter:blur(8px)}
+.bar .bk{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);
+  background:#fff;color:var(--ink2);border-radius:8px;padding:5px 11px;font-size:13px;
+  cursor:pointer;line-height:1.2}
+.bar .bk:hover{border-color:#c7d4ea;background:#f8fbff;color:var(--blue)}
+.bar .tt{font-size:13px;color:var(--ink3);white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;flex:1 1 auto;min-width:0}
+.bar .tt b{color:var(--ink2);font-weight:700}
+.bar .act{display:flex;gap:7px;flex:0 0 auto}
+.bar .act a{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);
+  background:#fff;color:var(--ink2);border-radius:8px;padding:5px 10px;font-size:12.5px;line-height:1.2}
+.bar .act a:hover{border-color:#c7d4ea;background:#f8fbff;color:var(--blue)}
+
+/* ---- 布局 ---- */
+.wrap{display:grid;grid-template-columns:236px minmax(0,1fr);gap:26px;
+  max-width:1220px;margin:0 auto;padding:22px 22px 60px}
+.toc{position:sticky;top:66px;align-self:start;max-height:calc(100vh - 92px);overflow:auto;
+  background:var(--card);border:1px solid var(--line);border-radius:13px;padding:13px 10px 15px}
+.toc .h{font-size:11.5px;letter-spacing:1.1px;color:var(--ink3);font-weight:700;
+  padding:0 8px 8px;border-bottom:1px solid var(--line2);margin-bottom:7px}
+.toc a{display:block;font-size:12.8px;line-height:1.5;color:var(--ink2);
+  padding:4px 8px;border-radius:6px;border-bottom:none;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.toc a:hover{background:#f2f7ff;color:var(--blue)}
+.toc a.lv3{padding-left:20px;font-size:12.2px;color:var(--ink3)}
+.toc a.on{background:#eef4ff;color:var(--blue);font-weight:700}
+
+/* ---- 正文卡片 ---- */
+article{background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:30px 40px 44px;box-shadow:0 4px 20px rgba(30,60,120,.05);min-width:0}
+.meta{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.2px;color:var(--ink3);
+  border-bottom:1px dashed var(--line);padding-bottom:12px;margin:0 0 22px}
+.meta span b{color:var(--ink2);font-weight:700}
+
+h1,h2,h3,h4,h5,h6{line-height:1.42;font-weight:700;color:var(--ink)}
+h1{font-size:25px;margin:0 0 6px;padding-bottom:12px;border-bottom:2px solid var(--blue)}
+h2{font-size:19.5px;margin:34px 0 12px;padding-left:11px;border-left:4px solid var(--blue)}
+h3{font-size:16.6px;margin:26px 0 9px;color:#20304a}
+h4{font-size:15.2px;margin:20px 0 7px;color:var(--ink2)}
+h5{font-size:14.2px;margin:16px 0 6px;color:var(--ink2)}
+h6{font-size:13.6px;margin:14px 0 6px;color:var(--ink3)}
+p{margin:11px 0}
+strong{color:#12203a}
+em{color:var(--ink2)}
+del{color:var(--ink3)}
+hr{border:none;border-top:1px dashed #d7e0ee;margin:26px 0}
+
+/* ---- 代码 ---- */
+code{background:#f2f5fa;border:1px solid #e7edf7;border-radius:5px;
+  padding:1px 5px;font-size:12.9px;color:#1d3a6e;word-break:break-word}
+pre.code{background:#f8fafd;border:1px solid var(--line);border-radius:10px;
+  padding:12px 15px;overflow-x:auto;margin:13px 0;line-height:1.66}
+pre.code code{background:none;border:none;padding:0;font-size:12.7px;color:#26364f;
+  white-space:pre;word-break:normal}
+
+/* ---- 引用 ---- */
+blockquote{margin:14px 0;padding:9px 16px;background:#f7faff;
+  border-left:3px solid var(--blue2);border-radius:0 9px 9px 0;color:var(--ink2)}
+blockquote>p{margin:5px 0}
+blockquote blockquote{margin:8px 0;background:#fff}
+
+/* ---- 表格 ---- */
+.tw{overflow-x:auto;margin:14px 0;border:1px solid var(--line);border-radius:10px}
+table{width:100%;border-collapse:collapse;font-size:13.4px;background:#fff}
+th{background:#f4f7fb;color:#243449;font-weight:700;text-align:left;
+  padding:8px 11px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:7px 11px;border-bottom:1px solid var(--line2);color:var(--ink2);vertical-align:top}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#fbfdff}
+td code,th code{font-size:12.4px}
+
+/* ---- 列表 ---- */
+ul,ol{margin:11px 0;padding-left:26px}
+li{margin:4px 0}
+li>ul,li>ol{margin:5px 0}
+
+/* ---- 公式 ---- */
+.mathblock{overflow-x:auto;overflow-y:hidden;padding:4px 0;margin:14px 0;text-align:center}
+.katex{font-size:1.045em}
+.katex-display{margin:0}
+.xref{border-bottom:none}
+.xref code{background:#eef4ff;border-color:#d3e0fb;color:var(--blue)}
+.xref:hover code{background:#e2ecff;border-color:#b9cdf8}
+.texerr{background:#fff3f5;color:#b3384c;border:1px solid #f0ccd3;border-radius:5px;
+  padding:1px 5px;font-family:ui-monospace,Consolas,monospace;font-size:12.5px}
+
+/* ---- 页脚 ---- */
+.foot{margin:26px 0 0;padding-top:14px;border-top:1px dashed var(--line);
+  font-size:12.2px;color:var(--ink3);display:flex;flex-wrap:wrap;gap:8px 18px}
+.foot a{border-bottom:none}
+
+.mdtip{position:fixed;left:50%;top:64px;transform:translateX(-50%) translateY(-8px);
+  background:#1c2534;color:#fff;font-size:13px;line-height:1.6;padding:9px 16px;border-radius:9px;
+  box-shadow:0 8px 26px rgba(20,40,80,.28);opacity:0;pointer-events:none;transition:.18s;z-index:60;
+  max-width:min(560px,92vw)}
+.mdtip.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.mdtip b{color:#ffd48a}
+.top{position:fixed;right:22px;bottom:22px;width:40px;height:40px;border-radius:50%;
+  border:1px solid var(--line);background:#fff;color:var(--ink2);cursor:pointer;
+  box-shadow:0 4px 16px rgba(30,60,120,.13);font-size:16px;display:none;z-index:40}
+.top:hover{color:var(--blue);border-color:#c7d4ea}
+.top.on{display:block}
+
+@media (max-width:900px){
+  .wrap{grid-template-columns:minmax(0,1fr);padding:14px 12px 50px}
+  .toc{position:static;max-height:none;order:2}
+  article{padding:22px 18px 34px}
+  .bar .tt{display:none}
+}
+@media print{
+  .bar,.toc,.top{display:none!important}
+  body{background:#fff}
+  .wrap{display:block;max-width:none;padding:0}
+  article{border:none;box-shadow:none;padding:0}
+  h2{break-after:avoid}
+  table,pre.code,blockquote{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div class="bar">
+  <a class="bk" id="btnBack" href="AAA四面体_主界面.html">&larr; 返回</a>
+  <div class="tt"><b>四面体_文档与模型实测记录</b></div>
+  <div class="act">
+    <a href="四面体_文档与模型实测记录.md" download title="下载 .md 原件（可用 Typora / Obsidian 打开编辑）">&#11015; .md 源文件</a>
+    <a href="javascript:window.print()" title="打印 / 存 PDF">&#128424; 打印</a>
+  </div>
+</div>
+
+<div class="wrap">
+<nav class="toc"><div class="h">目录</div>
+<a class="lv2" href="#h2" title="A. 文档精读">A. 文档精读</a>
+<a class="lv3" href="#h3" title="A-1. 文档基本信息">A-1. 文档基本信息</a>
+<a class="lv3" href="#h4" title="A-2. 正文 16 段逐段精读">A-2. 正文 16 段逐段精读</a>
+<a class="lv3" href="#h5" title="A-3. 文档的核心逻辑链">A-3. 文档的核心逻辑链</a>
+<a class="lv3" href="#h6" title="A-4. 关键数值总表（文档原值 vs 精确值）">A-4. 关键数值总表（文档原值 vs 精确值）</a>
+<a class="lv2" href="#h7" title="B. 11 张内嵌图清单">B. 11 张内嵌图清单</a>
+<a class="lv2" href="#h8" title="C. Shapr3D 工程文件反解（完整实测记录）">C. Shapr3D 工程文件反解（完整实测记录）</a>
+<a class="lv3" href="#h9" title="C-1. 文件格式">C-1. 文件格式</a>
+<a class="lv3" href="#h10" title="C-2. 2D → 3D 重建公式">C-2. 2D → 3D 重建公式</a>
+<a class="lv3" href="#h11" title="C-3. 重建结果">C-3. 重建结果</a>
+<a class="lv3" href="#h12" title="C-4. 模型坐标单位鉴定">C-4. 模型坐标单位鉴定</a>
+<a class="lv3" href="#h13" title="C-5. 核心比值（模型独立验证）">C-5. 核心比值（模型独立验证）</a>
+<a class="lv3" href="#h14" title="C-6. 关于「放大 1000 倍」的更正">C-6. 关于「放大 1000 倍」的更正</a>
+<a class="lv2" href="#h15" title="D. 三条独立数据链的闭合">D. 三条独立数据链的闭合</a>
+<a class="lv2" href="#h16" title="E. 待办与延伸">E. 待办与延伸</a>
+</nav>
+<article>
+<h1 id="h1">四面体内嵌倒四面体 · 文档精读与 Shapr3D 模型实测记录</h1>
+<blockquote><p>源文件： ① <code>重点：逆推内外四面体棱长比与ga白银比45°四次旋转系统.docx</code>（4.77 MB） ② <code>四面体.shapr</code>（Shapr3D 工程文件） ③ <code>6个子图拼接.jpg</code>（视频截图，演示效果参考） ④ <code>2.jpg</code>（手写公式笔记）本文记录两部分内容：<strong>A. docx 重点内容提取</strong>；<strong>B. Shapr3D 模型反解实测</strong>。</p></blockquote>
+<hr>
+<h2 id="h2">A. 文档精读</h2>
+<h3 id="h3">A-1. 文档基本信息</h3>
+<div class="tw"><table><thead><tr><th>项目</th><th>值</th></tr></thead><tbody><tr><td>文件名</td><td>重点：逆推内外四面体棱长比与ga白银比45°四次旋转系统.docx</td></tr><tr><td>大小</td><td>4,768,330 字节</td></tr><tr><td>含文字段落</td><td>16 段（其余为空段/图段）</td></tr><tr><td>内嵌图片</td><td>11 张（image1 ~ image11）</td></tr><tr><td>主题</td><td>正四面体内嵌倒四面体的棱长比 / 外接球直径比，反查为白银比四次方</td></tr></tbody></table></div>
+<h3 id="h4">A-2. 正文 16 段逐段精读</h3>
+<div class="tw"><table><thead><tr><th>段</th><th>原文要点（摘录）</th><th>提炼</th></tr></thead><tbody><tr><td>①</td><td>「重点：逆推内外四面体棱长比与ga白银比45°四次旋转系统」</td><td>标题：定调「反推」+「45° 四次旋转」</td></tr><tr><td>②</td><td>「正四面体内有 12 个直角三角形，勾 3 股 4 弦 5，把弦长 5 的边作为棱长；从每一顶点观察，三个直角三角形的直角边相互抵靠，在内部形成三角形△空隙；4 顶点 × 3 = 12 个三角形相互抵靠，中心交合处形成很小的倒正四面体」</td><td><strong>核心构造描述</strong>：12 枚 = 4×3；「中心交合」→ 内倒四面体</td></tr><tr><td>③</td><td>「最终我的答案：」</td><td>引出结论</td></tr><tr><td>④</td><td>「是 33.970563」</td><td><strong>关键数值答案 1</strong></td></tr><tr><td>⑤</td><td>「根据 wolfram 逆推：应该是 (1+√2)⁴」</td><td><strong>关键闭式</strong>：Wolfram 反查</td></tr><tr><td>⑥</td><td>（空段/图段，对应 image4~6 的 Wolfram 截图）</td><td>逆推过程截图</td></tr><tr><td>⑦</td><td>「大四面体外接球半径 R = 50×(√6)/4，棱长为 50，2R = 25√6。实测外接球直径是 61.2372」</td><td>大四面体数据；<strong>棱长取 50</strong></td></tr><tr><td>⑧</td><td>「小四面体外接球半径 r = 1.8027/2 = 0.90135 = 小棱长×(√6)/4，求出小棱长为 1.4719」</td><td>由外接球反推<strong>小棱长 1.4719</strong></td></tr><tr><td>⑨</td><td>「之后把棱长放大 1000 倍」</td><td>放大量级说明（实为 ×10⁴，见 B-5）</td></tr><tr><td>⑩</td><td>（空段/图段，对应 image3 测量截图）</td><td>测量 14,718.6258 mm</td></tr><tr><td>⑪</td><td>「500000 / 14718.6258 = 33.970563（这个应该是最精确的）」</td><td><strong>最精确的一次测量</strong></td></tr><tr><td>⑫</td><td>「也就是内外比为 (1+√2)⁴，这结构合理」</td><td>结论确认</td></tr><tr><td>⑬</td><td>（空段/图段）</td><td></td></tr><tr><td>⑭</td><td>「50 / 1.4719 = 33.969699」</td><td>第二种算法（分母精度不足）</td></tr><tr><td>⑮</td><td>（空段/图段）</td><td></td></tr><tr><td>⑯</td><td>「(25√6) / 1.8027 = 33.96973627」</td><td>第三种算法（分母精度不足）</td></tr><tr><td>⑰</td><td>（空段/图段）</td><td></td></tr><tr><td>⑱</td><td>「否定以上不合理的比值」</td><td>排除 ⑭⑯ 两式</td></tr><tr><td>⑲</td><td>（空段/图段）</td><td></td></tr><tr><td>⑳</td><td>「34.0222 值很可能是不够精确的值，根据 wolfram 逆推可以对比」</td><td>排除 34.0222 分支</td></tr><tr><td>㉑</td><td>（空段/图段）</td><td></td></tr><tr><td>㉒</td><td>「联想：」</td><td>引出文化联想</td></tr><tr><td>㉓</td><td>（空段/图段）</td><td></td></tr><tr><td>㉔</td><td>「(1+√2)⁴，这个比值结果藏着 4 次基于白银比 √2 相关的旋转。东西方文化又合盘。几何数理模型结构不同而已」</td><td><strong>「45° 四次旋转系统」的由来</strong></td></tr></tbody></table></div>
+<blockquote><p>说明：上表 ① ~ ⑯ 是 16 个含文字的段落（按出现顺序编号）；带㉑等记号的是同一序列的续编，便于对照。</p></blockquote>
+<h3 id="h5">A-3. 文档的核心逻辑链</h3>
+<pre class="code"><code class="lang-text">构图（12 枚 3-4-5 三角形以棱为斜边、直角顶朝内、相互抵靠）
+  ↓
+中心交合 → 形成很小的倒正四面体
+  ↓
+Shapr3D 建模 + 实测（大棱长 50、小棱长 1.4719）
+  ↓
+两组相除 → 33.970563（最精确值）
+  ↓
+Wolfram 闭式反查 → (1+√2)⁴
+  ↓
+解读为「4 次白银比 √2 旋转」＝ 45° 四次旋转系统</code></pre>
+<h3 id="h6">A-4. 关键数值总表（文档原值 vs 精确值）</h3>
+<div class="tw"><table><thead><tr><th>量</th><th>文档原值</th><th>精确值</th><th>相对误差</th></tr></thead><tbody><tr><td>大四面体棱长 a</td><td>50</td><td>50（设定）</td><td>0</td></tr><tr><td>外接球直径 2R = a√6/2</td><td>61.2372</td><td>61.2372435696</td><td>4.4e-5</td></tr><tr><td>小四面体外接球直径 2r</td><td>1.8027</td><td>1.8026561415</td><td>2.4e-5</td></tr><tr><td>小四面体棱长 b</td><td>1.4719</td><td>1.4718625761</td><td>2.5e-5</td></tr><tr><td>放大后大棱长</td><td>500000</td><td>500000</td><td>0</td></tr><tr><td>放大后小棱长</td><td>14718.6258</td><td>14718.6258（实测）</td><td>0</td></tr><tr><td>比值 500000/14718.6258</td><td>33.970563</td><td>33.9705627485</td><td>2.6e-7</td></tr><tr><td>比值 50/1.4719</td><td>33.969699</td><td>33.9705627485</td><td>8.6e-4</td></tr><tr><td>比值 (25√6)/1.8027</td><td>33.9697363</td><td>33.9705627485</td><td>8.3e-4</td></tr><tr><td>备选值 34.0222</td><td>34.0222</td><td>33.9705627485</td><td>5.2e-2（已否）</td></tr></tbody></table></div>
+<p><strong>结论</strong>：<code>500000 / 14718.6258 = 33.970563</code> 与 <code>(1+√2)⁴</code> 吻合到 7 位有效数字，是全部数据中最精确的一条。</p>
+<hr>
+<h2 id="h7">B. 11 张内嵌图清单</h2>
+<blockquote><p>以下为逐张实读记录（从 <code>word/media/</code> 提取原始图后直接查看）。</p></blockquote>
+<div class="tw"><table><thead><tr><th>图</th><th>尺寸</th><th>内容实读记录</th></tr></thead><tbody><tr><td>image1</td><td>784×1232</td><td>手写笔记「正四面体（棱长为 α）」：外接球半径 R = (√6/4)α；内切球半径 r = (√6/12)α；高 h = (√6/3)α；体积 V = (√2/12)α；<strong>中心将高分为 3 : 1</strong></td></tr><tr><td>image2</td><td>1441×1080</td><td>Shapr3D 建模界面：一个正四面体线框 + 外接球（球体线框）</td></tr><tr><td>image3</td><td>641×196</td><td>Shapr3D「当前测量」面板：<strong>14,718.6258 毫米 / 长度 − 1 边</strong></td></tr><tr><td>image4</td><td>1080×1848</td><td>Wolfram 闭式识别截图（33.970563 → 闭式）</td></tr><tr><td>image5</td><td>1080×2400</td><td>Wolfram 闭式识别截图（同上，另一组算式）</td></tr><tr><td>image6</td><td>1080×2400</td><td>Wolfram 闭式识别截图（同上）</td></tr><tr><td>image7</td><td>3072×1796</td><td>四宫格：①Shapr3D 星形结构，测量 34.02222222222222；②红字「34.022*4 = 136.088 ≈ 137」配「三阶宇宙魔方」（4×4 圆点阵）；③大字「137」+ 气泡宇宙图；④「内核演化…」粉色多层星形结构；⑤另一 Shapr3D 界面测量 102.05555555555556；⑥文字讲<strong>精细结构常数</strong> α = (1/4πε₀)·e²/(ℏc) ≈ 1/137</td></tr><tr><td>image8</td><td>1080×1056</td><td>Wolfram 闭式识别截图（34.0222 分支的对照）</td></tr><tr><td>image9</td><td>1500×1510</td><td>Kathara 网格图：45°/90° 的 Krystal 螺旋网格</td></tr><tr><td>image10</td><td>1500×1500</td><td>四宫格视频截图：①赵爽弦图式网格（勾三红字在四角、股四绿字在内侧、弦五青蓝围成外方、中央内方）②「提取弦五为基数，构建三角四面体」（弦五蓝色构建立体四面体 + 彩虹三角面）③「勾三、股四、三角叠加隐藏内脉，弦五外脉」④半透明菱形/四棱锥发光结构</td></tr><tr><td>image11</td><td>1080×1796</td><td>「克里斯托斯宇宙」与六十进制系统的文化/宇宙学联想图</td></tr></tbody></table></div>
+<p><strong>要点</strong>：image10 的四个分镜（弦图 → 弦五升维成棱 → 勾三股四叠加 → 内部结构显形）<strong>与本项目网页分镜 ②③④⑤ 的叙事顺序完全一致</strong>，可直接作为演示节奏的参考。</p>
+<hr>
+<h2 id="h8">C. Shapr3D 工程文件反解（完整实测记录）</h2>
+<h3 id="h9">C-1. 文件格式</h3>
+<p><code>.shapr</code> 虽然后缀为工程格式，实际是 <strong>ZIP 容器</strong>；解包后核心是 <code>workspace</code> —— 一个 <strong>SQLite 数据库</strong>，几何信息分布如下：</p>
+<div class="tw"><table><thead><tr><th>表</th><th>用途</th><th>本项目记录数</th></tr></thead><tbody><tr><td>SketchControllers</td><td>草图平面：中心 (PlaneCenterX/Y/Z)、法向 (PlaneNormX/Y/Z)、U 方向 (PlaneUDirX/Y/Z)</td><td>17</td></tr><tr><td>SketchCurves</td><td>每条曲线的 2D 端点（JSON 格式 Data 字段）</td><td>87</td></tr><tr><td>PersistentMeasurements</td><td>持久化测量项</td><td>0（测量值未落库，在 UI 里）</td></tr><tr><td>Shapes / Constraints / Drawings</td><td>实体 / 约束 / 工程图</td><td>若干</td></tr></tbody></table></div>
+<blockquote><p>注意：<code>SketchCurves.Data</code> 中部分记录<strong>没有 <code>start</code> 键</strong>，直接按 <code>start</code> 取值会 <code>KeyError</code>。稳健做法是<strong>递归遍历 JSON，凡含数值型 <code>x</code>、<code>y</code> 的节点都收为 2D 点</strong>。</p></blockquote>
+<h3 id="h10">C-2. 2D → 3D 重建公式</h3>
+<p>对每条曲线所属的草图平面（中心 C、法向 N、U 方向 U），令 V = N × U，则 2D 点 (u, v) 对应</p>
+<pre class="code"><code class="lang-text">P₃D = C + u·Û + v·V̂       （Û、V̂ 均为单位向量）</code></pre>
+<h3 id="h11">C-3. 重建结果</h3>
+<div class="tw"><table><thead><tr><th>指标</th><th>值</th></tr></thead><tbody><tr><td>提取到的 2D 端点</td><td>171 个</td></tr><tr><td>去重后唯一 3D 点</td><td>62 个</td></tr><tr><td>线段</td><td>84 条</td></tr></tbody></table></div>
+<p><strong>线段长度谱（按长度排序）</strong></p>
+<div class="tw"><table><thead><tr><th>长度</th><th>条数</th><th>含义</th></tr></thead><tbody><tr><td>0.000320</td><td>1</td><td>构造线</td></tr><tr><td>0.000369</td><td>3</td><td>= 内棱 × 1/4</td></tr><tr><td>0.000622</td><td>1</td><td>构造线</td></tr><tr><td>0.001195</td><td>1</td><td>构造线</td></tr><tr><td>0.001430</td><td>2</td><td>构造线</td></tr><tr><td>0.001450</td><td>1</td><td>构造线</td></tr><tr><td>0.001464</td><td>3</td><td>内棱的邻近量</td></tr><tr><td><strong>0.0014718626</strong></td><td><strong>6</strong></td><td><strong>内倒四面体的 6 条棱（严格等长）</strong></td></tr><tr><td>0.001866</td><td>3</td><td>构造线</td></tr><tr><td>0.002146</td><td>1</td><td>构造线</td></tr><tr><td>0.002476</td><td>3</td><td>构造线</td></tr><tr><td>0.010206</td><td>1</td><td>= 0.05 × √6/12 → <strong>内切球半径</strong></td></tr><tr><td><strong>0.030000</strong></td><td>18</td><td>3-4-5 的「勾三」（×0.01）</td></tr><tr><td>0.030619</td><td>4</td><td>= 0.05 × √6/4 → <strong>外接球半径</strong></td></tr><tr><td>0.036742</td><td>7</td><td>= 0.9 × 高（立体构造线）</td></tr><tr><td><strong>0.040000</strong></td><td>14</td><td>3-4-5 的「股四」（×0.01）</td></tr><tr><td>0.040297</td><td>1</td><td>斜向测量线</td></tr><tr><td><strong>0.050000</strong></td><td>13</td><td>3-4-5 的「弦五」= <strong>外四面体棱长</strong></td></tr><tr><td><strong>14.718626</strong></td><td>1</td><td>= 0.0014718626 × 10⁴（内棱放大 10⁴ 倍的副本）</td></tr></tbody></table></div>
+<h3 id="h12">C-4. 模型坐标单位鉴定</h3>
+<p>image3 显示 Shapr3D 的测量面板读数是 <strong>14,718.6258 毫米</strong>，而数据库中同一条线段反解长度为 <strong>14.718626</strong>。</p>
+<pre class="code"><code class="lang-text">14718.6258 mm ÷ 14.718626 = 1000.0  ⇒  模型单位 = 米（1 单位 = 1000 mm）</code></pre>
+<p>于是：</p>
+<div class="tw"><table><thead><tr><th>模型值（米）</th><th>换算 mm</th><th>与文档对照</th></tr></thead><tbody><tr><td>外四面体棱长 0.050000</td><td><strong>50 mm</strong></td><td>文档「棱长为 50」✔</td></tr><tr><td>内倒四面体棱长 0.0014718626</td><td><strong>1.4718626 mm</strong></td><td>文档「小棱长为 1.4719」✔</td></tr><tr><td>放大副本 14.718626</td><td><strong>14718.626 mm</strong></td><td>文档实测 14718.6258 ✔</td></tr><tr><td>外接球半径 0.030619</td><td>30.619 mm → 2R = 61.237 mm</td><td>文档实测 61.2372 ✔</td></tr></tbody></table></div>
+<h3 id="h13">C-5. 核心比值（模型独立验证）</h3>
+<pre class="code"><code class="lang-text">b / a = 0.0014718626 / 0.0500000 = 0.0294372515
+(√2 − 1)⁴                        = 0.0294372515</code></pre>
+<p><strong>吻合</strong>。且模型里<strong>内倒四面体的 6 条棱长度严格相等</strong>（0.0014718626 × 6），说明反解出的几何确实是「正」的倒四面体，而非测量噪声。</p>
+<h3 id="h14">C-6. 关于「放大 1000 倍」的更正</h3>
+<p>文档第 ⑨ 段写「之后把棱长放大 1000 倍」，但按 ⑪ 段的算式反推：</p>
+<pre class="code"><code class="lang-text">大棱长 50 mm  → 500000 mm   倍率 = 10⁴
+小棱长 1.4718626 mm → 14718.626 mm   倍率 = 10⁴</code></pre>
+<p>两处倍率一致为 <strong>10⁴</strong>（而非 10³）。这不影响比值结论（分子分母同时放大，比值不变），但笔记中记为 ×10⁴ 更准确。</p>
+<hr>
+<h2 id="h15">D. 三条独立数据链的闭合</h2>
+<div class="tw"><table><thead><tr><th>链</th><th>数据来源</th><th>得到 a/b</th></tr></thead><tbody><tr><td>文档实测</td><td>500000 / 14718.6258</td><td>33.970563</td></tr><tr><td>模型反解</td><td>0.0500000 / 0.0014718626</td><td>33.9705627</td></tr><tr><td>理论闭式</td><td>(1+√2)⁴ = 17 + 12√2</td><td>33.9705627</td></tr></tbody></table></div>
+<p>三条链互相独立（一条来自人工读数、一条来自文件解析、一条来自纯数学），结果一致 → 结论可靠。</p>
+<hr>
+<h2 id="h16">E. 待办与延伸</h2>
+<ol>
+<li><strong>网页分镜节奏</strong>可进一步对齐 image10 的四分镜（弦图 → 弦五升维 → 勾三股四叠加 → 内脉显形）。</li>
+<li><strong>34.0222 分支</strong>（image7 的「×4 ≈ 137 ≈ 1/精细结构常数」）与主结论 33.9705627 相差 5.2e-2，<p>文档已自行否决；可作为「探索性支线」单独归档，不影响主定理。</p></li>
+<li><strong>文化联想线</strong>（image9 的 Kathara 45°/90° 螺旋、image11 的六十进制）属于背景素材，<p>若要做成专题，需另起文档。</p></li>
+<li><code>6个子图拼接.jpg</code> 与视频号回放（<code>https://weixin.qq.com/sph/AQlEIqdCSh</code>）无法直接抓取<p>（需登录），演示节奏已按 image10 的分镜重排。</p></li>
+</ol>
+<hr>
+<p><em>本记录由 WorkBuddy 于 2026-10-12 完成。所有「实读」条目均为直接打开原图后所得，未依据文件名或上下文推测。</em></p>
+<div class="foot">
+  <span>源文件 <b>四面体_文档与模型实测记录.md</b></span>
+  <span>正文 4706 字 · 公式 0 处 · 15 节</span>
+  <span>由 <b>_build/md2html.py</b> 从 Markdown 自动生成 · 2026-10-17 09:41</span>
+</div>
+</article>
+</div>
+<div class="mdtip" id="mdTip"></div>
+<button class="top" id="btnTop" title="回到顶部">&#8593;</button>
+<script>
+(function(){
+  var b=document.getElementById('btnBack');
+  if(b) b.addEventListener('click',function(e){
+    e.preventDefault();
+    if(history.length>1){ history.back(); }
+    else { location.href='AAA四面体_主界面.html'; }
+  });
+  /* file:// 下 Chrome 对 .md 的 download 属性不可靠（可能直接导航成乱码），
+     所以本地打开时只弹提示，不跳转；http（预览面板）下照常下载。 */
+  var tip=document.getElementById('mdTip');
+  [].slice.call(document.querySelectorAll('a[download]')).forEach(function(a){
+    a.addEventListener('click',function(e){
+      if(location.protocol==='file:' && tip){
+        e.preventDefault();
+        tip.innerHTML='源文件就在本页同目录：<b>'+a.getAttribute('href')+'</b><br>'
+          +'浏览器直接打开 .md 会乱码，请右键「打开方式」用 Typora / Obsidian 看。';
+        tip.classList.add('on');
+        clearTimeout(tip._t);
+        tip._t=setTimeout(function(){ tip.classList.remove('on'); },3600);
+      }
+    });
+  });
+  var t=document.getElementById('btnTop');
+  if(t){
+    addEventListener('scroll',function(){ t.classList.toggle('on', scrollY>600); },{passive:true});
+    t.addEventListener('click',function(){ scrollTo({top:0,behavior:'smooth'}); });
+  }
+  var links=[].slice.call(document.querySelectorAll('.toc a'));
+  var heads=links.map(function(a){ return document.getElementById(a.getAttribute('href').slice(1)); });
+  if(!heads.length || !('IntersectionObserver' in window)) return;
+  var cur=-1;
+  var io=new IntersectionObserver(function(es){
+    es.forEach(function(en){
+      var i=heads.indexOf(en.target);
+      if(en.isIntersecting && i>=0 && i!==cur){
+        cur=i;
+        links.forEach(function(a){ a.classList.remove('on'); });
+        links[i].classList.add('on');
+      }
+    });
+  },{rootMargin:'-70px 0px -72% 0px'});
+  heads.forEach(function(h){ if(h) io.observe(h); });
+})();
+</script>
+</body>
+</html>

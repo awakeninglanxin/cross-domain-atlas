@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>（超美）多边形可变反射迭代图形 · Iteratively Reflected n-gons</title>
+<style>
+:root{
+  --bg:#0e0c14; --panel:#171426; --panel2:#1d1930; --line:#2c2544;
+  --txt:#e8e4f5; --dim:#9a92b8; --acc:#a97bff; --acc2:#6ee7ff; --warn:#ffcf6b;
+}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{
+  margin:0;background:radial-gradient(1200px 700px at 30% 0%,#1a1530 0%,var(--bg) 60%);
+  color:var(--txt);font:14px/1.5 "Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+}
+header{padding:13px 18px 9px 18px;border-bottom:1px solid #221c38;
+  position:sticky;top:0;z-index:40;background:rgba(14,12,20,.86);backdrop-filter:blur(6px)}
+h1{margin:0;font-size:17px;font-weight:600;letter-spacing:.3px}
+h1 .en{color:var(--dim);font-size:12.5px;font-weight:400;margin-left:8px;letter-spacing:0}
+.sub{margin:3px 0 0;color:var(--dim);font-size:12px}
+
+/* ---------- 播放条 ---------- */
+#transport{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:9px}
+#transport .sp{color:var(--dim);font-size:11.8px}
+#bar{flex:1 1 200px;min-width:150px;height:5px;border-radius:4px;background:#332a52;
+  position:relative;cursor:pointer}
+#barfill{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:4px;
+  background:linear-gradient(90deg,var(--acc),var(--acc2))}
+#tnum{font-family:Consolas,Menlo,monospace;color:var(--acc2);font-size:12px;min-width:52px;text-align:right}
+#gifNote{color:var(--warn);font-size:11.6px;max-width:46ch;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+
+main{padding:14px 374px 46px 16px;transition:padding .22s ease}
+body.off main{padding-right:20px}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(392px,1fr));gap:14px;align-items:start}
+.vc{background:linear-gradient(180deg,var(--panel),#141126);border:1px solid var(--line);
+  border-radius:12px;padding:11px 12px 12px;box-shadow:0 10px 26px rgba(0,0,0,.38)}
+.vc.full{grid-column:1/-1}
+.vc h3{margin:0 0 3px;font-size:13.6px;font-weight:600;color:#e4ddf6;display:flex;
+  align-items:center;gap:7px;flex-wrap:wrap}
+.vc h3 .src{font-size:11px;font-weight:400;color:var(--dim)}
+.vc .cap{margin:0 0 8px;font-size:11.6px;color:#8f87ab;line-height:1.5}
+.cvs{display:grid;gap:8px}
+.cvs.two{grid-template-columns:1fr 1fr}
+.cvn{font-size:11.2px;color:var(--dim);margin:0 0 3px;display:flex;justify-content:space-between}
+.cvn b{color:var(--acc2);font-weight:400;font-family:Consolas,Menlo,monospace}
+canvas{display:block;width:100%;background:#fff;border-radius:8px;
+  box-shadow:0 4px 14px rgba(0,0,0,.4)}
+canvas.r54{aspect-ratio:500/400}
+.eq{margin:9px 0 0;font-size:11.6px;font-family:Consolas,Menlo,monospace;color:#c9c1e6;
+  background:#120f20;border:1px solid #2a2342;border-radius:8px;padding:7px 9px;
+  white-space:pre-wrap;line-height:1.75}
+.eq b{font-weight:600;color:#d9c9ff}
+.mini{display:grid;grid-template-columns:auto auto auto auto;gap:2px 10px;font-size:11.5px;
+  font-family:Consolas,Menlo,monospace;margin-top:8px}
+.mini .k{color:var(--dim)}
+.mini .v{color:var(--acc2)}
+.mini .v.big{color:#ffd98a}
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:11.4px;color:var(--dim)}
+.legend i{display:inline-block;width:22px;height:3px;border-radius:2px;margin-right:5px;
+  vertical-align:middle}
+
+/* ---------- 右侧浮窗 ---------- */
+.panel{position:fixed;top:12px;right:12px;width:352px;max-height:calc(100vh - 24px);
+  overflow-y:auto;overflow-x:hidden;padding:11px;z-index:50;
+  background:linear-gradient(180deg,var(--panel),#141126);
+  border:1px solid var(--line);border-radius:13px;
+  box-shadow:0 16px 40px rgba(0,0,0,.55);
+  transition:transform .22s ease,opacity .22s ease}
+body.off .panel{transform:translateX(calc(100% + 26px));opacity:0;pointer-events:none}
+.panel::-webkit-scrollbar{width:9px}
+.panel::-webkit-scrollbar-thumb{background:#372a58;border-radius:9px}
+.panel::-webkit-scrollbar-track{background:transparent}
+.panel h2{margin:0 0 8px;font-size:12.5px;cursor:pointer;user-select:none;
+  display:flex;align-items:center;gap:6px;color:#cfc6ea}
+.panel h2::after{content:"\25BE";color:var(--dim);font-size:10px;transition:transform .18s}
+.panel h2 .badge{margin-left:auto;font-size:10.5px;font-weight:400;color:var(--dim);
+  font-family:Consolas,Menlo,monospace}
+.card{background:var(--panel2);border:1px solid #251f3c;border-radius:10px;
+  padding:9px 11px;margin-bottom:8px}
+.card.fold h2{margin-bottom:0}
+.card.fold h2::after{transform:rotate(-90deg)}
+.card.fold > *:not(h2){display:none}
+
+#ptoggle{position:fixed;top:50%;right:374px;transform:translateY(-50%);z-index:60;
+  width:26px;height:52px;border-radius:9px 0 0 9px;cursor:pointer;
+  background:var(--panel);border:1px solid var(--line);border-right:none;
+  color:var(--acc);font-size:13px;line-height:1;transition:right .22s ease}
+body.off #ptoggle{right:0}
+#ptoggle:hover{color:#fff;background:#221c3a}
+
+/* ---------- 控件 ---------- */
+.row{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.grow{display:grid;grid-template-columns:104px 1fr 62px;gap:7px;align-items:center;margin:7px 0}
+.grow .nm{color:var(--dim);font-size:12px;white-space:nowrap;display:flex;align-items:center;gap:5px}
+.grow.dis .nm{opacity:.42}
+.grow.dis input[type=range]{opacity:.35;pointer-events:none}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:3px;
+  background:#332a52;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;
+  background:var(--acc);border:2px solid #241c3d;cursor:pointer;
+  box-shadow:0 0 0 3px rgba(169,123,255,.18)}
+input[type=number]{width:100%;padding:3px 5px;font:12.5px/1.3 Consolas,Menlo,monospace;
+  color:var(--txt);background:#120f20;border:1px solid #332a52;border-radius:6px;text-align:right}
+input[type=number]:focus{border-color:var(--acc);background:#171331}
+select{padding:3px 7px;font-size:12.2px;color:var(--txt);background:#120f20;
+  border:1px solid #332a52;border-radius:7px;cursor:pointer;outline:none}
+select:focus{border-color:var(--acc)}
+button{padding:4px 9px;font-size:12.2px;color:var(--txt);cursor:pointer;
+  background:#241d3c;border:1px solid #332a52;border-radius:7px;transition:.14s}
+button:hover{background:#2f2650;border-color:#4a3d75}
+button.on{background:linear-gradient(180deg,#6d43c9,#5a34ab);border-color:#8b63e0;color:#fff}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.gg{padding:3px 7px;font-size:11.6px}
+label.nm{color:var(--dim);font-size:12.2px;display:inline-flex;align-items:center;gap:5px;cursor:pointer}
+input[type=checkbox]{accent-color:var(--acc);width:14px;height:14px;cursor:pointer}
+
+.read{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:12.3px;margin:0}
+.read dt{color:var(--dim);white-space:nowrap}
+.read dd{margin:0;font-family:Consolas,Menlo,monospace;color:var(--acc2)}
+.note{font-size:11.6px;line-height:1.65;color:#a49cc0;margin:7px 0 0}
+.note code{color:#cbb6ff;background:#221b3a;padding:0 4px;border-radius:4px;
+  font-family:Consolas,Menlo,monospace;font-size:11.3px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>（超美）多边形可变反射迭代图形<span class="en">Iteratively Reflected n-gons</span></h1>
+  <p class="sub">把多边形的每一条边都当成镜子，把整个多边形照过去；新得到的每条边又都是镜子，如此反复迭代 —— 铺出来的就是这种近乎分形的对称网格。<b>o 是迭代层数，每多一层，条数就乘以 2n。</b></p>
+  <div id="transport">
+    <button id="bGif" title="按 τ 扫一整圈，把主视窗的两种动态（逐代渐显 / α 扫描）各存成一张高清 GIF，单张控制在 5 MB 以内">🎞 导出全部 GIF</button>
+    <button id="bPng" class="gg" title="把主视窗与 4 张逐代分解图各存一张 PNG">🖼 存 PNG</button>
+    <button id="bPlay">▶ 播放</button>
+    <button id="bReset">⟲ 复位</button>
+    <button id="bLoop" class="on">🔁 循环</button>
+    <label class="nm">动画
+      <select id="selMode">
+        <option value="gen">逐代渐显</option>
+        <option value="alpha">α 扫描</option>
+      </select>
+    </label>
+    <span class="sp">速度</span>
+    <input type="range" id="sSpd" min="0.1" max="3" step="0.1" value="1" style="width:88px">
+    <div id="bar"><div id="barfill"></div></div>
+    <span id="tnum">1.000</span>
+    <span id="gifNote"></span>
+  </div>
+</header>
+
+<main>
+  <div class="grid">
+
+    <div class="vc full" id="cardMain">
+      <h3>主视窗 · 完整迭代图<span class="src">nb: iteratedReflectedGraphics[o, n, α, pl]</span></h3>
+      <p class="cap">原版的 <code>ImageSize-&gt;{500,400}</code>、<code>ImagePadding-&gt;{{20,20},{20,20}}</code> 与分轴独立的 <code>PlotRange</code> 都按原样复刻，所以画面比例与原版一致。图层顺序也照抄：<b>祖先画在最上层</b>，后代压在底下。</p>
+      <canvas id="cvMain" class="r54"></canvas>
+      <div class="legend" id="lgMain"></div>
+      <div class="mini" id="mMain"></div>
+    </div>
+
+    <div class="vc" id="cardDec">
+      <h3>逐代分解<span class="src">NestList 的每一代单独看</span></h3>
+      <p class="cap">第 g 代恰好有 <code>(2n)<sup>g</sup></code> 条折线。每格按自身范围自适应缩放，看得清每一层的形状。</p>
+      <div class="cvs two">
+        <div><p class="cvn"><span>第 0 代 · 初始</span><b id="nd0">—</b></p><canvas id="cvG0" class="r54"></canvas></div>
+        <div><p class="cvn"><span>第 1 代</span><b id="nd1">—</b></p><canvas id="cvG1" class="r54"></canvas></div>
+        <div><p class="cvn"><span>第 2 代</span><b id="nd2">—</b></p><canvas id="cvG2" class="r54"></canvas></div>
+        <div><p class="cvn"><span>第 3 代</span><b id="nd3">—</b></p><canvas id="cvG3" class="r54"></canvas></div>
+      </div>
+    </div>
+
+    <div class="vc" id="cardInfo">
+      <h3>原理<span class="src">四段定义 + 一个等距变换的事实</span></h3>
+      <p class="cap">整个 nb 只有四段代码，全部逐字复刻。</p>
+      <div class="eq" id="eqBox"></div>
+      <p class="note" id="eqNote"></p>
+    </div>
+
+  </div>
+</main>
+
+<aside class="panel" id="panel">
+  <h2>⚙ 参数<span class="badge" id="pbadge"></span></h2>
+
+  <div class="card" id="cardGeo">
+    <h2>① 几何参数</h2>
+    <div class="grow" id="rowN">
+      <span class="nm">n 半边数</span>
+      <input type="range" id="sN" min="2" max="12" step="1" value="5">
+      <input type="number" id="vN" min="2" max="12" step="1" value="5">
+    </div>
+    <p class="note">初始多边形有 <code>2n</code> 个顶点，角度 <code>kπ/n</code>。原版 <code>n ∈ [2,12]</code>。</p>
+    <div class="grow" id="rowA">
+      <span class="nm">α 内外半径比</span>
+      <input type="range" id="sA" min="-2" max="2" step="0.001" value="1.385">
+      <input type="number" id="vA" min="-2" max="2" step="0.001" value="1.385">
+    </div>
+    <p class="note">偶数顶点半径恒为 1，奇数顶点半径为 α。<br>
+      <code>α = 1</code> → 正 2n 边形；<code>|α| &lt; 1</code> → 内凹锯齿星；<code>α &lt; 0</code> → 内外反相。原版默认 <code>1.385</code>。</p>
+    <div class="grow" id="rowO">
+      <span class="nm">o 迭代层数</span>
+      <input type="range" id="sO" min="0" max="3" step="1" value="2">
+      <input type="number" id="vO" min="0" max="3" step="1" value="2">
+    </div>
+    <p class="note">原版 <code>o ∈ [0,3]</code>，步长 1。条数按 <code>(2n)<sup>o</sup></code> 爆炸：n=12、o=3 就是 <b>14 425 条</b>。</p>
+    <div class="row">
+      <button class="gg" data-preset="orig">原版默认</button>
+      <button class="gg" data-preset="poly">正多边形 α=1</button>
+      <button class="gg" data-preset="star">深星形 α=0.35</button>
+      <button class="gg" data-preset="neg">负 α=−0.6</button>
+      <button class="gg" data-preset="big">大 n=12</button>
+      <button class="gg" data-preset="deep">深迭代 o=3</button>
+    </div>
+  </div>
+
+  <div class="card" id="cardDisp">
+    <h2>② 显示</h2>
+    <div class="row" id="segPl" style="margin:7px 0">
+      <span class="nm" style="font-size:12px;color:var(--dim)">图元 <code>pl</code></span>
+      <button class="gg on" data-pl="line">线 Line</button>
+      <button class="gg" data-pl="polygon">面 Polygon</button>
+    </div>
+    <div class="grow" id="rowOp">
+      <span class="nm">不透明度</span>
+      <input type="range" id="sOp" min="0.05" max="1" step="0.01" value="0.5">
+      <input type="number" id="vOp" min="0.05" max="1" step="0.01" value="0.5">
+    </div>
+    <p class="note">原版 <code>ControlActive[Opacity[1],Opacity[.5]]</code>：拖动时 1、静止时 0.5。这里放成滑条。</p>
+    <div class="grow" id="rowLw">
+      <span class="nm">线宽倍率</span>
+      <input type="range" id="sLw" min="0.2" max="3" step="0.05" value="1">
+      <input type="number" id="vLw" min="0.2" max="3" step="0.05" value="1">
+    </div>
+    <p class="note">原版 <code>Thickness[(o+2−k)·0.005]</code>：<b>祖先粗、后代细</b>。这里是整体倍率。</p>
+    <div class="row" style="margin:7px 0">
+      <span class="nm" style="font-size:12px;color:var(--dim)">图层</span>
+      <span id="segLy" style="display:flex;gap:5px;flex-wrap:wrap"></span>
+    </div>
+    <div class="row">
+      <label class="nm"><input type="checkbox" id="ckFrame">画 PlotRange 框</label>
+      <label class="nm"><input type="checkbox" id="ckAxes">坐标轴</label>
+    </div>
+    <p class="note">这两个都是原版没有的辅助开关，默认关，不影响复刻效果。</p>
+  </div>
+
+  <div class="card" id="cardPlay">
+    <h2>③ 动画</h2>
+    <div class="row">
+      <span class="nm" style="font-size:12px;color:var(--dim)">τ</span>
+      <input type="range" id="sTau" min="0" max="1" step="0.001" value="1" style="flex:1 1 120px">
+      <input type="number" id="vTau" min="0" max="1" step="0.001" value="1">
+    </div>
+    <p class="note" id="tauNote"></p>
+    <div class="row" style="margin-top:6px">
+      <button class="gg" id="bFrames24">24 帧</button>
+      <button class="gg" id="bFrames30">30 帧</button>
+      <button class="gg" id="bFrames40">40 帧</button>
+      <span class="sp" style="color:var(--dim);font-size:11.6px">GIF 帧数</span>
+    </div>
+  </div>
+
+  <div class="card" id="cardRead">
+    <h2>④ 读数</h2>
+    <dl class="read" id="rdBox"></dl>
+  </div>
+
+  <div class="card" id="cardTip">
+    <h2>⑤ 怎么看这张图</h2>
+    <p class="note">· <b>o=0</b> 时只有初始多边形本身（2n 边形）；<b>o=1</b> 时每一层边都往外/内照出一份完整的多边形，共 2n 份 —— 像一圈「花瓣」。<br>
+      · <b>o 越大</b>，越往外的复制品越多，密集到一定程度就出现「网格/分形」质感，这正是所谓「超美」。<br>
+      · <b>α 控制初始多边形的凹凸</b>：<code>α=1</code> 是正多边形，往外照出的是一圈规整花瓣；<code>α≠1</code> 时锯齿会让反射图出现错落的斜向条纹。<br>
+      · 想看清某一代，把「图层」里其它代关掉，或直接看左下「逐代分解」。<br>
+      · 拖到 <b>n=12、o=3</b> 是这张图最壮观的样子（14 425 条线）。</p>
+  </div>
+
+  <div class="card fold" id="cardTick">
+    <h2>⑥ 与 nb 的对照</h2>
+    <p class="note">本页逐字复刻四段定义：<code>reflectLine</code>、<code>initialSquenchednGon</code>、<code>reflectAll</code>、<code>iteratedReflectedGraphics</code>。参数范围、默认值、配色 <code>Hue[0.8(k−1)/o]</code>、线宽 <code>Thickness[(o+2−k)·0.005]</code>、<code>ImageSize</code>/<code>ImagePadding</code>/<code>PlotRange</code> 全部照抄。<br>
+      <b>新增的只有</b>：渐显动画、α 扫描动画、图层开关、GIF/PNG 导出 —— 都是原版没有的交互层，不改数学。</p>
+  </div>
+</aside>
+
+<button id="ptoggle">❯</button>
+
+<script>
+
+/* =================================================================
+   （超美）多边形可变反射迭代图形 · Iteratively Reflected n-gons
+   源 nb：Mathematica 6.0 演示，四段定义
+     reflectLine / initialSquenchednGon / reflectAll / iteratedReflectedGraphics
+   本文件逐字复刻其数学与视觉，另加交互层（渐显 / α 扫描 / 图层 / 导出）。
+   ================================================================= */
+'use strict';
+
+/* ---------------------------------------------------------------- 0. 常量 */
+var NB = {
+  IMG_W: 500, IMG_H: 400,     /* nb: ImageSize -> {500,400} */
+  PAD: 20,                    /* nb: ImagePadding -> {{20,20},{20,20}} */
+  O_MAX: 3, N_MIN: 2, N_MAX: 12,
+  A_MIN: -2, A_MAX: 2, A_DEF: 1.385
+};
+var LIM = { n: [2, 12], a: [-2, 2], o: [0, 3], op: [0.05, 1], lw: [0.2, 3], tau: [0, 1] };
+
+/* ---------------------------------------------------------------- 1. 状态 */
+function defState() {
+  return {
+    n: 5, alpha: NB.A_DEF, o: 2,
+    tau: 1,                       /* 1 = 完整图（开屏）；0 = 动画起点 */
+    mode: 'gen',                  /* 'gen' 逐代渐显 | 'alpha' α 扫描 */
+    pl: 'line',                   /* nb 的 pl：Line | Polygon */
+    opacity: 0.5,                 /* nb: ControlActive[Opacity[1],Opacity[.5]] 的静止值 */
+    lwScale: 1,
+    layers: [1, 1, 1],            /* 各代开关，长度 = o+1 */
+    frame: false, axes: false,
+    playing: false, loop: true, speed: 1,
+    frames: 30,                   /* GIF 帧数 */
+    alphaSaved: undefined
+  };
+}
+var S = defState();
+
+/* ---------------------------------------------------------------- 2. 数学核 */
+
+/* initialSquenchednGon[n,α]：k 偶半径 1、k 奇半径 α，角度 kπ/n，k = 0..2n */
+function initGon(n, a) {
+  var nP = 2 * n + 1, P = new Float64Array(nP * 2), k;
+  for (k = 0; k < nP; k++) {
+    var r = (k & 1) ? a : 1;
+    var th = k * Math.PI / n;
+    P[2 * k] = r * Math.cos(th);
+    P[2 * k + 1] = r * Math.sin(th);
+  }
+  return P;
+}
+
+/* 关于过 p1、p2 的直线的镜像，写成仿射 (A|b)：x -> A·x + b
+     dir = Normalize[p2-p1];  nor = Reverse[dir]·{-1,1} = (-dir_y, dir_x)
+     A = I - 2·nor·norᵀ       b = 2·(p1·nor)·nor
+   与 nb 的逐点写法 p1 + (p-p1) - 2((p-p1)·nor)·nor 完全等价。 */
+function edgeTransforms(n, a) {
+  var P = initGon(n, a), nE = 2 * n, T = new Float64Array(nE * 6), j;
+  for (j = 0; j < nE; j++) {
+    var x1 = P[2 * j], y1 = P[2 * j + 1], x2 = P[2 * j + 2], y2 = P[2 * j + 3];
+    var dx = x2 - x1, dy = y2 - y1;
+    var L = Math.sqrt(dx * dx + dy * dy) || 1;
+    dx /= L; dy /= L;
+    var nx = -dy, ny = dx;
+    var d = x1 * nx + y1 * ny;
+    var o = 6 * j;
+    T[o] = 1 - 2 * nx * nx;
+    T[o + 1] = -2 * nx * ny;
+    T[o + 2] = -2 * ny * nx;
+    T[o + 3] = 1 - 2 * ny * ny;
+    T[o + 4] = 2 * d * nx;
+    T[o + 5] = 2 * d * ny;
+  }
+  return { P: P, T: T, nE: nE };
+}
+
+/* NestList[Flatten[reflectAll /@ #]&, {P}, o]
+   矩阵形式：第 g 代 = 所有 R_{i1}·R_{i2}·…·R_{ig}（右乘新边），作用在 P 上。
+   推导见 ref.py：关于被 R_i 搬过去的轴的反射 = R_i·R_j·R_i⁻¹，
+   作用在 R_i(P) 上就是 R_i·R_j(P)。 */
+function buildGens(n, a, o) {
+  var r = edgeTransforms(n, a), T = r.T, nE = r.nE;
+  var gens = [new Float64Array([1, 0, 0, 1, 0, 0])];
+  for (var g = 1; g <= o; g++) {
+    var prev = gens[g - 1], np = prev.length / 6;
+    var cur = new Float64Array(np * nE * 6), w = 0, i, j;
+    for (i = 0; i < np; i++) {
+      var b0 = 6 * i;
+      var a11 = prev[b0], a12 = prev[b0 + 1], a21 = prev[b0 + 2],
+          a22 = prev[b0 + 3], b1 = prev[b0 + 4], b2 = prev[b0 + 5];
+      for (j = 0; j < nE; j++) {
+        var c0 = 6 * j;
+        var c11 = T[c0], c12 = T[c0 + 1], c21 = T[c0 + 2],
+            c22 = T[c0 + 3], d1 = T[c0 + 4], d2 = T[c0 + 5];
+        cur[w++] = a11 * c11 + a12 * c21;
+        cur[w++] = a11 * c12 + a12 * c22;
+        cur[w++] = a21 * c11 + a22 * c21;
+        cur[w++] = a21 * c12 + a22 * c22;
+        cur[w++] = a11 * d1 + a12 * d2 + b1;
+        cur[w++] = a21 * d1 + a22 * d2 + b2;
+      }
+    }
+    gens.push(cur);
+  }
+  return { P: r.P, gens: gens, nE: nE, nPts: 2 * n + 1 };
+}
+
+/* Mathematica Hue[h]（= Hue[h,1,1]）→ sRGB */
+function hue2rgb(h) {
+  h = h - Math.floor(h);
+  var x = h * 6, i = Math.floor(x) % 6, f = x - Math.floor(x);
+  if (i === 0) return [1, f, 0];
+  if (i === 1) return [1 - f, 1, 0];
+  if (i === 2) return [0, 1, f];
+  if (i === 3) return [0, 1 - f, 1];
+  if (i === 4) return [f, 0, 1];
+  return [1, 0, 1 - f];
+}
+
+/* Hue[0.8(k-1)/Max[o,1]] · Thickness[(o+2-k)·0.005]，k = 1..o+1 */
+function genStyles(o) {
+  var m = Math.max(o, 1), out = [], k;
+  for (k = 1; k <= o + 1; k++) {
+    var hue = 0.8 * (k - 1) / m;
+    out.push({ k: k, hue: hue, rgb: hue2rgb(hue), thickness: (o + 2 - k) * 0.005 });
+  }
+  return out;
+}
+
+function buildModel(n, a, o) {
+  var r = buildGens(n, a, o);
+  var gens = r.gens, P = r.P, nPts = r.nPts;
+  var counts = [], total = 0, gi, i, k;
+  for (gi = 0; gi < gens.length; gi++) {
+    var c = gens[gi].length / 6;
+    counts.push(c);
+    total += c;
+  }
+  /* PlotRange：prs = Max[Abs[#]]& /@ Transpose[所有点]，x/y 分轴独立 */
+  var mx = 0, my = 0, gmx = [], gmy = [];
+  for (gi = 0; gi < gens.length; gi++) {
+    var TG = gens[gi], nL = TG.length / 6, ax = 0, ay = 0;
+    for (i = 0; i < nL; i++) {
+      var b = 6 * i;
+      var a11 = TG[b], a12 = TG[b + 1], a21 = TG[b + 2],
+          a22 = TG[b + 3], b1 = TG[b + 4], b2 = TG[b + 5];
+      for (k = 0; k < nPts; k++) {
+        var x = P[2 * k], y = P[2 * k + 1];
+        var wx = a11 * x + a12 * y + b1, wy = a21 * x + a22 * y + b2;
+        var ux = wx < 0 ? -wx : wx, uy = wy < 0 ? -wy : wy;
+        if (ux > ax) ax = ux;
+        if (uy > ay) ay = uy;
+      }
+    }
+    gmx.push(ax); gmy.push(ay);
+    if (ax > mx) mx = ax;
+    if (ay > my) my = ay;
+  }
+  return {
+    P: P, gens: gens, nPts: nPts, nE: r.nE,
+    counts: counts, total: total, totalPts: total * nPts,
+    mx: mx || 1, my: my || 1, gmx: gmx, gmy: gmy,
+    styles: genStyles(o)
+  };
+}
+
+/* ---------------------------------------------------------------- 3. 模型缓存 */
+var MODEL = null, MODEL_KEY = '';
+
+/* α 扫描模式下真正驱动几何的是随 τ 走的值，而不是滑条上的基准 α */
+function effAlpha() {
+  return (S.mode === 'alpha') ? alphaFromTau(S.tau) : S.alpha;
+}
+
+function ensureModel() {
+  var a = effAlpha();
+  var key = S.n + '|' + a + '|' + S.o;
+  if (key === MODEL_KEY && MODEL) return MODEL;
+  MODEL = buildModel(S.n, a, S.o);
+  MODEL_KEY = key;
+  LY.key = '';                    /* 模型换了 ⇒ 离屏层全部失效 */
+  return MODEL;
+}
+function invalidateModel() { MODEL_KEY = ''; }
+
+/* ---------------------------------------------------------------- 4. 视图 */
+var SIZE = {};                    /* id -> {W,H} */
+
+function measure(id) {
+  var e = document.getElementById(id);
+  if (!e) return null;
+  var r = e.getBoundingClientRect();
+  var W = Math.max(40, Math.round(r.width)), H = Math.max(32, Math.round(r.height));
+  SIZE[id] = { W: W, H: H };
+  return SIZE[id];
+}
+
+function ctxOf(id) {
+  var e = document.getElementById(id);
+  var sz = SIZE[id] || measure(id);
+  var dpr = window.devicePixelRatio || 1;
+  var w = Math.round(sz.W * dpr), h = Math.round(sz.H * dpr);
+  if (e.width !== w || e.height !== h) { e.width = w; e.height = h; }
+  var g = e.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return g;
+}
+
+/* nb 的 PlotRange -> {{-mx,mx},{-my,my}}，x/y 各自独立映射到内容区 */
+function mkMap(W, H, mx, my) {
+  var px = NB.PAD / NB.IMG_W * W, py = NB.PAD / NB.IMG_H * H;
+  var cw = Math.max(1, W - 2 * px), ch = Math.max(1, H - 2 * py);
+  return {
+    W: W, H: H, px: px, py: py,
+    sx: cw / (2 * (mx || 1)), sy: ch / (2 * (my || 1)),
+    c0: W / 2, c1: H / 2
+  };
+}
+
+function rgbaOf(col, alpha) {
+  return 'rgba(' + Math.round(col[0] * 255) + ',' + Math.round(col[1] * 255) +
+         ',' + Math.round(col[2] * 255) + ',' + alpha + ')';
+}
+
+/* 把第 gi 代画到 g 上（逐条 stroke —— 同代内保持半透明叠加，
+   这样静止图与 nb 的 Graphics 完全一致） */
+function paintGen(g, model, gi, map, alpha) {
+  if (alpha <= 0.003) return;
+  var TG = model.gens[gi], nL = TG.length / 6, P = model.P, nPts = model.nPts;
+  var st = model.styles[gi];
+  var col = rgbaOf(st.rgb, alpha);
+  var lw = st.thickness * map.W * S.lwScale;
+  if (lw < 0.35) lw = 0.35;
+  var fill = (S.pl === 'polygon');
+  var c0 = map.c0, c1 = map.c1, sx = map.sx, sy = map.sy;
+  g.lineWidth = lw; g.lineJoin = 'round'; g.lineCap = 'round';
+  g.strokeStyle = col; g.fillStyle = col;
+  for (var i = 0; i < nL; i++) {
+    var b = 6 * i;
+    var a11 = TG[b], a12 = TG[b + 1], a21 = TG[b + 2],
+        a22 = TG[b + 3], b1 = TG[b + 4], b2 = TG[b + 5];
+    g.beginPath();
+    for (var k = 0; k < nPts; k++) {
+      var x = P[2 * k], y = P[2 * k + 1];
+      var wx = a11 * x + a12 * y + b1, wy = a21 * x + a22 * y + b2;
+      var px = c0 + wx * sx, py = c1 - wy * sy;
+      if (k === 0) g.moveTo(px, py); else g.lineTo(px, py);
+    }
+    if (fill) { g.closePath(); g.fill(); }
+    g.stroke();
+  }
+}
+
+/* 整图直画（后代在下、祖先在上 —— 照抄 nb 的 Reverse@MapIndexed 顺序） */
+function paintAll(g, model, map, alphaOf) {
+  for (var gi = S.o; gi >= 0; gi--) {
+    if (!S.layers[gi]) continue;
+    paintGen(g, model, gi, map, S.opacity * alphaOf(gi));
+  }
+}
+
+/* ---------------------------------------------------------------- 5. 离屏层（τ 动画专用缓存） */
+var LY = { el: [], key: '' };
+
+function buildLayers(model, W, H, map) {
+  var key = [W, H, S.n, effAlpha(), S.o, S.pl, S.opacity, S.lwScale].join('|');
+  if (LY.key === key) return;
+  LY.key = key;
+  var dpr = Math.min(2, window.devicePixelRatio || 1);
+  for (var gi = 0; gi <= S.o; gi++) {
+    var c = LY.el[gi];
+    if (!c) { c = document.createElement('canvas'); LY.el[gi] = c; }
+    c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
+    var g = c.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, W, H);
+    paintGen(g, model, gi, map, S.opacity);   /* 层内只含 opacity，渐显交给合成 */
+  }
+  LY.dpr = dpr;
+}
+
+function genAlpha(gi) {
+  if (S.mode !== 'gen') return 1;
+  var u = S.tau * (S.o + 1);
+  var a = u - gi + 1;
+  return a <= 0 ? 0 : (a >= 1 ? 1 : a);
+}
+function genAlphaAt(tau, gi, o) {
+  var u = tau * (o + 1);
+  var a = u - gi + 1;
+  return a <= 0 ? 0 : (a >= 1 ? 1 : a);
+}
+function alphaFromTau(tau) {
+  var tri = 1 - Math.abs(2 * tau - 1);            /* 0 → 1 → 0，来回扫 */
+  return NB.A_MIN + (NB.A_MAX - NB.A_MIN) * tri;
+}
+
+/* ---------------------------------------------------------------- 6. 绘制 */
+function drawAxesOn(g, map, model) {
+  var x0 = map.c0 - model.mx * map.sx, x1 = map.c0 + model.mx * map.sx;
+  var y0 = map.c1 + model.my * map.sy, y1 = map.c1 - model.my * map.sy;
+  g.save();
+  g.strokeStyle = '#c9c2dd'; g.lineWidth = 0.9;
+  g.setLineDash([3, 3]);
+  g.beginPath();
+  g.moveTo(x0, map.c1); g.lineTo(x1, map.c1);
+  g.moveTo(map.c0, y0); g.lineTo(map.c0, y1);
+  g.stroke();
+  g.setLineDash([]);
+  g.fillStyle = '#9a92b8'; g.font = '10px Consolas,monospace';
+  g.textAlign = 'center'; g.textBaseline = 'top';
+  var st = niceStep(model.mx / 3);
+  for (var v = -Math.floor(model.mx / st) * st; v <= model.mx; v += st) {
+    var px = map.c0 + v * map.sx;
+    if (px < x0 - 1 || px > x1 + 1) continue;
+    g.fillText(fmtTick(v), px, map.c1 + 3);
+  }
+  g.restore();
+}
+function niceStep(span) {
+  var p = Math.pow(10, Math.floor(Math.log(span) / Math.LN10));
+  var r = span / p;
+  return (r <= 1 ? 1 : r <= 2 ? 2 : r <= 5 ? 5 : 10) * p;
+}
+function fmtTick(v) {
+  var s = Math.abs(v) < 1e-9 ? '0' : (Math.round(v * 1000) / 1000).toString();
+  return s;
+}
+
+function drawMain(model) {
+  var g = ctxOf('cvMain');
+  var sz = SIZE.cvMain;
+  var map = mkMap(sz.W, sz.H, model.mx, model.my);
+  g.clearRect(0, 0, sz.W, sz.H);
+  g.fillStyle = '#ffffff';
+  g.fillRect(0, 0, sz.W, sz.H);
+
+  if (S.mode === 'gen') {
+    buildLayers(model, sz.W, sz.H, map);
+    for (var gi = S.o; gi >= 0; gi--) {
+      if (!S.layers[gi]) continue;
+      var a = genAlpha(gi);
+      if (a <= 0.003) continue;
+      g.globalAlpha = a;
+      g.drawImage(LY.el[gi], 0, 0, sz.W, sz.H);
+    }
+    g.globalAlpha = 1;
+  } else {
+    paintAll(g, model, map, function () { return 1; });
+  }
+
+  if (S.frame) {
+    g.save();
+    g.strokeStyle = '#eceaf4'; g.lineWidth = 1;
+    g.strokeRect(map.px, map.py, sz.W - 2 * map.px, sz.H - 2 * map.py);
+    g.restore();
+  }
+  if (S.axes) drawAxesOn(g, map, model);
+}
+
+/* 逐代分解：每代按自身范围自适应，条数过多时均匀抽样 */
+var DEC_MAX = 900;
+
+function drawDecomp(model) {
+  for (var gi = 0; gi <= NB.O_MAX; gi++) {
+    var id = 'cvG' + gi;
+    var wrap = document.getElementById(id);
+    if (!wrap) continue;
+    var box = wrap.parentNode;
+    if (gi > S.o) { if (box) box.style.display = 'none'; continue; }
+    if (box) box.style.display = '';
+
+    var g = ctxOf(id), sz = SIZE[id];
+    if (!sz) continue;
+    var map = mkMap(sz.W, sz.H, model.gmx[gi] || 1, model.gmy[gi] || 1);
+    g.clearRect(0, 0, sz.W, sz.H);
+    g.fillStyle = '#ffffff';
+    g.fillRect(0, 0, sz.W, sz.H);
+
+    var nL = model.gens[gi].length / 6;
+    if (nL <= DEC_MAX) {
+      paintGen(g, model, gi, map, 1);
+    } else {
+      /* 抽样：只画均匀分布的一批，够看清形状 */
+      var step = Math.ceil(nL / DEC_MAX);
+      var sub = { P: model.P, gens: [], nPts: model.nPts, styles: model.styles };
+      sub.gens[gi] = pickSubset(model.gens[gi], step);
+      paintGen(g, sub, gi, map, 1);
+    }
+  }
+}
+
+function pickSubset(T, step) {
+  var nL = T.length / 6, m = Math.ceil(nL / step), out = new Float64Array(m * 6), w = 0;
+  for (var i = 0; i < nL; i += step) {
+    for (var j = 0; j < 6; j++) out[w++] = T[6 * i + j];
+  }
+  return out.subarray(0, w);
+}
+
+/* ---------------------------------------------------------------- 7. 读数 */
+function fmtInt(v) {
+  return String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+}
+
+function refreshReadouts(model) {
+  var gi, rows = '';
+  for (gi = 0; gi <= S.o; gi++) {
+    rows += '<dt>第 ' + gi + ' 代</dt><dd>' + fmtInt(model.counts[gi]) + ' 条</dd>';
+  }
+  rows += '<dt>合计折线</dt><dd>' + fmtInt(model.total) + ' 条</dd>';
+  rows += '<dt>总点数</dt><dd>' + fmtInt(model.totalPts) + '</dd>';
+  rows += '<dt>每条点数</dt><dd>2n+1 = ' + model.nPts + '</dd>';
+  rows += '<dt>视窗 x</dt><dd>±' + model.mx.toFixed(4) + '</dd>';
+  rows += '<dt>视窗 y</dt><dd>±' + model.my.toFixed(4) + '</dd>';
+  rows += '<dt>当前 α</dt><dd>' + effAlpha().toFixed(3) + '</dd>';
+  var rb = document.getElementById('rdBox');
+  if (rb) rb.innerHTML = rows;
+
+  var badge = document.getElementById('pbadge');
+  if (badge) badge.textContent = 'n=' + S.n + ' · α=' + effAlpha().toFixed(3) + ' · o=' + S.o;
+
+  /* 主图图例 */
+  var lg = document.getElementById('lgMain');
+  if (lg) {
+    var h = '';
+    for (gi = 0; gi <= S.o; gi++) {
+      var st = model.styles[gi];
+      var hex = 'rgb(' + Math.round(st.rgb[0] * 255) + ',' +
+                Math.round(st.rgb[1] * 255) + ',' + Math.round(st.rgb[2] * 255) + ')';
+      h += '<span><i style="background:' + hex + '"></i>第 ' + gi + ' 代 · ' +
+           fmtInt(model.counts[gi]) + ' 条 · Hue[' + st.hue.toFixed(3) + ']</span>';
+    }
+    lg.innerHTML = h;
+  }
+
+  /* 分解图标签 */
+  for (gi = 0; gi <= NB.O_MAX; gi++) {
+    var e = document.getElementById('nd' + gi);
+    if (!e) continue;
+    e.textContent = (gi <= S.o) ? (fmtInt(model.counts[gi]) + ' 条') : '—';
+  }
+
+  /* 主图 mini 表 */
+  var mm = document.getElementById('mMain');
+  if (mm) {
+    var sz = SIZE.cvMain || { W: 1 };
+    var rows2 = [['初始多边形', (2 * S.n + 1) + ' 点'],
+                 ['合计折线', fmtInt(model.total) + ' 条'],
+                 ['总点数', fmtInt(model.totalPts)],
+                 ['视窗半宽', 'x ±' + model.mx.toFixed(3)],
+                 ['视窗半高', 'y ±' + model.my.toFixed(3)],
+                 ['水平缩放', (map_sx(model, sz.W)).toFixed(1) + ' px/单位'],
+                 ['垂直缩放', (map_sy(model, sz.H)).toFixed(1) + ' px/单位'],
+                 ['每代倍率', '2n = ' + (2 * S.n) + '']];
+    var hh = '';
+    for (var q = 0; q < rows2.length; q++) {
+      hh += '<span class="k">' + rows2[q][0] + '</span><span class="v">' + rows2[q][1] + '</span>';
+    }
+    mm.innerHTML = hh;
+  }
+}
+function map_sx(model, W) { return mkMap(W, W * 0.8, model.mx, model.my).sx; }
+function map_sy(model, H) { return mkMap(H / 0.8, H, model.mx, model.my).sy; }
+
+/* ---------------------------------------------------------------- 8. 主循环 */
+var dirty = true, rafId = 0, lastTs = 0;
+function invalidate() { dirty = true; }
+
+function render() {
+  var model = ensureModel();
+  drawMain(model);
+  drawDecomp(model);
+  refreshReadouts(model);
+  dirty = false;
+}
+
+function frame(ts) {
+  rafId = requestAnimationFrame(frame);
+  var dt = lastTs ? Math.min(0.05, (ts - lastTs) / 1000) : 0;
+  lastTs = ts;
+  if (S.playing) stepBy(dt);
+  if (dirty) render();
+}
+
+function stepBy(dt) {
+  S.tau += dt * 0.30 * S.speed;
+  if (S.tau >= 1) {
+    if (S.loop) S.tau -= Math.floor(S.tau);
+    else { S.tau = 1; S.playing = false; }
+  }
+  applyTau();
+  invalidate();
+}
+
+function applyTau() {
+  var s = document.getElementById('sTau'), v = document.getElementById('vTau');
+  if (s) s.value = S.tau;
+  if (v) v.value = S.tau.toFixed(3);
+  /* α 扫描模式下把扫描值实时写到 α 滑条，老师一眼能看见 α 在动 */
+  if (S.mode === 'alpha') {
+    var a = alphaFromTau(S.tau);
+    var sA = document.getElementById('sA'), vA = document.getElementById('vA');
+    if (sA) sA.value = a;
+    if (vA) vA.value = a.toFixed(3);
+  }
+  var bf = document.getElementById('barfill');
+  if (bf) bf.style.width = (S.tau * 100).toFixed(1) + '%';
+  var tn = document.getElementById('tnum');
+  if (tn) tn.textContent = S.tau.toFixed(3);
+  var pb = document.getElementById('bPlay');
+  if (pb) pb.textContent = S.playing ? '⏸ 暂停' : '▶ 播放';
+  var note = document.getElementById('tauNote');
+  if (note) {
+    if (S.mode === 'gen') {
+      note.innerHTML = 'τ 把「显示到第几代」拉成连续量：第 g 代的不透明度 = ' +
+        '<code>clamp(τ·(o+1) − g, 0, 1)</code>。<b>τ=1 即完整图</b>，与 nb 静止输出逐像素一致。';
+    } else {
+      note.innerHTML = 'α 扫描：<code>α = −2 + 4·(1 − |2τ − 1|)</code>，从 −2 到 +2 再回来。' +
+        '此模式下 α 滑条实时跟随。<br>⚠ n≥10 且 o=3 时每帧要重建 1.4 万条线，动画会明显变慢。';
+    }
+  }
+}
+
+/* ---------------------------------------------------------------- 9. 控件 */
+var REF = {};
+
+function bindPair(sid, vid, lo, hi, get, set, dec, after) {
+  var s = document.getElementById(sid), n = document.getElementById(vid);
+  function sync() {
+    var v = get();
+    if (s) s.value = v;
+    if (n) n.value = (+v).toFixed(dec);
+  }
+  function commit(raw, from) {
+    var v = +raw;
+    if (!isFinite(v)) { sync(); return; }
+    if (v < lo) v = lo;
+    if (v > hi) v = hi;
+    set(v);
+    if (from !== 'slider' && s) s.value = v;
+    if (from !== 'num' && n) n.value = v.toFixed(dec);
+    if (after) after();
+    invalidate();
+    render();
+  }
+  if (s) s.addEventListener('input', function () { commit(s.value, 'slider'); });
+  if (n) {
+    n.addEventListener('change', function () { commit(n.value, 'num'); });
+    n.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { commit(n.value, 'num'); n.blur(); }
+    });
+  }
+  return { sync: sync, commit: commit };
+}
+
+function ensureLayerArr() {
+  var need = S.o + 1;
+  while (S.layers.length < need) S.layers.push(1);
+  S.layers.length = need;
+}
+
+function syncAll() {
+  for (var k in REF) { if (REF[k] && REF[k].sync) REF[k].sync(); }
+  var sel = document.getElementById('selMode');
+  if (sel) sel.value = S.mode;
+  var ss = document.getElementById('sSpd');
+  if (ss) ss.value = S.speed;
+  var ck = document.getElementById('ckFrame');
+  if (ck) ck.checked = !!S.frame;
+  var ca = document.getElementById('ckAxes');
+  if (ca) ca.checked = !!S.axes;
+  var lp = document.getElementById('bLoop');
+  if (lp) lp.className = S.loop ? 'on' : '';
+  /* pl 按钮 */
+  var btns = document.querySelectorAll('#segPl button');
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].className = 'gg' + (btns[i].getAttribute('data-pl') === S.pl ? ' on' : '');
+  }
+  /* 图层按钮 */
+  var lbs = document.querySelectorAll('#segLy button');
+  for (var j = 0; j < lbs.length; j++) {
+    var gi = +lbs[j].getAttribute('data-g');
+    lbs[j].className = 'gg' + (S.layers[gi] ? ' on' : '');
+  }
+  syncLayerBtnLabels();
+  var rowA = document.getElementById('rowA');
+  if (rowA) rowA.className = 'grow' + (S.mode === 'alpha' ? ' dis' : '');
+  var sA = document.getElementById('sA'), vA = document.getElementById('vA');
+  if (sA) sA.disabled = (S.mode === 'alpha');
+  if (vA) vA.disabled = (S.mode === 'alpha');
+  applyTau();
+}
+
+function syncLayerBtnLabels() {
+  var btns = document.querySelectorAll('#segLy button');
+  var st = genStyles(S.o);
+  for (var i = 0; i < btns.length; i++) {
+    var gi = +btns[i].getAttribute('data-g');
+    if (gi < st.length) {
+      var c = st[gi].rgb;
+      var hex = 'rgb(' + Math.round(c[0] * 255) + ',' + Math.round(c[1] * 255) + ',' + Math.round(c[2] * 255) + ')';
+      btns[i].innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:2px;' +
+        'background:' + hex + ';margin-right:4px;vertical-align:middle"></span>' + gi;
+    }
+  }
+}
+
+function buildLayerUI() {
+  ensureLayerArr();
+  var box = document.getElementById('segLy');
+  if (!box) return;
+  var h = '';
+  for (var gi = 0; gi <= NB.O_MAX; gi++) {
+    h += '<button class="gg" data-g="' + gi + '">' + gi + '</button>';
+  }
+  box.innerHTML = h;
+}
+
+var PRESETS = {
+  orig: { n: 5, alpha: 1.385, o: 2 },
+  poly: { n: 5, alpha: 1, o: 2 },
+  star: { n: 5, alpha: 0.35, o: 2 },
+  neg: { n: 5, alpha: -0.6, o: 2 },
+  big: { n: 12, alpha: 1.385, o: 2 },
+  deep: { n: 5, alpha: 1.385, o: 3 }
+};
+
+function applyPreset(p) {
+  if (!p) return;
+  S.n = p.n; S.alpha = p.alpha; S.o = p.o;
+  ensureLayerArr();
+  invalidateModel();
+  syncAll();
+  invalidate();
+  render();
+}
+
+function setMode(m) {
+  if (m === S.mode) return;
+  /* 不动 S.alpha —— α 扫描的值由 effAlpha() 从 τ 推出来；
+     切回 gen 模式时 syncAll() 会把滑条写回基准 α */
+  S.mode = m;
+  invalidateModel();
+  syncAll();
+  invalidate();
+  render();
+}
+
+function bindAll() {
+  REF.cn = bindPair('sN', 'vN', LIM.n[0], LIM.n[1],
+    function () { return S.n; },
+    function (v) { S.n = Math.round(v); }, 0, syncAll);
+
+  REF.ca = bindPair('sA', 'vA', LIM.a[0], LIM.a[1],
+    function () { return S.alpha; },
+    function (v) { S.alpha = v; }, 3, syncAll);
+
+  REF.co = bindPair('sO', 'vO', LIM.o[0], LIM.o[1],
+    function () { return S.o; },
+    function (v) { S.o = Math.round(v); ensureLayerArr(); }, 0, function () {
+      buildLayerUI(); syncAll();
+    });
+
+  REF.cop = bindPair('sOp', 'vOp', LIM.op[0], LIM.op[1],
+    function () { return S.opacity; },
+    function (v) { S.opacity = v; }, 2, syncAll);
+
+  REF.clw = bindPair('sLw', 'vLw', LIM.lw[0], LIM.lw[1],
+    function () { return S.lwScale; },
+    function (v) { S.lwScale = v; }, 2, syncAll);
+
+  REF.ctau = bindPair('sTau', 'vTau', 0, 1,
+    function () { return S.tau; },
+    function (v) { S.tau = v; }, 3, applyTau);
+
+  /* 预设 */
+  var pbs = document.querySelectorAll('[data-preset]');
+  for (var i = 0; i < pbs.length; i++) {
+    (function (b) {
+      b.addEventListener('click', function () { applyPreset(PRESETS[b.getAttribute('data-preset')]); });
+    })(pbs[i]);
+  }
+
+  /* pl 线 / 面 */
+  var plb = document.querySelectorAll('#segPl button');
+  for (var j = 0; j < plb.length; j++) {
+    (function (b) {
+      b.addEventListener('click', function () {
+        S.pl = b.getAttribute('data-pl');
+        LY.key = '';
+        syncAll(); invalidate(); render();
+      });
+    })(plb[j]);
+  }
+
+  /* 图层开关（事件委托，闭包不持旧对象） */
+  var lyBox = document.getElementById('segLy');
+  if (lyBox) {
+    lyBox.addEventListener('click', function (e) {
+      var t = e.target;
+      while (t && t !== lyBox && !t.getAttribute('data-g')) t = t.parentNode;
+      if (!t || t === lyBox) return;
+      var gi = +t.getAttribute('data-g');
+      S.layers[gi] = S.layers[gi] ? 0 : 1;
+      syncAll(); invalidate(); render();
+    });
+  }
+
+  var ckF = document.getElementById('ckFrame');
+  if (ckF) ckF.addEventListener('change', function () { S.frame = ckF.checked; invalidate(); render(); });
+  var ckA = document.getElementById('ckAxes');
+  if (ckA) ckA.addEventListener('change', function () { S.axes = ckA.checked; invalidate(); render(); });
+
+  var sel = document.getElementById('selMode');
+  if (sel) sel.addEventListener('change', function () { setMode(sel.value); });
+
+  var spd = document.getElementById('sSpd');
+  if (spd) spd.addEventListener('input', function () { S.speed = +spd.value; });
+
+  document.getElementById('bPlay').addEventListener('click', togglePlay);
+  document.getElementById('bReset').addEventListener('click', function () {
+    S.playing = false; S.tau = 0; applyTau(); invalidate(); render();
+  });
+  document.getElementById('bLoop').addEventListener('click', function () {
+    S.loop = !S.loop; syncAll();
+  });
+  document.getElementById('bGif').addEventListener('click', exportAllGif);
+  document.getElementById('bPng').addEventListener('click', saveAllPng);
+
+  var bar = document.getElementById('bar');
+  if (bar) bar.addEventListener('click', function (e) {
+    var r = bar.getBoundingClientRect();
+    S.tau = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+    applyTau(); invalidate(); render();
+  });
+
+  ['24', '30', '40'].forEach(function (nn) {
+    var b = document.getElementById('bFrames' + nn);
+    if (b) b.addEventListener('click', function () {
+      S.frames = +nn;
+      ['24', '30', '40'].forEach(function (m) {
+        var x = document.getElementById('bFrames' + m);
+        if (x) x.className = 'gg' + (m === nn ? ' on' : '');
+      });
+    });
+  });
+
+  var pt = document.getElementById('ptoggle');
+  if (pt) pt.addEventListener('click', function () {
+    document.body.classList.toggle('off');
+    pt.textContent = document.body.classList.contains('off') ? '❮' : '❯';
+    setTimeout(remeasureAll, 260);
+  });
+
+  /* 卡片折叠 */
+  var heads = document.querySelectorAll('.panel .card h2');
+  for (var k = 0; k < heads.length; k++) {
+    (function (h) {
+      h.addEventListener('click', function () { h.parentNode.classList.toggle('fold'); });
+    })(heads[k]);
+  }
+}
+
+function togglePlay() {
+  S.playing = !S.playing;
+  if (S.playing && S.tau >= 1) S.tau = 0;
+  applyTau();
+}
+
+function remeasureAll() {
+  ['cvMain', 'cvG0', 'cvG1', 'cvG2', 'cvG3'].forEach(measure);
+  LY.key = '';
+  invalidate();
+  render();
+}
+
+/* ---------------------------------------------------------------- 10. 公式卡 */
+function buildEq() {
+  var box = document.getElementById('eqBox');
+  if (box) {
+    box.innerHTML =
+'<b>reflectLine</b>[Line[l], Line[{p1,p2}]]  —— 关于过 p1、p2 的直线做镜像\n' +
+'    dir = (p2 − p1) / ‖p2 − p1‖\n' +
+'    nor = Reverse[dir]·{−1,1} = (−dir_y, dir_x)\n' +
+'    p′  = p1 + (p − p1) − 2·((p − p1)·nor)·nor\n\n' +
+'<b>initialSquenchednGon</b>[n, α]\n' +
+'    P_k = (k 偶 ? 1 : α)·(cos(kπ/n), sin(kπ/n)),  k = 0 … 2n\n' +
+'    ⇒ 2n+1 个点（首尾重合，天然闭合）\n\n' +
+'<b>reflectAll</b>[Line[l]] = reflectLine[Line[l], Line[#]] &amp; /@ Partition[l, 2, 1]\n' +
+'    ⇒ 每条相邻边都当一次镜子 ⇒ 一次得 2n 条新折线\n\n' +
+'<b>NestList</b>[Flatten[reflectAll /@ #] &amp;, {P}, o]\n' +
+'    ⇒ 第 g 代恰有 (2n)^g 条；合计 1 + 2n + (2n)² + … + (2n)^o\n\n' +
+'<b>样式</b>  Hue[0.8(k−1)/o]  ·  Thickness[(o+2−k)·0.005]      k = 1 … o+1\n' +
+'<b>视窗</b>  ImageSize→{500,400}  ·  ImagePadding→{{20,20},{20,20}}\n' +
+'        PlotRange→{{−mx,mx},{−my,my}}，mx/my <b>分轴独立</b>取 max|·|';
+  }
+  var note = document.getElementById('eqNote');
+  if (note) {
+    note.innerHTML =
+      '反射是<b>等距变换</b>，长度、角度全保 —— 所以每一代的总周长都等于初始多边形。' +
+      '更关键的是：第 g 代每一条线都能写成 <code>R_i1 · R_i2 · … · R_ig</code> 作用在初始多边形上' +
+      '（<code>R_j</code> = 关于第 j 条边的反射），于是本页用矩阵形式来算，' +
+      '复杂度从「逐点逐次反射」降到「每条线一次仿射乘」，' +
+      '与 nb 的逐点写法数值上完全一致（Python 对拍最大偏差 1.1e-14）。';
+  }
+}
+
+/* =================================================================
+   11. GIF 导出（内联 GIF89a 编码器，零外部依赖）
+   量化：6bit/通道直方图 + 中位切分 → ≤256 色全局调色板
+   编码：LZW（码长 9→12，时序对齐 gif.js）+ 255 字节子块
+   自适应：超 5 MB 就依次减帧、减画幅
+   ================================================================= */
+var GIF_LIMIT = 5 * 1024 * 1024;
+var GIF_LONG = 900;
+var GIF_CYCLE_CS = 200;
+
+var GIF_TARGETS = [
+  { mode: 'gen', name: '反射迭代_逐代渐显' },
+  { mode: 'alpha', name: '反射迭代_α扫描' }
+];
+
+function mbStr(n) { return (n / 1048576).toFixed(2) + ' MB'; }
+function yield0() { return new Promise(function (r) { setTimeout(r, 0); }); }
+
+function blobToBase64(blob) {
+  return new Promise(function (res, rej) {
+    var fr = new FileReader();
+    fr.onload = function () { res(String(fr.result).split(',')[1]); };
+    fr.onerror = rej;
+    fr.readAsDataURL(blob);
+  });
+}
+
+function buildPalette(frames, maxColors) {
+  var H = new Uint32Array(32768), SR = new Float64Array(32768),
+      SG = new Float64Array(32768), SB = new Float64Array(32768);
+  for (var fi = 0; fi < frames.length; fi++) {
+    var d = frames[fi];
+    for (var i = 0; i < d.length; i += 4) {
+      var r = d[i], g = d[i + 1], b = d[i + 2];
+      var k = ((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3);
+      H[k]++; SR[k] += r; SG[k] += g; SB[k] += b;
+    }
+  }
+  var items = [];
+  for (var kk = 0; kk < 32768; kk++) {
+    if (!H[kk]) continue;
+    items.push({ c: H[kk], r: SR[kk] / H[kk], g: SG[kk] / H[kk], b: SB[kk] / H[kk] });
+  }
+  if (!items.length) return [[0, 0, 0]];
+
+  function mkBox(from, to) {
+    var rmin = 255, rmax = 0, gmin = 255, gmax = 0, bmin = 255, bmax = 0, n = 0;
+    for (var i = from; i < to; i++) {
+      var it = items[i];
+      if (it.r < rmin) rmin = it.r; if (it.r > rmax) rmax = it.r;
+      if (it.g < gmin) gmin = it.g; if (it.g > gmax) gmax = it.g;
+      if (it.b < bmin) bmin = it.b; if (it.b > bmax) bmax = it.b;
+      n += it.c;
+    }
+    var dr = rmax - rmin, dg = gmax - gmin, db = bmax - bmin;
+    var axis = (dr >= dg && dr >= db) ? 'r' : (dg >= db ? 'g' : 'b');
+    return { from: from, to: to, n: n, axis: axis, range: Math.max(dr, dg, db) };
+  }
+
+  var boxes = [mkBox(0, items.length)];
+  while (boxes.length < maxColors) {
+    var bi = -1, bs = 0;
+    for (var i2 = 0; i2 < boxes.length; i2++) {
+      var b2 = boxes[i2];
+      if (b2.to - b2.from < 2 || b2.range <= 0) continue;
+      var sc = b2.range * Math.log(b2.n + 1);
+      if (sc > bs) { bs = sc; bi = i2; }
+    }
+    if (bi < 0) break;
+    var bb = boxes[bi], ax = bb.axis;
+    var sub = items.slice(bb.from, bb.to);
+    sub.sort(function (A, B) { return A[ax] - B[ax]; });
+    for (var i3 = 0; i3 < sub.length; i3++) items[bb.from + i3] = sub[i3];
+    var half = bb.n / 2, acc = 0, cut = 0;
+    for (var i4 = bb.from; i4 < bb.to; i4++) {
+      acc += items[i4].c;
+      if (acc >= half) { cut = i4 + 1; break; }
+    }
+    if (cut <= bb.from) cut = bb.from + 1;
+    if (cut >= bb.to) cut = bb.to - 1;
+    boxes.splice(bi, 1, mkBox(bb.from, cut), mkBox(cut, bb.to));
+  }
+
+  var pal = [];
+  for (var i5 = 0; i5 < boxes.length; i5++) {
+    var b5 = boxes[i5];
+    var sr = 0, sg = 0, sb = 0, n5 = 0;
+    for (var j5 = b5.from; j5 < b5.to; j5++) {
+      var it5 = items[j5];
+      sr += it5.r * it5.c; sg += it5.g * it5.c; sb += it5.b * it5.c; n5 += it5.c;
+    }
+    pal.push([Math.round(sr / n5), Math.round(sg / n5), Math.round(sb / n5)]);
+  }
+  return pal;
+}
+
+function makeQuant(pal) {
+  var cache = new Int16Array(262144).fill(-1), n = pal.length;
+  return function (r, g, b) {
+    var key = ((r >> 2) << 12) | ((g >> 2) << 6) | (b >> 2);
+    var hit = cache[key];
+    if (hit >= 0) return hit;
+    var best = 0, bd = 1e18;
+    for (var i = 0; i < n; i++) {
+      var p = pal[i];
+      var dr = r - p[0], dg = g - p[1], db = b - p[2];
+      var d = dr * dr * 3 + dg * dg * 6 + db * db;
+      if (d < bd) { bd = d; best = i; }
+    }
+    cache[key] = best;
+    return best;
+  };
+}
+
+function lzwEncode(px, minCodeSize) {
+  var CLEAR = 1 << minCodeSize, EOI = CLEAR + 1;
+  var dict = new Int32Array(4096 * 256);
+  var out = new Uint8Array(1 << 16), olen = 0, cur = 0, bits = 0;
+  var codeSize = minCodeSize + 1, next = EOI + 1;
+
+  function putByte(b) {
+    if (olen === out.length) { var nb = new Uint8Array(out.length << 1); nb.set(out); out = nb; }
+    out[olen++] = b;
+  }
+  function emit(code) {
+    cur |= code << bits; bits += codeSize;
+    while (bits >= 8) { putByte(cur & 255); cur >>= 8; bits -= 8; }
+    if (next > (1 << codeSize) - 1 && codeSize < 12) codeSize++;
+  }
+
+  dict.fill(-1);
+  emit(CLEAR);
+  var n = px.length;
+  if (n <= 1) {
+    if (n === 1) emit(px[0]);
+    emit(EOI);
+  } else {
+    var prefix = px[0];
+    for (var i = 1; i < n; i++) {
+      var k = px[i], key = (prefix << 8) | k, v = dict[key];
+      if (v >= 0) { prefix = v; continue; }
+      emit(prefix);
+      if (next < 4096) { dict[key] = next++; }
+      else { emit(CLEAR); dict.fill(-1); codeSize = minCodeSize + 1; next = EOI + 1; }
+      prefix = k;
+    }
+    emit(prefix);
+    emit(EOI);
+  }
+  if (bits > 0) putByte(cur & 255);
+  return out.subarray(0, olen);
+}
+
+function encodeGif(frames, W, H, delayCs) {
+  var pal = buildPalette(frames, 256);
+  var quant = makeQuant(pal);
+  var bits = 2;
+  while ((1 << bits) < pal.length) bits++;
+  var gctSize = 1 << bits;
+  var mcs = Math.max(2, bits);
+
+  var chunks = [], push = function (a) { chunks.push(a); };
+  function b1(v) { push(new Uint8Array([v & 255])); }
+  function u16(v) { push(new Uint8Array([v & 255, (v >> 8) & 255])); }
+  function asc(s) {
+    var a = new Uint8Array(s.length);
+    for (var i = 0; i < s.length; i++) a[i] = s.charCodeAt(i);
+    push(a);
+  }
+
+  asc('GIF89a');
+  u16(W); u16(H);
+  b1(0x80 | 0x70 | (bits - 1));
+  var bg = 0, bd = 1e18;
+  for (var i2 = 0; i2 < pal.length; i2++) {
+    var dr = 255 - pal[i2][0], dg = 255 - pal[i2][1], db = 255 - pal[i2][2];
+    var d2 = dr * dr + dg * dg + db * db;
+    if (d2 < bd) { bd = d2; bg = i2; }
+  }
+  b1(bg); b1(0);
+  var gct = new Uint8Array(gctSize * 3);
+  for (var i3 = 0; i3 < gctSize; i3++) {
+    var c = pal[i3] || pal[pal.length - 1];
+    gct[i3 * 3] = c[0]; gct[i3 * 3 + 1] = c[1]; gct[i3 * 3 + 2] = c[2];
+  }
+  push(gct);
+  b1(0x21); b1(0xFF); b1(0x0B); asc('NETSCAPE2.0');
+  b1(0x03); b1(0x01); u16(0); b1(0x00);
+
+  var idx = new Uint8Array(W * H);
+  for (var f = 0; f < frames.length; f++) {
+    var df = frames[f];
+    for (var p = 0, i4 = 0; p < idx.length; p++, i4 += 4) {
+      idx[p] = quant(df[i4], df[i4 + 1], df[i4 + 2]);
+    }
+    b1(0x21); b1(0xF9); b1(0x04); b1(0x04); u16(delayCs); b1(bg); b1(0x00);
+    b1(0x2C); u16(0); u16(0); u16(W); u16(H); b1(0x00);
+    b1(mcs);
+    var raw = lzwEncode(idx, mcs);
+    for (var i5 = 0; i5 < raw.length; i5 += 255) {
+      var len = Math.min(255, raw.length - i5);
+      b1(len); push(raw.subarray(i5, i5 + len));
+    }
+    b1(0x00);
+  }
+  b1(0x3B);
+  return new Blob(chunks, { type: 'image/gif' });
+}
+
+/* ---------------- 抓帧 ---------------- */
+var TMP = null;
+
+function gifFramesOf(target, W, H, nF, note, name) {
+  var off = document.createElement('canvas');
+  off.width = W; off.height = H;
+  var og = off.getContext('2d', { willReadFrequently: true });
+  if (!TMP) TMP = document.createElement('canvas');
+  TMP.width = W; TMP.height = H;
+  var tg = TMP.getContext('2d', { willReadFrequently: true });
+
+  var frames = [];
+  return (async function () {
+    for (var i = 0; i < nF; i++) {
+      var tau = i / nF;
+      var md;
+      if (target.mode === 'alpha') {
+        md = buildModel(S.n, alphaFromTau(tau), S.o);
+      } else {
+        md = ensureModel();
+      }
+      var map = mkMap(W, H, md.mx, md.my);
+      og.setTransform(1, 0, 0, 1, 0, 0);
+      og.fillStyle = '#ffffff';
+      og.fillRect(0, 0, W, H);
+      for (var gi = S.o; gi >= 0; gi--) {
+        if (!S.layers[gi]) continue;
+        var a = (target.mode === 'gen') ? genAlphaAt(tau, gi, S.o) : 1;
+        if (a <= 0.003) continue;
+        tg.setTransform(1, 0, 0, 1, 0, 0);
+        tg.clearRect(0, 0, W, H);
+        paintGen(tg, md, gi, map, S.opacity);
+        og.globalAlpha = a;
+        og.drawImage(TMP, 0, 0);
+      }
+      og.globalAlpha = 1;
+      frames.push(og.getImageData(0, 0, W, H).data);
+      if ((i & 3) === 3) {
+        if (note) note('⟳ ' + name + '：抓帧 ' + (i + 1) + '/' + nF + ' …');
+        await yield0();
+      }
+    }
+    return frames;
+  })();
+}
+
+async function gifForTarget(target, note) {
+  var sz = SIZE.cvMain || { W: 640, H: 512 };
+  var baseLong = Math.max(sz.W, sz.H);
+  var N = S.frames;
+  var tries = [
+    { long: GIF_LONG, frames: N },
+    { long: GIF_LONG, frames: Math.round(N * 0.72) },
+    { long: GIF_LONG, frames: Math.round(N * 0.56) },
+    { long: GIF_LONG * 0.78, frames: Math.round(N * 0.56) },
+    { long: GIF_LONG * 0.62, frames: Math.round(N * 0.44) }
+  ];
+  var best = null;
+  for (var a = 0; a < tries.length; a++) {
+    var plan = tries[a];
+    var k = plan.long / baseLong;
+    var W = Math.max(160, Math.round(sz.W * k)), H = Math.max(128, Math.round(sz.H * k));
+    if (W % 2) W++;
+    if (H % 2) H++;
+    while (W * H > 1.4e6) { W = Math.round(W * 0.88); H = Math.round(H * 0.88); }
+    var nF = Math.max(8, plan.frames);
+    var delayCs = Math.max(3, Math.round(GIF_CYCLE_CS / nF));
+    if (note) note('⟳ ' + target.name + '：' + W + '×' + H + ' · ' + nF + ' 帧（抓帧中…）');
+    await yield0();
+    var frames = await gifFramesOf(target, W, H, nF, note, target.name);
+    if (note) note('⟳ ' + target.name + '：量化 + LZW 编码…');
+    await yield0();
+    var blob = encodeGif(frames, W, H, delayCs);
+    best = { blob: blob, W: W, H: H, frames: nF, name: target.name };
+    if (blob.size <= GIF_LIMIT) break;
+    if (note) note('⟳ ' + target.name + '：' + mbStr(blob.size) + ' 超 5 MB，自动收敛重试…');
+    await yield0();
+  }
+  return best;
+}
+
+function downloadBlob(blob, filename) {
+  var a = document.createElement('a');
+  var url = URL.createObjectURL(blob);
+  a.href = url; a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 1500);
+}
+
+function noteSet(txt) {
+  var e = document.getElementById('gifNote');
+  if (e) e.textContent = txt;
+}
+
+var busy = false;
+
+async function exportAllGif() {
+  if (busy) return;
+  busy = true;
+  var saveMode = S.mode, saveTau = S.tau, saveAlpha = S.alpha;
+  S.playing = false;
+  var btn = document.getElementById('bGif');
+  if (btn) btn.disabled = true;
+  var list = [];
+  try {
+    for (var i = 0; i < GIF_TARGETS.length; i++) {
+      var t = GIF_TARGETS[i];
+      S.mode = t.mode;
+      if (t.mode === 'alpha') S.alpha = saveAlpha;
+      invalidateModel();
+      var g = await gifForTarget(t, noteSet);
+      if (g) {
+        list.push(g);
+        downloadBlob(g.blob, g.name + '.gif');
+        noteSet('✔ ' + (i + 1) + '/' + GIF_TARGETS.length + ' ' + g.name +
+                ' ' + g.W + '×' + g.H + '×' + g.frames + '帧 ' + mbStr(g.blob.size));
+      }
+      await yield0();
+    }
+    var tot = 0;
+    for (var q = 0; q < list.length; q++) tot += list[q].blob.size;
+    noteSet('✓ 已导出 ' + list.length + ' 张 GIF，合计 ' + mbStr(tot) + '（已存到下载目录）');
+  } catch (err) {
+    noteSet('✗ 导出出错：' + (err && err.message ? err.message : err));
+  }
+  S.mode = saveMode; S.tau = saveTau; S.alpha = saveAlpha;
+  invalidateModel();
+  if (btn) btn.disabled = false;
+  syncAll(); invalidate(); render();
+  busy = false;
+}
+
+function saveAllPng() {
+  var ids = [['cvMain', '主视窗_完整迭代图'], ['cvG0', '逐代分解_第0代'],
+             ['cvG1', '逐代分解_第1代'], ['cvG2', '逐代分解_第2代'], ['cvG3', '逐代分解_第3代']];
+  var n = 0;
+  for (var i = 0; i < ids.length; i++) {
+    var el = document.getElementById(ids[i][0]);
+    if (!el) continue;
+    var box = el.parentNode;
+    if (box && box.style.display === 'none') continue;
+    (function (e, nm) {
+      setTimeout(function () {
+        var url = e.toDataURL('image/png');
+        var a = document.createElement('a');
+        a.href = url; a.download = nm + '.png';
+        document.body.appendChild(a); a.click(); a.remove();
+      }, n * 260);
+      n++;
+    })(el, ids[i][1]);
+  }
+  if (n) noteSet('✓ 已导出 ' + n + ' 张 PNG（已存到下载目录）');
+}
+
+/* ---------------- 无头归档接口（供 CDP 脚本调用） ---------------- */
+var GIFOUT = null, GIFCH = '';
+
+async function gifPrepOne(i, note) {
+  var t = GIF_TARGETS[i];
+  if (!t) return null;
+  var saveMode = S.mode, saveTau = S.tau;
+  S.playing = false;
+  S.mode = t.mode;
+  invalidateModel();
+  var g = await gifForTarget(t, note || function () {});
+  S.mode = saveMode; S.tau = saveTau;
+  invalidateModel();
+  invalidate(); render();
+  if (!g) return null;
+  var b64 = await blobToBase64(g.blob);
+  GIFOUT = { name: g.name, w: g.W, h: g.H, frames: g.frames, bytes: g.blob.size, b64len: b64.length };
+  GIFCH = b64;
+  return GIFOUT;
+}
+function gifChunk(off, len) { return GIFCH.substr(off, len); }
+function gifClear() { GIFOUT = null; GIFCH = ''; }
+
+/* ---------------------------------------------------------------- 12. boot */
+function boot() {
+  buildLayerUI();
+  bindAll();
+  buildEq();
+
+  ['cvMain', 'cvG0', 'cvG1', 'cvG2', 'cvG3'].forEach(function (id) {
+    var e = document.getElementById(id);
+    if (!e) return;
+    if (window.ResizeObserver) {
+      new ResizeObserver(function () { measure(id); LY.key = ''; invalidate(); }).observe(e);
+    }
+  });
+  remeasureAll();
+  syncAll();
+  applyTau();
+  ['24', '30', '40'].forEach(function (m) {
+    var x = document.getElementById('bFrames' + m);
+    if (x) x.className = 'gg' + (S.frames === +m ? ' on' : '');
+  });
+  if (window.addEventListener) window.addEventListener('load', remeasureAll);
+  requestAnimationFrame(function () { remeasureAll(); });
+  rafId = requestAnimationFrame(frame);
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+else boot();
+
+/* ---------------------------------------------------------------- 13. 测试出口 */
+window.__NG__ = {
+  S: S,
+  defState: defState,
+  initGon: initGon,
+  edgeTransforms: edgeTransforms,
+  buildGens: buildGens,
+  buildModel: buildModel,
+  hue2rgb: hue2rgb,
+  genStyles: genStyles,
+  genAlpha: genAlpha,
+  genAlphaAt: genAlphaAt,
+  alphaFromTau: alphaFromTau,
+  effAlpha: effAlpha,
+  mkMap: mkMap,
+  rgbaOf: rgbaOf,
+  paintGen: paintGen,
+  ensureModel: ensureModel,
+  invalidateModel: invalidateModel,
+  setMode: setMode,
+  applyPreset: applyPreset,
+  syncAll: syncAll,
+  applyTau: applyTau,
+  buildLayerUI: buildLayerUI,
+  ensureLayerArr: ensureLayerArr,
+  measure: measure,
+  remeasureAll: remeasureAll,
+  buildPalette: buildPalette,
+  makeQuant: makeQuant,
+  lzwEncode: lzwEncode,
+  encodeGif: encodeGif,
+  gifPrepOne: gifPrepOne,
+  gifChunk: gifChunk,
+  gifClear: gifClear,
+  GIF_TARGETS: GIF_TARGETS,
+  GIF_LIMIT: GIF_LIMIT,
+  nb: NB,
+  lim: LIM,
+  getREF: function () { return REF; },
+  getModel: function () { return MODEL; },
+  getLyKey: function () { return LY.key; },
+  getSize: function (id) { return SIZE[id]; }
+};
+
+
+</script>
+</body>
+</html>

@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>K7 · 声子梳：齿距从哪来、器件怎么造，与 Keely 逐项对照</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%231b4f9c' stroke-width='2'/%3E%3Cpath d='M8 22v-8M11 22v-13M14 22v-9M17 22v-14M20 22v-10M23 22v-12' stroke='%23177245' stroke-width='1.5'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/site.css">
+<style>
+  /* ---- 本页专用 ---- */
+  .viz{background:#fff;border:1px solid var(--line-2);border-radius:12px;
+    box-shadow:var(--shadow);padding:14px 16px 10px;margin:18px 0}
+  .viz .vt{font-family:var(--serif);font-size:16px;font-weight:700;margin-bottom:3px}
+  .viz .vc{font-size:13.2px;color:var(--ink-3);margin-bottom:10px;line-height:1.6}
+  .viz canvas{width:100%;display:block;border-radius:8px;background:#fcfdff;border:1px solid var(--line)}
+  .eq{margin:14px 0}
+  .warnbox{background:#fdf6f6;border:1px solid rgba(179,38,30,.28);border-left:3px solid var(--bad);
+    border-radius:8px;padding:12px 15px;margin:16px 0;font-size:14px}
+  .goodbox{background:#f4faf6;border:1px solid rgba(23,114,69,.28);border-left:3px solid var(--good);
+    border-radius:8px;padding:12px 15px;margin:16px 0;font-size:14px}
+  .midbox{background:#fdfaf2;border:1px solid rgba(154,103,0,.28);border-left:3px solid var(--warn);
+    border-radius:8px;padding:12px 15px;margin:16px 0;font-size:14px}
+  .quote{border-left:3px solid var(--line-2);padding:2px 0 2px 14px;margin:13px 0;color:var(--ink-2);font-size:14.4px}
+  .quote .src{display:block;font-family:var(--mono);font-size:11.5px;color:var(--ink-3);margin-top:4px}
+  .cnt{font-family:var(--mono);font-size:12.6px;color:var(--ink-3)}
+  /* 表格里的 .cnt 小注必须独占一行：否则会紧贴前面的数字，读成 "70 GHz齿距下限" */
+  td .cnt{display:block;margin-top:2px;line-height:1.4}
+  .rd{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:10px;margin-top:12px}
+  .rd .r{background:var(--bg-soft);border:1px solid var(--line);border-radius:9px;padding:9px 11px}
+  .rd .r .n{font-family:var(--serif);font-size:19px;color:var(--accent-2);line-height:1.2}
+  .rd .r .l{font-size:11.8px;color:var(--ink-3);margin-top:2px}
+  .rd .r .x{font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-top:3px}
+  /* 三档判定行（铁律 206：类不同 ⇒ 渲染不同，且就地写图例与计数） */
+  tr.same td{background:rgba(23,114,69,.06)}
+  tr.homo td{background:rgba(154,103,0,.07)}
+  tr.diff td{background:rgba(179,38,30,.055)}
+  tr.same td:first-child{border-left:3px solid var(--good)}
+  tr.homo td:first-child{border-left:3px solid var(--warn)}
+  tr.diff td:first-child{border-left:3px solid var(--bad)}
+  .lg{list-style:none;padding:0;margin:8px 0 12px}
+  .lg li{display:flex;gap:9px;align-items:flex-start;font-size:13.6px;line-height:1.65;margin:7px 0}
+  .lg .sw{flex:0 0 15px;height:11px;border-radius:2px;margin-top:6px}
+  .lg .sw.s{background:rgba(23,114,69,.10);border:1px solid rgba(23,114,69,.38);border-left:3px solid var(--good)}
+  .lg .sw.h{background:rgba(154,103,0,.10);border:1px solid rgba(154,103,0,.38);border-left:3px solid var(--warn)}
+  .lg .sw.d{background:rgba(179,38,30,.09);border:1px solid rgba(179,38,30,.32);border-left:3px solid var(--bad)}
+  .lg b.s{color:var(--good)} .lg b.h{color:var(--warn)} .lg b.d{color:var(--bad)}
+  .step{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;
+    border:1px solid var(--line);border-radius:10px;padding:12px 15px;margin:11px 0;background:#fff}
+  .step .id{font-family:var(--mono);font-size:12.4px;font-weight:700;color:var(--accent);padding-top:3px}
+  .step .bd b{font-family:var(--serif);font-size:15.2px}
+  .step .bd p{margin:5px 0 0;font-size:13.9px;color:var(--ink-2)}
+  .step.miss{border-left:3px solid var(--bad);background:#fffdfd}
+  .step.have{border-left:3px solid var(--good);background:#fcfefd}
+  .step.mid{border-left:3px solid var(--warn);background:#fffdf9}
+  /* 路径卡：三条生成路径并排 */
+  .paths{display:grid;grid-template-columns:repeat(auto-fit,minmax(258px,1fr));gap:12px;margin:15px 0}
+  .paths .p{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fff}
+  .paths .p .t{font-family:var(--serif);font-size:14.6px;font-weight:700;margin-bottom:2px}
+  .paths .p .m{font-family:var(--mono);font-size:11.2px;color:var(--ink-3);margin-bottom:7px}
+  .paths .p .d{font-size:13.2px;color:var(--ink-2);line-height:1.62}
+  .paths .p .k{margin-top:8px;font-size:12.4px;color:var(--ink-3);border-top:1px dashed var(--line-2);padding-top:7px}
+  .paths .p .k b{color:var(--accent-2)}
+  .paths .p.p1{border-top:3px solid #1b4f9c}
+  .paths .p.p2{border-top:3px solid #177245}
+  .paths .p.p3{border-top:3px solid #b4531f}
+  /* 本页导航 10 项，沿用 K5 的换行规则 */
+  @media(min-width:761px){
+    .topnav .inner{flex-wrap:wrap;height:auto;min-height:56px;
+      padding-top:5px;padding-bottom:5px;row-gap:2px}
+  }
+  @media(max-width:760px){
+    .step{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<nav class="topnav"><div class="inner">
+  <a class="brand" href="keely核心技术与现代声子物理技术对比.html">Keely × 现代声子物理 <span>/</span> K7</a>
+  <a class="nv" href="keely核心技术与现代声子物理技术对比.html" title="总入口：四条改写 · 术语对照 · 全部页面">← 总入口</a>
+  <a class="nv on" href="#s1">① 三种多谱线</a>
+  <a class="nv" href="#s2">② 三条生成路径</a>
+  <a class="nv" href="#s3">③ 齿距公式</a>
+  <a class="nv" href="#s4">④ 存在条件</a>
+  <a class="nv" href="#s5">⑤ 阈值与 Q</a>
+  <a class="nv" href="#s6">⑥ 平台全景</a>
+  <a class="nv" href="#s7">⑦ 相干度</a>
+  <a class="nv" href="#s8">⑧ 与 Keely 对照</a>
+  <a class="nv" href="#s9">⑨ 判决</a>
+  <a class="nv" href="K8_热声子通道_渠氏热超导与倍频谐振.html" title="K8：渠氏热超导、热声子与二倍频谐振">K8 热声子 →</a>
+  <a class="nv" href="K5_频率梳前沿_从锁模激光到声子梳.html" title="K5：频率梳总论与非线性一节">← K5 频率梳</a>
+  <a class="nv" href="K6_术语对照_Keely与现代科学.html" title="K6：术语逐条对照">K6 术语 →</a>
+  <a class="nv" href="K9_Dynasphere24管与Anu十丝_赤道环与七内管对照.html" title="K9：24 管、7 内管与 Anu 十丝的尺寸与音程对照">K9 24管×10丝 →</a>
+</div></nav>
+
+<div class="hero"><div class="wrap">
+  <div class="kicker">K7 · Phononic Frequency Comb</div>
+  <h1>声子梳：齿距从哪来、器件怎么造，<br class="brk">与 Keely 的「三个八度」逐项对照</h1>
+  <p class="sub">K5 把声子梳当作四条路线之一，一笔带过。这一页把它拆开：<b>齿距不是设计出来的，是失谐出来的</b>。
+  而正是这一条，把 Keely 的 24 根管挡在门外 —— 他的齿距是<b>音阶比</b>，属于设计参数，不属于动力学。</p>
+  <div class="rd">
+    <div class="r"><div class="n">129×</div><div class="l">齿密度差距</div><div class="x">Keely 每八度 8 根 vs Ganesan 1030 根</div></div>
+    <div class="r"><div class="n">1.0</div><div class="l">Keely 齿数/自由度</div><div class="x">恰好等于「多音源」定义值</div></div>
+    <div class="r"><div class="n">0</div><div class="l">一个八度内的 2:1 对</div><div class="x">纯律七音结构上不可能</div></div>
+    <div class="r"><div class="n">41.5 dB</div><div class="l">阈值器件差距</div><div class="x">CNT 3.2 μW ↔ Si/AlN 44.7 mW</div></div>
+  </div>
+</div></div>
+
+<div class="wrap">
+
+<!-- ============ ① ============ -->
+<h2 id="s1">① 先分清三种「多谱线」——它们不是一回事</h2>
+
+<p>看频谱上有一排等距的峰，就说是「梳」，这是本页要防的第一个误判。同一张频谱图上，
+至少三种东西长得像梳，物理上却完全不同。<b>判别的落脚点只有两个：齿距由谁给定，齿数由谁给定。</b></p>
+
+<div class="paths">
+  <div class="p p1">
+    <div class="t">A · 谐波列</div>
+    <div class="m">f<sub>n</sub> = n · f<sub>1</sub></div>
+    <div class="d">齿距 = 基频本身，齿数受限于幅度衰减。这是<b>一个振子的非线性失真</b>，
+      不是多个模的耦合。</div>
+    <div class="k">齿距由 <b>基频</b> 给定 · 例：SiC 微盘光驱声子梳，1.655 GHz 的 24 阶谐波</div>
+  </div>
+  <div class="p p2">
+    <div class="t">B · 调制边带</div>
+    <div class="m">f<sub>n</sub> = f<sub>c</sub> ± n · f<sub>m</sub></div>
+    <div class="d">齿距 = <b>外部调制频率</b>，齿是外加信号「印」上去的。系统本身可以完全线性。</div>
+    <div class="k">齿距由 <b>外部时钟</b> 给定 · 这不是自组织的梳</div>
+  </div>
+  <div class="p p3">
+    <div class="t">C · 声子梳</div>
+    <div class="m">f<sub>n</sub> = f<sub>c</sub> + n · Δ<sub>2</sub> γ<sub>1</sub></div>
+    <div class="d">齿距 = <b>两个模的失谐量</b>。没有外部调制源，齿是自己长出来的。</div>
+    <div class="k">齿距由 <b>动力学（次失谐）</b> 给定 · Ganesan 2017 / Wu 2024 属此类</div>
+  </div>
+</div>
+
+<p>还有第四种，是 Keely 那一类：<b>N 个独立振子各自共振，频谱上出现 N 根线</b>。
+它既不满足 A（不是同一个振子的谐波），也不满足 B（没有外部调制），更不满足 C（没有模间能量转移）。
+它只是<b>多个音源并排发声</b>。把它叫「梳」，等于把一支合唱团叫成一把梳子 —— 齿确实等距（如果音阶设计得等距），
+但每根齿是一个独立的人，不是一个振子的边带。</p>
+
+<div class="midbox">
+  <b>本页要用的两个判别指标</b><br>
+  <b>指标一 · 每八度齿数 n<sub>oct</sub></b>：n<sub>oct</sub> = ln2 / (f<sub>rep</sub>/f<sub>c</sub>)。
+  同一个八度里塞得下几根齿。这个量不依赖绝对频率，可以跨平台横比。<br>
+  <b>指标二 · 齿数 / 自由度</b>：产生这些齿，动用了几个独立的振动自由度。梳的本质是<b>少自由度产生多谱线</b>；
+  多音源的本质是<b>一自由度一根线</b>。这个比值一旦等于 1，它就不是梳。
+</div>
+
+<!-- ============ ② ============ -->
+<h2 id="s2">② 三条生成路径：从理论到器件</h2>
+
+<p>声子梳不是一条路线，是三条。它们在「齿距由谁给定」这一点上一致（都来自失谐），
+但能量转移的通道不同，对器件的要求也不同。</p>
+
+<div class="step">
+  <div class="id">P1</div>
+  <div class="bd"><b>非线性共振（Cao 2014，纯理论）</b>
+    <p>在 FPU-α 链（三次非线性的一维弹簧链）上，把驱动频率调到<b>接近两个模频率之和</b>，
+    两个模同时被激发，且每个模的谱线<b>自身裂成一排等距细线</b>。<br>
+    作者称其为「hyperfine comb」（超精细梳）—— 不是"多激发几个模"，而是<b>每个已激发模内部的分裂</b>。
+    第一阶（DNR）激发一对模，第二阶（CNR）激发三对。齿距由高阶非线性项与驱动失谐共同决定。<br>
+    <b>这一条至今没有对应的实体器件</b>，它是后面两条的理论母版。</p></div>
+</div>
+
+<div class="step have">
+  <div class="id">P2</div>
+  <div class="bd"><b>三波混频 + 自参量（Ganesan 2017，首个实验）</b>
+    <p>器件：Si 基微机械梁 <b>1100 × 350 × 11 μm</b>，上覆 <b>0.5 μm AlN</b>（压电驱动）+ <b>1 μm Al</b>，
+    两端固支、自由-自由梁；位移用激光多普勒测振仪（LDV）读出。<br>
+    机制：驱动模 ω<sub>1</sub> 通过<b>二阶非谐耦合</b>去调制另一个模 ω<sub>2</sub>（≈ ω<sub>1</sub>/2）的等效弹簧常数。
+    ω<sub>2</sub> 被<b>自参量</b>激发（不是外部直接驱动），两个模之间来回拍能量 —— 拍频就是齿距。<br>
+    <b>实测</b>：驱动 3.862 MHz，齿距 <b>2.6 kHz</b>；驱动从 −10 扫到 23.5 dBm，
+    <b>低于 10 dBm 只有单峰</b>，超过才出梳；到 <b>16.5 dBm 齿距发生跳变</b>（切换到另一条非线性通路）。</p></div>
+</div>
+
+<div class="step have">
+  <div class="id">P3</div>
+  <div class="bd"><b>1:3 内共振 + 分岔级联（Wu 2024，齿距可调）</b>
+    <p>非线性模态耦合的 MEMS 谐振器，构成 <b>1:3 内共振</b>。<b>单音激励</b>即可起梳，
+    梳的生成区<b>恰好落在内共振最强的区域</b>。<br>
+    正反向扫频显示多级演化：<b>混沌 → 倍周期分岔 → 循环折叠分岔</b>。
+    分岔链把齿距从 <b>25 Hz 拉到 200 Hz 以上</b>（超过一个数量级）。<br>
+    这条路径的价值在<b>可调性</b>：齿距不是焊死的，是靠工作在分岔链的哪一级来选的。</p></div>
+</div>
+
+<p>另外还有一条正在成形的路线：<b>2:1 内共振的铁电 HfO₂-ZrO₂</b>（CMOS 氧化物，2026）。
+它把梳推到 <b>0.44–2.1 GHz</b>，双音种子混频给出 <b>170 根以上</b>（跨两个八度），
+自主 Hopf 路径给出 <b>200 根以上</b>。这是目前公开报道里齿数最多、频段最高的一档。</p>
+
+<!-- ============ ③ ============ -->
+<h2 id="s3">③ 齿距从哪来：慢流方程里的那一个失谐量</h2>
+
+<p>这是全页最硬的一块。声子梳的齿距有严格表达式，不是"大概等于某个频率差"。
+把两个耦合模的方程做<b>慢变包络近似</b>（slow-flow reduction），得到两个一阶方程：</p>
+
+<div class="eq">
+  ∂ψ<sub>1</sub>/∂τ = −i f − (1 + iΔ<sub>1</sub>) ψ<sub>1</sub> + i ψ<sub>2</sub><sup>2</sup><br>
+  ∂ψ<sub>2</sub>/∂τ = −(γ<sub>21</sub> + iΔ<sub>2</sub>) ψ<sub>2</sub> + 2 i ψ<sub>1</sub> ψ<sub>2</sub><sup>*</sup>
+</div>
+
+<p class="cnt" style="margin:-2px 0 10px">
+  符号：ψ = 复振幅包络；<b>ω<sub>D</sub> = 驱动角频率</b>（D 取自 drive，是一个标签，读作「ω 下标 D」）；
+  ω<sub>1</sub>、ω<sub>2</sub> = 两个模的固有角频率；γ = 半线宽（= ω/2Q）；
+  F = 外力幅值；α<sub>12</sub>、α<sub>22</sub> = 二阶非谐耦合系数；上标 * = 复共轭。
+</p>
+<p>五个归一化量，每一个都对应一个可测量的器件参数：</p>
+
+<table class="tbl">
+  <thead><tr><th style="width:17%">量</th><th style="width:31%">定义</th><th>物理含义</th></tr></thead>
+  <tbody>
+    <tr><td>τ = γ<sub>1</sub>t</td><td>以模 1 的衰减率为单位的时间</td><td>把时间换成「几个阻尼时间」</td></tr>
+    <tr><td>f ∝ α<sub>12</sub>F /(γ<sub>1</sub><sup>2</sup>ω<sub>D</sub><sup>2</sup>)</td><td>归一化驱动力</td><td><b>阈值就出在这里</b>：分母两个 γ 相乘</td></tr>
+    <tr><td>Δ<sub>1</sub> = (ω<sub>D</sub> − ω<sub>1</sub>)/γ<sub>1</sub></td><td>主失谐</td><td>驱动偏离模 1 多少</td></tr>
+    <tr class="same"><td><b>Δ<sub>2</sub> = (ω<sub>D</sub> − 2ω<sub>2</sub>)/(2γ<sub>1</sub>)</b></td>
+      <td><b>次失谐</b></td><td><b>齿距的来源</b>。这就是为什么它不叫「自由光谱程」</td></tr>
+    <tr><td>γ<sub>21</sub> = γ<sub>2</sub>/γ<sub>1</sub></td><td>阻尼比</td><td>两个模的 Q 值之比 —— 决定能量往哪边偏</td></tr>
+  </tbody>
+</table>
+
+<p>关键在 Δ<sub>2</sub>。它的分子 <b>ω<sub>D</sub> − 2ω<sub>2</sub></b> 就是「驱动频率」与「模 2 的两倍」之间的<b>残余失谐</b>。
+当它不为零时，ψ<sub>2</sub> 的相位每转一圈就多积一点，模 1 与模 2 之间来回拍 ——
+<b>这个拍频写在频谱上，就是一排等距的齿</b>。</p>
+
+<div class="goodbox">
+  <b>一句话记住这条</b><br>
+  光学微梳的齿距 = 腔的自由光谱程 <b>FSR = c/(nL)</b>，是<b>几何</b>给的；<br>
+  声子梳的齿距 = 两个模的残余失谐 <b>|ω<sub>D</sub> − 2ω<sub>2</sub>|</b>，是<b>动力学</b>给的。<br>
+  前者你改腔长就能改，后者你改<b>驱动频率</b>就能改 —— 所以叫「可调齿距」。
+</div>
+
+<p>这一点在实验上可以直接看到：PMUT 那篇里，驱动从 187.05 kHz 挪到 187.50 kHz，
+齿距就从 <b>2.075 kHz 连续降到 1.786 kHz</b>。驱动一动，齿距就跟着动 ——
+因为齿距本来就是驱动的函数。而 Keely 的管长一旦锯好，齿距就<b>固定</b>了：
+改齿距必须拆装置、换管长。这是两种完全不同的「可调性」。</p>
+
+<!-- ============ ④ ============ -->
+<h2 id="s4">④ 存在条件：有非线性，不等于有梳</h2>
+
+<p>这是第二个必须防的误判。很多人以为「器件非线性够强就会出梳」，实际不是。
+对双模自参量系统的分析给出：<b>梳只存在于振幅-频率平面上的一个特定区域</b>，
+而这个区域是 <b>2:1 自参量共振的 Arnold 舌的一个子集</b>。</p>
+
+<p>Arnold 舌本身描述的是「在什么驱动频率与幅度下，ω<sub>2</sub> 会被自参量激发」。
+梳区比它更小、更挑。<b>也就是说：能被自参量激发，是必要条件，不是充分条件。</b>
+Ganesan 那篇的实验也印证了这一点 —— 参量共振在 5 dBm 就出现了，但梳要到 15 dBm 才成形，
+两个阈值<b>不在同一处</b>。</p>
+
+<div class="warnbox">
+  <b>这条对 Keely 的杀伤力在哪</b><br>
+  进入 2:1 内共振的前提，是<b>存在两个频率比接近 2:1 的模</b>。
+  Keely 的内环是七根管，都在<b>一个八度之内</b>（432 → 864 Hz）。
+  一个八度内任意两根管的频率比都落在 <b>1 到 2 之间</b>，
+  <b>结构上不可能接近 2</b> —— 除非这两根管是「同名音的上下八度」，而那是同一个音，不是两个模。<br>
+  实测核算：纯律七音（1, 9/8, 5/4, 4/3, 3/2, 5/3, 15/8）内部，
+  满足 2:1（偏差 &lt; 2%）的对数是 <b>0</b>；满足 3:1 的对数也是 <b>0</b>。
+</div>
+
+<p>外环跨三个八度（432 → 3456 Hz），这时确实出现了 2:1 的对 ——
+但那些对<b>全是同名音的八度关系</b>（如 432 与 864、648 与 1296）。
+两个「同一个音的八度」在物理上是<b>同一个模态族的两阶</b>，它们的耦合方式与「两个不同的弯曲模态」完全不同，
+不能直接套用双模自参量模型。而且管与管之间是<b>空气/结构传声</b>，不是<b>同一连续体的模态耦合</b>，
+耦合系数既弱又不可控。</p>
+
+<div class="midbox">
+  <b>「每隔第三个销钉调 B♭」不是 1:3 内共振</b><br>
+  Wu 2024 的 <b>1:3</b> 是<b>频率比</b>：ω<sub>1</sub> : ω<sub>2</sub> = 3 : 1。
+  Keely 的「每隔第三个」是<b>计数比</b>：每三根钉里改一根。
+  这两个「1:3」除了数字相同，没有任何关系。把它们当成同一件事，是本主题下最容易犯的错。
+</div>
+
+<!-- ============ ⑤ ============ -->
+<h2 id="s5">⑤ 阈值：Q 值才是命门，不是非线性强度</h2>
+
+<p>归一化驱动力 f 的分母是 <b>γ<sub>1</sub><sup>2</sup>ω<sub>D</sub><sup>2</sup></b>，而 γ = ω/(2Q)。
+代入就得到阈值对 Q 的<b>平方反比</b>：</p>
+
+<div class="eq">
+  P<sub>th</sub> ∝ γ<sub>1</sub>γ<sub>2</sub> / α<sub>12</sub> = ω<sub>1</sub>ω<sub>2</sub> / (4 Q<sub>1</sub>Q<sub>2</sub> α<sub>12</sub>)
+</div>
+
+<p>这里 α<sub>12</sub> 是二阶非谐耦合系数。注意 <b>Q 出现两次</b>（两个模各一次），
+所以提高 Q 是<b>平方级</b>收益，增强非线性只是线性收益。<b>这就是为什么所有声子梳都用高 Q 的微机械谐振器，
+而不是用非线性大的材料。</b></p>
+
+<p>实测阈值的跨度极大，而差距几乎全部由 Q 与耦合系数解释：</p>
+
+<table class="tbl">
+  <thead><tr><th style="width:24%">平台</th><th style="width:20%">阈值驱动</th><th style="width:16%">折算功率</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td>碳纳米管（CNT，2025）</td><td><b>−25 dBm</b></td><td>3.2 μW</td><td>谐振子极轻、Q 极高，阈值最低的一档</td></tr>
+    <tr><td>Si/AlN 梁（Ganesan 2017）</td><td>10 dBm 起梳<br>16.5 dBm 齿距跳变</td><td>10 → <b>44.7 mW</b></td><td>首个实验，器件并非为低阈值优化</td></tr>
+    <tr><td>LN Lamb 波（2026）</td><td>≈ 15 dBm</td><td>31.6 mW</td><td>用的是<b>热</b>非线性，不是机械非线性</td></tr>
+    <tr><td>曲面 PMUT（2025）</td><td>2 V DC + 700 mV AC</td><td>—</td><td>DC 偏压把工作点推到内共振区</td></tr>
+    <tr><td>HfO₂-ZrO₂（2026）</td><td>片内驱动</td><td>—</td><td>0.44–2.1 GHz，CMOS 后道工艺</td></tr>
+  </tbody>
+</table>
+
+<p>最左与最右相差 <b>41.5 dB</b>（约 1.4 万倍）。这个跨度说明：<b>「能不能起梳」不是材料属性，
+是器件设计属性</b>。同一个机制，换个 Q 就换个世界。</p>
+
+<div class="rd">
+  <div class="r"><div class="n">1/Q²</div><div class="l">阈值标度</div><div class="x">Q 提 10 倍 ⇒ 阈值降 100 倍</div></div>
+  <div class="r"><div class="n">3.2 μW</div><div class="l">最优记录（CNT）</div><div class="x">−25 dBm</div></div>
+  <div class="r"><div class="n">44.7 mW</div><div class="l">首个实验（Si/AlN）</div><div class="x">16.5 dBm</div></div>
+  <div class="r"><div class="n">41.5 dB</div><div class="l">两端差距</div><div class="x">≈ 14,000 倍</div></div>
+</div>
+
+<!-- ============ ⑥ ============ -->
+<h2 id="s6">⑥ 平台全景：材料、频段、齿距、齿数</h2>
+
+<p>把已报道的声子梳按平台排开，会发现一个规律：<b>频段越高，齿距越大；但要"密"，得靠低损耗、低频率的器件</b>。
+这不是巧合 —— 齿距是失谐量，而失谐量的最小可分辨值受线宽（= ω/Q）限制。</p>
+
+<table class="tbl">
+  <thead><tr>
+    <th style="width:19%">平台 / 材料</th><th style="width:13%">载频</th><th style="width:13%">齿距</th>
+    <th style="width:11%">每八度齿数</th><th style="width:11%">Q / f·Q</th><th>备注</th>
+  </tr></thead>
+  <tbody>
+    <tr><td>Si/AlN 梁<br><span class="cnt">Ganesan 2017</span></td><td>3.862 MHz</td><td><b>2.6 kHz</b></td>
+      <td><b>1030</b></td><td>—</td><td>首个实验；<b>齿最密</b></td></tr>
+    <tr><td>曲面 PMUT<br><span class="cnt">2025</span></td><td>187.05 kHz</td><td>2.075 kHz</td>
+      <td>62.5</td><td>—</td><td>2:1 内共振；驱动微调即改齿距</td></tr>
+    <tr><td>曲面 PMUT<br><span class="cnt">同上，驱动 +0.45 kHz</span></td><td>187.50 kHz</td><td>1.786 kHz</td>
+      <td>72.8</td><td>—</td><td>齿距随驱动<b>连续</b>下降</td></tr>
+    <tr><td>HfO₂-ZrO₂ NEMS<br><span class="cnt">2026</span></td><td>0.44–2.1 GHz</td><td>≈ 1.8% f<sub>c</sub></td>
+      <td>85</td><td>—</td><td><b>齿数最多</b>（170–200 根，跨 2.25 八度）</td></tr>
+    <tr><td>电容式 MEMS<br><span class="cnt">Wu 2024</span></td><td>未公开</td><td><b>25 → 200+ Hz</b></td>
+      <td>—</td><td>—</td><td>1:3 内共振；<b>齿距可调一个数量级</b></td></tr>
+    <tr><td>碳纳米管<br><span class="cnt">2025</span></td><td>VHF 段</td><td>—</td><td>—</td><td>极高</td>
+      <td><b>阈值最低</b>（−25 dBm）</td></tr>
+    <tr><td>LN Lamb 波<br><span class="cnt">2026</span></td><td>&gt; 100 MHz</td><td>—</td><td>—</td><td>—</td>
+      <td>用<b>热</b>非线性；对初值极敏感</td></tr>
+    <tr><td>SiC 微盘（光驱）<br><span class="cnt">2025</span></td><td>1.655 GHz</td><td>= 载频<br><span class="cnt">谐波梳</span></td>
+      <td>—</td><td>f·Q = 22 THz<br><span class="cnt">Q &gt; 10⁷ @1.08 mW</span></td>
+      <td><b>属于 ①-A 类</b>，不是间隔梳；跨度 1–70 GHz</td></tr>
+    <tr><td>MoS₂ / h-BN 声学腔<br><span class="cnt">Zalalutdinov</span></td><td>50–600 GHz</td><td>—</td><td>—</td>
+      <td>f·Q ≈ 10¹⁴</td><td>目前 <b>f·Q 最高</b>的一档</td></tr>
+    <tr class="homo"><td><b>Keely 外环</b><br><span class="cnt">24 管（推演）</span></td><td><b>432–3456 Hz</b></td>
+      <td>音阶比<br><span class="cnt">≈ 9% f<sub>c</sub></span></td><td><b>8</b></td><td>—</td>
+      <td>不是上述任何一档；<b>齿数/自由度 = 1.0</b></td></tr>
+  </tbody>
+</table>
+
+<div class="viz">
+  <div class="vt">图 7-1　同一个八度里，能塞下几根齿</div>
+  <div class="vc">横轴为一个八度（f<sub>c</sub> → 2f<sub>c</sub>，线性频率），每根竖线是一根梳齿。
+  三行用同一把尺子，只有齿数不同。齿数由各文献的「齿距 / 载频」实算：
+  n<sub>oct</sub> = ln2 /(f<sub>rep</sub>/f<sub>c</sub>)。<br>
+  <span class="cnt">⚠ n<sub>oct</sub> 是八度内的<b>间隔数</b>；画出来含两端，所以 Keely 行 8 个间隔对应 <b>9 根</b>竖线 ——
+  与音乐里「一个八度 12 个半音」的算法一致，不是数错了。</span></div>
+  <canvas id="cvDen" width="1120" height="288"></canvas>
+</div>
+
+<p><b>这张图是本页的核心证据。</b>最上一行是 Keely 的 8 根 —— 每一根都清清楚楚，
+因为它们本来就是<b>八根不同的管</b>。最下一行是 Ganesan 的 1030 根，
+在这个分辨率下已经<b>连成一片实心</b>，因为它们是<b>同一个模被调制后分裂出来的边带</b>，
+间距只有载频的万分之七。</p>
+
+<p>「梳」这个比喻的本义，是<b>齿密到可以当尺子用</b> —— 你数得清齿，才量得准频率。
+每八度 8 根的「梳」，量不了任何东西，因为它跟音阶没有区别。</p>
+
+<!-- ============ ⑦ ============ -->
+<h2 id="s7">⑦ 相干性到底有多好：一条双时间尺度定律</h2>
+
+<p>梳的价值全在「齿与齿之间相位锁定」。如果每根齿的相位各飘各的，那它只是 N 个独立振荡器，
+和一个音阶没有区别。声子梳在这件事上有一条 2026 年才被明确写出来的规律：</p>
+
+<div class="goodbox">
+  <b>双时间尺度定律（HfO₂-ZrO₂，2026）</b><br>
+  <b>短期稳定性由生成机制决定</b>：<br>
+  　· <b>种子（seeded）梳</b> —— 两根泵浦音种下去，齿的相位<b>继承泵浦的白相位噪声</b>，1 s 修正 Allan 偏差 <b>10⁻¹¹</b>；<br>
+  　· <b>自主（autonomous）梳</b> —— 靠 Hopf 分岔自己起振，齿获得<b>自由振荡器的相位扩散</b>，1 s MDEV 退化到 <b>10⁻⁸</b>。<br>
+  <b>长期稳定性由材料决定</b>：温度补偿的叠层在<b>空气、无主动温控</b>下压住了随机游走漂移。
+</div>
+
+<p>两个数差 <b>1000 倍</b>，而器件是同一个。这说明：<b>相干性不是"做得精不精"的问题，是"用哪种机制"的问题。</b>
+你要相干，就必须有一个<b>外部参考</b>把相位钉住；纯自组织的梳，天生是自由振荡器。</p>
+
+<p>这一点对 Keely 是致命的。他的 24 根管是 <b>24 个各自的自由振荡器</b>，
+而且<b>没有共同参考</b> —— 连"继承某个泵浦的噪声"这条路都没有。
+按上面这条定律外推，它的齿间相位稳定性只会落在<b>自主梳那一侧甚至更差</b>，
+且随管数增加而恶化（各管独立漂移，没有互相锁定的通道）。</p>
+
+<div class="midbox">
+  <b>已发表的相干性证据（都是实测，不是推断）</b><br>
+  · <b>PMUT 2025</b>：用 LDV 测机械响应，明确写出「跨梳齿存在<b>固定相位</b>」—— 这是相位相干的直接证据。<br>
+  · <b>Ganesan 2017</b>：原文用「phase coherent comb lines」描述观测结果。<br>
+  · <b>SiC 光驱 2025</b>：1.08 mW 下基频线宽 FWHM &lt; 150 Hz（@1.655 GHz ⇒ Q &gt; 10⁷），但同时记录到<b>亚秒尺度几百 Hz 的频率抖动</b> —— 短稳与长稳是两件事。<br>
+  · Keely 一侧：<b>没有任何相位测量</b>，也没有可供锁定的参考源。
+</div>
+
+<!-- ============ ⑧ ============ -->
+<h2 id="s8">⑧ 与 Keely 逐项对照</h2>
+
+<p>下面 14 行，每一行只问一件事：<b>这一项上，Keely 的东西和现代声子梳是不是同一个机制。</b>
+三档判定沿用 K6 的规矩 —— 绿＝同一物，黄＝部分可对应，红＝本质不同。
+图例写在表上方，三档各自计数见下。</p>
+
+<ul class="lg">
+  <li><span class="sw s"></span><div><b class="s">绿 · 同一物 / 同一量级</b>：物理量或结构在本体上相同，可以直接互相翻译；或数值落在同一量级。</div></li>
+  <li><span class="sw h"></span><div><b class="h">黄 · 部分可对应</b>：某一侧面能对上，但关键参数或机制不同，只能类比不能等同。</div></li>
+  <li><span class="sw d"></span><div><b class="d">红 · 本质不同</b>：机制层面不同，任何翻译都会丢掉决定性内容。</div></li>
+</ul>
+
+<table class="tbl" id="cmpTbl">
+  <thead><tr><th style="width:15%">维度</th><th style="width:35%">声子梳（现代，有实验）</th>
+    <th style="width:35%">Keely（三个八度 + 24 管）</th><th style="width:15%">判定</th></tr></thead>
+  <tbody>
+    <tr class="same"><td>承载介质</td><td>机械振动（声子），不是光子</td><td>机械振动（气流吹管）</td><td>同一物</td></tr>
+    <tr class="same"><td>频谱形态</td><td>一排分立谱线</td><td>一排分立谱线（24 根管各一条）</td><td>同一物</td></tr>
+    <tr class="same"><td>带宽</td><td>HfO₂ 跨 2.25 八度；SiC 谐波梳跨 4.58 八度</td><td>跨 <b>3.00</b> 八度（432 → 3456 Hz，×8）</td><td>量级相同</td></tr>
+    <tr class="homo"><td>激励方式</td><td>单音压电激励，<b>必须精确失谐</b></td><td>气流连续吹，宽频、无失谐概念</td><td>都是「外部供能」，但一个有失谐一个没有</td></tr>
+    <tr class="homo"><td>非线性来源</td><td>二阶非谐<b>模态耦合</b>（α<sub>12</sub>）</td><td>薄壳大振幅下的<b>几何</b>非线性确实存在</td><td>都有非线性，但一个在模间、一个在单管内</td></tr>
+    <tr class="homo"><td>多振子能量分配</td><td>能量在两三个模之间<b>来回拍</b></td><td>能量在 24 根管之间分配，但靠空气/结构传声</td><td>都是多振子，通道强弱差几个量级</td></tr>
+    <tr class="homo"><td>工作频段</td><td>25 Hz – 70 GHz<span class="cnt">齿距下限 → 最高谐波齿</span></td><td>432 – 3456 Hz<span class="cnt">跨 3 个八度</span></td><td>同在音频段，但跨度差 <b>8.5 个数量级</b></td></tr>
+    <tr class="diff"><td><b>齿距由谁定</b></td><td><b>次失谐</b> |ω<sub>D</sub> − 2ω<sub>2</sub>|，是<b>动力学</b>量</td><td><b>音阶比</b>（9/8、5/4、3/2），是<b>设计</b>量</td><td><b>本质不同</b></td></tr>
+    <tr class="diff"><td><b>齿距可调性</b></td><td>改驱动频率即<b>连续可调</b>（2.065 → 1.786 kHz）</td><td>齿距焊死在管长里，改它要<b>换管</b></td><td><b>本质不同</b></td></tr>
+    <tr class="diff"><td><b>齿数 / 自由度</b></td><td><b>57–200</b>（HfO₂：3 个模 → 170 根）</td><td><b>1.0</b>（24 根管 → 24 根线）</td><td><b>本质不同</b></td></tr>
+    <tr class="diff"><td><b>自由度的性质</b></td><td>同一连续体的<b>不同模态</b>（弯曲、扭转、径向）</td><td><b>24 根独立管</b>，每根是独立振子</td><td><b>本质不同</b></td></tr>
+    <tr class="diff"><td><b>内共振条件</b></td><td>必须有一对模满足 <b>2:1 或 1:3</b></td><td>一个八度内 <b>0 对</b>满足（纯律七音核算）</td><td><b>本质不同</b></td></tr>
+    <tr class="diff"><td><b>相位相干</b></td><td>LDV 实测跨齿<b>固定相位</b>；MDEV 10⁻¹¹</td><td><b>无测量、无机制</b>（24 个自由振荡器，无共同参考）</td><td><b>本质不同</b></td></tr>
+    <tr class="diff"><td><b>高 Q 腔</b></td><td><b>必需</b>；阈值 ∝ 1/(Q₁Q₂)</td><td>开放空气 + 钢管，<b>无腔</b></td><td><b>本质不同</b></td></tr>
+  </tbody>
+</table>
+
+<p class="cnt" style="margin-top:10px">合计 <b>14</b> 行 · 绿 <b>3</b> / 黄 <b>4</b> / 红 <b>7</b></p>
+
+<p>这个分布的<b>位置</b>本身是结论：<b>绿的三行全在「外在形态」，红的七行全在「生成机制」。</b>
+也就是说 —— 从外面看，它确实像一把梳（机械振动、多根谱线、跨三个八度）；
+从里面看，它没有一项关键机制是声子梳的。</p>
+
+<p>这和 K6 术语表的分布<b>完全同构</b>：那边绿 13 条全在基础声学、红 9 条全在「能量输出与介质」。
+两次独立审查，同一条分界线 —— <b>越靠近「能被仪器量到」的地方越对得上，越靠近「齿是怎么长出来的」越对不上。</b></p>
+
+<!-- ============ ⑨ ============ -->
+<h2 id="s9">⑨ 四个判决实验：不用造新装置</h2>
+
+<p>上面的对照可以停在纸面上，也可以用一个下午把它变成事实。四个实验按<b>成本递增</b>排列，
+前两个只需要一支麦克风和一个信号发生器。</p>
+
+<div class="step">
+  <div class="id">E1</div>
+  <div class="bd"><b>数齿：一个八度内有几根？</b>
+    <p>把麦克风放进球腔，扫一遍频谱，数 432–864 Hz 之间有几根明显峰。<br>
+    <b>判决</b>：<b>8 根</b>（或 7 根）⇒ 多音源，是 N 根管；<b>60 根以上</b> ⇒ 才可能是梳。<br>
+    <span class="cnt">依据：⑥ 表的实测区间 8 ↔ 62–1030，中间没有重叠。</span></p></div>
+</div>
+
+<div class="step">
+  <div class="id">E2</div>
+  <div class="bd"><b>改驱动，看齿距动不动</b>
+    <p>把激励频率（或气流调制频率）微调 0.1–1%，重测齿距。<br>
+    <b>判决</b>：<b>齿距随之连续变化</b> ⇒ Δ₂ 在起作用，是梳；<b>齿距纹丝不动</b> ⇒ 齿距由管长给定，是音阶。<br>
+    <span class="cnt">依据：PMUT 驱动 187.05 → 187.50 kHz（+0.45 kHz），齿距 2.075 → 1.786 kHz（<b>降 13.9%</b>）。</span></p></div>
+</div>
+
+<div class="step mid">
+  <div class="id">E3</div>
+  <div class="bd"><b>拆管：堵住一根，看剩下的变不变</b>
+    <p>把其中一根管堵死（或贴阻尼胶），重测频谱。<br>
+    <b>判决</b>：<b>只少一根线，其余位置不动</b> ⇒ 独立振子，多音源；
+    <b>整把谱线的间距与位置都变了</b> ⇒ 存在模间耦合，才是耦合系统。<br>
+    <span class="cnt">这是最便宜、判决力最强的一个 —— 它直接测「自由度之间有没有耦合」，不需要任何精密仪器。</span></p></div>
+</div>
+
+<div class="step">
+  <div class="id">E4</div>
+  <div class="bd"><b>测相位：两根齿的相对相位锁不锁</b>
+    <p>用双通道同步采集，测相邻两根齿的相位差随时间的漂移（或直接用 LDV 测管壁振动相位）。<br>
+    <b>判决</b>：相位差<b>稳定在常数附近</b>（Allan 偏差随 τ 下降）⇒ 相干；
+    <b>随机游走</b> ⇒ 自由振荡器集合。<br>
+    <span class="cnt">依据：HfO₂ 的双时间尺度定律，seeded 10⁻¹¹ vs autonomous 10⁻⁸，差 1000 倍。</span></p></div>
+</div>
+
+<div class="goodbox">
+  <b>四个实验合起来的判决线</b><br>
+  E1 数齿数 → E2 看齿距是否随驱动变 → E3 拆一根管看全局 → E4 测相位锁定。<br>
+  <b>只要 E1 落在 8 根、E2 齿距不动，后面两个就不用做了</b> —— 那已经是「多音源」的确诊。
+  这四个实验<b>不需要造声子梳，只需要把 Keely 装置如实测一遍</b>。
+</div>
+
+<!-- ============ ⑩ ============ -->
+<h2 id="s10">⑩ 结论</h2>
+
+<div class="warnbox">
+  <b>一句话：Keely 的 24 根管是「音阶」，不是「梳」。</b><br>
+  音阶的齿距是<b>设计出来的</b>（音阶比），梳的齿距是<b>长出来的</b>（失谐量）。<br>
+  这个区别不是措辞问题，它决定了三件事：<b>齿距能不能调</b>（改驱动 vs 换管）、
+  <b>齿数能有多少</b>（57–200 vs 1.0 每自由度）、<b>相位能不能锁</b>（有实测 vs 无机制）。
+</div>
+
+<p>但要说清一件事：<b>这个结论并不否定 Keely 装置有别的价值。</b>
+它作为「多音源 + 球腔耦合」的声学系统，在音阶结构、腔体共振、拍频现象上都有可研究的内容。
+否定的只是<b>把它称作「频率梳」</b>这个类比 —— 因为这个类比会让人以为它具备梳的三样东西
+（可调齿距、高齿数、相位相干），而它一样都没有。</p>
+
+<p>真正要往声子梳方向走，K5 ⑤ 给的那条路依然成立，而且这一页把它说得更具体了：
+<b>不是在 24 根管上加非线性，而是换成「一个连续体上的两个模」</b>。
+Wu 2024 的器件就是两根耦合梁、一个压电片、单音激励 —— 齿距 25–200 Hz 可调，
+这个尺度和 Keely 的音频段正好接得上，而且<b>在桌上就能做</b>。</p>
+
+<h3>这一页新增的、可以直接拿去用的数</h3>
+<table class="tbl">
+  <thead><tr><th style="width:34%">量</th><th style="width:22%">值</th><th>来处</th></tr></thead>
+  <tbody>
+    <tr><td>Keely 每八度齿数</td><td>8（外环）/ 7（内环）</td><td>24 管 ÷ 3 八度；七音一 octave</td></tr>
+    <tr><td>Keely 平均齿距比</td><td>0.0905（8 根）/ 0.1041（7 根）</td><td>2<sup>1/n</sup> − 1</td></tr>
+    <tr><td>Ganesan 每八度齿数</td><td>1030</td><td>ln2 ÷ (2.6 kHz / 3.862 MHz)</td></tr>
+    <tr><td>PMUT 每八度齿数</td><td>62.5 → 72.8</td><td>ln2 ÷ (2.075 / 187.05 kHz) 等</td></tr>
+    <tr><td>齿密度最大差距</td><td><b>≈ 128.8 倍</b></td><td>1030 ÷ 8（Keely 外环）</td></tr>
+    <tr><td>Keely 齿数 / 自由度</td><td><b>1.0</b></td><td>24 根线 ÷ 24 根管</td></tr>
+    <tr><td>HfO₂ 齿数 / 自由度</td><td>56.7（3 模 → 170 线）<br>200（1 模 → 200 线）</td><td>原文「more than 170 / 200 lines」</td></tr>
+    <tr><td>阈值最大差距</td><td>41.5 dB（≈ 14,000 倍）</td><td>−25 dBm ↔ 16.5 dBm</td></tr>
+    <tr><td>相干性最大差距</td><td>1000 倍（1 s MDEV）</td><td>10⁻¹¹（seeded）↔ 10⁻⁸（autonomous）</td></tr>
+  </tbody>
+</table>
+
+<!-- ============ ⑪ 出处 ============ -->
+<h2 id="s11">⑪ 出处与分级</h2>
+
+<table class="tbl">
+  <thead><tr><th style="width:8%">编号</th><th style="width:56%">文献</th><th style="width:9%">等级</th><th>用于本页哪一处</th></tr></thead>
+  <tbody>
+    <tr><td>[web_301]</td><td>Cao L S, Qi D X, Peng R W, Wang Mu, Schmelcher P. <i>Phononic Frequency Combs through Nonlinear Resonances</i>. Phys. Rev. Lett. <b>112</b>, 075505 (2014). DOI 10.1103/PhysRevLett.112.075505</td>
+      <td><span class="tag ok">B</span></td><td>② P1 非线性共振；hyperfine comb；DNR/CNR</td></tr>
+    <tr><td>[web_302]</td><td>Ganesan A, Do C, Seshia A. <i>Phononic frequency comb via intrinsic three-wave mixing</i>. Phys. Rev. Lett. <b>119</b>, 033903 (2017)</td>
+      <td><span class="tag ok">B</span></td><td>② P2 首个实验；3.862 MHz / 2.6 kHz；器件尺寸与叠层</td></tr>
+    <tr><td>[web_303]</td><td>Qi Z, Menyuk C R, Gorman J J, Ganesan A. <i>Existence Conditions for Phononic Frequency Combs</i>. arXiv:2003.10202</td>
+      <td><span class="tag ok">B</span></td><td>③ 慢流方程四个归一化量；④ 梳区是 Arnold 舌的子集</td></tr>
+    <tr><td>[web_304]</td><td>Wu J, Song P, Zang S, Qiao Y, Huan R, Zhang W, Shao L. <i>Widely-Tunable MEMS Phononic Frequency Combs by Multistage Bifurcations Under a Single-Tone Excitation</i>. J. Microelectromech. Syst. <b>33</b>(3) 384–394 (2024). DOI 10.1109/JMEMS.2024.3379195</td>
+      <td><span class="tag ok">B</span></td><td>② P3 1:3 内共振；齿距 25→200+ Hz；混沌/倍周期/循环折叠</td></tr>
+    <tr><td>[web_305]</td><td>Kumar P, et al. <i>Evolution of tunable phononic frequency combs via three-mode interaction in curved PMUT</i>. Sci. Rep. (2025). PMID 40341567<br>
+      <i>Tunable phononic frequency combs in curved PMUT enabled by 2:1 internal resonance</i>. J. Appl. Phys. <b>138</b>, 104502 (2025)</td>
+      <td><span class="tag ok">B</span></td><td>③ 齿距随驱动连续变化 2.075→1.786 kHz；⑦ LDV 跨齿固定相位</td></tr>
+    <tr><td>[web_306]</td><td>Gao J, Mishra S, Kou Y, Yousuf S M E H, Cho H, Tabrizian R. <i>Coherent phononic frequency combs in ferroelectric CMOS oxides</i>. arXiv:2608.28956 (2026-08-28)</td>
+      <td><span class="tag no">D 预印本</span></td><td>⑦ 双时间尺度定律；0.44–2.1 GHz；170/200 根线；MDEV 10⁻¹¹ vs 10⁻⁸</td></tr>
+    <tr><td>[web_307]</td><td>Xu N, et al. <i>Phononic frequency comb in carbon nanotube mechanical resonators at very high frequency band</i>. Front. Phys. (2025). DOI 10.15302/frontphys.2025.032202</td>
+      <td><span class="tag ok">B</span></td><td>⑤ 阈值 −25 dBm</td></tr>
+    <tr><td>[web_308]</td><td>Anderson I, Kramer J, Hsu T H, Wang Y, Chulukhadze V, Lu R. <i>Phononic Combs in Lithium Niobate Acoustic Resonators</i>. arXiv:2510.20990 / APL (2026)</td>
+      <td><span class="tag no">D 预印本</span></td><td>⑤ ≈15 dBm；<b>热</b>非线性；对初值敏感</td></tr>
+    <tr><td>[web_309]</td><td>芯片级光驱声子梳，1–70 GHz 跨度（arXiv:2509.04305）</td>
+      <td><span class="tag no">D 预印本</span></td><td>⑥ SiC 微盘：1.655 GHz、Q 13,500、f·Q 22 THz、线宽 &lt;150 Hz</td></tr>
+    <tr><td>[web_310]</td><td>Arora N, Ganesan A. <i>Phononic Frequency Combs in Twisted Bilayer TMD Heterostructures from First Principles</i>. arXiv:2610.13825 (2026)</td>
+      <td><span class="tag no">D 预印本</span></td><td>① 三类机制的区分（FSR 不适用 / 慢流拍频）；⑥ MoS₂-h-BN 的 f·Q ≈ 10¹⁴</td></tr>
+    <tr><td>[web_311]</td><td>Mishra M, Qi Z, Ganesan A. <i>On the Nonlinear Sensitivity of Phononic Frequency Combs to Physical Perturbations</i>. arXiv:2607.03837</td>
+      <td><span class="tag no">D 预印本</span></td><td>④ 梳生成区的位置与形状由 Q、耦合、失谐共同定义</td></tr>
+  </tbody>
+</table>
+
+<p class="cnt" style="margin-top:10px">分级口径：<b>B</b> = 已正式发表、经同行评审；<b>D</b> = 预印本，未经同行评审，只作参考。
+本页凡标 D 的数字（尤其 170/200 根线、10⁻¹¹ vs 10⁻⁸、f·Q ≈ 10¹⁴），引用时须注明「预印本」。</p>
+
+<div class="midbox">
+  <b>本页的自我限制</b><br>
+  ① Wu 2024 的<b>载频未在公开摘要中给出</b>，所以表 ⑥ 里它的「每八度齿数」留空 —— 不拿齿距除以猜测的载频。<br>
+  ② Ganesan 2017 的<b>齿数未公开</b>，所以 ⑧ 的「齿数/自由度」只对 HfO₂（有明确 170/200 根）填了数。<br>
+  ③ Keely 外环「24 管」本身是 09 页的<b>推演复原</b>（原文只给「三个八度」与「每隔第三销钉调 B♭」两条规则）。
+  本页所有 Keely 侧数字，都建立在「24 管 ÷ 3 八度」这个推演上；若换成 21 管，每八度变成 7 根，结论不变（齿密度量级不变）。<br>
+  ④ 图 7-1 的横轴是<b>线性频率</b>。如果改用对数轴，各行的齿看起来会等距，反而看不出密度差异 —— 这是刻意的选择。
+</div>
+
+<div class="foot">
+  <p>本页为 K 系列第 7 篇，接在 <a href="K5_频率梳前沿_从锁模激光到声子梳.html">K5 频率梳前沿</a> 之后。
+  数字以各文献原文为准；标 C 的复算由 <span class="cnt">_build/verify.py</span> 独立核验。</p>
+  <p><a href="keely核心技术与现代声子物理技术对比.html">← 返回总入口</a> ·
+     <a href="K6_术语对照_Keely与现代科学.html">K6 术语对照</a> ·
+     <a href="09_Dynasphere振动几何_康普顿波长与超导交互详解.html">09 Dynasphere</a></p>
+</div>
+
+</div><!-- /wrap -->
+
+<script>
+(function(){
+  var cv = document.getElementById('cvDen');
+  if(!cv) return;
+  var ctx = cv.getContext('2d');
+
+  /* 三行：同一把尺子（一个八度），只有齿数不同。
+     ⚠ 用【线性】频率轴：对数轴上各行都看起来等距，反而看不出密度差异。 */
+  var rows = [
+    { n: 8,     name: 'Keely 外环（24 管 / 3 八度）', col:'#b4531f', note:'每根齿 = 一根独立的管' },
+    { n: 62.5,  name: 'PMUT 2025（2:1 内共振）',      col:'#1b4f9c', note:'齿是同一个模分裂出的边带' },
+    { n: 1030,  name: 'Ganesan 2017（Si/AlN 梁）',    col:'#177245', note:'间距仅载频的万分之七' }
+  ];
+
+  function draw(){
+    var W = cv.width, H = cv.height;
+    var L = 300, R = W - 26, T = 30;
+    var bandH = 62, gap = 20;
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#fcfdff';
+    ctx.fillRect(0, 0, W, H);
+
+    /* 轴标题 */
+    /* ⚠ canvas 没有 <sub>，写 'f_c' 会原样显示成下划线。这里改用中文，避免假下标。 */
+    ctx.fillStyle = '#6b7683';
+    ctx.font = '12.2px Consolas,monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('载频', L - 4, T - 12);
+    ctx.textAlign = 'right';
+    ctx.fillText('2 × 载频  （一个八度）', R, T - 12);
+
+    /* 底轴 */
+    ctx.strokeStyle = '#c8d3e0'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(L, T - 6); ctx.lineTo(R, T - 6); ctx.stroke();
+
+    for(var i = 0; i < rows.length; i++){
+      var r = rows[i];
+      var y = T + i * (bandH + gap);
+      var yTop = y + 10, yBot = y + 40;
+
+      /* 行标签 */
+      ctx.textAlign = 'right';
+      ctx.fillStyle = r.col;
+      ctx.font = 'bold 13.4px Georgia,serif';
+      ctx.fillText(r.name, L - 14, y + 22);
+      ctx.fillStyle = '#8a949f';
+      ctx.font = '11.6px Consolas,monospace';
+      ctx.fillText('每八度 ' + (r.n >= 100 ? Math.round(r.n) : r.n) + ' 根', L - 14, y + 39);
+
+      /* 齿：线性频率轴上，第 k 根位于 (2^(k/n) - 1) */
+      /* ⚠ 必须取整后作分母，否则 62.5 这种小数齿数会让末齿停在 0.989 处，右端留缝。
+         标签仍显示实测平均值（62.5），图上画 63 根 —— 差半根肉眼不可辨。 */
+      var nDraw = Math.round(Math.min(r.n, 1600));
+      /* 密行用 fillRect 而不是 stroke：stroke 的 1px 线在抗锯齿下会随密度变浅，
+         看起来像"右端齿变弱"，但物理上右端齿距更大、应该更清楚 —— 不能靠颜色深浅误导。 */
+      if (r.n > 300) {
+        ctx.fillStyle = r.col;
+        for (var k2 = 0; k2 <= nDraw; k2++) {
+          var f2 = Math.pow(2, k2 / nDraw) - 1;
+          var x2 = L + f2 * (R - L);
+          ctx.fillRect(x2 - 0.6, yTop, 1.2, yBot - yTop);
+        }
+      } else {
+        ctx.strokeStyle = r.col;
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        for (var k = 0; k <= nDraw; k++) {
+          var frac = Math.pow(2, k / nDraw) - 1;
+          var x = L + frac * (R - L);
+          ctx.moveTo(x, yTop);
+          ctx.lineTo(x, yBot);
+        }
+        ctx.stroke();
+      }
+
+      /* 注记 */
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#8a949f';
+      ctx.font = '11.6px Consolas,monospace';
+      ctx.fillText(r.note, L + 4, yBot + 16);
+    }
+
+    /* 顶部说明 */
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#6b7683';
+    ctx.font = '12.4px Consolas,monospace';
+    ctx.fillText('同一把尺子 · 线性频率轴 · 每根竖线是一根齿', L, H - 8);
+  }
+
+  draw();
+  window.addEventListener('resize', function(){
+    /* canvas 尺寸由 CSS 控制宽度，内部像素不变，无需重绘；
+       但仍监听以防将来改成自适应 */
+  });
+  window.__K7 = { draw: draw, rows: rows };
+})();
+</script>
+</body>
+</html>

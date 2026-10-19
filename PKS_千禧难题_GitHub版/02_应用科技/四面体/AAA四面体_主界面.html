@@ -1,0 +1,2460 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>四面体内嵌倒四面体 · 白银比四次方 · 3D 动态演示</title>
+<style>
+  :root{
+    --bg:#f4f7fb; --card:#ffffff; --line:#e2e8f2; --line2:#eef2f8;
+    --ink:#1c2534; --ink2:#495a72; --ink3:#7d8ca3;
+    --blue:#3457d5; --blue2:#5b7bf0; --amber:#e08a17; --red:#d1445a;
+    --teal:#0e9c8e; --violet:#7a51c9; --gold:#b8892b;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font-family:"Microsoft YaHei","PingFang SC","Hiragino Sans GB",system-ui,-apple-system,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:2080px;margin:0 auto;padding:14px 20px 20px}
+  header.top{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;justify-content:space-between;margin-bottom:12px}
+  .hintbox{flex:1 1 330px;min-width:240px;display:flex;flex-direction:column;justify-content:center;
+    gap:5px;font-size:12.5px;color:var(--ink3);line-height:1.6;padding-top:6px}
+  .hintbox b{color:var(--ink2)}
+  .hintbox .hin2{font-size:11.5px;color:#93a2b8;border-top:1px dashed var(--line);padding-top:5px}
+  .title{font-size:23px;font-weight:700;letter-spacing:.4px}
+  .title small{display:block;font-weight:400;color:var(--ink3);font-size:13px;margin-top:5px;letter-spacing:0}
+  .keyid{background:linear-gradient(135deg,#fff,#f3f7ff);border:1px solid var(--line);
+    border-radius:12px;padding:10px 16px;box-shadow:0 2px 10px rgba(30,60,120,.05);text-align:right}
+  .keyid .k1{font-size:12px;color:var(--ink3)}
+  .keyid .k2{font-size:19px;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums}
+  .keyid .k3{font-size:12px;color:var(--ink2);margin-top:3px;font-variant-numeric:tabular-nums}
+  .main{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:16px;align-items:start}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    box-shadow:0 3px 16px rgba(30,60,120,.055)}
+  .canvasWrap{position:relative;height:calc(100vh - 240px);min-height:470px;overflow:hidden;border-radius:14px}
+  canvas{display:block;width:100%;height:100%;cursor:grab}
+  canvas.grabbing{cursor:grabbing}
+  .caption{position:absolute;left:0;right:0;bottom:56px;pointer-events:none;
+    display:flex;justify-content:center;padding:0 18px}
+  .capbox{background:rgba(255,255,255,.93);border:1px solid var(--line);border-left:4px solid var(--blue);
+    border-radius:10px;padding:11px 15px;font-size:14.5px;line-height:1.62;color:var(--ink);
+    box-shadow:0 4px 18px rgba(30,60,120,.10);backdrop-filter:blur(3px);max-width:min(780px,100%)}
+  .capbox b{color:var(--blue)}
+  .capbox .eq{font-variant-numeric:tabular-nums;color:var(--violet);font-weight:600}
+  .stagebar{position:absolute;left:calc(50% - 358px);right:calc(50% - 358px);bottom:14px;
+    display:flex;gap:8px;align-items:center}
+  .ticks{display:flex;gap:5px;flex:1}
+  .tick{flex:1;height:6px;border-radius:4px;background:#dde5f1;overflow:hidden;cursor:pointer;position:relative}
+  .tick i{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,var(--blue2),var(--blue));display:block}
+  .tick.done i{width:100%}
+  .ctrl{display:flex;gap:6px}
+  .btn{border:1px solid var(--line);background:#fff;color:var(--ink2);border-radius:9px;
+    padding:6px 10px;font-size:13px;cursor:pointer;line-height:1;font-family:inherit}
+  .btn:hover{border-color:#c7d4ea;background:#f8fbff;color:var(--blue)}
+  .btn.pri{background:var(--blue);color:#fff;border-color:var(--blue)}
+  .btn.pri:hover{background:#2a49bd;color:#fff}
+  .badge{position:absolute;left:50%;transform:translateX(-50%);top:14px;display:flex;
+    gap:8px;flex-wrap:wrap;justify-content:center;max-width:calc(100% - 720px)}
+  .pill{background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:999px;
+    padding:5px 11px;font-size:12px;color:var(--ink2);box-shadow:0 2px 8px rgba(30,60,120,.06)}
+  .pill b{color:var(--blue)}
+  .side{display:flex;flex-direction:column;gap:14px}
+  .side h3{margin:0 0 10px;font-size:13px;letter-spacing:.6px;color:var(--ink3);font-weight:700}
+  .pad{padding:14px 16px}
+  .steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px}
+  .steps li{display:flex;gap:9px;align-items:flex-start;padding:7px 9px;border-radius:9px;
+    font-size:13px;color:var(--ink2);cursor:pointer;border:1px solid transparent;line-height:1.45}
+  .steps li .n{flex:0 0 20px;height:20px;border-radius:6px;background:#eef3fc;color:var(--blue);
+    font-size:11.5px;display:flex;align-items:center;justify-content:center;font-weight:700;margin-top:1px}
+  .steps li:hover{background:#f7faff}
+  .steps li.on{background:#eef4ff;border-color:#d3e0fb;color:var(--ink);font-weight:600}
+  .steps li.on .n{background:var(--blue);color:#fff}
+  table.ro{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+  table.ro td{padding:5px 2px;border-bottom:1px dashed var(--line2);color:var(--ink2)}
+  table.ro td:last-child{text-align:right;color:var(--ink);font-weight:600}
+  table.ro tr:last-child td{border-bottom:none}
+  .hl td:last-child{color:var(--blue)}
+  .sw{display:flex;gap:8px;flex-wrap:wrap}
+  .sw .btn.off{opacity:.45}
+  .sw .btn.on{background:var(--blue);color:#fff;border-color:var(--blue);font-weight:700;
+    box-shadow:0 2px 10px rgba(52,87,213,.28)}
+  .sw .btn.bad{color:#b3384c;border-color:#f0ccd3;background:#fff6f8}
+  .sw .btn.bad:hover{background:#fdeef1;border-color:#e7a9b6;color:#a02b3e}
+  .sw .btn h4{margin:0}
+  /* 「弦」徽标：绿=正整数，黄=非整数（开不尽） */
+  .sw .btn .t{font-variant-numeric:tabular-nums}
+  .sw .btn .hyp{margin-left:4px;font-style:normal;font-size:10px;font-weight:700;
+    padding:1px 4px;border-radius:5px;line-height:1.35;display:inline-block;vertical-align:1px}
+  .sw .btn .hyp.ok{color:#0b7f74;background:#e6f7f4;border:1px solid #c2ece6}
+  .sw .btn .hyp.no{color:#a86a08;background:#fdf6e9;border:1px solid #f0dfbc}
+  .sw .btn.on .hyp.ok{color:#e6fffb;background:rgba(255,255,255,.24);border-color:rgba(255,255,255,.5)}
+  .sw .btn.on .hyp.no{color:#fff0d6;background:rgba(255,255,255,.24);border-color:rgba(255,255,255,.5)}
+  .picksub .lg{display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
+  .picksub{font-size:11.5px;color:var(--ink3);margin:2px 0 7px;line-height:1.5}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin-top:8px}
+  .legend span{display:flex;align-items:center;gap:5px}
+  .dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+  /* ---------- 勾股形选择器：分组标签页 + 多列按钮墙 ---------- */
+  .picktabs{display:flex;gap:5px;flex-wrap:wrap;margin:0 0 8px}
+  .picktab{border:1px solid var(--line);background:#fff;color:var(--ink2);border-radius:8px;
+    padding:4px 8px;font-size:11.5px;cursor:pointer;font-family:inherit;line-height:1.5}
+  .picktab:hover{border-color:#c7d4ea;background:#f8fbff;color:var(--blue)}
+  .picktab.on{background:var(--blue);color:#fff;border-color:var(--blue);font-weight:700}
+  .picktab .n{opacity:.72;font-size:10.5px;margin-left:3px;font-variant-numeric:tabular-nums}
+  /* ---------- 左栏「通项公式」的比值模式切换（D外/D内 ↔ b内/a外） ---------- */
+  .eqseg{display:flex;gap:5px;flex-wrap:wrap;margin:0 0 7px}
+  .eqseg button{border:1px solid var(--line);background:#fff;color:var(--ink2);border-radius:8px;
+    padding:3px 9px;font-size:11.5px;cursor:pointer;font-family:inherit;line-height:1.55}
+  .eqseg button:hover{border-color:#c7d4ea;background:#f8fbff;color:var(--blue)}
+  .eqseg button.on{background:var(--blue);color:#fff;border-color:var(--blue);font-weight:700}
+  .eqseg button sub{font-size:9.5px}
+  .pickgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px;
+    max-height:236px;overflow-y:auto;padding:3px 3px 5px;border-radius:9px;background:#fbfdff}
+  .pickgrid .btn{padding:5px 6px;font-size:12px;display:flex;align-items:center;
+    justify-content:center;gap:3px;white-space:nowrap}
+  .pickin{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px;
+    border-top:1px dashed var(--line);padding-top:10px;font-size:12px;color:var(--ink3)}
+  .pickin input{width:54px;border:1px solid var(--line);border-radius:7px;padding:4px 6px;
+    font-size:12.5px;font-family:inherit;font-variant-numeric:tabular-nums;color:var(--ink);outline:none}
+  .pickin input:focus{border-color:var(--blue2);box-shadow:0 0 0 2px rgba(91,123,240,.13)}
+  .pickin input.bad{border-color:#e7a9b6;background:#fff6f8}
+  .pickin .msg{color:var(--ink3)}
+  .pickin .msg.warn{color:#b3384c;font-weight:700}
+
+  /* ---------- 勾股弦全景表 ---------- */
+  .triwrap{margin-top:24px}
+  .trihead{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;justify-content:space-between;margin-bottom:11px}
+  .trihead .ttl{font-size:16.5px;font-weight:700;color:var(--ink);line-height:1.45}
+  .trihead .ttl small{display:block;font-size:12px;font-weight:400;color:var(--ink3);margin-top:4px}
+  .trictl{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--ink3)}
+  .trictl select{border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:12px;
+    font-family:inherit;color:var(--ink2);background:#fff;outline:none}
+  .tristat{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:10px;margin-bottom:12px}
+  .tristat .st{background:linear-gradient(135deg,#fff,#f5f9ff);border:1px solid var(--line);
+    border-radius:11px;padding:10px 13px}
+  .tristat .st b{display:block;font-size:19px;color:var(--blue);font-variant-numeric:tabular-nums;line-height:1.25}
+  .tristat .st span{font-size:11.5px;color:var(--ink3);line-height:1.55;display:block;margin-top:3px}
+  .tristat .st.red b{color:var(--red)}
+  .tristat .st.green b{color:var(--teal)}
+  .tristat .st.violet b{color:var(--violet)}
+  .triscroll{max-height:540px;overflow:auto;border:1px solid var(--line);border-radius:11px;background:#fff}
+  table.tri{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
+  table.tri th{position:sticky;top:0;background:#f1f6ff;color:var(--ink2);font-weight:700;
+    padding:7px 9px;text-align:left;border-bottom:1.5px solid #d8e4fa;white-space:nowrap;z-index:2;font-size:12px}
+  table.tri th.num,table.tri td.num{text-align:right}
+  table.tri td{padding:6px 9px;border-bottom:1px dashed var(--line2);color:var(--ink2);white-space:nowrap}
+  table.tri tbody tr{cursor:pointer}
+  table.tri tbody tr:hover{background:#f7faff}
+  table.tri tbody tr.on{background:#eef4ff;box-shadow:inset 3px 0 0 var(--blue)}
+  table.tri tbody tr.on td{color:var(--ink);font-weight:600}
+  table.tri td.ex{color:var(--violet);font-weight:600}
+  table.tri td.dim{color:var(--ink3)}
+  .tagx{display:inline-block;padding:1.5px 6px;border-radius:6px;font-size:11px;font-weight:700;line-height:1.5}
+  .tagx.sig{color:#7a51c9;background:#f2ecff;border:1px solid #ded0fb}
+  .tagx.one{color:#0b7f74;background:#e6f7f4;border:1px solid #c2ece6}
+  .tagx.no{color:#a86a08;background:#fdf6e9;border:1px solid #f0dfbc}
+  .thm{border:1px solid var(--line);border-left:4px solid var(--violet);border-radius:11px;
+    padding:12px 16px;margin:10px 0;background:#fdfbff;font-size:13.5px;line-height:1.78;color:var(--ink2)}
+  .thm.t2{border-left-color:var(--teal);background:#f8fefe}
+  .thm.t3{border-left-color:var(--amber);background:#fffdf7}
+  .thm.t4{border-left-color:var(--blue);background:#f8fbff}
+  .thm h4{margin:0 0 7px;font-size:14px;color:var(--ink)}
+  .thm .fm{color:var(--violet);font-weight:700;font-variant-numeric:tabular-nums}
+  .thm .pf{display:block;margin-top:7px;padding-top:7px;border-top:1px dashed var(--line);
+    font-size:12.5px;color:var(--ink3)}
+  .foot{margin-top:26px;color:var(--ink3);font-size:12.5px;line-height:1.75}
+  @media (max-width:1180px){ .main{grid-template-columns:minmax(0,1fr)} .canvasWrap{height:62vh} }
+  @media (max-width:1180px){
+    .badge{left:16px;transform:none;justify-content:flex-start;max-width:none}
+    .caption{justify-content:flex-start}
+    .stagebar{left:16px;right:16px}
+  }
+  @media (max-width:640px){ .title{font-size:18px} .canvasWrap{height:56vh;min-height:380px} .capbox{font-size:13px} }
+
+  /* ============ 画布铺满 ＋ 左右两枚「可拖 · 可收 · 可调大小」浮窗 ============ */
+  .wb{position:relative;height:calc(100vh - 160px);min-height:420px}
+  .stage{position:absolute;inset:0;display:flex;flex-direction:column;min-width:0;min-height:0;gap:10px}
+  .vtabs{flex:0 0 auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .vtab{border:1px solid var(--line);background:#fff;color:var(--ink2);border-radius:9px;
+    padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;line-height:1.4}
+  .vtab:hover{border-color:#c7d4ea;background:#f8fbff;color:var(--blue)}
+  .vtab.on{background:var(--blue);color:#fff;border-color:var(--blue);box-shadow:0 2px 10px rgba(52,87,213,.24)}
+  .pane{display:none;flex:1 1 auto;min-height:0}
+  .pane.on{display:flex;flex-direction:column;min-height:0}
+  #pane-3d>.canvasWrap{flex:1 1 auto;height:auto;min-height:300px}
+  #pane-tab>.card.pad{display:flex;flex-direction:column;min-height:0;flex:1 1 auto;overflow:hidden;margin:0}
+  #pane-tab .triscroll{flex:1 1 auto;max-height:none;min-height:170px}
+  #pane-tab .tristat{flex:0 0 auto}
+  #pane-thm.on,#pane-doc.on{display:block;overflow-y:auto;padding-right:4px}
+  #pane-doc .foot{margin-top:0}
+  /* ---- 浮窗本体 ---- */
+  .fcol{position:fixed;z-index:40;display:flex;flex-direction:column;min-width:0;min-height:0;
+    background:var(--card);border:1px solid var(--line);border-radius:14px;
+    box-shadow:0 14px 38px rgba(24,48,100,.20);overflow:hidden}
+  #colL{left:20px;top:162px;width:308px;height:calc(100vh - 190px)}
+  #colR{right:20px;top:162px;width:352px;height:calc(100vh - 190px)}
+  .fcol.dragging{box-shadow:0 22px 50px rgba(24,48,100,.30);opacity:.97}
+  .fcol.off{height:auto!important;max-height:none!important;box-shadow:0 6px 18px rgba(24,48,100,.16)}
+  .fcol.off .fbody,.fcol.off .frz{display:none}
+  .fbar{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:8px;
+    padding:8px 11px;cursor:move;user-select:none;-webkit-user-select:none;
+    border-bottom:1px solid var(--line);background:linear-gradient(135deg,#fbfdff,#f3f8ff)}
+  .fcol.off .fbar{border-bottom:none}
+  .fbar .ft{font-size:12.5px;font-weight:700;color:var(--ink2);letter-spacing:.6px;white-space:nowrap}
+  .fbtn{border:1px solid var(--line);background:#fff;color:var(--ink3);border-radius:7px;
+    width:22px;height:22px;line-height:1;font-size:14px;cursor:pointer;padding:0;flex:0 0 auto;font-family:inherit}
+  .fbtn:hover{border-color:#c7d4ea;color:var(--blue);background:#f8fbff}
+  .fbody{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;padding:11px 12px;scrollbar-width:thin}
+  .fbody::-webkit-scrollbar{width:9px}
+  .fbody::-webkit-scrollbar-thumb{background:#d6e0ee;border-radius:6px;border:2px solid #fff}
+  .frz{position:absolute;right:1px;bottom:1px;width:20px;height:20px;cursor:nwse-resize;touch-action:none;z-index:6}
+  .frz::after{content:'';position:absolute;right:3px;bottom:3px;width:9px;height:9px;
+    border-right:2px solid #b8c6dc;border-bottom:2px solid #b8c6dc;border-radius:0 0 4px 0}
+  .frz:hover::after{border-color:var(--blue2)}
+  .fblk{padding:0 0 11px;margin-bottom:11px;border-bottom:1px dashed var(--line)}
+  .fblk:last-child{border-bottom:none;margin-bottom:0;padding-bottom:2px}
+  .fblk>h3{margin:0 0 8px;font-size:12.5px;letter-spacing:.5px;color:var(--ink3);font-weight:700}
+  .fbody>.card{border:none;border-radius:0;box-shadow:none;background:transparent;
+    padding:0 0 11px;margin-bottom:11px;border-bottom:1px dashed var(--line)}
+  .fbody>.card.pad{padding:0 0 11px}
+  .fbody>.card:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+  .fbody>.card h3{margin:0 0 9px;font-size:13px;letter-spacing:.6px;color:var(--ink3);font-weight:700}
+  #colL table.ro td{padding:4px 2px}
+  /* 非 3D 面板（全景表 / 判据 / 证明正文）避让两侧浮窗 —— 浮窗是 fixed，会浮在面板之上，
+     不避让就会被压掉 300+px 看不见。浮窗收起时相应一侧的留白立刻收掉。 */
+  @media (min-width:1181px){
+    #pane-tab,#pane-tab.on,#pane-thm,#pane-thm.on,#pane-doc,#pane-doc.on{
+      padding-left:324px;padding-right:368px}
+    body.flOffL #pane-tab,body.flOffL #pane-tab.on,body.flOffL #pane-thm,
+    body.flOffL #pane-thm.on,body.flOffL #pane-doc,body.flOffL #pane-doc.on{padding-left:18px}
+    body.flOffR #pane-tab,body.flOffR #pane-tab.on,body.flOffR #pane-thm,
+    body.flOffR #pane-thm.on,body.flOffR #pane-doc,body.flOffR #pane-doc.on{padding-right:18px}
+  }
+  @media (max-width:1180px){
+    .wb{height:auto;min-height:0}
+    .stage{position:static}
+    .fcol{position:static;width:auto!important;height:auto!important;
+      left:auto!important;top:auto!important;right:auto!important;
+      box-shadow:0 3px 16px rgba(30,60,120,.055)}
+    .fcol.off .fbody{display:block}
+    .frz{display:none}
+    .fbar{cursor:default}
+    #pane-3d>.canvasWrap{height:62vh;min-height:400px}
+    #pane-thm.on,#pane-doc.on{overflow:visible;max-height:none}
+  }
+
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="title">
+      正四面体内嵌倒四面体 · 从《周髀算经》直角三角形到 3D 交合
+      <small>3D 动态演示 ＋ 严格数学证明 ｜ <b>任意勾股形通项公式</b>：2R/2r = (√2·勾 + 股)/(√2·勾 − 股)</small>
+    </div>
+    <div class="keyid">
+      <div class="k1">外接球直径比 D<sub>外</sub> / D<sub>内</sub>（当前勾:股 = <span id="kPQ">3 : 4</span>）</div>
+      <div class="k2" id="kRatio">33.97056274847714</div>
+      <div class="k3" id="kExact">= (1+√2)<sup>4</sup> = 17 + 12√2 = cot<sup>4</sup>22.5°</div>
+    </div>
+    <div class="hintbox">
+      <div class="hin1"><b>拖拽旋转</b> · <b>Shift</b> + 拖拽平移 · 滚轮缩放 · 按 <b>R</b> 复位</div>
+      <div class="hin2">左栏 = 即时计算结果　｜　中栏 = 3D / 图表（上方切换）　｜　右栏 = 参数调节　（两侧均可收起）</div>
+    </div>
+  </header>
+
+  <!-- ============ 三栏工作台：左 · 即时结果 ｜ 中 · 3D/图表 ｜ 右 · 参数 ============ -->
+  <div class="wb" id="wb">
+
+    <!-- ===== 左：调参后的即时计算结果（可收起） ===== -->
+    <aside class="fcol" id="colL">
+      <div class="fbar">
+        <span class="ft">即时计算结果</span>
+        <button class="fbtn" id="tgL" title="收起 / 展开左栏">&minus;</button>
+      </div>
+      <div class="fbody">
+        <div class="fblk">
+          <h3>通项公式 · 一步出比值</h3>
+          <div class="eqseg" id="eqSeg">
+            <button type="button" data-eq="D" class="on">D<sub>外</sub>/D<sub>内</sub> 球直径比</button>
+            <button type="button" data-eq="b">b<sub>内</sub>/a<sub>外</sub> 棱长比</button>
+          </div>
+          <div id="eqBig" style="font-size:13.5px;font-weight:700;color:var(--blue);margin:2px 0 4px;
+                      font-variant-numeric:tabular-nums;line-height:1.45"></div>
+          <div id="exactBox" style="font-size:13px;color:var(--ink2);line-height:1.8"></div>
+          <div id="validBox" style="margin-top:9px;font-size:12.5px;line-height:1.65"></div>
+        </div>
+
+        <div class="fblk">
+          <h3>比值之比 · 大 &divide; 小 = 整数？</h3>
+          <div id="divBox"></div>
+        </div>
+      <div class="card pad">
+        <h3>实时读数（棱长 a = 弦 = <span id="rA2">5</span>）</h3>
+        <table class="ro">
+          <tr><td>勾 （短直角边）</td><td id="rP">3</td></tr>
+          <tr><td>股 （长直角边）</td><td id="rQ">4</td></tr>
+          <tr><td>棱长 a = 弦 = √(勾²+股²)</td><td id="rA">5</td></tr>
+          <tr><td>外接球半径 R = a√6/4</td><td id="rR">3.0618622</td></tr>
+          <tr class="hl"><td>外接球直径 2R = a√6/2</td><td id="r2R">6.1237244</td></tr>
+          <tr><td>k = (√2勾−股)&frasl;(√2勾+股)</td><td id="rk">0.0294373</td></tr>
+          <tr><td>内四面体棱长 b = k·a（k&lt;0 ⇒ 同向）</td><td id="rb">0.1471863</td></tr>
+          <tr><td>内四面体外接球半径 r = |b|√6/4</td><td id="rr">0.0901328</td></tr>
+          <tr class="hl"><td>内四面体外接球直径 2r = |b|√6/2</td><td id="r2r">0.1802657</td></tr>
+          <tr><td>12 枚勾股三角形（6棱×2）</td><td id="rFins">12</td></tr>
+          <tr class="hl"><td>直径比 |2R / 2r| = |1/k|</td><td id="rK">33.9705627</td></tr>
+          <tr><td>最简式（精确值）</td><td id="rExact">17+12√2</td></tr>
+          <tr><td>相对偏差（通项式 ↔ 三维构建）</td><td id="rErr">0</td></tr>
+        </table>
+      </div>
+
+        <div class="fblk">
+          <h3>&times;(&minus;1) 搭档 · 精确式只是分母变号</h3>
+          <div id="partnerBox"></div>
+        </div>
+      <div class="card pad">
+        <h3>演示分镜（点击跳转）</h3>
+        <ul class="steps" id="steps"></ul>
+      </div>
+      </div>
+      <div class="frz" title="拖动调整大小（双击复位）"></div>
+    </aside>
+
+    <!-- ===== 中：3D / 图表展示区 ===== -->
+    <section class="stage" id="stage">
+      <div class="vtabs" id="vtabs">
+        <button class="vtab on" data-v="3d">3D 演示</button>
+        <button class="vtab" data-v="tab">全景表</button>
+        <button class="vtab" data-v="thm">规律与判据</button>
+        <button class="vtab" data-v="doc">证明正文</button>
+      </div>
+      <div class="pane on" id="pane-3d">
+    <div class="card canvasWrap" id="canvasWrap">
+      <canvas id="cv"></canvas>
+      <div class="badge">
+        <div class="pill">棱长 <b id="pA">a = 5</b></div>
+        <div class="pill">外接球 <b id="pR">R = 3.06186</b></div>
+        <div class="pill">内倒四面体 <b id="pb">b = 0.147186</b></div>
+        <div class="pill">比值 <b id="pK">33.97056</b></div>
+      </div>
+      <div class="caption"><div class="capbox" id="capbox"></div></div>
+      <div class="stagebar">
+        <div class="ticks" id="ticks"></div>
+        <div class="ctrl">
+          <button class="btn" id="btnPrev" title="上一镜 (←)">◀</button>
+          <button class="btn pri" id="btnPlay" title="播放 / 暂停 (空格)">暂停</button>
+          <button class="btn" id="btnNext" title="下一镜 (→)">▶</button>
+        </div>
+      </div>
+    </div>
+      </div>
+      <div class="pane" id="pane-tab">
+    <div class="card pad">
+      <div class="trihead">
+        <div class="ttl">
+          ② 勾股弦全整数 · 全景表 —— 所有情况与它们的 D<sub>外</sub>/D<sub>内</sub>
+          <small>欧几里得通项 <span class="fm" style="color:var(--violet);font-weight:700">勾股弦 = k·(m²−n²) : k·2mn : k·(m²+n²)</span>
+            （m&gt;n≥1、gcd(m,n)=1、m−n 为奇）—— 下表由该通项<b>现场穷举</b>，无一条写死。
+            点任意行 ⟶ 上方 3D 换形。</small>
+        </div>
+        <div class="trictl">
+          范围 <select id="triRange">
+            <option value="100">弦 ≤ 100</option>
+            <option value="200" selected>弦 ≤ 200</option>
+            <option value="500">弦 ≤ 500</option>
+            <option value="1000">弦 ≤ 1000</option>
+            <option value="2000">弦 ≤ 2000</option>
+          </select>
+          倍数 <select id="triKind">
+            <option value="prim" selected>只看本原</option>
+            <option value="all">含整数倍（k&gt;1）</option>
+          </select>
+          内接 <select id="triScope">
+            <option value="in" selected>只看可内接 股/勾 ≤ √2</option>
+            <option value="all">全部（含细高三角形）</option>
+          </select>
+          排序 <select id="triSort">
+            <option value="c" selected>弦 小 → 大</option>
+            <option value="C">分母 C 小 → 大</option>
+            <option value="r">股÷勾 小 → 大</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="tristat" id="triStat"></div>
+
+      <div class="triscroll"><table class="tri" id="triTable"></table></div>
+
+      <div style="font-size:12px;color:var(--ink3);margin-top:9px;line-height:1.75">
+        比值的精确式写作 <span class="fm" style="color:var(--violet);font-weight:700">(A + B√2) / C</span>，
+        其中 <b>A = 2勾²+股²</b>、<b>B = 2·勾·股</b>、<b>C = |2勾²−股²|</b>，三者同除最大公约数。
+        <b>C 就是「分母」</b>：C 越小，比值越「干净」。<b>C = 1</b> 的那几行标 <span class="tagx one">无分母</span>。
+      </div>
+    </div>
+      </div>
+      <div class="pane" id="pane-thm">
+    <div class="card pad" style="margin-top:16px">
+      <div style="font-size:16.5px;font-weight:700;color:var(--ink);margin-bottom:4px">
+        ③ 规律与判据 —— 「哪些情况的比是整数比？」
+      </div>
+      <div style="font-size:12.5px;color:var(--ink3);margin-bottom:10px;line-height:1.7">
+        结论分三层：<b>① 真正的「整数比」一条都没有（可证明）；② 但「无分母」的情况恰好唯一 —— 3:4:5；
+        ③ 而「无分母」与「σ 的整数次幂」是同一件事。</b>
+      </div>
+
+      <div class="thm t2">
+        <h4>判据一 · D<sub>外</sub>/D<sub>内</sub> 恒为无理数 ⟹ <b>「整数比」一条都没有</b></h4>
+        比值 = <span class="fm">(√2·勾 + 股) / (√2·勾 − 股)</span>，分子分母都含 √2，
+        <b>永远不可能</b>写成两个整数之比（有理数）。
+        <span class="pf"><b>证明（两行）：</b>设 (√2p+q)/(√2p−q) = r ∈ ℚ。若 r ≠ 1，则
+        (r−1)·√2·p = (r+1)·q ⟹ √2 = q(r+1) / [p(r−1)] ∈ ℚ，与 √2 无理矛盾；
+        若 r = 1 则 q = −q，不可能（q &gt; 0）。∎<br>
+        <b>实测：</b>弦 ≤ 2000 全部 667 条可内接情况中，D<sub>外</sub>/D<sub>内</sub> 为有理数的 =
+        <b style="color:var(--red)">0 条</b>。</span>
+      </div>
+
+      <div class="thm">
+        <h4>判据二 · 「无分母」（C = 1）的情况<b>恰好唯一</b>：(勾, 股) = (3k, 4k)</h4>
+        把最简式写成 <span class="fm">(A + B√2) / C</span>。则
+        <span class="fm">C = 1 &nbsp;⟺&nbsp; (勾, 股) = (3k, 4k)</span>（k = 1, 2, 3, …），
+        此时 <span class="fm">D<sub>外</sub>/D<sub>内</sub> = 17 + 12√2 = (1+√2)⁴ = σ⁴ ≈ 33.9705627</span>。
+        枚举印证：弦 ≤ 2000 的 <b>500 条</b> C = 1 情况，<b>100 % 是 3:4:5 的整数倍</b>，别无他家。
+        <span class="pf"><b>证明（三步）：</b>C = |2勾²−股²| 要同时整除 A = 2勾²+股² 与 B = 2勾股。
+        ① A − C = 2股²，C | A ⟹ C | 2股²；又 C | 2·勾·股。
+        ② 取 C 的奇素因子 s ⟹ s | 股 ⟹ 由 C = 2勾²−股² 得 s | 勾，与本原性矛盾 ⟹
+        <b>C 只能是 2 的幂</b>。
+        ③ 本原勾股数中 勾、股 一奇一偶：若 勾 奇 股 偶，则 C ≡ 2 (mod 4) ⟹ C = 2，
+        即 q² − 2p² = −2（Pell 型）；解 (3,4)、(17,24)、(99,140)… 其中<b>只有 (3,4) 的弦 5 是整数</b>。
+        若 勾 偶 股 奇，则 C 为奇数 ⟹ C = 1，即 q² − 2p² = −1；解 (1,1)、(5,7)、(29,41)…
+        而 p²+q² = 3p²−1 ≡ 2 (mod 3) 永不可能是完全平方 ⟹ 弦恒开不尽。∎<br>
+        <b>所以：整数弦 + 无分母 两个条件的交点，有且只有 3-4-5 一个。</b></span>
+      </div>
+
+      <div class="thm t3">
+        <h4>判据三 · 「无分母」⟺ D<sub>外</sub>/D<sub>内</sub> 是 σ 的<b>整数次幂</b>（σ = 1+√2）</h4>
+        <span class="fm">C = 1 &nbsp;⟺&nbsp; |2勾²−股²| ∈ {1, 2} &nbsp;⟺&nbsp; 股² − 2·勾² = −1 或 −2
+        &nbsp;⟺&nbsp; D<sub>外</sub>/D<sub>内</sub> = σ<sup>2m</sup></span>。
+        这就是「σ 幂族」（Pell 族），递推 <b>(勾,股)<sub>n+2</sub> = 6·(勾,股)<sub>n</sub> − (勾,股)<sub>n−2</sub></b>：
+        <div style="margin-top:7px;font-size:13px;line-height:2;font-variant-numeric:tabular-nums">
+          1 : 1 → σ² &nbsp;·&nbsp; <b>3 : 4 → σ⁴</b> &nbsp;·&nbsp; 5 : 7 → σ⁶ &nbsp;·&nbsp;
+          17 : 24 → σ⁸ &nbsp;·&nbsp; 29 : 41 → σ¹⁰ &nbsp;·&nbsp; 99 : 140 → σ¹² &nbsp;·&nbsp;
+          169 : 239 → σ¹⁴ &nbsp;·&nbsp; 577 : 816 → σ¹⁶
+        </div>
+        <span class="pf">这八条里<b>只有 3 : 4 的弦是整数 5</b> ——
+        <b>3-4-5 是「σ 幂族」与「整数弦」两个家族的唯一交点</b>，也是唯一一条比值落在
+        ℤ[√2]（形如「整数 + 整数·√2」，不带分母）的整数直角三角形。
+        顺带：σ<sup>2m</sup> 的整数部分序列 3, 17, 99, 577, 3363… 与 √2 系数 2, 12, 70, 408, 2378…
+        也正是 σ<sup>2m</sup> 的有理/无理部分。</span>
+      </div>
+
+      <div class="thm t4">
+        <h4>通项公式汇总（三条，互相独立）</h4>
+        <div style="line-height:2;font-variant-numeric:tabular-nums">
+          <b>① 勾股弦通项（欧几里得）：</b>
+          <span class="fm">勾 : 股 : 弦 = k(m²−n²) : k(2mn) : k(m²+n²)</span>，
+          m &gt; n ≥ 1、gcd(m,n) = 1、m−n 为奇；k = 1 即本原。<br>
+          <b>② 可内接条件（倒插结构成立的充要条件）：</b>
+          <span class="fm">股/勾 ≤ √2</span> ⟺ 较大锐角 ≤ 54.7356°（四面体的「魔角」arctan√2）
+          ⟺ <span class="fm">m/n ∈ [ (1+√3)/√2 , √2+√3 ] ≈ [1.93185, 3.14626]</span>。<br>
+          <b>③ 直径比通项：</b>
+          <span class="fm">D<sub>外</sub>/D<sub>内</sub> = 2R/2r = (√2·勾+股)/(√2·勾−股)
+          = (2勾²+股² + 2勾股·√2) / (2勾²−股²)</span>，<b>只依赖「股/勾」这唯一一个数</b>。
+        </div>
+        <span class="pf">把 ① 的 m、n 代进 ② 立刻知道这一族能不能内接；再代进 ③ 就是它的直径比 ——
+        三步一条龙，不需要重新建模。</span>
+      </div>
+    </div>
+
+    <div class="card pad" style="margin-top:16px">
+      <div style="font-size:16.5px;font-weight:700;color:var(--ink);margin-bottom:4px">
+        ④ 两行相除能不能得整数？—— 只有 ×1 与 ×(−1)，<b>2、3、4… 永不可能</b>
+      </div>
+      <div style="font-size:12.5px;color:var(--ink3);margin-bottom:10px;line-height:1.7">
+        取表里第 i、j 两行，问 V<sub>i</sub> ÷ V<sub>j</sub>（V = D<sub>外</sub>/D<sub>内</sub>）能不能是整数。
+        <b>答案：能 —— 但只有两种取值</b>：商 = <b>+1</b>（两行是同一形状的整数倍，如 3:4:5 与 6:8:10），
+        商 = <b>−1</b>（两行互为「<b>2/r 搭档</b>」，两行精确式<b>分子一模一样、分母只是变号</b>，
+        本页按 |C| 显示 ⟹ 这两行在表里长得<b>完全一样</b>）。除此以外 <b>2、3、4… 一概不可能</b>。
+        本页下方有<b>现场两两比对</b>按钮与<b>搭档一键跳转</b>。
+      </div>
+
+      <div class="thm t2">
+        <h4>判据五 · 商为有理数 ⟺ 商 = ±1 ⟹ 整数倍只可能是 1 或 −1</h4>
+        记第 i 行的精确式 <span class="fm">V<sub>i</sub> = (A<sub>i</sub> + B<sub>i</sub>√2) / C<sub>i</sub></span>，
+        其中 <b>A<sub>i</sub> = 2勾²+股²</b>、<b>B<sub>i</sub> = 2勾股</b>、<b>C<sub>i</sub> = 2勾²−股²</b>（<b>带符号</b>）。
+        因为恒有 <span class="fm">A² − 2B² = C²</span>（分母平方，可约掉），所以
+        <div style="margin-top:6px;font-variant-numeric:tabular-nums">
+          <span class="fm">V₁ / V₂ = [ (A₁A₂ − 2B₁B₂) + (B₁A₂ − A₁B₂)·√2 ] / (C₁C₂)</span>
+        </div>
+        <span class="pf"><b>证明：</b>商是有理数 ⟺ 上式里 √2 的系数为零。把 A = 2勾²+股²、B = 2勾股 代进去因式分解：
+        <div style="margin:5px 0;font-variant-numeric:tabular-nums">
+          <span class="fm">B₁A₂ − A₁B₂ = 2 · 勾₁勾₂ · (2勾₁勾₂ − 股₁股₂) · (股₁/勾₁ − 股₂/勾₂)</span>
+        </div>
+        <b>其中 2·勾₁勾₂ ≠ 0，所以商要有理，只能让后面两个因子之一为零</b> —— 于是只有两条出路：<br>
+        ① <b>股₁/勾₁ = 股₂/勾₂</b>（同一形状）⟹ V₁ = V₂（比值只依赖「股÷勾」这一个数）⟹ 商 = <b>+1</b>；<br>
+        ② <b>股₁股₂ = 2·勾₁勾₂</b>（即 股₂/勾₂ = 2 ÷ (股₁/勾₁)，互为「2/r 搭档」）⟹ 商 = <b>−1</b>（推导见判据六）。<br>
+        有理数只可能是这两个值，而整数 ⊂ 有理数 ⟹ <b>商若为整数，只能 = ±1；想凑出 ×2、×3、×4 之类，数学上办不到</b>。∎</span>
+      </div>
+
+      <div class="thm">
+        <h4>判据六 · ×(−1) 搭档的构造式：把「<b>股 : 2·勾</b>」约分即成（分子相同、分母变号）</h4>
+        给定一行 勾 : 股，令
+        <span class="fm">搭档 = (股 : 2·勾) ÷ gcd(股, 2勾)</span>。它的「股÷勾」恰好是原来的 <b>2/r</b>，
+        两者乘积 = 2，商正好 = −1。
+        <span class="pf"><b>精确结构（已逐例核验 0 反例）：</b>设 搭档 = λ·(股, 2勾)（λ 为有理数），则
+        <b>A₂ = 2λ²A₁</b>、<b>B₂ = 2λ²B₁</b>、而 <b>C₂ = −2λ²C₁</b> ——
+        约分后写作：<b>「分子一模一样，分母只是变号」</b>。于是 V<sub>搭档</sub> = −V<sub>原</sub> <b>精确成立</b>，
+        两行的商 = <b>−1</b>。本页表格按 <b>|C|</b> 显示（不可内接那行取绝对值），
+        所以这一对在表里会显示成<b>完全相同的精确式与数值</b>。<br>
+        <b>方向的限制：</b>只有当 股/勾 ≤ 2 时，搭档才仍是「股 ≥ 勾」的形状（1 ≤ r ≤ 2）。
+        r &gt; 2（如 5:12、7:24）时搭档会翻进「股 &lt; 勾」的镜像，本表约定下就没有搭档行。</span>
+        <div class="pf" style="margin-top:7px">实时搭档见 <b>左栏「×( −1) 搭档」卡</b> —— 它跟随当前勾股形自动更新。</div>
+      </div>
+
+      <div class="thm t3">
+        <h4>判据七 · 为什么「整数弦」表里 ×(−1) 一对都找不到（Euler 1770）</h4>
+        搭档也要是整数弦 ⟺ 存在本原勾股数 (勾, 股) = (m²−n², 2mn)，使
+        <span class="fm">Q₁ = m⁴ − m²n² + n⁴</span> 或（勾、股两个角色对调时）
+        <span class="fm">Q₂ = m⁴ + 14m²n² + n⁴</span> 是完全平方。
+        <span class="pf"><b>关键恒等式：</b><span class="fm">Q₂(m, n) = Q₁(m+n, m−n)</span>（已数值验证无例外）
+        ⟹ 两个式子一并归到 Euler 1770 年的经典结论：<br>
+        <b>x⁴ − x²y² + y⁴ = z² 只有平凡解</b>（x = y 或 xy = 0），标准证法是<b>无穷递降</b>；
+        见 Dickson《History of the Theory of Numbers》Vol. II, Ch. XXII（p.634 起），
+        Euler 在《代数》中陈述、1800 年代初补出证明。<br>
+        而 x = y ⟹ 勾 = 0、xy = 0 同样退化 ⟹ <b>非退化情形无解</b>：
+        搭档永远不可能是整数弦。<br>
+        <b>实测印证：</b>m ≤ 20000（弦 ≤ 4×10⁸）共 <b>81,061,017</b> 组本原 (m, n)，Q₁、Q₂ <b>零命中</b>；
+        弦 ≤ 2000 的 319 种形状两两比对 <b>101,442</b> 对，商为有理数的 <b>0 对</b>。</span>
+      </div>
+
+      <div class="thm t2" id="thm8">
+        <h4>判据八 · <b>大</b>的比值 ÷ <b>小</b>的比值 = 整数？<b style="color:var(--red)">一对都没有</b> —— 不是「没找到」，是<b>恒不成立</b></h4>
+        <span class="pf">
+          <b>问题：</b>把<b>大</b>的那个 D<sub>外</sub>/D<sub>内</sub> 除以<b>小</b>的（商 &gt; 1），
+          会不会碰巧等于 2、3、4…？<br>
+          <b>答：永远不会。</b>两个<b>不同形状</b>的比值相除，商一定<b>还带着 √2</b>，是无理数。
+          商若要有理，只能落在 <b>+1</b>（两行同形状，含整数倍）或 <b>−1</b>（互为搭档）——
+          这两种都<b>不是</b>「大 ÷ 小 的整数倍」。把「只看本原」打开后连 +1 都没有：
+          <b>表里任意两行相除都不是整数</b>。
+        </span>
+
+        <div style="margin-top:10px;padding:11px 13px;border-radius:9px;background:#fff;
+                    border:1px solid var(--line);font-size:13px;line-height:1.95;
+                    font-variant-numeric:tabular-nums">
+          <b>证明（两步，只用到「股/勾 是有理数」）</b><br>
+          ① 记 <span class="fm">r = 股 / 勾</span>（有理数），把通项写成最简的莫比乌斯形：<br>
+          <div style="margin:5px 0 5px 16px">
+            <span class="fm">V(r) = D<sub>外</sub>/D<sub>内</sub> = (r + √2) / (r − √2)</span>
+          </div>
+          ② 两行相除，把含 √2 的项归拢到一起：<br>
+          <div style="margin:5px 0 5px 16px">
+            <span class="fm">V₁ / V₂ = [(r₁r₂ − 2) + (r₂ − r₁)·√2] / [(r₁r₂ − 2) − (r₂ − r₁)·√2]</span>
+          </div>
+          记 <span class="fm">X = r₁r₂ − 2</span>、<span class="fm">Y = r₂ − r₁</span>（<b>都是有理数</b>），
+          有理化得
+          <span class="fm">V₁/V₂ = (X² + 2Y² + 2XY√2) / (X² − 2Y²)</span>。<br>
+          分子里的 <span class="fm">2XY√2</span> 要消失（商才有理），<b>只能</b> X = 0 或 Y = 0：
+          <table style="width:100%;border-collapse:collapse;margin:7px 0 3px;font-size:12.5px">
+            <tr style="background:#f6f9fc;color:var(--ink3)">
+              <td style="padding:4px 8px;border:1px solid var(--line);width:96px">条件</td>
+              <td style="padding:4px 8px;border:1px solid var(--line)">含义</td>
+              <td style="padding:4px 8px;border:1px solid var(--line);width:74px;text-align:center">商</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 8px;border:1px solid var(--line)"><span class="fm">Y = 0</span></td>
+              <td style="padding:4px 8px;border:1px solid var(--line)">r₁ = r₂ ⟺ 两行<b>同形状</b>（同一勾股形的整数倍）</td>
+              <td style="padding:4px 8px;border:1px solid var(--line);text-align:center"><b style="color:var(--teal)">+1</b></td>
+            </tr>
+            <tr>
+              <td style="padding:4px 8px;border:1px solid var(--line)"><span class="fm">X = 0</span></td>
+              <td style="padding:4px 8px;border:1px solid var(--line)">r₁r₂ = 2 ⟺ 互为「<b>2/r 搭档</b>」（判据六）</td>
+              <td style="padding:4px 8px;border:1px solid var(--line);text-align:center"><b style="color:var(--violet)">−1</b></td>
+            </tr>
+          </table>
+          ⟹ <b>商 ∈ ℚ ⟹ 商 = ±1</b> ⟹ <b style="color:var(--red)">商 &gt; 1 的整数（2、3、4…）永远不存在</b>。∎
+        </div>
+
+        <span class="pf">
+          <b>「含根号 2」正是要害：</b>只要 r₁ ≠ r₂ 且 r₁r₂ ≠ 2，√2 就<b>消不掉</b>，
+          商必落在 ℚ(√2) ∖ ℚ 里 —— 那是无理数，永远不可能等于整数。<br>
+          <b>但它可以「任意接近」：</b>「等于」做不到（那要求 <span class="fm">X/Y = √2·(k+1)/(k−1)</span> 恰为有理数，矛盾），
+          可「差一点」总能做到 —— 因为 √2 的连分数逼近要多少有多近。实测把范围放大，
+          最近的一对确实越来越近（见下表最后一列）。
+        </span>
+
+        <span class="pf">
+          <b>实测（精确整数运算，逐对判定）——「商 ≥ 2」一栏全部为 0：</b>
+          <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;margin:7px 0 0;font-size:12px;
+                        font-variant-numeric:tabular-nums;min-width:620px">
+            <tr style="background:#f6f9fc;color:var(--ink3)">
+              <td style="padding:4px 6px;border:1px solid var(--line)">设置</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right">行数</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right">无序对</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right">商 = ±1</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right;color:var(--red);font-weight:700">商 ≥ 2</td>
+              <td style="padding:4px 6px;border:1px solid var(--line)">最接近整数的一对（已排除商 = 1 的平凡行）</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 6px;border:1px solid var(--line)">弦 ≤ 200 · 本原 · 可内接</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right">6</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right">15</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right">0</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right;color:var(--red);font-weight:700">0</td>
+              <td style="padding:4px 6px;border:1px solid var(--line)">(3:4) ÷ (20:21) = 5.020887744　差 2.1×10<sup>−2</sup></td>
+            </tr>
+            <tr>
+              <td style="padding:4px 6px;border:1px solid var(--line)">弦 ≤ 200 · 含整数倍 · 可内接</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right">52</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right">1,326</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right">797</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right;color:var(--red);font-weight:700">0</td>
+              <td style="padding:4px 6px;border:1px solid var(--line)">(9:12) ÷ (20:21) = 5.020887744　差 2.1×10<sup>−2</sup></td>
+            </tr>
+            <tr>
+              <td style="padding:4px 6px;border:1px solid var(--line)">弦 ≤ 500 · 含整数倍 · 可内接</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right">144</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right">10,296</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right">5,117</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right;color:var(--red);font-weight:700">0</td>
+              <td style="padding:4px 6px;border:1px solid var(--line)">(280:351) ÷ (65:72) = 2.018473642　差 1.8×10<sup>−2</sup></td>
+            </tr>
+            <tr>
+              <td style="padding:4px 6px;border:1px solid var(--line)">弦 ≤ 1000 · 含整数倍 · 可内接</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right">310</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right">47,895</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right">20,638</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right;color:var(--red);font-weight:700">0</td>
+              <td style="padding:4px 6px;border:1px solid var(--line)">(368:465) ÷ (319:360) = 1.997399296　差 2.6×10<sup>−3</sup></td>
+            </tr>
+            <tr>
+              <td style="padding:4px 6px;border:1px solid var(--line)">弦 ≤ 2000 · 含整数倍 · 可内接</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right">667</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right">222,111</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right">82,934</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right;color:var(--red);font-weight:700">0</td>
+              <td style="padding:4px 6px;border:1px solid var(--line)">(400:561) ÷ (988:1275) = 11.000229362　差 2.3×10<sup>−4</sup></td>
+            </tr>
+            <tr>
+              <td style="padding:4px 6px;border:1px solid var(--line)">弦 ≤ 500 · 含整数倍 · 全部</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right">386</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right">74,305</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right">6,743</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right;color:var(--red);font-weight:700">0</td>
+              <td style="padding:4px 6px;border:1px solid var(--line)">(95:168) ÷ (60:221) = 3.999679860　差 3.2×10<sup>−4</sup></td>
+            </tr>
+            <tr>
+              <td style="padding:4px 6px;border:1px solid var(--line)">弦 ≤ 1000 · 含整数倍 · 全部</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right">881</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right">387,640</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right">27,532</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right;color:var(--red);font-weight:700">0</td>
+              <td style="padding:4px 6px;border:1px solid var(--line)">(504:703) ÷ (145:408) = 47.999987046　差 1.3×10<sup>−5</sup></td>
+            </tr>
+            <tr>
+              <td style="padding:4px 6px;border:1px solid var(--line)">弦 ≤ 2000 · 含整数倍 · 全部</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right">1,981</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right">1,961,190</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right">111,639</td>
+              <td style="padding:4px 6px;border:1px solid var(--line);text-align:right;color:var(--red);font-weight:700">0</td>
+              <td style="padding:4px 6px;border:1px solid var(--line)">(504:703) ÷ (145:408) = 47.999987046　差 1.3×10<sup>−5</sup></td>
+            </tr>
+          </table>
+          </div>
+          <span style="display:block;margin-top:6px;color:var(--ink3);font-size:12px">
+            独立复算脚本 <span class="fm">_chk/bigdiv.py</span> 与 <span class="fm">_chk/bigdiv2.py</span>；
+            另附恒等式自检 <span class="fm">B₁A₂ − A₁B₂ = 2(勾₁股₂ − 股₁勾₂)(股₁股₂ − 2勾₁勾₂)</span>
+            —— 20 万随机组，反例 0 条（同一结论的另一条代数路径）。
+          </span>
+        </span>
+      </div>
+
+      <div class="thm t4">
+        <h4>现场两两比对当前表 · 看看到底有几对整数商（含「大 ÷ 小」方向）</h4>
+        <div class="sw" style="margin:2px 0 9px">
+          <button class="btn pri" id="btnScan">对当前表做两两比对（精确整数运算）</button>
+          <span id="scanHint" style="font-size:12px;color:var(--ink3);align-self:center"></span>
+        </div>
+        <div id="scanBox" style="font-size:12.5px;color:var(--ink2);line-height:1.8">
+          点上面的按钮。默认设置（弦 ≤ 200 · 只看本原 · 只看可内接）会得到 <b>×1 与 ×(−1) 各 0 对</b>；
+          把「倍数」切到<b>含整数倍</b>，×1 立刻成片出现（同形状的倍数行）—— 而 <b>×(−1) 永远是 0 对</b>。
+          面板下半部分专门回答「<b>大 ÷ 小 = 整数？</b>」：无论怎么调，<b>整数商 ≥ 2 恒为 0 对</b>，
+          但会给出<b>最接近整数的那一对</b>（判据八）。
+        </div>
+      </div>
+
+      <div class="thm t4" style="margin-bottom:0">
+        <h4>经典搭档对 —— 点击任意一个，3D 与全部读数立刻换形</h4>
+        <div class="sw" id="pairPresets" style="margin-top:4px"></div>
+        <span class="pf">每一对的两个「<b>股 : 2勾</b>」互为对方，精确式<b>分子相同、分母反号</b>。
+        左边那个的弦是整数（在 ② 的表里能直接找到），右边那个的弦必然开不尽
+        —— 这正是判据七「整数弦表里配不成对」的直观表现。<b>3 : 4 ↔ 2 : 3</b> 最典型：
+        V(3:4) = 17 + 12√2 = σ⁴ ≈ +33.97056275，V(2:3) = −(17 + 12√2) ≈ −33.97056275，商 = −1。<br>
+        <b>一个必然的推论：</b>因为 r₁·r₂ = 2 且 r ≠ √2（有理数），所以一对里
+        <b>必然一个是 股/勾 &lt; √2 的可内接行（真值为正），另一个是 股/勾 &gt; √2 的不可内接行（真值为负）</b> ——
+        页面对后者取绝对值，于是两行显示成同一个数。<br>
+        本页「弦开不尽」那一组里的 <b>4 : 5</b>，它的搭档正是 <b>5 : 8</b>（弦 √41 与 √89，双方都开不尽），
+        点开即可对照。</span>
+      </div>
+    </div>
+      </div>
+      <div class="pane" id="pane-doc">
+  <div class="foot">
+    <div class="card pad" style="font-size:14px;line-height:1.85;color:var(--ink2)">
+
+      <div style="font-size:17px;font-weight:700;color:var(--ink);margin-bottom:10px">
+        通项公式 · 不管勾股形怎么换，比值一步出
+      </div>
+
+      <div style="background:linear-gradient(135deg,#f7faff,#eef4ff);border:1px solid #d8e4fa;
+                  border-left:4px solid var(--blue);border-radius:11px;padding:15px 18px;margin-bottom:14px">
+        <div style="font-size:21px;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums;line-height:1.5">
+          D<sub>外</sub> / D<sub>内</sub> &nbsp;=&nbsp; 2R / 2r &nbsp;=&nbsp;
+          (√2·勾 + 股) / (√2·勾 − 股)
+        </div>
+        <div style="margin-top:9px;font-size:14.5px;color:var(--ink2);font-variant-numeric:tabular-nums">
+          = (2·勾² + 股² + 2√2·勾·股) / (2·勾² − 股²)
+          &nbsp;&nbsp;·&nbsp;&nbsp;
+          内倒四面体棱长 <i>b</i> = <i>k·a</i>，&nbsp;
+          <i>k</i> = (√2·勾 − 股) / (√2·勾 + 股)
+        </div>
+        <div style="margin-top:9px;font-size:13px;color:var(--ink3)">
+          比值只依赖<b>一个数</b>：股 / 勾。所以任意勾股形代进去即可，无需重新建模。
+        </div>
+      </div>
+
+      <div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:10px">
+        四步推到底（对任意勾股形都成立）
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px">
+        <div style="border:1px solid var(--line);border-radius:11px;padding:13px 15px">
+          <b style="color:var(--amber)">① 十二枚三角形 · 弦当棱</b><br>
+          正四面体棱长 <i>a</i> = 弦 = √(勾²+股²)。每条棱作 2 枚直角三角形（直角顶朝内、落在
+          「该棱 + 中心 O」所定的镜面内），6 棱 × 2 = <b>12 枚</b>。每条棱上两枚的差别只是
+          「勾腿/股腿」谁长谁短。
+        </div>
+        <div style="border:1px solid var(--line);border-radius:11px;padding:13px 15px">
+          <b style="color:var(--red)">② 对称性 ⇒ 三腿共点</b><br>
+          绕任一顶点 V<sub>k</sub> 的中轴 OV<sub>k</sub> 转 <b>120°</b>，恰好把「落在 V<sub>k</sub>
+          三条棱上、从其余三个顶点出发的那 3 条 <b>股腿</b>」循环置换。三腿互为映像、而一条直线
+          与中轴的交点唯一 ⇒ 这 3 条股腿必交于轴上<b>同一点 P<sub>k</sub></b>。
+        </div>
+        <div style="border:1px solid var(--line);border-radius:11px;padding:13px 15px">
+          <b style="color:var(--violet)">③ 共面二维解出 k</b><br>
+          在平面 (V<sub>k</sub> , V<sub>x</sub> , O) 内，记归一化腿长
+          <span class="eq">u = 股/a</span>、<span class="eq">v = 勾/a</span>（u²+v² = 1）。
+          直角顶落在「直径 = 棱」的圆上，该腿撞上中轴的参数
+          <span class="eq">t = 1/(u(u + √2 v))</span>；交点
+          <span class="eq">P<sub>k</sub> = O − k(V<sub>k</sub> − O)</span>，其中
+          <span class="eq">k = (√2·勾 − 股)/(√2·勾 + 股)</span>。
+        </div>
+        <div style="border:1px solid var(--line);border-radius:11px;padding:13px 15px">
+          <b style="color:var(--gold)">④ 四点成倒四面体 ⇒ 比值</b><br>
+          4 条中轴给 4 个交合点，由四面体对称群的作用它们两两等距 ⇒ 恰成一个<b>内倒正四面体</b>，
+          棱长 <span class="eq">b = k·a = a(√2勾−股)/(√2勾+股)</span>。同乘 √6/4 得两球半径，故
+          <span class="eq">2R/2r = a/b = 1/k = (√2勾+股)/(√2勾−股)</span>。
+        </div>
+      </div>
+
+      <div style="margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px">
+        <div style="border:1px solid #f4d6dc;background:#fff8f9;border-left:4px solid var(--red);
+                    border-radius:11px;padding:13px 15px">
+          <b style="color:var(--red)">存在条件（很重要）：股 / 勾 ≤ √2</b><br>
+          直角顶点的可行位置是「以棱为直径的球」∩ 四面体。可算出这条球与四面体的交线只在
+          <span class="eq">勾 ≥ a/√3</span> 时才存在 ⇒ 等价于
+          <span class="eq">股/勾 ≤ √2 ≈ 1.41421</span>，也等价于
+          <b>三角形较大的锐角 ≤ arctan√2 = 54.7356°</b>（正是四面体自己的「魔角」）。
+          <div style="margin-top:7px;color:var(--ink2)">
+            所以 <b>5-12-13（股/勾 = 2.4）、8-15-17（1.875）、7-24-25（3.43）都超范围</b>：
+            直角顶点落到四面体<b>外面</b>，这套嵌套结构压根不存在。硬代公式只会得到负值。
+          </div>
+        </div>
+        <div style="border:1px solid #dfeee9;background:#f7fdfb;border-left:4px solid var(--teal);
+                    border-radius:11px;padding:13px 15px">
+          <b style="color:var(--teal)">极限与「塌缩」：股/勾 → √2 时比值 → ∞</b><br>
+          <span class="eq">k = (√2 − λ)/(√2 + λ)</span>（<span class="eq">λ = 股/勾</span>）。
+          当 λ → √2，分子 → 0，内倒四面体<b>塌缩成一个点</b>，比值发散。所以在 √2 附近
+          （3-4-5 的 1.333 就离得不远）比值极大 —— 33.97 这个「大数」正是这么来的。
+        </div>
+      </div>
+
+      <div style="margin-top:22px;font-size:15px;font-weight:700;color:var(--ink);margin-bottom:8px">
+        代入即得：八组示例（精确最简式 + 数值）
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums">
+        <tr style="background:#f7faff">
+          <td style="padding:7px 10px;border:1px solid var(--line);font-weight:700">勾 : 股 : 弦</td>
+          <td style="padding:7px 10px;border:1px solid var(--line);font-weight:700">股/勾</td>
+          <td style="padding:7px 10px;border:1px solid var(--line);font-weight:700">2R / 2r 最简式（精确）</td>
+          <td style="padding:7px 10px;border:1px solid var(--line);font-weight:700">数值</td>
+        </tr>
+        <tr><td style="padding:7px 10px;border:1px solid var(--line)">1 : 1 : √2</td>
+          <td style="padding:7px 10px;border:1px solid var(--line)">1.0000</td>
+          <td style="padding:7px 10px;border:1px solid var(--line);color:var(--blue);font-weight:600">3 + 2√2 = (1+√2)²</td>
+          <td style="padding:7px 10px;border:1px solid var(--line)">5.82842712</td></tr>
+        <tr><td style="padding:7px 10px;border:1px solid var(--line);font-weight:700">3 : 4 : 5（周髀算经）</td>
+          <td style="padding:7px 10px;border:1px solid var(--line)">1.3333</td>
+          <td style="padding:7px 10px;border:1px solid var(--line);color:var(--blue);font-weight:700">17 + 12√2 = (1+√2)⁴ = cot⁴22.5°</td>
+          <td style="padding:7px 10px;border:1px solid var(--line);font-weight:700">33.97056275</td></tr>
+        <tr><td style="padding:7px 10px;border:1px solid var(--line)">5 : 7 : √74</td>
+          <td style="padding:7px 10px;border:1px solid var(--line)">1.4000</td>
+          <td style="padding:7px 10px;border:1px solid var(--line);color:var(--blue);font-weight:600">99 + 70√2 = (1+√2)⁶</td>
+          <td style="padding:7px 10px;border:1px solid var(--line)">197.99494937</td></tr>
+        <tr><td style="padding:7px 10px;border:1px solid var(--line)">17 : 24 : √865</td>
+          <td style="padding:7px 10px;border:1px solid var(--line)">1.4118</td>
+          <td style="padding:7px 10px;border:1px solid var(--line);color:var(--blue);font-weight:600">577 + 408√2 = (1+√2)⁸</td>
+          <td style="padding:7px 10px;border:1px solid var(--line)">1153.99913285</td></tr>
+        <tr><td style="padding:7px 10px;border:1px solid var(--line)">20 : 21 : 29</td>
+          <td style="padding:7px 10px;border:1px solid var(--line)">1.0500</td>
+          <td style="padding:7px 10px;border:1px solid var(--line);color:var(--blue);font-weight:600">(1241 + 840√2) / 359</td>
+          <td style="padding:7px 10px;border:1px solid var(--line)">6.76584789</td></tr>
+        <tr><td style="padding:7px 10px;border:1px solid var(--line)">48 : 55 : 73</td>
+          <td style="padding:7px 10px;border:1px solid var(--line)">1.1458</td>
+          <td style="padding:7px 10px;border:1px solid var(--line);color:var(--blue);font-weight:600">(7633 + 5280√2) / 1583</td>
+          <td style="padding:7px 10px;border:1px solid var(--line)">9.53888036</td></tr>
+        <tr><td style="padding:7px 10px;border:1px solid var(--line)">65 : 72 : 97</td>
+          <td style="padding:7px 10px;border:1px solid var(--line)">1.1077</td>
+          <td style="padding:7px 10px;border:1px solid var(--line);color:var(--blue);font-weight:600">(6817 + 4680√2) / 1633</td>
+          <td style="padding:7px 10px;border:1px solid var(--line)">8.22750733</td></tr>
+        <tr><td style="padding:7px 10px;border:1px solid var(--line)">119 : 120 : 169</td>
+          <td style="padding:7px 10px;border:1px solid var(--line)">1.0084</td>
+          <td style="padding:7px 10px;border:1px solid var(--line);color:var(--blue);font-weight:600">(21361 + 14280√2) / 6961</td>
+          <td style="padding:7px 10px;border:1px solid var(--line)">5.96982756</td></tr>
+        <tr style="background:#fdf6f7"><td style="padding:7px 10px;border:1px solid var(--line)">5 : 12 : 13</td>
+          <td style="padding:7px 10px;border:1px solid var(--line)">2.4000</td>
+          <td style="padding:7px 10px;border:1px solid var(--line);color:var(--red);font-weight:700" colspan="2">
+            ✗ &nbsp;股/勾 &gt; √2 —— 直角顶点在四面体外，结构不存在</td></tr>
+        <tr style="background:#fdf6f7"><td style="padding:7px 10px;border:1px solid var(--line)">8 : 15 : 17</td>
+          <td style="padding:7px 10px;border:1px solid var(--line)">1.8750</td>
+          <td style="padding:7px 10px;border:1px solid var(--line);color:var(--red);font-weight:700" colspan="2">
+            ✗ &nbsp;股/勾 &gt; √2 —— 结构不存在</td></tr>
+        <tr style="background:#fdf6f7"><td style="padding:7px 10px;border:1px solid var(--line)">7 : 24 : 25</td>
+          <td style="padding:7px 10px;border:1px solid var(--line)">3.4286</td>
+          <td style="padding:7px 10px;border:1px solid var(--line);color:var(--red);font-weight:700" colspan="2">
+            ✗ &nbsp;股/勾 &gt; √2 —— 结构不存在</td></tr>
+      </table>
+
+      <div style="margin-top:22px;font-size:15px;font-weight:700;color:var(--ink);margin-bottom:8px">
+        为什么 3-4-5 恰好落到 (1+√2) 的偶次幂？
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px;font-size:13.5px;line-height:1.75">
+        <div style="border-left:3px solid var(--blue);padding:2px 0 2px 12px">
+          <b>一个「偶次幂」家族</b>：取 <b>Pell 族</b> <span class="eq">勾 : 股 = 1:1、3:4、5:7、17:24、29:41、99:140…</span>
+          （由 σ<sup>2m</sup> = x + y√2 反解得 股/勾 = 2y ∕ (x+1)），则
+          <span class="eq">2R/2r = (1+√2)<sup>2m</sup></span>：
+          m=1 → 1:1 给 (1+√2)²；<b>m=2 → 3:4 给 (1+√2)⁴</b>；m=3 → 5:7 给 (1+√2)⁶；m=4 → 17:24 给 (1+√2)⁸。
+        </div>
+        <div style="border-left:3px solid var(--amber);padding:2px 0 2px 12px">
+          <b>3-4-5 的算理</b>：<span class="eq">(3√2+4)/(3√2−4)</span> 有理化后分母
+          <span class="eq">(3√2)² − 4² = 18 − 16 = 2</span>，分子
+          <span class="eq">34 + 24√2</span>，约掉 2 得 <span class="eq">17 + 12√2</span> ——
+          而 17² − 2·12² = 289 − 288 = 1，正是 Pell 方程 x²−2y²=1 的 (17,12)。
+        </div>
+        <div style="border-left:3px solid var(--violet);padding:2px 0 2px 12px">
+          <b>Pell 层面</b>：<span class="eq">(1+√2)<sup>n</sup> = x + y√2</span> 恰好枚举
+          x²−2y²=1 的全部解 —— n=1→(1,1)、2→(3,2)、3→(7,5)、<b>4→(17,12)</b>。
+          3-4-5 命中第 4 项，所以指数 = 4。
+        </div>
+        <div style="border-left:3px solid var(--teal);padding:2px 0 2px 12px">
+          <b>半角 / 八边形层面</b>：<span class="eq">tan22.5° = √2 − 1</span>、故
+          <span class="eq">cot22.5° = 1 + √2 = σ</span>（白银比）；正八边形的「长对角 ÷ 边」
+          也是 1+√2，其旋转步长恰为 45°。于是 σ 的幂就是这套 45° 系统的封闭形式。
+        </div>
+      </div>
+
+      <div style="margin-top:22px;font-size:15px;font-weight:700;color:var(--ink);margin-bottom:8px">
+        3-4-5 特例的七条交叉验证（同一比值，七条独立路径）
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums">
+        <tr style="background:#f7faff">
+          <td style="padding:7px 10px;border:1px solid var(--line);font-weight:700">路径</td>
+          <td style="padding:7px 10px;border:1px solid var(--line);font-weight:700">工具 / 依据</td>
+          <td style="padding:7px 10px;border:1px solid var(--line);font-weight:700">结果</td>
+        </tr>
+        <tr><td style="padding:7px 10px;border:1px solid var(--line)">① 通项公式代入（主证）</td>
+          <td style="padding:7px 10px;border:1px solid var(--line)">勾=3, 股=4 代入 (√2勾+股)/(√2勾−股)</td>
+          <td style="padding:7px 10px;border:1px solid var(--line);color:var(--blue);font-weight:600">17+12√2 ✓</td></tr>
+        <tr><td style="padding:7px 10px;border:1px solid var(--line)">② 对称性共点 + 共面解析</td>
+          <td style="padding:7px 10px;border:1px solid var(--line)">120° 置换 + x–z 平面解方程</td>
+          <td style="padding:7px 10px;border:1px solid var(--line);color:var(--blue);font-weight:600">k = 17−12√2 ✓</td></tr>
+        <tr><td style="padding:7px 10px;border:1px solid var(--line)">③ 纯代数 / Pell</td>
+          <td style="padding:7px 10px;border:1px solid var(--line)">(√2−1)⁴ 展开、x²−2y²=1</td>
+          <td style="padding:7px 10px;border:1px solid var(--line);color:var(--blue);font-weight:600">17+12√2 ✓</td></tr>
+        <tr><td style="padding:7px 10px;border:1px solid var(--line)">④ 高精度十进制</td>
+          <td style="padding:7px 10px;border:1px solid var(--line)">Python Decimal 70 位</td>
+          <td style="padding:7px 10px;border:1px solid var(--line);color:var(--blue);font-weight:600">33.9705627484771405856… ✓</td></tr>
+        <tr><td style="padding:7px 10px;border:1px solid var(--line)">⑤ 半角三角函数</td>
+          <td style="padding:7px 10px;border:1px solid var(--line)">cot22.5° = 1+√2、正八边形对角线</td>
+          <td style="padding:7px 10px;border:1px solid var(--line);color:var(--blue);font-weight:600">cot⁴22.5° ✓</td></tr>
+        <tr><td style="padding:7px 10px;border:1px solid var(--line)">⑥ 逐点数值枚举</td>
+          <td style="padding:7px 10px;border:1px solid var(--line)">12 腿两两求交、共点参数 t</td>
+          <td style="padding:7px 10px;border:1px solid var(--line);color:var(--blue);font-weight:600">t = 0.758252，四点等距 ✓</td></tr>
+        <tr><td style="padding:7px 10px;border:1px solid var(--line)">⑦ 文档 / 模型实测</td>
+          <td style="padding:7px 10px;border:1px solid var(--line)">50/1.4719、500000/14718.6258</td>
+          <td style="padding:7px 10px;border:1px solid var(--line);color:var(--blue);font-weight:600">33.970563 ✓</td></tr>
+      </table>
+
+    </div>
+  </div>
+      </div>
+    </section>
+
+    <!-- ===== 右：参数可调悬浮窗（可收起） ===== -->
+    <aside class="fcol" id="colR">
+      <div class="fbar">
+        <span class="ft">参数调节</span>
+        <button class="fbtn" id="tgR" title="收起 / 展开右栏">&minus;</button>
+      </div>
+      <div class="fbody">
+      <div class="card pad">
+        <h3>① 换勾股形 · 比值立刻变</h3>
+        <div class="picksub">点任意一枚 ⟶ 整幅 3D 按新比例重建，读数与最简式同步刷新。
+          「勾 : 股」= 短、长两条直角边；弦 a = √(勾²+股²)。
+          徽标就是弦：<span class="lg"><i class="hyp ok">5</i>正整数</span>
+          <span class="lg"><i class="hyp no">√41</i>开不尽</span>。分四组（见下方全景表 👇）：
+        </div>
+        <div class="picktabs" id="pickTabs"></div>
+        <div class="pickgrid" id="pickGrid"></div>
+        <div class="pickin">
+          自定义　勾 <input type="number" id="inP" min="1" step="1" value="3" title="短直角边">
+          股 <input type="number" id="inQ" min="1" step="1" value="4" title="长直角边">
+          <button class="btn" id="btnPQ">应用</button>
+          <span class="msg" id="inMsg"></span>
+        </div>
+
+      </div>
+
+      <div class="card pad">
+        <h3>显示开关</h3>
+        <div class="sw">
+          <button class="btn" id="tgFins">勾股三角形</button>
+          <button class="btn" id="tgSphere">外接球</button>
+          <button class="btn" id="tgInner">内倒四面体</button>
+          <button class="btn" id="tgLabel">标注</button>
+          <button class="btn" id="tgAuto">自动旋转</button>
+        </div>
+        <div class="legend">
+          <span><i class="dot" style="background:#3457d5"></i>外四面体</span>
+          <span><i class="dot" style="background:#e08a17"></i>勾股三角形 ×12</span>
+          <span><i class="dot" style="background:#d1445a"></i>内倒四面体</span>
+          <span><i class="dot" style="background:#0e9c8e"></i>外接球</span>
+        </div>
+      </div>
+
+      <div class="card pad">
+        <h3>证明与资料</h3>
+        <p style="margin:0 0 10px;font-size:13px;color:var(--ink2);line-height:1.7">
+          <b>通项公式</b>的完整推导与 8 组勾股形实测表见第一份文档；3-4-5 的特例证明含
+          7 条交叉验证路径（<b>对称性共点法</b>（主证）· 共面二维解析 · 纯代数 / Pell 方程 ·
+          60 位高精度十进制 · 半角三角函数 · Wolfram 闭式逆推 · Shapr3D 实测反解）。
+          <br><span style="font-size:12.4px;color:var(--ink3)">下面四个按钮打开的是<b>已排版的阅读页</b>（带目录、表格与公式）；.md 原件留在同目录，可用 Typora 编辑。</span>
+        </p>
+        <div class="sw">
+          <a class="btn" href="勾股通项_任意直角三角形.html" target="_blank">📐 通项公式（任意勾股形）</a>
+          <a class="btn" href="白银比四次方_数学证明.html" target="_blank">📄 3-4-5 数学证明</a>
+          <a class="btn" href="四面体_文档与模型实测记录.html" target="_blank">📄 文档精读与模型实测</a>
+          <a class="btn" href="四面体_知识要点卡片.html" target="_blank">📄 知识要点卡片</a>
+        </div>
+      </div>
+      </div>
+      <div class="frz" title="拖动调整大小（双击复位）"></div>
+    </aside>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+/* =========================================================================
+   正四面体内嵌倒四面体 · 3D 演示（纯 Canvas 2D 手写三维引擎，无外部依赖）
+   数学内核：
+     外四面体棱长 a（= 弦五）
+     12 枚 3-4-5 勾股三角形：斜边 = 棱，位于「棱 + 中心」所在镜面内，直角顶朝内
+     内倒四面体棱长 b = a(17-12√2) = a(√2-1)^4
+     比值 a/b = (1+√2)^4 = 17+12√2
+   ========================================================================= */
+
+/* ---------------- 向量 ---------------- */
+const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]];
+const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+const mul=(a,s)=>[a[0]*s,a[1]*s,a[2]*s];
+const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const crs=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const vlen=a=>Math.sqrt(dot(a,a));
+const nrm=a=>{const L=vlen(a)||1;return mul(a,1/L);};
+const lerpV=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
+const clamp=(x,l,h)=>x<l?l:(x>h?h:x);
+const easeOut=t=>1-Math.pow(1-clamp(t,0,1),3);
+const easeIO=t=>{t=clamp(t,0,1);return t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;};
+
+/* ============================================================================
+   几何内核 · 任意勾股形（勾 = P ≤ 股 = Q，棱长 a = 弦 = √(P²+Q²)）
+   ----------------------------------------------------------------------------
+   内倒四面体棱长比
+        k = (√2·勾 − 股) / (√2·勾 + 股)
+   直径比（本页主结论）
+        2R / 2r = 1/k = (√2·勾 + 股) / (√2·勾 − 股)
+                     = (2勾² + 股² + 2√2·勾·股) / (2勾² − 股²)
+   3-4-5 时 k = 17 − 12√2 = (√2−1)⁴，比值 = 17 + 12√2 = (1+√2)⁴。
+   ============================================================================ */
+const S2=Math.sqrt(2), S3=Math.sqrt(3), S6=Math.sqrt(6);
+const FACES=[[0,1,2],[0,1,3],[1,2,3],[2,0,3]];
+const EDGES=[[0,1],[1,2],[2,0],[0,3],[1,3],[2,3]];
+const FACE_LABEL=['D 对面','C 对面','B 对面','A 对面'];
+function gcd(a,b){ a=Math.abs(a); b=Math.abs(b); while(b){ const t=a%b; a=b; b=t; } return a||1; }
+
+let P=3, Q=4;                                   // 勾(短) / 股(长)
+let E=5, HGT=0, ROUT=0;
+let Vtx=[], O=[0,0,0];
+let KK=0, bEdge=0, Rinner=0, Hinner=0, T_LEG=0;
+let FINS=[], LEG4=[], PCONV=[], INNER=[], NEAR=[], DV=[0,0,0];
+let VALID=true, EXACT={A:17,B:12,C:1}, POW2=0;
+
+function insideTetra(p){
+  for(const f of FACES){
+    const n=crs(sub(Vtx[f[1]],Vtx[f[0]]),sub(Vtx[f[2]],Vtx[f[0]]));
+    if(Math.sign(dot(n,sub(O,Vtx[f[0]])))!==Math.sign(dot(n,sub(p,Vtx[f[0]])))) return false;
+  }
+  return true;
+}
+/* 棱 (i,j) 上的一枚勾股直角三角形：从 i 端算起直角边长 legP，
+   直角顶点必须落在「该棱 + 中心 O」所定的平面内、且朝内。 */
+function makeFin(i,j,legP){
+  const Pv=Vtx[i], Qv=Vtx[j];
+  const d=sub(Qv,Pv), L=vlen(d), dh=mul(d,1/L);
+  const m=nrm(crs(d,sub(O,Pv)));                 // 镜面法向（棱 + 中心 定平面）
+  const n=nrm(crs(m,dh));                        // 平面内、垂直于棱的方向
+  const foot=add(Pv,mul(dh,legP*legP/L));        // 直角顶点在棱上的垂足
+  const legQ=Math.sqrt(Math.max(0,L*L-legP*legP));
+  const alt=legP*legQ/L;                         // 对斜边的高
+  const a1=add(foot,mul(n,alt)), a2=sub(foot,mul(n,alt));
+  const apex = vlen(sub(a1,O))<=vlen(sub(a2,O)) ? a1 : a2;   // 取朝内那一侧
+  return {i,j,P:Pv,Q:Qv,apex,foot,mirror:m,legP,legQ,alt,inward:insideTetra(apex)};
+}
+
+/* ---------------------------------------------------------------------------
+   通项定理的几何机制（对任意勾股形成立）
+   ★ 对称性：绕顶点 V_k 的中轴 OV_k 转 120°，把「落在 V_k 三条棱上、
+     从其余三个顶点出发的那 3 条【股】腿（长 = 股）」循环置换
+     ⇒ 这 3 条腿必交于该轴上同一点 P_k。
+   ★ 共面 2D 解：在平面 (V_k , V_x , O) 内，记 u = 股/a、v = 勾/a（u²+v²=1），
+     该腿撞中轴的参数   t = 1 / ( u(u + √2·v) )
+     （3-4-5：u=4/5, v=3/5 ⇒ t = 25/(4(3√2+4)) = 0.758252…）
+     交点  P_k = O − k(V_k − O)，   k = (√2·勾 − 股)/(√2·勾 + 股)。
+   ★ 4 条中轴 ⇒ 4 个交合点，两两等距 ⇒ 恰成一个内倒正四面体，棱长 b = k·a。
+   ★ 可内接条件：直角顶点必须落在四面体内 ⟺ 勾 ≥ a/√3 ⟺ 股/勾 ≤ √2
+     ⟺ 三角形较大的锐角 ≤ arctan√2 = 54.7356°（四面体自己的"魔角"）。
+   --------------------------------------------------------------------------- */
+function rebuild(p,q){
+  P=p; Q=q;
+  E=Math.hypot(P,Q);                             // 棱长 = 弦
+  HGT=E*Math.sqrt(2/3); ROUT=E*S6/4;
+  Vtx=[[E/S3,0,0],[-E/(2*S3),E/2,0],[-E/(2*S3),-E/2,0],[0,0,HGT]];
+  O=[0,0,HGT/4];
+  KK=(S2*P-Q)/(S2*P+Q);                          // k = (√2勾−股)/(√2勾+股)
+  bEdge=E*KK; Rinner=Math.abs(bEdge)*S6/4; Hinner=bEdge*S6/12;
+  PCONV=Vtx.map(v=>add(O,mul(sub(O,v),KK)));
+  INNER=PCONV.slice(); DV=Vtx[3];
+  const un=Q/E, vn=P/E;
+  T_LEG=1/(un*(un+S2*vn));                       // 股腿撞中轴的参数
+  FINS=[];
+  EDGES.forEach(e=>{ FINS.push(makeFin(e[0],e[1],P)); FINS.push(makeFin(e[0],e[1],Q)); });
+  VALID=FINS.every(f=>f.inward) && (Q/P <= S2+1e-12);
+  LEG4=[];
+  EDGES.forEach(e=>{
+    const i=e[0], j=e[1];
+    /* 每条棱上有「两枚」勾股形：一枚的股腿自 i 端出发，另一枚的自 j 端出发。
+       12 条股腿（长 = 股）恰好「3 条一束」穿过同一个交合点 P_k。 */
+    LEG4.push({from:i,to:j,legP:Q,start:Vtx[i],end:makeFin(i,j,Q).apex,
+               meet:add(O,mul(sub(O,Vtx[j]),KK))});
+    LEG4.push({from:j,to:i,legP:Q,start:Vtx[j],end:makeFin(i,j,P).apex,
+               meet:add(O,mul(sub(O,Vtx[i]),KK))});
+  });
+  NEAR=LEG4.filter(L=>L.from===3).map(L=>({other:L.to,apex:L.end}));
+  /* 精确式：(√2P+Q)/(√2P−Q) = (A + B√2)/C ，按最大公约数化简。
+     C = 2勾² − 股² < 0 就是反例（股/勾 > √2）—— 此时分子分母同时取反，
+     得到的是「带符号的 2R/2r」（负值）；我们再整体取绝对值，
+     让它表示的恒是页面实际画出的两球直径比 |2R/2r| = (A + B√2)/C （A、B、C 全正）。*/
+  let A=2*P*P+Q*Q, B=2*P*Q, C=2*P*P-Q*Q;
+  if(C<0){ C=-C; }                       /* 分子已为正，只需把分母翻正 ⇒ 恒得 |2R/2r| */
+  const g0=gcd(gcd(A,B),C); EXACT={A:A/g0,B:B/g0,C:C/g0};
+  /* 是否恰好为 (1+√2)^(2m) —— 3-4-5 就是 m=2 */
+  POW2=0;
+  if(C>0){
+    const ratio=(S2*P+Q)/(S2*P-Q);
+    for(let m=1;m<=8;m++){ const v=Math.pow(1+S2,2*m); if(Math.abs(v-ratio)<=1e-9*Math.abs(v)) POW2=2*m; }
+  }
+}
+rebuild(P,Q);
+
+/* ---------------- 相机 / 投影 ---------------- */
+const cam={yaw:-0.62, pitch:0.30, dist:2.30*E, focal:0, auto:true};
+let camBasis=null;
+/* 分镜自动运镜：④ 推进到中心看内倒四面体，⑤ 退回全景 */
+let BASE_TARGET=[0,0,HGT*0.52];
+let viewDist=2.30*E, viewTarget=[0,0,HGT*0.52], zoomFactor=1;
+let panX=0, panY=0;                 /* 屏幕空间平移量（Shift + 拖动） */
+const DIST_MIN_K=0.045, DIST_MAX_K=4.6;   /* cam.dist 上下限（单位 × E） */
+function resetView(){
+  cam.yaw=-0.62; cam.pitch=0.30; cam.dist=2.30*E;
+  BASE_TARGET=[0,0,HGT*0.52];
+  panX=0; panY=0;
+  viewDist=cam.dist; viewTarget=BASE_TARGET.slice(); zoomFactor=1;
+}
+function viewState(si,p){
+  let zf=1, zt=0;
+  if(si===4){ const q=clamp((p-0.42)/0.52,0,1); zf=1-0.952*q; zt=q; }
+  else if(si===5){ const q=clamp(p/0.30,0,1); zf=0.048+0.952*q; zt=1-q; }
+  zoomFactor=zf;
+  /* 用户滚轮放大越深，视点中心越向 O 靠 —— 否则放大后看不到中心的嵌套四面体 */
+  const uz=cam.dist/(2.30*E);
+  const deep=clamp((0.75-uz)/0.70, 0, 1);
+  /* 下限 = 内球半径 × 0.9 ⇒ 可一直放大到「内接四面体铺满画面」为止 */
+  viewDist=Math.max(cam.dist*zf, Math.abs(Rinner)*0.9);
+  viewTarget=lerpV(BASE_TARGET, O, Math.max(zt, deep));
+}
+function viewBasis(){
+  const ey=[Math.sin(cam.yaw)*Math.cos(cam.pitch), -Math.cos(cam.yaw)*Math.cos(cam.pitch), Math.sin(cam.pitch)];
+  const right=nrm(crs([0,0,1],ey));
+  const up=crs(ey,right);
+  return {ey,right,up};
+}
+function project(p){
+  const b=camBasis;
+  const eye=add(viewTarget, mul(b.ey, viewDist));
+  const v=sub(p,eye);
+  const d=-dot(v,b.ey);
+  if(d<Math.max(1e-4, 0.012*viewDist)) return null;   /* 近平面随视距缩放（支持深度放大） */
+  const f=cam.focal;
+  return {x:W/2 + panX + f*dot(v,b.right)/d, y:H/2 + panY - f*dot(v,b.up)/d, d:d};
+}
+
+/* ---------------- 显示列表（画家算法） ---------------- */
+let DL=[];
+function pushD(d,fn){DL.push({d:d,fn:fn});}
+function flushDL(){
+  DL.sort((A,B)=>B.d-A.d);
+  for(let k=0;k<DL.length;k++) DL[k].fn();
+  DL=[];
+}
+function poly3(pts,st){
+  const vs=[]; let ds=0;
+  for(const p of pts){ const v=project(p); if(!v) return; vs.push(v); ds+=v.d; }
+  const d=ds/vs.length + (st.bias||0);
+  pushD(d,()=>{
+    ctx.beginPath();
+    for(let k=0;k<vs.length;k++){ if(k===0)ctx.moveTo(vs[k].x,vs[k].y); else ctx.lineTo(vs[k].x,vs[k].y); }
+    ctx.closePath();
+    if(st.fill){ ctx.fillStyle=st.fill; ctx.fill(); }
+    if(st.stroke){ ctx.strokeStyle=st.stroke; ctx.lineWidth=st.lw||1; ctx.stroke(); }
+  });
+}
+function line3(p,q,st){
+  const a1=project(p), b1=project(q); if(!a1||!b1) return;
+  const d=(a1.d+b1.d)/2+(st.bias||0);
+  pushD(d,()=>{
+    ctx.save();
+    ctx.beginPath(); ctx.moveTo(a1.x,a1.y); ctx.lineTo(b1.x,b1.y);
+    ctx.strokeStyle=st.stroke; ctx.lineWidth=st.lw||1;
+    if(st.dash) ctx.setLineDash(st.dash);
+    if(st.glow){ ctx.shadowColor=st.stroke; ctx.shadowBlur=st.glow; }
+    ctx.lineCap='round'; ctx.stroke(); ctx.restore();
+  });
+}
+function dot3(p,st){
+  const v=project(p); if(!v) return;
+  pushD(v.d-0.02,()=>{
+    ctx.save(); ctx.beginPath(); ctx.arc(v.x,v.y,st.r||3,0,6.2832);
+    ctx.fillStyle=st.fill; if(st.glow){ctx.shadowColor=st.fill;ctx.shadowBlur=st.glow;}
+    ctx.fill(); ctx.restore();
+  });
+}
+function label3(p,text,st){
+  const v=project(p); if(!v) return;
+  pushD(v.d-0.03,()=>{
+    ctx.save();
+    ctx.font=(st.bold?'700 ':'')+(st.size||13)+'px "Microsoft YaHei",system-ui,sans-serif';
+    ctx.textAlign=st.align||'center'; ctx.textBaseline='middle';
+    ctx.lineWidth=3.6; ctx.strokeStyle='rgba(255,255,255,0.95)';
+    ctx.strokeText(text, v.x+(st.dx||0), v.y+(st.dy||0));
+    ctx.fillStyle=st.color||'#1c2534';
+    ctx.fillText(text, v.x+(st.dx||0), v.y+(st.dy||0));
+    ctx.restore();
+  });
+}
+/* 球：轮廓 + 大圆环（有立体感） */
+function sphere3(c,r,st){
+  const v=project(c); if(!v) return;
+  const rad=Math.max(3, cam.focal*r/v.d);
+  pushD(v.d+0.001,()=>{
+    ctx.save();
+    const g=ctx.createRadialGradient(v.x-rad*0.3,v.y-rad*0.35,rad*0.1,v.x,v.y,rad);
+    g.addColorStop(0,st.fill0||'rgba(14,156,142,0.045)');
+    g.addColorStop(0.72,st.fill1||'rgba(14,156,142,0.075)');
+    g.addColorStop(1,'rgba(14,156,142,0.16)');
+    ctx.beginPath(); ctx.arc(v.x,v.y,rad,0,6.2832); ctx.fillStyle=g; ctx.fill();
+    ctx.strokeStyle=st.stroke||'rgba(14,156,142,0.55)'; ctx.lineWidth=st.lw||1.1; ctx.stroke();
+    ctx.restore();
+  });
+  const rings=st.rings==null?5:st.rings;
+  for(let k=0;k<rings;k++){
+    const phi=(k+1)/(rings+1)*Math.PI;
+    const rr=r*Math.sin(phi), zz=r*Math.cos(phi);
+    const pts=[]; const seg=48;
+    for(let s=0;s<=seg;s++){
+      const th=s/seg*6.2832;
+      pts.push([c[0]+rr*Math.cos(th), c[1]+rr*Math.sin(th), c[2]+zz]);
+    }
+    strokePolyline(pts, {stroke:st.ring||'rgba(14,156,142,0.30)', lw:0.9, bias:0.02});
+  }
+  for(let k=0;k<2;k++){
+    const th0=k*Math.PI/2;
+    const pts=[]; const seg=48;
+    for(let s=0;s<=seg;s++){
+      const a2=s/seg*6.2832;
+      pts.push([c[0]+r*Math.cos(a2)*Math.cos(th0), c[1]+r*Math.cos(a2)*Math.sin(th0), c[2]+r*Math.sin(a2)]);
+    }
+    strokePolyline(pts, {stroke:st.ring||'rgba(14,156,142,0.30)', lw:0.9, bias:0.02});
+  }
+}
+function strokePolyline(pts,st){
+  for(let k=0;k<pts.length-1;k++){
+    const a1=project(pts[k]), b1=project(pts[k+1]);
+    if(!a1||!b1) continue;
+    const d=(a1.d+b1.d)/2+(st.bias||0);
+    pushD(d,()=>{
+      ctx.beginPath(); ctx.moveTo(a1.x,a1.y); ctx.lineTo(b1.x,b1.y);
+      ctx.strokeStyle=st.stroke; ctx.lineWidth=st.lw||1; ctx.stroke();
+    });
+  }
+}
+
+/* ---------------- 画布 ---------------- */
+const cv=document.getElementById('cv');
+const ctx=cv.getContext('2d');
+let W=0,H=0,DPR=1;
+function resize(){
+  const rect=cv.parentElement.getBoundingClientRect();
+  DPR=Math.min(2.5, window.devicePixelRatio||1);
+  W=Math.max(320, rect.width); H=Math.max(300, rect.height);
+  cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR);
+  cam.focal=Math.min(W,H)*1.02;
+}
+window.addEventListener('resize', resize);
+
+/* ---------------- 分镜 ---------------- */
+const STAGES=[
+  {t:'① 周髀算经 · 勾股弦', dur:5.2,
+   cap:()=>'《周髀算经》的直角三角形：<b>勾 '+P+'、股 '+Q+'、弦 '+fmt(E,4)+'</b>，<span class="eq">'+(P*P)+' + '+(Q*Q)+' = '+(P*P+Q*Q)+'</span>。它是一切结构的「细胞」。'},
+  {t:'② 赵爽弦图 · 弦围方', dur:6.0,
+   cap:()=>'四枚勾股三角形以<b>弦为边</b>围成外方（边 = '+fmt(E,4)+'），中央留出内方，边长 = <b>股−勾 = '+(Q-P)+'</b>；面积 <span class="eq">4×'+(P*Q/2)+' + '+(Q-P)*(Q-P)+' = '+(P*P+Q*Q)+'</span>。'},
+  {t:'③ 升维 · 弦为棱', dur:5.2,
+   cap:()=>'把弦同时当作 <b>六条棱</b>：正四面体 ABCD，棱长 <span class="eq">a = '+fmt(E,4)+'</span>；外接球半径 <span class="eq">R = a√6/4 = '+fmt(ROUT,5)+'</span>，中心 O。'},
+  {t:'④ 十二枚勾股三角形 · 六镜面过心', dur:7.4,
+   cap:()=>'每条棱上放 <b>2 枚</b> 「勾 '+P+' · 股 '+Q+'」三角形（斜边 = 棱），直角顶朝内，且必须落在「<b>该棱 + 中心 O</b>」所定的镜面内（该镜面必过 O）⇒ 6 棱 × 2 = <b>12 枚</b>。两条直角腿长 <span class="eq">'+P+'</span> 与 <span class="eq">'+Q+'</span>，12 条<b>股腿</b>将分成 4 组、每组 3 条射向同一条中轴。'},
+  {t:'⑤ 中心交合 · 12 腿 → 4 点 → 内倒四面体', dur:8.6,
+   cap:()=>'12 条 <b>股腿</b>（长 '+Q+'）在中心交合：绕任一顶点 V<sub>k</sub> 的中轴转 <b>120°</b> 会把「射向该轴的 3 条股腿」循环置换，故这 3 条腿必交于轴上<b>同一点 P<sub>k</sub></b>；4 条中轴给出 <span class="eq">P₀…P₃</span> 共 4 点，两两等距 ⇒ 恰成一个<b>倒置正四面体</b>，棱长 <span class="eq">b = k·a，k = (√2·'+P+' − '+Q+')/(√2·'+P+' + '+Q+') = '+(VALID? fmt(KK,8) : '—')+'</span>。'},
+  {t:'⑥ 双球定比 · 通项公式', dur:8.4,
+   cap:()=> VALID
+     ? '外球直径 <span class="eq">2R = a√6/2 = '+fmt(2*ROUT,6)+'</span>，内球直径 <span class="eq">2r = |b|√6/2 = '+fmt(Math.abs(bEdge)*S6/2,6)+'</span>，比值恒为 <span class="eq">(√2·勾+股)/(√2·勾−股) = '+exactStr()+' = '+rTxt(8)+'</span>。'
+     : '当前 <b>勾 '+P+' : 股 '+Q+'</b>（股/勾 = '+fmt(Q/P,3)+' &gt; √2）：12 枚勾股形的直角顶点<b>全部落到四面体外</b>，围合机制断裂 ⇒ 倒插结构不成立（k 变号、通项式分母为负）。<br>'
+       +'但两个球仍然画得出来 —— 内球半径取 <span class="eq">|b| = |k|·a</span>，于是 <span class="eq">|2R / 2r| = '+exactStr()+' = '+rTxt(8)+'</span>：'
+       +'它仍是 <b>内接球 : 外接球 = |k| : 1</b> 这条代数关系；只是 k &lt; 0 时内外两枚四面体<b>同向</b>（不再是倒插），所以它不再由那 12 枚勾股形围出来。'},
+  {t:'⑦ 结论 · 白银比幂与 45° 系统', dur:6.0,
+   cap:()=>powNote()},
+  {t:'⑧ 通项公式 · 换勾股形即刻出比值', dur:7.0,
+   cap:()=>'在右栏「① 换勾股形」里任点一个三角形，整幅 3D 结构会按新比例重建 —— 唯一变化的是 <b>股/勾</b> 这一个数：<span class="eq">2R/2r = (√2·勾+股)/(√2·勾−股)</span>。注意<b>可内接条件 股/勾 ≤ √2</b>（较大锐角 ≤ 54.7356°），5-12-13 这类细高三角形不成立。'}
+];
+/* 直径比（带符号）：走有理化式 (2勾²+股²+2√2·勾·股)/(2勾²−股²)，末位与精确值一致
+   股/勾 < √2 ⇒ 分母 > 0 ⇒ 正（结构成立）；股/勾 > √2 ⇒ 分母 < 0 ⇒ 负（结构不成立） */
+function ratioNow(){
+  const A=2*P*P+Q*Q, B=2*P*Q, C=2*P*P-Q*Q;
+  return (A+B*S2)/C;
+}
+/* 两球直径比：页面上的内球半径始终取 |b| ⇒ 这个比值 = |通项式|，反例也照样有确定的值 */
+function absRatioNow(){ return Math.abs(ratioNow()); }
+function fmt(x,n){ const s=(Math.abs(x)<1e-12?0:x); return s.toFixed(n==null?6:n).replace(/\.?0+$/,''); }
+/* 把「离整数的差」写成 2.1×10⁻² 的样子（判据八 用它展示「任意接近但永不相等」） */
+function fmtGap(g){
+  const m=String(g.toExponential(1)).match(/^([\d.]+)e([+-])(\d+)$/);
+  if(!m) return g.toExponential(2);
+  const sup={'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
+  return m[1]+'×10'+(m[2]==='-'?'⁻':'')+m[3].split('').map(function(c){return sup[c];}).join('');
+}
+/* 千分位 */
+function grp(n){ return Number(n).toLocaleString('en-US'); }
+function rTxt(n){ return fmt(absRatioNow(),n==null?8:n); }
+/* 最简式：EXACT 已按「分母为正」归一 ⇒ 它表示的恒是 |2R/2r|
+   = (2勾²+股² + 2·勾·股·√2) / |2勾² − 股²|，再按最大公约数约分 */
+function exactStr(){
+  const A=EXACT.A, B=EXACT.B, C=EXACT.C;
+  const n=(A===0?'':((A>0?'':'−')+Math.abs(A)))+(B?((B>0?' + ':' − ')+Math.abs(B)+'√2'):'');
+  return C===1? n : '('+n+') / '+C;
+}
+function powNote(){
+  const base='<span class="eq">k = (√2·勾 − 股)/(√2·勾 + 股)</span> 是「白银比 σ = 1+√2」的幂：'
+    +'σ 的次数与勾股形的<b>较锐角</b>一一对应。当 勾 : 股 取 <b>Pell 族</b> 1:1、3:4、5:7、<b>17:24</b>、29:41、99:140… 时，'
+    +'恰好 <span class="eq">2R/2r = σ<sup>2m</sup></span>：1:1 → σ²、<b>3:4 → σ⁴</b>、5:7 → σ⁶、17:24 → σ⁸。';
+  const tail = POW2? '当前勾股形命中 <span class="eq">σ<sup>'+POW2+'</sup></span>。'
+                    : '当前勾股形不是纯 σ 幂，但通项式仍精确成立：<span class="eq">'+exactStr()+'</span>。';
+  return base+' '+tail+' 22.5° 是 <b>45° 的半角</b>，正八边形长对角 ÷ 边 = 1+√2 —— 与文档「白银比 45° 四次旋转系统」一致。';
+}
+
+let stage=0, stageT=0, playing=true, speed=1;
+
+/* ---------------- HUD ---------------- */
+const capbox=document.getElementById('capbox');
+const stepsEl=document.getElementById('steps');
+const ticksEl=document.getElementById('ticks');
+STAGES.forEach((s,i)=>{
+  const li=document.createElement('li');
+  li.innerHTML='<span class="n">'+String(i+1).padStart(2,'0')+'</span><span>'+s.t+'</span>';
+  li.addEventListener('click',()=>{stage=i;stageT=0;playing=true;syncUI();});
+  stepsEl.appendChild(li);
+  const tk=document.createElement('div'); tk.className='tick';
+  tk.innerHTML='<i></i>';
+  tk.title=s.t;
+  tk.addEventListener('click',(ev)=>{
+    const r=tk.getBoundingClientRect();
+    stage=i; stageT=clamp((ev.clientX-r.left)/r.width,0,0.999); playing=false; syncUI();
+  });
+  ticksEl.appendChild(tk);
+});
+function setCap(){ const c=STAGES[stage].cap; capbox.innerHTML=(typeof c==='function'? c() : c); }
+function syncUI(){
+  setCap();
+  [...stepsEl.children].forEach((li,i)=>li.classList.toggle('on', i===stage));
+  const tk=[...ticksEl.children];
+  tk.forEach((el,i)=>{
+    el.classList.toggle('done', i<stage);
+    el.firstChild.style.width = (i<stage?100:(i===stage?Math.round(stageT*100):0))+'%';
+  });
+  document.getElementById('btnPlay').textContent = playing?'暂停':'播放';
+}
+
+/* ---------------- 开关 ---------------- */
+const vis={fins:true, sphere:true, inner:true, label:true};
+function bindToggle(id,key){
+  const b=document.getElementById(id);
+  const upd=()=>b.classList.toggle('off', !vis[key]);
+  b.addEventListener('click',()=>{vis[key]=!vis[key]; upd();});
+  upd();
+}
+bindToggle('tgFins','fins'); bindToggle('tgSphere','sphere');
+bindToggle('tgInner','inner'); bindToggle('tgLabel','label');
+const tgAuto=document.getElementById('tgAuto');
+tgAuto.addEventListener('click',()=>{cam.auto=!cam.auto; tgAuto.classList.toggle('off',!cam.auto);});
+
+/* ---------------- 2D 幕（弦图） ---------------- */
+function sq(x,y){ return [ox + x*sc, oy - y*sc]; }
+let ox=0, oy=0, sc=40;
+/* 把 2D 数学坐标的包围盒 [minx,miny]×[maxx,maxy] 铺满画布（含留白） */
+function fit2D(minx,miny,maxx,maxy){
+  const bw=Math.max(1e-6,maxx-minx), bh=Math.max(1e-6,maxy-miny);
+  sc=Math.min(W*0.70/bw, H*0.70/bh);
+  ox=W/2-(minx+maxx)/2*sc;
+  oy=H/2+(miny+maxy)/2*sc;
+}
+function draw2D(si,p,alpha){
+  ctx.save(); ctx.globalAlpha=alpha;
+  const S=Math.min(1, p/0.42);
+  const txt=(t,x,y,col)=>{ ctx.lineWidth=4; ctx.strokeStyle='rgba(255,255,255,.95)';
+    ctx.strokeText(t,x,y); ctx.fillStyle=col; ctx.fillText(t,x,y); };
+  if(si===0){
+    /* 直角三角形：勾 = P（水平）、股 = Q（竖直）、弦 a = √(P²+Q²) */
+    fit2D(-0.30*P, -0.26*Q, P*1.42, Q*1.30);
+    ctx.lineCap='round';
+    ctx.strokeStyle='#3457d5'; ctx.lineWidth=4;
+    ctx.beginPath(); let s0=sq(0,0), s1=sq(P,0); ctx.moveTo(s0[0],s0[1]); ctx.lineTo(s1[0],s1[1]); ctx.stroke();
+    if(S>0.35){ ctx.strokeStyle='#e08a17'; ctx.beginPath(); let a1=sq(P,0), b1=sq(0,Q);
+      ctx.moveTo(a1[0],a1[1]); ctx.lineTo(b1[0],b1[1]); ctx.stroke(); }
+    if(S>0.7){ ctx.strokeStyle='#d1445a'; ctx.beginPath(); let c1=sq(0,Q), d1=sq(0,0);
+      ctx.moveTo(c1[0],c1[1]); ctx.lineTo(d1[0],d1[1]); ctx.stroke(); }
+    /* 直角标记 */
+    const r2=sq(P*0.12,0), r3=sq(0,Q*0.12), r4=sq(P*0.12,Q*0.12);
+    ctx.strokeStyle='#b9c6da'; ctx.lineWidth=1.6;
+    ctx.beginPath(); ctx.moveTo(r2[0],r2[1]); ctx.lineTo(r4[0],r4[1]); ctx.lineTo(r3[0],r3[1]); ctx.stroke();
+    ctx.font='700 16px "Microsoft YaHei",sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    const mid=(a,b)=>[(a[0]+b[0])/2,(a[1]+b[1])/2];
+    let m1=mid(sq(0,0),sq(P,0)), m2=mid(sq(P,0),sq(0,Q)), m3=mid(sq(0,Q),sq(0,0));
+    const aStr = Number.isInteger(E)? String(E) : '√'+(P*P+Q*Q);
+    txt('勾 = '+P, m1[0], m1[1]+20*Math.min(1.4,4/Math.max(1,Q)), '#3457d5');
+    txt('股 = '+Q, m3[0]-46, m3[1], '#e08a17');
+    txt('弦 = '+aStr, m2[0]+36, m2[1]-16, '#d1445a');
+    txt(P+'² + '+Q+'² = '+(P*P+Q*Q), W/2, oy+sc*1.12, '#7a51c9');
+  } else if(si===1){
+    /* 赵爽弦图：以弦长为边的大方，内嵌 4 枚勾股形 + 内方（边长 = 股−勾） */
+    const a=E;
+    const C4=[[0,0],[a,0],[a,a],[0,a]];
+    const inN=[[0,1],[-1,0],[0,-1],[1,0]];                 // 每条边的内向法向
+    const ap=C4.map((c,i)=>{
+      const n=C4[(i+1)%4], ux=(n[0]-c[0])/a, uy=(n[1]-c[1])/a;
+      const fx=c[0]+(P*P/a)*ux, fy=c[1]+(P*P/a)*uy;        // 直角顶点在边上的垂足
+      return [fx+(P*Q/a)*inN[i][0], fy+(P*Q/a)*inN[i][1]]; // 沿内向法向抬起到直角顶点
+    });
+    fit2D(-0.10*a, -0.16*a, a*1.06, a*1.20);
+    ctx.lineJoin='round';
+    /* 大方（弦为边） */
+    C4.forEach((c,i)=>{ const n=C4[(i+1)%4]; const a1=sq(c[0],c[1]), b1=sq(n[0],n[1]);
+      ctx.beginPath(); ctx.moveTo(a1[0],a1[1]); ctx.lineTo(b1[0],b1[1]);
+      ctx.strokeStyle='#d1445a'; ctx.lineWidth=3.4; ctx.stroke(); });
+    /* 4 枚勾股三角形（直角顶点即内方顶点） */
+    C4.forEach((c,i)=>{
+      const n=C4[(i+1)%4], q0=sq(c[0],c[1]), q1=sq(n[0],n[1]), q2=sq(ap[i][0],ap[i][1]);
+      ctx.beginPath(); ctx.moveTo(q0[0],q0[1]); ctx.lineTo(q1[0],q1[1]); ctx.lineTo(q2[0],q2[1]); ctx.closePath();
+      ctx.fillStyle=(i%2)?'rgba(224,138,23,.14)':'rgba(52,87,213,.13)';
+      ctx.fill(); ctx.strokeStyle=(i%2)?'#e08a17':'#3457d5'; ctx.lineWidth=1.8; ctx.stroke();
+    });
+    /* 内方 */
+    const iP=ap.map(v=>sq(v[0],v[1]));
+    ctx.beginPath(); ctx.moveTo(iP[0][0],iP[0][1]);
+    for(let k=1;k<4;k++) ctx.lineTo(iP[k][0],iP[k][1]);
+    ctx.closePath(); ctx.fillStyle='rgba(209,68,90,.20)'; ctx.fill();
+    ctx.strokeStyle='#d1445a'; ctx.lineWidth=2.6; ctx.stroke();
+    const cen=(function(){ let cx=0,cy=0; ap.forEach(v=>{cx+=v[0];cy+=v[1];}); return sq(cx/4,cy/4); })();
+    ctx.font='700 15px "Microsoft YaHei",sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    txt('内方 = 股−勾 = '+(Q-P), cen[0]+4, cen[1], '#d1445a');
+    txt('弦 = '+(Number.isInteger(a)?a:'√'+(P*P+Q*Q)), sq(a/2,0)[0], sq(a/2,0)[1]+22, '#d1445a');
+    txt('4 × '+(P*Q/2)+' + '+(Q-P)*(Q-P)+' = '+(P*P+Q*Q)+(Number.isInteger(a)?(' = '+a+'²'):''),
+        W/2, oy+sc*1.12, '#7a51c9');
+    if(p>0.55){
+      const g=clamp((p-0.55)/0.4,0,1);
+      ctx.save(); ctx.setLineDash([5,5]); ctx.strokeStyle='rgba(122,81,201,'+(0.35+0.5*g)+')'; ctx.lineWidth=1.6;
+      ctx.beginPath(); ctx.arc(cen[0],cen[1],sc*Math.max(0.6,0.72*(Q-P)/1), -Math.PI/2, -Math.PI/2 + g*Math.PI/4); ctx.stroke();
+      ctx.restore();
+      txt('45°', cen[0]+sc*0.55, cen[1]-sc*0.42, '#7a51c9');
+    }
+  }
+  ctx.restore();
+}
+
+/* ---------------- 3D 幕 ---------------- */
+function draw3D(si,p,alpha){
+  ctx.save(); ctx.globalAlpha=alpha;
+  const A=easeOut(p/0.5);
+  /* 推进到中心时把「面」淡出，只留线框，避免 12 层面把画面糊住 */
+  const zfFade=clamp(zoomFactor/0.55,0,1);
+
+  /* --- 外四面体面 --- */
+  if(si>=2){
+    const fa = (si===2? 0.35*A : 0.55)*zfFade;
+    for(const f of FACES){
+      poly3(f.map(i=>Vtx[i]), {fill:'rgba(52,87,213,'+(0.055*fa).toFixed(3)+')', stroke:null, bias:0.06});
+    }
+  }
+  /* --- 外四面体棱（③逐条生长） --- */
+  for(let k=0;k<EDGES.length;k++){
+    const e=EDGES[k];
+    let g=1;
+    if(si===2) g=clamp((p-0.18-k*0.055)/0.30,0,1);
+    if(g<=0) continue;
+    const P=Vtx[e[0]], Q0=Vtx[e[1]];
+    const Q=lerpV(P,Q0,easeOut(g));
+    line3(P,Q,{stroke:'rgba(52,87,213,0.95)', lw:2.6, glow:6, bias:0.0});
+  }
+  if(vis.label && si>=2){
+    const names=['A','B','C','D'];
+    names.forEach((nm,i)=>{
+      const dir=nrm(sub(Vtx[i],O));
+      label3(add(Vtx[i],mul(dir,0.42)), nm, {bold:true,size:15,color:'#243a86'});
+    });
+    if(si===2) label3([E/2,HGT*0.5,0], '弦 a = '+fmt(E,4), {size:13,color:'#3457d5',bold:true});
+  }
+
+  /* --- 12 枚勾股三角形 --- */
+  let finShow = 0;
+  if(si===3) finShow = clamp((p-0.10)/0.72,0,1);
+  else if(si>=4) finShow = 1;
+  if(vis.fins && finShow>0){
+    const total=FINS.length;
+    for(let k=0;k<total;k++){
+      const f=FINS[k];
+      const eIdx=Math.floor(k/2);
+      const g=clamp((finShow - eIdx/6*0.72)/0.28,0,1);
+      if(g<=0) continue;
+      const apex=lerpV(f.foot, f.apex, easeOut(g));
+      const bright = (si===3? 1 : 0.62);
+      poly3([f.P,f.Q,apex], {
+        fill:'rgba(224,138,23,'+(0.17*bright*zfFade).toFixed(3)+')',
+        stroke:'rgba(224,138,23,'+(0.92*bright*(0.30+0.70*zfFade)).toFixed(3)+')',
+        lw:1.4, bias:0.04+k*1e-5
+      });
+    }
+    /* 镜面 / 关键最短腿：D 出发的股四腿高亮（后续用） */
+    if(vis.label && si===3){
+      const f=FINS.find(o=>o.i===3||o.j===3);
+      if(f){
+        label3(f.apex, '勾 '+P+' / 股 '+Q+' / 弦 '+fmt(E,3), {size:12,color:'#b0720a',bold:true,dy:-14});
+      }
+    }
+  }
+
+  /* --- ⑤ 中心交合：12 条股四腿 → 4 点交合 → 内倒四面体 --- */
+  const showInner = vis.inner && si>=4;
+  if(showInner){
+    const done  = si>4;                         // ⑥⑦ 分镜：结构已定型，不再重播
+    const gLegs = done?1:clamp((p-0.02)/0.40,0,1);   // 12 条股四腿渐显
+    const gPt   = done?1:clamp((p-0.44)/0.26,0,1);   // 4 个交合点亮起
+    const gTet  = done?1:clamp((p-0.70)/0.30,0,1);   // 内倒四面体自 O 撑开
+
+    if(gLegs>0){
+      for(let k=0;k<LEG4.length;k++){
+        const L=LEG4[k];
+        const g=clamp((gLegs - (k/LEG4.length)*0.55)/0.45,0,1);
+        if(g<=0) continue;
+        line3(L.start, lerpV(L.start,L.end,easeOut(g)),
+          {stroke:'rgba(209,68,90,0.52)', lw:2.1, glow:4, bias:-0.012+k*1e-6});
+      }
+      if(vis.label && si===4 && gLegs>0.55){
+        label3(lerpV(Vtx[3], LEG4[0].end, 0.55), '股腿（长 = 股 '+Q+'）×12',
+          {size:12,color:'#c0394f',bold:true,dx:64,dy:-6});
+      }
+    }
+    if(gPt>0){
+      for(const q of PCONV) dot3(q,{r:2.4+4.6*easeOut(gPt), fill:'#d1445a', glow:11*gPt});
+      /* 标签等推进到位（zoomFactor 小）后再出，避免四点挤在一起看不清 */
+      if(vis.label && si===4 && gPt>0.6 && zoomFactor<0.40){
+        label3(PCONV[2],'交合点 P（3 条腿共点）',{size:12,color:'#a83549',bold:true,dy:-28});
+        label3(PCONV[0],'P_j = O − k(V_j − O)',{size:11.5,color:'#a83549',dx:78,dy:-2});
+        label3(PCONV[3], '内倒四面体 b = k·a = '+fmt(Math.abs(bEdge),5), {size:12.5,color:'#d1445a',bold:true,dy:46});
+      }
+    }
+    if(gTet>0){
+      const uu=easeIO(gTet);
+      const IV = INNER.map(v=>add(O, mul(sub(v,O), uu)));  // 关于 O 同心撑开
+      const IF=[[0,1,2],[0,1,3],[1,2,3],[2,0,3]];
+      IF.forEach(f=>poly3(f.map(i=>IV[i]), {fill:'rgba(209,68,90,0.13)', stroke:null, bias:-0.02}));
+      const IE=[[0,1],[1,2],[2,0],[0,3],[1,3],[2,3]];
+      IE.forEach(e=>line3(IV[e[0]],IV[e[1]], {stroke:'rgba(209,68,90,0.98)', lw:2.4, glow:5, bias:-0.03}));
+      IV.forEach(v=>dot3(v,{r:3.0,fill:'#d1445a'}));
+    }
+    /* 2D 角标：高亮一条「股四腿」以示「撞中轴」的共面 2D 解 */
+    if(vis.label && si===4 && gPt>0.2){
+      const t2=clamp((p-0.30)/0.5,0,1);
+      const A0=Vtx[0], A1=LEG4.find(L=>L.from===0&&L.to===3).end;
+      const E1=lerpV(A0,A1,easeOut(t2));
+      line3(A0, E1, {stroke:'rgba(52,87,213,0.90)', lw:2.6, glow:6, bias:-0.04});
+      if(t2>0.55) label3(E1, '共面 2D 解：一条股腿撞中轴', {size:11.5,color:'#3457d5',bold:true,dy:-16});
+    }
+  }
+
+  /* --- ⑥ 双球 --- */
+  if(vis.sphere && si>=5){
+    const g=clamp((p-0.05)/0.5,0,1);
+    ctx.globalAlpha=alpha*easeOut(g);
+    sphere3(O, ROUT, {rings:5, stroke:'rgba(14,156,142,0.60)', ring:'rgba(14,156,142,0.26)', lw:1.2});
+    sphere3(O, Rinner*1.0, {rings:3, stroke:'rgba(209,68,90,0.85)', ring:'rgba(209,68,90,0.35)', lw:1.1,
+      fill0:'rgba(209,68,90,0.05)', fill1:'rgba(209,68,90,0.09)'});
+    ctx.globalAlpha=alpha;
+    if(vis.label){
+      label3([O[0]+ROUT*0.62,O[1]+ROUT*0.58,O[2]+ROUT*0.45], '外接球 2R = a√6/2',
+        {size:12.5,color:'#0b7f74',bold:true});
+      label3([O[0]+0.55,O[1]-0.4,O[2]+Rinner*1.6], '内球 2r', {size:12,color:'#d1445a',bold:true});
+    }
+    /* 直径对比尺：把悬殊的比例画成可读的条形 */
+    const g6=clamp((p-0.42)/0.40,0,1);
+    if(g6>0){
+      const x0=Math.max(300,W-368), y0=134, Lmax=Math.min(286,W*0.38);
+      /* 2R = 2·(a√6/4) = a√6/2 ；2r = 2·(|b|√6/4) = |b|√6/2（b 取绝对值 ⇒ 两球始终能画） */
+      const dOut=E*S6/2, dIn=Math.abs(bEdge)*S6/2, Lout=Lmax, Lin=Math.max(1.6, Lmax*dIn/dOut);
+      ctx.save(); ctx.globalAlpha=alpha*easeOut(g6);
+      ctx.textAlign='left'; ctx.textBaseline='middle';
+      ctx.font='700 12.5px "Microsoft YaHei",system-ui,sans-serif';
+      ctx.fillStyle='#0b7f74'; ctx.fillText('外接球直径 2R = '+fmt(dOut,4), x0, y0-14);
+      ctx.fillStyle='rgba(14,156,142,0.80)'; ctx.fillRect(x0, y0-5, Lout, 11);
+      ctx.strokeStyle='#0b7f74'; ctx.lineWidth=1; ctx.strokeRect(x0, y0-5, Lout, 11);
+      ctx.fillStyle='#d1445a'; ctx.fillText('内球直径 2r = '+fmt(dIn,4), x0, y0+36);
+      ctx.fillStyle='rgba(209,68,90,0.95)'; ctx.fillRect(x0, y0+45, Lin, 11);
+      ctx.strokeStyle='#d1445a'; ctx.strokeRect(x0, y0+45, Lin, 11);
+      ctx.fillStyle='#7a51c9'; ctx.font='700 14px "Microsoft YaHei",system-ui,sans-serif';
+      ctx.fillText(VALID
+        ? ('2R / 2r = '+rTxt(7)+' = '+exactStr()+(POW2?(' = (1+√2)^'+POW2):''))
+        : ('|2R / 2r| = '+fmt(absRatioNow(),7)+' = '+exactStr()+'　（结构不成立，取绝对值）'),
+        x0, y0+86);
+      ctx.restore();
+    }
+  }
+  /* --- 中心自动放大提示 --- */
+  if(si===4 && zoomFactor<0.75){
+    ctx.save();
+    ctx.font='700 13px "Microsoft YaHei",system-ui,sans-serif';
+    ctx.textAlign='left'; ctx.textBaseline='top';
+    ctx.lineWidth=3.6; ctx.strokeStyle='rgba(255,255,255,.95)';
+    const zt='中心区自动放大 ≈ ×'+(1/zoomFactor).toFixed(0)+'（内棱只有外棱的 1/'+(VALID?fmt(ratioNow(),1):'—')+'）';
+    ctx.strokeText(zt, 18, 94); ctx.fillStyle='#3457d5'; ctx.fillText(zt, 18, 94);
+    ctx.restore();
+  }
+  /* --- 不可内接告警 --- */
+  if(!VALID && si>=2){
+    ctx.save();
+    ctx.font='700 14px "Microsoft YaHei",system-ui,sans-serif';
+    ctx.textAlign='left'; ctx.textBaseline='top';
+    ctx.lineWidth=4.2; ctx.strokeStyle='rgba(255,255,255,.96)';
+    const wt='⚠ 勾 '+P+' : 股 '+Q+'（股/勾 = '+fmt(Q/P,3)+' > √2）—— 直角顶点落到四面体外，倒插结构不成立';
+    ctx.strokeText(wt, 18, 58); ctx.fillStyle='#c0392b'; ctx.fillText(wt, 18, 58);
+    ctx.font='700 13px "Microsoft YaHei",system-ui,sans-serif';
+    const wt2='两球仍可画（内球半径取 |b|）⇒ |2R / 2r| = '+exactStr()+' ≈ '+fmt(absRatioNow(),6);
+    ctx.strokeText(wt2, 18, 80); ctx.fillStyle='#7a51c9'; ctx.fillText(wt2, 18, 80);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+/* ---------------- 背景 ---------------- */
+function drawBackdrop(){
+  const g=ctx.createRadialGradient(W*0.5,H*0.42,Math.min(W,H)*0.08,W*0.5,H*0.5,Math.max(W,H)*0.78);
+  g.addColorStop(0,'#ffffff'); g.addColorStop(1,'#eef3fa');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  ctx.save(); ctx.strokeStyle='rgba(120,150,200,0.13)'; ctx.lineWidth=1;
+  const step=Math.max(34,Math.min(W,H)/18);
+  for(let x=0;x<W;x+=step){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for(let y=0;y<H;y+=step){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+  ctx.restore();
+}
+
+/* ---------------- 主循环 ---------------- */
+let last=performance.now();
+function loop(now){
+  const dt=Math.min(0.05,(now-last)/1000); last=now;
+  if(playing){
+    stageT+=dt*speed/STAGES[stage].dur;
+    if(stageT>=1){
+      if(stage<STAGES.length-1){ stage++; stageT=0; }
+      else { stageT=1; playing=false; }
+    }
+  }
+  if(cam.auto) cam.yaw+=dt*0.155;
+  camBasis=viewBasis();
+  viewState(stage, stageT);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.clearRect(0,0,W,H);
+  drawBackdrop();
+  const si=stage, p=stageT;
+  const ov = si<=1 ? 1 : (si===2? Math.max(0,1-(p/0.42)) : 0);
+  const w3 = si>=2 ? (si===2? Math.min(1,p/0.42) : 1) : 0;
+  if(w3>0){ draw3D(si,p,w3); flushDL(); }
+  if(ov>0) draw2D(si,p,ov);
+  /* 过渡遮罩 */
+  if(si===2 && p<0.42){
+    ctx.save(); ctx.globalAlpha=0.5*(1-p/0.42);
+    ctx.fillStyle='#eef3fa'; ctx.fillRect(0,0,W,H); ctx.restore();
+  }
+  syncTick();
+  requestAnimationFrame(loop);
+}
+let lastTickStage=-1;
+function syncTick(){
+  const tk=[...ticksEl.children];
+  tk.forEach((el,i)=>{
+    el.classList.toggle('done', i<stage);
+    el.firstChild.style.width=(i<stage?100:(i===stage?Math.round(stageT*100):0))+'%';
+  });
+  if(lastTickStage!==stage){
+    lastTickStage=stage;
+    setCap();
+    [...stepsEl.children].forEach((li,i)=>li.classList.toggle('on', i===stage));
+    document.getElementById('btnPlay').textContent = playing?'暂停':'播放';
+  }
+}
+
+/* ---------------- 交互 ---------------- */
+let drag=null;
+cv.addEventListener('pointerdown',e=>{
+  if(e.shiftKey){                                  /* Shift + 拖动 = 平移（可把内部嵌套四面体拖到画面中心） */
+    drag={mode:'pan',x:e.clientX,y:e.clientY,px:panX,py:panY};
+    cv.style.cursor='move';
+  }else{
+    drag={mode:'rot',x:e.clientX,y:e.clientY,yaw:cam.yaw,pitch:cam.pitch};
+  }
+  cv.classList.add('grabbing'); cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove',e=>{
+  if(!drag) return;
+  if(drag.mode==='pan'){
+    panX = drag.px + (e.clientX-drag.x);
+    panY = drag.py + (e.clientY-drag.y);
+    return;
+  }
+  cam.yaw = drag.yaw + (e.clientX-drag.x)*0.008;
+  cam.pitch = clamp(drag.pitch + (e.clientY-drag.y)*0.006, -0.35, 1.25);
+  cam.auto=false; tgAuto.classList.add('off');
+});
+cv.addEventListener('pointerup',e=>{ drag=null; cv.classList.remove('grabbing'); cv.style.cursor=''; });
+cv.addEventListener('wheel',e=>{
+  /* 连续滚轮缩放：下限 0.045E ⇒ 可一路放大到「内接倒四面体铺满画面」（viewState 里还有内球半径下限兜底）
+     已到缩放上下限时**不拦截**滚轮，让整页能正常上下滚动。 */
+  const k=clamp(Math.pow(1.0022, e.deltaY), 0.5, 2.0);
+  const next=clamp(cam.dist*k, DIST_MIN_K*E, DIST_MAX_K*E);
+  if(next===cam.dist) return;                 /* 已顶到极限 ⇒ 交还滚动 */
+  e.preventDefault();
+  cam.dist=next;
+},{passive:false});
+document.getElementById('btnPlay').addEventListener('click',()=>{ playing=!playing; syncUI(); });
+document.getElementById('btnNext').addEventListener('click',()=>{ if(stage<STAGES.length-1){stage++;stageT=0;playing=true;syncUI();} });
+document.getElementById('btnPrev').addEventListener('click',()=>{ if(stage>0){stage--;stageT=0;playing=true;syncUI();} });
+window.addEventListener('keydown',e=>{
+  if(e.code==='Space'){ e.preventDefault(); playing=!playing; syncUI(); }
+  if(e.code==='ArrowRight'){ if(stage<STAGES.length-1){stage++;stageT=0;playing=true;syncUI();} }
+  if(e.code==='ArrowLeft'){ if(stage>0){stage--;stageT=0;playing=true;syncUI();} }
+});
+window.__setStage=function(i,t){ stage=clamp(i|0,0,STAGES.length-1); stageT=(t==null?0:clamp(t,0,1)); playing=false; syncUI(); };
+(function initHash(){
+  const m=/stage=(\d+)/.exec(location.hash||'');
+  if(m) window.__setStage(parseInt(m[1],10), 0.999);
+})();
+
+/* ---------------- 读数（通项公式驱动，随勾股形联动） ----------------
+   ┌ 通项公式 ────────────────────────────────────────────────┐
+   │  k = (√2·勾 − 股) / (√2·勾 + 股)                          │
+   │  直径比 2R / 2r = 1/k = (√2·勾 + 股) / (√2·勾 − 股)        │
+   └──────────────────────────────────────────────────────────┘ */
+function refreshReadouts(){
+  const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
+  const twoR=E*S6/2, twoRin=Math.abs(bEdge)*S6/2, ratio=ratioNow();
+  const ok=VALID;
+  /* 顶部大卡 */
+  set('kPQ', P+' : '+Q);
+  set('kRatio', ok? String(ratio) : String(absRatioNow()));
+  const ke=document.getElementById('kExact');
+  if(ke) ke.innerHTML = ok
+    ? '= '+(POW2? '(1+√2)<sup>'+POW2+'</sup> = ' : '')+exactStr()
+      +(POW2? ' = cot<sup>'+POW2+'</sup>22.5°' : '')
+    : '<span style="color:#c0392b">股/勾 &gt; √2 ⟹ 倒插不成立</span>，但 |2R/2r| = '+exactStr()+' ≈ '+fmt(absRatioNow(),8);
+  /* 左侧角标 pill */
+  set('pA','a = '+fmt(E,4));
+  set('pR','R = '+fmt(ROUT,5));
+  set('pb', ok? 'b = '+fmt(Math.abs(bEdge),6) : 'b = −'+fmt(Math.abs(bEdge),6)+'（同向）');
+  set('pK', fmt(absRatioNow(),5)+(ok?'':'（取绝对值）'));
+  /* 实时读数表 */
+  set('rA2', fmt(E,4));
+  set('rP', String(P));
+  set('rQ', String(Q));
+  set('rA', fmt(E,6));
+  set('rR', fmt(ROUT,7));
+  set('r2R', fmt(twoR,7));
+  set('rk', fmt(KK,7));
+  set('rb', fmt(bEdge,7));
+  set('rr', fmt(Rinner,7));
+  set('r2r', fmt(twoRin,7));
+  set('rFins', ok? (FINS.length+'（6棱×2）') : '0 / 12 直角顶点出界');
+  set('rK', fmt(absRatioNow(),7)+(ok?'':' |取绝对值|'));
+  set('rExact', exactStr());
+  /* 相对偏差：同一比值用两条独立代数路线各算一遍（通项式 vs 三维构建） */
+  set('rErr', (Math.abs(absRatioNow() - (twoR/twoRin))/Math.abs(absRatioNow())).toExponential(2));
+  /* 侧栏「通项公式」小卡 */
+  /* 侧栏「通项公式」小卡 —— 两种比值一步出，主行随模式对调，副行给出倒数那个 */
+  const eq=eqPair(P,Q), eBig=document.getElementById('eqBig');
+  if(eBig) eBig.innerHTML = eqBigStr();
+  const eb=document.getElementById('exactBox');
+  if(eb){
+    const isB=(EQM==='b');
+    const nmD='D<sub>外</sub>/D<sub>内</sub>', nmB='b<sub>内</sub>/a<sub>外</sub>';
+    const mMode=isB?'b':'D', sMode=isB?'D':'b';
+    const mNm=isB? nmB : nmD, sNm=isB? nmD : nmB;
+    const mTxt=eqText(eq,mMode), sTxt=eqText(eq,sMode);
+    const mVal=eqVal(eq,mMode), sVal=eqVal(eq,sMode);
+    const pw=POW2? (isB? '恰好 = σ<sup>&minus;'+POW2+'</sup>（即 1 &frasl; (1+√2)<sup>'+POW2+'</sup>）'
+                         : '恰好 = σ<sup>'+POW2+'</sup>（即 (1+√2)<sup>'+POW2+'</sup>）') : '';
+    let h='当前 <b>勾 '+P+' : 股 '+Q+'</b>（弦 '+fmt(E,4)+'）：'
+      +'<div style="background:#f2f7ff;border:1px solid #d8e4f8;border-radius:8px;padding:4px 7px;margin:4px 0 3px">'
+      +  mNm+' = <b style="color:var(--blue)">'+mTxt+'</b> &#8776; '+fmt(mVal,8)
+      +'</div>'
+      +'<div style="padding:0 7px;color:var(--ink3)">'+sNm+' = <b>'+sTxt+'</b> &#8776; '+fmt(sVal,8)+'</div>'
+      +'<div style="padding:0 7px;color:var(--ink3);font-size:12px">&#8597; 两值恒互为倒数</div>';
+    if(ok){
+      h += pw? ('<div style="padding:2px 7px;color:var(--teal);font-weight:700">'+pw+'</div>')
+             : ('<div style="padding:2px 7px;color:var(--ink3)">非纯 σ 幂，通项式仍<b>精确</b>成立</div>');
+      h += '<div style="padding:1px 7px;color:var(--ink3);font-size:12px">股/勾 = '+fmt(Q/P,4)+' &#8804; √2 &#8776; 1.41421</div>';
+      h += '<div style="padding:2px 7px">&#10233; 内棱长 '
+         + (isB? '<b>b = (b<sub>内</sub>/a<sub>外</sub>) &times; a</b>'
+                : '<b>|b| = a &divide; (D<sub>外</sub>/D<sub>内</sub>)</b>')
+         + '</div><div style="padding:0 7px 0 22px;font-variant-numeric:tabular-nums">= '
+         + (isB? fmt(mVal,8)+' &times; '+fmt(E,6) : fmt(E,6)+' &divide; '+fmt(mVal,8))
+         + ' = <b style="color:var(--violet)">'
+         + (isB? fmt(mVal*E,7) : fmt(E/mVal,7)) + '</b></div>';
+    } else {
+      h += '<div style="margin-top:5px;padding:0 7px">'
+        + '<span style="color:#c0392b;font-weight:700">股/勾 = '+fmt(Q/P,4)+' &gt; √2 &#8776; 1.41421</span><br>'
+        + '直角顶点落到四面体外部，12 枚勾股形无法围合 ⟹ <b>倒插结构不成立</b>（k &lt; 0，通项式分母为负）。<br>'
+        + '上面两行的值都是量长取正后的比值：k &lt; 0 ⟹ 内外两枚四面体<b>同向</b>（不再倒插），棱长比 = |k|。<br>'
+        + '<span style="color:var(--ink3);font-size:12px">仍是 ℚ(√2) 里的数，只有 √2 一个根号，恒为无理数。</span>'
+        + '</div>';
+    }
+    eb.innerHTML = h;
+  }
+  const vb=document.getElementById('validBox');
+  if(vb) vb.innerHTML = ok
+    ? '<span style="color:#0b7f74;font-weight:700">✔ 可内接</span>：直角顶点落在四面体内（较大锐角 '
+      +fmt(Math.atan(Q/P)*180/Math.PI,2)+'° &#8804; 54.7356°）。'
+    : '<span style="color:#c0392b;font-weight:700">✘ 不可内接</span>：较大锐角 '
+      +fmt(Math.atan(Q/P)*180/Math.PI,2)+'° &gt; 54.7356° —— 例如 5-12-13、8-15-17、7-24-25 都属于这一类。<br>'
+      +'<span style="color:var(--ink3);font-size:12px">判据来自镜面截面：截面三角形底 = 棱 a、高 = a/√2，侧边斜率恰为 <b>√2</b>，'
+      +'直角顶点落在其内 ⟺ 股/勾 &lt; √2。</span>';
+  /* ④ 面板：搭档卡随勾股形联动 */
+  updatePartnerBox();
+  /* 判据八 即时卡：比值之比（大 ÷ 小）是否整数 */
+  updateDivBox();
+}
+
+/* ============================================================================
+   勾股弦全整数 · 穷举 + D外/D内 通项表 + 整数性三层判据
+   ── ① 欧几里得通项：勾 : 股 : 弦 = k(m²−n²) : k(2mn) : k(m²+n²)
+   ── ② 可内接条件：股/勾 ≤ √2 ⟺ m/n ∈ [(1+√3)/√2, √2+√3] ≈ [1.93185, 3.14626]
+   ── ③ 直径比通项：D外/D内 = (√2·勾+股)/(√2·勾−股) = (A + B√2)/C
+          A = 2勾²+股²、B = 2·勾·股、C = |2勾²−股²|（三者同除 gcd 得最简）
+   ============================================================================ */
+/* 弦（斜边）判定：是否为「正整数」—— 即这组勾股形是否真的是勾股数 */
+function hypInfo(p,q){
+  const h2=p*p+q*q, h=Math.sqrt(h2), n=Math.round(h);
+  const isInt=Math.abs(h-n)<1e-9;
+  return {h2:h2, h:h, n:n, isInt:isInt, txt:(isInt? String(n) : '√'+h2)};
+}
+/* D外/D内 的最简三元组 (A + B√2)/C */
+function triExact(p,q){
+  const A=2*p*p+q*q, B=2*p*q, C=Math.abs(2*p*p-q*q);
+  const g=gcd(gcd(A,B),C)||1, Ar=A/g, Br=B/g, Cr=C/g;
+  return {Ar:Ar, Br:Br, Cr:Cr, dec:(Ar+Br*S2)/Cr};
+}
+/* 精确式文本：(A + B√2) / C —— 支持 B 为负（b 模式用 (A − B√2)/C，见 eqText） */
+function exStr(Ar,Br,Cr){
+  let s=(Ar<0?'−':'')+Math.abs(Ar);
+  if(Br) s+=((Br>0?' + ':' − ')+Math.abs(Br)+'√2');
+  return Cr===1? s : '('+s+') / '+Cr;
+}
+/* ---- 左栏「通项公式」的两种比值：球直径比 D外/D内 与 棱长比 b内/a外 ----
+   两者共用同一对 A/B/C（全取正），只差 √2 项的符号：
+     D 模式：2R/2r = (A + B√2) / C        b 模式：|b|/a = (A − B√2) / C
+   其中 A = 2勾²+股²、B = 2·勾·股、C = |2勾²−股²|（三者同除 gcd 得最简）。
+   自检恒等式：(A+B√2)(A−B√2) = A² − 2B² = (2勾²−股²)² = C²  ⟹ 两值恒互为倒数。   */
+let EQM='D';                       /* 当前比值模式：'D' = 球直径比；'b' = 内/外棱长比 */
+function eqPair(p,q){
+  const A=2*p*p+q*q, B=2*p*q, C=Math.abs(2*p*p-q*q);
+  const g=gcd(gcd(A,B),C)||1;
+  return {A:A/g, B:B/g, C:C/g};
+}
+function eqText(eq,m){ m=(m||EQM); return exStr(eq.A, m==='b'? -eq.B : eq.B, eq.C); }
+/* 数值：D 模式直接算 (A+B√2)/C；b 模式**不能**算 (A−B√2)/C —— 那是「大数相消」，
+   99:140 这类 Pell 大数会丢掉 8 位有效数字。改用精确恒等式 (A−B√2)/C = C/(A+B√2)。 */
+function eqVal(eq,m){
+  const den=eq.A+eq.B*S2;
+  return (m||EQM)==='b' ? eq.C/den : den/eq.C;
+}
+function eqBigStr(){
+  return EQM==='b'
+    ? 'b<sub>内</sub>&thinsp;/&thinsp;a<sub>外</sub> = (√2·勾 &minus; 股) &frasl; (√2·勾 + 股)'
+    : 'D<sub>外</sub>&thinsp;/&thinsp;D<sub>内</sub> = (√2·勾 + 股) &frasl; (√2·勾 &minus; 股)';
+}
+function syncEqSeg(){
+  const s=document.getElementById('eqSeg'); if(!s) return;
+  Array.prototype.forEach.call(s.querySelectorAll('button'),function(b){
+    b.classList.toggle('on', b.getAttribute('data-eq')===EQM);
+  });
+}
+function bindEqSeg(){
+  const s=document.getElementById('eqSeg'); if(!s) return;
+  Array.prototype.forEach.call(s.querySelectorAll('button'),function(b){
+    b.addEventListener('click',function(){
+      EQM=b.getAttribute('data-eq');
+      syncEqSeg();
+      refreshReadouts();
+    });
+  });
+  syncEqSeg();
+}
+/* σ 幂判定：D外/D内 = σ^(2m) ⟺ 最简分母 C=1 ⟺ |2勾²−股²| ∈ {1,2}（Pell 方程）
+   注：旧版此处写成 (√2p+q)/C —— 分子漏了有理化，故 3:4 会被误判为「非 σ 幂」。 */
+function sigmaPow(p,q){
+  /* ⚠ 必须先约分：比值只依赖「股/勾」，6:8:10 与 3:4:5 同值，唯一判据是「最简后」的 |2勾²−股²| */
+  const g=gcd(p,q)||1, p0=p/g, q0=q/g;
+  const d=Math.abs(2*p0*p0-q0*q0);
+  if(d!==1&&d!==2) return 0;
+  const r=(S2*p0+q0)/(S2*p0-q0);
+  for(let m=1;m<=14;m++){ const v=Math.pow(1+S2,2*m); if(Math.abs(v-r)<=1e-9*v) return 2*m; }
+  return 0;
+}
+/* 穷举：弦 ≤ L 的勾股数（onlyIn = true 时只取 股/勾 ≤ √2） */
+function triEnum(L, onlyIn){
+  const out=[];
+  for(let p=1;p<=L;p++){
+    for(let q=p+1;q<=L;q++){
+      if(onlyIn && q/p>S2) break;
+      const c2=p*p+q*q, c=Math.round(Math.sqrt(c2));
+      if(c*c!==c2 || c>L) continue;
+      out.push({p:p, q:q, c:c, prim:(gcd(p,q)===1)});
+    }
+  }
+  out.sort(function(a,b){ return a.c-b.c || a.p-b.p; });
+  return out;
+}
+const TRI_CACHE={};
+function triList(L, onlyIn){
+  const k=L+(onlyIn?'i':'a');
+  if(!TRI_CACHE[k]) TRI_CACHE[k]=triEnum(L, onlyIn);
+  return TRI_CACHE[k];
+}
+function ratioOf(p,q){ const A=2*p*p+q*q, B=2*p*q, C=2*p*p-q*q; return (A+B*S2)/C; }
+
+/* ---------------- 选择器：四组标签页 ---------------- */
+const PICK_TABS=[
+  {name:'整数弦 · 本原', tip:'股/勾 ≤ √2、弦 ≤ 1000 的本原勾股数（由通项现场穷举，共 32 条）',
+   get:function(){ return triList(1000,true).filter(function(t){return t.prim;})
+                     .map(function(t){ return [t.p,t.q]; }); }},
+  {name:'σ 幂族', tip:'D外/D内 = (1+√2)^(2m)。递推 (勾,股)ₙ₊₂ = 6(勾,股)ₙ − (勾,股)ₙ₋₂。八条里只有 3:4 的弦是整数',
+   get:function(){ return [[1,1],[3,4],[5,7],[17,24],[29,41],[99,140],[169,239],[577,816]]; }},
+  {name:'弦开不尽', tip:'可内接、但弦不是正整数（勾股弦不成整数三元组）',
+   get:function(){ return [[4,5],[5,6],[6,7],[7,8],[8,9],[10,11],[12,13],[16,17]]; }},
+  {name:'不可内接', tip:'股/勾 > √2：12 枚勾股形的直角顶点落到四面体外，倒插结构不成立（比值仍取绝对值）',
+   get:function(){ return [[5,12],[8,15],[7,24],[9,40],[11,60],[12,35],[13,84],[16,63]]; }}
+];
+let pickTab=0;
+function buildTabs(){
+  const box=document.getElementById('pickTabs'); if(!box) return;
+  box.innerHTML='';
+  PICK_TABS.forEach(function(t,i){
+    const b=document.createElement('button');
+    b.className='picktab'+(i===pickTab?' on':'');
+    b.innerHTML=t.name+'<span class="n">'+t.get().length+'</span>';
+    b.title=t.tip;
+    b.addEventListener('click',function(){ pickTab=i; buildTabs(); buildGrid(); });
+    box.appendChild(b);
+  });
+}
+/* 一枚三角形按钮：左「勾:股」，右挂「弦」徽标（绿=正整数 / 黄=开不尽） */
+function triButton(p,q){
+  const b=document.createElement('button');
+  const inw=(q/p<=S2+1e-12);
+  b.className='btn'+(inw?'':' bad')+((p===P&&q===Q)?' on':'');
+  const hy=hypInfo(p,q), sp=sigmaPow(p,q), ex=triExact(p,q);
+  b.innerHTML='<span class="t">'+p+':'+q+'</span>'
+    +'<i class="hyp '+(hy.isInt?'ok':'no')+'">'+hy.txt+'</i>';
+  b.title='勾 '+p+' · 股 '+q
+    +'\n弦 a = '+(hy.isInt? hy.n : hy.txt+' ≈ '+fmt(hy.h,5))+(hy.isInt? '　（正整数 ✓）' : '　（非整数 ✗）')
+    +'\n股/勾 = '+fmt(q/p,4)+(inw? ' ≤ √2　（可内接）' : ' > √2　（不可内接）')
+    +'\nD外/D内 = '+exStr(ex.Ar,ex.Br,ex.Cr)+' ≈ '+fmt(ex.dec,8)
+    +(sp? '\n恰好 = σ^'+sp+' = (1+√2)^'+sp : '');
+  b.addEventListener('click',function(){ pickTri(p,q); });
+  return b;
+}
+function buildGrid(){
+  const box=document.getElementById('pickGrid'); if(!box) return;
+  const arr=PICK_TABS[pickTab].get();
+  box.innerHTML='';
+  arr.forEach(function(pq){ box.appendChild(triButton(pq[0],pq[1])); });
+}
+function pickTri(p,q){
+  rebuild(p,q);
+  resetView();
+  stage=5; stageT=0.92; playing=false;   // 直接停在「双球定比」看新比值
+  buildTabs(); buildGrid(); refreshReadouts(); syncUI(); syncTriRows();
+  const ip=document.getElementById('inP'), iq=document.getElementById('inQ');
+  if(ip) ip.value=p; if(iq) iq.value=q;
+  setInMsg();
+}
+
+/* ---------------- ② 全景表 ---------------- */
+const TRI_STATE={ L:200, kind:'prim', scope:'in', sort:'c' };
+let TRI_R=[];
+function triRows(){
+  let arr=triList(TRI_STATE.L, TRI_STATE.scope==='in');
+  if(TRI_STATE.kind==='prim') arr=arr.filter(function(t){ return t.prim; });
+  const R=arr.map(function(t){
+    const ex=triExact(t.p,t.q), g=gcd(t.p,t.q);
+    return {p:t.p, q:t.q, c:t.c, prim:t.prim, g:g,
+            base:(g>1? (t.p/g)+' : '+(t.q/g)+' : '+(t.c/g) : ''),
+            r:t.q/t.p, ang:Math.atan(t.q/t.p)*180/Math.PI,
+            Ar:ex.Ar, Br:ex.Br, Cr:ex.Cr, dec:ex.dec,
+            sig:sigmaPow(t.p,t.q), inward:(t.q/t.p<=S2+1e-12)};
+  });
+  const s=TRI_STATE.sort;
+  R.sort(function(a,b){
+    if(s==='C') return a.Cr-b.Cr || a.c-b.c;
+    if(s==='r') return a.r-b.r || a.c-b.c;
+    return a.c-b.c || a.p-b.p;
+  });
+  return R;
+}
+function buildTriTable(){
+  const tb=document.getElementById('triTable'); if(!tb) return;
+  const R=triRows(); TRI_R=R;
+  const st=document.getElementById('triStat');
+  if(st){
+    const nPrim=R.filter(function(x){return x.prim;}).length;
+    const nOne =R.filter(function(x){return x.Cr===1;}).length;
+    const nSig =R.filter(function(x){return x.sig;}).length;
+    st.innerHTML=
+      '<div class="st"><b>'+R.length+'</b><span>当前条件命中的情况数<br>弦 ≤ '+TRI_STATE.L
+        +' · '+(TRI_STATE.kind==='prim'?'只看本原':'含整数倍')+' · '
+        +(TRI_STATE.scope==='in'?'只看可内接':'全部')+'</span></div>'
+     +'<div class="st"><b>'+nPrim+'</b><span>其中本原（gcd(勾,股) = 1）</span></div>'
+     +'<div class="st green"><b>'+nOne+'</b><span>分母 C = 1：比值 = 整数 + 整数·√2<br>全部是 3 : 4 : 5 的整数倍</span></div>'
+     +'<div class="st violet"><b>'+nSig+'</b><span>D外/D内 = σ 的整数次幂<br>与「C = 1」是同一族</span></div>'
+     +'<div class="st red"><b>0</b><span>D外/D内 为有理数（真正的「整数比」）<br><b>可证明一条都没有</b></span></div>';
+  }
+  let h='<thead><tr><th>#</th><th>勾 : 股 : 弦</th><th class="num">股÷勾</th>'
+       +'<th class="num">较大锐角</th><th>D<sub>外</sub>/D<sub>内</sub> 精确式</th>'
+       +'<th class="num">数值</th><th class="num">分母 C</th><th>标记</th></tr></thead><tbody>';
+  R.forEach(function(x,i){
+    let tag='';
+    if(x.sig)            tag='<span class="tagx sig">σ<sup>'+x.sig+'</sup></span>';
+    else if(x.Cr===1)    tag='<span class="tagx one">无分母</span>';
+    else if(!x.inward)   tag='<span class="tagx no">不可内接</span>';
+    h+='<tr data-i="'+i+'"'+(x.p===P&&x.q===Q?' class="on"':'')+'>'
+      +'<td class="dim">'+(i+1)+'</td>'
+      +'<td><b>'+x.p+' : '+x.q+' : '+x.c+'</b>'
+        +(x.g>1? ' <span class="dim" style="font-size:11px">= '+x.g+'×('+x.base+')</span>' : '')
+      +'</td>'
+      +'<td class="num">'+x.r.toFixed(6)+'</td>'
+      +'<td class="num dim">'+x.ang.toFixed(2)+'°</td>'
+      +'<td class="ex">'+exStr(x.Ar,x.Br,x.Cr)+'</td>'
+      +'<td class="num">'+x.dec.toFixed(8)+'</td>'
+      +'<td class="num">'+x.Cr+'</td>'
+      +'<td>'+tag+'</td></tr>';
+  });
+  tb.innerHTML=h+'</tbody>';
+  tb.querySelectorAll('tbody tr').forEach(function(tr){
+    tr.addEventListener('click',function(){
+      const i=+tr.getAttribute('data-i');
+      if(TRI_R[i]) pickTri(TRI_R[i].p, TRI_R[i].q);
+    });
+  });
+  updateDivBox();   /* 表变了 ⟹ 左栏「比值之比」即时卡跟着重算 */
+}
+function syncTriRows(){
+  const tb=document.getElementById('triTable'); if(!tb) return;
+  tb.querySelectorAll('tbody tr').forEach(function(tr){
+    const i=+tr.getAttribute('data-i');
+    tr.classList.toggle('on', !!TRI_R[i] && TRI_R[i].p===P && TRI_R[i].q===Q);
+  });
+}
+
+/* ============================================================================
+   ④ 两行之间的「整数倍关系」 —— 判据五 / 六 / 七 / 八 的计算与交互
+   ── 精确式（带符号 C）：V = (A + B√2)/C，A = 2勾²+股²、B = 2勾股、C = 2勾²−股²
+   ── 有理化：A² − 2B² = C²  ⟹  V₁/V₂ = [ (A₁A₂−2B₁B₂) + (B₁A₂−A₁B₂)√2 ] / (C₁C₂)
+   ── 商为有理数 ⟺ B₁A₂ − A₁B₂ = 0 ⟺ 2·勾₁勾₂·(2勾₁勾₂−股₁股₂)·(股₁/勾₁ − 股₂/勾₂) = 0
+        ① 股/勾 相同          ⟹ 商 = +1（同一形状的整数倍）
+        ② 股₁股₂ = 2勾₁勾₂   ⟹ 商 = −1（互为「2/r 搭档」）
+   ── 判据八（更简的莫比乌斯写法）：记 r = 股/勾，则 V(r) = (r+√2)/(r−√2)
+        V₁/V₂ = [(r₁r₂−2) + (r₂−r₁)·√2] / [(r₁r₂−2) − (r₂−r₁)·√2]
+        记 X = r₁r₂−2、Y = r₂−r₁（皆有理）⟹ 有理化后 √2 项系数恰为 2XY
+        ⟹ V₁/V₂ ∈ ℚ ⟺ XY = 0 ⟺ 商 = ±1
+        ⟹ 【大 ÷ 小】永远不可能是 ≥ 2 的整数（实测 196 万对亦为 0）
+   ============================================================================ */
+function exSigned(p,q){
+  const A=2*p*p+q*q, B=2*p*q, C=2*p*p-q*q;
+  const g=gcd(gcd(A,B),Math.abs(C))||1;
+  return {A:A/g, B:B/g, C:C/g};
+}
+/* 商 V₁/V₂ = (X + Y√2)/Z，带符号；isInt / val 用精确整数判定 */
+function quotEx(p1,q1,p2,q2){
+  const e1=exSigned(p1,q1), e2=exSigned(p2,q2);
+  const X=e1.A*e2.A-2*e1.B*e2.B, Y=e1.B*e2.A-e1.A*e2.B, Z=e1.C*e2.C;
+  const zz=Math.abs(Z);
+  const isInt=(Y===0 && zz!==0 && (X%zz)===0);
+  return {X:X, Y:Y, Z:Z, rational:(Y===0), isInt:isInt, val:(Y===0&&Z!==0? X/Z : NaN)};
+}
+/* ×(−1) 搭档：股₂/勾₂ = 2勾/股 ⇒ (勾₂,股₂) ∝ (股, 2勾)；股/勾 > 2 时搭档会翻进 股<勾 的镜像 */
+function partnerOf(p,q){
+  const g=gcd(q,2*p)||1;
+  return {p:q/g, q:2*p/g, exists:(2*p>=q)};
+}
+/* 搭档实时卡（跟随当前勾股形） */
+function updatePartnerBox(){
+  const box=document.getElementById('partnerBox'); if(!box) return;
+  const hy=hypInfo(P,Q), what=function(p,q){
+    const h=hypInfo(p,q);
+    return p+' : '+q+'（弦 '+(h.isInt? h.n : h.txt)+'）';
+  };
+  const me=exSigned(P,Q), pt=partnerOf(P,Q);
+  const val=Math.abs((me.A+me.B*S2)/me.C);
+  if(!pt.exists){
+    box.innerHTML='<b>当前 '+what(P,Q)+'</b>　股/勾 = '+fmt(Q/P,4)+' &gt; 2<br>'
+      +'<span style="color:var(--ink3)">搭档 (股 : 2勾) 会落到 股 &lt; 勾 的镜像里，'
+      +'本表「勾 &lt; 股」的约定下<b>没有搭档行</b>（这类行也永远不会出现在 ×(−1) 配对中）。</span>';
+    return;
+  }
+  const p2=pt.p, q2=pt.q, hy2=hypInfo(p2,q2), e2=exSigned(p2,q2);
+  const sameNum = (me.A===e2.A && me.B===e2.B) && (me.C===-e2.C);
+  const inTable = hy2.isInt;
+  box.innerHTML=
+    '<b>当前 '+what(P,Q)+'　⟵⟶　搭档 '+what(p2,q2)+'</b><br>'
+    +'股÷勾：'+fmt(Q/P,6)+' × '+fmt(q2/p2,6)+' = <b>'+fmt((Q/P)*(q2/p2),12)+'</b>　'
+    +'（条件 股₁股₂ = 2勾₁勾₂：'+Q+'×'+q2+' = '+2*P*p2+' ✓）<br>'
+    +'<span style="font-variant-numeric:tabular-nums">'
+    +'V<sub>当前</sub> = <span style="color:var(--blue);font-weight:700">'+exStr(me.A,me.B,Math.abs(me.C))+'</span> ≈ '
+      +(me.C>0?'+':'−')+fmt(val,8)+'　·　'
+    +'V<sub>搭档</sub> = <span style="color:var(--violet);font-weight:700">'+exStr(e2.A,e2.B,Math.abs(e2.C))+'</span> ≈ '
+      +(e2.C>0?'+':'−')+fmt(val,8)+'</span><br>'
+    +(sameNum
+      ? '<span style="color:#0b7f74;font-weight:700">✔ 分子完全相同（'+me.A+' + '+me.B+'√2）、分母只是变号（'
+        +me.C+' ↔ '+e2.C+'）</span> ⟹ 带符号真值精确互为相反数，<b>商 = −1</b>；'
+        +'本页取 |C| 显示 ⟹ 两行<b>看似完全一样</b>。<br>'
+      : '<span style="color:var(--ink3)">（分子形式：'+me.A+' + '+me.B+'√2　/　'+e2.A+' + '+e2.B+'√2）</span><br>')
+    +'<span style="color:'+(inTable?'#0b7f74':'#a86a08')+';font-weight:700">'
+      +(inTable? '✘ 但搭档的弦 '+hy2.txt+' 是整数 —— 若真出现，② 的表里就会有一对整数商（判据七证明其不可能）'
+               : '✔ 搭档的弦 '+hy2.txt+' 开不尽 ⟹ 它不在②的整数弦表里，只活在「弦开不尽」族中')
+    +'</span><br>'
+    +'<div class="sw" style="margin-top:7px">'
+    +'<button class="btn" id="btnGoPartner">⟶ 切到搭档 '+p2+' : '+q2+'</button>'
+    +'<button class="btn" id="btnGoSelf">⟵ 切回 '+P+' : '+Q+'</button>'
+    +'</div>';
+  const g1=document.getElementById('btnGoPartner'), g2=document.getElementById('btnGoSelf');
+  if(g1) g1.addEventListener('click',function(){ pickTri(p2,q2); });
+  if(g2) g2.addEventListener('click',function(){ pickTri(P,Q); });
+}
+/* ---- 判据八 · 即时版：把当前勾股形与整张表一一相除（大 ÷ 小），看有没有整数商 ---- */
+function absV(p,q){ const e=exSigned(p,q); return Math.abs((e.A+e.B*S2)/e.C); }
+function updateDivBox(){
+  const box=document.getElementById('divBox'); if(!box) return;
+  const R=(TRI_R&&TRI_R.length? TRI_R : []);
+  const v0=absV(P,Q), tr=triExact(P,Q);
+  let h='当前 <b>'+P+' : '+Q+'</b>　V = <span style="color:var(--blue);font-weight:700">'
+      +exStr(tr.Ar,tr.Br,tr.Cr)+'</span> ≈ '+fmt(v0,7)
+      +(VALID? '' : ' <span style="color:#a86a08;font-size:11.5px">（不可内接，取 |·|）</span>')+'<br>';
+  if(R.length<2){
+    box.innerHTML=h+'<span style="color:var(--ink3)">② 全景表尚未建立（或不足 2 行），暂无法两两相除。</span>';
+    return;
+  }
+  let nEq=0, nCmp=0, best=null;
+  for(let i=0;i<R.length;i++){
+    const p=R[i].p, q=R[i].q;
+    if(p===P && q===Q) continue;
+    nCmp++;
+    const qe=quotEx(P,Q,p,q);
+    if(qe.Y===0){ nEq++; continue; }                 // 商 = ±1 ⟺ 同形状（含整数倍）
+    const u=Math.max(v0,R[i].dec)/Math.min(v0,R[i].dec);
+    const k=Math.round(u), g=Math.abs(u-k);
+    if(g<1e-9) continue;
+    if(!best || g<best.g) best={g:g, u:u, k:k, p:p, q:q, X:qe.X, Y:qe.Y, Z:qe.Z};
+  }
+  h+='与表中 <b>'+R.length+'</b> 行一一相除（大 ÷ 小，'+nCmp+' 对）：<br>'
+    +'· 整数商 ≥ 2 ：<b style="color:var(--red);font-weight:700">0 对</b>'
+    +'<span style="color:var(--ink3);font-size:11.5px">　判据八 ⟹ 恒不成立</span><br>'
+    +'· 商 = 1（同形状的倍数行）：<b>'+grp(nEq)+'</b> 行'
+    +(TRI_STATE.kind==='prim' && nEq===0
+        ? '<span style="color:var(--ink3);font-size:11.5px">　本原模式下必然为 0</span>' : '')+'<br>';
+  if(best){
+    const bigT=(Math.abs(best.X)>1e12||Math.abs(best.Y)>1e12||Math.abs(best.Z)>1e12);
+    const yTxt=(best.Y<0? ' &minus; '+Math.abs(best.Y)+'√2' : ' + '+best.Y+'√2');
+    const zTxt=(best.Z<0? '(&minus;'+Math.abs(best.Z)+')' : String(best.Z));
+    h+='· 最接近整数的一对（要数 &times;'+best.k+'）：<br>'
+      +'<span style="padding-left:10px">'+P+' : '+Q+' &divide; '+best.p+' : '+best.q
+      +' = <b style="color:var(--violet)">'+best.u.toFixed(9)+'</b></span><br>'
+      +'<span style="padding-left:10px">差 <b>'+fmtGap(best.g)+'</b>　'
+      +(bigT? '<span style="color:var(--ink3)">（精确三元组太大，略）</span>'
+            : '精确式 = ('+best.X+yTxt+') / '+zTxt)+'</span>';
+  } else {
+    h+='<span style="color:var(--ink3)">表中没有可与当前行比大小的其它行。</span>';
+  }
+  box.innerHTML=h;
+}
+/* 经典搭档对预设按钮 */
+const PAIR_PRESETS=[[1,1],[3,4],[4,5],[5,7],[8,15],[20,21],[99,140],[119,120]];
+function buildPairPresets(){
+  const box=document.getElementById('pairPresets'); if(!box) return;
+  box.innerHTML='';
+  PAIR_PRESETS.forEach(function(pq){
+    const p=pq[0], q=pq[1], pt=partnerOf(p,q);
+    if(!pt.exists) return;
+    [ [p,q], [pt.p,pt.q] ].forEach(function(sh,i){
+      if(i===1){
+        const ar=document.createElement('span');
+        ar.style.cssText='align-self:center;color:var(--ink3);font-size:12px';
+        ar.textContent='⟷'; box.appendChild(ar);
+      }
+      const b=document.createElement('button');
+      const h=hypInfo(sh[0],sh[1]), e=exSigned(sh[0],sh[1]);
+      b.className='btn';
+      b.innerHTML=sh[0]+' : '+sh[1]
+        +'<i class="hyp '+(h.isInt?'ok':'no')+'" style="margin-left:5px">'+h.txt+'</i>';
+      b.title='勾 '+sh[0]+' · 股 '+sh[1]+'　股/勾 = '+fmt(sh[1]/sh[0],6)
+        +'\n弦 '+(h.isInt? h.n : h.txt+' ≈ '+fmt(h.h,6))
+        +'\nD外/D内 = '+exStr(e.A,e.B,Math.abs(e.C))+' ≈ '+fmt((e.A+e.B*S2)/Math.abs(e.C),8)
+        +'\n带符号 = '+(e.C>0?'+':'−')+fmt(Math.abs((e.A+e.B*S2)/e.C),8)
+        +'\n（与搭档相除 = −1 精确成立）';
+      b.addEventListener('click',function(){ pickTri(sh[0],sh[1]); });
+      box.appendChild(b);
+    });
+  });
+}
+/* 现场两两比对：把当前表所有行两两相除，精确判定整数商 */
+function scanIntPairs(){
+  const box=document.getElementById('scanBox'); if(!box) return;
+  const R=(TRI_R&&TRI_R.length? TRI_R : triRows());
+  const n=R.length, A=[], B=[], C=[];
+  for(let i=0;i<n;i++){ const e=exSigned(R[i].p,R[i].q); A.push(e.A); B.push(e.B); C.push(e.C); }
+  let nOne=0, nNeg=0, nOther=0, exOne=[], exNeg=[], exOther=[];
+  for(let i=0;i<n;i++){
+    for(let j=0;j<n;j++){
+      if(i===j) continue;
+      const X=A[i]*A[j]-2*B[i]*B[j], Y=B[i]*A[j]-A[i]*B[j], Z=C[i]*C[j];
+      if(Y!==0 || Z===0) continue;
+      const zz=Math.abs(Z);
+      if((X%zz)!==0) continue;
+      const v=X/Z;
+      if(v===1){ nOne++; if(exOne.length<3) exOne.push([R[i],R[j]]); }
+      else if(v===-1){ nNeg++; if(exNeg.length<3) exNeg.push([R[i],R[j]]); }
+      else { nOther++; if(exOther.length<3) exOther.push([R[i],R[j],v]); }
+    }
+  }
+  const nm=function(x){ return x.p+' : '+x.q+(x.c?' : '+x.c:''); };
+  /* ── 大 ÷ 小：按显示值 |V|，每个无序对只看一次，分子取较大的那个比值 ── */
+  let nBig=0, exBig=[], best=null;
+  for(let i=0;i<n;i++){
+    for(let j=i+1;j<n;j++){
+      const a=R[i].dec, b=R[j].dec;
+      if(Math.abs(a-b)<1e-9) continue;                 // 商 = 1，平凡（同形状）
+      const hiIsA=(a>b);
+      const u=(hiIsA? a/b : b/a), k=Math.round(u), g=Math.abs(u-k);
+      if(g<1e-9){ nBig++; if(exBig.length<3) exBig.push([hiIsA?R[i]:R[j], hiIsA?R[j]:R[i], k]); }
+      else if(!best || g<best.g) best={g:g, u:u, k:k, i:(hiIsA?i:j), j:(hiIsA?j:i)};
+    }
+  }
+  let h='<b>当前表：'+n+' 行</b>（弦 ≤ '+TRI_STATE.L+' · '
+    +(TRI_STATE.kind==='prim'?'只看本原':'含整数倍')+' · '
+    +(TRI_STATE.scope==='in'?'只看可内接':'全部')+'），共 <b>'+(n*(n-1)).toLocaleString()+'</b> 个有序对（'
+    +(n*(n-1)/2).toLocaleString()+' 个无序对）：'
+    +'<div style="margin-top:6px;font-variant-numeric:tabular-nums">'
+    +'· 商 = <b>+1</b>（同形状的倍数行）：<b style="color:'
+      +(nOne?'var(--teal)':'var(--red)')+'">'+grp(nOne/2)+'</b> 对（不计次序）'
+      +(exOne.length? '　例：'+exOne.slice(0,2).map(function(x){return nm(x[0])+' ÷ '+nm(x[1])+' = 1';}).join('；') : '')
+    +'<br>· 商 = <b>−1</b>（互为 2/r 搭档）：<b style="color:'
+      +(nNeg?'var(--teal)':'var(--red)')+'">'+grp(nNeg/2)+'</b> 对'
+      +(exNeg.length? '　例：'+exNeg.slice(0,2).map(function(x){return nm(x[0])+' ÷ '+nm(x[1])+' = −1';}).join('；') : '')
+    +'<br>· 其它整数商（×2、×3…）：<b style="color:'
+      +(nOther?'var(--teal)':'var(--red)')+'">'+grp(nOther/2)+'</b> 对'
+      +(exOther.length? '　例：'+exOther.slice(0,2).map(function(x){return nm(x[0])+' ÷ '+nm(x[1])+' = '+x[2];}).join('；') : '')
+    +'</div>'
+    +'<div style="margin-top:9px;padding-top:8px;border-top:1px dashed var(--line);'
+      +'font-variant-numeric:tabular-nums">'
+    +'<b>「大 ÷ 小 = 整数？」</b>（按显示值 |V|，每个无序对只算一次、分子取较大的比值）：<br>'
+    +'· 整数商 ≥ 2 ：<b style="color:'
+      +(nBig?'var(--teal)':'var(--red)')+';font-weight:700">'+nBig+'</b> 对'
+      +'　<span style="color:var(--ink3)">（判据八 ⟹ 无论怎么调都恒为 0：商若有理只能是 ±1）</span>'
+      +(exBig.length? '　若不为 0 会列在这里：'+exBig.slice(0,3).map(function(x){
+          return nm(x[0])+' ÷ '+nm(x[1])+' = '+x[2];}).join('；') : '')
+    +'<br>· 最接近整数的一对：'
+      +(best? ('<b>'+nm(R[best.i])+' ÷ '+nm(R[best.j])+'</b> = '
+             +'<b style="color:var(--violet)">'+best.u.toFixed(9)+'</b>'
+             +'（要数 ×'+best.k+'，差 '+fmtGap(best.g)+'）')
+           : '<span style="color:var(--ink3)">（表中可比大小的行不足 2 行）</span>')
+    +'<br>· 比值完全相等的行（大÷小 = 1）：<b>'+grp(nOne/2+nNeg/2)+'</b> 对 —— '
+      +'<span style="color:var(--ink3)">这是唯一能出现的「整数商」，但只是「一样大」，不是「整数倍」。</span>'
+    +'</div>'
+    +'<div style="margin-top:8px;color:var(--ink3)">'
+    +'<b>读数说明：</b>'
+    +(n===0? '表是空的。' : '')
+    +(nOne? '×1 之所以成片，是因为「含整数倍」把 3:4:5、6:8:10、9:12:15… 这类同形状的行都摆进来了 —— '
+      : (TRI_STATE.kind==='prim'? '本原模式下每种形状只有一行，所以 ×1 必然是 0 对；把「倍数」切到含整数倍即可看到。'
+                                 : '本模式下行数与形状数相同，故无 ×1。'))
+    +' ×(−1) 在任何设置下都是 <b>0 对</b>（判据七：搭档永远不是整数弦）；'
+    +'其它整数商恒为 <b>0 对</b>（判据五）：于是 <b>大 ÷ 小 也永远是 0 对</b>。</div>';
+  box.innerHTML='<div style="padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fbfdff">'+h+'</div>';
+}
+
+/* ---------------- 自定义输入 ---------------- */
+function setInMsg(){
+  const ip=document.getElementById('inP'), iq=document.getElementById('inQ'),
+        m=document.getElementById('inMsg');
+  if(!ip||!iq||!m) return;
+  const a=parseInt(ip.value,10), b=parseInt(iq.value,10);
+  const okA=(a>=1), okB=(b>=1);
+  ip.classList.toggle('bad',!okA); iq.classList.toggle('bad',!okB);
+  if(!okA||!okB){ m.className='msg warn'; m.textContent='两个都要 ≥ 1 的整数'; return; }
+  const lo=Math.min(a,b), hi=Math.max(a,b);
+  const hy=Math.sqrt(lo*lo+hi*hi), n=Math.round(hy), isInt=Math.abs(hy-n)<1e-9;
+  const inw=(hi/lo<=S2+1e-12);
+  const ex=triExact(lo,hi);
+  m.className='msg'+(inw?'':' warn');
+  m.textContent='弦 '+(isInt? n : '√'+(lo*lo+hi*hi))+'　'
+    +(inw? '可内接' : '股/勾 > √2 ⟹ 不可内接')
+    +'　D外/D内 ≈ '+fmt(ex.dec,6);
+}
+
+/* ---------------- 初始化 ---------------- */
+function initPickers(){
+  buildTabs(); buildGrid(); buildTriTable(); buildPairPresets();
+  const $=function(id){ return document.getElementById(id); };
+  const bind=function(id,fn){ const el=$(id); if(el) el.addEventListener('change',fn); };
+  bind('triRange',function(e){ TRI_STATE.L=+e.target.value; buildTriTable(); });
+  bind('triKind', function(e){ TRI_STATE.kind=e.target.value;  buildTriTable(); });
+  bind('triScope',function(e){ TRI_STATE.scope=e.target.value; buildTriTable(); });
+  bind('triSort', function(e){ TRI_STATE.sort=e.target.value;  buildTriTable(); });
+  if($('btnScan')) $('btnScan').addEventListener('click',scanIntPairs);
+  const hint=$('scanHint');
+  if(hint) hint.textContent='（精确整数运算：X = A₁A₂−2B₁B₂、Y = B₁A₂−A₁B₂、Z = C₁C₂，判 Y = 0 且 Z | X）';
+  if($('btnPQ')) $('btnPQ').addEventListener('click',function(){
+    const ip=$('inP'), iq=$('inQ');
+    let a=parseInt(ip.value,10), b=parseInt(iq.value,10);
+    if(!(a>=1)||!(b>=1)){ setInMsg(); return; }
+    if(a>b){ const t=a; a=b; b=t; ip.value=a; iq.value=b; }
+    pickTri(a,b);
+  });
+  ['inP','inQ'].forEach(function(id){
+    const el=$(id); if(!el) return;
+    el.addEventListener('input',setInMsg);
+    el.addEventListener('keydown',function(e){ if(e.key==='Enter') $('btnPQ').click(); });
+  });
+  setInMsg();
+}
+
+/* ------------- 视图 tab ＋ 两枚「可拖 · 可收 · 可调大小」浮窗 ＋ 画布自适应 ------------- */
+(function(){
+  const wb=document.getElementById('wb'); if(!wb) return;
+  const narrow=function(){ return innerWidth<=1180; };
+  const clamp=function(v,a,b){ return v<a?a:(v>b?b:v); };
+
+  /* --- ① 中间视图 tab --- */
+  const tabs=[...document.querySelectorAll('.vtab')];
+  tabs.forEach(function(b){
+    b.addEventListener('click',function(){
+      tabs.forEach(function(x){
+        x.classList.toggle('on', x===b);
+        const p=document.getElementById('pane-'+x.dataset.v);
+        if(p) p.classList.toggle('on', x===b);
+      });
+      requestAnimationFrame(resize);
+    });
+  });
+
+  /* --- ② 画布自适应（观察画布容器，而不是 window）--- */
+  const cw=document.getElementById('canvasWrap');
+  if(cw && window.ResizeObserver){
+    let raf=0;
+    new ResizeObserver(function(){
+      if(!cw.offsetParent) return;                 /* 3D 面板隐藏时不重算 */
+      cancelAnimationFrame(raf); raf=requestAnimationFrame(resize);
+    }).observe(cw);
+  }
+
+  /* --- ③ 工作台高度 = 视口 − 页头 − 上下内边距（算，不写死）--- */
+  const topEl=document.querySelector('header.top'), wpEl=document.querySelector('.wrap');
+  function fitWbHeight(){
+    if(!topEl||!wpEl||narrow()){ wb.style.height=''; return; }
+    const cs=getComputedStyle(wpEl);
+    const mb=parseFloat(getComputedStyle(topEl).marginBottom)||0;
+    const v=innerHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom)
+            -topEl.getBoundingClientRect().height-mb-2;
+    wb.style.height=Math.max(360,v)+'px';
+  }
+
+  const colL=document.getElementById('colL'), colR=document.getElementById('colR');
+  const vtabs=document.getElementById('vtabs');
+  const floats=[colL,colR].filter(Boolean);
+
+  /* --- ④ 浮窗定位 / 复位 --- */
+  function clearInline(el){
+    ['left','top','right','width','height','maxHeight'].forEach(function(k){ el.style[k]=''; });
+  }
+  function fitFloat(el){
+    if(!el) return;
+    if(narrow()){ clearInline(el); return; }
+    const top=Math.round((vtabs? vtabs.getBoundingClientRect().bottom : 150)+10);
+    if(!el.dataset.pos){                            /* 用户没拖过才自动贴边 */
+      el.style.top=top+'px';
+      if(el.id==='colR'){ el.style.left=''; el.style.right='20px'; }
+      else { el.style.right=''; el.style.left='20px'; }
+    }
+    if(!el.dataset.userH && !el.classList.contains('off'))
+      el.style.height=Math.max(240, innerHeight-top-18)+'px';
+  }
+
+  /* --- ⑤ 拖动：按住标题栏 --- */
+  function bindFloat(el, hd){
+    if(!hd) return;
+    let on=false, moved=false, sx=0, sy=0, ox=0, oy=0;
+    hd.addEventListener('pointerdown', function(e){
+      if(e.target.closest('button') || narrow()) return;
+      const r=el.getBoundingClientRect();
+      on=true; moved=false;
+      el.style.right='auto'; el.style.left=r.left+'px'; el.style.top=r.top+'px';
+      sx=e.clientX; sy=e.clientY; ox=r.left; oy=r.top;
+      el.classList.add('dragging');
+      try{ hd.setPointerCapture(e.pointerId); }catch(_){}
+      e.preventDefault();
+    });
+    hd.addEventListener('pointermove', function(e){
+      if(!on) return;
+      const dx=e.clientX-sx, dy=e.clientY-sy;
+      if(Math.abs(dx)>4||Math.abs(dy)>4) moved=true;
+      const r=el.getBoundingClientRect();
+      el.style.left=clamp(ox+dx, 6, Math.max(6, innerWidth -r.width-6))+'px';
+      el.style.top =clamp(oy+dy, 6, Math.max(6, innerHeight-42      ))+'px';
+    });
+    hd.addEventListener('pointerup', function(e){
+      if(!on) return;
+      on=false; el.classList.remove('dragging');
+      if(moved){                                    /* 拖过 ⇒ 记住位置，并抑制这一次 click */
+        el.dataset.pos='1'; el.dataset.moved='1';
+        setTimeout(function(){ el.dataset.moved=''; },0);
+      }
+      try{ hd.releasePointerCapture(e.pointerId); }catch(_){}
+    });
+    hd.addEventListener('click', function(e){
+      if(e.target.closest('button') || el.dataset.moved) return;
+      el.classList.toggle('off');                   /* 点标题栏张合 */
+      syncBtn(); fitFloat(el);
+    });
+  }
+
+  /* --- ⑥ 调大小：右下自绘把手，只夹右下角；双击复位 --- */
+  function bindResize(el, hz){
+    if(!hz) return;
+    let on=false, sx=0, sy=0, ow=0, oh=0;
+    hz.addEventListener('pointerdown', function(e){
+      if(narrow() || el.classList.contains('off')) return;
+      const r=el.getBoundingClientRect();
+      on=true; sx=e.clientX; sy=e.clientY; ow=r.width; oh=r.height;
+      el.style.width=ow+'px'; el.style.height=oh+'px';
+      el.dataset.userH='1';                         /* 手调过 ⇒ 不再按邻居/视口自动定高 */
+      try{ hz.setPointerCapture(e.pointerId); }catch(_){}
+      e.preventDefault(); e.stopPropagation();
+    });
+    hz.addEventListener('pointermove', function(e){
+      if(!on) return;
+      const r=el.getBoundingClientRect();
+      el.style.width =clamp(ow+e.clientX-sx, 220, Math.max(220, innerWidth -r.left-6))+'px';
+      el.style.height=clamp(oh+e.clientY-sy, 110, Math.max(110, innerHeight-r.top -6))+'px';
+    });
+    hz.addEventListener('pointerup', function(e){
+      if(!on) return; on=false;
+      try{ hz.releasePointerCapture(e.pointerId); }catch(_){}
+    });
+    hz.addEventListener('dblclick', function(){
+      el.style.width=''; el.style.height='';
+      delete el.dataset.userH;
+      fitFloat(el);
+    });
+  }
+
+  /* --- ⑦ 收起按钮（图标同步）--- */
+  const tgL=document.getElementById('tgL'), tgR=document.getElementById('tgR');
+  function syncBtn(){
+    if(tgL) tgL.innerHTML = colL.classList.contains('off') ? '+' : '&minus;';
+    if(tgR) tgR.innerHTML = colR.classList.contains('off') ? '+' : '&minus;';
+    /* 面板避让留白随收起状态联动 */
+    document.body.classList.toggle('flOffL', !!(colL && colL.classList.contains('off')));
+    document.body.classList.toggle('flOffR', !!(colR && colR.classList.contains('off')));
+  }
+  if(tgL) tgL.addEventListener('click', function(e){
+    e.stopPropagation(); colL.classList.toggle('off'); syncBtn(); fitFloat(colL);
+  });
+  if(tgR) tgR.addEventListener('click', function(e){
+    e.stopPropagation(); colR.classList.toggle('off'); syncBtn(); fitFloat(colR);
+  });
+
+  floats.forEach(function(el){
+    bindFloat(el, el.querySelector('.fbar'));
+    bindResize(el, el.querySelector('.frz'));
+  });
+  function syncAll(){ fitWbHeight(); floats.forEach(fitFloat); }
+  syncAll(); syncBtn();
+  window.addEventListener('resize', syncAll);
+})();
+
+resize(); initPickers(); bindEqSeg(); refreshReadouts(); syncUI(); requestAnimationFrame(loop);
+</script>
+</body>
+</html>

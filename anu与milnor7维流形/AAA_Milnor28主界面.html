@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Milnor 七维怪球 · 28 种微分结构动态演示</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header>
+  <h1>Milnor 七维怪球 · <em>28 种微分结构</em>动态演示</h1>
+  <div class="sub">
+    七维球面 S⁷ 上恰有 <b>28</b> 种两两不微分同胚的光滑结构（Frank Adams / Kervaire–Milnor：Θ₇ ≅ ℤ/28）。
+    每个元素都由 S³ 丛 over S⁴ 的粘合映射 <code>ξ(u,v) = (u, uʰvuʲ)</code> 驱动，同调球条件 <code>h + j = 1</code>，
+    判定不变量 <code>λ = (h−j)²−1 (mod 7)</code> 与 <code>28μ ≡ h(h−1)/2 (mod 28)</code>。
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- ================= 侧边栏 ================= -->
+  <aside>
+
+    <div class="modes">
+      <button id="modeMap" class="active">① 结构映射</button>
+      <button id="modeTube">② 纤维扫掠</button>
+      <button id="modeDense">③ 密铺全貌</button>
+    </div>
+
+    <div class="sec" id="densityWrap" style="display:none">
+      <label class="title">密铺密度（曲线条数）</label>
+      <div class="row">
+        <select id="density" class="sel">
+          <option value="low">疏 · 96 条</option>
+          <option value="mid" selected>中 · 216 条</option>
+          <option value="high">密 · 384 条</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="sec">
+      <label class="title">28 个元素（点击选择）</label>
+      <div id="grid"></div>
+      <div class="legend">
+        <span><i style="background:#86efac"></i>标准球面（n = 0）</span>
+        <span><i style="background:#fdba74"></i>S³ 丛可实现：共 16 个（含标准球面）</span>
+        <span><i style="background:#d8b4fe"></i>非丛元素：12 个（仅连通和）</span>
+      </div>
+    </div>
+
+    <div class="sec">
+      <label class="title">当前流形</label>
+      <div id="info" class="info"></div>
+    </div>
+
+    <div class="sec">
+      <label class="title">播放控制</label>
+      <div class="controls">
+        <button id="btnPlay" class="on">⏸ 暂停</button>
+        <button id="btnReset">↺ 复位</button>
+      </div>
+      <div class="row">
+        <span style="min-width:42px">τ 相位</span>
+        <input id="tau" type="range" min="0" max="1000" value="0">
+      </div>
+      <div class="row">
+        <span style="min-width:42px">速度</span>
+        <input id="speed" type="range" min="0.05" max="3" step="0.05" value="0.5">
+        <span class="val" id="speedVal">0.50×</span>
+      </div>
+    </div>
+
+    <div class="sec">
+      <label class="title">显示</label>
+      <label class="tog"><input type="checkbox" id="tgA" checked> 参考圆 A（w-z 圆）的像</label>
+      <label class="tog"><input type="checkbox" id="tgB" checked> 参考圆 B（x-y 圆）的像</label>
+      <label class="tog"><input type="checkbox" id="tgSphere" checked> 二维球面 w = 0 的像（紫）</label>
+      <label class="tog"><input type="checkbox" id="tgFiber" checked> Hopf 纤维 / 生成圆</label>
+      <label class="tog"><input type="checkbox" id="tgGhost" checked> 原始参考曲线（灰虚线）</label>
+      <label class="tog"><input type="checkbox" id="tgBoundary" checked> 边界球（表示 ∞）</label>
+      <label class="tog" id="tgCompareWrap"><input type="checkbox" id="tgCompare"> 叠加标准球面的轨道族（对照）</label>
+      <label class="tog"><input type="checkbox" id="tgRotate" checked> 自动旋转</label>
+    </div>
+
+    <div class="sec">
+      <label class="title">视频中的经典算例 · 球面层（h + j = 1）</label>
+      <div class="presets" id="presets"></div>
+    </div>
+
+    <div class="sec">
+      <label class="title">视频中的经典算例 · 丛层 M(h, −h)（h + j = 0）</label>
+      <div class="presets" id="bundles"></div>
+    </div>
+
+    <div class="sec">
+      <label class="title">当前解说</label>
+      <div id="presetHint"></div>
+    </div>
+
+  </aside>
+
+  <!-- ================= 画布 ================= -->
+  <section class="stage">
+    <canvas id="canvas"></canvas>
+
+    <div class="tagbar">
+      <div class="tag" id="tagMode">结构映射 ξ_{h,j}</div>
+      <div class="tag">S³ → M⁷ → S⁴</div>
+    </div>
+
+    <div class="hint" id="hintMap">
+      <b>结构映射视图</b>：蓝 / 绿曲线是两条参考圆在 ξ<sub>h,j</sub>(u) 下的像，紫色网络是二维球面 w=0 的像，
+      橙色圆环是 Hopf 纤维（u 的轨迹），橙点 = 当前 u。<b>拖动旋转，滚轮缩放。</b>
+      切换不同元素，观察两条参考圆的像如何被"拧"。
+    </div>
+
+    <div class="hint" id="hintTube" style="display:none">
+      <b>纤维扫掠视图</b>：把参考圆 A（w-z 圆）的像随 Hopf 纤维参数 τ 一路搬过去，得到的正是 ξ<sub>h,j</sub>
+      在环面 S¹×S¹ 上的<b>轨道族</b> —— 每一根纬线是"某一时刻参考圆的像"（颜色由蓝到橙表示 τ 的推进），
+      细灰线是把 θ 固定、让 τ 跑遍的经线。结构越"怪"，这张网缠绕得越密：<b>相对扭转率 = (h−j) − 1</b>，
+      h−j = 1 时最平缓（标准球面），h−j 越大越纠绞 —— 这正是两个七维球面之间难以找到微分同胚的几何体现。
+      勾选「叠加标准球面的轨道族」可做对照。
+      <b>采样层数会随 k 自动加密</b>（每「遍」扭转至少 6 层）：把 u(τ)=(cosτ,sinτ,0,0)、
+      v(θ)=cosθ+sinθk 代进 ξ 可以直接算出
+      <code>ξ<sub>h,j</sub>(u(τ),v(θ)) = ( cosθ·cos((h+j)τ), cosθ·sin((h+j)τ), −sinθ·sin(kτ), sinθ·cos(kτ) )</code>
+      —— 后两个分量在 τ 走一圈时转了 <b>k 圈</b>，层数不够就会把扭转采样掉，几支球面画成一个样。
+      <b>拖动旋转，滚轮缩放。</b>
+    </div>
+
+    <div class="hint" id="hintDense" style="display:none">
+      <b>密铺全貌视图</b>：前面两个视图只盯着<b>一条</b> Hopf 纤维上的 u；这里让 u 跑遍 S³ 的一整张网格
+      （Hopf 坐标 (χ,ψ) 铺底空间 S²、φ 铺纤维方向），把参考圆的像<b>一层层堆满</b> —— 得到 S⁷ 的一个「切片」。
+      这是讲解视频里最复杂、层数最多的那张画面。曲线的集合就是
+      <code>{ ξ<sub>h,j</sub>(u, v(θ)) : u ∈ 网格 ⊂ S³, v ∈ 参考圆 }</code>。
+      <b>看点</b>：色相绕底空间经度铺开，所以同一条纤维上的几层颜色相近、不同纤维之间颜色拉开，便于数层；
+      把 h+j 从 1 换成 0（丛层 M(h,−h)），结构立刻塌下去 —— ξ<sub>0,0</sub> 甚至只剩一条曲线。
+      <b>曲线条数用左上「密铺密度」切换，密档对显卡压力较大。</b>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  参考：John Milnor, <i>On manifolds homeomorphic to the 7-sphere</i> (1956) ·
+  Eells–Kuiper (1962) · Kervaire–Milnor (1963) ·
+  可视化方法源自 Niles Johnson, <a href="https://nilesjohnson.net/seven-manifolds.html" target="_blank">Visualizing Seven-Manifolds</a>
+  （<a href="https://youtu.be/II-maE5HEj0" target="_blank">视频</a>） ·
+  本页为独立实现，纯本地运行、无外部依赖。
+</footer>
+
+<script src="js/quaternion.js"></script>
+<script src="js/geometry.js"></script>
+<script src="js/camera.js"></script>
+<script src="js/data.js"></script>
+<script src="js/dense.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

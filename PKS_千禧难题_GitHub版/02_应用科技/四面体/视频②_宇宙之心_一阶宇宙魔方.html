@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>视频② 宇宙之心 · 一阶宇宙魔方 | 几何演示</title>
+<link rel="stylesheet" href="宇宙魔方_共用.css">
+<style>
+  .hl{color:var(--violet);font-weight:700}
+  .mono{font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="crumb"><a href="AAA_总入口_几何演示.html">← 返回 · 几何演示总入口</a></div>
+
+  <header class="top">
+    <div class="hero">
+      <h1>② 《宇宙之心》· 一阶宇宙魔方
+        <span class="sub">旋转七角星 · 七彩琉璃光 · 阴阳交感于六合 · 双四面体 Merkaba 反向对旋 —— 把视频的象征语言逐句翻译成几何与代数</span>
+      </h1>
+      <div class="hstats">
+        <div class="stat"><b>5</b><span>可交互模式</span></div>
+        <div class="stat"><b>7</b><span>七重对称</span></div>
+        <div class="stat"><b>6</b><span>俯视六角星 · 6 尖</span></div>
+        <div class="stat"><b>3 : 2 : 1</b><span>立方体:双:单四面体</span></div>
+      </div>
+    </div>
+  </header>
+
+  <div class="mbar" id="modeBar"></div>
+
+  <div class="main">
+    <div class="stage">
+      <canvas id="cv"></canvas>
+      <div class="badge" id="mtitle">1 / 4</div>
+      <div class="hint">拖拽旋转 · <b>Shift + 拖拽平移</b> · 滚轮缩放 · 空格播放<br>数字键 1–5 切换模式 · <b>T 俯视</b> · R 复位</div>
+      <div class="caption" id="mcap"></div>
+      <div class="ctrl">
+        <button id="btnPrev" title="上一模式">◀</button>
+        <button id="btnPlay">暂停</button>
+        <button id="btnNext" title="下一模式">▶</button>
+        <input type="range" id="spd" min="0" max="3" step="0.1" value="1">
+        <span class="lb" id="spdv">1.0×</span>
+        <button id="btnReset">复位视角</button>
+      </div>
+      <div class="progwrap"><i id="prog"></i></div>
+    </div>
+
+    <aside class="side">
+      <h3 id="mname">—</h3>
+      <div class="blk">
+        <div class="bt">数学内核</div>
+        <div class="bd" id="minfo">—</div>
+      </div>
+      <div class="blk">
+        <div class="bt">实时常量（本机实算，非引用）</div>
+        <div id="mcons">—</div>
+      </div>
+      <div class="blk">
+        <div class="bt">可验证性边界</div>
+        <div class="warn">
+          本页只对<b>可计算</b>的部分负责：七重对称、六合方向、正四面体的二面角与内外球比、
+          立方体与双四面体的体积比，全部可由上面的常量表复算。<br>
+          视频原文的「<b>炁脉</b>」「<b>无形无象的初始源能</b>」「<b>内藏七彩琉璃光于生命炁脉</b>」
+          属于<b>象征与文化诠释</b>：没有给出可测量的物理量，也无法设计实验去否证它。
+          几何是真的，但它为象征叙事做的是<b>背书</b>，不是<b>证明</b>。
+        </div>
+      </div>
+      <div class="blk">
+        <div class="bt">相关文档</div>
+        <div class="links">
+          <a class="mini" href="AAA四面体_主界面.html">同款构造 · 周髀算经 → 3D 交合</a>
+          <a class="mini" href="宇宙魔方_笔记01_宇宙之心.html" target="_blank">笔记 01 · 宇宙之心</a>
+          <a class="mini" href="AAA_总入口_几何演示.html">项目总入口</a>
+        </div>
+        <div class="tagset">
+          <span class="tag violet">共用引擎复用</span>
+          <span class="tag teal">常量已实算核验</span>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script src="宇宙魔方_共用.js"></script>
+<script>
+(function () {
+  'use strict';
+  var TAU = Math.PI * 2, R2D = 180 / Math.PI;
+  var TOP_PITCH = 1.5533;    /* ≈ 89°：正俯视但不落到相机退化点（90° 时 right 向量为零） */
+
+  /* ================= 几何数据 ================= */
+  /* 七角星基圆 */
+  var R7 = 1.86;
+  function heptXY() { var a = []; for (var i = 0; i < 7; i++) { var th = i * TAU / 7 - Math.PI / 2; a.push([R7 * Math.cos(th), R7 * Math.sin(th), 0]); } return a; }
+  function heptXZ() { var a = []; for (var i = 0; i < 7; i++) { var th = i * TAU / 7 - Math.PI / 2; a.push([R7 * Math.cos(th), 0, R7 * Math.sin(th)]); } return a; }
+  var H7A = heptXY(), H7B = heptXZ();
+
+  /* 六合：立方体棱=2，顶点 ±1 —— 六个方向 = ±x ±y ±z */
+  var CUBE = [[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]];
+  var CUBE_E = [];
+  for (var i = 0; i < 8; i++) for (var j = i + 1; j < 8; j++) {
+    var d = Math.abs(CUBE[i][0]-CUBE[j][0]) + Math.abs(CUBE[i][1]-CUBE[j][1]) + Math.abs(CUBE[i][2]-CUBE[j][2]);
+    if (d === 2) CUBE_E.push([i, j]);
+  }
+  /* 立方体内接两个互穿正四面体（偶/奇宇称 4 顶点，xyz 符号积 = +1 / −1） */
+  var TET_A = [[1,1,1],[1,-1,-1],[-1,1,-1],[-1,-1,1]];   /* 阳 */
+  var TET_B = [[-1,-1,-1],[-1,1,1],[1,-1,1],[1,1,-1]];   /* 阴 */
+  var TET_E = [[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]];
+  var TET_F = [[0,1,2],[0,1,3],[1,2,3],[2,0,3]];
+
+  var AXES = [
+    { u: [1,0,0],  a: '东', c: '#d1445a' },
+    { u: [-1,0,0], a: '西', c: '#e08a17' },
+    { u: [0,1,0],  a: '北', c: '#2fa35b' },
+    { u: [0,-1,0], a: '南', c: '#0e9c8e' },
+    { u: [0,0,1],  a: '上', c: '#3457d5' },
+    { u: [0,0,-1], a: '下', c: '#7a51c9' }
+  ];
+
+  /* ================= 旋转工具 ================= */
+  function rz(p, a) { var c = Math.cos(a), s = Math.sin(a); return [p[0]*c - p[1]*s, p[0]*s + p[1]*c, p[2]]; }
+  function ry(p, a) { var c = Math.cos(a), s = Math.sin(a); return [p[0]*c + p[2]*s, p[1], -p[0]*s + p[2]*c]; }
+  function rx(p, a) { var c = Math.cos(a), s = Math.sin(a); return [p[0], p[1]*c - p[2]*s, p[1]*s + p[2]*c]; }
+  function sc(p, k) { return [p[0]*k, p[1]*k, p[2]*k]; }
+  function tumble(p, t) { return ry(rx(p, 0.42 * t), 0.30 * t); }
+
+  function starPoint(n, m) { return 180 - 2 * m * 180 / n; }   /* 正星形 {n/m} 的尖角 */
+
+  /* ================= 公用绘制 ================= */
+  function drawStar(S, base, m, color, lw, t, alpha, k) {
+    k = k == null ? 1 : k;
+    var pts = base.map(function (p) { var q = tumble(p, t); return sc(q, k); });
+    for (var i = 0; i < 7; i++) {
+      S.line(pts[i], pts[(i + m) % 7], { stroke: S.rgba(color, 0.92 * alpha), lw: lw, glow: 8 });
+    }
+    return pts;
+  }
+  function drawRing(S, r, color, alpha, t, plane) {
+    var pts = [], u = (plane === 'xz') ? [1, 0, 0] : [1, 0, 0], v = (plane === 'xz') ? [0, 0, 1] : [0, 1, 0];
+    for (var k = 0; k <= 96; k++) {
+      var a = k / 96 * TAU;
+      pts.push(tumble([u[0]*r*Math.cos(a) + v[0]*r*Math.sin(a), u[1]*r*Math.cos(a) + v[1]*r*Math.sin(a), u[2]*r*Math.cos(a) + v[2]*r*Math.sin(a)], t));
+    }
+    S.polyline(pts, { stroke: S.rgba(color, 0.28 * alpha), lw: 1 });
+  }
+  function drawTet(S, V, faceCol, edgeCol, alpha, k) {
+    k = k == null ? 1 : k;
+    var P = V.map(function (p) { return sc(p, k); });
+    for (var f = 0; f < 4; f++) {
+      var t3 = TET_F[f];
+      S.poly([P[t3[0]], P[t3[1]], P[t3[2]]], { fill: S.rgba(faceCol, 0.16 * alpha), stroke: S.rgba(edgeCol, 0.55 * alpha), lw: 1.3, bias: 0.01 });
+    }
+    for (var e = 0; e < 6; e++) S.line(P[TET_E[e][0]], P[TET_E[e][1]], { stroke: S.rgba(edgeCol, 0.95 * alpha), lw: 2.1, glow: 4 });
+    return P;
+  }
+
+  /* ================= Merkaba：两枚互锁正四面体 =================
+     构造与 AAA四面体_主界面.html 的 rebuild() 同源：
+       底面正三角形放 xy 平面、顶点立在 +z 轴上 ⇒
+         V = { (E/√3,0,0), (−E/2√3, ±E/2, 0), (0,0,E√(2/3)) }，心 O = (0,0,E√(2/3)/4)
+         （O 同时是外心与内心，外接球 R = E√6/4，内切球 r = R/3）
+     第二枚 = 对 O 作【点反射】x ↦ 2O − x ⇒ 顶点朝下。点反射是等距变换 ⇒ 棱长相同、共外接球。
+     两枚互锁 = 星形四面体 stella octangula = Merkaba，8 个顶点恰是一个立方体的 8 顶点。 */
+  var S3 = Math.sqrt(3), S6 = Math.sqrt(6);
+  var E_TET = 2 * Math.SQRT2;                       /* 棱长（与原立方体内接口径一致） */
+  var TET_H = E_TET * Math.sqrt(2 / 3);             /* 高 = E√(2/3) */
+  var TET_R = E_TET * S6 / 4;                       /* 外接球 R = √3 */
+  var TET_O = [0, 0, TET_H / 4];                    /* 主界面里的心 */
+  var MERK_UP = [                                   /* 阳：顶点朝上（主界面同款） */
+    [E_TET / S3, 0, 0],
+    [-E_TET / (2 * S3), E_TET / 2, 0],
+    [-E_TET / (2 * S3), -E_TET / 2, 0],
+    [0, 0, TET_H]
+  ].map(function (p) { return [p[0] - TET_O[0], p[1] - TET_O[1], p[2] - TET_O[2]]; });
+  var MERK_DN = MERK_UP.map(function (p) { return [-p[0], -p[1], -p[2]]; });   /* 阴：点反射 */
+  var MERK_FACE = [[0, 1, 2], [0, 1, 3], [1, 2, 3], [2, 0, 3]];
+  var MERK_EDGE = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]];
+  /* 8 顶点构成的立方体框架（只在 θ = 0 时它才是真正的凸包；旋转后不再保持，故会淡出） */
+  var MERK_CUBE = MERK_UP.concat(MERK_DN);
+  var MERK_CUBE_E = (function () {
+    var e = [];
+    for (var i = 0; i < 8; i++) for (var j = i + 1; j < 8; j++) {
+      var dx = MERK_CUBE[i][0] - MERK_CUBE[j][0], dy = MERK_CUBE[i][1] - MERK_CUBE[j][1], dz = MERK_CUBE[i][2] - MERK_CUBE[j][2];
+      if (Math.abs(Math.sqrt(dx * dx + dy * dy + dz * dz) - 2) < 1e-9) e.push([i, j]);
+    }
+    return e;
+  })();
+  var LIGHT = CM.nrm([0.40, -0.58, 0.72]);          /* 固定世界光向，给玻璃面定明暗 */
+
+  /* 玻璃质感正四面体：逐面按外法向采光 + 屏幕空间渐变，走深度序 ⇒ 两枚穿插次序正确 */
+  function drawGlassTet(S, V, phi, st) {
+    var P = V.map(function (p) { return rz(p, phi); }), f, k;
+    for (f = 0; f < 4; f++) {
+      var fv = MERK_FACE[f], a = P[fv[0]], b = P[fv[1]], c = P[fv[2]];
+      var n = CM.nrm(CM.crs(CM.sub(b, a), CM.sub(c, a)));
+      var fc = [(a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3, (a[2] + b[2] + c[2]) / 3];
+      if (CM.dot(n, fc) < 0) n = CM.mul(n, -1);
+      var lam = Math.abs(CM.dot(n, LIGHT));                     /* 玻璃两面都透光 ⇒ 取绝对值 */
+      var al = st.alpha * (0.18 + 0.56 * lam);
+      var pa = S.proj(a), pb = S.proj(b), pc = S.proj(c);
+      if (!pa || !pb || !pc) continue;
+      var lp = S.proj(CM.add(fc, CM.mul(LIGHT, 0.9))) || pa;    /* 面心「朝光」投出的屏幕点，定渐变轴 */
+      S.item(null, { d: (pa.d + pb.d + pc.d) / 3 + 0.02 }, (function (pa, pb, pc, lp, al) {
+        return function (ctx) {
+          ctx.beginPath();
+          ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.lineTo(pc.x, pc.y); ctx.closePath();
+          var cx = (pa.x + pb.x + pc.x) / 3, cy = (pa.y + pb.y + pc.y) / 3;
+          var ex = lp.x - cx, ey = lp.y - cy, EL = Math.hypot(ex, ey) || 1; ex /= EL; ey /= EL;
+          var rr = Math.max(30, EL * 1.3);
+          var g = ctx.createLinearGradient(cx + ex * rr, cy + ey * rr, cx - ex * rr, cy - ey * rr);
+          g.addColorStop(0, CM.rgba(st.hi, al * 0.92));
+          g.addColorStop(0.55, CM.rgba(st.mid, al * 0.74));
+          g.addColorStop(1, CM.rgba(st.lo, al * 1.10));
+          ctx.fillStyle = g; ctx.fill();
+          ctx.strokeStyle = CM.rgba(st.edge, 0.20 + 0.55 * (al / Math.max(0.02, st.alpha)));
+          ctx.lineWidth = 1.15; ctx.stroke();
+        };
+      })(pa, pb, pc, lp, al));
+    }
+    /* 棱：先彩色发光，再压一道白高光 ⇒ 玻璃边 */
+    for (k = 0; k < 6; k++) {
+      S.line(P[MERK_EDGE[k][0]], P[MERK_EDGE[k][1]],
+        { stroke: CM.rgba(st.edge, 0.92 * st.lineAlpha), lw: st.lw || 2.3, glow: st.glow == null ? 8 : st.glow, bias: -0.06 });
+    }
+    for (k = 0; k < 6; k++) {
+      S.line(P[MERK_EDGE[k][0]], P[MERK_EDGE[k][1]],
+        { stroke: 'rgba(255,255,255,' + (0.55 * st.lineAlpha) + ')', lw: 0.9, bias: -0.09 });
+    }
+    return P;
+  }
+
+  /* 中央「炁」球：深度取原点深度 ⇒ 自动落在后半面之后、前半面之前 */
+  function drawQiBall(S, r, alpha) {
+    var v = S.proj([0, 0, 0]);
+    if (!v || alpha < 0.02) return;
+    var rad = Math.max(4, S.radiusPx([0, 0, 0], r));
+    S.item(null, { d: v.d + 0.02 }, function (ctx) {
+      ctx.save();
+      var halo = ctx.createRadialGradient(v.x, v.y, rad * 0.15, v.x, v.y, rad * 2.7);
+      halo.addColorStop(0, 'rgba(240,160,90,' + (0.34 * alpha) + ')');
+      halo.addColorStop(1, 'rgba(240,160,90,0)');
+      ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(v.x, v.y, rad * 2.7, 0, TAU); ctx.fill();
+      var g = ctx.createRadialGradient(v.x - rad * 0.34, v.y - rad * 0.38, rad * 0.08, v.x, v.y, rad);
+      g.addColorStop(0, 'rgba(255,252,246,' + (0.97 * alpha) + ')');
+      g.addColorStop(0.45, 'rgba(246,185,138,' + (0.80 * alpha) + ')');
+      g.addColorStop(1, 'rgba(214,96,63,' + (0.52 * alpha) + ')');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(v.x, v.y, rad, 0, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(224,134,90,' + (0.75 * alpha) + ')'; ctx.lineWidth = 1.1; ctx.stroke();
+      ctx.restore();
+    });
+  }
+
+  /* 绕中轴的旋转方向弧箭头： dir = +1 ⇒ 世界角增大（俯视为逆时针）/ −1 ⇒ 顺时针 */
+  function drawSpinArrow(S, z, r, dir, col, alpha, label) {
+    if (alpha < 0.02) return;
+    var N = 36, span = 2.0, k, pts = [];
+    for (k = 0; k <= N; k++) {
+      var a = dir > 0 ? (-0.6 + span * k / N) : (0.6 - span * k / N);
+      pts.push([r * Math.cos(a), r * Math.sin(a), z]);
+    }
+    S.polyline(pts, { stroke: CM.rgba(col, 0.88 * alpha), lw: 2.1, bias: -0.05 });
+    var e = pts[N], b = pts[N - 3];
+    var tg = CM.nrm(CM.sub(e, b)), nn = CM.nrm(CM.crs(tg, [0, 0, 1]));
+    S.line(e, CM.add(CM.add(e, CM.mul(tg, -0.22)), CM.mul(nn, 0.15)), { stroke: CM.rgba(col, 0.9 * alpha), lw: 2.1 });
+    S.line(e, CM.add(CM.add(e, CM.mul(tg, -0.22)), CM.mul(nn, -0.15)), { stroke: CM.rgba(col, 0.9 * alpha), lw: 2.1 });
+    if (label) S.label(pts[(N * 0.52) | 0], label, { size: 12, bold: true, color: col, dy: -15 });
+  }
+
+  /* 俯视小窗的 2D 弧箭头 */
+  function arcArrow(ctx, cx, cy, R, a0, a1, col) {
+    var N = 26, i, pts = [];
+    for (i = 0; i <= N; i++) {
+      var a = a0 + (a1 - a0) * i / N;
+      pts.push([cx + R * Math.cos(a), cy - R * Math.sin(a)]);
+    }
+    ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+    for (i = 1; i <= N; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+    ctx.strokeStyle = col; ctx.lineWidth = 1.8; ctx.stroke();
+    var e = pts[N], b = pts[N - 2];
+    var tx = e[0] - b[0], ty = e[1] - b[1], L = Math.hypot(tx, ty) || 1; tx /= L; ty /= L;
+    ctx.beginPath();
+    ctx.moveTo(e[0] - tx * 7 - ty * 4.6, e[1] - ty * 7 + tx * 4.6);
+    ctx.lineTo(e[0], e[1]);
+    ctx.lineTo(e[0] - tx * 7 + ty * 4.6, e[1] - ty * 7 - tx * 4.6);
+    ctx.stroke();
+  }
+
+  /* 俯视小窗：沿中轴 z 正投影 —— 两枚四面体各是一个等边三角形，互差 180° 叠成六角星 */
+  function drawTopInset(S, phiA, phiB, alpha) {
+    if (alpha < 0.03) return;
+    var W = S.W, H = S.H;
+    var w = Math.min(228, Math.max(166, W * 0.26)), m = 16, h = w + 30;
+    var x0 = W - m - w, y0 = 68;                            /* 右上角（hint 下方），避开字幕与控制条 */
+    var ru = E_TET / S3, k = (w / 2 - 26) / ru;             /* 世界半径 → 小窗像素 */
+    var cx = x0 + w / 2, cy = y0 + 24 + k * ru;
+    var P2 = function (p) { return [cx + p[0] * k, cy - p[1] * k]; };
+    S.item(null, { d: 0.012 }, function (ctx) {             /* 深度极小 ⇒ 最后绘制，永远最上层 */
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.beginPath();
+      var rr = 12;
+      ctx.moveTo(x0 + rr, y0);
+      ctx.arcTo(x0 + w, y0, x0 + w, y0 + h, rr);
+      ctx.arcTo(x0 + w, y0 + h, x0, y0 + h, rr);
+      ctx.arcTo(x0, y0 + h, x0, y0, rr);
+      ctx.arcTo(x0, y0, x0 + w, y0, rr);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(255,255,255,0.93)'; ctx.fill();
+      ctx.strokeStyle = 'rgba(198,210,228,1)'; ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, k * ru, 0, TAU);
+      ctx.setLineDash([4, 4]); ctx.strokeStyle = 'rgba(164,180,206,0.9)'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.setLineDash([]);
+      [[MERK_UP, phiA, '#c8385a', 'rgba(200,56,90,0.13)'],
+       [MERK_DN, phiB, '#3457d5', 'rgba(52,87,213,0.13)']].forEach(function (o) {
+        var V = o[0], f = o[1], i, q = [];
+        for (i = 0; i < 3; i++) q.push(P2(rz(V[i], f)));
+        ctx.beginPath(); ctx.moveTo(q[0][0], q[0][1]);
+        for (i = 1; i < 3; i++) ctx.lineTo(q[i][0], q[i][1]);
+        ctx.closePath();
+        ctx.fillStyle = o[3]; ctx.fill();
+        ctx.strokeStyle = o[2]; ctx.lineWidth = 1.9; ctx.stroke();
+        for (i = 0; i < 3; i++) {                       /* 6 个尖点标出来 */
+          ctx.beginPath(); ctx.arc(q[i][0], q[i][1], 2.5, 0, TAU);
+          ctx.fillStyle = o[2]; ctx.fill();
+        }
+      });
+      ctx.beginPath(); ctx.arc(cx, cy, 3.6, 0, TAU); ctx.fillStyle = 'rgba(122,81,201,0.92)'; ctx.fill();
+      arcArrow(ctx, cx, cy, k * ru * 0.58, 0.30, 2.60, '#c8385a');     /* 阳：角增大 ⇒ 逆时针 */
+      arcArrow(ctx, cx, cy, k * ru * 0.30, 2.60, 0.30, '#3457d5');     /* 阴：角减小 ⇒ 顺时针 */
+      ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+      ctx.font = '700 11.5px "Microsoft YaHei",system-ui,sans-serif';
+      ctx.fillStyle = '#33415c'; ctx.fillText('俯视（沿中轴 z）', x0 + 12, y0 + 14);
+      ctx.font = '600 10.5px "Microsoft YaHei",system-ui,sans-serif';
+      ctx.fillStyle = '#c8385a'; ctx.fillText('阳 ↺ 逆时针', x0 + 12, y0 + h - 13);
+      ctx.fillStyle = '#3457d5'; ctx.fillText('阴 ↻ 顺时针', x0 + w - 76, y0 + h - 13);
+      ctx.restore();
+    });
+  }
+  function drawCube(S, alpha, k, col) {
+    k = k == null ? 1 : k;
+    for (var e = 0; e < CUBE_E.length; e++) {
+      S.line(sc(CUBE[CUBE_E[e][0]], k), sc(CUBE[CUBE_E[e][1]], k), { stroke: S.rgba(col || '#8fa6c9', 0.62 * alpha), lw: 1.5 });
+    }
+  }
+  function drawAxes(S, alpha, len) {
+    len = len || 1.62;
+    for (var i = 0; i < 6; i++) {
+      var A = AXES[i];
+      S.line([0,0,0], [A.u[0]*len, A.u[1]*len, A.u[2]*len], { stroke: S.rgba(A.c, 0.85 * alpha), lw: 2.0, glow: 3, bias: 0.55 });
+      S.dot([A.u[0]*len, A.u[1]*len, A.u[2]*len], { r: 3.6, fill: A.c, glow: 5 });
+      S.label([A.u[0]*len*1.13, A.u[1]*len*1.13, A.u[2]*len*1.13], A.a,
+              { size: 12, bold: true, color: A.c, hl: 1 });
+    }
+  }
+  /* 屏幕上的一行小字（不随三维旋转） */
+  function screenTable(S, x, y, rows) {
+    S.ctx.save();
+    S.ctx.font = '600 12.2px "Microsoft YaHei",system-ui,sans-serif';
+    S.ctx.textAlign = 'left'; S.ctx.textBaseline = 'middle';
+    for (var i = 0; i < rows.length; i++) {
+      S.ctx.fillStyle = rows[i][2] || '#7d8ca3';
+      S.ctx.fillText(rows[i][0], x, y + i * 18);
+      S.ctx.fillStyle = rows[i][3] || '#3457d5';
+      S.ctx.fillText(rows[i][1], x + 132, y + i * 18);
+    }
+    S.ctx.restore();
+  }
+
+  /* ================= 四个模式 ================= */
+  var MODES = [
+    /* ---------- 1 七角星 · 七彩琉璃光 ---------- */
+    {
+      name: '七角星 · 七彩琉璃光', dur: 12,
+      cap: function () {
+        return '旋转<b>七角星</b>：{7/2} 星尖角 <span class="eq">' + CM.fmt(starPoint(7, 2), 4) + '°</span>，{7/3} 星尖角 <span class="eq">' +
+          CM.fmt(starPoint(7, 3), 4) + '°</span>，互为镜像。七枚顶点射出<b>七彩</b>光轴 —— ' +
+          '这就是「初心内藏七彩琉璃光」。七是<b>准周期</b>的：它既不能周期铺砌平面，也不能尺规作正七边形，更被晶体学<b>禁止</b>作为旋转轴。';
+      },
+      info: function () {
+        return '七重对称的「准周期宿命」有三重证据：<br>' +
+          '① <b>平面周期铺砌</b>只允许 3、4、6 次对称（因为 2cos(2π/n) 必须为整数），7 被排除；<br>' +
+          '② <b>尺规作图</b>：cos(2π/7) 是三次不可约多项式 <code>8x³+4x²−4x−1</code> 的根，非二次域元素 ⇒ 正七边形<b>不可作</b>；<br>' +
+          '③ <b>晶体学限制定理</b>：<span class="eq">2cos(2π/7) = ' + CM.fmt(2 * Math.cos(TAU / 7), 9) + '</span> 不是整数 ⇒ 7 次旋转轴在周期晶体中<b>不存在</b>。<br>' +
+          '所以七角星天然是「准晶/准周期」的符号，与 5 次对称（彭罗斯铺砌）同类。';
+      },
+      cons: function () {
+        return '<table class="cons">' +
+          '<tr><td>{7/2} 星尖角</td><td>' + CM.fmt(starPoint(7, 2), 6) + '°</td></tr>' +
+          '<tr><td>{7/3} 星尖角</td><td>' + CM.fmt(starPoint(7, 3), 6) + '°</td></tr>' +
+          '<tr><td>正七边形内角</td><td>' + CM.fmt(5 * 180 / 7, 6) + '°</td></tr>' +
+          '<tr><td>cos(2π/7)</td><td>' + CM.fmt(Math.cos(TAU / 7), 12) + '</td></tr>' +
+          '<tr><td>8x³+4x²−4x−1 代入值</td><td>' + CM.fmtE(8 * Math.pow(Math.cos(TAU/7),3) + 4 * Math.pow(Math.cos(TAU/7),2) - 4 * Math.cos(TAU/7) - 1, 2) + '</td></tr>' +
+          '<tr><td>2cos(2π/7) 是否整数</td><td>否 ⇒ 7 次轴禁止</td></tr>' +
+          '<tr><td>允许的旋转轴 n</td><td>2, 3, 4, 6</td></tr>' +
+          '</table>';
+      },
+      draw: function (S, t, p) {
+        var a = CM.easeOut(Math.min(1, p / 0.15));
+        drawRing(S, R7, '#3457d5', a * 0.9, t, 'xy');
+        /* 七彩光轴：七枚顶点射出七色光 */
+        for (var i = 0; i < 7; i++) {
+          var q = tumble(H7A[i], t);
+          S.line([0, 0, 0], q, { stroke: S.rgba(CM.HUES[i], 0.62 * a), lw: 2.6, glow: 11 });
+        }
+        /* 两枚七角星：{7/2} 在外圈（蓝），{7/3} 在内圈（琥珀），便于分辨 */
+        var outer = drawStar(S, H7A, 2, '#3457d5', 2.8, t, a, 1.0);
+        drawStar(S, H7B, 3, '#e08a17', 2.5, t, a, 0.72);
+        for (var k = 0; k < 7; k++) {
+          S.dot(outer[k], { r: 4.6, fill: CM.HUES[k], glow: 10 });
+        }
+        S.dot([0, 0, 0], { r: 6, fill: '#7a51c9', glow: 16 });
+        S.label([0, 0, 0], '一元', { dy: 34, size: 12.5, bold: true, color: '#7a51c9' });
+        S.label(outer[0], '{7/2}', { dy: -20, size: 12.5, bold: true, color: '#3457d5' });
+        S.label(sc(tumble(H7B[3], t), 0.72), '{7/3}', { dy: -18, size: 12, bold: true, color: '#e08a17' });
+        /* 屏幕角落：准周期读数 */
+        screenTable(S, 18, 58, [
+          ['尖角 {7/2}', CM.fmt(starPoint(7, 2), 3) + '°', '#7d8ca3', '#3457d5'],
+          ['尖角 {7/3}', CM.fmt(starPoint(7, 3), 3) + '°', '#7d8ca3', '#e08a17'],
+          ['2cos(2π/7)', CM.fmt(2 * Math.cos(TAU / 7), 6), '#7d8ca3', '#d1445a'],
+          ['周期铺砌', '仅 3 / 4 / 6 次', '#7d8ca3', '#0e9c8e'],
+          ['正七边形作图', '不可（三次域）', '#7d8ca3', '#d1445a']
+        ]);
+      }
+    },
+
+    /* ---------- 2 六合 · 阴阳交感 → Merkaba 双四面体 ---------- */
+    {
+      name: '六合 · 阴阳对旋 Merkaba', dur: 18,
+      enter: function (S) { S.view(8.0); },
+      cap: function () {
+        return '「阴阳交感于<b>六合</b>…隐藏三角四面体内」。六合 = <b>上下 + 四方</b>（±x ±y ±z），即立方体的三组对面。' +
+          '所谓的「三角四面体」不是别的 —— 就是<b>两枚同尺寸的正四面体互锁</b>：一枚顶点朝上（<b>阳</b>）、一枚顶点朝下（<b>阴</b>），' +
+          '二者互为对<b>心</b>点反射；合起来叫 <b>Merkaba</b>（星形四面体 stella octangula）。' +
+          '它的 8 个顶点恰好是一个<b>立方体</b>的 8 个顶点；<b>俯视</b>（沿中轴看下去）则是一个<b>六角星</b>。' +
+          '最后两枚绕同一中轴<b>反向等速旋转</b>：俯视看，一枚逆时针、另一枚顺时针（按 <b>T</b> 键切正俯视看最清楚）。';
+      },
+      info: function () {
+        return '两枚四面体的构造与《<a href="AAA四面体_主界面.html">周髀算经 → 3D 交合</a>》那页<b>完全同源</b>：' +
+          '底面正三角形放在 xy 平面、顶点立在 +z 轴上 ——<br>' +
+          '<span class="eq">V = {(E/√3, 0, 0), (−E/2√3, ±E/2, 0), (0, 0, E√(2/3))}，心 O = (0, 0, E√(2/3)/4)</span>；<br>' +
+          '第二枚 = 对 O 作<b>点反射</b> <span class="eq">x ↦ 2O − x</span>（顶点朝下）。点反射是等距变换 ⇒ 两枚棱长相同、共外接球。<br>' +
+          '取 <span class="eq">E = 2√2</span>：外接球 <span class="eq">R = E√6/4 = √3</span>、内切球 <span class="eq">r = R/3 = √3/3</span>；' +
+          '8 顶点两两距离只有三种 —— 棱 2（12 条）、面对角 2√2（12 条）、体对角 2√3（4 条）⇒ <b>确实构成一个立方体</b>，' +
+          '于是体积比 <span class="eq">立方体 : 双四面体 : 单四面体 = 3 : 2 : 1</span>（单枚恰好是立方体的 1/3）。<br>' +
+          '<b>俯视</b>：两枚各投影成一个等边三角形、互差 180°，6 个顶点落在 0°/60°/…/300° ⇒ 叠成六角星；' +
+          '两枚的<b>顶点都落在俯视图的圆心</b>（正是「尖」朝着你）。<br>' +
+          '<b>对旋</b>：阳转 <span class="eq">+θ</span>、阴转 <span class="eq">−θ</span>。' +
+          '只在 <b>θ ≡ 0 (mod 60°)</b> 时 8 顶点重新拼回那个立方体、整体保持点对称（θ = 60° 时偏差 4×10⁻¹⁶，机器精度）；' +
+          '其余时刻是「扭开的玻璃双四面体」—— 也就是说<b>标准 Merkaba 每 60° 复现一次</b>。<br>' +
+          '<b>俯视看下去</b>（按 T 键即得）：两枚各投影成一个等边三角形（顶点落在圆心），相对夹角恒为 ' +
+          '<span class="eq">60° − 2θ（mod 120°）</span> —— 两枚反向转、而<b>相对转动的角速度是本体转速的两倍</b>：' +
+          'θ = 0° / 60° 时张成正六角星，θ = 30° / 90° 时两枚完全重合（擦身而过）。';
+      },
+      cons: function () {
+        return '<table class="cons">' +
+          '<tr><td>棱长 E</td><td>' + CM.fmt(E_TET, 9) + '（2√2）</td></tr>' +
+          '<tr><td>高 h = E√(2/3)</td><td>' + CM.fmt(TET_H, 9) + '</td></tr>' +
+          '<tr><td>外接球 R = E√6/4</td><td>' + CM.fmt(TET_R, 9) + '（√3）</td></tr>' +
+          '<tr><td>内切球 r = R/3</td><td>' + CM.fmt(TET_R / 3, 9) + '</td></tr>' +
+          '<tr><td>R : r</td><td>3 : 1（与 E 无关）</td></tr>' +
+          '<tr><td>底面外接半径 ρ = E/√3</td><td>' + CM.fmt(E_TET / S3, 9) + '</td></tr>' +
+          '<tr><td>俯视 6 尖方位角</td><td>0° / 60° / 120° / 180° / 240° / 300°</td></tr>' +
+          '<tr><td>8 顶点距离谱</td><td>2×12、2√2×12、2√3×4 ⇒ 立方体</td></tr>' +
+          '<tr><td>体积比 立方 : 双 : 单</td><td>3 : 2 : 1</td></tr>' +
+          '<tr><td>单枚占立方体</td><td>33.3333 %</td></tr>' +
+          '<tr><td>点对称复现周期</td><td>每 60°（单枚自转周期 120°）</td></tr>' +
+          '<tr><td>俯视相对夹角</td><td>≡ 60° − 2θ（mod 120°）</td></tr>' +
+          '</table>';
+      },
+      draw: function (S, t, p) {
+        var a1 = CM.easeOut(CM.clamp(p / 0.09, 0, 1));                 /* 六合立方体 */
+        var a2 = CM.easeOut(CM.clamp((p - 0.09) / 0.14, 0, 1));        /* 阳 */
+        var a3 = CM.easeOut(CM.clamp((p - 0.26) / 0.14, 0, 1));        /* 阴 */
+        var a4 = CM.easeOut(CM.clamp((p - 0.44) / 0.12, 0, 1));        /* 玻璃化 / 立方体退场 */
+        var a5 = CM.easeOut(CM.clamp((p - 0.58) / 0.14, 0, 1));        /* 对旋方向箭头 */
+        var a6 = CM.easeOut(CM.clamp((p - 0.42) / 0.10, 0, 1));        /* 炁球 + 俯视小窗 */
+        var frame = a1 * (1 - a4);
+        /* 对旋角：末了各自 ±120° —— 正四面体自转 120° 复原 ⇒ 末态 = 初态，整段循环无缝 */
+        var th = (2 * Math.PI / 3) * CM.easeIO(CM.clamp((p - 0.56) / 0.44, 0, 1));
+
+        if (frame > 0.01) {
+          for (var e = 0; e < MERK_CUBE_E.length; e++) {
+            S.line(MERK_CUBE[MERK_CUBE_E[e][0]], MERK_CUBE[MERK_CUBE_E[e][1]],
+              { stroke: S.rgba('#8fa6c9', 0.60 * frame), lw: 1.5 });
+          }
+          drawAxes(S, 0.85 * frame);
+        }
+        if (a2 > 0.01) {
+          drawGlassTet(S, MERK_UP, th, { alpha: 0.58 * a2 * (0.55 + 0.45 * a4),
+            hi: '#f7a6b5', mid: '#e0708a', lo: '#7d2740', edge: '#c8385a', lineAlpha: a2, lw: 2.3, glow: 8 });
+        }
+        if (a3 > 0.01) {
+          drawGlassTet(S, MERK_DN, -th, { alpha: 0.58 * a3 * (0.55 + 0.45 * a4),
+            hi: '#a9c2f7', mid: '#5b7bf0', lo: '#1f3d9e', edge: '#3457d5', lineAlpha: a3, lw: 2.3, glow: 8 });
+        }
+        /* 近俯视时：顶点标注会叠在圆心、两条旋转弧也会重合 ⇒ 让位给六角星本身 */
+        var topish = S.cam.pitch > 1.15;
+        if (!topish) {
+          if (a2 > 0.72) S.label(rz(MERK_UP[3], th), '阳 · 顶点朝上', { size: 12, bold: true, color: '#c8385a', dy: -18 });
+          if (a3 > 0.72) S.label(rz(MERK_DN[3], -th), '阴 · 顶点朝下', { size: 12, bold: true, color: '#3457d5', dy: 18 });
+        }
+
+        if (a6 > 0.01) drawQiBall(S, 0.40 * TET_R, a6);
+        /* 对旋期间：本体 + 箭头 + 俯视小窗同时在场 */
+        if (a5 > 0.01 && !topish) {
+          drawSpinArrow(S, TET_R * 1.18, TET_R * 0.72, +1, '#c8385a', a5 * 0.9, '阳 ↺ 逆时针（俯视）');
+          drawSpinArrow(S, -TET_R * 1.18, TET_R * 0.72, -1, '#3457d5', a5 * 0.9, '阴 ↻ 顺时针（俯视）');
+        }
+        drawTopInset(S, th, -th, Math.max(a6 * 0.9, a5));
+        screenTable(S, 18, 58, [
+          ['棱长 E', CM.fmt(E_TET, 6) + '（2√2）'],
+          ['外接球 R / 内切球 r', CM.fmt(TET_R, 6) + ' / ' + CM.fmt(TET_R / 3, 6)],
+          ['R : r', '3 : 1'],
+          ['俯视 6 尖方位角', '0° · 60° · … · 300°'],
+          ['俯视相对夹角', '60° − 2θ（mod 120°）'],
+          ['点对称复现', '每 60°（自转 120°）']
+        ].map(function (r) { return [r[0], r[1], '#7d8ca3', '#3457d5']; }));
+      }
+    },
+
+    /* ---------- 3 正方体视角 · 四重轴 ---------- */
+    {
+      name: '正方体视角 · 四重轴', dur: 14,
+      enter: function (S) { S.view(6.5); S.cam.yaw = 0; S.cam.pitch = TOP_PITCH; },
+      cap: function () {
+        return '同一个星形四面体，<b>换个方向看就是「正方体」</b>。沿立方体的<b>四重轴</b>（某个面的法向）正投影：' +
+          '8 个顶点两两重合到正方形的 4 个角上，12 条棱投影后恰好是' +
+          '<b>正方形的 4 条边 + 2 条对角线</b> —— 这正是「正方体 + 内接叉」那个画面。' +
+          '上一模式沿<b>三重轴</b>看得到六角星，本模式沿四重轴看得到正方形：<b>同一枚几何体，两种标准视图</b>。';
+      },
+      info: function () {
+        return '为什么同一个物体能有两种「标准视图」——来自立方体的两个旋转轴：<br>' +
+          '· <b>四重轴</b>（面法向，共 3 条）：绕它转 90° 图形重合。沿它看 ⇒ 立方体轮廓 = 正方形；' +
+          '此时两枚四面体的 12 条棱<b>恰好投影到正方形的 4 条边与 2 条对角线</b>上（每枚各出 4 条边 + 2 条对角线，两枚互补）。<br>' +
+          '· <b>三重轴</b>（体对角，共 4 条）：绕它转 120° 图形重合。沿它看 ⇒ 立方体轮廓 = <b>正六边形</b>，' +
+          '6 个尖点等距 60°，叠成六角星（上一模式）。<br>' +
+          '· 本模式的摆法是<b>「轴向」摆法</b>：8 个顶点就取 <span class="eq">(±1,±1,±1)</span>，' +
+          '于是立方体与坐标轴对齐，四重轴 = <span class="eq">z</span> 轴，俯视即得正方形。<br>' +
+          '· 它与上一模式「底面朝下、顶点朝上」的摆法（<span class="eq">AAA四面体_主界面.html</code> 的 <span class="eq">rebuild()</span>）' +
+          '<b>是同一枚正四面体</b>：棱长同为 <span class="eq">2√2</span>、外接球同为 <span class="eq">√3</span>，只差一个 45° 左右的旋转。' +
+          '两种摆法各有好处：前者便于做方格阵列（见视频③的 4×4×4），后者便于讲勾股三角形的嵌套。';
+      },
+      cons: function () {
+        return '<table class="cons">' +
+          '<tr><td>摆法</td><td>轴向 (±1,±1,±1)</td></tr>' +
+          '<tr><td>棱长 / 外接球 / 内切球</td><td>2√2 / √3 / √3÷3</td></tr>' +
+          '<tr><td>四重轴数（面法向）</td><td>3（0°,90° 不变）</td></tr>' +
+          '<tr><td>三重轴数（体对角）</td><td>4（0°,120° 不变）</td></tr>' +
+          '<tr><td>沿四重轴看：8 顶点</td><td>→ 4 个角（前 4 后 4 重合）</td></tr>' +
+          '<tr><td>沿四重轴看：12 棱</td><td>→ 4 条边 + 2 条对角线</td></tr>' +
+          '<tr><td>沿三重轴看：轮廓</td><td>正六边形（六角星）</td></tr>' +
+          '</table>';
+      },
+      draw: function (S, t, p) {
+        var a1 = CM.easeOut(CM.clamp(p / 0.10, 0, 1));            /* 阳（粉） */
+        var a2 = CM.easeOut(CM.clamp((p - 0.12) / 0.12, 0, 1));   /* 阴（蓝） */
+        var a3 = CM.easeOut(CM.clamp((p - 0.32) / 0.16, 0, 1));   /* 立方体 12 棱 */
+        var a4 = CM.easeOut(CM.clamp((p - 0.54) / 0.16, 0, 1));   /* 正方形 + X 描出 */
+        var a5 = CM.easeOut(CM.clamp((p - 0.78) / 0.18, 0, 1));   /* 角点标注 */
+
+        var UP = CM.MERK.UP, DN = CM.MERK.DN, CU = CM.MERK.CUBE, k;
+
+        /* 视角软锁定在四重轴上（自动自转由 onFrame 关掉） */
+        S.cam.yaw += (0 - S.cam.yaw) * 0.16;
+        S.cam.pitch += (TOP_PITCH - S.cam.pitch) * 0.16;
+
+        /* 1) 两枚玻璃四面体：8 个顶点两两重合到 4 个角 */
+        if (a1 > 0.01) drawGlassTet(S, UP, 0, { alpha: 0.60 * a1, hi: '#f7a6b5', mid: '#e0708a', lo: '#7d2740', edge: '#c8385a', lineAlpha: 0.92, lw: 2.2 });
+        if (a2 > 0.01) drawGlassTet(S, DN, 0, { alpha: 0.60 * a2, hi: '#a9c2f7', mid: '#5b7bf0', lo: '#1f3d9e', edge: '#3457d5', lineAlpha: 0.92, lw: 2.2 });
+        /* 2) 立方体 12 棱（凸包） */
+        if (a3 > 0.01) {
+          for (k = 0; k < CM.MERK.CUBE_E.length; k++) {
+            S.line(CU[CM.MERK.CUBE_E[k][0]], CU[CM.MERK.CUBE_E[k][1]], { stroke: S.rgba('#5c7a9e', 0.82 * a3), lw: 1.7, bias: 0.02 });
+          }
+        }
+        /* 3) 8 个顶点（带发光 ⇒ 看出「重合」） */
+        for (k = 0; k < 8; k++) S.dot(CU[k], { r: a5 > 0.3 ? 3.4 : 2.6, fill: k < 4 ? '#c8385a' : '#3457d5', glow: 5 });
+
+        /* 4) 中央「炁」球 */
+        drawQiBall(S, 0.44, Math.max(a1, a2) * 0.88);
+
+        /* 5) 屏幕空间叠加：正方形 + 两条对角线（= 12 条棱的投影） */
+        if (a4 > 0.01) {
+          var top4 = [[1, 1, 1], [1, -1, 1], [-1, -1, 1], [-1, 1, 1]];
+          var P4 = top4.map(function (q) { return S.proj(q); });
+          if (P4[0] && P4[1] && P4[2] && P4[3]) {
+            S.item(null, { d: 0.010 }, function (ctx) {
+              ctx.save();
+              ctx.beginPath();
+              ctx.moveTo(P4[0].x, P4[0].y);
+              ctx.lineTo(P4[1].x, P4[1].y);
+              ctx.lineTo(P4[2].x, P4[2].y);
+              ctx.lineTo(P4[3].x, P4[3].y);
+              ctx.closePath();
+              ctx.strokeStyle = 'rgba(224,138,23,' + (0.95 * a4) + ')';
+              ctx.lineWidth = 2.6; ctx.stroke();
+              ctx.beginPath();
+              ctx.moveTo(P4[0].x, P4[0].y); ctx.lineTo(P4[2].x, P4[2].y);
+              ctx.moveTo(P4[1].x, P4[1].y); ctx.lineTo(P4[3].x, P4[3].y);
+              ctx.strokeStyle = 'rgba(200,56,90,' + (0.95 * a4) + ')';
+              ctx.lineWidth = 2.0; ctx.setLineDash([8, 5]); ctx.stroke(); ctx.setLineDash([]);
+              /* 角点标注 */
+              ctx.font = '700 12px "Microsoft YaHei",system-ui,sans-serif';
+              ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+              for (var i = 0; i < 4; i++) {
+                ctx.beginPath(); ctx.arc(P4[i].x, P4[i].y, 5.4, 0, TAU);
+                ctx.fillStyle = 'rgba(255,255,255,0.95)'; ctx.fill();
+                ctx.strokeStyle = 'rgba(224,138,23,1)'; ctx.lineWidth = 2.2; ctx.stroke();
+              }
+              var mx = (P4[0].x + P4[1].x + P4[2].x + P4[3].x) / 4, my = (P4[0].y + P4[1].y + P4[2].y + P4[3].y) / 4;
+              ctx.textAlign = 'left';
+              ctx.fillStyle = '#33415c';
+              ctx.font = '700 13px "Microsoft YaHei",system-ui,sans-serif';
+              ctx.fillText('正方形 = 立方体轮廓', mx + 42, my - 10);
+              ctx.fillStyle = '#c8385a';
+              ctx.font = '600 12px "Microsoft YaHei",system-ui,sans-serif';
+              ctx.fillText('虚线 = 12 条棱的投影（2 对角线）', mx + 42, my + 10);
+              ctx.restore();
+            });
+          }
+        }
+        /* 6) 底部对比提示 */
+        S.ctx.save();
+        S.ctx.font = '700 12.5px "Microsoft YaHei",system-ui,sans-serif';
+        S.ctx.textAlign = 'center'; S.ctx.textBaseline = 'middle';
+        S.ctx.fillStyle = 'rgba(52,87,213,' + (0.55 + 0.45 * a1) + ')';
+        S.ctx.fillText('三重轴 ⇒ 正六边形 / 六角星（上一模式）　｜　四重轴 ⇒ 正方形 + X（本模式）', S.W / 2, S.H - 180);
+        S.ctx.restore();
+
+        screenTable(S, 18, 58, [
+          ['摆法', '轴向 (±1,±1,±1)'],
+          ['棱长 E', CM.fmt(E_TET, 6) + '（2√2）'],
+          ['外接球 R', CM.fmt(TET_R, 6) + '（√3）'],
+          ['8 顶点 → ', '4 个角（前4后4重合）'],
+          ['12 棱 → ', '4 边 + 2 对角线'],
+          ['沿四重轴旋转', '90° 图形不变']
+        ].map(function (r) { return [r[0], r[1], '#7d8ca3', '#3457d5']; }));
+      }
+    },
+
+    /* ---------- 4 星形八面体 · 二面角与内外球比 ---------- */
+    {
+      name: '星形八面体 · 二面角与 R:r', dur: 13,
+      cap: function () {
+        return '去掉立方体，只留两枚互穿正四面体（<b>星形八面体 stella octangula</b>）：它的凸包正是那个立方体，' +
+          '8 个外尖点 = 立方体 8 顶点。此处给出正四面体的两个硬指标：二面角 <span class="eq">arccos(1/3) = ' +
+          CM.fmt(Math.acos(1 / 3) * R2D, 6) + '°</span>，以及外接球与内切球之比 <span class="eq">R : r = 3 : 1</span>。' +
+          '「三角四面体」的稳定性来自这个二面角 —— 它是所有正多面体中<b>最接近平面</b>的一个。';
+      },
+      info: function () {
+        return '正四面体（棱 = a）的闭式量：<br>' +
+          '· 二面角 <span class="eq">arccos(1/3) = ' + CM.fmt(Math.acos(1/3) * R2D, 8) + '°</span>；其半角正切恰为 <span class="eq">√2</span>，即 <b>arctan√2 = ' + CM.fmt(Math.atan(Math.SQRT2) * R2D, 6) + '°</b>——' +
+          '这个角在本项目里反复出现：它同时是「勾股形可内接」的临界角（见主界面通项公式）。<br>' +
+          '· 外接球 <span class="eq">R = a√6/4</span>，内切球 <span class="eq">r = a√6/12</span> ⇒ <b>R : r = 3 : 1</b>（与 a 无关）。<br>' +
+          '· 对称群：旋转群 ≅ <b>A₄</b>（12 阶），含镜像的全对称群 ≅ <b>S₄</b>（24 阶）。<br>' +
+          '· 两个互穿四面体的并集 = 星形八面体；其「内核」是正八面体，正八面体二面角 <span class="eq">' +
+          CM.fmt(Math.acos(-1/3) * R2D, 6) + '°</span>，与四面体二面角<b>互补</b>（和 = 180°）。';
+      },
+      cons: function () {
+        var a = 2 * Math.SQRT2;
+        return '<table class="cons">' +
+          '<tr><td>二面角 arccos(1/3)</td><td>' + CM.fmt(Math.acos(1 / 3) * R2D, 9) + '°</td></tr>' +
+          '<tr><td>半角 arctan√2</td><td>' + CM.fmt(Math.atan(Math.SQRT2) * R2D, 9) + '°</td></tr>' +
+          '<tr><td>R : r</td><td>3 : 1（与 a 无关）</td></tr>' +
+          '<tr><td>R = a√6/4（a = 2√2）</td><td>' + CM.fmt(a * Math.sqrt(6) / 4, 9) + '</td></tr>' +
+          '<tr><td>r = a√6/12</td><td>' + CM.fmt(a * Math.sqrt(6) / 12, 9) + '</td></tr>' +
+          '<tr><td>体积 a³/(6√2)</td><td>' + CM.fmt(a*a*a/(6*Math.SQRT2), 9) + '</td></tr>' +
+          '<tr><td>旋转群 / 全对称群</td><td>A₄ (12) / S₄ (24)</td></tr>' +
+          '<tr><td>正八面体二面角（互补）</td><td>' + CM.fmt(Math.acos(-1 / 3) * R2D, 9) + '°</td></tr>' +
+          '</table>';
+      },
+      draw: function (S, t, p) {
+        var a = CM.easeOut(CM.clamp(p / 0.16, 0, 1));
+        var showS = CM.easeOut(CM.clamp((p - 0.55) / 0.2, 0, 1));
+        drawGlassTet(S, MERK_UP, 0, { alpha: 0.60 * a, hi: '#f7a6b5', mid: '#e0708a', lo: '#7d2740', edge: '#c8385a', lineAlpha: a, lw: 2.3, glow: 8 });
+        drawGlassTet(S, MERK_DN, 0, { alpha: 0.60 * a, hi: '#a9c2f7', mid: '#5b7bf0', lo: '#1f3d9e', edge: '#3457d5', lineAlpha: a, lw: 2.3, glow: 8 });
+        /* 两枚四面体各自的外接球 */
+        if (showS > 0) {
+          S.sphere([0, 0, 0], Math.sqrt(3), { stroke: S.rgba('#0e9c8e', 0.55 * showS), ring: S.rgba('#0e9c8e', 0.22 * showS), rings: 3 });
+          S.sphere([0, 0, 0], Math.sqrt(3) / 3, { stroke: S.rgba('#d1445a', 0.62 * showS), ring: S.rgba('#d1445a', 0.24 * showS), rings: 2 });
+          S.label([1.55, 1.05, 0], 'R = a√6/4', { size: 12, bold: true, color: '#0e9c8e', align: 'left' });
+          S.label([-1.58, 0.30, 0], 'r = a√6/12', { size: 12, bold: true, color: '#d1445a', align: 'right' });
+        }
+        for (var i = 0; i < 4; i++) {
+          S.dot(MERK_UP[i], { r: 3.4, fill: '#c8385a' });
+          S.dot(MERK_DN[i], { r: 3.4, fill: '#3457d5' });
+        }
+        screenTable(S, 18, 58, [
+          ['二面角 arccos(1/3)', CM.fmt(Math.acos(1/3) * R2D, 5) + '°'],
+          ['半角 arctan√2', CM.fmt(Math.atan(Math.SQRT2) * R2D, 5) + '°'],
+          ['R : r', '3 : 1'],
+          ['旋转群 ≅ A₄', '12 阶'],
+          ['全对称群 ≅ S₄', '24 阶']
+        ].map(function (r) { return [r[0], r[1], '#7d8ca3', '#3457d5']; }));
+      }
+    },
+
+    /* ---------- 5 敛藏为一 ---------- */
+    {
+      name: '敛藏为一 · 一元平衡旋转', dur: 12,
+      cap: function () {
+        return '「内藏炁、一元<b>平衡旋转</b>、初始源能、无形无象」——把前面三层结构（七角星 · 六合 · 双四面体）整体<b>收拢成一个节点</b>，' +
+          '只留下旋转。这对应视频所谓「一阶宇宙魔方」：<b>1</b> 是最小单元，其余一切由它的<b>振动与排列</b>生成（下一集《宇宙DNA》就从这里接续）。';
+      },
+      info: function () {
+        return '「一阶」在数学上可以落实为：<b>一个点 + 一个旋转群</b>。<br>' +
+          '· 点：0 维；旋转：<span class="eq">SO(3)</span> 是 3 维李群，其有限子群就是全部<b>点群</b>；' +
+          '正四面体的旋转群 A₄（12 阶）正是其中最小的<b>三维非交换</b>点群之一；<br>' +
+          '· 「平衡旋转」有精确定义：绕任一轴匀速转动的角速度矢量守恒（无外力矩），即 <span class="eq">L = 常数</span>；' +
+          '视频把这个守恒量称为「一元」。<br>' +
+          '· 本模式做的收拢映射是 <span class="eq">x ↦ s·x, s : 1 → 0.04</span>——一个真实的相似变换（homothety），' +
+          '它把体积按 <span class="eq">s³</span> 缩掉 4 个数量级；但注意：<b>几何能收拢，象征不能</b>。' +
+          '「炁」「初始源能」在物理上没有对应量，本页只复现这件事的几何骨架。';
+      },
+      cons: function () {
+        return '<table class="cons">' +
+          '<tr><td>收拢变换</td><td>x ↦ s·x（相似变换）</td></tr>' +
+          '<tr><td>s 从 1 → 0.04</td><td>体积比 s³ = 6.4×10⁻⁵</td></tr>' +
+          '<tr><td>一阶节点维度</td><td>0</td></tr>' +
+          '<tr><td>旋转群 SO(3)</td><td>3 维李群</td></tr>' +
+          '<tr><td>四面体旋转子群</td><td>A₄，12 阶</td></tr>' +
+          '<tr><td>角动量 L</td><td>守恒（无外力矩）</td></tr>' +
+          '</table>';
+      },
+      draw: function (S, t, p) {
+        var s = 1 - 0.96 * CM.easeIO(CM.clamp(p / 0.55, 0, 1));
+        var glow = CM.ping(CM.clamp((p - 0.45) / 0.55, 0, 1));
+        if (s > 0.06) {
+          drawCube(S, CM.clamp((s - 0.06) / 0.94, 0, 1), s, '#8fa6c9');
+          drawTet(S, MERK_UP, '#c8385a', '#c8385a', 0.9, s);
+          drawTet(S, MERK_DN, '#3457d5', '#3457d5', 0.9, s);
+          /* 七角星也一起收拢（缩放后再画，不能用全尺寸的 drawStar） */
+          var base = H7A.map(function (q) { return sc(tumble(q, t), s); });
+          for (var i = 0; i < 7; i++) S.line(base[i], base[(i + 2) % 7], { stroke: S.rgba('#3457d5', 0.70), lw: 2 });
+          for (var i2 = 0; i2 < 7; i2++) S.dot(base[i2], { r: 2.6, fill: CM.HUES[i2] });
+        }
+        /* 收拢后的核心节点 */
+        var k = 1 - CM.easeIO(CM.clamp(p / 0.55, 0, 1));
+        S.dot([0, 0, 0], { r: 5 + 10 * glow, fill: '#7a51c9', glow: 16 + 22 * glow });
+        S.sphere([0, 0, 0], 0.30 + 0.55 * glow, { stroke: S.rgba('#7a51c9', 0.30 + 0.45 * glow), ring: S.rgba('#7a51c9', 0.14 + 0.3 * glow), rings: 3 });
+        S.label([0, 0, 0], p < 0.5 ? '敛藏' : '一元', { dy: -26 - 6 * glow, size: 13, bold: true, color: '#7a51c9' });
+        if (p > 0.62) {
+          S.label([0, 0, 0], '初始源能 · 无形无象', { dy: 30, size: 12.5, bold: true, color: '#7d8ca3' });
+        }
+        screenTable(S, 18, 58, [
+          ['相似比 s', CM.fmt(s, 4)],
+          ['体积比 s³', CM.fmtE(s * s * s, 3)],
+          ['节点数', '1（一阶）'],
+          ['旋转群 A₄', '12 阶'],
+          ['角动量 L', '守恒']
+        ].map(function (r) { return [r[0], r[1], '#7d8ca3', '#3457d5']; }));
+      }
+    }
+  ];
+
+  /* ================= 启动 ================= */
+  /* 自转开关的「唯一真源」：
+       要关掉自转的有两件事 —— ②「正方体视角 · 四重轴」模式、以及 T 键的正俯视。
+       把两者写成一个函数，谁都不会覆盖谁（旧版在退出俯视时无条件 autoSpin = true，
+       若此时仍在正方体视角模式，正方形就会被慢慢转歪）。 */
+  var inCubeView = false, topView = false, savedYaw = -0.62, savedPitch = 0.30;
+  var lastMode = -1;
+  function syncSpin() { APP.autoSpin = !(topView || APP.mode === 2); }
+  var APP = CM.create({
+    canvas: '#cv',
+    dist: 5.6,
+    yaw: -0.62, pitch: 0.30,
+    modes: MODES,
+    backdrop: function (ctx, W, H) {
+      var g = ctx.createRadialGradient(W * 0.5, H * 0.42, 10, W * 0.5, H * 0.5, Math.max(W, H) * 0.62);
+      g.addColorStop(0, 'rgba(52,87,213,0.045)');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    },
+    onFrame: function (S, dt) {
+      /* 只在「模式变了」时重算，既不会每帧覆盖、也不会和 T 键打架 */
+      if (S.mode !== lastMode) { lastMode = S.mode; inCubeView = (S.mode === 2); syncSpin(); }
+    }
+  });
+  /* T 键：切「俯视（沿中轴 z）」/ 回侧视 —— 俯视看两个三角形反向旋转最清楚 */
+  window.addEventListener('keydown', function (e) {
+    if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+    if (e.key === 't' || e.key === 'T') {
+      topView = !topView;
+      if (topView) {
+        savedYaw = APP.cam.yaw; savedPitch = APP.cam.pitch;
+        APP.cam.yaw = 0; APP.cam.pitch = TOP_PITCH;   /* ≈ 89°，正俯视但不落到相机退化点 */
+      } else {
+        APP.cam.yaw = savedYaw; APP.cam.pitch = savedPitch;
+      }
+      syncSpin();                                    /* 关自转与否由 topView / 模式共同决定 */
+    } else if (e.key === 'r' || e.key === 'R') {
+      topView = false; syncSpin();
+    }
+  });
+  window.__app = APP;
+})();
+</script>
+</body>
+</html>

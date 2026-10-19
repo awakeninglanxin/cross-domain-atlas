@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>总入口 · 全部网页总览（瑟尔 nb 网页版 + harmonograph）</title>
+<style>
+*{box-sizing:border-box}
+:root{
+  --bg:#0b0713;--panel:#161022;--panel2:#1e1631;--line:#2f2247;
+  --fg:#efe9f8;--dim:#9d90b8;--acc:#b06cff;--acc2:#4fd8ff;--gold:#ffc44d;
+}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font-family:"Microsoft YaHei","PingFang SC",-apple-system,"Segoe UI",sans-serif;
+  line-height:1.65;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(900px 520px at 12% -8%,rgba(176,108,255,.16),transparent 62%),
+    radial-gradient(760px 460px at 96% 2%,rgba(79,216,255,.12),transparent 60%),
+    radial-gradient(700px 600px at 50% 108%,rgba(128,0,128,.14),transparent 62%)}
+.wrap{position:relative;z-index:1;max-width:1360px;margin:0 auto;padding:30px 22px 70px}
+
+/* ---------- header ---------- */
+header{border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:8px}
+h1{margin:0 0 8px;font-size:27px;letter-spacing:.4px;line-height:1.35}
+h1 b{color:var(--acc)}
+h1 .thin{color:var(--dim);font-weight:400;font-size:19px}
+.badge{display:inline-block;background:rgba(176,108,255,.15);border:1px solid rgba(176,108,255,.45);
+  color:#dcc2ff;border-radius:999px;padding:1px 10px;font-size:11.5px;vertical-align:middle;
+  margin-left:8px;white-space:nowrap}
+.badge.g{background:rgba(255,196,77,.13);border-color:rgba(255,196,77,.45);color:#ffdd9a}
+.sub{color:var(--dim);font-size:13.2px;margin:0}
+.stats{display:flex;flex-wrap:wrap;gap:9px;margin:16px 0 4px}
+.stat{background:linear-gradient(180deg,rgba(30,22,49,.9),rgba(22,16,34,.9));
+  border:1px solid var(--line);border-radius:10px;padding:8px 14px;min-width:104px}
+.stat b{display:block;font-size:19px;color:var(--acc2);line-height:1.3}
+.stat span{font-size:11.5px;color:var(--dim)}
+
+/* ---------- 工具条 ---------- */
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:20px 0 4px;
+  position:sticky;top:0;z-index:20;padding:11px 0;
+  background:linear-gradient(180deg,rgba(11,7,19,.97) 60%,rgba(11,7,19,.72));
+  backdrop-filter:blur(7px);border-bottom:1px solid rgba(47,34,71,.55)}
+#q{flex:1 1 260px;min-width:200px;background:var(--panel2);border:1px solid var(--line);
+  color:var(--fg);border-radius:10px;padding:9px 13px;font-size:13.5px;outline:none;
+  font-family:inherit;transition:.16s}
+#q:focus{border-color:rgba(176,108,255,.85);box-shadow:0 0 0 3px rgba(176,108,255,.14)}
+#q::placeholder{color:#6f6490}
+.chips{display:flex;gap:7px;flex-wrap:wrap}
+.chip{background:var(--panel2);border:1px solid var(--line);color:var(--dim);
+  border-radius:999px;padding:6px 14px;font-size:12.6px;cursor:pointer;user-select:none;
+  transition:.16s;font-family:inherit}
+.chip:hover{color:var(--fg);border-color:rgba(176,108,255,.6)}
+.chip.on{background:rgba(176,108,255,.2);border-color:rgba(176,108,255,.8);color:#e7d6ff;font-weight:600}
+#cnt{color:var(--dim);font-size:12.4px;white-space:nowrap}
+
+/* ---------- 分组 ---------- */
+.sec{margin:34px 0 0}
+.sec.hide{display:none}
+.shd{display:flex;align-items:baseline;gap:11px;flex-wrap:wrap;
+  border-left:4px solid var(--acc);padding-left:11px;margin-bottom:7px}
+.shd h2{margin:0;font-size:19px;letter-spacing:.3px}
+.shd .note{color:var(--dim);font-size:12.6px}
+.sdesc{color:var(--dim);font-size:12.9px;margin:0 0 15px;padding-left:15px}
+
+/* ---------- 卡片 ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(392px,1fr));gap:15px}
+.card{display:flex;flex-direction:column;text-decoration:none;color:inherit;
+  background:linear-gradient(180deg,rgba(30,22,49,.86),rgba(19,13,30,.92));
+  border:1px solid var(--line);border-radius:14px;padding:15px 17px 13px;
+  position:relative;overflow:hidden;transition:transform .16s ease,border-color .16s,
+  box-shadow .18s,background .18s}
+.card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:linear-gradient(180deg,var(--acc),var(--acc2));opacity:.42;transition:opacity .16s}
+.card:hover{transform:translateY(-3px);border-color:rgba(176,108,255,.72);
+  box-shadow:0 16px 40px rgba(0,0,0,.55),0 0 0 1px rgba(176,108,255,.14);
+  background:linear-gradient(180deg,rgba(38,28,61,.95),rgba(22,16,34,.96))}
+.card:hover::before{opacity:1}
+.card[data-kind="报告"]::before{background:linear-gradient(180deg,var(--gold),#ff9f4d)}
+.chd{display:flex;align-items:flex-start;gap:10px;margin-bottom:7px}
+.num{flex:0 0 auto;font-size:11.5px;color:#c9b6ea;background:rgba(176,108,255,.16);
+  border:1px solid rgba(176,108,255,.34);border-radius:7px;padding:1px 7px;
+  font-family:Consolas,monospace;margin-top:4px}
+.chd h3{margin:0;font-size:15.8px;line-height:1.45;flex:1;letter-spacing:.2px}
+.chd h3 .en{display:block;font-size:11.9px;color:var(--dim);font-weight:400;
+  letter-spacing:.2px;margin-top:1px}
+.star{color:var(--gold);font-size:13px;margin-left:5px;vertical-align:2px}
+.kbadge{flex:0 0 auto;font-size:11px;border-radius:999px;padding:2px 9px;margin-top:3px;white-space:nowrap}
+.k-交互{background:rgba(79,216,255,.13);border:1px solid rgba(79,216,255,.42);color:#a8ecff}
+.k-报告{background:rgba(255,196,77,.13);border:1px solid rgba(255,196,77,.42);color:#ffdd9a}
+.desc{margin:0 0 11px;font-size:13.1px;color:#c8bede;flex:1}
+.desc code{font-family:Consolas,"Cascadia Mono",monospace;font-size:12.1px;
+  background:rgba(176,108,255,.13);border:1px solid rgba(176,108,255,.22);
+  padding:0 4px;border-radius:4px;color:#dcc2ff}
+.desc b{color:#ffd9a0}
+.metas{display:flex;flex-direction:column;gap:3px;margin-bottom:11px;
+  border-top:1px dashed rgba(47,34,71,.9);padding-top:9px}
+.mrow{display:flex;gap:8px;font-size:12.1px;line-height:1.5}
+.mk{flex:0 0 38px;color:#7d719e;text-align:justify;text-align-last:justify}
+.mv{color:#b6aad2;flex:1;word-break:break-word}
+.mv.gold{color:var(--gold)}
+.cft{display:flex;justify-content:space-between;align-items:center;
+  font-size:12.2px;color:var(--dim)}
+.cft .dot{margin:0 6px;opacity:.5}
+.cft .go{color:var(--acc);font-weight:600;transition:transform .16s}
+.card:hover .cft .go{transform:translateX(3px)}
+
+/* ---------- 说明 / footer ---------- */
+.note-box{margin:16px 0 0;background:rgba(79,216,255,.055);border:1px solid rgba(79,216,255,.24);
+  border-left:4px solid var(--acc2);border-radius:10px;padding:11px 15px;font-size:12.7px;color:#a9c4d6}
+.note-box b{color:#cdefff}
+.note-box code{font-family:Consolas,monospace;background:rgba(0,0,0,.3);padding:0 5px;
+  border-radius:4px;color:#9fe3ff}
+footer{margin-top:44px;border-top:1px solid var(--line);padding-top:18px;color:var(--dim);font-size:12.6px}
+footer h2{font-size:15px;color:#cbbfe4;margin:0 0 9px}
+.ptodo{list-style:none;margin:0 0 18px;padding:0;display:flex;flex-direction:column;gap:6px}
+.ptodo li{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;
+  background:rgba(30,22,49,.6);border:1px solid var(--line);border-radius:9px;padding:7px 13px}
+.ptodo b{color:#d9cdf2;font-weight:600;font-size:13px}
+.ptodo code{font-family:Consolas,monospace;font-size:11.9px;color:#9d90b8}
+.ptodo span{color:#8b80a8;font-size:12.1px}
+.gen{margin:0;line-height:1.9}
+.gen code{font-family:Consolas,monospace;background:rgba(0,0,0,.28);padding:0 5px;border-radius:4px}
+.card.hide{display:none}
+.nores{display:none;padding:34px 0;text-align:center;color:var(--dim);font-size:13.4px}
+@media (max-width:880px){
+  .grid{grid-template-columns:1fr}
+  .wrap{padding:22px 14px 56px}
+  h1{font-size:22px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>总入口 · <b>全部网页总览</b>
+    <span class="badge">本地文件 · 双击即用</span>
+    <span class="badge g">零外部依赖</span>
+  </h1>
+  <p class="sub">
+    <span class="thin">瑟尔讲解所需 nb → 网页版　＋　harmonograph 专区　＋　pintograph 三相探索台</span>
+  </p>
+  <div class="stats">
+    <div class="stat"><b>16</b><span>收录页面</span></div>
+    <div class="stat"><b>9</b><span>nb 网页版</span></div>
+    <div class="stat"><b>2</b><span>harmonograph</span></div>
+    <div class="stat"><b>2</b><span>pintograph</span></div>
+    <div class="stat"><b>13</b><span>可交互</span></div>
+    <div class="stat"><b>8.67 MB</b><span>合计体积</span></div>
+  </div>
+</header>
+
+<div class="bar">
+  <input id="q" type="search" placeholder="搜索：标题 / 英文名 / 文件名…（按 / 快速定位）">
+  <div class="chips">
+    <button class="chip on" data-f="all">全部</button>
+    <button class="chip" data-f="nb">nb 网页版</button>
+    <button class="chip" data-f="hg">harmonograph</button>
+    <button class="chip" data-f="pg">pintograph ★</button>
+    <button class="chip" data-f="more">延伸阅读</button>
+    <button class="chip" data-f="交互">可交互</button>
+    <button class="chip" data-f="报告">报告</button>
+  </div>
+  <span id="cnt"></span>
+</div>
+
+<section class="sec" data-sec="nb">
+  <div class="shd">
+    <h2>一、瑟尔讲解所需 nb → 网页版</h2>
+    <span class="note">原 nb 的四段定义一字未改，逐参数复刻；全部为单文件、双击即用</span>
+  </div>
+  <p class="sdesc">源目录：<code>D:\AAA我的文件\PKS_千禧难题_GitHub版\02_应用科技\24_searl_SEG\瑟尔讲解所需nb</code>　｜　各页配套说明书见同目录 <code>*网页版_使用与原理说明.md</code></p>
+  <div class="grid">
+      <a class="card" href="_瑟尔nb网页镜像/圆环表面绕行模拟TorusPaths.html" data-g="nb" data-kind="交互"
+         data-k="圆环表面绕行模拟 torus paths 圆环表面绕行模拟toruspaths.html 环面 甜甜圈 torus knot 纽结 缠绕 三叶结">
+        <div class="chd">
+          <span class="num">01</span>
+          <h3>圆环表面绕行模拟<span class="en">Torus Paths</span></h3>
+          <span class="kbadge k-交互">交互</span>
+        </div>
+        <p class="desc">环面（甜甜圈）表面上的一条缠绕曲线：绕洞 <code>n</code> 圈的同时穿洞 <code>k</code> 圈。<code>(2,3)</code> 是三叶结，<code>(2,5)</code> 是外科结。原版 9 个控件一个不少。</p>
+        <div class="metas">          <div class="mrow"><span class="mk">原 nb</span><span class="mv">圆环表面绕行模拟.nb</span></div>
+          <div class="mrow"><span class="mk">出处</span><span class="mv">Wolfram Demonstration《Torus Paths》· Tom Verhoeff</span></div>
+          <div class="mrow"><span class="mk">渲染</span><span class="mv">Three.js r160（内联）· 真 3D</span></div>
+          <div class="mrow"><span class="mk">验证</span><span class="mv">139 项桩测断言</span></div></div>
+        <div class="cft">
+          <span class="size">📄 697.7 KB<span class="dot">·</span>10-07 11:23</span>
+          <span class="go">打开 →</span>
+        </div>
+      </a>
+
+      <a class="card" href="_瑟尔nb网页镜像/频率弦投影FrequencyChordProjection.html" data-g="nb" data-kind="交互"
+         data-k="频率弦投影 frequency chord projection 频率弦投影frequencychordprojection.html 弦 圆 分割 频率 投影 上色 线宽">
+        <div class="chd">
+          <span class="num">02</span>
+          <h3>频率弦投影<span class="en">Frequency Chord Projection</span></h3>
+          <span class="kbadge k-交互">交互</span>
+        </div>
+        <p class="desc">圆周等分点两两连弦。先画完所有黑段、再画所有白段——<b>绘制顺序才是图案成型的关键</b>。另加一层按弦序绕圆一周的上色（含 matplotlib 官方 256 级色表）。</p>
+        <div class="metas">          <div class="mrow"><span class="mk">原 nb</span><span class="mv">圆内多分割反射线FrequencyChordProjection-author.nb</span></div>
+          <div class="mrow"><span class="mk">出处</span><span class="mv">Wolfram Demonstration · Michael Schreiber</span></div>
+          <div class="mrow"><span class="mk">渲染</span><span class="mv">纯 2D Canvas</span></div>
+          <div class="mrow"><span class="mk">验证</span><span class="mv">桩测 + 参考渲染六组对拍</span></div></div>
+        <div class="cft">
+          <span class="size">📄 45.7 KB<span class="dot">·</span>10-07 12:05</span>
+          <span class="go">打开 →</span>
+        </div>
+      </a>
+
+      <a class="card" href="_瑟尔nb网页镜像/勾股树PythagorasTree.html" data-g="nb" data-kind="交互"
+         data-k="勾股树 pythagoras tree 勾股树pythagorastree.html 分形 树 正方形 勾股 螺旋 直角">
+        <div class="chd">
+          <span class="num">03</span>
+          <h3>勾股树<span class="en">Pythagoras Tree</span></h3>
+          <span class="kbadge k-交互">交互</span>
+        </div>
+        <p class="desc">分形树：每次在直角三角形的两条腰上各生一个正方形，无限迭代。<code>bend = 5.35</code>（原版默认）⇒ 折角 33.64°，长出一棵卷曲的螺旋树。</p>
+        <div class="metas">          <div class="mrow"><span class="mk">原 nb</span><span class="mv">勾股树.nb</span></div>
+          <div class="mrow"><span class="mk">出处</span><span class="mv">Wolfram 分形树 · Ed Pegg Jr. 风格</span></div>
+          <div class="mrow"><span class="mk">渲染</span><span class="mv">纯 2D Canvas</span></div>
+          <div class="mrow"><span class="mk">验证</span><span class="mv">19 种配色，几何一字不差</span></div></div>
+        <div class="cft">
+          <span class="size">📄 46.5 KB<span class="dot">·</span>10-07 12:25</span>
+          <span class="go">打开 →</span>
+        </div>
+      </a>
+
+      <a class="card" href="_瑟尔nb网页镜像/滚筒轨迹融合工作台SeArlRollerStudio.html" data-g="nb" data-kind="交互"
+         data-k="瑟尔滚筒轨迹融合工作台 searl roller studio 滚筒轨迹融合工作台searlrollerstudio.html 瑟尔 searl 滚筒 转子 定子 外摆线 epitrochoid 磁 包络 统一模型">
+        <div class="chd">
+          <span class="num">04</span>
+          <h3>瑟尔滚筒轨迹融合工作台<span class="en">SeArl Roller Studio</span></h3>
+          <span class="kbadge k-交互">交互</span>
+        </div>
+        <p class="desc">统一模型 <code>n / r / ρ</code> 把 ①②③④ 四张图绑成一套，<b>改一处四张一起变</b>；④ 已从「四滚筒」改为「定子红圈 + n 个外围转子」。面板C 收的是线族<b>包络</b>。</p>
+        <div class="metas">          <div class="mrow"><span class="mk">原 nb</span><span class="mv">瑟尔滚筒环绕定子轨迹模拟Epitrochoids.nb ＋ searl 4滚筒模拟MultipleFerrisWheels-author.nb</span></div>
+          <div class="mrow"><span class="mk">出处</span><span class="mv">Bruce Fast ／ Ben Dillon & Charles Logue</span></div>
+          <div class="mrow"><span class="mk">渲染</span><span class="mv">纯 2D Canvas ×7</span></div>
+          <div class="mrow"><span class="mk">验证</span><span class="mv">周期 / 闭合数值断言</span></div>
+          <div class="mrow"><span class="mk">归档</span><span class="mv gold">7 张 900×900 · 30 帧 GIF</span></div></div>
+        <div class="cft">
+          <span class="size">📄 98.5 KB<span class="dot">·</span>10-07 13:26</span>
+          <span class="go">打开 →</span>
+        </div>
+      </a>
+
+      <a class="card" href="_瑟尔nb网页镜像/多边形可变反射迭代图形IterativelyReflectedNGons.html" data-g="nb" data-kind="交互"
+         data-k="（超美）多边形可变反射迭代图形 iteratively reflected n-gons 多边形可变反射迭代图形iterativelyreflectedngons.html 反射 镜子 多边形 ngon 迭代 分形 万花筒 五角星">
+        <div class="chd">
+          <span class="num">05</span>
+          <h3>（超美）多边形可变反射迭代图形<span class="en">Iteratively Reflected n-gons</span></h3>
+          <span class="kbadge k-交互">交互</span>
+        </div>
+        <p class="desc">把多边形的每条边都当成一面镜子照过去，照出来的新图形每条边又是镜子，如此反复。<code>n=12, o=3</code> 时共有 <b>14 425</b> 条线。原版静图之外，另加「逐代渐显」「α 扫描」两条动画。</p>
+        <div class="metas">          <div class="mrow"><span class="mk">原 nb</span><span class="mv">（超美）多边形可变反射迭代图形IterativelyReflectedNGons-author.nb</span></div>
+          <div class="mrow"><span class="mk">出处</span><span class="mv">Wolfram Demonstrations 投稿</span></div>
+          <div class="mrow"><span class="mk">渲染</span><span class="mv">纯 2D Canvas ×5</span></div>
+          <div class="mrow"><span class="mk">验证</span><span class="mv">93 数学 + 254 桩测 + 75 在线对拍 = 422 项</span></div>
+          <div class="mrow"><span class="mk">归档</span><span class="mv gold">2 张 GIF</span></div></div>
+        <div class="cft">
+          <span class="size">📄 58.8 KB<span class="dot">·</span>10-07 13:58</span>
+          <span class="go">打开 →</span>
+        </div>
+      </a>
+
+      <a class="card" href="_瑟尔nb网页镜像/方面转圆环ChartForATorus.html" data-g="nb" data-kind="交互"
+         data-k="方面转圆环 chart for a torus 方面转圆环chartforatorus.html ">
+        <div class="chd">
+          <span class="num">06</span>
+          <h3>方面转圆环<span class="en">Chart for a Torus</span></h3>
+          <span class="kbadge k-交互">交互</span>
+        </div>
+        <p class="desc"><code>TorusToPlane</code> 一族映射：<code>λ</code> 从 0（环面）连续走到 2（平面），中间 <code>λ=1</code> 恰好是圆柱 —— 两支在 λ=1 处严丝合缝，不是硬切。另配两个转盘挑点，看映射把 <code>(u,v)</code> 送到哪里。</p>
+        <div class="metas">          <div class="mrow"><span class="mk">原 nb</span><span class="mv">方面转圆环ChartForATorus-author.nb</span></div>
+          <div class="mrow"><span class="mk">出处</span><span class="mv">Wolfram Demonstration《Chart for a Torus》</span></div>
+          <div class="mrow"><span class="mk">渲染</span><span class="mv">纯 2D Canvas ×8 + 自写 3D 内核</span></div>
+          <div class="mrow"><span class="mk">验证</span><span class="mv">81 数学 + 37 内核 + 121 在线 + 170 桩测 = 409 项</span></div>
+          <div class="mrow"><span class="mk">归档</span><span class="mv gold">旋转 / λ 扫描 GIF</span></div></div>
+        <div class="cft">
+          <span class="size">📄 70.1 KB<span class="dot">·</span>10-07 16:16</span>
+          <span class="go">打开 →</span>
+        </div>
+      </a>
+
+      <a class="card" href="_瑟尔nb网页镜像/多面体内反射线DiagonalsOfPolyhedra.html" data-g="nb" data-kind="交互"
+         data-k="多面体内反射线 diagonals of polyhedra 多面体内反射线diagonalsofpolyhedra.html ">
+        <div class="chd">
+          <span class="num">07</span>
+          <h3>多面体内反射线<span class="en">Diagonals of Polyhedra</span></h3>
+          <span class="kbadge k-交互">交互</span>
+        </div>
+        <p class="desc">把多面体的全部顶点两两连线（<code>C(n,2)</code> 条，含棱 + 面对角线 + 体对角线），再把壳做成半透明 —— 壳内的每一道「内反射线」都看得见。155 个多面体可切，全库弦数合计 <b>72 339</b> 条；正十二面体那 190 条是颗星，足球的 1 770 条是一片光网。</p>
+        <div class="metas">          <div class="mrow"><span class="mk">原 nb</span><span class="mv">多面体内反射线DiagonalsOfPolyhedra-author.nb</span></div>
+          <div class="mrow"><span class="mk">出处</span><span class="mv">Wolfram Demonstration《Diagonals of Polyhedra》</span></div>
+          <div class="mrow"><span class="mk">渲染</span><span class="mv">纯 2D Canvas + 自写 3D 内核</span></div>
+          <div class="mrow"><span class="mk">验证</span><span class="mv">62 数学 + 61 在线 + 170 桩测 = 293 项</span></div>
+          <div class="mrow"><span class="mk">归档</span><span class="mv gold">4 张 880×720 · 30 帧 GIF</span></div></div>
+        <div class="cft">
+          <span class="size">📄 245.4 KB<span class="dot">·</span>10-07 17:08</span>
+          <span class="go">打开 →</span>
+        </div>
+      </a>
+
+      <a class="card" href="_瑟尔nb网页镜像/分形环套环RecursiveExercisesVITori.html" data-g="nb" data-kind="交互"
+         data-k="分形环套环 recursive exercises vi: tori 分形环套环recursiveexercisesvitori.html 分形 递归 环 圆环 torus 套环 generate 自相似 层级 主半径 管半径 环套环">
+        <div class="chd">
+          <span class="num">08</span>
+          <h3>分形环套环<span class="en">Recursive Exercises VI: Tori</span></h3>
+          <span class="kbadge k-交互">交互</span>
+        </div>
+        <p class="desc">p 个环摆成一圈，再在<b>每个环的主圆上</b>摆 p 个更小的环，如此递归 g 层 —— <code>generate</code> 只有 6 行，环数却是 <code>1+p+…+p^g</code>（p=4,g=4 时 <b>341</b> 只）。子环中心恰落在父环主圆上、主半径逐层<b>减半</b>而管半径<b>恒为 0.5</b>。⚠ nb 默认视角 <code>ViewPoint-&gt;{0,0,100}</code> 那一帧是退化的，本页默认给 3/4 视角。</p>
+        <div class="metas">          <div class="mrow"><span class="mk">原 nb</span><span class="mv">分形环套环RecursiveExercisesVITori-author.nb</span></div>
+          <div class="mrow"><span class="mk">出处</span><span class="mv">Wolfram Demonstration《Recursive Exercises VI: Tori》· Michael Schreiber</span></div>
+          <div class="mrow"><span class="mk">渲染</span><span class="mv">纯 2D Canvas + 自写 3D 内核</span></div>
+          <div class="mrow"><span class="mk">验证</span><span class="mv">55 数学 + 37 在线 + 209 桩测 = 301 项</span></div>
+          <div class="mrow"><span class="mk">归档</span><span class="mv gold">7 张 880×720 · 30 帧 GIF</span></div></div>
+        <div class="cft">
+          <span class="size">📄 65.5 KB<span class="dot">·</span>10-07 17:52</span>
+          <span class="go">打开 →</span>
+        </div>
+      </a>
+
+      <a class="card" href="_瑟尔nb网页镜像/圆环灯罩参数可变.html" data-g="nb" data-kind="交互"
+         data-k="圆环灯罩参数可变 variable lamp-shade of ring disks 圆环灯罩参数可变.html 灯罩 圆环 月牙 环片 片 tilt 倾角 孔 孔大小 shift 平移 多边形 交错 编织 红黄 画家算法">
+        <div class="chd">
+          <span class="num">09</span>
+          <h3>圆环灯罩参数可变<span class="en">Variable Lamp-Shade of Ring Disks</span></h3>
+          <span class="kbadge k-交互">交互</span>
+        </div>
+        <p class="desc">一张带孔月牙环片，平移 <code>shift</code>、朝一侧倾 <code>tilt</code>、绕 z 复制 <code>m</code> 份 ⇒ 红组；同一张片朝<b>另一侧</b>倾 <code>−tilt</code> 再复制 m 份 ⇒ 黄组；两组交错编成灯罩。<code>Polygon[Join[frame,hole]]</code> 的两圈<b>同向</b>，照抄会把孔填实、<code>d</code> 控件失效 —— 本页按<b>月牙</b>（外 n 边形 ∩ 孔圆之外）拆成 <code>2mn</code> 条<b>不自交</b>四边形，逐面做深度排序。⚠ <code>n</code> 不是 4 的倍数时孔会探出外圈（几何必然，页面已标注）。</p>
+        <div class="metas">          <div class="mrow"><span class="mk">原 nb</span><span class="mv">（重点）圆环灯罩参数可变.nb</span></div>
+          <div class="mrow"><span class="mk">出处</span><span class="mv">自建 nb · 瑟尔讲解系列</span></div>
+          <div class="mrow"><span class="mk">渲染</span><span class="mv">纯 2D Canvas + 自写 3D 内核</span></div>
+          <div class="mrow"><span class="mk">验证</span><span class="mv">213 桩测 + 53 在线对拍 = 266 项（最大偏差 4.97e-16）</span></div>
+          <div class="mrow"><span class="mk">归档</span><span class="mv gold">9 张 880×880 · 30 帧 GIF</span></div></div>
+        <div class="cft">
+          <span class="size">📄 66.4 KB<span class="dot">·</span>10-07 20:06</span>
+          <span class="go">打开 →</span>
+        </div>
+      </a>
+
+  </div>
+</section>
+
+<section class="sec" data-sec="hg">
+  <div class="shd">
+    <h2>二、harmonograph 专区 <span class="star" style="font-size:15px">★</span></h2>
+    <span class="note">你点名的两个「最新版」；与总览页同目录，直接打开</span>
+  </div>
+  <p class="sdesc">harmonograph 纹样的交互探索器与专题解剖报告。</p>
+  <div class="grid">
+      <a class="card" href="浑天仪探索器.html" data-g="hg" data-kind="交互"
+         data-k="浑天仪探索器 v3 · 四频率独立可调 浑天仪探索器.html harmonograph 浑天仪 臂线 频率 纹样 探索器">
+        <div class="chd">
+          <span class="num">01</span>
+          <h3>浑天仪探索器<span class="star">★</span><span class="en">v3 · 四频率独立可调</span></h3>
+          <span class="kbadge k-交互">交互</span>
+        </div>
+        <p class="desc">浑天仪（臂线）纹样的参数探索器：四个频率各自独立可调，右侧浮框边看图边调。</p>
+        <div class="metas">          <div class="mrow"><span class="mk">渲染</span><span class="mv">纯 2D Canvas ×3</span></div></div>
+        <div class="cft">
+          <span class="size">📄 218.3 KB<span class="dot">·</span>10-07 10:45</span>
+          <span class="go">打开 →</span>
+        </div>
+      </a>
+
+      <a class="card" href="瑟尔harmonograph_按住松手之谜.html" data-g="hg" data-kind="报告"
+         data-k="瑟尔 harmonograph 按住松手之谜 采样赝像解剖 · v2 含真相 瑟尔harmonograph_按住松手之谜.html harmonograph 浑天仪 赝像 采样 实心盘 按住">
+        <div class="chd">
+          <span class="num">02</span>
+          <h3>瑟尔 harmonograph 按住松手之谜<span class="star">★</span><span class="en">采样赝像解剖 · v2 含真相</span></h3>
+          <span class="kbadge k-报告">报告</span>
+        </div>
+        <p class="desc">按住鼠标出「浑天仪」、松手变「实心盘」—— 逐层拆开这个采样赝像的成因，并给出真相。</p>
+        <div class="metas">          <div class="mrow"><span class="mk">渲染</span><span class="mv">报告式长文</span></div></div>
+        <div class="cft">
+          <span class="size">📄 1.57 MB<span class="dot">·</span>10-06 21:48</span>
+          <span class="go">打开 →</span>
+        </div>
+      </a>
+
+  </div>
+</section>
+
+<section class="sec" data-sec="pg">
+  <div class="shd">
+    <h2>三、pintograph 三相探索台 <span class="star" style="font-size:15px">★</span></h2>
+    <span class="note">pintograph（平动式 harmonograph）三模型同台 · 单文件双击即用</span>
+  </div>
+  <p class="sdesc">
+    与总览页同目录，直接打开。配套 <b>8 份说明 md</b> 在 <code>pintograph_md\</code>（网页里可点开）；
+    原始素材与成果包（39 个元宝资源 + 最新 zip 解包）在 <code>pintograph_src\</code>，
+    见同目录 <code>README_归档说明.md</code>。
+  </p>
+  <div class="grid">
+      <a class="card" href="AAA_pintograph三相探索台.html" data-g="pg" data-kind="交互"
+         data-k="pintograph 三相探索台 three-phase pintograph lab aaa_pintograph三相探索台.html pintograph 三相 120° 单向旋转矢量 三盘 探索台 重数 对称阶 通项 反例 批量 元宝 闭合 公度 花瓣 镜像 旋转叠加 fold 浮窗 拖动 输入框 gcd lcm">
+        <div class="chd">
+          <span class="num">01</span>
+          <h3>pintograph 三相探索台<span class="star">★</span><span class="en">Three-Phase Pintograph Lab</span></h3>
+          <span class="kbadge k-交互">交互</span>
+        </div>
+        <p class="desc">三相 120° ／ 单向旋转矢量 ／ 三盘 pintograph 三模型同台。参数全为输入框，右侧「可调参数」+ 左侧「通项反例 A/B/C」两个浮窗都能拖动；实时判据 <code>阶 = gcd(Δᵢ) ÷ gcd(全体频率)</code>，另含批量造反例、镜像 D_fold、旋转叠加 fold、保存 PNG。</p>
+        <div class="metas">          <div class="mrow"><span class="mk">渲染</span><span class="mv">纯 2D Canvas · 多彩 hsv 分段描边</span></div>
+          <div class="mrow"><span class="mk">验证</span><span class="mv">元宝 lab 全功能融合 · 数学断言 + DOM 桩双测</span></div></div>
+        <div class="cft">
+          <span class="size">📄 62.8 KB<span class="dot">·</span>10-11 22:40</span>
+          <span class="go">打开 →</span>
+        </div>
+      </a>
+
+      <a class="card" href="AAA_pintograph3D_莫比乌斯8字环.html" data-g="pg" data-kind="交互"
+         data-k="pintograph 3d · 莫比乌斯 8 字环 pintograph 3d · möbius figure-8 aaa_pintograph3d_莫比乌斯8字环.html pintograph 3d 立体 三维 莫比乌斯 mobius 8 字 八字 纸带 带 扭转 twist 半个圈 mob 半扭 闭合 滑条 序列 自交 无自交 允许自交 接合 接缝 首尾 gap 切向 花型 单向旋转矢量 三盘 pintograph 连杆 销钉 圆规腿 盘心 同心 同心圆 正三角 共线 等频 正圆 圆 退化 塌缩 线性振子 公式框 真实公式 俯视 透视 方位角 仰角 深度雾 画家算法 老师原式 圆8字 预设 旋转 正面 正交 保存 png">
+        <div class="chd">
+          <span class="num">02</span>
+          <h3>pintograph 3D · 莫比乌斯 8 字环<span class="star">★</span><span class="en">Pintograph 3D · Möbius Figure-8</span></h3>
+          <span class="kbadge k-交互">交互</span>
+        </div>
+        <p class="desc">把 2D 探索台那张 k 矢量花型抬成立体：水平面仍是同一张花型一字不改，竖直 z 叠加「<code>circ</code> 圈数 × <code>n_z</code> 竖向来回」——只要「水平走 2 圈 + 竖向走 1 个来回」，正面看正好是 <b>8 字</b>。扭转拆成两个独立旋钮：<code>twist</code> 管花型自转（偶数才首尾闭合），<code>mob</code> 管纸带截面半扭（取奇数 ⇒ 末端两条边互换接上 = 真·<b>莫比乌斯</b>）。新增【闭合曲线滑条】两档参数库（① 轨迹全程无自交 / ② 允许自交）共 300+ 种，从最简单排到最复杂，拖一下即换图；并实时给出「中心线闭合 gap / 切向」与「纸带接合方式（边 A→边 A 普通环，边 A→边 B 互换 = 莫比乌斯）」体检值。另含老师原式 <code>x=(3+cos2t)·sin t, y=sin 2t, z=(3+cos2t)·cos t</code> 逐点对拍（偏差 0）。<br>花型模型三种可切：单向旋转矢量 / 线性振子 / <b>三盘 pintograph（真·连杆几何）</b>。公式框会按当前模型显示<b>真实方程</b>（三盘显示「圆∩圆 − 第三销钉」，不再套矢量公式），并实时判定「<b>等频 f₁=f₂=f₃ 到底是不是圆</b>」——三盘模式新增 4 种盘心布局（原样 / <b>同心</b> / 正三角 / 共线）与销钉半径、圆规腿长可调：只有<b>三盘同心</b>时等频才恰好画正圆（其余布局等频既非圆、也无中心对称）；矢量模式下等频若各矢量正好抵消，则直接<b>退化成一点</b>，页面会明确提示。</p>
+        <div class="metas">          <div class="mrow"><span class="mk">渲染</span><span class="mv">手写 3D Canvas · 方位/仰角旋转 + 透视投影 + 深度雾 + 画家算法 · 莫比乌斯带逐点标架 · 线段-线段求交自交检测（网格哈希分桶）· 分片预计算不冻结主线程 · 圆-圆求交连杆几何</span></div>
+          <div class="mrow"><span class="mk">验证</span><span class="mv">功能断言 44 + 42 项 + DOM 桩运行时 + CDP 交互实拍全绿</span></div></div>
+        <div class="cft">
+          <span class="size">📄 95.1 KB<span class="dot">·</span>10-12 11:59</span>
+          <span class="go">打开 →</span>
+        </div>
+      </a>
+
+  </div>
+</section>
+
+<section class="sec" data-sec="more">
+  <div class="shd">
+    <h2>四、同目录延伸阅读</h2>
+    <span class="note">harmonograph 目录下更早／专题的其他页面</span>
+  </div>
+  <div class="grid">
+      <a class="card" href="瑟尔harmonograph_怪异花纹_数学涌现原理.html" data-g="more" data-kind="报告"
+         data-k="瑟尔 harmonograph 怪异花纹的数学涌现原理 数学涌现原理 瑟尔harmonograph_怪异花纹_数学涌现原理.html harmonograph 浑天仪 怪异 涌现">
+        <div class="chd">
+          <span class="num">01</span>
+          <h3>瑟尔 harmonograph 怪异花纹的数学涌现原理<span class="en">数学涌现原理</span></h3>
+          <span class="kbadge k-报告">报告</span>
+        </div>
+        <p class="desc">为什么参数稍微一动，花纹就从规则变成「怪异」—— 从数学涌现的角度拆解。</p>
+        <div class="metas">          <div class="mrow"><span class="mk">渲染</span><span class="mv">报告式长文</span></div></div>
+        <div class="cft">
+          <span class="size">📄 2.19 MB<span class="dot">·</span>10-06 21:11</span>
+          <span class="go">打开 →</span>
+        </div>
+      </a>
+
+      <a class="card" href="瑟尔harmonograph_花纹成因解剖.html" data-g="more" data-kind="报告"
+         data-k="瑟尔 harmonograph「美丽花纹」成因解剖 成因解剖 瑟尔harmonograph_花纹成因解剖.html harmonograph 浑天仪 花纹 成因 解剖">
+        <div class="chd">
+          <span class="num">02</span>
+          <h3>瑟尔 harmonograph「美丽花纹」成因解剖<span class="en">成因解剖</span></h3>
+          <span class="kbadge k-报告">报告</span>
+        </div>
+        <p class="desc">逐项解剖美丽花纹的几何成因，是这一系列里篇幅最长的一篇。</p>
+        <div class="metas">          <div class="mrow"><span class="mk">渲染</span><span class="mv">报告式长文</span></div></div>
+        <div class="cft">
+          <span class="size">📄 3.13 MB<span class="dot">·</span>10-06 20:11</span>
+          <span class="go">打开 →</span>
+        </div>
+      </a>
+
+      <a class="card" href="harmonograph网页工作台.html" data-g="more" data-kind="交互"
+         data-k="harmonograph 网页工作台 早期版本 harmonograph网页工作台.html harmonograph 浑天仪 工作台 早期">
+        <div class="chd">
+          <span class="num">03</span>
+          <h3>harmonograph 网页工作台<span class="en">早期版本</span></h3>
+          <span class="kbadge k-交互">交互</span>
+        </div>
+        <p class="desc">最早一版 harmonograph 网页工作台，用来替代原版 nb。后由「浑天仪探索器 v3」接棒。</p>
+        <div class="metas">          <div class="mrow"><span class="mk">渲染</span><span class="mv">纯 2D Canvas</span></div></div>
+        <div class="cft">
+          <span class="size">📄 55.9 KB<span class="dot">·</span>10-06 21:47</span>
+          <span class="go">打开 →</span>
+        </div>
+      </a>
+
+  </div>
+</section>
+
+<div class="note-box">
+  <b>为什么会多出 <code>_瑟尔nb网页镜像\</code> 这个目录？</b><br>
+  内置预览面板把「页面所在目录」当作服务根，任何解析后落到根外的路径一律 403
+  （<code>../某个目录/页.html</code> 会被 RFC 3986 在根处截断）。所以第一节那 9 个 nb 网页版
+  是用 <b>硬链接</b>镜像进本目录的 —— <b>0 字节新增占用</b>（源文件与镜像 <code>st_ino</code> 相同、
+  <code>st_nlink = 2</code>），双击打开与预览面板两种方式都能点通。<br>
+  <span style="color:#8fb3c6">注意：源文件若被「整体替换」，镜像会停在旧内容 —— 重跑
+  <code>_总览页_dev\build_hub.py</code> 刷新即可。</span>
+</div>
+
+<footer>
+  <p class="gen" style="margin-top:0"><b>✅ 已抽源码的 nb 全部建页完毕，页脚不再有待办条目。</b></p>
+
+  <p class="gen">
+    总览页由 <code>_总览页_dev\build_hub.py</code> 生成 —— 卡片上的体积与日期都是<b>现场扫描磁盘</b>得来，
+    不是手写。<br>
+    生成时间戳以文件修改时间为准；共 16 个页面（9 个 nb 网页版 + 2 个 harmonograph +
+    2 个 pintograph + 3 个延伸）。
+  </p>
+</footer>
+
+<div class="nores" id="nores">没有匹配的页面 —— 换个关键词，或点「全部」。</div>
+
+</div>
+
+<script>
+(function () {
+  var q = document.getElementById('q');
+  var cards = [].slice.call(document.querySelectorAll('.card'));
+  var chips = [].slice.call(document.querySelectorAll('.chip'));
+  var secs = [].slice.call(document.querySelectorAll('.sec'));
+  var cnt = document.getElementById('cnt');
+  var nores = document.getElementById('nores');
+  var filter = 'all';
+
+  function apply() {
+    var kw = (q.value || '').trim().toLowerCase();
+    var shown = 0;
+    cards.forEach(function (c) {
+      var g = c.getAttribute('data-g');
+      var kind = c.getAttribute('data-kind');
+      var okF = (filter === 'all') || (filter === g) || (filter === kind);
+      var okK = !kw || (c.getAttribute('data-k') || '').indexOf(kw) >= 0
+                     || c.textContent.toLowerCase().indexOf(kw) >= 0;
+      var vis = okF && okK;
+      if (vis) { c.classList.remove('hide'); shown++; }
+      else { c.classList.add('hide'); }
+    });
+    secs.forEach(function (s) {
+      var n = s.querySelectorAll('.card:not(.hide)').length;
+      s.classList.toggle('hide', n === 0);
+    });
+    nores.style.display = shown ? 'none' : 'block';
+    cnt.textContent = '显示 ' + shown + ' / ' + cards.length;
+  }
+
+  chips.forEach(function (b) {
+    b.addEventListener('click', function () {
+      chips.forEach(function (x) { x.classList.remove('on'); });
+      b.classList.add('on');
+      filter = b.getAttribute('data-f');
+      apply();
+    });
+  });
+
+  q.addEventListener('input', apply);
+  document.addEventListener('keydown', function (e) {
+    if (e.key === '/' && document.activeElement !== q) { e.preventDefault(); q.focus(); }
+    if (e.key === 'Escape' && document.activeElement === q) { q.value = ''; apply(); q.blur(); }
+  });
+  apply();
+})();
+</script>
+</body>
+</html>

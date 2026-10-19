@@ -1,0 +1,766 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>EEQT Chaos Game — Selected Geometries</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#040408;color:#ccd4e0;font-family:Courier New,monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:14px}
+h1{font-size:.95em;color:#7a9ac0;letter-spacing:3px;text-transform:uppercase;margin-bottom:2px}
+.s{font-size:.58em;color:#3a4a5a;margin-bottom:10px}
+canvas{border:1px solid #151e2a;border-radius:5px;background:#010104;max-width:100%}
+.ctrl{display:flex;gap:18px;align-items:center;margin-top:12px;flex-wrap:wrap;justify-content:center}
+.g{display:flex;flex-direction:column;align-items:center;gap:4px}
+.l{font-size:.53em;color:#4a5a6a;text-transform:uppercase;letter-spacing:1px}
+input[type=range]{-webkit-appearance:none;width:150px;height:3px;background:#1a2432;border-radius:2px;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;border-radius:50%;background:#2a5a8a;border:2px solid #4a8abb}
+.v{font-size:.65em;color:#5a8aaa;min-width:36px;text-align:center;font-variant-numeric:tabular-nums}
+select{background:#0a1520;color:#6a9aba;border:1px solid #1e2e3e;font-family:Courier New,monospace;font-size:.63em;cursor:pointer;padding:4px 6px}
+button{background:#0a1520;color:#6a9aba;border:1px solid #1e2e3e;padding:5px 12px;cursor:pointer;border-radius:4px;font-family:Courier New,monospace;font-size:.65em;transition:all .2s}
+button:hover{background:#102030;border-color:#2a4a6a}
+.leg{display:flex;gap:9px;margin-top:7px;flex-wrap:wrap;justify-content:center}
+.li{display:flex;align-items:center;gap:3px;font-size:.5em;color:#3a4a5a}
+.d{width:6px;height:6px;border-radius:50%}
+.inf{margin-top:8px;font-size:.5em;color:#2a3a4a;max-width:620px;text-align:center;line-height:1.7}
+.fml{font-size:.62em;color:#2a4a6a;margin-top:4px;text-align:center}
+.dim-box{background:rgba(0,10,20,.85);border:1px solid #1a3040;border-radius:6px;padding:8px 14px;margin-top:8px;text-align:center;min-width:200px}
+.dim-label{font-size:.5em;color:#3a5565;text-transform:uppercase;letter-spacing:1px}
+.dim-value{font-size:1.4em;color:#4a8aaa;font-weight:bold;letter-spacing:2px}
+.dim-sub{font-size:.48em;color:#2a3a4a;margin-top:2px}
+.metrics-box{background:rgba(0,10,20,.85);border:1px solid #1a3040;border-radius:6px;padding:10px 14px;margin-top:8px;display:grid;grid-template-columns:repeat(5,1fr);gap:8px;text-align:center}
+.metric{background:rgba(5,15,25,.8);border-radius:4px;padding:6px 4px}
+.metric-label{font-size:.48em;color:#3a5565;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.metric-value{font-size:1em;color:#4a9acc;font-weight:bold}
+</style>
+
+<!-- 四元数旋转模块 -->
+<script>
+// ============================================================
+// 四元数旋转模块
+// ============================================================
+const Quaternion = {
+  fromAxisAngle: function(axis, angleDeg) {
+    const angle = angleDeg * Math.PI / 180;
+    const ax = axis[0], ay = axis[1], az = axis[2];
+    const norm = Math.sqrt(ax*ax + ay*ay + az*az);
+    if(norm < 1e-10) return [1, 0, 0, 0];
+    const half = angle / 2;
+    const s = Math.sin(half) / norm;
+    return [Math.cos(half), ax*s, ay*s, az*s];
+  },
+  multiply: function(q1, q2) {
+    const [w1,x1,y1,z1] = q1;
+    const [w2,x2,y2,z2] = q2;
+    return [
+      w1*w2 - x1*x2 - y1*y2 - z1*z2,
+      w1*x2 + x1*w2 + y1*z2 - z1*y2,
+      w1*y2 - x1*z2 + y1*w2 + z1*x2,
+      w1*z2 + x1*y2 - y1*x2 + z1*w2
+    ];
+  },
+  inverse: function(q) {
+    const n2 = q[0]*q[0] + q[1]*q[1] + q[2]*q[2] + q[3]*q[3];
+    if(n2 < 1e-10) return [1,0,0,0];
+    return [q[0]/n2, -q[1]/n2, -q[2]/n2, -q[3]/n2];
+  },
+  rotatePoint: function(point, q) {
+    const p = [0, point[0], point[1], point[2]];
+    const qInv = this.inverse(q);
+    const temp = this.multiply(q, p);
+    const result = this.multiply(temp, qInv);
+    return [result[1], result[2], result[3]];
+  },
+  normalize: function(v) {
+    const n = Math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+    if(n < 1e-10) return [0, 0, 1];
+    return [v[0]/n, v[1]/n, v[2]/n];
+  },
+  composeRotation: function(rotX, rotY, rotZ) {
+    const qx = this.fromAxisAngle([1,0,0], rotX);
+    const qy = this.fromAxisAngle([0,1,0], rotY);
+    const qz = this.fromAxisAngle([0,0,1], rotZ);
+    const qxy = this.multiply(qy, qx);
+    return this.multiply(qz, qxy);
+  },
+  rotateGeometry: function(vertices, rotX, rotY, rotZ) {
+    const q = this.composeRotation(rotX, rotY, rotZ);
+    return vertices.map(v => {
+      const rotated = this.rotatePoint(v, q);
+      return this.normalize(rotated);
+    });
+  }
+};
+</script>
+</head>
+<body>
+<h1>EEQT Chaos Game</h1>
+<div class="s">Quantum Fractals · Selected Geometries</div>
+<canvas id="c"></canvas>
+<div class="ctrl">
+  <div class="g"><div class="l">epsilon</div><input type="range" id="eS" min="5" max="999" value="800"><div class="v" id="eV">0.800</div></div>
+  <div class="g"><div class="l">points</div><input type="range" id="nS" min="50000" max="2000000" value="500000" step="50000"><div class="v" id="nV">500,000</div></div>
+  <div class="g"><div class="l">geometry</div><select id="typeS">
+    <optgroup label="─ Platonic Solids ─">
+    <option value="tetrahedron">Tetrahedron (4)</option>
+    <option value="octahedron">Octahedron (6)</option>
+    <option value="cube">Cube (8)</option>
+    <option value="icosahedron">Icosahedron (12)</option>
+    <option value="dodecahedron">Dodecahedron (20)</option>
+    </optgroup>
+    <optgroup label="─ Star Tetrahedron ─">
+    <option value="merkaba">★ Merkaba / Star Tetrahedron (8)</option>
+    </optgroup>
+    <optgroup label="─ Compound ─">
+    <option value="compound_32">★ Compound Dodeca+Icosa (32)</option>
+    </optgroup>
+    <optgroup label="─ C60 Fullerene ─">
+    <option value="c60_full">★ C60 Full (60) - 3D rotation</option>
+    </optgroup>
+    <optgroup label="─ Others ─">
+    <option value="rhombic_dodeca">Rhombic Dodecahedron (14)</option>
+    </optgroup>
+  </select></div>
+  <div class="g"><div class="l">proj</div><select id="projS">
+    <option value="stereo">Stereographic</option>
+    <option value="lambert">Lambert (equal-area)</option>
+    <option value="ortho">Orthographic</option>
+  </select></div>
+  <div class="g"><div class="l">formula</div><select id="fmlS">
+    <option value="smooth">Smooth (ε-weighted)</option>
+    <option value="standard">Standard EEQT</option>
+  </select><div class="v" id="fmlV">Smooth</div></div>
+  <div class="g"><div class="l">scale</div><input type="range" id="sS" min="50" max="200" value="100" step="1"><div class="v" id="sV">1.00x</div></div>
+</div>
+<div class="ctrl">
+  <div class="g"><div class="l">rot-X</div><input type="range" id="rxS" min="-180" max="180" value="0" step="3"><div class="v" id="rxV">0°</div></div>
+  <div class="g"><div class="l">rot-Y</div><input type="range" id="ryS" min="-180" max="180" value="0" step="3"><div class="v" id="ryV">0°</div></div>
+  <div class="g"><div class="l">rot-Z</div><input type="range" id="rzS" min="-180" max="180" value="0" step="3"><div class="v" id="rzV">0°</div></div>
+</div>
+<div class="leg">
+  <div class="li"><div class="d" style="background:#cc4444"></div>+z</div>
+  <div class="li"><div class="d" style="background:#44cc88"></div>+x</div>
+  <div class="li"><div class="d" style="background:#4477cc"></div>+y</div>
+  <div class="li"><div class="d" style="background:#ccaa44"></div>-x</div>
+  <div class="li"><div class="d" style="background:#cc44cc"></div>-y</div>
+  <div class="li"><div class="d" style="background:#44cccc"></div>-z</div>
+</div>
+<div class="dim-box"><div class="dim-label">Hausdorff Dimension</div><div class="dim-value" id="dimVal">--</div><div class="dim-sub">box-counting 路 log-log regression 路 D_H 鈭?[0,2]</div></div><div class="metrics-box"><div class="metric"><div class="metric-label">D</div><div class="metric-value" id="mD">--</div></div><div class="metric"><div class="metric-label">H</div><div class="metric-value" id="mH">--</div></div><div class="metric"><div class="metric-label">Score</div><div class="metric-value" id="mScore">--</div></div><div class="metric"><div class="metric-label">PRE%</div><div class="metric-value" id="mPRE">--</div></div><div class="metric"><div class="metric-label">Time</div><div class="metric-value" id="mTime">--</div></div></div>
+</div>
+<div class="fml" id="fml"></div>
+<div class="inf">
+  r' = [(1-e²)r + 2e(1+e·nᵢ·r)nᵢ] / [1+e²+2e·nᵢ·r] &nbsp; pᵢ = (1+e²+2e·nᵢ·r)/(N(1+e²))
+</div>
+
+<script>
+// ============================================================
+// GEOMETRY DEFINITIONS
+// ============================================================
+
+const PHI=(1+Math.sqrt(5))/2;
+
+// Tetrahedron: 4 detectors at tetrahedral vertices
+function getTetrahedron(){
+  const t=1/Math.sqrt(3);
+  return[[t,t,t],[t,-t,-t],[-t,t,-t],[-t,-t,t]];
+}
+
+// Octahedron: 6 detectors at ±x, ±y, ±z
+function getOctahedron(){
+  return[[0,0,1],[1,0,0],[0,1,0],[-1,0,0],[0,-1,0],[0,0,-1]];
+}
+
+// Cube: 8 detectors at cube vertices
+function getCube(){
+  const c=1/Math.sqrt(3);
+  return[[c,c,c],[c,c,-c],[c,-c,c],[c,-c,-c],[-c,c,c],[-c,c,-c],[-c,-c,c],[-c,-c,-c]];
+}
+
+// Merkaba / Star Tetrahedron: two interlocked tetrahedra
+function getMerkaba(){
+  const s2=Math.sqrt(2),s6=Math.sqrt(6);
+  return[
+    [0,0,1],
+    [2*s2/3,0,-1/3],
+    [-s2/3,s6/3,-1/3],
+    [-s2/3,-s6/3,-1/3],
+    [0,0,-1],
+    [-2*s2/3,0,1/3],
+    [s2/3,-s6/3,1/3],
+    [s2/3,s6/3,1/3]
+  ];
+}
+
+// Icosahedron: 12 detectors (dual of Dodecahedron, face centers)
+// Raw: (0,±1,±φ)|(±1,±φ,0)|(±φ,0,±1), normalized by c=1/√(φ+2)
+function getIcosahedron(){
+  const c=1/Math.sqrt(PHI+2);  // ≈0.525731
+  return[
+    [0,c,PHI*c],[0,-c,PHI*c],[0,c,-PHI*c],[0,-c,-PHI*c],
+    [c,PHI*c,0],[-c,PHI*c,0],[c,-PHI*c,0],[-c,-PHI*c,0],
+    [PHI*c,0,c],[PHI*c,0,-c],[-PHI*c,0,c],[-PHI*c,0,-c]
+  ];
+}
+
+// Dodecahedron: 20 vertices on unit sphere
+// Raw: (±1,±1,±1)|(0,±φ,±1/φ)|(±1/φ,0,±φ)|(±φ,±1/φ,0), normalized by 1/√3
+function getDodecahedron(){
+  const phi=(1+Math.sqrt(5))/2;
+  const d=1/Math.sqrt(3);  // normalization factor = 1/√3
+  const v=[];
+  // Type 1: (±1/√3, ±1/√3, ±1/√3) - 8 cube vertices
+  for(let s1 of[-1,1])for(let s2 of[-1,1])for(let s3 of[-1,1])
+    v.push([s1*d,s2*d,s3*d]);
+  // Type 2: (0, ±φ/√3, ±1/(φ√3)) - 4 YZ plane vertices
+  for(let s1 of[-1,1])for(let s2 of[-1,1]){
+    const y=s1*phi,yz=s2/phi,m=Math.sqrt(y*y+yz*yz);
+    v.push([0,y/m,yz/m]);
+  }
+  // Type 3: (±1/(φ√3), 0, ±φ/√3) - 4 XZ plane vertices
+  for(let s1 of[-1,1])for(let s2 of[-1,1]){
+    const x=s1/phi,xz=s2*phi,m=Math.sqrt(x*x+xz*xz);
+    v.push([x/m,0,xz/m]);
+  }
+  // Type 4: (±φ/√3, ±1/(φ√3), 0) - 4 XY plane vertices
+  for(let s1 of[-1,1])for(let s2 of[-1,1]){
+    const x=s1*phi,xy=s2/phi,m=Math.sqrt(x*x+xy*xy);
+    v.push([x/m,xy/m,0]);
+  }
+  return v;
+}
+
+// Rhombic Dodecahedron: 14 vertices
+function getRhombicDodecahedron(){
+  const v=[];
+  for(let s1 of[-1,1])for(let s2 of[-1,1])for(let s3 of[-1,1])
+    v.push([s1/Math.sqrt(3),s2/Math.sqrt(3),s3/Math.sqrt(3)]);
+  v.push([0,1,0],[0,-1,0],[1,0,0],[-1,0,0],[0,0,1],[0,0,-1]);
+  return v;
+}
+
+// C60 Full (60 vertices - complete sphere, for 3D rotation)
+var C60_FULL=[
+[-0.00000000,0.34327861,0.93923362],
+[0.00000000,-0.68655723,-0.72707577],
+[-0.00000000,0.68655723,0.72707577],
+[0.00000000,-0.34327861,-0.93923362],
+[-0.20177411,-0.83315470,0.51491792],
+[0.20177411,-0.83315470,0.51491792],
+[-0.20177411,0.83315470,-0.51491792],
+[0.20177411,0.83315470,-0.51491792],
+[-0.97943209,0.10607893,0.17163931],
+[-0.97943209,-0.10607893,-0.17163931],
+[0.97943209,0.10607893,0.17163931],
+[0.97943209,-0.10607893,-0.17163931],
+[-0.40354821,-0.55543646,0.72707577],
+[-0.40354821,0.89871508,-0.17163931],
+[0.40354821,-0.55543646,0.72707577],
+[0.40354821,0.89871508,-0.17163931],
+[-0.40354821,-0.89871508,0.17163931],
+[-0.40354821,0.55543646,-0.72707577],
+[0.40354821,-0.89871508,0.17163931],
+[0.40354821,0.55543646,-0.72707577],
+[-0.32647736,0.10607893,0.93923362],
+[-0.32647736,-0.79263615,-0.51491792],
+[0.32647736,0.10607893,0.93923362],
+[0.32647736,-0.79263615,-0.51491792],
+[-0.32647736,0.79263615,0.51491792],
+[-0.32647736,-0.10607893,-0.93923362],
+[0.32647736,0.79263615,0.51491792],
+[0.32647736,-0.10607893,-0.93923362],
+[-0.85472883,-0.06556038,0.51491792],
+[-0.85472883,-0.48987608,-0.17163931],
+[-0.85472883,0.48987608,0.17163931],
+[-0.85472883,0.06556038,-0.51491792],
+[0.85472883,-0.06556038,0.51491792],
+[0.85472883,-0.48987608,-0.17163931],
+[0.85472883,0.48987608,0.17163931],
+[0.85472883,0.06556038,-0.51491792],
+[-0.20177411,-0.27771823,0.93923362],
+[-0.20177411,-0.96427546,-0.17163931],
+[0.20177411,-0.27771823,0.93923362],
+[0.20177411,-0.96427546,-0.17163931],
+[-0.20177411,0.96427546,0.17163931],
+[-0.20177411,0.27771823,-0.93923362],
+[0.20177411,0.96427546,0.17163931],
+[0.20177411,0.27771823,-0.93923362],
+[-0.65295472,0.21215785,0.72707577],
+[-0.65295472,-0.55543646,-0.51491792],
+[0.65295472,0.21215785,0.72707577],
+[0.65295472,-0.55543646,-0.51491792],
+[-0.65295472,0.55543646,0.51491792],
+[-0.65295472,-0.21215785,-0.72707577],
+[0.65295472,0.55543646,0.51491792],
+[0.65295472,-0.21215785,-0.72707577],
+[-0.73002557,-0.44935754,0.51491792],
+[-0.73002557,-0.66151539,0.17163931],
+[-0.73002557,0.66151539,-0.17163931],
+[-0.73002557,0.44935754,-0.51491792],
+[0.73002557,-0.44935754,0.51491792],
+[0.73002557,-0.66151539,0.17163931],
+[0.73002557,0.66151539,-0.17163931],
+[0.73002557,0.44935754,-0.51491792]
+];
+
+// Compound of Dodecahedron + Icosahedron (32 vertices)
+// Dodecahedron: 20 vertices (normalized by 1/√3)
+// Icosahedron: 12 vertices as dual face centers (normalized by 1/√(φ+2))
+// NO additional rotation needed - dual relationship already gives correct compound
+function getCompoundDodecaIcosa(){
+  const phi=(1+Math.sqrt(5))/2;
+  const d=1/Math.sqrt(3);   // dodecahedron normalization
+  const c=1/Math.sqrt(phi+2);  // icosahedron normalization
+  const v=[];
+  // === Dodecahedron (20 vertices) ===
+  // Type 1: (±1/√3, ±1/√3, ±1/√3) - 8 cube vertices
+  for(let s1 of[-1,1])for(let s2 of[-1,1])for(let s3 of[-1,1])
+    v.push([s1*d,s2*d,s3*d]);
+  // Type 2: (0, ±φ/√3, ±1/(φ√3)) - 4 YZ plane vertices
+  for(let s1 of[-1,1])for(let s2 of[-1,1]){
+    const y=s1*phi,yz=s2/phi,m=Math.sqrt(y*y+yz*yz);
+    v.push([0,y/m,yz/m]);
+  }
+  // Type 3: (±1/(φ√3), 0, ±φ/√3) - 4 XZ plane vertices
+  for(let s1 of[-1,1])for(let s2 of[-1,1]){
+    const x=s1/phi,xz=s2*phi,m=Math.sqrt(x*x+xz*xz);
+    v.push([x/m,0,xz/m]);
+  }
+  // Type 4: (±φ/√3, ±1/(φ√3), 0) - 4 XY plane vertices
+  for(let s1 of[-1,1])for(let s2 of[-1,1]){
+    const x=s1*phi,xy=s2/phi,m=Math.sqrt(x*x+xy*xy);
+    v.push([x/m,xy/m,0]);
+  }
+  // === Icosahedron (12 vertices, dual face centers) ===
+  v.push([0,c,phi*c],[0,-c,phi*c],[0,c,-phi*c],[0,-c,-phi*c]);
+  v.push([c,phi*c,0],[-c,phi*c,0],[c,-phi*c,0],[-c,-phi*c,0]);
+  v.push([phi*c,0,c],[phi*c,0,-c],[-phi*c,0,c],[-phi*c,0,-c]);
+  return v;
+}
+
+// Get detector directions (with optional quaternion rotation)
+function getDirections(type, rotX=0, rotY=0, rotZ=0){
+  let dirs;
+  if(type==='tetrahedron') dirs = getTetrahedron();
+  else if(type==='octahedron') dirs = getOctahedron();
+  else if(type==='cube') dirs = getCube();
+  else if(type==='merkaba') dirs = getMerkaba();
+  else if(type==='icosahedron') dirs = getIcosahedron();
+  else if(type==='dodecahedron') dirs = getDodecahedron();
+  else if(type==='c60_full') dirs = C60_FULL.slice();
+  else if(type==='compound_32') dirs = getCompoundDodecaIcosa();
+  else if(type==='rhombic_dodeca') dirs = getRhombicDodecahedron();
+  else dirs = getOctahedron();
+  
+  // 应用四元数旋转
+  if(rotX !== 0 || rotY !== 0 || rotZ !== 0){
+    dirs = Quaternion.rotateGeometry(dirs, rotX, rotY, rotZ);
+  }
+  return dirs;
+}
+
+// ============================================================
+// PROJECTIONS
+// ============================================================
+
+// 基础投影函数：返回球面坐标到2D平面的映射（无缩放）
+function projStereo(r){
+  const den=1+r[2];
+  if(Math.abs(den)<1e-15)return[9999,9999];
+  return[r[0]/den,r[1]/den];
+}
+
+function projLambert(r){
+  const z=r[2];
+  const lr=Math.sqrt(Math.max(0,(1-z)/2));
+  const rxy=Math.sqrt(r[0]*r[0]+r[1]*r[1]);
+  if(rxy<1e-15)return[0,0];
+  return[r[0]/rxy*lr,r[1]/rxy*lr];
+}
+
+function projOrtho(r){return[r[0],r[1]];}
+
+// 获取基础投影函数
+function getProjFn(type){
+  if(type==='stereo')return projStereo;
+  if(type==='lambert')return projLambert;
+  if(type==='ortho')return projOrtho;
+  return projStereo;
+}
+
+// ============================================================
+// EEQT DYNAMICS
+// ============================================================
+
+const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]];
+const scl=(a,s)=>[a[0]*s,a[1]*s,a[2]*s];
+const norm=(a)=>{const L=Math.sqrt(dot(a,a));return L<1e-15?[0,0,1]:[a[0]/L,a[1]/L,a[2]/L];};
+
+// EEQT quantum jump transformation
+function T(r,n,eps){
+  const e2=eps*eps, ndr=dot(n,r);
+  const num=add(scl(r,1-e2), scl(n,2*eps*(1+eps*ndr)));
+  const den=1+e2+2*eps*ndr;
+  if(Math.abs(den)<1e-15)return[r[0],r[1],r[2]];
+  return[num[0]/den,num[1]/den,num[2]/den];
+}
+
+// Detection probability & jump size (两种模式对比)
+function detProb(r,n,eps,N,formulaMode){
+  const ndr = dot(n,r);
+  if(formulaMode==='standard'){
+    // 【Standard EEQT】纯线性：方向性强，P=0时永不选择
+    // 跳变强度固定为ε=1（最大跳跃）
+    return Math.max(0, (1 + ndr)) / (2 * N);
+  } else {
+    // 【Smooth模式】ε加权：平滑极端概率，可调跳跃强度
+    // ε越小方向性越强，ε越大越接近均匀分布
+    const e2 = eps * eps;
+    return (1 + e2 + 2 * eps * ndr) / (N * (1 + e2));
+  }
+}
+
+// EEQT量子跳变变换
+function quantumJump(r,n,eps,formulaMode){
+  if(formulaMode==='standard'){
+    // 【Standard EEQT】经典公式：简单向量平均
+    // r' = (r + n) / |r + n|
+    const sum=[r[0]+n[0], r[1]+n[1], r[2]+n[2]];
+    const len=Math.sqrt(sum[0]*sum[0]+sum[1]*sum[1]+sum[2]*sum[2]);
+    if(len<1e-15) return [0,0,1];
+    return [sum[0]/len, sum[1]/len, sum[2]/len];
+  } else {
+    // 【Smooth模式】ε参数化版本
+    if(eps < 0.01){
+      // 当ε→0时，直接跳转到detector（类似标准Chaos Game）
+      return [n[0], n[1], n[2]];
+    }
+    return T(r, n, eps);
+  }
+}
+
+// Pick detector based on probabilities
+function pick(r,dirs,eps,formulaMode){
+  const N=dirs.length;
+  const ps=dirs.map(n=>detProb(r,n,eps,N,formulaMode));
+  const tot=ps.reduce((a,b)=>a+b,0);
+  let u=Math.random()*tot;
+  for(let i=0;i<ps.length;i++){
+    u-=ps[i];
+    if(u<=0)return i;
+  }
+  return ps.length-1;
+}
+
+// ============================================================
+// HAUSDORFF DIMENSION (box-counting)
+// ============================================================
+
+const HAUS_SCALES=[0.5,0.25,0.125,0.0625,0.03125,0.015625];
+
+// ============================================================
+// ENTROPY (information entropy on sphere)
+// ============================================================
+function entropy(pts3){
+  if(pts3.length<100)return 0;
+  const nb=40,nb1=nb-1;
+  const rxy=pts3.map(function(p){return Math.sqrt(p[0]*p[0]+p[1]*p[1]+p[2]*p[2]);});
+  const theta=pts3.map(function(p,i){return Math.acos(Math.max(-1,Math.min(1,p[2]/rxy[i])));});
+  const phi=pts3.map(function(p){return Math.atan2(p[1],p[0]);});
+  const hist=new Array(nb*nb);
+  for(let h=0;h<hist.length;h++)hist[h]=0;
+  for(let i=0;i<pts3.length;i++){
+    const c1=Math.min(nb1,Math.floor(theta[i]/Math.PI*nb));
+    const c2=Math.min(nb1,Math.floor((phi[i]+Math.PI)/(2*Math.PI)*nb));
+    hist[c1*nb+c2]++;
+  }
+  let H=0,total=pts3.length;
+  for(let j=0;j<hist.length;j++){
+    if(hist[j]>0){const p=hist[j]/total;H-=p*Math.log2(p);}
+  }
+  return Math.max(0,H);
+}
+
+// ============================================================
+// GET METRICS (comprehensive score)
+// ============================================================
+function getMetrics(pts3,projFn,ND){
+  const H=entropy(pts3);
+  const D=hausdorffDim(pts3,projFn);
+  // sp = mean z² (polarization)
+  const sp=Math.sqrt(pts3.reduce(function(s,p){return s+p[2]*p[2];},0)/pts3.length);
+  // Score = H * D * (1+sp) - 综合指标
+  const score=H*(D||0)*(1+sp);
+  // PRE Score = H as % of max possible entropy log2(N)
+  const maxH=Math.log2(ND||4);
+  const preScore=maxH>0?(H/maxH)*100:0;
+  return{H:H,D:D,sp:sp,score:score,preScore:preScore};
+}
+
+function hausdorffDim(pts3d,projFn){
+  if(pts3d.length<100)return null;
+  const proj=[];
+  for(const p of pts3d){
+    const z=p[2];
+    if(projFn===projLambert){
+      const lr=Math.sqrt(Math.max(0,(1-z)/2));
+      const rxy=Math.sqrt(p[0]*p[0]+p[1]*p[1]);
+      if(rxy<1e-15){proj.push([0,0]);continue;}
+      proj.push([p[0]/rxy*lr,p[1]/rxy*lr]);
+    } else if(projFn===projOrtho){
+      proj.push([p[0],p[1]]);
+    } else {
+      const den=1+z;
+      if(Math.abs(den)<1e-10)continue;
+      proj.push([p[0]/den,p[1]/den]);
+    }
+  }
+  if(proj.length<50)return null;
+  const counts=[];
+  for(const box of HAUS_SCALES){
+    const boxes=new Set();
+    for(const [x,y] of proj){
+      const nx=Math.max(-20,Math.min(20,x)),ny=Math.max(-20,Math.min(20,y));
+      boxes.add(Math.floor(nx/box)+','+Math.floor(ny/box));
+    }
+    counts.push(boxes.size);
+  }
+  if(counts.some(c=>c<2))return null;
+  const logData=counts.map((c,i)=>({x:-Math.log(HAUS_SCALES[i]),y:Math.log(c)}));
+  const n=logData.length;
+  let sx=0,sy=0,sxy=0,sxx=0;
+  for(const p of logData){sx+=p.x;sy+=p.y;sxy+=p.x*p.y;sxx+=p.x*p.x;}
+  const d=n*sxx-sx*sx;
+  if(Math.abs(d)<1e-10)return null;
+  const slope=(n*sxy-sx*sy)/d;
+  if(slope<0||slope>3||isNaN(slope))return null;
+  return slope;
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+
+function render(canvas,eps,n,type,projType,scaleVal,formulaMode,rotX,rotY,rotZ){
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width,H=canvas.height;
+  const cx=W/2,cy=H/2;
+
+  // 边界圆固定半径
+  const BASE_SCALE=Math.min(W,H)*0.46;
+
+  // 背景
+  ctx.fillStyle='#010104';
+  ctx.fillRect(0,0,W,H);
+
+  // 获取几何体（应用四元数旋转）
+  const dirs=getDirections(type, rotX, rotY, rotZ);
+  const ND=dirs.length;
+  const projFn=getProjFn(projType);
+
+  let autoScaleFactor = 1.0;
+
+  // 总缩放因子 = 自动修正 × 用户缩放
+  const totalScale = autoScaleFactor * scaleVal;
+
+  // 边界圆（固定大小，不受scaleVal影响）
+  ctx.strokeStyle='rgba(30,50,80,.5)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.arc(cx,cy,BASE_SCALE,0,Math.PI*2);ctx.stroke();
+  ctx.strokeStyle='rgba(20,35,55,.2)';ctx.lineWidth=.5;
+  for(let i=1;i<=4;i++){
+    ctx.beginPath();ctx.arc(cx,cy,BASE_SCALE*i/4,0,Math.PI*2);ctx.stroke();
+  }
+
+  // Initial state + burn-in
+  let r=norm([0.1,0.1,0.98]);
+  const burnIn=1500;
+  for(let i=0;i<burnIn;i++){
+    const idx=pick(r,dirs,eps,formulaMode);
+    r=norm(quantumJump(r,dirs[idx],eps,formulaMode));
+    if(isNaN(r[0]+r[1]+r[2]))r=norm([0.1,0.1,0.98]);
+  }
+
+  // 生成轨迹点
+  const pts=[],ci=[],pts3d=[];
+  for(let i=0;i<n;i++){
+    const idx=pick(r,dirs,eps,formulaMode);
+    r=norm(quantumJump(r,dirs[idx],eps,formulaMode));
+    if(isNaN(r[0]+r[1]+r[2]))r=norm([0.1,0.1,0.98]);
+    
+    // 投影：先调用基础投影函数，再乘以总缩放因子
+    const baseProj=projFn(r);
+    pts.push([baseProj[0]*totalScale, baseProj[1]*totalScale]);
+    pts3d.push([r[0],r[1],r[2]]);
+    ci.push(idx);
+  }
+
+  // Color palette
+  const cols=[
+    [200,55,55],[55,200,120],[55,100,200],[200,160,55],
+    [200,55,200],[55,200,200],[200,100,55],[100,200,55],
+    [55,200,160],[160,55,200],[200,55,120],[120,55,200],
+    [180,80,80],[80,180,80],[80,80,180],[180,180,80]
+  ];
+
+  // ImageData render
+  const id=ctx.createImageData(W,H);
+  const d=id.data;
+  for(let i=0;i<d.length;i+=4){d[i]=4;d[i+1]=4;d[i+2]=10;d[i+3]=255;}
+  for(let i=0;i<pts.length;i++){
+    const sx=pts[i][0]*BASE_SCALE+cx;
+    const sy=-pts[i][1]*BASE_SCALE+cy;
+    const px=Math.round(sx),py=Math.round(sy);
+    if(px<0||px>=W||py<0||py>=H)continue;
+    const p4=(py*W+px)*4;
+    const col=cols[ci[i]%cols.length];
+    const a=0.22;
+    d[p4]=Math.round(d[p4]*(1-a)+col[0]*a);
+    d[p4+1]=Math.round(d[p4+1]*(1-a)+col[1]*a);
+    d[p4+2]=Math.round(d[p4+2]*(1-a)+col[2]*a);
+  }
+  ctx.putImageData(id,0,0);
+
+  // 边界圆
+  ctx.strokeStyle='rgba(50,80,120,.6)';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.arc(cx,cy,BASE_SCALE,0,Math.PI*2);ctx.stroke();
+
+  // Vertex markers - 使用相同的投影和缩放逻辑
+  for(let i=0;i<ND;i++){
+    // 投影detector顶点
+    const baseProj=projFn(dirs[i]);
+    // 检查是否为有效投影
+    if(!isFinite(baseProj[0])||!isFinite(baseProj[1]))continue;
+    
+    // 应用缩放
+    const zx=baseProj[0]*totalScale;
+    const zy=baseProj[1]*totalScale;
+    
+    // 检查范围（投影坐标的合理范围）
+    if(Math.abs(zx)>20||Math.abs(zy)>20)continue;
+    
+    // 转换为像素坐标
+    const mpx=zx*BASE_SCALE+cx;
+    const mpy=-zy*BASE_SCALE+cy;
+    
+    // 检查是否在画布内
+    if(mpx<0||mpx>=W||mpy<0||mpy>=H)continue;
+    
+    const col=cols[i%cols.length];
+    // 外圈
+    ctx.strokeStyle=`rgba(${col[0]},${col[1]},${col[2]},0.9)`;
+    ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.arc(mpx,mpy,ND<=6?5:3,0,Math.PI*2);ctx.stroke();
+    // 内圈
+    ctx.fillStyle=`rgba(${col[0]},${col[1]},${col[2]},.8)`;
+    ctx.beginPath();ctx.arc(mpx,mpy,ND<=6?4:2.5,0,Math.PI*2);ctx.fill();
+  }
+
+  // Info
+  const names={
+    'tetrahedron':'Tetrahedron','octahedron':'Octahedron','cube':'Cube',
+    'merkaba':'Merkaba','icosahedron':'Icosahedron','dodecahedron':'Dodecahedron',
+    'compound_32':'Compound D+I','rhombic_dodeca':'Rhombic Dodeca'
+  };
+  document.getElementById('fml').textContent=names[type]+' · '+ND+' detectors · '+projType+' · scale='+scaleVal.toFixed(2)+' · eps='+eps.toFixed(3)+' · '+n.toLocaleString()+' pts';
+
+  // Hausdorff dimension
+  const t0=performance.now();
+  const dH=hausdorffDim(pts3d,projFn);
+  const elapsed=Math.round(performance.now()-t0);
+  const dimEl=document.getElementById('dimVal');
+  if(dH!==null){
+    dimEl.textContent='D_H ≈ '+dH.toFixed(4);
+    dimEl.style.color='#4a9acc';
+  } else {
+    dimEl.textContent='computing...';
+    dimEl.style.color='#3a5565';
+  }
+  console.log('Hausdorff dim: '+(dH!==null?dH.toFixed(4):'null')+' ('+elapsed+'ms)');
+  
+  // Update additional metrics
+  const t1=performance.now();
+  const m=getMetrics(pts3d,projFn,ND);
+  const mTime=Math.round(performance.now()-t1);
+  document.getElementById('mD').textContent=(m.D!==null?m.D.toFixed(3):'--');
+  document.getElementById('mH').textContent=m.H.toFixed(2);
+  document.getElementById('mScore').textContent=m.score.toFixed(1);
+  document.getElementById('mPRE').textContent=m.preScore.toFixed(0)+'%';
+  document.getElementById('mTime').textContent=mTime+'ms';
+}
+
+// ============================================================
+// MAIN
+// ============================================================
+
+const canvas=document.getElementById('c');
+const size=Math.min(window.innerWidth-30,700);
+canvas.width=size;canvas.height=size;
+
+const eS=document.getElementById('eS');
+const nS=document.getElementById('nS');
+const typeS=document.getElementById('typeS');
+const projS=document.getElementById('projS');
+const sS=document.getElementById('sS');
+const rxS=document.getElementById('rxS');
+const ryS=document.getElementById('ryS');
+const rzS=document.getElementById('rzS');
+const eV=document.getElementById('eV');
+const nV=document.getElementById('nV');
+const sV=document.getElementById('sV');
+
+function draw(){
+  const eps=parseInt(eS.value)/1000;
+  const n=parseInt(nS.value);
+  const type=typeS.value;
+  const projType=projS.value;
+  const scaleVal=parseInt(sS.value)/100;
+  const formulaMode=fmlS.value;
+  const rotX=parseInt(rxS.value);
+  const rotY=parseInt(ryS.value);
+  const rotZ=parseInt(rzS.value);
+  eV.textContent=eps.toFixed(3);
+  nV.textContent=n.toLocaleString();
+  sV.textContent=scaleVal.toFixed(2)+'x';
+  fmlV.textContent=formulaMode==='smooth'?'Smooth':'Standard';
+  rxV.textContent=rotX+'°';
+  ryV.textContent=rotY+'°';
+  rzV.textContent=rotZ+'°';
+  render(canvas,eps,n,type,projType,scaleVal,formulaMode,rotX,rotY,rotZ);
+}
+
+// Optimal epsilon for each geometry (原始正确值：epsilon越小方向性越强，分形越清晰)
+const SOLID_EPS={
+  'tetrahedron':800,
+  'octahedron':100,   // 关键！低epsilon=强方向性=清晰分形
+  'cube':800,
+  'merkaba':800,
+  'icosahedron':900,
+  'dodecahedron':800,
+  'c60_full':800,
+  'compound_32':800,
+  'rhombic_dodeca':800
+};
+
+function setEpsForSolid(type){
+  const def=SOLID_EPS[type]||800;
+  eS.value=def;
+  eV.textContent=(def/1000).toFixed(3);
+}
+
+eS.addEventListener('input',draw);
+nS.addEventListener('input',draw);
+typeS.addEventListener('change',()=>{setEpsForSolid(typeS.value);draw();});
+projS.addEventListener('change',draw);
+sS.addEventListener('input',draw);
+rxS.addEventListener('input',draw);
+ryS.addEventListener('input',draw);
+rzS.addEventListener('input',draw);
+document.getElementById('go').addEventListener('click',draw);
+
+eV.textContent=(parseInt(eS.value)/1000).toFixed(3);
+nV.textContent=parseInt(nS.value).toLocaleString();
+sV.textContent=(parseInt(sS.value)/100).toFixed(2)+'x';
+setEpsForSolid(typeS.value);
+draw();
+</script>
+</body>
+</html>

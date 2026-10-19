@@ -1,0 +1,1762 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>K5 · 频率梳：从锁模激光到声子梳，Keely 的「三个八度」落在哪一格</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%231b4f9c' stroke-width='2'/%3E%3Cpath d='M7 12v8M12 10v12M17 13v6M22 9v14M27 14v4' stroke='%23b4531f' stroke-width='1.6'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/site.css">
+<style>
+  /* ---- 本页专用 ---- */
+  .viz{background:#fff;border:1px solid var(--line-2);border-radius:12px;
+    box-shadow:var(--shadow);padding:14px 16px 10px;margin:18px 0}
+  .viz .vt{font-family:var(--serif);font-size:16px;font-weight:700;margin-bottom:3px}
+  .viz .vc{font-size:13.2px;color:var(--ink-3);margin-bottom:10px;line-height:1.6}
+  .viz canvas{width:100%;display:block;border-radius:8px;background:#fcfdff;border:1px solid var(--line)}
+  .ctl{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin:12px 0 4px;font-size:13.4px;color:var(--ink-2)}
+  .ctl label{display:flex;align-items:center;gap:7px}
+  .ctl input[type=range]{width:150px}
+  .ctl .val{font-family:var(--mono);font-size:12.8px;color:var(--warm);min-width:60px}
+  .eq{margin:14px 0}
+  .warnbox{background:#fdf6f6;border:1px solid rgba(179,38,30,.28);border-left:3px solid var(--bad);
+    border-radius:8px;padding:12px 15px;margin:16px 0;font-size:14px}
+  .goodbox{background:#f4faf6;border:1px solid rgba(23,114,69,.28);border-left:3px solid var(--good);
+    border-radius:8px;padding:12px 15px;margin:16px 0;font-size:14px}
+  .midbox{background:#fdfaf2;border:1px solid rgba(154,103,0,.28);border-left:3px solid var(--warn);
+    border-radius:8px;padding:12px 15px;margin:16px 0;font-size:14px}
+  .quote{border-left:3px solid var(--line-2);padding:2px 0 2px 14px;margin:13px 0;color:var(--ink-2);font-size:14.4px}
+  .quote .src{display:block;font-family:var(--mono);font-size:11.5px;color:var(--ink-3);margin-top:4px}
+  .cnt{font-family:var(--mono);font-size:12.6px;color:var(--ink-3)}
+  .rd{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:10px;margin-top:12px}
+  .rd .r{background:var(--bg-soft);border:1px solid var(--line);border-radius:9px;padding:9px 11px}
+  .rd .r .n{font-family:var(--serif);font-size:19px;color:var(--accent-2);line-height:1.2}
+  .rd .r .l{font-size:11.8px;color:var(--ink-3);margin-top:2px}
+  .rd .r .x{font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-top:3px}
+  /* 三档判定行（铁律 206：类不同 ⇒ 渲染不同，且就地写图例与计数） */
+  tr.same td{background:rgba(23,114,69,.06)}
+  tr.homo td{background:rgba(154,103,0,.07)}
+  tr.diff td{background:rgba(179,38,30,.055)}
+  tr.same td:first-child{border-left:3px solid var(--good)}
+  tr.homo td:first-child{border-left:3px solid var(--warn)}
+  tr.diff td:first-child{border-left:3px solid var(--bad)}
+  .lg{list-style:none;padding:0;margin:8px 0 12px}
+  .lg li{display:flex;gap:9px;align-items:flex-start;font-size:13.6px;line-height:1.65;margin:7px 0}
+  .lg .sw{flex:0 0 15px;height:11px;border-radius:2px;margin-top:6px}
+  .lg .sw.s{background:rgba(23,114,69,.10);border:1px solid rgba(23,114,69,.38);border-left:3px solid var(--good)}
+  .lg .sw.h{background:rgba(154,103,0,.10);border:1px solid rgba(154,103,0,.38);border-left:3px solid var(--warn)}
+  .lg .sw.d{background:rgba(179,38,30,.09);border:1px solid rgba(179,38,30,.32);border-left:3px solid var(--bad)}
+  .lg b.s{color:var(--good)} .lg b.h{color:var(--warn)} .lg b.d{color:var(--bad)}
+  .step{display:grid;grid-template-columns:40px 1fr;gap:12px;align-items:start;
+    border:1px solid var(--line);border-radius:10px;padding:12px 15px;margin:11px 0;background:#fff}
+  .step .id{font-family:var(--mono);font-size:12.4px;font-weight:700;color:var(--accent);padding-top:3px}
+  .step .bd b{font-family:var(--serif);font-size:15.2px}
+  .step .bd p{margin:5px 0 0;font-size:13.9px;color:var(--ink-2)}
+  .step.miss{border-left:3px solid var(--bad);background:#fffdfd}
+  .step.have{border-left:3px solid var(--good);background:#fcfefd}
+  .exp{border:1px solid var(--line);border-radius:10px;padding:13px 16px;margin:12px 0;background:#fff}
+  .exp .eh{font-family:var(--serif);font-size:15.6px;font-weight:700;margin-bottom:6px}
+  .exp .eh .no{font-family:var(--mono);font-size:12px;color:var(--accent);margin-right:7px}
+  .exp .row{display:grid;grid-template-columns:96px 1fr;gap:10px;font-size:13.7px;margin:4px 0}
+  .exp .row .k{color:var(--ink-3);font-size:12.4px;padding-top:2px}
+  /* ③-bis 声压阶梯尺：纯 CSS，不再起 canvas。
+     灰蓝 = 线性区，淡红 = 非线性区(≥150 dB)，深红 = 激波临界(194 dB)。
+     ⚠ 这三色只在本节用，与 ④ 的绿/黄/红三档判定无关，勿混读。 */
+  .splb{margin:14px 0 4px;border:1px solid var(--line);border-radius:9px;
+    padding:11px 13px;background:#fff}
+  /* 两行式：上排「刻度 + 条」，下排注解缩进对齐条起点。
+     ⚠ 条必须吃满 1fr，194 dB 那条才能真的顶到右边界 —— 否则"天花板"没有视觉表达。 */
+  .splb .r{display:grid;grid-template-columns:56px minmax(0,1fr);
+    column-gap:10px;align-items:center;font-size:12.8px;margin:0 0 11px}
+  .splb .r .k{grid-column:1;grid-row:1;font-family:var(--mono);color:var(--ink-2);text-align:right}
+  .splb .r .t{grid-column:2;grid-row:1;display:block;width:100%;min-width:0}
+  .splb .r .b{display:block;height:10px;border-radius:5px;background:#c8d3e0;min-width:2px}
+  .splb .r .v{grid-column:2;grid-row:2;color:var(--ink-3);font-size:12.1px;line-height:1.4;margin-top:3px}
+  .splb .r.nl .b{background:#e0a49d}
+  .splb .r.sh .b{background:#b3261e}
+  /* 本页导航 12 项实测 1576 px，超过版心 1180 px ⇒ 允许换行成两排。
+     ⚠ 只在本页覆盖，不改共享 site.css。 */
+  @media(min-width:761px){
+    .topnav .inner{flex-wrap:wrap;height:auto;min-height:56px;
+      padding-top:5px;padding-bottom:5px;row-gap:2px}
+  }
+  @media(max-width:760px){
+    .step{grid-template-columns:1fr}
+    .exp .row{grid-template-columns:1fr}
+    .ctl input[type=range]{width:110px}
+  }
+</style>
+<!--FXCTL:CSS--><style id="fxctl-css">
+/* ============================================================
+   PKS · 通用「调参浮窗」样式  (float_ctl.css)
+   白底 / 深蓝强调 / 与 site.css 变量兼容（变量缺失时有兜底色）
+   面板不接管页面原有控件样式，只在自己作用域内统一外观
+   ============================================================ */
+#fxp{
+  position:fixed; z-index:840; top:84px; right:16px;
+  width:322px; max-height:calc(100vh - 118px);
+  display:flex; flex-direction:column;
+  background:#fff; border:1px solid #cfd6e0; border-radius:12px;
+  box-shadow:0 2px 6px rgba(18,22,28,.08), 0 14px 40px rgba(18,22,28,.14);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:13px; color:#12161c; line-height:1.55;
+  -webkit-user-select:none; user-select:none;
+}
+#fxp.fxp-min{ width:auto; min-width:150px; }
+#fxp.fxp-min .fxp-bd{ display:none; }
+#fxp.fxp-min .fxp-c{ display:none; }
+
+/* 标题栏（拖动手柄） */
+#fxp .fxp-h{
+  display:flex; align-items:center; gap:7px;
+  padding:8px 10px 8px 9px; cursor:grab; touch-action:none;
+  border-bottom:1px solid #e6eaf0; border-radius:12px 12px 0 0;
+  background:linear-gradient(#fbfcfe,#f4f7fb);
+}
+#fxp.fxp-min .fxp-h{ border-bottom:0; border-radius:12px; }
+#fxp .fxp-h.fxp-drag{ cursor:grabbing; }
+#fxp .fxp-grip{ color:#9aa6b6; font-size:13px; letter-spacing:0 }
+#fxp .fxp-t{
+  font-family:Georgia,"Times New Roman","Songti SC",serif;
+  font-weight:700; font-size:14.5px; color:#0d2f63; letter-spacing:.2px;
+}
+#fxp .fxp-c{ font-family:Consolas,monospace; font-size:11px; color:#6b7683; margin-left:auto; white-space:nowrap }
+#fxp .fxp-h.fxp-mini-open .fxp-c{ margin-left:6px }
+#fxp .fxp-b{
+  width:22px; height:22px; padding:0; flex:0 0 22px;
+  border:1px solid #cfd6e0; background:#fff; border-radius:6px;
+  color:#3b4552; font-size:12px; line-height:1; cursor:pointer;
+}
+#fxp .fxp-b:hover{ border-color:#1b4f9c; color:#1b4f9c; background:#f4f7fb }
+#fxp .fxp-b:first-of-type{ margin-left:6px }
+
+/* 面板主体 */
+#fxp .fxp-bd{
+  padding:4px 12px 12px; overflow-y:auto; overflow-x:hidden;
+  -webkit-user-select:auto; user-select:auto;
+}
+#fxp .fxp-bd::-webkit-scrollbar{ width:8px }
+#fxp .fxp-bd::-webkit-scrollbar-thumb{ background:#d7dee8; border-radius:4px }
+#fxp .fxp-bd::-webkit-scrollbar-track{ background:transparent }
+
+/* 分组 */
+#fxp .fxp-grp{ padding:9px 0 3px }
+#fxp .fxp-grp + .fxp-grp{ border-top:1px dashed #e6eaf0; margin-top:3px }
+#fxp .fxp-gl{
+  font-family:Consolas,monospace; font-size:10.5px; letter-spacing:.04em;
+  color:#6b7683; margin:0 0 7px; display:flex; align-items:baseline; gap:6px;
+}
+#fxp .fxp-gl b{ color:#1b4f9c; font-weight:600; font-size:11px }
+#fxp .fxp-gl i{ font-style:normal; color:#9aa6b6 }
+
+/* 控件统一外观：覆盖被搬进来的块，不依赖原页面 .viz .ctl 之类选择器 */
+#fxp .ctl, #fxp .ctrl, #fxp .controls, #fxp .calc, #fxp .panel, #fxp .param-panel{
+  display:block; margin:0; padding:0; border:0; background:none; box-shadow:none;
+  width:auto; max-width:none; position:static; float:none;
+}
+#fxp .ctl > *, #fxp .ctrl > *, #fxp .controls > *, #fxp .panel > *, #fxp .calc > *{ margin-bottom:9px }
+#fxp .ctl > *:last-child, #fxp .ctrl > *:last-child,
+#fxp .controls > *:last-child, #fxp .panel > *:last-child, #fxp .calc > *:last-child{ margin-bottom:0 }
+
+/* label 行：文字在上、滑块占满整行 */
+#fxp label, #fxp .row, #fxp .prow, #fxp .slider{
+  display:flex; flex-wrap:wrap; align-items:center; gap:3px 8px;
+  width:100%; margin:0 0 10px; font-size:12.6px; color:#3b4552;
+}
+#fxp label > span, #fxp .row > span{ flex:0 0 auto }
+#fxp input[type=range]{
+  -webkit-appearance:none; appearance:none; order:3;
+  /* ⚠ 不能用 flex:0 0 100%：父级 label.row 是 align-items:center 的 flex 行，
+     交叉轴会把 input 压成 track 的 3px 高（实测 offsetHeight=3），滑块几乎被裁掉。
+     flex:none + width:100% 一样能独占一行，且高度稳定 16px。 */
+  flex:none; width:100%; min-width:90px; height:16px; margin:1px 0 0;
+  background:transparent; cursor:pointer; accent-color:#1b4f9c;
+}
+#fxp input[type=range]::-webkit-slider-runnable-track{
+  height:3px; background:#dbe2ec; border-radius:2px;
+}
+#fxp input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:13px; height:13px; margin-top:-5px;
+  background:#1b4f9c; border:2px solid #fff; border-radius:50%;
+  box-shadow:0 1px 3px rgba(18,22,28,.28);
+}
+#fxp input[type=range]:focus{ outline:none }
+#fxp input[type=range]:focus::-webkit-slider-thumb{ box-shadow:0 0 0 3px rgba(27,79,156,.18) }
+
+/* 数值 */
+#fxp .val, #fxp .v, #fxp output, #fxp .num{
+  font-family:Consolas,monospace; font-size:12px; color:#b4531f;
+  min-width:0; margin-left:auto; white-space:nowrap; order:2;
+}
+
+/* 按钮 */
+#fxp button{
+  font-family:Consolas,monospace; font-size:11.5px; padding:4px 9px;
+  border:1px solid #cfd6e0; background:#fff; color:#3b4552;
+  border-radius:7px; cursor:pointer; margin:0 5px 5px 0;
+}
+#fxp button:hover{ border-color:#1b4f9c; color:#1b4f9c; background:#f4f7fb }
+
+/* .lab / .hint / .presets（aizawa / 黄金蛋 那一族的行结构） */
+#fxp .lab{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:8px; width:100%; order:1; font-size:12.6px; color:#3b4552;
+}
+#fxp .lab .v{ margin-left:auto }
+#fxp .hint{
+  order:4; width:100%; margin:3px 0 0; font-size:11.2px; line-height:1.5;
+  color:#6b7683;
+}
+#fxp .presets{ order:5; width:100%; display:flex; flex-wrap:wrap; gap:5px; margin-top:5px }
+#fxp .presets button{ margin:0 }
+#fxp .gt{
+  font-family:Georgia,"Songti SC",serif; font-size:12.8px; font-weight:700;
+  color:#0d2f63; margin:2px 0 8px;
+}
+#fxp .grp > .gt:first-child{ margin-top:0 }
+
+#fxp button.on, #fxp button.active{ background:#1b4f9c; border-color:#1b4f9c; color:#fff }
+#fxp select{
+  font-family:inherit; font-size:12px; padding:3px 6px; max-width:100%;
+  border:1px solid #cfd6e0; border-radius:6px; background:#fff; color:#12161c;
+}
+#fxp input[type=text], #fxp input[type=number]{
+  font-family:Consolas,monospace; font-size:12px; width:78px; padding:3px 6px;
+  border:1px solid #cfd6e0; border-radius:6px;
+}
+#fxp input[type=checkbox]{ accent-color:#1b4f9c; margin-right:2px }
+
+/* 原位置留下的提示 */
+.fxp-note{
+  margin:10px 0 0; padding:5px 9px; font-size:11.8px; color:#6b7683;
+  font-family:Consolas,monospace; background:#f6f8fb;
+  border:1px dashed #d7dee8; border-radius:6px;
+}
+.fxp-note::before{ content:"⇱ "; color:#1b4f9c }
+
+/* 窄屏：底部抽屉式，不再遮挡图 */
+@media (max-width:880px){
+  #fxp{
+    top:auto; bottom:0; right:0; left:0; width:auto;
+    max-height:52vh; border-radius:12px 12px 0 0;
+    border-left:0; border-right:0; border-bottom:0;
+  }
+  #fxp .fxp-h{ cursor:default; border-radius:12px 12px 0 0 }
+  #fxp.fxp-min{ left:auto; right:10px; bottom:10px; border:1px solid #cfd6e0; border-radius:12px }
+}
+@media print{ #fxp{ display:none !important } }
+
+/* ============================================================
+   暗色主题皮肤（2026-10-19 老师：Anu 主界面是暗底，浮窗却是白底，割裂）
+   触发条件：页面 <body> 或 <html> 自己声明了暗色
+     body.theme-dark / body.dark / body.theme-night
+     html[data-theme="dark"] / body[data-theme="dark"]
+   只做覆盖，不改上面的默认（白底）规则 —— 明色页面完全不受影响。
+   配色取自 anu.css 的 --panel/--line/--text/--accent，保持同源。
+   ============================================================ */
+body.theme-dark #fxp, body.dark #fxp, body.theme-night #fxp,
+html[data-theme="dark"] #fxp, body[data-theme="dark"] #fxp{
+  background:#0e1420; border-color:#22304a;
+  box-shadow:0 2px 8px rgba(0,0,0,.45), 0 18px 48px rgba(0,0,0,.55);
+  color:#e6edf8;
+}
+body.theme-dark #fxp .fxp-h, body.dark #fxp .fxp-h, body.theme-night #fxp .fxp-h,
+html[data-theme="dark"] #fxp .fxp-h, body[data-theme="dark"] #fxp .fxp-h{
+  background:linear-gradient(#182233,#111826); border-bottom-color:#22304a;
+}
+body.theme-dark #fxp .fxp-grip, body.dark #fxp .fxp-grip, body.theme-night #fxp .fxp-grip{
+  color:#5d7093;
+}
+body.theme-dark #fxp .fxp-t, body.dark #fxp .fxp-t, body.theme-night #fxp .fxp-t,
+html[data-theme="dark"] #fxp .fxp-t, body[data-theme="dark"] #fxp .fxp-t{
+  color:#cddcff;
+}
+body.theme-dark #fxp .fxp-c, body.dark #fxp .fxp-c, body.theme-night #fxp .fxp-c{
+  color:#6b7f9e;
+}
+body.theme-dark #fxp .fxp-b, body.dark #fxp .fxp-b, body.theme-night #fxp .fxp-b,
+html[data-theme="dark"] #fxp .fxp-b, body[data-theme="dark"] #fxp .fxp-b{
+  background:#141c2b; border-color:#22304a; color:#a9bad6;
+}
+body.theme-dark #fxp .fxp-b:hover, body.dark #fxp .fxp-b:hover, body.theme-night #fxp .fxp-b:hover{
+  background:#1b2740; border-color:#4d7cff; color:#cddcff;
+}
+body.theme-dark #fxp .fxp-bd::-webkit-scrollbar-thumb,
+body.dark #fxp .fxp-bd::-webkit-scrollbar-thumb,
+body.theme-night #fxp .fxp-bd::-webkit-scrollbar-thumb{
+  background:#26334c;
+}
+body.theme-dark #fxp .fxp-grp + .fxp-grp, body.dark #fxp .fxp-grp + .fxp-grp,
+body.theme-night #fxp .fxp-grp + .fxp-grp{ border-top-color:#1e2a3f }
+body.theme-dark #fxp .fxp-gl, body.dark #fxp .fxp-gl, body.theme-night #fxp .fxp-gl{
+  color:#7d90ae;
+}
+body.theme-dark #fxp .fxp-gl b, body.dark #fxp .fxp-gl b, body.theme-night #fxp .fxp-gl b{
+  color:#7ea6ff;
+}
+body.theme-dark #fxp .fxp-gl i, body.dark #fxp .fxp-gl i, body.theme-night #fxp .fxp-gl i{
+  color:#5d7093;
+}
+body.theme-dark #fxp label, body.theme-dark #fxp .row, body.theme-dark #fxp .prow,
+body.theme-dark #fxp .slider, body.dark #fxp label, body.dark #fxp .row,
+body.dark #fxp .prow, body.dark #fxp .slider,
+body.theme-night #fxp label, body.theme-night #fxp .row,
+body.theme-night #fxp .prow, body.theme-night #fxp .slider{
+  color:#b9c8e0;
+}
+body.theme-dark #fxp input[type=range]::-webkit-slider-runnable-track,
+body.dark #fxp input[type=range]::-webkit-slider-runnable-track,
+body.theme-night #fxp input[type=range]::-webkit-slider-runnable-track{
+  background:#31425f;                    /* 不能贴地色，否则轨道看不见、只剩一个蓝点 */
+}
+body.theme-dark #fxp input[type=range]::-webkit-slider-thumb,
+body.dark #fxp input[type=range]::-webkit-slider-thumb,
+body.theme-night #fxp input[type=range]::-webkit-slider-thumb{
+  background:#4d7cff; border-color:#0e1420;
+  box-shadow:0 1px 3px rgba(0,0,0,.6);
+}
+body.theme-dark #fxp input[type=range]:focus::-webkit-slider-thumb,
+body.dark #fxp input[type=range]:focus::-webkit-slider-thumb{
+  box-shadow:0 0 0 3px rgba(77,124,255,.28);
+}
+body.theme-dark #fxp .val, body.theme-dark #fxp .v, body.theme-dark #fxp output,
+body.theme-dark #fxp .num, body.dark #fxp .val, body.dark #fxp .v,
+body.dark #fxp output, body.dark #fxp .num,
+body.theme-night #fxp .val, body.theme-night #fxp .v,
+body.theme-night #fxp output, body.theme-night #fxp .num{
+  color:#ffc861;                      /* 与页面 --gold 同源 */
+}
+body.theme-dark #fxp button, body.dark #fxp button, body.theme-night #fxp button,
+html[data-theme="dark"] #fxp button, body[data-theme="dark"] #fxp button{
+  background:#141c2b; border-color:#22304a; color:#b9c8e0;
+}
+body.theme-dark #fxp button:hover, body.dark #fxp button:hover,
+body.theme-night #fxp button:hover{
+  background:#1b2740; border-color:#4d7cff; color:#cddcff;
+}
+body.theme-dark #fxp button.on, body.theme-dark #fxp button.active,
+body.dark #fxp button.on, body.dark #fxp button.active,
+body.theme-night #fxp button.on, body.theme-night #fxp button.active{
+  background:#2f6fe0; border-color:#2f6fe0; color:#fff;
+}
+body.theme-dark #fxp .lab, body.dark #fxp .lab, body.theme-night #fxp .lab{
+  color:#b9c8e0;
+}
+body.theme-dark #fxp .hint, body.dark #fxp .hint, body.theme-night #fxp .hint{
+  color:#7d90ae;
+}
+body.theme-dark #fxp .gt, body.dark #fxp .gt, body.theme-night #fxp .gt,
+html[data-theme="dark"] #fxp .gt, body[data-theme="dark"] #fxp .gt{
+  color:#cddcff;
+}
+body.theme-dark #fxp select, body.dark #fxp select, body.theme-night #fxp select,
+body.theme-dark #fxp input[type=text], body.theme-dark #fxp input[type=number],
+body.dark #fxp input[type=text], body.dark #fxp input[type=number],
+body.theme-night #fxp input[type=text], body.theme-night #fxp input[type=number]{
+  background:#0b1019; border-color:#22304a; color:#e6edf8;
+}
+body.theme-dark .fxp-note, body.dark .fxp-note, body.theme-night .fxp-note{
+  background:#111826; border-color:#22304a; color:#7d90ae;
+}
+body.theme-dark .fxp-note::before, body.dark .fxp-note::before,
+body.theme-night .fxp-note::before{ color:#7ea6ff }
+
+/* 暗色下的窄屏抽屉边框 */
+@media (max-width:880px){
+  body.theme-dark #fxp.fxp-min, body.dark #fxp.fxp-min, body.theme-night #fxp.fxp-min{
+    border-color:#22304a;
+  }
+}
+
+</style><!--/FXCTL:CSS-->
+</head>
+<body>
+
+<nav class="topnav"><div class="inner">
+  <a class="brand" href="keely核心技术与现代声子物理技术对比.html">Keely × 现代声子物理 <span>/</span> K5</a>
+  <a class="nv" href="keely核心技术与现代声子物理技术对比.html" title="总入口：四条改写 · 术语对照 · 全部页面">← 总入口</a>
+  <a class="nv on" href="#s1">① 什么是梳</a>
+  <a class="nv" href="#s2">② 时域＝频域</a>
+  <a class="nv" href="#s3">③ 现代四条路线</a>
+  <a class="nv" href="#s3b">③-bis 非线性</a>
+  <a class="nv" href="#s4">④ Keely 落在哪一格</a>
+  <a class="nv" href="#s5">⑤ 五个环节的落地</a>
+  <a class="nv" href="#s6">⑥ 三个判决实验</a>
+  <a class="nv" href="#s7">⑦ 结论</a>
+  <a class="nv" href="#s8">⑧ 出处</a>
+  <a class="nv" href="K8_热声子通道_渠氏热超导与倍频谐振.html" title="K8：渠氏热超导材料、热声子与二倍频谐振">K8 热声子 →</a>
+  <a class="nv" href="K7_声子梳_器件机理与Keely逐项对照.html" title="K7：声子梳的器件机理、齿距公式与对 Keely 的逐项对照">K7 声子梳 →</a>
+  <a class="nv" href="K6_术语对照_Keely与现代科学.html" title="K6：Keely 术语与现代科学术语逐条对照">K6 术语对照 →</a>
+  <a class="nv" href="09_Dynasphere振动几何_康普顿波长与超导交互详解.html" title="09 页：把梳的概念用到 12 in 球壳与七管上">09 Dynasphere →</a>
+  <a class="nv" href="K9_Dynasphere24管与Anu十丝_赤道环与七内管对照.html" title="K9：24 管、7 内管与 Anu 十丝的尺寸与音程对照">K9 24管×10丝 →</a>
+</div></nav>
+
+<div class="hero"><div class="wrap">
+  <div class="kicker">K5 · Frequency Comb</div>
+  <h1>频率梳：从锁模激光到声子梳，<br class="brk">Keely 的「三个八度」落在哪一格</h1>
+  <p class="sub">
+    Keely 的外环是「三个八度 + 每隔第三销钉调 B♭」——一句话里同时有<b>齿列</b>和<b>周期性</b>，
+    这与 2005 年拿诺贝尔奖的光学频率梳、与 2023 年的磁振子频率梳、与 2024 年的 MEMS 声子梳，
+    在几何形象上高度相似。本页做三件事：把「梳」这个词钉死在三类齿列上；
+    把现代四条路线的<b>真实齿距与齿数</b>排出来；然后逐条判定 Keely 的装置究竟落在哪一格 ——
+    <b>结论是他有齿列，没有齿距，更没有锁相</b>。缺的那一样，恰好是 130 年后才有的技术。
+  </p>
+  <p class="meta">文献：Phys. Rev. Lett. <b>131</b>, 243601 (2023) · J. Microelectromech. Syst. <b>33</b>(3) 384–394 (2024) · Photonics Insights <b>3</b>(4) R09 (2024) · preprint DOI 10.21203/rs.3.rs-4168088/v1</p>
+</div></div>
+
+<div class="wrap">
+
+<!-- ============ ① ============ -->
+<h2 id="s1"><span class="num">①</span>先把「梳」这个词钉死：三种齿列，只有两类配叫梳</h2>
+
+<p>
+  「频率梳」（frequency comb）这个名字来自图形：频谱上立着一排间距均匀的竖线，像梳齿。
+  但<b>「一排竖线」不是定义，齿距恒定才是</b>。世纪之交以来这个术语被泛化得太厉害，
+  以致于任何多峰谱都有人叫它"梳"。本页用三条判据把它收窄：
+</p>
+
+<div class="eq">
+  <b>C1 齿距恒定</b>：相邻齿的频率差 Δf<sub>k</sub> = f<sub>k+1</sub> − f<sub>k</sub> 与 k 无关<br>
+  <b>C2 相位相干</b>：齿与齿之间保持固定相位关系（不是各自随机游走）<br>
+  <b>C3 有共同来源</b>：所有齿由同一个泵浦/同一个腔产生，而不是 N 台独立振荡器拼起来
+</div>
+
+<p>
+  按这三条，齿列可以分成三类。<b>下面这张图是本页的地基</b>，先把它看清楚 ——
+  后面所有的判定都回到这张图的颜色上。
+</p>
+
+<div class="viz">
+  <div class="vt">图 5-1 · 三种齿列并排：齿距恒定的是梳，齿距递增的不是</div>
+  <div class="vc">
+    横轴为线性频率，单位取基频 f<sub>0</sub>。拖动滑块改齿数，看三行的「齿距」怎么变。<br>
+    <b style="color:#1b4f9c">蓝</b> = 谐波列 n·f<sub>0</sub>（齿距恒为 f<sub>0</sub>）；
+    <b style="color:#177245">绿</b> = 现代频率梳 f<sub>ceo</sub> + n·f<sub>rep</sub>（齿距恒为 f<sub>rep</sub>，可与谐波列不同）；
+    <b style="color:#b4531f">橙</b> = 纯律音阶比连乘：齿距<b>在一个八度内递增，跨八度整体 ×2 后重置</b>（所以呈锯齿）。<br>
+    <span class="cnt">⚠ 橙行同样 10 根齿却只铺到 2.5 f<sub>0</sub> —— 这不是画法问题：音阶比每八度只乘 2，所以<b>同样齿数覆盖的频率范围天然更窄</b>。
+    勾选下方后，橙行因齿太密（最小齿距只剩 ~10 px）改用<b>竖条高度</b>表示齿距（越高＝齿距越大），蓝/绿行仍写数字。
+    锯齿不是画错：跨八度时齿距整体乘 2，但下一个八度又从 9/8 起步，所以会跳回低值。</span>
+  </div>
+  <canvas id="cvComb" height="360"></canvas>
+  <div class="ctl">
+    <label>齿数 <input type="range" id="sN" min="4" max="16" value="10" step="1"><span class="val" id="vN">10</span></label>
+    <label><input type="checkbox" id="cDf"> 在齿下标出相邻齿距 Δf</label>
+    <span class="cnt" id="combMsg" style="font-size:12.4px"></span>
+  </div>
+  <div class="rd">
+    <div class="r"><div class="n" id="r1">f₀</div><div class="l">蓝：Δf 恒定</div><div class="x">n·f₀，n = 1,2,3…</div></div>
+    <div class="r"><div class="n" id="r2">0.50 f₀</div><div class="l">绿：Δf 恒定</div><div class="x">f_ceo + n·f_rep</div></div>
+    <div class="r"><div class="n" id="r3">1.125 → …</div><div class="l">橙：Δf 递增（整条）</div><div class="x">比值 ×2 每八度</div></div>
+  </div>
+</div>
+
+<h3>三类的名字与来历</h3>
+
+<div class="step have">
+  <div class="id">A1</div>
+  <div class="bd"><b>算术梳（等间隔）</b>
+    <p>f<sub>n</sub> = n·f<sub>rep</sub>。齿距恒为 f<sub>rep</sub>，与 n 无关。<br>
+    物理来源：任何<b>严格周期</b>信号。周期 T ⇒ 频谱只含 1/T 的整数倍 —— 这不是技术，是傅里叶定理。<br>
+    <b>谐波列</b>（一个音的泛音）就是 f<sub>rep</sub> = f<sub>0</sub> 的特例。</p></div>
+</div>
+
+<div class="step have">
+  <div class="id">A2</div>
+  <div class="bd"><b>平移算术梳（现代频率梳）</b>
+    <p>f<sub>n</sub> = n·f<sub>rep</sub> + f<sub>ceo</sub>。齿距仍是恒定的 f<sub>rep</sub>，
+    但整把梳被 f<sub>ceo</sub> 整体平移了一点。<br>
+    来源：锁模激光的<b>载波–包络相位</b>每圈滑动 Δφ，等效于整个频谱搬移 f<sub>ceo</sub> = f<sub>rep</sub>·Δφ/2π。<br>
+    这两个自由度（f<sub>rep</sub> 与 f<sub>ceo</sub>）都落在微波频段，可以被电子学直接测量和锁定 ——
+    <b>这就是它拿诺奖的原因：把几百 THz 的光，接上了一把 GHz 的尺子。</b></p></div>
+</div>
+
+<div class="step miss">
+  <div class="id">A3</div>
+  <div class="bd"><b>几何梳（等比齿列）· 音乐音阶属于这一类</b>
+    <p>f<sub>k</sub> = f<sub>0</sub>·r<sub>k</sub>，r<sub>k</sub> 是音阶比（如 9/8、5/4、3/2）。<br>
+    在<b>对数</b>频率轴上看起来等间隔（这就是"音阶"的含义）；在线性频率轴上，齿距<b>在一个八度内递增，跨八度整体 ×2 后重置</b>，所以呈锯齿形 —— 不是单调递增。<br>
+    <b>它不满足 C1</b>，而且不用跨八度就能看出来。<b>在同一个八度内</b>，纯律七音通分成 24 分音后，相邻齿距依次是
+    <b>3, 3, 2, 4, 4, 5</b>（单位 f<sub>0</sub>/24），即 <b>0.125, 0.125, 0.083, 0.167, 0.167, 0.208 f<sub>0</sub></b>；
+    最小 0.083、最大 0.208，<b>八度内跨度 2.5 倍</b>。<b>同一个音阶内部，齿距就已经不相等。</b><br>
+    <span class="cnt">⚠ 口径提醒：上面这组数是<b>一个八度内</b>的。图 5-1 的橙行横跨多个八度，整条跨度会更大（跨 2 个八度时 0.083 → 0.250，3.0 倍）——
+    两个数都对，只是范围不同。图下方读数写的是"整条橙行"的口径。</span></p></div>
+</div>
+
+<div class="warnbox">
+  <b>所以，"Keely 用三个八度做出了频率梳"这句话是错的 —— 错在把 A3 当成了 A1。</b><br>
+  音阶是<b>几何</b>齿列（比值恒定），频率梳是<b>算术</b>齿列（差值恒定）。两者在图上都是"一排竖线"，
+  但一个是乘法结构、一个是加法结构。<br>
+  <span class="cnt">这不是抠字眼：乘法结构下，齿距随频率增长 ⇒ 高频端齿越来越疏 ⇒ 无法用单一 f<sub>rep</sub> 拍频读出。
+  而"能用单一 f<sub>rep</sub> 读出"正是频率梳的全部工程价值。详见 ⑦。</span>
+</div>
+
+<!-- ============ ② ============ -->
+<h2 id="s2"><span class="num">②</span>时域与频域是同一件事：为什么"闭合"必然长出梳</h2>
+
+<p>
+  上面说"任何严格周期信号，频谱就是等间隔齿"，这句话值得单独证一遍 ——
+  因为它是本页唯一一条<b>不需要实验、纯数学成立</b>的桥，也是 Keely 那套"闭合"要成立时必须满足的条件。
+</p>
+
+<div class="eq">
+  若 s(t + T) = s(t) 对一切 t 成立，则傅里叶展开只允许<br>
+  &nbsp;&nbsp;s(t) = Σ<sub>n</sub> a<sub>n</sub> e<sup>i2πn t/T</sup> &nbsp;&nbsp;⇒&nbsp;&nbsp; 频率只能取 f<sub>n</sub> = n/T = n·f<sub>rep</sub><br>
+  <span class="cnt">齿距 = 1/T。周期越短，齿距越大；周期趋于无穷（非周期），齿距趋于 0，谱变连续。</span>
+</div>
+
+<svg viewBox="0 0 1080 240" style="width:100%;height:auto;display:block;margin:18px 0;background:#fcfdff;border:1px solid var(--line);border-radius:10px">
+  <!-- 上：时域 -->
+  <text x="24" y="30" font-family="Georgia,serif" font-size="15" font-weight="700" fill="#12161c">时域：一串严格等间隔的脉冲</text>
+  <line x1="24" y1="96" x2="1056" y2="96" stroke="#cfd6e0" stroke-width="1"/>
+  <!-- 脉冲：8 个 -->
+  <g stroke="#1b4f9c" stroke-width="2" fill="none">
+    <path d="M60 96 L60 52 Q64 46 68 52 L68 96"/>
+    <path d="M184 96 L184 52 Q188 46 192 52 L192 96"/>
+    <path d="M308 96 L308 52 Q312 46 316 52 L316 96"/>
+    <path d="M432 96 L432 52 Q436 46 440 52 L440 96"/>
+    <path d="M556 96 L556 52 Q560 46 564 52 L564 96"/>
+    <path d="M680 96 L680 52 Q684 46 688 52 L688 96"/>
+    <path d="M804 96 L804 52 Q808 46 812 52 L812 96"/>
+    <path d="M928 96 L928 52 Q932 46 936 52 L936 96"/>
+  </g>
+  <!-- T 标注 -->
+  <line x1="60" y1="112" x2="184" y2="112" stroke="#b4531f" stroke-width="1.4"/>
+  <line x1="60" y1="106" x2="60" y2="118" stroke="#b4531f" stroke-width="1.4"/>
+  <line x1="184" y1="106" x2="184" y2="118" stroke="#b4531f" stroke-width="1.4"/>
+  <text x="104" y="132" font-family="Consolas,monospace" font-size="12.5" fill="#b4531f">T（周期）</text>
+  <text x="960" y="70" font-family="Consolas,monospace" font-size="12" fill="#6b7683">…</text>
+
+  <!-- 中间箭头 -->
+  <text x="500" y="166" font-family="Georgia,serif" font-size="13.5" fill="#3b4552">傅里叶变换 ⇅（互为对偶，没有信息损失）</text>
+
+  <!-- 下：频域 -->
+  <text x="24" y="200" font-family="Georgia,serif" font-size="15" font-weight="700" fill="#12161c">频域：一排严格等间隔的齿，齿距 = 1/T</text>
+  <line x1="24" y1="228" x2="1056" y2="228" stroke="#cfd6e0" stroke-width="1"/>
+  <g stroke="#177245" stroke-width="2.4">
+    <line x1="60" y1="228" x2="60" y2="206"/>
+    <line x1="184" y1="228" x2="184" y2="206"/>
+    <line x1="308" y1="228" x2="308" y2="206"/>
+    <line x1="432" y1="228" x2="432" y2="206"/>
+    <line x1="556" y1="228" x2="556" y2="206"/>
+    <line x1="680" y1="228" x2="680" y2="206"/>
+    <line x1="804" y1="228" x2="804" y2="206"/>
+    <line x1="928" y1="228" x2="928" y2="206"/>
+  </g>
+  <g fill="#177245">
+    <circle cx="60" cy="204" r="3.2"/><circle cx="184" cy="204" r="3.2"/>
+    <circle cx="308" cy="204" r="3.2"/><circle cx="432" cy="204" r="3.2"/>
+    <circle cx="556" cy="204" r="3.2"/><circle cx="680" cy="204" r="3.2"/>
+    <circle cx="804" cy="204" r="3.2"/><circle cx="928" cy="204" r="3.2"/>
+  </g>
+  <text x="960" y="212" font-family="Consolas,monospace" font-size="12" fill="#6b7683">f</text>
+</svg>
+
+<div class="goodbox">
+  <b>由此得到本页最重要的一条推论（后面反复用）：</b><br>
+  Keely 追求的"闭合"，本质是在追求<b>周期性</b>。而周期性的直接后果，
+  就是频谱<b>自动</b>变成一把齿距 = 1/T 的算术梳。<br>
+  换句话说：<b>如果他真的做到了闭合，那把梳自己就长出来了，不需要他另外去造。</b>
+  反过来说，一把稳定的梳，就是"周期性成立"的可测证据。<br>
+  <span class="cnt">这条推论把"闭合"这个玄学词，变成了一个能不能测出来的工程量：测梳齿间距稳不稳、齿间相位锁不锁。</span>
+</div>
+
+<h3>但这里有个陷阱：周期 ≠ 音阶闭合</h3>
+
+<p>
+  09 页图 3a 的闭合判据是：m 个音程比连乘，回到 2<sup>n</sup>（Σq = Σs = 0）。
+  它保证的是<b>音阶走完一圈后，音高回到某个八度</b>。这确实会产生一个公共周期
+  T = 1/f<sub>gcd</sub>，其中 f<sub>gcd</sub> 是所有分量频率的最大公约数。
+</p>
+
+<p>
+  问题在 f<sub>gcd</sub> 的<b>大小</b>。取纯律七音 {1, 9/8, 5/4, 4/3, 3/2, 5/3, 15/8} × f<sub>0</sub>
+  = f<sub>0</sub>·{1, 1.125, 1.25, 1.333…, 1.5, 1.666…, 1.875}，通分成 24 分音：
+</p>
+
+<div class="eq">
+  {1, 9/8, 5/4, 4/3, 3/2, 5/3, 15/8} = {24, 27, 30, 32, 36, 40, 45} / 24<br>
+  ⇒ f<sub>gcd</sub> = f<sub>0</sub>/24 &nbsp;&nbsp;⇒&nbsp;&nbsp; <b>公共周期 T = 24/f<sub>0</sub></b><br>
+  <span class="cnt">f<sub>0</sub> = 432 Hz 时，T = 24/432 = 55.6 ms，齿距 = 432/24 = <b>18 Hz</b>。这是一把齿距 18 Hz 的梳 —— 不算离谱。</span>
+</div>
+
+<p>
+  但如果音阶里混进一个分母 81 的比（比如 81/64，毕氏大三度），f<sub>gcd</sub> 立刻掉到 f<sub>0</sub>/648，
+  齿距变成 0.67 Hz。再加一个分母 243 的，齿距 0.2 Hz。<b>每加一层 3 的幂，齿距就掉 3 倍。</b>
+</p>
+
+<div class="midbox">
+  <b>于是得到一条可算的判据（本页原创，C 级）：</b><br>
+  一个纯律音阶的"梳"是否<b>工程上存在</b>，不看它闭合不闭合，
+  而看它的<b>公分母 D = lcm(各比的分母)</b>：<br>
+  &nbsp;&nbsp;齿距 = f<sub>0</sub>/D，&nbsp; 齿数（一个八度内）= D<br>
+  若 f<sub>0</sub>/D 低于器件带宽或人耳分辨率，<b>这把梳在实践上等于不存在</b>（谱是连续的）。<br>
+  <span class="cnt">这解释了为什么现代频率梳不用音阶比：不是音阶"错"，是音阶的公分母不可控。
+  工程上宁可用 f<sub>rep</sub> = 10 GHz 的等间隔梳 —— 简单、可控、齿数固定。</span>
+</div>
+
+<!-- ============ ③ ============ -->
+<h2 id="s3"><span class="num">③</span>现代四条路线：真实齿距与齿数</h2>
+
+<p>
+  下面这张表全部来自可查文献，<b>数字不是估计</b>。注意四条路线的齿距跨了<b>十个数量级</b>
+  （25 Hz 到 1 THz），但它们服从同一条判据 C1 —— 齿距恒定。
+</p>
+
+<table>
+  <thead><tr>
+    <th style="width:15%">路线</th><th style="width:17%">齿距 f<sub>rep</sub></th>
+    <th style="width:11%">典型齿数</th><th style="width:26%">产生机制</th><th>为什么它能成立</th>
+  </tr></thead>
+  <tbody>
+    <tr>
+      <td><b>锁模激光梳</b><br><span class="cnt">mode-locked</span></td>
+      <td>100 MHz – 10 GHz</td>
+      <td>10<sup>5</sup> – 10<sup>6</sup></td>
+      <td>腔内锁模，输出一串飞秒脉冲</td>
+      <td>脉冲串天然周期 ⇒ 谱天然等间隔。靠可饱和吸收体或克尔透镜自锁模</td>
+    </tr>
+    <tr class="hl">
+      <td><b>克尔孤子微梳</b><br><span class="cnt">microcomb</span></td>
+      <td>1.8 GHz – 1 THz</td>
+      <td>10<sup>2</sup> – 10<sup>3</sup></td>
+      <td>χ<sup>(3)</sup> 四波混频 + 孤子双平衡</td>
+      <td>色散与非线性平衡、增益与损耗平衡 ⇒ 时域单个孤子脉冲 ⇒ 频域等间隔齿</td>
+    </tr>
+    <tr>
+      <td><b>电光梳</b><br><span class="cnt">EO comb</span></td>
+      <td>10 – 100 GHz</td>
+      <td>10<sup>1</sup> – 10<sup>2</sup></td>
+      <td>χ<sup>(2)</sup> 相位调制 + 高 Q 腔增强</td>
+      <td>单一连续激光被周期性相位调制 ⇒ 边带 f<sub>0</sub> ± n·f<sub>m</sub>，天然等间隔</td>
+    </tr>
+    <tr>
+      <td><b>声子 / 磁振子梳</b><br><span class="cnt">phononic / magnonic</span></td>
+      <td>25 Hz – 10 MHz</td>
+      <td>10<sup>1</sup> – 10<sup>4</sup></td>
+      <td>非线性耦合 + 级联四波混频 / 分岔</td>
+      <td>与微梳同构，只是把"光"换成"声/自旋波"</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>3.1 光学那一支：f<sub>ceo</sub> 为什么是诺奖级的一步</h3>
+
+<p>
+  锁模激光的脉冲串是周期的，但"脉冲里的光波"与"脉冲包络"之间每圈会错开一点相位 Δφ。
+  这一点错位，等效于整把梳在频率轴上平移：
+</p>
+
+<div class="eq">
+  f<sub>n</sub> = n·f<sub>rep</sub> + f<sub>ceo</sub>，&nbsp;&nbsp; f<sub>ceo</sub> = f<sub>rep</sub> · Δφ / 2π<br>
+  <span class="cnt">f<sub>rep</sub> 由腔长定（≈ c/2L），f<sub>ceo</sub> 由色散定。两个都在 GHz 以下，电子学能直接数。</span>
+</div>
+
+<p>
+  在 2000 年之前，光学频率（~10<sup>14</sup> Hz）与微波（~10<sup>9</sup> Hz）之间隔着五个数量级，
+  中间靠"频率链"一级一级往上乘，需要一整个实验室。频率梳把这件事变成一台仪器：
+  <b>只要测出 f<sub>rep</sub> 和 f<sub>ceo</sub> 两个射频数，第 n 根齿的绝对频率就精确知道。</b>
+  2005 年 Hall 与 Hänsch 因此获诺贝尔物理学奖。
+</p>
+
+<div class="quote">
+  「齿距 f<sub>rep</sub> 对应微谐振腔的自由光谱范围（FSR）；当级联四波混频产生等间距光梳线时，
+  该间距与 FSR 一致，实测与光纤频率梳比对，等间距程度可达 10<sup>−17</sup> 量级。」
+  <span class="src">— 微梳综述对 2007 年首次微梳实验的描述 [综述 Photonics Insights 3(4) R09, 2024]</span>
+</div>
+
+<h3>3.2 声子那一支：为什么它和 Keely 的装置最像</h3>
+
+<p>
+  声子梳（phononic comb）是把同样的机制搬到机械振动上。它的齿距不是光频，而是<b>机械模的频率</b>——
+  正好落在 Keely 装置工作的频段（Hz 到 MHz）。目前有三个可查的节点：
+</p>
+
+<div class="step have">
+  <div class="id">声-1</div>
+  <div class="bd"><b>磁振子频率梳：20 根齿，齿距 10.08 MHz</b>
+    <p>中科大董春华组（徐冠庭、张劢共同一作），<i>Phys. Rev. Lett.</i> <b>131</b>, 243601，2023-12-11。<br>
+    做法：磁–力学谐振腔，加一个<b>蓝失谐强泵浦</b>，磁致伸缩非线性被显著增强，
+    出现类克尔<b>级联四波混频</b>，产生 20 根梳齿，齿距 10.08 MHz <b>恰等于机械模谐振频率</b>。<br>
+    ✅ 与 Keely 的关键差别：他们用<b>注入锁定</b>稳定齿距 —— 这一点后面 ⑤ 会专门讲，那是"同情振动"的现代实现。</p></div>
+</div>
+
+<div class="step have">
+  <div class="id">声-2</div>
+  <div class="bd"><b>MEMS 声子梳：齿距 25 Hz → 200 Hz 可调</b>
+    <p>Jiahao Wu 等，<i>J. Microelectromech. Syst.</i> <b>33</b>(3) 384–394，2024-03-29，DOI 10.1109/JMEMS.2024.3379195。<br>
+    做法：非线性模态耦合的 MEMS 谐振器，构成 <b>1:3 内共振</b>；<b>单音激励</b>就能触发。
+    通过倍周期分岔、循环折叠分岔与混沌，齿距从 25 Hz 连续调到 200 Hz 以上，<b>跨一个数量级</b>。<br>
+    ✅ 这一条对 Keely 最友好：<b>单频驱动 + 结构非线性 ⇒ 多齿</b>。不需要激光、不需要低温，桌上就能做。</p></div>
+</div>
+
+<div class="step miss">
+  <div class="id">声-3</div>
+  <div class="bd"><b>相干声学频率梳（AFC）：10<sup>4</sup> 根齿，跨六个数量级</b>
+    <p>Guanzong Xiao 等，<i>Broadband nonlinear phonon-laser frequency comb</i>，
+    DOI 10.21203/rs.3.rs-4168088/v1，2024-04-11。<br>
+    ⚠ <b>这是预印本，未经同行评审</b>，引用时必须标明。文中称：SiN 膜 + 光力腔，
+    两种非线性耦合（增益辅助的光–运动耦合 + 机械波混频）可调，齿数达 10<sup>4</sup>，
+    覆盖六个数量级频率，齿距近乎完全均匀。</p></div>
+</div>
+
+<div class="warnbox">
+  <b>证据分级提醒（本页立场）：</b>
+  声-1、声-2 是正式发表；<b>声-3 是预印本</b>。
+  在 09 页的 A/B/C/D 分级里，声-3 应记作 <b>D 级（存疑）</b>，
+  不能因为"数字最漂亮"就当结论用。<br>
+  <span class="cnt">这条纪律对本页同样适用：下面 ④ 里凡是标了 C 的，都是我自己算的，不是文献直述。</span>
+</div>
+
+<!-- ============ ③-bis ============ -->
+<h2 id="s3b"><span class="num">③-bis</span>非线性：一根泵浦怎么变成一把梳</h2>
+
+<p>
+  ③ 列了四条路线，却没说它们共用一个<b>发动机</b>。这一节专讲发动机 —— <b>非线性</b>。<br>
+  先把一句话钉在这里：<b>非线性不是"更强的放大"，而是唯一能凭空造出新频率的机制。</b>
+  线性系统里，把 432 Hz 放大一千倍，出来的还是 432 Hz，只是更响。
+</p>
+
+<h3 id="s3b1">3b.1 三件套：非线性只是第一件</h3>
+
+<p>
+  媒体常把"非线性"说成万能钥匙。实际上它只是三个必要条件之一，<b>缺一件都不出梳</b>。
+</p>
+
+<table>
+  <thead><tr><th style="width:18%">条件</th><th style="width:38%">它负责什么</th><th>缺了会怎样</th></tr></thead>
+  <tbody>
+    <tr><td><b>A · 非线性</b><br><span class="cnt">χ<sup>(2)</sup> 或 χ<sup>(3)</sup></span></td>
+        <td>让输出不再正比于输入：y = a<sub>1</sub>x + a<sub>2</sub>x² + a<sub>3</sub>x³ + …，
+            a<sub>2</sub>、a<sub>3</sub> 非零 ⇒ 出现 2f、3f、f<sub>1</sub>±f<sub>2</sub></td>
+        <td>只剩 a<sub>1</sub> ⇒ 叠加原理成立 ⇒ <b>频率一个不变</b>。这就是"线性"的定义</td></tr>
+    <tr><td><b>B · 相位匹配</b><br><span class="cnt">Δk = 0 / 落在腔模上</span></td>
+        <td>新产生的频率必须与已有场<b>同相叠加</b>，否则走几微米就被相消掉</td>
+        <td>频率在局部瞬间产生了，但<b>传不出去也积不起来</b>，谱上只剩噪声鼓包</td></tr>
+    <tr><td><b>C · 高 Q 储能</b><br><span class="cnt">Q = ω₀·储能 / 每弧度损耗</span></td>
+        <td>把泵浦场在腔内放大 Q 倍（强度 Q² 倍），才够得着非线性阈值</td>
+        <td>只能靠外部把功率推到很大 —— <b>这就是 Keely 需要的 160 dB 的来历</b></td></tr>
+  </tbody>
+</table>
+
+<div class="midbox">
+  <b>最常被误解的是 A。</b>很多资料把"非线性"和"放大"混成一件事。反例很好举：
+  一台普通功放是<b>线性</b>的，把 432 Hz 推到 2,000 Pa 也不会自己冒出 1296 Hz。<br>
+  要 1296 Hz，必须存在某个 <b>x³ 项</b>（或级联的 x² 项）把它混出来。<b>能量可以从泵浦来，频率不能。</b>
+</div>
+
+<h3 id="s3b2">3b.2 五种机制：它们各自怎么把一根变成一把</h3>
+
+<p>
+  下表按「数学上靠哪一项 + 齿距由谁定」分类。<b>关键分辨点是"自发"还是"驱动"</b> ——
+  自发型给一个单频泵浦就自己长出齿，驱动型必须外加一个时钟。
+</p>
+
+<table>
+  <thead><tr>
+    <th style="width:19%">机制</th><th style="width:8%">类型</th><th style="width:21%">数学项 / 过程</th>
+    <th style="width:17%">齿距由谁定</th><th>实测代表（正式发表）</th>
+  </tr></thead>
+  <tbody>
+    <tr>
+      <td><b>① 克尔 · 四波混频</b><br><span class="cnt">Kerr / FWM</span></td>
+      <td><span class="tag ok">自发</span></td>
+      <td>χ<sup>(3)</sup>：2ω<sub>p</sub> → ω<sub>p</sub>+Ω, ω<sub>p</sub>−Ω<br>
+          腔增强级联 ⇒ 调制不稳定起振 ⇒ 耗散克尔孤子</td>
+      <td><b>腔的 FSR</b><br><span class="cnt">齿距 = D<sub>1</sub>/2π，与泵浦无关</span></td>
+      <td>TFLN <b>电泵浦</b>孤子微梳：<b>25 mW</b> 泵浦 ⇒ 200 GHz 齿距、180 nm 跨度、自注入锁定
+          <span class="cnt">[web_207]</span></td>
+    </tr>
+    <tr>
+      <td><b>② 二次级联 · 等效克尔</b><br><span class="cnt">cascaded χ<sup>(2)</sup></span></td>
+      <td><span class="tag ok">自发</span></td>
+      <td>χ<sup>(2)</sup> 的 ω+ω−ω 级联，<b>等效出一个可调 Kerr 项</b>；
+          等效 n<sub>2</sub> 可比材料本身大 <b>10³ 倍</b>，符号还能由失谐翻转</td>
+      <td>腔的 FSR<br><span class="cnt">但色散可被 χ<sup>(2)</sup> 主导</span></td>
+      <td>双色二次孤子 DQS：3 dB 带宽 <b>1.15 THz</b>、脉宽 <b>274 fs</b>
+          <span class="cnt">[web_208]</span>；二次-克尔混合腔 <b>0 dB 起伏</b>超平坦谱 <span class="cnt">[web_209]</span></td>
+    </tr>
+    <tr>
+      <td><b>③ 电光调制</b><br><span class="cnt">EO comb / Pockels</span></td>
+      <td><span class="tag mid">驱动</span></td>
+      <td>χ<sup>(2)</sup> 线性调制：f<sub>n</sub> = f<sub>c</sub> ± n·f<sub>m</sub><br>
+          <b>不需要自发起振</b>，只需要一个强的微波源</td>
+      <td><b>外部微波频率</b><br><span class="cnt">想设多少设多少，与腔无关</span></td>
+      <td>TFLN 行波电极：<b>29.158 GHz</b> 单音、36.5 dBm，跨 L/C/S/E 四个波段都能出边带 <span class="cnt">[web_210]</span></td>
+    </tr>
+    <tr>
+      <td><b>④ 结构非线性 · 内共振</b><br><span class="cnt">modal coupling</span></td>
+      <td><span class="tag ok">自发</span></td>
+      <td>几何/接触非线性 ⇒ 1:3 内共振 + 倍周期分岔 + 循环折叠分岔<br>
+          <b>纯力学，不需要特殊材料</b></td>
+      <td><b>机械模频率</b>或其分频<br><span class="cnt">随激励幅值连续移动</span></td>
+      <td>MEMS 单音激励，齿距 <b>25 → 200 Hz</b> 可调 <span class="cnt">[web_202]</span>；
+          曲面 PMUT 三模组合内共振 <span class="cnt">[web_212]</span>；磁振子梳 <b>20 齿 / 10.08 MHz</b> <span class="cnt">[web_201]</span></td>
+    </tr>
+    <tr>
+      <td><b>⑤ 受激散射</b><br><span class="cnt">SBS / SRS</span></td>
+      <td><span class="tag mid">需增益</span></td>
+      <td>泵浦把能量交给声子/分子振动，再以频移后的频率重发；级联 ⇒ 多级斯托克斯线</td>
+      <td><b>声子频率</b>（材料常数）<br><span class="cnt">改不了，只能改级数</span></td>
+      <td>反向教材：X 切 TFLN 里<b>拉曼太强反而杀死孤子</b>，必须靠晶向抑制才能出梳 <span class="cnt">[web_213]</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="warnbox">
+  <b>把 Keely 的「三个八度 + 每隔第三销钉调 B♭」放进这张表，它一行都落不进去。</b><br>
+  ① ② ④ 是"自发"—— 给单频，自己长出齿；③ 是"驱动"—— 齿距由外部时钟强迫。<br>
+  Keely 的音阶是<b>几何排布出来的固定音高</b>：管多长、调什么音，全是加工时定死的。
+  它既不自发，也没有外部时钟。<b>它是"设计好的七个频率"，不是"长出来的梳"。</b>
+</div>
+
+<h3 id="s3b3">3b.3 阈值：为什么现代只要 25 mW，而声学要 2.8 kW</h3>
+
+<p>
+  微腔里的这一整套动力学被压缩成一个方程 —— <b>Lugiato–Lefever 方程（LLE）</b>，
+  本质是一个"受驱、失谐、带阻尼的非线性薛定谔方程"：
+</p>
+
+<div class="eq">
+  ∂A/∂T = −(κ/2)·A − iδω·A + i(D<sub>2</sub>/2)·∂²A/∂φ² + i·g|A|²A + √(κ<sub>e</sub>P<sub>in</sub> / ħω<sub>0</sub>)
+</div>
+
+<p class="cnt" style="margin-top:-6px">
+  五项依次是：腔损耗 · 泵浦失谐 · 二阶色散 · 克尔自相位 · 泵浦注入。
+  <b>四波混频的起振阈值</b>由它解出：
+</p>
+
+<div class="eq">
+  P<sub>th</sub> = ħω<sub>0</sub>κ³ / (8 g κ<sub>e</sub>)　，　g = ħω<sub>0</sub>²c n<sub>2</sub> / (n<sub>0</sub>²V<sub>eff</sub>)
+</div>
+
+<p>把 g 代进去，再代入 κ ∝ 1/Q、κ<sub>e</sub> ∝ 1/Q<sub>e</sub>，得到一个只看数量级的标度律：</p>
+
+<div class="eq">
+  P<sub>th</sub> ∝ V<sub>eff</sub> · Q<sub>e</sub> / Q³　→（当 Q<sub>e</sub> ≈ Q）→　<b>P<sub>th</sub> ∝ V<sub>eff</sub> / Q²</b>
+</div>
+
+<table>
+  <thead><tr><th style="width:22%">旋钮</th><th style="width:20%">变化</th><th>阈值变化</th></tr></thead>
+  <tbody>
+    <tr><td>品质因数 Q</td><td>×10</td><td><b>÷100</b> ← 最猛的一个</td></tr>
+    <tr><td>模式体积 V<sub>eff</sub></td><td>÷10</td><td>÷10</td></tr>
+    <tr><td>非线性折射率 n<sub>2</sub></td><td>×10</td><td>÷10</td></tr>
+    <tr><td>泵浦角频率 ω<sub>0</sub><br><span class="cnt">由应用波段决定，不是自由旋钮</span></td><td>×10</td><td>÷10</td></tr>
+  </tbody>
+</table>
+
+<p>
+  <b>所以现代微梳的"低功耗"不是靠什么黑科技，是靠 Q²。</b>把 Q 从 10⁴ 提到 10⁶，阈值直接掉 10⁴ 倍。
+  这才是 25 mW 的全部秘密。
+</p>
+
+<div class="warnbox">
+  <b>把同一把尺子架到 Dynasphere 上：</b><br>
+  09 页 ⑥·ter 算过，要在 12 in 球内维持 160 dB（2,000 Pa）需要 <b>≈ 2.8 kW</b> 声功率；
+  现代电泵浦孤子微梳只要 <b>25 mW</b>。两者相差
+  <b>112,000 倍</b>（50.5 dB）。<br>
+  按 P<sub>th</sub> ∝ 1/Q² 反推：<b>把 Q 提高 √112,000 ≈ 335 倍就能打平。</b><br>
+  换句话说 —— <b>差的不是"技术代差"，是"没有 Q"。</b>
+  Keely 的七根管是自由辐射的，球壳是结构件而不是共振腔；Q 大概只有 10¹–10³
+  （钢的内耗 + 橡胶囊支撑 + 气动驱动）。<br>
+  <span class="cnt">⚠ 这是<b>标度类比</b>，不是同量纲换算 —— 光学腔与声学腔的 ħω 差 12 个数量级，
+  绝对阈值不能直接比。这里只用来看"数量级上差在哪一个旋钮"，属 C 级推演。</span>
+</div>
+
+<h3 id="s3b4">3b.4 空气这条路的天花板：194 dB，以及 81 次谐波为什么不存在</h3>
+
+<p>
+  3b.3 说的是"怎么把阈值降下来"。Keely 走的是反方向：<b>把振幅推上去</b>。
+  那就必须先问一句 —— <b>空气里最多能有多响？</b>
+</p>
+
+<div class="splb">
+  <div class="r"><span class="k">0 dB</span><span class="t"><span class="b" style="width:0.5%"></span></span><span class="v">20 µPa · 听阈</span></div>
+  <div class="r"><span class="k">60 dB</span><span class="t"><span class="b" style="width:30.9%"></span></span><span class="v">0.02 Pa · 正常谈话</span></div>
+  <div class="r"><span class="k">100 dB</span><span class="t"><span class="b" style="width:51.5%"></span></span><span class="v">2 Pa · 一米外的手提钻</span></div>
+  <div class="r"><span class="k">130 dB</span><span class="t"><span class="b" style="width:67.0%"></span></span><span class="v">63 Pa · 疼痛阈值</span></div>
+  <div class="r nl"><span class="k">150 dB</span><span class="t"><span class="b" style="width:77.3%"></span></span><span class="v">632 Pa · <b>非线性开始明显</b>（维基原文：over 150 dB）</span></div>
+  <div class="r nl"><span class="k">160 dB</span><span class="t"><span class="b" style="width:82.4%"></span></span><span class="v">2,000 Pa = 1.97 % 大气压 · <b>09 页 ⑥·ter 的临界值</b></span></div>
+  <div class="r nl"><span class="k">165 dB</span><span class="t"><span class="b" style="width:85.0%"></span></span><span class="v">3,557 Pa · 火箭发射</span></div>
+  <div class="r sh"><span class="k">194 dB</span><span class="t"><span class="b" style="width:100%"></span></span><span class="v">101,325 Pa = 1 atm · <b>非失真声波的理论上限，再高就是激波</b></span></div>
+</div>
+<p class="cnt" style="margin-top:2px">
+  条长按 dB 线性铺开（dB 本身已是对数刻度）。<b>灰蓝 = 线性区</b>（&lt; 150 dB），<b>淡红 = 非线性区</b>（150–180 dB），
+  <b>深红 = 激波临界</b>（194 dB）；三类共 8 行，与上方文字一一对应。数据：Wikipedia「声压」条目 <span class="cnt">[web_214]</span>。
+</p>
+
+<p>
+  这里有个数必须先说清楚：<b>194.094 dB 对应 1 个大气压</b>（峰压口径）。为什么不能更高？
+  因为声波的<b>疏部</b>压强最低只能到 0 —— 真空就是地板，不能再低。
+  所以 194 dB 不是"设备做不到"，是<b>热力学不允许</b>。
+</p>
+
+<p>
+  换个更好用的量：<b>声学马赫数 M = p/(ρc²)</b>。空气 ρc² = 1.204 × 343² = <b>141.6 kPa</b>。
+</p>
+
+<table>
+  <thead><tr><th style="width:14%">声压级</th><th style="width:18%">峰值声压</th><th style="width:16%">声学马赫数 M</th><th>意味着什么</th></tr></thead>
+  <tbody>
+    <tr><td>150 dB</td><td>632 Pa</td><td>0.446 %</td><td>非线性刚起来，谐波开始能被测到</td></tr>
+    <tr><td>160 dB</td><td>2,000 Pa</td><td>1.41 %</td><td>09 页的临界值 —— 已是"强非线性"，但仍是 1 % 量级</td></tr>
+    <tr><td>180 dB</td><td>20,000 Pa</td><td>14.1 %</td><td>波形严重畸变，正弦已经不像正弦</td></tr>
+    <tr><td>194.094 dB</td><td>101,325 Pa</td><td><b>71.5 %</b></td><td>疏部接近真空，再推就是激波</td></tr>
+  </tbody>
+</table>
+
+<p>
+  现在算 Keely 的 <b>×81</b>。若把它理解成一条谐波链（第 81 次谐波），
+  弱非线性（Fubini 解）下第 n 次谐波的相对幅度 ∝ <b>M<sup>n−1</sup></b>，即 <b>M<sup>80</sup></b>：
+</p>
+
+<table>
+  <thead><tr><th style="width:16%">若声压级为</th><th style="width:16%">M</th><th style="width:22%">81 次谐波相对幅度</th><th>判读</th></tr></thead>
+  <tbody>
+    <tr><td>160 dB</td><td>1.41 %</td><td>9.7 × 10<sup>−149</sup></td><td>幅度比已小于任何可分辨的量，<b>物理上等于零</b></td></tr>
+    <tr><td>180 dB</td><td>14.1 %</td><td>9.7 × 10<sup>−69</sup></td><td>仍完全不可测</td></tr>
+    <tr><td>194.094 dB（激波极限）</td><td>71.5 %</td><td><b>2.3 × 10<sup>−12</sup></b>（≈ −116 dB）</td><td><b>把空气压到极限，也只到这里</b></td></tr>
+  </tbody>
+</table>
+
+<div class="warnbox">
+  <b>这是比"需要 160 dB"更强的一条结论。</b><br>
+  160 dB 只是"非线性开始显现"；而 <b>81 次谐波要的是"极端非线性"</b>。
+  上表最后一行说明：<b>哪怕把空气推到 194 dB 的激波临界点，81 次谐波也只有 −116 dB 的相对幅度。</b><br>
+  更糟的是 —— 到了那个量级，能量主要不是"有序上转换"，而是<b>直接形成激波、耗散成热</b>。
+  所以 Keely 的 ×81 若按谐波链理解，<b>在空气中不存在任何实现路径</b>，这不是工程难度问题。<br>
+  <span class="cnt">⚠ 前提写明：M<sup>80</sup> 来自弱非线性平面波的 Fubini 级数解，M ≲ 0.3 时可靠；
+  M → 1 时该解失效，但失效方向是"更快变成激波"，结论只会更不利，不会翻盘。</span>
+</div>
+
+<h3 id="s3b5">3b.5 声学参量阵：唯一做成消费产品的「空气造频器」</h3>
+
+<p>
+  上面说的都是坏消息。但"靠空气非线性造出新频率"这件事，<b>真的被做成了产品</b> ——
+  就是<b>声学参量阵</b>（parametric acoustic array，市面上的"定向扬声器"）。它用两束强超声在空气里
+  非线性差频，变出可听声。定量公式是 Berktay 远场解：
+</p>
+
+<div class="eq">
+  p<sub>2</sub>(t′) ≈ [ β p<sub>0</sub>² a² / (16 ρ<sub>0</sub> c<sub>0</sub>⁴ z α<sub>0</sub>) ] · d²/dt′² E²(t′)
+</div>
+<p class="cnt" style="margin-top:-4px">[web_215]　z = 轴向距离，α<sub>0</sub> = 一次波吸收系数，E(t′) = 调制包络。</p>
+
+<p>
+  这里 β = 1 + B/(2A) 是介质的非线性系数：<b>空气 β ≈ 1.20</b>（B/A ≈ 0.4），<b>水 β ≈ 3.50</b>。
+  注意 <b>p<sub>2</sub> ∝ p<sub>0</sub>²</b> —— 二次波正比于一次波的<b>平方</b>，这是纯非线性特征，
+  线性系统里绝不会出现。
+</p>
+
+<div class="midbox">
+  <b>它的实测代价，正好是 Keely 那笔账的工业版：</b><br>
+  典型参量扬声器一次波（超声载波）在 1 m 处约 <b>130 dB</b>，解调出的可听声约 <b>72 dB</b> ——
+  <b>转换损失约 58 dB</b>，即功率只剩约 <b>63 万分之一</b>（10<sup>5.8</sup> = 6.3×10<sup>5</sup>）。<br>
+  而且产出是<b>一个差频</b>（宽带调制时是一段连续谱），<b>不是梳</b>：没有等间隔齿、没有相位锁定、没有 f<sub>ceo</sub>。<br>
+  <span class="cnt">这恰好从工业侧印证了 09 页 ⑥·ter 的判断：空气非线性真实存在、能用、已量产 ——
+  但代价是 ~58 dB，收益是 1 根齿。</span>
+</div>
+
+<h3 id="s3b6">3b.6 那 Keely 的装置里到底有没有非线性？</h3>
+
+<p>
+  公正地说：<b>有，但都不是"梳"要的那种。</b>逐条清点：
+</p>
+
+<div class="step have">
+  <div class="id">有</div>
+  <div class="bd"><b>几何非线性</b>
+    <p>1/32 in 厚的旋压薄壳在大振幅下会明显硬化（振幅可比厚度时，膜/壳方程的高阶项不可忽略）。
+    这确实是 χ<sup>(3)</sup> 型的结构非线性。</p></div>
+</div>
+<div class="step have">
+  <div class="id">有</div>
+  <div class="bd"><b>接触非线性</b>
+    <p>外环的销钉、轴端橡胶囊、配重黄铜球与内壁的接触 —— 这些都是强非线性源（干摩擦、间歇接触），
+    比材料本身的非线性强得多。MEMS 那篇 1:3 内共振走的正是这条路。</p></div>
+</div>
+<div class="step have">
+  <div class="id">有</div>
+  <div class="bd"><b>空气非线性</b>
+    <p>β = 1.20，客观存在。但 3b.4 已算过：在 160 dB 下只对应 M = 1.4 %，而 81 次谐波 ∝ M<sup>80</sup> = 9.7 × 10<sup>−149</sup>（即 10<sup>−148</sup>），<b>还差 148 个数量级</b>。</p></div>
+</div>
+<div class="step miss">
+  <div class="id">缺</div>
+  <div class="bd"><b>腔 —— 没有东西来定齿距</b>
+    <p>七根管是<b>自由辐射</b>的，不是耦合进一个谐振腔。没有腔，就没有 FSR，就没有"齿距"这个概念。
+    齿距是腔给的，不是管子给的。</p></div>
+</div>
+<div class="step miss">
+  <div class="id">缺</div>
+  <div class="bd"><b>色散平衡 —— 没有东西把孤子稳住</b>
+    <p>孤子 = 非线性（自相位调制）与色散（展宽）相抵。球腔里既没有设计过的色散，也没有反常色散区，
+    所以即使偶然出现脉冲，也会立刻塌掉。</p></div>
+</div>
+<div class="step miss">
+  <div class="id">缺</div>
+  <div class="bd"><b>锁相 —— 没有东西管住相位</b>
+    <p>现代梳靠注入锁定 / 自注入锁定把齿与齿的相位钉住（TFLN 那台就把 DFB 线宽从 44.1 kHz 压到 4.7 kHz）。
+    Keely 的七个音高由几何定死，但在时间上<b>彼此不相干</b> —— 这是"七个音"与"一把梳"的分水岭。</p></div>
+</div>
+<div class="step miss">
+  <div class="id">缺</div>
+  <div class="bd"><b>振幅 —— 差几十个 dB</b>
+    <p>按 3b.3，2.8 kW 才够 160 dB；而装置由气动/机械驱动，输入声功率在瓦级。
+    差 3 个数量级，且已顶到 3b.4 的物理天花板。</p></div>
+</div>
+
+<div class="goodbox">
+  <b>所以"给 Keely 补非线性"的正确做法，不是加大声压，而是换结构。</b>三条按可行性排序：
+  <ol style="margin:8px 0 0;padding-left:22px;font-size:13.9px;line-height:1.75">
+    <li><b>把七根管改成非线性耦合梁</b>，做 1:3 内共振 —— 照 <span class="cnt">[web_202]</span> 的结构：
+        单音激励自己长出齿，齿距 25–200 Hz 随幅值连续可调。<b>桌上就能做，不需要激光、不需要低温。</b></li>
+    <li><b>给它一个真腔</b>：Helmholtz 腔或管腔把 Q 提到 10³–10⁴，再靠空气非线性起振。
+        按 3b.3 的 Q² 标度，这是唯一可能把 2.8 kW 降下来的路径。</li>
+    <li><b>或者干脆改口</b>：承认它是<b>音阶发生器</b>，不是频率梳。音高是设计出来的，不是长出来的 ——
+        这句话同时是 ⑦ 的结论。</li>
+  </ol>
+</div>
+
+<h3 id="s3b7">3b.7 从谱上认机制：四个问题</h3>
+
+<p>拿到一张谱，不用看论文，先问这四句，机制基本就定了：</p>
+
+<table>
+  <thead><tr><th style="width:34%">问</th><th style="width:24%">答案</th><th>结论</th></tr></thead>
+  <tbody>
+    <tr><td>齿距等于腔的 FSR 吗？</td><td>是</td><td>① 克尔或 ② 二次级联（自发型）</td></tr>
+    <tr><td>齿距等于外部微波频率吗？</td><td>是</td><td>③ 电光梳（驱动型，齿距可任意设）</td></tr>
+    <tr><td>齿距等于某个机械模频率吗？</td><td>是</td><td>④ 结构非线性 / 声子梳</td></tr>
+    <tr><td>齿数随泵浦功率的斜率是多少？</td><td>≈1 / ≈2 / ≈3</td><td>线性 / χ<sup>(2)</sup> / χ<sup>(3)</sup> —— 即 ⑥ 的 E3 实验</td></tr>
+  </tbody>
+</table>
+
+<p>
+  对 Dynasphere 试一遍：齿距既不是 FSR（没有腔），也不是外部时钟（没有调制器），
+  更不是某个机械模（七根管调的是 B♭ 和弦，不是整数倍）。<b>四个问题全部落空</b> ——
+  这不是"证据不足"，而是"它本来就不属于这四类中的任何一类"。
+</p>
+
+<!-- ============ ④ ============ -->
+<h2 id="s4"><span class="num">④</span>Keely 的装置落在哪一格：逐项判定</h2>
+
+<p>
+  现在把 ① 的三条判据（C1 齿距恒定 / C2 相位相干 / C3 共同来源）套到 Dynasphere 上。
+  <b>下表每一行只判一件事，不合并。</b>
+</p>
+
+<p><b>表里三种底色 = 三类判定，别看字，先看底色：</b></p>
+<ul class="lg">
+  <li><span class="sw s"></span><span><b class="s">绿底（同一物）</b>：Keely 的做法与现代梳的对应环节<b>是同一件事</b>，只是名字不同。</span></li>
+  <li><span class="sw h"></span><span><b class="h">黄底（结构同构）</b>：形状/数学结构相同，但<b>物理机制不同</b>，不能互推结论。</span></li>
+  <li><span class="sw d"></span><span><b class="d">红底（本质不同）</b>：看起来像，实质是两回事；<b>混用会导致错误预测</b>。</span></li>
+</ul>
+<p class="cnt" style="margin:-4px 0 10px">
+  本表共 <b>9</b> 行：绿 <b>2</b> 行 · 黄 <b>4</b> 行 · 红 <b>3</b> 行。合计 9 —— 与表体行数一致。
+</p>
+
+<table>
+  <thead><tr><th style="width:22%">Keely 装置里的东西</th><th style="width:20%">现代梳里的对应</th><th style="width:12%">判定</th><th>差在哪（可复算的部分）</th></tr></thead>
+  <tbody>
+    <tr class="same">
+      <td>「三个八度」的频率分层</td><td>倍频程 log₂ 分层</td>
+      <td><span class="tag ok">✅ 同一物</span></td>
+      <td>八度就是 2:1，没有争议。三个八度 = 8 倍频程跨度</td>
+    </tr>
+    <tr class="same">
+      <td>7 根谐振管做<b>不同音高</b></td><td>多根齿（多模）</td>
+      <td><span class="tag ok">✅ 同一物</span></td>
+      <td>7 个不同频率 = 7 根"齿"，这一点成立。但它只是"有 7 根齿"，不是"有梳"</td>
+    </tr>
+    <tr class="homo">
+      <td>调 B♭ 和弦 ⇒ 音程比 2:3:5</td><td>有理数频率比 ⇒ 公共基频</td>
+      <td><span class="tag mid">◐ 结构同构</span></td>
+      <td>有理比 ⇒ 存在公分母 D ⇒ 可嵌入齿距 f<sub>0</sub>/D 的梳。但 D 由音阶决定，<b>不可独立设计</b>；现代梳的 f<sub>rep</sub> 是可设计的</td>
+    </tr>
+    <tr class="homo">
+      <td>外环「每隔第三销钉」调音</td><td>周期性调制 ⇒ 边带</td>
+      <td><span class="tag mid">◐ 结构同构</span></td>
+      <td>周期性调制确实产生 f ± n·f<sub>m</sub> 边带（电光梳就这么做）。<b>但需要非线性</b>：线性介质里调制只搬移、不新生频率。<b>这条差别是整页的关键</b></td>
+    </tr>
+    <tr class="homo">
+      <td>球壳 + 内环同轴嵌套</td><td>高 Q 腔（模式选择）</td>
+      <td><span class="tag mid">◐ 结构同构</span></td>
+      <td>几何上都是"用边界条件挑出离散模"。差别在 Q：声学腔 Q ~ 10<sup>2</sup>–10<sup>3</sup>，光学微腔 Q ~ 10<sup>6</sup>–10<sup>9</sup>。Q 决定齿线宽与相干时间</td>
+    </tr>
+    <tr class="homo">
+      <td>气流/弦驱动 → 管自持振动</td><td>泵浦（连续激光）</td>
+      <td><span class="tag mid">◐ 结构同构</span></td>
+      <td>都是"注入能量维持振荡"。但现代梳的泵浦必须<b>蓝失谐</b>才能触发参量过程（磁振子梳正是如此），而气动驱动没有失谐概念</td>
+    </tr>
+    <tr class="diff">
+      <td><b>「同情振动」</b>（sympathetic vibration）</td><td>注入锁定 / 锁相环</td>
+      <td><span class="tag no">❌ 本质不同</span></td>
+      <td>同情振动是<b>被动共振响应</b>（幅度按 Q 放大，相位被<em>拖</em>着走）；注入锁定是<b>主动同步</b>（从振子频率被拉到主振子频率，锁入带宽 Δω ∝ 注入幅度）。后者要求自激振子 + 单向耦合。Keely 的 7 根管无此结构</td>
+    </tr>
+    <tr class="diff">
+      <td>「净增益」（20,000 → 1,620,000）</td><td>梳齿功率总量</td>
+      <td><span class="tag no">❌ 本质不同</span></td>
+      <td>频率梳<b>不放大总功率</b>。它把泵浦功率<b>重新分配</b>到各齿上，转换效率还常低于 50%（暗孤子微梳片上效率 &gt;20% 已算好）。09 页 ⑥·ter 已给出这条账</td>
+    </tr>
+    <tr class="diff">
+      <td>「以太 / 磁流」作为传播介质</td><td>χ<sup>(3)</sup> 非线性介质</td>
+      <td><span class="tag no">❌ 本质不同</span></td>
+      <td><b>缺的正是这一环</b>。没有非线性，无论多少根管、多准确的音阶，都只会在原频率上叠加，不会生出新齿。空气的 χ<sup>(3)</sup> 极弱，需要 ~160 dB 才显现（09 页 6t.3）</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="warnbox">
+  <b>判定结论（一句话）：</b><br>
+  Keely 的装置<b>有齿列（黄 4 行），有分层（绿 2 行），但没有齿距、没有锁相、没有非线性介质（红 3 行）</b>。<br>
+  按 ① 的三条判据：C1 ❌、C2 ❌、C3 部分（同一个气源，但无相位耦合）。<b>三条里缺两条 ⇒ 它不是频率梳。</b><br>
+  <span class="cnt">这不是贬低：1870 年代没有"相位"这个概念的可测形式，χ<sup>(3)</sup> 要等到 1961 年二次谐波、1962 年三次谐波才被看见。
+  按 K4 的时间线硬约束，他不可能做出频率梳。</span>
+</div>
+
+<!-- ============ ⑤ ============ -->
+<h2 id="s5"><span class="num">⑤</span>落地：把他的五个环节，逐个换成现代器件</h2>
+
+<p>
+  ④ 讲的是"他缺什么"。这一节讲"他那套东西，今天能接到哪里" ——
+  每个环节给出<b>具体的现代对应物 + 可查参数</b>，并且标出哪一环是断的。
+</p>
+
+<div class="step have">
+  <div class="id">S1</div>
+  <div class="bd"><b>激发 → 泵浦</b>
+    <p>他：气流吹管 / 弦振。今天：连续激光（微梳）、蓝失谐泵浦（磁振子梳）、
+    压电换能器（MEMS 声子梳，单音激励即可）。<br>
+    <b>要补的</b>：加一个"失谐"旋钮。泵浦频率相对腔模的位置决定了是加热（红失谐）还是参量放大（蓝失谐），
+    这是现代梳能起振的必要条件，气动驱动没有这一维。</p></div>
+</div>
+
+<div class="step have">
+  <div class="id">S2</div>
+  <div class="bd"><b>谐振体 → 高 Q 腔</b>
+    <p>他：12 in 旋压球壳 + 7 管（Q 大约 10<sup>1</sup>–10<sup>2</sup>，金属壁、有缝）。
+    今天：声学腔 Q ~ 10<sup>3</sup>；石英声腔更高；光学微腔 Q ~ 10<sup>6</sup>–10<sup>9</sup>。<br>
+    <b>要补的</b>：Q 提高 3 个数量级。齿线宽 ∝ 1/Q，Q = 10<sup>2</sup> 时齿线宽达齿距的百分之一以上，齿与齿糊在一起。</p></div>
+</div>
+
+<div class="step miss">
+  <div class="id">S3</div>
+  <div class="bd"><b>「放大」→ 非线性介质（断点）</b>
+    <p>他：声称靠"极性/中性中心"聚集能量。今天：χ<sup>(3)</sup> 四波混频、χ<sup>(2)</sup> 和频差频、
+    机械波混频（MEMS 的 1:3 内共振）。<br>
+    <b>这一环是断的</b>，而且是唯一不能绕过的：线性系统里，多个频率叠加只会产生原来的频率，
+    <b>不会产生新频率</b>。要让齿长出来（而不是只有泵浦那一根），必须有非线性。<br>
+    <span class="cnt">空气的 χ<sup>(3)</sup> ≈ 10<sup>−22</sup> m²/V² 量级 ⇒ 要 ~160 dB SPL 才可见（09 页 6t.3：2,000 Pa、2.8 kW）。装置里没有这种条件。</span></p></div>
+</div>
+
+<div class="step have">
+  <div class="id">S4</div>
+  <div class="bd"><b>「同情振动」→ 注入锁定（这是最漂亮的一处对应）</b>
+    <p>他在 1875 年就用这个词描述了"一个振子带动另一个振子"。今天与之最接近的机制是
+    <b>注入锁定</b>：给自激振子注入一个外部信号，当失谐小于锁定带宽时，从振子频率被<b>拉</b>到主振子频率上，相位被锁住。<br>
+    ✅ <b>磁振子梳就是用它来稳齿距的</b>（PRL 131, 243601 原文摘要：通过注入锁定实现梳齿间距的稳定与控制）。<br>
+    <b>但差一层</b>：同情振动是被动响应（Q 放大），注入锁定要求<b>从振子自己已经在自激</b>。
+    所以判据是：把 7 根管中的一根轻微失谐，看其余各管的频率是否被"拉"过来 —— 如果只是幅度变化、频率不动，那就是共振，不是锁定。</p></div>
+</div>
+
+<div class="step have">
+  <div class="id">S5</div>
+  <div class="bd"><b>读出 → 拍频 / LDV / 光谱仪</b>
+    <p>他：人耳 + 手感。今天：激光测振仪（LDV，可测 nm 级位移）、FFT 分析仪、
+    光电探测 + 射频谱分析。<br>
+    <b>这是最容易补的一环</b>，成本也最低：一个麦克风 + 声卡 + FFT 软件，就能看到 20 kHz 以内的全部齿结构。
+    Keely 时代没有这个，所以他只能"听"，而人耳对齿距的分辨率远低于 FFT。</p></div>
+</div>
+
+<div class="goodbox">
+  <b>五个环节里，四个能接上，一个（S3 非线性）接不上。</b><br>
+  这就是"Keely 技术在现代怎么落地"的准确答案：<b>不是把他的装置放大，而是给他补一个非线性腔。</b><br>
+  补上以后，他想要的"多齿频谱"确实会出现 —— 但代价是必须接受 S3 的物理：
+  齿的功率从泵浦里来，总功率不增加。他当年要的"净增益"，恰恰是补上非线性以后<b>仍然拿不到</b>的那一样东西。
+</div>
+
+<!-- ============ ⑥ ============ -->
+<h2 id="s6"><span class="num">⑥</span>三个判决性实验：用一台声卡就能判生死</h2>
+
+<p>
+  前面所有判定都是"从原理推"。但 09 页的立场一直是<b>能验的才做</b>。下面三个实验都只需要
+  "可调单音驱动 + 麦克风 + FFT"，成本几百元，而每一个都能直接证伪一类说法。
+</p>
+
+<div class="exp">
+  <div class="eh"><span class="no">E1</span>相干度：7 源叠加到底是 ×49 还是 ×7</div>
+  <div class="row"><div class="k">做什么</div><div>7 根管（或用 7 个扬声器代替）同频驱动，麦克风置于球心。记录声压时间序列，算二阶相干度 g<sup>(2)</sup>(0)。</div></div>
+  <div class="row"><div class="k">判据</div><div>g<sup>(2)</sup>(0) = 1 ⇒ 完全相干 ⇒ 球心强度 ∝ N² = <b>49</b>；<br>g<sup>(2)</sup>(0) = 2 ⇒ 完全非相干 ⇒ 球心强度 ∝ N = <b>7</b>；<br>介于两者之间 ⇒ 部分相干。</div></div>
+  <div class="row"><div class="k">为什么硬</div><div>这是 09 页 ⑥ 那个"×49"的<b>直接检验</b>。若实测 g<sup>(2)</sup>(0) ≈ 2，则 ×49 从未发生，整个"球心汇聚"的叙述要改写。</div></div>
+  <div class="row"><div class="k">成本</div><div>一个测量麦克风（~¥300）+ 声卡 + 免费 FFT 软件</div></div>
+</div>
+
+<div class="exp">
+  <div class="eh"><span class="no">E2</span>注入锁定带宽：同情振动是共振还是锁定</div>
+  <div class="row"><div class="k">做什么</div><div>让 A 管自激（稳定单音），B 管由外部信号驱动、频率可调。逐步改变 B 的频率失谐 δ，测 A 的频率是否跟着变。</div></div>
+  <div class="row"><div class="k">判据</div><div>锁定：存在一段 |δ| &lt; δ<sub>lock</sub> 的区间，A 的频率<b>被拉到</b> B 的频率上（跳变或平台），且 δ<sub>lock</sub> 随驱动幅度增大。<br>共振：A 的频率<b>始终不动</b>，只有幅度随 δ 起伏（洛伦兹型）。</div></div>
+  <div class="row"><div class="k">为什么硬</div><div>这是"同情振动"这个词能否翻译成"注入锁定"的唯一实测依据。若能测出锁定平台，则 ⑤-S4 的对应成立；若只有幅度响应，则只是共振。</div></div>
+  <div class="row"><div class="k">成本</div><div>同上 + 一个可调信号源</div></div>
+</div>
+
+<div class="exp">
+  <div class="eh"><span class="no">E3</span>边带结构：有没有非线性，看斜率</div>
+  <div class="row"><div class="k">做什么</div><div>用单音 f 驱动，扫驱动幅度 A（例如 −20 dB 到 +20 dB，20 个点），在每个 A 上测 2f、3f 分量的幅度，做双对数图求斜率。</div></div>
+  <div class="row"><div class="k">判据</div><div>斜率 ≈ 1：线性（无新频率，只是原频率被放大）<br>斜率 ≈ 2：二次非线性（χ<sup>(2)</sup> 型）<br>斜率 ≈ 3：三次非线性（χ<sup>(3)</sup> 型，微梳就是这一类）<br>斜率 ≈ 0：饱和/平台 ⇒ 进入强非线性或测量被限幅</div></div>
+  <div class="row"><div class="k">为什么硬</div><div>这是 ⑤-S3 那个"断点"的<b>定量检验</b>。若 2f/3f 的斜率接近 1，说明装置里根本没有可用的非线性，"多齿"就不可能自发产生。</div></div>
+  <div class="row"><div class="k">成本</div><div>同上，不需要额外硬件</div></div>
+</div>
+
+<div class="midbox">
+  <b>三个实验的优先级：</b>E3 &gt; E1 &gt; E2。<br>
+  理由：E3 判的是"有没有产生新频率的能力"，这一条不成立，后面两条都无意义；
+  E1 判的是"相干叠加有没有发生"，直接检验 ×49；E2 判的是术语对应是否成立，学术价值高但不影响装置能不能工作。<br>
+  <span class="cnt">三个实验共用同一套硬件，一次搭台可以全做完。建议按 E3 → E1 → E2 顺序，每个 1 小时。</span>
+</div>
+
+<!-- ============ ⑦ ============ -->
+<h2 id="s7"><span class="num">⑦</span>结论：他缺的不是增益，是相干</h2>
+
+<p>
+  把 ①–⑥ 收成一句话：
+</p>
+
+<div class="goodbox" style="font-size:15px">
+  <b>Keely 想要的是「能量变多」（净增益）；现代频率梳做到的是「频率变准」（相干）。</b><br>
+  这两件事在数学上是正交的：前者要求非线性 + 有源介质 + COP &gt; 1（线性系统恒 ≤ 1）；
+  后者只要求<b>锁相</b>，而锁相完全不增加能量 —— 它只是把已有的能量<b>约束到一根根确定的齿上</b>。<br>
+  <span class="cnt">所以他失败的地方（拿不到净增益）和现代成功的地方（拿到相干），根本不是同一件事。
+  这也解释了为什么"用现代技术实现 Keely"这个说法永远落不了地：它想实现的那一半，物理上不允许；
+  它没想实现的那一半，现代已经做到了，而且做得比他精确 10<sup>12</sup> 倍。</span>
+</div>
+
+<h3>7.1 那张"落地"清单，按可行性排序</h3>
+
+<table>
+  <thead><tr><th style="width:34%">要做的事</th><th style="width:16%">难度</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td>用 FFT 测出 7 管的实际频谱</td><td><span class="tag ok">很低</span></td><td>麦克风 + 声卡。先看清"齿"到底长什么样 —— 大概率是 7 个宽峰 + 一堆谐波，不是梳</td></tr>
+    <tr><td>按 E3 测非线性斜率</td><td><span class="tag ok">很低</span></td><td>同一套硬件。这一步定生死：斜率 ≈1 就没有非线性，后面全部不用做</td></tr>
+    <tr><td>按 E1 测相干度 g<sup>(2)</sup>(0)</td><td><span class="tag ok">低</span></td><td>直接检验 ×49。这是 09 页 ⑥ 的实证版</td></tr>
+    <tr><td>把球壳换成高 Q 声腔（石英/玻璃）</td><td><span class="tag mid">中</span></td><td>Q 从 10<sup>2</sup> 提到 10<sup>3</sup>–10<sup>4</sup>，齿线宽收窄一个数量级以上。这是"能不能看到齿"的关键</td></tr>
+    <tr><td>加一个真正非线性的耦合（MEMS 式 1:3 内共振）</td><td><span class="tag mid">中</span></td><td>照 JMEMS 33(3) 那篇的结构做：非线性模态耦合梁，单音激励出多齿。这是最接近"Keely 装置 + 现代补丁"的方案</td></tr>
+    <tr><td>注入锁定稳齿距</td><td><span class="tag no">高</span></td><td>需要自激振子 + 单向耦合 + 相位检测。磁振子梳是靠这个才把齿距稳住的</td></tr>
+    <tr class="hl"><td><b>拿到净增益（COP &gt; 1）</b></td><td><span class="tag no">不可能</span></td><td>不是难度问题。线性无源腔恒 ≤ 1；要 &gt; 1 必须另有能量入口，且那时它已经不叫"增益"了</td></tr>
+  </tbody>
+</table>
+
+<h3>7.2 一句话回答老师的问题</h3>
+
+<div class="quote" style="font-size:15px">
+  「Keely 的技术在现代怎么落地？」<br>
+  <b>落地在"齿"上，不落地在"增益"上。</b>
+  他那套"三个八度 + 每隔第三钉"给出的是一个<b>可设计的频率网格</b>，
+  这正是频率梳的前身思想；但要把网格变成梳，必须补上三样他那个时代不存在的东西：
+  非线性介质（1961 年后才有）、相位锁定（1946 年 PLL / 1970s 注入锁定）、
+  以及能把相位测出来的仪器（FFT / 光谱仪）。<br>
+  <span class="src">—— 本页结论；依据 ①–⑥ 与 09 页 ⑥·ter 的线性声学账</span>
+</div>
+
+<!-- ============ ⑧ ============ -->
+<h2 id="s8"><span class="num">⑧</span>出处与分级</h2>
+
+<table>
+  <thead><tr><th style="width:8%">编号</th><th style="width:44%">文献 / 数据</th><th style="width:10%">等级</th><th>用在哪</th></tr></thead>
+  <tbody>
+    <tr><td>[web_201]</td><td>Xu G-T, Zhang M, Wang Y, Shen Z, Guo G-C, Dong C-H. <i>Magnonic Frequency Comb in the Magnomechanical Resonator</i>. Phys. Rev. Lett. <b>131</b>, 243601 (2023). DOI 10.1103/PhysRevLett.131.243601</td><td><span class="tag ok">B</span></td><td>20 根齿 / 10.08 MHz / 蓝失谐泵浦 / 级联四波混频 / 注入锁定稳齿距</td></tr>
+    <tr><td>[web_202]</td><td>Wu J, Song P, Zang S, Qiao Y, Huan R, Zhang W, Shao L. <i>Widely-Tunable MEMS Phononic Frequency Combs by Multistage Bifurcations Under a Single-Tone Excitation</i>. J. Microelectromech. Syst. <b>33</b>(3) 384–394 (2024). DOI 10.1109/JMEMS.2024.3379195</td><td><span class="tag ok">B</span></td><td>25→200 Hz 齿距 / 1:3 内共振 / 单音激励 / 倍周期与循环折叠分岔</td></tr>
+    <tr><td>[web_203]</td><td>Xiao G, Feng Z, Kuang T, … Jing H. <i>Broadband nonlinear phonon-laser frequency comb</i>. Preprint, DOI 10.21203/rs.3.rs-4168088/v1 (2024-04-11)</td><td><span class="tag no">D 预印本</span></td><td>10<sup>4</sup> 齿 / 跨六个数量级 —— <b>未同行评审，仅作参考</b></td></tr>
+    <tr><td>[web_204]</td><td>Shu H, Shen B, Chang H, Han J, Xiao J, Wang X. <i>Microcomb technology: from principles to applications</i>. Photonics Insights <b>3</b>(4) R09 (2024)</td><td><span class="tag ok">B</span></td><td>微梳原理 / FSR 与齿距 / 暗孤子效率 &gt;20% / 1.8 GHz–1 THz 重复频率</td></tr>
+    <tr><td>[web_205]</td><td>Zhang S, Bi T, Del'Haye P. <i>Soliton frequency combs in microresonators</i>. CRC Press (2024), ch. 4</td><td><span class="tag ok">B</span></td><td>2004 FWM 边带 → 2007 微梳 → 2014 DKS 的时间线 / 齿距与 FSR 一致到 10<sup>−17</sup></td></tr>
+    <tr><td>[web_206]</td><td>Hall / Hänsch 2005 诺贝尔物理学奖（光学频率梳）</td><td><span class="tag ok">B</span></td><td>f<sub>n</sub> = n f<sub>rep</sub> + f<sub>ceo</sub> 的计量学意义</td></tr>
+    <tr><td>[web_207]</td><td>Lv X, Wang Z, Xu T, … Bo F, Yang Q-F. <i>Electrically pumped soliton microcombs on thin-film lithium niobate</i>. Nanophotonics <b>14</b>(26) 4813–4819 (2025). DOI 10.1515/nanoph-2025-0510</td><td><span class="tag ok">B</span></td><td>3b.2 ① / 3b.3：<b>25 mW</b> 泵浦 / 200 GHz 齿距 / 180 nm 跨度 / 自注入锁定（DFB 44.1→4.7 kHz）</td></tr>
+    <tr><td>[web_208]</td><td>Musgrave J, Nie M, Huang S-W. <i>Dissipative quadratic soliton mode-locking of nonlinear frequency conversion</i>. arXiv:2505.12571 (2025-05)</td><td><span class="tag no">D 预印本</span></td><td>3b.2 ②：级联 χ<sup>(2)</sup> ⇒ 等效 Kerr 比材料大 10<sup>3</sup> 倍且符号可调 / 3 dB 带宽 1.15 THz / 274 fs —— <b>未同行评审</b></td></tr>
+    <tr><td>[web_209]</td><td>Wu G, Wei Y, Li L, Bu L, Baronio F, Lin T, Zhu M, Trillo S, Chen S, Ni Z. <i>Ultraflat Soliton Microcombs in Driven Quadratic-Kerr Nonlinear Microresonators</i>. Phys. Rev. Lett. <b>135</b>, 113801 (2025)</td><td><span class="tag ok">B</span></td><td>3b.2 ②：二次-克尔混合腔 / 对称色散波 / 数百条梳线内功率起伏 ≈ 0 dB</td></tr>
+    <tr><td>[web_210]</td><td><i>Hybrid Kerr-electro-optic frequency combs on thin-film lithium niobate</i>. Light: Sci. Appl. (2025). DOI 10.1038/s41377-025-01906-x</td><td><span class="tag ok">B</span></td><td>3b.2 ③：EO 行波电极 29.158 GHz / 36.5 dBm / 跨 L·C·S·E 波段；DKS 189 mW（660 GHz，372 mW 八度跨度）</td></tr>
+    <tr><td>[web_212]</td><td>Kumar P, et al. <i>Evolution of tunable phononic frequency combs via three-mode interaction in curved piezoelectric micromachined ultrasonic transducers</i>. Sci. Rep. (2025). PMID 40341567</td><td><span class="tag ok">B</span></td><td>3b.2 ④：三模组合内共振 / 齿距与齿数由 DC 偏压 + AC 电压与频率调节</td></tr>
+    <tr><td>[web_213]</td><td>Lv X, … Bo F, Yang Q-F. <i>Soliton Microcombs in X-cut LiNbO<sub>3</sub> Microresonators</i>. eLight (2025). DOI 10.1186/s43593-025-00093-x</td><td><span class="tag ok">B</span></td><td>3b.2 ⑤ 反例：拉曼过强会杀死孤子、逼出寄生拉曼激光 / 靠晶向抑制 / 脉冲泵浦 350 nm / 340 kHz 调谐</td></tr>
+    <tr><td>[web_214]</td><td>Wikipedia「声压」条目（引自 ANSI S1.1 与 NASA 资料）：<b>194.094 dB = 101,325 Pa</b> 为非失真上限；并注明 <i>"the sound waves become progressively non-linear starting over 150 dB"</i></td><td><span class="tag ok">B</span></td><td>3b.4：声压阶梯尺 / 194 dB 热力学地板 / <b>独立印证</b> 09 页 ⑥·ter 的"约 160 dB 量级"</td></tr>
+    <tr><td>[web_215]</td><td>Berktay H O (1965) 参量阵远场解；综述见 <i>A review of parametric acoustic array in air</i>, Applied Acoustics (2012)；β = 1 + B/(2A)，空气 B/A ≈ 0.4、水 ≈ 5</td><td><span class="tag ok">B</span></td><td>3b.5：p<sub>2</sub> ∝ βp<sub>0</sub>²a²/(16ρ<sub>0</sub>c<sub>0</sub>⁴zα<sub>0</sub>)·d²E²/dt′² / β<sub>air</sub>=1.20、β<sub>water</sub>=3.50 / 实测转换损失 ≈ 58 dB</td></tr>
+    <tr><td>[pdf_09]</td><td>09 页 ⑥、⑥·ter：7 源 ×49 的代价、160 dB 量化（2,000 Pa / 2.8 kW）</td><td><span class="tag mid">C 本页换算</span></td><td>④ 红行判定、⑤-S3 断点、⑦ 结论</td></tr>
+    <tr><td>[calc]</td><td>公分母 D 判据（f<sub>gcd</sub> = f<sub>0</sub>/D ⇒ 齿距 = f<sub>0</sub>/D）</td><td><span class="tag mid">C 本文推演</span></td><td>② 末尾"梳是否工程上存在"的判据。<b>这是本页自己提的，不是文献</b></td></tr>
+    <tr><td>[原文]</td><td>「外环 = diatonic scale ring of three octaves，每隔第三销钉调 B♭」</td><td><span class="tag ok">A 原文</span></td><td>④ 第 3、4 行。⚠ 原文<b>没有</b>给出"24 管"，也没有 equator 一词（见 09 页 §4 尺寸核对）</td></tr>
+  </tbody>
+</table>
+
+<div class="warnbox">
+  <b>本页的三条自我限制（必须与结论一起引用）：</b><br>
+  ① 「公分母 D 判据」是本文推演（C 级），我没找到文献用过这个说法。它能算，但不代表学界认同它是"梳"的判据。<br>
+  ② ④ 表里的判定是<b>按原理推</b>，不是实测。实测要等 ⑥ 的三个实验。<br>
+  ③ 声-3（AFC，10<sup>4</sup> 齿）是预印本。如果它后来被拒或数字被修正，③ 表里那一行要改。
+</div>
+
+<hr>
+<p class="cnt">
+  维护：本页为手写 HTML（不参与 <code>md2html.py</code> 编译，改完直接生效）。<br>
+  相关页：<a href="K1_标度律_Chladni到Lamb.html">K1 标度律</a> ·
+  <a href="K2_层级频率链_八度罗盘与3的幂.html">K2 频率链</a> ·
+  <a href="K8_热声子通道_渠氏热超导与倍频谐振.html">K8 热声子</a> ·
+  <a href="K7_声子梳_器件机理与Keely逐项对照.html">K7 声子梳</a> ·
+  <a href="K6_术语对照_Keely与现代科学.html">K6 术语对照</a> ·
+  <a href="09_Dynasphere振动几何_康普顿波长与超导交互详解.html">09 Dynasphere</a> ·
+  <a href="09b_球腔声场_回音干涉与模态.html">09b 球腔声场</a><br>
+  核验：<code>python _build/verify.py</code>
+</p>
+
+</div>
+
+<script>
+(function(){
+  var cv = document.getElementById('cvComb');
+  if(!cv) return;
+  var ctx = cv.getContext('2d');
+  var DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+
+  /* 纯律七音（5-限），一个八度。用于"几何梳"那一行 */
+  var JUST = [[1,1],[9,8],[5,4],[4,3],[3,2],[5,3],[15,8]];
+  var F_REP = 0.5, F_CEO = 0.2;      /* 绿行的齿距与偏移，单位 f0 */
+  var MAXF  = 8.0;                   /* 横轴上限，单位 f0 */
+
+  function ratios(n){
+    /* 铺 n 个纯律音，跨若干八度 */
+    var out = [], k = 0;
+    while(out.length < n){
+      for(var i=0;i<JUST.length && out.length<n;i++){
+        out.push(JUST[i][0]/JUST[i][1] * Math.pow(2,k));
+      }
+      k++;
+    }
+    return out;
+  }
+
+  function draw(){
+    var N = parseInt(document.getElementById('sN').value,10);
+    var showDf = document.getElementById('cDf').checked;
+
+    var W = cv.clientWidth || 1000;
+    var H = 360;
+    cv.width  = Math.round(W*DPR);
+    cv.height = Math.round(H*DPR);
+    cv.style.height = H+'px';
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    ctx.clearRect(0,0,W,H);
+
+    var L = 58, R = W-18, T = 46, B = H-40;
+    var rows = 3, band = (B-T)/rows;
+    var x = function(f){ return L + (f/MAXF)*(R-L); };
+
+    /* 轴 */
+    ctx.strokeStyle = '#cfd6e0'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(L,B); ctx.lineTo(R,B); ctx.stroke();
+    ctx.fillStyle = '#6b7683';
+    ctx.font = '11.5px Consolas,monospace';
+    ctx.textAlign = 'center';
+    for(var t=0; t<=MAXF; t+=1){
+      ctx.beginPath(); ctx.moveTo(x(t),B); ctx.lineTo(x(t),B+5); ctx.stroke();
+      ctx.fillText(t===0?'0':(t+'f₀'), x(t), B+19);
+    }
+    ctx.textAlign = 'left';
+
+    var labels = [
+      {name:'谐波列 n·f₀（算术梳）', col:'#1b4f9c', note:'齿距恒为 f₀'},
+      {name:'现代频率梳 f_ceo+n·f_rep（算术梳）', col:'#177245', note:'齿距恒为 0.5 f₀'},
+      {name:'纯律音阶比连乘（几何梳）', col:'#b4531f', note:'齿距递增·跨八度×2'}
+    ];
+
+    var freqs = [];
+    /* 行 1：谐波列 */
+    var a = []; for(var n=1;n<=N;n++) a.push(n*1.0);
+    /* 行 2：现代梳 */
+    var b = []; for(var m=0;b.length<N;m++){ var f=F_CEO+m*F_REP; if(f>0.05 && f<=MAXF) b.push(f); }
+    /* 行 3：纯律 */
+    var c = ratios(N);
+
+    freqs = [a,b,c];
+
+    /* 橙行齿距的极值：既用于条形归一化，也用于底部读数 */
+    var cSegAll = []; for(var q0=1;q0<freqs[2].length;q0++) cSegAll.push(freqs[2][q0]-freqs[2][q0-1]);
+    var cMinRef = Math.min.apply(null, cSegAll), cMaxRef = Math.max.apply(null, cSegAll);
+
+    for(var r=0;r<3;r++){
+      var yc = T + band*r + band*0.58;
+      var meta = labels[r];
+      var fs = freqs[r];
+
+      /* 行标题 + 右侧小注。⚠ 必须在【标题字体】下测宽，否则小注会飘到很远 */
+      ctx.font = 'bold 12.6px Georgia,serif';
+      ctx.fillStyle = meta.col;
+      ctx.textAlign = 'left';
+      ctx.fillText(meta.name, L, T + band*r + 14);
+      var nameW = ctx.measureText(meta.name).width;
+      ctx.fillStyle = '#6b7683';
+      ctx.font = '11.4px Consolas,monospace';
+      ctx.fillText(meta.note, L + nameW + 16, T + band*r + 14);
+
+      /* 基线 */
+      ctx.strokeStyle = '#e6eaf0'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(L, yc); ctx.lineTo(R, yc); ctx.stroke();
+
+      /* 齿 */
+      for(var i=0;i<fs.length;i++){
+        var px = x(fs[i]);
+        if(px > R+1) continue;
+        ctx.strokeStyle = meta.col; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(px, yc); ctx.lineTo(px, yc-26); ctx.stroke();
+        ctx.fillStyle = meta.col;
+        ctx.beginPath(); ctx.arc(px, yc-27, 2.8, 0, 6.2832); ctx.fill();
+      }
+
+      /* 齿距标注 */
+      if(showDf){
+        for(var j=0;j<fs.length-1 && j<N-1;j++){
+          var f1=fs[j], f2=fs[j+1];
+          if(f2 > MAXF) break;
+          var d = f2-f1;
+          var prev = (j>0) ? (f1-fs[j-1]) : d;
+          var eq = Math.abs(d-prev) < 1e-9;
+          var mx = (x(f1)+x(f2))/2;
+
+          if(r === 2){
+            /* 橙行齿太密（最小齿距只剩 ~10 px），横条会全叠成一条线。
+               改用【竖条高度】∝ 齿距：竖直方向有 90 px 空间，互不重叠。
+               ⚠ 跨八度时会跳回低值（八度是 2 倍，整体放大后重新从 9/8 开始）⇒ 锯齿是正常的。 */
+            var t01 = (d - cMinRef) / Math.max(1e-9, cMaxRef - cMinRef);
+            var bh = 5 + t01*24;
+            ctx.strokeStyle = '#c26a2e'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+            ctx.beginPath(); ctx.moveTo(mx, yc + 9); ctx.lineTo(mx, yc + 9 + bh); ctx.stroke();
+            ctx.lineCap = 'butt';
+          } else {
+            if(x(f2)-x(f1) < 34) continue;      /* 太密就不标，免得叠字 */
+            ctx.font = '10.6px Consolas,monospace';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = eq ? meta.col : '#b3261e';
+            ctx.fillText(d.toFixed(3), mx, yc+15);
+          }
+        }
+        ctx.textAlign = 'left';
+      }
+    }
+
+    /* 判定条：在最下方写结论 */
+    var d1 = (a.length>1) ? (a[1]-a[0]) : 0;
+    var d2 = F_REP;
+    var cMin = cMinRef, cMax = cMaxRef;
+
+    document.getElementById('r1').textContent = 'f₀';
+    document.getElementById('r2').textContent = F_REP.toFixed(2)+' f₀';
+    document.getElementById('r3').textContent = cMin.toFixed(3)+' → '+cMax.toFixed(3);
+
+    var msg = document.getElementById('combMsg');
+    if(msg){
+      /* 口径必须写清：这里算的是【整条橙行】（可能跨若干八度），
+         与 ① 正文里"一个八度内 0.083→0.208 / 2.5 倍"不是同一个范围。 */
+      var octSpan = Math.log2(c[c.length-1] / c[0]);
+      msg.innerHTML = '整条橙行跨 <b>'+octSpan.toFixed(1)+'</b> 个八度：齿距 '+
+        '<b style="color:#b3261e">'+cMin.toFixed(3)+' → '+cMax.toFixed(3)+' f₀（'+(cMax/cMin).toFixed(2)+' 倍）</b> '+
+        '⇒ 不满足 C1 <span style="color:#6b7683">（一个八度内是 0.083 → 0.208，2.5 倍）</span>';
+    }
+  }
+
+  document.getElementById('sN').addEventListener('input', function(){
+    document.getElementById('vN').textContent = this.value;
+    draw();
+  });
+  document.getElementById('cDf').addEventListener('change', draw);
+  window.addEventListener('resize', draw);
+  draw();
+
+  /* 调试钩子：验收脚本从这里读回实际绘制状态，避免"看图猜" */
+  window.__K5 = {
+    teeth: function(){
+      var N = parseInt(document.getElementById('sN').value,10);
+      var a=[]; for(var n=1;n<=N;n++) a.push(n);
+      var b=[]; for(var m=0;b.length<N;m++){ var f=F_CEO+m*F_REP; if(f>0.05&&f<=MAXF) b.push(f); }
+      return {harm:a, comb:b, just:ratios(N)};
+    },
+    redraw: draw
+  };
+})();
+</script>
+<!--FXCTL:JS--><script id="fxctl-js">
+/* ============================================================
+   PKS · 通用「调参浮窗」 (float_ctl.js)
+   作用：把页面里成块的参数控件（.ctl / .ctrl / .controls / .calc /
+        .panel[纯控件] / [data-param-panel]）收进右下角一个可拖动浮窗。
+   原则：
+     1. 只搬控件块本身，**不复制、不重建** ⇒ 原页面绑定在元素上的
+        事件监听、id、input 值全部照常工作。
+     2. 搬不走的、散的（每张卡片各一组、且组数很多）→ 整页放弃，
+        保持原样，并在 console 里说明原因，绝不半搬半留。
+     3. 位置写入 localStorage；双击标题栏回默认位；⇱/— 收起。
+   ============================================================ */
+(function () {
+  if (window.__FXCTL) return;
+
+  var SEL = '.ctl,.ctrl,.controls,.calc,.param-panel,.grp,.htgroup,[data-param-panel]';
+  var MAX_GROUPS = 16;    // 超过这个组数：判定为"散在每张卡片里"，整页跳过
+  var MIN_SHARE = 0.85;   // 收进去的滑块至少要占全页 85%，否则跳过（不做半搬半留）
+  var KEY = 'fxp:' + location.pathname;
+
+  function txt(el, n) {
+    var s = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    if (n && s.length > n) s = s.slice(0, n - 1) + '…';
+    return s;
+  }
+  function inChrome(el) {
+    return !!(el.closest && el.closest('.topnav,header,nav,.topbar,.fxp,#fxp'));
+  }
+
+  /* ---------- 1. 找参数面板 ---------- */
+  // 页面自己已经有一个"贴右边的浮动参数窗"？有就不再叠第二个
+  function hasOwnDock() {
+    var els = [].slice.call(document.querySelectorAll('body > *'));
+    // 也看一两层深，很多页把 pwin 套在 wrapper 里
+    document.querySelectorAll('body div, body section, body aside').forEach(function (x) {
+      if (els.length < 400) els.push(x);
+    });
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      if (el.id === 'fxp') continue;
+      if (getComputedStyle(el).position !== 'fixed') continue;
+      var r = el.getBoundingClientRect();
+      if (r.width > 240 && r.width < 620 && r.height > 240 &&
+          (innerWidth - r.right) < 70 && r.top < 220) return true;
+    }
+    return false;
+  }
+
+  function detect() {
+    var all = [].slice.call(document.querySelectorAll('input[type=range]'));
+    if (hasOwnDock()) {
+      return { panels: [], total: all.length, inline: 0, moved: 0, ok: false, own: true };
+    }
+    // 已经在自己的浮窗里（祖先 fixed）的滑块：不算在"待浮"里，也不搬
+    function inFixed(el) {
+      var a = el, d = 0;
+      while (a && d++ < 5) {
+        if (getComputedStyle(a).position === 'fixed') return true;
+        a = a.parentElement;
+      }
+      return false;
+    }
+    var inline = all.filter(function (i) { return !inFixed(i); });   // 仍躺在正文里的
+    var cands = [].slice.call(document.querySelectorAll(SEL)).filter(function (el) {
+      if (inChrome(el)) return false;
+      if (!el.querySelector('input[type=range]')) return false;
+      if (inFixed(el)) return false;                                 // 已在浮窗内
+      var hasCanvas = !!el.querySelector('canvas,svg,video,img');
+      var cls = el.className || '';
+      var isParamCol = /(^|\s)(ctl|ctrl|controls|calc|param-panel)(\s|$)/.test(cls);
+      if (hasCanvas && !isParamCol) return false;
+      if (el.classList.contains('panel') || el.classList.contains('grp')) {
+        return el.querySelectorAll('input[type=range]').length >= 2;
+      }
+      return true;
+    });
+    // 去重 + 保留最外层
+    cands = cands.filter(function (el, i) {
+      if (cands.indexOf(el) !== i) return false;
+      return !cands.some(function (o) { return o !== el && o.contains(el); });
+    });
+    var moved = 0;
+    cands.forEach(function (el) { moved += el.querySelectorAll('input[type=range]').length; });
+    var ok = cands.length > 0 && cands.length <= MAX_GROUPS &&
+             (inline.length ? moved / inline.length >= MIN_SHARE : false);
+    return { panels: cands, total: all.length, inline: inline.length, moved: moved, ok: ok };
+  }
+
+  /* ---------- 2. 取分组标签（最近的标题 / .vt）---------- */
+  function labelFor(el) {
+    var gt = el.querySelector && el.querySelector('.gt');
+    if (gt) return txt(gt, 22);
+    var v0 = el.closest && el.closest('.viz');
+    if (v0) { var t0 = v0.querySelector('.vt'); if (t0) return txt(t0, 22); }
+    var node = el, hop = 0;
+    while (node && hop++ < 6) {
+      var prev = node.previousElementSibling;
+      while (prev) {
+        if (/^H[1-4]$/.test(prev.tagName)) return txt(prev, 22);
+        if (prev.querySelector) {
+          var h = prev.querySelector('h2,h3,h4,.vt');
+          if (h) return txt(h, 22);
+        }
+        prev = prev.previousElementSibling;
+      }
+      node = node.parentElement;
+    }
+    return '';
+  }
+
+  /* 搬走控件后，父级若是两列网格且变空 → 收成一列，避免右侧留一条空白 */
+  function collapseTrack(el) {
+    var par = el.parentElement;
+    if (!par) return;
+    var cs = getComputedStyle(par);
+    if (cs.display !== 'grid') return;
+    var tracks = (cs.gridTemplateColumns || '').split(/\s+/).filter(function (x) { return x && x !== 'none'; });
+    if (tracks.length !== 2) return;
+    if (par.lastElementChild !== el) return;
+    par.style.gridTemplateColumns = '1fr';
+  }
+
+  /* ---------- 3. 搭面板 ---------- */
+  function build(d) {
+    var old = document.getElementById('fxp');
+    if (old) old.remove();
+
+    var p = document.createElement('div');
+    p.id = 'fxp';
+    var counts = d.panels.map(function (el) {
+      return el.querySelectorAll('input[type=range]').length;
+    });
+    var nRange = counts.reduce(function (a, b) { return a + b; }, 0);
+
+    p.innerHTML =
+      '<div class="fxp-h" id="fxpH">' +
+        '<span class="fxp-grip">⠿</span>' +
+        '<span class="fxp-t">调参</span>' +
+        '<span class="fxp-c">' + d.panels.length + ' 组 · ' + nRange + ' 滑块</span>' +
+        '<button class="fxp-b" data-a="mini" title="收起 / 展开">—</button>' +
+        '<button class="fxp-b" data-a="reset" title="回到默认位置（也可双击标题栏）">⟲</button>' +
+      '</div><div class="fxp-bd"></div>';
+
+    var bd = p.querySelector('.fxp-bd');
+    var used = {}, noteDone = false;
+    d.panels.forEach(function (el, i) {
+      var lb = labelFor(el) || ('参数组 ' + (i + 1));
+      if (used[lb]) { used[lb]++; lb = lb.slice(0, 16) + ' (' + used[lb] + ')'; } else { used[lb] = 1; }
+      var g = document.createElement('div');
+      g.className = 'fxp-grp';
+      var gl = document.createElement('div');
+      gl.className = 'fxp-gl';
+      gl.innerHTML = '<b>' + lb.replace(/</g, '&lt;') + '</b><i>' + counts[i] + '</i>';
+      g.appendChild(gl);
+
+      if (!noteDone && el.parentNode) {
+        var note = document.createElement('p');
+        note.className = 'fxp-note';
+        note.textContent = '参数已收进右侧浮窗「调参」（拖标题栏可挪走 · 双击回位）';
+        el.parentNode.insertBefore(note, el);
+        noteDone = true;
+      }
+      collapseTrack(el);
+
+      g.appendChild(el);          // ← 原节点整体搬入，事件与 id 不变
+      bd.appendChild(g);
+    });
+
+    document.body.appendChild(p);
+    return p;
+  }
+
+  /* ---------- 4. 位置 / 拖动 / 收起 ---------- */
+  function clamp(p) {
+    var r = p.getBoundingClientRect(), W = innerWidth, H = innerHeight;
+    var x = Math.min(Math.max(r.left, -r.width + 90), W - 90);
+    var y = Math.min(Math.max(r.top, 0), H - 44);
+    p.style.left = x + 'px'; p.style.top = y + 'px';
+    p.style.right = 'auto'; p.style.bottom = 'auto';
+  }
+  function defPos(p) {
+    p.style.left = ''; p.style.right = ''; p.style.top = ''; p.style.bottom = '';
+  }
+  function save(p) {
+    try {
+      var st = p.classList.contains('fxp-min');
+      if (!p.style.left) { localStorage.removeItem(KEY); return; }
+      localStorage.setItem(KEY, JSON.stringify({
+        x: parseFloat(p.style.left), y: parseFloat(p.style.top), mini: st
+      }));
+    } catch (e) {}
+  }
+  function load(p) {
+    try {
+      var s = localStorage.getItem(KEY);
+      /* 首次访问一律收起：页面本身就有「参数」竖条，浮窗默认展开会把画布挤掉 322px；
+         收起的标题条写着「调参 · N 组 · M 滑块」，一眼能看见、点一下就展开，状态会被记住。 */
+      if (!s) { p.classList.add('fxp-min'); return; }
+      var o = JSON.parse(s);
+      if (o.mini) p.classList.add('fxp-min');
+      if (typeof o.x === 'number' && isFinite(o.x)) {
+        p.style.left = o.x + 'px'; p.style.top = o.y + 'px';
+        p.style.right = 'auto'; p.style.bottom = 'auto';
+        clamp(p);
+      }
+    } catch (e) {}
+  }
+
+  function wire(p) {
+    var h = p.querySelector('#fxpH');
+    var drag = null;
+
+    h.addEventListener('pointerdown', function (ev) {
+      if (ev.target.closest('button')) return;
+      if (innerWidth <= 880) return;                 // 窄屏走底部抽屉，不拖
+      var r = p.getBoundingClientRect();
+      drag = { dx: ev.clientX - r.left, dy: ev.clientY - r.top, moved: false };
+      p.style.left = r.left + 'px'; p.style.top = r.top + 'px';
+      p.style.right = 'auto'; p.style.bottom = 'auto';
+      h.classList.add('fxp-drag');
+      h.setPointerCapture && h.setPointerCapture(ev.pointerId);
+      ev.preventDefault();
+    });
+    h.addEventListener('pointermove', function (ev) {
+      if (!drag) return;
+      drag.moved = true;
+      p.style.left = (ev.clientX - drag.dx) + 'px';
+      p.style.top = (ev.clientY - drag.dy) + 'px';
+      var r = p.getBoundingClientRect();
+      var nx = Math.min(Math.max(r.left, -r.width + 90), innerWidth - 90);
+      var ny = Math.min(Math.max(r.top, 0), innerHeight - 44);
+      p.style.left = nx + 'px'; p.style.top = ny + 'px';
+    });
+    function end() { if (drag) { h.classList.remove('fxp-drag'); save(p); drag = null; } }
+    h.addEventListener('pointerup', end);
+    h.addEventListener('pointercancel', end);
+
+    h.addEventListener('dblclick', function (ev) {
+      if (ev.target.closest('button')) return;
+      defPos(p);
+      try { localStorage.removeItem(KEY); } catch (e) {}
+    });
+
+    p.addEventListener('click', function (ev) {
+      var b = ev.target.closest('button[data-a]');
+      if (!b) return;
+      if (b.dataset.a === 'mini') { p.classList.toggle('fxp-min'); save(p); }
+      if (b.dataset.a === 'reset') { defPos(p); p.classList.remove('fxp-min'); save(p); }
+    });
+
+    addEventListener('resize', function () { if (p.style.left) clamp(p); });
+  }
+
+  /* ---------- 5. 启动 ---------- */
+  function boot() {
+    var d = detect();
+    if (!d.ok) {
+      if (d.own) {
+        console.info('[调参浮窗] 本页跳过：页面自己已有贴右的可拖动参数窗，不叠第二个');
+      } else if (d.inline === 0 && d.total > 0) {
+        console.info('[调参浮窗] 本页跳过：' + d.total + ' 个滑块全在页面自己的浮窗里，没有需要搬的');
+      } else if (d.panels.length) {
+        console.info('[调参浮窗] 本页跳过：' + d.panels.length + ' 组、待浮滑块 ' +
+          d.moved + '/' + d.inline + '（判据：≤' + MAX_GROUPS + ' 组且 ≥' +
+          Math.round(MIN_SHARE * 100) + '%；已在浮窗内的 ' + (d.total - d.inline) + ' 个不计）');
+      }
+      return;
+    }
+    var p = build(d);
+    load(p);
+    wire(p);
+    console.info('[调参浮窗] 已收 ' + d.moved + '/' + d.inline + ' 个待浮滑块，' +
+      d.panels.length + ' 组（另 ' + (d.total - d.inline) + ' 个本来就在浮窗里）');
+  }
+
+  window.__FXCTL = { detect: detect, boot: boot, build: build };
+
+  if (document.readyState === 'complete') setTimeout(boot, 60);
+  else addEventListener('load', function () { setTimeout(boot, 60); });
+})();
+
+</script><!--/FXCTL:JS-->
+</body>
+</html>

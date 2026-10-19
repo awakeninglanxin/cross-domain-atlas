@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Trexar GDR 核信号检验方案</title>
+<link rel="stylesheet" href="../_katex/katex.min.css">
+<style>
+:root{
+  --bg:#f4f7fb; --card:#ffffff; --line:#e2e8f2; --line2:#eef2f8;
+  --ink:#1c2534; --ink2:#495a72; --ink3:#7d8ca3;
+  --blue:#3457d5; --blue2:#5b7bf0; --amber:#e08a17; --teal:#0e9c8e;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15.5px/1.86 -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif}
+a{color:var(--blue);text-decoration:none;border-bottom:1px solid rgba(52,87,213,.28)}
+a:hover{color:#22409f;border-bottom-color:var(--blue)}
+code,kbd{font-family:ui-monospace,Consolas,"Cascadia Mono",Menlo,monospace}
+
+/* ---- 顶栏 ---- */
+.bar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:12px;
+  padding:9px 20px;background:rgba(255,255,255,.94);border-bottom:1px solid var(--line);
+  backdrop-filter:blur(8px)}
+.bar .bk{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);
+  background:#fff;color:var(--ink2);border-radius:8px;padding:5px 11px;font-size:13px;
+  cursor:pointer;line-height:1.2}
+.bar .bk:hover{border-color:#c7d4ea;background:#f8fbff;color:var(--blue)}
+.bar .tt{font-size:13px;color:var(--ink3);white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;flex:1 1 auto;min-width:0}
+.bar .tt b{color:var(--ink2);font-weight:700}
+.bar .act{display:flex;gap:7px;flex:0 0 auto}
+.bar .act a{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);
+  background:#fff;color:var(--ink2);border-radius:8px;padding:5px 10px;font-size:12.5px;line-height:1.2}
+.bar .act a:hover{border-color:#c7d4ea;background:#f8fbff;color:var(--blue)}
+.bar .act a.ghost{cursor:pointer;user-select:none}
+
+/* ---- 铁律 205：.md 不得作 href 目标 ⇒ 跨目录 .md 引用降级为「可读路径标注」 ---- */
+.xmd{border-bottom:1px dashed rgba(73,90,114,.5);color:var(--ink2);cursor:help}
+.xmd::after{content:"md";font-size:9px;color:var(--ink3);vertical-align:super;
+  margin-left:2px;letter-spacing:.3px}
+
+/* ---- 布局 ---- */
+.wrap{display:grid;grid-template-columns:236px minmax(0,1fr);gap:26px;
+  max-width:1220px;margin:0 auto;padding:22px 22px 60px}
+.toc{position:sticky;top:66px;align-self:start;max-height:calc(100vh - 92px);overflow:auto;
+  background:var(--card);border:1px solid var(--line);border-radius:13px;padding:13px 10px 15px}
+.toc .h{font-size:11.5px;letter-spacing:1.1px;color:var(--ink3);font-weight:700;
+  padding:0 8px 8px;border-bottom:1px solid var(--line2);margin-bottom:7px}
+.toc a{display:block;font-size:12.8px;line-height:1.5;color:var(--ink2);
+  padding:4px 8px;border-radius:6px;border-bottom:none;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.toc a:hover{background:#f2f7ff;color:var(--blue)}
+.toc a.lv3{padding-left:20px;font-size:12.2px;color:var(--ink3)}
+.toc a.on{background:#eef4ff;color:var(--blue);font-weight:700}
+
+/* ---- 正文卡片 ---- */
+article{background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:30px 40px 44px;box-shadow:0 4px 20px rgba(30,60,120,.05);min-width:0}
+.meta{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.2px;color:var(--ink3);
+  border-bottom:1px dashed var(--line);padding-bottom:12px;margin:0 0 22px}
+.meta span b{color:var(--ink2);font-weight:700}
+
+h1,h2,h3,h4,h5,h6{line-height:1.42;font-weight:700;color:var(--ink)}
+h1{font-size:25px;margin:0 0 6px;padding-bottom:12px;border-bottom:2px solid var(--blue)}
+h2{font-size:19.5px;margin:34px 0 12px;padding-left:11px;border-left:4px solid var(--blue)}
+h3{font-size:16.6px;margin:26px 0 9px;color:#20304a}
+h4{font-size:15.2px;margin:20px 0 7px;color:var(--ink2)}
+h5{font-size:14.2px;margin:16px 0 6px;color:var(--ink2)}
+h6{font-size:13.6px;margin:14px 0 6px;color:var(--ink3)}
+p{margin:11px 0}
+strong{color:#12203a}
+em{color:var(--ink2)}
+del{color:var(--ink3)}
+hr{border:none;border-top:1px dashed #d7e0ee;margin:26px 0}
+
+/* ---- 代码 ---- */
+code{background:#f2f5fa;border:1px solid #e7edf7;border-radius:5px;
+  padding:1px 5px;font-size:12.9px;color:#1d3a6e;word-break:break-word}
+pre.code{background:#f8fafd;border:1px solid var(--line);border-radius:10px;
+  padding:12px 15px;overflow-x:auto;margin:13px 0;line-height:1.66}
+pre.code code{background:none;border:none;padding:0;font-size:12.7px;color:#26364f;
+  white-space:pre;word-break:normal}
+
+/* ---- 引用 ---- */
+blockquote{margin:14px 0;padding:9px 16px;background:#f7faff;
+  border-left:3px solid var(--blue2);border-radius:0 9px 9px 0;color:var(--ink2)}
+blockquote>p{margin:5px 0}
+blockquote blockquote{margin:8px 0;background:#fff}
+
+/* ---- 表格 ---- */
+.tw{overflow-x:auto;margin:14px 0;border:1px solid var(--line);border-radius:10px}
+table{width:100%;border-collapse:collapse;font-size:13.4px;background:#fff}
+th{background:#f4f7fb;color:#243449;font-weight:700;text-align:left;
+  padding:8px 11px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:7px 11px;border-bottom:1px solid var(--line2);color:var(--ink2);vertical-align:top}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#fbfdff}
+td code,th code{font-size:12.4px}
+
+/* ---- 列表 ---- */
+ul,ol{margin:11px 0;padding-left:26px}
+li{margin:4px 0}
+li>ul,li>ol{margin:5px 0}
+
+/* ---- 公式 ---- */
+.mathblock{overflow-x:auto;overflow-y:hidden;padding:4px 0;margin:14px 0;text-align:center}
+.katex{font-size:1.045em}
+.katex-display{margin:0}
+.xref{border-bottom:none}
+.xref code{background:#eef4ff;border-color:#d3e0fb;color:var(--blue)}
+.xref:hover code{background:#e2ecff;border-color:#b9cdf8}
+.texerr{background:#fff3f5;color:#b3384c;border:1px solid #f0ccd3;border-radius:5px;
+  padding:1px 5px;font-family:ui-monospace,Consolas,monospace;font-size:12.5px}
+
+/* ---- 页脚 ---- */
+.foot{margin:26px 0 0;padding-top:14px;border-top:1px dashed var(--line);
+  font-size:12.2px;color:var(--ink3);display:flex;flex-wrap:wrap;gap:8px 18px}
+.foot a{border-bottom:none}
+
+.mdtip{position:fixed;left:50%;top:64px;transform:translateX(-50%) translateY(-8px);
+  background:#1c2534;color:#fff;font-size:13px;line-height:1.6;padding:9px 16px;border-radius:9px;
+  box-shadow:0 8px 26px rgba(20,40,80,.28);opacity:0;pointer-events:none;transition:.18s;z-index:60;
+  max-width:min(560px,92vw)}
+.mdtip.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.mdtip b{color:#ffd48a}
+.top{position:fixed;right:22px;bottom:22px;width:40px;height:40px;border-radius:50%;
+  border:1px solid var(--line);background:#fff;color:var(--ink2);cursor:pointer;
+  box-shadow:0 4px 16px rgba(30,60,120,.13);font-size:16px;display:none;z-index:40}
+.top:hover{color:var(--blue);border-color:#c7d4ea}
+.top.on{display:block}
+
+@media (max-width:900px){
+  .wrap{grid-template-columns:minmax(0,1fr);padding:14px 12px 50px}
+  .toc{position:static;max-height:none;order:2}
+  article{padding:22px 18px 34px}
+  .bar .tt{display:none}
+}
+@media print{
+  .bar,.toc,.top{display:none!important}
+  body{background:#fff}
+  .wrap{display:block;max-width:none;padding:0}
+  article{border:none;box-shadow:none;padding:0}
+  h2{break-after:avoid}
+  table,pre.code,blockquote{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div class="bar">
+  <a class="bk" id="btnBack" href="../keely核心技术与现代声子物理技术对比.html">&larr; 返回</a>
+  <div class="tt"><b>00_ima归档/_raw/B1_GDR核信号检验_初版</b></div>
+  <div class="act">
+    <a class="ghost" id="btnMd" data-md="00_ima归档/_raw/B1_GDR核信号检验_初版.md" title="源文件路径（不是链接）—— 用 Typora / Obsidian 打开编辑；IMA 归档的原件在 _raw/">&#11015; .md 源文件</a>
+    <a href="javascript:window.print()" title="打印 / 存 PDF">&#128424; 打印</a>
+  </div>
+</div>
+
+<div class="wrap">
+<nav class="toc"><div class="h">目录</div>
+<a class="lv2" href="#h2" title="判据体系 · 分级实验 · SOP · 统计方法">判据体系 · 分级实验 · SOP · 统计方法</a>
+<a class="lv2" href="#h3" title="0. ★ 实验定位（先读这段）">0. ★ 实验定位（先读这段）</a>
+<a class="lv3" href="#h4" title="0.1 硬约束：机械振动到不了核">0.1 硬约束：机械振动到不了核</a>
+<a class="lv3" href="#h5" title="0.2 因此本检验的正确定位">0.2 因此本检验的正确定位</a>
+<a class="lv2" href="#h6" title="1. 物理基础">1. 物理基础</a>
+<a class="lv3" href="#h7" title="1.1 GDR 是什么">1.1 GDR 是什么</a>
+<a class="lv3" href="#h8" title="1.2 GDR 参数">1.2 GDR 参数</a>
+<a class="lv3" href="#h9" title="1.3 具体核素的 GDR（Lorentzian 拟合值）">1.3 具体核素的 GDR（Lorentzian 拟合值）</a>
+<a class="lv3" href="#h10" title="1.4 中子产物的能谱">1.4 中子产物的能谱</a>
+<a class="lv2" href="#h11" title="2. ★ 判据体系">2. ★ 判据体系</a>
+<a class="lv3" href="#h12" title="2.1 关键事实：天然本底的能量上限">2.1 关键事实：天然本底的能量上限</a>
+<a class="lv3" href="#h13" title="2.2 五级判据">2.2 五级判据</a>
+<a class="lv3" href="#h14" title="2.3 承认标准">2.3 承认标准</a>
+<a class="lv2" href="#h15" title="3. 分级实验方案">3. 分级实验方案</a>
+<a class="lv3" href="#h16" title="Level 0 · 粗筛（数百–2000 元）">Level 0 · 粗筛（数百–2000 元）</a>
+<a class="lv3" href="#h17" title="Level 1 · NaI(Tl) γ 谱（核心，1–3 万元）">Level 1 · NaI(Tl) γ 谱（核心，1–3 万元）</a>
+<a class="lv3" href="#h18" title="Level 2 · 中子（决定性）">Level 2 · 中子（决定性）</a>
+<a class="lv3" href="#h19" title="Level 3 · HPGe（10–30 万元 + 液氮）">Level 3 · HPGe（10–30 万元 + 液氮）</a>
+<a class="lv2" href="#h20" title="4. ★ 统计判据（必须写死）">4. ★ 统计判据（必须写死）</a>
+<a class="lv3" href="#h21" title="Currie 探测限公式 [web_282]">Currie 探测限公式 [web_282]</a>
+<a class="lv3" href="#h22" title="效率必须实测">效率必须实测</a>
+<a class="lv2" href="#h23" title="5. 干扰排除（逐条对应判据）">5. 干扰排除（逐条对应判据）</a>
+<a class="lv2" href="#h24" title="6. SOP">6. SOP</a>
+<a class="lv3" href="#h25" title="步骤">步骤</a>
+<a class="lv3" href="#h26" title="激励策略">激励策略</a>
+<a class="lv3" href="#h27" title="同心 Trexar 试件参数（已定案）">同心 Trexar 试件参数（已定案）</a>
+<a class="lv2" href="#h28" title="7. 设备与成本估算">7. 设备与成本估算</a>
+<a class="lv2" href="#h29" title="8. 结果判读">8. 结果判读</a>
+<a class="lv2" href="#h30" title="9. 一句话总结">9. 一句话总结</a>
+</nav>
+<article>
+<h1 id="h1">Trexar GDR 核信号检验方案</h1>
+<h2 id="h2">判据体系 · 分级实验 · SOP · 统计方法</h2>
+<blockquote><p>建立日期：2026-10-17 关联文档：《Keely线性尺寸定律-现代声学对照与实验方案.md》v6 第 8 节定位：<strong>证伪性检验</strong>——阴性结果同样是有效且更有价值的结论</p></blockquote>
+<hr>
+<h2 id="h3">0. ★ 实验定位（先读这段）</h2>
+<h3 id="h4">0.1 硬约束：机械振动到不了核</h3>
+<div class="tw"><table><thead><tr><th>能量尺度</th><th>数值</th></tr></thead><tbody><tr><td>THz 声子（1 THz）</td><td><strong>4.14 meV</strong></td></tr><tr><td>核第一激发态</td><td><strong>~1 MeV</strong></td></tr><tr><td>GDR 共振（¹⁹⁷Au）</td><td><strong>13.7 MeV</strong> [web_299]</td></tr></tbody></table></div>
+<p><strong>相差 8–9 个数量级。</strong></p>
+<p>GDR 是被 <strong>γ 光子</strong>激发的光核反应 (γ,n)，<strong>不是</strong>被机械振动直接激发 [web_291][web_293][web_295]。</p>
+<h3 id="h5">0.2 因此本检验的正确定位</h3>
+<div class="tw"><table><thead><tr><th>结果</th><th>含义</th></tr></thead><tbody><tr><td><strong>测到核信号</strong></td><td>装置内发生了<strong>非机械的能量集中过程</strong> → 异常，值得追查</td></tr><tr><td><strong>测不到</strong>（理论预期）</td><td>层级说到<strong>第六级（Interetheric）为止</strong>，第七级 Compound Interetheric 不成立</td></tr></tbody></table></div>
+<blockquote><p><strong>阴性结果是本实验最有价值的产出。</strong> 它把 Keely 层级说的适用边界钉死在"未达核尺度"。</p></blockquote>
+<hr>
+<h2 id="h6">1. 物理基础</h2>
+<h3 id="h7">1.1 GDR 是什么</h3>
+<blockquote><p>「最重要的一个被称为<strong>巨偶极共振</strong>，通常描述为<strong>核内质子相对中子的受激集体振荡</strong>。这个激发态通常通过发射一个或多个<strong>光中子（photoneutron）</strong>退激。」[web_291]</p>
+<p>「巨偶极共振（GDR）代表<strong>核内中子相对质子的集体振动运动</strong>。」[web_293]</p></blockquote>
+<h3 id="h8">1.2 GDR 参数</h3>
+<div class="tw"><table><thead><tr><th>参数</th><th>值</th><th>来源</th></tr></thead><tbody><tr><td>共振能量范围（多数元素）</td><td><strong>13–26 MeV</strong></td><td>[web_291]</td></tr><tr><td>质量依赖</td><td>随 <strong>A^(−1/3)</strong> 缓慢下降</td><td>[web_291]</td></tr><tr><td>共振宽度 Γ</td><td><strong>3–6 MeV</strong>（另源 3–9 MeV）</td><td>[web_291][web_292][web_296]</td></tr><tr><td>重元素总截面</td><td><strong>几百毫巴（mb）</strong></td><td>[web_291]</td></tr><tr><td>光核反应阈值</td><td><strong>≥5 MeV</strong>（另说 &gt;5–15 MeV）</td><td>[web_292][web_295]</td></tr><tr><td>轻核 GDR 中心</td><td>~24 MeV</td><td>[web_292][web_296]</td></tr><tr><td>最重稳定核 GDR 中心</td><td>~12 MeV</td><td>[web_292][web_296]</td></tr></tbody></table></div>
+<h3 id="h9">1.3 具体核素的 GDR（Lorentzian 拟合值）</h3>
+<div class="tw"><table><thead><tr><th>核素</th><th>阈值 E_min</th><th>共振能 E₀</th><th>Γ_fwhm</th><th>峰值截面 σ̂</th></tr></thead><tbody><tr><td>¹²C</td><td>18.72 MeV</td><td>~23 MeV</td><td>~3.7</td><td>~7 mb</td></tr><tr><td>²⁷Al</td><td>13.03 MeV</td><td>~22 MeV</td><td>~6.7</td><td>~11 mb</td></tr><tr><td>nat Cu</td><td>9.91 MeV</td><td>~17 MeV</td><td>~7.8</td><td>~70 mb</td></tr><tr><td>⁹³Nb</td><td>8.8 MeV</td><td><strong>16.59 MeV</strong></td><td>5.05</td><td><strong>200 mb</strong></td></tr><tr><td><strong>²⁰⁸Pb</strong></td><td>7.38 MeV</td><td><strong>13.46 MeV</strong></td><td><strong>3.90</strong></td><td><strong>491 mb</strong></td></tr></tbody></table></div>
+<p>[web_294]</p>
+<p>独立测量值：</p>
+<div class="tw"><table><thead><tr><th>核素</th><th>共振能 Em</th><th>宽度 Γ</th></tr></thead><tbody><tr><td><strong>¹⁹⁷Au</strong></td><td><strong>13.7 MeV</strong></td><td><strong>4.76 MeV</strong></td></tr><tr><td>²⁰⁸Pb</td><td>13.5 MeV</td><td>4 MeV</td></tr><tr><td>¹⁶⁰Gd（形变核，双峰）</td><td>12.23 / 15.96 MeV</td><td>2.27 / 5.28</td></tr><tr><td>⁹⁰Zr</td><td>—</td><td>4.1 MeV</td></tr><tr><td>⁹⁴Zr</td><td>—</td><td>5.3 MeV</td></tr></tbody></table></div>
+<p>[web_299]</p>
+<blockquote><p><strong>★ Trexar 用得到的：金层 ¹⁹⁷Au 的 GDR 峰 = 13.7 MeV；铂层（A=195）应紧邻该值。</strong></p></blockquote>
+<h3 id="h10">1.4 中子产物的能谱</h3>
+<blockquote><p>「巨共振中子是低能的（<strong>1–3 MeV</strong>），最大产生截面为 1–2 mb/核子。」[web_295]</p>
+<p>「大部分 GDR 中子服从 Maxwellian 能量分布，即所谓<strong>蒸发谱</strong>：dN/dE = (E/T²)·exp(−E/T)，T（核温度）典型范围 <strong>0.4–1.4 MeV</strong>，T 是最概然能量，<strong>2T 是平均中子能量</strong>。」[web_291]</p></blockquote>
+<p><strong>衰变通道</strong>：中重核以 (γ,n) 为主；重核因库仑势垒，质子发射被强烈压低 [web_293][web_295]。</p>
+<hr>
+<h2 id="h11">2. ★ 判据体系</h2>
+<h3 id="h12">2.1 关键事实：天然本底的能量上限</h3>
+<p><strong>天然 γ 本底最高只到 ²⁰⁸Tl 的 2614.5 keV。</strong> 超过约 2.62 MeV 基本无天然 γ 源（宇宙射线除外）[web_300][web_301][web_302][web_304]。</p>
+<h3 id="h13">2.2 五级判据</h3>
+<div class="tw"><table><thead><tr><th>优先级</th><th>信号</th><th>物理来源</th><th>天然本底</th><th>判定力</th></tr></thead><tbody><tr><td><strong>1</strong></td><td><strong>中子计数</strong></td><td>GDR 主要衰变通道 [web_291][web_295]</td><td><strong>几乎为零</strong></td><td>★★★★★</td></tr><tr><td><strong>2</strong></td><td><strong>2.223 MeV γ 峰</strong></td><td>¹H(n,γ)²H 热中子俘获——中子铁证</td><td>无</td><td>★★★★★</td></tr><tr><td><strong>3</strong></td><td><strong>511 keV 峰增强</strong></td><td>&gt;1.022 MeV γ 产生电子对 → 湮灭</td><td>极低</td><td>★★★★</td></tr><tr><td><strong>4</strong></td><td><strong>&gt;2.62 MeV 的 γ</strong></td><td>超出天然本底上限</td><td>仅宇宙射线</td><td>★★★★</td></tr><tr><td>5</td><td><strong>13.7 MeV 区信号</strong></td><td>Au/Pt 的 GDR 直接峰 [web_299]</td><td>无</td><td>★★★（但 NaI 高能效率低）</td></tr></tbody></table></div>
+<h3 id="h14">2.3 承认标准</h3>
+<p>任一信号被承认，必须<strong>同时</strong>满足：</p>
+<ol>
+<li>在<strong>差分谱</strong>（实验 − 对照）上超过 Currie 探测限 L_D</li>
+<li><strong>两次独立重复可复现</strong></li>
+<li>已排除本条对应的干扰项（见第 5 节）</li>
+</ol>
+<hr>
+<h2 id="h15">3. 分级实验方案</h2>
+<h3 id="h16">Level 0 · 粗筛（数百–2000 元）</h3>
+<div class="tw"><table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody><tr><td>设备</td><td>盖革计数器 / 个人剂量计</td></tr><tr><td>方法</td><td>开机 vs 关机，各 30 min 计数率对比</td></tr><tr><td><strong>局限</strong></td><td>GM 管<strong>无能量分辨</strong>——140 keV 的 Tc-99m 与 364 keV 的 I-131 无法区分 [web_282]</td></tr><tr><td>用途</td><td>仅粗筛。阳性才升级</td></tr></tbody></table></div>
+<h3 id="h17">Level 1 · NaI(Tl) γ 谱（核心，1–3 万元）</h3>
+<p><strong>探测器参数</strong></p>
+<div class="tw"><table><thead><tr><th>参数</th><th>值</th></tr></thead><tbody><tr><td>光产额</td><td><strong>38000 photons/MeV</strong>（38 photons/keV）[web_281][web_287]</td></tr><tr><td>能量分辨率</td><td><strong>6–8% @ 662 keV</strong>（Cs-137）[web_281][web_282][web_287][web_290]</td></tr><tr><td>密度</td><td>3.67 g/cm³ [web_281][web_287]</td></tr><tr><td>有效 Z</td><td>I 的 Z = 53，碘含量 85 wt% [web_286][web_287]</td></tr><tr><td>发射峰</td><td>415 nm（匹配双碱 PMT）[web_281][web_287]</td></tr><tr><td>衰减时间</td><td>230–264 ns [web_281][web_287]</td></tr><tr><td>封装</td><td>必须气密（强潮解）[web_281][web_287]</td></tr><tr><td>建议尺寸</td><td>2″×2″ 或 3″×3″</td></tr></tbody></table></div>
+<p><strong>效率随能量变化</strong>：低中能时光电吸收主导、效率高；高能时光子更多发生康普顿散射或逃逸，光电峰效率下降 [web_282]。</p>
+<blockquote><p>「大晶体（5.5×11×40 cm³）测 Co-60 时光电峰突出、康普顿本底较低；小晶体（Ø1.5×2.5 cm）测同一源则康普顿连续区主导、光电峰微弱。」[web_285]</p></blockquote>
+<p>→ <strong>测高能 γ 必须尽量用大晶体。</strong></p>
+<p><strong>必设能量窗口</strong>（对标天然本底）</p>
+<div class="tw"><table><thead><tr><th>能量</th><th>归属</th><th>强度</th></tr></thead><tbody><tr><td>609.3 keV</td><td>²¹⁴Bi（²³⁸U 链）</td><td>45.44% [web_300][web_302]</td></tr><tr><td>1460.8 keV</td><td>⁴⁰K</td><td>10.66% [web_300][web_302][web_304]</td></tr><tr><td>1764 keV</td><td>²¹⁴Bi（²³⁸U 链）</td><td>[web_300][web_304]</td></tr><tr><td><strong>2614.5 keV</strong></td><td><strong>²⁰⁸Tl（²³²Th 链）</strong></td><td><strong>99.75%</strong> [web_300][web_302][web_304]</td></tr><tr><td><strong>&gt;3000 keV</strong></td><td><strong>宇宙射线监测窗</strong></td><td>[web_301]</td></tr><tr><td>661.7 keV</td><td>¹³⁷Cs（人工污染）</td><td>85.1% [web_300][web_302]</td></tr><tr><td>1173.2 / 1332.5 keV</td><td>⁶⁰Co</td><td>99.85% / 99.98% [web_302]</td></tr><tr><td>834.8 keV</td><td>⁵⁴Mn</td><td>99.98% [web_302]</td></tr></tbody></table></div>
+<p><strong>谱特征识别清单</strong> [web_285]</p>
+<ul>
+<li>光电峰（全能峰）→ 定能量</li>
+<li>康普顿连续区 + 康普顿边</li>
+<li>反散射峰（200–250 keV）</li>
+<li>屏蔽材料（铅）特征 X 射线峰</li>
+<li><strong>湮灭峰 511 keV</strong></li>
+<li>高活度时的相加峰</li>
+</ul>
+<h3 id="h18">Level 2 · 中子（决定性）</h3>
+<p><strong>(a) He-3 / BF₃ 正比计数管</strong> — 热中子直接计数（He-3 全球稀缺，价格高）</p>
+<p><strong>(b) 中子活化箔</strong> — 推荐，性价比高</p>
+<p><strong>首选：金箔活化</strong>（与 Trexar 中间层材料一致，语义自洽）</p>
+<pre class="code"><code>¹⁹⁷Au(n,γ)¹⁹⁸Au   半衰期 2.7 天   γ 411.8 keV</code></pre>
+<p><strong>备选：铟箔</strong></p>
+<pre class="code"><code>¹¹⁵In(n,γ)¹¹⁶ᵐIn   半衰期 54 分钟</code></pre>
+<p><strong>操作</strong>：箔片全程置于装置旁 → 实验结束后取出 → 立即用 Level 1 的 NaI 测 411.8 keV 峰 → 追踪计数随时间衰减 → 验证半衰期是否为 2.7 天。</p>
+<blockquote><p><strong>半衰期验证是关键</strong>：只有半衰期对得上，才能排除是其他核素污染。</p></blockquote>
+<h3 id="h19">Level 3 · HPGe（10–30 万元 + 液氮）</h3>
+<p>分辨率约 0.2% @ 1.33 MeV（远优于 NaI 的 6–8%），可精确识别核素。<strong>仅在 Level 1/2 阳性后升级。</strong></p>
+<hr>
+<h2 id="h20">4. ★ 统计判据（必须写死）</h2>
+<h3 id="h21">Currie 探测限公式 [web_282]</h3>
+<pre class="code"><code>L_D = 2.71 + 4.65·√B
+
+MDA = L_D / (ε · y · t)</code></pre>
+<ul>
+<li>B = 本底计数</li>
+<li>ε = 计数效率（必须用可溯源标准源实测，<strong>不能假设</strong> [web_282]）</li>
+<li>y = γ 产额（每次衰变发射的光子数）</li>
+<li>t = 计数时间</li>
+</ul>
+<p><strong>算例</strong>：B = 100 counts（1 min），ε = 0.30，y = 0.85 → L_D = 2.71 + 4.65·√100 = <strong>49.2 counts</strong> MDA = 49.2 / (0.30 × 0.85 × 60) ≈ <strong>3.2 Bq</strong> [web_282]</p>
+<blockquote><p>「用效率和本底都更差的便携 GM 计做同样计算，MDA 会大几个数量级——这正是为什么擦拭检验用闪烁计数器而不是便携 GM 探头。」[web_282]</p></blockquote>
+<h3 id="h22">效率必须实测</h3>
+<pre class="code"><code>ε = 净计数率(cps) / (A × y)</code></pre>
+<p>A = 源活度（Bq），y = 该光电峰的 γ 产额。效率必须针对<strong>每个核素、每种几何、每个能量窗</strong>分别建立 [web_282]。</p>
+<hr>
+<h2 id="h23">5. 干扰排除（逐条对应判据）</h2>
+<div class="tw"><table><thead><tr><th>干扰源</th><th>影响</th><th>对策</th></tr></thead><tbody><tr><td><strong>温度导致的增益漂移</strong></td><td>峰位移动。12 h 内 ⁴⁰K 峰可漂移约 <strong>55 道 / 1024 道</strong>，呈正弦型昼夜变化 [web_305]</td><td>用 <strong>239 / 609 / 1462 / 2614 keV 四峰</strong>做递归拟合校正 [web_305]</td></tr><tr><td>环境本底波动</td><td>计数率变化</td><td>18 次测量变异 &lt;3.5%（一处异常 8%，因靠近集装箱与压实路面）[web_305]</td></tr><tr><td>宇宙射线</td><td>&gt;3 MeV 假信号</td><td>设 <strong>3000 keV–∞ 监测窗</strong> [web_301]；或用符合/反符合</td></tr><tr><td>NaI 晶体自身 ⁴⁰K</td><td>1460.8 keV 本底</td><td>晶体含 ⁴⁰K &lt; 0.5 ppm [web_300][web_302]；PMT 玻璃含钾是主源，可加长光导降低几何因子 [web_306]</td></tr><tr><td>²²²Rn 衰变子体 ²¹⁴Bi</td><td>609/1765 keV 本底</td><td>15 cm 铅屏蔽可把 0.3–3.0 MeV 总计数降至 <strong>2.9 s⁻¹</strong> [web_306]；注意氡会在屏蔽腔内空气衰变并沉积于晶体表面 [web_306]</td></tr><tr><td>铅中 ²¹⁰Pb–²¹⁰Bi</td><td>&lt;1 MeV 轫致辐射</td><td>选低本底铅 [web_306]</td></tr><tr><td>脉冲堆积</td><td>高计数率下谱畸变</td><td>NaI 衰减时间 230–264 ns，须控制计数率 [web_281][web_283]</td></tr></tbody></table></div>
+<hr>
+<h2 id="h24">6. SOP</h2>
+<h3 id="h25">步骤</h3>
+<ol>
+<li><strong>本底</strong>：装置移走，NaI 测 <strong>24 h</strong> → 建立本底谱 + 四峰校正曲线</li>
+<li><strong>对照</strong>：装置就位、<strong>不通电</strong>，同几何测 <strong>24 h</strong></li>
+<li><strong>实验</strong>：按 3:6:9 设定激励，测 <strong>24 h</strong>（或更长）</li>
+<li><strong>差分</strong>：实验谱 − 对照谱 → 检查 <strong>511 keV / 2.223 MeV / &gt;2.62 MeV</strong> 三处</li>
+<li><strong>活化箔</strong>：全程置于装置旁 → 结束后立即计数 → 追踪衰减曲线 → 验证半衰期</li>
+</ol>
+<h3 id="h26">激励策略</h3>
+<p>既然纯 THz 机械振动（meV）不可能到 MeV，实验设计上要<strong>扫激励方式</strong>，而不只是扫频率：</p>
+<div class="tw"><table><thead><tr><th>激励</th><th>频段</th><th>可达性</th></tr></thead><tbody><tr><td>压电 / 超声</td><td>kHz–MHz</td><td>自行搭建</td></tr><tr><td>射频 / 微波腔</td><td>MHz–GHz</td><td>信号源 + 功放</td></tr><tr><td>THz</td><td>0.1–10 THz</td><td>需合作实验室（THz-TDS）</td></tr></tbody></table></div>
+<p><strong>驻留频点</strong>（Keely 给过的特征值）[pdf_3][pdf_7]：</p>
+<div class="tw"><table><thead><tr><th>层级</th><th>频率</th></tr></thead><tbody><tr><td>分子</td><td>100 MHz</td></tr><tr><td>分子间</td><td>300 MHz</td></tr><tr><td>原子</td><td>900 MHz</td></tr><tr><td>以太六度</td><td>8.1 GHz</td></tr><tr><td>以太间九度</td><td>24.3 GHz</td></tr></tbody></table></div>
+<p>在每个特征点及其<strong>谐波与和频</strong>上驻留计数。</p>
+<h3 id="h27">同心 Trexar 试件参数（已定案）</h3>
+<div class="tw"><table><thead><tr><th>项</th><th>值</th></tr></thead><tbody><tr><td>结构</td><td>同心：芯银 / 中金 / 外铂</td></tr><tr><td>半径比</td><td><strong>0.5 : 0.7071 : 0.8660</strong>（= 1 : √2 : √3）</td></tr><tr><td>直径比</td><td><strong>1 : 1.4142 : 1.7321</strong></td></tr><tr><td>累积截面积比</td><td><strong>1 : 2 : 3</strong></td></tr><tr><td>各环体积</td><td><strong>完全相等</strong></td></tr><tr><td>中间层 2ln2 = 1.3863</td><td><strong>已废弃</strong>（孤值，无物理对应）</td></tr></tbody></table></div>
+<hr>
+<h2 id="h28">7. 设备与成本估算</h2>
+<div class="tw"><table><thead><tr><th>Level</th><th>设备</th><th>人民币粗估</th></tr></thead><tbody><tr><td>0</td><td>盖革计数器 / 个人剂量计</td><td>数百–2000</td></tr><tr><td>1</td><td>NaI(Tl) 2″×2″ 或 3″×3″ + PMT + MCA + 铅室</td><td>1–3 万</td></tr><tr><td>2a</td><td>He-3 正比计数管</td><td>1–3 万（He-3 稀缺）</td></tr><tr><td>2b</td><td>金箔 / 铟箔 + 用 Level 1 的 NaI 计数</td><td><strong>增量极低</strong>（推荐）</td></tr><tr><td>3</td><td>HPGe + 液氮</td><td>10–30 万</td></tr></tbody></table></div>
+<p><strong>推荐路径</strong>：0 → 1 → 2b →（若阳性）3</p>
+<hr>
+<h2 id="h29">8. 结果判读</h2>
+<div class="tw"><table><thead><tr><th>观测</th><th>结论</th></tr></thead><tbody><tr><td>中子 / 2.223 MeV / 511 keV 增强 / &gt;2.62 MeV γ <strong>任一成立且可复现</strong></td><td>装置内存在非机械能量集中过程 → <strong>异常，进入 Level 3 精细测量</strong></td></tr><tr><td>四项全无，统计上低于 L_D</td><td><strong>层级说到第六级为止，第七级 Compound Interetheric 不成立</strong>（预期结果）</td></tr><tr><td>Level 0 阳性但 Level 1 无对应峰</td><td>多为电磁干扰或 GM 管伪响应，不采信</td></tr></tbody></table></div>
+<hr>
+<h2 id="h30">9. 一句话总结</h2>
+<blockquote><p>天然 γ 本底到 2614.5 keV 就断了。<strong>任何中子、任何 2.223 MeV 峰、任何 511 keV 增强，都是自然界不会平白给你的东西。</strong> 测到 = 有大事；测不到 = 把 Keely 层级说的边界钉死在核尺度之下。两者都是硬结论。</p></blockquote>
+<div class="foot">
+  <span>源文件 <b>00_ima归档/_raw/B1_GDR核信号检验_初版.md</b></span>
+  <span>正文 4940 字 · 公式 0 处 · 29 节</span>
+  <span>由 <b>_build/md2html.py</b> 从 Markdown 自动生成 · 2026-10-17 19:47</span>
+</div>
+</article>
+</div>
+<div class="mdtip" id="mdTip"></div>
+<button class="top" id="btnTop" title="回到顶部">&#8593;</button>
+<script>
+(function(){
+  var b=document.getElementById('btnBack');
+  if(b) b.addEventListener('click',function(e){
+    e.preventDefault();
+    if(history.length>1){ history.back(); }
+    else { location.href='../keely核心技术与现代声子物理技术对比.html'; }
+  });
+  /* 铁律 205：.md 一律不作 href 目标（浏览器直开 .md 会乱码，且预览面板下 404）。
+     所以「.md 源文件」按钮与正文里的 .md 引用都只报路径、不跳转。 */
+  var tip=document.getElementById('mdTip');
+  function showPath(p){
+    if(!tip) return;
+    tip.innerHTML='源文件（不是链接）：<b>'+p+'</b><br>'
+      +'用 Typora / Obsidian 打开编辑；浏览器直接打开 .md 会乱码。';
+    tip.classList.add('on');
+    clearTimeout(tip._t);
+    tip._t=setTimeout(function(){ tip.classList.remove('on'); },4200);
+  }
+  var bm=document.getElementById('btnMd');
+  if(bm) bm.addEventListener('click',function(e){
+    e.preventDefault(); showPath(bm.getAttribute('data-md'));
+  });
+  [].slice.call(document.querySelectorAll('.xmd')).forEach(function(s){
+    s.addEventListener('click',function(){ showPath(s.getAttribute('data-md')); });
+  });
+  var t=document.getElementById('btnTop');
+  if(t){
+    addEventListener('scroll',function(){ t.classList.toggle('on', scrollY>600); },{passive:true});
+    t.addEventListener('click',function(){ scrollTo({top:0,behavior:'smooth'}); });
+  }
+  var links=[].slice.call(document.querySelectorAll('.toc a'));
+  var heads=links.map(function(a){ return document.getElementById(a.getAttribute('href').slice(1)); });
+  if(!heads.length || !('IntersectionObserver' in window)) return;
+  var cur=-1;
+  var io=new IntersectionObserver(function(es){
+    es.forEach(function(en){
+      var i=heads.indexOf(en.target);
+      if(en.isIntersecting && i>=0 && i!==cur){
+        cur=i;
+        links.forEach(function(a){ a.classList.remove('on'); });
+        links[i].classList.add('on');
+      }
+    });
+  },{rootMargin:'-70px 0px -72% 0px'});
+  heads.forEach(function(h){ if(h) io.observe(h); });
+})();
+</script>
+</body>
+</html>

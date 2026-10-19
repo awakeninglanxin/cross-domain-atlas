@@ -1,0 +1,2189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>磁约束聚变 · AI 两族解演示台</title>
+<style>
+:root{
+  --bg:#eef1f6; --card:#ffffff; --ink:#1a2130; --ink2:#48526b; --ink3:#7c869c;
+  --line:#dfe5ee; --line2:#eef2f8;
+  --blue:#2f5bd0; --blue-soft:#e9effc;
+  --red:#d64545; --red-soft:#fdeced;
+  --green:#1f9a63; --green-soft:#e7f7ef;
+  --amber:#c9821a; --amber-soft:#fdf4e6;
+  --purple:#7a4fd0; --purple-soft:#f1ecfd;
+  --shadow:0 1px 2px rgba(20,30,60,.04), 0 10px 28px -16px rgba(20,30,60,.22);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:"PingFang SC","Microsoft YaHei","Hiragino Sans GB","Source Han Sans SC",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:15px; line-height:1.75; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* ---------- hero ---------- */
+.hero{background:linear-gradient(180deg,#f6f8fd 0%,#e8eefb 100%);border-bottom:1px solid var(--line);padding:38px 0 30px}
+.hero .rule{height:4px;width:88px;border-radius:2px;background:linear-gradient(90deg,#ff8a4c,#d94a8a 45%,#5b6ee0);margin-bottom:18px}
+.hero h1{margin:0 0 8px;font-size:31px;line-height:1.28;letter-spacing:-.4px}
+.hero h1 span{background:linear-gradient(90deg,#c0392b,#7a4fd0 55%,#2f5bd0);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .sub{color:var(--ink2);font-size:15.5px;max-width:820px;margin:0 0 18px}
+.hero .src{font-size:13px;color:var(--ink3);border-left:3px solid var(--line);padding-left:10px;margin-bottom:22px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow)}
+.stat .k{font-size:22px;font-weight:700;letter-spacing:-.5px;color:var(--blue)}
+.stat .k small{font-size:12px;font-weight:600;color:var(--ink3);letter-spacing:0}
+.stat .v{font-size:12.5px;color:var(--ink2);line-height:1.5;margin-top:2px}
+.stat.r .k{color:var(--red)} .stat.g .k{color:var(--green)} .stat.a .k{color:var(--amber)}
+
+/* ---------- nav ---------- */
+nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.9);backdrop-filter:saturate(1.6) blur(10px);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;gap:4px;overflow-x:auto;padding-top:0;padding-bottom:0}
+nav a{flex:0 0 auto;padding:11px 13px;font-size:13.5px;color:var(--ink2);border-bottom:2px solid transparent;white-space:nowrap}
+nav a:hover{color:var(--blue);text-decoration:none;border-bottom-color:var(--blue-soft)}
+/* nav 内的跨页互链按钮（→ harmonograph pintograph 3D） */
+nav a.xbtn{align-self:center;margin:6px 0 6px 10px;padding:6px 14px;border-radius:9px;
+  background:var(--purple-soft);border:1px solid #ded2fb;color:var(--purple);font-weight:600;
+  display:inline-flex;align-items:center;gap:6px}
+nav a.xbtn:hover{background:#e8e0fc;border-color:#c9b6f7;color:#6438c4;
+  border-bottom-color:#ded2fb;text-decoration:none}
+nav a.xbtn .ar{font-family:Consolas,monospace;font-size:13px;opacity:.8}
+
+/* ---------- sections ---------- */
+main{padding:26px 0 60px}
+section{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px 26px;margin-bottom:20px;box-shadow:var(--shadow);scroll-margin-top:56px}
+section > h2{margin:0 0 6px;font-size:20.5px;letter-spacing:-.3px;display:flex;align-items:center;gap:10px}
+section > h2 .n{flex:0 0 auto;width:26px;height:26px;border-radius:8px;background:var(--blue-soft);color:var(--blue);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}
+section > .lead{color:var(--ink2);margin:0 0 18px;font-size:14.5px}
+h3{font-size:15.5px;margin:22px 0 8px;color:var(--ink)}
+p{margin:9px 0}
+ul,ol{margin:9px 0;padding-left:22px}
+li{margin:5px 0}
+.mono{font-family:"Cascadia Mono",Consolas,"SFMono-Regular",Menlo,monospace;font-size:13px}
+
+/* ---------- toolbar / controls ---------- */
+.gl-wrap{display:grid;grid-template-columns:1fr 268px;gap:16px}
+@media(max-width:860px){.gl-wrap{grid-template-columns:1fr}}
+#gl3d{position:relative;height:520px;border-radius:13px;overflow:hidden;background:#eef1f6;border:1px solid var(--line);user-select:none;-webkit-user-select:none}
+#gl3d canvas{display:block;width:100%;height:100%}
+.gl-hint{position:absolute;left:12px;bottom:10px;font-size:12px;color:var(--ink3);background:rgba(255,255,255,.82);border:1px solid var(--line);border-radius:8px;padding:4px 9px;pointer-events:none}
+.gl-readout{position:absolute;left:12px;top:12px;background:rgba(255,255,255,.9);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:12.5px;color:var(--ink2);line-height:1.65;pointer-events:none;max-width:290px}
+.gl-readout b{color:var(--ink)}
+.gl-readout .verdict{font-weight:700;font-size:13.5px;display:block;margin-top:2px}
+.gl-readout .verdict.ok{color:var(--red)}
+.gl-readout .verdict.no{color:var(--green)}
+
+/* ==========================================================================
+   HUD 浮窗通用规则（SOUL 铁律 184）
+   凡覆盖在图上的浮窗／读数板（.hud），右上角一律带「可收起」按钮，
+   收起后只剩标题条，状态写 localStorage 持久化。
+   ========================================================================== */
+.hud{position:relative}
+.hud-toggle{position:absolute;top:6px;right:6px;width:22px;height:22px;padding:0;
+  display:flex;align-items:center;justify-content:center;
+  font-family:inherit;font-size:15px;line-height:1;font-weight:700;
+  color:var(--ink3);background:#fff;border:1px solid var(--line);border-radius:7px;
+  cursor:pointer;pointer-events:auto;z-index:4;transition:.12s}
+.hud-toggle:hover{border-color:var(--blue);color:var(--blue);background:#f4f8ff}
+.hud-toggle:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+.hud.collapsed > .hud-body{display:none}
+.hud.collapsed{padding:6px 8px}
+.hud.collapsed::before{content:attr(data-hud-title);display:block;
+  font-size:12px;font-weight:600;color:var(--ink3);line-height:22px;padding-right:26px}
+
+.panel{background:#f8fafd;border:1px solid var(--line);border-radius:13px;padding:14px 15px}
+.panel h4{margin:0 0 10px;font-size:13px;color:var(--ink3);font-weight:600;letter-spacing:.4px}
+.ctl{margin-bottom:13px}
+.ctl label{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;color:var(--ink2);margin-bottom:5px}
+.ctl label b{color:var(--blue);font-size:13px;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--blue);height:18px;margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:8px;padding:4px 9px;font-size:12px;color:var(--ink2);cursor:pointer;transition:.12s;font-variant-numeric:tabular-nums}
+.chip:hover{border-color:var(--blue);color:var(--blue)}
+.chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.chip.rd:hover{border-color:var(--red);color:var(--red)}
+.chip.rd.on{background:var(--red);border-color:var(--red);color:#fff}
+.toggles{display:flex;flex-direction:column;gap:7px;margin-top:4px}
+.tg{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink2);cursor:pointer;user-select:none}
+.tg input{accent-color:var(--blue);width:15px;height:15px;margin:0}
+
+.pc-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:760px){.pc-grid{grid-template-columns:1fr}}
+.pc-cell{background:#fbfcfe;border:1px solid var(--line);border-radius:13px;padding:12px}
+.pc-cell canvas{display:block;width:100%;height:330px}
+.pc-title{font-size:13.5px;font-weight:600;margin-bottom:2px}
+.pc-sub{font-size:12px;color:var(--ink3);margin-bottom:8px}
+.pc-stats{font-size:12px;color:var(--ink2);line-height:1.75;font-variant-numeric:tabular-nums;margin-top:8px;border-top:1px dashed var(--line);padding-top:7px}
+.pc-stats b{color:var(--ink)}
+
+/* §2 布局：A/B 两图在左、共用参数做成右侧浮窗（sticky）—— 拖滑杆时图和参数同屏，不用来回滚 */
+.pc-wrap{display:grid;grid-template-columns:minmax(0,1fr) 272px;gap:16px;align-items:start}
+@media(max-width:1080px){.pc-wrap{grid-template-columns:1fr}}
+.pc-params{position:sticky;top:14px;max-height:calc(100vh - 30px);overflow-y:auto}
+.pc-params h4{margin-bottom:6px}
+.pc-params .pc-hint{font-size:11.5px;color:var(--ink3);line-height:1.6;margin:0 0 11px}
+.pc-params .grid1{display:grid;grid-template-columns:1fr;gap:0}
+.pc-params .ctl{margin-bottom:9px}
+.pc-params .ctl label{font-size:12px;margin-bottom:4px}
+.pc-params .ctl label b{font-size:12.5px}
+.pc-params .chip{padding:3px 8px;font-size:11.5px}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:6px;font-weight:600;vertical-align:1px}
+.tag.rd{background:var(--red-soft);color:var(--red)}
+.tag.gr{background:var(--green-soft);color:var(--green)}
+.tag.bl{background:var(--blue-soft);color:var(--blue)}
+.tag.am{background:var(--amber-soft);color:var(--amber)}
+.tag.pu{background:var(--purple-soft);color:var(--purple)}
+
+/* ---------- tables ---------- */
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px}
+th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line2);vertical-align:top}
+th{background:#f6f9fd;color:var(--ink2);font-weight:600;font-size:12.5px;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:none}
+td.c,th.c{text-align:center}
+.tbl-wrap{overflow-x:auto}
+
+/* ---------- cards ---------- */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(238px,1fr));gap:13px;margin:14px 0}
+.card{border:1px solid var(--line);border-radius:13px;padding:14px 16px;background:#fbfcfe}
+.card .h{font-weight:600;font-size:14px;margin-bottom:5px;display:flex;align-items:center;gap:7px}
+.card .b{font-size:13px;color:var(--ink2);line-height:1.7}
+.card.warn{border-color:#f2d9b8;background:var(--amber-soft)}
+.card.warn .h{color:var(--amber)}
+.card.dang{border-color:#f4cfd0;background:var(--red-soft)}
+.card.dang .h{color:var(--red)}
+.card.good{border-color:#c9e9d8;background:var(--green-soft)}
+.card.good .h{color:var(--green)}
+.card.info{border-color:#cfdcf6;background:var(--blue-soft)}
+.card.info .h{color:var(--blue)}
+
+/* ---------- timeline ---------- */
+.tl{position:relative;margin:16px 0 6px;padding-left:26px}
+.tl:before{content:'';position:absolute;left:7px;top:6px;bottom:6px;width:2px;background:linear-gradient(180deg,#cfd8e8,#dfe5ee)}
+.tl-i{position:relative;padding:0 0 15px}
+.tl-i:before{content:'';position:absolute;left:-23px;top:6px;width:11px;height:11px;border-radius:50%;background:#fff;border:2.5px solid var(--blue)}
+.tl-i.red:before{border-color:var(--red)}
+.tl-i.green:before{border-color:var(--green)}
+.tl-i.grey:before{border-color:#c3ccdb}
+.tl-d{font-size:12px;color:var(--ink3);font-variant-numeric:tabular-nums}
+.tl-t{font-size:14px;font-weight:600;margin:1px 0 2px}
+.tl-b{font-size:13px;color:var(--ink2)}
+
+.callout{border-left:3px solid var(--blue);background:var(--blue-soft);border-radius:0 11px 11px 0;padding:12px 16px;margin:14px 0;font-size:14px}
+.callout.rd{border-color:var(--red);background:var(--red-soft)}
+.callout.gr{border-color:var(--green);background:var(--green-soft)}
+.callout.am{border-color:var(--amber);background:var(--amber-soft)}
+.callout.pu{border-color:var(--purple);background:var(--purple-soft)}
+.callout p:first-child{margin-top:0}
+.callout p:last-child{margin-bottom:0}
+.formula{background:#f7f9fc;border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin:12px 0;text-align:center;font-size:15px;overflow-x:auto}
+.formula .mono{font-size:15px}
+.note{font-size:12.5px;color:var(--ink3)}
+footer{color:var(--ink3);font-size:12.5px;padding:0 0 40px;line-height:1.85}
+footer .wrap{padding-top:18px;border-top:1px solid var(--line)}
+.kbd{font-family:Consolas,monospace;background:#f2f5fa;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12.5px}
+</style>
+<!--FXCTL:CSS--><style id="fxctl-css">
+/* ============================================================
+   PKS · 通用「调参浮窗」样式  (float_ctl.css)
+   白底 / 深蓝强调 / 与 site.css 变量兼容（变量缺失时有兜底色）
+   面板不接管页面原有控件样式，只在自己作用域内统一外观
+   ============================================================ */
+#fxp{
+  position:fixed; z-index:840; top:84px; right:16px;
+  width:322px; max-height:calc(100vh - 118px);
+  display:flex; flex-direction:column;
+  background:#fff; border:1px solid #cfd6e0; border-radius:12px;
+  box-shadow:0 2px 6px rgba(18,22,28,.08), 0 14px 40px rgba(18,22,28,.14);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:13px; color:#12161c; line-height:1.55;
+  -webkit-user-select:none; user-select:none;
+}
+#fxp.fxp-min{ width:auto; min-width:150px; }
+#fxp.fxp-min .fxp-bd{ display:none; }
+#fxp.fxp-min .fxp-c{ display:none; }
+
+/* 标题栏（拖动手柄） */
+#fxp .fxp-h{
+  display:flex; align-items:center; gap:7px;
+  padding:8px 10px 8px 9px; cursor:grab; touch-action:none;
+  border-bottom:1px solid #e6eaf0; border-radius:12px 12px 0 0;
+  background:linear-gradient(#fbfcfe,#f4f7fb);
+}
+#fxp.fxp-min .fxp-h{ border-bottom:0; border-radius:12px; }
+#fxp .fxp-h.fxp-drag{ cursor:grabbing; }
+#fxp .fxp-grip{ color:#9aa6b6; font-size:13px; letter-spacing:0 }
+#fxp .fxp-t{
+  font-family:Georgia,"Times New Roman","Songti SC",serif;
+  font-weight:700; font-size:14.5px; color:#0d2f63; letter-spacing:.2px;
+}
+#fxp .fxp-c{ font-family:Consolas,monospace; font-size:11px; color:#6b7683; margin-left:auto; white-space:nowrap }
+#fxp .fxp-h.fxp-mini-open .fxp-c{ margin-left:6px }
+#fxp .fxp-b{
+  width:22px; height:22px; padding:0; flex:0 0 22px;
+  border:1px solid #cfd6e0; background:#fff; border-radius:6px;
+  color:#3b4552; font-size:12px; line-height:1; cursor:pointer;
+}
+#fxp .fxp-b:hover{ border-color:#1b4f9c; color:#1b4f9c; background:#f4f7fb }
+#fxp .fxp-b:first-of-type{ margin-left:6px }
+
+/* 面板主体 */
+#fxp .fxp-bd{
+  padding:4px 12px 12px; overflow-y:auto; overflow-x:hidden;
+  -webkit-user-select:auto; user-select:auto;
+}
+#fxp .fxp-bd::-webkit-scrollbar{ width:8px }
+#fxp .fxp-bd::-webkit-scrollbar-thumb{ background:#d7dee8; border-radius:4px }
+#fxp .fxp-bd::-webkit-scrollbar-track{ background:transparent }
+
+/* 分组 */
+#fxp .fxp-grp{ padding:9px 0 3px }
+#fxp .fxp-grp + .fxp-grp{ border-top:1px dashed #e6eaf0; margin-top:3px }
+#fxp .fxp-gl{
+  font-family:Consolas,monospace; font-size:10.5px; letter-spacing:.04em;
+  color:#6b7683; margin:0 0 7px; display:flex; align-items:baseline; gap:6px;
+}
+#fxp .fxp-gl b{ color:#1b4f9c; font-weight:600; font-size:11px }
+#fxp .fxp-gl i{ font-style:normal; color:#9aa6b6 }
+
+/* 控件统一外观：覆盖被搬进来的块，不依赖原页面 .viz .ctl 之类选择器 */
+#fxp .ctl, #fxp .ctrl, #fxp .controls, #fxp .calc, #fxp .panel, #fxp .param-panel{
+  display:block; margin:0; padding:0; border:0; background:none; box-shadow:none;
+  width:auto; max-width:none; position:static; float:none;
+}
+#fxp .ctl > *, #fxp .ctrl > *, #fxp .controls > *, #fxp .panel > *, #fxp .calc > *{ margin-bottom:9px }
+#fxp .ctl > *:last-child, #fxp .ctrl > *:last-child,
+#fxp .controls > *:last-child, #fxp .panel > *:last-child, #fxp .calc > *:last-child{ margin-bottom:0 }
+
+/* label 行：文字在上、滑块占满整行 */
+#fxp label, #fxp .row, #fxp .prow, #fxp .slider{
+  display:flex; flex-wrap:wrap; align-items:center; gap:3px 8px;
+  width:100%; margin:0 0 10px; font-size:12.6px; color:#3b4552;
+}
+#fxp label > span, #fxp .row > span{ flex:0 0 auto }
+#fxp input[type=range]{
+  -webkit-appearance:none; appearance:none; order:3;
+  /* ⚠ 不能用 flex:0 0 100%：父级 label.row 是 align-items:center 的 flex 行，
+     交叉轴会把 input 压成 track 的 3px 高（实测 offsetHeight=3），滑块几乎被裁掉。
+     flex:none + width:100% 一样能独占一行，且高度稳定 16px。 */
+  flex:none; width:100%; min-width:90px; height:16px; margin:1px 0 0;
+  background:transparent; cursor:pointer; accent-color:#1b4f9c;
+}
+#fxp input[type=range]::-webkit-slider-runnable-track{
+  height:3px; background:#dbe2ec; border-radius:2px;
+}
+#fxp input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:13px; height:13px; margin-top:-5px;
+  background:#1b4f9c; border:2px solid #fff; border-radius:50%;
+  box-shadow:0 1px 3px rgba(18,22,28,.28);
+}
+#fxp input[type=range]:focus{ outline:none }
+#fxp input[type=range]:focus::-webkit-slider-thumb{ box-shadow:0 0 0 3px rgba(27,79,156,.18) }
+
+/* 数值 */
+#fxp .val, #fxp .v, #fxp output, #fxp .num{
+  font-family:Consolas,monospace; font-size:12px; color:#b4531f;
+  min-width:0; margin-left:auto; white-space:nowrap; order:2;
+}
+
+/* 按钮 */
+#fxp button{
+  font-family:Consolas,monospace; font-size:11.5px; padding:4px 9px;
+  border:1px solid #cfd6e0; background:#fff; color:#3b4552;
+  border-radius:7px; cursor:pointer; margin:0 5px 5px 0;
+}
+#fxp button:hover{ border-color:#1b4f9c; color:#1b4f9c; background:#f4f7fb }
+
+/* .lab / .hint / .presets（aizawa / 黄金蛋 那一族的行结构） */
+#fxp .lab{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:8px; width:100%; order:1; font-size:12.6px; color:#3b4552;
+}
+#fxp .lab .v{ margin-left:auto }
+#fxp .hint{
+  order:4; width:100%; margin:3px 0 0; font-size:11.2px; line-height:1.5;
+  color:#6b7683;
+}
+#fxp .presets{ order:5; width:100%; display:flex; flex-wrap:wrap; gap:5px; margin-top:5px }
+#fxp .presets button{ margin:0 }
+#fxp .gt{
+  font-family:Georgia,"Songti SC",serif; font-size:12.8px; font-weight:700;
+  color:#0d2f63; margin:2px 0 8px;
+}
+#fxp .grp > .gt:first-child{ margin-top:0 }
+
+#fxp button.on, #fxp button.active{ background:#1b4f9c; border-color:#1b4f9c; color:#fff }
+#fxp select{
+  font-family:inherit; font-size:12px; padding:3px 6px; max-width:100%;
+  border:1px solid #cfd6e0; border-radius:6px; background:#fff; color:#12161c;
+}
+#fxp input[type=text], #fxp input[type=number]{
+  font-family:Consolas,monospace; font-size:12px; width:78px; padding:3px 6px;
+  border:1px solid #cfd6e0; border-radius:6px;
+}
+#fxp input[type=checkbox]{ accent-color:#1b4f9c; margin-right:2px }
+
+/* 原位置留下的提示 */
+.fxp-note{
+  margin:10px 0 0; padding:5px 9px; font-size:11.8px; color:#6b7683;
+  font-family:Consolas,monospace; background:#f6f8fb;
+  border:1px dashed #d7dee8; border-radius:6px;
+}
+.fxp-note::before{ content:"⇱ "; color:#1b4f9c }
+
+/* 窄屏：底部抽屉式，不再遮挡图 */
+@media (max-width:880px){
+  #fxp{
+    top:auto; bottom:0; right:0; left:0; width:auto;
+    max-height:52vh; border-radius:12px 12px 0 0;
+    border-left:0; border-right:0; border-bottom:0;
+  }
+  #fxp .fxp-h{ cursor:default; border-radius:12px 12px 0 0 }
+  #fxp.fxp-min{ left:auto; right:10px; bottom:10px; border:1px solid #cfd6e0; border-radius:12px }
+}
+@media print{ #fxp{ display:none !important } }
+
+/* ============================================================
+   暗色主题皮肤（2026-10-19 老师：Anu 主界面是暗底，浮窗却是白底，割裂）
+   触发条件：页面 <body> 或 <html> 自己声明了暗色
+     body.theme-dark / body.dark / body.theme-night
+     html[data-theme="dark"] / body[data-theme="dark"]
+   只做覆盖，不改上面的默认（白底）规则 —— 明色页面完全不受影响。
+   配色取自 anu.css 的 --panel/--line/--text/--accent，保持同源。
+   ============================================================ */
+body.theme-dark #fxp, body.dark #fxp, body.theme-night #fxp,
+html[data-theme="dark"] #fxp, body[data-theme="dark"] #fxp{
+  background:#0e1420; border-color:#22304a;
+  box-shadow:0 2px 8px rgba(0,0,0,.45), 0 18px 48px rgba(0,0,0,.55);
+  color:#e6edf8;
+}
+body.theme-dark #fxp .fxp-h, body.dark #fxp .fxp-h, body.theme-night #fxp .fxp-h,
+html[data-theme="dark"] #fxp .fxp-h, body[data-theme="dark"] #fxp .fxp-h{
+  background:linear-gradient(#182233,#111826); border-bottom-color:#22304a;
+}
+body.theme-dark #fxp .fxp-grip, body.dark #fxp .fxp-grip, body.theme-night #fxp .fxp-grip{
+  color:#5d7093;
+}
+body.theme-dark #fxp .fxp-t, body.dark #fxp .fxp-t, body.theme-night #fxp .fxp-t,
+html[data-theme="dark"] #fxp .fxp-t, body[data-theme="dark"] #fxp .fxp-t{
+  color:#cddcff;
+}
+body.theme-dark #fxp .fxp-c, body.dark #fxp .fxp-c, body.theme-night #fxp .fxp-c{
+  color:#6b7f9e;
+}
+body.theme-dark #fxp .fxp-b, body.dark #fxp .fxp-b, body.theme-night #fxp .fxp-b,
+html[data-theme="dark"] #fxp .fxp-b, body[data-theme="dark"] #fxp .fxp-b{
+  background:#141c2b; border-color:#22304a; color:#a9bad6;
+}
+body.theme-dark #fxp .fxp-b:hover, body.dark #fxp .fxp-b:hover, body.theme-night #fxp .fxp-b:hover{
+  background:#1b2740; border-color:#4d7cff; color:#cddcff;
+}
+body.theme-dark #fxp .fxp-bd::-webkit-scrollbar-thumb,
+body.dark #fxp .fxp-bd::-webkit-scrollbar-thumb,
+body.theme-night #fxp .fxp-bd::-webkit-scrollbar-thumb{
+  background:#26334c;
+}
+body.theme-dark #fxp .fxp-grp + .fxp-grp, body.dark #fxp .fxp-grp + .fxp-grp,
+body.theme-night #fxp .fxp-grp + .fxp-grp{ border-top-color:#1e2a3f }
+body.theme-dark #fxp .fxp-gl, body.dark #fxp .fxp-gl, body.theme-night #fxp .fxp-gl{
+  color:#7d90ae;
+}
+body.theme-dark #fxp .fxp-gl b, body.dark #fxp .fxp-gl b, body.theme-night #fxp .fxp-gl b{
+  color:#7ea6ff;
+}
+body.theme-dark #fxp .fxp-gl i, body.dark #fxp .fxp-gl i, body.theme-night #fxp .fxp-gl i{
+  color:#5d7093;
+}
+body.theme-dark #fxp label, body.theme-dark #fxp .row, body.theme-dark #fxp .prow,
+body.theme-dark #fxp .slider, body.dark #fxp label, body.dark #fxp .row,
+body.dark #fxp .prow, body.dark #fxp .slider,
+body.theme-night #fxp label, body.theme-night #fxp .row,
+body.theme-night #fxp .prow, body.theme-night #fxp .slider{
+  color:#b9c8e0;
+}
+body.theme-dark #fxp input[type=range]::-webkit-slider-runnable-track,
+body.dark #fxp input[type=range]::-webkit-slider-runnable-track,
+body.theme-night #fxp input[type=range]::-webkit-slider-runnable-track{
+  background:#31425f;                    /* 不能贴地色，否则轨道看不见、只剩一个蓝点 */
+}
+body.theme-dark #fxp input[type=range]::-webkit-slider-thumb,
+body.dark #fxp input[type=range]::-webkit-slider-thumb,
+body.theme-night #fxp input[type=range]::-webkit-slider-thumb{
+  background:#4d7cff; border-color:#0e1420;
+  box-shadow:0 1px 3px rgba(0,0,0,.6);
+}
+body.theme-dark #fxp input[type=range]:focus::-webkit-slider-thumb,
+body.dark #fxp input[type=range]:focus::-webkit-slider-thumb{
+  box-shadow:0 0 0 3px rgba(77,124,255,.28);
+}
+body.theme-dark #fxp .val, body.theme-dark #fxp .v, body.theme-dark #fxp output,
+body.theme-dark #fxp .num, body.dark #fxp .val, body.dark #fxp .v,
+body.dark #fxp output, body.dark #fxp .num,
+body.theme-night #fxp .val, body.theme-night #fxp .v,
+body.theme-night #fxp output, body.theme-night #fxp .num{
+  color:#ffc861;                      /* 与页面 --gold 同源 */
+}
+body.theme-dark #fxp button, body.dark #fxp button, body.theme-night #fxp button,
+html[data-theme="dark"] #fxp button, body[data-theme="dark"] #fxp button{
+  background:#141c2b; border-color:#22304a; color:#b9c8e0;
+}
+body.theme-dark #fxp button:hover, body.dark #fxp button:hover,
+body.theme-night #fxp button:hover{
+  background:#1b2740; border-color:#4d7cff; color:#cddcff;
+}
+body.theme-dark #fxp button.on, body.theme-dark #fxp button.active,
+body.dark #fxp button.on, body.dark #fxp button.active,
+body.theme-night #fxp button.on, body.theme-night #fxp button.active{
+  background:#2f6fe0; border-color:#2f6fe0; color:#fff;
+}
+body.theme-dark #fxp .lab, body.dark #fxp .lab, body.theme-night #fxp .lab{
+  color:#b9c8e0;
+}
+body.theme-dark #fxp .hint, body.dark #fxp .hint, body.theme-night #fxp .hint{
+  color:#7d90ae;
+}
+body.theme-dark #fxp .gt, body.dark #fxp .gt, body.theme-night #fxp .gt,
+html[data-theme="dark"] #fxp .gt, body[data-theme="dark"] #fxp .gt{
+  color:#cddcff;
+}
+body.theme-dark #fxp select, body.dark #fxp select, body.theme-night #fxp select,
+body.theme-dark #fxp input[type=text], body.theme-dark #fxp input[type=number],
+body.dark #fxp input[type=text], body.dark #fxp input[type=number],
+body.theme-night #fxp input[type=text], body.theme-night #fxp input[type=number]{
+  background:#0b1019; border-color:#22304a; color:#e6edf8;
+}
+body.theme-dark .fxp-note, body.dark .fxp-note, body.theme-night .fxp-note{
+  background:#111826; border-color:#22304a; color:#7d90ae;
+}
+body.theme-dark .fxp-note::before, body.dark .fxp-note::before,
+body.theme-night .fxp-note::before{ color:#7ea6ff }
+
+/* 暗色下的窄屏抽屉边框 */
+@media (max-width:880px){
+  body.theme-dark #fxp.fxp-min, body.dark #fxp.fxp-min, body.theme-night #fxp.fxp-min{
+    border-color:#22304a;
+  }
+}
+
+</style><!--/FXCTL:CSS-->
+</head>
+<body>
+
+<div class="hero">
+  <div class="wrap">
+    <div class="rule"></div>
+    <h1>磁约束聚变 · <span>AI 两族解演示台</span></h1>
+    <p class="sub">2026 年 9 月 21 / 22 日，悬置了 <b>59 年</b>的 Grad 猜想被两篇论文前后脚推翻：一份是 147 页严格证明 + Lean 4 形式化，一份是 <b>GPT-6 Astra Pro 参与发现、人工逐式核验</b>的两族初等函数显式解。这个页面把这件事<b>跑给你看</b>——不是看图，是自己拖滑块验证。</p>
+    <div class="src">本期视频：<b>村长的AI</b>《GPT-6 Astra推翻59年核聚变猜想！物理学家只给它打了一句气》· 视频号 · 2026-10-08<br>
+      本页事实底稿：本项目 <span class="mono">02_应用科技/24_searl_SEG/磁约束聚变/</span> 目录（10 份整理文档 + 2 个演示脚本 + 归档一手对话 PDF 摘录）</div>
+    <div class="stats">
+      <div class="stat"><div class="k">20m 34s</div><div class="v">第一族（ι ≡ 2）的 AI 思考时长，不是全过程</div></div>
+      <div class="stat g"><div class="k">1,202 点</div><div class="v">64 位自动微分核对点数，含磁轴与边界点</div></div>
+      <div class="stat"><div class="k">147 页 + Lean 4</div><div class="v">另一篇（GSJT）的严格证明规模</div></div>
+      <div class="stat r"><div class="k">&lt; 4×10⁻¹⁶</div><div class="v">|∇·B|、|(∇×B)×B − ∇p| 最大残差</div></div>
+    </div>
+  </div>
+</div>
+
+<nav><div class="wrap">
+  <a href="#s1">① 3D 磁面演示台</a>
+  <a href="#s2">② 庞加莱截面</a>
+  <a href="#s3">③ 真实装置有理面尺</a>
+  <a href="#s4">④ 两族解对比</a>
+  <a href="#s5">⑤ 时间线</a>
+  <a href="#s6">⑥ 冷水四盆</a>
+  <a href="#s7">⑦ SEG / Anu 桥</a>
+  <a class="xbtn" href="AAA_pintograph3D_莫比乌斯8字环.html"
+    title="跨页互链：harmonograph · pintograph 3D 莫比乌斯 8 字环（k 矢量花型立体化）"
+    >pintograph 3D · 莫比乌斯 8 字环<span class="ar">↗</span></a>
+</div></nav>
+
+<main class="wrap">
+
+<!-- ================= 1. 3D ================= -->
+<section id="s1">
+  <h2><span class="n">1</span>3D 磁面演示台 —— 磁轴 · 嵌套磁面 · 磁力线</h2>
+  <p class="lead">AI 那两族解的核心承诺是四句话：<b>∇·B = 0</b>、<b>B·∇ψ = 0（存在嵌套磁面）</b>、<b>(∇×B)×B = ∇p（处处受力平衡）</b>、<b>处处光滑</b>。其中第二句——磁面真的嵌套、磁力线真的绕得住——是唯一能"用眼睛验"的一条。</p>
+
+  <div class="gl-wrap">
+    <div id="gl3d">
+      <div class="gl-readout hud" id="glReadout" data-hud-title="磁力线读数">
+        <div class="hud-body" id="glReadoutBody"></div>
+      </div>
+      <div class="gl-hint">拖动旋转 · 滚轮缩放 · <b>Shift+拖动</b> 搬动圆环 · 双击归位</div>
+    </div>
+
+    <div class="panel">
+      <h4>旋转变换 ι（iota）</h4>
+      <div class="ctl">
+        <label>ι 值 <b id="lbIota">2.00</b></label>
+        <input type="range" id="rgIota" min="0.2" max="3" step="0.01" value="2">
+        <div class="chips">
+          <span class="chip on" data-iota="2">ι = 2（第一族）</span>
+          <span class="chip" data-iota="2.5">5/2</span>
+        </div>
+        <div class="chips">
+          <span class="chip" data-iota="1.41421356">√2（第二族）</span>
+          <span class="chip" data-iota="0.61803399">φ−1</span>
+        </div>
+        <div class="chips">
+          <span class="chip" id="btnCloseTurns">⌖ 跳到最短闭合圈数</span>
+          <span class="chip" id="btnRingHome">⌖ 圆环归位</span>
+        </div>
+      </div>
+
+      <h4>追踪圈数 T（绕大环）</h4>
+      <div class="ctl">
+        <label>圈数 <b id="lbTurns">5</b></label>
+        <input type="range" id="rgTurns" min="2" max="10" step="1" value="5">
+      </div>
+
+      <h4>磁力线条数</h4>
+      <div class="ctl">
+        <label>条数 <b id="lbLines">1</b></label>
+        <input type="range" id="rgLines" min="1" max="4" step="1" value="1">
+      </div>
+
+      <h4>起始磁面半径 r₀</h4>
+      <div class="ctl">
+        <label>r₀ <b id="lbR0">0.18</b></label>
+        <input type="range" id="rgR0" min="0.06" max="0.27" step="0.01" value="0.18">
+      </div>
+
+      <h4>显示</h4>
+      <div class="toggles">
+        <label class="tg"><input type="checkbox" id="tgShell" checked> 真空室壁（最外磁面）</label>
+        <label class="tg"><input type="checkbox" id="tgNest"> 嵌套磁面（洋葱层）</label>
+        <label class="tg"><input type="checkbox" id="tgAxis" checked> 磁轴</label>
+        <label class="tg"><input type="checkbox" id="tgFlow" checked> 沿磁力线流动的光点</label>
+        <label class="tg"><input type="checkbox" id="tgSpin" checked> 自动旋转</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout gr" style="margin-top:18px">
+    <p><b>怎么读这张图：</b>磁力线每绕大环一圈（φ 增加 2π），就沿极向（截面方向）前进 ι·2π；跑 T 圈后极向一共转过 <span class="mono">k = ι × T</span> 圈。</p>
+    <p>👉 <b>决定「闭合还是铺满」的是 ι 本身，不是 k。</b>设 ι = m/n（最简分数）——<b>ι 是有理数 ⇒ 磁力线绕大环 n 圈就精确回到起点</b>，是一条闭合曲线，此后无限重复；<b>ι 是无理数 ⇒ 永不闭合</b>，绕下去稠密地织满整层磁面。</p>
+    <p class="note">⚠️ <b>别被画出来的段数误导。</b>你选的 T 若不是 n 的整数倍，屏幕上那条线只是闭合曲线的半截／三分之一，起止点（绿环 vs 红球）当然对不上——那说明「这段没画完」，<b>不说明磁力线不闭合</b>。典型例子 <span class="mono">ι = 5/2</span>（n = 2）：T 取 2 / 4 / 6 / 8 / 10 时首尾重合，T 取 5 时终点落在闭合曲线对侧、净差 0.5 圈，但磁力线<b>照样闭合</b>。点 <span class="mono">⌖ 跳到最短闭合圈数</span> 可以直接把 T 设到 n 上验证这一点。</p>
+    <p class="note">✅ <b>「重合」与「闭合」的逻辑关系（容易绕晕，一次说清）：</b>起止点<b>精确</b>重合意味着 <span class="mono">ι·T = 整数</span>，于是 <span class="mono">ι = 整数/T</span> 必为有理数 ⇒ <b>磁力线必然闭合</b>。所以「精确重合」是「闭合」的<b>充分条件</b>；反过来「不重合」却推不出「不闭合」（T 没取到 n 的整数倍而已）。<b>闭合的真正判据始终是 ι ∈ ℚ</b>，与 T 无关。</p>
+    <p>把 ι 拖到 <span class="mono">2</span>（第一族）再看 <span class="mono">√2</span>（第二族）—— 同一个环，同一个磁面，命运完全不同。<b>这就是这两族解最直白的可验证差异。</b></p>
+  </div>
+
+  <div class="callout am">
+    <p><b>⚠️ 边界声明（务必先读）：</b>这个 3D 场是一个<b>运动学玩具场</b>——它严格满足 ∇·B = 0、磁面严格嵌套、ι 可任意指定，但它 <b>不满足力平衡 (∇×B)×B = ∇p</b>。缺的恰恰是 Landreman 那两族解真正的贡献：力平衡 + 处处光滑 + 初等函数显式可写。</p>
+    <p>本页演示的是"<b>力平衡之外</b>的那部分"——旋转变换如何决定磁面是被"闭合的磁力线"还是"稠密的磁力线"填满。这一点，玩具场与真解完全一致（Landreman 原文就用到了它：<i>"For irrational ι, any equilibrium pressure would have to be constant on each torus because the field lines are dense on it."</i>）。</p>
+    <p>另外：图上<b>没有线圈</b>。两族解都不带实体线圈方案——"怎么把这个场造出来"是另一门学问，属于冷水之一。</p>
+  </div>
+</section>
+
+<!-- ================= 2. 庞加莱截面 ================= -->
+<section id="s2">
+  <h2><span class="n">2</span>庞加莱截面 —— 判别「闭合 vs 缠满」的标准工具</h2>
+  <p class="lead">3D 里磁力线看着都像一团毛线，肉眼分不出闭合与缠满。判别的标准做法是<b>庞加莱截面</b>：只在 φ = 0 这个平面上记录磁力线每次穿过的位置 (r, θ)。ι 有理 → 反复落在同几个点；ι 无理 → 落点连成一条闭合曲线，把整层磁面铺满。</p>
+
+  <div class="pc-wrap">
+  <div class="pc-grid">
+    <div class="pc-cell">
+      <div class="pc-title">A · 洁净场（无扰动）<span class="tag bl" style="margin-left:6px">ε = 0</span></div>
+      <div class="pc-sub">纯旋转变换：理论与 3D 演示严格一致</div>
+      <canvas id="pcClean"></canvas>
+      <div class="pc-stats" id="pcCleanStats"></div>
+    </div>
+    <div class="pc-cell">
+      <div class="pc-title">B · 叠加共振扰动<span class="tag rd" style="margin-left:6px">ε &gt; 0</span></div>
+      <div class="pc-sub">模拟线圈谐波误差场 → 有理面被撕出磁岛</div>
+      <canvas id="pcPerturb"></canvas>
+      <div class="pc-stats" id="pcPerturbStats"></div>
+    </div>
+  </div>
+
+  <div class="panel pc-params hud" data-hud-title="共用参数（已收起）">
+    <h4>共用参数 · A / B 两图同时生效</h4>
+    <p class="pc-hint">拖动下面任何一条滑杆，左手两张截面图会实时重画 —— 参数与图同屏，不必来回滚动。</p>
+    <div class="grid1">
+      <div class="ctl">
+        <label>ι 剖面 <b id="lbMode">常值</b></label>
+        <div class="chips">
+          <span class="chip on" data-mode="const">常值 ι</span>
+          <span class="chip" data-mode="shear">带剪切 ι(r)</span>
+        </div>
+      </div>
+      <div class="ctl">
+        <label>ι 基准值 <b id="lbPcIota">2.00</b></label>
+        <input type="range" id="rgPcIota" min="0.2" max="3" step="0.01" value="2">
+        <div class="chips">
+          <span class="chip on" data-pciota="2">2</span>
+          <span class="chip" data-pciota="2.5">5/2</span>
+          <span class="chip" data-pciota="1.41421356">√2</span>
+          <span class="chip" data-pciota="0.61803399">φ−1</span>
+        </div>
+      </div>
+      <div class="ctl">
+        <label>磁剪切强度 <b id="lbShear">0.60</b></label>
+        <input type="range" id="rgShear" min="0" max="1" step="0.01" value="0.6">
+      </div>
+      <div class="ctl">
+        <label>穿越圈数 N <b id="lbN">600</b></label>
+        <input type="range" id="rgN" min="100" max="3000" step="50" value="600">
+      </div>
+      <div class="ctl">
+        <label>起始磁面层数 <b id="lbLayers">3</b></label>
+        <input type="range" id="rgLayers" min="1" max="5" step="1" value="3">
+      </div>
+      <div class="ctl">
+        <label>扰动强度 ε <b id="lbEps">0.0040</b></label>
+        <input type="range" id="rgEps" min="0" max="0.012" step="0.0002" value="0.004">
+      </div>
+      <div class="ctl">
+        <label>共振谐波 m <b id="lbM">4</b></label>
+        <input type="range" id="rgM" min="1" max="6" step="1" value="4">
+      </div>
+      <div class="chips" style="margin-top:2px">
+        <span class="chip" id="btnAlign">⌖ 对准共振面</span>
+        <span class="chip" id="btnReset">↺ 复位</span>
+      </div>
+    </div>
+  </div>
+  </div><!-- /pc-wrap 左图右参数 -->
+
+  <div class="callout rd" style="margin-top:16px">
+    <p><b>右边这半张图是本项目的关切点。</b>把 ι 设成有理数（比如 <span class="mono">2</span> 或 <span class="mono">5/2</span>）并把 ε 拖大 —— 你会看到嵌套的圆环被撕成<b>一串串"岛链"（磁岛 / island）</b>。这正是仿星器圈最怕的事：</p>
+    <ul>
+      <li>有理面 ι = m/n 上，磁力线绕 n 圈后闭合，与线圈磁场的傅里叶谐波<b>共振</b>；</li>
+      <li>磁面被撕成磁岛，磁场拓扑被破坏（VMEC 这类"假设嵌套磁面"的求解器<b>自己算不出</b>磁面破裂）；</li>
+      <li>有理面上还会冒出 <span class="mono">J ∼ 1/x</span> 型奇异平行电流，物理上不成立。</li>
+    </ul>
+    <p>把 ι 换成 <span class="mono">√2</span>（第二族实取的无理值）再把剪切调大 —— 岛链消失，磁力线老老实实把磁面铺满。<b>真实仿星器要的就是后者。</b></p>
+  </div>
+
+  <div class="callout am">
+    <p><b>🔧 想看磁岛？照这个配方调：</b></p>
+    <ol>
+      <li>把 <b>ι 剖面</b>切到「带剪切 ι(r)」、<b>剪切强度</b>拉到 <span class="mono">0.60</span>、<b>共振谐波 m</b> 设为 <span class="mono">4</span>；</li>
+      <li>点一下 <span class="kbd">⌖ 对准共振面</span> —— 它会把最外那层磁面<u>精确放到</u>某条 ι = j/m 上；</li>
+      <li>然后把 <b>扰动强度 ε</b> 从 0 慢慢往上拖。你会看到那层圆环被撕成一串<b>岛链</b>，而没落在共振面上的层基本安然无恙。</li>
+    </ol>
+    <p><b>⚠️ 关键的一点，也是真实物理：磁岛只在「有剪切 + 落在有理面」的地方长出来。</b>把剪切拉回 0（ι 变成严格常数）再加大 ε —— 岛长不出来，磁力线反而会<b>整体径向漂移</b>、磁面被直接推散。</p>
+    <p>这正好解释了为什么第一族（ι ≡ 2，常数、无剪切）虽然是有理面却<b>不是好设计</b>，而第二族（带剪切、几乎每层无理）才接近工程实际 —— 与整理文档 <span class="mono">03</span> §四"闭合 vs 缠满"的结论一致。</p>
+  </div>
+
+  <div class="callout">
+    <p class="note">本图的扰动模型是示意性的扭转型磁场线映射 <span class="mono">r ← r + ε·sin(mθ)，θ ← θ + 2π·ι(r)</span>，与整理文档 <span class="mono">07</span> §S3 提出的检验实验同构。<b>它不是 MHD 平衡解</b>，只用于演示"共振 → 磁岛"这一机制。</p>
+    <p class="note">"不重复落点数"判据已做数值验证：有理 ι = m/n ⇒ 落点塌缩到 n 个位置（ι = 2 → 1 个；5/2 → 2 个；7/3 → 3 个）；无理 ι（√2、φ−1）⇒ 落点几乎不重合。洁净场的"散布"指标同时命中了文档 <span class="mono">04</span> 的解析锚点 —— 铺满时散布 = r₀（实测 0.0800 / 0.1450 / 0.2100，逐位相等）。</p>
+  </div>
+</section>
+
+<!-- ================= 3. 有理面尺 ================= -->
+<section id="s3">
+  <h2><span class="n">3</span>真实装置有理面尺 —— 设计目标被量出来了</h2>
+  <p class="lead">"让 ι 避开低阶有理数"到底是口号还是真在做？归档 Zenodo 大包后拿到了三台真实装置的 <b>VMEC 平衡文件</b>（<span class="mono">wout_*.nc</span>），把它们的 ι 剖面直接摆到有理数尺上量。<b>分母 n 越小，共振越危险</b>：n = 1、2 的磁岛最宽。</p>
+  <canvas id="ratCanvas" style="display:block;width:100%;height:290px"></canvas>
+  <div class="panel" style="margin-top:14px">
+    <div class="ctl" style="margin-bottom:0">
+      <label>把有理数标尺细分到 n ≤ <b id="lbMaxDen">12</b>（拖动看低阶面有多危险）</label>
+      <input type="range" id="rgMaxDen" min="3" max="30" step="1" value="12">
+    </div>
+  </div>
+  <div id="ratSummary" class="pc-stats" style="border:none;padding-top:10px"></div>
+
+  <div class="callout gr" style="margin-top:14px">
+    <p><b>实测结论：三个构型全部避开了 n ≤ 6 的低阶有理面</b>，而且用了三种<b>不同的</b>避开策略——</p>
+    <ul>
+      <li><b>HSX</b>（真实运行装置）：把整条 ι 剖面<b>抬到 1 以上</b>，直接绕开 1/1；跨度 0.064，有剪切。</li>
+      <li><b>precise QA</b>（准轴对称）：把 ι 挤在 5/12 附近，但<b>压窄跨度</b>，只跨 2 个高阶面。</li>
+      <li><b>precise QH</b>（准螺旋对称）：最极端——跨度只有 <b>0.0034</b>，n ≤ 20 一个有理面都不跨，离最近的 −5/4 还有 5.0×10⁻³。</li>
+    </ul>
+    <p>这不是巧合，是明确写进优化目标的设计。→ 这条证据把 <span class="mono">07</span> 文档的"桥 A"从"措辞相似"抬到了<b>"在真实装置数据上量得到同一个设计目标"</b>。</p>
+    <p class="note">数据坑（已踩）：VMEC 的 <span class="mono">iotas[0]</span> 是轴心占位 0、不是真 ι；部分 <span class="mono">wout</span> 轴心是 NaN。必须优先读 <span class="mono">iotaf</span> 并滤掉非有限值，否则有理面全被算到 s ≈ 0.0005、剪切算成 1059。本图数据来自文档 <span class="mono">07</span> 的实测表。</p>
+  </div>
+</section>
+
+<!-- ================= 4. 两族解对比 ================= -->
+<section id="s4">
+  <h2><span class="n">4</span>两族解到底是什么 —— 一表看清</h2>
+  <p class="lead">两篇论文、两种打法。GSJT 走纯数学硬分析（存在性），Landreman 走显式构造（可写出、可当标尺）。Landreman 论文引言<b>明写</b> GSJT 已经证伪了 Grad 猜想——所以不是"首次攻破"，增量是"初等函数显式、不做任何近似、可当数值基准"。</p>
+
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th style="width:130px"></th><th>GSJT · arXiv:2609.24739</th><th>Landreman · arXiv:2609.26742</th></tr></thead>
+    <tbody>
+      <tr><td><b>作者</b></td><td>Gómez-Serrano（布朗）/ Liehr（巴伊兰）/ Taylor（牛津）</td><td>Matt Landreman（马里兰大学 UMD）</td></tr>
+      <tr><td><b>提交</b></td><td>2026-09-21（v1）</td><td>2026-09-22（v1）/ 09-28（v2）</td></tr>
+      <tr><td><b>打法</b></td><td>147 页证明 + <b>Lean 4 机器可验</b>；Nash–Moser 迭代</td><td><b>显式解析解</b>：磁场 / 磁面 / 压力全用初等函数（平方根 + 三角）在笛卡尔坐标直接写出</td></tr>
+      <tr><td><b>对称性</b></td><td>对称群<b>恰好</b>是循环群 C_N（轴对称 / 镜面对称 / 螺旋对称一个都不占）</td><td>不做环径比倒数展开、不做"偏离轴对称是小量"的近似；全环域严格成立</td></tr>
+      <tr><td><b>解族</b></td><td>每个足够大的 N 一条解，构成<b>光滑单参数族</b>（把 Grad 1985 的"不存在解族"版本也一起推翻）</td><td>两族：<b>第一族 ι ≡ 2</b>（均匀）／<b>第二族 ι(ψ) 带磁剪切</b>，几乎每层无理，指定正则面取 ι = √2</td></tr>
+      <tr><td><b>残差</b></td><td>Lean 形式化（机器可验）</td><td>|∇·B| &lt; 3.5×10⁻¹⁶、|(∇×B)×B − ∇p| &lt; 3.9×10⁻¹⁶、|B·∇ψ| &lt; 2.1×10⁻¹⁷</td></tr>
+      <tr><td><b>短板</b></td><td><b>磁轴上 B = 0</b> ⇒ 不能当装置设计（Landreman 引言也点出这点）</td><td>自报：第一族 ι 是整数（有理面共振风险）；真空旋转变换很小但非零</td></tr>
+      <tr><td><b>AI 参与</b></td><td>媒体称：GPT-5.6 Sol / Claude Fable 5 / Claude Opus 5 轮番补细节与写 Lean 代码，作者全程盯 <span class="tag am">🔶媒体</span></td><td><b>GPT-6 Astra Pro 发现解并起草部分内容；所有方程由作者手工确认</b>（论文致谢原文）<span class="tag gr">✅一手</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>Landreman 三段对话 —— 一手实证（从归档 PDF 逐页提取）</h3>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>轮次</th><th class="c">思考时长</th><th>任务与产出</th></tr></thead>
+    <tbody>
+      <tr><td>第一轮<br><span class="note">09-10 06:44</span></td><td class="c"><b class="mono">20m 34s</b></td><td>要求"非轴对称 + 嵌套磁面 + ∇·B = 0 + MHD 平衡" → 交出<b>第一族 ι ≡ 2</b></td></tr>
+      <tr><td>第二轮<br><span class="note">09-11 16:05</span></td><td class="c"><b class="mono">33m 37s</b></td><td>追问"<i>ideally iota would be an irrational number</i>" → 先答"没做出来"，并<b>证明</b>第一族的二次振子构造必锁 ι 为整数，随后换构造交出<b>第二族</b></td></tr>
+      <tr><td>第三轮<br><span class="note">09-11 20:27</span></td><td class="c"><b class="mono">11m 6s</b></td><td>问磁轴是否平面、有无真空旋转变换</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="callout pu">
+    <p><b>⭐ 最值钱的一条，藏在第二轮的原文里：</b></p>
+    <p class="mono" style="background:#fff;border-radius:8px;padding:10px 13px;border:1px solid var(--line)">"For irrational ι, any equilibrium pressure would have to be constant on each torus because the field lines are dense on it."</p>
+    <p>翻译过来：<b>ι 无理 ⇒ 磁力线稠密 ⇒ 物理量被迫为常数</b>。注意这里的逻辑方向——稠密性不是"要避开的麻烦"，而是<b>被反过来当成了构造工具</b>。同一条定理，在这个项目里被三个场合各用了一面：</p>
+    <div class="tbl-wrap" style="margin-top:8px">
+    <table>
+      <thead><tr><th class="c" style="width:80px">面</th><th>谁在用</th><th>用成什么</th></tr></thead>
+      <tbody>
+        <tr><td class="c"><span class="tag bl">可视化</span></td><td>本页 ② 的庞加莱截面</td><td>ι 有理 → 只有孤立点；ι 无理 → 铺满整层磁面</td></tr>
+        <tr><td class="c"><span class="tag am">工程</span></td><td>仿星器有理面磁岛 / SEG <span class="mono">gcd = 1</span></td><td>不可公度 = 要争取的<b>目标</b></td></tr>
+        <tr><td class="c"><span class="tag gr">存在性</span></td><td>Landreman 第二族</td><td>不可公度 = 迫使压力为常数的<b>工具</b></td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="callout rd">
+    <p><b>⚠️ 同一份 PDF 也给了反直觉的冷水：</b>AI 在第二轮明确列出并否证了两条失败路径（不等拉伸分支、标签旋转场），原文结论是——</p>
+    <p class="mono" style="background:#fff;border-radius:8px;padding:10px 13px;border:1px solid var(--line)">"its quadratic-oscillator mechanism forces closed field lines … Thus <b>changing the frequency to an irrational number cannot work</b>."</p>
+    <p>意思是：<b>"把比例改成无理数就能避开共振"这个直觉，在真实 MHD 平衡里不成立</b>——会撞上闭磁力线机制与轴上力平衡两道墙。对 SEG / Anu 那套"改个比例就行"的类比，这是明确的警示，<b>别照搬</b>。</p>
+  </div>
+</section>
+
+<!-- ================= 5. 时间线 ================= -->
+<section id="s5">
+  <h2><span class="n">5</span>时间线 —— 谁推翻了什么</h2>
+  <div class="tl">
+    <div class="tl-i grey"><div class="tl-d">1967 / 1985</div><div class="tl-t">Grad 两版猜想</div><div class="tl-b">除对称特例外，不存在光滑依赖参数的解族 → 仿星器要的"完美三维磁笼子"数学上可能根本不存在。悬置 59 年。</div></div>
+    <div class="tl-i grey"><div class="tl-d">1964–1970 / 2021–2026</div><div class="tl-t">前史与相关构造</div><div class="tl-b">Mercier、Solov'ev–Shafranov 近轴近似；Lortz 证明带镜面对称的不对称平衡存在（但 ι = 0，关不住等离子体，且未显式写出）；Constantin、Enciso、Cardona、Drivas、Peralta-Salas 等一串相关构造。</div></div>
+    <div class="tl-i"><div class="tl-d">2026-09-10 06:44</div><div class="tl-t">给 GPT-6 Astra Pro 的第一条提示词</div><div class="tl-b">要求非对称、嵌套磁面、∇·B = 0、MHD 平衡 → <b>20m 34s</b> 后交出第一族 ι ≡ 2；随附 1,202 点 64 位自动微分 + 四阶有限差分独立核对。</div></div>
+    <div class="tl-i"><div class="tl-d">2026-09-11 16:05</div><div class="tl-t">追问无理 ι</div><div class="tl-b"><b>33m 37s</b>。先证明原构造必锁整数 ι，再换构造交出带剪切、几乎每层无理的第二族（指定正则面 ι = √2）。</div></div>
+    <div class="tl-i red"><div class="tl-d">2026-09-21</div><div class="tl-t">GSJT 论文挂 arXiv</div><div class="tl-b"><b>arXiv:2609.24739</b> · 147 页 + Lean 4 形式化 · 严格推翻 Grad 两版猜想（存在性层面）。</div></div>
+    <div class="tl-i red"><div class="tl-d">2026-09-22</div><div class="tl-t">Landreman 论文挂 arXiv</div><div class="tl-b"><b>arXiv:2609.26742</b> · 两族显式解析解 + DESC / SymPy / Mathematica 验证脚本 · 人工复核约十来天。至此猜想被"可写出、可算、可当标尺"层面钉死。</div></div>
+    <div class="tl-i grey"><div class="tl-d">2026-10 初</div><div class="tl-t">继续挖出更多反例族</div><div class="tl-b">Przemek Chojecki 用同法继续挖（<span class="tag am">🔶 未经 Lean / 同行检验</span>）</div></div>
+  </div>
+
+  <h3>媒体失真校正清单（转述时逐条对照）</h3>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th style="width:44%">媒体说法</th><th>校正</th></tr></thead>
+    <tbody>
+      <tr><td>「20 分 34 秒攻克核聚变」</td><td>20m34s 只是<b>找到第一族解的思考时间</b>；三段对话合计超过 1 小时，人工复核用了十来天；且"核聚变被解决"完全不成立（平衡 ≠ 稳定 ≠ 点火）</td></tr>
+      <tr><td>「首次攻破 59 年难题」</td><td>GSJT 早一天已用严格证明推翻；2021–2026 有一串相关构造在前</td></tr>
+      <tr><td>「GPT-6 解决了…」</td><td>分工是 <b>AI 提出构造、人验证正确性与价值</b>；GSJT 那份是 147 页证明 + Lean 形式化，<b>人最后署责</b></td></tr>
+      <tr><td>「可以照着造堆了」</td><td>两族解都<b>没有实体线圈、不保证稳定性</b>；GSJT 族磁轴上 B = 0，根本不能当设计</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ================= 6. 冷水 ================= -->
+<section id="s6">
+  <h2><span class="n">6</span>冷水四盆 + 三座大山 —— 别高兴过头</h2>
+  <p class="lead">这个解搬走的是一块压在仿星器理论地基上的石头，顺带给了仿真界一把标准尺子。但真正的卡点一个都没动。</p>
+
+  <h3>冷水四盆（每盆都是硬边界）</h3>
+  <div class="cards">
+    <div class="card dang"><div class="h">① 平衡 ≠ 稳定</div><div class="b">解只是"受力平衡"，不等于扰动下不崩。MHD 稳定性（Mercier 判据等）、湍流、新经典输运、高能粒子约束——<b>一个都没碰</b>。</div></div>
+    <div class="card warn"><div class="h">② GSJT 族不能当设计</div><div class="b">那族解在磁轴上 B = 0，只回答存在性，<b>没有任何装置意义</b>。</div></div>
+    <div class="card warn"><div class="h">③ 没有线圈</div><div class="b">两族解都不带实体线圈方案。"怎么把这个场造出来"是另一门学问。（本页 3D 图上也刻意没画线圈。）</div></div>
+    <div class="card dang"><div class="h">④ 工程三座大山原封不动</div><div class="b">材料（扛中子）、氚自持、能量增益 Q——聚变真正的卡点全在这些 measurable 的工程问题上。</div></div>
+  </div>
+
+  <h3>往上走：三座大山</h3>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th style="width:160px">山</th><th>内容</th><th>为什么难</th></tr></thead>
+    <tbody>
+      <tr><td><b>稳定与湍流</b></td><td>平衡只是静力学；扰动下不崩、湍流输运压得住才是堆</td><td>MHD 不稳定性模式成百上千；湍流是 NS 级难题</td></tr>
+      <tr><td><b>材料与氚自持</b></td><td>第一壁扛 14 MeV 中子轰击；氚增殖比 &gt; 1</td><td>材料辐照损伤 + 燃料闭环，都是工程极限</td></tr>
+      <tr><td><b>能量增益 Q</b></td><td>Q = 聚变功率 / 加热功率 &gt; 10 才有意义</td><td>前两座山的综合结果</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>价值四层（按含金量，不按热度）</h3>
+  <div class="cards">
+    <div class="card good"><div class="h">① 给仿真代码一把标准尺子</div><div class="b">以前 VMEC / DESC / SPEC 只能<b>互相印证</b>，判不了绝对误差。现在有了初等函数写出的精确解当金标准：直接测收敛阶与真实精度；不做近轴展开、不做小量近似，是<b>有限环径比</b>下的严格解，还能在非轴对称的完整傅里叶空间里测。<b>工程上立刻能用的一层。</b></div></div>
+    <div class="card good"><div class="h">② 摘掉悬了 59 年的存在性疑云</div><div class="b">仿星器靠故意造非对称三维磁场关住上亿度等离子体。Grad 的怀疑等于说地基是虚的。现在确认：<b>站得住</b>，不止存在，还能随参数连续成族。</div></div>
+    <div class="card info"><div class="h">③ 顺手解决同源的流体问题</div><div class="b">MHD 平衡 <span class="mono">(∇×B)×B = ∇p</span> 与<b>稳态不可压 Euler 流</b>数学同构（磁场 ↔ 流速）。这批解同时是"三维稳态 Euler 流带不变环面"的解——一鱼两吃，与项目 NS 方程千禧难题目录同源。</div></div>
+    <div class="card info"><div class="h">④ 方法论：启动老问题的成本被压到极低</div><div class="b">一个研究者、一个对话框、20 分钟，提示词与验证脚本全公开可复现。但分工必须说清：<b>AI 负责提出构造，人负责验证正确性与判断价值</b>。这是"AI 挤进发现新数学结构环节"的第二次出现——两次都验证同一条：AI 的产出必须过"独立验证"这关才算数。</div></div>
+  </div>
+
+  <div class="callout">
+    <p><b>对外引用时用这个口径：</b>AI 没有解决核聚变；它做的是——一组人 + AI 把 Grad 悬了 59 年的"完美三维磁笼子不存在"猜想推翻了，给了仿星器理论地基一个存在性确认，给了数值仿真界一把精确标尺。<b>离发电还隔着稳定性、材料与氚自持、能量增益三座大山。</b></p>
+  </div>
+</section>
+
+<!-- ================= 7. 桥 ================= -->
+<section id="s7">
+  <h2><span class="n">7</span>SEG ↔ Anu ↔ 仿星器 —— 真正共享的是一条防共振的数学</h2>
+  <p class="lead">这条桥是老师要的、也是本目录认为最值得写进正式笔记的一条。它不靠形状相似，靠<b>可以算</b>。</p>
+
+  <h3>桥 A：两个领域独立长出了同一条设计铁律</h3>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th style="width:120px"></th><th>SEG（磁齿轮消音）<span class="tag am" style="margin-left:4px">项目内</span></th><th>仿星器（磁面保护）<span class="tag bl" style="margin-left:4px">教科书</span></th></tr></thead>
+    <tbody>
+      <tr><td><b>两个"绕数"</b></td><td>定子磁极数 N 与滚筒磁极数 P</td><td>环向绕数 1 与极向绕数 ι</td></tr>
+      <tr><td><b>灾难</b></td><td><span class="mono">gcd(N,P) = d &gt; 1</span> ⇒ 每 N/d 圈周期性对齐 ⇒ "嘎嘣嘎嘣"振动、定点磨损</td><td><span class="mono">ι = m/n</span>（低阶分数）⇒ 与线圈谐波共振 ⇒ 撕出磁岛 + <span class="mono">J ∼ 1/x</span> 奇异电流</td></tr>
+      <tr><td><b>处方</b></td><td><b><span class="mono">gcd = 1</span></b>（互质）+ lcm 尽量大</td><td><b>ι 无理</b>（最好带剪切、逐层变化）</td></tr>
+      <tr><td><b>数学身份</b></td><td colspan="2">同一个：<b>旋转数的丢番图逼近</b>——避开低阶有理逼近。KAM 理论下它们甚至是同一个定理的两件外衣。</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>桥 B：二次无理数在两侧同时以"最无理"身份出场</h3>
+  <div class="callout am">
+    <p><b>⚠️ 2026-10-08 口径下修（据一手 PDF 实测）：</b>Landreman 第二族<b>实际取的是 ι = √2 = 1.41421356…，不是黄金比 φ</b>。</p>
+    <p>所以这条桥的正确说法是：<b>"二次无理数（φ = (1+√5)/2 与 √2）在两侧同时以'最无理'身份出场"</b>——不要说成"两边都是黄金比"，那是此前从元宝转述推出的过度推断，现已下修。</p>
+  </div>
+
+  <h3>冲突三条（物理内核的硬边界）</h3>
+  <div class="cards">
+    <div class="card dang"><div class="h">① 拓扑不同（最致命）</div><div class="b">Anu 螺旋绕<b>自己的中心轴</b>缠——像一根弹簧、闭合于自身；仿星器是<b>环面结</b>：绕大环一圈的同时绕截面转圈，两个周期叠在一起。<b>甜甜圈上拧的麻花 ≠ 一根弹簧。</b></div></div>
+    <div class="card dang"><div class="h">② 磁场不能有源和汇</div><div class="b">Anu 的正负 = "力涌出的泉"与"力流入的洞"——<b>有源有汇</b>；但磁场满足 <span class="mono">∇·B = 0</span>（无磁单极），磁力线<b>无头无尾</b>。这是方程层面的硬约束，不是设计偏好。</div></div>
+    <div class="card dang"><div class="h">③ 量级差三个数量级</div><div class="b">真实仿星器 <span class="mono">ι ∈ 0.1 ~ 2</span>；<b>1680 匝</b>意味着绕一圈转 1680 次——磁剪切大到任何等离子体瞬间撕碎、电流密度爆掉，且没有线圈能造出这种场。</div></div>
+  </div>
+
+  <div class="callout gr">
+    <p><b>口径收束：</b>同构在表面，分歧在方程。Anu 与仿星器共享<b>螺旋、嵌套、轴、手性、靠流动维持</b>这套几何词汇——足以让 Anu 成为一个漂亮的<b>直觉模型</b>；但它们不共享<b>拓扑</b>（弹簧 vs 环面结）与<b>守恒律</b>（有源汇 vs ∇·B = 0）。</p>
+    <p><b>Anu 给的是图像，图像不能替你算数；方程才能。</b></p>
+    <p class="note">另注：SEG 的滚筒在转，场是<b>时间相关</b>的；而 MHD 平衡（含这次两族解）说的是<b>静场</b>。所以 SEG 与"仿星器平衡"之间不存在直接的方程对应——能对应的只是<b>设计原则层</b>（桥 A / B），不是解层。</p>
+  </div>
+
+  <h3>04 · 方法论的落点</h3>
+  <p>分歧的实质不是"灵视真假"，而是它在认知流水线上的位置。两边其实共享同一条流水线，只是把"判定权"放在了不同环节：</p>
+  <div class="formula mono" style="font-size:13px">直觉 / 灵视（提出结构） → 可计算化（写成数 / 不等式） → 数值 / 实验判定 → 累积</div>
+  <p>据此本项目的三条规则：<b>① 保留输入通道</b>（灵视/直觉产出的结构按 S1–S2 入表、可计算化）；<b>② 判定交还可仲裁环节</b>（凡要写成"结论"，必须过数值/实验关——本页每个滑块都是按这个标准做的，可由第三方重跑复核）；<b>③ 给灵视一条明确的升级通道</b>（预登记预测：产出一条先于实验、可量化、随后被证实的预测即升级；截至 2026-10，这样的记录数为 <b>0</b>）。</p>
+  <div class="callout pu">
+    <p>灵视可以当<b>猜想生成器</b>，不能当<b>判定器</b>。这条流水线上缺的从来不是"看到"，是"仲裁"。</p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><b>数据与来源</b> · 事实底稿：本文档同目录 10 份整理 md（<span class="mono">00_导读</span> ~ <span class="mono">10_Mahatma训练体系</span>）＋ 演示脚本 <span class="mono">_iota_poincare.py</span> / <span class="mono">_iota_diophantine.py</span> ＋ 归档一手材料 <span class="mono">_归档下载/</span>（Landreman 三段对话 PDF 摘录、Grad-Conjecture Lean 代码库、Zenodo 笔记本）</p>
+    <p><b>置信标签</b> · <span class="tag gr">✅</span> 直接核对过 arXiv / Zenodo / 论文页原文 · <span class="tag am">🔶</span> 单一来源（元宝对话或中文媒体转述）· <span class="tag bl">📐</span> 教科书级标准结论 · <span class="tag pu">⚪</span> 未核实 / 存疑</p>
+    <p><b>本页 3D 演示的性质</b> · 运动学玩具场（满足 ∇·B = 0 与严格嵌套磁面，可任意指定 ι），<b>不满足力平衡 (∇×B)×B = ∇p</b>；扰动模块为示意性扭转型磁场线映射。<b>本页用于演示机制，不复现论文数值，不构成设计依据。</b></p>
+    <p>三维渲染 three.js r137（本地 <span class="mono">_three/three.min.js</span>，离线可用）· 本页无外部网络请求</p>
+  </div>
+</footer>
+
+<script src="_three/three.min.js"></script>
+<script>
+/* ============================================================================
+   磁约束 AI 两族解演示台
+   §1  three.js 3D：真空室壁 / 嵌套磁面 / 磁轴 / 磁力线 / 流动光点
+   §2  庞加莱截面：洁净场 + 共振扰动（磁岛）
+   §3  真实装置有理面尺（HSX / precise QA / precise QH）
+   ========================================================================== */
+(function () {
+'use strict';
+
+var PI = Math.PI, TAU = 2 * Math.PI;
+var R0 = 1.0;       /* 大半径 */
+var WALL = 0.30;    /* 真空室壁（最外磁面）小半径 */
+
+function $(id) { return document.getElementById(id); }
+function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+function gcd(a, b) { a = Math.abs(a); b = Math.abs(b); while (b) { var t = a % b; a = b; b = t; } return a; }
+function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+function fmt(v, n) { return Number(v).toFixed(n === undefined ? 2 : n); }
+
+/* 有理逼近：把 v 认成最简分数 m/n（n ≤ Qmax、误差 < tol），认不出返回 null。
+   这是判定「磁力线闭不闭合」的唯一正确入口 —— 闭合与否只取决于 ι 是不是有理数，
+   与"你画了多少圈 T"无关。 */
+function bestRational(v, Qmax, tol) {
+  Qmax = Qmax || 12;
+  if (tol === undefined) tol = 1e-6;
+  var best = null;
+  for (var n = 1; n <= Qmax; n++) {
+    var m = Math.round(v * n);
+    if (m === 0) continue;
+    if (gcd(Math.abs(m), n) !== 1) continue;   /* 只要最简形式 */
+    var err = Math.abs(v - m / n);
+    if (err < tol && (best === null || err < best.err)) best = { m: m, n: n, err: err };
+  }
+  return best;
+}
+
+/* 吸附到常见分数，用于读数显示（2.5 → 5/2） */
+function fracLabel(v) {
+  var r = bestRational(v, 12, 1e-6);
+  if (!r) return null;
+  return r.n === 1 ? String(r.m) : r.m + '/' + r.n;
+}
+
+/* ==========================================================================
+   §1  three.js 3D
+   ========================================================================== */
+var G = {
+  iota: 2.0, turns: 5, nLines: 1, r0: 0.18,
+  shell: true, nest: false, axis: true, flow: true, spin: true
+};
+
+function torusPoint(phi, th, r) {
+  var rho = R0 + r * Math.cos(th);
+  return new THREE.Vector3(rho * Math.cos(phi), rho * Math.sin(phi), r * Math.sin(th));
+}
+
+/* 一个环面管面（用于壁 / 嵌套磁面） */
+function tubeSurface(rTube, nU, nV, color, opacity) {
+  nU = nU || 96; nV = nV || 36;
+  var pos = [], idx = [], i, j, a, b;
+  for (i = 0; i <= nU; i++) {
+    var u = TAU * i / nU;
+    for (j = 0; j <= nV; j++) {
+      var v = TAU * j / nV;
+      var p = torusPoint(u, v, rTube);
+      pos.push(p.x, p.y, p.z);
+    }
+  }
+  for (i = 0; i < nU; i++) {
+    for (j = 0; j < nV; j++) {
+      a = i * (nV + 1) + j;
+      b = a + (nV + 1);
+      idx.push(a, b, a + 1, b, b + 1, a + 1);
+    }
+  }
+  var g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  var m = new THREE.MeshPhongMaterial({
+    color: color, transparent: true, opacity: opacity,
+    side: THREE.DoubleSide, depthWrite: false, shininess: 26,
+    specular: 0x8899bb, flatShading: false
+  });
+  return new THREE.Mesh(g, m);
+}
+
+function start3D() {
+  var host = $('gl3d');
+  if (!window.THREE) {
+    host.innerHTML = '<div style="padding:40px;color:#7c869c;text-align:center">three.js 未能加载（请确认 <span class="mono">_three/three.min.js</span> 与本页在同一目录树下）</div>';
+    return null;
+  }
+
+  var scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xeef1f6);
+
+  var camera = new THREE.PerspectiveCamera(38, 1, 0.05, 200);
+
+  var renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  host.appendChild(renderer.domElement);
+
+  var root = new THREE.Group();
+  root.rotation.x = -PI / 2;     /* 环面平放 */
+  scene.add(root);
+
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xc2cee2, 1.05));
+  var d1 = new THREE.DirectionalLight(0xffffff, 0.8); d1.position.set(3, 6, 4); scene.add(d1);
+  var d2 = new THREE.DirectionalLight(0xffffff, 0.34); d2.position.set(-4, -3, -3); scene.add(d2);
+
+  /* 地面参考网格 */
+  var grid = new THREE.GridHelper(3.6, 12, 0xc6d0e2, 0xe3e9f2);
+  grid.position.y = -0.58;
+  scene.add(grid);
+
+  /* 壁 */
+  var shell = tubeSurface(WALL, 104, 40, 0x8fa6cc, 0.20);
+  root.add(shell);
+
+  /* 嵌套磁面 */
+  var nest = new THREE.Group();
+  for (var k = 1; k <= 6; k++) {
+    var rr = WALL * k / 7;
+    var m = tubeSurface(rr, 80, 26, 0xa8b8d6, 0.11);
+    m.userData.r = rr;
+    nest.add(m);
+  }
+  root.add(nest);
+  nest.visible = false;
+
+  /* 磁轴 */
+  var axisPts = [];
+  for (var q = 0; q <= 200; q++) axisPts.push(torusPoint(TAU * q / 200, 0, 0));
+  var axisMesh = new THREE.Mesh(
+    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(axisPts, true), 240, 0.009, 8, true),
+    new THREE.MeshBasicMaterial({ color: 0xe08a1e })
+  );
+  root.add(axisMesh);
+
+  /* 磁力线容器 */
+  var lineGroup = new THREE.Group();
+  root.add(lineGroup);
+  var flowGroup = new THREE.Group();
+  root.add(flowGroup);
+
+  /* 光点纹理 */
+  var dotTex = (function () {
+    var c = document.createElement('canvas'); c.width = c.height = 64;
+    var g = c.getContext('2d');
+    var gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, 'rgba(255,255,255,1)');
+    gr.addColorStop(0.35, 'rgba(255,255,255,.85)');
+    gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+    var t = new THREE.Texture(c); t.needsUpdate = true; return t;
+  })();
+
+  var flowCurves = [];
+  var beadColors = [0xff4d4d, 0xff9f43, 0x22b573, 0x7a4fd0];
+
+  function disposeGroup(g) {
+    while (g.children.length) {
+      var c = g.children.pop();
+      if (c.geometry) c.geometry.dispose();
+      if (c.material) {
+        if (c.material.map && c.material.map !== dotTex) c.material.map.dispose();
+        c.material.dispose();
+      }
+    }
+  }
+
+  function clearLines() {
+    disposeGroup(lineGroup);
+    disposeGroup(flowGroup);
+    flowCurves = [];
+  }
+
+  function rebuild() {
+    clearLines();
+    var T = G.turns, r0 = G.r0, n = G.nLines;
+    var segs = clamp(Math.round(T * 200), 300, 2200);
+
+    /* 起止点标记（仅第一条第 0 条线做对比） */
+    for (var i = 0; i < n; i++) {
+      var th0 = TAU * i / n;
+      var pts = [];
+      for (var s = 0; s <= segs; s++) {
+        var phi = TAU * T * s / segs;
+        pts.push(torusPoint(phi, th0 + G.iota * phi, r0));
+      }
+      var curve = new THREE.CatmullRomCurve3(pts);
+      var tube = new THREE.Mesh(
+        new THREE.TubeGeometry(curve, clamp(segs, 200, 1600), 0.0075, 6, false),
+        new THREE.MeshBasicMaterial({ color: beadColors[i % 4] })
+      );
+      lineGroup.add(tube);
+
+      /* 起点绿环 + 终点红球 */
+      var sp = pts[0], ep = pts[pts.length - 1];
+      var ring = new THREE.Mesh(
+        new THREE.TorusGeometry(0.022, 0.005, 6, 20),
+        new THREE.MeshBasicMaterial({ color: 0x1f9a63 })
+      );
+      ring.position.copy(sp);
+      ring.lookAt(torusPoint(TAU * 0.06, th0, r0));
+      lineGroup.add(ring);
+
+      var dot = new THREE.Mesh(
+        new THREE.SphereGeometry(0.02, 14, 12),
+        new THREE.MeshBasicMaterial({ color: 0xd64545 })
+      );
+      dot.position.copy(ep);
+      lineGroup.add(dot);
+
+      /* 流动光点 */
+      if (G.flow) {
+        var spr = new THREE.Sprite(new THREE.SpriteMaterial({
+          map: dotTex, color: beadColors[i % 4], transparent: true,
+          depthWrite: false
+        }));
+        spr.scale.set(0.09, 0.09, 0.09);
+        root.add(spr);
+        flowGroup.add(spr);
+        flowCurves.push({ curve: curve, spr: spr, phase: i / Math.max(n, 1) });
+      }
+    }
+    updateReadout();
+  }
+
+  function updateReadout() {
+    var T = G.turns, iot = G.iota;
+    var k = iot * T;
+    var rat = bestRational(iot, 12, 1e-6);
+    var off = Math.abs(k - Math.round(k));
+    var visTol = 0.015 / (TAU * G.r0);
+
+    /* ⚠️ 闭合与否只看 ι 是不是有理数，不看 ι×T 是不是整数（长解释见本节末尾正文）。
+       HUD 是**标签**不是文章：这里只留「结论 + 3 个关键数字」，其余搬到正文 callout，
+       否则一屏文字会盖住图形本身。 */
+    var h = '<b>ι ' + fmt(iot, 4) + '</b>' +
+      (rat ? ' = ' + fracLabel(iot) : ' <span class="note">非低阶有理</span>') +
+      ' · <b>T ' + T + '</b><br>';
+
+    if (rat) {
+      var q = rat.n, p = rat.m;
+      var whole = Math.abs(T / q - Math.round(T / q)) < 1e-9;
+      h += whole
+        ? '✅ 起止点 <b>重合</b>（T 是 ' + q + ' 的整数倍）<br>'
+        : '✗ 起止点错开 <b>' + fmt(off, 3) + '</b> 圈（只是没画完）<br>';
+      h += '<span class="verdict ok">⚠ 仍闭合：绕 ' + q + ' 圈（极向 ' + p +
+        ' 圈）回起点 → 有理面 / 磁岛风险</span>';
+    } else {
+      h += '✗ 起止点错开 <b>' + fmt(off, 3) + '</b> 圈（再画也不重合）<br>';
+      h += '<span class="verdict no">✓ 永不闭合 → 稠密铺满，仿星器要的</span>';
+    }
+    h += '<br><span class="note">肉眼阈值 ' + fmt(visTol, 3) +
+      ' 圈：错开小于它，看着就像"重合"</span>';
+    setReadout(h);
+  }
+
+  /* HUD 读数的唯一出口：写正文 + 补回「圆环位置」那一行。
+     ⚠️ 凡是要重写读数的分支都得走这里，否则整块 innerHTML 会把 glPanInfo 冲掉。 */
+  function setReadout(html) {
+    var el = $('glReadoutBody');
+    if (!el) return;
+    el.innerHTML = html + '<br><span class="note" id="glPanInfo"></span>';
+    panInfo();
+  }
+
+  /* HUD 里「圆环位置」那一行：只改这一个 span，Shift 拖动时才不会整块重排。 */
+  function panInfo() {
+    var e = $('glPanInfo');
+    if (!e) return;
+    var p = root.position;
+    var m = Math.sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
+    e.textContent = m < 0.01
+      ? 'Shift+拖动 可搬动圆环'
+      : '圆环已移开 ' + fmt(m, 2) + ' · Shift+拖动 继续 · 双击归位';
+  }
+
+  /* ---------- 相机轨道控制（自写，避免额外依赖） ---------- */
+  var cam = { theta: 0.95, phi: 1.02, dist: 3.5 };
+  var camFit = 1;
+  function updateCamera() {
+    var sp = Math.sin(cam.phi), cp = Math.cos(cam.phi);
+    var D = cam.dist * camFit;
+    camera.position.set(
+      D * sp * Math.cos(cam.theta),
+      D * cp,
+      D * sp * Math.sin(cam.theta)
+    );
+    camera.lookAt(0, 0, 0);
+  }
+  updateCamera();
+
+  var dragging = false, dragPan = false, px = 0, py = 0;
+  var el = renderer.domElement;
+  el.style.cursor = 'grab';
+
+  /* ---------- Shift + 拖动 = 搬动圆环（移动 root，相机不动） ----------
+     两种模式共用一个拖动通道，靠 Shift 区分：
+       无 Shift  → 转相机（绕原点看）
+       有 Shift  → 抓起圆环、在垂直于视线的平面里平移
+     root.position 的父级是 scene，所以直接用相机的世界右/上向量即可，无需坐标变换。 */
+  var PAN_LIMIT = 2.2;     /* x/z 最大偏移 —— 再远就整环出画了 */
+  var PAN_Y_MIN = -0.42;   /* 别沉到地面参考网格下面去 */
+  var _panR = new THREE.Vector3(), _panU = new THREE.Vector3(), _panF = new THREE.Vector3();
+
+  /* 屏幕像素位移 → 世界位移。
+     透视相机在距原点 D 处的可见高度 = 2·D·tan(fov/2)，除以视口像素高 = 每像素多少世界单位。
+     相机恒 lookAt 原点、dist 就是到原点的距离，故物体中心（原点）所在深度处的换算刚好等于
+     "抓在手里"的手感：鼠标移 100 px，圆环在画面上也移 100 px。 */
+  function panDelta(dx, dy, viewH) {
+    var D = cam.dist * camFit;
+    var wpp = (2 * Math.tan(camera.fov * PI / 360) * D) / Math.max(viewH || 500, 1);
+    camera.updateMatrixWorld();
+    camera.matrixWorld.extractBasis(_panR, _panU, _panF);
+    /* 屏幕坐标 y 向下，相机 up 向上 ⇒ dy 取负号 */
+    return {
+      x: (_panR.x * dx - _panU.x * dy) * wpp,
+      y: (_panR.y * dx - _panU.y * dy) * wpp,
+      z: (_panR.z * dx - _panU.z * dy) * wpp
+    };
+  }
+
+  function panClamp(p, d) {
+    p.x = clamp(p.x + d.x, -PAN_LIMIT, PAN_LIMIT);
+    p.y = clamp(p.y + d.y, PAN_Y_MIN, PAN_LIMIT);
+    p.z = clamp(p.z + d.z, -PAN_LIMIT, PAN_LIMIT);
+    return p;
+  }
+  function panApply(dx, dy) {
+    panClamp(root.position, panDelta(dx, dy, el.clientHeight));
+    panInfo();
+  }
+
+  function ringHome() { root.position.set(0, 0, 0); panInfo(); }
+
+  function down(x, y, pan) {
+    dragging = true; dragPan = !!pan; px = x; py = y;
+    el.style.cursor = dragPan ? 'move' : 'grabbing';
+  }
+  function move(x, y, pan) {
+    if (!dragging) return;
+    var wantPan = !!pan;
+    /* 拖到一半按下/松开 Shift ⇒ 就地换模式；必须重置基准点，否则会跳变一大截 */
+    if (wantPan !== dragPan) {
+      dragPan = wantPan; px = x; py = y;
+      el.style.cursor = dragPan ? 'move' : 'grabbing';
+      return;
+    }
+    if (dragPan) {
+      panApply(x - px, y - py);
+    } else {
+      cam.theta -= (x - px) * 0.0085;
+      cam.phi = clamp(cam.phi - (y - py) * 0.0085, 0.14, PI - 0.14);
+      updateCamera();
+    }
+    px = x; py = y;
+  }
+  function up() { dragging = false; dragPan = false; el.style.cursor = 'grab'; }
+
+  el.addEventListener('mousedown', function (e) {
+    e.preventDefault();                       /* 防拖拽时选中文字 */
+    down(e.clientX, e.clientY, e.shiftKey);
+  });
+  window.addEventListener('mousemove', function (e) { move(e.clientX, e.clientY, e.shiftKey); });
+  window.addEventListener('mouseup', up);
+  /* 故意不监听 mouseleave：mousemove/up 都挂在 window 上，拖出画布也要继续跟手。
+     只兜一个"窗口失焦"（切到别的程序时鼠标抬起收不到，会一直粘着）。 */
+  window.addEventListener('blur', up);
+  el.addEventListener('dblclick', function () { ringHome(); });
+  el.addEventListener('wheel', function (e) {
+    e.preventDefault();
+    cam.dist = clamp(cam.dist * Math.exp(e.deltaY * 0.0012), 1.9, 9.5);
+    updateCamera();
+  }, { passive: false });
+
+  el.addEventListener('touchstart', function (e) {
+    if (e.touches.length === 1) down(e.touches[0].clientX, e.touches[0].clientY);
+    else if (e.touches.length === 2) {
+      dragging = false;
+      pinchPrev = Math.hypot(e.touches[0].clientX - e.touches[1].clientX,
+                             e.touches[0].clientY - e.touches[1].clientY);
+    }
+  }, { passive: true });
+  el.addEventListener('touchmove', function (e) {
+    if (e.touches.length === 1) move(e.touches[0].clientX, e.touches[0].clientY);
+    else if (e.touches.length === 2 && pinchPrev > 0) {
+      var d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX,
+                         e.touches[0].clientY - e.touches[1].clientY);
+      cam.dist = clamp(cam.dist * pinchPrev / d, 1.9, 9.5);
+      pinchPrev = d; updateCamera();
+    }
+    e.preventDefault();
+  }, { passive: false });
+  el.addEventListener('touchend', function () { up(); pinchPrev = 0; });
+  var pinchPrev = 0;
+
+  /* ---------- 尺寸 ---------- */
+  function resize() {
+    var w = host.clientWidth || 600;
+    var h = host.clientHeight || 500;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    /* 窄屏时整体拉远，保证环面完整（不覆盖用户手动缩放） */
+    camFit = clamp(1.55 / Math.max(camera.aspect, 0.5), 1.0, 2.2);
+    renderer.setSize(w, h, false);
+    updateCamera();
+  }
+  window.addEventListener('resize', resize);
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(host);
+
+  /* ---------- 主循环 ---------- */
+  var clock = new THREE.Clock();
+  function loop() {
+    requestAnimationFrame(loop);
+    var dt = clock.getDelta();
+    var t = clock.elapsedTime;
+
+    if (G.spin && !dragging) {
+      cam.theta += dt * 0.16;
+      updateCamera();
+    }
+
+    shell.visible = G.shell;
+    nest.visible = G.nest;
+    axisMesh.visible = G.axis;
+
+    if (G.flow) {
+      for (var i = 0; i < flowCurves.length; i++) {
+        var fc = flowCurves[i];
+        fc.phase = (fc.phase + dt * 0.055) % 1;
+        var p = fc.curve.getPointAt(fc.phase);
+        fc.spr.position.copy(p);
+        var sc = 0.085 + 0.02 * Math.sin(t * 4 + i);
+        fc.spr.scale.set(sc, sc, sc);
+      }
+    }
+
+    renderer.render(scene, camera);
+  }
+
+  resize();
+  rebuild();
+  loop();
+
+  return {
+    setIota: function (v) { G.iota = v; updateReadout(); rebuild(); },
+    setTurns: function (v) { G.turns = v; rebuild(); },
+    setLines: function (v) { G.nLines = v; rebuild(); },
+    setR0: function (v) { G.r0 = v; rebuild(); },
+    setFlag: function (k, v) { G[k] = v; if (k === 'flow') rebuild(); },
+    /* 圆环搬动 / 读数出口，供 §1 面板上的按钮调用 */
+    ringHome: ringHome,
+    setReadout: setReadout,
+    G: G
+  };
+}
+
+/* ==========================================================================
+   §2  庞加莱截面
+   ========================================================================== */
+var PC = {
+  mode: 'const', iota: 2.0, shear: 0.60, N: 600, layers: 3, eps: 0.004, m: 4
+};
+var PC_RMAX = WALL * 0.9;
+var PC_COLORS = ['#d64545', '#e08a1e', '#1f9a63', '#2f5bd0', '#7a4fd0'];
+
+function pcIotaOf(r) {
+  if (PC.mode === 'const') return PC.iota;
+  var s = r / WALL;
+  return PC.iota + PC.shear * s * s;
+}
+
+function pcTrace(r0, N, eps, m, th0) {
+  var pts = [], r = r0, th = th0 || 0;
+  for (var k = 0; k < N; k++) {
+    if (eps > 0) r = r + eps * Math.sin(m * th);
+    r = clamp(r, 0.004, 0.28);
+    th = th + TAU * pcIotaOf(r);
+    pts.push([r * Math.cos(th), r * Math.sin(th), r, th]);
+  }
+  return pts;
+}
+
+/* 三个统计量：落点数 / 去重后不同位置数 / 笛卡尔散布 */
+function pcStats(pts) {
+  var n = pts.length;
+  if (n === 0) return { n: 0, uniq: 0, spread: 0 };
+  var sx = 0, sy = 0, i;
+  for (i = 0; i < n; i++) { sx += pts[i][0]; sy += pts[i][1]; }
+  var mx = sx / n, my = sy / n;
+  var spread = 0;
+  for (i = 0; i < n; i++) spread += Math.hypot(pts[i][0] - mx, pts[i][1] - my);
+  spread /= n;
+
+  /* 0.0015 网格量化去重（只有有理 ι 才会真正塌缩到极少数位置） */
+  var seen = Object.create(null), uniq = 0;
+  for (i = 0; i < n; i++) {
+    var key = Math.round(pts[i][0] / 0.0015) + '|' + Math.round(pts[i][1] / 0.0015);
+    if (!seen[key]) { seen[key] = 1; uniq++; }
+  }
+  return { n: n, uniq: uniq, spread: spread };
+}
+
+function drawPoincare(cv, withPerturb) {
+  var dpr = Math.min(2, window.devicePixelRatio || 1);
+  var rect = cv.getBoundingClientRect();
+  var W = Math.max(200, rect.width), H = Math.max(200, rect.height);
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  var g = cv.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, W, H);
+
+  var pad = 26;
+  var Sc = (Math.min(W, H) - 2 * pad) / (2 * WALL * 1.05);
+  var cx = W / 2, cy = H / 2;
+  function TX(x) { return cx + x * Sc; }
+  function TY(y) { return cy - y * Sc; }
+
+  /* 壁 */
+  g.save();
+  g.setLineDash([5, 4]);
+  g.strokeStyle = '#b9c4d6'; g.lineWidth = 1.2;
+  g.beginPath(); g.arc(cx, cy, WALL * Sc, 0, TAU); g.stroke();
+  g.restore();
+
+  /* 十字轴 */
+  g.strokeStyle = '#e9eef6'; g.lineWidth = 1;
+  g.beginPath();
+  g.moveTo(pad, cy); g.lineTo(W - pad, cy);
+  g.moveTo(cx, pad); g.lineTo(cx, H - pad);
+  g.stroke();
+
+  var eps = withPerturb ? PC.eps : 0;
+  var n = Math.max(1, PC.layers);
+  var rMin = 0.055, rMax = 0.255;
+  var rows = [];
+
+  for (var i = 0; i < n; i++) {
+    var r0 = n === 1 ? 0.17 : (rMin + (rMax - rMin) * i / (n - 1));
+    /* 标称磁面虚线圆 */
+    if (n > 1) {
+      g.save();
+      g.setLineDash([2, 4]);
+      g.strokeStyle = 'rgba(150,165,190,.4)'; g.lineWidth = 1;
+      g.beginPath(); g.arc(cx, cy, r0 * Sc, 0, TAU); g.stroke();
+      g.restore();
+    }
+    /* ⚠️ 各层给不同初相：若 th0 恒为 0，无剪切场里 sin(m·0) = 0，
+       扰动会退化成"完全不动"，掩盖真实行为。 */
+    var pts = pcTrace(r0, PC.N, eps, PC.m, 0.31 + 0.53 * i);
+    var st = pcStats(pts);
+    rows.push({ r0: r0, pts: pts, st: st, color: PC_COLORS[i % 5] });
+
+    /* 画点 */
+    var dotR = PC.N > 1500 ? 1.1 : (PC.N > 800 ? 1.4 : 1.8);
+    g.fillStyle = rows[i].color;
+    g.globalAlpha = 0.78;
+    for (var k = 0; k < pts.length; k++) {
+      g.beginPath();
+      g.arc(TX(pts[k][0]), TY(pts[k][1]), dotR, 0, TAU);
+      g.fill();
+    }
+    g.globalAlpha = 1;
+  }
+
+  /* 判定：以"不重复落点数"为准。
+     ⚠️ 两个坑：
+       1) 不能用"离质心平均距离"—— ι = 5/2 只有 2 个落点，其中点恰在圆心，
+          平均距离会等于 r₀，被误判成"铺满"；
+       2) 也不能直接比 uniq 的绝对值 —— 小半径圆上可区分的格子本来就少，
+          点必然重合。要先按几何上限 cap = 2πr₀/cell 归一化。
+     有理 ι = m/n ⇒ 落点塌缩到 n 个位置；无理 ι ⇒ 落点几乎铺满。 */
+  var closed = true, maxUniq = 0, minRatio = 1;
+  for (var i2 = 0; i2 < rows.length; i2++) {
+    var rw = rows[i2];
+    var cap = Math.max(1, Math.min(rw.st.n, TAU * rw.r0 / 0.0015));
+    var ratio = rw.st.uniq / cap;
+    if (ratio < minRatio) minRatio = ratio;
+    if (rw.st.uniq > maxUniq) maxUniq = rw.st.uniq;
+    if (rw.st.uniq > Math.max(24, cap * 0.35)) closed = false;
+  }
+
+  /* 小字标注 */
+  g.font = '12px "PingFang SC","Microsoft YaHei",sans-serif';
+  g.fillStyle = '#7c869c';
+  g.fillText('r = ' + WALL.toFixed(2) + '（壁）', 8, 15);
+  g.fillText('φ = 0 截面', 8, H - 9);
+
+  return { rows: rows, closed: closed, maxUniq: maxUniq, minRatio: minRatio };
+}
+
+function pcReport(htmlId, res) {
+  var el = $(htmlId);
+  var lines = [];
+  for (var i = 0; i < res.rows.length; i++) {
+    var r = res.rows[i];
+    lines.push('r₀ = ' + fmt(r.r0, 3) +
+      ' · 穿越 ' + r.st.n + ' 次 · 不重复落点 <b>' + r.st.uniq + '</b>' +
+      ' · 散布 <b>' + fmt(r.st.spread, 4) + '</b>');
+  }
+  var verdict = res.closed
+    ? '<span class="tag rd">闭合</span> 最多只有 <b>' + res.maxUniq +
+      '</b> 个不重复落点 → 有理面 → 共振 / 磁岛风险'
+    : '<span class="tag gr">稠密铺满</span> 落点几乎不重合（最多 ' + res.maxUniq +
+      ' 个）→ 离低阶共振最远';
+  el.innerHTML = lines.join('<br>') + '<br>' + verdict;
+}
+
+function pcRedraw() {
+  var a = drawPoincare($('pcClean'), false);
+  var b = drawPoincare($('pcPerturb'), true);
+  pcReport('pcCleanStats', a);
+  pcReport('pcPerturbStats', b);
+}
+
+/* ==========================================================================
+   §3  真实装置有理面尺
+   ========================================================================== */
+var DEVICES = [
+  { name: 'HSX', sub: '真实运行装置 · 威斯康星大学', lo: 1.0351, hi: 1.0986,
+    note: '把整条 ι 剖面抬到 1 以上，直接绕开 1/1；跨度 0.064，有剪切' },
+  { name: 'precise QA', sub: '准轴对称优化构型', lo: 0.4158, hi: 0.4233,
+    note: '挤在 5/12 附近，但压窄跨度，只跨 2 个高阶面' },
+  { name: 'precise QH', sub: '准螺旋对称优化构型', lo: -1.2450, hi: -1.2416,
+    note: '跨度仅 0.0034，n ≤ 20 一个有理面都不跨——三者里最"纯净"' }
+];
+
+function rationalsIn(lo, hi, maxDen) {
+  var a = Math.min(lo, hi), b = Math.max(lo, hi);
+  var out = [];
+  for (var n = 1; n <= maxDen; n++) {
+    var m0 = Math.floor(a * n) - 1, m1 = Math.ceil(b * n) + 1;
+    for (var m = m0; m <= m1; m++) {
+      if (m === 0) continue;
+      if (gcd(Math.abs(m), n) !== 1) continue;
+      var q = m / n;
+      if (q > a && q < b) out.push({ m: m, n: n, q: q });
+    }
+  }
+  out.sort(function (p, q) { return p.q - q.q; });
+  return out;
+}
+
+function drawRuler() {
+  var cv = $('ratCanvas');
+  var dpr = Math.min(2, window.devicePixelRatio || 1);
+  var rect = cv.getBoundingClientRect();
+  var W = Math.max(320, rect.width), H = 290;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  cv.style.height = H + 'px';
+  var g = cv.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, W, H);
+
+  var maxDen = parseInt($('rgMaxDen').value, 10);
+  var labelW = W < 560 ? 74 : 104;
+  var x0 = labelW + 10, x1 = W - 96;
+  if (x1 < x0 + 60) x1 = x0 + 60;
+
+  var rowH = 88;
+  var summaryAll = [];
+
+  for (var di = 0; di < DEVICES.length; di++) {
+    var d = DEVICES[di];
+    var top = di * rowH + 14;
+    var lo = Math.min(d.lo, d.hi), hi = Math.max(d.lo, d.hi);
+    var padV = Math.max((hi - lo) * 0.42, 0.006);
+    var vLo = lo - padV, vHi = hi + padV;
+    var span = vHi - vLo;
+
+    function XV(v) { return x0 + (v - vLo) / span * (x1 - x0); }
+
+    var rl = rationalsIn(vLo, vHi, maxDen);
+    var low = rl.filter(function (h) { return h.n <= 6; }).length;
+    var mid = rl.filter(function (h) { return h.n > 6 && h.n <= 12; }).length;
+    summaryAll.push({ d: d, low: low, mid: mid, total: rl.length });
+
+    /* 行标题 */
+    g.font = '600 13px "PingFang SC","Microsoft YaHei",sans-serif';
+    g.fillStyle = '#1a2130';
+    g.fillText(d.name, 8, top + 26);
+    g.font = '11px "PingFang SC","Microsoft YaHei",sans-serif';
+    g.fillStyle = '#7c869c';
+    g.fillText(d.sub, 8, top + 43);
+
+    /* 基线 */
+    var yBase = top + 62;
+    g.strokeStyle = '#dfe5ee'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(x0, yBase); g.lineTo(x1, yBase); g.stroke();
+
+    /* 有理数刻度 */
+    for (var i = 0; i < rl.length; i++) {
+      var h = rl[i], x = XV(h.q);
+      var col = h.n <= 6 ? '#d64545' : (h.n <= 12 ? '#c9821a' : '#b9c4d6');
+      var hgt = h.n <= 6 ? 26 : (h.n <= 12 ? 17 : 10);
+      g.strokeStyle = col;
+      g.lineWidth = h.n <= 6 ? 2 : 1.2;
+      g.beginPath(); g.moveTo(x, yBase); g.lineTo(x, yBase - hgt); g.stroke();
+      if (h.n <= 6 || (h.n <= 12 && rl.length <= 7)) {
+        g.font = '10px Consolas,monospace';
+        g.fillStyle = col;
+        g.textAlign = 'center';
+        g.fillText(h.m + '/' + h.n, x, yBase - hgt - 4);
+        g.textAlign = 'left';
+      }
+    }
+
+    /* ι 剖面条 */
+    var barY = yBase + 7, barH = 13;
+    var ga = g.createLinearGradient(XV(lo), 0, XV(hi), 0);
+    ga.addColorStop(0, '#2f5bd0'); ga.addColorStop(1, '#7a4fd0');
+    g.fillStyle = ga;
+    var bw = Math.max(2, XV(hi) - XV(lo));
+    var r = 5, byy = barY, bxx = XV(lo), bww = bw, bhh = barH;
+    g.beginPath();
+    g.moveTo(bxx + r, byy);
+    g.lineTo(bxx + bww - r, byy);
+    g.quadraticCurveTo(bxx + bww, byy, bxx + bww, byy + r);
+    g.lineTo(bxx + bww, byy + bhh - r);
+    g.quadraticCurveTo(bxx + bww, byy + bhh, bxx + bww - r, byy + bhh);
+    g.lineTo(bxx + r, byy + bhh);
+    g.quadraticCurveTo(bxx, byy + bhh, bxx, byy + bhh - r);
+    g.lineTo(bxx, byy + r);
+    g.quadraticCurveTo(bxx, byy, bxx + r, byy);
+    g.closePath();
+    g.fill();
+
+    /* 端点数值 */
+    g.font = '11px Consolas,monospace';
+    g.fillStyle = '#48526b';
+    var lab = (d.lo < 0 ? '' : d.lo.toFixed(4)) + ' → ' + d.hi.toFixed(4) +
+              '  （跨度 ' + (d.hi - d.lo >= 0 ? '+' : '') + (d.hi - d.lo).toFixed(4) + '）';
+    g.fillText(lab, XV(lo), barY + barH + 14);
+
+    /* 右侧计数 */
+    g.font = '600 12px "PingFang SC","Microsoft YaHei",sans-serif';
+    g.textAlign = 'right';
+    g.fillStyle = low === 0 ? '#1f9a63' : '#d64545';
+    g.fillText('n≤6：' + low + ' 个', W - 10, top + 26);
+    g.font = '11px "PingFang SC","Microsoft YaHei",sans-serif';
+    g.fillStyle = '#7c869c';
+    g.fillText('n≤' + maxDen + '：' + rl.length + ' 个', W - 10, top + 43);
+    g.textAlign = 'left';
+  }
+
+  /* 汇总 */
+  var s = '';
+  for (var j = 0; j < summaryAll.length; j++) {
+    var x = summaryAll[j];
+    s += '<b>' + esc(x.d.name) + '</b>：跨过 ' + x.total + ' 个有理面（n ≤ ' + maxDen + '），' +
+      '其中低阶 n≤6 <b style="color:' + (x.low === 0 ? '#1f9a63' : '#d64545') + '">' + x.low + ' 个</b> · ' +
+      '<span class="note">' + esc(x.d.note) + '</span><br>';
+  }
+  $('ratSummary').innerHTML = s;
+}
+
+/* ==========================================================================
+   §4  绑定交互
+   ========================================================================== */
+function bindUI(api) {
+  var i;
+
+  /* --- 3D --- */
+  if (api) {
+    var rgIota = $('rgIota');
+    rgIota.addEventListener('input', function () {
+      $('lbIota').textContent = fmt(this.value, 2);
+      markChips(this.value, elIotaChips);
+      api.setIota(parseFloat(this.value));
+    });
+
+    $('rgTurns').addEventListener('input', function () {
+      $('lbTurns').textContent = this.value;
+      api.setTurns(parseInt(this.value, 10));
+    });
+    $('rgLines').addEventListener('input', function () {
+      $('lbLines').textContent = this.value;
+      api.setLines(parseInt(this.value, 10));
+    });
+    $('rgR0').addEventListener('input', function () {
+      $('lbR0').textContent = fmt(this.value, 2);
+      api.setR0(parseFloat(this.value));
+    });
+    $('tgShell').addEventListener('change', function () { api.setFlag('shell', this.checked); });
+    $('tgNest').addEventListener('change', function () { api.setFlag('nest', this.checked); });
+    $('tgAxis').addEventListener('change', function () { api.setFlag('axis', this.checked); });
+    $('tgFlow').addEventListener('change', function () { api.setFlag('flow', this.checked); });
+    $('tgSpin').addEventListener('change', function () { api.setFlag('spin', this.checked); });
+
+    var elIotaChips = [].slice.call(document.querySelectorAll('.chip[data-iota]'));
+    elIotaChips.forEach(function (c) {
+      c.addEventListener('click', function () {
+        var v = parseFloat(c.getAttribute('data-iota'));
+        rgIota.value = v; $('lbIota').textContent = fmt(v, 2);
+        markChips(v, elIotaChips);
+        api.setIota(v);
+      });
+    });
+    markChips(2, elIotaChips);
+
+    /* ⌖ 跳到最短闭合圈数：ι = m/n（最简）⇒ 设 T = n（n 不足滑杆下限则取最小可行整数倍） */
+    $('btnCloseTurns').addEventListener('click', function () {
+      var r = bestRational(G.iota, 12, 1e-6);
+      if (!r) {
+        api.setReadout('<b>ι ' + fmt(G.iota, 4) +
+          '</b> 非低阶有理 ⇒ 本来就不闭合，没有可跳的「闭合圈数」<br>' +
+          '<span class="verdict no">✓ 稠密铺满，正是仿星器要的</span>');
+        return;
+      }
+      var q = r.n, T = q;
+      while (T < 2) T += q;                 /* 滑杆下限 = 2 */
+      if (T > 10) {                          /* 超出滑杆上限 = 10 */
+        api.setReadout('<b>ι ' + fracLabel(G.iota) + '</b> ⇒ 要 <b>' + q +
+          '</b> 圈才闭合，超出滑杆上限 10<br>' +
+          '<span class="verdict ok">⚠ 仍是有理面（分母 ' + q + '，磁岛极小）</span>');
+        return;
+      }
+      $('rgTurns').value = T;
+      $('lbTurns').textContent = T;
+      api.setTurns(T);
+    });
+
+    /* ⌖ 圆环归位：把 Shift 拖动搬开的圆环放回原点（等同双击画布） */
+    $('btnRingHome').addEventListener('click', function () { api.ringHome(); });
+  }
+
+  function markChips(val, chips) {
+    var v = parseFloat(val);
+    chips.forEach(function (c) {
+      var cv = parseFloat(c.getAttribute('data-iota') || c.getAttribute('data-pciota'));
+      c.classList.toggle('on', Math.abs(cv - v) < 1e-6);
+    });
+  }
+
+  /* --- 庞加莱 --- */
+  var pcChipsIota = [].slice.call(document.querySelectorAll('.chip[data-pciota]'));
+  var pcChipsMode = [].slice.call(document.querySelectorAll('.chip[data-mode]'));
+
+  function setPcMode(m) {
+    PC.mode = m;
+    $('lbMode').textContent = (m === 'const' ? '常值' : '带剪切');
+    pcChipsMode.forEach(function (c) { c.classList.toggle('on', c.getAttribute('data-mode') === m); });
+    pcRedraw();
+  }
+  pcChipsMode.forEach(function (c) {
+    c.addEventListener('click', function () { setPcMode(c.getAttribute('data-mode')); });
+  });
+
+  $('rgPcIota').addEventListener('input', function () {
+    PC.iota = parseFloat(this.value);
+    $('lbPcIota').textContent = fmt(PC.iota, 2);
+    pcChipsIota.forEach(function (c) {
+      c.classList.toggle('on', Math.abs(parseFloat(c.getAttribute('data-pciota')) - PC.iota) < 1e-6);
+    });
+    pcRedraw();
+  });
+  pcChipsIota.forEach(function (c) {
+    c.addEventListener('click', function () {
+      var v = parseFloat(c.getAttribute('data-pciota'));
+      PC.iota = v; $('rgPcIota').value = v; $('lbPcIota').textContent = fmt(v, 2);
+      pcChipsIota.forEach(function (x) { x.classList.remove('on'); });
+      c.classList.add('on');
+      pcRedraw();
+    });
+  });
+
+  $('rgShear').addEventListener('input', function () {
+    PC.shear = parseFloat(this.value);
+    $('lbShear').textContent = fmt(PC.shear, 2);
+    pcRedraw();
+  });
+  $('rgN').addEventListener('input', function () {
+    PC.N = parseInt(this.value, 10);
+    $('lbN').textContent = PC.N;
+    pcRedraw();
+  });
+  $('rgLayers').addEventListener('input', function () {
+    PC.layers = parseInt(this.value, 10);
+    $('lbLayers').textContent = PC.layers;
+    pcRedraw();
+  });
+  $('rgEps').addEventListener('input', function () {
+    PC.eps = parseFloat(this.value);
+    $('lbEps').textContent = PC.eps.toFixed(4);
+    pcRedraw();
+  });
+  $('rgM').addEventListener('input', function () {
+    PC.m = parseInt(this.value, 10);
+    $('lbM').textContent = PC.m;
+    pcRedraw();
+  });
+
+  /* --- 预设按钮 --- */
+  function syncPcUI() {
+    $('rgPcIota').value = PC.iota;
+    $('lbPcIota').textContent = fmt(PC.iota, 2);
+    $('rgShear').value = PC.shear;
+    $('lbShear').textContent = fmt(PC.shear, 2);
+    $('rgEps').value = PC.eps;
+    $('lbEps').textContent = PC.eps.toFixed(4);
+    $('rgM').value = PC.m;
+    $('lbM').textContent = PC.m;
+    $('lbMode').textContent = (PC.mode === 'const' ? '常值' : '带剪切');
+    pcChipsMode.forEach(function (c) {
+      c.classList.toggle('on', c.getAttribute('data-mode') === PC.mode);
+    });
+    pcChipsIota.forEach(function (c) {
+      c.classList.toggle('on',
+        Math.abs(parseFloat(c.getAttribute('data-pciota')) - PC.iota) < 1e-6);
+    });
+  }
+
+  $('btnAlign').addEventListener('click', function () {
+    if (Math.abs(PC.shear) < 0.05) PC.shear = 0.6;
+    PC.mode = 'shear';
+    var rT = 0.255;                                   /* 最外层磁面 */
+    var s2 = (rT / WALL) * (rT / WALL);
+    var cur = PC.iota + PC.shear * s2;
+    var j = Math.max(1, Math.round(cur * PC.m));      /* 最近的 j/m */
+    var i0 = clamp(j / PC.m - PC.shear * s2, 0.2, 3);
+    PC.iota = Math.round(i0 * 100) / 100;
+    syncPcUI();
+    pcRedraw();
+  });
+
+  $('btnReset').addEventListener('click', function () {
+    PC.mode = 'const'; PC.iota = 2; PC.shear = 0.6;
+    PC.N = 600; PC.layers = 3; PC.eps = 0.004; PC.m = 4;
+    $('rgN').value = 600; $('lbN').textContent = 600;
+    $('rgLayers').value = 3; $('lbLayers').textContent = 3;
+    syncPcUI();
+    pcRedraw();
+  });
+
+  /* --- 有理面尺 --- */
+  $('rgMaxDen').addEventListener('input', function () {
+    $('lbMaxDen').textContent = this.value;
+    drawRuler();
+  });
+
+  window.addEventListener('resize', function () {
+    clearTimeout(window.__rzT);
+    window.__rzT = setTimeout(function () { pcRedraw(); drawRuler(); }, 160);
+  });
+}
+
+/* ==========================================================================
+   HUD 浮窗「可收起」按钮（SOUL 铁律 184）
+   凡带 .hud 的浮窗／读数板，右上角自动注入一个收起按钮（− / ＋）；
+   收起后只留 data-hud-title 标题条，状态按元素 id 存 localStorage。
+   元素内若没有显式 .hud-body，自动把原有子节点包进一层（不动模板结构）。
+   ========================================================================== */
+function initHudToggles() {
+  var boxes = [].slice.call(document.querySelectorAll('.hud'));
+
+  boxes.forEach(function (box) {
+    if (box.querySelector('.hud-toggle')) return;        /* 幂等：别重复注入 */
+
+    var body = box.querySelector(':scope > .hud-body');
+    if (!body) {                                         /* 没显式包 body 就自动包一层 */
+      body = document.createElement('div');
+      body.className = 'hud-body';
+      while (box.firstChild) body.appendChild(box.firstChild);
+      box.appendChild(body);
+    }
+
+    var key = 'hud.collapsed.' + (box.id || 'box' + boxes.indexOf(box));
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'hud-toggle';
+
+    function sync() {
+      var c = box.classList.contains('collapsed');
+      btn.textContent = c ? '+' : '−';                   /* 收起态显示 ＋，展开态显示 − */
+      btn.title = c ? '展开' : '收起';
+      btn.setAttribute('aria-expanded', c ? 'false' : 'true');
+      btn.setAttribute('aria-label', btn.title + '（' +
+        (box.getAttribute('data-hud-title') || '浮窗') + '）');
+    }
+
+    try { if (localStorage.getItem(key) === '1') box.classList.add('collapsed'); } catch (e) {}
+    sync();
+
+    btn.addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      box.classList.toggle('collapsed');
+      try { localStorage.setItem(key, box.classList.contains('collapsed') ? '1' : '0'); } catch (e2) {}
+      sync();
+    });
+
+    box.appendChild(btn);                                /* 绝对定位在右上角，DOM 顺序无关 */
+  });
+}
+
+/* ==========================================================================
+   boot
+   ========================================================================== */
+function boot() {
+  initHudToggles();
+  var api = null;
+  try { api = start3D(); }
+  catch (e) {
+    var h = $('gl3d');
+    if (h) h.innerHTML = '<div style="padding:40px;color:#7c869c;text-align:center">3D 初始化失败：' + esc(e.message) + '</div>';
+  }
+  bindUI(api);
+  pcRedraw();
+  drawRuler();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', boot);
+} else {
+  boot();
+}
+
+})();
+</script>
+<!--FXCTL:JS--><script id="fxctl-js">
+/* ============================================================
+   PKS · 通用「调参浮窗」 (float_ctl.js)
+   作用：把页面里成块的参数控件（.ctl / .ctrl / .controls / .calc /
+        .panel[纯控件] / [data-param-panel]）收进右下角一个可拖动浮窗。
+   原则：
+     1. 只搬控件块本身，**不复制、不重建** ⇒ 原页面绑定在元素上的
+        事件监听、id、input 值全部照常工作。
+     2. 搬不走的、散的（每张卡片各一组、且组数很多）→ 整页放弃，
+        保持原样，并在 console 里说明原因，绝不半搬半留。
+     3. 位置写入 localStorage；双击标题栏回默认位；⇱/— 收起。
+   ============================================================ */
+(function () {
+  if (window.__FXCTL) return;
+
+  var SEL = '.ctl,.ctrl,.controls,.calc,.param-panel,.grp,.htgroup,[data-param-panel]';
+  var MAX_GROUPS = 16;    // 超过这个组数：判定为"散在每张卡片里"，整页跳过
+  var MIN_SHARE = 0.85;   // 收进去的滑块至少要占全页 85%，否则跳过（不做半搬半留）
+  var KEY = 'fxp:' + location.pathname;
+
+  function txt(el, n) {
+    var s = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    if (n && s.length > n) s = s.slice(0, n - 1) + '…';
+    return s;
+  }
+  function inChrome(el) {
+    return !!(el.closest && el.closest('.topnav,header,nav,.topbar,.fxp,#fxp'));
+  }
+
+  /* ---------- 1. 找参数面板 ---------- */
+  // 页面自己已经有一个"贴右边的浮动参数窗"？有就不再叠第二个
+  function hasOwnDock() {
+    var els = [].slice.call(document.querySelectorAll('body > *'));
+    // 也看一两层深，很多页把 pwin 套在 wrapper 里
+    document.querySelectorAll('body div, body section, body aside').forEach(function (x) {
+      if (els.length < 400) els.push(x);
+    });
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      if (el.id === 'fxp') continue;
+      if (getComputedStyle(el).position !== 'fixed') continue;
+      var r = el.getBoundingClientRect();
+      if (r.width > 240 && r.width < 620 && r.height > 240 &&
+          (innerWidth - r.right) < 70 && r.top < 220) return true;
+    }
+    return false;
+  }
+
+  function detect() {
+    var all = [].slice.call(document.querySelectorAll('input[type=range]'));
+    if (hasOwnDock()) {
+      return { panels: [], total: all.length, inline: 0, moved: 0, ok: false, own: true };
+    }
+    // 已经在自己的浮窗里（祖先 fixed）的滑块：不算在"待浮"里，也不搬
+    function inFixed(el) {
+      var a = el, d = 0;
+      while (a && d++ < 5) {
+        if (getComputedStyle(a).position === 'fixed') return true;
+        a = a.parentElement;
+      }
+      return false;
+    }
+    var inline = all.filter(function (i) { return !inFixed(i); });   // 仍躺在正文里的
+    var cands = [].slice.call(document.querySelectorAll(SEL)).filter(function (el) {
+      if (inChrome(el)) return false;
+      if (!el.querySelector('input[type=range]')) return false;
+      if (inFixed(el)) return false;                                 // 已在浮窗内
+      var hasCanvas = !!el.querySelector('canvas,svg,video,img');
+      var cls = el.className || '';
+      var isParamCol = /(^|\s)(ctl|ctrl|controls|calc|param-panel)(\s|$)/.test(cls);
+      if (hasCanvas && !isParamCol) return false;
+      if (el.classList.contains('panel') || el.classList.contains('grp')) {
+        return el.querySelectorAll('input[type=range]').length >= 2;
+      }
+      return true;
+    });
+    // 去重 + 保留最外层
+    cands = cands.filter(function (el, i) {
+      if (cands.indexOf(el) !== i) return false;
+      return !cands.some(function (o) { return o !== el && o.contains(el); });
+    });
+    var moved = 0;
+    cands.forEach(function (el) { moved += el.querySelectorAll('input[type=range]').length; });
+    var ok = cands.length > 0 && cands.length <= MAX_GROUPS &&
+             (inline.length ? moved / inline.length >= MIN_SHARE : false);
+    return { panels: cands, total: all.length, inline: inline.length, moved: moved, ok: ok };
+  }
+
+  /* ---------- 2. 取分组标签（最近的标题 / .vt）---------- */
+  function labelFor(el) {
+    var gt = el.querySelector && el.querySelector('.gt');
+    if (gt) return txt(gt, 22);
+    var v0 = el.closest && el.closest('.viz');
+    if (v0) { var t0 = v0.querySelector('.vt'); if (t0) return txt(t0, 22); }
+    var node = el, hop = 0;
+    while (node && hop++ < 6) {
+      var prev = node.previousElementSibling;
+      while (prev) {
+        if (/^H[1-4]$/.test(prev.tagName)) return txt(prev, 22);
+        if (prev.querySelector) {
+          var h = prev.querySelector('h2,h3,h4,.vt');
+          if (h) return txt(h, 22);
+        }
+        prev = prev.previousElementSibling;
+      }
+      node = node.parentElement;
+    }
+    return '';
+  }
+
+  /* 搬走控件后，父级若是两列网格且变空 → 收成一列，避免右侧留一条空白 */
+  function collapseTrack(el) {
+    var par = el.parentElement;
+    if (!par) return;
+    var cs = getComputedStyle(par);
+    if (cs.display !== 'grid') return;
+    var tracks = (cs.gridTemplateColumns || '').split(/\s+/).filter(function (x) { return x && x !== 'none'; });
+    if (tracks.length !== 2) return;
+    if (par.lastElementChild !== el) return;
+    par.style.gridTemplateColumns = '1fr';
+  }
+
+  /* ---------- 3. 搭面板 ---------- */
+  function build(d) {
+    var old = document.getElementById('fxp');
+    if (old) old.remove();
+
+    var p = document.createElement('div');
+    p.id = 'fxp';
+    var counts = d.panels.map(function (el) {
+      return el.querySelectorAll('input[type=range]').length;
+    });
+    var nRange = counts.reduce(function (a, b) { return a + b; }, 0);
+
+    p.innerHTML =
+      '<div class="fxp-h" id="fxpH">' +
+        '<span class="fxp-grip">⠿</span>' +
+        '<span class="fxp-t">调参</span>' +
+        '<span class="fxp-c">' + d.panels.length + ' 组 · ' + nRange + ' 滑块</span>' +
+        '<button class="fxp-b" data-a="mini" title="收起 / 展开">—</button>' +
+        '<button class="fxp-b" data-a="reset" title="回到默认位置（也可双击标题栏）">⟲</button>' +
+      '</div><div class="fxp-bd"></div>';
+
+    var bd = p.querySelector('.fxp-bd');
+    var used = {}, noteDone = false;
+    d.panels.forEach(function (el, i) {
+      var lb = labelFor(el) || ('参数组 ' + (i + 1));
+      if (used[lb]) { used[lb]++; lb = lb.slice(0, 16) + ' (' + used[lb] + ')'; } else { used[lb] = 1; }
+      var g = document.createElement('div');
+      g.className = 'fxp-grp';
+      var gl = document.createElement('div');
+      gl.className = 'fxp-gl';
+      gl.innerHTML = '<b>' + lb.replace(/</g, '&lt;') + '</b><i>' + counts[i] + '</i>';
+      g.appendChild(gl);
+
+      if (!noteDone && el.parentNode) {
+        var note = document.createElement('p');
+        note.className = 'fxp-note';
+        note.textContent = '参数已收进右侧浮窗「调参」（拖标题栏可挪走 · 双击回位）';
+        el.parentNode.insertBefore(note, el);
+        noteDone = true;
+      }
+      collapseTrack(el);
+
+      g.appendChild(el);          // ← 原节点整体搬入，事件与 id 不变
+      bd.appendChild(g);
+    });
+
+    document.body.appendChild(p);
+    return p;
+  }
+
+  /* ---------- 4. 位置 / 拖动 / 收起 ---------- */
+  function clamp(p) {
+    var r = p.getBoundingClientRect(), W = innerWidth, H = innerHeight;
+    var x = Math.min(Math.max(r.left, -r.width + 90), W - 90);
+    var y = Math.min(Math.max(r.top, 0), H - 44);
+    p.style.left = x + 'px'; p.style.top = y + 'px';
+    p.style.right = 'auto'; p.style.bottom = 'auto';
+  }
+  function defPos(p) {
+    p.style.left = ''; p.style.right = ''; p.style.top = ''; p.style.bottom = '';
+  }
+  function save(p) {
+    try {
+      var st = p.classList.contains('fxp-min');
+      if (!p.style.left) { localStorage.removeItem(KEY); return; }
+      localStorage.setItem(KEY, JSON.stringify({
+        x: parseFloat(p.style.left), y: parseFloat(p.style.top), mini: st
+      }));
+    } catch (e) {}
+  }
+  function load(p) {
+    try {
+      var s = localStorage.getItem(KEY);
+      /* 首次访问一律收起：页面本身就有「参数」竖条，浮窗默认展开会把画布挤掉 322px；
+         收起的标题条写着「调参 · N 组 · M 滑块」，一眼能看见、点一下就展开，状态会被记住。 */
+      if (!s) { p.classList.add('fxp-min'); return; }
+      var o = JSON.parse(s);
+      if (o.mini) p.classList.add('fxp-min');
+      if (typeof o.x === 'number' && isFinite(o.x)) {
+        p.style.left = o.x + 'px'; p.style.top = o.y + 'px';
+        p.style.right = 'auto'; p.style.bottom = 'auto';
+        clamp(p);
+      }
+    } catch (e) {}
+  }
+
+  function wire(p) {
+    var h = p.querySelector('#fxpH');
+    var drag = null;
+
+    h.addEventListener('pointerdown', function (ev) {
+      if (ev.target.closest('button')) return;
+      if (innerWidth <= 880) return;                 // 窄屏走底部抽屉，不拖
+      var r = p.getBoundingClientRect();
+      drag = { dx: ev.clientX - r.left, dy: ev.clientY - r.top, moved: false };
+      p.style.left = r.left + 'px'; p.style.top = r.top + 'px';
+      p.style.right = 'auto'; p.style.bottom = 'auto';
+      h.classList.add('fxp-drag');
+      h.setPointerCapture && h.setPointerCapture(ev.pointerId);
+      ev.preventDefault();
+    });
+    h.addEventListener('pointermove', function (ev) {
+      if (!drag) return;
+      drag.moved = true;
+      p.style.left = (ev.clientX - drag.dx) + 'px';
+      p.style.top = (ev.clientY - drag.dy) + 'px';
+      var r = p.getBoundingClientRect();
+      var nx = Math.min(Math.max(r.left, -r.width + 90), innerWidth - 90);
+      var ny = Math.min(Math.max(r.top, 0), innerHeight - 44);
+      p.style.left = nx + 'px'; p.style.top = ny + 'px';
+    });
+    function end() { if (drag) { h.classList.remove('fxp-drag'); save(p); drag = null; } }
+    h.addEventListener('pointerup', end);
+    h.addEventListener('pointercancel', end);
+
+    h.addEventListener('dblclick', function (ev) {
+      if (ev.target.closest('button')) return;
+      defPos(p);
+      try { localStorage.removeItem(KEY); } catch (e) {}
+    });
+
+    p.addEventListener('click', function (ev) {
+      var b = ev.target.closest('button[data-a]');
+      if (!b) return;
+      if (b.dataset.a === 'mini') { p.classList.toggle('fxp-min'); save(p); }
+      if (b.dataset.a === 'reset') { defPos(p); p.classList.remove('fxp-min'); save(p); }
+    });
+
+    addEventListener('resize', function () { if (p.style.left) clamp(p); });
+  }
+
+  /* ---------- 5. 启动 ---------- */
+  function boot() {
+    var d = detect();
+    if (!d.ok) {
+      if (d.own) {
+        console.info('[调参浮窗] 本页跳过：页面自己已有贴右的可拖动参数窗，不叠第二个');
+      } else if (d.inline === 0 && d.total > 0) {
+        console.info('[调参浮窗] 本页跳过：' + d.total + ' 个滑块全在页面自己的浮窗里，没有需要搬的');
+      } else if (d.panels.length) {
+        console.info('[调参浮窗] 本页跳过：' + d.panels.length + ' 组、待浮滑块 ' +
+          d.moved + '/' + d.inline + '（判据：≤' + MAX_GROUPS + ' 组且 ≥' +
+          Math.round(MIN_SHARE * 100) + '%；已在浮窗内的 ' + (d.total - d.inline) + ' 个不计）');
+      }
+      return;
+    }
+    var p = build(d);
+    load(p);
+    wire(p);
+    console.info('[调参浮窗] 已收 ' + d.moved + '/' + d.inline + ' 个待浮滑块，' +
+      d.panels.length + ' 组（另 ' + (d.total - d.inline) + ' 个本来就在浮窗里）');
+  }
+
+  window.__FXCTL = { detect: detect, boot: boot, build: build };
+
+  if (document.readyState === 'complete') setTimeout(boot, 60);
+  else addEventListener('load', function () { setTimeout(boot, 60); });
+})();
+
+</script><!--/FXCTL:JS-->
+</body>
+</html>

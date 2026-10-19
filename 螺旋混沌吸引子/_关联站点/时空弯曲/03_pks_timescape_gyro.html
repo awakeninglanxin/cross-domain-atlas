@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>③ PKS 关联 · 时间梯度 ↔ 双曲锥 / 陀螺拓扑</title>
+<link rel="stylesheet" href="assets/css/site.css">
+<style>
+  /* 参数控件已全部移入右侧可拖动浮窗（#paramWin）——正文单栏满宽 */
+  .layout{display:block}
+  .unit{display:flex;gap:10px;align-items:center;margin:7px 0}
+  .unit .lb{font-family:var(--mono);font-size:12.5px;color:var(--ink-2);width:126px;flex:0 0 auto}
+  .unit .tr{flex:1;height:20px;background:var(--bg-soft2);border-radius:5px;overflow:hidden;display:flex}
+  .unit .tr i{display:block;height:100%}
+  .unit .tr i.a{background:linear-gradient(90deg,#2f7f52,#8fd0ab)}
+  .unit .tr i.b{background:linear-gradient(90deg,#3b56a8,#93a6e2)}
+  .unit .vv{font-family:var(--mono);font-size:12px;color:var(--ink-3);width:74px;text-align:right}
+  .pwin .unit .lb{width:104px;font-size:11.5px}
+  .pwin .unit .vv{width:60px;font-size:11.5px}
+  .idbox{border:2px solid var(--accent);border-radius:12px;padding:16px 18px;background:#f6f9ff;text-align:center;margin:18px 0}
+  .idbox .big{font-family:var(--serif);font-size:25px;color:var(--accent-2);font-weight:700;letter-spacing:.02em}
+  .viewer{user-select:none}
+</style>
+
+<style>
+  /* 3D 未就绪时的占位提示（WebGL 失败时不会静默空白） */
+  #glHint{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:6px;color:#8a5a20;font-size:13.5px;text-align:center;padding:26px;line-height:1.8;pointer-events:none}
+  #glHint .sm{font-size:12px;color:#7b8794}
+</style>
+<script>
+/* ★ SOUL 铁律 51：任何 JS 错误 / 资源加载失败，必须在页面右下角可见 */
+(function(){
+  var box = null;
+  function show(msg){
+    if (!box){
+      box = document.createElement('div');
+      box.id = '__ERRBOX__';
+      box.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:99999;max-width:470px;'
+        + 'max-height:42vh;overflow:auto;background:#fdecea;color:#8a1c12;border:1px solid #e0a49b;'
+        + 'border-radius:9px;padding:10px 12px;font:12px/1.6 Consolas,monospace;white-space:pre-wrap;'
+        + 'box-shadow:0 6px 22px rgba(0,0,0,.18)';
+      (document.body || document.documentElement).appendChild(box);
+    }
+    box.textContent += (box.textContent ? '\n' : '') + msg;
+  }
+  window.__showErr = show;
+  window.addEventListener('error', function(e){
+    var t = e.target;
+    if (t && t.tagName && (t.tagName === 'SCRIPT' || t.tagName === 'LINK' || t.tagName === 'IMG')){
+      show('资源加载失败：' + (t.src || t.href));
+    } else {
+      show('JS 错误：' + (e.message || '') + '\n  ' + (e.filename || '') + ':' + (e.lineno || ''));
+    }
+  }, true);
+  window.addEventListener('unhandledrejection', function(e){
+    show('Promise 未捕获：' + (e.reason && e.reason.message ? e.reason.message : e.reason));
+  });
+})();
+</script>
+</head>
+<body>
+
+<nav class="topnav"><div class="inner">
+  <a class="brand" href="index.html">时空弯曲 <span>/</span> 曲速引擎 <span>/</span> anu</a>
+  <a class="nv" href="01_spacetime_six_models.html">① 六种画法</a>
+  <a class="nv" href="02_warp_bubble_scanner.html">② 曲速泡扫描</a>
+  <a class="nv on" href="03_pks_timescape_gyro.html">③ PKS 关联</a>
+  <a class="nv" href="04_anu_to_nucleus.html">④ anu→原子核</a>
+  <a class="nv" href="05_quark_anu.html">⑤ 夸克↔anu</a>
+  <a class="nv" href="06_seven_realms_koilon_to_cell.html">⑥ 七界 L7→L1</a>
+  <a class="nv" href="07_magnetic_charge_lo_shu.html">⑦ 磁荷·洛书</a>
+  <a class="nv xlink" href="file:///D:/AAA%E6%88%91%E7%9A%84%E6%96%87%E4%BB%B6/anu%E4%B8%8Emilnor7%E7%BB%B4%E6%B5%81%E5%BD%A2/AAA_Anu%E4%B8%83%E7%BA%A7%E8%9E%BA%E6%97%8B%E4%B8%BB%E7%95%8C%E9%9D%A2.html"
+     target="_blank" rel="noopener"
+     title="Anu 七级螺旋主界面（另一项目「anu 与 Milnor 7 维流形」，本机 file:/// 绝对路径）">Anu 七级螺旋</a>
+</div></nav>
+
+<div class="wrap">
+<div class="hero">
+  <div class="kicker">PKS · Time gradient ⟷ Hyperbolic cone ⟷ Gyroscopic topology</div>
+  <h1>把「时间梯度 = 引力主项」接进双曲锥 / 陀螺拓扑框架</h1>
+  <p class="sub">
+    页面 ① 的模型 5 已给出结论：慢速物体感受到的引力，<b>几乎全部来自 g<sub>tt</sub> 的梯度</b>。
+    这一页把它推到几何层：先用一个可当场验算的<b>恒等式</b>把「时间慢」与「空间流」焊死，
+    再把它接到双曲锥（等距嵌入）与陀螺拓扑互锁（涡线联数）两个框架上，最后给出三条<b>写清了交付物</b>的接口。
+  </p>
+  <div class="meta">L0 恒等式 → L1 从 g<sub>tt</sub> 到力 → L2 双曲锥 → L3 陀螺互锁 → L4 三条可检验接口</div>
+</div>
+
+<h2><span class="num">§0</span>起点：一个要当场验算的恒等式</h2>
+<p>
+  Gullstrand–Painlevé 坐标（页面 ① 模型 4）与 Schwarzschild 静态坐标（模型 5）描述<b>同一个</b>几何，只是时间切片不同。
+  把两者分量对齐：
+</p>
+<div class="eq">ds²<sub>GP</sub> = −(1−β²)dt² + 2β dt dr + dr² + r²dΩ²，&nbsp; β(r) = √(r<sub>s</sub>/r) <span class="lbl">河流模型</span></div>
+<div class="eq">ds²<sub>Sch</sub> = −(1 − r<sub>s</sub>/r)dt² + dr²/(1 − r<sub>s</sub>/r) + r²dΩ² <span class="lbl">时钟速率场</span></div>
+<p>两者共用同一个 <b>g<sub>tt</sub> = −(1 − r<sub>s</sub>/r)</b>。于是立刻得到本页最重要的东西：</p>
+<div class="idbox">
+  <div style="font-family:var(--mono);font-size:11.5px;color:var(--ink-3);letter-spacing:.14em">CORE IDENTITY</div>
+  <div class="big">(dτ/dt)² &nbsp;+&nbsp; β² &nbsp;=&nbsp; 1</div>
+  <div style="font-size:13.5px;color:var(--ink-2);margin-top:7px">
+    (dτ/dt)² = −g<sub>tt</sub> = 1 − r<sub>s</sub>/r &nbsp;&nbsp;·&nbsp;&nbsp; β² = 1 + g<sub>tt</sub> = r<sub>s</sub>/r
+  </div>
+</div>
+<p>
+  <b>「时间慢」与「空间在流动」不是两件事，它们是同一个单位圆的余弦与正弦。</b>
+  视界处 (dτ/dt)² = 0 同时就是 β² = 1 ——「钟停」与「流速达光速」是同一句话的两种说法。
+  右侧两条分量条会实时保持平方和为 1（这条恒等式可以当场验算）。
+</p>
+<div class="card good">
+  <div class="ch">为什么这一条足以支撑整个 PKS 接口</div>
+  只画「空间弯曲」的图（①的模型 1、2）只显示了这条恒等式的<b>一半</b>；
+  只谈「时间慢」的图（模型 5）也没说明<b>另一半为什么等价于流速</b>。
+  有了 (dτ/dt)² + β² = 1，就能把「时间梯度」翻译成「场」，从而与任何以<b>场 / 流</b>语言写成的模型对话 ——
+  这是双曲锥（流道）与陀螺互锁（涡线）能被接进来的唯一入口。
+</div>
+
+<h2><span class="num">§1</span>L1：从 g<sub>tt</sub> 到力 —— 只有一项活下来</h2>
+<p>弱场静态极限 <b>ds² = −c²(1 + 2Φ/c²)dt² + (1 − 2Φ/c²)dx⃗²</b>。把测地线方程在慢速极限展开，含 v/c 的项全被压掉：</p>
+<div class="eq">Γⁱ<sub>tt</sub> ≈ (1/c²)·∂ⁱΦ &nbsp;⟹&nbsp; d²xⁱ/dt² = −∂ⁱΦ &nbsp;⟹&nbsp; <b>g⃗ = −∇Φ</b></div>
+<p>
+  而 Φ = −(c²/2)(1 − (dτ/dt)²)：<b>牛顿的力就是时间梯度的负号</b>。
+  关键点在于——<b>力可以从一个标量场 Φ 导出</b>。只要目标模型也能给出一个标量场，
+  两者就可以在同一张纸上比较，而不必先争论「空间弯曲还是时间弯曲」。
+</p>
+
+<h2><span class="num">§2</span>L2：双曲锥 —— 等距嵌入的第三条路</h2>
+<p>
+  Flamm 抛物面（页面 ① 模型 2）是把 t = const 空间切片<b>等距嵌入</b>平直三维空间的唯一旋转面解，剖面是抛物线。
+  工程与传统文献里被反复提起的「双曲锥 / 蛋形 / 内爆漏斗」则是另一族剖面：
+</p>
+<table>
+<thead><tr><th>曲面</th><th>剖面方程</th><th>喉部行为</th><th>出处 / 用途</th></tr></thead>
+<tbody>
+<tr><td>Flamm 抛物面</td><td>z = 2√(r<sub>s</sub>(r − r<sub>s</sub>))</td><td>z ∝ √(r−r<sub>s</sub>)：<b>垂直切进喉部</b></td><td>Flamm 1916；Schwarzschild 空间切片的等距嵌入唯一解</td></tr>
+<tr><td>双曲漏斗（单叶双曲面）</td><td>ρ̃ = a·√(1 + (z/c)²)</td><td>ρ̃ → a：<b>有最小半径</b></td><td>Schauberger 内爆漏斗；流体聚流 / 涡管成型</td></tr>
+<tr><td>锥面</td><td>ρ̃ = k·|z|</td><td>退化为一点（尖顶）</td><td>双曲面的渐近锥</td></tr>
+</tbody>
+</table>
+<div class="card warn">
+  <div class="ch">必须说清楚的一步</div>
+  <b>形状相似 ≠ 物理等价。</b> Flamm 抛物面是「爱因斯坦方程某个解的空间切片」；
+  双曲漏斗目前只是「被工程实践证明好用的流道形状」。要把两者接起来，
+  <b>必须写出双曲漏斗对应的 g<sub>tt</sub>(z)</b>，再检查它是否满足场方程 —— 这就是 §4 接口 ① 的交付物。
+</div>
+<h3>但有一个真正可做的动作：把时间梯度「画」到双曲锥上</h3>
+<p>
+  给定沿轴的势 Φ(z)，钟速 τ̇ = √(1 + 2Φ/c²) 在锥面上生成一族等值线。
+  由 §0 的恒等式，这族等值线<b>同时</b>就是流速等值线。于是「双曲锥里流体为什么加速」有了一个候选的几何解释：
+  <b>流体沿时间梯度最陡的方向走</b>。下方 3D 的第一个模式就是这样画的 ——
+  锥面按 τ̇ 着色，流线沿最陡下降方向螺旋下行，颜色越红表示钟越慢。
+</p>
+
+<h2><span class="num">§3</span>L3：陀螺拓扑互锁 —— 涡线才是那个不变量</h2>
+<p>
+  页面 ① 的模型 6 把曲率拆成<b>潮汐场 E</b>（拉伸/挤压）与<b>参考系拖曳场 B</b>（扭转）。
+  真正能在拓扑上「锁住」结构的是后者：B 的<b>积分曲线</b>（vortex lines）是闭合或螺旋的流管，
+  流管之间的<b>联数（linking number）</b>是整数型拓扑不变量。
+</p>
+<div class="card">
+  <div class="ch">一个可直接引用的结论（Nichols et al. 2012，稳态黑洞）</div>
+  <ul>
+    <li>慢转黑洞：<b>方位角方向的涡线是闭合的</b>。快转黑洞：涡线不再闭合，而是<b>向外螺旋</b>。</li>
+    <li>无论快慢，<b>都存在两个涡区</b>：一个逆时针涡从北极区升起，一个顺时针涡从南极区升起。</li>
+    <li>涡线可以<b>接到视界上</b>（在正标量曲率处）。</li>
+  </ul>
+  <div class="src">出处：Nichols et al. 2012，“Visualizing spacetime curvature via frame-drag vortexes and tidal tendexes II: Stationary black holes”，<code>03_时空可视化与嵌入/</code></div>
+</div>
+<p>
+  「南北极各出一个反向涡」正是「陀螺拓扑互锁」在 GR 侧最接近的实物：
+  <b>两个手性相反、彼此穿插的闭合流管</b>。它们之间只有两种可能 —— 联数为 0（可分开）或联数 ≠ 0（锁住）。
+  磁通管、涡管、超流体量子涡旋都用这套语言；把它移到引力侧，就是把 vortex line 当成客观的、<b>可计数的几何对象</b>。
+</p>
+<div class="card soft">
+  <div class="ch">本页 3D 的「陀螺互锁」模式画的是什么</div>
+  三个两两相扣、互相垂直的环（任意两环之间联数 = 1，即 <b>Hopf 链</b>），每环绕自身轴自旋。
+  <b>措辞要准</b>：这不是 Borromean 环（三环中任意两环都能分开的那一种），而是<b>两两相扣</b>。
+  另设「Kerr 双反向涡管」模式，画南北极反向上升的两个螺旋涡管。
+</div>
+
+<h2><span class="num">§4</span>L4：三条可检验接口（每条写清「要交付什么方程」）</h2>
+<table>
+<thead><tr><th>#</th><th>接口</th><th>现在手上有什么</th><th>要交付的东西</th><th>判据</th></tr></thead>
+<tbody>
+<tr>
+<td>①</td><td><b>双曲锥 ↔ 等距嵌入</b></td>
+<td>Flamm 抛物面（唯一解）；双曲漏斗（工程形状）</td>
+<td>写出双曲漏斗面的诱导度规 h<sub>ab</sub>，反解对应 g<sub>tt</sub>(z)、g<sub>zz</sub>(z)，代入真空场方程看残差</td>
+<td>残差为零 ⟹ 是解；非零 ⟹ 只能当工程近似，<b>不能说它是引力解</b></td>
+</tr>
+<tr>
+<td>②</td><td><b>陀螺互锁 ↔ 涡线联数</b></td>
+<td>vortex line = B 场积分曲线；环的联数是整数</td>
+<td>把互锁拓扑写成可计算量：<b>L<sub>k</sub> = (1/4π) ∮∮ (r₁−r₂)·(dr₁×dr₂)/|r₁−r₂|³</b>，
+    并给出场论版本（∮B·dl 或磁通管联数）</td>
+<td>L<sub>k</sub> 必须为整数且在连续形变下不变 —— 不变才叫拓扑</td>
+</tr>
+<tr>
+<td>③</td><td><b>时间梯度 ↔ 力</b></td>
+<td>g = −∇Φ 已成立（弱场）；Φ = −(c²/2)(1 − (dτ/dt)²)</td>
+<td>给出候选 Φ(x) 的<b>显式形式</b>（例如与锥体几何绑定），再检查两体运动、光线偏折、时钟比对三类观测是否与 GR 的 Schwarzschild 预言区分开</td>
+<td>找不到可区分的观测 ⟹ 只是重述 GR；找得到 ⟹ 才有意义</td>
+</tr>
+</tbody>
+</table>
+<div class="card bad">
+  <div class="ch">⚠ 边界声明（请保留）</div>
+  以上三条都是<b>结构性类比的候选接口</b>，<b>不是已成立的物理等价</b>。
+  任何一条要落地，都必须先写出对应的度规或场方程，并给出可与标准 GR 区分的可观测差异。
+  在写出方程之前，它们属于「值得试的路线」，不属于「结论」。
+</div>
+
+<h2><span class="num">§5</span>交互：拖一拖，看恒等式怎么被守住</h2>
+<p class="note" style="display:block">⚙ <b>全部可调参数都在右侧浮窗里</b>：拖动标题栏可移动，右上角「−/＋」收起；位置与收起状态自动记住。</p>
+<div class="layout">
+  <div>
+    <div class="viewer" id="viewer" style="height:580px">
+      <div class="hud" id="hud" data-hud-title="读数"><div class="hud-body"></div></div>
+      <div class="legend hud" id="legend" data-hud-title="图例"><div class="hud-body"></div></div>
+      <div class="badge" id="badge">XYZ · 等轴</div>
+      <div class="hint">拖动旋转 · 滚轮缩放 · <b>Shift+拖动 搬动几何体</b> · 双击归位</div>
+      <div id="glHint" style="z-index:-1">正在初始化 3D 视图…<span class="sm">若此处长时间空白，通常是浏览器未启用 WebGL / 硬件加速（页面文字与滑块不受影响）</span></div>
+    </div>
+    <div class="src" id="src" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     右侧可拖动参数浮窗（SOUL 铁律 184）：模式 / 参数 / 恒等式验算
+     ============================================================ -->
+<aside class="pwin" id="paramWin" aria-label="模式与参数">
+  <div class="pw-head" id="pwHead">
+    <span class="grip" aria-hidden="true">⠿</span>
+    <span class="pw-title">模式 · 参数 · 恒等式验算</span>
+    <button class="pw-btn" id="pwToggle" type="button" aria-expanded="true" aria-label="收起参数面板" title="收起参数面板">−</button>
+  </div>
+  <div class="pw-body" id="pwBody">
+
+    <div class="pw-sub">① 选择模式</div>
+    <div class="notch" id="modes"></div>
+
+    <div class="pw-sub">② 可调参数</div>
+    <div class="controls" style="margin-top:0">
+      <div class="slider"><span>质量 r<sub>s</sub></span><input type="range" id="srs" min="0.4" max="3" step="0.05" value="1.6"><span class="val" id="srsv">1.60</span></div>
+    </div>
+    <div class="controls">
+      <div class="slider"><span>锥形陡度 a/c</span><input type="range" id="sac" min="0.15" max="1.6" step="0.05" value="0.6"><span class="val" id="sacv">0.60</span></div>
+    </div>
+    <div class="controls">
+      <div class="slider"><span>探测半径 r</span><input type="range" id="sr" min="0.6" max="14" step="0.1" value="4"><span class="val" id="srv">4.0</span></div>
+    </div>
+
+    <div class="pw-sub">③ 视图操作</div>
+    <div class="controls" style="margin:0">
+      <button class="btn sm" id="panHome" title="把几何体搬回原点（也可双击 3D 画面）">⌖ 几何体归位</button>
+      <span class="note" id="panInfo" style="font-size:11px;display:block;margin-top:5px">位移 = (0.00, 0.00, 0.00)</span>
+    </div>
+
+    <div class="pw-sub">④ 恒等式验算器</div>
+    <div class="card soft" style="font-size:13px;margin:0">
+      <div class="ch" style="font-size:14.5px">(dτ/dt)² + β² = 1</div>
+      <div class="unit"><span class="lb">(dτ/dt)² = 1−r<sub>s</sub>/r</span><span class="tr"><i class="a" id="barA"></i></span><span class="vv" id="valA"></span></div>
+      <div class="unit"><span class="lb">β² = r<sub>s</sub>/r</span><span class="tr"><i class="b" id="barB"></i></span><span class="vv" id="valB"></span></div>
+      <div class="unit"><span class="lb" style="color:var(--accent-2)">两者之和</span><span class="vv" id="valS" style="width:auto;color:var(--accent-2);font-size:14px">1.000000</span></div>
+      <div style="font-size:12px;color:var(--ink-3);margin-top:8px;line-height:1.7">
+        钟速 dτ/dt = <b id="tau">…</b><br>
+        流速 β = <b id="beta">…</b>（以 c 为单位）<br>
+        <span id="note"></span>
+      </div>
+    </div>
+
+    <div class="pw-sub">⑤ 三种模式怎么读</div>
+    <div class="card soft" style="font-size:12.5px;margin:0">
+      <ul style="padding-left:16px;margin:0;font-size:12px">
+        <li><b>双曲锥·时间梯度</b>：锥面按 τ̇ 着色，流线沿最陡方向螺旋下行</li>
+        <li><b>陀螺互锁·三环</b>：两两相扣、互相垂直的三环，各自自旋</li>
+        <li><b>涡线·Kerr 双反向涡管</b>：南北极反向上升的涡管 + 闭合方位涡线</li>
+      </ul>
+    </div>
+
+  </div>
+</aside>
+
+<h2><span class="num">§6</span>出处</h2>
+<ul style="font-size:14px">
+<li>GP 度规与河流模型：Hamilton &amp; Lisle 2008, <i>Am. J. Phys.</i> <b>76</b>, 519（<code>01_原始论文PDF/</code>）</li>
+<li>弱场展开与 Γ<sup>i</sup><sub>tt</sub>、光线偏折 4GM/c²b：Jonsson 2005, <i>Am. J. Phys.</i> <b>73</b>, 248（<code>03_时空可视化与嵌入/</code>）</li>
+<li>Flamm 抛物面：Flamm 1916, <i>Phys. Z.</i> <b>17</b>, 448</li>
+<li>tendex / vortex 场与 Kerr 涡线结构：Nichols et al. 2011（I 一般理论）、Nichols et al. 2012（II 稳态黑洞）（<code>03_时空可视化与嵌入/</code>）</li>
+<li>宇宙加速膨胀争议（与「时间切片选择影响结论」同源的方法论）：Buchert 2000；Wiltshire 等（<code>04_宇宙加速膨胀争议/</code>）</li>
+</ul>
+
+<footer><div class="wrap">
+  <div>时空弯曲不同模型表达 · 交互页 ③</div>
+  <div>核心恒等式 (dτ/dt)² + β² = 1 由 GP 度规定义直接给出，可当页验算</div>
+</div></footer>
+</div>
+
+<script>
+/* ★ three.js 未加载时的明确提示（避免「什么都没有」的静默失败） */
+window.addEventListener('DOMContentLoaded', function(){
+  if (typeof THREE === 'undefined'){
+    var gh = document.getElementById('glHint');
+    if (gh){
+      gh.style.zIndex = '2';
+      gh.style.pointerEvents = 'auto';
+      gh.innerHTML = '⚠ 3D 引擎 three.js 未能加载'
+        + '<span class="sm">请确认 assets/js/vendor/three.min.js 与页面一同拷贝'
+        + '（本机常见原因：只复制了 .html 单文件）</span>';
+    }
+    if (window.__showErr) window.__showErr('three.js 未加载：assets/js/vendor/three.min.js 不可达');
+  }
+});
+</script>
+<script src="assets/js/vendor/three.min.js"></script>
+<script src="assets/js/vendor/OrbitControls.js"></script>
+<script src="assets/js/param-panel.js"></script>
+<script>
+/* ============================================================
+   ③ PKS 关联：时间梯度 ↔ 双曲锥 / 陀螺拓扑
+   ============================================================ */
+let rs = 1.6, ac = 0.6, rProbe = 4.0, mode = 'cone';
+
+const viewer = document.getElementById('viewer');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf9fbff);
+const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 4000);
+const HOME = new THREE.Vector3(19, 14, 22);
+camera.position.copy(HOME);
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+viewer.insertBefore(renderer.domElement, viewer.firstChild);
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = .08;
+controls.maxDistance = 320; controls.minDistance = 3; controls.update();
+
+scene.add(new THREE.AmbientLight(0xffffff,.80));
+const D1 = new THREE.DirectionalLight(0xffffff,.62); D1.position.set(20,28,16); scene.add(D1);
+const D2 = new THREE.DirectionalLight(0xffffff,.30); D2.position.set(-18,-14,-20); scene.add(D2);
+
+(function axes(){
+  const L = 12;
+  const mk=(d,c)=>{ const g=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),d.clone().multiplyScalar(L)]);
+    return new THREE.Line(g,new THREE.LineBasicMaterial({color:c,transparent:true,opacity:.5})); };
+  scene.add(mk(new THREE.Vector3(1,0,0),0xc0392b));
+  scene.add(mk(new THREE.Vector3(0,1,0),0x27732f));
+  scene.add(mk(new THREE.Vector3(0,0,1),0x1b4f9c));
+})();
+
+const G = new THREE.Group(); scene.add(G);
+function disposeGroup(g){
+  g.traverse(o=>{ if(o.geometry) o.geometry.dispose();
+    if(o.material){ (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{ if(m.map)m.map.dispose(); m.dispose(); }); } });
+}
+function line(pts,col,op){ const g=new THREE.BufferGeometry().setFromPoints(pts);
+  return new THREE.Line(g,new THREE.LineBasicMaterial({color:col,transparent:true,opacity:op===undefined?1:op})); }
+
+/* 时间速率着色：τ̇ = √(1 − rs/r)，慢=红 快=青 */
+function rateColor(x){
+  x = Math.max(0, Math.min(1, x));
+  const slow=[0.74,0.14,0.11], mid=[0.90,0.62,0.16], fast=[0.09,0.55,0.62];
+  let a,b,t;
+  if(x<0.5){ a=slow; b=mid; t=x/0.5; } else { a=mid; b=fast; t=(x-0.5)/0.5; }
+  return new THREE.Color(a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t);
+}
+
+let anim = [];   // 需每帧更新的对象
+
+/* ---------- 模式 A：双曲锥 · 时间梯度 ---------- */
+function buildCone(){
+  const S = new THREE.Group();
+  const ZMAX = 7.5, NZ = 90, NA = 80;
+  const verts=[], cols=[], idx=[];
+  for(let i=0;i<=NZ;i++){
+    const z = -ZMAX + 2*ZMAX*i/NZ;
+    const rt = ac*Math.sqrt(1 + z*z/(ac*ac));   // 单叶双曲面：ρ̃ = a√(1+(z/c)²)，取 c=a
+    for(let j=0;j<=NA;j++){
+      const p = 2*Math.PI*j/NA;
+      const x = rt*Math.cos(p), y = rt*Math.sin(p);
+      verts.push(x, z, y);
+      const rr = Math.sqrt(x*x + y*y + z*z);
+      const c = rateColor(Math.sqrt(Math.max(0, 1 - rs/Math.max(rr, rs*1.0001))));
+      cols.push(c.r,c.g,c.b);
+    }
+  }
+  for(let i=0;i<NZ;i++) for(let j=0;j<NA;j++){
+    const a=i*(NA+1)+j,b=a+1,c=(i+1)*(NA+1)+j,d=c+1; idx.push(a,c,b,b,c,d);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(verts,3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(cols,3));
+  geo.setIndex(idx); geo.computeVertexNormals();
+  S.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({vertexColors:true, side:THREE.DoubleSide,
+    roughness:.9, metalness:.02, transparent:true, opacity:.94})));
+  S.add(new THREE.Mesh(geo.clone(), new THREE.MeshBasicMaterial({color:0x38507a, wireframe:true,
+    transparent:true, opacity:.10})));
+
+  /* 喉部圈 */
+  const hr=[]; for(let j=0;j<=160;j++){ const p=2*Math.PI*j/160; hr.push(new THREE.Vector3(ac*Math.cos(p),0,ac*Math.sin(p))); }
+  S.add(line(hr, 0xb3261e, .95));
+
+  /* 螺旋流线：沿最陡下降（|τ̇ 梯度|）方向下行 */
+  const flows = [];
+  for(let k=0;k<9;k++){
+    const p0 = 2*Math.PI*k/9;
+    const pts=[];
+    const N=180;
+    for(let i=0;i<=N;i++){
+      const t = i/N;
+      const z = ZMAX*(1-2*t);
+      const rt = ac*Math.sqrt(1 + z*z/(ac*ac));
+      const p = p0 + 5.2*t + z*0.35;
+      pts.push(new THREE.Vector3(rt*Math.cos(p), z, rt*Math.sin(p)));
+    }
+    S.add(line(pts, 0x2a3b57, .40));
+    /* 流动亮点 */
+    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.13,10,8),
+       new THREE.MeshBasicMaterial({color:0x0f7b8a}));
+    S.add(dot);
+    flows.push({dot, p0});
+  }
+  let ph = 0;
+  anim.push({f:(dt)=>{
+    ph = (ph + dt*0.28) % 1;
+    flows.forEach(o=>{
+      const t = ph;
+      const z = ZMAX*(1-2*t);
+      const rt = ac*Math.sqrt(1 + z*z/(ac*ac));
+      const p = o.p0 + 5.2*t + z*0.35;
+      o.dot.position.set(rt*Math.cos(p), z, rt*Math.sin(p));
+    });
+  }});
+  return S;
+}
+
+/* ---------- 模式 B：陀螺互锁 · 三环 ---------- */
+function buildRings(){
+  const S = new THREE.Group();
+  const Rr = 4.0, tube = 0.20;
+  const planes = [
+    {axis:'z', col:0x1b4f9c},
+    {axis:'x', col:0xb4531f},
+    {axis:'y', col:0x177245}
+  ];
+  const spin = [];
+  planes.forEach(p=>{
+    const tg = new THREE.TorusGeometry(Rr, tube, 14, 130);
+    const m = new THREE.Mesh(tg, new THREE.MeshStandardMaterial({color:p.col, roughness:.42, metalness:.22}));
+    if(p.axis==='x') m.rotation.y = Math.PI/2;
+    if(p.axis==='y') m.rotation.x = Math.PI/2;
+    S.add(m);
+    /* 中心质量 */
+    spin.push({m, axis:p.axis});
+  });
+  const core = new THREE.Mesh(new THREE.SphereGeometry(1.0*rs, 30, 22),
+     new THREE.MeshStandardMaterial({color:0x2a3542, roughness:.3, metalness:.45}));
+  S.add(core);
+  /* 自旋方向箭头 */
+  ['x','y','z'].forEach((ax,i)=>{
+    const dir = i===0?new THREE.Vector3(1,0,0):(i===1?new THREE.Vector3(0,1,0):new THREE.Vector3(0,0,1));
+    S.add(new THREE.ArrowHelper(dir, dir.clone().multiplyScalar(Rr+0.4), 2.4, 0x51617a, 0.7, 0.42));
+  });
+  anim.push({f:(dt)=>{
+    spin.forEach(o=>{
+      if(o.axis==='z') o.m.rotation.z += dt*0.55;
+      else if(o.axis==='x') o.m.rotation.x += dt*0.55;
+      else o.m.rotation.y += dt*0.55;
+    });
+    core.rotation.y += dt*0.8;
+  }});
+  return S;
+}
+
+/* ---------- 模式 C：Kerr 双反向涡管 + 闭合方位涡线 ---------- */
+function buildVortex(){
+  const S = new THREE.Group();
+  const r0 = 2.4;
+  const core = new THREE.Mesh(new THREE.SphereGeometry(r0, 34, 26),
+     new THREE.MeshStandardMaterial({color:0x2a3542, roughness:.28, metalness:.5}));
+  S.add(core);
+  /* 视界圈 */
+  const hr=[]; for(let j=0;j<=160;j++){ const p=2*Math.PI*j/160; hr.push(new THREE.Vector3(r0*Math.cos(p),0,r0*Math.sin(p))); }
+  S.add(line(hr, 0xb3261e, .9));
+
+  /* 北极逆时针涡管 / 南极顺时针涡管 */
+  const tubes = [];
+  [1,-1].forEach(sgn=>{
+    const pts=[];
+    for(let i=0;i<=200;i++){
+      const t=i/200;
+      const z = sgn*(r0*0.4 + 8.5*t);
+      const rr = r0*0.9 + 0.55*t;                 // 略微外扩
+      const p = sgn*(t*8.4);                      // 螺旋
+      pts.push(new THREE.Vector3(rr*Math.cos(p), z, rr*Math.sin(p)));
+    }
+    S.add(line(pts, sgn>0?0x6b3fa0:0x0f7b8a, .95));
+    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.17,12,10),
+       new THREE.MeshBasicMaterial({color: sgn>0?0x6b3fa0:0x0f7b8a}));
+    S.add(dot);
+    tubes.push({dot, sgn});
+  });
+  /* 闭合方位角涡线（慢转黑洞的特征） */
+  for(let k=1;k<=5;k++){
+    const lat = -0.7 + 1.4*k/6;
+    const rr = r0*1.45*Math.sqrt(1-lat*lat) + 0.6;
+    const y = lat*r0*1.5;
+    const pts=[];
+    for(let j=0;j<=150;j++){ const p=2*Math.PI*j/150; pts.push(new THREE.Vector3(rr*Math.cos(p), y, rr*Math.sin(p))); }
+    S.add(line(pts, 0x51617a, .55));
+  }
+  let ph=0;
+  anim.push({f:(dt)=>{
+    ph = (ph + dt*0.11) % 1;
+    tubes.forEach(o=>{
+      const t=ph;
+      const z = o.sgn*(r0*0.4 + 8.5*t);
+      const rr = r0*0.9 + 0.55*t;
+      const p = o.sgn*(t*8.4);
+      o.dot.position.set(rr*Math.cos(p), z, rr*Math.sin(p));
+    });
+    core.rotation.y += dt*1.1;
+  }});
+  return S;
+}
+
+const BUILDERS = { cone:buildCone, rings:buildRings, vortex:buildVortex };
+const MODES = [
+  {k:'cone',  n:'双曲锥 · 时间梯度'},
+  {k:'rings', n:'陀螺互锁 · 三环'},
+  {k:'vortex',n:'涡线 · Kerr 双反向涡管'}
+];
+const HUD = {
+  cone:{ h:'<b>单叶双曲面</b> ρ̃ = a√(1+(z/c)²)，按 τ̇ = √(1−r<sub>s</sub>/r) 着色<br>红＝钟慢，青＝钟快；黑线＝沿最陡方向下行的流线',
+         l:'<div><b>等值线 = 流速等值线</b></div><div style="margin-top:5px">同一个 (dτ/dt)²+β²=1</div>',
+         s:'剖面取自单叶双曲面族；与 Flamm 抛物面的关系见 §2。着色与流线为「时间梯度驱动」的候选读法，非已解出的场方程。' },
+  rings:{ h:'三个两两相扣、互相垂直的环（Hopf 链，两两联数 = 1）<br>每环绕自身轴自旋；中心为质量',
+         l:'<div>联数 L<sub>k</sub> = 1</div><div style="margin-top:5px">拓扑不变量：连续形变下不变</div>',
+         s:'联数公式见 §4 接口②；「两两相扣」≠「Borromean 环」。' },
+  vortex:{ h:'南北极各升起一个<b>手性相反</b>的螺旋涡管；外圈为闭合方位角涡线',
+         l:'<div>紫＝北极逆时针涡</div><div>青＝南极顺时针涡</div><div style="margin-top:5px">灰＝闭合方位涡线</div>',
+         s:'依据 Nichols et al. 2012：慢转黑洞方位涡线闭合、快转则向外螺旋；两涡区分居南北极。' }
+};
+
+const modesEl = document.getElementById('modes');
+MODES.forEach(m=>{
+  const b=document.createElement('button'); b.textContent=m.n; b.dataset.k=m.k;
+  b.onclick=()=>setMode(m.k); modesEl.appendChild(b);
+});
+function setMode(k){
+  mode = k;
+  [...modesEl.children].forEach(b=>b.classList.toggle('on', b.dataset.k===k));
+  disposeGroup(G);
+  while(G.children.length) G.remove(G.children[0]);
+  anim = [];
+  G.add(BUILDERS[k]());
+  /* ★ 铁律 184：HUD 内容由 JS 反复重写 ⇒ 只写 .hud-body，收起按钮不会被冲掉 */
+  document.querySelector('#hud .hud-body').innerHTML = HUD[k].h;
+  document.querySelector('#legend .hud-body').innerHTML = HUD[k].l;
+  document.getElementById('src').innerHTML = '画法依据：'+HUD[k].s;
+  document.getElementById('badge').textContent = 'XYZ 等轴 · ' + MODES.find(m=>m.k===k).n;
+}
+
+/* ---------- 恒等式验算器 ---------- */
+function ident(){
+  const r = Math.max(rProbe, rs*1.0001);
+  const a = 1 - rs/r;      // (dτ/dt)²
+  const b = rs/r;          // β²
+  document.getElementById('barA').style.width = (a*100).toFixed(2)+'%';
+  document.getElementById('barB').style.width = (b*100).toFixed(2)+'%';
+  document.getElementById('valA').textContent = a.toFixed(6);
+  document.getElementById('valB').textContent = b.toFixed(6);
+  document.getElementById('valS').textContent = (a+b).toFixed(6);
+  document.getElementById('tau').textContent = Math.sqrt(Math.max(0,a)).toFixed(6);
+  document.getElementById('beta').textContent = Math.sqrt(Math.max(0,b)).toFixed(6);
+  const nb = r <= rs*1.0001
+    ? '⚠ 已到视界：钟停且流速 = 光速'
+    : (b>1 ? '视界以内：β > 1，向外运动学上不可能' :
+       (b>0.5 ? '靠近视界：钟速已被压到 70% 以下' : '远离质量：钟速接近 1，流速可忽略'));
+  document.getElementById('note').textContent = nb + '　（两者之和恒 = 1，这就是 §0 的恒等式）';
+}
+
+document.getElementById('srs').oninput = e=>{ rs=+e.target.value; document.getElementById('srsv').textContent=rs.toFixed(2); rebuildAll(); };
+document.getElementById('sac').oninput = e=>{ ac=+e.target.value; document.getElementById('sacv').textContent=ac.toFixed(2); if(mode==='cone') setMode('cone'); };
+document.getElementById('sr').oninput  = e=>{ rProbe=+e.target.value; document.getElementById('srv').textContent=rProbe.toFixed(1); ident(); };
+function rebuildAll(){ ident(); if(mode!=='cone') setMode(mode); }
+
+function resize(){
+  /* ★ CSS 万一没加载，.viewer 高度为 0 ⇒ 3D 区塌成一条线。这里兜一层。 */
+  if (viewer.clientHeight < 40) viewer.style.height = '580px';
+  const w = Math.max(1, viewer.clientWidth), h = Math.max(1, viewer.clientHeight);
+  renderer.setSize(w, h, false);
+  /* ★ 显式写死 CSS 尺寸，不依赖任何外部样式表，也覆盖可能残留的 inline 尺寸。
+     这是「3D 只剩一个像素/全白」的根治点。 */
+  renderer.domElement.style.width  = w + 'px';
+  renderer.domElement.style.height = h + 'px';
+  camera.aspect = w/h; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize(); setMode('cone'); ident();
+
+const clk = new THREE.Clock();
+let glHintDone = false;
+function loop(){
+  requestAnimationFrame(loop);
+  const dt = Math.min(0.05, clk.getDelta());
+  anim.forEach(a=>a.f(dt));
+  controls.update();
+  renderer.render(scene, camera);
+  /* ★ 真正画出第一帧后，撑掉「正在初始化」占位；WebGL 挂了它就会留着。 */
+  if(!glHintDone){
+    glHintDone = true;
+    var gh = document.getElementById('glHint');
+    if(gh) gh.style.display = 'none';
+  }
+}
+loop();
+
+/* ============================================================
+   浮窗 / HUD / Shift 拖动 —— 统一初始化（SOUL 铁律 184 / 185）
+   ============================================================ */
+(function(){
+  if (typeof ParamPanel === 'undefined') return;
+
+  /* ① 所有可调参数 + 模式选择收进右侧浮窗：标题栏可拖动，右上角 −/＋ 收起，状态入 localStorage */
+  ParamPanel.attach({ win:'paramWin', head:'pwHead', toggle:'pwToggle', key:'pksgyro' });
+
+  /* ② 图内读数板加「可收起」按钮（内容由 setMode() 反复重写 ⇒ 已给显式 .hud-body） */
+  ParamPanel.hud(document.querySelectorAll('#viewer .hud'));
+
+  /* ③ Shift + 拖动 = 搬动几何体本体（相机 / 坐标轴 / 流线纹丝不动）；双击画布归位 */
+  function showPan(o){
+    var el = document.getElementById('panInfo');
+    if (el) el.textContent = '位移 = (' + o.x.toFixed(2) + ', ' + o.y.toFixed(2) + ', ' + o.z.toFixed(2) + ')';
+  }
+  var pan = ParamPanel.bindShiftPan({
+    viewer:'viewer', camera:camera, target:controls.target,
+    object:G, limit:16, yMin:-16, onDelta:showPan
+  });
+  var home = document.getElementById('panHome');
+  if (home) home.onclick = function(){
+    if (pan) pan.home();
+    else { G.position.set(0,0,0); showPan({x:0,y:0,z:0}); }
+  };
+  showPan({x:0,y:0,z:0});
+})();
+</script>
+</body>
+</html>

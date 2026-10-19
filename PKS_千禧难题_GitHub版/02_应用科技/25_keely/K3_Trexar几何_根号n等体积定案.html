@@ -1,0 +1,1741 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>K3 · Trexar 几何定案：C 同心方案（√n 等体积）</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%23b4531f' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%23c9a227' stroke-width='1.8'/%3E%3Ccircle cx='16' cy='16' r='5' fill='none' stroke='%238b95a3' stroke-width='1.6'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/site.css">
+<style>
+  .viz{background:#fff;border:1px solid var(--line-2);border-radius:12px;
+    box-shadow:var(--shadow);padding:14px 16px 10px;margin:18px 0}
+  .viz .vt{font-family:var(--serif);font-size:16px;font-weight:700;margin-bottom:3px}
+  .viz .vc{font-size:13.2px;color:var(--ink-3);margin-bottom:10px;line-height:1.6}
+  .viz canvas{width:100%;display:block;border-radius:8px;background:#fcfdff;border:1px solid var(--line)}
+  .ctl{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin:12px 0 4px;font-size:13.4px;color:var(--ink-2)}
+  .ctl label{display:flex;align-items:center;gap:7px}
+  .ctl input[type=range]{width:230px}
+  .ctl .val{font-family:var(--mono);font-size:12.8px;color:var(--warm);min-width:92px}
+  .ctl button{font-size:12.5px;padding:5px 11px;border-radius:8px;border:1px solid var(--line-2);
+    background:#fff;color:var(--ink-2);cursor:pointer;font-family:var(--mono)}
+  .ctl button:hover{background:var(--bg-soft);border-color:var(--accent);color:var(--accent)}
+  .ctl button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .rd{display:grid;grid-template-columns:repeat(auto-fit,minmax(152px,1fr));gap:10px;margin-top:12px}
+  .rd .r{background:var(--bg-soft);border:1px solid var(--line);border-radius:9px;padding:9px 11px}
+  .rd .r .n{font-family:var(--serif);font-size:19px;color:var(--accent-2);line-height:1.2}
+  .rd .r .l{font-size:11.8px;color:var(--ink-3);margin-top:2px}
+  .rd .r .x{font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-top:3px}
+  .rd .r.ok{background:#f4faf6;border-color:rgba(23,114,69,.3)}
+  .rd .r.ok .n{color:var(--good)}
+  .rd .r.bad2{background:#fdf6f6;border-color:rgba(179,38,30,.25)}
+  .rd .r.bad2 .n{color:var(--bad)}
+  .eq{margin:14px 0}
+  .warnbox{background:#fdf6f6;border:1px solid rgba(179,38,30,.28);border-left:3px solid var(--bad);
+    border-radius:8px;padding:12px 15px;margin:16px 0;font-size:14px}
+  .goodbox{background:#f4faf6;border:1px solid rgba(23,114,69,.28);border-left:3px solid var(--good);
+    border-radius:8px;padding:12px 15px;margin:16px 0;font-size:14px}
+  .quote{border-left:3px solid var(--line-2);padding:2px 0 2px 14px;margin:12px 0;color:var(--ink-2);font-size:14.4px}
+  .quote .src{display:block;font-family:var(--mono);font-size:11.5px;color:var(--ink-3);margin-top:4px}
+  .cnt{font-family:var(--mono);font-size:12.6px;color:var(--ink-3)}
+  .abc{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0}
+  .abc .b{border:1px solid var(--line-2);border-radius:11px;padding:14px 16px;background:#fff;box-shadow:var(--shadow)}
+  .abc .b .h{font-family:var(--serif);font-size:15.5px;font-weight:700;margin-bottom:6px}
+  .abc .b .h span{font-family:var(--mono);color:var(--accent);margin-right:6px}
+  .abc .b p{margin:0;font-size:13.2px;color:var(--ink-2);line-height:1.65}
+  .abc .b.win{border-top:3px solid var(--good)}
+  .abc .b.mid{border-top:3px solid var(--warn)}
+  .abc .b.lose{border-top:3px solid var(--line-2)}
+  tr.hl td{background:#fdf3ec}
+  tr.best td{background:#d9ede1;font-weight:600}
+  @media(max-width:860px){.abc{grid-template-columns:1fr}.ctl input[type=range]{width:150px}}
+  /* 窄屏表格：允许横向滚动，不撑开页面 */
+  .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:12px 0}
+  .tw>table{margin:0;min-width:520px}
+</style>
+<!--FXCTL:CSS--><style id="fxctl-css">
+/* ============================================================
+   PKS · 通用「调参浮窗」样式  (float_ctl.css)
+   白底 / 深蓝强调 / 与 site.css 变量兼容（变量缺失时有兜底色）
+   面板不接管页面原有控件样式，只在自己作用域内统一外观
+   ============================================================ */
+#fxp{
+  position:fixed; z-index:840; top:84px; right:16px;
+  width:322px; max-height:calc(100vh - 118px);
+  display:flex; flex-direction:column;
+  background:#fff; border:1px solid #cfd6e0; border-radius:12px;
+  box-shadow:0 2px 6px rgba(18,22,28,.08), 0 14px 40px rgba(18,22,28,.14);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:13px; color:#12161c; line-height:1.55;
+  -webkit-user-select:none; user-select:none;
+}
+#fxp.fxp-min{ width:auto; min-width:150px; }
+#fxp.fxp-min .fxp-bd{ display:none; }
+#fxp.fxp-min .fxp-c{ display:none; }
+
+/* 标题栏（拖动手柄） */
+#fxp .fxp-h{
+  display:flex; align-items:center; gap:7px;
+  padding:8px 10px 8px 9px; cursor:grab; touch-action:none;
+  border-bottom:1px solid #e6eaf0; border-radius:12px 12px 0 0;
+  background:linear-gradient(#fbfcfe,#f4f7fb);
+}
+#fxp.fxp-min .fxp-h{ border-bottom:0; border-radius:12px; }
+#fxp .fxp-h.fxp-drag{ cursor:grabbing; }
+#fxp .fxp-grip{ color:#9aa6b6; font-size:13px; letter-spacing:0 }
+#fxp .fxp-t{
+  font-family:Georgia,"Times New Roman","Songti SC",serif;
+  font-weight:700; font-size:14.5px; color:#0d2f63; letter-spacing:.2px;
+}
+#fxp .fxp-c{ font-family:Consolas,monospace; font-size:11px; color:#6b7683; margin-left:auto; white-space:nowrap }
+#fxp .fxp-h.fxp-mini-open .fxp-c{ margin-left:6px }
+#fxp .fxp-b{
+  width:22px; height:22px; padding:0; flex:0 0 22px;
+  border:1px solid #cfd6e0; background:#fff; border-radius:6px;
+  color:#3b4552; font-size:12px; line-height:1; cursor:pointer;
+}
+#fxp .fxp-b:hover{ border-color:#1b4f9c; color:#1b4f9c; background:#f4f7fb }
+#fxp .fxp-b:first-of-type{ margin-left:6px }
+
+/* 面板主体 */
+#fxp .fxp-bd{
+  padding:4px 12px 12px; overflow-y:auto; overflow-x:hidden;
+  -webkit-user-select:auto; user-select:auto;
+}
+#fxp .fxp-bd::-webkit-scrollbar{ width:8px }
+#fxp .fxp-bd::-webkit-scrollbar-thumb{ background:#d7dee8; border-radius:4px }
+#fxp .fxp-bd::-webkit-scrollbar-track{ background:transparent }
+
+/* 分组 */
+#fxp .fxp-grp{ padding:9px 0 3px }
+#fxp .fxp-grp + .fxp-grp{ border-top:1px dashed #e6eaf0; margin-top:3px }
+#fxp .fxp-gl{
+  font-family:Consolas,monospace; font-size:10.5px; letter-spacing:.04em;
+  color:#6b7683; margin:0 0 7px; display:flex; align-items:baseline; gap:6px;
+}
+#fxp .fxp-gl b{ color:#1b4f9c; font-weight:600; font-size:11px }
+#fxp .fxp-gl i{ font-style:normal; color:#9aa6b6 }
+
+/* 控件统一外观：覆盖被搬进来的块，不依赖原页面 .viz .ctl 之类选择器 */
+#fxp .ctl, #fxp .ctrl, #fxp .controls, #fxp .calc, #fxp .panel, #fxp .param-panel{
+  display:block; margin:0; padding:0; border:0; background:none; box-shadow:none;
+  width:auto; max-width:none; position:static; float:none;
+}
+#fxp .ctl > *, #fxp .ctrl > *, #fxp .controls > *, #fxp .panel > *, #fxp .calc > *{ margin-bottom:9px }
+#fxp .ctl > *:last-child, #fxp .ctrl > *:last-child,
+#fxp .controls > *:last-child, #fxp .panel > *:last-child, #fxp .calc > *:last-child{ margin-bottom:0 }
+
+/* label 行：文字在上、滑块占满整行 */
+#fxp label, #fxp .row, #fxp .prow, #fxp .slider{
+  display:flex; flex-wrap:wrap; align-items:center; gap:3px 8px;
+  width:100%; margin:0 0 10px; font-size:12.6px; color:#3b4552;
+}
+#fxp label > span, #fxp .row > span{ flex:0 0 auto }
+#fxp input[type=range]{
+  -webkit-appearance:none; appearance:none; order:3;
+  /* ⚠ 不能用 flex:0 0 100%：父级 label.row 是 align-items:center 的 flex 行，
+     交叉轴会把 input 压成 track 的 3px 高（实测 offsetHeight=3），滑块几乎被裁掉。
+     flex:none + width:100% 一样能独占一行，且高度稳定 16px。 */
+  flex:none; width:100%; min-width:90px; height:16px; margin:1px 0 0;
+  background:transparent; cursor:pointer; accent-color:#1b4f9c;
+}
+#fxp input[type=range]::-webkit-slider-runnable-track{
+  height:3px; background:#dbe2ec; border-radius:2px;
+}
+#fxp input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:13px; height:13px; margin-top:-5px;
+  background:#1b4f9c; border:2px solid #fff; border-radius:50%;
+  box-shadow:0 1px 3px rgba(18,22,28,.28);
+}
+#fxp input[type=range]:focus{ outline:none }
+#fxp input[type=range]:focus::-webkit-slider-thumb{ box-shadow:0 0 0 3px rgba(27,79,156,.18) }
+
+/* 数值 */
+#fxp .val, #fxp .v, #fxp output, #fxp .num{
+  font-family:Consolas,monospace; font-size:12px; color:#b4531f;
+  min-width:0; margin-left:auto; white-space:nowrap; order:2;
+}
+
+/* 按钮 */
+#fxp button{
+  font-family:Consolas,monospace; font-size:11.5px; padding:4px 9px;
+  border:1px solid #cfd6e0; background:#fff; color:#3b4552;
+  border-radius:7px; cursor:pointer; margin:0 5px 5px 0;
+}
+#fxp button:hover{ border-color:#1b4f9c; color:#1b4f9c; background:#f4f7fb }
+
+/* .lab / .hint / .presets（aizawa / 黄金蛋 那一族的行结构） */
+#fxp .lab{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:8px; width:100%; order:1; font-size:12.6px; color:#3b4552;
+}
+#fxp .lab .v{ margin-left:auto }
+#fxp .hint{
+  order:4; width:100%; margin:3px 0 0; font-size:11.2px; line-height:1.5;
+  color:#6b7683;
+}
+#fxp .presets{ order:5; width:100%; display:flex; flex-wrap:wrap; gap:5px; margin-top:5px }
+#fxp .presets button{ margin:0 }
+#fxp .gt{
+  font-family:Georgia,"Songti SC",serif; font-size:12.8px; font-weight:700;
+  color:#0d2f63; margin:2px 0 8px;
+}
+#fxp .grp > .gt:first-child{ margin-top:0 }
+
+#fxp button.on, #fxp button.active{ background:#1b4f9c; border-color:#1b4f9c; color:#fff }
+#fxp select{
+  font-family:inherit; font-size:12px; padding:3px 6px; max-width:100%;
+  border:1px solid #cfd6e0; border-radius:6px; background:#fff; color:#12161c;
+}
+#fxp input[type=text], #fxp input[type=number]{
+  font-family:Consolas,monospace; font-size:12px; width:78px; padding:3px 6px;
+  border:1px solid #cfd6e0; border-radius:6px;
+}
+#fxp input[type=checkbox]{ accent-color:#1b4f9c; margin-right:2px }
+
+/* 原位置留下的提示 */
+.fxp-note{
+  margin:10px 0 0; padding:5px 9px; font-size:11.8px; color:#6b7683;
+  font-family:Consolas,monospace; background:#f6f8fb;
+  border:1px dashed #d7dee8; border-radius:6px;
+}
+.fxp-note::before{ content:"⇱ "; color:#1b4f9c }
+
+/* 窄屏：底部抽屉式，不再遮挡图 */
+@media (max-width:880px){
+  #fxp{
+    top:auto; bottom:0; right:0; left:0; width:auto;
+    max-height:52vh; border-radius:12px 12px 0 0;
+    border-left:0; border-right:0; border-bottom:0;
+  }
+  #fxp .fxp-h{ cursor:default; border-radius:12px 12px 0 0 }
+  #fxp.fxp-min{ left:auto; right:10px; bottom:10px; border:1px solid #cfd6e0; border-radius:12px }
+}
+@media print{ #fxp{ display:none !important } }
+
+/* ============================================================
+   暗色主题皮肤（2026-10-19 老师：Anu 主界面是暗底，浮窗却是白底，割裂）
+   触发条件：页面 <body> 或 <html> 自己声明了暗色
+     body.theme-dark / body.dark / body.theme-night
+     html[data-theme="dark"] / body[data-theme="dark"]
+   只做覆盖，不改上面的默认（白底）规则 —— 明色页面完全不受影响。
+   配色取自 anu.css 的 --panel/--line/--text/--accent，保持同源。
+   ============================================================ */
+body.theme-dark #fxp, body.dark #fxp, body.theme-night #fxp,
+html[data-theme="dark"] #fxp, body[data-theme="dark"] #fxp{
+  background:#0e1420; border-color:#22304a;
+  box-shadow:0 2px 8px rgba(0,0,0,.45), 0 18px 48px rgba(0,0,0,.55);
+  color:#e6edf8;
+}
+body.theme-dark #fxp .fxp-h, body.dark #fxp .fxp-h, body.theme-night #fxp .fxp-h,
+html[data-theme="dark"] #fxp .fxp-h, body[data-theme="dark"] #fxp .fxp-h{
+  background:linear-gradient(#182233,#111826); border-bottom-color:#22304a;
+}
+body.theme-dark #fxp .fxp-grip, body.dark #fxp .fxp-grip, body.theme-night #fxp .fxp-grip{
+  color:#5d7093;
+}
+body.theme-dark #fxp .fxp-t, body.dark #fxp .fxp-t, body.theme-night #fxp .fxp-t,
+html[data-theme="dark"] #fxp .fxp-t, body[data-theme="dark"] #fxp .fxp-t{
+  color:#cddcff;
+}
+body.theme-dark #fxp .fxp-c, body.dark #fxp .fxp-c, body.theme-night #fxp .fxp-c{
+  color:#6b7f9e;
+}
+body.theme-dark #fxp .fxp-b, body.dark #fxp .fxp-b, body.theme-night #fxp .fxp-b,
+html[data-theme="dark"] #fxp .fxp-b, body[data-theme="dark"] #fxp .fxp-b{
+  background:#141c2b; border-color:#22304a; color:#a9bad6;
+}
+body.theme-dark #fxp .fxp-b:hover, body.dark #fxp .fxp-b:hover, body.theme-night #fxp .fxp-b:hover{
+  background:#1b2740; border-color:#4d7cff; color:#cddcff;
+}
+body.theme-dark #fxp .fxp-bd::-webkit-scrollbar-thumb,
+body.dark #fxp .fxp-bd::-webkit-scrollbar-thumb,
+body.theme-night #fxp .fxp-bd::-webkit-scrollbar-thumb{
+  background:#26334c;
+}
+body.theme-dark #fxp .fxp-grp + .fxp-grp, body.dark #fxp .fxp-grp + .fxp-grp,
+body.theme-night #fxp .fxp-grp + .fxp-grp{ border-top-color:#1e2a3f }
+body.theme-dark #fxp .fxp-gl, body.dark #fxp .fxp-gl, body.theme-night #fxp .fxp-gl{
+  color:#7d90ae;
+}
+body.theme-dark #fxp .fxp-gl b, body.dark #fxp .fxp-gl b, body.theme-night #fxp .fxp-gl b{
+  color:#7ea6ff;
+}
+body.theme-dark #fxp .fxp-gl i, body.dark #fxp .fxp-gl i, body.theme-night #fxp .fxp-gl i{
+  color:#5d7093;
+}
+body.theme-dark #fxp label, body.theme-dark #fxp .row, body.theme-dark #fxp .prow,
+body.theme-dark #fxp .slider, body.dark #fxp label, body.dark #fxp .row,
+body.dark #fxp .prow, body.dark #fxp .slider,
+body.theme-night #fxp label, body.theme-night #fxp .row,
+body.theme-night #fxp .prow, body.theme-night #fxp .slider{
+  color:#b9c8e0;
+}
+body.theme-dark #fxp input[type=range]::-webkit-slider-runnable-track,
+body.dark #fxp input[type=range]::-webkit-slider-runnable-track,
+body.theme-night #fxp input[type=range]::-webkit-slider-runnable-track{
+  background:#31425f;                    /* 不能贴地色，否则轨道看不见、只剩一个蓝点 */
+}
+body.theme-dark #fxp input[type=range]::-webkit-slider-thumb,
+body.dark #fxp input[type=range]::-webkit-slider-thumb,
+body.theme-night #fxp input[type=range]::-webkit-slider-thumb{
+  background:#4d7cff; border-color:#0e1420;
+  box-shadow:0 1px 3px rgba(0,0,0,.6);
+}
+body.theme-dark #fxp input[type=range]:focus::-webkit-slider-thumb,
+body.dark #fxp input[type=range]:focus::-webkit-slider-thumb{
+  box-shadow:0 0 0 3px rgba(77,124,255,.28);
+}
+body.theme-dark #fxp .val, body.theme-dark #fxp .v, body.theme-dark #fxp output,
+body.theme-dark #fxp .num, body.dark #fxp .val, body.dark #fxp .v,
+body.dark #fxp output, body.dark #fxp .num,
+body.theme-night #fxp .val, body.theme-night #fxp .v,
+body.theme-night #fxp output, body.theme-night #fxp .num{
+  color:#ffc861;                      /* 与页面 --gold 同源 */
+}
+body.theme-dark #fxp button, body.dark #fxp button, body.theme-night #fxp button,
+html[data-theme="dark"] #fxp button, body[data-theme="dark"] #fxp button{
+  background:#141c2b; border-color:#22304a; color:#b9c8e0;
+}
+body.theme-dark #fxp button:hover, body.dark #fxp button:hover,
+body.theme-night #fxp button:hover{
+  background:#1b2740; border-color:#4d7cff; color:#cddcff;
+}
+body.theme-dark #fxp button.on, body.theme-dark #fxp button.active,
+body.dark #fxp button.on, body.dark #fxp button.active,
+body.theme-night #fxp button.on, body.theme-night #fxp button.active{
+  background:#2f6fe0; border-color:#2f6fe0; color:#fff;
+}
+body.theme-dark #fxp .lab, body.dark #fxp .lab, body.theme-night #fxp .lab{
+  color:#b9c8e0;
+}
+body.theme-dark #fxp .hint, body.dark #fxp .hint, body.theme-night #fxp .hint{
+  color:#7d90ae;
+}
+body.theme-dark #fxp .gt, body.dark #fxp .gt, body.theme-night #fxp .gt,
+html[data-theme="dark"] #fxp .gt, body[data-theme="dark"] #fxp .gt{
+  color:#cddcff;
+}
+body.theme-dark #fxp select, body.dark #fxp select, body.theme-night #fxp select,
+body.theme-dark #fxp input[type=text], body.theme-dark #fxp input[type=number],
+body.dark #fxp input[type=text], body.dark #fxp input[type=number],
+body.theme-night #fxp input[type=text], body.theme-night #fxp input[type=number]{
+  background:#0b1019; border-color:#22304a; color:#e6edf8;
+}
+body.theme-dark .fxp-note, body.dark .fxp-note, body.theme-night .fxp-note{
+  background:#111826; border-color:#22304a; color:#7d90ae;
+}
+body.theme-dark .fxp-note::before, body.dark .fxp-note::before,
+body.theme-night .fxp-note::before{ color:#7ea6ff }
+
+/* 暗色下的窄屏抽屉边框 */
+@media (max-width:880px){
+  body.theme-dark #fxp.fxp-min, body.dark #fxp.fxp-min, body.theme-night #fxp.fxp-min{
+    border-color:#22304a;
+  }
+}
+
+</style><!--/FXCTL:CSS-->
+</head>
+<body>
+
+<nav class="topnav"><div class="inner">
+  <a class="brand" href="keely核心技术与现代声子物理技术对比.html">Keely × 现代声子物理 <span>/</span> K3</a>
+  <a class="nv on" href="#s1">① 三方案对照</a>
+  <a class="nv" href="#s2">② √n 证明</a>
+  <a class="nv" href="#s3">③ 密度对照</a>
+  <a class="nv" href="#s4">④ 2ln2 为何废弃</a>
+  <a class="nv" href="#s5">⑤ 定案参数</a>
+  <a class="nv" href="#s6">⑥ 落地</a>
+  <a class="nv" href="#s7">⑦ 声学论证</a>
+  <a class="nv" href="keely核心技术与现代声子物理技术对比.html">← 总入口</a>
+  <a class="nv xlink" href="10_Trexar三金属导线_图纸复原工艺与材料物理.html" title="10 页：工艺与材料物理">10 Trexar 工艺</a>
+</div></nav>
+
+<div class="hero"><div class="wrap">
+  <div class="kicker">K3 · Trexar Geometry</div>
+  <h1>Trexar 几何定案：走 C（同心），√n 等体积</h1>
+  <p class="sub">
+    <b>2026-10-17 定案：采用 C 方案 —— 芯银 / 中铂 / 外金的同心复合线，三环等体积，半径比 1 : √2 : √3。</b><br>
+    √n 这条规律在数学上不只是成立，而是<b>必然</b> —— 只要 r<sub>n</sub> = √n·r₁，累积面积自动 1:2:3、每环面积自动相等。
+    原文两段话分别支持 A（轴向分段）与 C（同心），资料本身没定；<b>是本项目按「1:2:3 能被几何严格兑现」选了 C</b>，
+    并把 A / B 保留在本页作对照，方便随时回头复核这个选择。
+  </p>
+  <p class="meta">资料来源：归档 A6 v6 §7 · 笔记「√n 规律的证明」/「密度与配比四方案」· 本地 <code>00_ima归档/A6_线性尺寸定律_v6_最新.html</code>　|　定案：老师 2026-10-17<br>
+  <b style="color:var(--warn,#a86412)">▲ 2026-10-19 更正：三层顺序为「芯银 → 中铂 → 外金」，金在最外层。</b>
+  此前本页把中、外两层写反（记为「中金 / 外铂」），与 10 页图纸复原（外金 0.866 / 中铂 0.693）相矛盾，现已全页对调；
+  几何、√n 证明、2ln2 废弃结论<b>全部不受影响</b>（它们只跟半径次序有关，与金属名无关），受影响的只有材料属性标注与电学/声学推论。</p>
+</div></div>
+
+<div class="wrap">
+
+<!-- ============ ① ============ -->
+<h2 id="s1"><span class="num">①</span>三方案对照：为什么最后选 C</h2>
+
+<div class="goodbox">
+  <b>定案（2026-10-17，老师拍板）：走 <span style="font-size:1.15em">C · 同心</span>。</b><br>
+  芯 <b>银</b> / 中 <b>铂</b> / 外 <b>金</b>，三层<b>等长、等体积</b>，外半径比 <b>1 : √2 : √3</b>（= 0.5 : 0.7071 : 0.8660 归一）。
+  三环截面积各占 1/3 ⇒ 累积面积比精确 <b>1 : 2 : 3</b>。<br>
+  <span class="cnt">定案的实际含义：从此试件只有一种图纸；A / B 降级为"对照与退路"，留档备查，不再作为待选项。</span>
+</div>
+
+<div class="quote">
+  「Trexar 是由以下部分组成的线：<b>第一段银、第二段金和第三段铂，尺寸均一致</b>。」
+  <span class="src">— Keely 原文，另有 "a sectional wire of platinum and silver" [pdf_3][pdf_55]</span>
+</div>
+
+<p>
+  「第一段 / 第二段 / 第三段」+「sectional wire」⇒ 读起来是<b>轴向串联、等长等径</b>。
+  但另一处又说：
+</p>
+
+<div class="quote">
+  「新型超导线材和材料是由按 Keely 的 <b>1:2:3 比例</b>组合的元素制成的。」
+  <span class="src">— 元素配比口径 [pdf_3]</span>
+</div>
+
+<div class="abc">
+  <div class="b lose">
+    <div class="h"><span>A</span>轴向分段 <span style="font-size:11px;color:var(--ink-3);font-weight:400">· 未采用</span></div>
+    <p>三段等长等径串联。1:2:3 指<b>段长</b>或元素量。<br>
+    <b>好做</b>：三段线焊接 / 压接。<br>
+    依据：「尺寸均一致」「sectional wire」。<br>
+    <span class="cnt">另一个代价：<b>串联</b> ⇒ 电阻 3.07 倍纯银，比 C 的 1.80 倍高 70%（见 §6.4）。</span></p>
+  </div>
+  <div class="b lose">
+    <div class="h"><span>B</span>元素配比 <span style="font-size:11px;color:var(--ink-3);font-weight:400">· 未采用</span></div>
+    <p>三种金属<b>合金化</b>，1:2:3 是三种金属的量比。<br>
+    <b>难做</b>：需要熔炼配比控制。<br>
+    依据：「按 1:2:3 比例组合的元素」。<br>
+    <span class="cnt">真正的致命点：合金化后<b>没有三层界面</b>，"三段料"的物理图像整体消失。</span></p>
+  </div>
+  <div class="b win">
+    <div class="h"><span>C</span>同心 <span style="font-size:11px;color:var(--good);font-weight:700">· ✅ 已定案</span></div>
+    <p>芯银 / 中铂 / 外金，<b>r ∝ √n</b>。<br>
+    1:2:3 指<b>累积截面积</b>，且各环<b>等体积</b>。<br>
+    <b>难做</b>：需包覆拉丝工艺。<br>
+    <span class="cnt">依据：本项目推导 + √n 证明；<b>1:2:3 只有它能被几何严格兑现</b>。</span></p>
+  </div>
+</div>
+
+<div class="warnbox">
+  <b>定案之后必须诚实标注的一件事：C 是本项目的设计推演，不是 Keely 原文。</b><br>
+  原文两段话各支持一边 —— 「尺寸均一致 / sectional wire」偏向 A，「按 1:2:3 比例组合的元素」偏向 C。
+  资料本身<b>没有给出裁决</b>，本页选 C 的依据是：<b>只有 C 能让「1:2:3」变成一条可测量、可复算的几何约束</b>
+  （累积面积 1:2:3 且三环等体积）；A 里的 1:2:3 只能指"段长"，与「尺寸均一致」自相矛盾。<br>
+  <span class="cnt">所以：C 成立 ⇒ 拿到一条可证伪的试件；C 不成立 ⇒ 退路是 A，图纸另存（见 §⑥）。</span>
+</div>
+
+<!-- ============ ② ============ -->
+<h2 id="s2"><span class="num">②</span>√n 规律：为什么它是必然而不是巧合</h2>
+
+<p>设三层外半径为 r₁ : r₂ : r₃。若取 <b>r<sub>n</sub> = √n · r₁</b>，则两件事<b>同时</b>成立：</p>
+
+<table>
+  <thead><tr><th>层</th><th>外半径</th><th>累积截面积 πr²</th><th>累积比</th><th>该环单独面积</th></tr></thead>
+  <tbody>
+    <tr class="best"><td>银（内圆）</td><td>1·r₁</td><td>π r₁²</td><td><b>1</b></td><td>π r₁²（= 1 份）</td></tr>
+    <tr class="best"><td>铂（中环）</td><td>√2·r₁</td><td>2π r₁²</td><td><b>2</b></td><td>2π−π = π r₁²（= 1 份）</td></tr>
+    <tr class="best"><td>金（外环）</td><td>√3·r₁</td><td>3π r₁²</td><td><b>3</b></td><td>3π−2π = π r₁²（= 1 份）</td></tr>
+  </tbody>
+</table>
+
+<div class="eq">
+  <b>一般规律</b>：若 r<sub>n</sub> = √n · r₁，则<br>
+  ① 累积面积 ∝ n　（1 : 2 : 3 : … : n）<br>
+  ② 第 n 环单独面积 = πr₁²·[n − (n−1)] = <b>常数</b><br>
+  ⇒ 等长圆柱时，<b>每环体积完全相等</b>
+</div>
+
+<div class="goodbox">
+  <b>一条规律干掉两个矛盾：</b>「累积 1:2:3」与「各环等体积」被证明是<b>同一个几何的两个侧面</b>，
+  不是两个互斥的方案。<br>
+  <span class="cnt">推广：任意 n 层（七细分、Trexnonar 九节点）只要 r<sub>n</sub> ∝ √n，就自动每层等体积、累积 1:2:…:n。</span>
+</div>
+
+<h3>你文档里的数据其实自己验证了这件事</h3>
+<div class="quote">
+  「银铂金的半径比是 0.5 : 0.693 : 0.866，面积比是 0.7854 : 1.5087 : 2.3561，
+  直径比是 1 : 1.386 : 1.732……理想设计是里到外层体积比为 1:2:3」
+  <span class="src">— 本项目原始文档 [word_86]</span>
+</div>
+
+<table>
+  <thead><tr><th>层</th><th>半径</th><th>π·r²（本页算）</th><th>文档给的面积</th><th>对得上？</th></tr></thead>
+  <tbody>
+    <tr><td>银</td><td>0.5</td><td><b>0.7854</b></td><td>0.7854</td><td>✅</td></tr>
+    <tr><td>铂</td><td>0.693</td><td><b>1.5087</b></td><td>1.5087</td><td>✅</td></tr>
+    <tr><td>金</td><td>0.866</td><td><b>2.3561</b></td><td>2.3561</td><td>✅</td></tr>
+  </tbody>
+</table>
+
+<p>
+  三项全中 ⇒ 文档里的「面积比」是<b>累积口径（πr²）</b>，不是各环面积。这坐实了 C 方案的解读。
+  但比值是 1 : 1.921 : 3.0，<b>不是精确的 1:2:3</b> —— 差就差在中间层那个 0.693。
+</p>
+
+<!-- ============ ③ ============ -->
+<h2 id="s3"><span class="num">③</span>0.693 到底是什么：密度-配比四方案对照</h2>
+
+<p>把三种物理上说得通的"配比准则"全算一遍，看谁能给出 0.693（= 1.386/2）：</p>
+
+<table>
+  <thead><tr><th>设计准则</th><th>半径比</th><th>中间层值</th><th>对得上 1.386？</th></tr></thead>
+  <tbody>
+    <tr class="best"><td><b>等环体积（√n）</b></td><td><b>1 : √2 : √3</b></td><td><b>1.4142</b></td><td>❌ 差 2.0%</td></tr>
+    <tr><td>等原子数（等摩尔）</td><td>1 : 1.4122 : 1.6969</td><td>1.4122</td><td>❌ 差 1.9%</td></tr>
+    <tr><td>等质量</td><td>1 : 1.2203 : 1.4256</td><td>1.2203</td><td>❌ 差 13.6%</td></tr>
+    <tr><td>质量比 1:2:3</td><td>1 : 1.4447 : 1.8853</td><td>1.4447</td><td>❌ 差 4.2%</td></tr>
+    <tr class="hl"><td>2 ln2 方案</td><td>1 : 1.3863 : 1.7321</td><td>1.3863</td><td>—（孤值）</td></tr>
+  </tbody>
+</table>
+
+<h3>等质量方案怎么算的（可以手算复核）</h3>
+<p>
+  同心圆柱、等长，各环质量相等 ⇒ 每环体积 V ∝ 1/ρ：
+</p>
+<table>
+  <thead><tr><th>金属</th><th>密度 g/cm³</th><th>1/ρ</th><th>归一化</th><th>累积</th><th>半径 = √累积</th></tr></thead>
+  <tbody>
+    <tr><td>银 Ag</td><td>10.49</td><td>0.09533</td><td>1.000</td><td>1.000</td><td><b>1.0000</b></td></tr>
+    <tr><td>铂 Pt</td><td>21.45</td><td>0.04662</td><td>0.4890</td><td>1.4890</td><td><b>1.2203</b></td></tr>
+    <tr><td>金 Au</td><td>19.30</td><td>0.05181</td><td>0.5434</td><td>2.0325</td><td><b>1.4256</b></td></tr>
+  </tbody>
+</table>
+
+<p>
+  <b>2ln2 不可能是等质量解。</b>等质量要求中间层（铂）1.2203 —— 比 √2（1.4142）和 2ln2（1.3863）都小得多。
+  原因很直白：铂、金密度大，要跟银等质量就得做得更薄；铂密度最高，所以它被压得最薄。
+</p>
+
+<div class="warnbox">
+  <b>★ 顺带一个反证：1:2:3 原本就不是几何比</b><br>
+  若按 √n 做（三环等体积），三层<b>质量比</b>就是密度比：<br>
+  <code>10.49 : 21.45 : 19.30 = 1 : 2.045 : 1.840</code>（按层序：银 : 铂 : 金）<br>
+  对照 Keely 的 33⅓ : 66⅔ : 100 = 1 : 2 : 3：铂差 32%，<b>金差 8%</b>。<br>
+  ⇒ 「等体积」和「1:2:3」在质量口径下是两件事。这反过来说明 1:2:3 更可能是<b>元素配比</b>或<b>累积面积口径</b>，
+  而不是"三环物理体积比"。
+</div>
+
+<!-- ============ ④ ============ -->
+<h2 id="s4"><span class="num">④</span>2 ln2 为什么必须废弃（不只是"差 2%"）</h2>
+
+<p>把中间层从两档分别代入，看三环面积：</p>
+
+<table>
+  <thead><tr><th>层</th><th>√2 方案（1.4142）</th><th>2ln2 方案（1.386）</th></tr></thead>
+  <tbody>
+    <tr><td>银</td><td>1.000 π</td><td>1.000 π</td></tr>
+    <tr class="hl"><td>铂（中环）</td><td><b>1.000 π</b></td><td><b>0.921 π</b></td></tr>
+    <tr class="hl"><td>金（外环）</td><td><b>1.000 π</b></td><td><b>1.079 π</b></td></tr>
+  </tbody>
+</table>
+
+<p>
+  2ln2 让三环面积变成 1 : 0.921 : 1.079 —— <b>±8% 的失衡</b>。而"环体积相等"是你自己提出的设计准则，差 8% 就不叫等体积了。
+</p>
+
+<div class="eq">
+  更根本的理由：<b>2 ln2 = 1.3863 是"八度的对数增量"，不是几何量。</b><br>
+  你文档里 0.866 = √3/2 是干净的几何，0.5 = 1/2 也是，唯独 0.693 = ln2 是外来户 ——<br>
+  三根柱子里两根是几何、一根是对数，它本来就不该在那儿。
+</div>
+
+<!-- ============ ⑤ ============ -->
+<h2 id="s5"><span class="num">⑤</span>交互：拖一下就知道差在哪</h2>
+
+<div class="viz">
+  <div class="vt">三层同心截面试验台</div>
+  <div class="vc">
+    拖动滑块改<b>中间层（铂）外半径</b>。左图是真实比例的截面，右图是三环<b>单独面积</b>的柱状图 ——
+    只有三根柱子等高时，才是真正的"等体积"。
+    <span class="cnt">（窄屏只画剖面，面积数值看下方卡片。）</span>
+  </div>
+  <canvas id="cvRing" width="1120" height="430"></canvas>
+  <div class="ctl">
+    <label id="lR2">中间层半径 r₂ <input type="range" id="sR2" min="55" max="90" value="70.71" step="0.01"><span class="val" id="vR2">0.7071</span></label>
+    <button id="bSqrt" class="on">√2 = 0.7071</button>
+    <button id="bLn">2ln2 = 0.6931</button>
+    <button id="bHalf">0.75</button>
+    <button id="bSolid" class="on">结构：实心三层</button>
+    <button id="bHollow">结构：空心 + 充气 + 覆膜</button>
+
+    <label class="hrow" style="display:none">空心管外径 D₀ <input type="range" id="sR0" min="0" max="100" value="40" step="1"><span class="val" id="vR0">0.400 mm</span></label>
+    <label class="hrow" style="display:none">管长 L <input type="range" id="sLen" min="20" max="200" value="100" step="1"><span class="val" id="vLen">100 mm</span></label>
+    <label class="hrow" style="display:none">覆膜厚 t <input type="range" id="sTf" min="1" max="30" value="5" step="1"><span class="val" id="vTf">5 µm</span></label>
+    <label class="hrow" style="display:none">腔内气体
+      <select id="selGas">
+        <option value="air" selected>空气</option>
+        <option value="n2">氮气 N₂</option>
+        <option value="he">氦 He</option>
+        <option value="h2">氢 H₂</option>
+        <option value="ar">氩 Ar</option>
+        <option value="co2">二氧化碳 CO₂</option>
+      </select></label>
+    <label class="hrow" style="display:none">覆膜材料
+      <select id="selFilm">
+        <option value="ptfe">PTFE 聚四氟乙烯</option>
+        <option value="pi">聚酰亚胺 PI</option>
+        <option value="sio2">石英 SiO₂</option>
+        <option value="al2o3">氧化铝陶瓷</option>
+        <option value="dia" selected>金刚石 CVD</option>
+      </select></label>
+  </div>
+  <div class="rd">
+    <div class="r" id="c1"><div class="n" id="a1">1.000</div><div class="l">银环面积（份）</div><div class="x">π(r₁²−0)</div></div>
+    <div class="r" id="c2"><div class="n" id="a2">1.000</div><div class="l">铂环面积（份）</div><div class="x">π(r₂²−r₁²)</div></div>
+    <div class="r" id="c3"><div class="n" id="a3">1.000</div><div class="l">金环面积（份）</div><div class="x">π(r₃²−r₂²)</div></div>
+    <div class="r"><div class="n" id="a4">1 : 2.00 : 3.00</div><div class="l">累积面积比</div><div class="x">应精确为 1 : 2 : 3</div></div>
+    <div class="r"><div class="n" id="a5">0.0%</div><div class="l">三环最大偏差</div><div class="x" id="a5x">相对 1.000 份</div></div>
+  </div>
+
+  <!-- 空心模式读数（默认隐藏） -->
+  <div class="rd" id="hollowRd" style="display:none">
+    <div class="r"><div class="n" id="h1">0.400 mm</div><div class="l">空心管外径 D₀</div><div class="x" id="h1x">r₀ = 0.200 mm</div></div>
+    <div class="r ok"><div class="n" id="h2">0.000%</div><div class="l">三环等体积偏差</div><div class="x" id="h2x">r₁/r₂ 由 D₀ 反解，仍严格三等分</div></div>
+    <div class="r"><div class="n" id="h3">343</div><div class="l">腔内声速 c（m/s）</div><div class="x" id="h3x">理想气体 √(γRT/M)</div></div>
+    <div class="r"><div class="n" id="h4">413</div><div class="l">气体声阻抗 Z（Rayl）</div><div class="x">ρc，约为银的 1/90000</div></div>
+    <div class="r"><div class="n" id="h5">1.72 kHz</div><div class="l">腔体基频 c/2L</div><div class="x" id="h5x">两端封闭，L = 100 mm</div></div>
+    <div class="r"><div class="n" id="h6">0.01%</div><div class="l">金→膜 界面反射 R</div><div class="x" id="h6x">金刚石膜 Z = 61.4 MRayl</div></div>
+    <div class="r"><div class="n" id="h7">0.50×</div><div class="l">轴向等效热导 / 纯银</div><div class="x" id="h7x">并联口径，未计界面热阻</div></div>
+    <div class="r"><div class="n" id="h8">0.645 / 0.764</div><div class="l">重排后的 r₁ / r₂（mm）</div><div class="x" id="h8x">壁厚：银 0.145 / 铂 0.118 / 金 0.102</div></div>
+  </div>
+
+</div>
+
+<div class="goodbox">
+  <b>怎么读这张图：</b><br>
+  ① 按「√2 = 0.7071」→ 三根柱<b>等高</b>，累积比精确 1:2:3，偏差 0.0%。<br>
+  ② 按「2ln2 = 0.6931」→ 铂柱变矮、金柱变高，偏差 <b>约 8%</b>。<br>
+  ③ 拖到 0.75 → 偏差更大，且累积比偏离 1:2:3。<br>
+  <span class="cnt">这道题只有一个解，不是"接近就行"——因为你要的是等体积，而等体积对 √n 是全等映射。</span><br>
+  <b>④ 切到「空心 + 充气 + 覆膜」</b>：滑块换成<b>空心管外径 D₀</b>，r₁ / r₂ 由 D₀ 反解
+  （<span class="cnt">r₁ = √(r₀²+A)，A = (R₃²−r₀²)/3</span>），三环面积偏差<b>恒为 0.000%</b> ——
+  空心并没有破坏等体积，只是让三层一起变薄、一起外移。右图这时改画<b>径向声阻抗阶梯</b>，
+  能看到气体那一段几乎贴着对数轴底部（详见 §7.8）。
+</div>
+
+<!-- ============ 定案 ============ -->
+<h3>定案参数（C 方案）</h3>
+<table>
+  <thead><tr><th>项</th><th>值</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr class="best"><td><b>半径比</b></td><td><b>0.5 : 0.7071 : 0.8660</b></td><td>= 1 : √2 : √3</td></tr>
+    <tr><td>直径比</td><td>1 : 1.4142 : 1.7321</td><td>半径 ×2</td></tr>
+    <tr><td>累积面积比</td><td><b>1 : 2 : 3</b></td><td>精确</td></tr>
+    <tr><td>各环体积</td><td><b>完全相等</b></td><td>等长圆柱 ⇒ 体积 = 面积 × 长</td></tr>
+    <tr class="hl"><td>中间层 2ln2 = 1.3863</td><td><b>废弃</b></td><td>孤值，无物理对应；使三环面积变 1 : 0.921 : 1.079</td></tr>
+  </tbody>
+</table>
+
+<div class="quote">
+  「<b>需要不同的分子体积来等同交感神经流的差异。Trexar 满足了这个条件。</b>
+  由两种不同介质代表的两种不同的分子密度，使得三分之一的和谐调整成为可能。」
+  <span class="src">— Keely 原文 [pdf_3]</span>
+</div>
+
+<p>
+  这句话值得单独拎出来：它说的是<b>三种金属的原子体积不同</b>，靠材料差异来平衡流，不是靠几何。
+  如果 C 方案成立，这条反而变得更漂亮 —— <b>等体积的三层 + 三种不同密度</b>，
+  正好"用密度差抵消体积相等"，从而"等同交感流的差异"。
+  <span class="cnt">但这是推论，不是引文。</span>
+</p>
+
+<!-- ============ ⑥ ============ -->
+<h2 id="s6"><span class="num">⑥</span>定案之后：工艺、公差、电学后果（这才是"走 C"的实际代价）</h2>
+
+<p>
+  C 一旦定案，试件就只有一张图纸。下面五节是<b>拿去和加工厂对话用的</b>，
+  每一格都能被独立复算 —— 尤其 <b>6.4 的电阻</b>，它是<b>区分 A 与 C 的第一道筛</b>。
+  <br><span class="cnt">配色约定（本页全局）：<b>绿底 = 定案 / 推荐 / 该先做</b>；红只出现在风险提示框里；
+  表格中不承载"推荐"含义的行<b>一律不加底色</b> —— 免得红色一会儿表示"重点"、一会儿表示"排除"。</span>
+</p>
+
+<h3>6.1 尺寸（以归一外径 D₃ = 0.866 mm 为例）</h3>
+<table>
+  <thead><tr><th>层</th><th>外半径</th><th>外径</th><th>该层壁厚</th><th>面积占比</th></tr></thead>
+  <tbody>
+    <tr><td>银（芯）</td><td class="cnt">0.2500 mm</td><td class="cnt">0.5000 mm</td><td class="cnt">0.2500（实心）</td><td class="cnt">1/3</td></tr>
+    <tr><td>铂（中环）</td><td class="cnt">0.3536 mm</td><td class="cnt">0.7071 mm</td><td class="cnt">0.1036 mm</td><td class="cnt">1/3</td></tr>
+    <tr><td>金（外环）</td><td class="cnt">0.4330 mm</td><td class="cnt">0.8660 mm</td><td class="cnt">0.0794 mm</td><td class="cnt">1/3</td></tr>
+  </tbody>
+</table>
+<p class="cnt" style="margin-top:-6px">
+  换任意外径 D₃ 只需整体乘 (D₃/0.866)：三层的<b>比例不变</b>，这就是 √n 的全部内容。
+</p>
+
+<h3>6.2 工艺路线：三条，按推荐度排</h3>
+<table>
+  <thead><tr><th>路线</th><th>做法</th><th>能做到什么</th><th>风险 / 代价</th></tr></thead>
+  <tbody>
+    <tr class="best"><td><b>① 包覆拉拔</b><br><span class="cnt">clad composite</span></td>
+      <td>银棒套铂管、再套金管，端部封焊，整体逐道过拉丝模拉细</td>
+      <td><b>界面冶金结合</b>、壁厚比在拉拔中<b>按比例守恒</b> ⇒ 装配时做对就一直对</td>
+      <td>要拉丝模 + 退火炉；小批量起订量高</td></tr>
+    <tr><td>② 电镀</td><td>银线芯先镀铂、再镀金</td>
+      <td>设备最便宜，能做薄层</td>
+      <td>层厚靠电流×时间，<b>1:2:3 是目标不是保证</b>；界面是机械附着，不是冶金结合</td></tr>
+    <tr><td>③ 紧配合套筒</td><td>银芯插入铂管、再插入金管，冷缩/热套</td>
+      <td>精度靠机加工，可做短样</td>
+      <td>层间有<b>气隙</b> ⇒ 热阻与接触电阻都不可控；只适合做"看得见的样品"</td></tr>
+  </tbody>
+</table>
+<p class="cnt" style="margin-top:-6px">
+  ②③ 不必排除，但<b>要先测电阻再测振动</b>：气隙与附着不良会让"等体积"变成纸面结论。
+</p>
+
+<h3>6.3 公差：到底要卡到多紧（算给你看，别凭感觉）</h3>
+<p>
+  铂环面积 <span class="cnt">A = π(r₂² − r₁²)</span>。若两个界面的圆心跳动为 e₂、e₁，最坏（反向）叠加时
+  一阶面积偏差 ≈ <span class="cnt">2π(r₂e₂ + r₁e₁)</span>，归一后：
+</p>
+<div class="eq">ΔA / A ≈ 2(r₂e₂ + r₁e₁) / (r₂² − r₁²)　→　取 e₁=e₂=e 时　≈ <b>4.83 · e/r₁</b></div>
+<table>
+  <thead><tr><th>同心度误差 e / r₁</th><th>铂环面积偏差</th><th>判定</th></tr></thead>
+  <tbody>
+    <tr><td class="cnt">1.0 %</td><td class="cnt">≈ 4.8 %</td><td>包覆拉拔的常规水平，<b>可接受</b></td></tr>
+    <tr><td class="cnt">0.5 %</td><td class="cnt">≈ 2.4 %</td><td>优于常规，需要挑料</td></tr>
+    <tr><td class="cnt">0.2 %</td><td class="cnt">≈ 1.0 %</td><td>接近工艺极限，成本跳一档</td></tr>
+  </tbody>
+</table>
+<div class="goodbox">
+  <b>这里的正确结论不是"必须做到 1%"</b> —— 而是：<b>C 的目标是「等体积到 ±5% 量级」</b>。<br>
+  理由有两条，都成立：① 只要 ±5%，就已经与 A / B 的<b>结构级差异</b>（100% 量级）完全不在一个层级；
+  ② Keely 的「三分之一和谐调整」没有任何 1% 精度的原文依据，硬卡 1% 是自我加戏。<br>
+  <span class="cnt">工艺上真正要紧的一点：<b>拉拔过程本身按比例缩小壁厚</b>，所以相对偏差在拉细中守恒 ——
+  装配阶段（大直径、公差宽松）做对，拉成细线后仍然对。这就是为什么①号路线优于②电镀。</span>
+</div>
+
+<h3 id="s6d">6.4 电学后果：A 与 C 差 1.70 倍，几何差得更狠</h3>
+<p>
+  ρ(20 ℃, Ω·m)：银 <span class="cnt">1.59×10⁻⁸</span>、金 <span class="cnt">2.44×10⁻⁸</span>、铂 <span class="cnt">1.06×10⁻⁷</span>（= 106 nΩ·m，是银的 6.7 倍）。
+  三层等体积 ⇒ 各层截面积 = S/3，等长 L。
+</p>
+<table>
+  <thead><tr><th>方案</th><th>连接方式</th><th>R·S/L（Ω·m）</th><th>相对纯银</th></tr></thead>
+  <tbody>
+    <tr><td>纯银同截面（基准）</td><td>—</td><td class="cnt">1.59×10⁻⁸</td><td class="cnt">1.00×</td></tr>
+    <tr class="best"><td><b>C 同心</b></td><td><b>并联</b>（三芯同时通流）</td><td class="cnt">2.862×10⁻⁸</td><td class="cnt"><b>1.80×</b></td></tr>
+    <tr><td><b>A 轴向分段</b></td><td><b>串联</b>（三段依次相接）</td><td class="cnt">4.877×10⁻⁸</td><td class="cnt"><b>3.07×</b></td></tr>
+  </tbody>
+</table>
+<p>
+  <b>C 方案里三层各自的分流</b>（电导份额 ∝ 1/ρ）：
+  银 <b>60.0 %</b>、金 <b>39.1 %</b>、铂 <b>0.9 %</b> —— 铂的电阻率是银的 6.7 倍，
+  所以它<b>一个百分点的电流都不到</b>。这个分布是定案的重要含义之一：<b>"三层"在电学上是不平等的</b>。
+  <span class="cnt">层序：银（芯）→ 铂（中）→ 金（外）。份额只由 ρ 决定，与谁在内谁在外无关。</span>
+</p>
+<div class="warnbox" style="font-size:13.4px">
+  <b>▲ 2026-10-19 数值校核（本轮顺手改错）：</b>上一版这里写的是 <b>2.648×10⁻⁸ / 1.67× / 55.5 : 36.2 : 8.3</b>。
+  复算发现那三个数把铂的 <span class="cnt">106 nΩ·m</span> 当成了 <span class="cnt">10.6 nΩ·m</span>
+  （<span class="cnt">1/1.59 : 1/2.44 : 1/10.6 = 55.5 : 36.2 : 8.3</span> 正好对上）。
+  用正确的 106 重算：<span class="cnt">R·S/L = 3/(0.6289+0.4098+0.00943) = 2.862×10⁻⁸ ⇒ 1.80× 纯银</span>，
+  分流 60.0 / 39.1 / 0.9。A 方案（串联）不受影响，仍是 3.07×。因此 A/C 的差距是 <b>1.70 倍（70%）</b>，不是 1.84 倍。<br>
+  <span class="cnt">这条改动直接决定 §6.5 的验收判据，所以必须改 —— 判据写 2.65 而实测会落在 2.86，会被误判成"没做成 C"。</span>
+</div>
+<div class="goodbox">
+  <b>这里要克制：A 与 C 的电阻只差 1.70 倍，不是"差一个数量级"。</b><br>
+  因为 A 是三段串联，每段只有 <span class="cnt">L/3</span> 长；铂段虽然 ρ 高 6.7 倍，但只占三分之一的长度，
+  摊到整根线上只有 <span class="cnt">(1.59+2.44+106)/3 = 36.7 nΩ·m</span>，折合 3.07 倍纯银。<br>
+  <span class="cnt">所以「选 C 不是为了省电」—— <b>选 C 是因为只有 C 能把 1:2:3 变成一条可测量的几何约束</b>。
+  电阻差在这里只是<b>验收时可以一刀切开两者的指纹</b>（70% 的差距，四探针足够分出）。</span>
+</div>
+<p>
+  <b>频率上限：C 的"银芯优势"会被趋肤效应逐层剥夺，而三个转折点是算得出来的。</b>
+  趋肤深度 <span class="cnt">δ = √(2ρ/ωμ₀) ∝ 1/√f</span>，与某层特征厚度相等时的频率，就是该层"自成一层壳"的起点。
+  以 D₃ = 0.866 mm 计：
+</p>
+
+<table>
+  <thead><tr><th>层</th><th>特征厚度</th><th>δ（100 kHz）</th><th>成壳频率 f = 100k·(δ/t)²</th></tr></thead>
+  <tbody>
+    <tr><td>银（芯，半径）</td><td class="cnt">r₁ = 0.250 mm</td><td class="cnt">0.201 mm</td><td class="cnt"><b>64 kHz</b></td></tr>
+    <tr><td>铂（中环，壁厚）</td><td class="cnt">0.1036 mm</td><td class="cnt">0.518 mm</td><td class="cnt"><b>2.50 MHz</b></td></tr>
+    <tr class="hl"><td><b>金（外环，壁厚）</b></td><td class="cnt">0.0794 mm</td><td class="cnt">0.249 mm</td><td class="cnt"><b>983 kHz</b></td></tr>
+  </tbody>
+</table>
+
+<div class="warnbox">
+  <b>怎么读这三级（注意顺序已换）：</b><br>
+  · <b>64 kHz 以下</b>：三层都远薄于各自的 δ ⇒ 电流按面积均匀分布，<b>§6.4 的并联结论（1.80×、60.0/39.1/0.9）严格成立</b>。
+  这是"准直流区"，也是这套尺寸真正该用的频段。<br>
+  · <b>64 kHz 起</b>：银芯先开始趋肤（中心出现死区），银的有效截面略缩。<br>
+  · <b>983 kHz 起</b>：<b>金外环</b>先成壳 —— 不是因为它阻抗高，而是因为它<b>最薄</b>（0.0794 mm）。
+  但金的 ρ 只有银的 1.54 倍，成壳对总电阻的影响<b>温和</b>，这一档不致命。<br>
+  · <b>2.50 MHz 以上</b>：铂层（0.1036 mm）也厚于 δ，电流被限制在铂壳里 ⇒ 交流电阻趋向<b>纯铂</b>（ρ 是银的 6.7 倍），
+  C 的"银芯"在电学上<b>等于不存在</b>。<br>
+  <span class="cnt">⚠ 口径声明：这三个频率是<b>逐层独立估计</b>（把每层当成孤立导体看 δ 与壁厚的比），
+  用来判"哪个频段还行"是够的；要精确的交流电阻曲线，得做多层同心圆柱的 Bessel 联解 —— 本页没做，也不假装做了。
+  另：2.50 MHz 只由 ρ<sub>Pt</sub> 与铂层壁厚决定，<b>改外径就要重算</b>（壁厚同比例变，f 变 (D₃/0.866)²）。</span>
+</div>
+
+<h3>6.5 验收：两道筛，顺序别反</h3>
+<table>
+  <thead><tr><th>顺序</th><th>测什么</th><th>判据</th><th>能筛掉什么</th></tr></thead>
+  <tbody>
+    <tr class="best"><td>第一道</td><td><b>四探针电阻</b>（成品线，毫欧级）</td>
+      <td>落在 <b>2.86×10⁻⁸</b> 附近 ⇒ 是并联的 C（1.80×纯银）；<br>落在 <b>4.88×10⁻⁸</b> 附近 ⇒ 做成了串联的 A（3.07×纯银）</td>
+      <td><b>一刀切开 A / C</b>（差 70%），还能顺带发现层间气隙（电阻偏高）</td></tr>
+    <tr><td>第二道</td><td><b>金相截面</b>（镶嵌→抛光→SEM/光学）</td>
+      <td>量三处半径，比 1 : 1.414 : 1.732，偏差 ≤ 5 %</td>
+      <td>同心度、界面是否真的冶金结合、有无孔洞</td></tr>
+  </tbody>
+</table>
+<p class="cnt">
+  ⚠ <b>别用"称重 + 量外径"来验</b>：A 与 C 都是三份等体积，平均密度同样 17.09 g/cm³ —— 密度这个口径<b>对 A/C 无分辨力</b>。
+  必须靠电阻（并联 vs 串联）或截面几何。
+</p>
+
+<div class="warnbox">
+  <b>退路（万一 C 做不出来）：</b>退回 A 时有三件事必须重做，不能直接套用 ——
+  ① 电学结论重算（并联 → 串联：1.80× 变 3.07×，A/C 差 1.70 倍）；
+  ② 「1:2:3 = 累积面积」这条读法失效，1:2:3 只能退回指"段长"，与「尺寸均一致」的矛盾要重新交代；
+  ③ K4 的 GDR 试件参数（质量、厚度、金箔叠层数）要按新结构重定。<br>
+  <span class="cnt">本项目立场：先按 C 出图、按 6.5 两道筛验收；C 失败再谈 A，不预先两边下注。</span>
+</div>
+
+
+<!-- ============ ⑦ ============ -->
+<h2 id="s7"><span class="num">⑦</span>选材的声学论证：为什么是这三种金属，以及为什么金必须在最外</h2>
+
+<p>
+  这一节来自老师 2026-10-19 的一篇笔记《Trexar 选材的声学论证》（ima 笔记，原文归档于
+  <code>00_ima归档/C1_Trexar选材声学论证_2026-10-19.md</code>）。
+  它把「银 / 铂 / 金」从"三种贵金属"变成<b>三个各有不可替代角色的声学元件</b>。
+  <br><span class="cnt">⚠ 两个前提必须先说清：① 本节按<b>更正后的层序</b>（芯银 → 中铂 → 外金）重排了笔记里"金中 / 铂外"的表述，
+  笔记原文的顺序与图纸相反；② 笔记用的是<b>超声换能器的正入射模型</b>，而 Trexar 的主传播方向沿轴、界面平行于波前 ——
+  两者适用的场合不同，7.4 节专门交代这个边界。</span>
+</p>
+
+<h3>7.1 三种金属的声学数据（多源，次序一致）</h3>
+<p>声阻抗 <span class="cnt">Z = ρ·c</span>（密度 × 纵波声速），取 KARL DEUTSCH 口径：</p>
+<table>
+  <thead><tr><th>层</th><th>金属</th><th>密度 g/cm³</th><th>纵波声速 m/s</th><th>声阻抗 Z（MRayl）</th><th>角色</th></tr></thead>
+  <tbody>
+    <tr class="best"><td>芯</td><td>银 Ag</td><td class="cnt">10.4–10.5</td><td class="cnt">3600</td><td><b>37.4</b></td><td><b>传输</b>：内摩擦最低、Q 最高</td></tr>
+    <tr class="best"><td>中</td><td>铂 Pt</td><td class="cnt">21.4</td><td class="cnt">3260</td><td><b>69.8</b></td><td><b>钳制</b>：阻抗峰 + 加 Pt 降衰减</td></tr>
+    <tr class="best"><td>外</td><td>金 Au</td><td class="cnt">19.3</td><td class="cnt">3240</td><td><b>62.6</b></td><td><b>封套</b>：与铂同速、化学最惰、最延展</td></tr>
+  </tbody>
+</table>
+<p class="cnt" style="margin-top:-6px">
+  另一套资料（ULTRASONIC REFERENCE，退火态）给 Pt 84.7 / Au 63.8 / Ag 38.0，次序不变、数值更高；
+  差异来自热处理状态与声速取法（Pt 取 3960 而非 3260）。本页统一用上表一套，保证每个数可互相复算。
+</p>
+
+<div class="quote">
+  「银、金和铂因其晶体金属结构而具有特征声学性质：轻敲后以高而持久的频率振动……
+  贵金属在固体中声速高且内阻尼低，结果是明亮悠长的余音。」
+  <span class="src">— 笔记引 [web_352][web_353]</span>
+</div>
+<div class="quote">
+  「低内阻尼是最重要的因素。银的内摩擦极低，振动每个周期损失的能量极少，所以余音很长。
+  技术指标是品质因数 Q——银币的 Q 值可达数百；铅只有 5–15。」
+  <span class="src">— 笔记引 [web_354]</span>
+</div>
+<p>
+  所以"声超导"的严格物理对应不是电阻为零，而是 <b>高 Q、低内摩擦、无内部界面散射</b>。
+  Keely 挑的不是"贵金属"，是<b>声学高 Q 金属</b>，恰好它们都贵。
+  <span class="cnt">这一条把"SVP 说它是 superconducting wire"翻译成了一个可测量的量：Q 值。</span>
+</p>
+
+<h3>7.2 更正顺序之后：径向阻抗阶梯是「内高外低」的峰，不是单调爬升</h3>
+<p>
+  这是本次更正<b>真正改变结论</b>的地方。原来的写法（金中 / 铂外）是一条单调爬升的阶梯
+  <span class="cnt">37 → 63 → 70</span>，正好照抄超声换能器的"多层阻抗渐变匹配层"。
+  改成<b>铂中 / 金外</b>以后，阶梯变成：</p>
+<div class="eq">
+  Ag <b>37.4</b> → Pt <b>69.8</b>（峰）→ Au <b>62.6</b>（回落）→ 环境
+</div>
+<p>
+  也就是说，<b>阻抗峰被关在中间，最外层反而比中间低 10%</b>。这在声学上不是"渐变匹配"，
+  而是<b>「内钳制 + 外回落」</b>：铂层像一道闸把能量堵在银芯里，金层再把这道闸"软化"一点、
+  接到环境上。两种结构都真实存在于超声工程里，但用途不同 ——
+  单调渐变是为了<b>把能量送出去</b>（发射换能器匹配层），中间加峰是为了<b>把能量关住</b>（解匹配层 / 背衬）。
+  <span class="cnt">Keely 要的是"交感流在芯内不中断"，后者更贴。这是本项目推论，判 C+。</span>
+</p>
+
+<h3>7.3 界面反射率（可复算）</h3>
+<p>正入射能量反射 <span class="cnt">R = [(Z₂−Z₁)/(Z₂+Z₁)]²</span>：</p>
+<table>
+  <thead><tr><th>界面</th><th>Z₁ → Z₂</th><th>R</th><th>透射 1−R</th><th>读法</th></tr></thead>
+  <tbody>
+    <tr><td>Ag | Pt</td><td class="cnt">37.4 → 69.8</td><td class="cnt"><b>9.1 %</b></td><td class="cnt">90.9 %</td><td>唯一"有分量"的界面，能量在此被钳一下</td></tr>
+    <tr class="hl"><td>Pt | Au</td><td class="cnt">69.8 → 62.6</td><td class="cnt"><b>0.30 %</b></td><td class="cnt">99.70 %</td><td><b>近乎声学透明</b> —— 两层声速只差 0.6%</td></tr>
+    <tr><td>Ag | Au</td><td class="cnt">37.4 → 62.6</td><td class="cnt">6.4 %</td><td class="cnt">93.6 %</td><td>（对照：没有铂层时的跳变）</td></tr>
+  </tbody>
+</table>
+<p>
+  <b>把铂夹在中间，等于把一个 6.4% 的跳变拆成 9.1% + 0.30% 两次。</b>
+  合起来看总反射并没有变小（9.4% vs 6.4%，反而略大），所以<b>不能说"这样更透"</b>；
+  它真正的好处是<b>把反射位置挪到了内界面</b>：能量在 Ag|Pt 被挡一下、留在芯里，
+  而 Pt|Au 几乎不反射 —— 外表面不会把能量甩回环境。
+  <span class="cnt">这正是"解匹配层"的用法：故意在内侧造一个高阻抗界面，把能量往芯部推。</span>
+</p>
+<div class="quote">
+  「解匹配层具有高于压电元件的声阻抗，以增加发送出去的超声波功率……
+  以在声学上'钳'住压电元件，使大部分声能被发送出压电元件的前面。」
+  <span class="src">— 笔记引 [web_345]（超声换能器结构：匹配层—晶体—解匹配层—透镜）</span>
+</div>
+
+<h3>7.4 边界的诚实交代：这套反射率什么时候能用</h3>
+<div class="warnbox">
+  <b>正入射模型的前提是「波垂直穿过界面」。Trexar 的主传播沿轴，界面平行于波前 —— 此时 R 公式不适用。</b><br>
+  两套模型各管一段，别混用：<br>
+  ① <b>径向分量 / 端面耦合</b>（芯部呼吸、把线端贴到换能器上、声波斜入射到柱面）→ 用本节的 Z 与 R，
+  结论是"Ag|Pt 钳制、Pt|Au 透明"。<br>
+  ② <b>轴向主传播</b>（Keely 的 sympathetic flow 沿线的方向）→ 用 10 页 §5.4 的<b>并联（Voigt）</b>模型：
+  三层等应变、力相加，得到等效声速与等效声阻抗，界面不产生法向反射。<br>
+  <span class="cnt">两份结论并不冲突：一份讲"横向怎么漏"，一份讲"纵向怎么传"。谁也不能替代谁。</span>
+</div>
+
+<h3>7.5 为什么金必须在最外（四条独立理由）</h3>
+<table>
+  <thead><tr><th>#</th><th>理由</th><th>依据 / 强度</th></tr></thead>
+  <tbody>
+    <tr class="best"><td>1</td><td><b>声速与铂几乎相同</b>（3240 vs 3260，差 0.6%）⇒ Pt|Au 界面折射角差 &lt;0.4°，
+      波从铂进金"直线穿过去、只换刚度"</td><td>数据可查，<b>A−</b></td></tr>
+    <tr class="best"><td>2</td><td><b>化学惰性最好</b>：金不氧化、不硫化、耐酸碱 ⇒ 唯一适合放在<b>最外层</b>接触环境的贵金属。
+      铂虽也惰性，但金更彻底，且薄膜不致密时金仍稳定</td><td>材料学常识，<b>A</b></td></tr>
+    <tr class="best"><td>3</td><td><b>延展性最好</b>（金可冷拉到 1 µm 级箔）⇒ 最外层要做得最薄（0.0794 mm），
+      只有金能稳定拉成这样还不裂</td><td>工艺事实，<b>A−</b></td></tr>
+    <tr class="best"><td>4</td><td><b>与 GDR 检验同源</b>：K4 用 <sup>197</sup>Au 金箔活化，金在外层 ⇒ <b>直面辐照</b>，
+      "金层 = 活化层"语义自洽；若金在中间，中间层反而测不到</td><td>本项目推论，<b>B+</b></td></tr>
+  </tbody>
+</table>
+<p>
+  四条里没有一条是"因为金最贵"。反过来，<b>铂放中间</b>的理由只有一条但很硬：
+  它是三者中阻抗最高、密度最大、导热最差的那一个 —— 三个"最"都指向同一个功能：<b>当闸门，不当外壳</b>。
+</p>
+
+<h3>7.6 一个顺手推翻的旧说法</h3>
+<div class="warnbox" style="font-size:13.6px">
+  <b>「Au/Pt 阻抗差最小所以放外面做匹配」—— 这条不成立。</b>
+  Au/Pt 的 Z 差 7.2 MRayl（相对差 10.3%），而 Ag/Au 差 25.2 MRayl（40.3%），
+  所以 Au/Pt 界面确实最"透明"；但界面透明是<b>界面</b>的性质，不是<b>层序</b>的性质 ——
+  把铂放外面、金放中间，Pt|Au 这道界面一样透明（它就在那儿）。
+  真正只能靠层序解释的，是<b>阻抗峰在不在中间</b>（见 7.2）和<b>谁去接触环境</b>（见 7.5）。
+  <span class="cnt">写这段是为了防止"用一条对称的理由去证明一个不对称的结论"。</span>
+</div>
+
+<h3>7.7 待办：把这三层算成一条传输线</h3>
+<p>
+  笔记末尾留了一条真正该做的事：<b>用传输矩阵（每层 λ/4）算一遍透射谱</b>，
+  看哪个频率点透射最优，再与 Keely 的 3:6:9 特征值（100 MHz / 900 MHz / 8.1 GHz）对照。
+  <br><span class="cnt">本页没做 —— 因为要做对，得先定"哪一段是波长的量尺"（体纵波还是杆波）、以及端面边界条件；
+  这两个前提不定，算出来的谱只是好看。等试件尺寸定了再算。</span>
+</p>
+
+<!-- ---- 7.8 空心充气 ---- -->
+<h3 id="s78">7.8 可选项 H：空心 + 充气 + 外覆膜 —— 通向「热超导棒」的一条候选路径</h3>
+
+<p>
+  老师给出的定义很关键：<b>里面做成空心，但三环的体积比保持 1:1:1 不变；空心管外径可调。</b>
+  这句话把问题从"挖掉芯部"变成了"<b>三层同步向外让位</b>"，几何上一个字都不用改设计准则：
+</p>
+
+<div class="eq">
+  给定空心管外径 D₀（内腔半径 r₀ = D₀/2），外径 R₃ 不变，令每环面积相等：<br>
+  A = (R₃² − r₀²) / 3　　⇒　　<b>r₁ = √(r₀² + A)</b>　　<b>r₂ = √(r₀² + 2A)</b><br>
+  <span class="cnt">r₀ = 0 时自动退回 0.5 / 0.7071 / 0.866 —— 也就是说实心定案只是 D₀ = 0 的特例。</span>
+</div>
+
+<table>
+  <thead><tr><th>空心管外径 D₀</th><th>r₀</th><th>r₁（银外）</th><th>r₂（铂外）</th><th>壁厚 银 / 铂 / 金（mm）</th><th>三环体积比</th></tr></thead>
+  <tbody>
+    <tr><td class="cnt">0（实心定案）</td><td class="cnt">0</td><td class="cnt">0.5000</td><td class="cnt">0.7071</td><td class="cnt">0.500 / 0.207 / 0.159</td><td><b>1 : 1 : 1</b></td></tr>
+    <tr><td class="cnt">0.40 mm</td><td class="cnt">0.200</td><td class="cnt">0.5260</td><td class="cnt">0.7165</td><td class="cnt">0.326 / 0.191 / 0.150</td><td><b>1 : 1 : 1</b></td></tr>
+    <tr><td class="cnt">0.80 mm</td><td class="cnt">0.400</td><td class="cnt">0.5972</td><td class="cnt">0.7439</td><td class="cnt">0.197 / 0.147 / 0.122</td><td><b>1 : 1 : 1</b></td></tr>
+    <tr class="hl"><td class="cnt">1.00 mm</td><td class="cnt">0.500</td><td class="cnt">0.6455</td><td class="cnt">0.7638</td><td class="cnt">0.146 / 0.118 / 0.102</td><td><b>1 : 1 : 1</b></td></tr>
+  </tbody>
+</table>
+<p class="cnt" style="margin-top:-6px">
+  外径 0.866 mm 不变。D₀ 越大，三层一起变薄、一起外移，但<b>谁都不多占一份</b> —— 这就是"等体积"这条设计准则的正确空心化方式。
+  上图试验台切到"空心 + 充气 + 覆膜"，拖 D₀ 就能看到三环同步收薄、而三环面积偏差恒为 0.000%。
+</p>
+
+<div class="goodbox">
+  <b>热学上：空心一定变差，问题只是差多少。</b>把 D₀ 从 0 拉到 1.0 mm（外径的 115%）：
+  <table style="margin:8px 0 0">
+    <thead><tr><th>D₀</th><th>等效 λ（W/m·K）</th><th>相对纯银</th><th>整根线导热（含截面缩小）</th></tr></thead>
+    <tbody>
+      <tr><td class="cnt">0</td><td class="cnt">273</td><td class="cnt">0.64×</td><td class="cnt">100%（基准）</td></tr>
+      <tr><td class="cnt">0.40 mm</td><td class="cnt">258</td><td class="cnt">0.60×</td><td class="cnt">90%</td></tr>
+      <tr><td class="cnt">0.80 mm</td><td class="cnt">214</td><td class="cnt">0.50×</td><td class="cnt">62%</td></tr>
+      <tr><td class="cnt">1.00 mm</td><td class="cnt">182</td><td class="cnt">0.42×</td><td class="cnt">45%</td></tr>
+    </tbody>
+  </table>
+  <span class="cnt">λ 用并联口径 ΣλᵢAᵢ/ΣA（未计界面热阻）；最后一列再乘上"金属截面少了多少"，才是整根线真能导多少热。</span>
+</div>
+
+<table>
+  <thead><tr><th>量</th><th>数值（20 ℃，1 atm）</th><th>对"热超导"意味着什么</th></tr></thead>
+  <tbody>
+    <tr><td>气体导热 λ（空气 / 氦 / 氢）</td><td class="cnt">0.026 / 0.151 / 0.187 W/(m·K)</td><td>比银（429）低 <b>3–4 个数量级</b>，充气只能隔热</td></tr>
+    <tr><td>气体声阻抗 Z</td><td class="cnt">413 / 154 / 109 Rayl</td><td>约为银的 <b>1/90000</b> ⇒ 腔壁是"声学自由面"，几乎全反射</td></tr>
+    <tr><td>腔体轴向基频 c/2L（L=100 mm，空气）</td><td class="cnt">1.72 kHz</td><td>可调：换气体、改管长都能移，是<b>可设计的共振自由度</b></td></tr>
+    <tr><td>金刚石膜 / 金的界面反射 R</td><td class="cnt"><b>0.01 %</b></td><td>金刚石 Z=61.4 与金 62.6 几乎相等 ⇒ 覆膜"声学上不存在"</td></tr>
+  </tbody>
+</table>
+
+<div class="warnbox">
+  <b>结论（不好听但要说）：充气体本身不会让它变成热超导棒。</b><br>
+  ① 气体的 λ 比金属低 3–4 个数量级，填进去等于在芯里塞了一根绝热柱；<br>
+  ② 空心让金属截面同步缩小，整根线的导热量在 D₀ = 1 mm 时只剩 45%；<br>
+  ③ 要跨到"热超导"量级（λ_eff ≫ 金属），只有两条路：<br>
+  　<b>(a) 腔内装相变工质</b>（水/乙醇/氨/丙酮 + 抽真空 + 毛细或沟槽），即真正的热管 —— 这时"充气"要改成"抽真空后充液"；<br>
+  　<b>(b) 外覆膜换成高导热碳</b>（CVD 金刚石 ~2000、石墨烯面内 ~3000–5000 W/m·K）并做够厚，
+  让它承担主要热流 —— 此时"膜"不是封装，而是<b>主导热通道</b>。<br>
+  <span class="cnt">所以这个可选项值不值得做，取决于填的是<b>气体</b>还是<b>工质</b>、膜是<b>封装</b>还是<b>导热层</b>。
+  在这两个问题定下来之前，它只是一个结构想法，不是一条已验证的升级路径。证据等级：<b>D（待验证假设）</b>。</span>
+</div>
+
+<p>
+  但"空心但仍等体积"这个改动，在<b>声学</b>上有一处真实收益，值得单独记一笔：
+  内腔把实心银芯换成了一个<b>低声阻抗软层</b>（Z 约 400 Rayl vs 银 37.4 MRayl，差 5 个数量级），
+  它会把轴向驻波的节点位置整体拉动 —— 这正是 09b 页球腔声场在做的事。
+  换句话说，<b>充气对热学是负分，对声学是新的调节旋钮</b>，而且这个旋钮的外径 D₀ 是连续可调的。
+  <span class="cnt">试验台切到空心模式，右图会看到那一段几乎贴着对数轴底部的"气体台阶" —— 它就是这根线里唯一的一段声学软层。</span>
+</p>
+
+<hr>
+<p class="cnt">
+  上一站：<a href="K2_层级频率链_八度罗盘与3的幂.html">K2 · 层级频率链</a>　·　
+  下一站：<a href="K4_核尺度检验_GDR可证伪判据.html">K4 · 核尺度检验</a>　·　
+  <a href="K1_标度律_Chladni到Lamb.html">K1 · 标度律</a>　·　
+  <a href="keely核心技术与现代声子物理技术对比.html">← 回总入口</a>
+</p>
+
+</div>
+
+<script>
+/* =====================================================================
+   K3 · 三层同心截面试验台
+   ---------------------------------------------------------------------
+   r1 固定 0.5（银外半径），r3 固定 √3/2 = 0.8660（铂外半径），
+   r2 由滑块给出。实时算三环单独面积与累积比。
+   ===================================================================== */
+(function(){
+'use strict';
+var $ = function(id){ return document.getElementById(id); };
+var DPR = Math.min(2, window.devicePixelRatio || 1);
+
+var R1 = 0.5, R3 = Math.sqrt(3)/2;      /* 0.8660254 */
+var R2_IDEAL = Math.sqrt(2)/2;          /* 0.7071068 —— √n 解 */
+var R2_LN2   = 1.3863/2;                /* 0.69315 —— 2ln2 废弃值 */
+
+var cv = $('cvRing');
+var state = { mode:'solid' };
+
+/* ---------- 材料表 ----------
+   声阻抗 Z 取 KARL DEUTSCH 口径（体纵波，MRayl）：
+     Ag 10.4 g/cm³ / 3600 m/s / 37.4 　Pt 21.4 / 3260 / 69.8 　Au 19.3 / 3240 / 62.6
+   注：另一套资料（ULTRASONIC REFERENCE）给 Pt 84.7，因为声速取 3960。
+       本页统一用 DEUTSCH 一套，保证「表格里的每个数能互相复算」。
+   导热 λ 单位 W/(m·K)，20 ℃。
+   层序（2026-10-19 更正）：芯 Ag → 中 Pt → 外 Au。 */
+var MAT = {
+  Ag:{Z:37.4, c:3600, rho:10.4, lam:429.0},
+  Pt:{Z:69.8, c:3260, rho:21.4, lam:71.6},
+  Au:{Z:62.6, c:3240, rho:19.3, lam:317.0}
+};
+var GAS = {
+  air:{n:'空气', M:0.02897, g:1.400, lam:0.0260},
+  n2 :{n:'氮气', M:0.02801, g:1.400, lam:0.0258},
+  he :{n:'氦',   M:0.004003,g:1.667, lam:0.1510},
+  h2 :{n:'氢',   M:0.002016,g:1.405, lam:0.1870},
+  ar :{n:'氩',   M:0.03995, g:1.667, lam:0.0177},
+  co2:{n:'二氧化碳', M:0.04401, g:1.289, lam:0.0166}
+};
+var FILM = {
+  ptfe :{n:'PTFE',   Z:2.97},
+  pi   :{n:'聚酰亚胺', Z:3.12},
+  sio2 :{n:'石英 SiO₂', Z:12.6},
+  al2o3:{n:'氧化铝', Z:39.0},
+  dia  :{n:'金刚石', Z:61.4}
+};
+var RGAS = 8.314, T0 = 293.15, PATM = 101325;
+
+function fit(c, hArg){
+  var r = c.getBoundingClientRect();
+  var w = Math.max(300, Math.round(r.width)), h = hArg || parseInt(c.getAttribute('height'),10);
+  c.width = w*DPR; c.height = h*DPR; c.style.height = h+'px';
+  var g = c.getContext('2d');
+  g.setTransform(DPR,0,0,DPR,0,0);
+  return {w:w, h:h, g:g};
+}
+
+/* 面积（以 π r₁² 为 1 份） */
+function areas(r2){
+  var a1 = (R1*R1);
+  var a2 = (r2*r2 - R1*R1);
+  var a3 = (R3*R3 - r2*r2);
+  var u = a1;
+  return {a1:a1/u, a2:a2/u, a3:a3/u,
+          cum:[1, (r2*r2)/(R1*R1), (R3*R3)/(R1*R1)]};
+}
+
+/* 空心模式的派生量 */
+function gasState(gk, Lmm){
+  var G = GAS[gk];
+  var c = Math.sqrt(G.g*RGAS*T0/G.M);
+  var rho = PATM*G.M/(RGAS*T0);
+  var Z = rho*c;                       /* Rayl */
+  var f1 = c/(2*(Lmm/1000));           /* 两端封闭的轴向基频 */
+  return {c:c, rho:rho, Z:Z, f1:f1, lam:G.lam, name:G.n, gamma:G.g, M:G.M};
+}
+/* 空心但三环仍等体积：给定内腔半径 r0，反解 r1 / r2
+   A = (R3² − r0²)/3 ，r1² = r0² + A，r2² = r0² + 2A
+   ⇒ 三个环面积仍各占 1/3，外径 R3 不变。r0 = 0 时退化为 0.5 / 0.7071。 */
+function hollowRadii(r0){
+  var A = (R3*R3 - r0*r0)/3;
+  return {A:A, r1:Math.sqrt(r0*r0 + A), r2:Math.sqrt(r0*r0 + 2*A), r3:R3};
+}
+function lamEqH(r0, lamg){
+  var A = (R3*R3 - r0*r0)/3;
+  return ((MAT.Ag.lam + MAT.Pt.lam + MAT.Au.lam)*A + lamg*r0*r0)/(R3*R3);
+}
+
+/* ================= 实心三层（定案 C） ================= */
+function drawSolid(g, W, H, r2, narrow){
+  var cx = narrow ? W/2 : Math.min(W*0.30, 300);
+  var cy = narrow ? H*0.44 : H*0.52;
+  var RAD = narrow ? Math.min(W*0.34, 132) : Math.min(W*0.22, 168);
+
+  /* 金（外环） */
+  g.fillStyle = '#f2dc9b';
+  g.beginPath(); g.arc(cx, cy, RAD, 0, 6.2832); g.fill();
+  /* 铂（中环） */
+  g.fillStyle = '#c3ccd9';
+  g.beginPath(); g.arc(cx, cy, RAD*(r2/R3), 0, 6.2832); g.fill();
+  /* 银（芯） */
+  g.fillStyle = '#e9edf3';
+  g.beginPath(); g.arc(cx, cy, RAD*(R1/R3), 0, 6.2832); g.fill();
+
+  g.strokeStyle = 'rgba(90,105,125,.55)'; g.lineWidth = 1.4;
+  [R1/R3, r2/R3, 1].forEach(function(k){
+    g.beginPath(); g.arc(cx, cy, RAD*k, 0, 6.2832); g.stroke();
+  });
+
+  var ang = -Math.PI/4;
+  g.strokeStyle = 'rgba(179,38,30,.7)'; g.lineWidth = 1.4;
+  g.beginPath(); g.moveTo(cx,cy);
+  g.lineTo(cx + RAD*Math.cos(ang), cy + RAD*Math.sin(ang)); g.stroke();
+
+  g.font = '11.5px -apple-system,"Microsoft YaHei",sans-serif';
+  g.textAlign = 'left'; g.textBaseline = 'middle';
+  var marks = [
+    {k:0.42, t:'Ag 银（芯）', c:'#4a5563'},
+    {k:0.66, t:'Pt 铂（中）', c:'#4a5563'},
+    {k:0.90, t:'Au 金（外）', c:'#8a6a12'}
+  ];
+  marks.forEach(function(m){
+    var a = -Math.PI/4*2.35, rr = RAD*m.k;
+    g.fillStyle = m.c;
+    g.fillText(m.t, cx + rr*Math.cos(a) + 4, cy + rr*Math.sin(a));
+  });
+
+  /* 尺寸刻度（错开上下，避免叠字） */
+  g.strokeStyle = 'rgba(27,79,156,.35)'; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx+RAD, cy); g.stroke();
+  [[R1/R3,'0.500'],[r2/R3, r2.toFixed(3)],[1,'0.866']].forEach(function(p, i){
+    var x = cx + RAD*p[0];
+    g.strokeStyle='rgba(27,79,156,.7)';
+    g.beginPath(); g.moveTo(x, cy-6); g.lineTo(x, cy+6); g.stroke();
+    g.fillStyle='#0d2f63'; g.font='10px ui-monospace,Consolas,monospace';
+    g.textAlign='center';
+    var below = (i % 2 === 1);
+    g.textBaseline = below ? 'top' : 'bottom';
+    g.fillText(p[1], x, below ? cy+9 : cy-9);
+  });
+
+  if(!narrow){
+    /* 右半：三环面积柱状图 */
+    var bx0 = W*0.56, by0 = H-70, bw = Math.min(88, (W-bx0-190)/4.2), gap = bw*0.45;
+    var A = areas(r2);
+    var maxA = Math.max(A.a1, A.a2, A.a3)*1.15;
+    var HH = H-130;
+
+    g.strokeStyle='#9aa5b4'; g.lineWidth=1.2;
+    g.beginPath(); g.moveTo(bx0-26, by0-HH-6); g.lineTo(bx0-26, by0); g.lineTo(bx0+bw*3+gap*2+16, by0); g.stroke();
+
+    var cols = [
+      {v:A.a1, c:'#c7ced8', n:'Ag'},
+      {v:A.a2, c:'#9aa5b4', n:'Pt'},
+      {v:A.a3, c:'#e8c96a', n:'Au'}
+    ];
+    var yIdeal = by0 - HH*(1.0/maxA);
+    cols.forEach(function(c, i){
+      var x = bx0 + i*(bw+gap);
+      var hh = HH*(c.v/maxA);
+      g.fillStyle = c.c;
+      g.fillRect(x, by0-hh, bw, hh);
+      g.strokeStyle='rgba(90,105,125,.5)'; g.lineWidth=1;
+      g.strokeRect(x+.5, by0-hh+.5, bw-1, hh-1);
+      g.fillStyle='#3b4552'; g.font='11.5px -apple-system,"Microsoft YaHei",sans-serif';
+      g.textAlign='center'; g.textBaseline='top';
+      g.fillText(c.n, x+bw/2, by0+6);
+      g.fillStyle='#0d2f63'; g.font='12px ui-monospace,Consolas,monospace';
+      g.textBaseline='bottom';
+      g.fillText(c.v.toFixed(3), x+bw/2, by0-hh-5);
+    });
+    g.strokeStyle='rgba(23,114,69,.65)'; g.lineWidth=1.5; g.setLineDash([6,4]);
+    g.beginPath(); g.moveTo(bx0-6, yIdeal); g.lineTo(bx0+bw*3+gap*2+10, yIdeal); g.stroke();
+    g.setLineDash([]);
+    /* 理想线不再配文字：柱顶已各自标出 1.000，右侧留给浮窗 */
+
+    g.fillStyle='#12161c'; g.font='12.5px -apple-system,"Microsoft YaHei",sans-serif';
+    g.textAlign='center'; g.textBaseline='top';
+    g.fillText('同心截面（真实比例）', cx, H-32);
+    g.fillText('各环单独面积（份）', bx0+bw*1.5+gap, H-32);
+  } else {
+    g.fillStyle='#12161c'; g.font='12.5px -apple-system,"Microsoft YaHei",sans-serif';
+    g.textAlign='center'; g.textBaseline='top';
+    g.fillText('同心截面（真实比例）', cx, H-30);
+  }
+}
+
+/* ================= 空心充气 + 外覆膜（候选方案 H） ================= */
+function drawHollow(g, W, H, narrow){
+  var D0 = parseFloat($('sR0').value)/100;          /* 空心管外径，mm */
+  var r0 = D0/2;
+  var HR = hollowRadii(r0);                         /* 保持三环等体积 */
+  var r1 = HR.r1, r2 = HR.r2;
+  var gk = $('selGas').value, fk = $('selFilm').value;
+  var G  = gasState(gk, 100), F = FILM[fk];
+
+  var cx = narrow ? W/2 : Math.min(W*0.28, 285);
+  var cy = narrow ? H*0.42 : H*0.50;
+  var RAD = narrow ? Math.min(W*0.34, 130) : Math.min(W*0.20, 155);
+
+  /* 覆膜：厚度 5 µm 对 0.866 mm 只有 0.6%，画不出 —— 固定夸大 6 px，标题旁注明 */
+  g.fillStyle = '#d8f1f5';
+  g.beginPath(); g.arc(cx, cy, RAD+6, 0, 6.2832); g.fill();
+  g.fillStyle = '#f2dc9b';                       /* 金 */
+  g.beginPath(); g.arc(cx, cy, RAD, 0, 6.2832); g.fill();
+  g.fillStyle = '#c3ccd9';                       /* 铂 */
+  g.beginPath(); g.arc(cx, cy, RAD*(r2/R3), 0, 6.2832); g.fill();
+  g.fillStyle = '#e9edf3';                       /* 银 */
+  g.beginPath(); g.arc(cx, cy, RAD*(r1/R3), 0, 6.2832); g.fill();
+
+  if(r0 > 0.002){                                /* 内腔 */
+    var rc = RAD*(r0/R3);
+    g.fillStyle = '#f4fdff';
+    g.beginPath(); g.arc(cx, cy, rc, 0, 6.2832); g.fill();
+    g.strokeStyle='rgba(30,120,150,.55)'; g.lineWidth=1.2;
+    g.beginPath(); g.arc(cx, cy, rc, 0, 6.2832); g.stroke();
+    /* 气体分子点缀 */
+    g.fillStyle='rgba(60,150,180,.5)';
+    for(var i=0;i<26;i++){
+      var aa = i*2.399, rr = rc*Math.sqrt((i+0.5)/26);
+      g.beginPath(); g.arc(cx+rr*Math.cos(aa), cy+rr*Math.sin(aa), 1.5, 0, 6.2832); g.fill();
+    }
+  }
+
+  g.strokeStyle='rgba(90,105,125,.5)'; g.lineWidth=1.2;
+  [r1/R3, r2/R3, 1].forEach(function(k){
+    g.beginPath(); g.arc(cx, cy, RAD*k, 0, 6.2832); g.stroke();
+  });
+
+  /* 图例（横排在图下方，避免与小半径的环标注互相压字） */
+  var leg=[
+    {c:'#f4fdff', t:'气体'},
+    {c:'#e9edf3', t:'银 Ag'},
+    {c:'#c3ccd9', t:'铂 Pt'},
+    {c:'#f2dc9b', t:'金 Au'},
+    {c:'#d8f1f5', t:'覆膜'}
+  ];
+  g.font='11px -apple-system,"Microsoft YaHei",sans-serif';
+  g.textAlign='left'; g.textBaseline='middle';
+  var segW = narrow ? Math.min(70, (W-20)/5) : 80;
+  var lx0 = narrow ? (W - segW*5)/2 : cx - 160;
+  var ly = narrow ? 26 : H-58;
+  leg.forEach(function(it, i){
+    var lx = lx0 + i*segW;
+    g.fillStyle=it.c; g.fillRect(lx, ly-6, 10, 10);
+    g.strokeStyle='rgba(90,105,125,.45)'; g.lineWidth=1;
+    g.strokeRect(lx+.5, ly-5.5, 9, 9);
+    g.fillStyle='#3b4552';
+    g.fillText(it.t, lx+14, ly);
+  });
+
+  if(!narrow){
+    var bx0 = W*0.55, bx1 = W-200, byT = 96, by0 = H-64;
+    var ZMAX = 80;                                  /* 线性轴 0–80 MRayl：要看出 37 / 70 / 63 的峰 */
+    function yz(z){ return by0 - Math.min(z, ZMAX)/ZMAX*(by0-byT); }
+    function xx(r){ return bx0 + (r/R3)*(bx1-bx0); }
+
+    /* 网格 */
+    g.strokeStyle='#e3e8ef'; g.lineWidth=1;
+    for(var zv=0; zv<=ZMAX; zv+=20){
+      var yy = yz(zv);
+      g.beginPath(); g.moveTo(bx0, yy); g.lineTo(bx1, yy); g.stroke();
+      g.fillStyle='#8b96a5'; g.font='9.5px ui-monospace,Consolas,monospace';
+      g.textAlign='right'; g.textBaseline='middle';
+      g.fillText(String(zv), bx0-6, yy);
+    }
+    g.fillStyle='#8b96a5'; g.font='9px ui-monospace,Consolas,monospace';
+    g.textAlign='left'; g.textBaseline='bottom';
+    g.fillText('MRayl', bx0-4, byT-14);
+
+    var segs=[
+      {x0:0,    x1:r0, Z:G.Z/1e6,   n:'气体', c:'#a8deea', gas:true},
+      {x0:r0,   x1:r1, Z:MAT.Ag.Z,  n:'Ag',   c:'#c7ced8'},
+      {x0:r1,   x1:r2, Z:MAT.Pt.Z,  n:'Pt',   c:'#93a0b1'},
+      {x0:r2,   x1:R3, Z:MAT.Au.Z,  n:'Au',   c:'#e8c96a'}
+    ];
+    segs.forEach(function(s){
+      if(s.x1 - s.x0 < 1e-4) return;
+      var X0=xx(s.x0), X1=xx(s.x1);
+      var Y = s.gas ? by0-4 : yz(s.Z);          /* 气体远低于刻度，压成 4 px 条 */
+      g.fillStyle=s.c;
+      g.fillRect(X0, Y, Math.max(1,X1-X0), by0-Y);
+      g.strokeStyle='rgba(90,105,125,.45)'; g.lineWidth=1;
+      g.strokeRect(X0+.5, Y+.5, Math.max(1,X1-X0)-1, by0-Y-1);
+      if(s.gas){
+        g.fillStyle='#1a8ea3'; g.font='9px -apple-system,"Microsoft YaHei",sans-serif';
+        g.textAlign='left'; g.textBaseline='bottom';
+        g.fillText('气体 Z≈'+Math.round(G.Z)+' Rayl（出界）', X0+2, Y-3);
+      }
+    });
+
+    /* 金基准线 + 膜 */
+    var yAu = yz(MAT.Au.Z), yF = yz(F.Z);
+    g.strokeStyle='rgba(23,114,69,.55)'; g.setLineDash([5,4]); g.lineWidth=1.3;
+    g.beginPath(); g.moveTo(bx0, yAu); g.lineTo(bx1, yAu); g.stroke();
+    g.setLineDash([]);
+    g.fillStyle='#177245'; g.font='10px -apple-system,"Microsoft YaHei",sans-serif';
+    g.textAlign='left'; g.textBaseline='bottom';
+    g.fillText('Au 基准 62.6', bx0+6, yAu-4);
+
+    /* 膜的短横线 */
+    g.strokeStyle='#1a8ea3'; g.lineWidth=3;
+    g.beginPath(); g.moveTo(bx1-14, yF); g.lineTo(bx1, yF); g.stroke();
+    g.fillStyle='#1a8ea3'; g.font='10px -apple-system,"Microsoft YaHei",sans-serif';
+    g.textAlign='right'; g.textBaseline='bottom';
+    g.fillText('膜 '+F.n+' '+F.Z.toFixed(1), bx1, yF+6);
+
+    /* 阻抗峰标注 */
+    var xPeak=(xx(r1)+xx(r2))/2, yPeak=yz(MAT.Pt.Z);
+    g.fillStyle='#b4531f'; g.beginPath(); g.arc(xPeak, yPeak, 3.2, 0, 6.2832); g.fill();
+    g.font='10.5px -apple-system,"Microsoft YaHei",sans-serif';
+    g.textAlign='center'; g.textBaseline='bottom';
+    g.fillText('阻抗峰在铂（69.8）', xPeak, yPeak-6);
+
+    g.fillStyle='#12161c'; g.font='12.5px -apple-system,"Microsoft YaHei",sans-serif';
+    g.textAlign='center'; g.textBaseline='top';
+    g.fillText('截面（覆膜厚度已放大）', cx, H-32);
+  /* ---------- 右：径向声阻抗阶梯（对数轴） ---------- */
+  } else {
+    g.fillStyle='#12161c'; g.font='12.5px -apple-system,"Microsoft YaHei",sans-serif';
+    g.textAlign='center'; g.textBaseline='top';
+    g.fillText('截面（覆膜厚度已放大）', cx, H-30);
+  }
+}
+
+function draw(){
+  var cw = cv.parentNode.getBoundingClientRect().width;
+  var narrow = cw < 620;
+  var o = fit(cv, narrow ? 430 : 430), g = o.g, W = o.w, H = o.h;
+  g.clearRect(0,0,W,H);
+  var r2 = parseFloat($('sR2').value)/100;
+  if(state.mode === 'solid') drawSolid(g, W, H, r2, narrow);
+  else drawHollow(g, W, H, narrow);
+}
+
+function refresh(){
+  var r2 = parseFloat($('sR2').value)/100;
+  var A = areas(r2);
+
+  /* —— 实心读数 —— */
+  $('vR2').textContent = r2.toFixed(4);
+  $('a1').textContent = A.a1.toFixed(3);
+  $('a2').textContent = A.a2.toFixed(3);
+  $('a3').textContent = A.a3.toFixed(3);
+  $('a4').textContent = '1 : ' + A.cum[1].toFixed(2) + ' : ' + A.cum[2].toFixed(2);
+
+  var dev = Math.max(Math.abs(A.a1-1), Math.abs(A.a2-1), Math.abs(A.a3-1));
+  $('a5').textContent = (dev*100).toFixed(1) + '%';
+  $('a5x').textContent = '相对 1.000 份';
+
+  ['c1','c2','c3'].forEach(function(id){ $(id).classList.remove('ok','bad2'); });
+  if(dev < 1e-6){
+    ['c1','c2','c3'].forEach(function(id){ $(id).classList.add('ok'); });
+  } else if(dev > 0.03){
+    ['c1','c2','c3'].forEach(function(id){ $(id).classList.add('bad2'); });
+  }
+
+  $('bSqrt').classList.toggle('on', Math.abs(r2 - R2_IDEAL) < 1e-4);
+  $('bLn').classList.toggle('on', Math.abs(r2 - R2_LN2) < 1e-4);
+  $('bHalf').classList.toggle('on', Math.abs(r2 - 0.75) < 1e-4);
+
+  /* —— 空心读数（三环仍等体积） —— */
+  if(state.mode === 'hollow'){
+    var D0  = parseFloat($('sR0').value)/100;
+    var r0  = D0/2;
+    var HR  = hollowRadii(r0);
+    var Lmm = parseFloat($('sLen').value);
+    var tf  = parseFloat($('sTf').value);
+    var G   = gasState($('selGas').value, Lmm);
+    var F   = FILM[$('selFilm').value];
+
+    $('vR0').textContent = D0.toFixed(3) + ' mm';
+    $('vLen').textContent = Lmm + ' mm';
+    $('vTf').textContent  = tf + ' µm';
+
+    $('h1').textContent  = D0.toFixed(3) + ' mm';
+    $('h1x').textContent = 'r₀ ' + r0.toFixed(3) + ' mm · 占外径 ' + (r0/R3*100).toFixed(1) + '%';
+    $('h2').textContent  = '0.000%';
+    $('h2x').textContent = 'r₁/r₂ 由 D₀ 反解，三环仍各占 1/3';
+    $('h3').textContent  = Math.round(G.c);
+    $('h3x').textContent = G.name + ' · γ=' + G.gamma + ' · M=' + (G.M*1000).toFixed(2);
+    $('h4').textContent  = Math.round(G.Z);
+    $('h5').textContent  = G.f1 >= 1000 ? (G.f1/1000).toFixed(2)+' kHz' : Math.round(G.f1)+' Hz';
+    $('h5x').textContent = '两端封闭，L = ' + Lmm + ' mm';
+    var Rf = Math.pow((F.Z-MAT.Au.Z)/(F.Z+MAT.Au.Z), 2);
+    $('h6').textContent  = Rf < 0.001 ? (Rf*100).toFixed(2)+'%' : (Rf*100).toFixed(1)+'%';
+    $('h6x').textContent = F.n + ' · Z=' + F.Z.toFixed(1) + ' · 膜厚 ' + tf + ' µm';
+    var le = lamEqH(r0, G.lam);
+    $('h7').textContent  = (le/429).toFixed(2) + '×';
+    $('h7x').textContent = '实心 0.64× · 纯银 1.00×（λ_eq ' + le.toFixed(0) + '）';
+    $('h8').textContent  = HR.r1.toFixed(3) + ' / ' + HR.r2.toFixed(3);
+    $('h8x').textContent = '壁厚 银/铂/金 = ' + (HR.r1-r0).toFixed(3) + '/' + (HR.r2-HR.r1).toFixed(3) + '/' + (R3-HR.r2).toFixed(3);
+  }
+
+  draw();
+}
+
+function setR2(v){ $('sR2').value = (v*100).toFixed(2); refresh(); }
+
+$('sR2').addEventListener('input', refresh);
+$('bSqrt').addEventListener('click', function(){ setR2(R2_IDEAL); });
+$('bLn').addEventListener('click', function(){ setR2(R2_LN2); });
+$('bHalf').addEventListener('click', function(){ setR2(0.75); });
+
+/* ---------- 结构模式切换 ---------- */
+function setMode(m){
+  state.mode = m;
+  $('bSolid').classList.toggle('on', m==='solid');
+  $('bHollow').classList.toggle('on', m==='hollow');
+  var lr = $('lR2'); if(lr) lr.style.display = (m==='hollow') ? 'none' : 'flex';
+  var rows = document.querySelectorAll('.hrow');
+  for(var i=0;i<rows.length;i++) rows[i].style.display = (m==='hollow') ? 'flex' : 'none';
+  $('hollowRd').style.display = (m==='hollow') ? '' : 'none';
+  document.querySelectorAll('.rd:not(#hollowRd)').forEach(function(el){
+    el.style.display = (m==='hollow') ? 'none' : '';
+  });
+  refresh();
+}
+$('bSolid').addEventListener('click', function(){ setMode('solid'); });
+$('bHollow').addEventListener('click', function(){ setMode('hollow'); });
+['sR0','sLen','sTf'].forEach(function(id){ $(id).addEventListener('input', refresh); });
+['selGas','selFilm'].forEach(function(id){ $(id).addEventListener('change', refresh); });
+
+/* 表格窄屏横向滚动包裹（不改原 HTML 结构） */
+document.querySelectorAll('table').forEach(function(t){
+  if(t.parentNode && t.parentNode.classList && t.parentNode.classList.contains('tw')) return;
+  var d = document.createElement('div'); d.className = 'tw';
+  t.parentNode.insertBefore(d, t); d.appendChild(t);
+});
+
+var rz;
+window.addEventListener('resize', function(){ clearTimeout(rz); rz=setTimeout(draw,120); });
+
+/* ---------- 钩子 ---------- */
+window.__K3 = {
+  R1:R1, R3:R3, R2IDEAL:R2_IDEAL, R2LN2:R2_LN2,
+  areas:areas,
+  cumAt:function(r2){ var A=areas(r2); return A.cum; },
+  devAt:function(r2){ var A=areas(r2);
+    return Math.max(Math.abs(A.a1-1),Math.abs(A.a2-1),Math.abs(A.a3-1)); },
+  /* 等质量方案的中间层（供核验用） */
+  eqMassR2:function(d1,d2,d3){
+    var v1=1/d1, v2=1/d2, v3=1/d3;
+    var c2=v1+v2, c3=c2+v3;
+    return {r2:Math.sqrt(c2/c3), r3:1.0};
+  }
+};
+})();
+</script>
+<!--FXCTL:JS--><script id="fxctl-js">
+/* ============================================================
+   PKS · 通用「调参浮窗」 (float_ctl.js)
+   作用：把页面里成块的参数控件（.ctl / .ctrl / .controls / .calc /
+        .panel[纯控件] / [data-param-panel]）收进右下角一个可拖动浮窗。
+   原则：
+     1. 只搬控件块本身，**不复制、不重建** ⇒ 原页面绑定在元素上的
+        事件监听、id、input 值全部照常工作。
+     2. 搬不走的、散的（每张卡片各一组、且组数很多）→ 整页放弃，
+        保持原样，并在 console 里说明原因，绝不半搬半留。
+     3. 位置写入 localStorage；双击标题栏回默认位；⇱/— 收起。
+   ============================================================ */
+(function () {
+  if (window.__FXCTL) return;
+
+  var SEL = '.ctl,.ctrl,.controls,.calc,.param-panel,.grp,.htgroup,[data-param-panel]';
+  var MAX_GROUPS = 16;    // 超过这个组数：判定为"散在每张卡片里"，整页跳过
+  var MIN_SHARE = 0.85;   // 收进去的滑块至少要占全页 85%，否则跳过（不做半搬半留）
+  var KEY = 'fxp:' + location.pathname;
+
+  function txt(el, n) {
+    var s = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    if (n && s.length > n) s = s.slice(0, n - 1) + '…';
+    return s;
+  }
+  function inChrome(el) {
+    return !!(el.closest && el.closest('.topnav,header,nav,.topbar,.fxp,#fxp'));
+  }
+
+  /* ---------- 1. 找参数面板 ---------- */
+  // 页面自己已经有一个"贴右边的浮动参数窗"？有就不再叠第二个
+  function hasOwnDock() {
+    var els = [].slice.call(document.querySelectorAll('body > *'));
+    // 也看一两层深，很多页把 pwin 套在 wrapper 里
+    document.querySelectorAll('body div, body section, body aside').forEach(function (x) {
+      if (els.length < 400) els.push(x);
+    });
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      if (el.id === 'fxp') continue;
+      if (getComputedStyle(el).position !== 'fixed') continue;
+      var r = el.getBoundingClientRect();
+      if (r.width > 240 && r.width < 620 && r.height > 240 &&
+          (innerWidth - r.right) < 70 && r.top < 220) return true;
+    }
+    return false;
+  }
+
+  function detect() {
+    var all = [].slice.call(document.querySelectorAll('input[type=range]'));
+    if (hasOwnDock()) {
+      return { panels: [], total: all.length, inline: 0, moved: 0, ok: false, own: true };
+    }
+    // 已经在自己的浮窗里（祖先 fixed）的滑块：不算在"待浮"里，也不搬
+    function inFixed(el) {
+      var a = el, d = 0;
+      while (a && d++ < 5) {
+        if (getComputedStyle(a).position === 'fixed') return true;
+        a = a.parentElement;
+      }
+      return false;
+    }
+    var inline = all.filter(function (i) { return !inFixed(i); });   // 仍躺在正文里的
+    var cands = [].slice.call(document.querySelectorAll(SEL)).filter(function (el) {
+      if (inChrome(el)) return false;
+      if (!el.querySelector('input[type=range]')) return false;
+      if (inFixed(el)) return false;                                 // 已在浮窗内
+      var hasCanvas = !!el.querySelector('canvas,svg,video,img');
+      var cls = el.className || '';
+      var isParamCol = /(^|\s)(ctl|ctrl|controls|calc|param-panel)(\s|$)/.test(cls);
+      if (hasCanvas && !isParamCol) return false;
+      if (el.classList.contains('panel') || el.classList.contains('grp')) {
+        return el.querySelectorAll('input[type=range]').length >= 2;
+      }
+      return true;
+    });
+    // 去重 + 保留最外层
+    cands = cands.filter(function (el, i) {
+      if (cands.indexOf(el) !== i) return false;
+      return !cands.some(function (o) { return o !== el && o.contains(el); });
+    });
+    var moved = 0;
+    cands.forEach(function (el) { moved += el.querySelectorAll('input[type=range]').length; });
+    var ok = cands.length > 0 && cands.length <= MAX_GROUPS &&
+             (inline.length ? moved / inline.length >= MIN_SHARE : false);
+    return { panels: cands, total: all.length, inline: inline.length, moved: moved, ok: ok };
+  }
+
+  /* ---------- 2. 取分组标签（最近的标题 / .vt）---------- */
+  function labelFor(el) {
+    var gt = el.querySelector && el.querySelector('.gt');
+    if (gt) return txt(gt, 22);
+    var v0 = el.closest && el.closest('.viz');
+    if (v0) { var t0 = v0.querySelector('.vt'); if (t0) return txt(t0, 22); }
+    var node = el, hop = 0;
+    while (node && hop++ < 6) {
+      var prev = node.previousElementSibling;
+      while (prev) {
+        if (/^H[1-4]$/.test(prev.tagName)) return txt(prev, 22);
+        if (prev.querySelector) {
+          var h = prev.querySelector('h2,h3,h4,.vt');
+          if (h) return txt(h, 22);
+        }
+        prev = prev.previousElementSibling;
+      }
+      node = node.parentElement;
+    }
+    return '';
+  }
+
+  /* 搬走控件后，父级若是两列网格且变空 → 收成一列，避免右侧留一条空白 */
+  function collapseTrack(el) {
+    var par = el.parentElement;
+    if (!par) return;
+    var cs = getComputedStyle(par);
+    if (cs.display !== 'grid') return;
+    var tracks = (cs.gridTemplateColumns || '').split(/\s+/).filter(function (x) { return x && x !== 'none'; });
+    if (tracks.length !== 2) return;
+    if (par.lastElementChild !== el) return;
+    par.style.gridTemplateColumns = '1fr';
+  }
+
+  /* ---------- 3. 搭面板 ---------- */
+  function build(d) {
+    var old = document.getElementById('fxp');
+    if (old) old.remove();
+
+    var p = document.createElement('div');
+    p.id = 'fxp';
+    var counts = d.panels.map(function (el) {
+      return el.querySelectorAll('input[type=range]').length;
+    });
+    var nRange = counts.reduce(function (a, b) { return a + b; }, 0);
+
+    p.innerHTML =
+      '<div class="fxp-h" id="fxpH">' +
+        '<span class="fxp-grip">⠿</span>' +
+        '<span class="fxp-t">调参</span>' +
+        '<span class="fxp-c">' + d.panels.length + ' 组 · ' + nRange + ' 滑块</span>' +
+        '<button class="fxp-b" data-a="mini" title="收起 / 展开">—</button>' +
+        '<button class="fxp-b" data-a="reset" title="回到默认位置（也可双击标题栏）">⟲</button>' +
+      '</div><div class="fxp-bd"></div>';
+
+    var bd = p.querySelector('.fxp-bd');
+    var used = {}, noteDone = false;
+    d.panels.forEach(function (el, i) {
+      var lb = labelFor(el) || ('参数组 ' + (i + 1));
+      if (used[lb]) { used[lb]++; lb = lb.slice(0, 16) + ' (' + used[lb] + ')'; } else { used[lb] = 1; }
+      var g = document.createElement('div');
+      g.className = 'fxp-grp';
+      var gl = document.createElement('div');
+      gl.className = 'fxp-gl';
+      gl.innerHTML = '<b>' + lb.replace(/</g, '&lt;') + '</b><i>' + counts[i] + '</i>';
+      g.appendChild(gl);
+
+      if (!noteDone && el.parentNode) {
+        var note = document.createElement('p');
+        note.className = 'fxp-note';
+        note.textContent = '参数已收进右侧浮窗「调参」（拖标题栏可挪走 · 双击回位）';
+        el.parentNode.insertBefore(note, el);
+        noteDone = true;
+      }
+      collapseTrack(el);
+
+      g.appendChild(el);          // ← 原节点整体搬入，事件与 id 不变
+      bd.appendChild(g);
+    });
+
+    document.body.appendChild(p);
+    return p;
+  }
+
+  /* ---------- 4. 位置 / 拖动 / 收起 ---------- */
+  function clamp(p) {
+    var r = p.getBoundingClientRect(), W = innerWidth, H = innerHeight;
+    var x = Math.min(Math.max(r.left, -r.width + 90), W - 90);
+    var y = Math.min(Math.max(r.top, 0), H - 44);
+    p.style.left = x + 'px'; p.style.top = y + 'px';
+    p.style.right = 'auto'; p.style.bottom = 'auto';
+  }
+  function defPos(p) {
+    p.style.left = ''; p.style.right = ''; p.style.top = ''; p.style.bottom = '';
+  }
+  function save(p) {
+    try {
+      var st = p.classList.contains('fxp-min');
+      if (!p.style.left) { localStorage.removeItem(KEY); return; }
+      localStorage.setItem(KEY, JSON.stringify({
+        x: parseFloat(p.style.left), y: parseFloat(p.style.top), mini: st
+      }));
+    } catch (e) {}
+  }
+  function load(p) {
+    try {
+      var s = localStorage.getItem(KEY);
+      /* 首次访问一律收起：页面本身就有「参数」竖条，浮窗默认展开会把画布挤掉 322px；
+         收起的标题条写着「调参 · N 组 · M 滑块」，一眼能看见、点一下就展开，状态会被记住。 */
+      if (!s) { p.classList.add('fxp-min'); return; }
+      var o = JSON.parse(s);
+      if (o.mini) p.classList.add('fxp-min');
+      if (typeof o.x === 'number' && isFinite(o.x)) {
+        p.style.left = o.x + 'px'; p.style.top = o.y + 'px';
+        p.style.right = 'auto'; p.style.bottom = 'auto';
+        clamp(p);
+      }
+    } catch (e) {}
+  }
+
+  function wire(p) {
+    var h = p.querySelector('#fxpH');
+    var drag = null;
+
+    h.addEventListener('pointerdown', function (ev) {
+      if (ev.target.closest('button')) return;
+      if (innerWidth <= 880) return;                 // 窄屏走底部抽屉，不拖
+      var r = p.getBoundingClientRect();
+      drag = { dx: ev.clientX - r.left, dy: ev.clientY - r.top, moved: false };
+      p.style.left = r.left + 'px'; p.style.top = r.top + 'px';
+      p.style.right = 'auto'; p.style.bottom = 'auto';
+      h.classList.add('fxp-drag');
+      h.setPointerCapture && h.setPointerCapture(ev.pointerId);
+      ev.preventDefault();
+    });
+    h.addEventListener('pointermove', function (ev) {
+      if (!drag) return;
+      drag.moved = true;
+      p.style.left = (ev.clientX - drag.dx) + 'px';
+      p.style.top = (ev.clientY - drag.dy) + 'px';
+      var r = p.getBoundingClientRect();
+      var nx = Math.min(Math.max(r.left, -r.width + 90), innerWidth - 90);
+      var ny = Math.min(Math.max(r.top, 0), innerHeight - 44);
+      p.style.left = nx + 'px'; p.style.top = ny + 'px';
+    });
+    function end() { if (drag) { h.classList.remove('fxp-drag'); save(p); drag = null; } }
+    h.addEventListener('pointerup', end);
+    h.addEventListener('pointercancel', end);
+
+    h.addEventListener('dblclick', function (ev) {
+      if (ev.target.closest('button')) return;
+      defPos(p);
+      try { localStorage.removeItem(KEY); } catch (e) {}
+    });
+
+    p.addEventListener('click', function (ev) {
+      var b = ev.target.closest('button[data-a]');
+      if (!b) return;
+      if (b.dataset.a === 'mini') { p.classList.toggle('fxp-min'); save(p); }
+      if (b.dataset.a === 'reset') { defPos(p); p.classList.remove('fxp-min'); save(p); }
+    });
+
+    addEventListener('resize', function () { if (p.style.left) clamp(p); });
+  }
+
+  /* ---------- 5. 启动 ---------- */
+  function boot() {
+    var d = detect();
+    if (!d.ok) {
+      if (d.own) {
+        console.info('[调参浮窗] 本页跳过：页面自己已有贴右的可拖动参数窗，不叠第二个');
+      } else if (d.inline === 0 && d.total > 0) {
+        console.info('[调参浮窗] 本页跳过：' + d.total + ' 个滑块全在页面自己的浮窗里，没有需要搬的');
+      } else if (d.panels.length) {
+        console.info('[调参浮窗] 本页跳过：' + d.panels.length + ' 组、待浮滑块 ' +
+          d.moved + '/' + d.inline + '（判据：≤' + MAX_GROUPS + ' 组且 ≥' +
+          Math.round(MIN_SHARE * 100) + '%；已在浮窗内的 ' + (d.total - d.inline) + ' 个不计）');
+      }
+      return;
+    }
+    var p = build(d);
+    load(p);
+    wire(p);
+    console.info('[调参浮窗] 已收 ' + d.moved + '/' + d.inline + ' 个待浮滑块，' +
+      d.panels.length + ' 组（另 ' + (d.total - d.inline) + ' 个本来就在浮窗里）');
+  }
+
+  window.__FXCTL = { detect: detect, boot: boot, build: build };
+
+  if (document.readyState === 'complete') setTimeout(boot, 60);
+  else addEventListener('load', function () { setTimeout(boot, 60); });
+})();
+
+</script><!--/FXCTL:JS-->
+</body>
+</html>

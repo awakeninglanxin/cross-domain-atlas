@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>勾股定理之弦外之音 · 3D 动态演示</title>
+<style>
+  :root{
+    --bg:#f4f7fb; --card:#ffffff; --line:#e2e8f2; --line2:#eef2f8;
+    --ink:#1c2534; --ink2:#495a72; --ink3:#7d8ca3;
+    --blue:#3457d5; --blue2:#5b7bf0; --amber:#e08a17; --red:#d1445a;
+    --teal:#0e9c8e; --violet:#7a51c9; --gold:#b8892b;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font-family:"Microsoft YaHei","PingFang SC","Hiragino Sans GB",system-ui,-apple-system,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:1560px;margin:0 auto;padding:18px 20px 44px}
+  header.top{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;justify-content:space-between;margin-bottom:14px}
+  .title{font-size:23px;font-weight:700;letter-spacing:.4px}
+  .title small{display:block;font-weight:400;color:var(--ink3);font-size:13px;margin-top:5px;letter-spacing:0}
+  .keyid{background:linear-gradient(135deg,#fff,#f3f7ff);border:1px solid var(--line);
+    border-radius:12px;padding:10px 16px;box-shadow:0 2px 10px rgba(30,60,120,.05);text-align:right}
+  .keyid .k1{font-size:12px;color:var(--ink3)}
+  .keyid .k2{font-size:19px;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums}
+  .keyid .k3{font-size:12px;color:var(--ink2);margin-top:3px;font-variant-numeric:tabular-nums}
+  .main{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:16px;align-items:start}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    box-shadow:0 3px 16px rgba(30,60,120,.055)}
+  .canvasWrap{position:relative;height:min(820px,calc(100vh - 236px));min-height:480px;overflow:hidden;border-radius:14px}
+  canvas{display:block;width:100%;height:100%;cursor:grab;touch-action:none}
+  canvas.grabbing{cursor:grabbing}
+  .caption{position:absolute;left:16px;right:16px;bottom:58px;pointer-events:none}
+  .capbox{background:rgba(255,255,255,.94);border:1px solid var(--line);border-left:4px solid var(--blue);
+    border-radius:10px;padding:11px 15px;font-size:14.5px;line-height:1.64;color:var(--ink);
+    box-shadow:0 4px 18px rgba(30,60,120,.10);max-width:920px}
+  .capbox b{color:var(--blue)}
+  .capbox .eq{font-variant-numeric:tabular-nums;color:var(--violet);font-weight:600}
+  .stagebar{position:absolute;left:16px;right:16px;bottom:14px;display:flex;gap:8px;align-items:center}
+  .ticks{display:flex;gap:5px;flex:1}
+  .tick{flex:1;height:6px;border-radius:4px;background:#dde5f1;overflow:hidden;cursor:pointer;position:relative}
+  .tick i{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,var(--blue2),var(--blue));display:block}
+  .tick.done i{width:100%}
+  .ctrl{display:flex;gap:6px}
+  .btn{border:1px solid var(--line);background:#fff;color:var(--ink2);border-radius:9px;
+    padding:6px 10px;font-size:13px;cursor:pointer;line-height:1;font-family:inherit}
+  .btn:hover{border-color:#c7d4ea;background:#f8fbff;color:var(--blue)}
+  .btn.pri{background:var(--blue);color:#fff;border-color:var(--blue)}
+  .btn.pri:hover{background:#2a49bd;color:#fff}
+  .badge{position:absolute;left:16px;top:14px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
+  .pill{background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:999px;
+    padding:5px 11px;font-size:12px;color:var(--ink2);box-shadow:0 2px 8px rgba(30,60,120,.06)}
+  .pill b{color:var(--blue);font-variant-numeric:tabular-nums}
+  .side{display:flex;flex-direction:column;gap:14px}
+  .side h3{margin:0 0 10px;font-size:13px;letter-spacing:.6px;color:var(--ink3);font-weight:700}
+  .pad{padding:14px 16px}
+  .steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px}
+  .steps li{display:flex;gap:9px;align-items:flex-start;padding:7px 9px;border-radius:9px;
+    font-size:13px;color:var(--ink2);cursor:pointer;border:1px solid transparent;line-height:1.45}
+  .steps li .n{flex:0 0 20px;height:20px;border-radius:6px;background:#eef3fc;color:var(--blue);
+    font-size:11.5px;display:flex;align-items:center;justify-content:center;font-weight:700;margin-top:1px}
+  .steps li:hover{background:#f7faff}
+  .steps li.on{background:#eef4ff;border-color:#d3e0fb;color:var(--ink);font-weight:600}
+  .slider{display:flex;align-items:center;gap:10px;margin:6px 0 4px}
+  input[type=range]{flex:1;accent-color:var(--blue)}
+  .nval{font-size:15px;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums;min-width:26px;text-align:right}
+  table.rd{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
+  table.rd td{padding:4.5px 0;border-bottom:1px dashed var(--line2);color:var(--ink2)}
+  table.rd td.v{text-align:right;font-weight:600;color:var(--ink)}
+  table.rd tr:last-child td{border-bottom:none}
+  .sw{display:flex;flex-direction:column;gap:8px}
+  .sw .btn{text-align:center;display:block}
+  /* ---- 勾股数组合选择器（3:4:5 只是其中一组） ---- */
+  .tripick{display:flex;flex-direction:column;gap:8px}
+  .tripick .tgl{font-size:11.5px;color:var(--ink3);font-weight:700;letter-spacing:.3px;margin-top:5px}
+  .tripick .tgl:first-child{margin-top:0}
+  .tripick .tr{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:6px}
+  .trbtn{border:1px solid var(--line);background:#fff;color:var(--ink2);border-radius:9px;
+    padding:6px 4px;font-size:12.5px;cursor:pointer;line-height:1.3;font-family:inherit;
+    font-variant-numeric:tabular-nums;text-align:center;transition:.12s}
+  .trbtn:hover{border-color:#c7d4ea;background:#f8fbff;color:var(--blue)}
+  .trbtn.on{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:700}
+  .trbtn.on small{color:#dce6ff}
+  .trbtn small{display:block;font-size:10px;opacity:.7;font-weight:400;margin-top:2px}
+  .tman{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:var(--ink2);flex-wrap:wrap}
+  .tman input{width:54px;border:1px solid var(--line);border-radius:7px;padding:4px 6px;font-size:12.5px;
+    font-family:inherit;color:var(--ink);font-variant-numeric:tabular-nums}
+  .tman input:focus{outline:none;border-color:var(--blue2)}
+  .tman .hypv{font-weight:700;color:var(--violet);font-variant-numeric:tabular-nums;min-width:34px}
+  .tn2{font-size:11.5px;color:var(--ink3);line-height:1.68;margin-top:9px}
+  .tn2 b{color:var(--red)}
+  /* ---- 通项穷举：范围 / 类型 选择 ---- */
+  .tsel{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink3);flex-wrap:wrap}
+  .tsel select{border:1px solid var(--line);border-radius:7px;padding:3.5px 7px;font-size:12px;
+    font-family:inherit;color:var(--ink);background:#fff;cursor:pointer}
+  .tsel select:focus{outline:none;border-color:var(--blue2)}
+  .tsel .st{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--ink2);font-weight:600}
+  .tsel .st b{color:var(--blue)}
+  .tpwrap{max-height:266px;overflow-y:auto;padding-right:4px;margin-top:9px}
+  .tripick .tgl .cnt{font-weight:400;color:var(--ink3);margin-left:5px;font-variant-numeric:tabular-nums}
+  .trbtn.pel{border-color:#e8c46a;background:#fffdf4}
+  .trbtn.pel:hover{background:#fff8e3}
+  .trbtn.pel.on{background:#c9a227;border-color:#c9a227;color:#fff}
+  .trbtn.pel.on small{color:#ffeec2}
+  /* ---- 比值全景表 ---- */
+  .rtwrap{max-height:460px;overflow-y:auto;border-radius:12px}
+  table.tb td.int{color:var(--red);font-weight:700;background:#fff5f7}
+  table.tb td.fx{color:var(--ink3)}
+  table.tb tr.pelrow td{background:#fffbf0}
+  table.tb tr.pelrow td.int{background:#fff2f4}
+  table.tb th small{display:block;font-weight:400;font-size:10.5px;color:var(--ink3);margin-top:2px}
+  /* ---- 判据卡 ---- */
+  .thm{border:1px solid var(--line);border-left:4px solid var(--blue);border-radius:11px;
+    padding:13px 16px;background:#fff;font-size:13px;line-height:1.78;color:var(--ink2);margin-bottom:11px}
+  .thm.t2{border-left-color:#0e9c8e}
+  .thm.t3{border-left-color:#c9a227}
+  .thm h4{margin:0 0 7px;font-size:13.5px;color:var(--blue)}
+  .thm.t2 h4{color:#0e9c8e}
+  .thm.t3 h4{color:#a8841c}
+  .thm .fm{font-variant-numeric:tabular-nums;color:var(--violet);font-weight:600}
+  .thm .pf{display:block;margin-top:7px;font-size:12.5px;color:var(--ink3);line-height:1.74}
+  .thm .pf b{color:var(--ink2)}
+  .thm b.key{color:var(--red)}
+  section{margin-top:26px}
+  .secttl{font-size:16px;font-weight:700;color:var(--ink);margin:0 0 12px}
+  .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+  .box{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:#fff;font-size:13.5px;line-height:1.78;color:var(--ink2)}
+  .box b{color:var(--ink)}
+  .box .eq{font-variant-numeric:tabular-nums;color:var(--violet);font-weight:600}
+  .box h4{margin:0 0 8px;font-size:13.5px;color:var(--blue)}
+  table.tb{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums;background:#fff;
+    border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  table.tb th{background:#f2f6fd;color:var(--ink2);font-weight:700;padding:8px 6px;text-align:center;border-bottom:1px solid var(--line);font-size:12px}
+  table.tb td{padding:6.5px 6px;text-align:center;color:var(--ink2);border-bottom:1px dashed var(--line2)}
+  table.tb tr:last-child td{border-bottom:none}
+  table.tb tr.hl td{background:#fffaf0;color:var(--ink);font-weight:600}
+  table.tb td.mid{color:var(--amber);font-weight:600}
+  table.tb td.good{color:var(--teal);font-weight:600}
+  footer{margin-top:34px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--ink3);line-height:1.9}
+  @media (max-width:900px){
+    .main{grid-template-columns:minmax(0,1fr)}
+    .canvasWrap{height:60vh}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="title">
+      勾股定理之弦外之音 · 动态演示
+      <small>三全自然教育讲义还原 &nbsp;|&nbsp; <b>任意勾股数</b>（3 : 4 : 5 只是其中一组）→ 赵爽弦图出入相补 → 天元数 2·勾·股 → 弦里弦外共天元</small>
+    </div>
+    <div class="keyid">
+      <div class="k1" id="k1">核心恒等式（当前组合 · n = 1…10 全验）</div>
+      <div class="k2" id="k2">24n² + n² = 25n²</div>
+      <div class="k3" id="k3">天元数 2·勾·股 = 弦方内四△ = 外方 − 弦方</div>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="card canvasWrap">
+      <canvas id="cv"></canvas>
+      <div class="badge" id="badge"></div>
+      <div class="caption"><div class="capbox" id="cap"></div></div>
+      <div class="stagebar">
+        <div class="ticks" id="ticks"></div>
+        <div class="ctrl">
+          <button class="btn pri" id="btnPlay">▶ 播放</button>
+          <button class="btn" id="btnIn" title="放大">＋</button>
+          <button class="btn" id="btnOut" title="缩小">－</button>
+          <button class="btn" id="btnFit" title="复位视野">复位</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="card pad">
+        <h3>勾股数组合（通项穷举 · 点即切换）</h3>
+        <div class="tsel">
+          <span>范围</span>
+          <select id="triRange">
+            <option value="30">弦 ≤ 30</option>
+            <option value="100" selected>弦 ≤ 100</option>
+            <option value="200">弦 ≤ 200</option>
+            <option value="500">弦 ≤ 500</option>
+            <option value="1000">弦 ≤ 1000</option>
+          </select>
+          <select id="triKind">
+            <option value="prim" selected>只看本原</option>
+            <option value="all">含整数倍</option>
+          </select>
+          <span class="st" id="triStat"></span>
+        </div>
+        <div class="tpwrap"><div class="tripick" id="triPick"></div></div>
+        <div class="tman">
+          <span>自定义：勾</span><input id="inA" type="text" inputmode="numeric" value="3">
+          <span>股</span><input id="inB" type="text" inputmode="numeric" value="4">
+          <span>弦</span><span class="hypv" id="inC">5</span>
+          <button class="btn" id="btnSet" style="padding:5px 9px">用这组</button>
+        </div>
+        <div class="tn2">
+          按钮由 <b>欧几里得通项</b>
+          <span style="font-variant-numeric:tabular-nums;color:var(--violet);font-weight:600">勾:股:弦 = (m²−n²) : 2mn : (m²+n²)</span>
+          <b>现场穷举</b>（m &gt; n ≥ 1、gcd = 1、m−n 为奇），一条都没写死。<br>
+          弦 = √(勾² + 股²) 自动算出（开不尽时显示根号）。<b>3 : 4 : 5 只是其中一组</b> ——
+          上面任一组（甚至自定义的任意整数勾、股）都满足同一条恒等式，
+          只是数字换成它自己的 <b>2·勾·股</b> 与 <b>(股−勾)²</b>。<br>
+          <b>金框那一组（股 − 勾 = 1 · Pell 家族）很特别</b>：只有它们能让「÷内方」的比变成整数，
+          见下方<b>③ 比值全景表</b>与<b>三条判据</b>。
+        </div>
+      </div>
+
+      <div class="card pad">
+        <h3>分镜（← → 切换）</h3>
+        <ul class="steps" id="steps"></ul>
+      </div>
+
+      <div class="card pad">
+        <h3 id="hMul">倍率 n（勾 : 股 : 弦 = 3n : 4n : 5n）</h3>
+        <div class="slider">
+          <input type="range" id="nSlider" min="1" max="10" step="1" value="1">
+          <span class="nval" id="nVal">1</span>
+        </div>
+        <table class="rd" id="rdTab"></table>
+      </div>
+
+      <div class="card pad">
+        <h3>讲义与相关文档</h3>
+        <div class="sw">
+          <a class="btn" href="AAA四面体_主界面.html">四面体 · 白银比四次方（升维下一步）</a>
+          <a class="btn" href="勾股通项_任意直角三角形.html" target="_blank">通项公式 · 任意勾股形</a>
+          <a class="btn" href="白银比四次方_数学证明.html" target="_blank">白银比四次方 · 严格证明</a>
+          <a class="btn" href="AAA_总入口_几何演示.html">返回总入口</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 恒等式 ================= -->
+  <section>
+    <div class="secttl">两处「天元数」—— 弦里弦外共天元<span id="idSub" style="font-weight:400;font-size:13px;color:var(--ink3)"></span></div>
+    <div class="grid" id="identityGrid"></div>
+  </section>
+
+  <!-- ================= 十行推演表 ================= -->
+  <section>
+    <div class="secttl" id="tblTtl">讲义原表 · n = 1…10 逐行推演（悬停高亮；随分镜自动高亮）</div>
+    <table class="tb" id="mainTable"></table>
+    <div class="box" style="margin-top:12px" id="tblNote"></div>
+  </section>
+
+  <!-- ================= 比值全景表 ================= -->
+  <section>
+    <div class="secttl">比值全景表 —— 所有勾股数各自的「弦里 / 弦外」比
+      <span id="rtSub" style="font-weight:400;font-size:13px;color:var(--ink3)"></span></div>
+    <div class="tsel" style="margin-bottom:11px">
+      <span>范围</span>
+      <select id="rtRange">
+        <option value="30">弦 ≤ 30</option>
+        <option value="100" selected>弦 ≤ 100</option>
+        <option value="200">弦 ≤ 200</option>
+        <option value="500">弦 ≤ 500</option>
+        <option value="1000">弦 ≤ 1000</option>
+      </select>
+      <select id="rtKind">
+        <option value="prim" selected>只看本原</option>
+        <option value="all">含整数倍</option>
+      </select>
+      <span class="st" id="rtStat"></span>
+    </div>
+    <div class="rtwrap"><table class="tb" id="rtTable"></table></div>
+    <div class="box" style="margin-top:12px" id="rtNote"></div>
+  </section>
+
+  <!-- ================= 三条判据 ================= -->
+  <section>
+    <div class="secttl">哪些情况的比是「整数比」？—— 三条判据（带证明）</div>
+
+    <div class="thm">
+      <h4>判据一 · 凡「÷ 弦方」的比，<b class="key">永远是分数，一条整数都没有</b></h4>
+      把弦方当作分母去看三种面积（内方 = (股−勾)²、天元数 = 2·勾·股、外方 = (勾+股)²）：
+      <span class="fm">内方 / 弦方 = (股−勾)² / 弦² ∈ (0, 1)</span>　·　
+      <span class="fm">天元数 / 弦方 = 2·勾·股 / 弦² ∈ (0, 1)</span>　·　
+      <span class="fm">外方 / 弦方 = (勾+股)² / 弦² ∈ (1, 2)</span>
+      <span class="pf"><b>证明：</b>① 0 &lt; 股−勾 &lt; 弦 ⇒ 第一个比是真分数；
+      ② 弦² − 2·勾·股 = (股−勾)² &gt; 0 ⇒ 第二个比也在 (0,1)；
+      ③ 外方 − 弦方 = 2·勾·股 &gt; 0、且 2·弦² − 外方 = (股−勾)² &gt; 0 ⇒ 第三个比严格落在 (1, 2)。
+      <b>三个比值都卡在 0 与 1（或 1 与 2）之间，永远取不到整数分子 —— 这也解释了为什么「弦里弦外共天元」这句话只在面积层面成立，一写成比就再也回不到整数。</b>
+      机械核验：弦 ≤ 1000 的全部 881 组（含整数倍），违反条数 <b>0</b>。</span>
+    </div>
+
+    <div class="thm t2">
+      <h4>判据二 · 凡「÷ 内方」的比，取整 <b class="key">⟺ 股 − 勾 = 1</b>（Pell 家族，别无他家）</h4>
+      <span class="fm">天元数 / 内方 = 2·勾·股 / (股−勾)²</span>　·　
+      <span class="fm">弦方 / 内方 = 弦² / (股−勾)²</span>　·　
+      <span class="fm">外方 / 内方 = (勾+股)² / (股−勾)²</span>
+      <span class="pf"><b>证明：</b>这三个比都是<b>尺度不变量</b>（勾、股、弦同乘 k，分子分母同乘 k² ⇒ 比值不变），
+      所以只需讨论<b>最简本原形</b>（gcd(勾,股) = 1）。
+      ① 记 D = 股 − 勾。由 gcd(D, 勾) = gcd(股, 勾) = 1、gcd(D, 股) = gcd(勾, 股) = 1 得
+      <b>gcd(D², 勾·股) = 1</b>，于是 <span class="fm">D² | 2·勾·股 ⟺ D² | 2 ⟺ D = 1</span>（第一个比）；
+      ② 弦方/内方 取整 ⟺ D² | 弦² ⟺ D | 弦 ⟹ D | 弦² = 勾² + 股² ≡ 2·勾² (mod D) ⟹ D | 2·勾²，
+      再配合 gcd(D, 勾) = 1 得 <b>D | 2 ⇒ D = 1</b>（第二个比；D = 2 虽满足 2 的幂，但此时勾、股同奇偶，与本原性矛盾）；
+      ③ 外方/内方 取整 ⟺ D | (勾+股) ⟹ D | (勾+股) + (股−勾) = 2·股 且 D | 2·勾 ⟹ D | 2·gcd(勾,股) = 2 ⇒ <b>D = 1</b>（第三个比）。
+      <b>三个比的方向不同、证法不同，最后全都落到同一条条件 股 − 勾 = 1 上 —— 而这条正是 Pell 方程 (2·勾+1)² − 2·弦² = −1。</b>
+      机械核验：弦 ≤ 1000 的 881 组里，违反条数 <b>0</b>；「÷内方」取整的共 <b>240</b> 组，
+      全部是最简形为 3:4:5 / 20:21:29 / 119:120:169 / 696:697:985 … 的整数倍。</span>
+    </div>
+
+    <div class="thm t3">
+      <h4>判据三 · 其余六个方向 <b class="key">永不取整</b>；能取整的只有「÷ 内方」这三条</h4>
+      把六个「÷ 勾方 / ÷ 股方 / ÷ 外方 / ÷ 天元数」方向一并机械扫描（弦 ≤ 1000，881 组）：
+      <span class="pf">
+      内方/勾方、内方/股方、天元数/勾方、天元数/股方、外方/勾方、外方/股方、外方/天元数、天元数/外方、弦方/天元数
+      —— <b>取整条数全部 = 0</b>。
+      <b>证明：</b>它们都要求 勾 | 股 或 股 | 勾 或 勾 | 2·股 之类；由 gcd(勾,股) = 1、股 &gt; 勾 立即得 勾 = 1、股 = 2，
+      而 1² + 2² = 5 开不尽 ⇒ 整数勾股数里无解。（另：天元数/外方 与 弦方/天元数 一侧小于 1、一侧大于 1，
+      但 gcd(勾·股, 勾+股) = 1 同样封死了整除的可能。）</span>
+      <span class="pf"><b>合起来一句话 ——</b>
+      在整数勾股数这一族里，「能写成整数比」的路<b>只有一条</b>：把内方当分母。
+      而它又只有一个条件：<span class="fm">股 − 勾 = 1</span>，即
+      <b>3 : 4 : 5 → 20 : 21 : 29 → 119 : 120 : 169 → 696 : 697 : 985 → 4059 : 4060 : 5741 → …</b>
+      （每一项 = 前一项 × (3 + 2√2) 附近，也就是 σ² = (1+√2)² 在勾股三边上的投影）。
+      这和三维页（`AAA四面体_主界面.html`）里「无分母 ⟺ 3 : 4 : 5 一整族」的结论<b>互为印证</b> ——
+      3 : 4 : 5 同时是两边的第一条。</span>
+    </div>
+  </section>
+
+  <footer>
+    <div>数据来源：<span style="font-variant-numeric:tabular-nums">D:\AAA我的文件\PKS_千禧难题_GitHub版\02_应用科技\24_searl_SEG\相关图片\勾股定理之弦外之音.jpg</span>（三全自然教育讲义，2026-10-12 19:59 加入）</div>
+    <div><b>勾股数可换</b>：右栏「勾股数组合」由<b>欧几里得通项现场穷举</b>（范围 弦 ≤ 30…1000 ×
+      只看本原 / 含整数倍），金框 = <b>股 − 勾 = 1 的 Pell 家族</b>；也可直接输入「勾、股」自定义。
+      3 : 4 : 5 只是其中一组（而且是 Pell 家族的第一条）。几何、文案、读数表、推演表、比值全景表会全部按新组合现算。</div>
+    <div><b>③ 比值全景表</b>列出所有勾股数各自的「弦里 / 弦外」比；
+      <b>三条判据</b>回答「哪些情况的比是整数比」：<b>÷弦方 永远是真分数</b>，
+      <b>÷内方 取整 ⟺ 股 − 勾 = 1</b>（Pell 家族，别无他家），其余六个方向<b>永不取整</b> —— 均附证明。</div>
+    <div>配套页：<a href="AAA四面体_主界面.html">四面体 · 白银比四次方</a> &nbsp;·&nbsp; <a href="勾股通项_任意直角三角形.html" target="_blank">通项公式 · 任意勾股形</a> &nbsp;·&nbsp; <a href="AAA_总入口_几何演示.html">项目总入口</a></div>
+    <div>操作：拖拽平移 · 滚轮缩放 · 双击复位 · 空格播放/暂停 · ← → 切换分镜 · URL 传参 <code>#tri=20-21-29&stage=2@0.5</code></div>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+window.__errs=[];
+window.addEventListener('error',function(e){ window.__errs.push(String((e&&e.message)||e)); });
+window.addEventListener('unhandledrejection',function(e){ window.__errs.push('reject: '+String(e&&e.reason)); });
+
+/* ============================================================
+   0. 基础：画布 / 视野 / 世界坐标映射
+   ============================================================ */
+var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+var W=0,H=0,DPR=Math.min(2,window.devicePixelRatio||1);
+
+function resize(){
+  var r=cv.parentElement.getBoundingClientRect();
+  W=Math.max(320,r.width); H=Math.max(320,r.height);
+  cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR);
+  cv.style.width=W+'px'; cv.style.height=H+'px';
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+
+var view={cx:0,cy:0,k:40};
+function P(x,y){ return [ (x-view.cx)*view.k + W/2, -(y-view.cy)*view.k + H/2 ]; }
+function fit(x0,y0,x1,y1,pad){
+  pad=(pad===undefined)?64:pad;
+  var w=Math.max(1e-6,x1-x0), h=Math.max(1e-6,y1-y0);
+  view.k=Math.min((W-2*pad)/w,(H-2*pad)/h);
+  view.cx=(x0+x1)/2; view.cy=(y0+y1)/2;
+}
+
+/* ---------- 绘图原语（世界坐标 → 屏幕像素） ---------- */
+function poly(pts,o){
+  o=o||{};
+  ctx.beginPath();
+  for(var i=0;i<pts.length;i++){
+    var s=P(pts[i][0],pts[i][1]);
+    if(i) ctx.lineTo(s[0],s[1]); else ctx.moveTo(s[0],s[1]);
+  }
+  ctx.closePath();
+  if(o.fill){ ctx.fillStyle=o.fill; ctx.fill(); }
+  if(o.stroke){ ctx.strokeStyle=o.stroke; ctx.lineWidth=o.lw||1.7;
+    if(o.dash) ctx.setLineDash(o.dash);
+    ctx.stroke(); ctx.setLineDash([]); }
+}
+function seg(a,b,o){
+  o=o||{};
+  var p=P(a[0],a[1]), q=P(b[0],b[1]);
+  ctx.beginPath(); ctx.moveTo(p[0],p[1]); ctx.lineTo(q[0],q[1]);
+  ctx.strokeStyle=o.stroke||'#94a3b8'; ctx.lineWidth=o.lw||1.5;
+  if(o.dash) ctx.setLineDash(o.dash);
+  ctx.stroke(); ctx.setLineDash([]);
+}
+function label(x,y,txt,o){
+  o=o||{};
+  var p=P(x,y);
+  var X=p[0]+(o.dx||0), Y=p[1]+(o.dy||0);
+  ctx.font=(o.bold?'700 ':'')+(o.size||13)+'px "Microsoft YaHei","PingFang SC",sans-serif';
+  ctx.textAlign=o.align||'center'; ctx.textBaseline=o.mid?'middle':(o.baseline||'middle');
+  if(o.halo!==false){ ctx.lineWidth=4; ctx.strokeStyle='rgba(255,255,255,.95)'; ctx.strokeText(txt,X,Y); }
+  ctx.fillStyle=o.color||'#1c2534';
+  ctx.fillText(txt,X,Y);
+}
+function dot(x,y,r,c){ var p=P(x,y); ctx.beginPath(); ctx.arc(p[0],p[1],r,0,6.2832);
+  ctx.fillStyle=c||'#3457d5'; ctx.fill(); }
+
+/* ---------- 缓动 ---------- */
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+function easeOut(t){ return 1-Math.pow(1-t,3); }
+function easeIO(t){ return t<0.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2; }
+
+/* ============================================================
+   1. 勾股数（可选组合）—— 3 : 4 : 5 只是其中一组
+   ------------------------------------------------------------
+   全部几何都由「勾 a、股 b、弦 c」现算，任何整数勾/股都成立：
+     内方边长 = 股 − 勾 = b − a
+     天元数   = 2·勾·股 = 2ab
+     外方边长 = 勾 + 股 = a + b
+     恒等式   2ab + (b−a)² = c²   （⇔ a² + b² = c²）
+   ============================================================ */
+/* 欧几里得通项现场穷举：勾:股:弦 = (m²−n²) : 2mn : (m²+n²)
+   （m > n ≥ 1、gcd(m,n) = 1、m − n 为奇数；k ≥ 2 给出非本原整数倍）
+   ⚠ 坑：m²−n² 未必小于 2mn（如 m=5,n=2 → 21 > 20），必须交换成「勾 = 短边」，
+      否则 20:21:29 会记成 21:20:29、d = 股−勾 变成负数。 */
+function triEnum(L, withMul){
+  var out=[];
+  for(var m=2; m*m+1<=L; m++){
+    for(var n=1; n<m; n++){
+      if(((m-n)&1)===0) continue;
+      if(gcd2(m,n)!==1) continue;
+      var c=m*m+n*n;
+      if(c>L) continue;
+      var p=m*m-n*n, q=2*m*n, t;
+      if(p>q){ t=p; p=q; q=t; }
+      out.push([p,q,c]);
+      if(withMul) for(var k=2; k*c<=L; k++) out.push([k*p,k*q,k*c]);
+    }
+  }
+  out.sort(function(x,y){ return x[2]-y[2] || x[0]-y[0]; });
+  return out;
+}
+var TRI_CACHE={};
+function triListOf(L,withMul){
+  var key=L+(withMul?'a':'p');
+  if(!TRI_CACHE[key]) TRI_CACHE[key]=triEnum(L,withMul);
+  return TRI_CACHE[key];
+}
+function triPrim(t){ return gcd2(t[0],t[1])===1; }
+/* 「股 − 勾 = 1」是<b>尺度不变量</b>：6:8:10 的最简形 3:4:5 也满足 ⇒ 整数倍照样算进 Pell 家族 */
+function triPel(t){ var g=gcd2(t[0],t[1])||1; return (t[1]-t[0])/g===1; }
+var TRI_RANGE=100, TRI_KIND='prim';
+
+var TRIP={a:3,b:4,c:5};
+var N=1;                       /* 倍率：勾股弦 = a·n : b·n : c·n */
+var GOU=3, GU=4, XIAN=5;       /* 含倍率后的实际三边（各分镜直接引用） */
+
+function gcd2(x,y){ x=Math.abs(x); y=Math.abs(y); while(y){ var t=x%y; x=y; y=t; } return x; }
+function syncGeo(){ GOU=TRIP.a*N; GU=TRIP.b*N; XIAN=TRIP.c*N; }
+function isInt(v){ return typeof v==='number' && isFinite(v) && Math.abs(v-Math.round(v))<1e-9; }
+
+/* 本原系数（n = 1 时的值）—— 用来生成「9n²」这类符号串 */
+function K(){
+  var t=TRIP;
+  return { a:t.a, b:t.b, c:t.c,
+    a2:t.a*t.a, b2:t.b*t.b, c2:t.c*t.c,
+    ab:t.a*t.b, ab2:2*t.a*t.b,
+    d:t.b-t.a, d2:(t.b-t.a)*(t.b-t.a),
+    s:t.a+t.b, s2:(t.a+t.b)*(t.a+t.b) };
+}
+/* 符号串：系数为 1 时省略 ⇒ P2(9)='9n²'、P2(1)='n²'、PN(7)='7n'、PN(1)='n' */
+function P2(v){ return (v===1?'':v)+'n²'; }
+function PN(v){ return (v===1?'':v)+'n'; }
+/* 中文数字（标题用，≤ 999） */
+var CN1=['零','一','二','三','四','五','六','七','八','九'];
+function cnNum(n){
+  n=Math.round(n);
+  if(!isFinite(n)||n<0) return String(n);
+  if(n<10) return CN1[n];
+  if(n<20) return '十'+(n%10?CN1[n%10]:'');
+  if(n<100) return CN1[Math.floor(n/10)]+'十'+(n%10?CN1[n%10]:'');
+  if(n<1000){ var h=Math.floor(n/100), r=n%100;
+    return CN1[h]+'百'+(r?(r<10?'零'+CN1[r]:cnNum(r)):''); }
+  return String(n);
+}
+/* 当前组合的说明串 */
+function tripTag(){ return TRIP.a+' : '+TRIP.b+' : '+TRIP.c; }
+function tripIs345(){ return TRIP.a===3&&TRIP.b===4&&TRIP.c===5&&N===1; }
+
+/* ============================================================
+   1b. 赵爽弦图（任意直角边 A、B，斜边 E = √(A²+B²)）
+   ------------------------------------------------------------
+   以弦 E 为边作大方；每条边上取「距起点 A²/E」的垂足，
+   再沿内向法向抬起 A·B/E ⇒ 得到直角顶点。
+   四个这样的直角顶点恰构成内方，边长 = B − A（与 A、B 是否整数无关）。
+   原式 A=3、B=4、E=5 时：垂足 (1.8, 0) 抬起 (0, 2.4) ⇒ (1.8, 2.4) ✓
+   ============================================================ */
+var _zs=null, _zsk='';
+function zs(){
+  var k=GOU+'|'+GU;
+  if(_zsk!==k){
+    var E=XIAN, a2=GOU*GOU;
+    var C4=[[0,0],[E,0],[E,E],[0,E]], inN=[[0,1],[-1,0],[0,-1],[1,0]];
+    var ap=C4.map(function(c,i){
+      var n=C4[(i+1)%4], ux=(n[0]-c[0])/E, uy=(n[1]-c[1])/E;
+      return [ c[0]+(a2/E)*ux+(GOU*GU/E)*inN[i][0],
+               c[1]+(a2/E)*uy+(GOU*GU/E)*inN[i][1] ];
+    });
+    var T=C4.map(function(c,i){ return [c, C4[(i+1)%4], ap[i]]; });
+    _zs={T:T, hole:ap, C4:C4, E:E, A:GOU, B:GU};
+    _zsk=k;
+  }
+  return _zs;
+}
+function zsClear(){ _zsk=''; }
+
+function centroid(pts){
+  var x=0,y=0; for(var i=0;i<pts.length;i++){ x+=pts[i][0]; y+=pts[i][1]; }
+  return [x/pts.length, y/pts.length];
+}
+function rotAbout(p,c,ang){
+  var dx=p[0]-c[0], dy=p[1]-c[1], co=Math.cos(ang), si=Math.sin(ang);
+  return [c[0]+dx*co-dy*si, c[1]+dx*si+dy*co];
+}
+function lerp(a,b,t){ return a+(b-a)*t; }
+function lerpV(a,b,t){ return [lerp(a[0],b[0],t), lerp(a[1],b[1],t)]; }
+
+/* ============================================================
+   2. 数值（当前勾股数 × 倍率 n）
+   ============================================================ */
+function nums(n){
+  n=(n===undefined)?N:n;
+  var a=TRIP.a*n, b=TRIP.b*n, c=TRIP.c*n;
+  return {
+    a:a, b:b, c:c,
+    gou:a*a, gu:b*b, xian:c*c,
+    wai:(a+b)*(a+b),          /* 外方 (勾+股)² */
+    tian:2*a*b,               /* 天元数 2·勾·股 */
+    nei:(b-a)*(b-a)           /* 内方 (股−勾)² */
+  };
+}
+
+/* ============================================================
+   3. 分镜（全部随当前勾股数现算；t / cap / bbox 支持函数）
+   ============================================================ */
+var SCENES=[
+ {
+  t:function(){ return '① 勾'+cnNum(TRIP.a)+'股'+cnNum(TRIP.b)+'弦'+cnNum(TRIP.c)+' —— 三个正方形就位'; },
+  dur:6.2,
+  cap:function(){
+    var k=K();
+    var pre = tripIs345()
+      ? '《周髀算经》商高曰：<b>勾三、股四、弦五</b>。'
+      : '勾 <b>'+TRIP.a+'</b>、股 <b>'+TRIP.b+'</b>、弦 <b>'+TRIP.c+'</b> —— 又一组勾股数，和 3-4-5 走的是同一条定理。';
+    return pre+'在直角三角形的三条边上各立一个正方形，得到勾方 <span class="eq">'+P2(k.a2)+'</span>、股方 <span class="eq">'+P2(k.b2)+'</span>、弦方 <span class="eq">'+P2(k.c2)+'</span>。<br>关键观察：<b>勾方 + 股方 = 弦方</b>，这就是勾股定理。';
+  },
+  bbox:function(){ var S=GOU+GU; return [-1.35*GU,-1.4667*GOU,1.2*S,1.2*S]; },
+  draw:function(p){
+    var A=GOU, B=GU, E=XIAN, S=A+B, k=K();
+    /* 三边正方形，按进度向外生长 */
+    var s=easeOut(clamp((p-0.05)/0.55,0,1));
+    /* 股方：沿 (−1,0) 向外 */
+    poly([[-B*s,0],[0,0],[0,B],[-B*s,B]],{fill:'rgba(14,156,142,.16)',stroke:'rgba(14,156,142,.85)',lw:1.8});
+    /* 勾方：沿 (0,−1) 向外 */
+    poly([[0,-A*s],[A,-A*s],[A,0],[0,0]],{fill:'rgba(52,87,213,.15)',stroke:'rgba(52,87,213,.85)',lw:1.8});
+    /* 弦方：斜边 (A,0)-(0,B)，外法向 (B,A)/E */
+    poly([[A,0],[0,B],[B*s,B+A*s],[A+B*s,A*s]],{fill:'rgba(224,138,23,.15)',stroke:'rgba(224,138,23,.9)',lw:1.8});
+    /* 三角形本体 */
+    var t2=easeOut(clamp((p-0.45)/0.4,0,1));
+    poly([[0,0],[A,0],[0,B]],{fill:'rgba(209,68,90,.20)',stroke:'rgba(209,68,90,.95)',lw:2.2});
+    label(A*0.5,-A*0.14,'勾 = '+TRIP.a+'n',{color:'#3457d5',bold:true});
+    /* ⚠ 股标签的 y 必须与「股方」标签（在 −B/2, B/2）错开：
+       两者若同 y，在勾:股 ≈ 1:1 的组合（20:21:29、119:120:169、696:697:985）里
+       世界坐标间距会被 bbox 压到临界像素，两行文字黏成一串。抬到 0.78B 后彻底分离。 */
+    label(-A*0.14,B*0.78,'股 = '+TRIP.b+'n',{color:'#0e9c8e',bold:true});
+    label(A*0.38,B*0.64,'弦 = '+TRIP.c+'n',{color:'#d1445a',bold:true,dx:14,dy:-10});
+    if(s>0.85){
+      label(-B*0.5,B*0.5,'股方 '+P2(k.b2),{color:'#0e9c8e',bold:true,size:13.5});
+      label(A*0.5,-A*0.5,'勾方 '+P2(k.a2),{color:'#3457d5',bold:true,size:13.5});
+      label(S*0.657,S*0.629,'弦方 '+P2(k.c2),{color:'#e08a17',bold:true,size:13.5});
+    }
+    if(t2>0.6) label(A*0.5,-A*1.25,'勾方 + 股方 = 弦方 ：  '+P2(k.a2)+' + '+P2(k.b2)+' = '+P2(k.c2),{color:'#1c2534',bold:true,size:14.5});
+  }
+ },
+ {
+  t:'② 赵爽弦图 —— 出入相补，弦方自证',
+  dur:8.4,
+  cap:function(){
+    var k=K();
+    return '把四枚全等的 '+TRIP.a+'n-'+TRIP.b+'n-'+TRIP.c+'n 直角三角形<b>旋转着拼进弦方</b>，斜边恰好贴满弦方的四条边，中央余下一个内方，边长恰为 <span class="eq">股 − 勾 = '+PN(k.d)+'</span>。<br>这就是赵爽「<b>出入相补</b>」—— 不靠代数，只靠搬移拼合，弦方自己说出了面积。';
+  },
+  bbox:function(){ var E=XIAN; return [-0.72*E,-0.72*E,1.72*E,1.72*E]; },
+  draw:function(p){
+    var E=XIAN, k=K(), Z=zs();
+    var u=easeIO(clamp(p/0.72,0,1));
+    /* 目标弦方 */
+    poly([[0,0],[E,0],[E,E],[0,E]],{stroke:'rgba(52,87,213,.55)',lw:1.8,dash:[6,5]});
+    var c=[E/2,E/2], o=0.42*E;
+    for(var i=0;i<4;i++){
+      var Vf=Z.T[i], ct=centroid(Vf);
+      var ang0=(i%2?1:-1)*0.62, off0=[[0,-o],[o,0],[0,o],[-o,0]][i];
+      var cur=Vf.map(function(v){
+        var r=rotAbout(v,ct,ang0*(1-u));
+        return [r[0]+off0[0]*(1-u), r[1]+off0[1]*(1-u)];
+      });
+      poly(cur,{fill:'rgba(224,138,23,'+(0.24+0.16*u).toFixed(3)+')',stroke:'rgba(224,138,23,.95)',lw:1.9});
+    }
+    if(u>0.92){
+      poly(Z.hole,{fill:'rgba(209,68,90,.30)',stroke:'rgba(209,68,90,.98)',lw:2});
+      label(E/2,E/2,P2(k.d2),{color:'#d1445a',bold:true,size:15});
+    }
+    label(E/2,E*1.11,'弦方 '+P2(k.c2),{color:'#3457d5',bold:true,size:14});
+    if(u>0.9) label(-E/2,E/2,'股 − 勾 = '+PN(k.d),{color:'#d1445a',bold:true,size:13,align:'center'});
+  }
+ },
+ {
+  t:'③ 弦里 —— 弦方 = 内方 + 四△',
+  dur:6.4,
+  cap:function(){
+    var k=K();
+    return '弦方内部只有两种东西：中央内方 <span class="eq">(股−勾)² = '+P2(k.d2)+'</span>，和四个直角三角形 <span class="eq">4 × (½·勾·股) = 2·勾·股 = '+P2(k.ab2)+'</span>。<br>于是 <span class="eq">弦方 = '+P2(k.ab2)+' + '+P2(k.d2)+' = '+P2(k.c2)+'</span> —— 弦方<strong>里面</strong>就藏着天元数 <b>'+P2(k.ab2)+'</b>。';
+  },
+  bbox:function(){ var E=XIAN; return [-0.44*E,-0.44*E,1.44*E,1.44*E]; },
+  draw:function(p){
+    var E=XIAN, k=K(), Z=zs();
+    var g1=easeOut(clamp((p-0.05)/0.45,0,1));
+    var g2=easeOut(clamp((p-0.45)/0.45,0,1));
+    for(var i=0;i<4;i++){
+      poly(Z.T[i],{fill:'rgba(224,138,23,'+(0.16+0.24*g1).toFixed(3)+')',stroke:'rgba(224,138,23,.95)',lw:1.9});
+    }
+    poly(Z.hole,{fill:'rgba(209,68,90,'+(0.10+0.24*g2).toFixed(3)+')',stroke:'rgba(209,68,90,.98)',lw:2});
+    poly([[0,0],[E,0],[E,E],[0,E]],{stroke:'rgba(52,87,213,.75)',lw:2});
+    label(E/2,E/2,P2(k.d2),{color:'#d1445a',bold:true,size:15});
+    if(g1>0.6){
+      label(E*0.15,E*0.15,'△ '+P2(k.ab/2),{color:'#a86a08',bold:true,size:12.5});
+      label(E*0.85,E*0.15,'△ '+P2(k.ab/2),{color:'#a86a08',bold:true,size:12.5});
+      label(E*0.85,E*0.85,'△ '+P2(k.ab/2),{color:'#a86a08',bold:true,size:12.5});
+      label(E*0.15,E*0.85,'△ '+P2(k.ab/2),{color:'#a86a08',bold:true,size:12.5});
+      label(-E*0.27,E/2,'四△ = '+P2(k.ab2),{color:'#e08a17',bold:true,size:13.5,align:'center',dy:-14});
+      label(-E*0.27,E/2,'内方 '+P2(k.d2),{color:'#d1445a',bold:true,size:13.5,align:'center',dy:10});
+      label(E/2,-E*0.23,P2(k.ab2)+' + '+P2(k.d2)+' = '+P2(k.c2),{color:'#1c2534',bold:true,size:14.5});
+    }
+  }
+ },
+ {
+  t:'④ 弦外 —— 外方减去弦方，余 2·勾·股',
+  dur:7.0,
+  cap:function(){
+    var k=K();
+    return '改用 <span class="eq">勾 + 股 = '+PN(k.s)+'</span> 为边作外方，它被切成四块：勾方 <span class="eq">'+P2(k.a2)+'</span>、股方 <span class="eq">'+P2(k.b2)+'</span>，外加两块 '+TRIP.a+'n×'+TRIP.b+'n 矩形各 <span class="eq">'+P2(k.ab)+'</span>。<br>由勾股定理 勾方 + 股方 = 弦方，故 <span class="eq">外方 = 弦方 + 2·勾·股 = '+P2(k.c2)+' + '+P2(k.ab2)+' = '+P2(k.s2)+'</span> —— 弦方<strong>外面</strong>同样是天元数 <b>'+P2(k.ab2)+'</b>。';
+  },
+  bbox:function(){ var S=GOU+GU; return [-0.3429*S,-0.3429*S,1.3429*S,1.3429*S]; },
+  draw:function(p){
+    var A=GOU, B=GU, S=A+B, k=K();
+    var g=easeOut(clamp((p-0.05)/0.5,0,1));
+    poly([[0,0],[S,0],[S,S],[0,S]],{stroke:'rgba(52,87,213,.75)',lw:2});
+    /* 勾方 A×A 左下 */
+    poly([[0,0],[A,0],[A,A],[0,A]],{fill:'rgba(52,87,213,.18)',stroke:'rgba(52,87,213,.9)',lw:1.8});
+    /* 股方 B×B 右上 */
+    poly([[A,A],[S,A],[S,S],[A,S]],{fill:'rgba(14,156,142,.18)',stroke:'rgba(14,156,142,.9)',lw:1.8});
+    /* 两块矩形（天元数），随进度点亮 */
+    var am='rgba(224,138,23,'+(0.10+0.22*g).toFixed(3)+')';
+    poly([[A,0],[S,0],[S,A],[A,A]],{fill:am,stroke:'rgba(224,138,23,.95)',lw:1.8});
+    poly([[0,A],[A,A],[A,S],[0,S]],{fill:am,stroke:'rgba(224,138,23,.95)',lw:1.8});
+    label(A*0.5,A*0.5,'勾方 '+P2(k.a2),{color:'#3457d5',bold:true,size:12.5});
+    label((A+S)/2,(A+S)/2,'股方 '+P2(k.b2),{color:'#0e9c8e',bold:true,size:12.5});
+    if(g>0.5){
+      label((A+S)/2,A*0.5,P2(k.ab),{color:'#a86a08',bold:true,size:12.5});
+      label(A*0.5,(A+S)/2,P2(k.ab),{color:'#a86a08',bold:true,size:12.5});
+      label(S*1.1286,S*0.5,'两块矩形',{color:'#e08a17',bold:true,size:13.5,align:'left'});
+      label(S*1.1286,S*0.5+18,'= 2·勾·股 = '+P2(k.ab2),{color:'#e08a17',bold:true,size:13.5,align:'left'});
+      label(S/2,-S*0.186,'外方 ('+PN(k.s)+')² = '+P2(k.s2)+' = 弦方 '+P2(k.c2)+' + 天元数 '+P2(k.ab2),{color:'#1c2534',bold:true,size:14});
+    }
+    label(-S*0.1857,S*0.5,'外方 '+PN(k.s),{color:'#3457d5',bold:true,size:13,align:'right'});
+  }
+ },
+ {
+  t:'⑤ 合一 —— 弦里弦外共天元',
+  dur:7.6,
+  cap:function(){
+    var k=K();
+    return '左：弦方内部，四个三角形合计 <span class="eq">4×('+P2(k.ab/2)+') = 2·勾·股 = '+P2(k.ab2)+'</span>。右：外方内部，两块矩形合计 <span class="eq">2×'+P2(k.ab)+' = 2·勾·股 = '+P2(k.ab2)+'</span>。<br>同一个 <b>'+P2(k.ab2)+'</b> 既是「弦里」也是「弦外」，再加内方 <span class="eq">'+P2(k.d2)+' = (股−勾)²</span> 便回满弦方 —— <b>'+P2(k.ab2)+' + '+P2(k.d2)+' = '+P2(k.c2)+'</b>。';
+  },
+  bbox:function(){ var E=XIAN,S=GOU+GU; return [-0.4*E,-0.3429*S,1.44*E+1.457*S,1.1714*S]; },
+  draw:function(p){
+    var A=GOU, B=GU, E=XIAN, S=A+B, k=K(), Z=zs();
+    var g=easeOut(clamp((p-0.05)/0.5,0,1));
+    /* ---- 左：弦方 ---- */
+    for(var i=0;i<4;i++) poly(Z.T[i],{fill:'rgba(224,138,23,.34)',stroke:'rgba(224,138,23,.95)',lw:1.8});
+    poly(Z.hole,{fill:'rgba(209,68,90,.30)',stroke:'rgba(209,68,90,.98)',lw:1.9});
+    poly([[0,0],[E,0],[E,E],[0,E]],{stroke:'rgba(52,87,213,.8)',lw:2});
+    label(E/2,E*1.1,'弦方 '+P2(k.c2),{color:'#3457d5',bold:true,size:13.5});
+    label(E/2,E/2,P2(k.d2),{color:'#d1445a',bold:true,size:14});
+    label(E/2,-E*0.20,'四个半矩形 = 2·勾·股',{color:'#a86a08',bold:true,size:12.5,align:'center'});
+    label(E/2,-E*0.32,'= '+P2(k.ab2),{color:'#a86a08',bold:true,size:12.5,align:'center'});
+
+    /* ---- 中：等号 ---- */
+    label(1.44*E-0.24*E,S*0.5,'=',{color:'#1c2534',bold:true,size:30});
+
+    /* ---- 右：外方 ---- */
+    var ox=1.44*E;
+    poly([[ox,0],[ox+S,0],[ox+S,S],[ox,S]],{stroke:'rgba(52,87,213,.8)',lw:2});
+    poly([[ox,0],[ox+A,0],[ox+A,A],[ox,A]],{fill:'rgba(52,87,213,.18)',stroke:'rgba(52,87,213,.9)',lw:1.7});
+    poly([[ox+A,A],[ox+S,A],[ox+S,S],[ox+A,S]],{fill:'rgba(14,156,142,.18)',stroke:'rgba(14,156,142,.9)',lw:1.7});
+    var am='rgba(224,138,23,'+(0.18+0.22*g).toFixed(3)+')';
+    poly([[ox+A,0],[ox+S,0],[ox+S,A],[ox+A,A]],{fill:am,stroke:'rgba(224,138,23,.95)',lw:1.8});
+    poly([[ox,A],[ox+A,A],[ox+A,S],[ox,S]],{fill:am,stroke:'rgba(224,138,23,.95)',lw:1.8});
+    label(ox+A*0.5,A*0.5,P2(k.a2),{color:'#3457d5',bold:true,size:12});
+    label(ox+(A+S)/2,(A+S)/2,P2(k.b2),{color:'#0e9c8e',bold:true,size:12});
+    label(ox+S/2,S*1.07,'外方 '+P2(k.s2),{color:'#3457d5',bold:true,size:13.5});
+    label(ox+S/2,-E*0.20,'两块整矩形 = 2·勾·股',{color:'#a86a08',bold:true,size:12.5,align:'center'});
+    label(ox+S/2,-E*0.32,'= '+P2(k.ab2),{color:'#a86a08',bold:true,size:12.5,align:'center'});
+
+    /* ---- 底部结论 ---- */
+    if(g>0.5) label((ox+S)/2+E*0.1,S*1.0857,'弦里 '+P2(k.ab2)+'  =  弦外 '+P2(k.ab2)+'   ⇒   再加内方 '+P2(k.d2)+' 回满弦方 '+P2(k.c2),{color:'#1c2534',bold:true,size:14});
+  }
+ }
+];
+
+/* ============================================================
+   4. 分镜控制 / 时间轴
+   ============================================================ */
+var si=0, sp=0, playing=true, last=0;
+
+function capOf(i){ var c=SCENES[i].cap; return (typeof c==='function')? c() : c; }
+function tOf(i){ var t=SCENES[i].t; return (typeof t==='function')? t() : t; }
+function bboxOf(i){ var b=SCENES[i].bbox; return (typeof b==='function')? b() : b; }
+
+function setStage(i,prog){
+  si=clamp(i,0,SCENES.length-1);
+  sp=(prog===undefined)?0:clamp(prog,0,1);
+  fitAll();
+  syncUI();
+}
+function fitAll(){ var b=bboxOf(si); fit(b[0],b[1],b[2],b[3],72); }
+window.__setStage=function(i,prog){ playing=false; setStage(i,prog); };
+
+/* UI 元素 */
+var capEl=document.getElementById('cap'), ticksEl=document.getElementById('ticks'),
+    stepsEl=document.getElementById('steps'), badgeEl=document.getElementById('badge'),
+    nSlider=document.getElementById('nSlider'), nVal=document.getElementById('nVal'),
+    btnPlay=document.getElementById('btnPlay');
+var tickEls=[], stepEls=[];
+
+function clickStage(i){
+  return function(){ setStage(i,0); playing=true; btnPlay.textContent='❚❚ 暂停'; };
+}
+/* 分镜标题会随勾股数变 ⇒ 可重建 */
+function buildSteps(){
+  ticksEl.innerHTML=''; stepsEl.innerHTML=''; tickEls=[]; stepEls=[];
+  SCENES.forEach(function(s,i){
+    var t=document.createElement('div'); t.className='tick'; t.innerHTML='<i></i>';
+    t.onclick=clickStage(i); ticksEl.appendChild(t); tickEls.push(t);
+    var li=document.createElement('li'); li.className='steps-li';
+    li.onclick=clickStage(i); stepsEl.appendChild(li); stepEls.push(li);
+  });
+  refreshStepText();
+}
+function refreshStepText(){
+  SCENES.forEach(function(s,i){
+    if(!stepEls[i]) return;
+    stepEls[i].innerHTML='<span class="n">'+(i+1)+'</span><span>'+tOf(i).replace(/^[①②③④⑤⑥⑦⑧⑨]\s*/,'')+'</span>';
+  });
+}
+
+var RDEF=[
+  ['勾 / 股 / 弦',  function(){ var q=nums(); return q.a+' / '+q.b+' / '+q.c; }],
+  ['勾方',          function(){ var k=K(); return P2(k.a2)+' = '+nums().gou; }],
+  ['股方',          function(){ var k=K(); return P2(k.b2)+' = '+nums().gu; }],
+  ['弦方',          function(){ var k=K(); return P2(k.c2)+' = '+nums().xian; }],
+  ['外方 = (勾+股)²',function(){ var k=K(); return P2(k.s2)+' = '+nums().wai; }],
+  ['天元数 = 2·勾·股',function(){ var k=K(); return P2(k.ab2)+' = '+nums().tian; }],
+  ['内方 = (股−勾)²', function(){ var k=K(); return P2(k.d2)+' = '+nums().nei; }],
+  ['天元数 + 内方',  function(){ var q=nums(); return q.tian+' + '+q.nei+' = '+(q.tian+q.nei); }]
+];
+function buildRd(){
+  var h='';
+  RDEF.forEach(function(r,i){
+    h+='<tr><td>'+r[0]+'</td><td class="v" id="rdv'+i+'"></td></tr>';
+  });
+  document.getElementById('rdTab').innerHTML=h;
+}
+function refreshRd(){
+  RDEF.forEach(function(r,i){ var e=document.getElementById('rdv'+i); if(e) e.textContent=r[1](); });
+}
+
+function syncUI(){
+  refreshStepText();
+  capEl.innerHTML=capOf(si);
+  var q=nums(), k=K();
+  for(var i=0;i<tickEls.length;i++){
+    tickEls[i].className='tick'+(i<si?' done':'');
+    tickEls[i].firstChild.style.width=(i<si?100:(i===si?sp*100:0))+'%';
+  }
+  for(var j=0;j<stepEls.length;j++) stepEls[j].className=(j===si?'on':'');
+  badgeEl.innerHTML=
+    '<span class="pill">分镜 <b>'+(si+1)+'/'+SCENES.length+'</b></span>'+
+    '<span class="pill">勾股弦 <b>'+TRIP.a+' : '+TRIP.b+' : '+TRIP.c+'</b></span>'+
+    '<span class="pill">n = <b>'+N+'</b></span>'+
+    '<span class="pill">天元数 <b>'+q.tian+'</b></span>'+
+    '<span class="pill">弦方 <b>'+q.xian+'</b></span>';
+  nVal.textContent=N;
+  /* 顶部恒等式 */
+  document.getElementById('k1').textContent='核心恒等式（'+tripTag()+' · n = 1…10 全验）';
+  document.getElementById('k2').textContent=P2(k.ab2)+' + '+P2(k.d2)+' = '+P2(k.c2);
+  document.getElementById('hMul').textContent='倍率 n（勾 : 股 : 弦 = '+TRIP.a+'n : '+TRIP.b+'n : '+TRIP.c+'n）';
+  document.getElementById('idSub').textContent='　当前组合 '+tripTag()+'　⇒　天元数 '+P2(k.ab2)+'、内方 '+P2(k.d2);
+  document.getElementById('tblTtl').innerHTML='推演表 · '+tripTag()+' 的 n = 1…10 逐行（悬停高亮；随分镜自动高亮）';
+  refreshRd();
+  buildIdentity();
+  highlightTable();
+}
+
+/* ============================================================
+   5. 渲染主循环
+   ============================================================ */
+function render(){
+  ctx.clearRect(0,0,W,H);
+  /* 底色网格（示意坐标系） */
+  var g=P(0,0);
+  ctx.strokeStyle='rgba(52,87,213,.045)'; ctx.lineWidth=1;
+  var step=view.k;
+  for(var x=g[0]%step; x<W; x+=step){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for(var y=g[1]%step; y<H; y+=step){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+  SCENES[si].draw(sp);
+}
+
+function loop(ts){
+  if(!last) last=ts;
+  var dt=Math.min(0.05,(ts-last)/1000); last=ts;
+  if(playing){
+    sp+=dt/SCENES[si].dur;
+    if(sp>=1){
+      if(si<SCENES.length-1){ setStage(si+1,0); }
+      else { sp=1; playing=false; btnPlay.textContent='▶ 重播'; }
+    }
+    if(tickEls[si]) tickEls[si].firstChild.style.width=(sp*100)+'%';
+    for(var j=0;j<stepEls.length;j++) stepEls[j].className=(j===si?'on':'');
+    highlightTable();
+  }
+  render();
+  requestAnimationFrame(loop);
+}
+
+/* ============================================================
+   6. 交互：拖拽 / 缩放 / 键盘 / 参数
+   ============================================================ */
+var drag=null;
+cv.addEventListener('pointerdown',function(e){
+  drag={x:e.clientX,y:e.clientY,cx:view.cx,cy:view.cy};
+  cv.classList.add('grabbing'); cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove',function(e){
+  if(!drag) return;
+  view.cx=drag.cx-(e.clientX-drag.x)/view.k;
+  view.cy=drag.cy+(e.clientY-drag.y)/view.k;
+});
+cv.addEventListener('pointerup',function(e){ drag=null; cv.classList.remove('grabbing'); });
+cv.addEventListener('pointercancel',function(){ drag=null; cv.classList.remove('grabbing'); });
+
+cv.addEventListener('wheel',function(e){
+  e.preventDefault();
+  var r=cv.getBoundingClientRect();
+  var mx=e.clientX-r.left, my=e.clientY-r.top;
+  var wx=(mx-W/2)/view.k+view.cx, wy=-(my-H/2)/view.k+view.cy;
+  var f=Math.pow(1.0016,-e.deltaY);
+  view.k=clamp(view.k*f,6,420);
+  view.cx=wx-(mx-W/2)/view.k; view.cy=wy+(my-H/2)/view.k;
+},{passive:false});
+
+cv.addEventListener('dblclick', fitAll);
+
+function zoomBy(f){
+  var wx=view.cx, wy=view.cy;
+  view.k=clamp(view.k*f,6,420);
+  view.cx=wx; view.cy=wy;
+}
+document.getElementById('btnIn').onclick=function(){ zoomBy(1.22); };
+document.getElementById('btnOut').onclick=function(){ zoomBy(1/1.22); };
+document.getElementById('btnFit').onclick=fitAll;
+
+btnPlay.onclick=function(){
+  if(sp>=1 && !playing){ setStage(si,0); playing=true; btnPlay.textContent='❚❚ 暂停'; return; }
+  playing=!playing;
+  btnPlay.textContent=playing?'❚❚ 暂停':'▶ 播放';
+};
+window.addEventListener('keydown',function(e){
+  if(e.code==='Space'){ e.preventDefault(); btnPlay.click(); }
+  else if(e.code==='ArrowRight'){ setStage(si+1,0); playing=true; btnPlay.textContent='❚❚ 暂停'; }
+  else if(e.code==='ArrowLeft'){ setStage(Math.max(0,si-1),0); playing=true; btnPlay.textContent='❚❚ 暂停'; }
+});
+
+/* ---------- 倍率 n ---------- */
+function setN(v){
+  N=clamp(parseInt(v,10)||1,1,10);
+  nSlider.value=N;
+  syncGeo(); zsClear(); syncUI();
+}
+nSlider.addEventListener('input',function(){ N=parseInt(nSlider.value,10)||1;
+  syncGeo(); zsClear(); syncUI(); refreshTableHL(); });
+
+/* ============================================================
+   4b. 勾股数组合选择器（3 : 4 : 5 只是其中一组）
+   ============================================================ */
+function applyTri(a,b,c){
+  if(!(a>0)||!(b>0)) return;
+  if(a>b){ var t=a; a=b; b=t; }             /* 勾 = 短边 */
+  if(!c || Math.abs(c*c-(a*a+b*b))>1e-6) c=Math.sqrt(a*a+b*b);
+  TRIP={a:a,b:b,c:c};
+  syncGeo(); zsClear();
+  document.getElementById('inA').value=a;
+  document.getElementById('inB').value=b;
+  document.getElementById('inC').textContent=isInt(c)? String(Math.round(c)) : '√'+(a*a+b*b);
+  document.getElementById('inC').style.color = isInt(c)? 'var(--teal)' : 'var(--violet)';
+  markTri(); buildTable(); refreshTableHL(); syncUI();
+}
+function markTri(){
+  var btns=document.querySelectorAll('#triPick .trbtn');
+  for(var i=0;i<btns.length;i++){
+    var on = (+btns[i].getAttribute('data-a')===TRIP.a &&
+              +btns[i].getAttribute('data-b')===TRIP.b &&
+              +btns[i].getAttribute('data-c')===TRIP.c);
+    var pe = triPel([+btns[i].getAttribute('data-a'), +btns[i].getAttribute('data-b'), 0]);
+    /* ⚠ 不能直接赋值 className='trbtn on' —— 会把 Pell 的金框 class 抹掉 */
+    btns[i].className='trbtn'+(pe?' pel':'')+(on?' on':'');
+  }
+}
+function buildTriPicker(){
+  var box=document.getElementById('triPick'); if(!box) return;
+  box.innerHTML='';
+  var list=triListOf(TRI_RANGE, TRI_KIND==='all');
+  var g1=[], g2=[], g3=[], g4=[];
+  list.forEach(function(t){
+    var pr=triPrim(t), pe=triPel(t);
+    if(pe && pr) g1.push(t);
+    else if(pe) g2.push(t);
+    else if(pr) g3.push(t);
+    else g4.push(t);
+  });
+  var groups=[
+    {g:'① 股 − 勾 = 1 · Pell 家族 ★（唯一能取整数比）', list:g1, pel:true},
+    {g:'② Pell 家族的整数倍（比值同样取整）', list:g2, pel:true},
+    {g:'③ 其余本原勾股数', list:g3},
+    {g:'④ 其余整数倍（非本原）', list:g4}
+  ];
+  groups.forEach(function(grp){
+    if(!grp.list.length) return;
+    var h=document.createElement('div'); h.className='tgl';
+    h.innerHTML=grp.g+'<span class="cnt">'+grp.list.length+'</span>';
+    box.appendChild(h);
+    var row=document.createElement('div'); row.className='tr';
+    grp.list.forEach(function(t){
+      var b=document.createElement('button');
+      b.className='trbtn'+(grp.pel?' pel':'');
+      b.setAttribute('data-a',t[0]); b.setAttribute('data-b',t[1]); b.setAttribute('data-c',t[2]);
+      b.innerHTML=t[0]+' : '+t[1]+'<small>弦 '+t[2]+'</small>';
+      b.title='勾 '+t[0]+' · 股 '+t[1]+' · 弦 '+t[2]
+        +'\n股 − 勾 = '+(t[1]-t[0])+(triPel(t)? '　（最简形满足 股−勾=1 ⇒ 比值可取整 ★）' : '')
+        +'\n内方 = '+(t[1]-t[0])*(t[1]-t[0])+'　天元数 = '+(2*t[0]*t[1])+'　外方 = '+(t[0]+t[1])*(t[0]+t[1])
+        +'\n天元数 ÷ 内方 = '+fmt6(2*t[0]*t[1]/((t[1]-t[0])*(t[1]-t[0])));
+      b.onclick=(function(tt){ return function(){ setN(1); applyTri(tt[0],tt[1],tt[2]); }; })(t);
+      row.appendChild(b);
+    });
+    box.appendChild(row);
+  });
+  var st=document.getElementById('triStat');
+  if(st) st.innerHTML='共 <b>'+list.length+'</b> 组';
+  markTri();
+}
+function fmt6(v){ return isInt(v)? String(Math.round(v)) : v.toFixed(4); }
+/* 自定义输入：弦实时算出 */
+function liveC(){
+  var a=parseInt(document.getElementById('inA').value,10);
+  var b=parseInt(document.getElementById('inB').value,10);
+  var el=document.getElementById('inC');
+  if(!(a>0&&b>0)){ el.textContent='—'; el.style.color='var(--ink3)'; return; }
+  var s=a*a+b*b, r=Math.sqrt(s);
+  el.textContent = isInt(r)? String(r) : '√'+s;
+  el.style.color = isInt(r)? 'var(--teal)' : 'var(--violet)';
+}
+document.getElementById('inA').addEventListener('input',liveC);
+document.getElementById('inB').addEventListener('input',liveC);
+document.getElementById('btnSet').onclick=function(){
+  var a=parseInt(document.getElementById('inA').value,10);
+  var b=parseInt(document.getElementById('inB').value,10);
+  if(!(a>0&&b>0)) return;
+  applyTri(a,b,null);
+};
+document.getElementById('inA').addEventListener('keydown',function(e){ if(e.key==='Enter') document.getElementById('btnSet').click(); });
+document.getElementById('inB').addEventListener('keydown',function(e){ if(e.key==='Enter') document.getElementById('btnSet').click(); });
+
+/* ============================================================
+   4c. 比值全景表 —— 所有勾股数各自的「弦里 / 弦外」比
+       内方 = (股−勾)²  天元数 = 2·勾·股  外方 = (勾+股)²  弦方 = 弦²
+       「÷弦方」三个比是尺度不变量（同乘 k 分子分母同乘 k²）；
+       「÷内方」三个比同样是尺度不变量 —— 所以「取整与否」只依赖最简本原形。
+   ============================================================ */
+var RT_RANGE=100, RT_KIND='prim';
+function frac(n,d){                       /* 精确约分显示，如 24/25 或 3 */
+  n=Math.round(n); d=Math.round(d);
+  if(d===0) return '—';
+  var g=gcd2(n,d)||1, a=n/g, b=d/g;
+  if(b<0){ a=-a; b=-b; }
+  return (b===1)? String(a) : a+'/'+b;
+}
+function ratioRow(t){
+  var a=t[0], b=t[1], c=t[2], g=gcd2(a,b)||1;
+  var d=b-a, d2=d*d, ab2=2*a*b, s2=(a+b)*(a+b), c2=c*c;
+  var d0=(b-a)/g, d02=d0*d0;              /* 最简本原形的内方 */
+  var TI=(2*a*b)/d2, CN=c2/d2, WN=s2/d2;  /* ÷内方 三兄弟（尺度不变量） */
+  return {
+    tag:a+' : '+b+' : '+c, prim:g===1, d:d, d0:d0, br:b/a,
+    nei_c:d2/c2, tian_c:ab2/c2, wai_c:s2/c2,
+    TI:TI, CN:CN, WN:WN, pel:(d0===1),
+    intAll: isInt(TI)&&isInt(CN)&&isInt(WN),
+    f_nei_c:frac(d2,c2), f_tian_c:frac(ab2,c2), f_wai_c:frac(s2,c2),
+    f_TI:frac(ab2,d2),  f_CN:frac(c2,d2),       f_WN:frac(s2,d2)
+  };
+}
+function buildRatioTable(){
+  var tb=document.getElementById('rtTable'); if(!tb) return;
+  var list=triListOf(RT_RANGE, RT_KIND==='all');
+  var h='<thead><tr><th>#</th><th>勾 : 股 : 弦</th><th>股 ÷ 勾</th>'
+    +'<th>内方 ÷ 弦方<small>(股−勾)² / 弦²</small></th>'
+    +'<th>天元数 ÷ 弦方<small>2·勾·股 / 弦²</small></th>'
+    +'<th>外方 ÷ 弦方<small>(勾+股)² / 弦²</small></th>'
+    +'<th>天元数 ÷ 内方<small>2·勾·股 / (股−勾)²</small></th>'
+    +'<th>弦方 ÷ 内方<small>弦² / (股−勾)²</small></th>'
+    +'<th>外方 ÷ 内方<small>(勾+股)² / (股−勾)²</small></th>'
+    +'<th>标记</th></tr></thead><tbody>';
+  var nInt=0;
+  list.forEach(function(t,i){
+    var r=ratioRow(t);
+    if(r.intAll) nInt++;
+    var cls=r.pel? ' class="pelrow"':'';
+    h+='<tr'+cls+' data-a="'+t[0]+'" data-b="'+t[1]+'" data-c="'+t[2]+'">'
+      +'<td>'+(i+1)+'</td><td><b>'+r.tag+'</b>'
+      +(r.prim?'':' <span style="color:var(--ink3);font-size:10.5px">×'+(gcd2(t[0],t[1])||1)+'</span>')+'</td>'
+      +'<td>'+r.br.toFixed(4)+'</td>'
+      +'<td class="fx">'+r.f_nei_c+'</td>'
+      +'<td class="fx">'+r.f_tian_c+'</td>'
+      +'<td class="fx">'+r.f_wai_c+'</td>'
+      +'<td'+(isInt(r.TI)?' class="int"':' class="fx"')+'>'+r.f_TI+'</td>'
+      +'<td'+(isInt(r.CN)?' class="int"':' class="fx"')+'>'+r.f_CN+'</td>'
+      +'<td'+(isInt(r.WN)?' class="int"':' class="fx"')+'>'+r.f_WN+'</td>'
+      +'<td>'+(r.pel? '<span style="color:#a8841c;font-weight:700">★ 整数比</span>' : '—')+'</td></tr>';
+  });
+  tb.innerHTML=h+'</tbody>';
+  /* 点任意行 ⟶ 上方 3D 立即换形（与三维页全景表一致） */
+  var trs=tb.querySelectorAll('tbody tr');
+  for(var j=0;j<trs.length;j++){
+    (function(tr){
+      tr.style.cursor='pointer';
+      tr.title='点这一行 ⇒ 上方演示切到 '+tr.getAttribute('data-a')+' : '+tr.getAttribute('data-b')
+        +' : '+tr.getAttribute('data-c');
+      tr.addEventListener('click',function(){
+        setN(1);
+        applyTri(+tr.getAttribute('data-a'), +tr.getAttribute('data-b'), +tr.getAttribute('data-c'));
+        tr.className=(triPel([+tr.getAttribute('data-a'),+tr.getAttribute('data-b'),0])?'pelrow ':'')+'hl';
+      });
+    })(trs[j]);
+  }
+  var st=document.getElementById('rtStat');
+  if(st) st.innerHTML='共 <b>'+list.length+'</b> 组 · 其中 ★ <b>'+nInt+'</b> 组可取整数比';
+  var sub=document.getElementById('rtSub');
+  if(sub) sub.innerHTML='　当前范围 弦 ≤ '+RT_RANGE+(RT_KIND==='all'?'（含整数倍）':'（只看本原）');
+  var nt=document.getElementById('rtNote');
+  if(nt) nt.innerHTML='<b>读法：</b>前三列分母都是<b>弦方</b> —— 三格全部是<b>真分数</b>（'
+    +'内方/弦方 ∈ (0,1)、天元数/弦方 ∈ (0,1)、外方/弦方 ∈ (1,2)），<b>永远取不到整数</b>（判据一）。<br>'
+    +'中间三列分母换成<b>内方</b> —— 只有它们能取整，而且<b>红线标出的整数值恰好只出现在金底那几行</b>（'
+    +'股 − 勾 = 1 的 Pell 家族），其余各行全是分数（判据二）。<br>'
+    +'<b>注意 6 : 8 : 10 这类整数倍也会取整</b> —— 因为三个「÷内方」的比都是<b>尺度不变量</b>，'
+    +'（6,8,10）= 2×(3,4,5) 的内方、天元数、弦方同时乘 4，比例一字不差。<br>'
+    +'<b>点任意一行</b> ⇒ 上方 3D 演示立即切到该组勾股数（金底行 = Pell 家族）。';
+}
+
+window.__dbg={
+  get TRIP(){ return TRIP; }, get N(){ return N; }, get si(){ return si; },
+  get GOU(){ return GOU; }, get GU(){ return GU; }, get XIAN(){ return XIAN; },
+  K:K, nums:nums, zs:zs, P2:P2, PN:PN, tripTag:tripTag,
+  applyTri:applyTri, setN:setN, setStage:setStage, SCENES:SCENES,
+  triEnum:triEnum, triListOf:triListOf, triPel:triPel, triPrim:triPrim,
+  ratioRow:ratioRow, buildRatioTable:buildRatioTable, frac:frac,
+  get TRI_RANGE(){ return TRI_RANGE; }, get TRI_KIND(){ return TRI_KIND; },
+  get RT_RANGE(){ return RT_RANGE; }, get RT_KIND(){ return RT_KIND; },
+  get triCount(){ return triListOf(TRI_RANGE, TRI_KIND==='all').length; },
+  get pelCount(){ return triListOf(TRI_RANGE, TRI_KIND==='all').filter(triPel).length; },
+  get rtRows(){ return document.querySelectorAll('#rtTable tbody tr').length; },
+  get rtIntCount(){ return triListOf(RT_RANGE, RT_KIND==='all').filter(function(t){ return ratioRow(t).intAll; }).length; },
+  get errs(){ return window.__errs||[]; }
+};
+/* 范围 / 类型 两个开关（选择器 + 全景表各一套） */
+document.getElementById('triRange').addEventListener('change',function(){
+  TRI_RANGE=parseInt(this.value,10)||100; buildTriPicker();
+});
+document.getElementById('triKind').addEventListener('change',function(){
+  TRI_KIND=this.value; buildTriPicker();
+});
+document.getElementById('rtRange').addEventListener('change',function(){
+  RT_RANGE=parseInt(this.value,10)||100; buildRatioTable();
+});
+document.getElementById('rtKind').addEventListener('change',function(){
+  RT_KIND=this.value; buildRatioTable();
+});
+
+/* ============================================================
+   7. 推演表（当前勾股数 × n = 1…10）—— 由公式生成并核验
+   ============================================================ */
+function buildTable(){
+  var k=K();
+  var rows='<thead><tr><th>n</th><th>勾 : 股 : 弦</th><th>('+k.s+'n)²</th>'
+    +'<th>弦实 '+P2(k.c2)+'<br>= '+P2(k.a2)+' + '+P2(k.b2)+'</th>'
+    +'<th>外方 − 弦实<br>= 天元数 '+P2(k.ab2)+'</th>'
+    +'<th>天元数 + 内方<br>= '+P2(k.ab2)+' + '+P2(k.d2)+'</th></tr></thead><tbody>';
+  for(var n=1;n<=10;n++){
+    var a=TRIP.a*n, b=TRIP.b*n, c=TRIP.c*n;
+    var c2=c*c, ab2=2*a*b, d2=(b-a)*(b-a), s2=(a+b)*(a+b);
+    rows+='<tr data-n="'+n+'"><td><b>'+n+'</b></td><td>'+a+' : '+b+' : '+c+'</td>'
+      +'<td class="mid">'+s2+'</td>'
+      +'<td class="good">'+c2+' = '+(a*a)+' + '+(b*b)+'</td>'
+      +'<td class="mid">'+ab2+' = '+s2+' − '+c2+'</td>'
+      +'<td class="good">'+ab2+' + '+d2+' = '+c2+'</td></tr>';
+  }
+  rows+='</tbody>';
+  document.getElementById('mainTable').innerHTML=rows;
+  bindTableHover();
+  document.getElementById('tblNote').innerHTML=
+    '<b>读法：</b>第 1 列 <span class="eq">('+k.s+'n)²</span> 是外方（边长 = 勾 + 股 = '+PN(k.s)+'）；'
+    +'第 2 列把它减去弦实 <span class="eq">'+P2(k.c2)+'</span>（= 勾方 '+P2(k.a2)+' + 股方 '+P2(k.b2)+' = 弦方，'
+    +'即括注的 '+k.a+'n×'+k.a+'n + '+k.b+'n×'+k.b+'n），余下 <span class="eq">'+P2(k.ab2)+'</span> = 天元数；'
+    +'第 3 列再把内方 <span class="eq">'+P2(k.d2)+'</span> 加回去，重新得到 <span class="eq">'+P2(k.c2)+'</span>。'
+    +'三列走的正是一条闭环：<span class="eq">外方 → 减弦实 → 得天元数 → 加内方 → 回弦实</span>。'
+    +'<br><b>把组合换成 '+tripTag()+'，十行里每个数都跟着换，可这条闭环一字不变</b> —— '
+    +'换谁进来，第 3 列都恰好回满弦实。这就是「弦外之音」的普适之处。';
+}
+function bindTableHover(){
+  var trs=document.querySelectorAll('#mainTable tbody tr');
+  for(var i=0;i<trs.length;i++){
+    (function(tr){
+      tr.addEventListener('mouseenter',function(){
+        var v=parseInt(tr.getAttribute('data-n'),10);
+        if(v){ N=v; nSlider.value=N; syncGeo(); zsClear(); syncUI(); }
+      });
+    })(trs[i]);
+  }
+}
+function highlightTable(){
+  var trs=document.querySelectorAll('#mainTable tbody tr');
+  for(var i=0;i<trs.length;i++){
+    trs[i].className=(i===N-1)?'hl':'';
+    /* 分镜⑤ 播放时，行按进度依次点亮叠加 */
+    if(si===4){
+      var upto=Math.floor(sp*10);
+      if(i<upto) trs[i].className='hl';
+    }
+  }
+}
+function refreshTableHL(){ highlightTable(); }
+
+/* ============================================================
+   7b. 「两处天元数」三块解说（随组合现算）
+   ============================================================ */
+function buildIdentity(){
+  var k=K();
+  var nNote = (N>1)? '<br><span style="color:var(--amber)">当前倍率 n = '+N
+      +'，把式子里每个 n² 换成 '+(N*N)+' 即得实际面积。</span>' : '';
+  var tail345 = tripIs345()? '<br><b>讲义原表十行，逐行数值全部命中。</b>'
+      : '<br><span style="color:var(--ink3)">（3 : 4 : 5 只是把 2·勾·股 取成 24 的那一组特例。）</span>';
+  document.getElementById('identityGrid').innerHTML=
+   '<div class="box"><h4>弦里：弦方 '+P2(k.c2)+' 的内部拆解</h4>'
+   +'赵爽弦图把四个 '+k.a+'n-'+k.b+'n-'+k.c+'n 直角三角形绕弦方一圈摆好，中央剩下一个内方，边长恰为 '
+   +'<span class="eq">股 − 勾 = '+PN(k.d)+'</span>。于是<br>'
+   +'<span class="eq">弦方 = 4 × (½·勾·股) + (股−勾)² = '+P2(k.ab2)+' + '+P2(k.d2)+' = '+P2(k.c2)+'</span><br>'
+   +'四个直角三角形之和 <span class="eq">4 × '+P2(k.ab/2)+' = '+P2(k.ab2)+'</span>，就是弦方内部的「天元数」。'
+   +nNote+'</div>'
+   +'<div class="box"><h4>弦外：外方 '+P2(k.s2)+' 的差值</h4>'
+   +'以 <span class="eq">勾 + 股 = '+PN(k.s)+'</span> 为边作外方，它可拆成勾方 '+P2(k.a2)+' + 股方 '+P2(k.b2)
+   +' + 两块 '+k.a+'n×'+k.b+'n 矩形。<br>'
+   +'<span class="eq">外方 = 弦方 + 2·勾·股 = '+P2(k.c2)+' + '+P2(k.ab2)+' = '+P2(k.s2)+'</span><br>'
+   +'两块矩形之和 <span class="eq">2 × '+P2(k.ab)+' = '+P2(k.ab2)+'</span>，就是弦方外部的「天元数」。</div>'
+   +'<div class="box"><h4>合一：同一个 '+P2(k.ab2)+'</h4>'
+   +'<span class="eq">2·勾·股 = '+P2(k.ab2)+'</span> 同时扮演两个角色 —— 在弦方内部是「四个半矩形之和」，'
+   +'在弦方外部是「两块整矩形之和」。里外共此一元，故曰「弦里弦外共天元」；再加内方 '+P2(k.d2)
+   +'，恰好补成弦方 '+P2(k.c2)+'。'+tail345+'</div>';
+}
+
+/* ============================================================
+   8. 启动
+   ============================================================ */
+function boot(){
+  resize();
+  buildTriPicker(); buildRd(); buildSteps(); buildTable(); buildRatioTable();
+  /* 初始组合：URL 可传 #tri=20-21-29（缺省 3 : 4 : 5） */
+  var h1=(location.hash||'').match(/tri=(\d+)[-:](\d+)[-:](\d+)/);
+  if(h1) applyTri(parseInt(h1[1],10),parseInt(h1[2],10),parseInt(h1[3],10));
+  else applyTri(3,4,5);
+  var h2=(location.hash||'').match(/stage=(\d+)(?:@([\d.]+))?/);
+  var init=h2?parseInt(h2[1],10):0;
+  var ip=h2&&h2[2]!==undefined?parseFloat(h2[2]):0;
+  setStage(isNaN(init)?0:init, isNaN(ip)?0:ip);
+  if(h2 && h2[2]!==undefined){ playing=false; btnPlay.textContent='▶ 播放'; }
+  window.addEventListener('resize',function(){ resize(); if(view.k<2) fitAll(); render(); });
+  /* ⚠ 只读一次 hash 不够：同文档改 hash（粘地址、replace）浏览器不重载页面，
+     boot() 不会重跑 ⇒ 必须监听 hashchange，否则 #tri=... 看着写了却无效。 */
+  window.addEventListener('hashchange',applyHash);
+  requestAnimationFrame(loop);
+}
+function applyHash(){
+  var h=(location.hash||'').match(/tri=(\d+)[-:](\d+)[-:](\d+)/);
+  if(h) applyTri(parseInt(h[1],10),parseInt(h[2],10),parseInt(h[3],10));
+  var s=(location.hash||'').match(/stage=(\d+)(?:@([\d.]+))?/);
+  if(s){
+    playing=false; btnPlay.textContent='▶ 播放';
+    setStage(parseInt(s[1],10), s[2]!==undefined?parseFloat(s[2]):0);
+  }
+}
+if(document.readyState==='complete') boot(); else window.addEventListener('load',boot);
+})();
+</script>
+</body>
+</html>

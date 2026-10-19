@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>魔角石墨烯 · 魔角谱、贵金属比与分形莫尔</title>
+<style>
+  :root{
+    --bg:#080c18; --card:#121b31; --card2:#17223c; --line:#243250;
+    --txt:#e6ecff; --dim:#93a2c4; --dim2:#6b7b9e;
+    --cyan:#4fd1c5; --warm:#ffa15b; --hot:#ff6b6b; --purple:#a78bfa; --blue:#5b9dff; --gold:#ffd166;
+    --safe-b:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{overscroll-behavior-y:contain}
+  body{margin:0;padding:0;background:radial-gradient(1000px 600px at 20% -10%,#152040 0%,var(--bg) 60%) fixed,var(--bg);
+    color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;
+    line-height:1.6;font-size:15px}
+  body.lock{overflow:hidden}
+  .wrap{max-width:760px;margin:0 auto;padding:12px 12px 140px}
+  h1{font-size:20px;margin:2px 0 4px}
+  h1 .hl{background:linear-gradient(90deg,var(--gold),var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{color:var(--dim);font-size:12.5px;margin-bottom:10px}
+  .card{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);
+    border-radius:15px;padding:12px;margin-bottom:11px;box-shadow:0 6px 22px rgba(0,0,0,.34)}
+  .card h2{font-size:15px;margin:0 0 8px;display:flex;align-items:center;gap:8px}
+  .card h2 .num{width:22px;height:22px;border-radius:7px;background:rgba(79,209,197,.15);color:var(--cyan);
+    font-size:12px;display:flex;align-items:center;justify-content:center;font-weight:700;flex:none}
+  .card h3{font-size:13px;margin:13px 0 5px;color:var(--cyan)}
+  p{margin:6px 0}
+  .dim{color:var(--dim);font-size:13px}
+  .tiny{color:var(--dim2);font-size:11.5px}
+  b{color:#fff}
+  code{background:rgba(255,255,255,.07);padding:1px 5px;border-radius:5px;font-size:12.5px;color:#cfe0ff}
+  .eq{background:rgba(0,0,0,.32);border:1px solid var(--line);border-radius:10px;padding:9px 11px;
+    font-family:Menlo,Consolas,monospace;font-size:12px;color:#bcd0f5;overflow-x:auto;margin:8px 0;white-space:nowrap}
+  .hint{background:rgba(167,139,250,.10);border-left:3px solid var(--purple);padding:8px 11px;
+    border-radius:0 9px 9px 0;font-size:12.5px;color:#d9d2ff;margin-top:9px}
+  .warn{background:rgba(255,161,91,.10);border-left:3px solid var(--warm);padding:8px 11px;
+    border-radius:0 9px 9px 0;font-size:12.5px;color:#ffdcbb;margin-top:9px}
+  .ok{background:rgba(79,209,197,.10);border-left:3px solid var(--cyan);padding:8px 11px;
+    border-radius:0 9px 9px 0;font-size:12.5px;color:#c9f5ef;margin-top:9px}
+
+  .topbar{position:sticky;top:0;z-index:40;margin:0 -12px 9px;padding:7px 12px;
+    background:rgba(8,12,24,.93);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line)}
+  .tbRow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .tbVal{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .tbVal small{font-size:11px;color:var(--dim);font-weight:400}
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:600}
+  .dot{width:8px;height:8px;border-radius:50%;flex:none}
+  .tbStats{display:flex;gap:5px;margin-top:5px}
+  .tbStat{flex:1;background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:8px;padding:3px 4px;text-align:center}
+  .tbStat .t{font-size:9px;color:var(--dim2)}
+  .tbStat .v{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+
+  canvas{display:block;width:100%;border-radius:11px;background:#060a14}
+  .cap{font-size:11.5px;color:var(--dim2);margin-top:5px;text-align:center}
+  .legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--dim);margin-top:5px;justify-content:center}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+
+  table{width:100%;border-collapse:collapse;font-size:12px;margin-top:7px}
+  th,td{border-bottom:1px solid var(--line);padding:5px 2px;text-align:center}
+  th{color:var(--dim);font-weight:600;font-size:11px}
+  td.hl{background:rgba(79,209,197,.13);color:#fff;font-weight:700}
+  td.gold{background:rgba(255,209,102,.16);color:#ffe6a8;font-weight:700}
+  .mono{font-family:Menlo,Consolas,monospace;font-size:11.5px;white-space:nowrap}
+
+  #fab{position:fixed;right:13px;bottom:calc(15px + var(--safe-b));z-index:60;
+    display:flex;align-items:center;gap:7px;padding:11px 16px;border-radius:26px;border:0;
+    background:linear-gradient(135deg,#2a7d9b,#3f5fa8);color:#fff;font-size:14px;font-weight:700;
+    box-shadow:0 8px 24px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.18);font-family:inherit}
+  #fab:active{transform:scale(.96)}
+  #scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;opacity:0;pointer-events:none;transition:opacity .2s}
+  #scrim.on{opacity:1;pointer-events:auto}
+  #sheet{position:fixed;left:0;right:0;bottom:0;z-index:80;max-height:80vh;
+    background:linear-gradient(180deg,#17223c,#101828);border-top:1px solid var(--line);
+    border-radius:20px 20px 0 0;padding:5px 13px calc(14px + var(--safe-b));
+    transform:translateY(105%);transition:transform .26s cubic-bezier(.22,.8,.3,1);
+    overflow-y:auto;-webkit-overflow-scrolling:touch;box-shadow:0 -10px 30px rgba(0,0,0,.55)}
+  #sheet.on{transform:translateY(0)}
+  .grab{width:42px;height:4px;border-radius:3px;background:rgba(255,255,255,.28);margin:4px auto 8px}
+  .shHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  .shHead .tt{font-size:14px;font-weight:700}
+  .shHead button{border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--dim);
+    border-radius:9px;padding:5px 12px;font-size:13px;font-family:inherit}
+  .tabs{display:flex;gap:4px;background:rgba(0,0,0,.26);padding:3px;border-radius:12px;margin-bottom:8px}
+  .tabs button{flex:1;border:0;background:transparent;color:var(--dim);padding:7px 2px;border-radius:9px;
+    font-size:12px;font-family:inherit}
+  .tabs button.on{background:linear-gradient(180deg,rgba(79,209,197,.28),rgba(79,209,197,.14));
+    color:#fff;box-shadow:inset 0 0 0 1px rgba(79,209,197,.45)}
+  .pane{display:none}.pane.on{display:block}
+  .fld{margin:11px 0}
+  .fld .lb{font-size:12.5px;color:var(--dim);margin-bottom:5px;display:flex;justify-content:space-between;align-items:baseline}
+  .fld .lb .v{font-size:15px;color:#fff;font-weight:700;font-variant-numeric:tabular-nums}
+  .fld .lb .v small{font-size:11px;color:var(--dim);font-weight:400}
+  .seg{display:flex;gap:4px;background:rgba(0,0,0,.28);padding:3px;border-radius:11px;flex-wrap:wrap}
+  .seg button{flex:1;min-width:52px;border:0;background:transparent;color:var(--dim);padding:7px 4px;
+    border-radius:8px;font-size:12.5px;cursor:pointer;font-family:inherit}
+  .seg button.on{background:linear-gradient(180deg,rgba(79,209,197,.28),rgba(79,209,197,.14));
+    color:#fff;box-shadow:inset 0 0 0 1px rgba(79,209,197,.45)}
+  input[type=range]{width:100%;accent-color:var(--cyan);height:30px;margin:0}
+  input[type=text]{width:100%;background:rgba(0,0,0,.3);border:1px solid var(--line);color:#fff;
+    border-radius:9px;padding:8px 10px;font-size:14px;font-family:Menlo,Consolas,monospace;letter-spacing:1px}
+  .stepRow{display:flex;gap:6px;margin-top:5px;flex-wrap:wrap}
+  .stepRow button{flex:1;min-width:56px;border:1px solid var(--line);background:rgba(255,255,255,.05);
+    color:var(--txt);border-radius:9px;padding:7px 0;font-size:12.5px;font-family:inherit}
+  .stepRow button:active{background:rgba(79,209,197,.18)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px}
+  .chip{background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:9px;padding:6px 10px;font-size:12px;white-space:nowrap}
+  .chip.on{background:rgba(255,209,102,.18);border-color:rgba(255,209,102,.5);color:#ffe6a8}
+  .chip:active{background:rgba(79,209,197,.2)}
+  .note{font-size:11.5px;color:var(--dim2);margin-top:5px}
+  .foot{text-align:center;color:var(--dim2);font-size:11px;margin-top:14px}
+  .tag{display:inline-block;padding:1px 6px;border-radius:6px;font-size:11px;margin:1px 2px}
+  .tag.g{background:rgba(255,209,102,.18);color:#ffe6a8}
+  .tag.c{background:rgba(79,209,197,.16);color:#bff6ef}
+  .tag.n{background:rgba(255,255,255,.07);color:#b9c6e2}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:600px){.two{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="tbRow">
+    <span class="tbVal" id="tbTheta">1.100<small>°</small></span>
+    <span class="badge" id="tbBadge"><span class="dot"></span><span id="tbBadgeTxt">—</span></span>
+    <span class="tiny" id="tbN" style="margin-left:auto"></span>
+  </div>
+  <div class="tbStats">
+    <div class="tbStat"><div class="t">层数 N</div><div class="v" id="tbN2">—</div></div>
+    <div class="tbStat"><div class="t">魔角个数</div><div class="v" id="tbCnt">—</div></div>
+    <div class="tbStat"><div class="t">最大魔角</div><div class="v" id="tbMax">—</div></div>
+    <div class="tbStat"><div class="t">名贵常数</div><div class="v" id="tbSp">—</div></div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <h1>魔角谱 · <span class="hl">贵金属比</span> · 分形莫尔</h1>
+  <div class="sub">把两层石墨烯的 1.1° 推广成任意层、任意排列 —— 看看哪些数学常数会自己冒出来。</div>
+
+  <div class="card">
+    <h2><span class="num">0</span>先说清 θ 是什么角</h2>
+    <p class="dim">θ <b>不是把平面掀起来的倾角</b>，而是<b>面内旋转角</b>：各层始终保持平行（间距 ~0.34 nm），θ 指上下层绕<b>垂直于层面的轴 ẑ</b> 相对转过的角度。像把两张透明胶片平放在桌上，按住中心<b>原地旋转</b>一张。</p>
+    <div class="two">
+      <div><canvas id="top"></canvas><div class="cap">俯视（沿 ẑ）</div></div>
+      <div><canvas id="side"></canvas><div class="cap">侧视：各层严格平行</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">1</span>统一公式：魔角 = 界面耦合矩阵的谱</h2>
+    <p class="dim">在手性极限（关掉 AA 位隧穿 w<sub>AA</sub>=0）下，N 层交替转角石墨烯的平带条件可以精确求解：把每层看作一个顶点、每个扭转界面看作一条边，得到一张<b>界面耦合图</b>，于是</p>
+    <div class="eq">θ<sub>魔</sub> = θ<sub>TBG</sub> × λ ， λ = 界面耦合矩阵的<b>正本征值</b>， θ<sub>TBG</sub> = 1.1°</div>
+    <p class="dim">对最常见的<b>均匀链</b>（N 层、N−1 个等强界面），这张图就是路径图 P<sub>N</sub>，本征值有闭式解：</p>
+    <div class="eq">λ<sub>k</sub> = 2 cos( kπ / (N+1) ) ,&nbsp; k = 1, 2, … , ⌊N/2⌋&nbsp;&nbsp;→&nbsp;&nbsp;θ<sub>k</sub> = 2θ<sub>TBG</sub> cos( kπ/(N+1) )</div>
+    <div class="ok">这就是 Khalaf 等人 2019 年的结果，也是实验上 3 层 1.56°、4 层 1.78°、5 层 1.95° 的来源。<b>魔角个数 = ⌊N/2⌋</b> —— 层数越多，超导夹角越多。</div>
+    <div class="warn"><b>关键约束：λ ≤ 2。</b>因为路径图的最大本征值趋于 2，所以均匀链的魔角<b>永远不会超过 2θ<sub>TBG</sub> = 2.2°</b>。这一条决定了下面所有关于"贵金属比"的讨论。</div>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">2</span>放开层数：N = 2 … 30 的完整魔角谱</h2>
+    <div class="hint">下面这张表把 λ<sub>k</sub> = 2cos(kπ/(N+1)) 全部算出来，并自动识别它等于哪个数学常数（≤2 的代数数）。金色标签 = 名贵常数。</div>
+    <div style="overflow-x:auto"><table id="specTable"></table></div>
+    <h3>哪些层数能凑出哪些常数</h3>
+    <div style="overflow-x:auto"><table id="constTable"></table></div>
+    <div class="tiny" style="margin-top:6px">规律很干净：λ = 2cos(kπ/(N+1))，把分数 k/(N+1) 约简成 p/q 后，常数只由 <b>q</b> 决定。所以想要 √3（q=6）、√2（q=4）、1（q=3）、φ（q=5）同时在同一个 N 出现，就要 N+1 同时被 3、4、6 整除 → <b>N+1 = 12，即 N = 11</b>；再把 φ 也拉进来需要 q=5 → <b>N+1 = 60，即 N = 59</b>。</div>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">3</span>贵金属比：为什么进不来，又怎么把它请进来</h2>
+    <p class="dim">贵金属比（metallic means）定义为 λ<sub>m</sub> = (m + √(m²+4))/2，即矩阵 [[m,1],[1,0]] 的 Perron 根：</p>
+    <div style="overflow-x:auto"><table id="metTable"></table></div>
+    <div class="warn"><b>黄金比 φ = 1.618 可以直接当 λ</b>（N = 4, 9, 14, 19, 24 …，即 N+1 是 5 的倍数）；<b>√2 = δ<sub>银</sub> − 1</b> 也可以（N = 3, 7, 11, 15, 19 …）。但银比 2.414、铜比 3.303 都 <b>&gt; 2</b>，撞上了第 1 节那条天花板，永远不可能成为某个 N 层均匀链的 λ。</div>
+    <div class="ok"><b>出路：让不同界面取不同的耦合强度。</b>贵金属比不再作为"放大倍数 λ"，而是作为<b>两类界面耦合之比 ρ = t<sub>A</sub>/t<sub>B</sub></b>。这时层数序列本身变成一条"字"（word）——A 类界面、B 类界面按某种顺序排列 —— 于是我们得到一条<b>一维准晶链</b>，它的谱就是魔角谱。<br><br>物理上怎么实现不同的 t？层间耦合对<b>层间距</b>极其敏感（所以静水压能把魔角推向更大角度）。给不同界面插入不同厚度的 hBN 隔层、或用局部压力/间隔物分别调控，原则上就能独立设定每个界面的 t —— 这样可以在<b>保持同一莫尔周期</b>的前提下实现任意权重。</div>
+    <h3>怎么构造：贵金属比替换序列</h3>
+    <p class="dim">要得到自相似的（分形）谱，界面序列不能随便排，而要按<b>贵金属比替换规则</b>生成：</p>
+    <div class="eq">σ<sub>m</sub> :  A → A<sup>m</sup>B ,&nbsp; B → A</div>
+    <p class="dim">m=1 → 斐波那契字（A→AB），A:B 数量比 → φ；m=2 → 银均字（A→AAB），比 → 1+√2；m=3 → 铜均字（A→AAAB），比 → (3+√13)/2。把耦合设成 t<sub>A</sub>/t<sub>B</sub> = λ<sub>m</sub>，就得到一条严格自相似的准晶链。</p>
+    <div class="hint"><b>组与组之间的排列组合确实会改变谱</b> —— 但它有一个漂亮的对称性：<b>把整个序列倒过来读，谱完全不变</b>（路径图的转置相似）。所以 AAB 与 BAA 同谱，真正不同的排列数是" bracelet（不计反转的项链）"数，不是全排列数。下面的"排列对比"表会算给你看。</div>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">4</span>蝶形谱：魔角随耦合比 ρ 的分形结构</h2>
+    <canvas id="butterfly"></canvas>
+    <div class="cap">横轴 = 两类界面耦合比 ρ；纵轴 = 魔角 θ。竖虚线：φ / 银比 / 铜比</div>
+    <div class="hint">这是整页最" fractally"的一张图。谱随 ρ 变化时会不断分裂成子带、子带再分裂，形成康托集式的自相似结构 —— 和 Hofstadter 蝴蝶是同一类数学对象。ρ 取在贵金属比上时，自相似性最强（能级间距按 λ<sub>m</sub> 标度）。</div>
+    <h3>当前序列的魔角谱</h3>
+    <canvas id="spec"></canvas>
+    <div class="cap" id="specCap"></div>
+    <h3>排列对比（同一 multiset 的不同排法）</h3>
+    <div style="overflow-x:auto"><table id="permTable"></table></div>
+    <div class="note" id="permNote"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">5</span>分形嵌套莫尔：莫尔的莫尔</h2>
+    <p class="dim">当不同界面有<b>不同转角</b>时，会出现多代莫尔：第 1 代莫尔（周期 L）自己再形成莫尔 → 超莫尔（周期 ~L/θ），再形成 → 超超莫尔。这就是分形六边形嵌套的来源。</p>
+    <div class="eq">L<sub>1</sub> = a/θ &nbsp;→&nbsp; L<sub>2</sub> ≈ L<sub>1</sub>/θ<sub>rad</sub> &nbsp;→&nbsp; L<sub>3</sub> ≈ L<sub>2</sub>/θ<sub>rad</sub> &nbsp;→&nbsp; …</div>
+    <canvas id="moire"></canvas>
+    <div class="legend">
+      <span><i style="background:#ffc178"></i>AA 区（电子局域）</span>
+      <span><i style="background:#2b4f8f"></i>AB/BA 区</span>
+      <span><i style="border:1px solid #7ff0e6;background:transparent"></i>各代莫尔原胞（嵌套六边形）</span>
+    </div>
+    <div class="cap" id="moireCap"></div>
+    <div class="hint">图上手势：<b>左右拖动</b>调 θ，<b>上下拖动</b>缩放视场。</div>
+    <h3>理想化的自相似极限：六边形雪花（Hexaflake）</h3>
+    <canvas id="flake"></canvas>
+    <div class="cap">一个六边形 = 7 个 1/k 缩小的六边形；维数 = log7/log3 ≈ 1.771（k=3）</div>
+    <div class="tiny">注意：真实的莫尔层级比例是 1/θ<sub>rad</sub>，θ=1.1° 时约 <b>52 倍</b>，远不是 3 —— 所以真实的嵌套只有 2–3 代能进入视野（这正是螺旋四层石墨烯里 a<sup>M</sup> ≈ 6 nm、a<sup>MM</sup> ≈ 0.1 μm、a<sup>MMM</sup> ≈ 几 μm 的原因）。Hexaflake 是把比例压到 3 后的理想化自相似版本，用来展示层级结构本身。</div>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">6</span>螺旋堆叠：天然的多代莫尔发生器</h2>
+    <p class="dim">交替堆叠（+θ/−θ/+θ…）所有界面共用一个莫尔周期，只有<b>一代</b>莫尔。而<b>螺旋堆叠</b>（每层都沿同一方向转 +θ）会产生 N−1 个<b>方向彼此错开</b>的莫尔图案，它们互相干涉，天然生成多代结构：</p>
+    <div style="overflow-x:auto"><table id="helTable"></table></div>
+    <div class="tiny" style="margin-top:6px">螺旋三层的超莫尔周期 ~0.1 μm、螺旋四层的超超莫尔可达几 μm —— 都被实验观测到。但螺旋体系的魔角<b>不属于</b>上面那套图谱公式（它不满足手性极限分解），数值来自具体计算，本页按文献值列出，不参与实时公式。</div>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">7</span>这一切和超导有什么关系</h2>
+    <canvas id="phase"></canvas>
+    <div class="cap">魔角区：半填充 ±2 出现关联绝缘体，两侧冒出超导穹顶</div>
+    <div class="hint" id="phaseVerdict"></div>
+    <p class="dim" style="margin-top:8px">每多一个魔角，就多一个可以用栅压去"对焦"的强关联窗口 —— 这就是多层体系的价值：它不是简单的重复，而是把 1.1° 这一个点，变成了一整族可调的平带条件。</p>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">8</span>诚实边界：哪些是文献，哪些是本页外推</h2>
+    <p class="dim"><b>✅ 文献确立：</b><br>
+    · 手性极限下 N 层交替转角石墨烯的魔角谱 θ<sub>k</sub> = 2θ<sub>TBG</sub>cos(kπ/(N+1))（Khalaf et al. 2019；实验 3/4/5 层 ≈ 1.57°/1.77°/1.95°）。<br>
+    · 螺旋体系的多代莫尔与超超莫尔（a<sup>M</sup> / a<sup>MM</sup> / a<sup>MMM</sup>）。<br>
+    · 层间耦合对间距敏感 → 静水压可移动魔角（Yankowitz et al., Science 2019）。</p>
+    <p class="dim"><b>⚠️ 本页外推（思想实验，未经实验验证）：</b><br>
+    · 把"界面耦合图"推广到<b>加权路径图 / 准晶字</b>，并声称其本征值给出魔角 —— 这是把已确立的手性极限公式做了推广，物理前提是能<b>独立调控每个界面的耦合</b>且保持共同莫尔周期。真实样品中不同界面转角不同会立刻引入多代莫尔，破坏单周期假设。<br>
+    · 贵金属比作为"耦合比 ρ"的说法、蝶形谱的具体形状、以及"ρ = λ<sub>m</sub> 时自相似性最强"，都属于这一推广框架内的推论。<br>
+    · Hexaflake 是纯几何示意，不是任何真实样品的实空间图像。</p>
+    <p class="dim"><b>⚠️ 数值口径：</b>表中为手性极限解析值；真实体系 w<sub>AA</sub>≠0 且存在晶格弛豫，实测魔角会偏移百分之几到十几。层数超过约 8 层在制备上极不现实，N&gt;8 的表格仅供看数学结构。</p>
+  </div>
+
+  <div class="foot">a = 0.246 nm · θ<sub>TBG</sub> = 1.1° · 手性极限 · ε<sub>r</sub> ≈ 6（hBN 环境）</div>
+</div>
+
+<button id="fab"><span>⚙</span><span id="fabTxt">调参</span></button>
+<div id="scrim"></div>
+<div id="sheet">
+  <div class="grab"></div>
+  <div class="shHead"><span class="tt">调参面板</span><button id="closeBtn">收起</button></div>
+  <div class="tabs">
+    <button data-p="base" class="on">基础</button>
+    <button data-p="chain">链与常数</button>
+    <button data-p="quasi">贵金属比</button>
+    <button data-p="frac">分形</button>
+  </div>
+
+  <div class="pane on" id="p-base">
+    <div class="fld">
+      <div class="lb"><span>堆叠方式</span></div>
+      <div class="seg" id="modeSeg">
+        <button data-mode="alt" class="on">交替 ±θ</button>
+        <button data-mode="hel">螺旋 +θ</button>
+      </div>
+      <div class="note" id="modeNote"></div>
+    </div>
+    <div class="fld">
+      <div class="lb"><span>转角 θ</span><span class="v" id="thVal">1.100<small>°</small></span></div>
+      <input type="range" id="thSlider" min="0.30" max="4.00" step="0.005" value="1.1">
+      <div class="stepRow">
+        <button data-d="-0.1">−0.1°</button><button data-d="-0.01">−0.01°</button>
+        <button data-d="0.01">+0.01°</button><button data-d="0.1">+0.1°</button>
+      </div>
+      <div class="lb" style="margin-top:10px"><span>一键跳到魔角</span></div>
+      <div class="chips" id="magicChips"></div>
+    </div>
+    <div class="fld">
+      <div class="lb"><span>填充因子 ν（相图游标）</span><span class="v" id="nuVal">−2.20</span></div>
+      <input type="range" id="nuSlider" min="-4" max="4" step="0.05" value="-2.2">
+    </div>
+  </div>
+
+  <div class="pane" id="p-chain">
+    <div class="fld">
+      <div class="lb"><span>层数 N（均匀交替链）</span><span class="v" id="nVal">2</span></div>
+      <input type="range" id="nSlider" min="2" max="60" step="1" value="2">
+      <div class="stepRow">
+        <button data-n="3">3 · √2</button><button data-n="4">4 · φ</button>
+        <button data-n="11">11 · √3√2·1</button><button data-n="19">19 · φ·√2</button>
+      </div>
+      <div class="stepRow">
+        <button data-n="29">29 · 五连</button><button data-n="59">59 · 全家桶</button>
+      </div>
+      <div class="note">N 只影响「链与常数」表和主魔角谱；制备上 8 层以上已极不现实，大 N 仅供看数学结构。</div>
+    </div>
+    <div class="fld">
+      <div class="lb"><span>主魔角（用于相图/莫尔）</span><span class="v" id="pickVal">—</span></div>
+      <div class="chips" id="pickChips"></div>
+      <div class="note">选一个魔角作为"当前工作点"，相图与莫尔图会按它渲染。</div>
+    </div>
+  </div>
+
+  <div class="pane" id="p-quasi">
+    <div class="fld">
+      <div class="lb"><span>序列类型（替换规则）</span></div>
+      <div class="seg" id="seqSeg">
+        <button data-seq="fib" class="on">斐波那契</button>
+        <button data-seq="silver">银均</button>
+        <button data-seq="bronze">铜均</button>
+        <button data-seq="custom">自定义</button>
+      </div>
+      <div class="note" id="seqNote"></div>
+    </div>
+    <div class="fld" id="customBox" style="display:none">
+      <div class="lb"><span>自定义字（A/B）</span></div>
+      <input type="text" id="wordInput" value="AAB" spellcheck="false" autocapitalize="characters">
+      <div class="note">A = 强耦合界面，B = 弱耦合界面。只能含 A 和 B。</div>
+    </div>
+    <div class="fld">
+      <div class="lb"><span>替换代数</span><span class="v" id="genVal">6</span></div>
+      <input type="range" id="genSlider" min="1" max="7" step="1" value="6">
+      <div class="note" id="lenNote"></div>
+    </div>
+    <div class="fld">
+      <div class="lb"><span>重复次数 P</span><span class="v" id="repVal">1</span></div>
+      <input type="range" id="repSlider" min="1" max="4" step="1" value="1">
+    </div>
+    <div class="fld">
+      <div class="lb"><span>耦合比 ρ = t<sub>A</sub>/t<sub>B</sub></span><span class="v" id="rhoVal">1.618</span></div>
+      <input type="range" id="rhoSlider" min="1" max="6" step="0.005" value="1.618">
+      <div class="chips">
+        <span class="chip" data-rho="1">均匀 1</span>
+        <span class="chip" data-rho="1.618033988749895">φ 金</span>
+        <span class="chip" data-rho="2.414213562373095">δs 银</span>
+        <span class="chip" data-rho="3.302775637731995">δb 铜</span>
+        <span class="chip" data-rho="4.23606797749979">δ₄</span>
+      </div>
+      <div class="note">ρ 是"界面耦合强度"之比，不是转角之比；本征值 λ = ρ 意义上的放大。</div>
+    </div>
+    <div class="fld">
+      <div class="lb"><span>蝶形图横轴范围</span><span class="v" id="bwVal">1 → 5</span></div>
+      <input type="range" id="bwSlider" min="3" max="8" step="0.5" value="5">
+    </div>
+  </div>
+
+  <div class="pane" id="p-frac">
+    <div class="fld">
+      <div class="lb"><span>莫尔代数 G</span><span class="v" id="gen2Val">4</span></div>
+      <input type="range" id="gen2Slider" min="1" max="5" step="1" value="4">
+      <div class="note">G=1 普通莫尔；G≥2 出现超莫尔、超超莫尔……</div>
+    </div>
+    <div class="fld">
+      <div class="lb"><span>代间比例 R</span><span class="v" id="ratVal">4.0</span></div>
+      <input type="range" id="ratSlider" min="1.5" max="8" step="0.1" value="4">
+      <div class="note">真实体系 R ≈ 1/θ<sub>rad</sub>；θ=1.1° 时约 52。压小是为了让多代同时进画面。</div>
+    </div>
+    <div class="fld">
+      <div class="lb"><span>视场（对数）</span><span class="v" id="viewVal">—</span></div>
+      <input type="range" id="viewSlider" min="0" max="100" step="1" value="50">
+    </div>
+    <div class="fld">
+      <div class="lb"><span>Hexaflake 递归深度</span><span class="v" id="fDepthVal">4</span></div>
+      <input type="range" id="fDepth" min="1" max="5" step="1" value="4">
+    </div>
+    <div class="fld">
+      <div class="lb"><span>Hexaflake 缩放比 k</span><span class="v" id="fKVal">3</span></div>
+      <input type="range" id="fK" min="2" max="6" step="0.5" value="3">
+    </div>
+    <div class="fld"><div class="stepRow"><button id="resetBtn">全部恢复默认</button></div></div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============ 常数 ============ */
+var A_CC=0.246, KD=4*Math.PI/(3*A_CC), HBARVF=2.135*A_CC;
+var THETA_TBG=1.1, EPS_R=6, E2=1.44, GMAG=4*Math.PI/(Math.sqrt(3)*A_CC);
+
+var PHI=(1+Math.sqrt(5))/2, SILVER=1+Math.sqrt(2), BRONZE=(3+Math.sqrt(13))/2, MET4=2+Math.sqrt(5);
+
+/* ============ 状态 ============ */
+var S={ mode:'alt', theta:1.1, nu:-2.2, N:2, pickIdx:0,
+        seq:'fib', gen:6, rep:1, rho:PHI, word:'AAB', bw:5,
+        G:4, R:4.0, viewT:50, fDepth:4, fK:3 };
+
+/* ============ 数学工具 ============ */
+function gcd(a,b){while(b){var t=a%b;a=b;b=t;}return a;}
+
+/* QL 隐式位移：对称三对角本征值。e[0] 未用，e[i]=次对角(i-1,i) */
+function tqli(d,e){
+  var n=d.length, m,l,iter,i,s,r,p,g,f,dd,c,b;
+  for(i=1;i<n;i++) e[i-1]=e[i];
+  e[n-1]=0;
+  for(l=0;l<n;l++){
+    iter=0;
+    do{
+      for(m=l;m<n-1;m++){ dd=Math.abs(d[m])+Math.abs(d[m+1]); if(Math.abs(e[m])+dd===dd) break; }
+      if(m!==l){
+        if(iter++===60) break;
+        g=(d[l+1]-d[l])/(2*e[l]);
+        r=Math.sqrt(g*g+1);
+        g=d[m]-d[l]+e[l]/(g+(g>=0?Math.abs(r):-Math.abs(r)));
+        s=1;c=1;p=0;
+        for(i=m-1;i>=l;i--){
+          f=s*e[i]; b=c*e[i];
+          r=Math.sqrt(f*f+g*g); e[i+1]=r;
+          if(r===0){ d[i+1]-=p; e[m]=0; break; }
+          s=f/r; c=g/r; g=d[i+1]-p;
+          r=(d[i]-g)*s+2*c*b; p=s*r; d[i+1]=g+p; g=c*r-b;
+        }
+        d[l]-=p; e[l]=g; e[m]=0;
+      }
+    }while(m!==l);
+  }
+  return d;
+}
+/* 给定界面耦合权重数组，返回降序本征值 */
+function eigPath(w){
+  var n=w.length+1, d=new Array(n), e=new Array(n), i;
+  for(i=0;i<n;i++) d[i]=0;
+  e[0]=0;
+  for(i=0;i<n-1;i++) e[i+1]=w[i];
+  var ev=tqli(d,e);
+  ev.sort(function(a,b){return b-a;});
+  return ev;
+}
+/* 均匀链解析谱：2cos(kπ/(N+1)) */
+function uniformSpectrum(N){
+  var out=[], m=N+1;
+  for(var k=1;k<=Math.floor(N/2);k++){
+    var g=2*Math.cos(k*Math.PI/m);
+    if(g>1e-9) out.push({k:k,g:g,theta:THETA_TBG*g});
+  }
+  return out;
+}
+/* 常数识别 */
+function constLabel(p,q){
+  if(q===3) return '1';
+  if(q===4) return '√2';
+  if(q===5) return p===1?'φ':'1/φ';
+  if(q===6) return (p===1)?'√3':'1';
+  if(q===8) return (p===1)?'√(2+√2)':(p===3?'√(2−√2)':null);
+  if(q===10) return (p===1)?'√((5+√5)/2)':(p===2?'φ':(p===3?'√((5−√5)/2)':'1/φ'));
+  if(q===12) return (p===1)?'(√6+√2)/2':(p===2?'√3':(p===3?'√2':(p===4?'1':'(√6−√2)/2')));
+  if(q===16) return (p===1)?'√(2+√(2+√2))':(p===3?'√(2+√(2−√2))':(p===5?'√(2−√(2−√2))':'√(2−√(2+√2))'));
+  if(q===20) return (p===2)?'√((5+√5)/2)':(p===4?'φ':(p===6?'√((5−√5)/2)':(p===8?'1/φ':null)));
+  if(q===24) return (p===2)?'(√6+√2)/2':(p===3?'√(2+√2)':(p===4?'√3':(p===6?'√2':(p===8?'1':null))));
+  if(q===30) return (p===6)?'φ':(p===10?'1':(p===5?'√3':null));
+  return null;
+}
+function famous(c){ return ['φ','1/φ','√2','√3','1','2','(√6+√2)/2','(√6−√2)/2','√((5+√5)/2)','√((5−√5)/2)','√(2+√2)','√(2−√2)'].indexOf(c)>=0; }
+
+function tagOf(g,N){
+  var m=N+1, best=null, bd=1e9;
+  for(var k=1;k<=Math.floor(N/2);k++){
+    var gg=2*Math.cos(k*Math.PI/m);
+    if(Math.abs(gg-g)<bd){bd=Math.abs(gg-g);best=k;}
+  }
+  if(best===null||bd>1e-9) return null;
+  var d=gcd(best,m), p=best/d, q=m/d;
+  var lb=constLabel(p,q);
+  return {k:best,p:p,q:q,label:lb||('2cos('+p+'π/'+q+')'),named:!!lb,famous:!!(lb&&famous(lb))};
+}
+
+/* 替换序列 */
+function subst(word,m){ var o=''; for(var i=0;i<word.length;i++){ var c=word[i]; o += (c==='A') ? (new Array(m+1).join('A')+'B') : 'A'; } return o; }
+function buildWord(){
+  var m = S.seq==='fib'?1 : S.seq==='silver'?2 : S.seq==='bronze'?3 : null;
+  var w;
+  if(m===null){
+    w=(S.word||'AAB').toUpperCase().replace(/[^AB]/g,'');
+    if(!w) w='AAB';
+  }else{
+    w='A'; for(var i=0;i<S.gen;i++) w=subst(w,m);
+  }
+  var out=''; for(var r=0;r<S.rep;r++) out+=w;
+  return out;
+}
+function bracelets(word){ // 不计反转的不同排列
+  var arr=word.split('').sort();
+  var seen={}, res=[];
+  function permute(a,cur){
+    if(!a.length){
+      var s=cur.join(''), rv=s.split('').reverse().join('');
+      var key=(s<rv)?(s+'|'+rv):(rv+'|'+s);
+      if(!seen[key]){seen[key]=1;res.push(s);}
+      return;
+    }
+    var used={};
+    for(var i=0;i<a.length;i++){
+      if(used[a[i]])continue; used[a[i]]=1;
+      var rest=a.slice(); rest.splice(i,1);
+      permute(rest,cur.concat(a[i]));
+    }
+  }
+  permute(arr,[]);
+  return res;
+}
+
+/* 当前主魔角（工作点） */
+function currentSubs(){
+  if(S.mode==='hel'){
+    var tbl={2:[1.10],3:[1.80],4:[2.30]}, a=tbl[Math.min(S.N,4)]||[];
+    return a.map(function(t){return {theta:t,g:t/THETA_TBG,label:'螺旋魔角'};});
+  }
+  return uniformSpectrum(S.N);
+}
+function workTheta(){
+  var s=currentSubs();
+  if(!s.length) return S.theta;
+  var i=Math.min(S.pickIdx,s.length-1);
+  return s[i].theta;
+}
+
+/* ============ DOM ============ */
+function $(id){return document.getElementById(id);}
+var sheet=$('sheet'), scrim=$('scrim'), fab=$('fab');
+function openSheet(){sheet.classList.add('on');scrim.classList.add('on');document.body.classList.add('lock');}
+function closeSheet(){sheet.classList.remove('on');scrim.classList.remove('on');document.body.classList.remove('lock');}
+fab.onclick=function(){sheet.classList.contains('on')?closeSheet():openSheet();};
+scrim.onclick=closeSheet; $('closeBtn').onclick=closeSheet;
+Array.prototype.forEach.call(document.querySelectorAll('.tabs button'),function(b){
+  b.onclick=function(){
+    Array.prototype.forEach.call(document.querySelectorAll('.tabs button'),function(x){x.classList.toggle('on',x===b);});
+    Array.prototype.forEach.call(document.querySelectorAll('.pane'),function(p){p.classList.toggle('on',p.id==='p-'+b.dataset.p);});
+  };
+});
+
+/* ============ canvas 工具 ============ */
+function fit(cv,h){
+  var dpr=Math.min(window.devicePixelRatio||1,2);
+  var w=cv.clientWidth||cv.parentNode.clientWidth||320;
+  if(!w||w<50)w=320;
+  cv.width=Math.round(w*dpr); cv.height=Math.round(h*dpr); cv.style.height=h+'px';
+  var ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+  return {w:w,h:h,ctx:ctx};
+}
+function sq(cv){ var w=cv.clientWidth||320; return fit(cv,Math.min(w,430)); }
+
+/* ============ 俯视 / 侧视 ============ */
+function layerAngles(N,mode,th){
+  var a=[]; for(var i=0;i<N;i++) a.push(mode==='alt'?((i%2===0)?0:th):i*th); return a;
+}
+function drawTop(){
+  var f=sq($('top')), ctx=f.ctx, w=f.w, cx=w/2, cy=w/2, R=w*0.29;
+  ctx.clearRect(0,0,w,w);
+  var g=ctx.createRadialGradient(cx,cy,0,cx,cy,w*0.55);
+  g.addColorStop(0,'#101a30'); g.addColorStop(1,'#070b14');
+  ctx.fillStyle=g; ctx.fillRect(0,0,w,w);
+  var angs=layerAngles(Math.min(S.N,8),S.mode,S.theta);
+  var maxAbs=Math.max.apply(null,angs.map(Math.abs))||1;
+  var K=Math.min(8, 40/Math.max(maxAbs,0.001)); if(K<1)K=1;
+  var cols=['#7fd3ff','#ff9c6b','#a78bfa','#4fd1c5','#ffd166','#ff6b6b','#8be28b','#ff9ecd'];
+  for(var i=angs.length-1;i>=0;i--){
+    var rot=angs[i]*K*Math.PI/180, off=(i-(angs.length-1)/2)*Math.min(7,w*0.02);
+    var ox=cx+off, oy=cy+off*0.5, r=R*(1-0.05*i);
+    ctx.save(); ctx.translate(ox,oy); ctx.rotate(rot);
+    ctx.beginPath();
+    for(var k=0;k<6;k++){ var a2=Math.PI/6+k*Math.PI/3; var px=r*Math.cos(a2),py=r*Math.sin(a2);
+      if(k===0)ctx.moveTo(px,py);else ctx.lineTo(px,py); }
+    ctx.closePath(); ctx.fillStyle='rgba(255,255,255,.04)'; ctx.fill();
+    ctx.strokeStyle=cols[i%cols.length]; ctx.lineWidth=i===0?2:1.4; ctx.stroke();
+    ctx.globalAlpha=0.45; ctx.lineWidth=0.7;
+    for(var d=0;d<3;d++){ var a3=d*Math.PI/3; ctx.beginPath();
+      ctx.moveTo(-r*0.8*Math.cos(a3),-r*0.8*Math.sin(a3)); ctx.lineTo(r*0.8*Math.cos(a3),r*0.8*Math.sin(a3)); ctx.stroke(); }
+    ctx.globalAlpha=0.8; ctx.fillStyle=cols[i%cols.length];
+    var b1=Math.max(8,r/5), t2y=b1*Math.sqrt(3)/2, nn=Math.ceil(r/b1)+1;
+    for(var m2=-nn;m2<=nn;m2++)for(var n2=-nn;n2<=nn;n2++){
+      var bx=m2*b1+n2*b1/2, by=n2*t2y;
+      if(bx*bx+by*by<r*r*0.7){ctx.beginPath();ctx.arc(bx,by,1.3,0,6.2832);ctx.fill();}
+    }
+    ctx.globalAlpha=1; ctx.restore();
+    ctx.fillStyle=cols[i%cols.length]; ctx.font='bold 10px -apple-system,sans-serif'; ctx.textAlign='left';
+    ctx.fillText('L'+(i+1)+' '+(angs[i]>=0?'+':'')+angs[i].toFixed(1)+'°', ox+r*0.7, oy-r*0.7);
+  }
+  ctx.strokeStyle='#fff'; ctx.fillStyle='#fff'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(cx,cy,6,0,6.2832); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx,cy,2,0,6.2832); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx,cy,15,-0.4,3.5); ctx.stroke();
+  var ex=cx+15*Math.cos(3.5), ey=cy+15*Math.sin(3.5);
+  ctx.beginPath(); ctx.moveTo(ex,ey); ctx.lineTo(ex-5*Math.cos(2.9),ey-5*Math.sin(2.9)); ctx.lineTo(ex-5*Math.cos(4.1),ey-5*Math.sin(4.1)); ctx.closePath(); ctx.fill();
+  ctx.font='9.5px -apple-system,sans-serif'; ctx.textAlign='center';
+  ctx.fillText('ẑ 旋转轴',cx,cy+30);
+  ctx.fillStyle='#6b7b9e'; ctx.textAlign='left'; ctx.fillText('放大 '+K.toFixed(1)+'×',7,w-6);
+}
+function drawSide(){
+  var f=fit($('side'),Math.max(110,Math.min(150,S.N*22+52))), ctx=f.ctx, w=f.w, h=f.h;
+  ctx.clearRect(0,0,w,h); ctx.fillStyle='#070b14'; ctx.fillRect(0,0,w,h);
+  var angs=layerAngles(Math.min(S.N,8),S.mode,S.theta), top=24, bot=h-26;
+  var gap=angs.length>1?(bot-top)/(angs.length-1):0, x0=w*0.17, x1=w*0.83;
+  var cols=['#7fd3ff','#ff9c6b','#a78bfa','#4fd1c5','#ffd166','#ff6b6b','#8be28b','#ff9ecd'];
+  ctx.strokeStyle='rgba(255,255,255,.32)'; ctx.setLineDash([5,4]); ctx.lineWidth=1.1;
+  ctx.beginPath(); ctx.moveTo(w/2,top-12); ctx.lineTo(w/2,bot+12); ctx.stroke(); ctx.setLineDash([]);
+  for(var i=0;i<angs.length;i++){
+    var y=top+gap*i;
+    ctx.strokeStyle=cols[i%cols.length]; ctx.lineWidth=3; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(x0,y); ctx.lineTo(x1,y); ctx.stroke();
+    ctx.fillStyle=cols[i%cols.length]; ctx.font='bold 10px -apple-system,sans-serif'; ctx.textAlign='right';
+    ctx.fillText('L'+(i+1),x0-5,y+3.5);
+    ctx.textAlign='left'; ctx.fillStyle='#6b7b9e'; ctx.font='9.5px -apple-system,sans-serif';
+    ctx.fillText((angs[i]>=0?'+':'')+angs[i].toFixed(1)+'°',x1+5,y+3.5);
+  }
+  var my=(top+bot)/2;
+  ctx.strokeStyle='#fff'; ctx.fillStyle='#fff'; ctx.lineWidth=1.3;
+  ctx.beginPath(); ctx.ellipse(w/2,my,14,4.5,0,0,6.2832); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(w/2+14,my); ctx.lineTo(w/2+9.5,my-4); ctx.lineTo(w/2+9.5,my+4); ctx.closePath(); ctx.fill();
+  ctx.font='bold 10px -apple-system,sans-serif'; ctx.textAlign='center'; ctx.fillText('ẑ',w/2,top-15);
+  ctx.fillStyle='#93a2c4'; ctx.font='9.5px -apple-system,sans-serif';
+  ctx.fillText('严格平行 · θ 只是绕 ẑ 的取向',w/2,h-6);
+}
+
+/* ============ 表格：N 谱 + 常数 ============ */
+function buildSpecTable(){
+  var rows='', maxN=30, list=[];
+  for(var n=2;n<=maxN;n++) list.push(n);
+  if(S.N>maxN) list.push(S.N);
+  list.forEach(function(n){
+    var sp=uniformSpectrum(n), cells=[], nSp=0;
+    for(var i=0;i<sp.length;i++){
+      var t=tagOf(sp[i].g,n), lb=t?t.label:'';
+      var cls=t&&t.famous?'gold':'';
+      if(t&&t.famous) nSp++;
+      cells.push('<span class="tag '+(cls?'g':'n')+'">'+sp[i].theta.toFixed(2)+'°'+(lb?' '+lb:'')+'</span>');
+    }
+    var hl=(n===S.N)?'hl':'';
+    rows+='<tr><td class="'+hl+'">'+n+'</td><td class="'+hl+'">'+sp.length+'</td><td class="'+hl+'" style="text-align:left;padding-left:4px">'+cells.join('')+'</td></tr>';
+  });
+  $('specTable').innerHTML='<tr><th>N</th><th>魔角数</th><th>魔角（含常数标签，金色=名贵）</th></tr>'+rows;
+}
+function buildConstTable(){
+  var map={};
+  for(var n=2;n<=60;n++){
+    var sp=uniformSpectrum(n);
+    for(var i=0;i<sp.length;i++){
+      var t=tagOf(sp[i].g,n); if(!t||!t.famous)continue;
+      if(!map[t.label]) map[t.label]={ns:[],th:sp[i].theta};
+      if(map[t.label].ns.indexOf(n)<0) map[t.label].ns.push(n);
+    }
+  }
+  var order=['φ','1/φ','√2','√3','1','(√6+√2)/2','(√6−√2)/2','√((5+√5)/2)','√((5−√5)/2)','√(2+√2)','√(2−√2)'];
+  var rows='';
+  order.forEach(function(k){
+    var v=map[k]; if(!v)return;
+    rows+='<tr><td class="gold">'+k+'</td><td class="mono">'+(v.th/1.1).toFixed(4)+'</td><td>'+v.th.toFixed(3)+'°</td><td class="mono">'+v.ns.join(', ')+'</td></tr>';
+  });
+  $('constTable').innerHTML='<tr><th>常数</th><th>λ</th><th>魔角</th><th>出现的层数 N</th></tr>'+rows;
+}
+function buildMetTable(){
+  var defs=[['黄金比 φ',PHI],['银比 δs',SILVER],['铜比 δb',BRONZE],['第四 δ₄',MET4]];
+  var rows='';
+  defs.forEach(function(d){
+    var can=d[1]<=2;
+    rows+='<tr><td class="gold">'+d[0]+'</td><td class="mono">'+d[1].toFixed(6)+'</td><td>'+(can?'✓ 可做 λ':'✗ >2，做不了 λ')+'</td>'+
+      '<td>'+(can?'θ='+(1.1*d[1]).toFixed(3)+'°':'只能做耦合比 ρ')+'</td></tr>';
+  });
+  $('metTable').innerHTML='<tr><th>贵金属比</th><th>数值</th><th>能否当 λ</th><th>意义</th></tr>'+rows;
+}
+function buildHelTable(){
+  var d=[[2,'a^M ≈ 6 nm','—','1.10°'],[3,'a^M','a^MM ≈ 0.1 μm','1.80°'],[4,'a^M','a^MMM ≈ 几 μm','2.30°']];
+  var rows='';
+  d.forEach(function(r){
+    rows+='<tr><td>'+r[0]+' 层</td><td>'+(r[0]-1)+' 个莫尔</td><td class="mono">'+r[1]+(r[2]==='—'?'':' + '+r[2])+'</td><td class="gold">'+r[3]+'</td></tr>';
+  });
+  $('helTable').innerHTML='<tr><th>螺旋层数</th><th>莫尔图案数</th><th>层级尺度</th><th>魔角</th></tr>'+rows;
+}
+
+/* ============ 蝶形谱 ============ */
+function drawButterfly(){
+  var f=fit($('butterfly'),250), ctx=f.ctx, w=f.w, h=f.h;
+  ctx.clearRect(0,0,w,h); ctx.fillStyle='#080d1a'; ctx.fillRect(0,0,w,h);
+  var x0=40,x1=w-10,y0=14,y1=h-28;
+  var base=buildWord(); if(base.length>44) base=base.slice(0,44);
+  var rmin=1, rmax=S.bw;
+  var maxE=0, cols=[];
+  var NC=Math.min(200,Math.max(60,Math.round(w*0.7)));
+  for(var c=0;c<NC;c++){
+    var rho=rmin+(rmax-rmin)*c/(NC-1);
+    var wts=base.split('').map(function(ch){return ch==='A'?rho:1;});
+    var ev=eigPath(wts);
+    cols.push(ev);
+    for(var i=0;i<ev.length;i++) maxE=Math.max(maxE,Math.abs(ev[i]));
+  }
+  var yMax=Math.min(maxE*1.05, 2.2*rmax+1);
+  function X(rho){return x0+(rho-rmin)/(rmax-rmin)*(x1-x0);}
+  function Y(v){return y1-(v/yMax)*(y1-y0);}
+  ctx.strokeStyle='rgba(255,255,255,.07)'; ctx.lineWidth=1;
+  ctx.fillStyle='#6b7b9e'; ctx.font='9.5px -apple-system,sans-serif';
+  for(var g=0;g<=Math.floor(yMax);g++){
+    ctx.beginPath(); ctx.moveTo(x0,Y(g)); ctx.lineTo(x1,Y(g)); ctx.stroke();
+    ctx.textAlign='right'; ctx.fillText((1.1*g).toFixed(1)+'°',x0-4,Y(g)+3);
+  }
+  for(var r=Math.ceil(rmin);r<=rmax;r++){
+    ctx.beginPath(); ctx.moveTo(X(r),y0); ctx.lineTo(X(r),y1); ctx.stroke();
+    ctx.textAlign='center'; ctx.fillText(r,X(r),y1+13);
+  }
+  ctx.fillStyle='#93a2c4'; ctx.textAlign='left'; ctx.fillText('θ',x0-36,y0+2);
+  ctx.textAlign='right'; ctx.fillText('耦合比 ρ',x1,y1+24);
+  // 点
+  for(var c=0;c<NC;c++){
+    var rh=rmin+(rmax-rmin)*c/(NC-1), xx=X(rh);
+    var ev=cols[c];
+    for(var i=0;i<ev.length;i++){
+      var v=ev[i]; if(v<=0.02) continue;
+      var yy=Y(v); if(yy<y0||yy>y1) continue;
+      ctx.fillStyle='rgba(120,220,255,.55)';
+      ctx.fillRect(xx-0.6,yy-0.6,1.4,1.4);
+    }
+  }
+  // 贵金属比竖线
+  [[PHI,'φ','#ffd166'],[SILVER,'δs','#ffd166'],[BRONZE,'δb','#ffd166']].forEach(function(m){
+    if(m[0]<rmin||m[0]>rmax)return;
+    var xx=X(m[0]);
+    ctx.strokeStyle='rgba(255,209,102,.65)'; ctx.setLineDash([3,3]); ctx.lineWidth=1.2;
+    ctx.beginPath(); ctx.moveTo(xx,y0); ctx.lineTo(xx,y1); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle='#ffd166'; ctx.font='bold 9.5px -apple-system,sans-serif'; ctx.textAlign='center';
+    ctx.fillText(m[1],xx,y0+9);
+  });
+  // 当前 ρ
+  var cx=X(S.rho);
+  ctx.strokeStyle='#fff'; ctx.lineWidth=1.2;
+  ctx.beginPath(); ctx.moveTo(cx,y0); ctx.lineTo(cx,y1); ctx.stroke();
+}
+
+/* ============ 当前序列的谱 ============ */
+function drawSpec(){
+  var f=fit($('spec'),180), ctx=f.ctx, w=f.w, h=f.h;
+  ctx.clearRect(0,0,w,h); ctx.fillStyle='#080d1a'; ctx.fillRect(0,0,w,h);
+  var word=buildWord(); if(word.length>44) word=word.slice(0,44);
+  var wts=word.split('').map(function(c){return c==='A'?S.rho:1;});
+  var ev=eigPath(wts).filter(function(v){return v>1e-6;});
+  var x0=38,x1=w-10,y0=12,y1=h-26;
+  var yMax=Math.max.apply(null,ev.concat([1]))*1.1;
+  function Y(v){return y1-(v/yMax)*(y1-y0);}
+  ctx.strokeStyle='rgba(255,255,255,.07)'; ctx.fillStyle='#6b7b9e'; ctx.font='9.5px -apple-system,sans-serif';
+  for(var g=0;g<=Math.ceil(yMax);g++){
+    ctx.beginPath(); ctx.moveTo(x0,Y(g)); ctx.lineTo(x1,Y(g)); ctx.stroke();
+    ctx.textAlign='right'; ctx.fillText((1.1*g).toFixed(1)+'°',x0-4,Y(g)+3);
+  }
+  ctx.fillStyle='#93a2c4'; ctx.textAlign='left'; ctx.fillText('θ',x0-34,y0+2);
+  var bw=(x1-x0)/Math.max(ev.length,1);
+  ev.forEach(function(v,i){
+    var xx=x0+i*bw, yy=Y(v);
+    var grd=ctx.createLinearGradient(0,yy,0,y1);
+    grd.addColorStop(0,'#4fd1c5'); grd.addColorStop(1,'rgba(79,209,197,.25)');
+    ctx.fillStyle=grd;
+    ctx.fillRect(xx+1,yy,Math.max(1.5,bw-2),y1-yy);
+    if(bw>10){ ctx.fillStyle='#bff6ef'; ctx.font='8.5px -apple-system,sans-serif'; ctx.textAlign='center';
+      ctx.fillText((1.1*v).toFixed(2),xx+bw/2,yy-3); }
+  });
+  // 能隙标注
+  var gaps=[];
+  for(var i=0;i+1<ev.length;i++) gaps.push(ev[i]-ev[i+1]);
+  var maxGap=gaps.length?Math.max.apply(null,gaps):0;
+  $('specCap').innerHTML='序列 <span class="mono">'+(word.length>28?word.slice(0,28)+'…':word)+'</span>（'+word.length+' 界面 / '+(word.length+1)+' 层）· '+
+    '正本征值 '+ev.length+' 个 · 最大魔角 '+(1.1*ev[0]).toFixed(3)+'° · 最大能隙 '+ (1.1*maxGap).toFixed(3)+'°';
+}
+
+/* ============ 排列对比 ============ */
+function buildPermTable(){
+  var baseWord;
+  if(S.seq==='custom') baseWord=(S.word||'AAB').toUpperCase().replace(/[^AB]/g,'')||'AAB';
+  else baseWord = S.seq==='fib'?'AB':(S.seq==='silver'?'AAB':'AAAB');
+  if(baseWord.length>6) baseWord=baseWord.slice(0,6);
+  var perms=bracelets(baseWord);
+  if(perms.length>24) perms=perms.slice(0,24);
+  var rows='';
+  perms.forEach(function(p){
+    var wts=p.split('').map(function(c){return c==='A'?S.rho:1;});
+    var ev=eigPath(wts).filter(function(v){return v>1e-6;});
+    var mx=ev.length?1.1*ev[0]:0;
+    var hl=(p===buildWord().slice(0,p.length))?'hl':'';
+    rows+='<tr><td class="'+hl+' mono">'+p+'</td><td class="'+hl+'">'+ev.length+'</td><td class="'+hl+'">'+mx.toFixed(3)+'°</td>'+
+      '<td class="'+hl+' mono">'+ev.slice(0,4).map(function(v){return (1.1*v).toFixed(2);}).join(' ')+'</td></tr>';
+  });
+  $('permTable').innerHTML='<tr><th>排列</th><th>魔角数</th><th>最大魔角</th><th>前 4 个</th></tr>'+rows;
+  $('permNote').innerHTML='基本字 '+baseWord+' 共 '+perms.length+' 种（不计反转）不同排列。'+
+    '<b>反转对称性</b>：把序列倒读，谱完全不变（路径图转置相似），所以 AAB 与 BAA 同谱、不算两种。';
+}
+
+/* ============ 多代嵌套莫尔 ============ */
+var OFF=document.createElement('canvas'); OFF.width=250; OFF.height=250;
+var octx=OFF.getContext('2d'), oimg=octx.createImageData(250,250);
+function moireP(x,y,L,phi){
+  var gm=4*Math.PI/(Math.sqrt(3)*L), s=0;
+  for(var i=0;i<3;i++){
+    var a=phi+Math.PI/2+i*2*Math.PI/3;
+    s+=Math.cos(gm*(x*Math.cos(a)+y*Math.sin(a)));
+  }
+  return (s+1.5)/4.5;
+}
+function drawMoire(){
+  var f=sq($('moire')), ctx=f.ctx, w=f.w;
+  var th=workTheta(), L0=A_CC/(2*Math.sin(th*Math.PI/360));
+  var G=S.G, R=S.R;
+  var vmin=Math.log(L0*0.9), vmax=Math.log(L0*Math.pow(R,G-1)*3.2);
+  var view=Math.exp(vmin+(vmax-vmin)*S.viewT/100);
+  var d=oimg.data, M=250;
+  for(var y=0;y<M;y++){
+    var ry=(y-M/2+0.5)/M*view;
+    for(var x=0;x<M;x++){
+      var rx=(x-M/2+0.5)/M*view;
+      var v=moireP(rx,ry,L0,0);
+      for(var j=1;j<G;j++){
+        var Lj=L0*Math.pow(R,j);
+        v*= (0.35+0.65*moireP(rx,ry,Lj,j*0.35));
+      }
+      if(v<0)v=0; if(v>1)v=1;
+      var r,g,b;
+      if(v<0.5){var t=v/0.5; r=16+(58-16)*t; g=30+(92-30)*t; b=68+(186-68)*t;}
+      else{var t2=(v-0.5)/0.5; r=58+(255-58)*t2; g=92+(192-92)*t2; b=186+(118-186)*t2;}
+      var o=(y*M+x)*4; d[o]=r; d[o+1]=g; d[o+2]=b; d[o+3]=255;
+    }
+  }
+  octx.putImageData(oimg,0,0);
+  ctx.clearRect(0,0,w,w); ctx.drawImage(OFF,0,0,w,w);
+  // 嵌套六边形
+  var sc=w/view;
+  for(var j=0;j<G;j++){
+    var Lj=L0*Math.pow(R,j), rr=Lj/Math.sqrt(3)*sc;
+    if(rr<3||rr>w*0.62) continue;
+    ctx.strokeStyle='rgba(127,240,230,'+(0.75-0.13*j)+')'; ctx.lineWidth=j===0?1.6:1.1;
+    ctx.beginPath();
+    for(var k=0;k<6;k++){
+      var a=j*0.35+Math.PI/6+k*Math.PI/3;
+      var px=w/2+rr*Math.cos(a), py=w/2+rr*Math.sin(a);
+      if(k===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+    }
+    ctx.closePath(); ctx.stroke();
+    ctx.fillStyle='rgba(200,255,250,.9)'; ctx.font='9.5px -apple-system,sans-serif'; ctx.textAlign='left';
+    ctx.fillText('L'+(j+1), w/2+rr*Math.cos(j*0.35+Math.PI/6)+3, w/2+rr*Math.sin(j*0.35+Math.PI/6)-2);
+  }
+  var bar=w/5, nm=view/5;
+  ctx.strokeStyle='rgba(255,255,255,.85)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(12,w-16); ctx.lineTo(12+bar,w-16);
+  ctx.moveTo(12,w-21); ctx.lineTo(12,w-11); ctx.moveTo(12+bar,w-21); ctx.lineTo(12+bar,w-11); ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,.9)'; ctx.font='11px -apple-system,sans-serif'; ctx.textAlign='left';
+  ctx.fillText((nm<1?nm.toFixed(2):(nm<10?nm.toFixed(1):nm.toFixed(0)))+' nm',14+bar,w-11);
+  $('moireCap').innerHTML='θ = '+th.toFixed(3)+'° → L₁ = '+L0.toFixed(1)+' nm'+
+    (G>1?(' ；L'+G+' = '+(L0*Math.pow(R,G-1)).toFixed(0)+' nm（代间比 R='+R.toFixed(1)+'）'):'')+
+    ' · 当前视场 '+view.toFixed(0)+' nm';
+}
+
+/* ============ Hexaflake ============ */
+function drawFlake(){
+  var f=sq($('flake')), ctx=f.ctx, w=f.w, R=w*0.42, k=S.fK;
+  ctx.clearRect(0,0,w,w); ctx.fillStyle='#070b14'; ctx.fillRect(0,0,w,w);
+  function hex(cx,cy,r){
+    ctx.beginPath();
+    for(var i=0;i<6;i++){ var a=Math.PI/6+i*Math.PI/3; var px=cx+r*Math.cos(a), py=cy+r*Math.sin(a);
+      if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py); }
+    ctx.closePath();
+  }
+  var total=0;
+  ctx.fillStyle='rgba(79,209,197,.16)';
+  ctx.strokeStyle='rgba(127,240,230,.65)';
+  ctx.lineWidth=1;
+  (function rec(cx,cy,r,dep){
+    if(dep===0||r<0.7){ hex(cx,cy,r); ctx.fill(); ctx.stroke(); total++; return; }
+    rec(cx,cy,r/k,dep-1);
+    for(var i=0;i<6;i++){
+      var a=Math.PI/6+i*Math.PI/3;
+      rec(cx+r*(1-1/k)*Math.cos(a), cy+r*(1-1/k)*Math.sin(a), r/k, dep-1);
+    }
+  })(w/2,w/2,R,S.fDepth);
+  var dim=Math.log(7)/Math.log(k);
+  ctx.fillStyle='#93a2c4'; ctx.font='10px -apple-system,sans-serif'; ctx.textAlign='left';
+  ctx.fillText('六边形数 '+total+' · 形式相似维数 log7/log'+k+' = '+dim.toFixed(3),8,w-7);
+}
+
+/* ============ 相图 ============ */
+function drawPhase(){
+  var f=fit($('phase'),210), ctx=f.ctx, w=f.w, h=f.h;
+  ctx.clearRect(0,0,w,h); ctx.fillStyle='#080d1a'; ctx.fillRect(0,0,w,h);
+  var x0=40,x1=w-12,y0=14,y1=h-28, TMAX=3.2, narrow=w<400;
+  function X(n){return x0+(n+4)/8*(x1-x0);}
+  function Y(T){return y1-T/TMAX*(y1-y0);}
+  ctx.strokeStyle='rgba(255,255,255,.07)'; ctx.fillStyle='#6b7b9e'; ctx.font='9.5px -apple-system,sans-serif';
+  for(var n=-4;n<=4;n++){ ctx.beginPath(); ctx.moveTo(X(n),y0); ctx.lineTo(X(n),y1); ctx.stroke();
+    ctx.textAlign='center'; ctx.fillText((n>0?'+':'')+n,X(n),y1+13); }
+  for(var T=0;T<=TMAX;T+=0.8){ ctx.beginPath(); ctx.moveTo(x0,Y(T)); ctx.lineTo(x1,Y(T)); ctx.stroke();
+    ctx.textAlign='right'; ctx.fillText(T.toFixed(1),x0-4,Y(T)+3); }
+  ctx.fillStyle='#93a2c4'; ctx.textAlign='left'; ctx.fillText('T (K)',x0-36,y0+2);
+  ctx.textAlign='right'; ctx.fillText('ν',x1,y1+22);
+
+  // 强度：θ 离最近魔角多近
+  var subs=currentSubs(), dist=1e9, near=null;
+  subs.forEach(function(s){ var d=Math.abs(S.theta-s.theta); if(d<dist){dist=d;near=s;} });
+  var strength=Math.max(0,1-Math.pow(dist/0.18,2));
+  var Tc=1.7*strength*((S.mode==='alt'&&S.N>=3)?1.5:1.0);
+  if(strength>0.12){
+    [-2,2].forEach(function(v){
+      var wd=(x1-x0)/8*0.85;
+      ctx.fillStyle='rgba(255,107,107,'+(0.15+0.30*strength)+')'; ctx.fillRect(X(v)-wd/2,y0,wd,y1-y0);
+      if(!narrow){ctx.fillStyle='rgba(255,180,180,.9)';ctx.font='9px -apple-system,sans-serif';ctx.textAlign='center';
+        ctx.fillText('关联绝缘体',X(v),y0+12);}
+    });
+  }
+  if(Tc>0.06){
+    for(var s=-1;s<=1;s++){
+      var c=-2.75*s; ctx.beginPath(); var st=false;
+      for(var nu=c-1.1;nu<=c+1.1;nu+=0.02){
+        var tc=Tc*(1-Math.pow((nu-c)/1.05,2)); if(tc<=0)continue;
+        var xx=X(nu),yy=Y(tc); if(!st){ctx.moveTo(xx,yy);st=true;}else ctx.lineTo(xx,yy);
+      }
+      ctx.lineTo(X(c+1.05),Y(0)); ctx.lineTo(X(c-1.05),Y(0)); ctx.closePath();
+      ctx.fillStyle='rgba(79,209,197,.28)'; ctx.fill();
+      ctx.strokeStyle='rgba(79,209,197,.9)'; ctx.lineWidth=1.4; ctx.stroke();
+      ctx.fillStyle='#7ff0e6'; ctx.font='bold 9.5px -apple-system,sans-serif'; ctx.textAlign='center';
+      ctx.fillText('超导',X(c),Y(Tc)-5);
+    }
+  }else{
+    ctx.fillStyle='#6b7b9e'; ctx.font='11px -apple-system,sans-serif'; ctx.textAlign='center';
+    ctx.fillText('θ 不在魔角附近：v* 未被压制，无超导穹顶',(x0+x1)/2,(y0+y1)/2);
+  }
+  var cx=X(S.nu); ctx.strokeStyle='#fff'; ctx.lineWidth=1.2;
+  ctx.beginPath(); ctx.moveTo(cx,y0); ctx.lineTo(cx,y1); ctx.stroke();
+  ctx.fillStyle='#fff'; ctx.font='bold 9.5px -apple-system,sans-serif';
+  ctx.textAlign=S.nu>2.6?'right':'left';
+  ctx.fillText('ν='+S.nu.toFixed(2),cx+(S.nu>2.6?-3:3),y0+10);
+
+  var pv=$('phaseVerdict');
+  if(strength>0.4 && near){
+    pv.innerHTML='当前 θ = '+S.theta.toFixed(3)+'° 落在魔角 <b>'+near.theta.toFixed(3)+'°</b> 附近（偏离 '+dist.toFixed(3)+'°）。'+
+      '平带形成 → 半填充 ±2 处出现关联绝缘体，两侧冒出超导穹顶，T<sub>c</sub> 约 '+(Tc*1.0).toFixed(2)+' K。'+
+      '<br><span class="tiny">每多一个魔角 = 多一个可用栅压"对焦"的强关联窗口，这就是多层体系的价值。</span>';
+  }else{
+    pv.innerHTML='当前 θ = '+S.theta.toFixed(3)+'° 距离最近的魔角'+(near?(' '+near.theta.toFixed(3)+'°'):'')+' 还有 '+
+      (near?dist.toFixed(3):'—')+'°，平带未形成。点浮窗里的魔角 chip 一键对焦。';
+  }
+}
+
+/* ============ 主更新 ============ */
+var C={tables:'',quasi:'',perm:'',moire:'',flake:'',stack:'',phase:''};
+var raf=null;
+function update(){
+  if(raf)cancelAnimationFrame(raf);
+  raf=requestAnimationFrame(function(){
+    var subs=currentSubs();
+    if(S.pickIdx>=subs.length) S.pickIdx=0;
+    var wt=workTheta();
+
+    $('thVal').innerHTML=S.theta.toFixed(3)+'<small>°</small>';
+    $('nuVal').textContent=S.nu.toFixed(2);
+    $('nVal').textContent=S.N;
+    $('genVal').textContent=S.gen;
+    $('repVal').textContent=S.rep;
+    $('rhoVal').textContent=S.rho.toFixed(3);
+    $('bwVal').textContent='1 → '+S.bw.toFixed(1);
+    $('gen2Val').textContent=S.G;
+    $('ratVal').textContent=S.R.toFixed(1);
+    $('fDepthVal').textContent=S.fDepth;
+    $('fKVal').textContent=S.fK;
+    $('pickVal').innerHTML=subs.length?(wt.toFixed(3)+'<small>°</small>'):'—';
+    $('fabTxt').textContent='调参 · '+wt.toFixed(2)+'°';
+
+    $('tbTheta').innerHTML=S.theta.toFixed(3)+'<small>°</small>';
+    $('tbN').textContent=(S.mode==='alt'?'交替 ±θ':'螺旋 +θ')+' · '+S.N+' 层';
+    $('tbN2').textContent=S.N;
+    $('tbCnt').textContent=subs.length||'—';
+    $('tbMax').innerHTML=subs.length?(subs[0].theta.toFixed(2)+'<span style="font-size:9px">°</span>'):'—';
+    var sp=0; subs.forEach(function(s){var t=tagOf(s.g,S.N); if(t&&t.famous)sp++;});
+    $('tbSp').textContent=sp||'—';
+
+    // 徽章
+    var dist=1e9; subs.forEach(function(s){dist=Math.min(dist,Math.abs(S.theta-s.theta));});
+    var col,txt,bgc;
+    if(dist<0.04){col='#4fd1c5';txt='★ 正对魔角';bgc='rgba(79,209,197,.16)';}
+    else if(dist<0.18){col='#ffa15b';txt='接近魔角';bgc='rgba(255,161,91,.14)';}
+    else{col='#6b7b9e';txt='远离魔角';bgc='rgba(107,123,158,.14)';}
+    var bg=$('tbBadge'); bg.style.background=bgc; bg.style.color=col;
+    bg.querySelector('.dot').style.background=col;
+    $('tbBadgeTxt').textContent=txt;
+
+    $('modeNote').innerHTML=(S.mode==='alt')
+      ? '相邻层交替反向扭转（保持镜面对称）：N 层分解为若干 TBG 子系统，共 ⌊N/2⌋ 个魔角，且 λ ≤ 2，魔角上限 2.2°。'
+      : '每层沿同一方向累积旋转 +θ：产生 N−1 个方向各异的莫尔图案，互相干涉形成多代 super-moiré（魔角 2/3/4 层 ≈ 1.1°/1.8°/2.3°）。';
+
+    // 魔角 chips
+    var chips='';
+    subs.forEach(function(s,i){
+      var t=tagOf(s.g,S.N);
+      var on=(Math.abs(S.theta-s.theta)<0.02||S.pickIdx===i)?' on':'';
+      chips+='<span class="chip'+on+'" data-th="'+s.theta.toFixed(4)+'" data-i="'+i+'">'+s.theta.toFixed(3)+'°'+(t&&t.famous?' '+t.label:'')+'</span>';
+    });
+    if(!subs.length) chips='<span class="tiny">该构型无魔角</span>';
+    $('magicChips').innerHTML=chips;
+    Array.prototype.forEach.call($('magicChips').querySelectorAll('.chip'),function(c){
+      c.onclick=function(){ S.theta=parseFloat(c.dataset.th); S.pickIdx=parseInt(c.dataset.i,10); $('thSlider').value=S.theta; update(); };
+    });
+
+    // 工作点选择 chips
+    var pc='';
+    subs.forEach(function(s,i){
+      var t=tagOf(s.g,S.N);
+      pc+='<span class="chip'+(S.pickIdx===i?' on':'')+'" data-i="'+i+'">'+(i+1)+' · '+s.theta.toFixed(3)+'°'+(t&&t.famous?' '+t.label:'')+'</span>';
+    });
+    $('pickChips').innerHTML=pc||'<span class="tiny">无</span>';
+    Array.prototype.forEach.call($('pickChips').querySelectorAll('.chip'),function(c){
+      c.onclick=function(){ S.pickIdx=parseInt(c.dataset.i,10); update(); };
+    });
+
+    var word=buildWord();
+    $('lenNote').textContent='当前序列长度 '+word.length+'（界面）→ '+(word.length+1)+' 层';
+    $('seqNote').innerHTML=(S.seq==='fib')?'A→AB, B→A：A:B 数量比 → φ = 1.618，斐波那契准晶。'
+      :(S.seq==='silver')?'A→AAB, B→A：比 → 银比 1+√2 = 2.414。'
+      :(S.seq==='bronze')?'A→AAAB, B→A：比 → 铜比 (3+√13)/2 = 3.303。'
+      :'手动输入 A/B 序列。';
+    $('customBox').style.display=(S.seq==='custom')?'block':'none';
+
+    // 只在相关参数变化时重算重绘（表格/蝶形谱较重）
+    var sigT=S.mode+'|'+S.N;
+    if(sigT!==C.tables){ C.tables=sigT; buildSpecTable(); buildConstTable(); buildMetTable(); buildHelTable(); }
+    var sigQ=S.seq+'|'+S.gen+'|'+S.rep+'|'+S.rho.toFixed(4)+'|'+S.word+'|'+S.bw;
+    if(sigQ!==C.quasi){ C.quasi=sigQ; drawButterfly(); drawSpec(); }
+    var sigP=S.seq+'|'+S.word+'|'+S.rho.toFixed(4);
+    if(sigP!==C.perm){ C.perm=sigP; buildPermTable(); }
+    var sigM=wt.toFixed(4)+'|'+S.G+'|'+S.R+'|'+S.viewT;
+    if(sigM!==C.moire){ C.moire=sigM; drawMoire(); }
+    var sigF=S.fDepth+'|'+S.fK;
+    if(sigF!==C.flake){ C.flake=sigF; drawFlake(); }
+    var sigS=S.mode+'|'+S.N+'|'+S.theta.toFixed(4);
+    if(sigS!==C.stack){ C.stack=sigS; drawTop(); drawSide(); }
+    var sigPh=S.mode+'|'+S.N+'|'+S.theta.toFixed(4)+'|'+S.nu.toFixed(2);
+    if(sigPh!==C.phase){ C.phase=sigPh; drawPhase(); }
+    raf=null;
+  });
+}
+
+/* ============ 控件绑定 ============ */
+function bindSlider(id,key){
+  $(id).addEventListener('input',function(){ S[key]=parseFloat(this.value); update(); });
+}
+$('thSlider').addEventListener('input',function(){S.theta=parseFloat(this.value);update();});
+$('nuSlider').addEventListener('input',function(){S.nu=parseFloat(this.value);update();});
+$('nSlider').addEventListener('input',function(){S.N=parseInt(this.value,10);S.pickIdx=0;update();});
+$('genSlider').addEventListener('input',function(){S.gen=parseInt(this.value,10);update();});
+$('repSlider').addEventListener('input',function(){S.rep=parseInt(this.value,10);update();});
+$('rhoSlider').addEventListener('input',function(){S.rho=parseFloat(this.value);update();});
+$('bwSlider').addEventListener('input',function(){S.bw=parseFloat(this.value);update();});
+$('gen2Slider').addEventListener('input',function(){S.G=parseInt(this.value,10);update();});
+$('ratSlider').addEventListener('input',function(){S.R=parseFloat(this.value);update();});
+$('viewSlider').addEventListener('input',function(){S.viewT=parseFloat(this.value);update();});
+$('fDepth').addEventListener('input',function(){S.fDepth=parseInt(this.value,10);update();});
+$('fK').addEventListener('input',function(){S.fK=parseFloat(this.value);update();});
+$('wordInput').addEventListener('input',function(){S.word=this.value;update();});
+Array.prototype.forEach.call(document.querySelectorAll('.stepRow button[data-d]'),function(b){
+  b.onclick=function(){
+    S.theta=Math.min(4,Math.max(0.3,Math.round((S.theta+parseFloat(b.dataset.d))*1000)/1000));
+    $('thSlider').value=S.theta; update();
+  };
+});
+Array.prototype.forEach.call(document.querySelectorAll('.stepRow button[data-n]'),function(b){
+  b.onclick=function(){ S.N=parseInt(b.dataset.n,10); S.pickIdx=0; $('nSlider').value=S.N; update(); };
+});
+Array.prototype.forEach.call(document.querySelectorAll('.chips .chip[data-rho]'),function(c){
+  c.onclick=function(){ S.rho=parseFloat(c.dataset.rho); $('rhoSlider').value=Math.min(6,S.rho); update(); };
+});
+$('modeSeg').addEventListener('click',function(e){
+  var b=e.target.closest('button'); if(!b)return;
+  S.mode=b.dataset.mode; S.pickIdx=0;
+  Array.prototype.forEach.call(this.children,function(x){x.classList.toggle('on',x===b);});
+  update();
+});
+$('seqSeg').addEventListener('click',function(e){
+  var b=e.target.closest('button'); if(!b)return;
+  S.seq=b.dataset.seq;
+  Array.prototype.forEach.call(this.children,function(x){x.classList.toggle('on',x===b);});
+  update();
+});
+$('resetBtn').onclick=function(){
+  invalidate();
+  S={mode:'alt',theta:1.1,nu:-2.2,N:2,pickIdx:0,seq:'fib',gen:6,rep:1,rho:PHI,word:'AAB',bw:5,G:4,R:4.0,viewT:50,fDepth:4,fK:3};
+  $('thSlider').value=1.1;$('nuSlider').value=-2.2;$('nSlider').value=2;$('genSlider').value=6;
+  $('repSlider').value=1;$('rhoSlider').value=PHI;$('bwSlider').value=5;$('gen2Slider').value=4;
+  $('ratSlider').value=4;$('viewSlider').value=50;$('fDepth').value=4;$('fK').value=3;$('wordInput').value='AAB';
+  Array.prototype.forEach.call($('modeSeg').children,function(x){x.classList.toggle('on',x.dataset.mode==='alt');});
+  Array.prototype.forEach.call($('seqSeg').children,function(x){x.classList.toggle('on',x.dataset.seq==='fib');});
+  update();
+};
+
+/* 莫尔手势 */
+(function(){
+  var cv=$('moire'), sx=0, sy=0, st=0, sv=0, id=null;
+  cv.style.touchAction='none';
+  cv.addEventListener('pointerdown',function(e){ id=e.pointerId; sx=e.clientX; sy=e.clientY; st=S.theta; sv=S.viewT;
+    if(cv.setPointerCapture)cv.setPointerCapture(id); });
+  cv.addEventListener('pointermove',function(e){
+    if(id===null)return;
+    var w=cv.clientWidth||300;
+    S.theta=Math.min(4,Math.max(0.3,Math.round((st+(e.clientX-sx)/w*3.7)*1000)/1000));
+    S.viewT=Math.min(100,Math.max(0,sv-(e.clientY-sy)/w*90));
+    $('thSlider').value=S.theta; $('viewSlider').value=S.viewT; update();
+  });
+  function end(){id=null;}
+  cv.addEventListener('pointerup',end); cv.addEventListener('pointercancel',end);
+})();
+
+var rt=null;
+function invalidate(){C.tables=C.quasi=C.perm=C.moire=C.flake=C.stack=C.phase='';}
+window.addEventListener('resize',function(){clearTimeout(rt);rt=setTimeout(function(){invalidate();update();},150);});
+window.addEventListener('orientationchange',function(){setTimeout(function(){invalidate();update();},300);});
+
+update();
+})();
+</script>
+</body>
+</html>

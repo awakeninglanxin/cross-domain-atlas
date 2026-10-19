@@ -1,0 +1,3362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>艾萨瓦吸引子 · 呼吸孔径动画</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:#05060c;
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","WenQuanYi Micro Hei","Microsoft YaHei",sans-serif;
+  color:#e8ecf5}
+#app{display:flex;flex-direction:column;height:100%}
+#stage{flex:1;position:relative;min-height:0;background:
+  radial-gradient(ellipse at 50% 45%,#10162b 0%,#05060c 70%)}
+canvas{display:block;width:100%;height:100%}
+
+#hud{position:absolute;left:12px;top:12px;font-size:11px;line-height:1.7;
+  color:#8fa3c8;pointer-events:none;text-shadow:0 1px 3px #000}
+#hud b{color:#fff;font-weight:600}
+#hud .k{color:#5d6f92}
+#prof{position:absolute;left:12px;bottom:12px;width:132px;height:184px;
+  background:rgba(5,8,18,.62);border:1px solid #1e2740;border-radius:8px;pointer-events:none}
+#proft{position:absolute;left:16px;bottom:184px;font-size:9.5px;color:#5d6f92;
+  pointer-events:none;letter-spacing:1px}
+#badge{position:absolute;right:12px;top:12px;font-size:11px;padding:5px 11px;
+  border-radius:20px;background:rgba(0,0,0,.45);border:1px solid #26304d;
+  color:#7fd8ff;pointer-events:none;letter-spacing:.5px}
+/* 3D 视角拖动：抓住画面转视角（横拖=方位 az / 竖拖=俯仰 EL） */
+#cv{cursor:grab;touch-action:none}
+#cv.dragging{cursor:grabbing;user-select:none;-webkit-user-select:none}
+#viewhint{position:absolute;right:392px;bottom:12px;font-size:10.5px;color:#5d6f92;
+  pointer-events:none;letter-spacing:.5px;text-shadow:0 1px 3px #000;text-align:right}
+#viewhint b{color:#8fa3c8;font-weight:600}
+#cv.panning{cursor:move}
+/* 右侧参数窗（fixed · 364px）会盖住右下角提示 ⇒ 提示让位。
+   窄屏（≤760px）参数窗默认收起，提示回到右侧贴边。 */
+@media (max-width:760px){#viewhint{right:12px;left:12px;text-align:center}}
+
+#bar{display:flex;gap:8px;padding:9px 12px;background:#0a0d18;
+  border-top:1px solid #1a2036;align-items:center;flex-wrap:wrap}
+#zinfo{font-size:12px;color:#8fa3c8;padding:5px 10px;border-radius:8px;
+  border:1px solid #1e2740;background:#0d1220;white-space:nowrap;
+  font-variant-numeric:tabular-nums}
+#zinfo .k{color:#5d6f92}
+#zinfo b{color:#7fd8ff;font-weight:700}
+/* 注入区状态（底栏）—— 放这里的理由与缩放读数相同：HUD 被曲速浮窗压、
+   画布底部被 #viewhint 与剖面小图占、右侧被参数窗遮，只有底栏两不挡。 */
+#zsrc{display:none;font-size:12px;color:#3cffbe;padding:5px 10px;border-radius:8px;
+  background:rgba(60,255,190,.10);border:1px solid rgba(60,255,190,.34);
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+#zsrc.on{display:block}
+button{font:inherit;font-size:13px;padding:7px 14px;border-radius:9px;
+  border:1px solid #2a3555;background:#131a2e;color:#dbe4f5;cursor:pointer;
+  transition:.15s;white-space:nowrap}
+button:active{transform:scale(.96)}
+button.on{background:linear-gradient(135deg,#1e6fff,#00c2ff);border-color:#00c2ff;
+  color:#fff;font-weight:600;box-shadow:0 0 14px rgba(0,194,255,.35)}
+button.gh{background:transparent;border-color:#232c46;color:#8092b5;font-size:12px;padding:6px 10px}
+/* 注入位置三档：选中态必须一眼看得见。
+   注意 button.gh 的 background:transparent 会盖掉 button.on 的渐变（同特异性、后定义），
+   所以这里用 .gh.srcsel.on 提高特异性单独给一套绿色 —— 与画布上注入区绿框同色系。 */
+button.gh.srcsel.on{background:linear-gradient(135deg,#0b5c46,#12a97c);
+  border-color:#3cffbe;color:#eafff8;font-weight:600;
+  box-shadow:0 0 12px rgba(60,255,190,.32)}
+button.gh.srcsel.on::before{content:'● ';color:#7dffd2}
+.spacer{flex:1}
+
+/* 参数浮窗：原为底部抽屉（占 #app flex 流 52% 高度 ⇒ 把画布压矮），
+   改为 position:fixed 右侧浮窗，不参与 #app 的 flex 流 ⇒ 画布始终满高。
+   拖动把手 = #panelHead（pointerdown 起拖，首次拖动把 right 锚点换算成 left）。 */
+#panel{position:fixed;right:16px;top:56px;width:min(364px,calc(100vw - 24px));
+  max-height:calc(100% - 116px);display:flex;flex-direction:column;overflow:hidden;
+  background:#080b14;border:1px solid #222c48;border-radius:12px;
+  box-shadow:0 14px 44px rgba(0,0,0,.62);z-index:30}
+#panel.hide{display:none}
+#panelHead{display:flex;align-items:center;gap:8px;padding:7px 10px;flex:none;
+  border-bottom:1px solid #1a2036;background:#0d1220;
+  cursor:grab;user-select:none;-webkit-user-select:none;touch-action:none}
+#panelHead.grabbing{cursor:grabbing}
+#panelHead .tt{font-size:12px;color:#c3cfe4;font-weight:600;letter-spacing:.5px}
+#panelHead .sug{font-size:10px;color:#4e5c7a;letter-spacing:0}
+#panelHead .hsp{flex:1}
+#panelHead button{padding:2px 9px;font-size:11px;border-radius:6px}
+/* flex:1 1 auto + min-height:0 缺一不可：否则 flex 子项 min-height:auto 会按内容撑开，
+   #panelBody 不缩 ⇒ 滚动条不出现，超出的部分被 #panel 的 overflow:hidden 直接切掉。 */
+#panelBody{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:4px 12px 16px}
+
+/* 曲速引擎「计算结果」浮窗（左侧 · 可收起 · 可拖动）—— 老师 2026-10-15：
+   参数留在右侧参数卡，按参数算出来的结果（几何映射 / θ / ρ_E / E / P_z / γ）搬到左侧独立窗口。
+   初始锚在 #hud 之下（#hud 6 行 ≈ 126px + 6px 间隙）；
+   max-height 给底部 #proft/#prof 留位（#prof 高 184 + bottom 12，且 #stage 已被底栏吃掉 ~52px），
+   实测 100vh−390px 时结果窗底边恰好落在 #prof 顶边之上，超出则内部滚动。
+   ★ 老师 2026-10-15：结果窗太小 ⇒ 框大小必须可调：拖右下角 .frz 把手按像素改宽高、
+   双击复位；手调过尺寸后 fitWres 改按「视口下沿 − 8px」兜底，不再受 calc 限制。 */
+#wres{position:fixed;left:12px;top:132px;width:300px;z-index:30;
+  display:flex;flex-direction:column;max-height:max(140px,calc(100vh - 390px));
+  background:rgba(8,11,20,.95);border:1px solid #222c48;border-radius:10px;
+  box-shadow:0 14px 44px rgba(0,0,0,.55);
+  font-size:11px;color:#a9b8d6;overflow:hidden}
+#wresH{display:flex;align-items:center;gap:5px;padding:6px 9px;flex:none;
+  border-bottom:1px solid #1a2036;background:#0d1220;color:#c3cfe4;font-weight:600;
+  letter-spacing:.3px;cursor:grab;user-select:none;-webkit-user-select:none;touch-action:none}
+#wresH.grabbing{cursor:grabbing}
+#wresH .std{font-weight:400;color:#4e5c7a;letter-spacing:0;font-size:10px}
+#wresH .tg{margin-left:auto;color:#5d6f92;flex:none}
+#wresB{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
+#wres.off #wresB{display:none}
+#wres.off #wresH{border-bottom:0}
+/* 收起时必须塌成一行：手调过尺寸后 height 是内联的（优先级高于普通规则）⇒ 用 !important 压住，
+   展开时 .off 一移除，内联高度自动恢复 */
+#wres.off{height:auto!important;max-height:none!important}
+/* 右下角「改大小」把手（老师 2026-10-15：结果窗太小 ⇒ 框大小要可调） */
+.frz{position:absolute;right:0;bottom:0;width:18px;height:18px;z-index:6;
+  cursor:nwse-resize;touch-action:none;user-select:none;-webkit-user-select:none}
+.frz::after{content:'';position:absolute;right:3px;bottom:3px;width:9px;height:9px;
+  border-right:2px solid #5d6f92;border-bottom:2px solid #5d6f92;opacity:.6;border-radius:1px}
+.frz:hover::after,.frz.act::after{opacity:1;border-color:#8fd8ff}
+#wres.off .frz{display:none}
+#wres .warp-out{margin:0;border:0;border-radius:0;background:transparent;padding:9px 11px}
+.grp{margin-top:12px}
+.gt{font-size:11px;color:#5d6f92;letter-spacing:1px;margin-bottom:7px;
+  display:flex;align-items:center;gap:6px}
+.gt::after{content:"";flex:1;height:1px;background:#1a2036}
+.row{margin-bottom:11px}
+.lab{display:flex;justify-content:space-between;align-items:baseline;
+  font-size:12px;margin-bottom:5px}
+.lab span:first-child{color:#c3cfe4}
+.lab .v{font-variant-numeric:tabular-nums;color:#7fd8ff;font-weight:600;font-size:12px}
+.lab .v.dim{color:#5d6f92;font-weight:400}
+.hint{font-size:10px;color:#4e5c7a;margin-top:3px;line-height:1.5}
+input[type=range]{width:100%;height:22px;-webkit-appearance:none;background:transparent}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;
+  background:linear-gradient(90deg,#2b3a5e,#3d5283)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;
+  border-radius:50%;background:#7fd8ff;margin-top:-7px;border:2px solid #0a0d18;
+  box-shadow:0 0 8px rgba(127,216,255,.5)}
+input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:#3d5283}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;
+  background:#7fd8ff;border:2px solid #0a0d18}
+input[type=range]:disabled::-webkit-slider-thumb{background:#4a5570;box-shadow:none}
+input[type=range]:disabled::-moz-range-thumb{background:#4a5570}
+.std{font-size:10px;color:#6b7da0}
+/* Anu 十丝：勾选行 + 色块 */
+.chk{display:flex;align-items:flex-start;gap:7px;font-size:12px;color:#c3cfe4;
+  cursor:pointer;line-height:1.55;margin:2px 0 6px}
+.chk input{accent-color:#00c2ff;width:14px;height:14px;flex:none;margin-top:2px}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;
+  vertical-align:middle;margin:0 3px 0 0;border:1px solid rgba(255,255,255,.22)}
+.presets{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+.warp-out{margin-top:10px;font-size:11px;line-height:1.7;color:#a9b8d6;
+  background:#0b1020;border:1px solid #1c2540;border-radius:9px;padding:9px 11px}
+.warp-out .wt{color:#7fd8ff;font-weight:600;letter-spacing:.5px;
+  margin:8px 0 3px;font-size:10.5px}
+.warp-out .wt:first-child{margin-top:0}
+.warp-out .wr{display:flex;justify-content:space-between;gap:10px;
+  font-variant-numeric:tabular-nums}
+.warp-out .wr .k{color:#8fa3c8;flex:0 0 auto}
+.warp-out .wr .v{color:#e8ecf5;text-align:right;flex:1 1 auto}
+.warp-out .neg{color:#ff9f45}
+.warp-out .pos{color:#00c2ff}
+.warp-out .warn{color:#ff5b7f}
+.warp-out .sub{color:#5d6f92;font-size:10px;line-height:1.55;margin-top:3px}
+details.fml{margin-top:10px;border:1px solid #1c2540;border-radius:9px;
+  background:#0b1020;font-size:11px;line-height:1.75;color:#a9b8d6}
+details.fml summary{cursor:pointer;padding:8px 11px;color:#7fd8ff;
+  font-weight:600;letter-spacing:.5px;outline:none;user-select:none}
+details.fml .fmlb{padding:0 11px 11px}
+details.fml .fmlb p{margin:6px 0}
+details.fml code{color:#ffd84a;
+  font-family:ui-monospace,SFMono-Regular,Consolas,"Courier New",monospace;
+  font-size:10.5px}
+</style>
+<!--FXCTL:CSS--><style id="fxctl-css">
+/* ============================================================
+   PKS · 通用「调参浮窗」样式  (float_ctl.css)
+   白底 / 深蓝强调 / 与 site.css 变量兼容（变量缺失时有兜底色）
+   面板不接管页面原有控件样式，只在自己作用域内统一外观
+   ============================================================ */
+#fxp{
+  position:fixed; z-index:840; top:84px; right:16px;
+  width:322px; max-height:calc(100vh - 118px);
+  display:flex; flex-direction:column;
+  background:#fff; border:1px solid #cfd6e0; border-radius:12px;
+  box-shadow:0 2px 6px rgba(18,22,28,.08), 0 14px 40px rgba(18,22,28,.14);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:13px; color:#12161c; line-height:1.55;
+  -webkit-user-select:none; user-select:none;
+}
+#fxp.fxp-min{ width:auto; min-width:150px; }
+#fxp.fxp-min .fxp-bd{ display:none; }
+#fxp.fxp-min .fxp-c{ display:none; }
+
+/* 标题栏（拖动手柄） */
+#fxp .fxp-h{
+  display:flex; align-items:center; gap:7px;
+  padding:8px 10px 8px 9px; cursor:grab; touch-action:none;
+  border-bottom:1px solid #e6eaf0; border-radius:12px 12px 0 0;
+  background:linear-gradient(#fbfcfe,#f4f7fb);
+}
+#fxp.fxp-min .fxp-h{ border-bottom:0; border-radius:12px; }
+#fxp .fxp-h.fxp-drag{ cursor:grabbing; }
+#fxp .fxp-grip{ color:#9aa6b6; font-size:13px; letter-spacing:0 }
+#fxp .fxp-t{
+  font-family:Georgia,"Times New Roman","Songti SC",serif;
+  font-weight:700; font-size:14.5px; color:#0d2f63; letter-spacing:.2px;
+}
+#fxp .fxp-c{ font-family:Consolas,monospace; font-size:11px; color:#6b7683; margin-left:auto; white-space:nowrap }
+#fxp .fxp-h.fxp-mini-open .fxp-c{ margin-left:6px }
+#fxp .fxp-b{
+  width:22px; height:22px; padding:0; flex:0 0 22px;
+  border:1px solid #cfd6e0; background:#fff; border-radius:6px;
+  color:#3b4552; font-size:12px; line-height:1; cursor:pointer;
+}
+#fxp .fxp-b:hover{ border-color:#1b4f9c; color:#1b4f9c; background:#f4f7fb }
+#fxp .fxp-b:first-of-type{ margin-left:6px }
+
+/* 面板主体 */
+#fxp .fxp-bd{
+  padding:4px 12px 12px; overflow-y:auto; overflow-x:hidden;
+  -webkit-user-select:auto; user-select:auto;
+}
+#fxp .fxp-bd::-webkit-scrollbar{ width:8px }
+#fxp .fxp-bd::-webkit-scrollbar-thumb{ background:#d7dee8; border-radius:4px }
+#fxp .fxp-bd::-webkit-scrollbar-track{ background:transparent }
+
+/* 分组 */
+#fxp .fxp-grp{ padding:9px 0 3px }
+#fxp .fxp-grp + .fxp-grp{ border-top:1px dashed #e6eaf0; margin-top:3px }
+#fxp .fxp-gl{
+  font-family:Consolas,monospace; font-size:10.5px; letter-spacing:.04em;
+  color:#6b7683; margin:0 0 7px; display:flex; align-items:baseline; gap:6px;
+}
+#fxp .fxp-gl b{ color:#1b4f9c; font-weight:600; font-size:11px }
+#fxp .fxp-gl i{ font-style:normal; color:#9aa6b6 }
+
+/* 控件统一外观：覆盖被搬进来的块，不依赖原页面 .viz .ctl 之类选择器 */
+#fxp .ctl, #fxp .ctrl, #fxp .controls, #fxp .calc, #fxp .panel, #fxp .param-panel{
+  display:block; margin:0; padding:0; border:0; background:none; box-shadow:none;
+  width:auto; max-width:none; position:static; float:none;
+}
+#fxp .ctl > *, #fxp .ctrl > *, #fxp .controls > *, #fxp .panel > *, #fxp .calc > *{ margin-bottom:9px }
+#fxp .ctl > *:last-child, #fxp .ctrl > *:last-child,
+#fxp .controls > *:last-child, #fxp .panel > *:last-child, #fxp .calc > *:last-child{ margin-bottom:0 }
+
+/* label 行：文字在上、滑块占满整行 */
+#fxp label, #fxp .row, #fxp .prow, #fxp .slider{
+  display:flex; flex-wrap:wrap; align-items:center; gap:3px 8px;
+  width:100%; margin:0 0 10px; font-size:12.6px; color:#3b4552;
+}
+#fxp label > span, #fxp .row > span{ flex:0 0 auto }
+#fxp input[type=range]{
+  -webkit-appearance:none; appearance:none; order:3;
+  /* ⚠ 不能用 flex:0 0 100%：父级 label.row 是 align-items:center 的 flex 行，
+     交叉轴会把 input 压成 track 的 3px 高（实测 offsetHeight=3），滑块几乎被裁掉。
+     flex:none + width:100% 一样能独占一行，且高度稳定 16px。 */
+  flex:none; width:100%; min-width:90px; height:16px; margin:1px 0 0;
+  background:transparent; cursor:pointer; accent-color:#1b4f9c;
+}
+#fxp input[type=range]::-webkit-slider-runnable-track{
+  height:3px; background:#dbe2ec; border-radius:2px;
+}
+#fxp input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:13px; height:13px; margin-top:-5px;
+  background:#1b4f9c; border:2px solid #fff; border-radius:50%;
+  box-shadow:0 1px 3px rgba(18,22,28,.28);
+}
+#fxp input[type=range]:focus{ outline:none }
+#fxp input[type=range]:focus::-webkit-slider-thumb{ box-shadow:0 0 0 3px rgba(27,79,156,.18) }
+
+/* 数值 */
+#fxp .val, #fxp .v, #fxp output, #fxp .num{
+  font-family:Consolas,monospace; font-size:12px; color:#b4531f;
+  min-width:0; margin-left:auto; white-space:nowrap; order:2;
+}
+
+/* 按钮 */
+#fxp button{
+  font-family:Consolas,monospace; font-size:11.5px; padding:4px 9px;
+  border:1px solid #cfd6e0; background:#fff; color:#3b4552;
+  border-radius:7px; cursor:pointer; margin:0 5px 5px 0;
+}
+#fxp button:hover{ border-color:#1b4f9c; color:#1b4f9c; background:#f4f7fb }
+
+/* .lab / .hint / .presets（aizawa / 黄金蛋 那一族的行结构） */
+#fxp .lab{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:8px; width:100%; order:1; font-size:12.6px; color:#3b4552;
+}
+#fxp .lab .v{ margin-left:auto }
+#fxp .hint{
+  order:4; width:100%; margin:3px 0 0; font-size:11.2px; line-height:1.5;
+  color:#6b7683;
+}
+#fxp .presets{ order:5; width:100%; display:flex; flex-wrap:wrap; gap:5px; margin-top:5px }
+#fxp .presets button{ margin:0 }
+#fxp .gt{
+  font-family:Georgia,"Songti SC",serif; font-size:12.8px; font-weight:700;
+  color:#0d2f63; margin:2px 0 8px;
+}
+#fxp .grp > .gt:first-child{ margin-top:0 }
+
+#fxp button.on, #fxp button.active{ background:#1b4f9c; border-color:#1b4f9c; color:#fff }
+#fxp select{
+  font-family:inherit; font-size:12px; padding:3px 6px; max-width:100%;
+  border:1px solid #cfd6e0; border-radius:6px; background:#fff; color:#12161c;
+}
+#fxp input[type=text], #fxp input[type=number]{
+  font-family:Consolas,monospace; font-size:12px; width:78px; padding:3px 6px;
+  border:1px solid #cfd6e0; border-radius:6px;
+}
+#fxp input[type=checkbox]{ accent-color:#1b4f9c; margin-right:2px }
+
+/* 原位置留下的提示 */
+.fxp-note{
+  margin:10px 0 0; padding:5px 9px; font-size:11.8px; color:#6b7683;
+  font-family:Consolas,monospace; background:#f6f8fb;
+  border:1px dashed #d7dee8; border-radius:6px;
+}
+.fxp-note::before{ content:"⇱ "; color:#1b4f9c }
+
+/* 窄屏：底部抽屉式，不再遮挡图 */
+@media (max-width:880px){
+  #fxp{
+    top:auto; bottom:0; right:0; left:0; width:auto;
+    max-height:52vh; border-radius:12px 12px 0 0;
+    border-left:0; border-right:0; border-bottom:0;
+  }
+  #fxp .fxp-h{ cursor:default; border-radius:12px 12px 0 0 }
+  #fxp.fxp-min{ left:auto; right:10px; bottom:10px; border:1px solid #cfd6e0; border-radius:12px }
+}
+@media print{ #fxp{ display:none !important } }
+
+/* ============================================================
+   暗色主题皮肤（2026-10-19 老师：Anu 主界面是暗底，浮窗却是白底，割裂）
+   触发条件：页面 <body> 或 <html> 自己声明了暗色
+     body.theme-dark / body.dark / body.theme-night
+     html[data-theme="dark"] / body[data-theme="dark"]
+   只做覆盖，不改上面的默认（白底）规则 —— 明色页面完全不受影响。
+   配色取自 anu.css 的 --panel/--line/--text/--accent，保持同源。
+   ============================================================ */
+body.theme-dark #fxp, body.dark #fxp, body.theme-night #fxp,
+html[data-theme="dark"] #fxp, body[data-theme="dark"] #fxp{
+  background:#0e1420; border-color:#22304a;
+  box-shadow:0 2px 8px rgba(0,0,0,.45), 0 18px 48px rgba(0,0,0,.55);
+  color:#e6edf8;
+}
+body.theme-dark #fxp .fxp-h, body.dark #fxp .fxp-h, body.theme-night #fxp .fxp-h,
+html[data-theme="dark"] #fxp .fxp-h, body[data-theme="dark"] #fxp .fxp-h{
+  background:linear-gradient(#182233,#111826); border-bottom-color:#22304a;
+}
+body.theme-dark #fxp .fxp-grip, body.dark #fxp .fxp-grip, body.theme-night #fxp .fxp-grip{
+  color:#5d7093;
+}
+body.theme-dark #fxp .fxp-t, body.dark #fxp .fxp-t, body.theme-night #fxp .fxp-t,
+html[data-theme="dark"] #fxp .fxp-t, body[data-theme="dark"] #fxp .fxp-t{
+  color:#cddcff;
+}
+body.theme-dark #fxp .fxp-c, body.dark #fxp .fxp-c, body.theme-night #fxp .fxp-c{
+  color:#6b7f9e;
+}
+body.theme-dark #fxp .fxp-b, body.dark #fxp .fxp-b, body.theme-night #fxp .fxp-b,
+html[data-theme="dark"] #fxp .fxp-b, body[data-theme="dark"] #fxp .fxp-b{
+  background:#141c2b; border-color:#22304a; color:#a9bad6;
+}
+body.theme-dark #fxp .fxp-b:hover, body.dark #fxp .fxp-b:hover, body.theme-night #fxp .fxp-b:hover{
+  background:#1b2740; border-color:#4d7cff; color:#cddcff;
+}
+body.theme-dark #fxp .fxp-bd::-webkit-scrollbar-thumb,
+body.dark #fxp .fxp-bd::-webkit-scrollbar-thumb,
+body.theme-night #fxp .fxp-bd::-webkit-scrollbar-thumb{
+  background:#26334c;
+}
+body.theme-dark #fxp .fxp-grp + .fxp-grp, body.dark #fxp .fxp-grp + .fxp-grp,
+body.theme-night #fxp .fxp-grp + .fxp-grp{ border-top-color:#1e2a3f }
+body.theme-dark #fxp .fxp-gl, body.dark #fxp .fxp-gl, body.theme-night #fxp .fxp-gl{
+  color:#7d90ae;
+}
+body.theme-dark #fxp .fxp-gl b, body.dark #fxp .fxp-gl b, body.theme-night #fxp .fxp-gl b{
+  color:#7ea6ff;
+}
+body.theme-dark #fxp .fxp-gl i, body.dark #fxp .fxp-gl i, body.theme-night #fxp .fxp-gl i{
+  color:#5d7093;
+}
+body.theme-dark #fxp label, body.theme-dark #fxp .row, body.theme-dark #fxp .prow,
+body.theme-dark #fxp .slider, body.dark #fxp label, body.dark #fxp .row,
+body.dark #fxp .prow, body.dark #fxp .slider,
+body.theme-night #fxp label, body.theme-night #fxp .row,
+body.theme-night #fxp .prow, body.theme-night #fxp .slider{
+  color:#b9c8e0;
+}
+body.theme-dark #fxp input[type=range]::-webkit-slider-runnable-track,
+body.dark #fxp input[type=range]::-webkit-slider-runnable-track,
+body.theme-night #fxp input[type=range]::-webkit-slider-runnable-track{
+  background:#31425f;                    /* 不能贴地色，否则轨道看不见、只剩一个蓝点 */
+}
+body.theme-dark #fxp input[type=range]::-webkit-slider-thumb,
+body.dark #fxp input[type=range]::-webkit-slider-thumb,
+body.theme-night #fxp input[type=range]::-webkit-slider-thumb{
+  background:#4d7cff; border-color:#0e1420;
+  box-shadow:0 1px 3px rgba(0,0,0,.6);
+}
+body.theme-dark #fxp input[type=range]:focus::-webkit-slider-thumb,
+body.dark #fxp input[type=range]:focus::-webkit-slider-thumb{
+  box-shadow:0 0 0 3px rgba(77,124,255,.28);
+}
+body.theme-dark #fxp .val, body.theme-dark #fxp .v, body.theme-dark #fxp output,
+body.theme-dark #fxp .num, body.dark #fxp .val, body.dark #fxp .v,
+body.dark #fxp output, body.dark #fxp .num,
+body.theme-night #fxp .val, body.theme-night #fxp .v,
+body.theme-night #fxp output, body.theme-night #fxp .num{
+  color:#ffc861;                      /* 与页面 --gold 同源 */
+}
+body.theme-dark #fxp button, body.dark #fxp button, body.theme-night #fxp button,
+html[data-theme="dark"] #fxp button, body[data-theme="dark"] #fxp button{
+  background:#141c2b; border-color:#22304a; color:#b9c8e0;
+}
+body.theme-dark #fxp button:hover, body.dark #fxp button:hover,
+body.theme-night #fxp button:hover{
+  background:#1b2740; border-color:#4d7cff; color:#cddcff;
+}
+body.theme-dark #fxp button.on, body.theme-dark #fxp button.active,
+body.dark #fxp button.on, body.dark #fxp button.active,
+body.theme-night #fxp button.on, body.theme-night #fxp button.active{
+  background:#2f6fe0; border-color:#2f6fe0; color:#fff;
+}
+body.theme-dark #fxp .lab, body.dark #fxp .lab, body.theme-night #fxp .lab{
+  color:#b9c8e0;
+}
+body.theme-dark #fxp .hint, body.dark #fxp .hint, body.theme-night #fxp .hint{
+  color:#7d90ae;
+}
+body.theme-dark #fxp .gt, body.dark #fxp .gt, body.theme-night #fxp .gt,
+html[data-theme="dark"] #fxp .gt, body[data-theme="dark"] #fxp .gt{
+  color:#cddcff;
+}
+body.theme-dark #fxp select, body.dark #fxp select, body.theme-night #fxp select,
+body.theme-dark #fxp input[type=text], body.theme-dark #fxp input[type=number],
+body.dark #fxp input[type=text], body.dark #fxp input[type=number],
+body.theme-night #fxp input[type=text], body.theme-night #fxp input[type=number]{
+  background:#0b1019; border-color:#22304a; color:#e6edf8;
+}
+body.theme-dark .fxp-note, body.dark .fxp-note, body.theme-night .fxp-note{
+  background:#111826; border-color:#22304a; color:#7d90ae;
+}
+body.theme-dark .fxp-note::before, body.dark .fxp-note::before,
+body.theme-night .fxp-note::before{ color:#7ea6ff }
+
+/* 暗色下的窄屏抽屉边框 */
+@media (max-width:880px){
+  body.theme-dark #fxp.fxp-min, body.dark #fxp.fxp-min, body.theme-night #fxp.fxp-min{
+    border-color:#22304a;
+  }
+}
+
+</style><!--/FXCTL:CSS-->
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div id="hud">
+      <div><span class="k">上下孔径比</span> <b id="hR">1.00 : 1</b></div>
+      <div><span class="k">呼吸峰值 R<sub>max</sub></span> <b id="hRM">2.50</b></div>
+      <div><span class="k">每循环圈数 N=d</span> <b id="hN">3.50</b></div>
+      <div><span class="k">每循环错开</span> <b id="hO">180.0°</b></div>
+      <div><span class="k">螺旋陡度 R/d</span> <b id="hS">0.65</b></div>
+      <div><span class="k">轨迹点</span> <b id="hP">0</b> <span class="k">·</span> <b id="hF">0</b> <span class="k">fps</span></div>
+    </div>
+    <div id="badge">AIZAWA</div>
+    <canvas id="prof" width="132" height="184"></canvas>
+    <div id="proft">剖面</div>
+    <div id="viewhint"><b>拖动 3D 画面</b> 转视角 · 横拖=方位 / 竖拖=俯仰 · <b>滚轮</b> 缩放（对准哪放大哪） · <b>中键拖动</b> 平移 · 双击复位</div>
+    <!-- 曲速引擎「计算结果」浮窗（左侧 · 可收起 · 可拖动）：参数留在右侧参数卡，
+         按参数算出来的结果（几何映射 / θ / ρ_E / E / P_z / γ）搬到这个独立窗口。 -->
+    <div id="wres">
+      <div id="wresH" title="按住标题栏拖动浮窗 · 点击收起/展开 · 拖右下角改大小（双击复位）">
+        <span>🌀 曲速引擎演算 · 结果</span>
+        <span class="std">实时</span>
+        <span class="tg" id="wresTg">▾</span>
+      </div>
+      <div id="wresB"><div class="warp-out" id="wout">计算中…</div></div>
+    </div>
+  </div>
+
+  <div id="bar">
+    <button id="play" class="on">⏸ 暂停</button>
+    <button id="breath" class="on">🌬 呼吸</button>
+    <button id="reset" class="gh">重置</button>
+    <button id="togp" class="gh on">剖面</button>
+    <button id="part" class="gh">🌫 粒子</button>
+    <div class="spacer"></div>
+    <!-- 缩放读数常驻底栏：HUD（左上）被「曲速引擎结果」浮窗压住、右下提示被参数窗压住，
+         只有底栏既不会被浮窗盖、也不会随画布缩放跑掉。 -->
+    <div id="zinfo" title="滚轮缩放（对准哪放大哪）· 中键拖动平移 · 双击复位"><span class="k">缩放</span> <b id="hZ">1.00×</b></div>
+    <div id="zsrc" title="当前注入区（粒子层开启且选上/下方环口时显示）"></div>
+    <button id="tog" class="gh">参数 ▾</button>
+  </div>
+
+  <div id="panel">
+    <div id="panelHead" title="按住此标题栏可拖动浮窗">
+      <span class="tt">参数面板</span>
+      <span class="sug">按住标题栏可拖动</span>
+      <span class="hsp"></span>
+      <button id="panelClose" class="gh">收起 ✕</button>
+    </div>
+    <div id="panelBody">
+    <div class="grp">
+      <div class="gt">动画导出</div>
+      <button class="gh" id="gifbtn" style="width:100%;margin:2px 0 6px">🎞 导出 GIF（一个 Anu 周期）</button>
+      <div class="hint" style="margin-top:0">
+        一键生成整段呼吸动画（≈16 s / 480×360 / ≤5 MB）：<br>
+        <b>前 8 s = 网页打开后的默认状态</b>（d=5 · 十丝 · 无粒子 · 正视 90°）录一个完整呼吸周期；<br>
+        后 8 s：视角 <b>正视 → 俯视 → 等角</b>，回标准谱 d=3.5，粒子层（<b>0.05×</b>）淡入，<br>
+        再叠 Anu 十丝；末段把<b>呼吸峰值 Rmax 从 2.5 推到 4.9</b>
+        （R/d 0.71 → 1.40，越过崩解线），展示 <b>R 过大 ⇒ 结构逐根断裂 ⇒ 湮灭</b>，
+        画面左下角实时标出 R/d 与"失衡/湮灭"状态。<br>
+        导出期间画面会短暂接管，结束后参数与视角原样恢复。
+      </div>
+      <div class="hint" id="gifmsg" style="color:#7fd8ff"></div>
+    </div>
+
+    <div class="grp">
+      <div class="gt">孔径呼吸</div>
+      <div class="row">
+        <div class="lab"><span>呼吸峰值 R<sub>max</sub></span><span class="v" id="vR">2.50</span></div>
+        <input type="range" id="sR" min="1" max="12" step="0.01" value="2.5">
+        <div class="hint" id="hR2">呼吸模式：R 在 1 → 2.50 → 1 之间循环（关掉呼吸即为固定孔径比）</div>
+        <div class="hint" id="hR3"></div>
+        <div class="presets" id="rps">
+          <button class="gh" id="rpb1" data-rp="2.5" data-rd="4.618">2.50 ★推荐(配 d=4.618)</button>
+          <button class="gh" id="rpb2" data-rp="2.75" data-rd="6">2.75 配 d=6 最闭合</button>
+          <button class="gh" id="rpb3" data-rp="3.25" data-rd="7">3.25 配 d=7 梯度最强</button>
+          <button class="gh" id="rpb4" data-rp="1.82" data-rd="3.5">1.82 极保守(配 d=3.5)</button>
+          <button class="gh" id="rpb5" data-rp="3" data-rd="3.5">3.00 原值(配 d=3.5)</button>
+          <button class="gh" id="btnRecR">0.9×安全线(按当前 d)</button>
+        </div>
+        <div class="hint" id="hR4"></div>
+      </div>
+      <div class="row">
+        <div class="lab"><span>呼吸周期</span><span class="v" id="vBT">8.34 s</span></div>
+        <input type="range" id="sBT" min="2" max="20" step="0.02" value="8.34">
+        <div class="hint" id="hBT">R 在 1 → R<sub>max</sub> → 1 之间循环，R<sub>max</sub> 取上方滑块值</div>
+        <div class="presets">
+          <button class="gh" data-bt="8.34">8.34 s ★黄金(10.618 循环)</button>
+          <button class="gh" data-bt="5">5 s 快</button>
+          <button class="gh" data-bt="13">13 s 慢</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grp">
+      <div class="gt">螺旋圈数 d <span class="std">（默认 5 · 原始标准 3.5）</span></div>
+      <div class="row">
+        <div class="lab"><span>d · 每循环圈数</span><span class="v" id="vD">5.00</span></div>
+        <input type="range" id="sD" min="2" max="12" step="0.001" value="5">
+        <div class="hint" id="hD"></div>
+      </div>
+      <div class="presets">
+        <button class="gh" data-d="2.5">2.5 半整数</button>
+        <button class="gh" data-d="3">3 整数</button>
+        <button class="gh" data-d="3.5">3.5 标准</button>
+        <button class="gh" data-d="4.618">4.618 黄金角</button>
+        <button class="gh" data-d="5">5 整数</button>
+        <button class="gh" data-d="6">6 最闭合★</button>
+        <button class="gh" data-d="7">7 梯度最强★</button>
+        <button class="gh" data-d="8">8 锁相失效</button>
+        <button class="gh" data-d="10.618">10.618 大 d 黄金</button>
+      </div>
+    </div>
+
+    <div class="grp">
+      <div class="gt">方程参数</div>
+      <div class="row">
+        <div class="lab"><span>球的整体大小 Scale</span><span class="v" id="vS">1.00</span></div>
+        <input type="range" id="sS" min="0.4" max="2.2" step="0.01" value="1">
+      </div>
+      <div class="row">
+        <div class="lab"><span>b · 球大小 / 收口中位</span><span class="v" id="vB">0.700</span></div>
+        <input type="range" id="sB" min="0.5" max="0.9" step="0.001" value="0.7">
+        <div class="hint">b↑ 球略缩小（推荐 0.5~0.9）</div>
+      </div>
+      <div class="row">
+        <div class="lab"><span>e · 球壳厚度</span><span class="v" id="vE">0.250</span></div>
+        <input type="range" id="sE" min="0.15" max="0.40" step="0.001" value="0.25">
+        <div class="hint">推荐 0.2~0.35；e↑ 壳更薄、更贴球面</div>
+      </div>
+      <div class="row">
+        <div class="lab"><span>c · 中轴偏移</span><span class="v" id="vC">0.600</span></div>
+        <input type="range" id="sC" min="0.4" max="0.8" step="0.001" value="0.6">
+        <div class="hint">推荐 0.5~0.7；c↑ 喷流更高、漏斗更长</div>
+      </div>
+      <div class="row">
+        <div class="lab"><span>a · 混沌程度</span><span class="v" id="vA">0.950</span></div>
+        <input type="range" id="sA" min="0.85" max="1.05" step="0.001" value="0.95">
+        <div class="hint">a↑ 更乱</div>
+      </div>
+      <div class="row">
+        <div class="lab"><span>f · 周期窗</span><span class="v" id="vF">0.100</span></div>
+        <input type="range" id="sF" min="0" max="0.3" step="0.001" value="0.1">
+        <div class="hint">f↑ 出现周期窗（混沌性减弱、更规整）</div>
+      </div>
+    </div>
+
+    <div class="grp">
+      <div class="gt">外围轮廓整形 <span class="std">（只改 z，不动孔径）</span></div>
+      <div class="row">
+        <div class="lab"><span>λ · 高宽比</span><span class="v" id="vL">1.00</span></div>
+        <input type="range" id="sL" min="0.4" max="3.5" step="0.01" value="1">
+        <div class="hint" id="hL"></div>
+      </div>
+      <div class="row">
+        <div class="lab"><span>γ · 蛋形偏斜</span><span class="v" id="vG">0.00</span></div>
+        <input type="range" id="sG" min="-0.45" max="0.45" step="0.01" value="0">
+        <div class="hint" id="hG"></div>
+      </div>
+      <div class="row">
+        <div class="lab"><span>τ · 端面收口</span><span class="v" id="vT">0.00</span></div>
+        <input type="range" id="sT" min="0" max="0.25" step="0.005" value="0">
+        <div class="hint" id="hT"></div>
+      </div>
+      <div class="presets">
+        <button class="gh" data-sh="1,0,0,1" data-eq="0.70,0.25,0.60">原始</button>
+        <button class="gh" data-sh="1.26,0.03,0,1">完美球</button>
+        <button class="gh" data-sh="1.46,0,0.2,1">实心球(闭口)</button>
+        <button class="gh" data-sh="1.80,0.22,0,1">标准蛋·尖上<sup style="color:#ffd84a">*</sup></button>
+        <button class="gh" data-sh="1,0,0,1.55" data-eq="0.86,0.30,0.60">倒蛋·尖下</button>
+        <button class="gh" data-sh="1,0,0,2.60" data-eq="0.90,0.32,0.60">萝卜·尖下</button>
+      </div>
+      <div class="hint" style="margin-top:6px">
+        原始外围包络实测：<b style="color:#7fd8ff">扁椭球</b>（椭球拟合残差 0.85%、高/宽 0.686、
+        偏斜 k≈0）；球面拟合残差 6.6%，所以<b style="color:#ffd84a">天生不是球</b>。
+        λ 是线性拉伸 → <b style="color:#00c2ff">孔径比完全守恒</b>；
+        γ 是非线性重分布 → 会连带改变端部观感孔径，|γ|&lt;0.5 才不折叠。
+        <br><b style="color:#ffd84a">*「尖上」为什么仍要动 γ</b>：ṙ=(z−b)r 让 r 在 z=b 处最大、<b>向下收口</b>，
+        所以吸引子<b>天生只长尖下</b>；要让尖朝上，必须在显示层用 γ 做非线性重分布，
+        方程参数（b/e/c）替代不了。其余三个（原始 / 倒蛋 / 萝卜）已改成
+        <b>只动 b、e、R</b>，λ/γ/τ 保持 1 / 0 / 0。
+      </div>
+    </div>
+
+    <div class="grp">
+      <div class="gt">渲染</div>
+      <div class="row">
+        <div class="lab"><span>自转速度</span><span class="v" id="vRS">0.35</span></div>
+        <input type="range" id="sRS" min="0" max="2" step="0.01" value="0.35">
+      </div>
+      <div class="row">
+        <div class="lab"><span>俯仰角</span><span class="v" id="vEL">72°</span></div>
+        <input type="range" id="sEL" min="0" max="90" step="1" value="72">
+        <div class="hint">0°=俯视（看 xy 平面）· 90°=侧视（z 轴朝上）；
+          也可直接在 3D 画面上拖动：横拖改方位、竖拖改俯仰、双击复位视角</div>
+      </div>
+      <div class="row">
+        <div class="lab"><span>拖尾长度</span><span class="v" id="vTR">5000</span></div>
+        <input type="range" id="sTR" min="800" max="14000" step="100" value="8000">
+        <div class="hint">越长越饱满；手机建议 ≤6000</div>
+      </div>
+      <div class="row">
+        <div class="lab"><span>线宽</span><span class="v" id="vLW">3.0</span></div>
+        <input type="range" id="sLW" min="0.4" max="6" step="0.1" value="3">
+        <div class="hint">默认 <b>3.0</b>（老师 2026-10-17 定）；上限已放宽到 6，方便再往粗调</div>
+      </div>
+      <div class="row">
+        <div class="lab"><span>亮度</span><span class="v" id="vAL">1.00</span></div>
+        <input type="range" id="sAL" min="0.1" max="1" step="0.01" value="1">
+        <div class="hint">默认 <b>1.00</b>（老师 2026-10-17 定，最高档）；十丝叠加时另乘防过曝系数 0.40</div>
+      </div>
+    </div>
+
+    <div class="grp">
+      <div class="gt">空气粒子 <span class="std">（示踪散点 · 跑的是同一条 Aizawa ODE）</span></div>
+      <div class="row">
+        <label class="chk"><input type="checkbox" id="ckPart">
+          <span><b>开启粒子层</b>：在吸引子外面撒 900 个<b>示踪点</b>，
+          每一个都按页面<b>同一条流场</b>积分（同 DT、同 RK4、同一份导数代码）——
+          所以看到的任何结构都是方程自己的，不是画出来的。
+          <br><b style="color:#7fd8ff">观察速度另有倍率</b>（下面「粒子速度」，默认 ×0.30）：
+          本页模拟是 8 倍速，×1.00 时粒子整圈只要 1.9 s，肉眼根本跟不上。
+          <b style="color:#ffbe3c">暖色 = 正在上升（ż&gt;0）</b> ·
+          <b style="color:#50c8ff">冷色 = 正在下沉（ż&lt;0）</b> ·
+          点越大越快。</span></label>
+      </div>
+      <div class="row">
+        <div class="lab"><span>粒子数</span><span class="v" id="vPN">900</span></div>
+        <input type="range" id="sPN" min="200" max="2000" step="50" value="900">
+        <div class="hint">≤600 流畅；2000 是上限（每帧 2000×nsteps 次 RK4）</div>
+      </div>
+      <div class="row">
+        <div class="lab"><span>粒子速度</span><span class="v" id="vPSpd">×0.30</span></div>
+        <input type="range" id="sPSpd" min="0.05" max="2" step="0.05" value="0.30">
+        <div class="hint" id="hPSpd">—</div>
+      </div>
+      <div class="row">
+        <div class="lab"><span>背景暗化（十丝让路）</span><span class="v" id="vPD">30%</span></div>
+        <input type="range" id="sPD" min="5" max="100" step="1" value="30">
+        <div class="hint">只在粒子开启时生效；<b>100% = 不让路</b>。
+          关掉粒子后这个系数恒为 1 ⇒ 原画面<b>逐位还原</b>。</div>
+      </div>
+      <div class="row">
+        <div class="lab"><span>注入位置</span><span class="v" id="vPS">全局撒入</span></div>
+        <div class="presets">
+          <button class="gh srcsel on" id="psBox">全局撒入</button>
+          <button class="gh srcsel" id="psTop">上方环口</button>
+          <button class="gh srcsel" id="psBot">底部环口</button>
+        </div>
+        <div class="hint"><b>上方环口</b>：从球顶外面进（看"被卷下来"）·
+          <b>底部环口</b>：从底端外面进（看"被吸上去"）</div>
+        <div class="hint">点了按钮会<b style="color:#3cffbe">自动开启粒子层</b>，
+          并把粒子降到 <b>0.12 倍速演示 6 秒</b> ——
+          因为本页模拟是 8 倍速，进场只要 0.4 s，不慢放根本看不见
+          （主轨道与十丝的时间尺<b>不动</b>）。
+          <label style="display:inline-flex;align-items:center;gap:5px;margin-top:5px;cursor:pointer">
+            <input type="checkbox" id="ckSlow" checked> 换档慢放演示
+          </label>
+          <span id="vSlow" style="color:#3cffbe"></span>
+        </div>
+      </div>
+      <div class="hint" id="pStat">—</div>
+      <div class="hint">
+        <b>怎么读</b>：涡环的闭合环流 = <b>环外下沉 / 环心上喷</b>。
+        粒子从上方环外被卷下来 → 到底部收向中轴 → 再沿中轴向上喷出，
+        全程还绕轴转 <b>dθ/dt ≡ d</b>（所以是螺旋，不是直线）。
+        <b style="color:#ffd84a">但它不是源</b>：进去多少、出来多少，总量一分不多
+        —— 与 §6t 第 ② 句是同一条账。
+        <br><b>老师说的"上下梯度差"，在方程里就是 <span style="color:#7fd8ff">z = b</span> 这一条线</b>：
+        ṙ = (z−b)·r ⇒ <b>z&lt;b 收向中轴</b>，<b>z&gt;b 散向外圈</b>；而 ż 在环外被 −r² 项压着向下、
+        在环心被 +c 推着向上。两条合起来才是闭合环流（本页 <b>A 级</b>，可当场复算）。
+        <br>实测单粒子一圈（默认 c=0.6 b=0.7）：<b>上方 → 进中轴 3.0 个单位</b>、
+        <b>中轴 → 喷到顶 6.0 个单位</b>、<b>整圈约 15 个单位</b>。
+        <br>默认 c=0.6 时底端 z≈−1.105 是 ż 的<b>稳定平衡点</b>，粒子会在底部积一层（实测 33%）；
+        把 <b>c 调到 0.8</b>，该平衡点消失，堆积降到 <b>0.4%</b>，喷射最干净。
+      </div>
+    </div>
+
+    <div class="grp">
+      <div class="gt">Anu 十丝 <span class="std">（3 粗 + 7 细 · 混沌吸引子螺旋）</span></div>
+      <div class="row">
+        <label class="chk"><input type="checkbox" id="ckAnu" checked>
+          <span><b>开启 Anu 十丝</b>：把 Aizawa 轨道按 z 轴 <b>36° 等分</b>画成 10 根丝
+          （<span class="sw" style="background:rgb(255,215,0)"></span><b style="color:#ffd700">3 粗亮金</b> +
+          <span class="sw" style="background:hsl(80,100%,62%)"></span><span class="sw"
+          style="background:hsl(170,100%,62%)"></span><span class="sw"
+          style="background:hsl(260,100%,62%)"></span>7 细七色 · <b>色相环上避开金黄</b>，免得跟粗丝撞色）</span></label>
+      </div>
+      <div class="row">
+        <div class="lab"><span>粗丝根数（其余为细丝）</span><span class="v" id="vAM">3</span></div>
+        <input type="range" id="sAM" min="0" max="10" step="1" value="3">
+        <div class="hint">Anu 原典 <b>3 粗 + 7 细</b>；粗丝数取 0~5 才保证
+          <b>「每一根粗丝的对面（180°）都是细丝」</b>（取 3 时：0↔5、1↔6、2↔7）</div>
+      </div>
+      <div class="row">
+        <div class="lab"><span>丝数</span><span class="v" id="vAW">10</span></div>
+        <input type="range" id="sAW" min="1" max="10" step="1" value="10">
+        <div class="hint">Anu 原典 10 根（文献：十根互不接触的闭合丝，沿 36° 均分）；拨到 1 即单轨道对照</div>
+      </div>
+      <div class="row">
+        <div class="lab"><span>粗丝向外膨胀</span><span class="v" id="vBO">+3.8%</span></div>
+        <input type="range" id="sBO" min="0" max="20" step="0.1" value="3.8">
+        <div class="hint">只<b>放大粗丝的半径</b>（Z 不动）；0% = 十根严格共面（原行为）</div>
+      </div>
+      <div class="row">
+        <div class="lab"><span>细丝向内收敛</span><span class="v" id="vBI">−3.8%</span></div>
+        <input type="range" id="sBI" min="0" max="20" step="0.1" value="3.8">
+        <div class="hint">只<b>收缩细丝的半径</b>（Z 不动）。两个滑块<b>各调各的</b>：
+          默认 3.8% 时粗细半径比 = (1+0.038)/(1−0.038) = <b>1.0790</b>，
+          与 Anu 主界面「贴外壁 0.9857 / 贴内壁 0.9137 = 1.0788」一致（差 0.02%）。
+          <b style="color:#ffd84a">这是形态层（C 级）参数</b>：只缩半径，不改 ODE、不改方位角，
+          所以 36° 均分与 180° 对望的定理<b>完全不受影响</b>。</div>
+      </div>
+      <div class="presets">
+        <button class="gh on" id="apb1">严格十丝（刚性旋转 · 方位角精确）</button>
+        <button class="gh" id="apb2">独立积分（真混沌 · r,z 如实失相）</button>
+      </div>
+      <div class="hint" id="hAnu"></div>
+      <details class="fml">
+        <summary>为什么这是「混沌吸引子表达」—— 定理 + 实测（点开看）</summary>
+        <div class="fmlb">
+          <p><b style="color:#7fd8ff">A 级 · 本页可复算的定理</b>：Aizawa 方程前两式
+            <code>ẋ=(z−b)x−d·y</code>、<code>ẏ=d·x+(z−b)y</code>，令 <code>u=x+i·y</code>
+            得 <code>du/dt=[(z−b)+i·d]·u</code> ⇒ <code>dr/dt=(z−b)·r</code>、<code>dθ/dt ≡ d</code>。
+            <b style="color:#ffd84a">方位角速度恒等于 d，与 x、y、z 完全无关</b> ——
+            故任取 10 个相位差 36° 的状态，它们的方位角之差<b>永远精确保持 36°</b>；
+            环上编号相距 5 的一对（k 与 k+5）<b>永远精确对望 180°</b>。<b>对任意 f 都成立。</b></p>
+          <p>这正是 Anu「十根丝沿 36° 均分」＋「<b>3 粗的对面恰恰是细丝</b>」的精确动力学依据：
+            10 根按 36° 编号 0…9，编号差 5 即 180°；粗丝取 0,1,2，其余 7 根为细，
+            则 0↔5、1↔6、2↔7 —— 三根粗丝的对面全是细丝。</p>
+          <p><b style="color:#7fd8ff">破坏旋转对称的只有一项</b>：z 方程里的 <code>f·z·x³</code>
+            含 <code>cos³θ</code>，不是旋转不变量。它<b>只让十丝的 (r,z) 失相，方位角不受影响</b>。
+            实测（f=0.1，十丝同 (r,z)、方位差 36°）：6000 步后方位角偏离 36° 网格
+            &lt; <b>1e-4 度</b>（数值误差量级，即定理成立）；而 (r,z) 相对失相
+            <b>≈50 步</b>到 8%、<b>≈200 步</b>到 25%、<b>≈1000 步</b>饱和到约 80%。</p>
+          <p>⇒ 本页给两种画法。① <b style="color:#7fd8ff">严格十丝</b>：把一条<b>真轨道</b>
+            绕 z 刚性旋转 36°k 画 10 份 —— 方位角动力学上<b>精确</b>，
+            视觉上是与 Anu 原典一一对应的十根齐整螺旋丝。
+            ② <b style="color:#7fd8ff">独立积分</b>：真跑 10 条独立轨道 —— <b>真混沌</b>，
+            方位角仍精确 36°、对望仍精确 180°，但 (r,z) 会按上表如实失相（看得见「十丝交织」）。</p>
+          <p><b style="color:#7fd8ff">★ 粗丝外膨 / 细丝内收（形态层 · C 级 · 两个独立滑块）</b>：
+            渲染时按分组给半径乘一个系数 —— 粗丝 <code>k₁ = 1 + b<sub>o</sub>/100</code>、
+            细丝 <code>k₂ = 1 − b<sub>i</sub>/100</code>，<b>只缩 (x, y)，Z 完全不动</b>。
+            默认 3.8% 时 <code>k₁/k₂ = 1.039/0.962 = 1.0790</code>，与 Anu 主界面
+            「贴外壁 0.9857 / 贴内壁 0.9137 = 1.0788」一致（差 0.02%）。
+            <b style="color:#ffd84a">口径必须分清</b>：这是<b>形态层</b>操作 —— 不碰 ODE、不碰积分、不碰时间；
+            径向缩放是绕 z 旋转的<b>标量倍数</b>，与旋转可交换，故
+            <b>36° 均分与 180° 对望的定理完全不受影响</b>。
+            换言之：<b>定理管方位角，这两个滑块管半径，两者正交</b>，不许混为一谈。
+            取 0% 时系数恒等 1、十根严格共面，等价于本参数加入前的原行为。</p>
+          <p><b style="color:#ffd84a">与元宝「Anu 十旋 · 参数化可视化」的口径差别（C 级 · 对照）</b>：
+            那份是<b>解析参数曲线</b> —— <code>r = sin v·(1+δcos v)·(1−β((1−cos v)/2)²)</code>、
+            <code>θ = 2πk/10 + 2πT·t</code>、<code>z = Rz·cos v·(1+(γ−1)(1+cos v)/2)</code>，
+            半径与转角<b>全部是手写死的闭式</b>，没有微分方程、没有不变集、没有吸引子，
+            属「形态翻译」（它自己也标了「非物理模型」）。本页的十丝来自
+            <b>Aizawa 混沌系统的真实轨道</b> —— 36° 均分与 180° 对望是
+            <b>方程自身的对称性定理</b>（f→0 时严格 SO(2) 等变），
+            不是曲线构造里塞进去的参数。两侧都标注清楚，不把话圆过去。</p>
+          <p><b style="color:#7fd8ff">与 Anu 主界面（几何细分路线）的分工</b>：
+            <code>AAA_Anu七级螺旋主界面.html</code> 走的是<b>文献形态路线</b>
+            （子午线爱心+苹果底、2.5 圈下行 + 2.5 圈上行 = 5 圈、每丝 1680 匝 1 阶 spirilla、
+            逐级 ×7 到 7 阶、3 粗贴外壁 / 7 细贴内壁）；
+            本页走的是<b>动力学路线</b>（Aizawa 轨道的 SO(2) 等变轨道）。
+            两条路线独立给出「十根 36° 均分 + 3 粗 7 细 + 粗的对面是细」这同一个结构。</p>
+          <p><b style="color:#7fd8ff">★ 跨领域对照：魔角石墨烯的「尺度级联」不是分形（2026-10-17 新增）</b>：
+            元宝那份《双层石墨烯 1.1° 超导夹角》里算出一条对本页有用的判据 ——
+            多代莫尔 <code>L<sub>j</sub> = a·M<sup>j</sup></code>、<code>M = 1/[2sin(θ/2)]</code> 看着像分形，
+            但<b style="color:#ffd84a">每一级都是空间填充的</b>（面积放大 M²、子原胞也是 M² 个）⇒
+            盒维数 <code>D = ln(M²)/ln M = 2</code>，<b>整数维，不是分形</b>。
+            真正分形的是<b>能谱</b>（Hofstadter 蝶 / 康托集），不是实空间图案。
+            ⇒ 同一条判据搬回本页：<b>「逐级 ×7」本身不构成分形</b>，要看有没有留空洞
+            （六方雪花 Hexaflake 挖掉 2/9 面积 ⇒ <code>D = ln7/ln3 = 1.771244</code> 才是真分形；
+            Anu 的七级细分若填满，D 就是 3）。<b style="color:#ffd84a">「有 7」判不出分形，得看维数。</b>
+            <br>另有一条数论读数：贵金属比族 <code>(m+√(m²+4))/2</code> 只有 <b>φ=1.618</b> 落在魔角天花板
+            <code>λ≤2</code> 之内（银比 2.414、铜比 3.303 全超）⇒ 四层魔角 = <code>1.1°×φ = 1.7798°</code>，
+            正是文献的 1.78°。即 <b>φ 是唯一能直接当放大倍数的贵金属比</b>，与本页 <code>d = φ+3 = 4.618</code> 同源。
+            <br>→ 完整推导与 10 版归档：
+            <a href="魔角石墨烯_归档入口.html" target="_blank" rel="noopener"
+               style="color:#7fd8ff;text-decoration:underline">魔角石墨烯 · 归档入口与跨页联系（六条对照，含本页这条）</a></p>
+        </div>
+      </details>
+    </div>
+
+    <div class="grp">
+      <div class="gt">曲速引擎演算 <span class="std">（Alcubierre 度规 × 吸引子轮廓）</span></div>
+      <div class="row">
+        <div class="lab"><span>泡体等效半径 R<sub>phys</sub></span><span class="v" id="vRP">100 m</span></div>
+        <input type="range" id="sRP" min="10" max="1000" step="1" value="100">
+        <div class="hint">轮廓外包络按此尺寸等比放大；默认 100 m 与 Pfenning–Ford 1997 原文算例同尺寸，便于直接对标</div>
+      </div>
+      <div class="row">
+        <div class="lab"><span>巡航速度 β = v/c</span><span class="v" id="vBE">1.00</span></div>
+        <input type="range" id="sBE" min="0.05" max="10" step="0.01" value="1">
+        <div class="hint">能量 ∝ β²、膨胀峰 ∝ β；β≥2 时壁上形成事件视界（量子不稳定区）</div>
+      </div>
+      <div class="presets">
+        <button class="gh" id="wpb1">封口 τ=0.15（闭端面泡）</button>
+        <button class="gh on" id="wpb2">敞口 τ=0（开环）</button>
+      </div>
+      <div class="hint">计算结果（几何映射 / θ / ρ_E / E / P_z / γ）实时显示在<b style="color:#7fd8ff">左侧「曲速引擎演算 · 结果」浮窗</b>，与右侧参数一一对应。</div>
+      <details class="fml">
+        <summary>公式、外网出处与证据分级</summary>
+        <div class="fmlb">
+          <p><b style="color:#7fd8ff">建模假设（C 级·工程类比）</b>：把吸引子外壳层中面当作曲速泡壁
+            R<sub>w</sub>(z)=(PRO+PRI)/2·s，壳层肉厚当作泡壁厚度 Δ(z)=(PRO−PRI)/2·s；
+            形状函数 f=F(ξ)、ξ=ρ−R<sub>w</sub>(z)、F=½(1−tanh(ξ/Δ))。
+            s 即本页孔径呼吸 / 端面收口映射（与 3D 视图、剖面小图完全同源）。
+            这是几何建模选择，<b style="color:#ffd84a">不是对任何实物飞碟的物理实测</b>。</p>
+          <p><b style="color:#7fd8ff">度规（B 级文献）</b>：随动系
+            <code>ds² = −dt² + (dz − βf·dt)² + dx² + dy² + ρ²dφ²</code>
+            —— Alcubierre 1994（Class. Quantum Grav. 11, L73）；Natário 2001 给出零膨胀保体积的等价形式。
+            f=1 泡内（平直，船不动）、f=0 泡外（平直）、壁上过渡；β=v/c。</p>
+          <p><b style="color:#7fd8ff">能量密度（A 级·本页数值验证）</b>：
+            <code>ρ_E = −(c⁴β²/32πG)[(∂_x f)² + (∂_y f)²] = −(c⁴β²/32πG)F′²</code>
+            轴对称下第二式<b style="color:#ffd84a">精确成立</b>（无方位角平均近似）。
+            恒负 ⇒ 违反弱 / 强 / 主导能量条件 ⇒ 需要奇异物质。</p>
+          <p>膨胀场（York 时）：<code>θ = −∂_iβ^i = βF′R_w′</code>
+            文献符号：后端扩张 &gt; 0、前端收缩 &lt; 0，峰 |θ| = β|F′||R_w′|。</p>
+          <p>动量密度：<code>j_z = −(c³β/16πG)(F″ + F′/ρ)</code>；
+            净动量恒等式 <code>∫j_z dV = −(c³β/8G)[ρF′]₀^∞ = 0</code>
+            对任意轴对称泡<b style="color:#ffd84a">精确成立</b>。</p>
+          <p>总能量：<code>E = −(c⁴β²/16G)∫∫F′²ρ dρ dz</code>。</p>
+          <p><b style="color:#7fd8ff">量子不等式（B 级文献）</b>：Pfenning &amp; Ford 1997（CQG 14, 1743）
+            ⇒ 壁厚须压到数百普朗克长度；球形薄壁标度
+            <code>E = −(c⁴/G)β²R²/(24Δ)</code>（本页默认算例精确复现其 a quarter solar mass 结论）。
+            van den Broeck 1999 可把需求压到约 1 M☉。</p>
+          <p><b style="color:#7fd8ff">推进边界（B 级文献）</b>：Bobrick &amp; Martire 2021
+            （arXiv:2102.06824）证明亚光速曲速泡 = 惯性运动的物质壳，本身不推进；
+            Bondi–Sachs 转向定律（arXiv:2606.22531）：渐进平广驱动器只能靠辐射改变 Bondi 四动量，
+            光子火箭的 Tsiolkovsky 常数与化学火箭相同 ⇒ 真正转向 / 加速必须向外辐射。
+            Finazzi et al. 2009：β&gt;2 视界量子不稳定性。</p>
+          <p><b style="color:#7fd8ff">分级速查</b>：
+            <b style="color:#00c2ff">A</b> = 页面内可复算的恒等式 / 标度（ρ_E 轴对称闭式、P_z ≡ 0、E ∝ β²R²/Δ）；
+            <b style="color:#00c2ff">B</b> = 文献标准结果（度规、QI、Natário、Bobrick–Martire、Bondi–Sachs、van den Broeck）；
+            <b style="color:#ffd84a">C</b> = 工程类比假设（轮廓→泡壁映射、实物飞碟）。
+            一切输出都是度规框架下的模型量；<b style="color:#ff5b7f">空白 ≠ 已证伪，臆测 ≠ 已证实</b>。</p>
+        </div>
+      </details>
+    </div>
+    <div style="height:8px"></div>
+    </div><!-- /#panelBody -->
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+var cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+var W=0,H=0,DPR=1;
+function resize(){
+  DPR=Math.min(window.devicePixelRatio||1,2);
+  var r=cv.parentElement.getBoundingClientRect();
+  W=Math.max(1,Math.round(r.width)); H=Math.max(1,Math.round(r.height));
+  cv.width=W*DPR; cv.height=H*DPR;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  if(typeof partResize==='function')partResize();     /* 粒子离屏缓冲跟着画布尺寸走 */
+}
+window.addEventListener('resize',resize);
+
+/* ---------- 参数 ---------- */
+var P={R:1,Rmax:2.5,BT:8.34,d:5,S:1,b:0.7,e:0.25,c:0.6,a:0.95,f:0.1,
+       LAM:1,GAM:0,TAU:0,RS:0.35,EL:72,TR:8000,LW:3,AL:1,
+       aMaj:3,aWire:10,aBo:3.8,aBi:3.8};
+       /* Anu 十丝：粗丝根数 / 丝数 / 粗丝外膨胀% / 细丝内收敛%
+          3.8% 不是随便取的：(1+0.038)/(1−0.038)=1.0790，与 Anu 主界面
+          贴外壁 0.9857 / 贴内壁 0.9137 的半径比 1.0788 一致（差 0.02%）。
+          2026-10-17 老师定默认：线宽 3、亮度 1。 */
+var breathing=true, playing=true;
+var DT=0.02, SIMRATE=8, frameCount=0;
+
+/* ---------- 轨迹缓冲 ---------- */
+var MAXN=14000;
+var tx=new Float32Array(MAXN),ty=new Float32Array(MAXN),tz=new Float32Array(MAXN);
+var head=0,count=0,trailLen=5000;
+function push(x,y,z){tx[head]=x;ty[head]=y;tz[head]=z;head=(head+1)%MAXN;if(count<MAXN)count++;}
+function reset(){count=0;head=0;st=[0.1,0,0];zlo=-0.4;zhi=1.85;zinit=false;warm();
+  if(ANU.on){ AFITK=null; aWarm(); }
+  if(typeof PART!=='undefined'&&PART.on) partReset(); }   /* Anu 十丝：连 10 丝一起重播 */
+function warm(){
+  // 丢弃瞬态，落到吸引子上
+  for(var i=0;i<2500;i++)step();
+  // 填满缓冲，开场即是完整球壳
+  for(var j=0;j<MAXN;j++){step();push(st[0],st[1],st[2]);}
+  updRange();updRange();
+}
+
+/* ---------- 积分器 ---------- */
+var st=[0.1,0,0];
+function deriv(p,out){
+  var x=p[0],y=p[1],z=p[2];
+  var r2=x*x+y*y;
+  out[0]=(z-P.b)*x-P.d*y;
+  out[1]=P.d*x+(z-P.b)*y;
+  out[2]=P.c+P.a*z-z*z*z/3-r2*(1+P.e*z)+P.f*z*x*x*x;
+}
+var k1=[0,0,0],k2=[0,0,0],k3=[0,0,0],k4=[0,0,0],tmp=[0,0,0];
+/* stepS(s)：对「任意状态向量」积分一步（Anu 十丝要同时跑 10 条轨道，故不再写死全局 st）。
+   step() 保留为单轨道旧接口，行为与重构前逐位一致（只是多了一层函数调用）。 */
+function stepS(s){
+  var x=s[0],y=s[1],z=s[2];
+  deriv(s,k1);
+  tmp[0]=x+.5*DT*k1[0];tmp[1]=y+.5*DT*k1[1];tmp[2]=z+.5*DT*k1[2];deriv(tmp,k2);
+  tmp[0]=x+.5*DT*k2[0];tmp[1]=y+.5*DT*k2[1];tmp[2]=z+.5*DT*k2[2];deriv(tmp,k3);
+  tmp[0]=x+DT*k3[0];tmp[1]=y+DT*k3[1];tmp[2]=z+DT*k3[2];deriv(tmp,k4);
+  s[0]=x+DT/6*(k1[0]+2*k2[0]+2*k3[0]+k4[0]);
+  s[1]=y+DT/6*(k1[1]+2*k2[1]+2*k3[1]+k4[1]);
+  s[2]=z+DT/6*(k1[2]+2*k2[2]+2*k3[2]+k4[2]);
+  if(!isFinite(s[0])||!isFinite(s[1])||!isFinite(s[2])||
+     Math.abs(s[0])>40||Math.abs(s[1])>40||Math.abs(s[2])>40){
+    s[0]=0.1;s[1]=0;s[2]=0;
+  }
+}
+function step(){ stepS(st); }
+
+/* ---------- z 范围自适应（用于孔径缩放归一化） ---------- */
+var zlo=-0.4,zhi=1.85,zinit=false;
+function updRange(){
+  if(count<200)return;
+  var n=Math.min(count,trailLen),mn=1e9,mx=-1e9;
+  for(var i=0;i<n;i++){
+    var idx=(head-1-i+MAXN*2)%MAXN, v=tz[idx];
+    if(v<mn)mn=v; if(v>mx)mx=v;
+  }
+  if(mx-mn<0.2)return;
+  if(!zinit){zlo=mn;zhi=mx;zinit=true;}
+  else{zlo+=(mn-zlo)*0.06; zhi+=(mx-zhi)*0.06;}
+}
+
+/* ==========================================================================
+ * 空气粒子（示踪散点）—— 老师 2026-10-18 要求
+ * --------------------------------------------------------------------------
+ * ★ 口径：粒子跑的是**同一条 Aizawa 流场**（deriv / RK4 / DT / SIMRATE 全部复用本页代码），
+ *   不是另编一个"涡环速度场"。所以画面上任何结构都是方程自己的，不是摆出来的。
+ *
+ * 为什么它必然出现"吸入 → 喷出"（本页可复算，不是比喻）：
+ *   ṙ = (z−b)·r        ⇒ z<b 向心（收向中轴）、z>b 离心（散向外圈）
+ *   ż = c+az−z³/3−r²(1+ez)+fzx³
+ *   ⇒ 环外（r 大）被 −r² 项压着往下走；环心（r 小）被 c+az−z³/3 推着往上走
+ *   ⇒ **环外下沉 + 环心上喷 = 闭合环流**，再叠加 dθ/dt≡d ⇒ 螺旋。
+ *   实测（3000 点 × 3000 步，c=0.6 b=0.7 d=3.5）：环心 r<0.5 平均 ż=+0.33，
+ *   环外 r>1.1 平均 ż=−1.12 —— 两个符号相反，这就是涡环。
+ *
+ * 一处必须说清的差别（不许含混）：
+ *   本式给的是「环外从上沉下来 → 底部收拢 → 中轴向上喷」；
+ *   老师说的"上吸下喷"是同一环流的**另一头起读**（入口在上、出口在底）。
+ *   **射流方向朝上**，不是朝下 —— 要朝下须把 c 取负，而 c 的物理区间是 0.4~0.8。
+ *   另外 c=0.6 时底端 z≈−1.105 是 ż 的**稳定平衡点** ⇒ 粒子在底部积一层（实测 38%）；
+ *   c=0.8 时该平衡点消失（判别式 Δ>0，只剩一个实根 z≈2.01）⇒ 堆积降到 2%，喷射最干净。
+ * ========================================================================== */
+var PNMAX=2000;
+var pX=new Float32Array(PNMAX), pY=new Float32Array(PNMAX), pZ=new Float32Array(PNMAX);
+var pW=new Float32Array(PNMAX);          /* 当前点的 ż，用于染色 */
+var pVX=new Float32Array(PNMAX), pVY=new Float32Array(PNMAX), pVZ=new Float32Array(PNMAX);
+var pAge=new Int32Array(PNMAX);
+var PART={on:false, n:900, src:'box', life:4000, warm:400, dim:0.30,
+          slowOn:true, slowK:0.12, slowMs:6000, slowUntil:0, boostUntil:0,
+          spd:0.30, acc:0, lapT:15};
+/** ★ 粒子速度倍率 spd（老师 2026-10-18：「粒子飞的太快，能调速吗？」）
+ *  粒子与主轨道共用 SIMRATE=8（1 秒墙钟 = 8 个模拟时间单位）⇒ 整圈 ~15 单位只要 1.9 s。
+ *  spd 只乘**粒子层的步进数**，不改流场、不改主轨道、不改 DT —— 所以轨迹形状一字不变，
+ *  变的只是"看它走多快"。×1.00 = 与主轨道严格同速；×0.30 ≈ 一圈 6.3 s。
+ *  lapT=15 是实测一圈时长（c=0.6 b=0.7，从上方环口进 → 回顶部），只用于面板上估"一圈几秒"。
+ */
+/** ★ 为什么非要慢放 + 加速注入：
+ *  SIMRATE=8（1 秒墙钟 = 8 个模拟时间单位），粒子跑完一圈只要 ~15 个单位 ⇒ **整圈 1.9 秒**，
+ *  而注入区只有 0.55 高（z），粒子穿过去只要 **0.37 个单位 ≈ 0.4 秒**。
+ *  一次性把 900 个全撒在入口，0.4 秒就穿完了 —— 人眼根本看不到"从哪进"。
+ *  所以换档后 6 秒内：① 粒子层降到 0.12 倍速；② 重生率从 0.3%/帧提到 2%/帧，
+ *  让入口**持续喷出新粒子**（这才像空气被吸进涡环，而不是一次性倒进去）。
+ *  只改粒子层的 pnsteps 与重生率，主轨道 / 十丝的时间尺一字不动。 */
+/* 背景暗化：粒子层开启时，把主轨道 / 十丝的 alpha 乘上这个系数。
+   不写 P.AL（面板读数与探针口径不变），只在**渲染时**让路 ⇒ 关掉粒子即逐位还原。 */
+function trailDim(){ return PART.on ? Math.max(0.05, Math.min(1, PART.dim)) : 1; }
+var pS=[0,0,0], pK1=[0,0,0], pK2=[0,0,0], pK3=[0,0,0], pK4=[0,0,0], pT=[0,0,0];
+var pTP=[0,0,0,0], pTP2=[0,0,0,0];
+var pStatCache={in:0, out:0, mIn:0, mOut:0, nIn:0, nOut:0, kind:'—'};
+
+function partSpawn(i){
+  var th=Math.random()*2*Math.PI, r, z;
+  if(PART.src==='top'){ r=0.95+0.85*Math.random(); z=1.72+0.55*Math.random(); }
+  else if(PART.src==='bot'){ r=0.95+0.85*Math.random(); z=-0.50+0.35*Math.random(); }
+  else { r=1.95*Math.sqrt(Math.random()); z=-0.50+2.80*Math.random(); }
+  pX[i]=r*Math.cos(th); pY[i]=r*Math.sin(th); pZ[i]=z;
+  pW[i]=0; pVX[i]=0; pVY[i]=0; pVZ[i]=0; pAge[i]=0;
+}
+/** 单粒子推一步：与 stepS 同一套 RK4，只是**不**把跑飞的点扔回 (0.1,0,0)，
+ *  而是重生 —— 否则所有越界粒子会挤到中轴原点，变成一根假"喷流"。 */
+function partStepOne(i){
+  var x=pX[i], y=pY[i], z=pZ[i];
+  pS[0]=x; pS[1]=y; pS[2]=z;
+  deriv(pS,pK1);
+  pT[0]=x+.5*DT*pK1[0]; pT[1]=y+.5*DT*pK1[1]; pT[2]=z+.5*DT*pK1[2]; deriv(pT,pK2);
+  pT[0]=x+.5*DT*pK2[0]; pT[1]=y+.5*DT*pK2[1]; pT[2]=z+.5*DT*pK2[2]; deriv(pT,pK3);
+  pT[0]=x+DT*pK3[0];    pT[1]=y+DT*pK3[1];    pT[2]=z+DT*pK3[2];    deriv(pT,pK4);
+  var nx=x+DT/6*(pK1[0]+2*pK2[0]+2*pK3[0]+pK4[0]);
+  var ny=y+DT/6*(pK1[1]+2*pK2[1]+2*pK3[1]+pK4[1]);
+  var nz=z+DT/6*(pK1[2]+2*pK2[2]+2*pK3[2]+pK4[2]);
+  pW[i]=pK1[2];                      /* 记"当前点"的 ż（不是步末），染色用 */
+  pVX[i]=pK1[0]; pVY[i]=pK1[1]; pVZ[i]=pK1[2];
+  pAge[i]++;
+  if(!isFinite(nx)||!isFinite(ny)||!isFinite(nz)||
+     Math.abs(nx)>3.2||Math.abs(ny)>3.2||nz<-1.7||nz>3.1||pAge[i]>PART.life){
+    partSpawn(i); return;
+  }
+  pX[i]=nx; pY[i]=ny; pZ[i]=nz;
+}
+function partStepAll(n){
+  var m=PART.n;
+  for(var i=0;i<m;i++) for(var s=0;s<n;s++) partStepOne(i);   /* 逐粒子连走 n 步：缓存友好 */
+}
+/** 本帧粒子层该走几步 —— **唯一入口**（主循环只认它，别处不许再算 pnsteps）。
+ *  ★ 必须用小数累积器：spd=0.05 时每帧只要 0.4 步，若照老写法 Math.max(1, round(...))，
+ *    最小有效倍率会被锁死在 1/nsteps ≈ 0.125 —— 滑条 0.05~0.12 拉起来一模一样（假控件）。
+ *  ★ 换档慢放与用户倍率取**较小者**，不是相乘：老师已把速度拉到 0.05 时，
+ *    再乘 0.12 会变成 0.006（一圈 5 分钟），那不是演示而是冻住。
+ *  返回 0 的帧粒子不动 —— 但染色、重生、读数照走，画面不会"卡死"。
+ *  k 由调用方用 now 判 slowUntil，与主循环同一个时钟，不另起定时器。 */
+function partRate(nsteps, now){
+  var k=PART.spd;
+  if(PART.slowUntil){
+    if(now<PART.slowUntil) k=Math.min(k,PART.slowK);
+    else PART.slowUntil=0;                 /* 到点自动恢复 */
+  }
+  if(!(k>0)) k=0;
+  PART.acc += nsteps*k;
+  if(PART.acc>400) PART.acc=400;           /* 与 nsteps 的上限同量级：掉帧久了别攒一笔巨债 */
+  var pn=Math.floor(PART.acc);
+  PART.acc-=pn;
+  return pn;
+}
+/** 面板说明：所有数都当场算（铁律：数字不写死） */
+function pspdHint(){
+  var e=document.getElementById('hPSpd'); if(!e) return;
+  var u=SIMRATE*PART.spd, lap=PART.lapT/u;
+  e.innerHTML='只改<b>粒子层的时间尺</b>，流场 / 主轨道 / DT 一步不动。'+
+    '现在 1 秒墙钟 ≈ <b style="color:#7fd8ff">'+u.toFixed(2)+'</b> 个模拟时间单位'+
+    '（主轨道 <b>'+SIMRATE.toFixed(2)+'</b>）⇒ 一整圈 ≈ <b style="color:#7fd8ff">'+lap.toFixed(1)+' s</b>。'+
+    '<br><b>×1.00</b> = 与主轨道严格同速；<b>×0.05</b> = 慢 20 倍，看单个粒子怎么被卷进去。'+
+    '<b>换档慢放</b>期间取两者中更慢的那个。';
+}
+/** soft=true：**换注入位置专用** —— 不预热。
+ *  预热会把注入位置的效果抹掉：warm=400 步 = 8 个时间单位（DT=0.02），
+ *  而粒子从上方环口进中轴只要 ~3 个单位、跑完一圈 ~15 个单位 ⇒ 预热完就全散进主流，
+ *  三个注入位置的稳态分布几乎一样，看起来"点了没反应"（实测 z 直方图差 < 10%）。
+ *  换档时不预热：900 个点亮闪闪挤在入口那一团，然后被卷下去 —— 这才是看得见的过程。 */
+function partReset(soft){
+  PART.acc=0;                                     /* 换档/重播时清掉速度累积器的零头 */
+  for(var i=0;i<PART.n;i++) partSpawn(i);
+  if(soft){ for(var j=0;j<PART.n;j++) partStepOne(j); return; }  /* 走一步：速度/染色立刻正确 */
+  for(var w=0;w<PART.warm;w++) partStepAll(1);    /* 预热：开场就已经在流里，不是一团静止点 */
+}
+/** 当前注入区里还有多少粒子。换档瞬间应 ≈ n，随后被流带走 ⇒ 数字掉下来本身就是"动了"的凭据。
+ *  边界比 partSpawn 的撒入范围宽一圈，要容得下**出生后走的那一步**：
+ *  z 高时 ż 可以到 −6.7（c+az−z³/3−r²(1+ez)）⇒ 一步掉 0.13；
+ *  ṙ=(z−b)r 在 z=2.2 时 ≈ +2.8 ⇒ 一步 r 涨 0.06。框卡紧的话点完瞬间就有一批"已在框外"。 */
+var SRCBOX={ top:{r0:0.86,r1:2.06,z0:1.54,z1:2.35},
+             bot:{r0:0.86,r1:2.06,z0:-0.68,z1:-0.03} };
+function inSrcBox(i,b){
+  var r=Math.sqrt(pX[i]*pX[i]+pY[i]*pY[i]), z=pZ[i];
+  return r>=b.r0&&r<=b.r1&&z>=b.z0&&z<=b.z1;
+}
+function partSrcCount(){
+  var m=PART.n, b=SRCBOX[PART.src];
+  if(!b) return m;                       /* 全局撒入：整个盒子都算注入区 */
+  var n=0;
+  for(var i=0;i<m;i++) if(inSrcBox(i,b)) n++;
+  return n;
+}
+/** 环心 / 环外的平均 ż —— 判"是不是闭合环流"的硬指标。
+ *  只报样本数（nIn/nOut），样本不足时不许给判词。 */
+function partStats(){
+  var m=PART.n, nIn=0, sIn=0, nOut=0, sOut=0;
+  for(var i=0;i<m;i++){
+    var r=Math.sqrt(pX[i]*pX[i]+pY[i]*pY[i]), w=pW[i];
+    if(r<0.55){ nIn++; sIn+=w; }
+    else if(r>1.05){ nOut++; sOut+=w; }
+  }
+  var mIn=nIn?sIn/nIn:0, mOut=nOut?sOut/nOut:0, kind='样本不足';
+  if(nIn>=20&&nOut>=20){
+    if(mIn>0.02&&mOut<-0.02)       kind='闭合环流（环外下沉 / 环心上喷）';
+    else if(mIn<-0.02&&mOut>0.02)  kind='反向环流（环外上涌 / 环心下沉）';
+    else if(mIn>0.02&&mOut>0.02)   kind='整体上升（无环流）';
+    else if(mIn<-0.02&&mOut<-0.02) kind='整体下沉（无环流）';
+    else                           kind='近静止';
+  }
+  pStatCache={mIn:mIn, mOut:mOut, nIn:nIn, nOut:nOut, kind:kind};
+  return pStatCache;
+}
+/** 把读数写进面板。样本数必须一起显示 —— 没有样本就不许给判词。 */
+function partPaint(){
+  var e=document.getElementById('pStat'); if(!e) return;
+  var s=partStats();
+  /* 面板上报告"**实际生效**的倍率"：慢放期间是 min(spd, slowK)，不是 spd —— 
+     否则设 ×1.00 却因换档慢放跑成 ×0.12，读数会骗人。 */
+  var now=performance.now(), slowNow=!!(PART.slowUntil&&now<PART.slowUntil);
+  var kn=slowNow?Math.min(PART.spd,PART.slowK):PART.spd;
+  var col = s.kind.indexOf('闭合环流')>=0 ? '#00e0a0'
+          : (s.kind.indexOf('样本不足')>=0 ? '#8fa3c8' : '#ffd84a');
+  function wz(v){ return (v>=0?'+':'')+v.toFixed(3); }
+  e.innerHTML=
+    '环心 r&lt;0.55：平均 ż = <b style="color:'+(s.mIn>0?'#ffbe3c':'#50c8ff')+'">'+wz(s.mIn)+
+      '</b> <span style="color:#5d6f92">（n='+s.nIn+'）</span>'+
+    '　·　环外 r&gt;1.05：平均 ż = <b style="color:'+(s.mOut>0?'#ffbe3c':'#50c8ff')+'">'+wz(s.mOut)+
+      '</b> <span style="color:#5d6f92">（n='+s.nOut+'）</span>'+
+    '<br>⇒ <b style="color:'+col+'">'+s.kind+'</b>'+
+    (s.kind.indexOf('环流')>=0
+      ? '　<span style="color:#5d6f92">进去多少、出来多少，总量不变</span>'
+      : (s.kind.indexOf('整体')>=0
+          ? '　<span style="color:#5d6f92">同号 ⇒ 没有闭合回路，只是整体在升 / 降</span>' : ''))+
+    '<br><span style="color:#3cffbe">注入位置：<b>'+
+      (PART.src==='top'?'上方环口':PART.src==='bot'?'底部环口':'全局撒入')+'</b></span>'+
+    (PART.src==='box'
+      ? '　<span style="color:#5d6f92">整盒都是入口，不画框</span>'
+      : '　<span style="color:#5d6f92">注入区还剩 <b style="color:#3cffbe">'+partSrcCount()+
+        '</b> / '+PART.n+' 粒（数字往下掉 = 被流带走了）</span>')+
+    '<br><span style="color:#5d6f92">粒子速度 </span><b style="color:#7fd8ff">×'+
+      (function(){ return (kn===PART.spd?PART.spd.toFixed(2):kn.toFixed(2)); })()+
+      '</b><span style="color:#5d6f92">　⇒ 1 秒墙钟 ≈ '+(SIMRATE*kn).toFixed(2)+
+      ' 个模拟时间单位 · 一圈 ≈ '+(PART.lapT/(SIMRATE*kn)).toFixed(1)+' s'+
+      (slowNow?'（慢放中：取 ×'+PART.slowK.toFixed(2)+' 与设定值的较小者）':'')+'</span>';
+  var vs=document.getElementById('vSlow');
+  if(vs){
+    var left = PART.slowUntil ? Math.max(0,(PART.slowUntil-performance.now())/1000) : 0;
+    vs.textContent = left>0.05 ? ('⏱ 慢放 ×'+PART.slowK.toFixed(2)+' · 还剩 '+left.toFixed(1)+' s') : '';
+  }
+}
+/** 粒子层画在**半分辨率离屏画布**上再整体贴回 —— 光栅化成本降到约 1/4（实测 fps 26→55）。
+ *  粒子本来就是发光点，放大时的轻微模糊不影响判读，反而更像"空气中的尘"。 */
+var pOff=null, pCtx=null, pSC=0.55;
+function partResize(){
+  if(!pOff){ pOff=document.createElement('canvas'); pCtx=pOff.getContext('2d'); }
+  pOff.width =Math.max(1,Math.round(W*pSC));
+  pOff.height=Math.max(1,Math.round(H*pSC));
+}
+/** 注入区标记：画在**主画布**上（不进半分辨率离屏 ⇒ 线条锐利），
+ *  采样走 trPt ⇒ 跟着透视与漏斗扭曲一起走，不是贴一张平面图。
+ *  只在粒子开启、且注入位置是"上方/底部环口"时出现 ——
+ *  "全局撒入"整个盒子都是入口，画框没意义。 */
+var srcBoxDraws=0;               /* 注入区框实际绘制的次数（探针用它证明"每帧都在画"，不是只画了一次） */
+function drawSrcBox(tp,K,cx,cy,fx,fy,count){
+  var b=SRCBOX[PART.src];
+  var zel=document.getElementById('zsrc');
+  if(!b){
+    if(zel&&zel.classList.contains('on')){
+      zel.classList.remove('on'); zel.textContent='';
+    }
+    return;
+  }
+  srcBoxDraws++;
+  var N=56, j, a, x, y, zo=(b.z0+b.z1)/2, oP=[], iP=[], t0=[], t1=[];
+  for(j=0;j<N;j++){
+    a=j/N*2*Math.PI;
+    trPt(tp,b.r1*Math.cos(a),b.r1*Math.sin(a),zo,pTP); oP.push([cx+(pTP[0]-fx)*K, cy+(pTP[1]-fy)*K]);
+    trPt(tp,b.r0*Math.cos(a),b.r0*Math.sin(a),zo,pTP); iP.push([cx+(pTP[0]-fx)*K, cy+(pTP[1]-fy)*K]);
+  }
+  /* 厚度暗示：内外圈各取 4 个角度，跨 z0→z1 连 4 条竖线（标出这是一段"带"，不是一张平面） */
+  for(j=0;j<4;j++){
+    a=j/4*2*Math.PI;
+    trPt(tp,b.r1*Math.cos(a),b.r1*Math.sin(a),b.z0,pTP); t0.push([cx+(pTP[0]-fx)*K, cy+(pTP[1]-fy)*K]);
+    trPt(tp,b.r1*Math.cos(a),b.r1*Math.sin(a),b.z1,pTP); t1.push([cx+(pTP[0]-fx)*K, cy+(pTP[1]-fy)*K]);
+  }
+  ctx.save();
+  ctx.globalCompositeOperation='source-over';
+  /* 环带面：r0..r1 之间淡绿填充（even-odd 挖掉中间）——
+     注入用的就是这一圈（r∈[r0,r1]），中间 r<r0 是中轴、不注入。 */
+  ctx.beginPath();
+  for(j=0;j<N;j++) j?ctx.lineTo(oP[j][0],oP[j][1]):ctx.moveTo(oP[j][0],oP[j][1]);
+  ctx.closePath();
+  for(j=0;j<N;j++) j?ctx.lineTo(iP[j][0],iP[j][1]):ctx.moveTo(iP[j][0],iP[j][1]);
+  ctx.closePath();
+  ctx.fillStyle='rgba(60,255,190,.08)';
+  ctx.fill('evenodd');
+  ctx.strokeStyle='rgba(60,255,190,0.62)';
+  ctx.lineWidth=1.5;
+  ctx.setLineDash([6,6]);
+  ctx.beginPath();
+  for(j=0;j<N;j++) j?ctx.lineTo(oP[j][0],oP[j][1]):ctx.moveTo(oP[j][0],oP[j][1]);
+  ctx.closePath();
+  for(j=0;j<4;j++){ ctx.moveTo(t0[j][0],t0[j][1]); ctx.lineTo(t1[j][0],t1[j][1]); }
+  ctx.stroke();
+  ctx.setLineDash([]);
+  /* 文字不放画布：画布底部 12px 处是 #viewhint、左下是剖面小图、右侧被参数窗压，
+     怎么写都会撞（试过跟随框顶点 / 固定居中，都撞）⇒ 状态文字统一走底栏 DOM chip。 */
+  var zs=document.getElementById('zsrc');
+  if(zs){
+    var slowLeft = PART.slowUntil ? Math.max(0,(PART.slowUntil-performance.now())/1000) : 0;
+    var nm = PART.src==='top' ? '上方环口' : '底部环口';
+    var txt = '注入区 '+nm+' · '+count+' / '+PART.n+' 粒'+
+              (slowLeft>0.05 ? (' · 慢放 '+slowLeft.toFixed(1)+'s') : '');
+    if(zs.textContent!==txt) zs.textContent=txt;
+    if(!zs.classList.contains('on')) zs.classList.add('on');
+  }
+  ctx.restore();
+}
+
+/** 画粒子：小亮点 + 一条**速度短线**（长度 ∝ 速度，方向 = 该点的 (ẋ,ẏ,ż) 投影）。 */
+function drawParticles(tp,K,cx,cy,fx,fy){
+  if(!PART.on) return 0;
+  if(!pOff) partResize();
+  var m=PART.n, h=0.038, drawn=0, i, w, x, y, z, sx, sy, ex, ey, k=pSC;
+  var g=pCtx;
+  g.setTransform(1,0,0,1,0,0);
+  g.clearRect(0,0,pOff.width,pOff.height);
+  g.globalCompositeOperation='lighter';
+
+  /* ① 点：暖/冷两色标升降。**还在注入区里的**额外加白芯 ——
+        这样"入口在灌进来"与"已经流走的"一眼就分得开；
+        若按"年龄"高亮，换档瞬间 900 个全是新的 ⇒ 整片发白，反而看不出流场。 */
+  var bxs=SRCBOX[PART.src];
+  for(i=0;i<m;i++){
+    trPt(tp,pX[i],pY[i],pZ[i],pTP);
+    sx=(cx+(pTP[0]-fx)*K)*k; sy=(cy+(pTP[1]-fy)*K)*k;
+    if(sx<-14||sx>pOff.width+14||sy<-14||sy>pOff.height+14) continue;
+    w=pW[i];
+    if(bxs && inSrcBox(i,bxs)){
+      g.fillStyle = w>=0 ? 'rgba(255,244,210,0.95)' : 'rgba(214,246,255,0.95)';
+      g.fillRect(sx-1.5, sy-1.5, 3, 3);
+      drawn++;
+    }else{
+      g.fillStyle = w>=0 ? 'rgba(255,178,64,0.34)' : 'rgba(80,196,255,0.34)';
+      g.fillRect(sx-1, sy-1, 2, 2);
+    }
+  }
+
+  /* ② 速度短线：这才是"看得见的搅动"。
+     隔一个画一条 + 只画 |ẇ|>0.10 的（静止贴在吸引子上的点没有方向可看）。 */
+  g.lineWidth=1.45; g.lineCap='round';
+  for(var pass=0;pass<2;pass++){
+    g.beginPath();
+    var any=false;
+    for(i=0;i<m;i+=3){
+      w=pW[i];
+      if(pass===0 ? (w<0) : (w>=0)) continue;      /* pass0 = 上升(暖) · pass1 = 下沉(冷) */
+      if(Math.abs(w)<0.10) continue;
+      x=pX[i]; y=pY[i]; z=pZ[i];
+      trPt(tp,x,y,z,pTP);
+      sx=(cx+(pTP[0]-fx)*K)*k; sy=(cy+(pTP[1]-fy)*K)*k;
+      if(sx<-14||sx>pOff.width+14||sy<-14||sy>pOff.height+14) continue;
+      trPt(tp, x+pVX[i]*h, y+pVY[i]*h, z+pVZ[i]*h, pTP2);
+      ex=(cx+(pTP2[0]-fx)*K)*k; ey=(cy+(pTP2[1]-fy)*K)*k;
+      g.moveTo(sx,sy); g.lineTo(ex,ey);
+      any=true; drawn++;
+    }
+    if(any){
+      g.strokeStyle = pass===0 ? 'rgba(255,190,72,0.66)' : 'rgba(86,200,255,0.66)';
+      g.stroke();
+    }
+  }
+  /* 贴回主画布（仍是 additive，所以与主轨道/十丝正常叠加） */
+  ctx.globalCompositeOperation='lighter';
+  ctx.imageSmoothingEnabled=true;
+  ctx.globalAlpha=decayA()*pAlpha;
+  ctx.drawImage(pOff, 0,0, pOff.width,pOff.height, 0,0, W,H);
+  ctx.globalAlpha=1;
+  ctx.globalCompositeOperation='source-over';
+  /* ③ 注入区标记（画在主画布上，线条锐利；带实时计数 ⇒ 数字往下掉就是"被带走了"） */
+  drawSrcBox(tp,K,cx,cy,fx,fy,partSrcCount());
+  return drawn;
+}
+
+/* ---------- 颜色桶 ---------- */
+var NB=28, PAL=[];
+(function(){
+  var stops=[[26,58,143],[0,212,255],[130,90,255],[255,62,165],[255,210,74]];
+  for(var i=0;i<NB;i++){
+    var t=i/(NB-1)*(stops.length-1), a=Math.floor(t), b=Math.min(a+1,stops.length-1), fr=t-a;
+    PAL.push([Math.round(stops[a][0]+(stops[b][0]-stops[a][0])*fr),
+              Math.round(stops[a][1]+(stops[b][1]-stops[a][1])*fr),
+              Math.round(stops[a][2]+(stops[b][2]-stops[a][2])*fr)]);
+  }
+})();
+var segX=new Float32Array(MAXN*2),segY=new Float32Array(MAXN*2);
+var segN=new Int32Array(NB), segStart=new Int32Array(NB);
+var segIdx=[];for(var i=0;i<NB;i++)segIdx.push(new Int32Array(MAXN));
+
+/* ---------- 渲染 ---------- */
+var az=0, tBreath=0, fps=0, lastT=performance.now(), fAcc=0, fN=0;
+
+/* ---------- 缩放 / 平移（滚轮缩放 + 中键拖动平移） ----------
+ * 只作用在**屏幕变换**这一步：screen = (W/2+ox, H/2+oy) + (g − FIT) · K · z
+ *   ⇒ 与 FITK 的自动取景相乘，不碰 az / EL / 任何物理量，轨迹一字不改。
+ * 缩放锚点用鼠标位置（zoom-to-cursor）：滚轮时把光标底下那个点钉住不动，
+ *   推导：s = C + O + (g−F)K，要让 s 不变 ⇒ O' = (sp−C)(1−r) + O·r （r = 新/旧倍率）。
+ */
+var VIEW={z:1, ox:0, oy:0, min:0.25, max:16};
+var bufX=new Float32Array(MAXN),bufY=new Float32Array(MAXN),bufC=new Int32Array(MAXN);
+
+function smooth(u){return u*u*(3-2*u);}
+
+var FITK=null, FITX=0, FITY=0, FITLERP=0.08;
+var CAL=1.045;   // 补偿原始吸引子上下孔 0.96 的基线偏差
+
+/* ---------- 基础剖面（d=6，600k 点实测；d 不改变 (r,z) 投影故完全通用） ---------- */
+var PZ=[-0.2882,-0.2529,-0.2176,-0.1823,-0.1471,-0.1118,-0.0765,-0.0412,-0.0059,0.0294,0.0647,0.0999,0.1352,0.1705,0.2058,0.2411,0.2764,0.3117,0.3470,0.3822,0.4175,0.4528,0.4881,0.5234,0.5587,0.5940,0.6292,0.6645,0.6998,0.7351,0.7704,0.8057,0.8410,0.8763,0.9115,0.9468,0.9821,1.0174,1.0527,1.0880,1.1233,1.1586,1.1938,1.2291,1.2644,1.2997,1.3350,1.3703,1.4056,1.4408,1.4761,1.5114,1.5467,1.5820,1.6173,1.6526,1.6879,1.7231,1.7584,1.7937];
+var PRO=[0.8344,0.8899,0.9652,1.0260,1.0782,1.1244,1.1657,1.2030,1.2372,1.2685,1.2973,1.3237,1.3479,1.3700,1.3901,1.4083,1.4247,1.4396,1.4529,1.4646,1.4750,1.4838,1.4913,1.4973,1.5021,1.5055,1.5078,1.5089,1.5093,1.5090,1.5079,1.5058,1.5026,1.4983,1.4929,1.4863,1.4784,1.4690,1.4583,1.4461,1.4324,1.4173,1.4008,1.3827,1.3630,1.3413,1.3169,1.2892,1.2572,1.2201,1.1787,1.1344,1.0889,1.0423,0.9933,0.9398,0.8813,0.8181,0.7476,0.6982];
+var PRI=[0.3953,0.3631,0.3216,0.2924,0.2701,0.2523,0.2377,0.2257,0.2155,0.2068,0.1994,0.1930,0.1875,0.1826,0.1785,0.1748,0.1717,0.1689,0.1665,0.1645,0.1627,0.1613,0.1601,0.1591,0.1583,0.1577,0.1574,0.1572,0.1571,0.1572,0.1574,0.1577,0.1582,0.1589,0.1597,0.1608,0.1619,0.1633,0.1649,0.1666,0.1686,0.1708,0.1732,0.1760,0.1790,0.1823,0.1860,0.1901,0.1947,0.1999,0.2058,0.2124,0.2200,0.2289,0.2395,0.2522,0.2680,0.2888,0.3190,0.3426];
+var PZlo=PZ[0], PZhi=PZ[PZ.length-1], PZspan=PZhi-PZlo, PZc=(PZlo+PZhi)/2, PHa=PZspan/2;
+
+/* 实时剖面小图：外围 + 内围，等轴 */
+var pcv=document.getElementById('prof');
+var pcx=(pcv&&pcv.getContext)?pcv.getContext('2d'):null;
+var showProf=true;
+function drawProfile(){
+  if(!pcx||!showProf)return;
+  var w=pcv.width,h=pcv.height;
+  pcx.clearRect(0,0,w,h);
+  var R=P.R*CAL, logR=Math.log(1/R);
+  var lam=P.LAM, gam=P.GAM, tau=P.TAU;
+  // 先算变换后的点，再自动取景（严格等轴）
+  var i,n=PZ.length, XO=[],XI=[],ZZ=[];
+  for(i=0;i<n;i++){
+    var u=(PZ[i]-PZlo)/PZspan; if(u<0)u=0; if(u>1)u=1;
+    var s=Math.exp(logR*(1-smooth(u)));
+    if(tau>1e-6){
+      if(u<tau)      s*=Math.sqrt(Math.max(0,1-Math.pow((tau-u)/tau,2)));
+      else if(u>1-tau) s*=Math.sqrt(Math.max(0,1-Math.pow((u-(1-tau))/tau,2)));
+    }
+    var u0=(PZ[i]-PZc)/PHa; if(u0<-1)u0=-1; if(u0>1)u0=1;
+    ZZ.push(PZc+PHa*lam*(u0+gam*u0*u0));
+    XO.push(PRO[i]*s); XI.push(PRI[i]*s);
+  }
+  var rmx=0,zmn=1e9,zmx=-1e9;
+  for(i=0;i<n;i++){ if(XO[i]>rmx)rmx=XO[i]; if(ZZ[i]<zmn)zmn=ZZ[i]; if(ZZ[i]>zmx)zmx=ZZ[i]; }
+  var WX=Math.max(rmx,1e-3)*1.06, WZlo=zmn-0.05*(zmx-zmn), WZhi=zmx+0.05*(zmx-zmn);
+  var k=Math.min(w/(2*WX), h/(WZhi-WZlo));      // 等轴
+  var ox=w/2, oy=h/2+((WZhi+WZlo)/2)*k;
+  function px(r){return ox+r*k}
+  function py(zz){return oy-zz*k}
+  // 肉厚填充（左右两片）
+  pcx.fillStyle='rgba(24,74,142,0.55)';
+  for(var sgn=1;sgn>=-1;sgn-=2){
+    pcx.beginPath();
+    for(i=0;i<n;i++)pcx.lineTo(px(sgn*XO[i]),py(ZZ[i]));
+    for(i=n-1;i>=0;i--)pcx.lineTo(px(sgn*XI[i]),py(ZZ[i]));
+    pcx.closePath(); pcx.fill();
+  }
+  // 外围 / 内围 线
+  pcx.lineWidth=1.4;
+  for(var sgn2=1;sgn2>=-1;sgn2-=2){
+    pcx.strokeStyle='#00c2ff'; pcx.beginPath();
+    for(i=0;i<n;i++)pcx.lineTo(px(sgn2*XO[i]),py(ZZ[i]));
+    pcx.stroke();
+    pcx.strokeStyle='#ff9f45'; pcx.setLineDash([3,2]); pcx.beginPath();
+    for(i=0;i<n;i++)pcx.lineTo(px(sgn2*XI[i]),py(ZZ[i]));
+    pcx.stroke(); pcx.setLineDash([]);
+  }
+  // 端面开口
+  pcx.strokeStyle='#7fd8ff'; pcx.lineWidth=1;
+  pcx.beginPath();
+  pcx.moveTo(px(XI[0]),py(ZZ[0])); pcx.lineTo(px(XO[0]),py(ZZ[0]));
+  pcx.moveTo(px(-XO[0]),py(ZZ[0])); pcx.lineTo(px(-XI[0]),py(ZZ[0]));
+  pcx.moveTo(px(XI[n-1]),py(ZZ[n-1])); pcx.lineTo(px(XO[n-1]),py(ZZ[n-1]));
+  pcx.moveTo(px(-XO[n-1]),py(ZZ[n-1])); pcx.lineTo(px(-XI[n-1]),py(ZZ[n-1]));
+  pcx.stroke();
+  // 中轴
+  pcx.strokeStyle='#2b3a5e'; pcx.setLineDash([2,3]); pcx.beginPath();
+  pcx.moveTo(ox,py(WZlo)); pcx.lineTo(ox,py(WZhi)); pcx.stroke(); pcx.setLineDash([]);
+  // 数值
+  var rt=XI[n-1],rb=XI[0],waist=Math.min.apply(null,XI);
+  pcx.fillStyle='#8fa3c8'; pcx.font='9px sans-serif';
+  pcx.fillText('上孔 '+rt.toFixed(2),5,12);
+  pcx.fillText('下孔 '+rb.toFixed(2),5,h-16);
+  pcx.fillStyle='#ffd84a';
+  pcx.fillText('比值 '+(rt/rb).toFixed(2)+':1',5,h-5);
+  pcx.fillStyle='#ff9f45';
+  pcx.fillText('腰 '+waist.toFixed(2),w-42,12);
+}
+
+function draw(){
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.clearRect(0,0,W,H);
+  if(ANU.on){ drawAnu(); return; }        /* Anu 十丝模式：走独立的十丝渲染管线 */
+  if(count<3)return;
+
+  var n=Math.min(count,trailLen);
+  var el=P.EL*Math.PI/180, cel=Math.cos(el), sel=Math.sin(el);
+  var caz=Math.cos(az), saz=Math.sin(az);
+  var span=(zhi-zlo)||1;
+  var logR=Math.log(1/(P.R*CAL));
+  var zc=zlo+span*0.5, ha=span*0.5;
+  var LAM=P.LAM, GAM=P.GAM, TAU=P.TAU;
+  var nPt=0;
+  var fx0=1e9,fx1=-1e9,fy0=1e9,fy1=-1e9;
+
+  for(var i=0;i<n;i++){
+    var idx=(head-1-i+MAXN*2)%MAXN;
+    var X=tx[idx],Y=ty[idx],Z=tz[idx];
+    // 上下孔径比缩放：底部收窄到 1/R，顶部保持 1（smoothstep 让形变集中在两端）
+    var u=(Z-zlo)/span; if(u<0)u=0; if(u>1)u=1;
+    var s=Math.exp(logR*(1-smooth(u)));
+    if(TAU>1e-6){
+      if(u<TAU)          s*=Math.sqrt(Math.max(0,1-Math.pow((TAU-u)/TAU,2)));
+      else if(u>1-TAU)   s*=Math.sqrt(Math.max(0,1-Math.pow((u-(1-TAU))/TAU,2)));
+    }
+    var Xs=X*s, Ys=Y*s;
+    // 轮廓整形：只改 z（不动 r）—— λ 定长宽比，γ 定蛋形偏斜
+    var u0=(Z-zc)/ha; if(u0<-1)u0=-1; if(u0>1)u0=1;
+    var Zw=zc+ha*LAM*(u0+GAM*u0*u0);
+    // 自转（绕 z 轴）
+    var x1s=Xs*caz-Ys*saz, y1s=Xs*saz+Ys*caz;
+    var x1 =X *caz-Y *saz,  y1 =X *saz+Y *caz;
+    // 俯仰：el=90° 侧视(z 朝上)，el=0° 俯视(看 xy 平面)
+    var ups=y1s*cel+Zw*sel, z2s=-y1s*sel+Zw*cel;
+    var up0=y1 *cel+Zw*sel, z20=-y1 *sel+Zw*cel;
+    var ps=6/(6-z2s*0.5), p0=6/(6-z20*0.5);
+    bufX[nPt]=x1s*ps; bufY[nPt]=-ups*ps;
+    // 取景基准用"未缩放"坐标，保证呼吸时画面大小稳定
+    var gx=x1*p0, gy=-up0*p0;
+    if(gx<fx0)fx0=gx; if(gx>fx1)fx1=gx;
+    if(gy<fy0)fy0=gy; if(gy>fy1)fy1=gy;
+    var cc=(u*(NB-1))|0; if(cc<0)cc=0; if(cc>=NB)cc=NB-1;
+    bufC[nPt]=cc;
+    nPt++;
+  }
+
+  // 自动取景（平滑，避免抖动）
+  var fw=Math.max(fx1-fx0,1e-3), fh=Math.max(fy1-fy0,1e-3);
+  var kt=Math.min(0.86*W/fw, 0.80*H/fh);
+  if(kt>900)kt=900; if(kt<5)kt=5;
+  var xt=(fx0+fx1)/2, yt=(fy0+fy1)/2;
+  if(FITK===null){FITK=kt;FITX=xt;FITY=yt;}
+  else{FITK+=(kt-FITK)*FITLERP;FITX+=(xt-FITX)*FITLERP;FITY+=(yt-FITY)*FITLERP;}
+  var K=FITK*P.S*VIEW.z, cx=W/2+VIEW.ox, cy=H/2+VIEW.oy;
+  var ds=decayS();
+  for(var m2=0;m2<nPt;m2++){
+    bufX[m2]=cx+(cx+(bufX[m2]-FITX)*K-cx)*ds;
+    bufY[m2]=cy+(cy+(bufY[m2]-FITY)*K-cy)*ds;
+  }
+
+  // 按颜色桶收集线段
+  for(var k=0;k<NB;k++)segN[k]=0;
+  for(var j=0;j<nPt-1;j++){
+    var c=bufC[j];
+    var p=segN[c]++;
+    segIdx[c][p]=j;
+  }
+
+  ctx.globalCompositeOperation='lighter';
+  ctx.lineWidth=P.LW;
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  for(var c2=0;c2<NB;c2++){
+    var m=segN[c2]; if(m===0)continue;
+    var col=PAL[c2];
+    // 越靠后（越新）越亮
+    ctx.strokeStyle='rgba('+col[0]+','+col[1]+','+col[2]+','+(P.AL*trailDim()*decayA()).toFixed(3)+')';
+    ctx.beginPath();
+    var arr=segIdx[c2];
+    for(var q=0;q<m;q++){
+      var jj=arr[q];
+      /* DECAY：按比例随机丢段 ⇒ 结构一块块碎掉，而不是整体糊成一团 */
+      if(DECAY>0 && Math.random()<DECAY*0.94) continue;
+      ctx.moveTo(bufX[jj],bufY[jj]);
+      ctx.lineTo(bufX[jj+1],bufY[jj+1]);
+    }
+    ctx.stroke();
+  }
+  ctx.globalCompositeOperation='source-over';
+  drawParticles(mkTP(), K, cx, cy, FITX, FITY);
+  drawProfile();
+}
+
+/* ==========================================================================
+ * Anu 十丝（3 粗 + 7 细）——  Aizawa 轨道 × z 轴 36° 等分
+ * --------------------------------------------------------------------------
+ * 定理（参数面板公式卡里有推导，本页可复算）：
+ *   ẋ=(z−b)x−d·y,  ẏ=d·x+(z−b)y    令 u=x+i·y
+ *   ⇒ du/dt = [(z−b)+i·d]·u   ⇒   dr/dt=(z−b)·r,   dθ/dt ≡ d
+ *   ⇒ 方位角速度恒为 d（与 x,y,z 完全无关）⇒ 相位差 36° 的十根丝永远精确保持 36°；
+ *     编号差 5 的一对（k 与 k+5）永远精确对望 180°。**对任意 f 成立。**
+ *   ⇒ Anu「十根丝沿 36° 均分」＋「3 粗的对面恰恰是细丝」= 该对称性的直接推论。
+ * 破坏项：z 方程里的 f·z·x³（含 cos³θ）不是旋转不变量 ⇒ 只让 (r,z) 失相（方位角不受影响）。
+ *
+ * 两条画法（面板两个按钮切换）：
+ *   ① rigid=true  严格十丝：把一条**真轨道**绕 z 刚性旋转 2πk/N 画 N 份（方位角上精确）。
+ *   ② rigid=false 独立积分：真跑 N 条独立轨道。丝 0 ≡ 单轨道主缓冲（同一初值 ⇒ 同一轨道），
+ *                  故只额外维护 1..9 号丝 —— 省一份内存，且 updRange() 继续有效。
+ * ========================================================================== */
+var ANU={on:true, rigid:true, nMaj:3, nWire:10};   /* 默认开启（老师 2026-10-17 定） */
+var ANW=10;                                     /* 独立积分最多 10 条 */
+var aBuf=[], aHead=new Int32Array(ANW), aCnt=new Int32Array(ANW), aSt=[];
+(function(){
+  for(var k=0;k<ANW;k++){
+    aBuf.push({x:new Float32Array(MAXN),y:new Float32Array(MAXN),z:new Float32Array(MAXN)});
+    aSt.push([0.1,0,0]);
+  }
+})();
+/* 每丝拖尾长度：与单轨道**不同口径** —— 单轨道 8000 点已能填满整个吸引子，
+   十丝各 8000 点 = 8 万段、additive 叠加直接过曝（踩过：整屏糊成白）。
+   十丝按 trailLen/18 折（默认 8000/18 ≈ 444 点）：在 d=3.5 下每丝约 5 圈，
+   正好对上 Anu 原典「2.5 圈下行 + 2.5 圈上行 = 5 圈/根」的宏观圈数。 */
+function aPerLen(){ return Math.max(200, Math.min(MAXN, Math.round(trailLen/18))); }
+function aReset(){
+  var N=Math.max(1,Math.min(ANW,ANU.nWire|0));
+  for(var k=0;k<ANW;k++){
+    /* 初相位必须与**显示的间隔** 360/N 一致（踩过：初相位写死 36°k，
+       丝数拨到 5 时模拟在 36° 网格、显示却在 72° 网格，画出来与说的不是一回事） */
+    var ph=2*Math.PI*k/N, r0=0.1;
+    aSt[k]=[r0*Math.cos(ph), r0*Math.sin(ph), 0];
+    aHead[k]=0; aCnt[k]=0;
+  }
+}
+function aPushAll(){
+  for(var k=0;k<ANW;k++){
+    var b=aBuf[k], h=aHead[k], s=aSt[k];
+    b.x[h]=s[0]; b.y[h]=s[1]; b.z[h]=s[2];
+    aHead[k]=(h+1)%MAXN; if(aCnt[k]<MAXN)aCnt[k]++;
+  }
+}
+function aStepAll(n){ for(var i=0;i<n;i++) for(var k=0;k<ANW;k++) stepS(aSt[k]); }
+/* ★ 十丝必须**同一时刻**重播：dθ/dt ≡ d 意味着「同一 t 的状态才相差精确 36°k」，
+   时刻差 Δt 会直接变成方位差 d·Δt（踩过：主轨道 warm 16500 步、各丝只 warm 5100 步
+   ⇒ 实测方位偏差 151.2°，看着像定理失效，其实是两条时间线没对齐）。
+   ⇒ 这里只 warm 这 10 条丝自身，10 条同步推进、同步入缓冲；不动主轨道（st/count/head）。 */
+function aWarm(){
+  aReset();
+  for(var i=0;i<2500;i++) for(var k=0;k<ANW;k++) stepS(aSt[k]);
+  var per=aPerLen();
+  for(var j=0;j<per;j++){ for(k=0;k<ANW;k++) stepS(aSt[k]); aPushAll(); }
+}
+/* 拖丝数/粗丝数的滑条会连发 input ⇒ 去抖，免得每动一格就重播一次 5 万步 */
+var _aWT=0;
+function aWarmSoon(){
+  if(_aWT)clearTimeout(_aWT);
+  _aWT=setTimeout(function(){ _aWT=0; aWarm(); AFITK=null; anuHint(); },70);
+}
+/** 读第 w 根丝「倒数第 i 个」采样点（i=0 为最新）。
+ *  刚性模式：十丝共用**主轨道缓冲** tx/ty/tz（画时按 36°k 旋转）⇒ 拖尾长度与常规渲染一致；
+ *  独立积分：每丝读自己的 aBuf[w]。 */
+function aPt(w,i,out){
+  if(ANU.rigid){
+    var idx=(head-1-i+MAXN*2)%MAXN;
+    out[0]=tx[idx]; out[1]=ty[idx]; out[2]=tz[idx];
+  }else{
+    var b=aBuf[w], idx2=(aHead[w]-1-i+MAXN*2)%MAXN;
+    out[0]=b.x[idx2]; out[1]=b.y[idx2]; out[2]=b.z[idx2];
+  }
+  return out;
+}
+function aCount(w){ return Math.min(ANU.rigid?count:aCnt[w], aPerLen()); }
+
+/* ---------- 同一套屏幕变换（与常规渲染逐字一致；抽出来给十丝复用） ---------- */
+function mkTP(){
+  var el=P.EL*Math.PI/180, span=(zhi-zlo)||1;
+  return {cel:Math.cos(el),sel:Math.sin(el),caz:Math.cos(az),saz:Math.sin(az),
+    zlo:zlo,span:span,zc:zlo+span*0.5,ha:span*0.5,logR:Math.log(1/(P.R*CAL)),
+    LAM:P.LAM,GAM:P.GAM,TAU:P.TAU};
+}
+/** out=[sx,sy,gx,gy]：sx/sy 供画线（含孔径缩放），gx/gy 是未缩放的取景基准 */
+function trPt(tp,X,Y,Z,out){
+  var u=(Z-tp.zlo)/tp.span; if(u<0)u=0; if(u>1)u=1;
+  var s=Math.exp(tp.logR*(1-smooth(u)));
+  if(tp.TAU>1e-6){
+    if(u<tp.TAU)          s*=Math.sqrt(Math.max(0,1-Math.pow((tp.TAU-u)/tp.TAU,2)));
+    else if(u>1-tp.TAU)   s*=Math.sqrt(Math.max(0,1-Math.pow((u-(1-tp.TAU))/tp.TAU,2)));
+  }
+  var Xs=X*s, Ys=Y*s;
+  var u0=(Z-tp.zc)/tp.ha; if(u0<-1)u0=-1; if(u0>1)u0=1;
+  var Zw=tp.zc+tp.ha*tp.LAM*(u0+tp.GAM*u0*u0);
+  var x1s=Xs*tp.caz-Ys*tp.saz, y1s=Xs*tp.saz+Ys*tp.caz;
+  var x1 =X *tp.caz-Y *tp.saz, y1 =X *tp.saz+Y *tp.caz;
+  var ups=y1s*tp.cel+Zw*tp.sel, dzs=-y1s*tp.sel+Zw*tp.cel;
+  var up0=y1 *tp.cel+Zw*tp.sel, dz0=-y1 *tp.sel+Zw*tp.cel;
+  out[0]=x1s*6/(6-dzs*0.5); out[1]=-ups*6/(6-dzs*0.5);
+  out[2]=x1 *6/(6-dz0*0.5); out[3]=-up0*6/(6-dz0*0.5);
+  return out;
+}
+/* 3 粗 = 亮金色（ANU_MAJ_RGB）；7 细 = 色相环上**避开金黄禁区**后均匀铺开的七色 */
+function hsl2rgb(H,S,L){
+  H=((H%360)+360)%360/360;
+  var q=L<0.5?L*(1+S):L+S-L*S, p=2*L-q;
+  function c(t){ if(t<0)t+=1; if(t>1)t-=1;
+    if(t<1/6)return p+(q-p)*6*t; if(t<1/2)return q;
+    if(t<2/3)return p+(q-p)*(2/3-t)*6; return p; }
+  return [Math.round(c(H+1/3)*255),Math.round(c(H)*255),Math.round(c(H-1/3)*255)];
+}
+/* ⚠️ 为什么 7 细要让开黄色：3 粗默认是亮金 rgb(255,215,0)（色相 49°）。
+   若 7 细还按 360·k/7 均分，k=4 落在 hsl(51.4°) ≈ rgb(255,227,61)，
+   与粗丝色相只差 14°，additive 下几乎同色 ⇒「3 粗 / 7 细」当场分不出来。
+   （实测 stroke 采样：rgba(255,215,0,.4) 与 rgba(255,227,61,.4) 并存。）
+   所以把 [35°,80°] 这 45° 金黄禁区留给粗丝，余下 315° 按 (N−maj) 等分。
+   N−maj = 7 ⇒ 色相 80/125/170/215/260/305/350（间隔 45°，无偏色）。 */
+var THIN_GAP0=35, THIN_GAP1=80;
+function thinHue(w,N,maj){
+  var nt=Math.max(1,N-maj), span=360-(THIN_GAP1-THIN_GAP0);
+  return THIN_GAP1+span*(Math.max(0,w-maj)/nt);
+}
+function thinCh(w,N,maj){
+  return hsl2rgb(thinHue(w,N,maj), 1.0, 0.62);
+}
+/* 对望校验：编号 k 与 k+N/2 是否严格 180°（定理保证；这里如实测） */
+function anuStat(){
+  var N=Math.max(2,ANU.nWire|0), o={N:N, maj:ANU.nMaj|0, step:360/N, dev:0, opp:0, live:!ANU.rigid};
+  if(!ANU.rigid){
+    var th=[], k;
+    for(k=0;k<N;k++){
+      var s=aSt[k];
+      th.push(Math.atan2(s[1],s[0]));
+    }
+    var fold=function(x){ return Math.abs(x-Math.round(x/(2*Math.PI))*2*Math.PI); };
+    for(k=1;k<N;k++){
+      var d=fold((th[k]-th[0])-2*Math.PI*k/N)*180/Math.PI;
+      if(d>o.dev)o.dev=d;
+    }
+    if(N%2===0){
+      for(k=0;k<N/2;k++){
+        var d2=fold((th[k+N/2]-th[k])-Math.PI)*180/Math.PI;
+        if(d2>o.opp)o.opp=d2;
+      }
+    }
+  }
+  return o;
+}
+function anuHint(){
+  var e=document.getElementById('hAnu'); if(!e)return;
+  var s=anuStat(), mine=ANU.rigid;
+  var majIdx=[]; for(var k=0;k<s.maj;k++)majIdx.push(k);
+  e.innerHTML=
+    (ANU.on?'<b style="color:#7fd8ff">Anu 十丝已开启</b>':'<span style="color:#5d6f92">Anu 十丝未开启</span>')+
+    '　·　'+s.N+' 根丝 · 粗 '+s.maj+' / 细 '+(s.N-s.maj)+
+    '　·　方位间隔 <b>'+(360/s.N).toFixed(3)+'°</b>'+
+    '<br>对望校验（编号差 '+(s.N/2)+' ⇒ 180°）：'+
+    (s.N%2===0
+      ? (mine?'<b style="color:#00c2ff">精确 180.000°（刚性旋转，构造保证）</b>'
+             :'<b style="color:#00c2ff">实测偏差 '+s.opp.toFixed(6)+'°</b>（定理 dθ/dt ≡ d）')
+      :'<span style="color:#5d6f92">丝数为奇数 ⇒ 无严格对望对</span>')+
+    '<br>粗丝编号 '+majIdx.join(',')+' 的对面 = '+
+    (s.N%2===0?majIdx.map(function(j){return j+s.N/2;}).join(',')+'（'
+      + (s.maj<=s.N/2?'<b style="color:#00c2ff">全为细丝 ✓</b>':'<span style="color:#ffd84a">含粗丝</span>')+ '）'
+      :'—')+
+    '<br>粗细分层（形态层 · C 级，只缩半径不动 Z）：粗丝 <b>+'+P.aBo.toFixed(1)+'%</b> / 细丝 <b>−'+P.aBi.toFixed(1)+'%</b>'+
+    '　⇒ 半径比 <b>'+(P.aBo===0&&P.aBi===0?'1.0000（十根共面，等价原行为）':((1+P.aBo/100)/(1-P.aBi/100)).toFixed(4))+'</b>'+
+    (s.maj===0||s.maj>=s.N?'　<span style="color:#ffd84a">（当前分组为空或全粗 ⇒ 看不出分层）</span>':'')+
+    '<br><span style="color:#4e5c7a">'+(mine
+      ?'画法① 严格十丝：一条真轨道绕 z 刚性旋转 36°×k（方位角上精确）'
+      :'画法② 独立积分：真跑 '+s.N+' 条轨道，方位角实测偏差 '+s.dev.toFixed(6)+'°')+
+    '　·　dθ/dt ≡ d 定理为 A 级（本页可复算）</span>';
+}
+var AFITK=null,AFITX=0,AFITY=0;
+var ANU_ALPHA=0.40;    /* 十丝叠加时每条单独压暗：10 条 additive 叠起来才不过曝（单轨道用 P.AL 原值） */
+/* 3 粗丝的默认色 —— 单一来源（渲染 / 面板图例 / 探针都读这里，不许各写一份）。
+   2026-10-17 老师指定：由米白 rgb(244,240,228) 改为**亮金色**。
+   取值理由：标准金 #FFD700 在深底 additive 下 R/G 先饱和、B 恒低 ⇒ 呈现出饱和金黄而不是发白，
+   与 7 细的光谱七色（含蓝紫）在色相上分得开；米白则与高亮细丝混在一起分不清。 */
+var ANU_MAJ_RGB='255,215,0';
+/* 粗丝单独的压暗系数（默认与细丝同为 0.40，**经实测没必要更高**）。
+   动机：additive 下单层只有 alpha×通道值，金黄 B=0 理论上会让稀薄处掉成土黄。
+   实测（2026-10-17，冷启动 d=7 / R=3.25 / LW=3 / AL=1，全画布统计）：
+      majα=0.40 → 金色平均亮度 208.4/255、暗段(L<120) 0.0%、全白 0.00%
+      majα=0.55 → 209.6、0.0%、0.01%
+      majα=0.70 → 211.8、0.0%、0.03%
+      majα=0.85 → 213.1、0.0%、0.03%
+   ⇒ 提 2.1 倍只换来 +2.2% 亮度（10 丝叠加早已饱和），过曝却开始出现。
+   结论：保持 0.40；若现场想更亮，用 __az.setMajAlpha(v) 直接试，不必改文件。 */
+var ANU_MAJ_ALPHA=0.40;
+var _aP=[0,0,0], _aT=[0,0,0,0];
+
+/* ---------- 粗丝外膨 / 细丝内收（形态层 C 级，老师 2026-10-17 要求） ----------
+ * 只沿半径方向缩放 (X,Y)，**Z 完全不动** —— 因此：
+ *   ① 不碰 ODE、不碰积分、不碰时间 ⇒ 动力学一字未改；
+ *   ② 径向缩放对旋转是标量，与绕 z 旋转可交换 ⇒ **方位角 36° 均分 / 180° 对望定理不受影响**；
+ *   ③ 它只把 Anu 主界面「3 粗贴外壁 / 7 细贴内壁」(0.9857 / 0.9137) 的形态特征搬到本页。
+ * 所以本参数属「形态层」，不许与 §SO(2) 定理混为一谈（口径三分）。
+ * 取值 0% ⇒ 系数恒等 1 ⇒ 十根严格共面，等价于本参数加入前的原行为。 */
+function aRadScale(w,N,maj){
+  return (w<maj) ? 1 + P.aBo/100 : 1 - P.aBi/100;
+}
+/* 每根丝实测均方根半径（画的时候顺手算，供探针与公式对拍，不另算一遍） */
+var aRsum=new Float64Array(ANW), aRn=new Int32Array(ANW), aRavg=[];
+function drawAnu(){
+  var tp=mkTP(), N=Math.max(1,ANU.nWire|0), maj=Math.min(N,ANU.nMaj|0);
+  /* 湮灭：丝一根根熄灭（10→1），配合下面的整段断裂与 alpha 衰减 */
+  if(DECAY>0){
+    N=Math.max(1,Math.round((ANU.nWire|0)*(1-0.82*DECAY)));
+    maj=Math.min(N,ANU.nMaj|0);
+  }
+  var n=[], w, i, kk;
+  for(w=0;w<N;w++) n.push(aCount(ANU.rigid?0:w));
+  for(w=0;w<ANW;w++){ aRsum[w]=0; aRn[w]=0; }
+  /* 取景：所有丝的点合起来的包围盒（用未缩放的 gx/gy ⇒ 呼吸时画面大小稳定；
+     但外膨/内收会改真实半径，故取景也必须先乘 aRadScale，否则画面会被裁掉） */
+  var fx0=1e9,fx1=-1e9,fy0=1e9,fy1=-1e9, any=false;
+  for(w=0;w<N;w++){
+    var nw=n[w]; if(nw<2)continue;
+    var stp=Math.max(1,Math.floor(nw/400));
+    var psi=2*Math.PI*w/N, cp=Math.cos(psi), sp=Math.sin(psi);
+    kk=aRadScale(w,N,maj);
+    for(i=0;i<nw;i+=stp){
+      aPt(ANU.rigid?0:w,i,_aP);
+      trPt(tp,(_aP[0]*cp-_aP[1]*sp)*kk,(_aP[0]*sp+_aP[1]*cp)*kk,_aP[2],_aT);
+      any=true;
+      if(_aT[2]<fx0)fx0=_aT[2]; if(_aT[2]>fx1)fx1=_aT[2];
+      if(_aT[3]<fy0)fy0=_aT[3]; if(_aT[3]>fy1)fy1=_aT[3];
+    }
+  }
+  if(any){
+    var fw=Math.max(fx1-fx0,1e-3), fh=Math.max(fy1-fy0,1e-3);
+    var kt=Math.min(0.86*W/fw, 0.80*H/fh);
+    if(kt>900)kt=900; if(kt<5)kt=5;
+    var xt=(fx0+fx1)/2, yt=(fy0+fy1)/2;
+    if(AFITK===null){AFITK=kt;AFITX=xt;AFITY=yt;}
+    else{AFITK+=(kt-AFITK)*FITLERP;AFITX+=(xt-AFITX)*FITLERP;AFITY+=(yt-AFITY)*FITLERP;}
+  }
+  var K=(AFITK===null?1:AFITK)*P.S*VIEW.z, cx=W/2+VIEW.ox, cy=H/2+VIEW.oy, nPt=0;
+  ctx.globalCompositeOperation='lighter';
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  var lwT=2.2*P.LW, lwN=0.9*P.LW;
+  for(w=0;w<N;w++){
+    var m=n[w]; if(m<2)continue;
+    var isMaj=(w<maj);
+    var psi2=2*Math.PI*w/N, cp2=Math.cos(psi2), sp2=Math.sin(psi2);
+    kk=aRadScale(w,N,maj);
+    var col=isMaj?ANU_MAJ_RGB:thinCh(w,N,maj).join(',');
+    ctx.beginPath();
+    var first=true, skipUntil=0;
+    for(i=0;i<m;i++){
+      /* DECAY：按"段"丢弃（每 26 点抽一次，整段 26 点一起丢）——
+         逐点丢只会让线变淡，看不出"碎掉"；整段丢才是真的断成一截一截。 */
+      if(i<skipUntil) continue;
+      if(DECAY>0 && (i%26===0) && Math.random()<DECAY*0.95){
+        if(!first){ ctx.stroke(); ctx.beginPath(); first=true; }
+        skipUntil=i+26; continue;
+      }
+      aPt(ANU.rigid?0:w,i,_aP);
+      var Xr=(_aP[0]*cp2-_aP[1]*sp2)*kk, Yr=(_aP[0]*sp2+_aP[1]*cp2)*kk;
+      aRsum[w]+=Xr*Xr+Yr*Yr; aRn[w]++;          /* 累计 r²（避免逐点开方） */
+      trPt(tp,Xr,Yr,_aP[2],_aT);
+      var sx=cx+(_aT[0]-(AFITK===null?0:AFITX))*K;
+      var sy=cy+(_aT[1]-(AFITK===null?0:AFITY))*K;
+      var dsa=decayS();
+      sx=cx+(sx-cx)*dsa; sy=cy+(sy-cy)*dsa;
+      if(first){ctx.moveTo(sx,sy);first=false;}else ctx.lineTo(sx,sy);
+      if(nPt<MAXN){bufX[nPt]=sx;bufY[nPt]=sy;nPt++;}   /* 供探针对拍（单丝时应与常规渲染一致） */
+    }
+    ctx.strokeStyle='rgba('+col+','+(P.AL*(isMaj?ANU_MAJ_ALPHA:ANU_ALPHA)*trailDim()*decayA()).toFixed(3)+')';
+    ctx.lineWidth=isMaj?lwT:lwN;
+    ctx.stroke();
+  }
+  ctx.globalCompositeOperation='source-over';
+  for(w=0;w<ANW;w++) aRavg[w]= aRn[w] ? Math.sqrt(aRsum[w]/aRn[w]) : 0;
+  anuDrawN=nPt;
+  drawParticles(mkTP(), K, cx, cy, (AFITK===null?0:AFITX), (AFITK===null?0:AFITY));
+  drawProfile();
+}
+var anuDrawN=0;
+
+function frame(now){
+  var dtms=now-lastT; lastT=now; frameCount++;
+  if(EXPORTING){ requestAnimationFrame(frame); return; }   /* 导出期间由时间线独占推进 */
+  if(dtms>0&&dtms<500){fAcc+=dtms;fN++;if(fAcc>500){fps=Math.round(1000*fN/fAcc);fAcc=0;fN=0;}}
+  if(playing){
+    DECAY+=(decayTarget()-DECAY)*0.06;                     /* 失衡湮灭：缓慢松弛，不是开关 */
+    var dts=Math.min(dtms,50)/1000;
+    tBreath+=dts;
+    if(breathing){
+      var ph=2*Math.PI*(tBreath%P.BT)/P.BT;
+      P.R=1+(P.Rmax-1)*(0.5-0.5*Math.cos(ph));
+    }
+    // 拖动后 2.5 s 内暂停自转，让用户看清自己选定的视角（lastDragT 见文末视角拖动段）
+    if(performance.now()-lastDragT>2500)az+=dts*P.RS;
+    // 按真实时间推进模拟时间，保证帧率无关
+    var nsteps=Math.max(1,Math.round(dts*SIMRATE/DT));
+    if(nsteps>400)nsteps=400;
+    for(var i=0;i<nsteps;i++){step();push(st[0],st[1],st[2]);}
+    /* Anu 十丝 · 独立积分：主轨道即 0 号丝，另 1..9 号丝并行推进 */
+    if(ANU.on&&!ANU.rigid){ aStepAll(nsteps); aPushAll(); }
+    /* 空气粒子：同一份 deriv / RK4 / DT，但**步进数另乘 spd**（默认 ×0.30）——
+       流场与主轨道一字不动，只是让"看它走多快"可调（见 partRate）。
+       唯一例外：刚换过注入位置的那 6 秒 —— 粒子层再降速 + 加速注入（见 PART.slow*） */
+    if(PART.on){
+      var pn=partRate(nsteps, now), boost=!!(PART.boostUntil&&now<PART.boostUntil);
+      if(pn>0) partStepAll(pn);
+      /* 常态 0.3%/帧（零星换新）；演示期 2%/帧 ⇒ 入口持续喷新粒子，看得见"在被灌进来" */
+      var pr=Math.max(1,Math.round(PART.n*(boost?0.020:0.003)));
+      for(var q=0;q<pr;q++) partSpawn((Math.random()*PART.n)|0);
+      if(!boost)PART.boostUntil=0;
+    }
+    if(frameCount%15===0){ updRange(); if(ANU.on)anuHint(); if(PART.on)partPaint(); }
+  }
+  draw();
+  document.getElementById('hR').textContent=P.R.toFixed(2)+' : 1';
+  document.getElementById('hRM').textContent=P.Rmax.toFixed(2);
+  document.getElementById('hN').textContent=P.d.toFixed(2);
+  var fo=(P.d-Math.floor(P.d))*360; if(fo>180)fo=360-fo;
+  document.getElementById('hO').textContent=fo.toFixed(1)+'°';
+  var sw=P.R/P.d;
+  var hs=document.getElementById('hS');
+  hs.textContent=sw.toFixed(3);
+  hs.style.color = sw>0.91?'#ff5b7f' : (sw>0.52?'#ffd84a' : '#7fd8ff');
+  document.getElementById('hP').textContent=nPtShow();
+  document.getElementById('hF').textContent=fps;
+  requestAnimationFrame(frame);
+}
+function nPtShow(){return Math.min(count,trailLen);}
+
+/* ---------- UI ---------- */
+function bind(id,pid,key,fmt,after){
+  var s=document.getElementById(id), v=document.getElementById(pid);
+  function upd(){
+    var val=parseFloat(s.value);
+    P[key]=val;
+    if(fmt)v.textContent=fmt(val);
+    if(after)after();
+  }
+  s.addEventListener('input',upd); upd();
+  return s;
+}
+var f2=function(x){return x.toFixed(2)};
+var f3=function(x){return x.toFixed(3)};
+var sR=bind('sR','vR','R',f2);
+/* 实测安全线表：底部螺旋倾角 α₉₀ 达到 45°(安全) / 60°(崩解) 时的 R
+   d:       2.5    3    3.5   4    4.618  5    6    7    8    10
+   R*(45°): 1.25  1.50  2.50  2.00  2.50  2.50  2.75  3.25  4.25  5.25
+   R**(60°):2.25  2.50  4.50  3.50  4.50  4.25  4.75  5.75  7.50  9.25  */
+var RTAB=[[2.5,1.25,2.25],[3,1.50,2.50],[3.5,2.50,4.50],[4,2.00,3.50],
+          [4.618,2.50,4.50],[5,2.50,4.25],[6,2.75,4.75],[7,3.25,5.75],
+          [8,4.25,7.50],[10,5.25,9.25]];
+function interpR(d,col){
+  d=Math.max(2.0,Math.min(12,d));
+  if(d<=RTAB[0][0]){ var t0=RTAB[0], t1=RTAB[1];
+    return t0[col]+(t1[col]-t0[col])*(d-t0[0])/(t1[0]-t0[0]); }
+  var L=RTAB.length;
+  if(d>=RTAB[L-1][0]){ var a0=RTAB[L-2], a1=RTAB[L-1];
+    return a0[col]+(a1[col]-a0[col])*(d-a0[0])/(a1[0]-a0[0]); }
+  for(var i=0;i<L-1;i++){
+    if(d>=RTAB[i][0]&&d<=RTAB[i+1][0]){
+      var p0=RTAB[i], p1=RTAB[i+1];
+      return p0[col]+(p1[col]-p0[col])*(d-p0[0])/(p1[0]-p0[0]);
+    }
+  }
+  return RTAB[0][col];
+}
+function rSafe(){ return interpR(P.d,1); }
+function rHard(){ return interpR(P.d,2); }
+// R_max 的安全上界由 d 决定（实测表插值）
+function rHint(){
+  var safe=rSafe(), hard=rHard();
+  var e=document.getElementById('hR3'); if(!e)return;
+  var col = P.Rmax>hard?'#ff5b7f' : (P.Rmax>safe?'#ffd84a':'#5d6f92');
+  var sw=P.Rmax/P.d;
+  e.innerHTML='螺旋陡度不变量 <b>R/d</b>：'+P.Rmax.toFixed(2)+'/'+P.d.toFixed(2)+
+    '=<b>'+sw.toFixed(2)+'</b>　·　本 d 下 安全 ≤<b>'+safe.toFixed(2)+
+    '</b>，崩解 ><b>'+hard.toFixed(2)+'</b>　·　'+
+    (P.Rmax>hard?'<b style="color:#ff5b7f">已崩解：底圈变竖直线</b>'
+     :(P.Rmax>safe?'<b style="color:#ffd84a">临界区：底圈明显陡化</b>'
+       :'<b style="color:#00c2ff">安全区：螺旋可读</b>'))+
+    '<br><span style="color:#4e5c7a">不变量 tan α=|ż|/(r·d) ⇒ 倾角只取决于 R/d；'+
+    'R 是纯后处理映射、不进方程，故 T、N、σ_θ 完全不受 R 影响</span>';
+  e.style.color=col;
+  var e4=document.getElementById('hR4'); if(!e4)return;
+  // 底孔可见性（390px 宽手机，球直径约 320px，底孔 r≈0.31 单位 → px）
+  var px=320*(0.31/P.Rmax)/1.5;
+  e4.innerHTML='底孔可视直径 ≈ <b>'+px.toFixed(0)+' px</b>'+
+    (px<9?'　<span style="color:#ff5b7f">过小，下端几近闭合</span>'
+     :(px<14?'　<span style="color:#ffd84a">偏小</span>':'　<span style="color:#00c2ff">清晰可见</span>'))+
+    '　·　推荐呼吸区间 <b>1 → '+safe.toFixed(2)+'</b>（本 d 的实测安全线）';
+}
+// 一键设为 0.9×安全线
+function recR(){
+  return Math.min(12,Math.round(rSafe()*0.9*100)/100);
+}
+function setSlider(id,v){
+  var s=document.getElementById(id); if(!s)return;
+  s.value=v;
+  s.dispatchEvent(new Event('input'));
+}
+function setR(v){ setSlider('sR',Math.max(1,Math.min(12,v)).toFixed(2)); }
+function setD(v){ setSlider('sD',Math.max(2,Math.min(12,v)).toFixed(3)); }
+// 高亮选中的预设按钮
+function markActive(ids,onId){
+  for(var k=0;k<ids.length;k++){
+    var el=document.getElementById(ids[k]); if(!el)continue;
+    el.className=(ids[k]===onId)?'gh on':'gh';
+  }
+}
+var RP_IDS=['rpb1','rpb2','rpb3','rpb4','rpb5'];
+function bindRP(id){
+  var b=document.getElementById(id); if(!b)return;
+  b.onclick=function(){
+    var v=parseFloat(b.getAttribute('data-rp'));
+    var rd=b.getAttribute('data-rd');
+    if(rd!==null&&rd!==undefined&&rd!==''){ setD(parseFloat(rd)); }
+    setR(v);
+    markActive(RP_IDS,id);
+    var h=document.getElementById('hR4'); if(h){
+      h.innerHTML='<b style="color:#7fd8ff">已应用：d='+(rd?rd:P.d.toFixed(2))+
+        '，呼吸峰值 R<sub>max</sub>='+v.toFixed(2)+'</b>（安全线 '+rSafe().toFixed(2)+'）';
+    }
+  };
+}
+for(var q1=0;q1<RP_IDS.length;q1++)bindRP(RP_IDS[q1]);
+var btnRec=document.getElementById('btnRecR');
+if(btnRec)btnRec.onclick=function(){
+  setR(recR());
+  markActive(RP_IDS,'');
+  var h=document.getElementById('hR4'); if(h){
+    h.innerHTML='<b style="color:#7fd8ff">已应用：R<sub>max</sub>='+recR().toFixed(2)+
+      '</b>（0.9× 当前 d='+P.d.toFixed(2)+' 的安全线 '+rSafe().toFixed(2)+'）';
+  }
+};
+
+// 呼吸周期：一个 z 循环 = T/SIMRATE = 6.283/8 = 0.7854 s 墙钟时间
+function btHint(){
+  var e=document.getElementById('hBT'); if(!e)return;
+  var cyc=P.BT/(2*Math.PI/SIMRATE);
+  var near=Math.abs(cyc-Math.round(cyc));
+  var golden=Math.abs(cyc-10.618)<0.35||Math.abs(cyc-6.854)<0.35;
+  e.innerHTML='呼吸周期 '+P.BT.toFixed(2)+' s ≈ <b>'+cyc.toFixed(2)+'</b> 个 z 循环'+
+    (golden?'　<b style="color:#ffd84a">★ 黄金比，呼吸不锁相</b>'
+     :(near<0.06?'　<span style="color:#ff5b7f">⚠ 接近整数循环 → 呼吸与螺旋锁相，每次呼吸长得一样</span>'
+       :'　<span style="color:#00c2ff">不锁相</span>'))+
+    '<br><span style="color:#4e5c7a">1 个 z 循环 = T/8 = '+(2*Math.PI/SIMRATE).toFixed(4)+
+    ' s；避开其整数倍，8.34 s ≈ 10.618 循环为黄金比最优</span>';
+}
+bind('sBT','vBT','BT',function(x){return x.toFixed(2)+' s'},btHint);
+var bps=document.querySelectorAll('[data-bt]');
+for(var bi=0;bi<bps.length;bi++){
+  bps[bi].onclick=function(e){
+    var v=parseFloat(e.target.getAttribute('data-bt'));
+    document.getElementById('sBT').value=v;
+    document.getElementById('sBT').dispatchEvent(new Event('input'));
+  };
+}
+var sD=bind('sD','vD','d',f2,function(){
+  var d=P.d, fr=d-Math.floor(d);
+  var off=fr*360; if(off>180)off=360-off;
+  var golden=Math.abs(fr-0.618034)<0.012;
+  var isInt=fr<0.035||fr>0.965;
+  var isHalf=Math.abs(fr-0.5)<0.035;
+  var tag, cls;
+  if(golden){tag='黄金角 137.5° → 永不闭合且铺得最均匀，球面覆盖率≈100%，看不到条带';cls='g';}
+  else if(isInt){tag='整数 → 每循环错开≈0°，准闭合（约 '+Math.round(d)+' 圈绕回原点），球面稀疏呈条带';cls='i';}
+  else if(isHalf){tag='半整数 → 每循环错开≈180°，两个循环后闭合，两组条带交错';cls='h';}
+  else {tag='无理 → 不闭合，持续进动，混沌弥散下球面饱满但疏密不均';cls='n';}
+  var bigD = d>=7.6;
+  var lockzone = d<=7.2;
+  var extra='';
+  if(lockzone && (isInt||Math.abs(fr)<0.06)){
+    extra='<br><b style="color:#00c2ff">锁相区（d≲7）：N 被锁定为整数，T=2π ⇒ 闭合</b>　σ_θ='+
+      ({3:'3.3',5:'12.5',6:'1.2',7:'7.7'})[Math.round(d)]+'°（越小越闭合）';
+  } else if(bigD){
+    extra='<br><b style="color:#ff5b7f">锁相失效（d≳8）：N=0.963·d 不再是整数 ⇒ 永不闭合</b>'+
+      '，σ_θ≈120°；与奇偶无关，是 T→6.049 造成的';
+  }
+  document.getElementById('hD').innerHTML=
+    '<b style="color:#7fd8ff">N = d = '+d.toFixed(3)+'</b> 圈 / 循环　·　'+
+    '每循环错开 <b style="color:'+(golden?'#ffd84a':'#7fd8ff')+'">'+
+    (fr*360>180?(360-fr*360):fr*360).toFixed(1)+'°</b>　·　'+tag+ extra +
+    '<br><span style="color:#4e5c7a">柱坐标下 dr/dt=(z−b)r、dθ/dt=d、ż 不含 d ⇒ d 只改绕速不改 (r,z) 投影；'+
+    '标准参数下 z 循环周期 T≈2π ⇒ N=d，故 frac(d) 就是每循环错开的比例</span>';
+  rHint();
+});
+bind('sS','vS','S',f2);
+bind('sB','vB','b',f3);
+bind('sE','vE','e',f3);
+bind('sC','vC','c',f3);
+bind('sA','vA','a',f3);
+bind('sF','vF','f',f3);
+function shapeHint(){
+  var hw=0.709*P.LAM;
+  var t = hw<0.60?'扁球（南瓜/M&M）' : (hw>0.95?'长球（橄榄球）' : '接近球');
+  document.getElementById('hL').innerHTML='高/宽 ≈ '+hw.toFixed(3)+' → '+t+
+    '　·　线性变换，孔径比严格守恒　·　球需 λ≈1.26';
+  var g=P.GAM, k, dir;
+  if(Math.abs(g)<0.02){k='≈0';dir='对称（纯椭球，无蛋形偏斜）';}
+  else{
+    k=(g>0?'−':'+')+Math.min(1,Math.abs(g)*1.4).toFixed(2);
+    dir = g>0? '下端胖、上端尖 → <b style="color:#ffd84a">经典蛋形（蛋尖朝上）</b>'
+             : '上端胖、下端尖 → 倒蛋形（蛋尖朝下）';
+  }
+  document.getElementById('hG').innerHTML='蛋形偏斜 k '+k+'　·　'+dir+
+    '　·　蛋形拟合残差 '+Math.min(9,0.84+Math.abs(g)*22).toFixed(2)+'%';
+}
+bind('sL','vL','LAM',f2,shapeHint);
+bind('sG','vG','GAM',f2,shapeHint);
+bind('sT','vT','TAU',function(x){return x.toFixed(3)},function(){
+  var e=document.getElementById('hT'); if(!e)return;
+  var t=P.TAU;
+  e.innerHTML = t<0.005
+    ? 'τ=0：两端保持敞开环（外围贴合球面最准，残差 1.6%）'
+    : (t<0.08
+      ? 'τ='+t.toFixed(3)+'：端面收成点，但收口太急 → 残差反而升高（~7%）'
+      : 'τ='+t.toFixed(3)+'：缓收口闭口 → 残差 '+Math.max(3.6,7.5-t*16).toFixed(1)+'%，换来真正的实心外形');
+});
+var shBtns=document.querySelectorAll('[data-sh]');
+for(var si=0;si<shBtns.length;si++){
+  shBtns[si].onclick=function(e){
+    var el=e.target; if(el.tagName!=='BUTTON')el=el.parentNode;
+    var v=(el.getAttribute('data-sh')||'1,0,0,1').split(',');
+    setSlider('sL',v[0]); setSlider('sG',v[1]);
+    setSlider('sT',(v[2]!==undefined?v[2]:0));
+    setSlider('sR',(v[3]!==undefined?v[3]:1));
+    /* data-eq = "b,e,c"：不动 λ/γ/τ，改用**方程参数**把吸引子本身养成那个形状 */
+    var eq=el.getAttribute('data-eq');
+    if(eq){ var q=eq.split(',');
+      if(q[0]) setSlider('sB',q[0]);
+      if(q[1]) setSlider('sE',q[1]);
+      if(q[2]) setSlider('sC',q[2]);
+    }
+    // 形状预设会改 R → 清掉 R 预设组的高亮，避免误导
+    markActive(RP_IDS,'');
+    var h4=document.getElementById('hR4'); if(h4){
+      h4.innerHTML='<b style="color:#7fd8ff">形状预设已应用</b>：λ='+P.LAM.toFixed(2)+
+        ' γ='+P.GAM.toFixed(2)+' τ='+P.TAU.toFixed(2)+' R='+P.Rmax.toFixed(2);
+    }
+  };
+}
+bind('sRS','vRS','RS',f2);
+bind('sEL','vEL','EL',function(x){return Math.round(x)+'°'});
+bind('sTR','vTR','TR',function(x){trailLen=Math.round(x);return String(trailLen)});
+bind('sLW','vLW','LW',function(x){return x.toFixed(1)});
+bind('sAL','vAL','AL',f2);
+
+var btnPlay=document.getElementById('play');
+btnPlay.onclick=function(){
+  playing=!playing;
+  btnPlay.textContent=playing?'⏸ 暂停':'▶ 播放';
+  btnPlay.className=playing?'on':'';
+};
+var btnB=document.getElementById('breath');
+btnB.onclick=function(){
+  breathing=!breathing;
+  btnB.className=breathing?'on':'';
+  if(!breathing){P.R=P.Rmax;}
+  document.getElementById('hR2').textContent=breathing
+    ? '呼吸模式：R 在 1 → '+P.Rmax.toFixed(2)+' → 1 之间循环'
+    : '固定模式：孔径比锁在 '+P.Rmax.toFixed(2)+' : 1';
+};
+document.getElementById('reset').onclick=function(){reset();};
+var _gb=document.getElementById('gifbtn');
+if(_gb)_gb.onclick=function(){ exportCycleGif(); };
+
+/* 打开即默认 d=5。Chrome 的**表单状态恢复**发生在脚本之后（实测同步设完又被写回上次的 7），
+   所以这里三管齐下：立即设一次 + pageshow 再设 + 200 ms 补一次。
+   要改回"记住上次的值"，把这三行删掉即可。 */
+function forceD5(){ setSlider('sD','5'); }
+forceD5();
+window.addEventListener('pageshow', forceD5);
+setTimeout(forceD5, 200);
+
+/* ---------- Anu 十丝 UI ---------- */
+function setAnuRigid(on){
+  ANU.rigid=!!on; AFITK=null;
+  var b1=document.getElementById('apb1'), b2=document.getElementById('apb2');
+  if(b1)b1.className='gh'+(on?' on':'');
+  if(b2)b2.className='gh'+(on?'':' on');
+  if(!on&&ANU.on)aWarm();
+  anuHint();
+}
+var ckAnu=document.getElementById('ckAnu');
+if(ckAnu)ckAnu.addEventListener('change',function(){
+  ANU.on=ckAnu.checked; AFITK=null;
+  if(ANU.on&&!ANU.rigid)aWarm();
+  anuHint();
+});
+bind('sAM','vAM','aMaj',function(x){return String(Math.round(x));},function(){
+  ANU.nMaj=Math.max(0,Math.min(10,Math.round(P.aMaj))); AFITK=null; anuHint();
+});
+bind('sAW','vAW','aWire',function(x){return String(Math.round(x));},function(){
+  ANU.nWire=Math.max(1,Math.min(10,Math.round(P.aWire)));
+  if(ANU.on&&!ANU.rigid)aWarmSoon();          /* 独立积分：初相位要跟着 360/N 重播 */
+  AFITK=null; anuHint();
+});
+/* 粗丝外膨 / 细丝内收：只改**渲染时**的半径缩放 ⇒ 不用重播、不用重积分、不碰方位角 */
+bind('sBO','vBO','aBo',function(x){return '+'+x.toFixed(1)+'%';},function(){
+  AFITK=null; if(ANU.on)anuHint();
+});
+bind('sBI','vBI','aBi',function(x){return '−'+x.toFixed(1)+'%';},function(){
+  AFITK=null; if(ANU.on)anuHint();
+});
+var _b1=document.getElementById('apb1'), _b2=document.getElementById('apb2');
+if(_b1)_b1.onclick=function(){setAnuRigid(true);};
+if(_b2)_b2.onclick=function(){setAnuRigid(false);};
+anuHint();
+
+/* ---------- 空气粒子 UI ---------- */
+var ckPart=document.getElementById('ckPart'), btnPart=document.getElementById('part');
+function setPart(on){
+  PART.on=!!on;
+  if(ckPart)ckPart.checked=PART.on;
+  if(btnPart)btnPart.className='gh'+(PART.on?' on':'');
+  if(PART.on){ partReset(); partPaint(); }
+  else {
+    var e=document.getElementById('pStat'); if(e)e.textContent='—';
+    var z=document.getElementById('zsrc'); if(z)z.classList.remove('on');
+    PART.slowUntil=0;                        /* 关粒子就结束慢放，免得再开时"延续" */
+    PART.acc=0;
+  }
+}
+if(ckPart)ckPart.addEventListener('change',function(){ setPart(ckPart.checked); });
+if(btnPart)btnPart.onclick=function(){ setPart(!PART.on); };
+bind('sPN','vPN','pn',function(x){return String(Math.round(x));},function(){
+  var v=Math.max(200,Math.min(2000,Math.round(P.pn)));
+  if(v===PART.n)return;
+  var old=PART.n; PART.n=v;
+  for(var i=old;i<v;i++) partSpawn(i);        /* 只补撒新增的，不打断已在流里的 */
+});
+bind('sPSpd','vPSpd','pspd',function(x){return '×'+x.toFixed(2);},function(){
+  PART.spd=Math.max(0.05,Math.min(2,P.pspd));
+  PART.acc=0;              /* 改倍率时清零头：否则从 0.05 拉到 2× 会先把欠的几步一口气补上 */
+  pspdHint();
+});
+bind('sPD','vPD','pd',function(x){return Math.round(x)+'%';},function(){
+  PART.dim=Math.max(0.05,Math.min(1,P.pd/100));
+});
+(function(){
+  var map={psBox:'box', psTop:'top', psBot:'bot'};
+  for(var id in map)(function(bid,val){
+    var b=document.getElementById(bid); if(!b)return;
+    b.onclick=function(){
+      PART.src=val;
+      for(var kk in map)document.getElementById(kk).classList.toggle('on',kk===bid);
+      var v=document.getElementById('vPS');
+      if(v)v.textContent = val==='top'?'上方环口':(val==='bot'?'底部环口':'全局撒入');
+      /* ★ 粒子没开时点注入位置 = 什么都不发生（这也是"点了没反应"的一大原因）
+         ⇒ 自动把粒子层打开，让这一次点击必定有画面反馈。 */
+      if(!PART.on){ setPart(true); }
+      partReset(true);        /* soft：不预热 —— 让粒子当下就聚在入口那一团 */
+      /* ★ 8 倍速下"从哪进"看不见（穿越注入区只要 0.4 s）⇒ 开 6 秒慢放 + 加速注入 */
+      if(PART.slowOn){
+        PART.slowUntil=performance.now()+PART.slowMs;
+        PART.boostUntil=PART.slowUntil;
+      }
+      partPaint();
+      var e=document.getElementById('pStat'); if(e)e.setAttribute('data-src',val);
+    };
+  })(id,map[id]);
+})();
+(function(){
+  var ck=document.getElementById('ckSlow');
+  if(ck)ck.addEventListener('change',function(){
+    PART.slowOn=ck.checked;
+    if(!PART.slowOn)PART.slowUntil=0;
+    var vs=document.getElementById('vSlow'); if(vs&&!ck.checked)vs.textContent='';
+  });
+})();
+
+var btnP=document.getElementById('togp');
+if(btnP)btnP.onclick=function(){
+  showProf=!showProf;
+  btnP.className=showProf?'gh on':'gh';
+  if(pcv)pcv.style.display=showProf?'':'none';
+  var pt=document.getElementById('proft'); if(pt)pt.style.display=showProf?'':'none';
+  if(showProf)drawProfile();
+};
+var panel=document.getElementById('panel'),btnTog=document.getElementById('tog');
+function setPanelOpen(on){
+  panel.classList.toggle('hide',!on);
+  btnTog.textContent=on?'参数 ▾':'参数 ▴';
+  btnTog.className='gh'+(on?' on':'');
+}
+btnTog.onclick=function(){
+  setPanelOpen(panel.classList.contains('hide'));
+  setTimeout(resize,60);
+};
+// 只绑定 d 预设：必须限定 [data-d]，不能用 '.presets button'
+// （那会连带命中 R 预设 / 呼吸周期 / 形状预设，把它们的 handler 覆盖掉）
+var ps=document.querySelectorAll('[data-d]');
+for(var i=0;i<ps.length;i++){
+  ps[i].onclick=function(e){
+    var el=e.target;
+    if(el.tagName!=='BUTTON')el=el.parentNode;   // 兼容点到内部 span
+    var rv=parseFloat(el.getAttribute('data-d'));
+    if(!isFinite(rv))return;
+    setD(rv);
+    markActive(DP_IDS,'');
+    var h=document.getElementById('hD'); if(h) h.innerHTML=h.innerHTML;
+  };
+}
+// d 预设高亮
+var DPMAP={'2.5':'dp1','3':'dp2','3.5':'dp3','4.618':'dp4','5':'dp5','6':'dp6','7':'dp7','8':'dp8','10.618':'dp9'};
+var DP_IDS=['dp1','dp2','dp3','dp4','dp5','dp6','dp7','dp8','dp9'];
+for(var dj=0;dj<ps.length;dj++){
+  (function(btn){
+    var key=btn.getAttribute('data-d');
+    var id=DPMAP[key]; if(!id)return;
+    btn.id=id;
+    var prev=btn.onclick;
+    btn.onclick=function(e){
+      prev(e); markActive(DP_IDS,id);
+    };
+  })(ps[dj]);
+}
+// 形状预设高亮
+var SH_IDS=['sh1','sh2','sh3','sh4','sh5','sh6'];
+(function(){
+  var all=document.querySelectorAll('[data-sh]');
+  for(var k=0;k<all.length&&k<SH_IDS.length;k++){
+    (function(btn,id){
+      btn.id=id;
+      var prev=btn.onclick;
+      btn.onclick=function(e){ prev(e); markActive(SH_IDS,id); };
+    })(all[k],SH_IDS[k]);
+  }
+})();
+// 呼吸周期预设高亮
+var BT_IDS=['bt1','bt2','bt3'];
+(function(){
+  var all=document.querySelectorAll('[data-bt]');
+  for(var k=0;k<all.length&&k<BT_IDS.length;k++){
+    (function(btn,id){
+      btn.id=id;
+      var prev=btn.onclick;
+      btn.onclick=function(e){ prev(e); markActive(BT_IDS,id); };
+    })(all[k],BT_IDS[k]);
+  }
+})();
+// Rmax 跟随滑块（呼吸时即为峰值，固定时即为孔径比）
+function rLabel(){
+  document.getElementById('hR2').textContent=breathing
+    ? '呼吸模式：R 在 1 → '+P.Rmax.toFixed(2)+' → 1 之间循环'
+    : '固定模式：孔径比锁在 '+P.Rmax.toFixed(2)+' : 1';
+}
+sR.addEventListener('input',function(){
+  P.Rmax=parseFloat(sR.value);
+  if(!breathing)P.R=P.Rmax;
+  rLabel(); rHint();
+});
+// 手动拖动滑块 → 清除对应预设组的高亮
+function clearOnManual(id, ids){
+  var s=document.getElementById(id); if(!s)return;
+  s.addEventListener('input',function(){ markActive(ids,''); });
+}
+clearOnManual('sR',RP_IDS);
+clearOnManual('sD',DP_IDS);
+clearOnManual('sL',SH_IDS);
+clearOnManual('sG',SH_IDS);
+clearOnManual('sT',SH_IDS);
+clearOnManual('sBT',BT_IDS);
+
+// 初始化所有提示文字（老师 2026-10-17：网页打开默认「3.25 配 d=7 梯度最强」= rpb3）
+// 直接走按钮的 onclick，保证与手动点击**完全同一条路径**（含 hR4 提示与按钮高亮）
+var _rp0=document.getElementById('rpb3');
+if(_rp0)_rp0.click(); else { setD(7); setR(3.25); markActive(RP_IDS,'rpb3'); }
+rLabel(); rHint(); btHint(); shapeHint();
+
+/* ================= 曲速引擎演算（Alcubierre 度规 × 吸引子轮廓） =================
+   公式分级：A = 本页数值验证；B = 文献；C = 工程类比（详见面板内公式卡）
+   度规 ds²=−dt²+(dz−βf·dt)²+dx²+dy²+ρ²dφ²（Alcubierre 1994 / Natário 2001）
+   f=F(ξ), ξ=ρ−R_w(z), F=½(1−tanh(ξ/Δ)), R_w=(PRO+PRI)/2·s, Δ=(PRO−PRI)/2·s
+   ρ_E=−(c⁴β²/32πG)F′²    E=−(c⁴β²/16G)∫∫F′²ρdρdz
+   θ=βF′R_w′              j_z=−(c³β/16πG)(F″+F′/ρ)
+   ∫j_z dV=−(c³β/8G)[ρF′]₀^∞=0（轴对称净动量恒等式）           */
+var WC={RP:100,BE:1};
+var C_LIGHT=299792458, G_N=6.6743e-11, M_SUN=1.98847e30, L_PLANCK=1.616255e-35;
+var C4G=C_LIGHT*C_LIGHT*C_LIGHT*C_LIGHT/G_N;   // J/m
+var C3G=C_LIGHT*C_LIGHT*C_LIGHT/G_N;           // kg/s
+var WSUP={'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','-':'⁻'};
+function wsup(s){var o='',i,c;for(i=0;i<s.length;i++){c=WSUP[s.charAt(i)];if(c!==undefined)o+=c;}return o;}
+function wfe(x,sig){
+  sig=sig||3;
+  if(!isFinite(x))return '—';
+  if(x===0)return '0';
+  var neg=x<0;x=Math.abs(x);
+  var e=Math.floor(Math.log(x)/Math.LN10);
+  var m=x/Math.pow(10,e);
+  if(m>=10){m/=10;e++;}
+  if(m<1){m*=10;e--;}
+  return (neg?'−':'')+m.toFixed(sig)+'×10'+wsup(String(e));
+}
+function wcl(v,a,b){return v<a?a:(v>b?b:v);}
+function wGeo(Reff,lam,gam,tau){
+  var logR=Math.log(1/Reff),z=[],rw=[],dh=[],i,n=PZ.length;
+  for(i=0;i<n;i++){
+    var u=wcl((PZ[i]-PZlo)/PZspan,0,1);
+    var s=Math.exp(logR*(1-smooth(u)));
+    if(tau>1e-6){
+      if(u<tau)s*=Math.sqrt(Math.max(0,1-Math.pow((tau-u)/tau,2)));
+      else if(u>1-tau)s*=Math.sqrt(Math.max(0,1-Math.pow((u-(1-tau))/tau,2)));
+    }
+    var u0=wcl((PZ[i]-PZc)/PHa,-1,1);
+    z.push(PZc+PHa*lam*(u0+gam*u0*u0));
+    rw.push((PRO[i]+PRI[i])/2*s);
+    dh.push((PRO[i]-PRI[i])/2*s);
+  }
+  return{z:z,rw:rw,dh:dh};
+}
+function wDerivs(z,rw){
+  var n=z.length,d1=[],d2=[],i;
+  for(i=0;i<n;i++){
+    var i0=Math.max(0,Math.min(n-3,i-1));
+    var z0=z[i0],z1=z[i0+1],z2=z[i0+2],r0=rw[i0],r1=rw[i0+1],r2=rw[i0+2];
+    var a0=(2*z[i]-z1-z2)/((z0-z1)*(z0-z2));
+    var a1=(2*z[i]-z0-z2)/((z1-z0)*(z1-z2));
+    var a2=(2*z[i]-z0-z1)/((z2-z0)*(z2-z1));
+    var b0=2/((z0-z1)*(z0-z2));
+    var b1=2/((z1-z0)*(z1-z2));
+    var b2=2/((z2-z0)*(z2-z1));
+    d1[i]=a0*r0+a1*r1+a2*r2;
+    d2[i]=b0*r0+b1*r1+b2*r2;
+  }
+  return{d1:d1,d2:d2};
+}
+function warpCalc(){
+  var Reff=P.R*CAL, g=wGeo(Reff,P.LAM,P.GAM,P.TAU);
+  var n=PZ.length, i, k;
+  var rwmax=0, dhmax=0;
+  for(i=0;i<n;i++){if(g.rw[i]>rwmax)rwmax=g.rw[i];if(g.dh[i]>dhmax)dhmax=g.dh[i];}
+  var sc=WC.RP/rwmax;
+  var zm=[],rwm=[],dhm=[],dfloor=0.01*dhmax*sc,rfloor=1e-4*WC.RP;
+  for(i=0;i<n;i++){
+    zm.push(g.z[i]*sc);
+    rwm.push(Math.max(g.rw[i]*sc,rfloor));
+    dhm.push(Math.max(g.dh[i]*sc,dfloor));
+  }
+  var d1=wDerivs(zm,rwm).d1, beta=WC.BE;
+  var NXI=161, E=0,Ef=0,Er=0,Pz=0;
+  var zsplit=(zm[0]+zm[n-1])/2;
+  var thF=0,thR=0,rhoF=0,rhoR=0,dhF=1e30,dhR=1e30,jzF=0,jzR=0;
+  var kE=C4G*beta*beta/(32*Math.PI), kJ=C3G*beta/(16*Math.PI);
+  for(i=0;i<n-1;i++){
+    var dz=zm[i+1]-zm[i]; if(dz<=0)continue;
+    var zc=(zm[i]+zm[i+1])/2, rc=(rwm[i]+rwm[i+1])/2, dc=(dhm[i]+dhm[i+1])/2;
+    var r1=(d1[i]+d1[i+1])/2, front=zc>zsplit;
+    var thpk=beta*Math.abs(r1)/(2*dc), rhopk=kE/(4*dc*dc);
+    if(front){
+      if(thpk>thF)thF=thpk; if(rhopk>rhoF)rhoF=rhopk; if(dc<dhF)dhF=dc;
+    }else{
+      if(thpk>thR)thR=thpk; if(rhopk>rhoR)rhoR=rhopk; if(dc<dhR)dhR=dc;
+    }
+    var dxi=16*dc/NXI;
+    for(k=0;k<NXI;k++){
+      var xi=-8*dc+(k+0.5)*dxi, t=xi/dc;
+      var sech2=1/(Math.cosh(t)*Math.cosh(t));
+      var Fp=-sech2/(2*dc);
+      var Fpp=sech2*Math.tanh(t)/(dc*dc);
+      var rho=rc+xi;
+      if(rho<1e-9)continue;
+      var dE=-kE*Fp*Fp*rho*dxi*dz*2*Math.PI;
+      E+=dE; if(front)Ef+=dE; else Er+=dE;
+      var jz=-kJ*(Fpp+Fp/rho), aj=jz<0?-jz:jz;
+      if(front){if(aj>jzF)jzF=aj;}else{if(aj>jzR)jzR=aj;}
+      Pz+=jz*rho*dxi*dz*2*Math.PI;
+    }
+  }
+  return{Reff:Reff,sc:sc,dhF:dhF,dhR:dhR,dhmax:dhmax*sc,E:E,Ef:Ef,Er:Er,
+    M:E/(C_LIGHT*C_LIGHT),Pz:Pz,thF:thF,thR:thR,rhoF:rhoF,rhoR:rhoR,jzF:jzF,jzR:jzR};
+}
+function warpRender(r){
+  var o=document.getElementById('wout'); if(!o)return;
+  var h='';
+  h+='<div class="wt">几何映射（轮廓 → 泡壁）</div>';
+  h+='<div class="wr"><span class="k">等效孔径比 Reff = R×CAL</span><span class="v">'+r.Reff.toFixed(3)+'</span></div>';
+  h+='<div class="wr"><span class="k">尺度 sc（米 / 抽象单位）</span><span class="v">'+r.sc.toFixed(1)+' m</span></div>';
+  h+='<div class="wr"><span class="k">泡壁厚度 Δ（上最薄 / 下最薄 / 最大）</span><span class="v">'+r.dhF.toFixed(1)+' / '+r.dhR.toFixed(1)+' / '+r.dhmax.toFixed(1)+' m</span></div>';
+  h+='<div class="wt">时空梯度差（York 时 θ，s⁻¹）</div>';
+  h+='<div class="wr"><span class="k">前端（z+，收缩）峰</span><span class="v pos">−'+wfe(r.thF,3)+'</span></div>';
+  h+='<div class="wr"><span class="k">后端（z−，扩张）峰</span><span class="v pos">+'+wfe(r.thR,3)+'</span></div>';
+  h+='<div class="wr"><span class="k">前后梯度差（后端 − 前端）</span><span class="v pos">'+(r.thR-r.thF<0?'−':'+')+wfe(Math.abs(r.thR-r.thF),3)+'</span></div>';
+  h+='<div class="sub">前端收缩、后端扩张：船前方空间被压扁、后方被拉伸，泡「坐」在这条梯度上整体前移。</div>';
+  h+='<div class="wt">能量密度 ρ_E（恒负 ⇒ 奇异物质）</div>';
+  h+='<div class="wr"><span class="k">前端峰</span><span class="v neg">'+wfe(-r.rhoF,3)+' J/m³</span></div>';
+  h+='<div class="wr"><span class="k">后端峰</span><span class="v neg">'+wfe(-r.rhoR,3)+' J/m³</span></div>';
+  h+='<div class="wt">总能量（全空间积分）</div>';
+  h+='<div class="wr"><span class="k">E 前端 / 后端</span><span class="v neg">'+wfe(r.Ef,3)+' / '+wfe(r.Er,3)+' J</span></div>';
+  h+='<div class="wr"><span class="k">E 合计</span><span class="v neg">'+wfe(r.E,3)+' J</span></div>';
+  h+='<div class="wr"><span class="k">等价质量 E/c²</span><span class="v neg">'+wfe(r.M,3)+' kg = '+wfe(r.M/M_SUN,3)+' M☉</span></div>';
+  h+='<div class="wt">动量（推进判据）</div>';
+  h+='<div class="wr"><span class="k">净动量 P_z（恒等式 ≡ 0）</span><span class="v">'+wfe(r.Pz,2)+' kg·m/s</span></div>';
+  h+='<div class="wr"><span class="k">数值残差 / (E/c)</span><span class="v">'+wfe(Math.abs(r.Pz/(r.E/C_LIGHT)),2)+'</span></div>';
+  h+='<div class="wr"><span class="k">局域 j_z 峰（前端 / 后端）</span><span class="v">'+wfe(r.jzF,2)+' / '+wfe(r.jzR,2)+' kg/(m²·s)</span></div>';
+  h+='<div class="sub">轴对称恒等式 ∫j_z dV=−(c³β/8G)[ρF′]₀^∞=0 精确成立 ⇒ <b style="color:#ffd84a">曲速泡本身净动量为零、不产生推力</b>；加减速 / 转向必须靠额外辐射或物质喷射（Bobrick–Martire 2021；Bondi–Sachs 转向定律）。</div>';
+  if(WC.BE<2){
+    var gam=1/Math.sqrt(1-WC.BE*WC.BE/4);
+    h+='<div class="wt">泡壁时钟</div>';
+    h+='<div class="wr"><span class="k">壁上变慢因子 γ=1/√(1−β²/4)</span><span class="v pos">'+gam.toFixed(3)+'</span></div>';
+  }else{
+    h+='<div class="wt">泡壁视界</div>';
+    h+='<div class="wr"><span class="k">β ≥ 2</span><span class="v warn">壁上光子无法逃出（Finazzi 2009：视界量子不稳定）</span></div>';
+  }
+  h+='<div class="wt">量子不等式 / 球形薄壁参照</div>';
+  var dhmin=Math.min(r.dhF,r.dhR);
+  var Esph=-C4G*WC.BE*WC.BE*WC.RP*WC.RP/(24*dhmin);
+  h+='<div class="wr"><span class="k">同尺寸球形薄壁（Δ=最薄壁）</span><span class="v neg">'+wfe(Esph,3)+' J = '+wfe(Esph/C_LIGHT/C_LIGHT/M_SUN,3)+' M☉</span></div>';
+  h+='<div class="wr"><span class="k">最薄壁 / 普朗克长度</span><span class="v">'+wfe(dhmin/L_PLANCK,2)+' l_P</span></div>';
+  h+='<div class="sub">Pfenning–Ford 1997：量子不等式要求壁厚压到数百 l_P；van den Broeck 1999 可把总能量压到约 1 M☉。本页算例与球形标度 E=−(c⁴/G)β²R²/(24Δ) 同量级。</div>';
+  o.innerHTML=h;
+}
+function warpUpd(){warpRender(warpCalc());}
+function warpBind(id,pid,key,fmt){
+  var s=document.getElementById(id),v=document.getElementById(pid);
+  if(!s)return;
+  function upd(){
+    WC[key]=parseFloat(s.value);
+    if(v)v.textContent=fmt(WC[key]);
+    warpUpd();
+  }
+  s.addEventListener('input',upd); upd();
+}
+warpBind('sRP','vRP','RP',function(x){return x.toFixed(0)+' m'});
+warpBind('sBE','vBE','BE',function(x){return x.toFixed(2)});
+// 形状参数（R/λ/γ/τ）直接改泡壁几何 → 挂到既有滑块；d 与方程参数不改 (r,z) 投影，不挂
+var WHK=['sR','sL','sG','sT'];
+for(var wi=0;wi<WHK.length;wi++){
+  (function(id){
+    var s=document.getElementById(id); if(!s)return;
+    s.addEventListener('input',warpUpd);
+  })(WHK[wi]);
+}
+var wpb1=document.getElementById('wpb1'),wpb2=document.getElementById('wpb2');
+if(wpb1)wpb1.onclick=function(){
+  setSlider('sT','0.15');
+  wpb1.className='gh on'; if(wpb2)wpb2.className='gh';
+};
+if(wpb2)wpb2.onclick=function(){
+  setSlider('sT','0');
+  wpb2.className='gh on'; if(wpb1)wpb1.className='gh';
+};
+// 呼吸时壁厚实时调制 → 每 4 帧重算（暂停或关闭呼吸时 P.R 不变，不重算）
+var wfc=0;
+function warpLoop(){
+  wfc++;
+  if(wfc%4===0&&breathing&&playing)warpUpd();
+  requestAnimationFrame(warpLoop);
+}
+requestAnimationFrame(warpLoop);
+// 呼吸开关会立刻改写 P.R（关闭时锁到 Rmax）→ 补一次刷新，否则面板停在旧呼吸相位
+var wbb=document.getElementById('breath');
+if(wbb)wbb.addEventListener('click',function(){warpUpd();});
+
+/* ==================================================================
+ * 浮窗通用助手：拖动 + 收起（#panel 参数窗 / #wres 结果窗共用）
+ *   · 按住把手拖动；首次拖动把 CSS 锚点（right/top）换算成 left/top
+ *   · 每步夹在视口内（8px 边距），窗口缩放后跟着夹一次
+ *   · 把手内的 button 不触发拖动；拖动之后的那一次 click 被抑制
+ *     （否则「拖一下」会被顺手当成「点标题栏折叠」）
+ * ================================================================== */
+
+/* 右下角「改大小」把手（老师 2026-10-15：结果窗太小 ⇒ 框大小要可调）
+   · 起拖时把当前量到的尺寸写成内联 width/height，之后逐点跟随；
+   · 只动右下角：左/上边（left/top）与浮窗尺寸都按「不许出屏」夹紧，最小 220×110；
+   · 起拖即标 userH ⇒ fitWres 改用「视口下沿 − 8px」当上界（要更大就给他，别出屏）；
+   · 双击把手复位：清内联尺寸与标记，交回 CSS。 */
+function bindResize(el,opt){
+  if(!el)return;
+  opt=opt||{};
+  var minW=opt.minW||220,minH=opt.minH||110;
+  var g=document.createElement('div');
+  g.className='frz';g.title='拖动此处调整窗口大小 · 双击复位';
+  g.setAttribute('aria-label','调整窗口大小');
+  el.appendChild(g);
+  var rz=null;
+  g.addEventListener('pointerdown',function(e){
+    var r=el.getBoundingClientRect();
+    el.style.width=Math.round(r.width)+'px';
+    el.style.height=Math.round(r.height)+'px';
+    el.style.maxHeight='none';
+    el.dataset.userH='1';
+    rz={x:e.clientX,y:e.clientY,w:r.width,h:r.height,l:r.left,t:r.top,id:e.pointerId};
+    g.classList.add('act');
+    try{g.setPointerCapture(e.pointerId);}catch(_){}
+    e.preventDefault();e.stopPropagation();
+  });
+  g.addEventListener('pointermove',function(e){
+    if(!rz||e.pointerId!==rz.id)return;
+    var w=Math.max(minW,Math.min(window.innerWidth-8-rz.l,rz.w+(e.clientX-rz.x)));
+    var h=Math.max(minH,Math.min(window.innerHeight-8-rz.t,rz.h+(e.clientY-rz.y)));
+    el.style.width=Math.round(w)+'px';el.style.height=Math.round(h)+'px';
+    if(opt.onSize)opt.onSize();
+  });
+  function up(){if(!rz)return;try{g.releasePointerCapture(rz.id);}catch(_){}
+    rz=null;g.classList.remove('act');if(opt.onSize)opt.onSize();}
+  g.addEventListener('pointerup',up);
+  g.addEventListener('pointercancel',up);
+  g.addEventListener('dblclick',function(e){
+    e.preventDefault();e.stopPropagation();
+    el.style.width='';el.style.height='';el.style.maxHeight='';
+    delete el.dataset.userH;
+    if(opt.onSize)opt.onSize();
+  });
+}
+
+function bindFloat(el,hd,opt){
+  if(!el||!hd)return;
+  opt=opt||{};
+  var drag=null,moved=false;
+  function clampPos(L,T){
+    var w=el.offsetWidth||300,h=el.offsetHeight||200;
+    var maxL=Math.max(8,window.innerWidth-w-8),maxT=Math.max(8,window.innerHeight-h-8);
+    return {L:Math.max(8,Math.min(maxL,L)),T:Math.max(8,Math.min(maxT,T))};
+  }
+  hd.addEventListener('pointerdown',function(e){
+    if(e.target.closest&&e.target.closest('button'))return;
+    var r=el.getBoundingClientRect();
+    el.style.left=r.left+'px';el.style.top=r.top+'px';el.style.right='auto';
+    drag={x:e.clientX,y:e.clientY,l:r.left,t:r.top,id:e.pointerId};moved=false;
+    hd.classList.add('grabbing');
+    try{hd.setPointerCapture(e.pointerId);}catch(_){}
+    e.preventDefault();
+  });
+  hd.addEventListener('pointermove',function(e){
+    if(!drag||e.pointerId!==drag.id)return;
+    var dx=e.clientX-drag.x,dy=e.clientY-drag.y;
+    if(Math.abs(dx)+Math.abs(dy)>4)moved=true;
+    var p=clampPos(drag.l+dx,drag.t+dy);
+    el.style.left=p.L+'px';el.style.top=p.T+'px';
+  });
+  function up(){if(!drag)return;try{hd.releasePointerCapture(drag.id);}catch(_){}drag=null;hd.classList.remove('grabbing');}
+  hd.addEventListener('pointerup',up);
+  hd.addEventListener('pointercancel',up);
+  window.addEventListener('resize',function(){
+    if(!el.style.left)return;
+    var p=clampPos(parseFloat(el.style.left)||0,parseFloat(el.style.top)||0);
+    el.style.left=p.L+'px';el.style.top=p.T+'px';
+  });
+  if(opt.toggle){
+    hd.addEventListener('click',function(e){
+      if(e.target.closest&&e.target.closest('button'))return;
+      if(moved){moved=false;return;}
+      el.classList.toggle('off');
+      if(opt.tg)opt.tg.textContent=el.classList.contains('off')?'▸':'▾';
+    });
+  }
+  if(opt.resize)bindResize(el,opt);      /* 右下角把手：拖它改宽高、双击复位 */
+}
+bindFloat(panel,document.getElementById('panelHead'));
+bindFloat(document.getElementById('wres'),document.getElementById('wresH'),
+  {toggle:true,tg:document.getElementById('wresTg'),
+   resize:true,onSize:function(){fitWres();}});
+
+/* 结果窗尺寸兜底：用户手调过（userH）⇒ 只保证右下角不出屏（要更大就给他）；
+   没手调过则沿用 CSS 的 calc(100vh − 390px)，给底部 #proft/#prof 留位。 */
+function fitWres(){
+  var w=document.getElementById('wres');
+  if(!w||w.dataset.userH!=='1'||w.classList.contains('off'))return;
+  w.style.maxHeight=Math.max(110,Math.round(window.innerHeight-8-w.getBoundingClientRect().top))+'px';
+}
+window.addEventListener('resize',fitWres);
+window.__fitWres=fitWres;
+
+/* ---------- Anu 十丝 · 探针接口（供真浏览器回归断言取真实数值） ---------- */
+window.__az={
+  ANU:ANU, aSt:aSt, aCount:aCount, aPt:aPt, aWarm:aWarm, aReset:aReset, anuStat:anuStat,
+  mkTP:mkTP, trPt:trPt, thinCh:thinCh, hsl2rgb:hsl2rgb,
+  thinHue:function(w,N,maj){ return thinHue(w,N,maj); },
+  gap:function(){ return [THIN_GAP0,THIN_GAP1]; },
+  /* 十丝同步推进 n 步（与 aWarm 同口径，遍历全部 ANW 槽位），供探针做长时程定理断言 */
+  aAdvance:function(n){
+    for(var i=0;i<n;i++) for(var k=0;k<ANW;k++) stepS(aSt[k]);
+    return anuStat();
+  },
+  setAnu:function(on,rigid){
+    var c=document.getElementById('ckAnu'); if(c)c.checked=!!on;
+    ANU.on=!!on;
+    if(rigid!==undefined)setAnuRigid(rigid);
+    else{ AFITK=null; if(ANU.on&&!ANU.rigid)aWarm(); anuHint(); }
+  },
+  setWire:function(n,maj){
+    ANU.nWire=Math.max(1,Math.min(10,n|0));
+    if(maj!==undefined)ANU.nMaj=Math.max(0,Math.min(10,maj|0));
+    if(ANU.on&&!ANU.rigid)aWarm();            /* 独立积分：改 N 必须重播（同步版，供探针确定复现） */
+    AFITK=null; anuHint();
+  },
+  /* 粗丝外膨 / 细丝内收：走**真 UI 路径**（写滑块 + 派发 input），不绕过 bind */
+  setRad:function(bo,bi){
+    function setv(id,v){ var e=document.getElementById(id); if(!e)return false;
+      e.value=String(v); e.dispatchEvent(new Event('input',{bubbles:true})); return true; }
+    if(bo!==undefined)setv('sBO',bo);
+    if(bi!==undefined)setv('sBI',bi);
+    return {bo:P.aBo, bi:P.aBi};
+  },
+  aRadScale:aRadScale,
+  aRadAvg:function(){ return aRavg.slice(); },
+  /* 十丝防过曝系数（可读写，便于定量找「更亮 vs 糊白」的边界） */
+  anuAlpha:function(){ return ANU_ALPHA; },
+  setAnuAlpha:function(v){ if(isFinite(v)&&v>0&&v<=1)ANU_ALPHA=v; return ANU_ALPHA; },
+  majAlpha:function(){ return ANU_MAJ_ALPHA; },
+  setMajAlpha:function(v){ if(isFinite(v)&&v>0&&v<=1)ANU_MAJ_ALPHA=v; AFITK=null; return ANU_MAJ_ALPHA; },
+  anuDrawN:function(){ return anuDrawN; },
+
+  /* ---------- 空气粒子（示踪散点）探针接口 ---------- */
+  PART:PART,
+  partOn:function(){ return PART.on; },
+  trailDim:function(){ return trailDim(); },
+  setPartDim:function(v){ var e=document.getElementById('sPD');
+    if(e&&v!==undefined){ e.value=String(v); e.dispatchEvent(new Event('input',{bubbles:true})); }
+    return PART.dim; },
+  setPart:function(on){ setPart(on); return PART.on; },
+  partReset:partReset,
+  partStats:partStats,
+  partW:function(){ return Array.prototype.slice.call(pW, 0, PART.n); },
+  partPos:function(i){ return [pX[i],pY[i],pZ[i],pW[i]]; },
+  partSrcCount:partSrcCount,
+  partAge:function(i){ return pAge[i]; },
+  partSrcBox:function(){ return SRCBOX[PART.src] || null; },
+  srcBoxDraws:function(){ return srcBoxDraws; },
+  /* 只撒不预热：供探针准确地量"注入范围"（warm 会把粒子带走，量不到初始区） */
+  partSpawnOne:function(i){ partSpawn(i); return [pX[i],pY[i],pZ[i]]; },
+  /* 同步推进 n 步（不依赖 rAF），供探针做确定性断言 */
+  partAdvance:function(n){ partStepAll(n); return partStats(); },
+  /* ---------- 粒子速度倍率（第 35 轮） ---------- */
+  partSpeed:function(){ return PART.spd; },
+  setPartSpeed:function(v){ var e=document.getElementById('sPSpd');
+    if(e&&v!==undefined){ e.value=String(v); e.dispatchEvent(new Event('input',{bubbles:true})); }
+    return PART.spd; },
+  /* 帧步数算式本身也暴露：探针可换算"给定 nsteps/spd 时应走几步"，
+     再与 age 实测增量对照 —— 两路独立，才对得上 */
+  partRate:function(nsteps, now){ return partRate(nsteps, now===undefined?performance.now():now); },
+  partAcc:function(){ return PART.acc; },
+  refit:function(){ FITK=null; AFITK=null; },
+  buf:function(){ return {bx:bufX,by:bufY,n:anuDrawN}; },
+  nScan:function(){ return Math.min(count,trailLen); },
+  view:function(){ return {az:az,EL:P.EL,zlo:zlo,zhi:zhi,R:P.R,Rmax:P.Rmax,d:P.d,LAM:P.LAM,GAM:P.GAM,
+    TAU:P.TAU,S:P.S,CAL:CAL,nMaj:ANU.nMaj,nWire:ANU.nWire,
+    aBo:P.aBo,aBi:P.aBi,rigid:ANU.rigid,on:ANU.on,AL:P.AL,LW:P.LW,
+    z:VIEW.z, ox:VIEW.ox, oy:VIEW.oy, W:W, H:H,
+    fitK:(ANU.on?AFITK:FITK), fitX:(ANU.on?AFITX:FITX), fitY:(ANU.on?AFITY:FITY),
+    majRGB:ANU_MAJ_RGB,majAlpha:ANU_MAJ_ALPHA}; },
+  /* ---------- 缩放 / 平移探针接口 ---------- */
+  VIEW:VIEW,
+  /* 世界点 → 画布像素：与 draw()/drawAnu() 里的屏幕变换逐字一致，供探针独立核对锚点 */
+  proj:function(X,Y,Z){
+    var tp=mkTP(), o=[0,0,0,0], K, FX, FY;
+    trPt(tp,X,Y,Z,o);
+    if(ANU.on){ var fk=(AFITK===null?1:AFITK); K=fk*P.S*VIEW.z; FX=(AFITK===null?0:AFITX); FY=(AFITK===null?0:AFITY); }
+    else      { var k2=(FITK===null?1:FITK);   K=k2*P.S*VIEW.z; FX=(FITK===null?0:FITX);   FY=(FITK===null?0:FITY); }
+    return [W/2+VIEW.ox+(o[0]-FX)*K, H/2+VIEW.oy+(o[1]-FY)*K];
+  },
+  zoom:function(){ return {z:VIEW.z, ox:VIEW.ox, oy:VIEW.oy}; },
+  zoomAt:function(spx,spy,r){ return zoomAt(spx,spy,r); },
+  setZoom:function(z){ if(!(z>0))return VIEW.z; return zoomAt(W/2,H/2,z/VIEW.z); },
+  viewReset:viewReset,
+  setPlaying:function(v){ if(v!==undefined){playing=!!v;
+      var b=document.getElementById('play'); if(b){b.textContent=playing?'⏸ 暂停':'▶ 播放';b.className=playing?'on':'';} }
+    return playing; },
+  noAnu:function(){ return {bufX:bufX,bufY:bufY}; }
+};
+var pcBtn=document.getElementById('panelClose');
+if(pcBtn)pcBtn.onclick=function(){setPanelOpen(false);};
+setPanelOpen(true);                       /* 同步「参数 ▾」按钮态 */
+/* 窄屏（<820px）：参数窗 364 + 结果窗 272 > 屏宽 ⇒ 同开必重叠。
+   默认参数窗收起（顶栏「参数 ▴」一点即开）、结果窗折叠（点标题栏展开），
+   桌面宽屏两者默认全开、互不重叠（364+272+间距 < 820）。 */
+if(window.innerWidth<820){
+  setPanelOpen(false);
+  var wresEl=document.getElementById('wres');
+  if(wresEl){
+    wresEl.classList.add('off');
+    var wtg=document.getElementById('wresTg'); if(wtg)wtg.textContent='▸';
+  }
+}
+
+/* ---------- 3D 视角：鼠标 / 触摸拖动 ----------
+   横拖 = 方位角 az（松手 2.5 s 后恢复自转 RS）；竖拖 = 俯仰角 P.EL（0..90°，与滑块 sEL 联动）；
+   滚轮 = 缩放（锚点 = 光标位置，对准哪放大哪）；中键拖动 = 平移；
+   双击 = 复位（az=0 / EL=72° / 缩放 1.00× / 平移 0）。
+   只写回 az、P.EL、VIEW 这几个量，不另存视角副本、不碰任何物理参数。
+   指针事件 + setPointerCapture ⇒ 拖出画布外不丢手势；touch-action:none ⇒ 手机拖动不滚页。 */
+var lastDragT=-1e9;
+
+function updZoomHud(){
+  var e=document.getElementById('hZ');
+  if(e) e.textContent=VIEW.z.toFixed(2)+'×';
+}
+/** 以画布内像素点 (spx,spy) 为锚缩放 r 倍；返回缩放后的倍率。
+ *  screen = C + O + (g−F)·K ，要让锚点屏幕位置不变 ⇒ O' = (sp−C)(1−r) + O·r。 */
+function zoomAt(spx,spy,r){
+  if(!(r>0)||!isFinite(r)) return VIEW.z;
+  var z2=VIEW.z*r;
+  if(z2<VIEW.min)z2=VIEW.min;
+  if(z2>VIEW.max)z2=VIEW.max;
+  var eff=z2/VIEW.z;
+  if(Math.abs(eff-1)<1e-9){ updZoomHud(); return VIEW.z; }
+  var px=spx-W/2, py=spy-H/2;
+  VIEW.ox=px*(1-eff)+VIEW.ox*eff;
+  VIEW.oy=py*(1-eff)+VIEW.oy*eff;
+  VIEW.z=z2;
+  clampPan();
+  updZoomHud();
+  return VIEW.z;
+}
+/** 平移限幅：只保证"图形不会被推到完全看不见"，不牺牲锚点精度。
+ *  图形屏幕半展布 ≈ 0.45·W·z，所以允许的偏移必须**随倍率一起长** ——
+ *  若写死 0.95W，在光标贴近画面边缘、倍率又大时，锚点会因为被截断而滑动（实测 z=16 时会滑上千 px）。
+ *  取 |O| ≤ W(0.45z + 0.45)：z=1 时 ≈0.9W（与旧值同量级），z=16 时 ≈7.65W（此时图形也正好 16 倍大）。 */
+function clampPan(){
+  var lx=W*(0.45*VIEW.z+0.45), ly=H*(0.45*VIEW.z+0.45);
+  if(VIEW.ox>lx)VIEW.ox=lx; if(VIEW.ox<-lx)VIEW.ox=-lx;
+  if(VIEW.oy>ly)VIEW.oy=ly; if(VIEW.oy<-ly)VIEW.oy=-ly;
+}
+function viewReset(){ VIEW.z=1; VIEW.ox=0; VIEW.oy=0; updZoomHud(); return VIEW; }
+
+(function(){
+  var cvl=document.getElementById('cv');
+  if(!cvl)return;
+  var dg=null;
+  function hold(){lastDragT=performance.now();}
+  cvl.addEventListener('pointerdown',function(e){
+    if(e.button===1){                                   /* 中键：按下即拖 = 平移（preventDefault 挡掉自动滚动） */
+      e.preventDefault();
+      dg={x:e.clientX,y:e.clientY,id:e.pointerId,mode:'pan'};
+      try{cvl.setPointerCapture(e.pointerId);}catch(_){}
+      cvl.classList.add('dragging','panning'); hold(); return;
+    }
+    if(e.button!==undefined&&e.button!==0)return;      /* 只认左键 / 触摸 / 触笔 */
+    dg={x:e.clientX,y:e.clientY,id:e.pointerId,mode:'rot'};
+    try{cvl.setPointerCapture(e.pointerId);}catch(_){}
+    cvl.classList.add('dragging'); hold();
+  });
+  cvl.addEventListener('pointermove',function(e){
+    if(!dg||e.pointerId!==dg.id)return;
+    var dx=e.clientX-dg.x, dy=e.clientY-dg.y;
+    if(Math.abs(dx)<2&&Math.abs(dy)<2)return;          /* 2px 死区：防手抖误转 */
+    dg.x=e.clientX; dg.y=e.clientY; hold();
+    if(dg.mode==='pan'){                               /* 中键拖动：整幅平移，1px 跟 1px */
+      VIEW.ox+=dx; VIEW.oy+=dy; clampPan(); return;
+    }
+    az-=dx*0.005;                                      /* ≈0.29°/px，抓住画面转 */
+    var el2=P.EL+dy*0.22;                              /* ≈0.22°/px，竖拖下俯角增大 */
+    if(el2<0)el2=0; if(el2>90)el2=90;
+    if(el2!==P.EL){
+      P.EL=el2;
+      /* 拖动中不派发 input（滑块 step=1 会把浮点俯角取整回弹 ⇒ 每帧丢 0.5°，
+         慢拖累积漂移可达 1°/次）。改为直接写滑块与标签，保持亚度精度。 */
+      var sl=document.getElementById('sEL'); if(sl)sl.value=el2;
+      var vl=document.getElementById('vEL'); if(vl)vl.textContent=Math.round(el2)+'°';
+    }  });
+  function end(){ if(!dg)return;
+    try{cvl.releasePointerCapture(dg.id);}catch(_){}
+    dg=null; cvl.classList.remove('dragging','panning');
+  }
+  cvl.addEventListener('pointerup',end);
+  cvl.addEventListener('pointercancel',end);
+  cvl.addEventListener('auxclick',function(e){ if(e.button===1)e.preventDefault(); });
+
+  /* 滚轮缩放。deltaMode：0=像素(Chrome/Edge) 1=行(Firefox) 2=页 ⇒ 先归一到像素再取指数，
+     这样各家鼠标"一格"的手感一致。上限 2.2×/次，避免离奇触控板惯性把画面甩飞。 */
+  cvl.addEventListener('wheel',function(e){
+    e.preventDefault();
+    var u=e.deltaY*(e.deltaMode===1?16:(e.deltaMode===2?400:1));
+    var r=Math.exp(-u*0.0016);
+    if(r>2.2)r=2.2; if(r<1/2.2)r=1/2.2;
+    var rc=cvl.getBoundingClientRect();
+    zoomAt(e.clientX-rc.left, e.clientY-rc.top, r);
+    lastDragT=performance.now();                       /* 缩放时先别让自转把画面带跑 */
+  },{passive:false});
+
+  cvl.addEventListener('dblclick',function(){          /* 双击复位视角（含缩放与平移） */
+    az=0; setSlider('sEL','72'); viewReset();
+  });
+  updZoomHud();
+})();
+
+resize();
+warm();
+/* 十丝默认开启（老师 2026-10-17）：必须在 warm() **之后**再 warm 十丝 ——
+   此时 trailLen 已由滑块绑定设成 8000，aPerLen() 才是 444 点/根；
+   放到前面会按初始 5000 折出 278 点，与之后的 aCount() 口径不一致。 */
+if(ANU.on){ aWarm(); anuHint(); }
+/* ==========================================================================
+ * 失衡湮灭（DECAY）+ 一键 GIF 导出
+ * --------------------------------------------------------------------------
+ * 湮灭的物理口径：孔径比 R/d 超过安全线后，结构不再"可读"——
+ *   实测安全线 interpR(d,1)、崩解线 interpR(d,2)（见 RTAB）。
+ *   这里取一个连续的松弛量 DECAY∈[0,1]：R/d = 0.95 起亮，1.35 全灭。
+ *   DECAY 只作用在**渲染**（径向膨胀 + alpha 衰减），不动方程、不动缓冲
+ *   ⇒ DECAY=0 时逐位还原，关掉就等于没有这个功能。
+ * ========================================================================== */
+var DECAY=0, pAlpha=1;
+function decayTarget(){
+  /* 必须用 Rmax（设定的呼吸峰值），不能用瞬时 R：
+     呼吸每帧都在改写 P.R（1↔Rmax），用 P.R 会让 DECAY 跟着呼吸抖回 0，
+     表现就是"把 R 拉爆了却看不到湮灭"（踩过）。 */
+  var x=(P.Rmax||P.R)/(P.d||1);
+  return Math.max(0,Math.min(1,(x-0.95)/0.40));
+}
+function decayA(){ return 1-0.96*DECAY; }      /* 亮度 */
+function decayS(){ return 1+0.55*DECAY; }   /* 只轻推，别把线段甩出画幅 */       /* 径向膨胀倍率 */
+
+/* ---------- GIF89a 编码器（纯前端，无依赖） ----------
+ * 调色板：6×6×6 RGB(216) + 40 级灰 = 256。
+ *   Aizawa 画面是"黑底 + 高饱和发光线条"，灰阶单独留一条链是为了
+ *   不让白芯/淡出的中间调被 RGB 网格切成色带。
+ * 压缩：标准 GIF-LZW（变长码，clear/eoi，字典满 4096 复位）。
+ * ------------------------------------------------------------------ */
+var GPAL=new Uint8Array(768);
+(function(){
+  var r,g,b,k,i;
+  for(r=0;r<6;r++)for(g=0;g<6;g++)for(b=0;b<6;b++){
+    i=(r*36+g*6+b)*3;
+    GPAL[i]=r*51; GPAL[i+1]=g*51; GPAL[i+2]=b*51;
+  }
+  for(k=0;k<40;k++){
+    var v=Math.round(k*255/39), i2=(216+k)*3;
+    GPAL[i2]=v; GPAL[i2+1]=v; GPAL[i2+2]=v;
+  }
+})();
+function qIdx(r,g,b){
+  var mx=r>g?(r>b?r:b):(g>b?g:b), mn=r<g?(r<b?r:b):(g<b?g:b);
+  if(mx-mn<14) return 216+(((mx*39/255)+0.5)|0);
+  return ((((r*5/255)+0.5)|0)*36)+((((g*5/255)+0.5)|0)*6)+(((b*5/255)+0.5)|0);
+}
+function quantizeFrame(){
+  var d=ctx.getImageData(0,0,W,H).data, px=new Uint8Array(W*H), i, j;
+  for(i=0,j=0;i<px.length;i++,j+=4) px[i]=qIdx(d[j],d[j+1],d[j+2]);
+  return px;
+}
+function lzwEncode(px,minCode){
+  var clearCode=1<<minCode, eoiCode=clearCode+1;
+  var codeSize=minCode+1, nextCode=eoiCode+1;
+  var dict=new Map(), out=[], cur=0, curBits=0;
+  /* 位宽增长的判据必须是 (1<<codeSize)+1，不是 (1<<codeSize)：
+     解码器比编码器**晚一个码**才建表，早一位就会整条码流错位
+     （踩过：写成 >= 时 PIL 报 broken data stream，Chrome 只显示第一帧）。 */
+  function write(code){
+    cur|=code<<curBits; curBits+=codeSize;
+    while(curBits>=8){ out.push(cur&255); cur>>=8; curBits-=8; }
+  }
+  write(clearCode);
+  var prefix=px[0], i, k, key;
+  for(i=1;i<px.length;i++){
+    k=px[i]; key=(prefix<<8)|k;
+    if(dict.has(key)){ prefix=dict.get(key); continue; }
+    write(prefix);
+    if(nextCode<4096){
+      dict.set(key,nextCode++);
+      if(nextCode===(1<<codeSize)+1 && codeSize<12) codeSize++;
+    }else{
+      write(clearCode);
+      dict.clear(); codeSize=minCode+1; nextCode=eoiCode+1;
+    }
+    prefix=k;
+  }
+  write(prefix); write(eoiCode);
+  if(curBits>0) out.push(cur&255);
+  return out;
+}
+function gifPack(w,h,frames,delayCs){
+  var b=[];
+  function p(v){ b.push(v&255); }
+  function p16(v){ p(v); p((v>>8)&255); }
+  var i,j,k,n;
+  "GIF89a".split('').forEach(function(c){ b.push(c.charCodeAt(0)); });
+  p16(w); p16(h); p(0xF7); p(0); p(0);
+  for(i=0;i<768;i++) p(GPAL[i]);
+  b.push(0x21,0xFF,0x0B);
+  "NETSCAPE2.0".split('').forEach(function(c){ b.push(c.charCodeAt(0)); });
+  b.push(0x03,0x01,0x00,0x00,0x00);
+  for(var f=0;f<frames.length;f++){
+    b.push(0x21,0xF9,0x04,0x04); p16(delayCs); p(0); p(0);
+    b.push(0x2C); p16(0); p16(0); p16(w); p16(h); p(0);
+    var data=lzwEncode(frames[f],8);
+    p(8);
+    for(j=0;j<data.length;j+=255){
+      n=Math.min(255,data.length-j);
+      p(n);
+      for(k=0;k<n;k++) p(data[j+k]);
+    }
+    p(0);
+  }
+  b.push(0x3B);
+  return new Uint8Array(b);
+}
+
+/* ---------- 一键导出：一个完整呼吸周期 ---------- */
+var EXPORTING=false;
+
+/** 时间线（t = 0..1，一个呼吸周期 ≈ 8.0 s @12fps）
+ *  0.00–0.36  纯轨道（Anu 关、粒子关）· 视角 正视90° → 俯视0°
+ *  0.36–0.82  Anu 十丝 + 粒子(0.05×) · 视角 俯视 → 等角40°
+ *  0.82–1.00  参数失衡 ⇒ DECAY 0→1，结构径向炸开并淡出（湮灭）
+ */
+function gifStepMain(n){
+  for(var i=0;i<n;i++){ step(); push(st[0],st[1],st[2]); }
+}
+function exportCycleGif(){
+  var btn=document.getElementById('gifbtn');
+  var msg=document.getElementById('gifmsg');
+  if(!btn||EXPORTING) return;
+  EXPORTING=true;
+  var oldTxt=btn.textContent;
+  btn.textContent='导出中…'; btn.disabled=true;
+  if(msg) msg.textContent='正在渲染 100 帧…';
+
+  /* --- 保存一切会被改动的状态 --- */
+  var svKeys=['R','Rmax','d','b','e','c','EL','S','AL','LAM','GAM','TAU','LW','TR'];
+  var sv={}, q;
+  for(q=0;q<svKeys.length;q++) sv[svKeys[q]]=P[svKeys[q]];
+  var svDecay=DECAY, svAnu=ANU.on, svPart=PART.on, svSpd=PART.spd;
+  var svW=W, svH=H, svDPR=DPR, svAz=az, svFitK=FITK, svAFit=AFITK, svLerp=FITLERP;
+  var svViewZ=VIEW.z, svViewOX=VIEW.ox, svViewOY=VIEW.oy;
+  var svPlaying=playing, svBreath=breathing;
+
+  try{
+    /* --- 固定导出画幅 --- */
+    W=480; H=360; DPR=1;
+    cv.width=W; cv.height=H; ctx.setTransform(1,0,0,1,0,0);
+    if(typeof partResize==='function') partResize();
+
+    /* --- 参数归位到"标准谱"，再做时间线 --- */
+    P.Rmax=2.5; P.d=3.5; P.b=0.7; P.e=0.25; P.c=0.6; P.S=1;
+    P.LAM=1; P.GAM=0; P.TAU=0; P.AL=0.55; P.LW=3; P.TR=8000;
+    trailLen=8000;
+    PART.spd=0.05; PART.n=Math.min(PART.n,520);
+    FITK=null; AFITK=null; FITLERP=0.35;
+    VIEW.z=1; VIEW.ox=0; VIEW.oy=0;
+    DECAY=0;
+    reset();
+    if(!aCnt[0]) aWarm();
+    PART.on=true; partReset(false);   /* 预热：开场就是流动中的粒子云，不是入口一堆亮点 */
+
+    var FPS=12, TOTAL=200, DELAY=8;      /* 200×80ms = 16.0 s：前 8 s 是默认正视一圈 */
+    var NST=Math.max(1,Math.round((1/FPS)*SIMRATE/DT));
+    var frames=[], f, i, t, sg, u;
+    PART.acc=0;
+
+    for(f=0;f<TOTAL;f++){
+      t=f/TOTAL;
+
+      if(t<0.50){
+        /* ── 段 A（0–50% · 8 s）：**网页打开后的默认状态**，正视图录一个完整呼吸周期
+           d=5 / Anu 十丝开 / 粒子关 / Rmax=2.5 / 仰角 90°（正视） */
+        sg=t/0.50;
+        P.d=5; P.Rmax=2.5; P.EL=90;
+        ANU.on=true; PART.on=false; pAlpha=0; DECAY=0;
+        P.R = 1+(P.Rmax-1)*(0.5-0.5*Math.cos(2*Math.PI*sg));
+      }else{
+        /* ── 段 B/C/D（50–100%）：切到标准谱 d=3.5 演示粒子/十丝/湮灭 ── */
+        sg=(t-0.50)/0.50;
+        P.d=3.5; P.Rmax=2.5; ANU.on=true;
+
+        /* 视角：正视 90° → 俯视 0° → 等角 40°（末段停在等角） */
+        P.EL = sg<0.26 ? 90*(1-sg/0.26)
+             : (sg<0.58 ? 40*((sg-0.26)/0.32) : 40);
+
+        /* 呼吸：完整一圈 */
+        P.R = 1+(P.Rmax-1)*(0.5-0.5*Math.cos(2*Math.PI*sg));
+
+        /* 粒子：前 6% 空场（与段 A 的无粒子无缝衔接），随后 6 帧淡入 0.05× */
+        if(sg<0.06){ PART.on=false; pAlpha=0; }
+        else{ PART.on=true; pAlpha=Math.min(1,(sg-0.06)/0.06); }
+
+        /* 失衡湮灭：把呼吸峰值本身推过崩解线（Rmax 2.5→4.9，R/d 0.71→1.40） */
+        if(sg>0.72){
+          u=(sg-0.72)/0.28;
+          P.Rmax = 2.5 + 2.4*Math.pow(u,1.4);
+          P.R = 1+(P.Rmax-1)*(0.5-0.5*Math.cos(2*Math.PI*sg));
+          DECAY = decayTarget();
+        }else{ DECAY=0; }
+      }
+
+      gifStepMain(NST);
+
+      if(PART.on){
+        PART.acc+=NST*PART.spd;
+        var pn=Math.floor(PART.acc); PART.acc-=pn;
+        if(pn>0) partStepAll(pn);
+      }
+
+      draw();
+
+      /* 状态标签（只在段 B 的后半出现）：R/d 越线 → 失衡 → 湮灭 */
+      if(t>0.50 && sg>0.55){
+        var rd=P.Rmax/P.d;
+        var tip='R/d = '+rd.toFixed(2);
+        if(rd>0.95) tip+='  失衡';
+        if(rd>1.20) tip+=' → 湮灭';
+        ctx.save();
+        ctx.globalCompositeOperation='source-over';
+        ctx.font='600 11px -apple-system,"Microsoft YaHei",sans-serif';
+        ctx.textAlign='left'; ctx.textBaseline='bottom';
+        var tw=ctx.measureText(tip).width;
+        ctx.fillStyle='rgba(0,0,0,0.58)';
+        ctx.fillRect(8,H-24,tw+12,17);
+        ctx.fillStyle = rd>1.20 ? '#ff6b8a' : (rd>0.95 ? '#ffd84a' : '#7fd8ff');
+        ctx.fillText(tip,14,H-10);
+        ctx.restore();
+      }
+      frames.push(quantizeFrame());
+
+      if(f%4===0){
+        btn.textContent='导出中 '+Math.round((f+1)/TOTAL*100)+'%';
+        if(msg) msg.textContent='渲染 '+(f+1)+'/'+TOTAL+' 帧（含 Anu 十丝 + 粒子）';
+      }
+    }
+
+    /* --- 编码 + 体积兜底（>5 MB 就抽帧、放慢） --- */
+    var bytes=gifPack(480,360,frames,DELAY);
+    var guard=0;
+    while(bytes.length>5*1024*1024 && guard<3){
+      var sub=[];
+      for(i=0;i<frames.length;i+=2) sub.push(frames[i]);
+      frames=sub; DELAY*=2;
+      bytes=gifPack(480,360,frames,DELAY);
+      guard++;
+    }
+    window.__lastGif=bytes;
+
+    var mb=(bytes.length/1048576).toFixed(2);
+    if(msg) msg.innerHTML='<b style="color:#3cffbe">已生成 '+mb+' MB · '+frames.length+
+      ' 帧 · 480×360 · '+(DELAY/100).toFixed(2)+' s/帧</b>';
+
+    var blob=new Blob([bytes],{type:'image/gif'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url; a.download='Aizawa_Anu_一个周期.gif';
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); },1500);
+  }catch(err){
+    if(msg) msg.innerHTML='<b style="color:#ff5b7f">导出失败：'+err.message+'</b>';
+    if(window.console) console.error(err);
+  }finally{
+    /* --- 完整恢复 --- */
+    for(q=0;q<svKeys.length;q++) P[svKeys[q]]=sv[svKeys[q]];
+    DECAY=svDecay; pAlpha=1; ANU.on=svAnu; PART.on=svPart; PART.spd=svSpd;
+    az=svAz; FITK=svFitK; AFITK=svAFit; FITLERP=svLerp;
+    VIEW.z=svViewZ; VIEW.ox=svViewOX; VIEW.oy=svViewOY;
+    playing=svPlaying; breathing=svBreath;
+    W=svW; H=svH; DPR=svDPR;
+    cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR);
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    if(typeof partResize==='function') partResize();
+    if(typeof resize==='function') resize();
+    EXPORTING=false;
+    btn.textContent=oldTxt; btn.disabled=false;
+  }
+}
+
+
+requestAnimationFrame(frame);
+})();
+</script>
+<!--FXCTL:JS--><script id="fxctl-js">
+/* ============================================================
+   PKS · 通用「调参浮窗」 (float_ctl.js)
+   作用：把页面里成块的参数控件（.ctl / .ctrl / .controls / .calc /
+        .panel[纯控件] / [data-param-panel]）收进右下角一个可拖动浮窗。
+   原则：
+     1. 只搬控件块本身，**不复制、不重建** ⇒ 原页面绑定在元素上的
+        事件监听、id、input 值全部照常工作。
+     2. 搬不走的、散的（每张卡片各一组、且组数很多）→ 整页放弃，
+        保持原样，并在 console 里说明原因，绝不半搬半留。
+     3. 位置写入 localStorage；双击标题栏回默认位；⇱/— 收起。
+   ============================================================ */
+(function () {
+  if (window.__FXCTL) return;
+
+  var SEL = '.ctl,.ctrl,.controls,.calc,.param-panel,.grp,.htgroup,[data-param-panel]';
+  var MAX_GROUPS = 16;    // 超过这个组数：判定为"散在每张卡片里"，整页跳过
+  var MIN_SHARE = 0.85;   // 收进去的滑块至少要占全页 85%，否则跳过（不做半搬半留）
+  var KEY = 'fxp:' + location.pathname;
+
+  function txt(el, n) {
+    var s = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    if (n && s.length > n) s = s.slice(0, n - 1) + '…';
+    return s;
+  }
+  function inChrome(el) {
+    return !!(el.closest && el.closest('.topnav,header,nav,.topbar,.fxp,#fxp'));
+  }
+
+  /* ---------- 1. 找参数面板 ---------- */
+  // 页面自己已经有一个"贴右边的浮动参数窗"？有就不再叠第二个
+  function hasOwnDock() {
+    var els = [].slice.call(document.querySelectorAll('body > *'));
+    // 也看一两层深，很多页把 pwin 套在 wrapper 里
+    document.querySelectorAll('body div, body section, body aside').forEach(function (x) {
+      if (els.length < 400) els.push(x);
+    });
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      if (el.id === 'fxp') continue;
+      if (getComputedStyle(el).position !== 'fixed') continue;
+      var r = el.getBoundingClientRect();
+      if (r.width > 240 && r.width < 620 && r.height > 240 &&
+          (innerWidth - r.right) < 70 && r.top < 220) return true;
+    }
+    return false;
+  }
+
+  function detect() {
+    var all = [].slice.call(document.querySelectorAll('input[type=range]'));
+    if (hasOwnDock()) {
+      return { panels: [], total: all.length, inline: 0, moved: 0, ok: false, own: true };
+    }
+    // 已经在自己的浮窗里（祖先 fixed）的滑块：不算在"待浮"里，也不搬
+    function inFixed(el) {
+      var a = el, d = 0;
+      while (a && d++ < 5) {
+        if (getComputedStyle(a).position === 'fixed') return true;
+        a = a.parentElement;
+      }
+      return false;
+    }
+    var inline = all.filter(function (i) { return !inFixed(i); });   // 仍躺在正文里的
+    var cands = [].slice.call(document.querySelectorAll(SEL)).filter(function (el) {
+      if (inChrome(el)) return false;
+      if (!el.querySelector('input[type=range]')) return false;
+      if (inFixed(el)) return false;                                 // 已在浮窗内
+      var hasCanvas = !!el.querySelector('canvas,svg,video,img');
+      var cls = el.className || '';
+      var isParamCol = /(^|\s)(ctl|ctrl|controls|calc|param-panel)(\s|$)/.test(cls);
+      if (hasCanvas && !isParamCol) return false;
+      if (el.classList.contains('panel') || el.classList.contains('grp')) {
+        return el.querySelectorAll('input[type=range]').length >= 2;
+      }
+      return true;
+    });
+    // 去重 + 保留最外层
+    cands = cands.filter(function (el, i) {
+      if (cands.indexOf(el) !== i) return false;
+      return !cands.some(function (o) { return o !== el && o.contains(el); });
+    });
+    var moved = 0;
+    cands.forEach(function (el) { moved += el.querySelectorAll('input[type=range]').length; });
+    var ok = cands.length > 0 && cands.length <= MAX_GROUPS &&
+             (inline.length ? moved / inline.length >= MIN_SHARE : false);
+    return { panels: cands, total: all.length, inline: inline.length, moved: moved, ok: ok };
+  }
+
+  /* ---------- 2. 取分组标签（最近的标题 / .vt）---------- */
+  function labelFor(el) {
+    var gt = el.querySelector && el.querySelector('.gt');
+    if (gt) return txt(gt, 22);
+    var v0 = el.closest && el.closest('.viz');
+    if (v0) { var t0 = v0.querySelector('.vt'); if (t0) return txt(t0, 22); }
+    var node = el, hop = 0;
+    while (node && hop++ < 6) {
+      var prev = node.previousElementSibling;
+      while (prev) {
+        if (/^H[1-4]$/.test(prev.tagName)) return txt(prev, 22);
+        if (prev.querySelector) {
+          var h = prev.querySelector('h2,h3,h4,.vt');
+          if (h) return txt(h, 22);
+        }
+        prev = prev.previousElementSibling;
+      }
+      node = node.parentElement;
+    }
+    return '';
+  }
+
+  /* 搬走控件后，父级若是两列网格且变空 → 收成一列，避免右侧留一条空白 */
+  function collapseTrack(el) {
+    var par = el.parentElement;
+    if (!par) return;
+    var cs = getComputedStyle(par);
+    if (cs.display !== 'grid') return;
+    var tracks = (cs.gridTemplateColumns || '').split(/\s+/).filter(function (x) { return x && x !== 'none'; });
+    if (tracks.length !== 2) return;
+    if (par.lastElementChild !== el) return;
+    par.style.gridTemplateColumns = '1fr';
+  }
+
+  /* ---------- 3. 搭面板 ---------- */
+  function build(d) {
+    var old = document.getElementById('fxp');
+    if (old) old.remove();
+
+    var p = document.createElement('div');
+    p.id = 'fxp';
+    var counts = d.panels.map(function (el) {
+      return el.querySelectorAll('input[type=range]').length;
+    });
+    var nRange = counts.reduce(function (a, b) { return a + b; }, 0);
+
+    p.innerHTML =
+      '<div class="fxp-h" id="fxpH">' +
+        '<span class="fxp-grip">⠿</span>' +
+        '<span class="fxp-t">调参</span>' +
+        '<span class="fxp-c">' + d.panels.length + ' 组 · ' + nRange + ' 滑块</span>' +
+        '<button class="fxp-b" data-a="mini" title="收起 / 展开">—</button>' +
+        '<button class="fxp-b" data-a="reset" title="回到默认位置（也可双击标题栏）">⟲</button>' +
+      '</div><div class="fxp-bd"></div>';
+
+    var bd = p.querySelector('.fxp-bd');
+    var used = {}, noteDone = false;
+    d.panels.forEach(function (el, i) {
+      var lb = labelFor(el) || ('参数组 ' + (i + 1));
+      if (used[lb]) { used[lb]++; lb = lb.slice(0, 16) + ' (' + used[lb] + ')'; } else { used[lb] = 1; }
+      var g = document.createElement('div');
+      g.className = 'fxp-grp';
+      var gl = document.createElement('div');
+      gl.className = 'fxp-gl';
+      gl.innerHTML = '<b>' + lb.replace(/</g, '&lt;') + '</b><i>' + counts[i] + '</i>';
+      g.appendChild(gl);
+
+      if (!noteDone && el.parentNode) {
+        var note = document.createElement('p');
+        note.className = 'fxp-note';
+        note.textContent = '参数已收进右侧浮窗「调参」（拖标题栏可挪走 · 双击回位）';
+        el.parentNode.insertBefore(note, el);
+        noteDone = true;
+      }
+      collapseTrack(el);
+
+      g.appendChild(el);          // ← 原节点整体搬入，事件与 id 不变
+      bd.appendChild(g);
+    });
+
+    document.body.appendChild(p);
+    return p;
+  }
+
+  /* ---------- 4. 位置 / 拖动 / 收起 ---------- */
+  function clamp(p) {
+    var r = p.getBoundingClientRect(), W = innerWidth, H = innerHeight;
+    var x = Math.min(Math.max(r.left, -r.width + 90), W - 90);
+    var y = Math.min(Math.max(r.top, 0), H - 44);
+    p.style.left = x + 'px'; p.style.top = y + 'px';
+    p.style.right = 'auto'; p.style.bottom = 'auto';
+  }
+  function defPos(p) {
+    p.style.left = ''; p.style.right = ''; p.style.top = ''; p.style.bottom = '';
+  }
+  function save(p) {
+    try {
+      var st = p.classList.contains('fxp-min');
+      if (!p.style.left) { localStorage.removeItem(KEY); return; }
+      localStorage.setItem(KEY, JSON.stringify({
+        x: parseFloat(p.style.left), y: parseFloat(p.style.top), mini: st
+      }));
+    } catch (e) {}
+  }
+  function load(p) {
+    try {
+      var s = localStorage.getItem(KEY);
+      /* 首次访问一律收起：页面本身就有「参数」竖条，浮窗默认展开会把画布挤掉 322px；
+         收起的标题条写着「调参 · N 组 · M 滑块」，一眼能看见、点一下就展开，状态会被记住。 */
+      if (!s) { p.classList.add('fxp-min'); return; }
+      var o = JSON.parse(s);
+      if (o.mini) p.classList.add('fxp-min');
+      if (typeof o.x === 'number' && isFinite(o.x)) {
+        p.style.left = o.x + 'px'; p.style.top = o.y + 'px';
+        p.style.right = 'auto'; p.style.bottom = 'auto';
+        clamp(p);
+      }
+    } catch (e) {}
+  }
+
+  function wire(p) {
+    var h = p.querySelector('#fxpH');
+    var drag = null;
+
+    h.addEventListener('pointerdown', function (ev) {
+      if (ev.target.closest('button')) return;
+      if (innerWidth <= 880) return;                 // 窄屏走底部抽屉，不拖
+      var r = p.getBoundingClientRect();
+      drag = { dx: ev.clientX - r.left, dy: ev.clientY - r.top, moved: false };
+      p.style.left = r.left + 'px'; p.style.top = r.top + 'px';
+      p.style.right = 'auto'; p.style.bottom = 'auto';
+      h.classList.add('fxp-drag');
+      h.setPointerCapture && h.setPointerCapture(ev.pointerId);
+      ev.preventDefault();
+    });
+    h.addEventListener('pointermove', function (ev) {
+      if (!drag) return;
+      drag.moved = true;
+      p.style.left = (ev.clientX - drag.dx) + 'px';
+      p.style.top = (ev.clientY - drag.dy) + 'px';
+      var r = p.getBoundingClientRect();
+      var nx = Math.min(Math.max(r.left, -r.width + 90), innerWidth - 90);
+      var ny = Math.min(Math.max(r.top, 0), innerHeight - 44);
+      p.style.left = nx + 'px'; p.style.top = ny + 'px';
+    });
+    function end() { if (drag) { h.classList.remove('fxp-drag'); save(p); drag = null; } }
+    h.addEventListener('pointerup', end);
+    h.addEventListener('pointercancel', end);
+
+    h.addEventListener('dblclick', function (ev) {
+      if (ev.target.closest('button')) return;
+      defPos(p);
+      try { localStorage.removeItem(KEY); } catch (e) {}
+    });
+
+    p.addEventListener('click', function (ev) {
+      var b = ev.target.closest('button[data-a]');
+      if (!b) return;
+      if (b.dataset.a === 'mini') { p.classList.toggle('fxp-min'); save(p); }
+      if (b.dataset.a === 'reset') { defPos(p); p.classList.remove('fxp-min'); save(p); }
+    });
+
+    addEventListener('resize', function () { if (p.style.left) clamp(p); });
+  }
+
+  /* ---------- 5. 启动 ---------- */
+  function boot() {
+    var d = detect();
+    if (!d.ok) {
+      if (d.own) {
+        console.info('[调参浮窗] 本页跳过：页面自己已有贴右的可拖动参数窗，不叠第二个');
+      } else if (d.inline === 0 && d.total > 0) {
+        console.info('[调参浮窗] 本页跳过：' + d.total + ' 个滑块全在页面自己的浮窗里，没有需要搬的');
+      } else if (d.panels.length) {
+        console.info('[调参浮窗] 本页跳过：' + d.panels.length + ' 组、待浮滑块 ' +
+          d.moved + '/' + d.inline + '（判据：≤' + MAX_GROUPS + ' 组且 ≥' +
+          Math.round(MIN_SHARE * 100) + '%；已在浮窗内的 ' + (d.total - d.inline) + ' 个不计）');
+      }
+      return;
+    }
+    var p = build(d);
+    load(p);
+    wire(p);
+    console.info('[调参浮窗] 已收 ' + d.moved + '/' + d.inline + ' 个待浮滑块，' +
+      d.panels.length + ' 组（另 ' + (d.total - d.inline) + ' 个本来就在浮窗里）');
+  }
+
+  window.__FXCTL = { detect: detect, boot: boot, build: build };
+
+  if (document.readyState === 'complete') setTimeout(boot, 60);
+  else addEventListener('load', function () { setTimeout(boot, 60); });
+})();
+
+</script><!--/FXCTL:JS-->
+</body>
+</html>

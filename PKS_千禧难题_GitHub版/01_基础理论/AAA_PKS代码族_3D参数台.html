@@ -1,0 +1,1547 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PKS 代码族 · 3D 参数台（六族最终升级版）</title>
+<style>
+*{box-sizing:border-box}
+html,body{overflow-x:clip}
+body{margin:0;background:#fff;color:#16181d;
+ font:15px/1.75 -apple-system,"Segoe UI","Microsoft YaHei",system-ui,sans-serif}
+a{color:#0b57a4;text-decoration:none}a:hover{text-decoration:underline}
+.topnav{background:#0f1c2e;color:#dbe4f0;font-size:13.2px}
+.topnav .in{max-width:1180px;margin:0 auto;padding:9px 24px;display:flex;flex-wrap:wrap;gap:4px 18px}
+.topnav a{color:#cfe0f5}.topnav a:hover{color:#fff}.topnav b{color:#ffd591}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 90px}
+.kicker{display:inline-block;background:#12305e;color:#fff;font-size:12px;border-radius:4px;padding:2px 9px;margin:22px 0 6px}
+h1{font-size:25px;line-height:1.4;margin:6px 0 8px}
+h1 small{display:block;font-size:13.5px;font-weight:400;color:#6b7683;margin-top:9px}
+h2{font-size:19.5px;margin:38px 0 12px;padding-bottom:7px;border-bottom:2px solid #e5e8ee}
+h3{font-size:15.5px;margin:22px 0 7px;color:#12305e}
+p{margin:9px 0}ul,ol{margin:8px 0 8px 22px;padding:0}li{margin:3px 0}
+code{background:#f3f5f9;border:1px solid #e3e7ef;border-radius:3px;padding:.5px 4px;
+ font-family:Consolas,"Courier New",monospace;font-size:12.8px}
+.eq{background:#fbfcfe;border:1px solid #e2e8f2;border-left:3px solid #2f6fb5;
+ border-radius:4px;padding:9px 14px;margin:12px 0;font-family:Consolas,"Courier New",monospace;
+ font-size:13.2px;overflow-x:auto;color:#12305e;white-space:pre-wrap}
+.infobox{background:#f3f8ff;border:1px solid #c9dcf5;border-left:4px solid #2f6fb5;
+ border-radius:6px;padding:12px 16px;margin:16px 0;font-size:14px}
+.warnbox{background:#fff6f5;border:1px solid #f0c2bc;border-left:4px solid #b3261e;
+ border-radius:6px;padding:12px 16px;margin:16px 0;font-size:14px}
+.okbox{background:#f4faf5;border:1px solid #c6e2cc;border-left:4px solid #2e7d43;
+ border-radius:6px;padding:12px 16px;margin:16px 0;font-size:14px}
+.graybox{background:#fafbfd;border:1px solid #e4e8f0;border-left:4px solid #b9c4d6;
+ border-radius:6px;padding:11px 15px;margin:16px 0;font-size:13.4px;color:#4a5566}
+.tw{overflow-x:auto;margin:13px 0}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{border:1px solid #dfe4ec;padding:6px 9px;vertical-align:top;text-align:left}
+th{background:#eef2f8;font-weight:600}
+tbody tr:nth-child(even){background:#fafbfd}
+.note{color:#6b7683;font-size:12.8px}
+.foot{margin-top:50px;padding-top:14px;border-top:1px solid #e5e8ee;color:#7b8595;font-size:12.6px}
+.hit{color:#b3261e;font-weight:600}
+
+/* 舞台 */
+.tabs{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0 4px}
+.tabs button{font:inherit;font-size:13px;cursor:pointer;border:1px solid #cfd8e5;background:#fff;
+ color:#24405f;border-radius:999px;padding:4px 13px}
+.tabs button.on{background:#12305e;border-color:#12305e;color:#fff;font-weight:600}
+.stage{display:grid;grid-template-columns:1.3fr .7fr;gap:18px;margin:14px 0 6px;align-items:start}
+@media(max-width:960px){.stage{grid-template-columns:1fr}}
+#cvbox{position:relative;background:linear-gradient(180deg,#f9fbfe,#eef3f9);
+ border:1px solid #dde3ec;border-radius:10px;overflow:hidden;height:520px}
+#cv3d{display:block;width:100%;height:100%;cursor:grab}
+#cv3d:active{cursor:grabbing}
+#badge{position:absolute;left:12px;top:10px;font-size:12px;color:#12305e;max-width:78%;
+ background:rgba(255,255,255,.92);border:1px solid #d6dfec;border-radius:4px;padding:3px 9px;font-weight:600;line-height:1.5}
+#hint{position:absolute;right:10px;bottom:9px;font-size:11.4px;color:#6b7683;
+ background:rgba(255,255,255,.86);border:1px solid #e1e6ee;border-radius:4px;padding:2px 8px}
+.ctrl{background:#fcfcfd;border:1px solid #e6eaf2;border-radius:10px;padding:14px 16px}
+.ctrl h3{margin:0 0 4px;font-size:15.5px}
+.ctrl .pyline{font-size:11.6px;color:#8a95a5;font-family:Consolas,monospace;word-break:break-all;margin-bottom:8px;line-height:1.5}
+.row{margin:8px 0}
+.row label{display:flex;justify-content:space-between;font-size:12.9px;color:#2c3546;margin-bottom:2px}
+.row label b{color:#12305e;font-family:Consolas,monospace}
+input[type=range]{width:100%;accent-color:#2f6fb5;height:18px}
+.choices{display:flex;flex-wrap:wrap;gap:5px;margin:5px 0 8px}
+.choices button{font:inherit;font-size:12px;cursor:pointer;border:1px solid #cfd8e5;background:#fff;
+ color:#24405f;border-radius:5px;padding:2px 8px}
+.choices button.on{background:#e8f0fb;border-color:#2f6fb5;color:#12305e;font-weight:600}
+.readout{margin-top:10px;border-top:1px dashed #e0e5ee;padding-top:9px;font-size:12.7px}
+.readout div{display:flex;justify-content:space-between;gap:10px;margin:2.5px 0}
+.readout span:first-child{color:#5a6678}
+.readout b{font-family:Consolas,monospace;color:#12305e;font-weight:600;text-align:right}
+#prof{width:100%;height:200px;border:1px solid #e2e8f2;border-radius:6px;background:#fff;margin-top:9px;display:none}
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.presets button{font:inherit;font-size:12.2px;cursor:pointer;border:1px solid #d8c9a8;background:#fffbf2;
+ color:#7a5a1e;border-radius:5px;padding:3px 9px}
+.presets button:hover{background:#fdf3dd}
+</style>
+<!--FXCTL:CSS--><style id="fxctl-css">
+/* ============================================================
+   PKS · 通用「调参浮窗」样式  (float_ctl.css)
+   白底 / 深蓝强调 / 与 site.css 变量兼容（变量缺失时有兜底色）
+   面板不接管页面原有控件样式，只在自己作用域内统一外观
+   ============================================================ */
+#fxp{
+  position:fixed; z-index:840; top:84px; right:16px;
+  width:322px; max-height:calc(100vh - 118px);
+  display:flex; flex-direction:column;
+  background:#fff; border:1px solid #cfd6e0; border-radius:12px;
+  box-shadow:0 2px 6px rgba(18,22,28,.08), 0 14px 40px rgba(18,22,28,.14);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:13px; color:#12161c; line-height:1.55;
+  -webkit-user-select:none; user-select:none;
+}
+#fxp.fxp-min{ width:auto; min-width:150px; }
+#fxp.fxp-min .fxp-bd{ display:none; }
+#fxp.fxp-min .fxp-c{ display:none; }
+
+/* 标题栏（拖动手柄） */
+#fxp .fxp-h{
+  display:flex; align-items:center; gap:7px;
+  padding:8px 10px 8px 9px; cursor:grab; touch-action:none;
+  border-bottom:1px solid #e6eaf0; border-radius:12px 12px 0 0;
+  background:linear-gradient(#fbfcfe,#f4f7fb);
+}
+#fxp.fxp-min .fxp-h{ border-bottom:0; border-radius:12px; }
+#fxp .fxp-h.fxp-drag{ cursor:grabbing; }
+#fxp .fxp-grip{ color:#9aa6b6; font-size:13px; letter-spacing:0 }
+#fxp .fxp-t{
+  font-family:Georgia,"Times New Roman","Songti SC",serif;
+  font-weight:700; font-size:14.5px; color:#0d2f63; letter-spacing:.2px;
+}
+#fxp .fxp-c{ font-family:Consolas,monospace; font-size:11px; color:#6b7683; margin-left:auto; white-space:nowrap }
+#fxp .fxp-h.fxp-mini-open .fxp-c{ margin-left:6px }
+#fxp .fxp-b{
+  width:22px; height:22px; padding:0; flex:0 0 22px;
+  border:1px solid #cfd6e0; background:#fff; border-radius:6px;
+  color:#3b4552; font-size:12px; line-height:1; cursor:pointer;
+}
+#fxp .fxp-b:hover{ border-color:#1b4f9c; color:#1b4f9c; background:#f4f7fb }
+#fxp .fxp-b:first-of-type{ margin-left:6px }
+
+/* 面板主体 */
+#fxp .fxp-bd{
+  padding:4px 12px 12px; overflow-y:auto; overflow-x:hidden;
+  -webkit-user-select:auto; user-select:auto;
+}
+#fxp .fxp-bd::-webkit-scrollbar{ width:8px }
+#fxp .fxp-bd::-webkit-scrollbar-thumb{ background:#d7dee8; border-radius:4px }
+#fxp .fxp-bd::-webkit-scrollbar-track{ background:transparent }
+
+/* 分组 */
+#fxp .fxp-grp{ padding:9px 0 3px }
+#fxp .fxp-grp + .fxp-grp{ border-top:1px dashed #e6eaf0; margin-top:3px }
+#fxp .fxp-gl{
+  font-family:Consolas,monospace; font-size:10.5px; letter-spacing:.04em;
+  color:#6b7683; margin:0 0 7px; display:flex; align-items:baseline; gap:6px;
+}
+#fxp .fxp-gl b{ color:#1b4f9c; font-weight:600; font-size:11px }
+#fxp .fxp-gl i{ font-style:normal; color:#9aa6b6 }
+
+/* 控件统一外观：覆盖被搬进来的块，不依赖原页面 .viz .ctl 之类选择器 */
+#fxp .ctl, #fxp .ctrl, #fxp .controls, #fxp .calc, #fxp .panel, #fxp .param-panel{
+  display:block; margin:0; padding:0; border:0; background:none; box-shadow:none;
+  width:auto; max-width:none; position:static; float:none;
+}
+#fxp .ctl > *, #fxp .ctrl > *, #fxp .controls > *, #fxp .panel > *, #fxp .calc > *{ margin-bottom:9px }
+#fxp .ctl > *:last-child, #fxp .ctrl > *:last-child,
+#fxp .controls > *:last-child, #fxp .panel > *:last-child, #fxp .calc > *:last-child{ margin-bottom:0 }
+
+/* label 行：文字在上、滑块占满整行 */
+#fxp label, #fxp .row, #fxp .prow, #fxp .slider{
+  display:flex; flex-wrap:wrap; align-items:center; gap:3px 8px;
+  width:100%; margin:0 0 10px; font-size:12.6px; color:#3b4552;
+}
+#fxp label > span, #fxp .row > span{ flex:0 0 auto }
+#fxp input[type=range]{
+  -webkit-appearance:none; appearance:none; order:3;
+  /* ⚠ 不能用 flex:0 0 100%：父级 label.row 是 align-items:center 的 flex 行，
+     交叉轴会把 input 压成 track 的 3px 高（实测 offsetHeight=3），滑块几乎被裁掉。
+     flex:none + width:100% 一样能独占一行，且高度稳定 16px。 */
+  flex:none; width:100%; min-width:90px; height:16px; margin:1px 0 0;
+  background:transparent; cursor:pointer; accent-color:#1b4f9c;
+}
+#fxp input[type=range]::-webkit-slider-runnable-track{
+  height:3px; background:#dbe2ec; border-radius:2px;
+}
+#fxp input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:13px; height:13px; margin-top:-5px;
+  background:#1b4f9c; border:2px solid #fff; border-radius:50%;
+  box-shadow:0 1px 3px rgba(18,22,28,.28);
+}
+#fxp input[type=range]:focus{ outline:none }
+#fxp input[type=range]:focus::-webkit-slider-thumb{ box-shadow:0 0 0 3px rgba(27,79,156,.18) }
+
+/* 数值 */
+#fxp .val, #fxp .v, #fxp output, #fxp .num{
+  font-family:Consolas,monospace; font-size:12px; color:#b4531f;
+  min-width:0; margin-left:auto; white-space:nowrap; order:2;
+}
+
+/* 按钮 */
+#fxp button{
+  font-family:Consolas,monospace; font-size:11.5px; padding:4px 9px;
+  border:1px solid #cfd6e0; background:#fff; color:#3b4552;
+  border-radius:7px; cursor:pointer; margin:0 5px 5px 0;
+}
+#fxp button:hover{ border-color:#1b4f9c; color:#1b4f9c; background:#f4f7fb }
+
+/* .lab / .hint / .presets（aizawa / 黄金蛋 那一族的行结构） */
+#fxp .lab{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:8px; width:100%; order:1; font-size:12.6px; color:#3b4552;
+}
+#fxp .lab .v{ margin-left:auto }
+#fxp .hint{
+  order:4; width:100%; margin:3px 0 0; font-size:11.2px; line-height:1.5;
+  color:#6b7683;
+}
+#fxp .presets{ order:5; width:100%; display:flex; flex-wrap:wrap; gap:5px; margin-top:5px }
+#fxp .presets button{ margin:0 }
+#fxp .gt{
+  font-family:Georgia,"Songti SC",serif; font-size:12.8px; font-weight:700;
+  color:#0d2f63; margin:2px 0 8px;
+}
+#fxp .grp > .gt:first-child{ margin-top:0 }
+
+#fxp button.on, #fxp button.active{ background:#1b4f9c; border-color:#1b4f9c; color:#fff }
+#fxp select{
+  font-family:inherit; font-size:12px; padding:3px 6px; max-width:100%;
+  border:1px solid #cfd6e0; border-radius:6px; background:#fff; color:#12161c;
+}
+#fxp input[type=text], #fxp input[type=number]{
+  font-family:Consolas,monospace; font-size:12px; width:78px; padding:3px 6px;
+  border:1px solid #cfd6e0; border-radius:6px;
+}
+#fxp input[type=checkbox]{ accent-color:#1b4f9c; margin-right:2px }
+
+/* 原位置留下的提示 */
+.fxp-note{
+  margin:10px 0 0; padding:5px 9px; font-size:11.8px; color:#6b7683;
+  font-family:Consolas,monospace; background:#f6f8fb;
+  border:1px dashed #d7dee8; border-radius:6px;
+}
+.fxp-note::before{ content:"⇱ "; color:#1b4f9c }
+
+/* 窄屏：底部抽屉式，不再遮挡图 */
+@media (max-width:880px){
+  #fxp{
+    top:auto; bottom:0; right:0; left:0; width:auto;
+    max-height:52vh; border-radius:12px 12px 0 0;
+    border-left:0; border-right:0; border-bottom:0;
+  }
+  #fxp .fxp-h{ cursor:default; border-radius:12px 12px 0 0 }
+  #fxp.fxp-min{ left:auto; right:10px; bottom:10px; border:1px solid #cfd6e0; border-radius:12px }
+}
+@media print{ #fxp{ display:none !important } }
+
+/* ============================================================
+   暗色主题皮肤（2026-10-19 老师：Anu 主界面是暗底，浮窗却是白底，割裂）
+   触发条件：页面 <body> 或 <html> 自己声明了暗色
+     body.theme-dark / body.dark / body.theme-night
+     html[data-theme="dark"] / body[data-theme="dark"]
+   只做覆盖，不改上面的默认（白底）规则 —— 明色页面完全不受影响。
+   配色取自 anu.css 的 --panel/--line/--text/--accent，保持同源。
+   ============================================================ */
+body.theme-dark #fxp, body.dark #fxp, body.theme-night #fxp,
+html[data-theme="dark"] #fxp, body[data-theme="dark"] #fxp{
+  background:#0e1420; border-color:#22304a;
+  box-shadow:0 2px 8px rgba(0,0,0,.45), 0 18px 48px rgba(0,0,0,.55);
+  color:#e6edf8;
+}
+body.theme-dark #fxp .fxp-h, body.dark #fxp .fxp-h, body.theme-night #fxp .fxp-h,
+html[data-theme="dark"] #fxp .fxp-h, body[data-theme="dark"] #fxp .fxp-h{
+  background:linear-gradient(#182233,#111826); border-bottom-color:#22304a;
+}
+body.theme-dark #fxp .fxp-grip, body.dark #fxp .fxp-grip, body.theme-night #fxp .fxp-grip{
+  color:#5d7093;
+}
+body.theme-dark #fxp .fxp-t, body.dark #fxp .fxp-t, body.theme-night #fxp .fxp-t,
+html[data-theme="dark"] #fxp .fxp-t, body[data-theme="dark"] #fxp .fxp-t{
+  color:#cddcff;
+}
+body.theme-dark #fxp .fxp-c, body.dark #fxp .fxp-c, body.theme-night #fxp .fxp-c{
+  color:#6b7f9e;
+}
+body.theme-dark #fxp .fxp-b, body.dark #fxp .fxp-b, body.theme-night #fxp .fxp-b,
+html[data-theme="dark"] #fxp .fxp-b, body[data-theme="dark"] #fxp .fxp-b{
+  background:#141c2b; border-color:#22304a; color:#a9bad6;
+}
+body.theme-dark #fxp .fxp-b:hover, body.dark #fxp .fxp-b:hover, body.theme-night #fxp .fxp-b:hover{
+  background:#1b2740; border-color:#4d7cff; color:#cddcff;
+}
+body.theme-dark #fxp .fxp-bd::-webkit-scrollbar-thumb,
+body.dark #fxp .fxp-bd::-webkit-scrollbar-thumb,
+body.theme-night #fxp .fxp-bd::-webkit-scrollbar-thumb{
+  background:#26334c;
+}
+body.theme-dark #fxp .fxp-grp + .fxp-grp, body.dark #fxp .fxp-grp + .fxp-grp,
+body.theme-night #fxp .fxp-grp + .fxp-grp{ border-top-color:#1e2a3f }
+body.theme-dark #fxp .fxp-gl, body.dark #fxp .fxp-gl, body.theme-night #fxp .fxp-gl{
+  color:#7d90ae;
+}
+body.theme-dark #fxp .fxp-gl b, body.dark #fxp .fxp-gl b, body.theme-night #fxp .fxp-gl b{
+  color:#7ea6ff;
+}
+body.theme-dark #fxp .fxp-gl i, body.dark #fxp .fxp-gl i, body.theme-night #fxp .fxp-gl i{
+  color:#5d7093;
+}
+body.theme-dark #fxp label, body.theme-dark #fxp .row, body.theme-dark #fxp .prow,
+body.theme-dark #fxp .slider, body.dark #fxp label, body.dark #fxp .row,
+body.dark #fxp .prow, body.dark #fxp .slider,
+body.theme-night #fxp label, body.theme-night #fxp .row,
+body.theme-night #fxp .prow, body.theme-night #fxp .slider{
+  color:#b9c8e0;
+}
+body.theme-dark #fxp input[type=range]::-webkit-slider-runnable-track,
+body.dark #fxp input[type=range]::-webkit-slider-runnable-track,
+body.theme-night #fxp input[type=range]::-webkit-slider-runnable-track{
+  background:#31425f;                    /* 不能贴地色，否则轨道看不见、只剩一个蓝点 */
+}
+body.theme-dark #fxp input[type=range]::-webkit-slider-thumb,
+body.dark #fxp input[type=range]::-webkit-slider-thumb,
+body.theme-night #fxp input[type=range]::-webkit-slider-thumb{
+  background:#4d7cff; border-color:#0e1420;
+  box-shadow:0 1px 3px rgba(0,0,0,.6);
+}
+body.theme-dark #fxp input[type=range]:focus::-webkit-slider-thumb,
+body.dark #fxp input[type=range]:focus::-webkit-slider-thumb{
+  box-shadow:0 0 0 3px rgba(77,124,255,.28);
+}
+body.theme-dark #fxp .val, body.theme-dark #fxp .v, body.theme-dark #fxp output,
+body.theme-dark #fxp .num, body.dark #fxp .val, body.dark #fxp .v,
+body.dark #fxp output, body.dark #fxp .num,
+body.theme-night #fxp .val, body.theme-night #fxp .v,
+body.theme-night #fxp output, body.theme-night #fxp .num{
+  color:#ffc861;                      /* 与页面 --gold 同源 */
+}
+body.theme-dark #fxp button, body.dark #fxp button, body.theme-night #fxp button,
+html[data-theme="dark"] #fxp button, body[data-theme="dark"] #fxp button{
+  background:#141c2b; border-color:#22304a; color:#b9c8e0;
+}
+body.theme-dark #fxp button:hover, body.dark #fxp button:hover,
+body.theme-night #fxp button:hover{
+  background:#1b2740; border-color:#4d7cff; color:#cddcff;
+}
+body.theme-dark #fxp button.on, body.theme-dark #fxp button.active,
+body.dark #fxp button.on, body.dark #fxp button.active,
+body.theme-night #fxp button.on, body.theme-night #fxp button.active{
+  background:#2f6fe0; border-color:#2f6fe0; color:#fff;
+}
+body.theme-dark #fxp .lab, body.dark #fxp .lab, body.theme-night #fxp .lab{
+  color:#b9c8e0;
+}
+body.theme-dark #fxp .hint, body.dark #fxp .hint, body.theme-night #fxp .hint{
+  color:#7d90ae;
+}
+body.theme-dark #fxp .gt, body.dark #fxp .gt, body.theme-night #fxp .gt,
+html[data-theme="dark"] #fxp .gt, body[data-theme="dark"] #fxp .gt{
+  color:#cddcff;
+}
+body.theme-dark #fxp select, body.dark #fxp select, body.theme-night #fxp select,
+body.theme-dark #fxp input[type=text], body.theme-dark #fxp input[type=number],
+body.dark #fxp input[type=text], body.dark #fxp input[type=number],
+body.theme-night #fxp input[type=text], body.theme-night #fxp input[type=number]{
+  background:#0b1019; border-color:#22304a; color:#e6edf8;
+}
+body.theme-dark .fxp-note, body.dark .fxp-note, body.theme-night .fxp-note{
+  background:#111826; border-color:#22304a; color:#7d90ae;
+}
+body.theme-dark .fxp-note::before, body.dark .fxp-note::before,
+body.theme-night .fxp-note::before{ color:#7ea6ff }
+
+/* 暗色下的窄屏抽屉边框 */
+@media (max-width:880px){
+  body.theme-dark #fxp.fxp-min, body.dark #fxp.fxp-min, body.theme-night #fxp.fxp-min{
+    border-color:#22304a;
+  }
+}
+
+</style><!--/FXCTL:CSS-->
+</head>
+<body>
+<div class="topnav"><div class="in">
+  <b>PKS · 形状层</b>
+  <a href="../../AAA_跨界总入口_总网页.html">← 跨界总入口</a>
+  <a href="AAA_蛋形与双锥_3D参数台.html">蛋形参数台</a>
+  <a href="../AAA_PKS五层树_3D总览.html">PKS 五层树</a>
+  <a href="AAA_PKS代码族_3D参数台_说明.md">本页说明（md）</a>
+</div></div>
+
+<div class="wrap">
+<span class="kicker">L3 · 六族代码的最终升级版</span>
+<h1>PKS 代码族 · 3D 参数台
+<small>把 <code>PKS_千禧难题_GitHub版</code> 里六个代码目录的<b>最后一代 py</b> 各搬成一页可拖参数的 3D：
+双波纹盘（本次纠正）、蛋螺旋、螺旋锥管、蛋形均轮、钟形水轮、双曲锥几何阻尼。
+每族的参数与默认值都取自原脚本，滑条一动整个网格按方程重算，不是截图。</small></h1>
+
+<div class="infobox">
+<b>这一页解决的问题：</b>仓库里有 1457 个 <code>.py</code>，绝大多数是同一想法的一代代改稿；<b>只有每个目录里的最后一代才是"定型版"</b>。
+这一页先做了一件事——<b>扫每一族有没有配套的 md 说明</b>，再按最后一代的方程做成参数台。
+<b>凡是原脚本里数值会崩的地方（NaN、开方为负、曲线提前终止），这一页都不偷偷修掉，而是照实标出来。</b>
+</div>
+
+<h2>一 · 先扫一遍：六族 × 最后一代 × 有没有 md</h2>
+<p>扫描范围：根目录下 7 个 <code>代码_*</code> 目录（<code>代码_DXF生成工具</code> 是空的），共 <b>36 个 py</b>。
+判别"最后一代"的依据是文件编号（<code>22_</code>、<code>30_</code> 这类）与目录内 md 的演化谱系表，不是按修改时间。</p>
+<div class="tw"><table>
+<thead><tr><th style="width:15%">代码目录</th><th style="width:30%">最后一代 py（本页复刻的对象）</th><th style="width:12%">配套 md</th><th>这一族在讲什么</th></tr></thead>
+<tbody>
+<tr><td><b>代码_波纹盘</b></td><td><code>22_双波纹盘最佳截面曲线.py</code><br>+ <code>27_双曲线比切四象限.py</code>（衰减内化）<br>+ <code>30_4种波纹最佳截面曲线.py</code>（四方案对比）</td>
+<td class="hit">有</td><td><b>蛋形方程的两个分量各自变成一条截面曲线</b>，上下面各一条 → 绕轴转出"双面波纹盘"。<b>波纹沿半径方向，不是沿圆周方向。</b></td></tr>
+<tr><td><b>代码_蛋形曲线</b></td><td><code>舒伯格蛋Die Ei-Kurve -蛋螺旋 缩放sqrt(n).py</code></td><td>无</td>
+<td>用斐波那契比值喂蛋参数 <code>(k,b)</code>，振幅取 <code>√n</code>，把 72 个蛋逐层转 2520° 叠成螺旋。</td></tr>
+<tr><td><b>代码_螺旋锥与螺旋管</b></td><td><code>最简原始模版…锥角参数可调 管波动纹 黄金比schauberger.py</code></td><td>无</td>
+<td>指数螺旋锥 + 非线性扭转 + 断面从"咬一口的蛋"渐变 + 沿管的锯齿波纹（47 带，频率按 φ 增）。</td></tr>
+<tr><td><b>代码_外摆线均轮</b></td><td><code>egg_epicycle_interactive.py</code></td><td class="hit">有</td>
+<td>托勒密偏心均轮 <code>M=C+均轮+本轮</code>。<b>md 自己承认：它是外旋轮线，看着像蛋，数学上不是蛋。</b></td></tr>
+<tr><td><b>代码_水轮发电</b></td><td><code>钟形水轮顶逆时针进水锥逆时针转 最终.py</code></td><td class="hit">有</td>
+<td>蛋半径当母线、<code>sin/cos(3ft)</code> 当相位 → 钟形螺旋；叶片沿 Frenet 标架扫掠成叶轮。</td></tr>
+<tr><td><b>代码_PKS双曲锥与阻尼NS</b></td><td><code>task3_conical_ns.py</code></td><td class="hit">有</td>
+<td>锥面 <code>z=C₁−C₂ln r</code> 的度量与曲率 <code>κ(r)</code>；"几何阻尼"是启发式提法，脚本自己声明未解 NS。</td></tr>
+</tbody></table></div>
+<p class="note">md 有 4 族、缺 2 族（蛋形曲线、螺旋锥管）。缺的两族，方程只能从 py 里直接读——这一页末尾把读出来的式子都写了一遍，算是给它们补的说明。</p>
+
+<h2>二 · 参数台</h2>
+<div class="tabs" id="tabs"></div>
+
+<div class="stage">
+  <div id="cvbox">
+    <canvas id="cv3d"></canvas>
+    <div id="badge">—</div>
+    <div id="hint">拖动旋转 ｜ 滚轮缩放 ｜ 双击复位 ｜ 空格暂停自转</div>
+  </div>
+  <div class="ctrl">
+    <h3 id="famTitle">—</h3>
+    <div class="pyline" id="famPy"></div>
+    <div id="rows"></div>
+    <div class="choices" id="choices"></div>
+    <div class="readout" id="readout"></div>
+    <canvas id="prof" width="340" height="200"></canvas>
+    <div class="presets" id="presets"></div>
+  </div>
+</div>
+<div class="infobox" id="famNote"></div>
+
+<h2>三 · 逐族说明（含原脚本的坑）</h2>
+
+<h3>① 双波纹盘 —— 本页纠正的那一个</h3>
+<p><b>之前错在哪：</b>我上一版把波纹盘画成 <code>z = A·sin(nθ)</code>，也就是"盘子边缘一圈起皱"。那是<b>周向</b>波纹，
+属于克拉德尼那一类"沿圆周的驻波"，跟 <code>22_双波纹盘最佳截面曲线.py</code> 不是一回事。</p>
+<p><b>原脚本实际做的事</b>（三行就说完）：它<b>不画参数曲线</b> <code>(x(t),y(t))</code>，而是把蛋的两个分量<b>拆开</b>，
+各自以 <code>t</code> 为横轴当成一条<b>截面曲线</b>——蓝线一条、绿线一条，绕盘心转一圈就得到一张<b>双面</b>盘：</p>
+<div class="eq">amp(t) = 1 / [ (1 + t/2π) · ln(n+1) ]                     ← 衰减包络（连续对数积分）
+
+蓝面 A(t) = amp(t) · a · [ 2·sin t / (b + √(b²−4k·cos t)) − t_min ]
+绿面 B(t) = amp(t) · a · [ m·term₁ + term₂(t) + t_min ]
+            a = 2π ,  m = 2/3 ,  k = 2/3 ,  b = 5/3 ,  t_min = 2π/(n+1) ,  t ∈ [t_min, 2π+2nπ]</div>
+<p>所以"双波纹"指的是<b>两张面各自带波纹</b>，波纹<b>沿半径方向</b>一圈圈往外走，振幅按 <code>1/[(1+t/2π)·ln(n+1)]</code> 递减。
+<b>n 越大，衰减越快、纹越密</b>；n 与 ln(n+1) 一起决定了整体厚薄（实测 n=1 很肥、n=12 很薄）。</p>
+<p><b>27 号文件是"衰减内化"版</b>：不再外乘 <code>amp</code>，改成让蛋自己的参数随时间演化 ——
+<code>k(t)=1/2π</code>、<code>b(t)=2t/(T√t)=2√t/T</code>，于是"蛋自己选择慢慢变圆"。
+代价是它的定义域变窄：<code>b²−4k = 4t/T² − 4/T</code>，<b>当 t&lt;T=2π 时为负</b>，原脚本直接 <code>np.sqrt</code> 会出 <code>NaN</code>。
+本页照实处理：从 <code>t=2π</code> 起画，内圈那一段留空，并在读数里报"无效点"个数。</p>
+<div class="warnbox">
+<b>读图提醒：</b>本页把两条截面的<b>颜色照原脚本</b>（蓝 = <code>x_minus</code>，绿 = <code>y_add</code>），
+不叫"上/下"——因为蓝面在 <code>z&lt;0</code>、绿面在 <code>z&gt;0</code>，谁在上取决于你从哪边看，硬叫上下反而会误导。
+盘心留 5% 的孔也不是我加的：原脚本从 <code>t_min</code> 起画，本来就不经过圆心；孔边那一圈"小尖"是因为 <b>t_min 处厚度最大</b>（n=5 时是该盘最厚的 6.4，厚径比在这一处取到 0.093），原式如此，不是建模多画了一笔。
+</div>
+
+<h3>② 蛋螺旋（Die Ei-Kurve · √n 缩放）</h3>
+<p>斐波那契比值喂参数，是这一族最"不像凑数"的地方：<code>k=F_{n+1}/F_{n+2}</code>、<code>b=F_{n+3}/F_{n+2}</code>，
+随 n 增大同时收敛到 <code>1/φ=0.618</code> 与 <code>φ=1.618</code>——<b>也就是说 n 越大，蛋就越接近黄金蛋，只是个头按 √n 长大</b>。</p>
+<div class="eq">蛋曲线：  r(φ) = amp·[ z₀ − √( z₀² − 4·cosφ·sinα / √(sin²φ + cos²φ·cos²α) ) ] / (2·cosφ·sinα)
+          x = r·sinφ ,  y = r·cosφ ,  tanα = k ,  z₀ = b ,  amp = √n
+叠层：    z_n = (n−1)·Δz ,  第 n 层整体转 θ_n = (n−1)/(N−1) · 2520°</div>
+<p>原脚本出的是 2D 叠图 GIF；本页做的是<b>把这个叠层抬进 3D</b>（每层给一个 z，保留原来的旋转角），所以能看出它其实是一条<b>会膨胀的螺旋壳</b>——
+舒伯格"羚羊角"那类形状的骨架。φ 在 <code>π/2</code>、<code>3π/2</code> 处 <code>cosφ=0</code>，分母为零，原脚本靠 <code>valid_mask</code> 跳过；
+本页同样跳过，所以每条曲线在那两处有<b>两个小缺口</b>，不是画错了。</p>
+
+<h3>③ 螺旋锥管（黄金比 · 管波动纹）</h3>
+<p>这是六族里代码最长（28 KB）的一个，三件事叠在一起：<b>指数螺旋锥</b> + <b>断面渐变</b> + <b>管的波纹</b>。</p>
+<div class="eq">螺旋线：  R(t) = R_top·e^{b·t} ,  b = ln(R_bot/R_top) ,  R_top = R_bot/2 − tan(α)·h
+          θ(t) = 2π·turns·t ,  z(t) = h·(e^{b t} − 1)/(e^b − 1)
+扭转：    ψ(t) = twist·2π·turns·t                    （linear）
+          ψ(t) = twist·2π·turns·(2^{3t}−1)/(2³−1)     （exponential，原脚本默认）
+断面：    r_s(t) = amp·(1 − taper·t)                   （原脚本 a[]=linspace(1,1/3) → taper=2/3）
+波纹：    相位 = Bands·(φ^{p·t}−1)/(φ^p−1) , 锯齿 = 2 − (相位 mod 1) ∈ (1,2]
+          断面半径 × [1 + cAmp·(锯齿−1.5)]</div>
+<p><b>关键点：</b>波纹的<b>频率随 t 增大而变密</b>（相位是 φ 的幂的积分，不是线性相位），所以管子下端疏、上端密——
+这就是原脚本 <code>_precompute_exp_wave</code> 里那段 <code>minimize</code> 在干的事：<b>反解 k 使总带数正好落在 47 带</b>。
+本页用同样的归一化形状，但把"总带数"直接做成滑条，省掉优化那一步（结果等价，可自己数带子）。</p>
+<p class="note">原脚本要从两个 DXF 里读"咬一口的蛋"断面做首尾混合；本页把断面简化为圆 + 波纹，
+<b>不再复刻断面渐变</b>——这一条是降级，不是等价，写在这里免得误会。</p>
+
+<h3>④ 蛋形均轮（托勒密偏心模型）</h3>
+<div class="eq">M(t) = ( C_x + R·cos t + r·cos(w·t) ,  C_y + R·sin t + r·sin(w·t) )
+k_E  = max(M_y) / |min(M_y)|</div>
+<p>这一族的配套 md 写得最诚实，直接给结论：<b>它是外旋轮线（epitrochoid），不是蛋形方程</b>。
+<code>w=1</code> 偏心圆、<code>w=2</code> 蜗线（limaçon）、<code>w=3</code> 三尖外摆线；<b>只要 <code>C_y≠0</code> 就打破对称，看起来就像蛋</b>。
+所以本页的读数里专门给一行"曲线类型"，就是不让"像蛋"被当成"是蛋"。</p>
+
+<h3>⑤ 钟形水轮（内进水锥）</h3>
+<div class="eq">母线半径：  r(t) = √[ 1/(b − t·sinα)² − (t·cosα)² ]
+中心线：    x = r·sin(3ft) ,  y = r·cos(3ft) ,  z = −t·z_v ,  t ∈ [0, 2π/3]
+叶片断面：  x_s(τ) = −a·π·sinτ/τ ,  y_s(τ) = a·π·cosτ/τ ,  a: 0.3 → 0.1</div>
+<p>"钟形"不是抛物线也不是圆锥，而是那个根号：<code>t</code> 小的时候 <code>r≈1/b</code>（近似圆柱段），
+<code>t</code> 一大 <code>(b−t·sinα)²</code> 变小、<code>r</code> 加速膨大，<b>再大就开方为负、曲线当场终止</b>。
+本页把这个终止点（cut）直接报出来：把 α 拧到 25° 以下、或把 t_max 比例拧大，就会看到"钟"还没长完就断了。</p>
+
+<h3>⑥ 双曲锥 · 几何阻尼</h3>
+<div class="eq">锥面：  z(r) = C₁ − C₂·ln r ,  C₂ = z₀/ln10 ,  C₁ = z₀ + C₂·ln10   （r=1→z=2z₀，r=10→z=z₀）
+曲率：  κ(r) = C₂ / ( r·√(r² + C₂²) )
+几何力：f_cone^r = −κ(r)·|u_r|</div>
+<p>颜色就是 <code>κ(r)</code>：越靠近锥顶（r 小）曲率越大、阻尼越强，r 大则趋近于零。
+<b>但必须说清楚</b>：<code>task3_conical_ns.py</code> 的抬头自己写着"不声称 NS 在锥面上有光滑解、不声称几何阻尼保证不爆破"。
+这一页照抄它的立场——<b>画的是曲率，不是证明</b>。</p>
+
+<div class="graybox">
+<b>本页的取舍（写明白，免得当成"全复刻"）：</b><br>
+① 断面渐变（③）、DXF 输入（③⑤）、trimesh 导出与 Rhino 里 InterpCurve 的插值方式，这些<b>没有</b>搬上来——它们要文件、要软件，不是方程。<br>
+② 所有"旋成体"都按<b>三角网格</b>实时重算，分辨率取到能看清纹路为止（双波纹盘约 4 万顶点），不追求加工级精度。<br>
+③ 六族各自独立，<b>没有</b>强行把它们塞进同一条公式——仓库里它们确实同根（都从蛋 / 双曲线来），但"同根"是叙述，不是可以互推的等式。
+</div>
+
+<h2>四 · 回总入口</h2>
+<p>这一页在总入口里挂在 <a href="../../AAA_跨界总入口_总网页.html#m0">〇 组（PKS 主树 · 门面页）</a>，
+和《蛋形与双锥 3D 参数台》相邻：那一页管<b>一条方程两个参数</b>，这一页管<b>六族代码各自定型之后长什么样</b>。
+两页里的波纹盘已改为同一套方程，不再互相矛盾。</p>
+
+<div class="foot">
+基准目录 <code>D:/AAA我的文件/PKS_千禧难题_GitHub版</code> ｜ 三维用 <code>../_vendor/three.min.js</code>（MIT）实时计算 ｜
+方程取自 <code>代码_波纹盘/22·27·30</code>、<code>代码_蛋形曲线/舒伯格蛋Die Ei-Kurve…</code>、
+<code>代码_螺旋锥与螺旋管/最简原始模版…黄金比schauberger.py</code>、<code>代码_外摆线均轮/egg_epicycle_interactive.py</code>、
+<code>代码_水轮发电/钟形水轮顶…最终.py</code>、<code>代码_PKS双曲锥与阻尼NS/task3_conical_ns.py</code> ｜ 2026-10-18 建
+</div>
+</div>
+
+<script src="../_vendor/three.min.js"></script>
+<script>
+var TAU=Math.PI*2, PHI=(1+Math.sqrt(5))/2;
+function sq(v){return v>0?Math.sqrt(v):0;}
+function solid(c,o){return new THREE.MeshPhongMaterial({color:c,shininess:55,specular:0x556677,
+  transparent:o<1,opacity:o,side:THREE.DoubleSide});}
+
+/* ---------------- 网格工具 ---------------- */
+function gridGeom(nu,nv,fn,colFn){
+  var pos=[],col=[],idx=[],i,j,q;
+  for(i=0;i<=nu;i++)for(j=0;j<=nv;j++){
+    q=fn(i/nu,j/nv); pos.push(q[0],q[1],q[2]);
+    if(colFn){var c=colFn(q[3],q[4]);col.push(c.r,c.g,c.b);}
+  }
+  for(i=0;i<nu;i++)for(j=0;j<nv;j++){
+    var A=i*(nv+1)+j,B=A+nv+1;
+    idx.push(A,B,A+1,B,B+1,A+1);
+  }
+  var g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  if(colFn)g.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
+  g.setIndex(idx);g.computeVertexNormals();
+  return g;
+}
+/* 把一条【闭合截面】绕 z 轴旋成实体：prof=[{r,z},...] 顺时针闭合 */
+function revolveLoop(prof,NS,color){
+  var M=prof.length,pos=[],idx=[],j,i;
+  for(j=0;j<NS;j++){
+    var th=TAU*j/NS,c=Math.cos(th),s=Math.sin(th);
+    for(i=0;i<M;i++)pos.push(prof[i].r*c,prof[i].z,prof[i].r*s);
+  }
+  for(j=0;j<NS;j++){
+    var jn=(j+1)%NS;
+    for(i=0;i<M;i++){
+      var in_=(i+1)%M;
+      var a0=j*M+i,a1=j*M+in_,b0=jn*M+i,b1=jn*M+in_;
+      idx.push(a0,b0,a1,a1,b0,b1);
+    }
+  }
+  var g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  g.setIndex(idx);g.computeVertexNormals();
+  return new THREE.Mesh(g,solid(color,0.97));
+}
+function lineOf(pts,color,w){
+  var g=new THREE.BufferGeometry().setFromPoints(pts);
+  return new THREE.Line(g,new THREE.LineBasicMaterial({color:color,linewidth:w||1}));
+}
+function fib(n){var a=1,b=1,i,c;for(i=2;i<n;i++){c=a+b;a=b;b=c;}return b;}
+function kbOf(n){return [fib(n+1)/fib(n+2),fib(n+3)/fib(n+2)];}
+
+/* ---------------- 家族 1：双波纹盘 ---------------- */
+function f1Sections(P){
+  var n=Math.max(1,Math.round(P.n)),k=P.k,b=P.b,A=TAU,m=2/3;
+  var tmin=TAU/(n+1),tmax=TAU+2*n*TAU;
+  var t0=(P.mode===0)?tmin:Math.max(tmin,TAU);
+  var N=300,out=[],bad=0,i;
+  for(i=0;i<=N;i++){
+    var t=t0+(tmax-t0)*i/N,bb,kk,amp,off;
+    if(P.mode===0){bb=b;kk=k;amp=1/((1+t/TAU)*Math.log(n+1));off=tmin;}
+    else{bb=2*t/(TAU*Math.sqrt(t));kk=1/TAU;amp=1;off=tmin/2;}
+    var s=bb*bb-4*kk*Math.cos(t);
+    if(s<=0||bb*bb-4*kk<=0){bad++;out.push({r:i/N,ok:false});continue;}
+    var r1=Math.sqrt(bb*bb-4*kk),r2=Math.sqrt(bb*bb+4*kk),r3=Math.sqrt(s);
+    var term1=-((Math.sqrt(1+kk*kk)*(-r1+r2))/(2*kk));
+    var term2=(1/(2*Math.sqrt(1+kk*kk)))*(((kk*kk-1)/kk)*bb+((kk*kk+1)/kk)*r3)
+              -(bb*(-1+kk*kk)+r1*(1+kk*kk))/(2*kk*Math.sqrt(1+kk*kk));
+    var za=A*((2*Math.sin(t)/(bb+r3))-off)*amp;
+    var zb=A*((m*term1+term2)+off)*amp;
+    out.push({r:i/N,ok:true,t:t,A:za,B:zb});
+  }
+  return {pts:out,bad:bad,t0:t0,tmax:tmax,tmin:tmin};
+}
+function f1Build(P){
+  var S=f1Sections(P),A=[],B=[],i,j,q;
+  var rim=Math.max(0,Math.min(0.24,P.rim));
+  var zs=P.amp/Math.max(1,S.tmax);      // 真实比例 = 1；P.amp 是夸大倍数
+  for(i=0;i<S.pts.length;i++){
+    q=S.pts[i];
+    var rr=rim+(1-rim)*q.r;
+    if(q.ok){A.push({r:rr,z:q.A*zs});B.push({r:rr,z:q.B*zs});}
+  }
+  if(A.length<4)return null;
+  var prof=[];
+  for(j=0;j<A.length;j++)prof.push(A[j]);
+  for(j=B.length-1;j>=0;j--)prof.push(B[j]);
+  var g=new THREE.Group();
+  g.add(revolveLoop(prof,96,0xc9803a));
+  // 两条截面曲线（θ=0 与 θ=π 各画一组，露出剖面）
+  var pa=[],pb=[],pa2=[],pb2=[];
+  for(j=0;j<A.length;j++){
+    pa.push(new THREE.Vector3(A[j].r*1.004,A[j].z*1.02,0));
+    pa2.push(new THREE.Vector3(-A[j].r*1.004,A[j].z*1.02,0));
+  }
+  for(j=0;j<B.length;j++){
+    pb.push(new THREE.Vector3(B[j].r*1.004,B[j].z*1.02,0));
+    pb2.push(new THREE.Vector3(-B[j].r*1.004,B[j].z*1.02,0));
+  }
+  g.add(lineOf(pa,0x1f4fa8));g.add(lineOf(pb,0x1c7a3e));
+  g.add(lineOf(pa2,0x1f4fa8));g.add(lineOf(pb2,0x1c7a3e));
+  var zmax=0.002;
+  for(j=0;j<A.length;j++)zmax=Math.max(zmax,Math.abs(A[j].z),Math.abs(B[j].z));
+  g.add(lineOf([new THREE.Vector3(0,-zmax*1.3,0),new THREE.Vector3(0,zmax*1.3,0)],0xb9c4d6));
+  return g;
+}
+function f1Read(P){
+  var S=f1Sections(P),th=[],bad=0,i;
+  for(i=0;i<S.pts.length;i++){var q=S.pts[i];if(q.ok)th.push(Math.abs(q.A-q.B));else bad++;}
+  var mx=th.length?Math.max.apply(null,th):0, mn=th.length?Math.min.apply(null,th):0;
+  var n=Math.max(1,Math.round(P.n));
+  var dec=(P.mode===0)?(1/((1+S.t0/TAU)*Math.log(n+1)))/(1/((1+S.tmax/TAU)*Math.log(n+1))):1;
+  return [
+    ['模型',P.mode===0?'22 号：外乘 amp':'27 号：衰减内化'],
+    ['用户数 n',n+'（t∈['+S.t0.toFixed(2)+', '+S.tmax.toFixed(0)+']）'],
+    ['厚度 最大 / 最小',mx.toFixed(2)+' / '+mn.toFixed(3)],
+    ['真实厚径比',(mx/S.tmax).toFixed(3)+' : 1（画面已夸大 ×'+P.amp.toFixed(1)+'）'],
+    ['内→外 振幅比',P.mode===0?dec.toFixed(1)+' : 1':'1 : 1（无外乘）'],
+    ['定义域 b²−4k',(P.b*P.b-4*P.k).toFixed(3)+(P.b*P.b-4*P.k>0?' > 0 ✓（需 b>2√k='+(2*Math.sqrt(P.k)).toFixed(3)+'）':' ≤ 0 ✗ 无定义')],
+    ['无效采样点',bad+' / '+S.pts.length]
+  ];
+}
+function f1Prof(ctx,W,H,P){
+  var S=f1Sections(P),i,q;
+  var mx=0;for(i=0;i<S.pts.length;i++){q=S.pts[i];if(q.ok)mx=Math.max(mx,Math.abs(q.A),Math.abs(q.B));}
+  mx=mx||1;
+  var l=46,r=W-10,t=14,b=H-26,sw=r-l,sh=b-t;
+  ctx.clearRect(0,0,W,H);ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#eef1f6';ctx.lineWidth=1;
+  for(i=0;i<=4;i++){var y=t+sh*i/4;ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(r,y);ctx.stroke();}
+  ctx.strokeStyle='#dde3ec';ctx.beginPath();ctx.moveTo(l,t+sh/2);ctx.lineTo(r,t+sh/2);ctx.stroke();
+  function yy(v){return t+sh/2-v/mx*sh/2;}
+  function xx(u){return l+u*sw;}
+  function draw(key,col){
+    ctx.beginPath();var started=false;
+    for(i=0;i<S.pts.length;i++){
+      q=S.pts[i];if(!q.ok){started=false;continue;}
+      var X=xx(q.r),Y=yy(q[key]);
+      if(!started){ctx.moveTo(X,Y);started=true;}else ctx.lineTo(X,Y);
+    }
+    ctx.strokeStyle=col;ctx.lineWidth=1.7;ctx.stroke();
+  }
+  draw('A','#1f4fa8');draw('B','#1c7a3e');
+  ctx.fillStyle='#8a95a5';ctx.font='11px sans-serif';
+  ctx.fillText('盘心 r=0',l,10);ctx.fillText('外缘 r=1',r-46,10);
+  ctx.fillText('蓝 = A(t) 截面曲线   绿 = B(t) 截面曲线（原脚本配色）',l,H-8);
+}
+
+/* ---------------- 家族 2：蛋螺旋 ---------------- */
+function f2Egg(z0,ta,amp,nPts){
+  var al=Math.atan(ta),sa=Math.sin(al),ca=Math.cos(al),out=[],i;
+  for(i=0;i<=nPts;i++){
+    var ph=TAU*i/nPts,sp=Math.sin(ph),cp=Math.cos(ph);
+    var di=Math.sqrt(sp*sp+cp*cp*ca*ca);
+    var ins=z0*z0-4*cp*sa/di,den=2*cp*sa;
+    if(ins<0||Math.abs(den)<1e-6)continue;
+    var rr=amp*(z0-Math.sqrt(ins))/den;
+    out.push([rr*sp,rr*cp]);
+  }
+  return out;
+}
+function f2Build(P){
+  var N=Math.max(1,Math.round(P.N)),i,n;
+  var pos=[],col=[],g=new THREE.Group(),ridge=[];
+  var scheme=P.sch,dz=P.dz,rot=P.rot;
+  for(n=1;n<=N;n++){
+    var kb=kbOf(n),amp=(scheme===0?Math.sqrt(n):(scheme===1?n:1))*P.scale;
+    var pts=f2Egg(kb[1],kb[0],amp,220);
+    if(pts.length<4)continue;
+    var th=(N>1?(n-1)/(N-1):0)*rot*Math.PI/180;
+    var ct=Math.cos(th),st=Math.sin(th);
+    var c=new THREE.Color().setHSL(0.62*(1-(N>1?(n-1)/(N-1):0)),0.74,0.45);
+    var prev=null;
+    for(i=0;i<pts.length;i++){
+      var x=pts[i][0]*ct-pts[i][1]*st,y=pts[i][0]*st+pts[i][1]*ct;
+      var z=(n-1)*dz;
+      var cur=[x,y,z];
+      if(prev){
+        pos.push(prev[0],prev[1],prev[2],cur[0],cur[1],cur[2]);
+        col.push(c.r,c.g,c.b,c.r,c.g,c.b);
+      }
+      prev=cur;
+    }
+    var tp=f2Egg(kb[1],kb[0],amp,180);
+    if(tp.length){ var tx=tp[0][0]*ct-tp[0][1]*st, ty=tp[0][0]*st+tp[0][1]*ct;
+      ridge.push(new THREE.Vector3(tx,ty,(n-1)*dz)); }
+  }
+  var geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  geo.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
+  g.add(new THREE.LineSegments(geo,new THREE.LineBasicMaterial({vertexColors:true})));
+  if(ridge.length>1){
+    var rh=[];
+    for(i=0;i<ridge.length;i++)rh.push(ridge[i]);
+    var cc=new THREE.CatmullRomCurve3(rh);
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(cc,200,Math.max(0.01,dz*0.05),6,false),
+      solid(0xb3261e,0.75)));
+  }
+  return g;
+}
+function f2Read(P){
+  var N=Math.max(1,Math.round(P.N)),kb=kbOf(N);
+  return [
+    ['层数 N',N],
+    ['第 N 层 k',kb[0].toFixed(6)],
+    ['第 N 层 b',kb[1].toFixed(6)],
+    ['振幅方案',P.sch===0?'√n':(P.sch===1?'n':'1（等幅）')],
+    ['总旋转',P.rot.toFixed(0)+'° ／ '+P.dz.toFixed(2)+' 层距']
+  ];
+}
+
+/* ---------------- 家族 3：螺旋锥管 ---------------- */
+function cross3(a,b){return [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];}
+function norm3(a){var L=Math.sqrt(a[0]*a[0]+a[1]*a[1]+a[2]*a[2])||1e-9;return [a[0]/L,a[1]/L,a[2]/L];}
+function f3Build(P){
+  var Rbot=Math.max(2,P.db)/2,al=P.alpha*Math.PI/180;
+  var Rtop=Rbot-Math.tan(al)*P.h;
+  var clipped=false;
+  if(Rtop<Rbot*0.04){Rtop=Rbot*0.04;clipped=true;}
+  var bb=Math.log(Rbot/Rtop),turns=Math.max(0.2,P.turns);
+  function C(t){
+    var R=Rtop*Math.exp(bb*t),th=TAU*turns*t;
+    var z=P.h*(Math.exp(bb*t)-1)/(Math.exp(bb)-1||1e-9);
+    return [R*Math.cos(th),z,R*Math.sin(th)];
+  }
+  var NT=260,NV=36,i,j;
+  var frames=[];
+  var hh=1e-4;
+  for(i=0;i<=NT;i++){
+    var t=i/NT,c0=C(t),c1=C(Math.min(1,t+hh)),c2=C(Math.max(0,t-hh));
+    var d1=[c1[0]-c2[0],c1[1]-c2[1],c1[2]-c2[2]];
+    var d2=[c1[0]-2*c0[0]+c2[0],c1[1]-2*c0[1]+c2[1],c1[2]-2*c0[2]+c2[2]];
+    var T=norm3(d1),Nn=norm3(d2),B=norm3(cross3(T,Nn));
+    var psi;
+    if(P.tw===0)psi=P.twist*TAU*turns*t;
+    else psi=P.twist*TAU*turns*(Math.pow(2,3*t)-1)/7;
+    frames.push({c:c0,T:T,N:Nn,B:B,psi:psi});
+  }
+  var bands=Math.max(0,Math.round(P.bands));
+  function wave(t){
+    if(bands<=0)return 1;
+    var p=Math.max(0.4,P.bfreq),ph=bands*(Math.pow(PHI,p*t)-1)/(Math.pow(PHI,p)-1);
+    var saw=2-(ph-Math.floor(ph));
+    return 1+P.cAmp*(saw-1.5);
+  }
+  var geo=gridGeom(NT,NV,function(s,v){
+    var t=s,fr=frames[Math.round(s*NT)];
+    var a=TAU*v;
+    var rs=P.tr*(1-P.taper*t)*wave(t);
+    var u=rs*Math.cos(a),w=rs*Math.sin(a);
+    var cp=Math.cos(fr.psi),sp=Math.sin(fr.psi);
+    var x=u*cp-w*sp,y=u*sp+w*cp;
+    return [
+      fr.c[0]+x*fr.B[0]+y*fr.N[0],
+      fr.c[1]+x*fr.B[1]+y*fr.N[1],
+      fr.c[2]+x*fr.B[2]+y*fr.N[2]
+    ];
+  });
+  var g=new THREE.Group();
+  g.add(new THREE.Mesh(geo,solid(0x2f6fb5,0.95)));
+  g.add(new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:0x12305e,wireframe:true,
+    transparent:true,opacity:0.07})));
+  var cl=[];for(i=0;i<=120;i++){var q=C(i/120);cl.push(new THREE.Vector3(q[0],q[1],q[2]));}
+  g.add(lineOf(cl,0xb3261e));
+  // 极淡的锥面参考（不含波纹，帮你看清这是"锥"）
+  var cg=gridGeom(20,48,function(s,v){
+    var R=Rtop*Math.exp(bb*s),th=TAU*v;
+    return [R*Math.cos(th),P.h*(Math.exp(bb*s)-1)/(Math.exp(bb)-1),R*Math.sin(th)];
+  });
+  var cm=new THREE.Mesh(cg,new THREE.MeshPhongMaterial({color:0x9fc0e2,transparent:true,
+    opacity:0.13,side:THREE.DoubleSide,depthWrite:false}));
+  g.add(cm);
+  g.userData.clipped=clipped;g.userData.Rtop=Rtop;g.userData.Rbot=Rbot;g.userData.bb=bb;
+  return g;
+}
+function f3Read(P){
+  var Rbot=Math.max(2,P.db)/2,al=P.alpha*Math.PI/180;
+  var Rtop=Rbot-Math.tan(al)*P.h,clip=false;
+  if(Rtop<Rbot*0.04){Rtop=Rbot*0.04;clip=true;}
+  var bb=Math.log(Rbot/Rtop);
+  return [
+    ['底径 / 顶径',(2*Rbot).toFixed(0)+' → '+(2*Rtop).toFixed(0)+(clip?'（已夹到下限）':'')],
+    ['指数因子 b',bb.toFixed(4)],
+    ['锥半角 α',P.alpha.toFixed(2)+'°（锥顶角 '+(2*P.alpha).toFixed(2)+'°）'],
+    ['扭转',(P.tw===0?'线性':'指数')+'，twist='+P.twist.toFixed(2)],
+    ['波纹',Math.round(P.bands)+' 带，强度 '+(P.cAmp*100).toFixed(0)+'%']
+  ];
+}
+
+/* ---------------- 家族 4：蛋形均轮 ---------------- */
+function f4Build(P){
+  var g=new THREE.Group(),i;
+  var R=P.R,r=P.r,cx=P.Cx,cy=P.Cy,w=P.w,N=900;
+  var pts=[];
+  for(i=0;i<=N;i++){
+    var t=TAU*i/N;
+    pts.push(new THREE.Vector3(cx+R*Math.cos(t)+r*Math.cos(w*t),
+                               cy+R*Math.sin(t)+r*Math.sin(w*t),0));
+  }
+  var curve=new THREE.CatmullRomCurve3(pts);
+  var tub=new THREE.Mesh(new THREE.TubeGeometry(curve,700,Math.max(0.018,R*0.007),8,false),solid(0x1c7a3e,0.98));
+  g.add(tub);
+  // 均轮
+  var dc=[];for(i=0;i<=160;i++){var a=TAU*i/160;dc.push(new THREE.Vector3(cx+R*Math.cos(a),cy+R*Math.sin(a),0));}
+  g.add(lineOf(dc,0x8fb8e0));
+  // 快照本轮 + 曲柄
+  var ts=TAU*0.15,sx=cx+R*Math.cos(ts),sy=cy+R*Math.sin(ts);
+  var ec=[];for(i=0;i<=120;i++){var b=TAU*i/120;ec.push(new THREE.Vector3(sx+r*Math.cos(b),sy+r*Math.sin(b),0));}
+  g.add(lineOf(ec,0x7b52a8));
+  g.add(lineOf([new THREE.Vector3(cx,cy,0),new THREE.Vector3(sx,sy,0)],0xe08a1e));
+  var mx=cx+R*Math.cos(ts)+r*Math.cos(w*ts),my=cy+R*Math.sin(ts)+r*Math.sin(w*ts);
+  g.add(lineOf([new THREE.Vector3(sx,sy,0),new THREE.Vector3(mx,my,0)],0x7b52a8));
+  var sp=new THREE.Mesh(new THREE.SphereGeometry(Math.max(0.06,R*0.022),14,12),solid(0x12305e,1));
+  sp.position.set(0,0,0);g.add(sp);
+  var sp2=sp.clone();sp2.position.set(cx,cy,0);g.add(sp2);
+  var sp3=new THREE.Mesh(new THREE.SphereGeometry(Math.max(0.07,R*0.026),14,12),solid(0xb3261e,1));
+  sp3.position.set(mx,my,0);g.add(sp3);
+  return g;
+}
+function f4Read(P){
+  var i,N=600,ymx=-1e9,ymn=1e9,R=P.R,r=P.r,cx=P.Cx,cy=P.Cy,w=P.w;
+  for(i=0;i<=N;i++){
+    var t=TAU*i/N,y=cy+R*Math.sin(t)+r*Math.sin(w*t);
+    if(y>ymx)ymx=y;if(y<ymn)ymn=y;
+  }
+  var kE=Math.abs(ymn)>1e-9?ymx/Math.abs(ymn):Infinity;
+  var ty;
+  if(Math.abs(w-1)<1e-6)ty='偏心圆（w=1）';
+  else if(Math.abs(w-2)<1e-6)ty='蜗线 limaçon（w=2）';
+  else if(Math.abs(w-3)<1e-6)ty='三尖外摆线（w=3）';
+  else ty='外旋轮线（w='+w.toFixed(1)+'）';
+  return [['曲线类型',ty],['蛋形度 k_E',isFinite(kE)?kE.toFixed(3):'∞'],
+    ['y 最大 / 最小',ymx.toFixed(2)+' / '+ymn.toFixed(2)],
+    ['偏心 C',(cx.toFixed(2))+', '+(cy.toFixed(2))+(Math.abs(cy)<1e-6?'（对称，无蛋感）':'')]];
+}
+function f4Prof(ctx,W,H,P){
+  var LX=14,RX=W-14,TY=12,BY=H-24,N=700,i;
+  var xs=[],ys=[],R=P.R,r=P.r,cx=P.Cx,cy=P.Cy,w=P.w;
+  for(i=0;i<=N;i++){
+    var th=TAU*i/N;
+    xs.push(cx+R*Math.cos(th)+r*Math.cos(w*th));
+    ys.push(cy+R*Math.sin(th)+r*Math.sin(w*th));
+  }
+  var x0=Math.min.apply(null,xs),x1=Math.max.apply(null,xs);
+  var y0=Math.min.apply(null,ys),y1=Math.max.apply(null,ys);
+  x0=Math.min(x0,cx-R,0);x1=Math.max(x1,cx+R,0);
+  y0=Math.min(y0,cy-R,0);y1=Math.max(y1,cy+R,0);
+  var s=Math.min((RX-LX)/((x1-x0)||1),(BY-TY)/((y1-y0)||1));
+  var ox=LX+((RX-LX)-(x1-x0)*s)/2-x0*s, oy=BY-((BY-TY)-(y1-y0)*s)/2+y0*s;
+  ctx.clearRect(0,0,W,H);ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);
+  function X(v){return ox+v*s;}function Y(v){return oy-v*s;}
+  ctx.strokeStyle='#eef1f6';ctx.lineWidth=1;
+  for(i=0;i<=4;i++){var yy=TY+(BY-TY)*i/4;ctx.beginPath();ctx.moveTo(LX,yy);ctx.lineTo(RX,yy);ctx.stroke();}
+  ctx.beginPath();ctx.arc(X(cx),Y(cy),R*s,0,TAU);ctx.strokeStyle='#8fb8e0';ctx.lineWidth=1;ctx.stroke();
+  ctx.beginPath();
+  for(i=0;i<=N;i++){if(i===0)ctx.moveTo(X(xs[i]),Y(ys[i]));else ctx.lineTo(X(xs[i]),Y(ys[i]));}
+  ctx.strokeStyle='#1c7a3e';ctx.lineWidth=1.8;ctx.stroke();
+  ctx.fillStyle='#8a95a5';ctx.font='11px sans-serif';
+  ctx.fillText('绿 = 合成轨迹　浅蓝 = 均轮（圆心 C）',LX,H-7);
+}
+
+/* ---------------- 家族 5：钟形水轮 ---------------- */
+function f5Build(P){
+  var al=P.alpha*Math.PI/180,b=P.b,f=P.f,zv=P.zv;
+  var tmax=TAU/3*P.frac,NT=200,NV=8,i,j;
+  var cut=null;
+  function rad(t){
+    var inn=1/Math.pow(b-t*Math.sin(al),2)-Math.pow(t*Math.cos(al),2);
+    if(inn<=0)return null;
+    return Math.sqrt(inn);
+  }
+  for(i=1;i<=400;i++){var tt=tmax*i/400;if(rad(tt)===null){cut=tt;break;}}
+  var tEnd=cut?Math.max(0.02,cut*0.985):tmax;
+  function C(t){
+    var r=rad(t)||0,ph=3*f*t;
+    return [r*Math.sin(ph),-t*zv,r*Math.cos(ph)];
+  }
+  var frames=[],hh=Math.max(1e-4,tEnd*1e-3);
+  for(i=0;i<=NT;i++){
+    var t=tEnd*i/NT,c0=C(t),c1=C(Math.min(tEnd,t+hh)),c2=C(Math.max(0.0001,t-hh));
+    var d1=[c1[0]-c2[0],c1[1]-c2[1],c1[2]-c2[2]];
+    var d2=[c1[0]-2*c0[0]+c2[0],c1[1]-2*c0[1]+c2[1],c1[2]-2*c0[2]+c2[2]];
+    var T=norm3(d1),Nn=norm3(d2),B=norm3(cross3(T,Nn));
+    frames.push({c:c0,T:T,N:Nn,B:B,t:t,psi:1.5*tEnd*(i/NT)});
+  }
+  var g=new THREE.Group();
+  var cl=[];for(i=0;i<=NT;i++)cl.push(new THREE.Vector3(frames[i].c[0],frames[i].c[1],frames[i].c[2]));
+  g.add(lineOf(cl,0xb3261e));
+  var nb=Math.max(2,Math.round(P.blades));
+  var cols=[0x2f6fb5,0x1c7a3e,0xa1591f,0x7b52a8,0x177245,0xb06a00,0x0b57a4,0x8a5a2b];
+  for(j=0;j<nb;j++){
+    var base=j*TAU/nb;
+    var geo=gridGeom(NT,32,function(s,v){
+      var fr=frames[Math.round(s*NT)];
+      var tau=Math.PI+1.5*Math.PI*v;          // 原脚本 theta ∈ [π, 2.5π]
+      var av=P.bl*(0.30-0.20*s);              // 原脚本 a = linspace(0.3, 0.1)
+      var xs=-av*Math.PI*Math.sin(tau)/tau;   // x(θ,a) = −aπ·sinθ/θ
+      var ys= av*Math.PI*Math.cos(tau)/tau;   // y(θ,a) =  aπ·cosθ/θ
+      var sf=1/(fr.t+1);                      // 原脚本 scale_factor = 1/(t+1)
+      var psi=fr.psi+base;
+      var cp=Math.cos(psi),spn=Math.sin(psi);
+      var x=xs*cp-ys*spn,y=xs*spn+ys*cp;
+      return [fr.c[0]+sf*(x*fr.B[0]+y*fr.N[0]),
+              fr.c[1]+sf*(x*fr.B[1]+y*fr.N[1]),
+              fr.c[2]+sf*(x*fr.B[2]+y*fr.N[2])];
+    });
+    g.add(new THREE.Mesh(geo,solid(cols[j%cols.length],0.9)));
+  }
+  g.userData.cut=cut;g.userData.tEnd=tEnd;
+  return g;
+}
+function f5Read(P){
+  var al=P.alpha*Math.PI/180,b=P.b,tmax=TAU/3*P.frac,i;
+  var cut=null,mn=1e9,mx=-1e9;
+  for(i=1;i<=600;i++){
+    var t=tmax*i/600;
+    var inn=1/Math.pow(b-t*Math.sin(al),2)-Math.pow(t*Math.cos(al),2);
+    if(inn<=0){if(cut===null)cut=t;continue;}
+    var r=Math.sqrt(inn);if(r<mn)mn=r;if(r>mx)mx=r;
+  }
+  return [
+    ['母线半径 顶/底',(mn===1e9?'—':mn.toFixed(3))+' / '+(mx===-1e9?'—':mx.toFixed(3))],
+    ['螺旋圈数（3f·t/2π）',(3*P.f*(cut||tmax)/TAU).toFixed(2)],
+    ['开方断开点 t',cut?cut.toFixed(3)+'（曲线在此终止）':'未出现（t 走完全程）'],
+    ['叶片',Math.round(P.blades)+' 片，尺度 '+(P.bl*100).toFixed(0)+'%'],
+    ['b',P.b.toFixed(3)+(Math.abs(P.b-1.618)<0.003?' = φ（黄金比）':'')]
+  ];
+}
+
+/* ---------------- 家族 6：双曲锥 ---------------- */
+function f6Build(P){
+  var z0=P.z0,C2=z0/Math.log(10),C1=z0+C2*Math.log(10);
+  var r0=Math.max(0.25,P.r0),r1=Math.max(r0+0.3,P.r1);
+  var kmin=C2/(r1*Math.sqrt(r1*r1+C2*C2)),kmax=C2/(r0*Math.sqrt(r0*r0+C2*C2));
+  var g=new THREE.Group(),i,j;
+  function col(k){
+    var u=(Math.log(Math.max(k,1e-9))-Math.log(kmin))/(Math.log(kmax)-Math.log(kmin)||1);
+    u=Math.max(0,Math.min(1,u));
+    return new THREE.Color().setHSL(0.59-0.59*u,0.78,0.5-0.06*u);
+  }
+  var geo=gridGeom(60,80,function(s,v){
+    var r=r0+(r1-r0)*s,th=TAU*v;
+    return [r*Math.cos(th),C1-C2*Math.log(r),r*Math.sin(th),C2/(r*Math.sqrt(r*r+C2*C2))];
+  },col);
+  g.add(new THREE.Mesh(geo,new THREE.MeshPhongMaterial({vertexColors:true,shininess:30,
+    side:THREE.DoubleSide,flatShading:false})));
+  var nf=Math.max(3,Math.round(P.flow));
+  for(j=0;j<nf;j++){
+    var th0=j*TAU/nf,pts=[];
+    for(i=0;i<=90;i++){
+      var s=i/90,r=r0+(r1-r0)*s,th=th0+s*TAU*1.5;
+      pts.push(new THREE.Vector3(r*Math.cos(th),C1-C2*Math.log(r),r*Math.sin(th)));
+    }
+    var cur=new THREE.CatmullRomCurve3(pts);
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(cur,120,Math.max(0.008,C2*0.016),6,false),
+      solid(0x12305e,0.85)));
+  }
+  g.userData.k0=kmax;g.userData.k1=kmin;g.userData.C2=C2;g.userData.C1=C1;
+  return g;
+}
+function f6Read(P){
+  var z0=P.z0,C2=z0/Math.log(10);
+  var r0=Math.max(0.25,P.r0),r1=Math.max(r0+0.3,P.r1);
+  var k0=C2/(r0*Math.sqrt(r0*r0+C2*C2)),k1=C2/(r1*Math.sqrt(r1*r1+C2*C2));
+  return [
+    ['C₂ = z₀/ln10',C2.toFixed(3)],
+    ['κ(r_min)',k0.toFixed(4)],
+    ['κ(r_max)',k1.toFixed(5)],
+    ['强/弱阻尼比',(k0/Math.max(k1,1e-9)).toFixed(1)+' 倍'],
+    ['z(r) 落差',(C2*Math.log(r1/r0)).toFixed(2)]
+  ];
+}
+
+/* ---------------- 家族表 ---------------- */
+var FAMS=[
+{id:'ripple',label:'① 双波纹盘',title:'双波纹盘 · 双截面旋成',
+ pyLine:'代码_波纹盘/22_双波纹盘最佳截面曲线.py + 27_双曲线比切四象限.py',
+ badge:function(P){return '双波纹盘 · n='+Math.round(P.n)+' · '+(P.mode===0?'22号（外乘衰减）':'27号（衰减内化）');},
+ params:[
+  {k:'n',label:'用户数 n（ln(n+1) 的 n）',min:1,max:12,step:1,int:true,dp:0},
+  {k:'mode',label:'衰减方式',type:'choice',opts:[{v:0,t:'22 号：外乘 amp'},{v:1,t:'27 号：内化 k(t),b(t)'}]},
+  {k:'k',label:'k（蛋参数）',min:0.30,max:0.95,step:0.005,dp:3},
+  {k:'b',label:'b（蛋参数）',min:1.20,max:2.50,step:0.005,dp:3},
+  {k:'amp',label:'z 向夸大（1 = 原比例 1:23）',min:1,max:20,step:0.5,dp:1},
+  {k:'rim',label:'盘心孔径',min:0,max:0.24,step:0.01,dp:2}
+ ],
+ def:{n:5,mode:0,k:2/3,b:5/3,amp:8,rim:0.05},
+ build:f1Build,read:f1Read,prof:f1Prof,
+ empty:'无定义：b²−4k ≤ 0（双波纹盘要求 b > 2√k ≈ 1.633，请把 b 调大或 k 调小）',
+ note:'<b>这一族是本轮纠正的重点。</b>旧版画的是 <code>z=A·sin(nθ)</code>（沿圆周起皱），错在把"波纹盘"当成了"边缘波浪"；'+
+      '真正的做法是把蛋的 <b>x、y 两个分量拆成两条截面曲线</b>（蓝 A、绿 B），绕轴旋成一张<b>双面</b>盘 —— 波纹沿<b>半径</b>方向，'+
+      '振幅按 <code>1/[(1+t/2π)ln(n+1)]</code> 往外衰减。<b>n 越大纹越密、盘越薄</b>——厚径比实测 n=1 是 <b>2.21:1</b>（比半径还厚，已经不像盘）、n=5 是 0.093:1、n=12 是 0.017:1。'+
+      '27 号把衰减"内化"成 <code>k(t)=1/2π, b(t)=2√t/T</code>，但 <code>t&lt;2π</code> 时 <code>b²−4k&lt;0</code> 会出 NaN，本页从 2π 起画并报出无效点。<b>内化的代价（本轮实测）：</b>厚度不再随半径衰减，n=5 时厚径比从 22 号的 0.093 变成 <b>0.195</b>，旋出来是个"鼓"而不是薄盘——它换来的是"蛋自己变圆"，丢掉的是"往外变薄"。两种都摆在同一格里，好对着看。',
+ presets:[{t:'标准 n=5（22 号）',v:{n:5,mode:0,k:2/3,b:5/3}},
+          {t:'八度 n=1（很肥）',v:{n:1,mode:0,k:2/3,b:5/3}},
+          {t:'密纹 n=12',v:{n:12,mode:0,k:2/3,b:5/3}},
+          {t:'27 号 内化',v:{n:5,mode:1}},
+          {t:'k=0.78 尖钝差拉大',v:{n:5,mode:0,k:0.78,b:1.95}}]},
+
+{id:'eggspiral',label:'② 蛋螺旋',title:'蛋螺旋 · 斐波那契蛋叠层',
+ pyLine:'代码_蛋形曲线/舒伯格蛋Die Ei-Kurve -蛋螺旋 缩放sqrt(n).py',
+ badge:function(P){return '蛋螺旋 · N='+Math.round(P.N)+' 层 · 总转 '+P.rot.toFixed(0)+'°';},
+ params:[
+  {k:'N',label:'层数 N（1–72）',min:1,max:72,step:1,int:true,dp:0},
+  {k:'sch',label:'振幅方案',type:'choice',opts:[{v:0,t:'amp=√n（原脚本）'},{v:1,t:'amp=n'},{v:2,t:'amp=1（等幅）'}]},
+  {k:'rot',label:'总旋转角（°）',min:0,max:2520,step:30,dp:0},
+  {k:'dz',label:'层间距 Δz',min:0.05,max:1.5,step:0.05,dp:2},
+  {k:'scale',label:'整体缩放',min:0.2,max:2.0,step:0.05,dp:2}
+ ],
+ def:{N:14,sch:0,rot:540,dz:0.55,scale:1},
+ build:f2Build,read:f2Read,
+ note:'<code>k=F_{n+1}/F_{n+2}</code>、<code>b=F_{n+3}/F_{n+2}</code> 随 n 收敛到 <code>1/φ</code> 与 <code>φ</code>——'+
+      '所以 n 越大，每一层越接近黄金蛋，只是个头按 √n 长大。<b>原脚本是 2D 叠图 GIF</b>，这里把每层抬一个 z、保留原旋转角，'+
+      '于是一条"会膨胀的螺旋壳"就出来了。<code>φ=π/2, 3π/2</code> 处 <code>cosφ=0</code> 分母为零，原脚本跳过、这里也跳过，所以每条线有两个<b>小缺口</b>。'},
+
+{id:'tube',label:'③ 螺旋锥管',title:'螺旋锥管 · 指数螺旋 + 管波动纹',
+ pyLine:'代码_螺旋锥与螺旋管/最简原始模版…锥角参数可调 管波动纹 黄金比schauberger.py',
+ badge:function(P){return '螺旋锥管 · '+P.turns.toFixed(1)+' 圈 · '+Math.round(P.bands)+' 带波纹';},
+ params:[
+  {k:'db',label:'底部直径',min:40,max:200,step:1,dp:0},
+  {k:'h',label:'高度 h',min:30,max:250,step:1,dp:0},
+  {k:'alpha',label:'侧面夹角 α（°）',min:4,max:30,step:0.1,dp:2},
+  {k:'turns',label:'圈数',min:0.5,max:6,step:0.1,dp:1},
+  {k:'tw',label:'扭转类型',type:'choice',opts:[{v:0,t:'linear 线性'},{v:1,t:'exponential 指数（原默认）'}]},
+  {k:'twist',label:'扭转量 twist',min:-1.5,max:1.5,step:0.05,dp:2},
+  {k:'tr',label:'管半径',min:1,max:10,step:0.2,dp:1},
+  {k:'taper',label:'锥缩 taper（1→?）',min:0,max:0.9,step:0.02,dp:2},
+  {k:'bands',label:'波纹带数',min:0,max:120,step:1,dp:0},
+  {k:'cAmp',label:'波纹强度',min:0,max:0.8,step:0.02,dp:2},
+  {k:'bfreq',label:'波纹加密指数 p',min:0.4,max:3,step:0.1,dp:1}
+ ],
+ def:{db:108,h:144,alpha:13.28,turns:2,tw:1,twist:-0.5,tr:4.5,taper:0.667,bands:47,cAmp:0.35,bfreq:1},
+ build:f3Build,read:f3Read,
+ note:'原脚本最"用力"的地方是 <b>波纹不是等间距</b>：相位是 <code>φ</code> 的幂的积分 <code>Bands·(φ^{p·t}−1)/(φ^p−1)</code>，'+
+      '所以带子下疏上密；<code>_precompute_exp_wave</code> 里那段 <code>minimize</code> 就是在反解 k 让总带数正好 47。'+
+      '本页把"总带数"直接做成滑条（等价、可数）。<b>降级说明：</b>原脚本从两个 DXF 读"咬一口的蛋"断面并首尾渐变，本页断面是圆+波纹。'},
+
+{id:'epi',label:'④ 蛋形均轮',title:'蛋形均轮 · 托勒密偏心模型',
+ pyLine:'代码_外摆线均轮/egg_epicycle_interactive.py（配套 md：为什么蛋形均轮不是真蛋形.md）',
+ badge:function(P){return '蛋形均轮 · R='+P.R.toFixed(1)+' r='+P.r.toFixed(1)+' w='+P.w.toFixed(1);},
+ params:[
+  {k:'R',label:'均轮半径 R',min:1,max:15,step:0.1,dp:1},
+  {k:'r',label:'本轮半径 r',min:0.5,max:8,step:0.1,dp:1},
+  {k:'Cx',label:'偏心 X',min:-5,max:8,step:0.05,dp:2},
+  {k:'Cy',label:'偏心 Y（≠0 → 像蛋）',min:-5,max:5,step:0.05,dp:2},
+  {k:'w',label:'角速比 w = ω_本轮/ω_均轮',min:0.5,max:12,step:0.5,dp:1}
+ ],
+ def:{R:8,r:2.5,Cx:0,Cy:3,w:2},
+ build:f4Build,read:f4Read,prof:f4Prof,
+ note:'配套 md 自己给了结论：<b>它是外旋轮线（epitrochoid），不是蛋形方程</b>。'+
+      '<code>w=1</code> 偏心圆、<code>w=2</code> 蜗线、<code>w=3</code> 三尖外摆线；<b>只要 <code>C_y≠0</code> 就破对称、看起来像蛋</b>。'+
+      '本页读数专列"曲线类型"，就是不让"像蛋"被读成"是蛋"。红色小球是快照时刻的行星位置，紫圈是本轮，橙线是偏心臂。'},
+
+{id:'wheel',label:'⑤ 钟形水轮',title:'钟形水轮 · 蛋半径母线 + 叶轮',
+ pyLine:'代码_水轮发电/钟形水轮顶逆时针进水锥逆时针转 最终.py（配套 md：README_钟形水轮_数学原理.md）',
+ badge:function(P){return '钟形水轮 · α='+P.alpha.toFixed(1)+'° · '+Math.round(P.blades)+' 叶';},
+ params:[
+  {k:'alpha',label:'螺锥半角 α（°）',min:15,max:45,step:0.5,dp:1},
+  {k:'b',label:'膨胀控制 b',min:1.30,max:1.85,step:0.005,dp:3},
+  {k:'f',label:'频率 f（相位 3f·t）',min:1,max:4,step:0.1,dp:1},
+  {k:'zv',label:'z 向速率 z_v',min:0.5,max:3,step:0.1,dp:1},
+  {k:'blades',label:'叶片数',min:2,max:8,step:1,int:true,dp:0},
+  {k:'bl',label:'叶片尺度',min:0.3,max:2.5,step:0.05,dp:2},
+  {k:'frac',label:'t_max 比例（原 2π/3）',min:0.3,max:1,step:0.01,dp:2}
+ ],
+ def:{alpha:33.7,b:1.618,f:3,zv:2,blades:3,bl:1,frac:1},
+ build:f5Build,read:f5Read,
+ note:'"钟形"来自根号 <code>√[1/(b−t sinα)² − (t cosα)²]</code>：t 小时 <code>r≈1/b</code>（近似圆柱段），t 大则加速膨大，'+
+      '<b>再大就开方为负、曲线当场终止</b>。把 α 调到 25° 以下或 t_max 比例调大，读数里的"开方断开点"就会给出具体 t——'+
+      '这不是 bug，是原方程自带的边界。叶片断面用 <code>x=−aπ sinτ/τ, y=aπ cosτ/τ</code>，沿 Frenet 标架绕 T 旋转复制。'},
+
+{id:'cone',label:'⑥ 双曲锥',title:'双曲锥 · 曲率色图与几何阻尼',
+ pyLine:'代码_PKS双曲锥与阻尼NS/task3_conical_ns.py',
+ badge:function(P){return '双曲锥 z=C₁−C₂ln r · z₀='+P.z0.toFixed(1);},
+ params:[
+  {k:'z0',label:'落差 z₀（r=1→r=10 掉多少）',min:1,max:15,step:0.5,dp:1},
+  {k:'r0',label:'r_min（锥顶侧）',min:0.4,max:3,step:0.05,dp:2},
+  {k:'r1',label:'r_max（锥底侧）',min:3,max:12,step:0.1,dp:1},
+  {k:'flow',label:'面上流线条数',min:3,max:16,step:1,int:true,dp:0}
+ ],
+ def:{z0:5,r0:0.6,r1:7,flow:8},
+ build:f6Build,read:f6Read,
+ note:'颜色就是 <code>κ(r)=C₂/(r√(r²+C₂²))</code>：越靠锥顶曲率越大、几何阻尼越强，往外趋近于零。'+
+      '<b>必须照抄脚本自己的声明：</b><code>task3_conical_ns.py</code> 抬头写着"不声称 NS 在锥面上有光滑解、不声称几何阻尼保证不爆破"。'+
+      '所以这一格画的是<b>曲率</b>，不是证明。深色管是面上流线（r 由大到小、θ 转 1.5 圈），不是 NS 解。'}
+];
+
+/* ---------------- three 场景 ---------------- */
+var canvas=document.getElementById('cv3d'),box=document.getElementById('cvbox');
+var renderer,scene,camera,root;
+var az=0.95,el=0.46,camD=6,zoom=1,autoRot=true,dragging=false,lx=0,ly=0;
+var curFam=0,P=null,pending=false;
+
+function initGL(){
+  renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:true,alpha:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  scene=new THREE.Scene();
+  camera=new THREE.PerspectiveCamera(38,1,0.1,5000);
+  scene.add(new THREE.AmbientLight(0xffffff,0.86));
+  var d=new THREE.DirectionalLight(0xffffff,0.72);d.position.set(5,8,6);scene.add(d);
+  var d2=new THREE.DirectionalLight(0xbcd4f0,0.42);d2.position.set(-6,-4,-5);scene.add(d2);
+  var d3=new THREE.DirectionalLight(0xffffff,0.28);d3.position.set(0,-8,2);scene.add(d3);
+  root=new THREE.Group();scene.add(root);
+  resize();
+}
+function resize(){
+  if(!renderer)return;
+  var w=box.clientWidth,h=box.clientHeight;
+  renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();
+}
+function rebuild(){
+  var f=FAMS[curFam];
+  while(root.children.length)root.remove(root.children[0]);
+  var obj=null;
+  try{obj=f.build(P);}catch(e){console.error(e);}
+  if(!obj){document.getElementById('badge').textContent=f.empty||'参数越界，模型为空';return;}
+  var bb=new THREE.Box3().setFromObject(obj);
+  if(!bb.isEmpty()){
+    var c=bb.getCenter(new THREE.Vector3()),sz=bb.getSize(new THREE.Vector3());
+    obj.position.sub(c);
+    root.add(obj);
+    var rad=Math.max(sz.x,sz.y,sz.z)*0.5;
+    camD=Math.max(0.6,rad*4.05);
+  }else{
+    root.add(obj);camD=6;
+  }
+  // 读数
+  var rd=f.read(P),html='';
+  for(var i=0;i<rd.length;i++)html+='<div><span>'+rd[i][0]+'</span><b>'+rd[i][1]+'</b></div>';
+  document.getElementById('readout').innerHTML=html;
+  document.getElementById('badge').textContent=f.badge(P);
+  // 2D
+  var pc=document.getElementById('prof');
+  if(f.prof){
+    pc.style.display='block';
+    var g2=pc.getContext('2d');
+    f.prof(g2,pc.width,pc.height,P);
+  }else pc.style.display='none';
+}
+
+/* UI */
+function fmtVal(p,v){
+  if(p.type==='choice'){for(var i=0;i<p.opts.length;i++)if(p.opts[i].v===v)return p.opts[i].t;return v;}
+  return (p.dp===0)?String(Math.round(v)):Number(v).toFixed(p.dp);
+}
+function buildUI(){
+  var f=FAMS[curFam];
+  document.getElementById('famTitle').textContent=f.title;
+  document.getElementById('famPy').textContent=f.pyLine;
+  document.getElementById('famNote').innerHTML=f.note;
+  var rows=document.getElementById('rows'),chs=document.getElementById('choices');
+  rows.innerHTML='';chs.innerHTML='';
+  f.params.forEach(function(p){
+    if(p.type==='choice'){
+      var wrap=document.createElement('div');
+      wrap.style.margin='8px 0';
+      var lab=document.createElement('div');
+      lab.style.cssText='font-size:12.9px;color:#2c3546;margin-bottom:3px';
+      lab.textContent=p.label;wrap.appendChild(lab);
+      var bx=document.createElement('div');bx.className='choices';bx.style.margin='0';
+      p.opts.forEach(function(o){
+        var bt=document.createElement('button');bt.type='button';bt.textContent=o.t;
+        if(P[p.k]===o.v)bt.className='on';
+        bt.addEventListener('click',function(){
+          P[p.k]=o.v;
+          [].forEach.call(bx.children,function(c){c.className=(c===bt?'on':'');});
+          rebuild();
+        });
+        bx.appendChild(bt);
+      });
+      wrap.appendChild(bx);rows.appendChild(wrap);
+      return;
+    }
+    var d=document.createElement('div');d.className='row';
+    var lb=document.createElement('label');
+    var sp=document.createElement('span');sp.textContent=p.label;
+    var bv=document.createElement('b');bv.textContent=fmtVal(p,P[p.k]);
+    lb.appendChild(sp);lb.appendChild(bv);
+    var inp=document.createElement('input');
+    inp.type='range';inp.min=p.min;inp.max=p.max;inp.step=p.step;inp.value=P[p.k];
+    d.appendChild(lb);d.appendChild(inp);rows.appendChild(d);
+    inp.addEventListener('input',function(){
+      P[p.k]=p.int?parseInt(inp.value,10):parseFloat(inp.value);
+      bv.textContent=fmtVal(p,P[p.k]);
+      rebuild();
+    });
+  });
+  var pv=document.getElementById('presets');pv.innerHTML='';
+  if(f.presets)f.presets.forEach(function(pr){
+    var b=document.createElement('button');b.type='button';b.textContent=pr.t;
+    b.addEventListener('click',function(){
+      for(var k in pr.v)P[k]=pr.v[k];
+      buildUI();rebuild();
+    });
+    pv.appendChild(b);
+  });
+}
+function selectFam(i){
+  curFam=i;
+  P={};
+  var f=FAMS[i];
+  for(var k in f.def)P[k]=f.def[k];
+  [].forEach.call(document.getElementById('tabs').children,function(b,idx){
+    b.className=(idx===i?'on':'');
+  });
+  az=0.95;el=0.46;zoom=1;
+  buildUI();rebuild();
+}
+document.getElementById('tabs').innerHTML=FAMS.map(function(f,i){
+  return '<button type="button" data-i="'+i+'">'+f.label+'</button>';
+}).join('');
+document.getElementById('tabs').addEventListener('click',function(e){
+  var b=e.target.closest('button');if(!b)return;
+  selectFam(parseInt(b.dataset.i,10));
+});
+
+canvas.addEventListener('mousedown',function(e){dragging=true;lx=e.clientX;ly=e.clientY;});
+window.addEventListener('mouseup',function(){dragging=false;});
+window.addEventListener('mousemove',function(e){
+  if(!dragging)return;
+  az-=(e.clientX-lx)*0.008;el+=(e.clientY-ly)*0.006;
+  el=Math.max(-1.45,Math.min(1.45,el));
+  lx=e.clientX;ly=e.clientY;
+});
+canvas.addEventListener('wheel',function(e){
+  e.preventDefault();zoom*=(e.deltaY>0?1.08:0.925);
+  zoom=Math.max(0.25,Math.min(4,zoom));
+},{passive:false});
+canvas.addEventListener('dblclick',function(){az=0.95;el=0.46;zoom=1;});
+window.addEventListener('keydown',function(e){
+  if(e.code==='Space'){autoRot=!autoRot;e.preventDefault();}
+});
+window.addEventListener('resize',resize);
+
+function loop(){
+  requestAnimationFrame(loop);
+  if(autoRot&&!dragging)az+=0.0028;
+  var d=camD*zoom;
+  camera.position.set(d*Math.cos(el)*Math.sin(az),d*Math.sin(el),d*Math.cos(el)*Math.cos(az));
+  camera.lookAt(0,0,0);
+  renderer.render(scene,camera);
+}
+initGL();selectFam(0);loop();
+</script>
+<!--FXCTL:JS--><script id="fxctl-js">
+/* ============================================================
+   PKS · 通用「调参浮窗」 (float_ctl.js)
+   作用：把页面里成块的参数控件（.ctl / .ctrl / .controls / .calc /
+        .panel[纯控件] / [data-param-panel]）收进右下角一个可拖动浮窗。
+   原则：
+     1. 只搬控件块本身，**不复制、不重建** ⇒ 原页面绑定在元素上的
+        事件监听、id、input 值全部照常工作。
+     2. 搬不走的、散的（每张卡片各一组、且组数很多）→ 整页放弃，
+        保持原样，并在 console 里说明原因，绝不半搬半留。
+     3. 位置写入 localStorage；双击标题栏回默认位；⇱/— 收起。
+   ============================================================ */
+(function () {
+  if (window.__FXCTL) return;
+
+  var SEL = '.ctl,.ctrl,.controls,.calc,.param-panel,.grp,.htgroup,[data-param-panel]';
+  var MAX_GROUPS = 16;    // 超过这个组数：判定为"散在每张卡片里"，整页跳过
+  var MIN_SHARE = 0.85;   // 收进去的滑块至少要占全页 85%，否则跳过（不做半搬半留）
+  var KEY = 'fxp:' + location.pathname;
+
+  function txt(el, n) {
+    var s = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    if (n && s.length > n) s = s.slice(0, n - 1) + '…';
+    return s;
+  }
+  function inChrome(el) {
+    return !!(el.closest && el.closest('.topnav,header,nav,.topbar,.fxp,#fxp'));
+  }
+
+  /* ---------- 1. 找参数面板 ---------- */
+  // 页面自己已经有一个"贴右边的浮动参数窗"？有就不再叠第二个
+  function hasOwnDock() {
+    var els = [].slice.call(document.querySelectorAll('body > *'));
+    // 也看一两层深，很多页把 pwin 套在 wrapper 里
+    document.querySelectorAll('body div, body section, body aside').forEach(function (x) {
+      if (els.length < 400) els.push(x);
+    });
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      if (el.id === 'fxp') continue;
+      if (getComputedStyle(el).position !== 'fixed') continue;
+      var r = el.getBoundingClientRect();
+      if (r.width > 240 && r.width < 620 && r.height > 240 &&
+          (innerWidth - r.right) < 70 && r.top < 220) return true;
+    }
+    return false;
+  }
+
+  function detect() {
+    var all = [].slice.call(document.querySelectorAll('input[type=range]'));
+    if (hasOwnDock()) {
+      return { panels: [], total: all.length, inline: 0, moved: 0, ok: false, own: true };
+    }
+    // 已经在自己的浮窗里（祖先 fixed）的滑块：不算在"待浮"里，也不搬
+    function inFixed(el) {
+      var a = el, d = 0;
+      while (a && d++ < 5) {
+        if (getComputedStyle(a).position === 'fixed') return true;
+        a = a.parentElement;
+      }
+      return false;
+    }
+    var inline = all.filter(function (i) { return !inFixed(i); });   // 仍躺在正文里的
+    var cands = [].slice.call(document.querySelectorAll(SEL)).filter(function (el) {
+      if (inChrome(el)) return false;
+      if (!el.querySelector('input[type=range]')) return false;
+      if (inFixed(el)) return false;                                 // 已在浮窗内
+      var hasCanvas = !!el.querySelector('canvas,svg,video,img');
+      var cls = el.className || '';
+      var isParamCol = /(^|\s)(ctl|ctrl|controls|calc|param-panel)(\s|$)/.test(cls);
+      if (hasCanvas && !isParamCol) return false;
+      if (el.classList.contains('panel') || el.classList.contains('grp')) {
+        return el.querySelectorAll('input[type=range]').length >= 2;
+      }
+      return true;
+    });
+    // 去重 + 保留最外层
+    cands = cands.filter(function (el, i) {
+      if (cands.indexOf(el) !== i) return false;
+      return !cands.some(function (o) { return o !== el && o.contains(el); });
+    });
+    var moved = 0;
+    cands.forEach(function (el) { moved += el.querySelectorAll('input[type=range]').length; });
+    var ok = cands.length > 0 && cands.length <= MAX_GROUPS &&
+             (inline.length ? moved / inline.length >= MIN_SHARE : false);
+    return { panels: cands, total: all.length, inline: inline.length, moved: moved, ok: ok };
+  }
+
+  /* ---------- 2. 取分组标签（最近的标题 / .vt）---------- */
+  function labelFor(el) {
+    var gt = el.querySelector && el.querySelector('.gt');
+    if (gt) return txt(gt, 22);
+    var v0 = el.closest && el.closest('.viz');
+    if (v0) { var t0 = v0.querySelector('.vt'); if (t0) return txt(t0, 22); }
+    var node = el, hop = 0;
+    while (node && hop++ < 6) {
+      var prev = node.previousElementSibling;
+      while (prev) {
+        if (/^H[1-4]$/.test(prev.tagName)) return txt(prev, 22);
+        if (prev.querySelector) {
+          var h = prev.querySelector('h2,h3,h4,.vt');
+          if (h) return txt(h, 22);
+        }
+        prev = prev.previousElementSibling;
+      }
+      node = node.parentElement;
+    }
+    return '';
+  }
+
+  /* 搬走控件后，父级若是两列网格且变空 → 收成一列，避免右侧留一条空白 */
+  function collapseTrack(el) {
+    var par = el.parentElement;
+    if (!par) return;
+    var cs = getComputedStyle(par);
+    if (cs.display !== 'grid') return;
+    var tracks = (cs.gridTemplateColumns || '').split(/\s+/).filter(function (x) { return x && x !== 'none'; });
+    if (tracks.length !== 2) return;
+    if (par.lastElementChild !== el) return;
+    par.style.gridTemplateColumns = '1fr';
+  }
+
+  /* ---------- 3. 搭面板 ---------- */
+  function build(d) {
+    var old = document.getElementById('fxp');
+    if (old) old.remove();
+
+    var p = document.createElement('div');
+    p.id = 'fxp';
+    var counts = d.panels.map(function (el) {
+      return el.querySelectorAll('input[type=range]').length;
+    });
+    var nRange = counts.reduce(function (a, b) { return a + b; }, 0);
+
+    p.innerHTML =
+      '<div class="fxp-h" id="fxpH">' +
+        '<span class="fxp-grip">⠿</span>' +
+        '<span class="fxp-t">调参</span>' +
+        '<span class="fxp-c">' + d.panels.length + ' 组 · ' + nRange + ' 滑块</span>' +
+        '<button class="fxp-b" data-a="mini" title="收起 / 展开">—</button>' +
+        '<button class="fxp-b" data-a="reset" title="回到默认位置（也可双击标题栏）">⟲</button>' +
+      '</div><div class="fxp-bd"></div>';
+
+    var bd = p.querySelector('.fxp-bd');
+    var used = {}, noteDone = false;
+    d.panels.forEach(function (el, i) {
+      var lb = labelFor(el) || ('参数组 ' + (i + 1));
+      if (used[lb]) { used[lb]++; lb = lb.slice(0, 16) + ' (' + used[lb] + ')'; } else { used[lb] = 1; }
+      var g = document.createElement('div');
+      g.className = 'fxp-grp';
+      var gl = document.createElement('div');
+      gl.className = 'fxp-gl';
+      gl.innerHTML = '<b>' + lb.replace(/</g, '&lt;') + '</b><i>' + counts[i] + '</i>';
+      g.appendChild(gl);
+
+      if (!noteDone && el.parentNode) {
+        var note = document.createElement('p');
+        note.className = 'fxp-note';
+        note.textContent = '参数已收进右侧浮窗「调参」（拖标题栏可挪走 · 双击回位）';
+        el.parentNode.insertBefore(note, el);
+        noteDone = true;
+      }
+      collapseTrack(el);
+
+      g.appendChild(el);          // ← 原节点整体搬入，事件与 id 不变
+      bd.appendChild(g);
+    });
+
+    document.body.appendChild(p);
+    return p;
+  }
+
+  /* ---------- 4. 位置 / 拖动 / 收起 ---------- */
+  function clamp(p) {
+    var r = p.getBoundingClientRect(), W = innerWidth, H = innerHeight;
+    var x = Math.min(Math.max(r.left, -r.width + 90), W - 90);
+    var y = Math.min(Math.max(r.top, 0), H - 44);
+    p.style.left = x + 'px'; p.style.top = y + 'px';
+    p.style.right = 'auto'; p.style.bottom = 'auto';
+  }
+  function defPos(p) {
+    p.style.left = ''; p.style.right = ''; p.style.top = ''; p.style.bottom = '';
+  }
+  function save(p) {
+    try {
+      var st = p.classList.contains('fxp-min');
+      if (!p.style.left) { localStorage.removeItem(KEY); return; }
+      localStorage.setItem(KEY, JSON.stringify({
+        x: parseFloat(p.style.left), y: parseFloat(p.style.top), mini: st
+      }));
+    } catch (e) {}
+  }
+  function load(p) {
+    try {
+      var s = localStorage.getItem(KEY);
+      /* 首次访问一律收起：页面本身就有「参数」竖条，浮窗默认展开会把画布挤掉 322px；
+         收起的标题条写着「调参 · N 组 · M 滑块」，一眼能看见、点一下就展开，状态会被记住。 */
+      if (!s) { p.classList.add('fxp-min'); return; }
+      var o = JSON.parse(s);
+      if (o.mini) p.classList.add('fxp-min');
+      if (typeof o.x === 'number' && isFinite(o.x)) {
+        p.style.left = o.x + 'px'; p.style.top = o.y + 'px';
+        p.style.right = 'auto'; p.style.bottom = 'auto';
+        clamp(p);
+      }
+    } catch (e) {}
+  }
+
+  function wire(p) {
+    var h = p.querySelector('#fxpH');
+    var drag = null;
+
+    h.addEventListener('pointerdown', function (ev) {
+      if (ev.target.closest('button')) return;
+      if (innerWidth <= 880) return;                 // 窄屏走底部抽屉，不拖
+      var r = p.getBoundingClientRect();
+      drag = { dx: ev.clientX - r.left, dy: ev.clientY - r.top, moved: false };
+      p.style.left = r.left + 'px'; p.style.top = r.top + 'px';
+      p.style.right = 'auto'; p.style.bottom = 'auto';
+      h.classList.add('fxp-drag');
+      h.setPointerCapture && h.setPointerCapture(ev.pointerId);
+      ev.preventDefault();
+    });
+    h.addEventListener('pointermove', function (ev) {
+      if (!drag) return;
+      drag.moved = true;
+      p.style.left = (ev.clientX - drag.dx) + 'px';
+      p.style.top = (ev.clientY - drag.dy) + 'px';
+      var r = p.getBoundingClientRect();
+      var nx = Math.min(Math.max(r.left, -r.width + 90), innerWidth - 90);
+      var ny = Math.min(Math.max(r.top, 0), innerHeight - 44);
+      p.style.left = nx + 'px'; p.style.top = ny + 'px';
+    });
+    function end() { if (drag) { h.classList.remove('fxp-drag'); save(p); drag = null; } }
+    h.addEventListener('pointerup', end);
+    h.addEventListener('pointercancel', end);
+
+    h.addEventListener('dblclick', function (ev) {
+      if (ev.target.closest('button')) return;
+      defPos(p);
+      try { localStorage.removeItem(KEY); } catch (e) {}
+    });
+
+    p.addEventListener('click', function (ev) {
+      var b = ev.target.closest('button[data-a]');
+      if (!b) return;
+      if (b.dataset.a === 'mini') { p.classList.toggle('fxp-min'); save(p); }
+      if (b.dataset.a === 'reset') { defPos(p); p.classList.remove('fxp-min'); save(p); }
+    });
+
+    addEventListener('resize', function () { if (p.style.left) clamp(p); });
+  }
+
+  /* ---------- 5. 启动 ---------- */
+  function boot() {
+    var d = detect();
+    if (!d.ok) {
+      if (d.own) {
+        console.info('[调参浮窗] 本页跳过：页面自己已有贴右的可拖动参数窗，不叠第二个');
+      } else if (d.inline === 0 && d.total > 0) {
+        console.info('[调参浮窗] 本页跳过：' + d.total + ' 个滑块全在页面自己的浮窗里，没有需要搬的');
+      } else if (d.panels.length) {
+        console.info('[调参浮窗] 本页跳过：' + d.panels.length + ' 组、待浮滑块 ' +
+          d.moved + '/' + d.inline + '（判据：≤' + MAX_GROUPS + ' 组且 ≥' +
+          Math.round(MIN_SHARE * 100) + '%；已在浮窗内的 ' + (d.total - d.inline) + ' 个不计）');
+      }
+      return;
+    }
+    var p = build(d);
+    load(p);
+    wire(p);
+    console.info('[调参浮窗] 已收 ' + d.moved + '/' + d.inline + ' 个待浮滑块，' +
+      d.panels.length + ' 组（另 ' + (d.total - d.inline) + ' 个本来就在浮窗里）');
+  }
+
+  window.__FXCTL = { detect: detect, boot: boot, build: build };
+
+  if (document.readyState === 'complete') setTimeout(boot, 60);
+  else addEventListener('load', function () { setTimeout(boot, 60); });
+})();
+
+</script><!--/FXCTL:JS-->
+</body>
+</html>

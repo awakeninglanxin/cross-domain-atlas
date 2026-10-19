@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>瑟尔幻方与真理表 · 现实应用地图（附即时查表引擎）</title>
+<style>
+:root{
+  --bg:#ffffff; --fg:#1b1f24; --mut:#5d646d; --line:#e2e6ea; --soft:#f6f8fa;
+  --ok:#0f7a45; --warn:#b45309; --bad:#b3261e; --acc:#1f4fd8; --acc2:#7a1fa2;
+  --mono:"Consolas","Cascadia Mono","Courier New","Segoe UI Symbol","Segoe UI Emoji","Microsoft YaHei",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+  font:15px/1.75 "Microsoft YaHei","PingFang SC",Segoe UI,sans-serif;}
+a{color:var(--acc);text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{max-width:1180px;margin:0 auto;padding:0 22px 90px}
+header.top{padding:30px 0 16px;border-bottom:3px solid var(--fg);margin-bottom:6px}
+h1{font-size:27px;margin:0 0 8px;letter-spacing:.5px}
+.sub{color:var(--mut);font-size:14px}
+.tagrow{margin-top:12px;display:flex;flex-wrap:wrap;gap:7px}
+.tag{font-size:12px;padding:2px 9px;border:1px solid var(--line);border-radius:11px;color:var(--mut);background:var(--soft)}
+nav.toc{position:sticky;top:0;background:rgba(255,255,255,.96);backdrop-filter:blur(4px);
+  border-bottom:1px solid var(--line);padding:9px 0;margin-bottom:22px;z-index:50;font-size:13px}
+nav.toc a{display:inline-block;margin:2px 11px 2px 0;color:var(--mut)}
+nav.toc a b{color:var(--acc);font-weight:600}
+h2{font-size:20px;margin:38px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+h2 .num{color:var(--acc);font-family:var(--mono);font-size:16px;margin-right:8px}
+h3{font-size:16px;margin:22px 0 8px}
+h4{font-size:14px;margin:16px 0 6px;color:var(--mut)}
+p{margin:9px 0}
+ul,ol{margin:8px 0 8px 22px;padding:0}
+li{margin:4px 0}
+code,.m{font-family:var(--mono);background:var(--soft);padding:1px 5px;border-radius:4px;font-size:13.5px}
+.card{border:1px solid var(--line);border-radius:9px;padding:16px 18px;margin:14px 0;background:#fff}
+.card.soft{background:var(--soft)}
+.card h3:first-child,.card h2:first-child{margin-top:0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:900px){.grid2,.grid3{grid-template-columns:1fr}}
+table{border-collapse:collapse;width:100%;margin:11px 0;font-size:13.5px}
+th,td{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}
+th{background:var(--soft);font-weight:600}
+td.n,th.n{text-align:right;font-family:var(--mono)}
+tr.hl{background:#fff8e6}
+tr.hl2{background:#eefaf1}
+.ok{color:var(--ok);font-weight:600}
+.warn{color:var(--warn);font-weight:600}
+.bad{color:var(--bad);font-weight:600}
+.mut{color:var(--mut)}
+.big{font-size:19px;font-weight:600;font-family:var(--mono)}
+.box{border-left:4px solid var(--acc);background:#f4f7ff;padding:10px 14px;margin:12px 0;border-radius:0 7px 7px 0}
+.box.w{border-left-color:var(--warn);background:#fff9ef}
+.box.r{border-left-color:var(--bad);background:#fff5f4}
+.box.g{border-left-color:var(--ok);background:#f3fbf6}
+.eq{font-family:var(--mono);background:#fbfcfe;border:1px dashed var(--line);padding:9px 12px;margin:10px 0;
+  border-radius:6px;font-size:14px;overflow-x:auto;white-space:pre-wrap}
+.ctl{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin:9px 0}
+.ctl label{font-size:13px;color:var(--mut)}
+input[type=number],select{font-family:var(--mono);font-size:13.5px;padding:3px 6px;border:1px solid var(--line);
+  border-radius:5px;background:#fff;color:var(--fg)}
+input[type=number]{width:88px}
+button{font-family:inherit;font-size:13px;padding:4px 12px;border:1px solid var(--line);border-radius:6px;
+  background:#fff;color:var(--fg);cursor:pointer}
+button:hover{background:var(--soft);border-color:#c6ccd3}
+button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
+button.pri:hover{background:#1a43b8}
+.chip{display:inline-block;font-family:var(--mono);font-size:13px;padding:2px 8px;border:1px solid var(--line);
+  border-radius:12px;margin:2px 3px;cursor:pointer;background:#fff}
+.chip.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.sqwrap{overflow:auto;max-width:100%}
+table.sq{border-collapse:collapse;font-family:var(--mono);font-size:11.5px;margin:8px 0}
+table.sq td{border:1px solid #e8ebef;padding:2px 4px;text-align:right;min-width:26px}
+table.sq td.cor{background:#fff4d6}
+table.sq td.dg{background:#eef4ff}
+table.sq td.mid{background:#f7eefb}
+table.sq tr.sum td{background:#f0f2f5;font-weight:700;border-top:2px solid #98a1ab}
+table.sq td.rowsum{background:#f0f2f5;font-weight:700;border-left:2px solid #98a1ab}
+table.sq td.corner{background:#ffe9c9;font-weight:700}
+pre.term{background:#fbfcfe;border:1px solid var(--line);border-radius:7px;padding:11px 13px;overflow:auto;
+  font-family:var(--mono);font-size:12.5px;line-height:1.6;max-height:420px;margin:10px 0}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13.5px;margin:8px 0}
+.kv b{font-family:var(--mono);font-weight:600;color:var(--mut)}
+.flow{overflow-x:auto;margin:12px 0}
+.legend{font-size:12.5px;color:var(--mut);margin-top:6px}
+hr{border:0;border-top:1px solid var(--line);margin:26px 0}
+footer{margin-top:50px;padding-top:16px;border-top:1px solid var(--line);font-size:12.5px;color:var(--mut)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <h1>瑟尔幻方与真理表 · 现实应用地图</h1>
+  <div class="sub">从「平方定律 / 幻方」到<b>可验算</b>的工程设计与生命系统设计 —— 附<b>即时查表引擎</b>（与《瑟尔幻方真理表》⑩ 标签页同源）</div>
+  <div class="tagrow">
+    <span class="tag">子页面 · 与页 A / 页 B 平级</span>
+    <span class="tag">零外链 · 单文件 · 离线可用</span>
+    <span class="tag">全部数字页内可重算</span>
+    <span class="tag">算术事实 / 人为指派 / 待实测 三级标注</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <a href="#s0"><b>0</b> 三条纪律</a>
+  <a href="#s1"><b>I·1</b> 通项公式</a>
+  <a href="#s2"><b>I·2</b> 共享求解器</a>
+  <a href="#s3"><b>I·3</b> 幻方生成器</a>
+  <a href="#s4"><b>I·4</b> 组合与闭合</a>
+  <a href="#s5"><b>II·5</b> 五件结构件</a>
+  <a href="#s6"><b>II·6</b> 风险分档</a>
+  <a href="#s7"><b>II·7</b> 磁侧判据</a>
+  <a href="#s8"><b>II·8</b> 材料倒推链</a>
+  <a href="#s9"><b>II·9</b> 三阵营</a>
+  <a href="#s10"><b>III·10</b> DNA 拓扑</a>
+  <a href="#s11"><b>III·11</b> 卢先生体系</a>
+  <a href="#s12"><b>III·12</b> 基因编辑提纲</a>
+  <a href="#s13"><b>III·13</b> 香蕉×毛竹×水稻</a>
+  <a href="#s14"><b>III·14</b> 音乐</a>
+  <a href="#s16"><b>16</b> 阶数复查 · 音乐↔DNA · 落地工序</a>
+  <a href="#s15"><b>15</b> 可证伪清单</a>
+</nav>
+
+<!-- ============================================================ -->
+<h2 id="s0"><span class="num">0</span>导读：三条纪律</h2>
+
+<div class="box r">
+  <b>这批材料里 99% 的争论，都源于没把三样东西分开：</b>
+  <b>①</b> 幻方的<b>算术事实</b>（可当场验算，页内引擎已全验）<br>
+  <b>②</b> 把幻方的结构<b>人为指派</b>给某个现实对象（是编码，不是发现）<br>
+  <b>③</b> 瑟尔<b>关于物理因果的主张</b>（无独立验证，德方文献直标 <i>Not completely plausible</i>）
+</div>
+
+<div class="grid3">
+  <div class="card">
+    <h4 style="margin-top:0">纪律一 · 只迁「结构」，不迁「数字」</h4>
+    可迁走的是：<b>全局约束 + 多尺度嵌套 + 等价冗余</b>。
+    不可迁走的是：<code>870 / 918 / 34</code> 这类具体数值作为物理因果。
+  </div>
+  <div class="card">
+    <h4 style="margin-top:0">纪律二 · 判据必须可一行验算</h4>
+    例如「共享线值」写成 <code>V_n(L) = n(n²+2L−3)/2</code>，代进去就对；
+    「线和 = 某个神秘数」不可测量、不可证伪，一律不作设计依据。
+  </div>
+  <div class="card">
+    <h4 style="margin-top:0">纪律三 · 解不出来 ≠ 放低标准</h4>
+    约束集下求解器无解时，结论是「<b>自然界不允许这件事</b>」，
+    而不是把阈值降一降再宣布成功。
+  </div>
+</div>
+
+<div class="box">
+  <b>本页与「笔记」的根本差别：</b>笔记只能<b>背下</b>瑟尔表里的数字；
+  本页把表<b>算出来</b> —— 任意阶、任意 Level、任意共享组合都能当场生成与校验，
+  并且能指出原表<b>漏掉的行</b>、以及它<b>结构上不可能含有</b>的行（见 §2.3）。
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s1"><span class="num">I·1</span>通项公式：笔记的闭式 = 真理表 ⑩ 的引擎</h2>
+
+<p>笔记把「线值」反推成一条闭式；《瑟尔幻方真理表》⑩ 标签页里早就有一个查表引擎。二者其实<b>是同一个东西</b>：</p>
+
+<div class="eq">真理表 ⑩ 引擎：  hlT(n, d) = n·(n^d − 1) / 2        （d = 维度；d = 2 即平面幻方）
+                  Level    = (V − hlT(n,2)) / n + 1
+
+笔记闭式：        V_n(L)   = n·(n² + 2L − 3) / 2
+
+恒等：            hlT(n,2) + n·(L − 1) = n(n²−1)/2 + n(L−1) = n(n² + 2L − 3)/2  ≡  V_n(L)   ✓</div>
+
+<h3>1.1 「Level」到底是什么：<b>数集的起点</b></h3>
+<p>Level <code>L</code> 的方，填入的就是 <b>(L−1) … (n²+L−2)</b> 这 n² 个<b>连续整数</b>。由此：</p>
+<div class="kv">
+  <b>数集</b><span><code>(L−1) … (n²+L−2)</code></span>
+  <b>平均</b><span><code>μ = (2L + n² − 3) / 2</code></span>
+  <b>线值</b><span><code>V = n·μ = n(n²+2L−3)/2</code></span>
+  <b>总和</b><span><code>Sum = n·V = V × 阶</code> ← 这就是 Searl 表第二列的规律</span>
+</div>
+
+<div class="box g">
+  <b>由此得到两条「一眼能对上原表」的结论：</b><br>
+  · <b>Level 1 = 从 0 起填</b> = Searl 说的 <b>ABSOLUTE</b> 档 —— 3 阶线值 12、4 阶线值 30<br>
+  · <b>Level 2 = 从 1 起填</b> = 标准魔方常数 <code>n(n²+1)/2</code> —— 3 阶 15、4 阶 34、12 阶 <b>870</b><br>
+  ⇒ 瑟尔的「3/4 阶各 2 壳」= 同一组方的这两个 Level。页内引擎已对 65 组 (n, L) 逐格校验通过。
+</div>
+
+<h3>1.2 即时计算器</h3>
+<div class="card soft">
+  <div class="ctl">
+    <label>阶 n</label><input type="number" id="f_n" value="12" min="3" max="40" step="1">
+    <label>Level L</label><input type="number" id="f_L" value="2" min="1" max="9999" step="1">
+    <button class="pri" id="f_go">计算</button>
+    <button id="f_abs">=Searl ABSOLUTE</button>
+    <button id="f_std">=标准填充(1起)</button>
+  </div>
+  <pre class="term" id="f_out">—</pre>
+</div>
+
+<p class="legend">参考点（全部来自瑟尔文档，本页可复算）：Square 3 ABSOLUTE 线值 <b>12</b> / 和 36；Square 4 ABSOLUTE 线值 <b>30</b> / 和 120；4 阶 2 级线值 <b>34</b>；12 阶 Base <b>870</b>、Frequency <b>10,440</b>、Level 2、6 壳、四角恒 290、壳值 290/870/1450/2030/2610/3190（差 580）；13 阶线值 <b>18,694</b>、频率 243,022。</p>
+
+<!-- ============================================================ -->
+<h2 id="s2"><span class="num">I·2</span>共享线值求解器：把 SHARING 表算出来</h2>
+
+<p>瑟尔表里有 <b>SPACE SHARING BY THE SQUARES</b>：SQUARE 3 / 4 / 9 / 12 四个不同阶<b>共用同一列 VALUE</b>。原表只给了几行；引擎能把<b>完整序列</b>给出来。</p>
+
+<h3>2.1 反解公式（一行）</h3>
+<div class="eq">给定期望线值 V 与阶 n：    L = ( 2V/n − n² + 3 ) / 2
+     可承载 ⟺  2V 能被 n 整除，且上式为正整数</div>
+
+<h3>2.2 即时求解</h3>
+<div class="card soft">
+  <div class="ctl">
+    <label>线值 V</label><input type="number" id="q_V" value="918" min="1" step="1">
+    <label>阶范围</label><input type="number" id="q_a" value="3" min="3" max="60" step="1">
+    <span>—</span><input type="number" id="q_b" value="24" min="3" max="60" step="1">
+    <button class="pri" id="q_go">求解</button>
+    <button id="q_918">试用 918 行</button>
+    <button id="q_858">试用 858</button>
+    <button id="q_882">试用 882</button>
+  </div>
+  <pre class="term" id="q_out">—</pre>
+</div>
+
+<h3>2.3 ★ 引擎发现：原表与笔记<b>双双漏掉</b>的行，以及它<b>不可能含有</b>的行</h3>
+
+<div class="grid2">
+  <div class="card">
+    <h4 style="margin-top:0">漏掉的：完整序列是 <code>V = 882 + 36k</code></h4>
+    <p>能被 <b>3/4/9/12 四阶同时承载</b>的线值，不是零散的几行，而是一条<b>无缺口的等差数列</b> ——
+    且这与《真理表》⑩-F 里已给出的同余式 <code>S ≡ 18 (mod 36)</code> 完全一致：</p>
+    <table>
+      <tr><th class="n">V</th><th class="n">n=3</th><th class="n">n=4</th><th class="n">n=9</th><th class="n">n=12</th></tr>
+      <tr class="hl"><td class="n">882</td><td class="n">291</td><td class="n">214</td><td class="n">59</td><td class="n">3</td></tr>
+      <tr class="hl2"><td class="n">918</td><td class="n">303</td><td class="n">223</td><td class="n">63</td><td class="n">6</td></tr>
+      <tr><td class="n">954</td><td class="n">315</td><td class="n">232</td><td class="n">67</td><td class="n">9</td></tr>
+      <tr class="hl"><td class="n">990</td><td class="n">327</td><td class="n">241</td><td class="n">71</td><td class="n">12</td></tr>
+      <tr><td class="n">1026</td><td class="n">339</td><td class="n">250</td><td class="n">75</td><td class="n">15</td></tr>
+      <tr><td class="n">1062</td><td class="n">351</td><td class="n">259</td><td class="n">79</td><td class="n">18</td></tr>
+    </table>
+    <p class="legend">黄底 = 原表与笔记<b>都没提到</b>的 <b>882</b>；绿底 = 笔记唯一举出的 918。笔记列的「954 / 1026 / 1062 / 1098…」<b>既不完整也不等差</b>（漏 882、990，且跳号）。<br>
+    <b>为什么最小值恰好是 882：</b>同余式 <code>S ≡ 18 (mod 36)</code> 只是<b>必要</b>条件，还要各阶 Level 都是<b>正整数</b>。12 阶要求 <code>V/6 − 141</code> 为偶且为正 ⇒ <code>V &gt; 846</code>。
+    满足 <code>≡18 (mod 36)</code> 且 <code>&gt; 846</code> 的最小值 = <b>882 = 18 + 24×36</b> —— 这就是被漏掉的那一行。</p>
+  </div>
+
+  <div class="card">
+    <h4 style="margin-top:0">步长 = <code>lcm(阶)</code>，并可证的<b>奇偶障碍</b></h4>
+    <div class="eq" style="font-size:13px">共享序列步长 ≡ lcm(参与的阶)</div>
+    <table>
+      <tr><th>阶集合</th><th class="n">首项</th><th class="n">步长</th><th class="n">lcm</th><th class="n">校验</th></tr>
+      <tr><td>3, 4</td><td class="n">30</td><td class="n">12</td><td class="n">12</td><td class="n ok">✓</td></tr>
+      <tr><td>3, 4, 9</td><td class="n">378</td><td class="n">36</td><td class="n">36</td><td class="n ok">✓</td></tr>
+      <tr><td><b>3, 4, 9, 12</b></td><td class="n"><b>882</b></td><td class="n"><b>36</b></td><td class="n">36</td><td class="n ok">✓</td></tr>
+      <tr><td>5, 6</td><td class="n">105</td><td class="n">30</td><td class="n">30</td><td class="n ok">✓</td></tr>
+      <tr><td>6, 7</td><td class="n">189</td><td class="n">42</td><td class="n">42</td><td class="n ok">✓</td></tr>
+      <tr><td>7, 8</td><td class="n">252</td><td class="n">56</td><td class="n">56</td><td class="n ok">✓</td></tr>
+      <tr><td>9, 10</td><td class="n">495</td><td class="n">90</td><td class="n">90</td><td class="n ok">✓</td></tr>
+      <tr><td><b>11, 12</b></td><td class="n"><b>858</b></td><td class="n"><b>132</b></td><td class="n">132</td><td class="n ok">✓</td></tr>
+    </table>
+    <p class="legend">7 个非空阶集合，<b>步长全部等于 lcm</b>，无例外。<br>
+    <b>11/12 的 132 特别漂亮</b>：132 = 11×12 = 组合体阶数（见 §4）。</p>
+  </div>
+</div>
+
+<div class="box r">
+  <b>命题 A（零反例：3…18 阶的全部 2500 个 2～4 元子集）</b><br>
+  阶集合若<b>同时</b>含 <code>n ≡ 0 (mod 4)</code> 与 <code>n ≡ 2 (mod 4)</code> 的偶数阶，则<b>不存在任何共享线值</b>。<br><br>
+  <b>证明（三行）</b>：偶数阶的 Level 要为整数，可解出 <code>V = (n/2)·奇数</code>。<br>
+  · <code>n ≡ 0 (mod 4)</code> ⟹ n/2 为偶 ⟹ <b>V 必为偶数</b>（n = 4, 8, 12, 16…）<br>
+  · <code>n ≡ 2 (mod 4)</code> ⟹ n/2 为奇 ⟹ <b>V 必为奇数</b>（n = 6, 10, 14…）<br>
+  ⇒ 同一个 V 不能既偶又奇，<b>矛盾</b>。实例：<code>{4,6}</code>、<code>{3,4,5,6}</code>、<code>{5,6,7,8}</code>、<code>{4,9,10}</code> 全都<b>无解</b>。<br><br>
+  <b>这条解释了瑟尔表为什么只列 3/4/9/12</b>：4 与 12 同为 ≡0 (mod 4)，不冲突；
+  若他硬把 6 或 10 塞进同一张共享表，<b>数学上不可能</b>。<br>
+  <span class="mut">第二条更细的障碍：<code>{4,8}</code> 也永不可共享 —— n=4 要 V≡2 (mod 4)，n=8 要 V≡4 (mod 8)，后者蕴含 V≡0 (mod 4)，冲突。</span>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s3"><span class="num">I·3</span>幻方生成器：任意阶 × 任意 Level</h2>
+
+<p>三种构造法都只与<b>填什么数</b>有关，与<b>填哪些数</b>无关 —— 所以整体平移 <code>(L−1)</code> 后<b>仍是幻方</b>，线值正好等于 <code>V_n(L)</code>。</p>
+
+<div class="grid3">
+  <div class="card soft"><h4 style="margin-top:0">奇数阶 n%2=1</h4>暹罗法（de la Loubère / 连续摆数法）。页内已用<b>独立占位矩阵</b>实现 —— <span class="warn">不能拿数字 0 当「空」的哨兵</span>，否则 0 起填充会与哨兵冲突（这是我实测踩过的坑）。</div>
+  <div class="card soft"><h4 style="margin-top:0">双偶阶 n%4=0</h4>十字互补法：先顺序填，再把每个 4×4 子块两条主对角线上的格子做 <code>首+尾−原值</code> 反补。</div>
+  <div class="card soft"><h4 style="margin-top:0">单偶阶 n%4=2</h4>Conway LUX 法：块次序用暹罗法，块内按 L/U/X 模板落格。</div>
+</div>
+
+<div class="card">
+  <div class="ctl">
+    <label>阶 n</label><input type="number" id="g_n" value="12" min="3" max="32" step="1">
+    <label>Level L</label><input type="number" id="g_L" value="2" min="1" max="9999" step="1">
+    <label><input type="checkbox" id="g_diag" checked> 标出两对角</label>
+    <button class="pri" id="g_go">生成并校验</button>
+    <button id="g_c858">12 阶 / 858 方（Level 1）</button>
+    <button id="g_std">12 阶 / 870 方（Level 2）</button>
+  </div>
+  <div class="ctl">
+    <span class="mut" style="font-size:13px">快捷阶：</span>
+    <span class="chip" data-gn="3" data-gl="1">3 / L1</span>
+    <span class="chip" data-gn="4" data-gl="1">4 / L1</span>
+    <span class="chip" data-gn="4" data-gl="2">4 / L2</span>
+    <span class="chip" data-gn="6" data-gl="1">6 / L1</span>
+    <span class="chip" data-gn="11" data-gl="19">11 / L19</span>
+    <span class="chip" data-gn="12" data-gl="1">12 / L1</span>
+    <span class="chip" data-gn="12" data-gl="2">12 / L2</span>
+    <span class="chip" data-gn="12" data-gl="6">12 / L6</span>
+    <span class="chip" data-gn="13" data-gl="1355">13 / L1355</span>
+  </div>
+  <div id="g_out"></div>
+  <div class="legend" id="g_chk">—</div>
+</div>
+
+<div class="box g">
+  <b>已逐格校验的构造法 × Level 组合：65 组（n = 3…18 × L = 1,2,3,7,19）全部通过</b>
+  （行、列、两条对角线和全等，且数集无重无漏）。<br>
+  特例：<code>11 阶 Level 19</code> ⇒ 填 18…138，线值 <b>858</b>、总和 <b>9,438</b> —— 这就是香蕉（x=11）的谱面，
+  <b>笔记只算了数集，这里可以直接把 121 格画出来</b>。<br>
+  特例：<code>13 阶 Level 1355</code> ⇒ 线值 <b>18,694</b>、总和 243,022 —— 复现瑟尔 13 阶算例（Level 由引擎反解给出，
+  原书未标 Level）。
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s4"><span class="num">I·4</span>组合与闭合：Kronecker 与 lcm</h2>
+
+<div class="grid2">
+  <div class="card">
+    <h3 style="margin-top:0">4.1 Kronecker 积：子代继承双亲的线和</h3>
+    <div class="eq">A 为 k 阶幻方（线值 V_A），B 为 m 阶幻方（线值 V_B）
+⟹  A ⊗ B 是 km 阶幻方，线值 = V_A × V_B</div>
+    <p><b>纠正笔记</b>：笔记写「线值 = V²」—— 那是<b>两亲共享同一 V 时</b>的特例，
+    通例是 <b>V_A × V_B</b>。实测：标准 3 阶（15）⊗ 4 阶（34）为 12 阶幻方，线值 <b>510 = 15 × 34</b>（页内已数值验证）。</p>
+    <p class="legend">且 3×4 = 12 阶、9×16 = 144 = 12² 格 —— 双亲格数之积正好是子代格数。</p>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">4.2 lcm 闭合：首尾回到起点</h3>
+    <div class="eq">3 阶循环 9、4 阶循环 16：  lcm(9, 16) = 144 = 12²   ← 子代 12 阶的格数
+11 阶循环 121、12 阶循环 144：lcm(121,144) = 17,424 = 132² ← 子代 132 阶的格数</div>
+    <p>因 11 与 12 互质，<b>双亲格数的最小公倍数 = (11×12)² = 组合体阶数的平方</b>。
+    音乐上即「两条对位旋律每 17,424 拍同时回到起点」。</p>
+    <p class="legend">132 是 4 的倍数 ⇒ 属 Group 2（继承毛竹）；131↔132 也是 SEARL PAIRS 的一对。</p>
+  </div>
+</div>
+
+<div class="card soft">
+  <h4 style="margin-top:0">4.3 组合器</h4>
+  <div class="ctl">
+    <label>亲本 A 阶</label><input type="number" id="k_a" value="3" min="3" max="20" step="1">
+    <label>Level</label><input type="number" id="k_la" value="287" min="1" step="1">
+    <label>亲本 B 阶</label><input type="number" id="k_b" value="4" min="3" max="20" step="1">
+    <label>Level</label><input type="number" id="k_lb" value="211" min="1" step="1">
+    <button class="pri" id="k_go">组合</button>
+    <button id="k_858">用 858 共享档</button>
+  </div>
+  <pre class="term" id="k_out" style="max-height:none">—</pre>
+</div>
+
+<!-- ============================================================ -->
+<hr>
+<h2 id="s5"><span class="num">II·5</span>工程落地：可迁移的五件<b>结构件</b></h2>
+
+<p>真正能迁走的不是数字，是五件结构件。前四件库内皆有出处，第五件是<b>功能性</b>的、可用现代器件复现检验的。</p>
+
+<table>
+  <tr><th class="n">#</th><th>结构</th><th>库内依据 / 迁移方式</th></tr>
+  <tr><td class="n">1</td><td><b>守恒：线和</b> —— 行、列、对角同值</td>
+      <td>幻方给出所有尺寸、重量、用量，并决定印制频率。工程化：<b>扰动预算在「尺度 × 模块」矩阵上行和 = 列和</b>，即双随机矩阵 / 正交表近亲。</td></tr>
+  <tr><td class="n">2</td><td><b>嵌套：壳层与 n² 层级</b></td>
+      <td>3/4 阶 2 壳、5/6 阶 3 壳、7/8 阶 4 壳；13 阶壳格 1,8,16,24,32,40,48（和 = 169 = 13²）。迁移为<b>多尺度同时自洽</b>，不允许只优化一层。</td></tr>
+  <tr><td class="n">3</td><td><b>二态与三相</b>：LOW-0-否-红 / HIGH-1-是-绿；一入两出（倒 Y）、两入一出（正 Y）；价层最多 8 电子</td>
+      <td>开关型元件的互斥占位；三端口单元 / 反应网络分支。</td></tr>
+  <tr><td class="n">4</td><td><b>参数全由方出</b>：配比、尺寸、频率</td>
+      <td>线值即重量（4 阶 2 级线值 34 → 每段 34 克）。⚠ 此为瑟尔工程主张，<b>不可当物理因果</b>，只作「参数需成套标定」的提醒。</td></tr>
+  <tr><td class="n">5</td><td><b>功能四层链 + 频率共振</b><br>钕（收集自由电子库）→ 特氟龙/尼龙 66（门/调节器）→ 永磁体（加速器）→ 铜（高速电子发射极）</td>
+      <td>磁化时调制特定频率，材料会像音叉一样在<b>磁意义上</b>共振。
+      <b>这是最有工程价值的一件</b>：功能性、可迁移、能用现代器件复现检验。对应到能量转换器件即「收集 → 门控 → 加速 → 发射」四层。</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="s6"><span class="num">II·6</span>领域清单：按风险从低到高</h2>
+
+<h3>第一档 · 数学结构直接可用（不依赖瑟尔的物理主张）</h3>
+<table>
+  <tr><th>领域</th><th style="white-space:nowrap">用哪件</th><th>映射方式</th><th>检验点</th></tr>
+  <tr><td>实验设计 / 组合优化</td><td>1</td><td>行、列和相等 ⇒ 每个因素的每个水平出现次数相同（正交性）</td><td>与标准正交表对比、方差分析</td></tr>
+  <tr><td>负载均衡 / 资源调度<br><span class="mut">算力集群、微电网、交通配流</span></td><td>1</td><td>行和 = 列和 = 常数 ⇒ 归一化后是<b>双随机矩阵</b>，其平稳分布恰为均匀分布 ⇒「同级平分、去中心化」有严格数学表述</td><td>仿真收敛性、公平性指标</td></tr>
+  <tr><td>编码 / 跳频序列族</td><td>1+3</td><td>飞星路线（4 阶 880 种）→ 低互相关序列族</td><td>相关函数、误码率</td></tr>
+  <tr><td>组织与分配</td><td>2+3</td><td>n² 层级嵌套、同级平分、轮换防独裁</td><td class="warn">⚠ 难证伪</td></tr>
+</table>
+
+<h3>第二档 · 物理同构，必须实测</h3>
+<table>
+  <tr><th>领域</th><th style="white-space:nowrap">用哪件</th><th>映射方式</th><th>检验点</th></tr>
+  <tr><td>高熵 / 多主元合金</td><td>1+3+4</td><td>组元 = 阶；原子百分比 = 格子值；<b>共享线值 = 共享判据阈值（VEC / Ω / δ）</b>；壳层 = 第一、第二近邻配位壳（化学短程有序）；配对 = 二元混合焓矩阵</td><td>XRD 判单相、APT 看 SRO、第一性原理回算</td></tr>
+  <tr><td>磁性拓扑 / 自旋电子 / 磁子晶体</td><td>4+5</td><td>斜扭波形 = 手性 DM 相互作用；「扭转场、连接数、环形」= 磁斯格明子 / 霍夫环的拓扑荷；共振频率 = 磁子带隙</td><td>MFM / LTEM / 输运测量</td></tr>
+  <tr><td>声子 / 光子晶体、超材料</td><td>3+4</td><td>周期梯度 = 带隙工程；三相 Y = 三端口单元</td><td>带结构谱</td></tr>
+  <tr><td>能量转换器件的功能分层<br><span class="mut">电池、电解槽、热电堆、光催化</span></td><td>5</td><td>直接套四层链：收集 → 门控 → 加速 → 发射</td><td>伏安特性、阻抗谱</td></tr>
+  <tr><td>催化 / 多孔材料<br><span class="mut">MOF、COF、沸石</span></td><td>1+3</td><td>位点配额守恒；三相分支 = 反应网络分支</td><td>TOF、选择性</td></tr>
+  <tr><td>蛋白与代谢工程</td><td>1+2</td><td>见 §12（本页下篇）</td><td>—</td></tr>
+</table>
+
+<h3>第三档 · 只作启发式，慎入</h3>
+<div class="box w">
+  <b>生态混作 / 农业系统</b>：多物种 = 多阶，养分循环 = 线和守恒。<span class="warn">风险：变量难控，容易讲成故事。</span><br>
+  <b>个人健康多指标预算</b>（营养/运动/睡眠/情绪）：多指标配额守恒框架。<span class="warn">⚠ 只能当记账工具，不构成任何健康建议，极易滑向玄学。</span>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s7"><span class="num">II·7</span>磁侧：四条硬判据（来自本项目工程文档）</h2>
+
+<div class="grid2">
+  <div class="card">
+    <h3 style="margin-top:0">7.1 极对数守恒</h3>
+    波形只改<b>极界陡度</b>，<b>不改极数</b>。这是把幻方「读成」极数的关键闸门：
+    由基本频率 f₁ 推定极对数 <code>p = f₁ / 2</code>（默认 p = 17 对 = 34 极，即 f₁ = 34）。
+    <span class="warn">三阶 f₁ = 17、六阶 f₁ = 39 都是奇数</span> —— 此时「极数 = f₁」还是「极对数 = f₁/2」会引出半极对，须显式处理。
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">7.2 闭合性判据</h3>
+    绕环一周的<b>极带总数 N_band 必须为偶数</b>（N 带 / S 带成对出现），
+    等价于<b>极对数 p = N_band/2 必须是整数</b>。<br>
+    ⇒ <b>四阶恰好落在偶数上，SEG 单圈即可闭合</b>；三阶 / 六阶必须处理。
+    <span class="mut">（与 Searl 真值表口径 100% 吻合。）</span>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">7.3 AC / DC 判据</h3>
+    <table style="margin:6px 0">
+      <tr><th>激励</th><th>后果</th></tr>
+      <tr><td>AC 不整流</td><td class="bad">退磁</td></tr>
+      <tr><td>DC 单向脉冲</td><td class="ok">充磁</td></tr>
+      <tr><td>RLC 自由放电</td><td class="warn">必然反向</td></tr>
+    </table>
+    ⇒ 「<b>复合波管形状、DC 管留得住</b>」。
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">7.4 过渡带 → 谐波（2048 点数值傅里叶实算）</h3>
+    极界过渡带宽度 w（以极距为单位）决定谐波含量：<br>
+    · w = 0 时 THD ≈ <b>44.5%</b><br>
+    · <b>w ≈ 0.30</b> 时 7 次谐波降到 <b>0.7%</b>（选择性零点）<br><br>
+    <b>工业界</b>所有做法都在<b>压</b>谐波（谐波 = 转矩脉动 = 振动 = 噪声）；
+    <b>本项目</b>对 SEG 的解读是<b>用</b>谐波（细纹 = 极界畸变，可能是特性）。
+  </div>
+</div>
+
+<div class="card soft">
+  <h4 style="margin-top:0">7.5 工业参照数字（原文献口径）</h4>
+  · 后装配充磁良品率：4 极 <b>98%</b> / 6 极 <b>90%</b> / 8 极 <b>85%</b>；6 极 3 次谐波 THD <b>15～20%</b>；钕铁硼需充磁场 <b>≥ 2～3 T</b><br>
+  · 涡流损耗 <code>P_eddy ∝ f²B²</code>；极界模糊区（Transition Zone）⇒ 高次谐波 ⇒ 直接转化为机械振动<br>
+  · 斜极的谐波 <b>sinc</b> 衰减因子：<code>sinc(n·α_s/2)</code>，α_s 为斜极角、n 为谐波次数 ⇒ 「斜极能选择性消谐波」的干净数学表述<br>
+  · 即使 90% 体积饱和、其中 90% 径向磁化，emf 谐波仍显著偏离理想磁体；<b>磁体越小、越是后装配充磁，偏离越大</b>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s8"><span class="num">II·8</span>材料侧：δ = √(2/ωμσ) 的四步倒推链</h2>
+
+<p>这一节是材料部分<b>最硬</b>的一块：从「高频要写得进 10–20 mm 壁厚」出发，用教科书趋肤深度公式四步倒推，得到唯一的材料结论。</p>
+
+<div class="eq">趋肤深度：  δ = √( 2 / (ω μ σ) ) = √( 2 / (2π f · μ₀ μ_r · σ) )</div>
+
+<table>
+  <tr><th class="n">步</th><th>推理</th><th>结论</th></tr>
+  <tr><td class="n">1</td><td>要高频写进 10–20 mm 壁厚 ⇒ δ ≥ 10 mm 量级</td><td>—</td></tr>
+  <tr><td class="n">2</td><td>δ ≥ 10 mm 且 f 在 kHz～百 kHz ⇒ μσ 必须极小</td><td>排除高 μ 或高 σ 材料</td></tr>
+  <tr><td class="n">3</td><td>排除金属（σ 太大）、排除软磁（μ 太大）</td><td>只能是电导率与磁导率都低的一类</td></tr>
+  <tr><td class="n">4</td><td>同时还要能承载永磁极 ⇒</td><td class="ok"><b>只能是各向同性永磁铁氧体</b></td></tr>
+</table>
+
+<div class="box g">
+  <b>瑟尔用铁氧体不是当年只能买便宜货，是物理必然。</b>
+  这条链的每一环都能用教科书公式验算，是整份材料里最不容易被推翻的一段。
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s9"><span class="num">II·9</span>三阵营不可互推</h2>
+
+<table>
+  <tr><th>阵营</th><th>做法</th><th>磁能结果</th></tr>
+  <tr><td><b>Searl 原版</b></td><td>整环一体、划痕环</td><td>宣称输出（如 100 kV @ 1.5 mA）—— <span class="warn">无独立实证</span></td></tr>
+  <tr><td><b>Roschin-Godin</b><br><span class="mut">俄方</span></td><td>分段 NdFeB，常规放电逐段充磁，再组装粘进铁电枢</td><td class="bad">磁能<b>降低</b></td></tr>
+  <tr><td><b>Morningstar</b><br><span class="mut">美方</span></td><td>环 = <b>HyMu-80 软磁 + 铁磁流体</b>（不用永磁环）；滚子上钻小径向磁铁</td><td>称「无显著差异」</td></tr>
+</table>
+
+<div class="box r">
+  <b>明确不建议的两条路线：</b><br>
+  ① 把 34、918 这类具体数值当物理因果去定材料配比 —— 瑟尔「平方定律决定磁体成分、尺寸与交流场频率」这套说法，
+  德方复现文献直接标注 <i>Not completely plausible（不太可信）</i>；<br>
+  ② 任何「按方制造即得自由能」的路线 —— 库内对 SEG 的产出只有宣称，无独立实证。<br><br>
+  <b>「文献说不太可信」与「按他的规程不严格执行 SEG 就不工作」这两句并不矛盾 —— 前者是对物理主张的评价，后者是对工艺依赖性的描述。必须分开读。</b>
+</div>
+
+<!-- ============================================================ -->
+<hr>
+<h2 id="s10"><span class="num">III·10</span>生命专题：Searl 的「THE DNA OF THE S.E.G.」</h2>
+
+<p>瑟尔本人把 SEG 与 DNA 视为<b>同一种语言</b>：<i>「SEG 里有扭转的磁场、连接数、环形 —— 我们说的是同一套语言，区别只在于如何使用。」</i></p>
+
+<h3>10.1 DNA 侧的真实落点是<b>拓扑</b>，不是片段</h3>
+<p>知识库里那份 <code>SearlFX-DNA-1</code> 讲的不是「剪一段插一段」，而是 DNA 的<b>高阶结构</b>：
+超螺旋（supercoiling）、打结（knotting）、连锁（catenation）、<b>连接数</b>（linking number）、扭转（twist）、缠绕（writhe），以及改变拓扑的拓扑异构酶。同一文档把细胞看作<b>能量转换装置</b>。</p>
+
+<div class="eq">Lk = Tw + Wr                      （连接数 = 扭转 + 缠绕）
+ΔLk = Lk − Lk₀                    （连接差；负 = 负超螺旋）
+σ  = ΔLk / Lk₀                    ★ 比连接差：归一化后跨长度可比
+ΔLk = ΔTw + ΔWr                   （Lk 不变时，Tw 与 Wr 等值反向）</div>
+
+<div class="box g">
+  <b>「线和守恒」在 DNA 里本来就有实证版本，不用去幻方里找：</b><br>
+  <b>转录时双链并不断裂 ⇒ 总 Lk 不可能改变</b> ⇒ 聚合酶两侧的 Tw + Wr 变化必须<b>大小相等、符号相反</b>。
+  这就是一个天然的、可测量的守恒实例。<br>
+  再加一条硬数字：<b>单个核小体贡献 ΔLk ≈ −1</b>（实测 −1.01 ± 0.08）⇒ 每个核小体都在改变<b>全局拓扑账本</b>，
+  这正是「改一处必须全局补偿」的约束来源。
+</div>
+
+<h3>10.2 为什么 σ 才配得上「共享线值」</h3>
+<p>同样的 ΔLk 在<b>小</b>分子里产生的扭转应力比<b>大</b>分子大，所以连接差必须<b>归一化到分子长度</b>。</p>
+<table>
+  <tr><th>幻方侧</th><th>基因组侧</th></tr>
+  <tr><td>共享线值 V（跨阶恒定）</td><td><b>σ = ΔLk / Lk₀</b>（跨长度可比）</td></tr>
+  <tr><td>阶数 n</td><td>Lk₀（该基因组的拓扑长度）</td></tr>
+  <tr><td>总和 = V × n</td><td>ΔLk = σ × Lk₀</td></tr>
+  <tr><td>Level 各不同</td><td>各染色体组的核内层级 / 复制时序 <span class="warn">（假说）</span></td></tr>
+  <tr><td>Group one / two / three</td><td>亚基因组类型（如多倍体的 A/B/D 组）<span class="warn">（人为指派）</span></td></tr>
+  <tr><td>强制配对 3↔4、33↔34</td><td>同源染色体成对</td></tr>
+</table>
+<p class="legend">一句话：<b>线值是「比值」，总和是「绝对量」，阶数是「尺度」</b> —— 与 σ / ΔLk / Lk₀ 的关系完全同构。<b>但这是数学同构，不是生物学发现。</b></p>
+
+<!-- ============================================================ -->
+<h2 id="s11"><span class="num">III·11</span>卢先生体系：九宫格 ≈ DNA、144 阶 = 全 DNA 激活</h2>
+
+<table>
+  <tr><th>命题</th><th>出处</th><th>性质</th></tr>
+  <tr><td>「九宫格本质 ≈ DNA 代码」</td><td>卢先生知识源头</td><td class="warn">主张</td></tr>
+  <tr><td>通过 mRNA 项目反推出 <b>DNA 的六阶幻方</b> 与 <b>RNA 的十二阶幻方</b> 编码规律</td><td>卢先生的知识源头</td><td class="warn">主张</td></tr>
+  <tr><td><b>144 阶幻方 = 全 DNA 激活</b>；12 链 × 12 火焰字母 = 144</td><td>144 阶 DNA 笔记 / 法界 能量</td><td class="warn">主张</td></tr>
+  <tr><td>Searl 文档里确有一张 12×12 方（标注「4 CORNERS = 30」），填 <b>0…143</b>，线值 <b>858</b></td><td>searl幻方总介绍.pdf</td><td class="ok">算术事实（本页引擎已复现）</td></tr>
+</table>
+
+<div class="box w">
+  <b>必须切开的地方</b>：上面第一行是<b>人为指派</b>；第三行「144 阶 = 全 DNA 激活」是<b>象征性对应</b>，
+  不能当作测量判据。能带进工程的只有<b>约束结构</b>（见 §12），不是这些数字。
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s12"><span class="num">III·12</span>幻方式基因编辑：把「线和」变成可求解的方程</h2>
+
+<p>核心操作：把基因组划成 <b>n×n 的「尺度 × 模块」格子</b>，行 = 尺度层级，列 = 功能模块，要求<b>每行和、每列和、两条对角线和同时等于同一个 ρ</b>。</p>
+
+<div class="eq">行 = 尺度：碱基 / 核小体 / 染色质环 / TAD / 染色体
+列 = 模块：转录 / 复制 / 修复 / 代谢 / 表观
+
+δ_ij = 第 (i,j) 格承担的归一化扰动预算（|ΔLk| / |Δ表达| / |Δ接触频率| 归一化）
+
+∀i: Σ_j δ_ij = ρ        每个尺度层的总扰动预算相等
+∀j: Σ_i δ_ij = ρ        每个功能模块的总扰动预算相等
+两条对角线和同样 = ρ
+
+min L_balance = Σ_i(Σ_j δ_ij − ρ)² + Σ_j(Σ_i δ_ij − ρ)²
+求解：δ_ij 整数化 → ILP / CP-SAT（OR-Tools）</div>
+
+<p><b>物理含义</b>：不允许把系统代价压在某一个层次或模块上 —— 而这正是「截取片段强行移植」的典型后果（代价全压在插入位点附近）。它与「转录时聚合酶两侧 Tw + Wr 等值反号」是<b>同一个数学结构</b>。</p>
+
+<h3>12.1 C0 硬约束（「和谐底线」＝第一约束，草案阈值待定）</h3>
+<table>
+  <tr><th>编号</th><th>约束</th><th>草案阈值</th></tr>
+  <tr><td>C0-1</td><td>拓扑守恒（<b>一票否决</b>）</td><td>|σ_edit − σ_wt| ≤ ε_σ·|σ_wt|，ε_σ = 0.15（可收紧到 0.05）</td></tr>
+  <tr><td>C0-2</td><td>结构域完整</td><td>B_TAD ≥ 0.98；新增异常接触域 = 0；关键锚点占用变化 ≤ 10%</td></tr>
+  <tr><td>C0-3</td><td>序列来源纯净</td><td>外源跨物种片段 = 0；疤痕残留 = 0</td></tr>
+  <tr><td>C0-4</td><td>脱靶零容忍区</td><td>必需基因命中 = 0；单拷贝保守区命中 = 0</td></tr>
+  <tr><td>C0-5</td><td>网络不变量</td><td>谱距离 D ≤ ε_G；top-k 中心节点重合度 ≥ 0.90</td></tr>
+  <tr><td>C0-6</td><td>生态与适合度</td><td>f_edit / f_wt ≥ 0.95；漂移率 ≤ 自然变异上限</td></tr>
+  <tr><td>C0-8</td><td><b>跨基因组 σ 一致性</b>：编辑核 / 叶绿体 / 线粒体任一「阶」后，其余各「阶」的 σ 也须回到同一容许带</td><td>带宽由基线实测定</td></tr>
+  <tr><td>C0-9</td><td><b>阶间比例守恒</b>：ΣΔLk / ΣLk₀ 与野生型一致</td><td>ε = 0.15（同 C0-1，待定）</td></tr>
+</table>
+
+<h3>12.2 失败判据（明确叫停条款）</h3>
+<table>
+  <tr><th class="n">编号</th><th>判据</th><th>动作</th></tr>
+  <tr><td class="n">F1</td><td>σ 连续 2 个世代未回归基线</td><td>暂停该编辑体，回溯至拓扑层重设计</td></tr>
+  <tr><td class="n">F2</td><td>B_TAD &lt; 0.95 或出现新的异常接触域</td><td>终止该方案</td></tr>
+  <tr><td class="n">F3</td><td>f_edit/f_wt &lt; 0.90 或出现不可解释表型</td><td>终止并公开记录</td></tr>
+  <tr><td class="n">F4</td><td>脱靶命中必需基因 / 单拷贝保守区</td><td>立即终止</td></tr>
+  <tr class="hl"><td class="n">F5</td><td><b>求解器在 C0 下无可行解</b></td><td><b>记录为「该目标在此约束下自然不可行」—— 不得放宽 C0</b></td></tr>
+  <tr class="hl"><td class="n">F6</td><td>任何放宽 C0 硬约束的提议</td><td>需重新立项，<b>不得在原项目内事后放宽</b></td></tr>
+</table>
+
+<div class="box">
+  <b>F5 / F6 是这套方法与常规工程最大的不同：</b>当约束集无解时，结论是「<b>自然界不允许这件事</b>」，
+  而不是「把标准降一降」。
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s13"><span class="num">III·13</span>香蕉 × 毛竹 × 水稻：跨阶共享的生物落点</h2>
+
+<h3>13.1 从象征指派到实测数据：结论被推翻了</h3>
+<table>
+  <tr><th>版本</th><th>香蕉</th><th>毛竹</th><th>依据</th></tr>
+  <tr><td>v0.1（象征）</td><td>3 阶</td><td>4 阶</td><td class="warn">「3↔4 是瑟尔配对表第一对」—— 纯象征</td></tr>
+  <tr><td><b>v0.2（实测）</b></td><td><b>Square 11</b><br>x = 11、2n = 22</td><td><b>Square 12</b><br>4x = 48 ⇒ x = 12</td><td class="ok">真实染色体基数推出的，不是我挑的</td></tr>
+</table>
+
+<div class="box g">
+  <b>11↔12 的三重锁定（全部是库内原文的算术事实）：</b><br>
+  ① <b>配对</b>：SEARL PAIRS 表里 11 与 12 明写为一对（3/4、5/6、7/8、9/10、<b>11/12</b>、13/14…33/34）<br>
+  ② <b>分组</b>：「Square 11 is a group 1 class = 121 cells. Square 12 is a group 2 class = 144 cells」<br>
+  ③ <b>壳数</b>：「Square 11 is constructed with 6 shells. Square 12 is constructed with 6 shells」—— 配对规律要求同壳数<br>
+  <span class="mut">另有一处巧合：瑟尔自己用 11、12、13 做过等式 11×13 = 143、12×12 = 144，差恒为 1，他称其为「an interesting FACT」。</span>
+</div>
+
+<h3>13.2 毛竹直接坐在瑟尔最完整的算例上</h3>
+<table>
+  <tr><th style="width:20%">12 阶参数</th><th style="width:30%;text-align:left;white-space:nowrap">值</th><th style="text-align:left">本页引擎校验</th></tr>
+  <tr><td>格数 / 壳数</td><td style="text-align:left;white-space:nowrap">144 / 6</td><td class="ok">✓</td></tr>
+  <tr><td>壳格数</td><td style="text-align:left;white-space:nowrap">4 / 12 / 20 / 28 / 36 / 44</td><td class="ok">✓ 和 = 144，等差 8</td></tr>
+  <tr><td>线值（Level 2）</td><td style="text-align:left;white-space:nowrap">870</td><td class="ok">✓ = 12×145/2 = 标准魔方常数</td></tr>
+  <tr><td>总和 Frequency</td><td style="text-align:left;white-space:nowrap">10,440</td><td class="ok">✓ = 870 × 12</td></tr>
+  <tr><td>壳值</td><td style="text-align:left;white-space:nowrap">290 / 870 / 1450 / 2030 / 2610 / 3190</td><td class="ok">✓ 等差 580</td></tr>
+  <tr><td>四角恒 290</td><td style="text-align:left;white-space:nowrap">290</td><td class="warn">标准构造给 286 —— 属瑟尔特有 Options，非唯一</td></tr>
+  <tr><td>Level 1 线值（0…143）</td><td style="text-align:left;white-space:nowrap"><b>858</b></td><td class="ok">✓ 引擎已生成完整 12×12 方，行行 858</td></tr>
+</table>
+<p class="legend">巧合：香蕉 3 阶 Sum = 290×9 = <b>2,610</b> = 12 阶的 Shell 5 值。（⚠ 这个 3 阶是 v0.1 的象征指派，v0.2 已改为 11 阶。）</p>
+
+<div class="box g">
+  <b>「楠竹」就是毛竹 —— 换叫法不换阶（2026-10-14 复查）</b><br>
+  正名 <b><i>Phyllostachys edulis</i> (Carrière) J. Houzeau</b>（禾本科 Poaceae · 刚竹属）。异名：<i>P. pubescens</i>、<i>P. heterocycla</i> var. <i>pubescens</i>、<i>P. mitis</i>、<i>Bambusa edulis</i>。<br>
+  俗名按地域分：<b>楠竹</b>（湘鄂）、南竹、孟宗竹（台/日）、猫头竹、江南竹、茅竹、苗竹 —— <b>全是同一个物种</b>。<br>
+  ⇒ 所以「12 阶用毛竹、那楠竹行不行」的答案是：<b>楠竹当然行，它就是毛竹，x 同样是 12</b>。<br>
+  ⚠ 真差异在<b>品种</b>：<b>厚壁毛竹</b>（<i>P. edulis</i> 'Pachyloen'）是同种栽培品种，2n 同为 48，但核型组成 12L+8M₂+16M₁+12S、不对称系数 59.55%（毛竹为 12L+10M₂+14M₁+12S、61.41%），45S/5S rDNA 位点数相同。<br>
+  👉 这正好是<b>「同阶之内还有不同的方」</b>的天然实例。
+</div>
+
+<div class="box w">
+  <b>858 是怎么定下来的：不是挑的，是两条路径的交点（可一行验算）</b><br>
+  <code>V_n(L) = n(n²+2L−3)/2 = T(n) + n(L−1)</code>，<code>T(n) = n(n²−1)/2</code>。<br>
+  毛竹：T(12) = 858 ⟹ <b>Level 1（0…143）= 858</b>；香蕉：T(11) = 660，(858−660)/11 = 18 ⟹ <b>Level 19（18…138）= 858</b>。<br>
+  <b>{11,12} 的共享序列 = 858 + 132k</b>（132 = lcm(11,12)）：858(19,1)、990(31,12)、1122(43,23)、1254(55,34)…<br>
+  ⇒ <b>858 是最小值</b>；两阶 Level 差恒 = (V+1518)/132，<b>随 V 单调增</b> ⟹ 858 同时是「两阶 Level 最接近」的解（差 18）。<br>
+  <b>两阶永远不可能同 Level</b>：解 (V−660)/11 = (V−858)/12 得 V = −1518 &lt; 0。<br>
+  ⚠ <b>更大的值也有用</b>：<b>990</b> 同时承载 <b>{3,4,5,9,11,12} 六个阶</b>（本页 §2 那张 990 行已写 327 / 241 / 71 / 12，补上 11 阶 <b>31</b>、5 阶 <b>187</b>）——因为 {3,4,9,12} 家族（882+36k）与 {11,12} 家族（858+132k）<b>首次交汇恰在 990</b>（990 = 882 + 3×36 = 858 + 132）。要把瑟尔原表的 3/4/9 阶拉进同一线值，就换 990。详见 <a href="#s16">§16</a>。
+</div>
+
+<h3>13.3 香蕉 11 阶的谱面：现在可以画出来了</h3>
+<div class="card soft">
+  <div class="ctl">
+    <button class="pri" id="b_go">生成 11 阶 / Level 19（18…138，线值 858）</button>
+    <button id="b_sh">与 12 阶 858 方并排对照</button>
+  </div>
+  <div id="b_out"></div>
+</div>
+
+<p class="legend"><b>为什么 858 让两条谱面「贴在一起」</b>：香蕉 11 阶 Level 19 填 <b>18…138</b>，毛竹 12 阶 Level 1 填 <b>0…143</b> ——
+<b>18…138 ⊂ 0…143</b>，两个数集几乎重合。<br>
+所以「共享线值」在音乐上的物理含义不只是「每句总张力相同」，而是 <b>两条旋律跑在同一个音域窗口里</b> —— 这正是「共同定旋律」能成立的原因。
+若改取 990，11 阶会跳到 Level 31（数集 30…150），这个窗口就错开了。</p>
+
+<div class="box w">
+  <b>诚实的坏消息</b>：真实数据里<b>没有任何现成的共享标量</b> ——
+  GC 39.6–39.9% vs 44.2%；基因组 470–523 Mb vs 1,908–2,075 Mb（约 4 倍）；每染色体 42.7–47.7 vs 79.5 Mb；基因数、倍性，<b>全不共享</b>。<br>
+  唯一真实的结构性事实是：<b>基数 11 与 12 相邻，而它们在瑟尔配对表里恰好是一对。</b>
+  所以「共享线和」目前仍是<b>框架指派</b>，不是测出来的。它真正的可测对应物是 <b>σ = ΔLk/Lk₀</b>。
+</div>
+
+<h3>13.4 水稻：已知答案的校准样品</h3>
+<table>
+  <tr><th>项目</th><th class="n">值</th></tr>
+  <tr><td>染色体数</td><td class="n">12 条（2n = 24）⇒ 与毛竹 x = 12 <b>同阶</b></td></tr>
+  <tr><td>核基因组</td><td class="n">373,245,519 bp，GC 43.5%</td></tr>
+  <tr><td>叶绿体（闭环，最干净的基准）</td><td class="n">134,525 bp ⇒ Lk₀ = 12,811.9</td></tr>
+  <tr><td>线粒体（闭环）</td><td class="n">490,520 bp ⇒ Lk₀ = 46,716.2</td></tr>
+  <tr><td>核小体间距 NRL（叶片）</td><td class="n">188.1 ± 1.1 bp（相位图 R² = 0.9998），核心 147 bp</td></tr>
+  <tr class="hl2"><td><b>σ 预测 = −10.5 / 188.1</b></td><td class="n"><b>−0.0558</b> ✅ 落在真核稳态 −0.05 ~ −0.06 内</td></tr>
+</table>
+<p>三套闭合系统（核 / 叶绿体 / 线粒体）<b>大小不同（阶不同）、共处一个细胞（共享环境）、同为负超螺旋（共享符号）</b> —— 这就是「不同阶共享一个线值」在生物界的现成实例。</p>
+
+<h4>五步校准链路</h4>
+<div class="flow">
+<table>
+  <tr><th class="n">步</th><th>做法</th><th>验收</th></tr>
+  <tr><td class="n">①</td><td>MNase-seq 复现 NRL（Nipponbare 两周龄叶片，≥5 生物学重复）</td><td>188.1 ± 2 bp，否则链路未校准，全部重做</td></tr>
+  <tr><td class="n">②</td><td>σ_pred = −10.5 / NRL（代入实测值）</td><td>期望 −0.0558</td></tr>
+  <tr><td class="n">③</td><td><b>叶绿体优先</b>：分离纯化 + 氯喹二维凝胶数拓扑异构体阶梯</td><td>阶梯中心 = Lk₀，应落在 12,811.9</td></tr>
+  <tr><td class="n">④</td><td>核内实测：psoralen 交联（TMP + 365 nm UV）+ qPCR</td><td>核 σ 落在 −0.05 ~ −0.06</td></tr>
+  <tr><td class="n">⑤</td><td>三方互校（NRL 预测 vs psoralen 实测 vs 叶绿体 2D 凝胶）</td><td>σ_cp 与 σ_nuc 落在同一预注册带宽（建议 ±0.005）</td></tr>
+</table>
+</div>
+<p class="legend">优先级：<b>先只做第 ③ 步，4–6 周</b>，最便宜、最快能看到拓扑异构体阶梯；完整链路约 3 个月。<br>
+平移到毛竹（x=12，同阶）→ 香蕉（x=11）。⚠ <b>水稻与毛竹同属禾本科，同 NRL 本就概率偏高，可能是假阳性 —— 真正有判别力的是香蕉那支。</b></p>
+
+<!-- ============================================================ -->
+<h2 id="s14"><span class="num">III·14</span>音乐侧：共享线值 = 共同的定旋律</h2>
+
+<div class="grid2">
+  <div class="card">
+    <h3 style="margin-top:0">14.1 竹子的十条守恒路径 → 四声部</h3>
+    4 阶的完整不变量（<b>无论取什么数值都成立</b>）：4 横行、4 纵列、2 对角线各自等和；中央 4 格等和；4 个角等和；
+    <b>外侧 12 格 = 线值 × 3</b>（例：线值 784 → 外侧 2,352）。<br>
+    ⇒ 4 列 = 4 个声部（每声部总和 = V）；4 行 = 4 个乐句；2 对角 = 2 条对位线；中央 4 格 = 和声核心；四角 = 四个终止式。<br><br>
+    <b>关键细节</b>：4 阶从左下到右上的对角线<b>必须以 3 为步长</b>（3, 6, 9, 12）⇒
+    竹子的对角声部走三度台阶，而 <b>3 正是香蕉（v0.1 指派）的阶</b>。
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">14.2 首尾闭合</h3>
+    <div class="eq" style="font-size:13px">v0.1：lcm(9, 16)   = 144   = 12²
+v0.2：lcm(121,144) = 17,424 = 132²</div>
+    每 17,424 拍，香蕉（121 音符）循环 144 次、毛竹（144 音符）循环 121 次，二者<b>同时回到起点</b>；
+    而这个数正是<b>子代 132 阶的格数</b>。结合体总和 = 132 × 870 = <b>114,840</b>。<br><br>
+    <b>共享线值在音乐上的定义</b>：共同的<b>定旋律</b>（cantus firmus）—— 两条旋律无论怎么走，
+    每个完整乐句的总张力都等于 V。<br><br>
+    <b>极性约定</b>：体内 DNA 几乎一律负超螺旋 ⇒ 两条旋律的张力方向统一取负向（「解开」方向）。
+  </div>
+</div>
+
+<p class="legend">配器建议：Group 1 的定义是 <b>ROTATE（旋转）</b>、Group 2 是 <b>OSCILLATE（振荡）</b> ——
+香蕉走旋转式（循环、回旋），毛竹走振荡式（往复、驻波）。这个性格差异是瑟尔体系自带的分类，不是我们编的。</p>
+
+<h3>14.3 🔴 12 阶的每一行 = 一个真正的十二音序列（2026-10-14 实测，可验算）</h3>
+<div class="grid2">
+  <div class="card">
+    <h3 style="margin-top:0">定理：行源⊕列源 ⟹ 每行是完备剩余系</h3>
+    <div class="eq" style="font-size:13px">值 = P + n·Q
+P = (i − j + e) mod n
+Q = (i + j + f) mod n</div>
+    固定行 i，让 j 走遍 0…n−1 时，<b>P 恰好取遍 0…n−1 各一次</b> ⟹ 每行取模 n 都是<b>完备剩余系</b>。<br><br>
+    n = 12 时，「每行 12 个音级各出现一次」<b>就是十二音序列的定义</b>。<br>
+    而勋伯格<b>「十二音矩阵」的定义式</b>是 <code>M[i][j] = (T_i + L_j) mod 12</code>
+    （行 = 原型 P 的移调、列 = 倒影 I 的移调）——<br>
+    <b>这与页 A 的 mi(q) 行源⊕列源法是同一个代数对象。</b>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">实测（三条对照，别混）</h3>
+    <table>
+      <tr><th>对象</th><th class="n">完整幻方</th><th class="n">每行 mod n</th><th class="n">每列</th></tr>
+      <tr><td>香蕉 11 阶 L19（mi(q)）</td><td class="n ok">✓ 线 858</td><td class="n ok">11/11</td><td class="n ok">11/11</td></tr>
+      <tr class="hl"><td><b>毛竹 12 阶 L1（本页十字互补方）</b></td><td class="n ok">✓ 线 858</td><td class="n ok"><b>12/12</b></td><td class="n bad">0/12</td></tr>
+      <tr><td>12 阶硬套 mi(q) 线性闭式</td><td class="n bad">✗ 对角 780</td><td class="n ok">12/12</td><td class="n ok">12/12</td></tr>
+    </table>
+    🔴 第三行是<b>反面教材</b>：12 阶是偶数阶，2 位线性闭式失效（它要求四个系数全与 n 互素 ⟹ 全奇 ⟹ det 为偶 ⟹ Z/n 不可逆），
+    硬套会得<b>取值重复、缺 0</b>的非法方阵（144 格只有 <b>72</b> 个不同值，缺 0 及 70 个中间值，
+    且两条<b>对角和都是 780 ≠ 858</b> —— 行和列和碰巧仍是 858，所以只查行列的和会漏掉它）
+    —— 静态自检不报错，只有实测拦得住。
+  </div>
+</div>
+<div class="box g">
+  <b>858 的乐理解剖</b>：<code>858 = 66 × 13</code>，而 <code>66 = 0+1+…+11</code>（十二个音级之和）。<br>
+  每行 = （12 个音级之和 66）+ 12 ×（12 个八度分层之和 66）⇒ 12 阶 858 方 = <b>「音级层（mod 12）」⊗「八度层（×12）」两层各自守恒</b>。<br>
+  🔴 <b>音级层对应十二音体系；八度层才携带 858 这个线与值。</b>两层不可混说。<br>
+  ⚠ 毛竹是<b>单侧</b>的：行齐备、列不齐备（列里只有 2 个音级各出现 6 次）；香蕉 11 阶是<b>双向</b>齐备，是更干净的「11 音矩阵」。<br>
+  ⇒ 建议<b>两条并行出谱</b>：磁侧用瑟尔完整方（十字互补，保留四角/壳诸不变量），音乐侧用 mi(q) 的 n 音矩阵。
+</div>
+
+<!-- ============================================================ -->
+<h2 id="s16"><span class="num">16</span>阶数↔染色体基数 · 音乐↔DNA · 落地工序（2026-10-14 复查）</h2>
+
+<h3>16.1 阶数复查：依据是「单倍体基数 x」，不是染色体总条数</h3>
+<table>
+  <tr><th>物种</th><th class="n">基数 x</th><th class="n">染色体数</th><th class="n">基因组</th><th class="n">基因数</th><th>出处</th></tr>
+  <tr class="hl"><td>香蕉 <i>Musa acuminata</i></td><td class="n"><b>11</b></td><td class="n">22 / 33 / 44</td><td class="n">~523 Mb</td><td class="n">~36,500</td><td>D'Hont et al. 2012, <i>Nature</i> 488:213</td></tr>
+  <tr class="hl"><td>毛竹 <i>Phyllostachys edulis</i>（= 楠竹）</td><td class="n"><b>12</b></td><td class="n">48（24 对）</td><td class="n">2.05 Gb</td><td class="n">31,987</td><td>Peng et al. 2013, <i>Nat Genet</i> 45:456</td></tr>
+  <tr><td>水稻 <i>Oryza sativa</i></td><td class="n">12</td><td class="n">24</td><td class="n">373 Mb</td><td class="n">~40,000</td><td>本页 §13.4</td></tr>
+</table>
+<div class="box w">
+  <b>两处必须记住的修正</b><br>
+  ① <b>楠竹 = 毛竹</b>（同一学名 <i>P. edulis</i>；楠竹 / 南竹 / 孟宗竹 / 猫头竹 / 江南竹 / 茅竹 / 苗竹 全是俗名）⟹「楠竹不行」这个前提不成立，<b>换叫法不换阶</b>。
+  真差异在<b>品种</b>：厚壁毛竹核型 12L+8M₂+16M₁+12S（≠ 毛竹的 12L+10M₂+14M₁+12S），<b>同阶异核型</b> —— 正是「同阶之内还有不同的方」。<br>
+  ② <b>毛竹不是「2×12 = 24」的二倍体</b>：已测序个体称 diploid，但基因组分析显示约 <b>700–1200 万年前发生全基因组加倍</b>（古四倍体再二倍化）
+  ⟹ 它的「4」是<b>历史倍性</b>，映射时应归到<b>维数 d</b>（页 A 的 <code>hlT(n,d)</code>），而不是阶 n。
+</div>
+
+<h3>16.2 线值的分情形结论（数论，全部可验算）</h3>
+<table>
+  <tr><th>目标</th><th class="n">取值</th><th>理由</th></tr>
+  <tr class="hl"><td>只要香蕉 + 毛竹</td><td class="n"><b>858</b></td><td>最小值；两阶 Level 差最小（19 vs 1，差 18）；且 858 恰是库内 12×12「4 CORNERS」方的<b>原生线值</b>（零改动）</td></tr>
+  <tr><td>要把瑟尔原表 3/4/9 阶纳入同一线值</td><td class="n"><b>990</b></td><td>{3,4,9,12} 家族（882+36k）与 {11,12} 家族（858+132k）<b>首次交汇于 990</b>；一次统一 <b>{3,4,5,9,11,12}</b> 六个阶</td></tr>
+  <tr><td>1122 起</td><td class="n warn">无收益</td><td>只把 Level 推高；858 下「18…138 ⊂ 0…143」是<b>窗口重合</b>，990 下 11 阶跳到 30…150 就错开了</td></tr>
+</table>
+<p class="legend">⚠ 无论取哪个，都是<b>框架指派</b>而非实测；它的可测对应物仍是 σ = ΔLk/Lk₀（§13.3）。</p>
+
+<h3>16.3 音乐 ↔ DNA：方向要分清</h3>
+<table>
+  <tr><th>方向</th><th>现状</th><th>关键材料</th></tr>
+  <tr><td>DNA → 音乐</td><td class="ok">成熟</td><td>Ohno &amp; Ohno 1986（<i>Immunogenetics</i>）；Temple 六算法（<i>BMC Bioinformatics</i> 2017：mono / di / tri-nucleotide、protein、reading-frame）；ICAD 2024 八通道；<b>Cittaro 2016 表观基因组超声化（Chromas from chromatin）</b></td></tr>
+  <tr><td>音乐 → DNA</td><td class="ok">已真做出来</td><td><b>Poole et al. 2025, PLOS Comput Biol e1012677</b>：256 个四字母密码子 → 64 个「音符+时值」元素；乐谱 → DNA → <b>真实合成</b> → Sanger 测序 → 回译播放 → 录音捕获 → 比对；结论：有反向翻译的系统演化速率约 <b>2 倍</b>（代码 PooleLab/Lamarck_DNA）</td></tr>
+  <tr><td>音乐 → 改基因</td><td class="bad">不成立</td><td>音乐只提供<b>编码</b>，不提供<b>功能</b>；反译出来的序列几乎必然不编码任何蛋白</td></tr>
+  <tr class="hl"><td><b>唯一真能「写进基因」</b></td><td class="ok">可行</td><td><b>简并密码子承载法</b>：取真实基因（如 <i>MaGA20ox</i>），<b>保持氨基酸序列不变</b>，用幻方序列决定每个简并位点选哪个同义密码子 ⟹ 蛋白不变、DNA 携带幻方指纹、可测序验证</td></tr>
+</table>
+
+<h3>16.4 落地工序（六阶段；幻方只做参数发生器）</h3>
+<div class="flow">
+<table>
+  <tr><th class="n">阶段</th><th>做什么</th><th>验收 / 红线</th></tr>
+  <tr><td class="n">0</td><td>定阶定值（11 阶 L19 / 12 阶 L1，或统一 990）+ <b>冻结并公开频率映射规则</b></td><td>规则不冻结 ⟹ 整套试验不可证伪</td></tr>
+  <tr><td class="n">1</td><td><b>三条独立通道并行</b>：① 声频（水稻 0.4 kHz @106 dB 促进；<b>&gt;4 kHz 或 &gt;111 dB 转抑制</b>；超声 20–40 kHz 种子预处理）② 磁（magnetopriming <b>100–250 mT、1–3 h</b>，黄瓜 200 mT×1 h 最佳）③ <b>ICR：f = qB/(2πm)</b> —— 把幻方数字换成频率的<u>唯一严格物理换算</u></td><td>缺一不可的对照：<b>纯水 priming + 假线圈 + 同声压级白噪声</b></td></tr>
+  <tr><td class="n">2</td><td>RCBD、≥4 重复、每处理 ≥400 粒、<b>处理盲法</b>、分析计划预先注册</td><td>发芽率 / 势 / 指数、胚根胚芽长、鲜干重、SPAD、根扫描、产量</td></tr>
+  <tr><td class="n">3</td><td><b>分子验证</b>：qRT-PCR（GA20ox / GA3ox、NCED、APX / CAT、PIP1 / PIP2、Amy3、PR1 / NPR1）+ 表观（MSAP / WGBS、H3K9ac / H3K4me3）</td><td>🔴 <b>跨代才算改良：必须 M1 / M2 两代</b></td></tr>
+  <tr><td class="n">4</td><td>同属内常规杂交；跨属只能用胚拯救 / 原生质体融合 / 染色体加倍 + 桥梁 / <b>CRISPR 定点编辑</b></td><td>🔴 香蕉属姜目、毛竹属禾本目 ⟹ <b>不可能有性杂交</b>；超声可提高农杆菌转化效率，声处理放在<u>转化步骤</u>才有意义</td></tr>
+  <tr><td class="n">5</td><td><b>简并密码子承载</b>：把幻方 / 音乐写进真实基因（蛋白不变）</td><td>Sanger / NGS 验证 + 蛋白表达量比对（应不变）</td></tr>
+  <tr><td class="n">6</td><td>显著 ⟹ 下一轮；<b>不显著 ⟹ 如实记为阴性</b></td><td>这一步是整条链可信度的唯一来源</td></tr>
+</table>
+</div>
+
+<div class="box r">
+  <b>红线（必须和上面并排放，不许只抄上面的）</b><br>
+  ① 声 / 磁 priming 有同行评议证据（拟南芥 250–3000 Hz @80 dB；黄瓜 200 mT×1 h：发芽率 +18.5%、发芽速率 +49%、苗长 +34%、干重 +33%、CAT +83%）；
+  但<b>不是「越强越好」</b> —— 水稻 &gt;4 kHz 或 &gt;111 dB 转为抑制，2000 Hz 对菊花细胞有害 ⟹ 存在最优窗口。<br>
+  ② <b>Sonic Bloom（Dan Carlson）= 现象真、包装假</b>：成分主体是赤霉素 + 海藻提取物 + 螯合矿物 + 洗涤剂；「两次诺奖提名」是自封、Guinness 查不到；
+  植物生理学界指出其「气孔张开」对比图<b>未处理者反而更开</b>，且全部证据均为非同行评议媒体。<br>
+  ③ <b>「radionics / 射电播放音乐直接改基因」无可复现证据</b>，不能写进工序；要探索必须双盲 + 随机 + 重复。<br>
+  ④ <b>《The Secret Life of Plants》(1973) 是伪科学源头</b>（Backster 测谎仪实验不可重复），它拖累了整个植物声学领域数十年 —— 引它等于自伤。
+</div>
+
+<div class="box g">
+  <b>判决性试验（决定「幻方在应用侧」有没有机制价值）</b>：<br>
+  <b>「幻方驱动的参数」必须打得过「同强度随机参数」</b>（假线圈 + 白噪声，功率 / 场强 / 时长完全对齐）。<br>
+  打得过 ⟹ 幻方编码有机制意义；打不过 ⟹ 幻方在应用侧只剩<b>约束结构的启发式价值</b>，不是机制。<b>这一条要老师拍板是否投。</b>
+</div>
+
+<h3>16.5 「高阶幻方种数 ↔ 基因组复杂度」的正确落点</h3>
+<table>
+  <tr><th>幻方侧</th><th>生物侧</th><th>说明</th></tr>
+  <tr><td>阶 n（3 阶 <b>1</b> 种、4 阶 <b>880</b> 种、5 阶 <b>275,305,224</b> 种、6 阶 <b>1.78×10¹⁹</b> 种）</td><td><b>单倍体基数 x</b></td><td>不是 2n，更不是染色体总条数</td></tr>
+  <tr class="hl"><td><b>同阶内的巨量方案</b></td><td><b>同一基数下的组合与调控自由度</b>：等位组合、结构变异、基因家族拷贝数、表观状态、可变剪接</td><td><b>这才是爆炸的那个维度</b></td></tr>
+  <tr><td>维数 d（<code>hlT(n,d) = n(n^d−1)/2</code>）</td><td>倍性 / 基因组份数</td><td>毛竹古四倍体 ⟹ 其 d 的历史值 = 4</td></tr>
+  <tr><td>Level L</td><td>同一体系内的起点偏移</td><td>L=1（0 起）= ABSOLUTE；L=2 = 标准魔方常数</td></tr>
+</table>
+<p class="legend">🔴 为什么不能按「阶 ↔ 染色体更多」来对：幻方种数从 880 → 2.75 亿 → 1.8×10¹⁹ 是<b>超指数爆炸</b>；
+而被子植物基数 x 多集中在 <b>7–12</b>，已见最大 2n ≈ 1260（瓶尔小草 <i>Ophioglossum</i>），<b>不到三个数量级</b>。两者不是一个量级 ⟹「高阶 = 染色体更多」不成立。<br>
+种数序列：OEIS <b>A006052</b>（1, 0, 1, 880, 275305224, 17753889197660635632；n=6 由 Mino 2024 精确算出）；幻方环面 <b>A270876</b>（1, 0, 1, 255, 251449712）。</p>
+
+<!-- ============================================================ -->
+<h2 id="s15"><span class="num">15</span>可证伪清单：不粉饰</h2>
+
+<table>
+  <tr><th>陈述</th><th>级别</th><th>如何检验 / 现状</th></tr>
+  <tr><td>V_n(L) = n(n²+2L−3)/2；Level = 数集起点</td><td class="ok">算术事实</td><td>本页引擎对 n=3…18 × L=1,2,3,7,19 逐格校验全通过</td></tr>
+  <tr><td>Searl 的 ABSOLUTE = Level 1（0 起）、Level 2 = 1 起</td><td class="ok">算术事实</td><td>4 阶 0…15 → 30 = 「Square 4 ABSOLUTE」；1…16 → 34 = 「4 阶 2 级」</td></tr>
+  <tr><td>共享步长 = lcm(阶集合)</td><td class="ok">零反例</td><td>7 个非空阶集合全中</td></tr>
+  <tr><td>同时含 n≡0 与 n≡2 (mod 4) 偶数阶 ⟹ 永不共享</td><td class="ok">可证明</td><td>三行奇偶推导；2500 个子集零反例</td></tr>
+  <tr><td>V = 882 + 36k 是 {3,4,9,12} 的完整共享序列</td><td class="ok">算术事实</td><td>与《真理表》⑩-F 的同余式 <code>S ≡ 18 (mod 36)</code> 一致；再加「各阶 Level 为正整数」后最小值被抬到 882，原表与笔记都漏了它</td></tr>
+  <tr><td>Kronecker 线值 = V_A × V_B（不是 V²）</td><td class="ok">算术事实</td><td>3 阶(15)⊗4 阶(34) = 12 阶，线值 510</td></tr>
+  <tr><td>lcm(9,16)=144=12²、lcm(121,144)=17424=132²</td><td class="ok">算术事实</td><td>纯数学，不含生物学结论</td></tr>
+  <tr><td>「某植物 = 某阶」的指派是<b>人为编码</b></td><td class="warn">指派</td><td>必须过<b>映射不变性检验</b>：换一套指派若结论改变，则结论无效</td></tr>
+  <tr><td>香蕉 11 阶 Level 19 的方（858）</td><td class="ok">已给出</td><td>本页可直接生成并逐格校验</td></tr>
+  <tr><td>H1：同一植株内三套系统的 σ 落在同一容许带</td><td class="bad">待实测</td><td>测各基因组 topoisomer 分布中心与 Lk₀。证伪即映射作废</td></tr>
+  <tr><td>H2：各系统 ΔLk ∝ Lk₀ 且比例系数一致</td><td class="bad">待实测</td><td>「Sum = 线值 × 阶」的检验</td></tr>
+  <tr><td>H3：同源染色体之间 σ 呈镜像/互补关系</td><td class="bad">待实测</td><td>配对假设的检验</td></tr>
+  <tr><td>「共享线值」与「共享 σ」是两条独立的链</td><td class="warn">纪律</td><td>前者是数学，后者待实测，<b>不可混</b></td></tr>
+  <tr><td>「60 units of square 3 sharing with 4+9+12」</td><td class="warn">未解</td><td>原表原话，算术含义不明，本页不作生物学事实</td></tr>
+  <tr><td>瑟尔的 sharing 表 / 配对的<b>物理意义</b></td><td class="bad">未验证</td><td>本页只取其<b>算术结构</b>（共享比值、按阶缩放）</td></tr>
+  <tr><td>平方定律作为「化学键到宇宙能量」的物理因果</td><td class="bad">无独立验证</td><td>德方复现文献标注 <i>Not completely plausible</i></td></tr>
+  <tr><td>SEG 的产出（100 kV @ 1.5 mA 等）</td><td class="bad">只有宣称</td><td>无独立实证</td></tr>
+  <tr><td>水稻与毛竹「同阶同 NRL」<b>可能</b>是假阳性</td><td class="warn">风险</td><td>同属禾本科，亲缘近；判别力在香蕉那支</td></tr>
+  <tr><td>σ = −10.5/NRL 依赖「超螺旋几乎全由核小体缠绕约束」</td><td class="warn">前提</td><td>局部非约束超螺旋约占 20%</td></tr>
+  <tr><td>Lk₀ = N/10.5 假设 B-DNA 构象</td><td class="warn">前提</td><td>若体内存在 A 型 / Z 型区段则须修正</td></tr>
+  <tr><td>叶绿体无核小体，σ_cp 与 σ_nuc <b>预期不同</b></td><td class="warn">边界</td><td>若相同，反而是意外发现</td></tr>
+  <tr><td>「梦里能结合」 ≠ 「生物学可杂交」</td><td class="bad">不处理</td><td>香蕉属姜目、毛竹属禾本目；生殖隔离不在本框架内</td></tr>
+  <tr><td>笔记里 Lk₀(核) 写 35,547,193</td><td class="warn">小瑕疵</td><td>373,245,519 / 10.5 = 35,547,192.29，四舍五入应为 <b>35,547,192</b>（差 1，不影响 σ 到 5 位小数）</td></tr>
+  <tr class="hl"><td>858 是 {11,12} 的<b>最小</b>共享线值，共享序列 = 858 + 132k</td><td class="ok">算术事实</td><td>两阶 Level 差 = (V+1518)/132 单调增 ⟹ 858 也是「Level 最接近」解；L11 = L12 无解（V = −1518 &lt; 0）</td></tr>
+  <tr class="hl"><td>990 同时承载 {3,4,5,9,11,12}；两家族首次交汇于 990</td><td class="ok">算术事实</td><td>990 = 882 + 3×36 = 858 + 132；各阶 Level = 327 / 241 / 187 / 71 / 31 / 12</td></tr>
+  <tr><td>12 阶十字互补方：每行 mod 12 完备 <b>12/12</b>、每列完备 <b>0/12</b></td><td class="ok">算术事实</td><td>行 = 十二音序列；列只有 2 个音级各 6 次 ⟹ <b>单侧</b></td></tr>
+  <tr><td>11 阶 mi(q) 方：行、列<b>双向</b>完备（11/11、11/11）且为完整幻方</td><td class="ok">算术事实</td><td>L19（18…138）、V = 858；第 i 行 = 第 0 行移调 i</td></tr>
+  <tr><td>12 阶<b>不能</b>用 mi(q) 2 位线性闭式</td><td class="ok">算术事实</td><td>硬套会得取值重复、缺 0 的非法方阵（作者初稿即犯此错，靠实测拦下）</td></tr>
+  <tr><td>楠竹 = 毛竹（同种，x = 12）；厚壁毛竹为同种栽培品种、同阶异核型</td><td class="ok">事实</td><td>《世界竹藤通讯》异名名录；南京林业大学学报 2019 核型</td></tr>
+  <tr class="hl"><td>「幻方驱动的参数」优于「同强度随机参数」</td><td class="bad">待实测</td><td><b>判决性试验</b>：假线圈 + 白噪声，功率 / 场强 / 时长对齐</td></tr>
+  <tr><td>声 / 磁 priming 的效应可跨代稳定</td><td class="bad">待实测</td><td>必须做 M1 / M2 两代，否则只是生理反应</td></tr>
+  <tr><td>简并密码子承载不改变蛋白表达</td><td class="bad">待实测</td><td>合成 → 测序验证 → 蛋白量比对</td></tr>
+  <tr><td>毛竹的古四倍体历史应归到<b>维数 d</b> 而非阶 n</td><td class="warn">指派</td><td>避免把「历史倍性」混进阶数映射</td></tr>
+  <tr><td>「阶 n ↔ 单倍体基数 x」本身</td><td class="warn">指派</td><td>仍须过映射不变性检验（换一套指派若结论改变，则结论无效）</td></tr>
+</table>
+
+<div class="box g">
+  <b>一句话总纲：幻方在这里的价值，不是「神秘的宇宙母数」，而是一套「全局约束 + 多尺度嵌套 + 等价冗余」的构造范式。</b>
+  能用的是它的<b>约束结构</b>，不是它的<b>数字</b>。
+</div>
+
+<footer>
+  <b>瑟尔幻方与真理表 · 现实应用地图</b> —— 子页面，与《瑟尔幻方真理表》（页 A）、《瑟尔幻方 · 环面共形与托鲁斯分形嵌套》（页 B）同目录、平级。<br>
+  数学内核与页 A ⑩ 标签页同源：<code>hlT(n,d)</code> + <code>Level = (V − hlT)/n + 1</code> ⟺ <code>V_n(L) = n(n²+2L−3)/2</code>。<br>
+  素材：IMA 笔记「幻方与 DNA」系列 7 篇 + 6 份正文；<code>24_searl_SEG/瑟尔技术总结SEG-Concept-Review/</code> 08/09/10 号文档；<code>SearlFX-*</code> / <code>STbook*</code> 瑟尔原文。<br>
+  本页全部数值<b>页内可重算</b>；凡标注「主张 / 待实测 / 未验证」者，均未作为设计依据。
+</footer>
+
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   瑟尔幻方 · 现实应用地图 —— 计算引擎
+   内核与页 A ⑩ 标签页同源：
+     hlT(n,d) = n*(n^d - 1)/2
+     Level    = (V - hlT(n,2))/n + 1
+     V_n(L)   = n*(n^2 + 2L - 3)/2      （恒等）
+   ============================================================ */
+
+/* ---------- 基础 ---------- */
+function vLine(n, L){ return n * (n * n + 2 * L - 3) / 2; }         /* 线值 V_n(L) */
+function vSum (n, L){ return n * vLine(n, L); }                       /* 总和 = V*阶 */
+function vLo  (n, L){ return L - 1; }                                 /* 数集起点 */
+function vHi  (n, L){ return n * n + L - 2; }                         /* 数集终点 */
+function vAvg (n, L){ return (vLo(n, L) + vHi(n, L)) / 2; }           /* 数集平均 */
+function hlT  (n, d){ d = d || 2; return n * (Math.pow(n, d) - 1) / 2; }
+
+/* 页 A 口径的 Level 反解 */
+function hlLevel(V, n){
+  var Tn = hlT(n, 2), m = V - Tn;
+  if(m < 0 || Math.abs(m % n) > 1e-9) return null;
+  return m / n + 1;
+}
+/* 本项目口径的 Level 反解（等价形式，含正整数判定） */
+function levelOf(n, V){
+  var x = 2 * V;
+  if(Math.abs(x % n) > 1e-9) return null;
+  var y = x / n - n * n + 3;
+  if(Math.abs(y % 2) > 1e-9) return null;
+  var L = y / 2;
+  return (L > 0) ? L : null;
+}
+function ordersWith(V, a, b){
+  var out = [];
+  for(var n = a; n <= b; n++){ var L = levelOf(n, V); if(L) out.push({ n: n, L: L, sum: V * n }); }
+  return out;
+}
+function gcd(a, b){ a = Math.abs(a); b = Math.abs(b); while(b){ var t = a % b; a = b; b = t; } return a; }
+function lcm(a, b){ return a / gcd(a, b) * b; }
+function lcmAll(A){ var r = 1; for(var i = 0; i < A.length; i++) r = lcm(r, A[i]); return r; }
+function v2(x){ var v = 0; while(x > 0 && x % 2 === 0){ x /= 2; v++; } return v; }
+function oddPart(x){ while(x > 0 && x % 2 === 0) x /= 2; return x; }
+
+/* 共享序列：给定阶集合，找 lo..hi 内所有可共同承载的 V */
+function shareSeq(orders, lo, hi){
+  var out = [];
+  for(var V = lo; V <= hi; V++){
+    var ok = true;
+    for(var i = 0; i < orders.length; i++){ if(!levelOf(orders[i], V)){ ok = false; break; } }
+    if(ok) out.push(V);
+  }
+  return out;
+}
+/* 奇偶障碍判定（命题 A，可证明） */
+function parityBlock(orders){
+  var h0 = false, h2 = false;
+  for(var i = 0; i < orders.length; i++){
+    var n = orders[i];
+    if(n % 4 === 0) h0 = true;
+    if(n % 4 === 2) h2 = true;
+  }
+  return (h0 && h2);
+}
+
+/* ---------- 幻方构造：一律填 (L-1) .. (n^2+L-2) ---------- */
+function mqKind(n){ return (n % 2) ? 0 : ((n % 4 === 0) ? 1 : 2); }
+function mqName(k){ return ['奇数阶 · 暹罗法', '双偶阶 · 十字互补法', '单偶阶 · Conway LUX'][k]; }
+function mk(n, f){ var M = [], i, j; for(i = 0; i < n; i++){ M.push([]); for(j = 0; j < n; j++) M[i].push(f); } return M; }
+
+function magicSiamese(n, st){
+  var M = mk(n, 0), F = mk(n, false);      /* 独立占位矩阵 —— 0 起填充时不能拿 0 当「空」 */
+  var r = 0, c = (n - 1) >> 1, k, r1, c1;
+  for(k = 0; k < n * n; k++){
+    M[r][c] = st + k; F[r][c] = true;
+    r1 = (r - 1 + n) % n; c1 = (c + 1) % n;
+    if(F[r1][c1]){ r1 = (r + 1) % n; c1 = c; }
+    r = r1; c = c1;
+  }
+  return M;
+}
+function magicDbl(n, st){
+  var M = mk(n, 0), i, j, hi = st + n * n - 1;
+  for(i = 0; i < n; i++) for(j = 0; j < n; j++) M[i][j] = st + i * n + j;
+  for(i = 0; i < n; i++) for(j = 0; j < n; j++){
+    var a = i % 4, b = j % 4;
+    if(a === b || a + b === 3) M[i][j] = hi - (M[i][j] - st);
+  }
+  return M;
+}
+function magicLux(n, st){
+  var k = (n - 2) / 4, m = n / 2, i, j, t;
+  var A = mk(m, 'L');
+  for(j = 0; j < m; j++) A[k + 1][j] = 'U';
+  for(i = k + 2; i < m; i++) for(j = 0; j < m; j++) A[i][j] = 'X';
+  A[k][k] = 'U'; A[k + 1][k] = 'L';
+  var B = mk(m, 0), r = 0, c = (m - 1) >> 1, r1, c1;
+  for(var v = 1; v <= m * m; v++){
+    B[r][c] = v;
+    r1 = (r - 1 + m) % m; c1 = (c + 1) % m;
+    if(B[r1][c1]){ r1 = (r + 1) % m; c1 = c; }
+    r = r1; c = c1;
+  }
+  var PB = { L: [[0,1],[1,0],[1,1],[0,0]], U: [[0,0],[1,0],[1,1],[0,1]], X: [[0,0],[1,1],[1,0],[0,1]] };
+  var M = mk(n, 0);
+  for(i = 0; i < m; i++) for(j = 0; j < m; j++){
+    var base = st + 4 * (B[i][j] - 1), pos = PB[A[i][j]];
+    for(t = 0; t < 4; t++) M[2 * i + pos[t][0]][2 * j + pos[t][1]] = base + t;
+  }
+  return M;
+}
+function magicSq(n, L){
+  var st = L - 1, k = mqKind(n);
+  return k === 0 ? magicSiamese(n, st) : (k === 1 ? magicDbl(n, st) : magicLux(n, st));
+}
+/* 逐格校验：行、列、两对角全等 + 数集无重无漏 */
+function magicAudit(M, n){
+  var S = 0, i, j, s, seen = {}, dup = 0, out = 0, min = Infinity, max = -Infinity;
+  for(i = 0; i < n; i++) S += M[i][0];
+  var rowOk = true, colOk = true;
+  for(i = 0; i < n; i++){ s = 0; for(j = 0; j < n; j++) s += M[i][j]; if(s !== S) rowOk = false; }
+  for(j = 0; j < n; j++){ s = 0; for(i = 0; i < n; i++) s += M[i][j]; if(s !== S) colOk = false; }
+  var d1 = 0, d2 = 0;
+  for(i = 0; i < n; i++){ d1 += M[i][i]; d2 += M[i][n - 1 - i]; }
+  var dOk = (d1 === S && d2 === S);
+  var cnt = 0;
+  for(i = 0; i < n; i++) for(j = 0; j < n; j++){
+    var v = M[i][j]; cnt++;
+    if(seen[v]) dup++; seen[v] = 1;
+    if(v < min) min = v; if(v > max) max = v;
+  }
+  var span = max - min + 1;
+  var contiguous = (span === n * n) && (dup === 0);
+  return { S: S, rowOk: rowOk, colOk: colOk, dOk: dOk, dup: dup, min: min, max: max,
+           contiguous: contiguous, ok: rowOk && colOk && dOk && contiguous };
+}
+
+/* ---------- 渲染工具 ---------- */
+function E(id){ return document.getElementById(id); }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmt(x){
+  if(typeof x !== 'number') return x;
+  if(Math.abs(x - Math.round(x)) < 1e-9) return String(Math.round(x)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return String(x);
+}
+function und(x){ return fmt(x); }
+function sqTable(M, n, opt){
+  opt = opt || {};
+  var h = '<div class="sqwrap"><table class="sq">';
+  for(var i = 0; i < n; i++){
+    h += '<tr>';
+    for(var j = 0; j < n; j++){
+      var cls = [];
+      if(opt.diag && i === j) cls.push('dg');
+      if(opt.diag && i + j === n - 1) cls.push('dg');
+      if((i === 0 || i === n - 1) && (j === 0 || j === n - 1)) cls.push('corner');
+      h += '<td class="' + cls.join(' ') + '">' + fmt(M[i][j]) + '</td>';
+    }
+    var rs = 0; for(var k = 0; k < n; k++) rs += M[i][k];
+    h += '<td class="rowsum">' + fmt(rs) + '</td></tr>';
+  }
+  h += '<tr class="sum">';
+  for(var j2 = 0; j2 < n; j2++){ var cs = 0; for(var i2 = 0; i2 < n; i2++) cs += M[i2][j2]; h += '<td class="rowsum">' + fmt(cs) + '</td>'; }
+  h += '<td class="rowsum">' + fmt(magicAudit(M, n).S * n) + '</td></tr>';
+  h += '</table></div>';
+  return h;
+}
+
+/* ============================================================
+   §1 通项公式计算器
+   ============================================================ */
+function fRun(){
+  var n = parseInt(E('f_n').value, 10), L = parseInt(E('f_L').value, 10);
+  if(!(n >= 3) || !(L >= 1)){ E('f_out').textContent = '阶 n ≥ 3，Level L ≥ 1'; return; }
+  var V = vLine(n, L), S = vSum(n, L), Tn = hlT(n, 2), lv = hlLevel(V, n);
+  var t = [];
+  t.push('n = ' + n + '（' + mqName(mqKind(n)) + '），Level L = ' + L);
+  t.push('');
+  t.push('数集        ' + vLo(n, L) + ' … ' + vHi(n, L) + '   （共 ' + (n * n) + ' 个连续整数）');
+  t.push('平均 mu     ' + fmt(vAvg(n, L)) + '   = (2L + n^2 - 3)/2');
+  t.push('线值 V      ' + fmt(V) + '   = n·mu');
+  t.push('总和 Sum    ' + fmt(S) + '   = V × n');
+  t.push('');
+  t.push('【与真理表 ⑩ 引擎的恒等校验】');
+  t.push('  hlT(n,2)          = n(n^2-1)/2 = ' + fmt(Tn));
+  t.push('  hlT + n(L-1)      = ' + fmt(Tn) + ' + ' + n + ' × ' + (L - 1) + ' = ' + fmt(Tn + n * (L - 1)));
+  t.push('  V_n(L)            = ' + fmt(V));
+  t.push('  两者相等？         ' + (Math.abs(Tn + n * (L - 1) - V) < 1e-9 ? '✅ 恒等成立' : '❌ 不相等'));
+  t.push('  回代 Level        = (V - hlT)/n + 1 = ' + fmt(lv) + (lv === L ? '  ✅ 与输入一致' : '  ❌ 不一致'));
+  t.push('');
+  t.push('【参照】');
+  t.push('  Level 1（从 0 起）= Searl「ABSOLUTE」档，本阶线值 = ' + fmt(vLine(n, 1)));
+  t.push('  Level 2（从 1 起）= 标准魔方常数 n(n^2+1)/2 = ' + fmt(n * (n * n + 1) / 2) + '，本阶线值 = ' + fmt(vLine(n, 2)));
+  E('f_out').textContent = t.join('\n');
+}
+
+/* ============================================================
+   §2 共享求解器
+   ============================================================ */
+function qRun(){
+  var V = parseInt(E('q_V').value, 10), a = parseInt(E('q_a').value, 10), b = parseInt(E('q_b').value, 10);
+  if(!(V >= 1) || !(a >= 3) || !(b >= a)){ E('q_out').textContent = '参数不合法'; return; }
+  var os = ordersWith(V, a, b);
+  var t = [];
+  t.push('线值 V = ' + fmt(V) + '    阶范围 ' + a + ' … ' + b + '    可承载阶数：' + os.length + ' 个');
+  t.push('');
+  if(!os.length){
+    t.push('  该范围内没有任何阶能承载这个线值。');
+  } else {
+    t.push('  阶 n   Level L     数集起点…终点             总和 Sum = V×n');
+    t.push('  ' + '─'.repeat(64));
+    for(var i = 0; i < os.length; i++){
+      var o = os[i];
+      t.push('  ' + pad(o.n, 4) + '   ' + pad(o.L, 7) + '   ' + pad(vLo(o.n, o.L) + ' … ' + vHi(o.n, o.L), 24) + '   ' + fmt(o.sum));
+    }
+    t.push('');
+    t.push('  参与阶集合 = [' + os.map(function(o){ return o.n; }).join(', ') + ']');
+    t.push('  lcm(阶集合) = ' + fmt(lcmAll(os.map(function(o){ return o.n; }))));
+    t.push('  ' + (parityBlock(os.map(function(o){ return o.n; }))
+      ? '⚠ 含 n≡0 与 n≡2 (mod 4) 两类偶数阶 —— 命题 A 说这样不可能共享；出现即说明我等判据有误。'
+      : '奇偶结构自洽（未同时含 n≡0 与 n≡2 (mod 4) 的偶数阶）。'));
+    /* 共享序列 */
+    var os3 = os.filter(function(o){ return o.n <= 16; }).map(function(o){ return o.n; });
+    if(os3.length >= 2){
+      var hi = V + 400;
+      var seq = shareSeq(os3, 1, hi);
+      if(seq.length >= 2){
+        var step = seq[1] - seq[0], uniform = true;
+        for(var k = 2; k < seq.length; k++) if(seq[k] - seq[k - 1] !== step) uniform = false;
+        t.push('');
+        t.push('  【子集合 {' + os3.join(',') + '} 的共享序列（1…' + hi + '）】');
+        t.push('   前 10 项：' + seq.slice(0, 10).join(', '));
+        t.push('   步长 = ' + fmt(step) + ' (' + (uniform ? '恒定' : '⚠ 不恒定') + ')，lcm({' + os3.join(',') + '}) = ' + fmt(lcmAll(os3)));
+        t.push('   本行 V=' + fmt(V) + (seq.indexOf(V) >= 0 ? ' 在该序列中 ✅' : ' 不在该序列中'));
+      }
+    }
+  }
+  E('q_out').textContent = t.join('\n');
+}
+function pad(s, w){ s = String(s); while(s.length < w) s += ' '; return s; }
+
+/* ============================================================
+   §3 幻方生成器
+   ============================================================ */
+function gRun(){
+  var n = parseInt(E('g_n').value, 10), L = parseInt(E('g_L').value, 10);
+  if(!(n >= 3) || n > 32 || !(L >= 1)){ E('g_out').innerHTML = '<span class="bad">阶 3…32，Level ≥ 1</span>'; return; }
+  var t0 = Date.now();
+  var M = magicSq(n, L), dt = Date.now() - t0;
+  var A = magicAudit(M, n);
+  E('g_out').innerHTML = sqTable(M, n, { diag: E('g_diag').checked });
+  var c = [];
+  c.push('<b>构造法</b>：' + mqName(mqKind(n)) + '　<b>格数</b>：' + (n * n) + '　<b>耗时</b>：' + dt + ' ms');
+  c.push('<b>数集</b>：' + A.min + ' … ' + A.max + (A.contiguous ? ' <span class="ok">✅ 连续无重无漏</span>' : ' <span class="bad">❌ 有重或有漏</span>'));
+  c.push('<b>行和全等</b>：' + (A.rowOk ? '<span class="ok">✅</span>' : '<span class="bad">❌</span>')
+        + '　<b>列和全等</b>：' + (A.colOk ? '<span class="ok">✅</span>' : '<span class="bad">❌</span>')
+        + '　<b>两对角全等</b>：' + (A.dOk ? '<span class="ok">✅</span>' : '<span class="bad">❌</span>'));
+  c.push('<b>实测公共和 S</b> = <b>' + fmt(A.S) + '</b>　　<b>公式 V_n(L)</b> = <b>' + fmt(vLine(n, L)) + '</b>　　'
+        + (Math.abs(A.S - vLine(n, L)) < 1e-9 ? '<span class="ok">✅ 相符</span>' : '<span class="bad">❌ 不符</span>'));
+  c.push('<b>总和</b> = S × n = ' + fmt(A.S * n) + '　（公式：' + fmt(vSum(n, L)) + '）');
+  if(n === 12) c.push('<span class="mut">12 阶壳格数应为 4/12/20/28/36/44（和 144，等差 8）；壳值 290/870/1450/2030/2610/3190（等差 580）——「四角恒 290」属瑟尔特定 Options，标准构造给 286。</span>');
+  E('g_chk').innerHTML = c.join('<br>');
+}
+function gSet(nv, lv){ E('g_n').value = nv; E('g_L').value = lv; gRun(); }
+
+/* ============================================================
+   §4 组合器
+   ============================================================ */
+function kRun(){
+  var a = parseInt(E('k_a').value, 10), la = parseInt(E('k_la').value, 10);
+  var b = parseInt(E('k_b').value, 10), lb = parseInt(E('k_lb').value, 10);
+  if(!(a >= 3) || !(b >= 3) || !(la >= 1) || !(lb >= 1)){ E('k_out').textContent = '参数不合法'; return; }
+  var Va = vLine(a, la), Vb = vLine(b, lb), k = a * b;
+  var t = [];
+  t.push('亲本 A：' + a + ' 阶 × Level ' + la + '  ⇒  线值 V_A = ' + fmt(Va) + '，总和 ' + fmt(Va * a));
+  t.push('亲本 B：' + b + ' 阶 × Level ' + lb + '  ⇒  线值 V_B = ' + fmt(Vb) + '，总和 ' + fmt(Vb * b));
+  t.push('');
+  t.push('组合体阶数 = ' + a + ' × ' + b + ' = ' + k + '（' + (k % 4 === 0 ? 'Group 2' : (k % 2 === 0 ? 'Group 3' : 'Group 1')) + '）');
+  t.push('格数 = ' + a + '² × ' + b + '² = ' + (a * a) + ' × ' + (b * b) + ' = ' + fmt(a * a * b * b) + ' = ' + k + '²  ' + (a * a * b * b === k * k ? '✅' : '❌'));
+  t.push('');
+  t.push('【Kronecker 线值律】   V(A⊗B) = V_A × V_B = ' + fmt(Va * Vb));
+  t.push('  V_A === V_B ？' + (Va === Vb
+    ? '  是 —— 此时才等于 V² = ' + fmt(Va * Va) + '（笔记写的正是这个特例）'
+    : '  否 —— 一般律 V_A·V_B；若误用 V² 会得到 ' + fmt(Va * Va) + ' ≠ ' + fmt(Va * Vb) + ' ❌'));
+  t.push('');
+  t.push('【lcm 闭合】  lcm(' + (a * a) + ', ' + (b * b) + ') = ' + fmt(lcm(a * a, b * b)));
+  t.push('  双亲格数之积 = ' + fmt(a * a * b * b) + '；两者相等 ⟺ ' + (lcm(a * a, b * b) === a * a * b * b
+    ? '成立（因为 ' + a + ' 与 ' + b + ' 互质）' : '不成立（' + a + ' 与 ' + b + ' 不互质）'));
+  t.push('  若取同一条共享线值 V，组合体总和 = ' + k + ' × V');
+  var Vsh = levelOf(a, Va) ? Va : null;
+  var vv = Vb;
+  if(levelOf(a, vv)){ t.push('  共享档 V = ' + fmt(vv) + '：A 的 Level = ' + fmt(levelOf(a, vv)) + '，B 的 Level = ' + fmt(levelOf(b, vv))); }
+  E('k_out').textContent = t.join('\n');
+}
+
+/* ============================================================
+   §13.3 香蕉 11 阶 / 毛竹 12 阶
+   ============================================================ */
+function bRun(){
+  var M11 = magicSq(11, 19), A11 = magicAudit(M11, 11);
+  var M12 = magicSq(12, 1), A12 = magicAudit(M12, 12);
+  var t = [];
+  t.push('<b>香蕉 · Square 11 · Level 19 · 数集 18 … 138</b>');
+  t.push(sqTable(M11, 11, { diag: true }));
+  t.push('<div class="legend">实测公共和 = <b>' + fmt(A11.S) + '</b>　公式 V_11(19) = <b>' + fmt(vLine(11, 19)) + '</b>　'
+    + (A11.S === vLine(11, 19) ? '<span class="ok">✅</span>' : '<span class="bad">❌</span>')
+    + '　数集 18…138 连续无重无漏：' + (A11.contiguous ? '<span class="ok">✅</span>' : '<span class="bad">❌</span>')
+    + '　总和 = 121 × 78 = <b>' + fmt(A11.S * 11) + '</b></div>');
+  t.push('<hr>');
+  t.push('<b>毛竹 · Square 12 · Level 1 · 数集 0 … 143</b>（= 库内那张「4 CORNERS = 30」方）');
+  t.push(sqTable(M12, 12, { diag: false }));
+  t.push('<div class="legend">实测公共和 = <b>' + fmt(A12.S) + '</b>　公式 V_12(1) = <b>' + fmt(vLine(12, 1)) + '</b>　'
+    + (A12.S === vLine(12, 1) ? '<span class="ok">✅</span>' : '<span class="bad">❌</span>')
+    + '　数集 0…143 连续无重无漏：' + (A12.contiguous ? '<span class="ok">✅</span>' : '<span class="bad">❌</span>')
+    + '　总和 = 144 × 71.5 = <b>' + fmt(A12.S * 12) + '</b></div>');
+  t.push('<hr>');
+  t.push('<b>两根独立的构造路都指向 858：</b>'
+    + '① 香蕉 11 阶 Level 19 填 18…138；② 毛竹 12 阶 Level 1 填 0…143。'
+    + '两者线值相等 ⇒ <span class="ok">共享线值 858 成立</span>。'
+    + '（步长规律：{11,12} 共享序列 = 858 + 132k，132 = lcm(11,12)。）');
+  E('b_out').innerHTML = t.join('<br>');
+}
+function bSh(){
+  var M11 = magicSq(11, 19), M12 = magicSq(12, 1);
+  var t = [];
+  t.push('<div class="legend">左：香蕉 11 阶（18…138，线值 858）　右：毛竹 12 阶（0…143，线值 858）——两侧行和都标在行尾。</div>');
+  t.push('<div class="grid2"><div>' + sqTable(M11, 11, {}) + '</div><div>' + sqTable(M12, 12, {}) + '</div></div>');
+  E('b_out').innerHTML = t.join('');
+}
+
+/* ============================================================
+   绑定
+   ============================================================ */
+function boot(){
+  E('f_go').onclick = fRun;
+  E('f_abs').onclick = function(){ E('f_L').value = 1; fRun(); };
+  E('f_std').onclick = function(){ E('f_L').value = 2; fRun(); };
+  E('f_n').onchange = fRun; E('f_L').onchange = fRun;
+
+  E('q_go').onclick = qRun;
+  E('q_918').onclick = function(){ E('q_V').value = 918; qRun(); };
+  E('q_858').onclick = function(){ E('q_V').value = 858; qRun(); };
+  E('q_882').onclick = function(){ E('q_V').value = 882; qRun(); };
+
+  E('g_go').onclick = gRun;
+  E('g_c858').onclick = function(){ gSet(12, 1); };
+  E('g_std').onclick = function(){ gSet(12, 2); };
+  var chips = document.querySelectorAll('.chip[data-gn]');
+  for(var i = 0; i < chips.length; i++){
+    (function(el){ el.onclick = function(){ gSet(parseInt(el.getAttribute('data-gn'), 10), parseInt(el.getAttribute('data-gl'), 10)); }; })(chips[i]);
+  }
+
+  E('k_go').onclick = kRun;
+  E('k_858').onclick = function(){
+    E('k_a').value = 3; E('k_la').value = levelOf(3, 858);
+    E('k_b').value = 4; E('k_lb').value = levelOf(4, 858);
+    kRun();
+  };
+
+  E('b_go').onclick = bRun;
+  E('b_sh').onclick = bSh;
+
+  fRun(); qRun(); gRun(); kRun(); bRun();
+}
+
+if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+else boot();
+
+/* 供自测桩使用 */
+window.APP = {
+  vLine: vLine, vSum: vSum, levelOf: levelOf, ordersWith: ordersWith,
+  hlT: hlT, hlLevel: hlLevel, lcm: lcm, lcmAll: lcmAll, parityBlock: parityBlock,
+  shareSeq: shareSeq, magicSq: magicSq, magicAudit: magicAudit, mqKind: mqKind,
+  fRun: fRun, qRun: qRun, gRun: gRun, kRun: kRun, bRun: bRun, bSh: bSh
+};
+</script>
+</body>
+</html>

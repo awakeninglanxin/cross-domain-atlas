@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>数学工具之网 · 织起史上数学工具的联系</title>
+<style>
+:root{
+  --bg:#0a0e16; --bg2:#0e1420; --panel:#111a28; --line:#1e2a3d;
+  --text:#e8eef7; --muted:#8b9ab0; --accent:#5cc8ff;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+#app{display:flex;flex-direction:column;height:100%}
+header{height:52px;flex:0 0 52px;display:flex;align-items:center;gap:8px;padding:0 10px;
+  border-bottom:1px solid var(--line);background:var(--bg2)}
+header h1{font-size:15px;margin:0;font-weight:600;white-space:nowrap;letter-spacing:.5px}
+header h1 span{color:var(--accent)}
+.hgrow{flex:1}
+.searchwrap{position:relative;display:flex;align-items:center}
+#search{width:170px;height:32px;border-radius:16px;border:1px solid var(--line);background:#0b1220;
+  color:var(--text);padding:0 12px;font-size:13px;outline:none}
+#search:focus{border-color:var(--accent)}
+#sugg{position:absolute;top:36px;left:0;width:260px;max-height:300px;overflow:auto;z-index:40;
+  background:var(--panel);border:1px solid var(--line);border-radius:10px;display:none;padding:4px}
+#sugg div{padding:8px 10px;font-size:13px;border-radius:6px;cursor:pointer}
+#sugg div:hover{background:#1b2739}
+#sugg div b{color:var(--accent);font-weight:600}
+.btn{height:32px;padding:0 10px;border-radius:8px;border:1px solid var(--line);background:#0b1220;
+  color:var(--text);font-size:12px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.on{background:#123047;border-color:var(--accent);color:var(--accent)}
+main{position:relative;flex:1;overflow:hidden}
+canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+#legend{position:absolute;left:8px;top:8px;z-index:10;background:rgba(14,20,32,.86);
+  border:1px solid var(--line);border-radius:10px;padding:8px;backdrop-filter:blur(6px);max-width:150px}
+#legend .lt{font-size:11px;color:var(--muted);margin-bottom:6px;letter-spacing:.5px}
+#legend .row{display:flex;align-items:center;gap:6px;font-size:11px;padding:3px 2px;cursor:pointer;border-radius:5px}
+#legend .row:hover{background:#1a2434}
+#legend .row.off{opacity:.35}
+#legend .dot{width:9px;height:9px;border-radius:50%;flex:0 0 9px}
+#hint{position:absolute;left:10px;bottom:10px;font-size:11px;color:#5f6d84;z-index:10;line-height:1.6}
+#tip{position:absolute;z-index:30;max-width:280px;background:rgba(17,26,40,.96);border:1px solid var(--accent);
+  border-radius:8px;padding:8px 10px;font-size:12px;line-height:1.55;display:none;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+#tip .tt{color:var(--accent);font-weight:600;margin-bottom:3px}
+#panel{position:absolute;right:0;top:0;bottom:0;width:370px;z-index:20;background:var(--panel);
+  border-left:1px solid var(--line);display:flex;flex-direction:column;transform:translateX(100%);
+  transition:transform .25s ease}
+#panel.open{transform:none}
+.ph{display:flex;align-items:center;gap:6px;padding:10px;border-bottom:1px solid var(--line)}
+.tab{flex:1;height:30px;border-radius:8px;border:1px solid transparent;background:transparent;
+  color:var(--muted);font-size:13px;cursor:pointer}
+.tab.on{background:#16283c;color:var(--text);border-color:#27405c}
+#pbody{flex:1;overflow:auto;padding:12px}
+.close{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:#0b1220;
+  color:var(--muted);font-size:15px;cursor:pointer;line-height:1}
+.title{font-size:18px;font-weight:600;margin:0 0 4px}
+.sub{font-size:12px;color:var(--muted);margin-bottom:8px}
+.chip{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;margin:2px 4px 2px 0}
+.desc{font-size:13px;line-height:1.7;color:#c8d4e4;background:#0e1626;border:1px solid var(--line);
+  border-radius:8px;padding:9px 10px;margin:8px 0}
+.sec{font-size:12px;color:var(--accent);margin:14px 0 6px;font-weight:600}
+.rel{border:1px solid var(--line);border-radius:8px;padding:8px 9px;margin-bottom:7px;background:#0e1626;cursor:pointer}
+.rel:hover{border-color:var(--accent)}
+.rel .hd{font-size:13px;font-weight:600;margin-bottom:4px}
+.rel .hd em{font-style:normal;color:var(--muted);font-weight:400}
+.rel .rs{font-size:12px;line-height:1.6;color:#b7c4d6}
+.arrow{color:var(--accent);margin:0 4px}
+.empty{font-size:12px;color:var(--muted);padding:6px}
+#rsearch{width:100%;height:32px;border-radius:8px;border:1px solid var(--line);background:#0b1220;
+  color:var(--text);padding:0 10px;font-size:13px;outline:none;margin-bottom:8px}
+@media (max-width:760px){
+  header h1{font-size:13px}
+  #search{width:120px}
+  #legend{max-width:none;right:8px;display:flex;flex-wrap:wrap;gap:4px 8px;padding:6px 8px}
+  #legend .lt{width:100%;margin-bottom:2px}
+  #panel{width:100%;top:auto;height:66vh;bottom:0;border-left:none;border-top:1px solid var(--accent);
+    border-radius:14px 14px 0 0;transform:translateY(100%)}
+  #panel.open{transform:none}
+  #hint{font-size:10px;bottom:6px}
+  #btnFit{display:none}
+  header h1 span{display:none}
+  #search{width:96px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>数学工具之网<span> · Web of Math</span></h1>
+    <div class="hgrow"></div>
+    <div class="searchwrap">
+      <input id="search" placeholder="搜索工具…" autocomplete="off">
+      <div id="sugg"></div>
+    </div>
+    <button class="btn" id="btnAll">连线</button>
+    <button class="btn" id="btnAI">AI 前沿</button>
+    <button class="btn" id="btnFit">重置</button>
+  </header>
+  <main>
+    <canvas id="cv"></canvas>
+    <div id="legend"><div class="lt">分类（点击可隐藏）</div></div>
+    <div id="hint">拖拽节点 · 滚轮/双指缩放 · 点击节点看详情 · 点击连线看联系理由</div>
+    <div id="tip"><div class="tt"></div><div class="tx"></div></div>
+    <aside id="panel">
+      <div class="ph">
+        <button class="tab on" data-t="node">详情</button>
+        <button class="tab" data-t="rel">全部连线理由</button>
+        <button class="close" id="pclose">✕</button>
+      </div>
+      <div id="pbody"></div>
+    </aside>
+  </main>
+</div>
+<script>
+const DATA = {"nodes": [{"id": "count", "name": "计数与自然数", "en": "Counting & Natural Numbers", "cat": "foundation", "era": "约公元前 30000 年起", "desc": "从结绳、刻痕到皮亚诺公理：把「多少」变成可以运算的对象，是全部数学工具的第一块基石。"}, {"id": "placevalue", "name": "位值制与零", "en": "Positional Notation & Zero", "cat": "foundation", "era": "约公元前 2000 年（巴比伦）／5 世纪（印度）", "desc": "同一个符号因位置不同而代表不同数量，零作为占位符出现，使大数书写与竖式运算成为可能。"}, {"id": "arithmetic", "name": "四则运算与算术", "en": "Arithmetic", "cat": "foundation", "era": "古代各文明独立发展", "desc": "加减乘除与运算律，人类最早、使用最广的计算工具箱，也是所有算法最后的落点。"}, {"id": "fraction", "name": "分数与有理数", "en": "Fractions & Rational Numbers", "cat": "foundation", "era": "古埃及／巴比伦", "desc": "把「除不尽」的结果也变成数，让比例、分配与测量进入计算，数系第一次被扩充。"}, {"id": "euclid_algo", "name": "欧几里得算法", "en": "Euclidean Algorithm", "cat": "foundation", "era": "约公元前 300 年", "desc": "辗转相除求最大公约数，史上最早被明确写下的非平凡算法，至今仍是数论与密码学的底层工具。"}, {"id": "prime", "name": "素数与算术基本定理", "en": "Primes & Fundamental Theorem", "cat": "foundation", "era": "约公元前 300 年／1801 年高斯", "desc": "每个整数唯一分解为素数之积，素数因此成为整数的「原子」，也是难解问题的天然来源。"}, {"id": "log", "name": "对数", "en": "Logarithms", "cat": "foundation", "era": "1614 年 纳皮尔", "desc": "把乘除化为加减、把幂化为乘法，手算时代最重要的加速工具，今天仍是复杂度与信息度量的尺度。"}, {"id": "complex", "name": "复数", "en": "Complex Numbers", "cat": "foundation", "era": "1545 年 卡尔达诺／1799 年高斯", "desc": "引入 i² = −1，使代数方程总有根、使旋转与振荡有了统一语言，是分析进入平面的入口。"}, {"id": "set", "name": "集合论", "en": "Set Theory", "cat": "foundation", "era": "1874—1897 年 康托尔", "desc": "现代数学的通用语言：几乎所有对象都被定义为「带结构的集合」，并第一次区分了不同等级的无穷。"}, {"id": "algebra_sym", "name": "代数符号与方程求解", "en": "Algebraic Symbolism", "cat": "algebra", "era": "820 年 花拉子米", "desc": "用符号代表未知量，「还原与对消」给出一次、二次方程的通用解法，数学从此能处理一般问题而非个例。"}, {"id": "polynomial", "name": "多项式与代数方程", "en": "Polynomials", "cat": "algebra", "era": "16—19 世纪", "desc": "代数研究的核心对象：求根、因式分解、根与系数的关系，几乎所有代数工具的练兵场。"}, {"id": "matrix", "name": "矩阵与线性方程组", "en": "Matrices & Linear Systems", "cat": "algebra", "era": "19 世纪 高斯／凯莱", "desc": "把多个线性方程压缩成一个数组对象，整体进行运算，是「批量处理线性关系」的标准容器。"}, {"id": "determinant", "name": "行列式", "en": "Determinants", "cat": "algebra", "era": "1750 年 克莱姆／19 世纪", "desc": "用一个数刻画方阵是否可逆，以及线性变换对体积的缩放比，是连接代数与几何的古老桥梁。"}, {"id": "linspace", "name": "向量空间与线性代数", "en": "Vector Spaces", "cat": "algebra", "era": "19—20 世纪", "desc": "加法与数乘的抽象舞台，为几何、分析、优化、机器学习提供共同的坐标系与语言。"}, {"id": "eigen", "name": "特征值与谱理论", "en": "Eigenvalues & Spectral Theory", "cat": "algebra", "era": "19 世纪", "desc": "寻找线性变换的「不动方向」，把复杂变换化为沿主轴的伸缩，是降维、稳定性与振动分析的共同核心。"}, {"id": "group", "name": "群论", "en": "Group Theory", "cat": "algebra", "era": "1830 年代 伽罗瓦", "desc": "研究对称与可逆变换的代数结构，把「在什么变换下保持不变」这个问题变成可计算的对象。"}, {"id": "ring_field", "name": "环、域与理想", "en": "Rings, Fields & Ideals", "cat": "algebra", "era": "19 世纪 戴德金／希尔伯特", "desc": "把整数的运算律抽象为环与域，用理想弥补一般数域中唯一分解的失效，是代数数论与代数几何的地基。"}, {"id": "galois", "name": "伽罗瓦理论", "en": "Galois Theory", "cat": "algebra", "era": "1846 年 发表", "desc": "用域扩张的自同构群判定方程能否用根式求解，一举解释了五次方程为何没有求根公式。"}, {"id": "lie", "name": "李群与李代数", "en": "Lie Groups & Lie Algebras", "cat": "algebra", "era": "1870 年代 索甫斯·李", "desc": "连续对称性（旋转、平移、规范变换）的数学形式，其局部结构被李代数线性化，从而可用线性代数计算。"}, {"id": "representation", "name": "表示论", "en": "Representation Theory", "cat": "algebra", "era": "19—20 世纪", "desc": "把抽象群写成具体的矩阵，让对称性的作用可以用线性代数计算，是「把抽象变可算」的典范工具。"}, {"id": "category", "name": "范畴论与同调代数", "en": "Category & Homological Algebra", "cat": "algebra", "era": "1940 年代 艾伦伯格／麦克莱恩", "desc": "不问对象是什么、只问对象之间的映射，提供把不同分支放在同一框架下比较的元语言。"}, {"id": "boolean", "name": "布尔代数", "en": "Boolean Algebra", "cat": "logic", "era": "1854 年 布尔", "desc": "用 0/1 与与或非表达逻辑关系，是数字电路、程序语言与一切离散系统设计的代数基础。"}, {"id": "euclid", "name": "欧氏几何与公理化", "en": "Euclidean Geometry", "cat": "geometry", "era": "约公元前 300 年", "desc": "从五条公设推出全部几何命题，确立了「定义—公理—证明」的范式，影响远超几何本身。"}, {"id": "trig", "name": "三角学", "en": "Trigonometry", "cat": "geometry", "era": "古希腊／印度／阿拉伯", "desc": "把角度与边长联系起来，是测量、天文与一切周期现象的基础换算工具。"}, {"id": "analytic_geom", "name": "解析几何", "en": "Analytic Geometry", "cat": "geometry", "era": "1637 年 笛卡尔", "desc": "给点以坐标，几何命题变成代数方程，几何与代数第一次合流，计算从此能「看见」图形。"}, {"id": "projective", "name": "射影几何", "en": "Projective Geometry", "cat": "geometry", "era": "17—19 世纪", "desc": "加入无穷远点与射影变换，让「平行线相交于无穷远」不再是例外，统一处理透视与交点计数。"}, {"id": "non_euclid", "name": "非欧几何", "en": "Non-Euclidean Geometry", "cat": "geometry", "era": "1829—1832 年 罗巴切夫斯基／鲍耶", "desc": "否定平行公设后依然自洽，打破了「物理空间必是欧氏」的信念，为弯曲空间打开大门。"}, {"id": "diff_geom", "name": "微分几何", "en": "Differential Geometry", "cat": "geometry", "era": "19 世纪 高斯", "desc": "用微积分研究曲线曲面的弯曲程度，高斯「绝妙定理」说明曲率是曲面内蕴的性质。"}, {"id": "riemann_geom", "name": "黎曼几何", "en": "Riemannian Geometry", "cat": "geometry", "era": "1854 年 黎曼", "desc": "在任意维流形上定义度量与曲率，成为广义相对论与现代几何共同使用的母语言。"}, {"id": "topology", "name": "点集拓扑", "en": "Point-set Topology", "cat": "geometry", "era": "20 世纪初", "desc": "只保留连续性与邻近关系，研究在连续拉伸变形下不变的性质，是「形状」最粗也最普适的层次。"}, {"id": "algebraic_topology", "name": "代数拓扑", "en": "Algebraic Topology", "cat": "geometry", "era": "1900 年代 庞加莱", "desc": "用群与同调把「形状」翻译成可计算的代数不变量，让「两个空间是否同伦」变成代数问题。"}, {"id": "diff_topology", "name": "微分拓扑", "en": "Differential Topology", "cat": "geometry", "era": "20 世纪", "desc": "在拓扑空间上叠加光滑结构，研究流形的光滑分类、横截相交与配边，是拓扑与微分几何的交界。"}, {"id": "fractal", "name": "分形几何", "en": "Fractal Geometry", "cat": "geometry", "era": "1970 年代 曼德博", "desc": "描述处处粗糙、维数非整数的形状，为海岸线、云朵、血管这类不规则形态提供几何语言。"}, {"id": "algebraic_geom", "name": "代数几何", "en": "Algebraic Geometry", "cat": "geometry", "era": "20 世纪（格罗滕迪克等人）", "desc": "用交换环与层研究多项式方程组的零点集，把「解方程」升级为研究空间本身，是当代数学最大的综合工程之一。"}, {"id": "limit", "name": "极限与连续", "en": "Limits & Continuity", "cat": "analysis", "era": "19 世纪 柯西／魏尔斯特拉斯", "desc": "用 ε-δ 把「无限接近」变成严格语句，分析学由此摆脱对直觉的依赖，变得可证伪、可推广。"}, {"id": "calculus", "name": "微积分", "en": "Calculus", "cat": "analysis", "era": "1680 年代 牛顿／莱布尼茨", "desc": "导数与积分互为逆运算，是描述变化率与累积量的通用工具，也是整个应用数学的发动机。"}, {"id": "series", "name": "级数与泰勒展开", "en": "Series & Taylor Expansion", "cat": "analysis", "era": "18—19 世纪", "desc": "用无穷多个简单项逼近复杂函数，把函数变成「可截断计算」的对象，是分析的主要计算手段。"}, {"id": "fourier", "name": "傅里叶分析", "en": "Fourier Analysis", "cat": "analysis", "era": "1822 年 傅里叶", "desc": "把函数分解为频率成分，把微分运算变成乘法，是「换个坐标系看问题」最成功的范例。"}, {"id": "complex_analysis", "name": "复分析", "en": "Complex Analysis", "cat": "analysis", "era": "19 世纪 柯西／黎曼", "desc": "可微的复函数异常刚硬：局部值决定整体，留数与围道积分成为计算实积分与级数的利器。"}, {"id": "ode", "name": "常微分方程", "en": "Ordinary Differential Equations", "cat": "analysis", "era": "17—19 世纪", "desc": "描述单变量随时间的演化规律，是经典力学、电路与种群模型的标准语言。"}, {"id": "pde", "name": "偏微分方程", "en": "Partial Differential Equations", "cat": "analysis", "era": "18—20 世纪", "desc": "描述多变量场（热、波、流体、电磁）的演化，是应用数学与计算科学的主战场。"}, {"id": "variational", "name": "变分法", "en": "Calculus of Variations", "cat": "analysis", "era": "1744 年 欧拉／拉格朗日", "desc": "在无穷维函数空间中求极值，导出欧拉-拉格朗日方程，是「最小作用量原理」的数学形式。"}, {"id": "measure", "name": "测度与勒贝格积分", "en": "Measure & Lebesgue Integral", "cat": "analysis", "era": "1902 年 勒贝格", "desc": "重新定义「长度与面积」，使更多函数可积、极限与积分可交换，为概率与泛函分析铺路。"}, {"id": "functional", "name": "泛函分析", "en": "Functional Analysis", "cat": "analysis", "era": "20 世纪 希尔伯特／巴拿赫", "desc": "把函数本身当作点，研究无限维空间上的线性算子，统一处理微分方程、积分方程与逼近论。"}, {"id": "wavelet", "name": "小波分析", "en": "Wavelet Analysis", "cat": "analysis", "era": "1980 年代", "desc": "用可伸缩、可平移的局部波形分析信号，兼顾时间与频率定位，弥补傅里叶只看全局频率的不足。"}, {"id": "chaos", "name": "动力系统与混沌", "en": "Dynamical Systems & Chaos", "cat": "analysis", "era": "1890 年代 庞加莱／1960 年代 洛伦兹", "desc": "研究迭代与流的长期行为，发现确定性系统也可能不可长期预测，敏感依赖初值是其核心现象。"}, {"id": "tensor", "name": "张量分析", "en": "Tensor Analysis", "cat": "applied", "era": "19—20 世纪 里奇／列维-奇维塔", "desc": "多重线性对象的坐标无关记法，是连续介质力学、相对论与今天深度学习数组的共同书写方式。"}, {"id": "congruence", "name": "同余与模算术", "en": "Congruences & Modular Arithmetic", "cat": "number", "era": "1801 年 高斯", "desc": "只关心除以 m 的余数，把无限整数问题压缩到有限环上，既是数论的基本运算场，也是现代密码的运算场。"}, {"id": "reciprocity", "name": "二次互反律", "en": "Quadratic Reciprocity", "cat": "number", "era": "1796 年 高斯", "desc": "揭示两个素数之间「平方剩余」关系的互反规律，结构优美而证明极难，被称为数论之珠。"}, {"id": "analytic_number", "name": "解析数论与 ζ 函数", "en": "Analytic Number Theory", "cat": "number", "era": "1859 年 黎曼", "desc": "用复分析研究素数分布，ζ 函数的零点与素数计数之间精确对应，黎曼猜想是当今最著名的未解问题。"}, {"id": "algebraic_number", "name": "代数数论", "en": "Algebraic Number Theory", "cat": "number", "era": "19 世纪 库默尔／戴德金", "desc": "把「整数」的概念推广到代数数域，用理想恢复唯一分解，是现代数论的主干语言。"}, {"id": "elliptic", "name": "椭圆曲线", "en": "Elliptic Curves", "cat": "number", "era": "19 世纪", "desc": "三次曲线上的点构成阿贝尔群，同时是代数对象、几何对象与分析对象，身份极其多重。"}, {"id": "modular", "name": "模形式", "en": "Modular Forms", "cat": "number", "era": "19—20 世纪", "desc": "在上半平面具有超高对称性的解析函数，对称性之强使其系数蕴含深刻算术信息。"}, {"id": "prob", "name": "概率论（公理化）", "en": "Probability (Axiomatic)", "cat": "probstat", "era": "1933 年 柯尔莫哥洛夫", "desc": "用测度论定义概率，把「随机」变成可严格推理的对象，结束了概率论长期缺乏基础的状态。"}, {"id": "distribution", "name": "随机变量与分布", "en": "Random Variables & Distributions", "cat": "probstat", "era": "20 世纪", "desc": "用分布函数刻画随机取值的规律，常用分布族成为建模时随手取用的零件库。"}, {"id": "clt", "name": "大数律与中心极限定理", "en": "LLN & Central Limit Theorem", "cat": "probstat", "era": "18—20 世纪", "desc": "解释为什么大量微小随机因素的叠加总是趋向正态，是统计推断合法性的来源。"}, {"id": "bayes", "name": "贝叶斯推断", "en": "Bayesian Inference", "cat": "probstat", "era": "1763 年／1950 年代复兴", "desc": "用新证据按固定规则更新信念，把参数本身视为随机变量，让「主观先验」进入严格计算。"}, {"id": "inference", "name": "统计推断与假设检验", "en": "Statistical Inference", "cat": "probstat", "era": "1920 年代 费希尔／奈曼-皮尔逊", "desc": "从样本反推总体，用显著性水平与置信区间量化结论的不确定性，是实验科学的判据工具。"}, {"id": "regression", "name": "回归与最小二乘", "en": "Regression & Least Squares", "cat": "probstat", "era": "1805 年 勒让德／高斯", "desc": "用一条曲线拟合带噪声的数据，是数据分析最古老也最常用的实用工具。"}, {"id": "stochastic", "name": "随机过程与马尔可夫链", "en": "Stochastic Processes & Markov Chains", "cat": "probstat", "era": "1906 年 马尔可夫", "desc": "研究随时间演化的随机现象；「无记忆性」让庞大系统变得可计算，是排队、金融、语言的通用模型。"}, {"id": "martingale", "name": "鞅论", "en": "Martingale Theory", "cat": "probstat", "era": "20 世纪", "desc": "刻画「未来期望等于现在」的公平过程，是随机分析、期权定价与序贯分析的关键工具。"}, {"id": "information", "name": "信息论与熵", "en": "Information Theory & Entropy", "cat": "probstat", "era": "1948 年 香农", "desc": "用熵度量不确定性，给出数据压缩与可靠传输的极限，把「信息」变成了可计算的量。"}, {"id": "logic", "name": "形式逻辑", "en": "Formal Logic", "cat": "logic", "era": "1879 年 弗雷格", "desc": "用符号化的推理规则取代自然语言论证，是数学基础、程序验证与知识表示共同的语言。"}, {"id": "godel", "name": "哥德尔不完备定理", "en": "Gödel's Incompleteness Theorems", "cat": "logic", "era": "1931 年", "desc": "任何足够强且相容的形式系统，都存在它无法在内部证明的真命题，划定了公理方法的边界。"}, {"id": "turing", "name": "图灵机与可计算性", "en": "Turing Machines & Computability", "cat": "logic", "era": "1936 年", "desc": "用最简机械模型定义「可计算」，并证明存在不可判定的问题，为算法这一概念给出了最终定义。"}, {"id": "complexity", "name": "计算复杂度", "en": "Computational Complexity", "cat": "logic", "era": "1960—70 年代", "desc": "度量计算所需的资源，区分「可解」与「实际可解」，P 与 NP 是否相等是其核心难题。"}, {"id": "graph", "name": "图论", "en": "Graph Theory", "cat": "logic", "era": "1736 年 欧拉", "desc": "用点与边建模连接、路径与网络，从七桥问题到互联网，是离散结构最直观的语言。"}, {"id": "combinatorics", "name": "组合数学", "en": "Combinatorics", "cat": "logic", "era": "古代—20 世纪", "desc": "研究离散对象的安排、选取与计数，是算法设计与离散概率的底座。"}, {"id": "genfunc", "name": "生成函数", "en": "Generating Functions", "cat": "logic", "era": "18 世纪 欧拉／拉普拉斯", "desc": "把数列编码成幂级数，让代数与解析运算自动完成计数，是组合数学最有力的机器。"}, {"id": "type_theory", "name": "类型论与 λ 演算", "en": "Type Theory & Lambda Calculus", "cat": "logic", "era": "1930—40 年代 丘奇", "desc": "用函数与类型构造数学与计算，是现代证明助手与函数式编程语言的共同根基。"}, {"id": "formal_proof", "name": "机器证明与形式化", "en": "Formal Proof & Proof Assistants", "cat": "logic", "era": "1950 年代至今（Coq／Lean）", "desc": "把证明写成可机器核验的代码（Lean、Coq），正在把「数学验证」变成可计算、可批量处理的过程。2026 年 OpenAI 一次性放出 722 篇 AI 手稿，其中 235 个结果族附 Lean 证书，形式化第一次成为 AI 数学产出的质检线；但机器只能保证它拿到的那句话被证明了，这句话是否等于论文宣称的结论，仍需人读代码核对。"}, {"id": "interpolation", "name": "插值与函数逼近", "en": "Interpolation & Approximation", "cat": "numeric", "era": "17—19 世纪", "desc": "用简单函数（多项式、样条）通过或逼近给定数据点，是把连续问题交给计算机的第一步。"}, {"id": "numerical_linear", "name": "数值线性代数", "en": "Numerical Linear Algebra", "cat": "numeric", "era": "20 世纪", "desc": "研究矩阵运算在浮点世界中的稳定、快速算法（LU／QR／SVD／共轭梯度），是科学计算的引擎室。"}, {"id": "fem", "name": "有限元方法", "en": "Finite Element Method", "cat": "numeric", "era": "1940—60 年代", "desc": "把连续区域切成小片、用分片多项式逼近，是求解复杂几何 PDE 的工业标准方法。"}, {"id": "fft", "name": "快速傅里叶变换", "en": "Fast Fourier Transform", "cat": "numeric", "era": "1965 年 Cooley-Tukey", "desc": "把离散傅里叶变换的复杂度从 O(n²) 降到 O(n log n)，让频谱分析可以实时进行。"}, {"id": "lp", "name": "线性规划与单纯形法", "en": "Linear Programming & Simplex", "cat": "numeric", "era": "1947 年 丹齐格", "desc": "在线性约束下优化线性目标，是最成熟、应用最广的大规模优化工具，对偶理论是其理论灵魂。"}, {"id": "convex", "name": "凸优化", "en": "Convex Optimization", "cat": "numeric", "era": "20 世纪", "desc": "在凸结构下局部最优即全局最优，是一片既可证明最优性又能高效求解的稀缺领地。"}, {"id": "gradient", "name": "梯度下降与一阶方法", "en": "Gradient Descent & First-order Methods", "cat": "numeric", "era": "19 世纪 柯西／当代", "desc": "沿负梯度迭代前进，只需一阶信息即可处理超大规模问题，是当代机器学习的训练引擎。"}, {"id": "montecarlo", "name": "蒙特卡洛方法", "en": "Monte Carlo Methods", "cat": "numeric", "era": "1940 年代 冯·诺依曼／乌拉姆", "desc": "用随机采样估计难以解析计算的量，误差与维数无关，维度越高越有优势。"}, {"id": "dp", "name": "动态规划", "en": "Dynamic Programming", "cat": "numeric", "era": "1950 年代 贝尔曼", "desc": "把最优决策拆成重叠子问题，用状态与递推统一求解，是「用记忆换时间」的范式。"}, {"id": "crypto", "name": "公钥密码学", "en": "Public-key Cryptography", "cat": "numeric", "era": "1976—1978 年", "desc": "建立在「正向容易、逆向困难」的数论假设上，把最纯粹的数学变成最实用的安全技术。"}, {"id": "signal", "name": "信号处理", "en": "Signal Processing", "cat": "applied", "era": "20 世纪", "desc": "对信号做滤波、变换与压缩，是傅里叶分析、小波与采样定理的主要应用舞台。"}, {"id": "game", "name": "博弈论", "en": "Game Theory", "cat": "applied", "era": "1944 年 冯·诺依曼／摩根斯特恩", "desc": "研究多个理性决策者的互动与均衡，为经济学、演化与多智能体系统提供分析框架。"}, {"id": "control", "name": "最优控制", "en": "Optimal Control", "cat": "applied", "era": "1950 年代 庞特里亚金／贝尔曼", "desc": "在动态系统中选择最优控制策略，最小值原理与动态规划是其两大支柱，广泛用于工程与机器人。"}, {"id": "ml", "name": "机器学习与统计学习", "en": "Machine Learning", "cat": "applied", "era": "1990 年代至今", "desc": "从数据中学习规律，同时消耗概率、优化、线性代数与泛函分析，是当下 AI 的数学内核。"}, {"id": "ai_math", "name": "AI 批量定理发现（OpenAI 722 篇）", "en": "AI Mass Theorem Discovery (OpenAI, 2026)", "cat": "ai", "era": "2026 年 10 月 6 日", "desc": "OpenAI 未公开的内部模型一次性产出 722 篇手稿、372 个结果族，横跨 17 个领域；平均每个结果约 ChatGPT Pro 三小时算力，235 族附 Lean 机器检验证书，3 篇因符号错误撤稿，尚未有一篇经过同行评议——史上最大规模的一次机器数学产出。"}, {"id": "erdos_prob", "name": "Erdős 问题库", "en": "Erdős Problems Database", "cat": "logic", "era": "Erdős 遗留下千猜想，2020 年代由 Bloom 建库", "desc": "Erdős 一生留下的上千个猜想被整理成公开题库，难度梯度极细、存量极大，2026 年成为衡量 AI 数学能力最通用的标尺，也是 AI 最早成规模攻破的战场。"}, {"id": "quasi_riemann", "name": "准黎曼假设与零点自由带", "en": "Quasi-Riemann Hypothesis & Zero-free Region", "cat": "number", "era": "2026 年 AI 声称证明", "desc": "所有 Dirichlet L-函数（含 ζ 函数）在实部大于 7/8 处无零点，且不存在 Siegel 零点——数十年来首个固定的零点自由带，虽远未触及临界线 1/2，却已能给出迄今最精确的素数分布估计。"}, {"id": "ugc", "name": "唯一游戏猜想", "en": "Unique Games Conjecture", "cat": "logic", "era": "2002 年 Khot 提出；2026 年 AI 声称证明", "desc": "刻画一大类优化问题能否被高效近似的下界，是近似硬度理论的基石假设，与 P/NP 问题近在咫尺。"}, {"id": "kakeya", "name": "Kakeya 猜想", "en": "Kakeya Conjecture", "cat": "geometry", "era": "1917 年提出；2026 年 AI 声称推进至四维", "desc": "一根针转向所有方向所需的最小空间有多大，这个几何问题意外地与调和分析、偏微分方程和数论纠缠在一起，三维版本曾为人类数学家赢得菲尔兹奖级认可。"}, {"id": "hodge", "name": "霍奇猜想", "en": "Hodge Conjecture", "cat": "geometry", "era": "1950 年提出，千禧难题之一", "desc": "断言复代数簇上的某些拓扑闭链必由代数子簇给出，是连接拓扑与代数几何的核心桥梁；AI 声称证明了 CM 阿贝尔簇上的有理版本。"}, {"id": "hilbert10", "name": "希尔伯特第十问题", "en": "Hilbert's Tenth Problem", "cat": "logic", "era": "1900 年提出，1970 年被证不可判定", "desc": "是否存在算法判定丢番图方程有无整数解，答案是否定的；AI 声称把不可判定性进一步推进到有理数范围。"}, {"id": "navier_stokes", "name": "纳维—斯托克斯方程", "en": "Navier–Stokes Equations", "cat": "applied", "era": "19 世纪提出，千禧难题之一", "desc": "描述流体运动的非线性偏微分方程组，是否存在全局光滑解是千禧难题；2026 年 9 月 AI 声称在带外力的版本上给出了证明。"}], "edges": [{"s": "count", "t": "placevalue", "r": "位值制让「逐一累加」升级为按位记数，是计数工具第一次抽象，也是一切竖式运算的前提。"}, {"s": "placevalue", "t": "arithmetic", "r": "统一的位值记数为加减乘除提供了固定的操作界面，四则运算才可能变成可重复的机械步骤。"}, {"s": "arithmetic", "t": "fraction", "r": "分数把「除不尽」的结果也变成一个数，扩展了算术的封闭范围，比例与测量才进入计算。"}, {"s": "arithmetic", "t": "euclid_algo", "r": "辗转相除源自欧氏几何中「反复量度」的思想，是求最大公约数的标准算法。"}, {"s": "euclid_algo", "t": "prime", "r": "判断整除与分解素因数都依赖最大公约数计算，gcd 是素性检验最基础的操作。"}, {"s": "euclid_algo", "t": "congruence", "r": "扩展欧几里得算法求模逆元，是在模 m 的有限环上做「除法」的唯一途径。"}, {"s": "prime", "t": "analytic_number", "r": "素数分布有多密，是解析数论的出发点，ζ 函数正是为回答这个问题而引入。"}, {"s": "prime", "t": "crypto", "r": "RSA 的安全性建立在「大整数分解困难」之上，素数的单向性被直接用作安全假设。"}, {"s": "log", "t": "calculus", "r": "对数把乘除化成加减，是分部积分与换元中最常用的化简技巧，也是 1/x 积分的结果。"}, {"s": "log", "t": "information", "r": "熵与信息量都以对数定义（−Σp log p），对数保证了信息可加、且给出了比特这一单位。"}, {"s": "log", "t": "complexity", "r": "算法的层级（O(1)、O(log n)、O(n log n)）以对数刻画，是复杂度比较的共同尺度。"}, {"s": "arithmetic", "t": "algebra_sym", "r": "从解具体数字的问题到解一般方程，代数符号把算术提升为对「任意数」都成立的规则。"}, {"s": "complex", "t": "polynomial", "r": "代数基本定理说复数域上多项式必有一根，复数正是为了让多项式理论封闭而引入。"}, {"s": "complex", "t": "complex_analysis", "r": "复数是复分析的定义域；也正因可微性在复平面上如此刚硬，才有了留数定理这类工具。"}, {"s": "complex", "t": "fourier", "r": "欧拉公式把三角函数写成复指数，使傅里叶级数与变换的形式大幅简化、统一。"}, {"s": "complex", "t": "eigen", "r": "实矩阵的特征多项式可能有复根，引入复数后谱理论才完整，旋转变换也才有特征值解释。"}, {"s": "complex", "t": "calculus", "r": "复可微蕴含任意阶可微与解析，复变函数论把微积分的许多结论变得更强更干净。"}, {"s": "count", "t": "combinatorics", "r": "组合数学研究的基本问题就是「有多少种」，是计数原理的系统化与精细化。"}, {"s": "count", "t": "prob", "r": "古典概率定义为有利情形数与总情形数之比，概率论最初就是带权重的计数。"}, {"s": "set", "t": "topology", "r": "拓扑空间就是集合上附加一族开集，集合论提供了定义「邻近」所需的语言。"}, {"s": "set", "t": "measure", "r": "测度是定义在集合族（σ-代数）上的集合函数，测度论完全是集合论语言的产物。"}, {"s": "set", "t": "logic", "r": "集合的外延与谓词的内涵可以互相翻译，集合论与谓词逻辑是同一个基础的两副面孔。"}, {"s": "set", "t": "godel", "r": "哥德尔用集合/自然数编码公式本身（哥德尔配数），自指才可能在形式系统中实现。"}, {"s": "algebra_sym", "t": "polynomial", "r": "方程求解的抽象对象就是多项式，「解方程」从此变成研究多项式的根与因式。"}, {"s": "polynomial", "t": "galois", "r": "伽罗瓦理论正是为判定多项式能否用根式求解而建立，用群的结构回答方程的可解性。"}, {"s": "polynomial", "t": "algebraic_geom", "r": "代数几何的基本对象就是多项式方程组的公共零点集，二者是同一件事的代数面与几何面。"}, {"s": "polynomial", "t": "interpolation", "r": "插值即找一个多项式穿过给定数据点，是数值逼近最古老、最直接的手段。"}, {"s": "matrix", "t": "linspace", "r": "矩阵是向量空间之间线性映射的具体表示，选定基之后，抽象的算子就变成可算的数组。"}, {"s": "matrix", "t": "determinant", "r": "行列式由矩阵的元素按固定规则算出一个数，用来判断可逆性与体积缩放比。"}, {"s": "determinant", "t": "eigen", "r": "特征多项式 det(A−λI)=0 给出特征值，行列式是求谱的起点工具。"}, {"s": "linspace", "t": "eigen", "r": "特征向量给出线性变换的不变子空间，谱分解把复杂变换化为沿各主轴的独立伸缩。"}, {"s": "linspace", "t": "functional", "r": "泛函分析就是无限维向量空间上的线性代数，把有限维直觉推广到函数空间。"}, {"s": "linspace", "t": "numerical_linear", "r": "数值线性代数研究如何在浮点与有限步内可靠地执行向量空间里的运算。"}, {"s": "linspace", "t": "ml", "r": "样本、特征与模型参数都表示为向量，机器学习几乎全部运算都发生在向量空间里。"}, {"s": "linspace", "t": "tensor", "r": "张量是多重线性映射，是向量空间概念向多个输入方向的自然推广。"}, {"s": "eigen", "t": "pde", "r": "分离变量法把偏微分方程化为算子的特征值问题，驻波与模态都由此而来。"}, {"s": "eigen", "t": "ml", "r": "主成分分析、谱聚类等降维方法的本质就是协方差矩阵的特征分解。"}, {"s": "eigen", "t": "stochastic", "r": "马尔可夫链的稳态分布是转移矩阵特征值为 1 的特征向量，谱决定收敛速度。"}, {"s": "group", "t": "galois", "r": "伽罗瓦把方程的根的置换构成一个群，用群的可解性等价刻画方程的根式可解性。"}, {"s": "group", "t": "lie", "r": "李群是带连续参数的群，把离散对称推广为连续对称（如旋转、平移）。"}, {"s": "group", "t": "representation", "r": "表示论把抽象群实现为矩阵群，让群的作用可以用线性代数直接计算。"}, {"s": "group", "t": "algebraic_topology", "r": "基本群与同调群把空间的「洞」变成群，是用代数识别形状的核心不变量。"}, {"s": "group", "t": "crypto", "r": "有限群上的离散对数问题难以求解，这正是 Diffie-Hellman 与椭圆曲线密码的安全假设。"}, {"s": "group", "t": "ring_field", "r": "群是只要一种运算的结构，加上第二种运算与分配律就得到环与域，是代数结构的逐级加料。"}, {"s": "ring_field", "t": "algebraic_number", "r": "代数数论研究数域中的整数环与理想分解，环与理想是其不可替换的语言。"}, {"s": "ring_field", "t": "algebraic_geom", "r": "交换环的谱（Spec）与理想一一对应，环论构成代数几何的代数侧。"}, {"s": "ring_field", "t": "galois", "r": "伽罗瓦理论研究域扩张及其自同构群，是环与域理论最深刻的一次应用。"}, {"s": "ring_field", "t": "boolean", "r": "布尔代数是特殊的环（特征 2 且幂等），逻辑运算因此可以用代数工具处理。"}, {"s": "lie", "t": "pde", "r": "李群对称性可用来寻找偏微分方程的相似解与守恒律，是求解非线性方程的主力技巧。"}, {"s": "lie", "t": "diff_geom", "r": "李群本身是光滑流形，李代数刻画其单位元附近的局部结构，二者天然属于微分几何。"}, {"s": "representation", "t": "fourier", "r": "傅里叶分析本质是平移群的表示分解：把函数按不可约表示（频率）展开。"}, {"s": "representation", "t": "ml", "r": "等变神经网络用群表示把旋转、置换等对称性写进模型结构，显著减少所需数据。"}, {"s": "representation", "t": "modular", "r": "自守表示把模形式与表示论统一在同一套语言下，是现代数论的主流视角。"}, {"s": "category", "t": "algebraic_geom", "r": "概形与层用范畴语言重写，代数几何因此获得处理「族」与「粘合」的统一框架。"}, {"s": "algebraic_topology", "t": "category", "r": "同调与同伦群都是函子，代数拓扑的威力正来自「把空间映射到代数」的范畴式操作。"}, {"s": "category", "t": "type_theory", "r": "Curry-Howard-Lambek 对应把命题、类型与范畴对象三者对齐，证明与程序成为同一件事。"}, {"s": "euclid", "t": "analytic_geom", "r": "解析几何用坐标重述欧氏几何，把原本依赖图形的证明变成代数计算。"}, {"s": "euclid", "t": "projective", "r": "射影几何取消平行公设的特殊地位，把欧氏几何中「平行线不相交」的例外统一处理掉。"}, {"s": "euclid", "t": "non_euclid", "r": "非欧几何诞生于证明第五公设独立性的尝试，是对欧氏公理体系的一次内部检验。"}, {"s": "euclid", "t": "logic", "r": "《几何原本》是公理化的范本，其「少数公理推出全部命题」的模式直接塑造了形式逻辑。"}, {"s": "euclid", "t": "trig", "r": "三角学源自几何中的相似三角形与圆，是解决测量与天文计算问题的几何工具。"}, {"s": "euclid", "t": "euclid_algo", "r": "《几何原本》用「辗转量度」求最大公度量，几何中的量度思想直接孕育了这个算法。"}, {"s": "trig", "t": "analytic_geom", "r": "三角函数把角度与直角坐标联系起来，是解析几何处理旋转与极坐标的标准语言。"}, {"s": "trig", "t": "fourier", "r": "傅里叶级数用正弦余弦函数系展开任意周期函数，三角函数系是其正交基。"}, {"s": "trig", "t": "complex", "r": "欧拉公式把三角函数与复指数统一，三角恒等式因此可用指数运算机械推导。"}, {"s": "analytic_geom", "t": "calculus", "r": "有了坐标与曲线方程，切线与面积问题才有解析表达，微积分才可能被系统地建立。"}, {"s": "analytic_geom", "t": "diff_geom", "r": "微分几何用局部坐标卡研究曲线曲面，是解析几何思想在弯曲空间上的延续。"}, {"s": "analytic_geom", "t": "algebraic_geom", "r": "「方程 ↔ 图形」的对应被推广到高维与任意域，就是代数几何的出发点。"}, {"s": "analytic_geom", "t": "projective", "r": "射影坐标让交点计数不再有例外（如贝祖定理），是解析几何的一次完备化。"}, {"s": "non_euclid", "t": "riemann_geom", "r": "黎曼几何给出任意曲率的统一框架，非欧几何成为其中曲率非零的特例。"}, {"s": "non_euclid", "t": "diff_geom", "r": "非欧几何提供了曲率非零空间的具体实例，迫使微分几何区分内蕴与外蕴曲率。"}, {"s": "projective", "t": "algebraic_geom", "r": "射影空间是代数几何最自然的舞台，无穷远点被吸收后交点定理才干净成立。"}, {"s": "diff_geom", "t": "riemann_geom", "r": "黎曼几何在微分流形上附加度量，把高斯对曲面的研究推广到任意维。"}, {"s": "calculus", "t": "diff_geom", "r": "曲率、测地线等几何量都由导数定义，微分几何是微积分在弯曲空间上的应用。"}, {"s": "tensor", "t": "riemann_geom", "r": "度量张量与曲率张量是黎曼几何的标准记法，张量让几何量摆脱坐标依赖。"}, {"s": "riemann_geom", "t": "pde", "r": "Ricci 流、爱因斯坦方程等几何方程都是非线性 PDE，几何问题常以 PDE 形式求解。"}, {"s": "riemann_geom", "t": "variational", "r": "测地线是能量泛函的临界点，黎曼几何中的许多对象都由变分原理刻画。"}, {"s": "topology", "t": "diff_topology", "r": "微分拓扑在拓扑空间上再加一层光滑结构，拓扑性质是它必须首先满足的前提。"}, {"s": "topology", "t": "functional", "r": "泛函分析中的开集、紧性、完备性、弱拓扑都直接来自点集拓扑的概念库。"}, {"s": "topology", "t": "measure", "r": "Borel 集由开集生成，测度论与拓扑通过「正则测度」等方式紧密咬合。"}, {"s": "topology", "t": "limit", "r": "连续与收敛的本质是邻域与开集，极限概念在点集拓扑中被抽象到最一般的形式。"}, {"s": "algebraic_topology", "t": "diff_topology", "r": "微分拓扑大量使用同调、配边等代数拓扑不变量来区分光滑流形。"}, {"s": "algebraic_topology", "t": "graph", "r": "图的连通分支数就是它的第 0 个同调群的秩，图论中最基本的概念是同调的特例。"}, {"s": "fractal", "t": "measure", "r": "分形维数必须用 Hausdorff 测度定义，非整数维本身就是测度论的工具。"}, {"s": "fractal", "t": "chaos", "r": "混沌系统的奇异吸引子通常具有分形结构，维数刻画了吸引子的复杂程度。"}, {"s": "fractal", "t": "stochastic", "r": "布朗运动轨迹与随机分形密切相关，随机过程生成的集合常是分形。"}, {"s": "limit", "t": "calculus", "r": "极限为导数与积分提供了严格定义，微积分从「无穷小量的技巧」变成了可靠的分析学。"}, {"s": "limit", "t": "series", "r": "级数的收敛定义为部分和序列的极限，整个级数理论建立在极限语言之上。"}, {"s": "limit", "t": "measure", "r": "勒贝格积分之所以强大，正因为它允许在极限与积分之间交换，这由极限定理保证。"}, {"s": "calculus", "t": "ode", "r": "微分方程描述变化率，积分是其求解的基本动作，二者是同一个问题的正反面。"}, {"s": "calculus", "t": "pde", "r": "偏导数是多元微积分的核心运算，PDE 就是关于未知函数偏导数的方程。"}, {"s": "calculus", "t": "variational", "r": "变分法求泛函极值，其必要条件欧拉-拉格朗日方程正是由积分与导数导出。"}, {"s": "calculus", "t": "series", "r": "泰勒级数用导数值构造多项式逼近函数，是微分运算最直接的产出。"}, {"s": "calculus", "t": "fourier", "r": "傅里叶系数由积分算出，正交性与内积都借自微积分的积分结构。"}, {"s": "calculus", "t": "gradient", "r": "梯度是导数的多元推广，一阶优化方法本质上沿着导数给出的方向前进。"}, {"s": "series", "t": "complex_analysis", "r": "幂级数与洛朗级数是表示复函数的主要工具，解析函数就是局部可展为幂级数的函数。"}, {"s": "series", "t": "genfunc", "r": "生成函数把数列写成幂级数，使计数问题可以用代数运算自动完成。"}, {"s": "series", "t": "analytic_number", "r": "狄利克雷级数与欧拉乘积是解析数论的基本工具，ζ 函数就是其代表。"}, {"s": "series", "t": "interpolation", "r": "泰勒展开与多项式插值同源：都是用有限/无限个简单项去逼近给定函数。"}, {"s": "fourier", "t": "pde", "r": "傅里叶变换把微分算子变成乘法，把 PDE 化为代数方程，是求解线性 PDE 的标准动作。"}, {"s": "fourier", "t": "signal", "r": "频谱分析、滤波与卷积定理都以傅里叶变换为基础，信号处理几乎建立在其上。"}, {"s": "fourier", "t": "fft", "r": "FFT 是离散傅里叶变换的快速算法，把 O(n²) 降到 O(n log n)，使理论变得可用。"}, {"s": "fourier", "t": "wavelet", "r": "小波为弥补傅里叶缺乏时间定位而生：用局部化的基替代全局的正弦基。"}, {"s": "fourier", "t": "interpolation", "r": "采样定理说明带限函数可由离散样本完全重建，是插值与信号采样的共同理论基石。"}, {"s": "complex_analysis", "t": "analytic_number", "r": "ζ 函数的解析延拓与零点分布全靠复分析，素数定理的证明也依赖它。"}, {"s": "elliptic", "t": "complex_analysis", "r": "椭圆曲线在复数域上是环面，由双周期椭圆函数参数化，分析视角给出其群结构。"}, {"s": "complex_analysis", "t": "modular", "r": "模形式定义为上半平面上的解析函数，其存在与性质完全依赖复分析。"}, {"s": "ode", "t": "chaos", "r": "动力系统的定性理论由常微分方程的流给出，混沌现象正是在三维 ODE 中首次被确认。"}, {"s": "ode", "t": "pde", "r": "分离变量与特征线法把 PDE 降解为 ODE，求解 PDE 的多数技巧最终回到 ODE。"}, {"s": "ode", "t": "interpolation", "r": "数值求解 ODE 的每一步都在用插值与外推估计轨迹，龙格-库塔法即由此构造。"}, {"s": "ode", "t": "control", "r": "最优控制的对象是受控微分方程，控制即选择 ODE 右端的输入。"}, {"s": "pde", "t": "fem", "r": "有限元是 PDE 弱形式的离散求解方案，工程中的 PDE 几乎都靠它算。"}, {"s": "pde", "t": "variational", "r": "许多 PDE 的弱解可表述为某个能量泛函的极小点，变分形式是求解与证明的入口。"}, {"s": "pde", "t": "numerical_linear", "r": "PDE 离散后得到大型稀疏线性系统，其求解效率取决于数值线性代数。"}, {"s": "pde", "t": "stochastic", "r": "扩散方程与随机游走/布朗运动对应（费曼-卡茨公式），PDE 与随机过程可互相翻译。"}, {"s": "pde", "t": "control", "r": "最优控制的 HJB 方程是一个非线性 PDE，动态规划在连续时间下的形态就是 PDE。"}, {"s": "variational", "t": "fem", "r": "有限元的数学基础是变分原理与弱形式，单元刚度矩阵正由能量泛函导出。"}, {"s": "variational", "t": "control", "r": "庞特里亚金最小值原理是变分法在带约束控制问题上的现代形式。"}, {"s": "variational", "t": "convex", "r": "极小化凸泛函是变分法与凸优化的共同课题，凸性保证极小点存在且可求。"}, {"s": "measure", "t": "prob", "r": "柯尔莫哥洛夫把概率定义为归一化测度，随机变量就是可测函数，概率论由此公理化。"}, {"s": "measure", "t": "functional", "r": "L^p 空间由可测函数与积分构造，是泛函分析最重要的一类具体空间。"}, {"s": "measure", "t": "information", "r": "熵是相对于测度的积分量，KL 散度也是测度之间的一种「距离」。"}, {"s": "functional", "t": "pde", "r": "弱解、Sobolev 空间与算子半群把 PDE 放进泛函分析框架，从而可用紧性等方法证明存在性。"}, {"s": "functional", "t": "ml", "r": "再生核希尔伯特空间（RKHS）是核方法与学习理论基础，把学习问题变成函数空间中的极值问题。"}, {"s": "functional", "t": "numerical_linear", "r": "无限维算子的离散近似最终落到矩阵，泛函分析与数值线性代数通过 Galerkin 方法衔接。"}, {"s": "wavelet", "t": "signal", "r": "小波用于时频分析、去噪与图像压缩（JPEG2000），是信号处理的第二代工具。"}, {"s": "wavelet", "t": "interpolation", "r": "小波基是另一套逼近基：与多项式插值互补，更适合表示局部突变与非光滑函数。"}, {"s": "chaos", "t": "stochastic", "r": "混沌系统的统计行为可用不变测度与随机过程描述，确定性混沌与随机性在统计层面难以区分。"}, {"s": "chaos", "t": "dp", "r": "混沌系统的长期优化与控制常写成动态规划/最优控制的递推形式。"}, {"s": "interpolation", "t": "numerical_linear", "r": "插值与最小二乘拟合最终都归为一个线性方程组，是数值线性代数的典型输入。"}, {"s": "interpolation", "t": "fem", "r": "有限元的形函数本质就是分片插值多项式，逼近精度取决于插值阶数。"}, {"s": "congruence", "t": "reciprocity", "r": "二次互反律回答的正是「x² ≡ a (mod p) 何时有解」，是同余方程可解性的高峰。"}, {"s": "congruence", "t": "crypto", "r": "模幂与模逆运算是 RSA、DH 等算法的基本操作，密码学就运行在模 m 的环上。"}, {"s": "congruence", "t": "algebraic_number", "r": "代数数论把同余推广到理想的同余（分解群、Frobenius 元），是模算术的远大推广。"}, {"s": "congruence", "t": "analytic_number", "r": "狄利克雷特征基于模 q 的既约剩余类构造，L 函数是模算术在分析中的延伸。"}, {"s": "reciprocity", "t": "algebraic_number", "r": "Artin 互反律把二次互反律推广到一般数域的阿贝尔扩张，是类域论的核心。"}, {"s": "analytic_number", "t": "modular", "r": "模形式的 L 函数是黎曼 ζ 的推广，二者通过狄利克雷级数与函数方程连成一体。"}, {"s": "algebraic_number", "t": "elliptic", "r": "椭圆曲线上的有理点与算术性质属于代数数论的研究范围（如莫德尔-韦伊定理）。"}, {"s": "algebraic_number", "t": "galois", "r": "伽罗瓦群与域扩张是代数数论的基本对象，理想分解与 Galois 作用不可分割。"}, {"s": "elliptic", "t": "modular", "r": "谷山-志村（模性）定理把每条椭圆曲线与一个模形式对应，怀尔斯正是用它证明了费马大定理。"}, {"s": "elliptic", "t": "crypto", "r": "椭圆曲线上的离散对数比整数分解更难，能用更短的密钥提供同等安全强度。"}, {"s": "algebraic_geom", "t": "algebraic_topology", "r": "代数几何用层上同调研究空间，与代数拓扑共享同一套同调代数装置，拓扑直觉常先于代数证明。"}, {"s": "algebraic_geom", "t": "complex_analysis", "r": "复代数几何以黎曼面与多复变为基础，复分析为其提供紧致性、留数与上同调的计算手段。"}, {"s": "elliptic", "t": "algebraic_geom", "r": "椭圆曲线是最简单的一维阿贝尔簇，是代数几何中研究得最透彻的对象之一。"}, {"s": "modular", "t": "algebraic_topology", "r": "模形式空间与某些上同调群、椭圆上同调相关，是表示论与拓扑交汇的现代前沿。"}, {"s": "prob", "t": "distribution", "r": "随机变量是概率空间上的可测函数，其分布函数完整描述了它取值的规律。"}, {"s": "distribution", "t": "clt", "r": "中心极限定理说明大量独立随机变量之和的分布收敛到正态，是分布族中的核心结论。"}, {"s": "clt", "t": "inference", "r": "统计推断的正态近似、置信区间与大样本理论都依赖大数律与中心极限定理。"}, {"s": "clt", "t": "montecarlo", "r": "蒙特卡洛估计的误差评估与收敛速度判断依赖大数律与中心极限定理。"}, {"s": "clt", "t": "prob", "r": "大数律回答「频率是否趋于概率」，是概率论从公理走向经验世界的关键定理。"}, {"s": "prob", "t": "bayes", "r": "条件概率公式是贝叶斯法则的出发点，贝叶斯推断只是把同一个公式反过来用。"}, {"s": "bayes", "t": "inference", "r": "贝叶斯学派把参数视为随机变量，用后验分布完成估计与检验，是统计推断的两大范式之一。"}, {"s": "bayes", "t": "ml", "r": "贝叶斯方法为机器学习提供不确定性建模、正则化解释与主动学习的策略。"}, {"s": "bayes", "t": "information", "r": "贝叶斯更新可视为信息增益过程，先验到后验的 KL 散度度量了新证据带来的信息量。"}, {"s": "inference", "t": "regression", "r": "回归系数的显著性检验与置信区间是统计推断最典型的应用场景。"}, {"s": "regression", "t": "linspace", "r": "最小二乘解是观测向量在列空间上的正交投影，本质是一次向量空间中的几何运算。"}, {"s": "regression", "t": "convex", "r": "岭回归、LASSO 等带正则的回归都是凸优化问题，凸性保证解唯一且可高效求得。"}, {"s": "ml", "t": "regression", "r": "回归是监督学习最基础的模型族，从线性回归到广义线性模型一脉相承。"}, {"s": "regression", "t": "interpolation", "r": "回归是「允许误差的插值」：两者都是用已知函数拟合数据，只是目标函数不同。"}, {"s": "stochastic", "t": "martingale", "r": "鞅刻画「未来期望等于当前值」的公平过程，是随机过程中结构最丰富、工具最强的一类。"}, {"s": "stochastic", "t": "montecarlo", "r": "MCMC 构造一个以目标分布为稳态的马尔可夫链，是高维采样的主力方法。"}, {"s": "stochastic", "t": "information", "r": "熵率刻画随机过程单位时间产生的信息量，是过程层面的信息度量。"}, {"s": "martingale", "t": "convex", "r": "最优停止与期权定价中的鞅方法常与凸对偶结合，凸性给出价格的上确界刻画。"}, {"s": "information", "t": "ml", "r": "交叉熵损失、KL 散度与最大熵原则直接构成机器学习的目标函数与正则项。"}, {"s": "information", "t": "crypto", "r": "香农用熵定义「完美保密」，一次一密的不可破译性由此可证，信息论是密码学的理论基石。"}, {"s": "information", "t": "complexity", "r": "柯尔莫哥洛夫复杂度用最短描述长度度量信息，与香农熵互为计算视角与统计视角的对应。"}, {"s": "logic", "t": "godel", "r": "哥德尔定理针对的就是足够强的形式系统，用编码把「可证性」写成系统内的算术命题。"}, {"s": "logic", "t": "turing", "r": "图灵用机械计算模型刻画「按规则推理」，把希尔伯特判定问题变成可证的否定结论。"}, {"s": "logic", "t": "boolean", "r": "布尔代数是命题逻辑的代数化，真值演算因此可以用代数化简（如卡诺图）。"}, {"s": "logic", "t": "type_theory", "r": "Curry-Howard 对应把命题对应到类型、证明对应到程序，逻辑与计算成为同一结构。"}, {"s": "godel", "t": "turing", "r": "不可判定性是不完备性的计算版本：图灵的停机问题与哥德尔的自指命题用的是同一种对角线技巧。"}, {"s": "godel", "t": "formal_proof", "r": "不完备定理说明任何足够强的系统都有无法内部判定的命题，这正是机器证明必须面对的边界。"}, {"s": "turing", "t": "complexity", "r": "复杂度理论在图灵机模型上度量时间与空间，可计算性解决「能不能」，复杂度解决「快不快」。"}, {"s": "turing", "t": "dp", "r": "动态规划是可计算性理论中「实际可算」的范式：用状态压缩把指数搜索降为多项式递推。"}, {"s": "turing", "t": "ml", "r": "可计算性与 PAC 学习框架同源：学习本身被视为一种算法任务，图灵机定义了其可行性边界。"}, {"s": "complexity", "t": "crypto", "r": "公钥密码的安全性就是「逆问题在计算上不可行」，复杂度假设是其唯一的地基。"}, {"s": "complexity", "t": "convex", "r": "凸优化是少数拥有多项式时间全局解保证的大类，内点法的复杂度分析是其标志成果。"}, {"s": "complexity", "t": "lp", "r": "单纯形法的指数反例与内点法的多项式界，直接推动了 P/NP 与复杂度理论的发展。"}, {"s": "complexity", "t": "numerical_linear", "r": "矩阵乘法等线性代数运算的复杂度指数是理论计算机科学长期追逐的核心指标之一。"}, {"s": "graph", "t": "combinatorics", "r": "图论研究点与边的组合结构，是组合数学中最大、应用最广的分支。"}, {"s": "graph", "t": "complexity", "r": "最短路可多项式求解而哈密顿路是 NP 完全，图问题是复杂度分类的主战场。"}, {"s": "graph", "t": "ml", "r": "概率图模型、图神经网络与知识图谱把图结构直接用作学习与推理的载体。"}, {"s": "dp", "t": "graph", "r": "图上最短路、最小生成树与路径计数是动态规划最直观的应用舞台。"}, {"s": "combinatorics", "t": "genfunc", "r": "生成函数是组合计数的核心机器：把递推关系变成函数方程，用代数自动解出计数。"}, {"s": "combinatorics", "t": "prob", "r": "离散概率的一切概率都归结为组合计数，古典概型就是组合数学的应用。"}, {"s": "combinatorics", "t": "lp", "r": "组合优化（匹配、装箱、调度）是线性规划与整数规划最主要的问题来源。"}, {"s": "boolean", "t": "complexity", "r": "布尔电路是复杂度类的基本计算模型，SAT 是第一个被证明的 NP 完全问题。"}, {"s": "boolean", "t": "type_theory", "r": "布尔代数的与或结构与类型论中的和类型、积类型同构，逻辑连接词与类型构造子一一对应。"}, {"s": "type_theory", "t": "formal_proof", "r": "Coq、Lean 等证明助手建立在依赖类型论之上，类型即命题、程序即证明。"}, {"s": "formal_proof", "t": "ml", "r": "机器学习正被用于搜索证明步骤与猜想（如自动形式化、AI 辅助证明），形式化与 AI 正在合流。"}, {"s": "formal_proof", "t": "category", "r": "范畴论为形式化数学提供了结构化的组织方式，是证明助手中抽象层与复用机制的理论支撑。"}, {"s": "numerical_linear", "t": "fem", "r": "有限元离散后得到大型稀疏线性系统，能否算得动取决于数值线性代数的算法与并行实现。"}, {"s": "numerical_linear", "t": "ml", "r": "大规模训练与推荐系统依赖矩阵分解、迭代法与混合精度线性代数。"}, {"s": "numerical_linear", "t": "eigen", "r": "QR 算法、幂法与 Lanczos 迭代是求大规模矩阵特征值的主力，谱计算本身是个数值问题。"}, {"s": "fft", "t": "signal", "r": "FFT 让频谱分析、卷积与滤波可以实时完成，是现代信号处理与通信的算力基础。"}, {"s": "fft", "t": "numerical_linear", "r": "循环与 Toeplitz 矩阵乘法可用 FFT 加速，是快速线性代数中的常用技巧。"}, {"s": "lp", "t": "convex", "r": "线性规划是凸优化的特例，单纯形法与内点法都被统一在凸优化的理论框架中。"}, {"s": "lp", "t": "game", "r": "零和博弈的最优混合策略可化为一对对偶线性规划，极小极大定理与 LP 对偶同源。"}, {"s": "convex", "t": "gradient", "r": "一阶方法是求解大规模凸问题的主要手段，凸性保证了梯度类方法的全局收敛性。"}, {"s": "convex", "t": "ml", "r": "支持向量机、正则化损失、矩阵补全等学习问题都可写成凸优化，凸性带来可证明的泛化保证。"}, {"s": "convex", "t": "numerical_linear", "r": "牛顿法、拟牛顿与共轭梯度把凸优化与线性代数求解紧密结合，每步都要解线性系统。"}, {"s": "gradient", "t": "ml", "r": "反向传播加梯度下降是深度学习的训练引擎，几乎所有现代 AI 模型都由此优化。"}, {"s": "gradient", "t": "numerical_linear", "r": "大规模一阶方法的每一步都是矩阵-向量运算，其效率取决于稀疏线性代数实现。"}, {"s": "dp", "t": "control", "r": "贝尔曼方程就是连续/离散决策问题的动态规划形式，最优控制的两大支柱之一。"}, {"s": "dp", "t": "game", "r": "多阶段博弈的均衡求解（如随机博弈）用动态规划做逆向归纳。"}, {"s": "montecarlo", "t": "complexity", "r": "蒙特卡洛是处理 #P 难计数与高维积分的通用近似方案，用随机性换取多项式时间。"}, {"s": "crypto", "t": "analytic_number", "r": "密码学的安全性依赖于数论中「正向易、逆向难」的结构（分解、离散对数），是数论的应用出口。"}, {"s": "tensor", "t": "ml", "r": "张量是深度学习中数据、参数与算子的统一表示，自动微分框架围绕张量构建。"}, {"s": "tensor", "t": "diff_geom", "r": "张量场是微分几何描述联络与曲率的基本对象，流形上的分析离不开它。"}, {"s": "signal", "t": "ml", "r": "卷积网络的特征提取源自信号处理中的滤波与卷积，语音图像模型直接继承其结构。"}, {"s": "game", "t": "ml", "r": "对抗训练（GAN）、多智能体强化学习与机制设计都建立在博弈论的均衡概念上。"}, {"s": "game", "t": "convex", "r": "凸分析与不动点定理是证明均衡存在性的标准工具，博弈论与凸优化共享数学基础。"}, {"s": "control", "t": "stochastic", "r": "随机控制处理带噪声的动态系统，随机过程是其状态演化的建模语言。"}, {"s": "ai_math", "t": "formal_proof", "r": "722 篇手稿里 235 个结果族附了 Lean 证书，把机器可核验从单个定理推到数百条规模，形式化第一次成为 AI 数学产出的质检线。"}, {"s": "ai_math", "t": "ml", "r": "结果全部由未公开的内部前沿模型产出，平均每个结果约 ChatGPT Pro 三小时算力，是机器学习能力第一次直接外化为大批量的数学研究产出。"}, {"s": "ai_math", "t": "erdos_prob", "r": "Erdős 问题库是 AI 最早成规模攻破的公开题库（如 #183 多色 Ramsey 数下界），梯度细、存量多，天然适合当能力标尺。"}, {"s": "ai_math", "t": "quasi_riemann", "r": "整批成果中分量最重的数论进展：首个固定的零点自由带，并声称解决了 Siegel 零点问题。"}, {"s": "ai_math", "t": "ugc", "r": "AI 声称证明了这个近似硬度理论的基石假设，若成立将锁定一大类优化问题的近似极限。"}, {"s": "ai_math", "t": "kakeya", "r": "AI 声称解决三维极大猜想与四维维数猜想，而这个方向去年刚为人类数学家赢得菲尔兹奖级认可。"}, {"s": "ai_math", "t": "hodge", "r": "AI 声称证明了 CM 阿贝尔簇上的有理霍奇猜想，是七个千禧难题中罕见的实质性推进。"}, {"s": "ai_math", "t": "hilbert10", "r": "AI 声称把不可判定性从整数推进到有理数范围，用的是两个此前被认为互不相关的领域的拼接。"}, {"s": "ai_math", "t": "navier_stokes", "r": "2026 年 9 月 AI 声称在带外力的版本上证明了 NS 的存在性与光滑性，是它第一次冲击千禧难题，四个月后才有这 722 篇。"}, {"s": "ai_math", "t": "godel", "r": "不完备定理划定的天花板依然有效：AI 的证明同样必须落在某个形式系统之内，总有它无法判定的命题，它能扩大可证范围却不能取消边界。"}, {"s": "ai_math", "t": "complexity", "r": "唯一游戏猜想、最近向量问题的近似硬度等成果直接落在复杂度理论的核心地带。"}, {"s": "ai_math", "t": "crypto", "r": "最近向量问题的近似硬度是格密码的安全底座，AI 若持续攻破这类假设，后量子密码的地基会被动摇。"}, {"s": "erdos_prob", "t": "combinatorics", "r": "Erdős 问题绝大多数是组合、图论与数论猜想，是组合数学天然的练兵场。"}, {"s": "erdos_prob", "t": "graph", "r": "多色 Ramsey 数、极值图的极数等 Erdős 名题直接属于图论。"}, {"s": "erdos_prob", "t": "prime", "r": "Erdős 关于素数间隔、堆垒基与覆盖同余的猜想是题库数论侧的重要部分。"}, {"s": "quasi_riemann", "t": "analytic_number", "r": "零点自由带决定素数定理的余项大小，是解析数论最核心的量。"}, {"s": "quasi_riemann", "t": "complex_analysis", "r": "ζ 与 L 函数的解析延拓、围道积分与零点计数全靠复分析。"}, {"s": "quasi_riemann", "t": "prime", "r": "零点越靠近临界线，素数分布的误差估计越精确。"}, {"s": "ugc", "t": "complexity", "r": "唯一游戏猜想是近似硬度理论的核心假设，直接刻画 NP 难问题能被近似到什么程度。"}, {"s": "ugc", "t": "convex", "r": "它声称的正是半定规划这类凸松弛对某些优化问题已达到最优近似比，本质是凸优化的边界问题。"}, {"s": "kakeya", "t": "measure", "r": "Kakeya 集合有多大必须用测度与维数来刻画，是几何测度论的经典问题。"}, {"s": "kakeya", "t": "fractal", "r": "Kakeya 集可以体积为零却维数满，其分形维数正是问题的核心不变量。"}, {"s": "kakeya", "t": "pde", "r": "Kakeya 猜想与波动方程、调和分析中的限制性估计深刻纠缠，是 PDE 正则性问题的上游。"}, {"s": "hodge", "t": "algebraic_geom", "r": "霍奇猜想是代数几何的千禧难题，讨论的是代数簇上的闭链结构。"}, {"s": "hodge", "t": "algebraic_topology", "r": "它陈述的是上同调类能否由代数闭链表示，本质是拓扑不变量与代数对象的对应。"}, {"s": "hilbert10", "t": "turing", "r": "希尔伯特第十问题正是用图灵机与可计算性理论被证明不可判定的，是停机问题的数论版本。"}, {"s": "hilbert10", "t": "godel", "r": "两者同属数学有其不可判定之地这一谱系，不完备定理是其思想先声。"}, {"s": "navier_stokes", "t": "pde", "r": "NS 方程就是非线性偏微分方程组，存在性与光滑性问题是 PDE 理论的巅峰难题。"}, {"s": "navier_stokes", "t": "chaos", "r": "湍流是混沌现象的原型，光滑性问题与湍流中的奇点形成直接相关。"}, {"s": "navier_stokes", "t": "functional", "r": "弱解、能量估计与 Sobolev 空间是攻击 NS 问题的标准泛函分析工具。"}]};
+const CATS = {
+  foundation:{n:"基础与算术",c:"#ffd43b"},
+  algebra:{n:"代数与结构",c:"#9775fa"},
+  geometry:{n:"几何与拓扑",c:"#ff6b6b"},
+  analysis:{n:"分析与方程",c:"#38d9a9"},
+  number:{n:"数论",c:"#ffa94d"},
+  probstat:{n:"概率与统计",c:"#4dabf7"},
+  logic:{n:"逻辑与计算",c:"#f783ac"},
+  numeric:{n:"数值与优化",c:"#22b8cf"},
+  applied:{n:"应用与交叉",c:"#a9e34b"},
+  ai:{n:"AI 前沿（2026）",c:"#ff922b"}
+};
+const N = DATA.nodes.map(n=>Object.assign({},n,{x:0,y:0,vx:0,vy:0,deg:0,r:6,hidden:false,fixed:false}));
+const byId = {}; N.forEach(n=>byId[n.id]=n);
+const E = DATA.edges.map((e,i)=>({i,a:byId[e.s],b:byId[e.t],r:e.r}));
+E.forEach(e=>{e.a.deg++;e.b.deg++;});
+N.forEach(n=>n.r = 5 + Math.min(n.deg,12)*1.0);
+
+/* ---------- 初始布局 ---------- */
+const ckeys = Object.keys(CATS);
+N.forEach(n=>{
+  const ci = ckeys.indexOf(n.cat);
+  const ang = ci/ckeys.length*Math.PI*2;
+  n.x = Math.cos(ang)*300 + (Math.random()-.5)*180;
+  n.y = Math.sin(ang)*300 + (Math.random()-.5)*180;
+});
+
+/* ---------- 力导向 ---------- */
+const REP=9000, L0=110, K=0.03, G=0.004, DAMP=.86, HARD=55;
+let alpha=1;
+function tick(){
+  const vis = N.filter(n=>!n.hidden);
+  for(let i=0;i<vis.length;i++){
+    const a=vis[i];
+    for(let j=i+1;j<vis.length;j++){
+      const b=vis[j];
+      let dx=b.x-a.x, dy=b.y-a.y;
+      let d2=dx*dx+dy*dy; if(d2<1) d2=1;
+      if(d2>220000) continue;
+      const d=Math.sqrt(d2);
+      let f=REP/d2;
+      if(d<HARD) f += (HARD-d)*1.2;
+      const fx=dx/d*f, fy=dy/d*f;
+      a.vx-=fx; a.vy-=fy; b.vx+=fx; b.vy+=fy;
+    }
+  }
+  for(const e of E){
+    if(e.a.hidden||e.b.hidden) continue;
+    const dx=e.b.x-e.a.x, dy=e.b.y-e.a.y;
+    const d=Math.hypot(dx,dy)||1;
+    const f=(d-L0)*K, fx=dx/d*f, fy=dy/d*f;
+    e.a.vx+=fx; e.a.vy+=fy; e.b.vx-=fx; e.b.vy-=fy;
+  }
+  for(const n of vis){
+    n.vx += (0-n.x)*G; n.vy += (0-n.y)*G;
+    if(n.fixed){n.vx=0;n.vy=0;continue;}
+    n.vx*=DAMP; n.vy*=DAMP;
+    let sp=Math.hypot(n.vx,n.vy);
+    if(sp>9){n.vx=n.vx/sp*9;n.vy=n.vy/sp*9;}
+    n.x+=n.vx*alpha; n.y+=n.vy*alpha;
+  }
+  alpha*=0.992; if(alpha<0.015) alpha=0.015;
+}
+for(let i=0;i<420;i++){ alpha=Math.max(alpha,0.55); tick(); }
+alpha=0.6;
+
+/* ---------- 画布 ---------- */
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+let W=0,H=0,DPR=1, scale=1, ox=0, oy=0;
+function resize(){
+  DPR=Math.min(window.devicePixelRatio||1,2);
+  W=cv.clientWidth; H=cv.clientHeight;
+  cv.width=W*DPR; cv.height=H*DPR;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+window.addEventListener('resize',()=>{resize();});
+const sx=x=>x*scale+ox, sy=y=>y*scale+oy;
+const wx=x=>(x-ox)/scale, wy=y=>(y-oy)/scale;
+
+function fit(){
+  const vis=N.filter(n=>!n.hidden); if(!vis.length) return;
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  vis.forEach(n=>{x0=Math.min(x0,n.x-n.r);y0=Math.min(y0,n.y-n.r);x1=Math.max(x1,n.x+n.r);y1=Math.max(y1,n.y+n.r);});
+  const bw=x1-x0, bh=y1-y0;
+  scale=Math.min((W-60)/bw,(H-60)/bh); scale=Math.max(0.18,Math.min(scale,1.6));
+  ox=W/2-(x0+x1)/2*scale; oy=H/2-(y0+y1)/2*scale;
+}
+
+/* ---------- 状态 ---------- */
+let hoverN=null, hoverE=null, selN=null, selE=null, drag=null, panning=false, lastP=null, downP=null;
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  // 连线
+  for(const e of E){
+    if(e.a.hidden||e.b.hidden) continue;
+    const isHi = (selE===e)||(hoverE===e)||
+      (hoverN&&(e.a===hoverN||e.b===hoverN))||(selN&&(e.a===selN||e.b===selN));
+    const dim = (hoverN||selN) && !isHi;
+    const g=edgeGeom(e);
+    ctx.beginPath(); ctx.moveTo(g.x1,g.y1);
+    ctx.quadraticCurveTo(g.cx,g.cy,g.x2,g.y2);
+    if(isHi){
+      ctx.strokeStyle = (selE===e||hoverE===e) ? '#5cc8ff' : CATS[(hoverN||selN).cat].c;
+      ctx.lineWidth = 2.6; ctx.globalAlpha=0.95;
+    }else{
+      ctx.strokeStyle='#7f93b3'; ctx.lineWidth=1; ctx.globalAlpha=dim?0.07:0.24;
+    }
+    ctx.stroke(); ctx.globalAlpha=1;
+  }
+  // 节点圆点
+  const cands=[];
+  for(const n of N){
+    if(n.hidden) continue;
+    const x=sx(n.x), y=sy(n.y), r=Math.max(4.5,n.r*Math.min(scale,1.25));
+    const isHi = n===hoverN||n===selN||(hoverN&&linked(hoverN,n))||(selN&&linked(selN,n))||
+      (hoverE&&(hoverE.a===n||hoverE.b===n))||(selE&&(selE.a===n||selE.b===n));
+    const dim=(hoverN||selN||hoverE||selE)&&!isHi;
+    n._x=x; n._y=y; n._r=r; n._hi=isHi;
+    ctx.globalAlpha = dim?0.28:1;
+    if(n.cat==='ai'){
+      ctx.beginPath(); ctx.arc(x,y,r+7,0,6.2832);
+      ctx.fillStyle='rgba(255,146,43,.18)'; ctx.fill();
+      ctx.beginPath(); ctx.arc(x,y,r+3.5,0,6.2832);
+      ctx.strokeStyle='rgba(255,146,43,.75)'; ctx.lineWidth=1.4; ctx.stroke();
+    }
+    ctx.beginPath(); ctx.arc(x,y,r,0,6.2832);
+    ctx.fillStyle=CATS[n.cat].c; ctx.fill();
+    ctx.lineWidth= (n===selN?2.5:1); ctx.strokeStyle=(n===selN||n===hoverN)?'#fff':'rgba(255,255,255,.25)'; ctx.stroke();
+    ctx.globalAlpha=1;
+    if(isHi || scale>0.62 || (scale>0.3 && n.deg>=7) || n.cat==='ai') cands.push(n);
+  }
+  // 标签：按重要性排序，重叠的让位，避免文字互相压叠
+  const fs = scale<0.5?10:11;
+  cands.sort((a,b)=>((b._hi?100:0)+(b.cat==='ai'?300:0)+b.deg)-((a._hi?100:0)+(a.cat==='ai'?300:0)+a.deg));
+  const boxes=[];
+  for(const n of cands){
+    const w=n.name.length*fs+2, h=fs+4;
+    const bx=n._x-w/2, by=n._y+n._r+3;
+    if(!n._hi){
+      let hit=false;
+      for(const b of boxes){ if(bx<b[2]&&b[0]<bx+w&&by<b[3]&&b[1]<by+h){hit=true;break;} }
+      if(hit) continue;
+    }
+    boxes.push([bx,by,bx+w,by+h]);
+    ctx.globalAlpha = (hoverN||selN||hoverE||selE)&&!n._hi ? 0.35 : 1;
+    ctx.font=(n._hi?'600 ':'')+fs+'px -apple-system,"PingFang SC",sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='top';
+    ctx.lineWidth=3; ctx.strokeStyle='rgba(8,12,20,.92)';
+    ctx.strokeText(n.name, n._x, by);
+    ctx.fillStyle= n._hi? '#ffffff' : '#a9b7cc';
+    ctx.fillText(n.name, n._x, by);
+    ctx.globalAlpha=1;
+  }
+  window._lc=boxes.length;
+}
+const linked=(a,b)=>E.some(e=>(e.a===a&&e.b===b)||(e.a===b&&e.b===a));
+function loop(){ tick(); tick(); draw(); requestAnimationFrame(loop); }
+
+/* ---------- 命中测试 ---------- */
+function pickNode(px,py){
+  let best=null,bd=1e9;
+  for(const n of N){ if(n.hidden) continue;
+    const d=Math.hypot(sx(n.x)-px, sy(n.y)-py);
+    const rr=Math.max(10, n.r*Math.min(scale,1.25)+6);
+    if(d<rr && d<bd){bd=d;best=n;}
+  }
+  return best;
+}
+function edgeGeom(e){
+  const x1=sx(e.a.x),y1=sy(e.a.y),x2=sx(e.b.x),y2=sy(e.b.y);
+  const mx=(x1+x2)/2, my=(y1+y2)/2, nx=-(y2-y1), ny=(x2-x1);
+  const nl=Math.hypot(nx,ny)||1, off=Math.min(18, nl*0.06);
+  return {x1,y1,cx:mx+nx/nl*off, cy:my+ny/nl*off, x2,y2};
+}
+function distCurve(e,px,py){
+  const g=edgeGeom(e);
+  let best=1e9, px0=g.x1, py0=g.y1;
+  for(let i=1;i<=12;i++){
+    const t=i/12, u=1-t;
+    const bx=u*u*g.x1+2*u*t*g.cx+t*t*g.x2;
+    const by=u*u*g.y1+2*u*t*g.cy+t*t*g.y2;
+    const d=distSeg(px,py,px0,py0,bx,by);
+    if(d<best) best=d;
+    px0=bx; py0=by;
+  }
+  return best;
+}
+function pickEdge(px,py){
+  let best=null,bd=9;
+  for(const e of E){
+    if(e.a.hidden||e.b.hidden) continue;
+    const d=distCurve(e,px,py);
+    if(d<bd){bd=d;best=e;}
+  }
+  return best;
+}
+function distSeg(px,py,x1,y1,x2,y2){
+  const dx=x2-x1, dy=y2-y1, L=dx*dx+dy*dy;
+  let t = L? ((px-x1)*dx+(py-y1)*dy)/L : 0; t=Math.max(0,Math.min(1,t));
+  return Math.hypot(px-(x1+t*dx), py-(y1+t*dy));
+}
+
+/* ---------- 交互 ---------- */
+const tip=document.getElementById('tip');
+cv.addEventListener('pointerdown',ev=>{
+  cv.setPointerCapture(ev.pointerId);
+  const r=cv.getBoundingClientRect(), px=ev.clientX-r.left, py=ev.clientY-r.top;
+  const n=pickNode(px,py);
+  if(n){ drag=n; n.fixed=true; hoverN=n; downP={px,py}; return; }
+  const e=pickEdge(px,py);
+  if(e){ selE=e; selN=null; showEdge(e); return; }
+  panning=true; lastP={px,py};
+});
+cv.addEventListener('pointermove',ev=>{
+  const r=cv.getBoundingClientRect(), px=ev.clientX-r.left, py=ev.clientY-r.top;
+  if(drag){ drag.x=wx(px); drag.y=wy(py); drag.vx=drag.vy=0; alpha=Math.max(alpha,0.25); return; }
+  if(panning){ ox+=px-lastP.px; oy+=py-lastP.py; lastP={px,py}; return; }
+  const n=pickNode(px,py);
+  hoverN=n;
+  if(n){ hoverE=null; tip.style.display='none'; cv.style.cursor='pointer'; return; }
+  const e=pickEdge(px,py);
+  hoverE=e;
+  if(e){
+    tip.style.display='block';
+    tip.querySelector('.tt').textContent=e.a.name+' ⟷ '+e.b.name;
+    tip.querySelector('.tx').textContent=e.r;
+    const tw=280; tip.style.left=Math.min(px+14, W-tw-10)+'px'; tip.style.top=Math.min(py+14,H-90)+'px';
+    cv.style.cursor='pointer';
+  }else{ tip.style.display='none'; cv.style.cursor='grab'; }
+});
+cv.addEventListener('pointerup',ev=>{
+  const r=cv.getBoundingClientRect(), px=ev.clientX-r.left, py=ev.clientY-r.top;
+  if(drag){
+    const moved = downP ? Math.hypot(px-downP.px, py-downP.py) : 99;
+    drag.fixed=false;
+    if(moved<5){ selN=drag; selE=null; showNode(drag); }
+    drag=null; downP=null; return;
+  }
+  panning=false;
+});
+cv.addEventListener('pointerleave',()=>{tip.style.display='none';hoverN=hoverE=null;});
+cv.addEventListener('wheel',ev=>{
+  ev.preventDefault();
+  const r=cv.getBoundingClientRect(), px=ev.clientX-r.left, py=ev.clientY-r.top;
+  const wxp=wx(px), wyp=wy(py);
+  const k=ev.deltaY<0?1.12:0.89;
+  scale=Math.max(0.15,Math.min(4,scale*k));
+  ox=px-wxp*scale; oy=py-wyp*scale;
+},{passive:false});
+// 双指缩放
+let pinch=null;
+cv.addEventListener('touchstart',ev=>{ if(ev.touches.length===2){
+  const r=cv.getBoundingClientRect();
+  pinch={d:Math.hypot(ev.touches[0].clientX-ev.touches[1].clientX, ev.touches[0].clientY-ev.touches[1].clientY),
+    cx:(ev.touches[0].clientX+ev.touches[1].clientX)/2-r.left, cy:(ev.touches[0].clientY+ev.touches[1].clientY)/2-r.top};
+}},{passive:true});
+cv.addEventListener('touchmove',ev=>{ if(ev.touches.length===2&&pinch){
+  ev.preventDefault();
+  const d=Math.hypot(ev.touches[0].clientX-ev.touches[1].clientX, ev.touches[0].clientY-ev.touches[1].clientY);
+  const wxp=wx(pinch.cx), wyp=wy(pinch.cy);
+  scale=Math.max(0.15,Math.min(4, scale*(d/pinch.d)));
+  ox=pinch.cx-wxp*scale; oy=pinch.cy-wyp*scale; pinch.d=d;
+}},{passive:false});
+cv.addEventListener('touchend',()=>{pinch=null;});
+
+/* ---------- 面板 ---------- */
+const panel=document.getElementById('panel'), pbody=document.getElementById('pbody');
+document.getElementById('pclose').onclick=()=>panel.classList.remove('open');
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  t.classList.add('on');
+  if(t.dataset.t==='rel') renderAllRels(); else if(selN) showNode(selN); else pbody.innerHTML='<div class="empty">点击任意节点查看它的工具档案与联系理由。</div>';
+});
+function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function chip(cat){return '<span class="chip" style="background:'+CATS[cat].c+'22;color:'+CATS[cat].c+';border:1px solid '+CATS[cat].c+'55">'+CATS[cat].n+'</span>';}
+function showNode(n){
+  selN=n;
+  const rels=E.filter(e=>e.a===n||e.b===n).map(e=>{
+    const o=(e.a===n?e.b:e.a);
+    return '<div class="rel" data-id="'+o.id+'"><div class="hd">'+esc(n.name)+'<span class="arrow">⟷</span>'+esc(o.name)+
+      ' <em>'+CATS[o.cat].n+'</em></div><div class="rs">'+esc(e.r)+'</div></div>';
+  }).join('');
+  pbody.innerHTML =
+    '<div class="title">'+esc(n.name)+'</div>'+
+    '<div class="sub">'+esc(n.en)+' · '+esc(n.era)+'</div>'+
+    '<div>'+chip(n.cat)+'<span class="chip" style="background:#1b2739;color:#8b9ab0;border:1px solid #26344a">连线 '+E.filter(e=>e.a===n||e.b===n).length+' 条</span></div>'+
+    '<div class="desc">'+esc(n.desc)+'</div>'+
+    '<div class="sec">与其他工具的联系（'+E.filter(e=>e.a===n||e.b===n).length+'）</div>'+
+    (rels||'<div class="empty">暂无</div>');
+  pbody.querySelectorAll('.rel').forEach(el=>el.onclick=()=>{
+    const t=byId[el.dataset.id]; if(t){ showNode(t); focusOn(t);} });
+  panel.classList.add('open');
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x.dataset.t==='node'));
+  focusOn(n);
+}
+function showEdge(e){
+  pbody.innerHTML =
+    '<div class="title" style="font-size:16px">'+esc(e.a.name)+' <span class="arrow">⟷</span> '+esc(e.b.name)+'</div>'+
+    '<div class="sub">'+CATS[e.a.cat].n+' × '+CATS[e.b.cat].n+'</div>'+
+    '<div class="sec">为什么相连</div><div class="desc">'+esc(e.r)+'</div>'+
+    '<div class="sec">'+esc(e.a.name)+'</div><div class="rs" style="font-size:12px;line-height:1.7;color:#b7c4d6">'+esc(e.a.desc)+'</div>'+
+    '<div class="sec">'+esc(e.b.name)+'</div><div class="rs" style="font-size:12px;line-height:1.7;color:#b7c4d6">'+esc(e.b.desc)+'</div>'+
+    '<div style="display:flex;gap:8px;margin-top:10px">'+
+    '<button class="btn" data-go="'+e.a.id+'">查看 '+esc(e.a.name)+'</button>'+
+    '<button class="btn" data-go="'+e.b.id+'">查看 '+esc(e.b.name)+'</button></div>';
+  pbody.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{showNode(byId[b.dataset.go]);});
+  panel.classList.add('open');
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x.dataset.t==='node'));
+}
+let relQ='';
+function renderAllRels(){
+  const q=relQ.trim();
+  const list=E.filter(e=>!q|| (e.a.name+e.b.name+e.r).indexOf(q)>=0);
+  pbody.innerHTML='<div class="sub">共 '+E.length+' 条连线，每条都写明了两个工具为什么相关。'+(q?'（匹配 '+list.length+' 条）':'')+'</div>'+
+    '<input id="rsearch" placeholder="搜索工具名或理由关键词…" value="'+esc(q)+'">'+
+    list.map(e=>'<div class="rel" data-e="'+e.i+'"><div class="hd">'+esc(e.a.name)+'<span class="arrow">⟷</span>'+esc(e.b.name)+
+      ' <em>'+CATS[e.a.cat].n+'×'+CATS[e.b.cat].n+'</em></div><div class="rs">'+esc(e.r)+'</div></div>').join('');
+  const rs=document.getElementById('rsearch');
+  rs.oninput=()=>{relQ=rs.value; const q2=relQ.trim();
+    pbody.querySelectorAll('.rel').forEach(el=>{
+      const e=E[+el.dataset.e]; el.style.display=(!q2||(e.a.name+e.b.name+e.r).indexOf(q2)>=0)?'':'none';});
+    const cnt=pbody.querySelectorAll('.rel:not([style*="display: none"])').length;
+    pbody.querySelector('.sub').textContent='共 '+E.length+' 条连线'+(q2?'，匹配 '+cnt+' 条':'');
+  };
+  pbody.querySelectorAll('.rel').forEach(el=>el.onclick=()=>{
+    const e=E[+el.dataset.e]; selE=e; selN=null; showEdge(e);
+    const mx=(e.a.x+e.b.x)/2, my=(e.a.y+e.b.y)/2;
+    ox=W/2-mx*scale; oy=H/2-my*scale;
+  });
+}
+function focusOn(n){ ox=W/2-n.x*scale; oy=H/2-n.y*scale; alpha=Math.max(alpha,0.2); }
+
+/* ---------- 图例 ---------- */
+const legend=document.getElementById('legend');
+Object.keys(CATS).forEach(k=>{
+  const row=document.createElement('div'); row.className='row'; row.dataset.k=k;
+  row.innerHTML='<span class="dot" style="background:'+CATS[k].c+'"></span><span>'+CATS[k].n+'（'+N.filter(n=>n.cat===k).length+'）</span>';
+  row.onclick=()=>{
+    const on=row.classList.toggle('off');
+    N.forEach(n=>{ if(n.cat===k) n.hidden=on; });
+    alpha=0.5;
+  };
+  legend.appendChild(row);
+});
+
+/* ---------- 搜索 ---------- */
+const si=document.getElementById('search'), sg=document.getElementById('sugg');
+si.oninput=()=>{
+  const q=si.value.trim(); if(!q){sg.style.display='none';return;}
+  const m=N.filter(n=>(n.name+n.en+n.desc).indexOf(q)>=0).slice(0,12);
+  sg.innerHTML = m.length? m.map(n=>'<div data-id="'+n.id+'">'+esc(n.name).replace(esc(q),'<b>'+esc(q)+'</b>')+' <em style="color:#8b9ab0;font-style:normal">'+CATS[n.cat].n+'</em></div>').join('')
+    : '<div style="color:#8b9ab0">没有匹配的工具</div>';
+  sg.style.display='block';
+  sg.querySelectorAll('[data-id]').forEach(d=>d.onclick=()=>{
+    const n=byId[d.dataset.id]; sg.style.display='none'; si.value='';
+    if(n.hidden){ n.hidden=false; legend.querySelector('[data-k="'+n.cat+'"]').classList.remove('off'); }
+    selN=n; selE=null; hoverN=n; showNode(n);
+  });
+};
+si.onblur=()=>setTimeout(()=>sg.style.display='none',200);
+
+/* ---------- 按钮 ---------- */
+document.getElementById('btnFit').onclick=()=>{fit();};
+const ball=document.getElementById('btnAll');
+ball.onclick=()=>{ renderAllRels(); panel.classList.add('open');
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x.dataset.t==='rel')); };
+const bai=document.getElementById('btnAI');
+if(byId['ai_math']) bai.onclick=()=>{ const n=byId['ai_math']; selE=null; hoverN=n; showNode(n); };
+
+/* ---------- 启动 ---------- */
+resize(); fit(); loop();
+document.getElementById('hint').innerHTML =
+  N.length+' 个数学工具 · '+E.length+' 条联系（每条都写了为什么相连）· <span style="color:#ff922b">橙色为 2026 年新增的 AI 前沿</span><br>'+
+  '拖拽节点 · 滚轮/双指缩放 · 点节点看档案 · 点连线看联系理由';
+pbody.innerHTML='<div class="empty">点击任意节点查看它的工具档案与联系理由；点击连线看它们的联系依据；右上角「全部连线」可通读全部理由。</div>';
+</script>
+</body>
+</html>

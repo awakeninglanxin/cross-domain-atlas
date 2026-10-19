@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>磁荷与洛书 —— Ω-9 磁荷矩阵演算（SU(9)/Z₉）</title>
+<link rel="stylesheet" href="assets/css/site.css">
+<style>
+  /* ── 磁荷 3×3 矩阵（行和列实时可见） ── */
+  .mstage{display:inline-block;margin:6px 0 2px}
+  .mgrid{display:grid;grid-template-columns:repeat(3,60px) 72px;grid-auto-rows:54px;gap:5px}
+  .mgrid .cell{border:1px solid var(--line-2);border-radius:9px;display:flex;align-items:center;justify-content:center;
+    font-family:var(--serif);font-size:23px;background:#fff;cursor:pointer;user-select:none;transition:.1s;color:var(--ink)}
+  .mgrid .cell:hover{border-color:var(--accent)}
+  .mgrid .cell.sel{outline:2px solid var(--accent);background:#eaf1fb}
+  .mgrid .sum{border:0;background:var(--bg-soft);font-family:var(--mono);font-size:14.5px;color:var(--accent-2);cursor:default;border-radius:8px}
+  .mgrid .sum.zero{color:var(--good);font-weight:700}
+  .mgrid .corner{border:0;background:transparent;cursor:default}
+  .mgrid .lbl{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+  .verdict{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 4px;align-items:center}
+  .mono-big{font-family:var(--serif);font-size:26px;color:var(--accent-2)}
+  /* ── 洛书展示格 ── */
+  .loshu{display:grid;grid-template-columns:repeat(3,58px);gap:5px;margin:6px 0}
+  .loshu .n{border:1px solid var(--line-2);border-radius:9px;height:54px;display:flex;align-items:center;justify-content:center;
+    font-family:var(--serif);font-size:23px;background:#fff}
+  .loshu .n.c5{background:var(--bg-soft2);font-weight:700;color:var(--accent-2)}
+  .loshu .n.neg{color:var(--ink-2)}
+  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+  @media(max-width:820px){.twocol{grid-template-columns:1fr}}
+  .mini{font-size:13px;color:var(--ink-3);font-family:var(--mono)}
+  .calcrow{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin:8px 0}
+  .calcrow label{font-size:13px;color:var(--ink-2);font-family:var(--mono)}
+  .calcrow input{width:80px;padding:6px 9px;border:1px solid var(--line-2);border-radius:8px;font-family:var(--mono);font-size:15px}
+  .calcrow input:focus{outline:2px solid var(--accent);border-color:var(--accent)}
+  .census-out{font-family:var(--mono);font-size:14.5px;line-height:2;background:var(--bg-soft);border:1px solid var(--line);
+    border-left:3px solid var(--accent);border-radius:8px;padding:12px 16px;margin:10px 0}
+  .err{color:var(--bad);font-family:var(--mono);font-size:13px;min-height:18px;margin:2px 0}
+  .chk-ok{color:var(--good);font-weight:700}
+  .chk-no{color:var(--bad);font-weight:700}
+  /* ── 尺度之桥 ── */
+  .r0row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:4px 0 8px}
+  .r0row .lbl2{font-size:13px;color:var(--ink-2);font-family:var(--mono)}
+  .brk{font-weight:700;color:var(--accent-2);font-family:var(--serif)}
+</style>
+</head>
+<body>
+
+<nav class="topnav"><div class="inner">
+  <a class="brand" href="index.html">时空弯曲 <span>/</span> 曲速引擎 <span>/</span> anu</a>
+  <a class="nv" href="01_spacetime_six_models.html">① 六种画法</a>
+  <a class="nv" href="02_warp_bubble_scanner.html">② 曲速泡扫描</a>
+  <a class="nv" href="03_pks_timescape_gyro.html">③ PKS 关联</a>
+  <a class="nv" href="04_anu_to_nucleus.html">④ anu→原子核</a>
+  <a class="nv" href="05_quark_anu.html">⑤ 夸克↔anu</a>
+  <a class="nv" href="06_seven_realms_koilon_to_cell.html">⑥ 七界 L7→L1</a>
+  <a class="nv on" href="07_magnetic_charge_lo_shu.html">⑦ 磁荷·洛书</a>
+  <a class="nv xlink" href="file:///D:/AAA%E6%88%91%E7%9A%84%E6%96%87%E4%BB%B6/anu%E4%B8%8Emilnor7%E7%BB%B4%E6%B5%81%E5%BD%A2/AAA_Anu%E4%B8%83%E7%BA%A7%E8%9E%BA%E6%97%8B%E4%B8%BB%E7%95%8C%E9%9D%A2.html"
+     target="_blank" rel="noopener"
+     title="Anu 七级螺旋主界面（另一项目「anu 与 Milnor 7 维流形」，本机 file:/// 绝对路径）">Anu 七级螺旋</a>
+</div></nav>
+
+<div class="wrap">
+
+<div class="hero">
+  <div class="kicker">PKS 千禧难题 · 02 应用科技 · 时空弯曲不同模型表达 · 子页 ⑦</div>
+  <h1>磁荷与洛书：Ω-9 磁荷矩阵演算</h1>
+  <p class="sub">
+    Phillips 在 <em>ESP of Quarks</em>（1980）里把 anu 认成 <b>SU(9) 磁单极子</b>，整套结构可以压缩成一个五层形式系统——
+    ima 笔记把它命名为 <b>Ω-9 磁荷矩阵演算</b>。本页把它落到三件能看、能算、能验的东西上：<br>
+    <b>①</b> 一条对每个原子核都成立的<b>通项定理</b>；<b>②</b> 洛书幻方 = <b>Z₉</b> 的逐层对应；
+    <b>③</b> 三个可现场点的部件——「质子谱排不成全幻方」穷举台、夸克普查计算器、以及 <b>A 的尺度之桥</b>
+    （同一个 A：磁荷账本里乘 18，尺度桥里开 1/3 次方）。
+  </p>
+  <div class="meta">来源：ima 知识库「关于磁荷anu笔记」· Phillips 1980 + B–L 计数 · 关键结论已本页穷举复核 · 尺度桥常数已独立复算 · A/B/C 三级分级</div>
+</div>
+
+<!-- ══════════════ §1 ══════════════ -->
+<h2><span class="num">§1</span>一条通项定理，与五层总表</h2>
+
+<div class="card warn">
+  <div class="ch">通项定理（对任意元素、任意核素成立）</div>
+  <div class="eq" style="margin-top:4px">H(A, Z) ≡ 0 (mod 9)　　—— 任意原子核的总磁荷恒等于零<span class="lbl">约束，不是随元素变的公式</span></div>
+  <p style="margin:0">这不是「每个元素的磁荷不同、可以列表」的那种规律，而是一条<b>约束</b>：所有元素（含全部稀土）的核总磁荷<b>一律相同，都是 0</b>。
+  所以<b>磁荷分不清镧和镥</b>——能区分它们的是 Anu 计数（B–L 的 N、Phillips 的 n = 18A、以及误差 N − n）。
+  Phillips 给的两种核子磁荷谱不只是模 9 抵消，<b>整数和就精确为零</b>：质子 4+3−6−1 = 0；氧 MPA 总账 80(+2)/64(+1)/80(−2)/64(−1) 也精确对消。</p>
+  <div class="src">出处：ima 笔记《找到了，但要先把话说准……》；原文引语 "flux quanta defined modulo 9" / "nine and only nine SU(9) monopoles form a magnetically neutral system"　<span class="g gA">A</span> 原文有据</div>
+</div>
+
+<p>整个 Ω-9 演算可以压成五层。下表是本页的总纲，后面每一节展开其中一层：</p>
+
+<div class="scroll-x">
+<table>
+<thead><tr><th>层</th><th>名称</th><th>结构</th><th>约束 / 关键式</th><th>落到本页哪一节</th></tr></thead>
+<tbody>
+<tr><td class="kv">层 0</td><td><b>拓扑群基座</b></td>
+  <td>规范群 SU(9)/Z₉ 九重连通；Z₉ 唯一真子群 Z₃ 生成商结构</td>
+  <td class="kv">τ: Z₉ → Z₃；+1 与 −2 同弦、+2 与 −1 同弦（1 ≡ −2、2 ≡ −1，mod 3）</td>
+  <td>§2（Z₃ 把重子逼成 3×3）</td></tr>
+<tr><td class="kv">层 1–2</td><td><b>单体 / 三体</b></td>
+  <td>omegon 九个「颜色–色度」态 ω<sup>αa</sup>，构成 SU(3)꜀×SU(3)ₛ 的 (3,3) 表示；夸克 = 3 个单极子簇，Y 形 SU(3) 弦束缚</td>
+  <td class="kv">行和 m<sub>i</sub> ≡ 0 (mod 3)；合法行型 ±(1,1,1)、±(1,1,−2)、±(2,2,−1)、±(2,2,2) ⇒ m<sub>i</sub> ∈ {0, ±3, ±6}</td>
+  <td>§4（夸克普查公式）</td></tr>
+<tr><td class="kv">层 3</td><td><b>九体 3×3 矩阵</b></td>
+  <td>重子 = 3×3 磁荷矩阵 M，行 = 夸克，九个 omegon 各占一色态；介子 = M₂ = −M₁ 反对称</td>
+  <td class="kv">三档解 (a) 行行归零 (b) ±3,±3,∓6 (c) 3,0,−3；可观测性：自由态只许色单态</td>
+  <td>§2 / §3（三档解 ↔ 完全幻方/半幻/行幻）</td></tr>
+<tr><td class="kv">层 4</td><td><b>堆积层 MPA</b></td>
+  <td>MPA = 两个原子核；色度对称度降低 → 核子分裂为夸克与 omegon → 重组成 B–L 群清单（Ad6、H3、N2、Li4、B5、Be10、P9…）</td>
+  <td class="kv">N = 18A；Ca-40 的 720 UPA ÷ 18 = 40.00 是 N=18A 规则的字面出处</td>
+  <td>§5（核不是 27 阶幻方）</td></tr>
+<tr><td class="kv">—</td><td><b>算法边界</b></td>
+  <td colspan="2">它只是<b>守恒律编译器，不是动力学引擎</b>——能量、形成概率、为何 (a)(b)(c) 实现为质子/中子谱，原文自己挂起（「这里不再讨论」）。三个开放参数：m<sub>Ω</sub>、氧螺旋电荷里的未知 X、计数误差裁决规则。</td>
+  <td>§8</td></tr>
+</tbody></table>
+</div>
+
+<!-- ══════════════ §2 ══════════════ -->
+<h2><span class="num">§2</span>洛书 = Z₉：「减 5」就是磁中性条件</h2>
+
+<p>ima 笔记里最关键的一句对应：<b>洛书幻方其实就是 Z₉（模 9 循环群）的算术化身</b>，而 Phillips 的重子恰好也是被强制成「九格系统」的。您幻方里「减 5」那一步，在框架里有精确的物理对应物。</p>
+
+<div class="twocol">
+<div>
+  <h4>洛书（每线和 = 15，模 9 下 15 ≡ 6）</h4>
+  <div class="loshu" id="loshuRaw">
+    <div class="n">4</div><div class="n">9</div><div class="n">2</div>
+    <div class="n">3</div><div class="n c5">5</div><div class="n">7</div>
+    <div class="n">8</div><div class="n">1</div><div class="n">6</div>
+  </div>
+  <p class="mini">行 / 列 / 对角全部 = 15。九条线同余 6 (mod 9) ⇒ 这是一张「模 9 幻方」。</p>
+</div>
+<div>
+  <h4>「减 5」之后（每线和 = 0）</h4>
+  <div class="loshu" id="loshuCen">
+    <div class="n neg">−1</div><div class="n neg">4</div><div class="n neg">−3</div>
+    <div class="n neg">−2</div><div class="n c5">0</div><div class="n neg">2</div>
+    <div class="n neg">3</div><div class="n neg">−4</div><div class="n neg">1</div>
+  </div>
+  <p class="mini">减去中心 5 后每线归零，对称落到 −4…4。数学上就是<b>投影到总和为零的子空间</b>——和磁中性条件 Σ M<sub>i</sub> = 0 是同一句话。</p>
+</div>
+</div>
+
+<blockquote>
+  <p>「九个阿贝尔单极子系统的磁中性条件」——九单极子系统要具有限能量，条件是电偶极矩恰为零，即 Σ<sub>i,α</sub> m<sub>i</sub><sup>α</sup> = 0（Phillips 式 49–50）。</p>
+  <cite>Phillips 1980，转引自 ima 笔记《这个类比比"像"更深……》</cite>
+</blockquote>
+
+<p><b>为什么偏偏是 3×3：</b>Z₉ 的因子只有 1、3、9，唯一真子群是 Z₃。所以九足涡旋「聚成三组、每组三个」，外层 SU(9) 弦、内层 Y 形 SU(3) 弦；重子的天然图像就是 3×3：<b>行 = 夸克，列 = 色度</b>（ψ/φ/θ 三重态）。幻方选 3×3 不是随便举例，是被子群结构逼出来的。</p>
+
+<p>Phillips 给出三档解，恰好是「平衡程度」的分级——把它翻译成幻方语言：</p>
+<div class="scroll-x">
+<table>
+<thead><tr><th>Phillips 解</th><th>行和结构</th><th>幻方语言</th><th>对应粒子</th></tr></thead>
+<tbody>
+<tr><td class="kv">(a)</td><td class="kv">m₁=m₂=m₃=0</td><td><b>完全幻方态</b>（由 ±(1,1,−2) 型行实现）</td><td>理想中性三重态</td></tr>
+<tr><td class="kv">(b)</td><td class="kv">±3, ±3, ∓6</td><td>行内漏电、全局归零 —— <b>半幻</b></td><td rowspan="2">真实核子落在这里</td></tr>
+<tr><td class="kv">(c)</td><td class="kv">3, 0, −3</td><td>等差行、和为零 —— <b>行幻 + 全局幻</b></td></tr>
+</tbody></table>
+</div>
+<p class="note">注：(c) 的行和 3,0,−3 是等差数列，对称性比洛书低一档。真实核子落在 (b)/(c)：全局平衡、行内带电荷（夸克磁荷 3 或 6 mod 9）。</p>
+
+<p>还有第三张表常被忽略：<b>中心化洛书的「对位互补」= 介子</b>。对位两格之和为零（8+2、1+9、3+7、4+6 全对消），它的物理实现不是重子而是介子——Phillips 的介子定义就是夸克 + 反夸克，M₂<sup>α</sup> = −M₁<sup>α</sup>，Σ(M₁+M₂) = 0 (mod 9)。于是三张表各归其位：<b>完全幻方 = 理想中性三重态；行幻 + 全局幻 = 重子；对位幻方 = 介子。</b></p>
+
+<div class="src">本节出处：ima 笔记《这个类比比"像"更深——洛书幻方其实就是 Z₉……》　<span class="g gA">A</span> 原文有据（磁中性条件、子群结构）　<span class="g gB">B</span> 幻方↔矩阵的逐层对应为本页/笔记所做的接通</div>
+
+<!-- ══════════════ §3 ══════════════ -->
+<h2><span class="num">§3</span>质子谱排不成全幻方（可现场穷举）</h2>
+
+<p>把核子的磁荷多重集填进 3×3，要求每行是合法夸克行（行和 ∈ {0, ±3, ±6}）。笔记给了一条可以当场验证的小定理：<b>质子谱能摆到「行合法、全局归零」，但列永远无法同时归零 ⇒ 排不成完全幻方</b>。</p>
+
+<div class="card">
+  <div class="ch">穷举台 —— 点格子交换，或一键随机 / 一键穷举全部</div>
+  <div class="controls">
+    <button class="btn on" id="msProton" type="button">质子谱 {2,2,1,1,1,−1,−2,−2,−2}</button>
+    <button class="btn" id="msNeutron" type="button">中子谱 {2,2,2,1,−1,−1,−1,−2,−2}</button>
+    <button class="btn" id="msIdeal" type="button">理想 6/3 谱 {1×6, −2×3}</button>
+    <button class="btn sm" id="msShuffle" type="button">随机摆一种</button>
+    <button class="btn sm" id="msEnum" type="button">▶ 穷举全部排列</button>
+  </div>
+  <div class="mstage"><div class="mgrid" id="mgrid"></div></div>
+  <div class="verdict" id="mverdict"></div>
+  <p class="mini">用法：点一个格子选中，再点另一个格子交换（多重集不变）。右列 = 行和，底行 = 列和；<b>绿色 = 归零</b>。完全幻方 = 三行全 0 且三列全 0。</p>
+  <div class="err" id="merr"></div>
+  <div id="menum" class="census-out" style="display:none"></div>
+</div>
+
+<div class="card good">
+  <div class="ch">本页已用穷举独立复核（Python，非照抄笔记）</div>
+  <div class="scroll-x"><table>
+  <thead><tr><th>磁荷谱</th><th>不同排列</th><th>行合法排列</th><th>出现的行和结构</th><th>列同时归零</th><th>完全幻方</th></tr></thead>
+  <tbody>
+  <tr><td>质子 5/4</td><td class="kv">5040</td><td class="kv">180</td><td class="kv">(−3,0,3)、(−6,3,3)</td><td><span class="chk-no">0</span></td><td><span class="chk-no">0</span></td></tr>
+  <tr><td>中子 5/4</td><td class="kv">5040</td><td class="kv">180</td><td class="kv">(−3,−3,6)、(−3,0,3)</td><td><span class="chk-no">0</span></td><td><span class="chk-no">0</span></td></tr>
+  <tr><td>理想 6/3</td><td class="kv">84</td><td class="kv">84</td><td class="kv">含 (0,0,0)</td><td><span class="chk-ok">27</span></td><td><span class="chk-ok">6</span></td></tr>
+  </tbody></table></div>
+  <p style="margin:0">障碍的根源是那个反复打交道的 <b>5(+)/4(−) 个数不对称</b>：完全幻方要求 6/3 型谱（如 {1×6, −2×3}，可排成每行每列都是 (1,1,−2) 的排列）——那不是核子。
+  换句话说，<b>「全局抵消但局部漏电」不是模型没做干净，而是 5/4 结构的数学必然。</b>氢变体 2 的 10+/8−、稀土表里永远小于 1 的正负比、和这里「排不成全幻方」，是同一件事的三个投影。</p>
+  <div class="src">笔记原文给出的是 (3,0,−3) 一种行组合；本页穷举发现合法行结构实为两种（多出 (−6,3,3)，即一行为三个 −2）。结论「完全幻方 = 0」两者一致，行结构数以本页穷举为准。　<span class="g gA">A</span> 组合数学，可复算</div>
+</div>
+
+<!-- ══════════════ §4 ══════════════ -->
+<h2><span class="num">§4</span>夸克普查计算器（本轮新推的核心输出）</h2>
+
+<p>从层 3 谱系（质子 2u+d、中子 u+2d）+ MPA = 双核，纯算术可推出夸克普查公式。它把账本从 (A, Z) 一路闭合到 omegon：</p>
+
+<div class="eq">
+N<sub>u</sub> = 2(A + Z)　　N<sub>d</sub> = 2(2A − Z)　　N<sub>u</sub> + N<sub>d</sub> = 6A　　omegon = 18A　　正 Anu = 2(4A + Z)　负 Anu = 2(5A − Z)
+</div>
+
+<p>下面这个计算器把公式做实。输入质量数 A 与质子数 Z，实时给出全部对账（带闭合自检）；
+再给两个原子侧参数（n* 与 Z<sub>eff</sub>）并选一个核侧参数 r₀，<b>同一个 A</b> 同时算出「尺度之桥」：</p>
+
+<div class="card">
+  <div class="calcrow">
+    <div><label for="cA">质量数 A</label><br><input id="cA" type="number" min="1" max="300" step="1" value="27"></div>
+    <div><label for="cZ">质子数 Z</label><br><input id="cZ" type="number" min="0" max="600" step="1" value="13"></div>
+    <div><button class="btn" id="cGo" type="button">算</button></div>
+    <div><label for="cN">有效主量子数 n*</label><br><input id="cN" type="number" min="1" max="7" step="0.1" value="3"></div>
+    <div><label for="cZe">Z<sub>eff</sub></label><br><input id="cZe" type="number" min="0.1" max="30" step="0.01" value="4.04"></div>
+  </div>
+  <div class="r0row">
+    <span class="lbl2">核侧 r₀：</span>
+    <button class="btn sm on" id="r0t" type="button">1.2 fm（教科书）</button>
+    <button class="btn sm" id="r0f" type="button">0.974 fm（实测拟合）</button>
+    <button class="btn sm" id="r0p" type="button">1.414 fm（π 康普顿）</button>
+    <span class="lbl2">预设：</span>
+    <button class="btn sm" id="pAl" type="button">Al-27</button>
+    <button class="btn sm" id="pNi" type="button">Ni-58</button>
+    <button class="btn sm" id="pBa" type="button">Ba-138</button>
+    <button class="btn sm" id="pH" type="button">H-1</button>
+  </div>
+  <div class="err" id="cerr"></div>
+  <div class="census-out" id="cout">填 A、Z 后点「算」。</div>
+</div>
+
+<p>公式用五个元素的原文实测数交叉验证，<b>五处独立全中</b>（此前各轮只用 Anu 级普查，夸克级普查是它缺失的中间层）：</p>
+<div class="scroll-x">
+<table>
+<thead><tr><th>元素</th><th>预测 u/d</th><th>原文实测</th><th>结果</th></tr></thead>
+<tbody>
+<tr><td>Li-7</td><td class="kv">20 / 22</td><td>"20 个 u 和 22 个 d 夸克"</td><td><span class="chk-ok">✓</span></td></tr>
+<tr><td>He-3</td><td class="kv">10 / 8</td><td>"十个 u 夸克和八个 d 夸克"</td><td><span class="chk-ok">✓</span></td></tr>
+<tr><td>Al-27</td><td class="kv">80 / 82</td><td>图 7.78："80u……82d"</td><td><span class="chk-ok">✓</span></td></tr>
+<tr><td>Si-28</td><td class="kv">84 / 84</td><td>"84 个 u 夸克和 84 个 d 夸克"</td><td><span class="chk-ok">✓</span></td></tr>
+<tr><td>K-39</td><td class="kv">116 / 118</td><td>"116 个 u 夸克和 118 个 d 夸克"</td><td><span class="chk-ok">✓</span></td></tr>
+</tbody></table>
+</div>
+<div class="src">出处：ima 笔记《有——而且这一轮检索把最后几块拼图补齐了……》　<span class="g gA">A</span> 原文实测数　<span class="g gB">B</span> 公式为本页/笔记推导（已复算）</div>
+
+<h4 style="margin:20px 0 6px">④-2　A 的第二重身份：尺度之桥</h4>
+
+<p>元宝对话（老师 2026-10-14 提供）把「原子为什么比核大五万倍」拆成了一个闭式。<b>它与上面的普查公式共享同一个 A</b>：
+磁荷账本里 A <b>乘 18</b>（omegon = 18A），尺度桥里 A <b>开 1/3 次方</b>（R ∝ A<sup>1/3</sup>）——一个核子数，两本账。</p>
+
+<div class="eq">
+原子/核尺度比 = (1/α) × (m<sub>π</sub>/m<sub>e</sub>) × (λ̄<sub>π</sub>/(√(3/5)·r₀)) × (n*)²/(Z<sub>eff</sub>·A<sup>1/3</sup>)
+= 137.036 × 273.13 × 1.5210 × (n*)²/(Z<sub>eff</sub>·A<sup>1/3</sup>) = <b>56,930 × (n*)²/(Z<sub>eff</sub>·A<sup>1/3</sup>)</b>
+</div>
+
+<div class="scroll-x">
+<table>
+<thead><tr><th>侧</th><th>公式</th><th>关键假设</th><th>几何因子</th></tr></thead>
+<tbody>
+<tr><td class="kv">原子侧</td><td class="kv">r = (n*)²/Z<sub>eff</sub> · a₀</td>
+  <td>Slater 型轨道径向电荷密度取极值：dρ/dr = 0 ⇒ r<sub>max</sub> = n*/ξ，而 ξ = Z<sub>eff</sub>/n* ⇒ r<sub>max</sub> = (n*)²/Z<sub>eff</sub>·a₀。a₀ = 52.9177 pm（CODATA）。</td>
+  <td>无（纯量子力学）；n* 是 Slater 修正主量子数（n = 4→3.7、5→4.0、6→4.2）</td></tr>
+<tr><td class="kv">核侧</td><td class="kv">R = √(3/5) · r₀ · A<sup>1/3</sup></td>
+  <td>核密度近似恒定 ⇒ 体积 ∝ 核子数 A ⇒ R ∝ A<sup>1/3</sup>；r₀ ≈ 1.2 fm（实测拟合最优 0.974 fm）。</td>
+  <td><b>√(3/5) = 0.7746</b>：均匀 d 维球的 rms 半径 ⟨r²⟩ = d/(d+2)·R²，d = 3（分母的 +2 来自 r² 权重）——货真价实的几何，不是拟合</td></tr>
+</tbody></table>
+</div>
+
+<p><b>尺度阶梯</b>（全部只由 ħc 与两个质量标出，单位 fm）：</p>
+<div class="scroll-x">
+<table>
+<thead><tr><th>尺度</th><th>值 (fm)</th><th>是什么</th></tr></thead>
+<tbody>
+<tr><td>核子康普顿 λ̄<sub>p</sub></td><td class="kv">0.2103</td><td>ħc/m<sub>p</sub></td></tr>
+<tr><td>核 rms 半径 √(3/5)·r₀</td><td class="kv">0.9295</td><td>液滴硬边 1.2 fm × 0.7746</td></tr>
+<tr><td>π 介子康普顿 λ̄<sub>π</sub></td><td class="kv">1.41382</td><td>ħc/m<sub>π</sub>——核力程的尺度（QCD 决定，不是几何）</td></tr>
+<tr><td>电子康普顿 λ̄<sub>e</sub></td><td class="kv">386.16</td><td>ħc/m<sub>e</sub>——与耦合强度无关，电子「本来」的量子尺度</td></tr>
+<tr><td>玻尔半径 a₀</td><td class="kv">52,917.7</td><td>λ̄<sub>e</sub>/α——α 唯一的活儿，就是把 λ̄<sub>e</sub> 撑大 137 倍</td></tr>
+</tbody></table>
+</div>
+<p class="note">两跳分解：a₀/λ̄<sub>e</sub> = 137.036 = 1/α；λ̄<sub>e</sub>/R<sub>rms</sub> = 415.4。五万倍里 137 倍来自 α，另外 415 倍来自「电子比强子轻 273 倍」加核力程细节。
+拆到底：a₀/r₀ = (m<sub>eff</sub>/m<sub>e</sub>)/α = 44,098，其中 m<sub>eff</sub> = ħc/r₀ = 164.4 MeV——<b>接近但不等于 m<sub>π</sub> = 139.6 MeV，这正是核侧那几个百分点误差的物理根源</b>（核力程由 π 介子还是 QCD 尺度 Λ ≈ 200 MeV 决定，没有单一答案）。</p>
+
+<div class="card">
+  <div class="ch">电子的三条尺度是一条等比链：r<sub>e</sub> : λ̄<sub>e</sub> : a₀ = α² : α : 1</div>
+  <p style="margin:0">经典电子半径 r<sub>e</sub> = α²·a₀ = 2.8179 fm（电磁自能 = 静质能定出的长度）；约化康普顿 λ̄<sub>e</sub> = α·a₀ = 386.16 fm；玻尔半径 a₀ = λ̄<sub>e</sub>/α。
+  验算：λ̄<sub>e</sub>/a₀ = 0.0072974 = α、r<sub>e</sub>/a₀ = α²（代数恒等，数值误差只来自常数有效位；a₀/r<sub>e</sub> = 18,779）。
+  物理内容：<b>中间那个 λ̄<sub>e</sub> 不依赖耦合强度，是电子本来的量子尺度；两边被 α 一缩一放。</b>
+  α 小 ⇒ 轨道被撑大 ⇒ 原子是空的。反事实检验：若 α 变成 2 倍，核半径丝毫不变（强相互作用主导，α 只带来极小电磁修正），而所有原子缩小一半——<b>比值 ∝ 1/α，严格线性</b>。</p>
+</div>
+
+<p><b>预设与自洽性</b>（Z<sub>eff</sub> 取 Clementi-Raimondi 最外壳层值，n* 取 Slater 修正；r<sub>计算</sub> = (n*)²a₀/Z<sub>eff</sub>）：</p>
+<div class="scroll-x">
+<table>
+<thead><tr><th>元素</th><th>A</th><th>n*</th><th>Z<sub>eff</sub></th><th>r<sub>计算</sub> (pm)</th><th>R<sub>rms</sub> (fm)</th><th>公式比值</th><th>与同源 SCF 表偏差</th></tr></thead>
+<tbody>
+<tr><td>Al 铝</td><td>27</td><td>3</td><td>4.04</td><td>117.9</td><td>2.7885</td><td class="kv">42,275</td><td><b>0.00%</b></td></tr>
+<tr><td>Ni 镍</td><td>58</td><td>4</td><td>5.68</td><td>149.1</td><td>3.5980</td><td class="kv">41,429</td><td><b>0.00%</b></td></tr>
+<tr><td>Fe 铁</td><td>56</td><td>4</td><td>5.43</td><td>155.9</td><td>3.5562</td><td class="kv">43,847</td><td><b>0.00%</b></td></tr>
+<tr><td>Ba 钡</td><td>138</td><td>6</td><td>7.53</td><td>253.0</td><td>4.8034</td><td class="kv">52,669</td><td><b>0.00%</b></td></tr>
+<tr><td>H 氢</td><td>1</td><td>1</td><td>1.00</td><td>52.92</td><td>0.9295</td><td class="kv">56,930</td><td>液滴在 A=1 失效（见下注）</td></tr>
+</tbody></table>
+</div>
+<p class="note">氢注：液滴给 R<sub>rms</sub> = 0.9295 fm，而质子电荷半径实测 0.8409 fm；氢的正确写法是 比值 = (1/α)(λ̄<sub>e</sub>/R<sub>p</sub>) = 137.036 × 459.2 = <b>62,930</b>（液滴口径给 56,930，低 9.5%）。A&lt;20 的轻核表面层占比太大，液滴前提本就不稳。</p>
+
+<div class="card warn">
+  <div class="ch">误差与纪律：这个公式能说到什么程度</div>
+  <ul style="margin:0">
+    <li><b>0.00% 是循环论证，不是验证。</b>上表的 Z<sub>eff</sub> 就是从 r<sub>计算</sub> 反推的（Z<sub>eff</sub> = (n*)²a₀/r），公式只是 SCF 表换了写法——元宝原文自己也承认了这一点。真正的检验在下面两条。</li>
+    <li><b>独立检验一（Z<sub>eff</sub> 改用 Slater 经验规则 0.35/0.85/1.00，不用 SCF 表）：</b>Al：S = 9.50 ⇒ Z<sub>eff</sub> = 3.50 ⇒ r = 136.1 pm vs CR 118 pm（<b>+15%</b>）；K：S = 16.8、n* = 3.7、Z<sub>eff</sub> = 2.2 ⇒ r = 329 pm vs Slater 自己表里的 203 pm（<b>+62%</b>）。</li>
+    <li><b>独立检验二（换一个物理量——共价半径，Cordero 2008）：</b>Al 121 pm（公式 117.9，+2.6%）、Ni 124 pm（公式 149.1，−16.8%）、Ba 215 pm（公式 253.0，−15.0%）。共价半径是成键量，与自由原子轨道最概然半径本就是两个物理量——定义分歧主导误差，对过渡金属能差到 20%。</li>
+    <li><b>r₀ 一漂，常数就散：</b>C = a₀/(√(3/5)·r₀) 在文献值 48,321（r₀ = 1.4138）～70,140（r₀ = 0.974）之间，跨度 <b>45%</b>；拿实测核半径拟合出的最优值是 0.974 fm 而非教科书 1.2 fm。</li>
+    <li><b>撞数纪律（本项目的老规矩）：</b>56,930 = 2×5×5693，而 5693 是素数——没有组合意义；且它只有两位有效数字。这个量级上三角数每 ~337 出一个：56,953 = 337×338/2 只差 <b>0.040%</b>，239² = 57,121 差 0.336%。<b>撞上是背景，不是发现。</b></li>
+    <li><b>39202 与 Q₁₂（银比幂）：</b>(1+√2)¹² = 39,201.99997 ≡ Q₁₂；39,202 × 3.061 fm = 120.00 pm，落在 Al 共价半径 121(4) pm 的正中——但共价半径本身有 ±4 pm（3.3%）不确定度，1% 以内的吻合落在定义噪声里。元宝的进一步分析：d 区金属的两种半径口径（Cordero 晶体成键 vs Clementi 自由原子轨道）把 39,202 夹在中间，<b>随便挑一个过渡金属，必有一种口径能凑到 5% 以内</b>——先射箭后画靶。</li>
+    <li><b>λ̄<sub>π</sub> ≈ √2：本项目最熟的陷阱。</b>λ̄<sub>π</sub> = 1.41382 fm 与 √2 = 1.41421 只差 <b>0.028%</b>；换中性 π⁰（m = 134.98 MeV，λ̄ = 1.46193 fm）立刻差 3.4%，巧合即破。m<sub>π</sub> 由 QCD 决定，与八边形几何毫无关系——<b>√2 属于银比与准晶，不属于原子和原子核</b>。</li>
+  </ul>
+  <div class="src">来源：元宝对话（老师提供，2026-10-14）· 常数取 CODATA 级 · 全部数字经本页独立复算（Python）。
+  元宝原表有三处内部不一致（r₀ 漂移表混用「÷r₀」与「÷√(3/5)r₀」两种分母、Z<sub>eff</sub> 在两张表里混用 3.308/4.04、激子玻尔半径单位差 10 倍），<b>本页不采用其数字，一律以复算为准</b>。
+  　<span class="g gA">A</span> 公式结构、常数、恒等式　<span class="g gB">B</span> 数值预言（误差结构如上）</div>
+</div>
+
+<!-- ══════════════ §5 ══════════════ -->
+<h2><span class="num">§5</span>核不是 27 阶幻方，是 2A 张三阶洗牌后的并集</h2>
+
+<p>纯幻方数学里「3 阶 → 9 阶 → 27 阶」（9×9×9 = 729 格）确实成立，甚至可证 9 张全同洛书按对齐平铺能拼出一张 9×9 幻方。<b>但物理不走这条路。</b>笔记的结论很干脆：<em>不是分形，是壁纸</em>。</p>
+
+<div class="scroll-x">
+<table>
+<thead><tr><th>物理层级</th><th>内容</th><th>束缚机制</th></tr></thead>
+<tbody>
+<tr><td class="kv">1</td><td>omegon（磁荷 ±1、±2）</td><td>—</td></tr>
+<tr><td class="kv">2</td><td>夸克 = 3 个 omegon</td><td>Y 形 SU(3) 弦，结点通量 0 (mod 3)</td></tr>
+<tr><td class="kv">3</td><td>核子 = 9 个 omegon（3 夸克），「弦状激发分成三组、每组三个」</td><td>SU(9) 九涡旋结，总通量 0 (mod 9)</td></tr>
+<tr><td class="kv">4</td><td>核 = A 个核子块；MPA = 两个核，N = 9(A₁+A₂) = 18A</td><td>核力 = 弦间残余耦合</td></tr>
+</tbody></table>
+</div>
+
+<p><b>深度锁死在 3 层，然后线性重复。</b>第四层起 A 是任意正整数、不需要是 3 的幂，所以「升阶」这条路被钉死：</p>
+<ul>
+  <li>「27 阶幻方」= 729 格 = 单核 A=81（⁸¹Br）的 omegon 数——但 B–L 观察的 MPA 永远是两个核、计数是 18 的倍数，729/18 = 40.5 非整，<b>连被观察的资格都没有</b>。</li>
+  <li>「27」真正出现的位置是<b>块数</b>：²⁷Al = 27 个核子块，不是 27 阶幻方。<b>块数是线性变量，阶数是平方变量，两者正交。</b></li>
+</ul>
+
+<p>比「不是分形」更狠的一步：<b>连砖块都会被拆掉重发。</b>Phillips 对 MPA 形成的描述是——微灵视扰动把两个核的夸克溶解成 omegon 等离子体，再重新聚集成「三组、每组三个」：氢 MPA 里两个质子的 omegon 可跨原质子重组；锂 MPA 的 14 个核子块被拆成 Ad6 双夸克、H3 三重态等新群；硫核比镁核多 4p4n，多出的 8 块以「每个卵形多 2 个 u、2 个 d 聚体」的方式填进漏斗，<b>而不是把漏斗升级成更大的幻方</b>。</p>
+
+<div class="card soft">
+  <div class="ch">一句话收束：为什么磁荷账本对几何不敏感</div>
+  <p style="margin:0">在幻方的全部性质里，<b>只有「总和为零」是排列不变的</b>——把九个数字任意打乱，总和不动；而「每线为零」会被打乱破坏。自然界只强制了最稳健的那一条（有限能量 / 有限涡旋）。B–L 看到的漏斗、球体、四面体，相当于 9!/(2!3!3!) = 5040 种排列中的一种——每一种的总磁荷都恒为零，所以<b>磁荷记账永远无法区分它们，几何观察与电荷账本互不约束</b>。唯一保证穿越洗牌的是总账 Σ = 0（加法结合律：每块 0，块的和的和还是 0）。</p>
+</div>
+
+<p>框架自己还下了禁令，翻译成幻方语言：<b>自由的中性幻方只许 2 行（介子）和 3 行（重子），4 行及以上的自由系统被明文排除</b>（"欧米伽力饱和仅发生在夸克–反夸克和三夸克束缚态中"）。确实存在 4-omegon（Li4）和 6-omegon（Ad6）这样的内部子群——但它们带净电荷、嵌在 MPA 里，是大账本里的非零行，不是中性幻方。</p>
+
+<div class="src">出处：ima 笔记《不是分形——而且这个问题问到了类比的最精确边界……》　<span class="g gA">A</span> 层级与禁令原文　<span class="g gB">B</span> 壁纸/谢尔宾斯基的类比表述</div>
+
+<!-- ══════════════ §6 ══════════════ -->
+<h2><span class="num">§6</span>与真实核物理的交叉：两套 "magic"</h2>
+
+<p>笔记在这里主动接上了传统核物理——真实世界里真有一个半开玩笑得名的同款概念：<b>幻数（magic numbers）2, 8, 20, 28, 50, 82, 126</b>。核子数填满壳层时出现额外结合能、近球形、第一激发能级飙高（Wigner 当年觉得「简直像魔法」）。双幻核（质子中子同时闭合）是稳定性巅峰：⁴He、¹⁶O、⁴⁰Ca、⁵⁶Ni、²⁰⁸Pb。</p>
+
+<div class="card">
+  <div class="ch">一个三方交叉点</div>
+  <p style="margin:0">上一轮算出「正负 Anu 比恰好 = 1」的元素表（He-4、C-12、N-14、O-16、Ne-20、Mg-24、Si-28、S-32、Ca-40）里，<b>⁴He、¹⁶O、⁴⁰Ca 同时是真实核物理的双幻核</b>。
+  两套 magic 语义不同（幻方 = 电荷对消；幻数 = 壳层闭合 = 结合能峰值），但结构角色相同：<b>闭合即稳</b>。</p>
+</div>
+
+<p>再往下挖一层，"4" 以更具体的方式现身——<b>α 团簇物理</b>：4n 核的 α 粒子真的按点群对称性排布：⁸Be 两 α 链状、¹²C 三 α 等边三角形（D₃ₕ）、¹⁶O 四 α 正四面体（Td 点群）。代数团簇模型预言的转振谱 fingerprint 与 ¹⁶O 实验谱吻合；著名的 Hoyle 态就是 ¹²C 里三个 α 的稀疏玻色凝聚态。</p>
+
+<div class="card soft">
+  <p style="margin:0">看清楚了吗：<b>"4 阶" 在真实核物理里的对应物，不是 4×4 幻方，而是「四个 9-omegon 块排成 Td 四面体」</b>——阶数仍在块内锁 3，"4" 出现在块的数目和块间的点群几何上。（彩蛋：氧在 B–L 的七组表里恰好也归四面体组——两套体系在此撞形，笔记标记为巧合，暂不过度声称。）</p>
+</div>
+
+<div class="card">
+  <div class="ch">「几何 → 数列 → 核性质」的真实链路：幻数是这么排出来的</div>
+  <p style="margin:0">3D 谐振子壳层简并度（含自旋）= <b>(N+1)(N+2) = 2, 6, 12, 20, 30, 42, 56</b>——pronic 数，纯球对称的产物，与任何神秘数列无关。
+  裸累加得 2, 8, 20, 40, 70, 112, 168；<b>自旋-轨道劈裂后高-j 闯入轨道</b>（如 1f₇/₂）插队重排，才得到实测幻数 2, 8, 20, 28, 50, 82, 126。
+  前三项与裸累加重合不是巧合——N ≤ 2 时根本没有闯入轨道。<b>整数序列要在物理里现身，必须有离散的拓扑约束</b>（壳层简并度，或准晶能隙标号的 K₀ 群）；
+  而单个原子的半径没有任何这类约束——它由 Z<sub>eff</sub>、n*、A 三个连续变量决定（见 §4-2 尺度桥）。元宝对话把这类「撞数」逐个拆穿，结论与本项目纪律一致：
+  <b>拓扑数列的真实归宿是准晶</b>（φ↔Fibonacci↔5/10 次、δs = 1+√2 ↔ Pell ↔ 8 次、青铜比 ↔ 12 次，统摄方程 x² = mx + 1），与原子半径的计算机制不相交。</p>
+</div>
+
+<div class="card soft">
+  <div class="ch">尺度桥的两个工程后果（真数，已复算）</div>
+  <ul style="margin:0">
+    <li><b>截面比 ≈ 4.7×10⁸：</b>核几何截面 π(r₀A<sup>1/3</sup>)² = 4.524·A<sup>2/3</sup> fm²（A = 56 → 0.66 barn；A = 238 → 1.74 barn）；原子几何截面 π(1 Å)² = 3.14×10⁸ barn。
+    「原子几乎是空的」就是这句话——它决定了离子注入、辐射损伤、Bethe-Bloch 能损里<b>电子阻止本领压倒性主导核阻止</b>。</li>
+    <li><b>缪子催化聚变（「比值」本身当机制用）：</b>缪氢玻尔半径 = a₀·m<sub>e</sub>/μ = 284.7 fm，比普通氢压缩 <b>185.8 倍</b>；|ψ(0)|² ∝ μ³ ⇒ (m<sub>μ</sub>/m<sub>e</sub>)³ = <b>8.84×10⁶</b> 倍重叠增强 ⇒ 氘氚核进入核力程、室温自发聚变，实测每缪子催化 150–200 次。同一机制也是「质子半径之谜」的根源（缪氢有限核体积效应对兰姆位移的占比从电子氢的 0.014% 提到约 2%）。</li>
+  </ul>
+</div>
+
+<div class="src">出处：ima 笔记《好问题——这正是检验类比边界的地方……》　<span class="g gA">A</span> 幻数 / 双幻核 / α 团簇与点群（传统核物理，可查）　<span class="g gB">B</span> 与 Ω-9 侧的「比值=1」重叠及"4=Td 四面体"的对应<br>
+本节新增两卡出自元宝对话（2026-10-14）：幻数链 (N+1)(N+2)、截面比、缪氢 284.7 fm 与 (m<sub>μ</sub>/m<sub>e</sub>)³ 均经本页独立复算；「拓扑数列归宿是准晶」为元宝的分析性结论，列 <span class="g gB">B</span>。</div>
+
+<!-- ══════════════ §7 ══════════════ -->
+<h2><span class="num">§7</span>稀土总表：通项定理的样子</h2>
+
+<p>把通项定理落到稀土系，就是下面这张表。<b>「总磁荷」一列是定理不是数据</b>——所有元素都是 0，在稀土系内没有区分度。真正随元素变的是正/负 Anu 计数与误差列。</p>
+
+<div class="scroll-x">
+<table>
+<thead><tr><th>元素</th><th>核素</th><th>N（B–L 实测）</th><th>n = 18A</th><th>误差 N−n</th><th>正 Anu（推导）</th><th>负 Anu（推导）</th><th>总磁荷 (mod 9)</th></tr></thead>
+<tbody>
+<tr><td>La 镧</td><td><sup>139</sup>La</td><td>2,482</td><td>2,502</td><td>−20</td><td>1,226</td><td>1,276</td><td><b>0</b></td></tr>
+<tr><td>Ce 铈</td><td><sup>140</sup>Ce</td><td>2,511</td><td>2,520</td><td>−9</td><td>1,236</td><td>1,284</td><td><b>0</b></td></tr>
+<tr><td>Pr 镨</td><td><sup>141</sup>Pr</td><td>2,527</td><td>2,538</td><td>−11</td><td>1,246</td><td>1,292</td><td><b>0</b></td></tr>
+<tr><td>Nd 钕</td><td><sup>143</sup>Nd</td><td>2,575</td><td>2,574</td><td>+1</td><td>1,264</td><td>1,310</td><td><b>0</b></td></tr>
+<tr><td>Pm 钷</td><td><sup>147</sup>Pm</td><td>2,640</td><td>2,646</td><td>−6</td><td>1,298</td><td>1,348</td><td><b>0</b></td></tr>
+<tr><td>Pm「元」</td><td><sup>151</sup>Pm</td><td>2,736</td><td>2,718</td><td>+18</td><td>1,330</td><td>1,388</td><td><b>0</b></td></tr>
+<tr><td>Sm 钐</td><td><sup>154</sup>Sm</td><td>2,794</td><td>2,772</td><td>+22</td><td>1,356</td><td>1,416</td><td><b>0</b></td></tr>
+<tr><td>Eu 铕</td><td><sup>153</sup>Eu</td><td>2,843</td><td>2,754</td><td>+89</td><td>1,350</td><td>1,404</td><td><b>0</b></td></tr>
+<tr><td>Gd 钆</td><td><sup>160</sup>Gd</td><td>2,880</td><td>2,880</td><td>0</td><td>1,408</td><td>1,472</td><td><b>0</b></td></tr>
+<tr><td>Tb 铽</td><td><sup>159</sup>Tb</td><td>2,916</td><td>2,862</td><td>+54</td><td>1,402</td><td>1,460</td><td><b>0</b></td></tr>
+<tr><td>Dy 镝</td><td><sup>164</sup>Dy</td><td>2,979</td><td>2,952</td><td>+27</td><td>1,444</td><td>1,508</td><td><b>0</b></td></tr>
+<tr><td>Ho 钬</td><td><sup>165</sup>Ho</td><td>3,004</td><td>2,970</td><td>+34</td><td>1,454</td><td>1,516</td><td><b>0</b></td></tr>
+<tr><td>Er 铒</td><td><sup>168</sup>Er</td><td>3,029</td><td>3,024</td><td>+5</td><td>1,480</td><td>1,544</td><td><b>0</b></td></tr>
+<tr><td>Tm 铥</td><td><sup>169</sup>Tm</td><td>3,096</td><td>3,042</td><td>+54</td><td>1,490</td><td>1,552</td><td><b>0</b></td></tr>
+<tr><td>Yb 镱</td><td><sup>174</sup>Yb</td><td>3,131</td><td>3,132</td><td>−1</td><td>1,532</td><td>1,600</td><td><b>0</b></td></tr>
+<tr><td>Lu 镥</td><td><sup>175</sup>Lu</td><td>3,171</td><td>3,150</td><td>+21</td><td>1,542</td><td>1,608</td><td><b>0</b></td></tr>
+</tbody></table>
+</div>
+
+<p>三点务必记住：</p>
+<ul>
+  <li><b>误差列（−20 到 +89）说明 B–L 的 N 与 18A 只近似吻合</b>——钆和镱（误差 0、−1）吻合最好，铕最差（+89）。</li>
+  <li><b>正/负两列的适用边界：</b>它们是对 n = 18A 个 omegon 的<b>预测</b>；当某元素 N ≠ n（如铕 +89）时，B–L 实测的那批 Anu 无法逐个对应到磁荷谱上，此时正/负计数只能按 n 侧理解。</li>
+  <li><b>口径警告（不同口径的数字不许相除）：</b>pdf 提醒，《隐秘化学》里第二类 +/− 记号（组级标签）<b>可能指净电荷而非磁荷</b>；且这里是模型内的无量纲计数，不是库仑，不能直接与 SI 电荷相除或比对。</li>
+</ul>
+<div class="src">出处：ima 笔记《找到了，但要先把话说准……》　<span class="g gA">A</span> N 列（B–L 实测）与 18A 规则　<span class="g gB">B</span> 正/负列为推导值（本页已复算 pos+neg=18A 恒成立）</div>
+
+<!-- ══════════════ §8 ══════════════ -->
+<h2><span class="num">§8</span>边界、分级与保留意见</h2>
+
+<div class="grid g2">
+  <div class="card">
+    <div class="ch">这套演算能做什么、不能做什么</div>
+    <ul style="margin:0">
+      <li><b>它是守恒律编译器，不是动力学引擎。</b>能量、形成概率、为何 (a)(b)(c) 实现为质子/中子谱——原文自己挂起。</li>
+      <li><b>三个开放参数：</b>m<sub>Ω</sub>、氧螺旋电荷里的未知 X、计数误差裁决规则（误差须是带结构解释的小整数：Si 每漏斗多计 2、F 少 2、Na 多 4，均已给出具体归因）。</li>
+      <li><b>可证伪接口在层 4：</b>对任一元素，算法输出群清单的极性预言，与 B–L 衰变图对账——Be 的 (+)/(−) Be10、锂的 8 个 ud 双夸克八边形排列、氩的 N63 中子簇，都是已跑通的用例。</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="ch">来源分级（A / B / C）</div>
+    <ul style="margin:0">
+      <li><span class="g gA">A</span>　磁中性条件、SU(9)/Z₉ 与 Z₃ 子群、核子磁荷谱、N=18A、B–L 实测计数、夸克普查的 5 个原文实测数、组合数学（5040 穷举，本页可复算）。</li>
+      <li><span class="g gB">B</span>　正/负 Anu 推导列、夸克普查公式本身、洛书 ↔ 矩阵的逐层对应、与幻数/α 团簇的交叉解读。</li>
+      <li><span class="g gB">B</span>　尺度之桥公式（§4-2，元宝对话 2026-10-14 提供）：公式结构、常数与恒等式为 <span class="g gA">A</span>，数值预言为 B（误差结构已如实展开：循环论证、Slater 独立检验 +15%/+62%、共价半径口径 −17%～−15%、r₀ 漂移 45%）。</li>
+      <li><span class="g gC">C</span>　「质量 = 未抵消残余磁荷」那条线——本表再次确认 Phillips 核子谱是整数级精确抵消，残余必须到夸克层（3/6 mod 9）或核子内九个 omegon 的具体分组方式（原文未给出）里去找；暂不作证据。</li>
+    </ul>
+  </div>
+</div>
+
+<div class="card warn">
+  <div class="ch">三条保留意见</div>
+  <ol style="margin:0">
+    <li><b>这套框架尚未被物理界接受。</b>本页做的是「把它讲清楚、把它能算的算出来、把它能验的验掉」，不是「它已被证实」。它是 <em>ESP of Quarks</em>（1980）的再诠释链，不是标准模型。</li>
+    <li><b>「磁荷」在这套语料里是拓扑/模 9 意义上的量</b>，与电磁学里的磁单极子（狄拉克 g = ½e）是借来的词汇与单位，不是同一个已证实的物理对象。别把两套口径的数字直接相除。</li>
+    <li><b>计数有误差、归类有歧义。</b>稀土表误差列 −20…+89；Eu / Ho / Lu 在 B–L 七组里的确切列位，两份扫描表格对不齐（§6 彩蛋处已标「撞形 = 巧合」）。凡歧义处本页都写了出来，没有抹平。</li>
+  </ol>
+</div>
+
+<!-- ══════════════ §9 ══════════════ -->
+<h2><span class="num">§9</span>与其他子页的接驳</h2>
+<div class="scroll-x">
+<table>
+<thead><tr><th>想去哪</th><th>看什么</th></tr></thead>
+<tbody>
+<tr><td><a href="04_anu_to_nucleus.html">④ anu→原子核</a></td><td>Phillips 1980 全书网页化；N = 18A 交互验证器（55 个核素）；MPA = 双核、Ca-40 的 720 UPA ÷ 18 = 40 的原始出处。</td></tr>
+<tr><td><a href="05_quark_anu.html">⑤ 夸克↔anu</a></td><td>omegon 电量装配台（用 +5/9 与 −4/9 拼 u、d、质子、中子）；夸克与 anu 的关系存在于哪一层。</td></tr>
+<tr><td><a href="06_seven_realms_koilon_to_cell.html">⑥ 七界 L7→L1</a></td><td>本页的磁荷矩阵属于 L5 夸克 / L4 几何那两界的定量内核；⑥ 讲七界下降链的总框架。</td></tr>
+<tr><td><a href="01_spacetime_six_models.html">① 六种画法</a></td><td>「守恒荷决定能不能连续形变过去」的几何直觉——与 §5 的排列不变性同源。</td></tr>
+</tbody></table>
+</div>
+
+<div class="card soft">
+  <div class="ch">材料出处</div>
+  <p style="margin:0">本页全部内容出自 ima 知识库 <b>「关于磁荷anu笔记」</b>（37 条笔记，创建人 🙏明锜🤲），核心笔记 4 篇已全文读取；
+  原始文本为 Phillips《ESP of Quarks》（1980，即本目录 <code>here.pdf</code>）+ Besant &amp; Leadbeater《Occult Chemistry》的 B–L 计数。
+  <b>洛书 = Z₉、质子排不成全幻方、夸克普查公式</b>三条关键结论，本页已用独立穷举 / 算术复核（非照抄笔记）。
+  <b>§4-2 尺度之桥与 §6 新增两卡</b>另取自老师提供的元宝对话（2026-10-14，<code>yb.tencent.com/s/OzzGEwnwCfvP</code>）：
+  常数取 CODATA 级，全部数字经 Python 独立复算；元宝原表的内部不一致处（三处，已在 §4-2 纪律卡列明）未采用，以本页复算为准。</p>
+</div>
+
+</div>
+
+<footer><div class="wrap">
+  <span>时空弯曲 / 曲速引擎 / anu · 子页 ⑦ 磁荷与洛书 · Ω-9 磁荷矩阵演算</span>
+  <span>来源 ima「关于磁荷anu笔记」· 关键结论已本页穷举复核 · 全部离线可用</span>
+</div></footer>
+
+<script>
+(function(){
+  "use strict";
+  function disp(v){ return String(v).replace("-", "−"); }   // 负号用真减号 −
+  var LEGALSET = [0,3,-3,6,-6];
+
+  /* ═══ 部件一：3×3 磁荷矩阵穷举台 ═══ */
+  var MSETS = {
+    proton:  {label:"质子谱",   vals:[2,2,1,1,1,-1,-2,-2,-2], arr:[2,2,-1, 1,1,-2, 1,-2,-2]},
+    neutron: {label:"中子谱",   vals:[2,2,2,1,-1,-1,-1,-2,-2], arr:[2,2,-1, -1,-1,2, -2,-2,1]},
+    ideal:   {label:"理想 6/3 谱", vals:[1,1,1,1,1,1,-2,-2,-2], arr:[1,-2,1, 1,1,-2, -2,1,1]}
+  };
+  var curKey = "proton";
+  var grid = MSETS.proton.arr.slice();     // 当前 9 格（多重集的一个排列，默认摆典范 (c) 解）
+  var selIdx = -1;
+
+  var mgrid = document.getElementById("mgrid");
+  var mverdict = document.getElementById("mverdict");
+  var merr = document.getElementById("merr");
+  var menum = document.getElementById("menum");
+
+  function rowsums(g){ return [g[0]+g[1]+g[2], g[3]+g[4]+g[5], g[6]+g[7]+g[8]]; }
+  function colsums(g){ return [g[0]+g[3]+g[6], g[1]+g[4]+g[7], g[2]+g[5]+g[8]]; }
+  function inLegal(v){ return LEGALSET.indexOf(v) >= 0; }
+
+  function render(){
+    if(!mgrid) return;
+    mgrid.innerHTML = "";
+    var rs = rowsums(grid), cs = colsums(grid);
+    var cells = grid.concat([null]);   // 9 值 + 行和占位由下行处理
+    for(var r=0;r<3;r++){
+      for(var c=0;c<3;c++){
+        var i=r*3+c;
+        var d=document.createElement("div");
+        d.className="cell"+(selIdx===i?" sel":"");
+        d.textContent=disp(grid[i]);
+        d.setAttribute("data-i", i);
+        d.addEventListener("click", onCell);
+        mgrid.appendChild(d);
+      }
+      var sd=document.createElement("div");
+      sd.className="sum"+(rs[r]===0?" zero":"");
+      sd.textContent=disp(rs[r]);
+      mgrid.appendChild(sd);
+    }
+    for(var c2=0;c2<3;c2++){
+      var cd=document.createElement("div");
+      cd.className="sum"+(cs[c2]===0?" zero":"");
+      cd.textContent=disp(cs[c2]);
+      mgrid.appendChild(cd);
+    }
+    var corner=document.createElement("div"); corner.className="corner"; mgrid.appendChild(corner);
+
+    // 判定
+    var legalRow = rs.every(inLegal);
+    var rowZero  = rs.every(function(x){return x===0;});
+    var colZero  = cs.every(function(x){return x===0;});
+    var total = grid.reduce(function(a,b){return a+b;},0);
+    mverdict.innerHTML =
+      tag(legalRow,"行合法（∈{0,±3,±6}）") +
+      tag(rowZero,"行全归零") +
+      tag(colZero,"列全归零") +
+      tag(rowZero&&colZero,"完全幻方") +
+      '<span class="tag v">九格总和 = '+disp(total)+'（恒 0，与摆法无关 = 通项定理 H≡0）</span>';
+    function tag(ok,txt){
+      return '<span class="tag '+(ok?"ok":"no")+'">'+(ok?"✓ ":"✗ ")+txt+'</span>';
+    }
+  }
+  function onCell(ev){
+    var i=parseInt(ev.currentTarget.getAttribute("data-i"),10);
+    if(selIdx<0){ selIdx=i; }
+    else if(selIdx===i){ selIdx=-1; }
+    else {
+      var t=grid[selIdx]; grid[selIdx]=grid[i]; grid[i]=t; selIdx=-1;
+    }
+    render();
+  }
+  function shuffle(){
+    var v=MSETS[curKey].vals.slice();
+    for(var i=v.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=v[i]; v[i]=v[j]; v[j]=t; }
+    grid=v; selIdx=-1; render();
+  }
+  function setKey(k){
+    curKey=k; grid=MSETS[k].arr.slice(); selIdx=-1;
+    menum.style.display="none"; menum.innerHTML="";
+    ["proton","neutron","ideal"].forEach(function(x){
+      var b=document.getElementById(x==="proton"?"msProton":x==="neutron"?"msNeutron":"msIdeal");
+      if(b) b.classList.toggle("on", x===k);
+    });
+    render();
+  }
+
+  /* 穷举全部不同排列 */
+  function permute(arr){
+    var res=[];
+    (function rec(prefix, rest){
+      if(rest.length===0){ res.push(prefix); return; }
+      var seen={};
+      for(var i=0;i<rest.length;i++){
+        if(seen[rest[i]]) continue; seen[rest[i]]=1;
+        rec(prefix.concat([rest[i]]), rest.slice(0,i).concat(rest.slice(i+1)));
+      }
+    })([], arr);
+    return res;
+  }
+  function enumerateAll(){
+    try{
+      var perms=permute(MSETS[curKey].vals);
+      var legal=0, colzero=0, full=0, triples={};
+      for(var p=0;p<perms.length;p++){
+        var g=perms[p], rs=rowsums(g), cs=colsums(g);
+        if(rs.every(inLegal)){
+          legal++;
+          var key=rs.slice().sort(function(a,b){return a-b;}).join(",");
+          triples[key]=(triples[key]||0)+1;
+          if(cs.every(function(x){return x===0;})) colzero++;
+        }
+        if(rs.every(function(x){return x===0;}) && cs.every(function(x){return x===0;})) full++;
+      }
+      var tripTxt=Object.keys(triples).map(function(k){return "("+k.replace(/-/g,"−")+")";}).join("、");
+      menum.style.display="block";
+      menum.innerHTML =
+        "谱："+MSETS[curKey].label+"　不同排列 <b>"+perms.length+"</b> 种<br>"+
+        "行合法排列 <b>"+legal+"</b> 种；行和结构 "+tripTxt+"<br>"+
+        "其中列同时归零 <b>"+colzero+"</b> 种；<b>完全幻方 <span style='color:"+(full?"var(--good)":"var(--bad)")+"'>"+full+"</span> 种</b>"+
+        (full===0?"<br>⇒ 穷举证实：这个谱<b>排不出完全幻方</b>。":"<br>⇒ 这个谱<b>能</b>排出完全幻方（对照理想谱）。");
+      merr.textContent="";
+    }catch(e){
+      merr.textContent="穷举出错："+e.message;
+    }
+  }
+
+  ["msProton","msNeutron","msIdeal","msShuffle","msEnum"].forEach(function(id){
+    var b=document.getElementById(id); if(!b) return;
+    b.addEventListener("click", function(){
+      if(id==="msProton") setKey("proton");
+      else if(id==="msNeutron") setKey("neutron");
+      else if(id==="msIdeal") setKey("ideal");
+      else if(id==="msShuffle") shuffle();
+      else if(id==="msEnum") enumerateAll();
+    });
+  });
+  render();
+
+  /* ═══ 部件二：夸克普查计算器 + A 的尺度之桥 ═══ */
+  var cA=document.getElementById("cA"), cZ=document.getElementById("cZ"),
+      cN=document.getElementById("cN"), cZe=document.getElementById("cZe"),
+      cGo=document.getElementById("cGo"), cout=document.getElementById("cout"),
+      cerr=document.getElementById("cerr");
+  // 尺度桥常数（CODATA 级，已独立复算；单位 fm）
+  var A0_FM=52917.7210903, INV_ALPHA=137.035999084, M_PI_ME=273.13244, LBAR_PI=1.4138169;
+  var SQ35=Math.sqrt(3/5), R0=1.2;
+  var PRESETS={Al:{A:27,Z:13,ns:3,ze:4.04},Ni:{A:58,Z:28,ns:4,ze:5.68},
+               Ba:{A:138,Z:56,ns:6,ze:7.53},H:{A:1,Z:1,ns:1,ze:1.00}};
+  function fmt(x){ return String(x).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+  function census(){
+    try{
+      var A=parseInt(cA.value,10), Z=parseInt(cZ.value,10);
+      var ns=parseFloat(cN.value), ze=parseFloat(cZe.value);
+      if(!isFinite(A)||!isFinite(Z)){ cerr.textContent="A、Z 必须是整数。"; return; }
+      if(A<1||A>300){ cerr.textContent="A 需在 1–300。"; return; }
+      if(Z<0||Z>2*A){ cerr.textContent="Z 需满足 0 ≤ Z ≤ 2A（中子数不能为负）。"; return; }
+      if(!isFinite(ns)||ns<1||ns>7){ cerr.textContent="n* 需在 1–7（Slater 修正：4→3.7、5→4.0、6→4.2）。"; return; }
+      if(!isFinite(ze)||ze<=0||ze>30){ cerr.textContent="Z_eff 需在 0–30。"; return; }
+      cerr.textContent="";
+      var Nu=2*(A+Z), Nd=2*(2*A-Z), om=18*A, pos=2*(4*A+Z), neg=2*(5*A-Z);
+      var sumQ=Nu+Nd, sumPN=pos+neg;
+      var N=A-Z;
+      // ── 尺度之桥（同一个 A 的第二重身份）──
+      var C=A0_FM/(SQ35*R0), f3=LBAR_PI/(SQ35*R0);
+      var prod=INV_ALPHA*M_PI_ME*f3;
+      var Ac=Math.pow(A,1/3);
+      var Rrms=SQ35*R0*Ac;
+      var rAtom=ns*ns/ze*52.9177210903;      // pm（a₀ = 52.9177210903 pm，CODATA 2018）
+      var ratio=C*ns*ns/(ze*Ac);
+      var html=
+        '<span class="brk">第一重身份 · 磁荷账本</span><br>'+
+        "A = "+A+"，Z = "+Z+"（N = A−Z = "+N+"）<br>"+
+        "u 夸克 N<sub>u</sub> = 2(A+Z) = <b>"+Nu+"</b><br>"+
+        "d 夸克 N<sub>d</sub> = 2(2A−Z) = <b>"+Nd+"</b><br>"+
+        "闭合自检① N<sub>u</sub>+N<sub>d</sub> = "+sumQ+" = 6A = "+6*A+"　"+(sumQ===6*A?'<span class="chk-ok">✓</span>':'<span class="chk-no">✗</span>')+"<br>"+
+        "omegon 总数 = 18A = <b>"+om+"</b><br>"+
+        "正 Anu = 2(4A+Z) = <b>"+pos+"</b>　负 Anu = 2(5A−Z) = <b>"+neg+"</b><br>"+
+        "闭合自检② 正+负 = "+sumPN+" = 18A　"+(sumPN===om?'<span class="chk-ok">✓</span>':'<span class="chk-no">✗</span>')+"<br>"+
+        "正负比 = "+pos+" : "+neg+(pos===neg?"（= 1，落在「比值 1」特异点）":"")+"<br>"+
+        "核子磁荷多重集：质子 ×"+Z+"　中子 ×"+N+"　（每块整数和精确为 0，非仅模 9）<br>"+
+        '<span class="brk">第二重身份 · 尺度之桥</span>（n* = '+ns+'，Z<sub>eff</sub> = '+ze+'，r₀ = '+R0+' fm）<br>'+
+        "同一个 A：磁荷账本乘 18（omegon = <b>"+om+"</b>）；核 rms 半径 R = √(3/5)·r₀·A<sup>1/3</sup> = <b>"+Rrms.toFixed(4)+" fm</b>（开 1/3 次方）<br>"+
+        "原子侧 r = (n*)²/Z<sub>eff</sub>·a₀ = <b>"+rAtom.toFixed(1)+" pm</b><br>"+
+        "原子/核尺度比 = C·(n*)²/(Z<sub>eff</sub>·A<sup>1/3</sup>) = <b>"+fmt(Math.round(ratio))+"</b><br>"+
+        "三因子分解：(1/α) "+INV_ALPHA.toFixed(3)+" × (m<sub>π</sub>/m<sub>e</sub>) "+M_PI_ME.toFixed(2)+
+          " × (λ̄<sub>π</sub>/(√(3/5)·r₀)) "+f3.toFixed(4)+" = "+fmt(Math.round(prod))+"　"+
+          (Math.abs(prod-C)<0.5?'<span class="chk-ok">✓ 与 C 一致</span>':'<span class="chk-no">✗</span>')+"<br>"+
+        "档常数 C = a₀/(√(3/5)·r₀) = <b>"+fmt(Math.round(C))+"</b>（r₀ = 1.2 → 56,930；0.974 → 70,140；1.4138 → 48,321）";
+      if(A===1){
+        html+="<br><b>⚠ A = 1 时液滴失效：</b>R<sub>rms</sub> = 0.9295 fm ≠ 质子电荷半径 0.8409 fm；氢的正确写法是 比值 = (1/α)(λ̄<sub>e</sub>/R<sub>p</sub>) = 137.036 × 459.2 = <b>62,930</b>（液滴口径给 56,930，低 9.5%）。";
+      }
+      cout.innerHTML=html;
+    }catch(e){
+      cerr.textContent="计算出错："+e.message;
+    }
+  }
+  if(cGo) cGo.addEventListener("click", census);
+  if(cA) cA.addEventListener("input", census);
+  if(cZ) cZ.addEventListener("input", census);
+  if(cN) cN.addEventListener("input", census);
+  if(cZe) cZe.addEventListener("input", census);
+  // r₀ 三档
+  ["r0t","r0f","r0p"].forEach(function(id){
+    var b=document.getElementById(id); if(!b) return;
+    b.addEventListener("click", function(){
+      R0 = id==="r0t"?1.2 : id==="r0f"?0.974 : 1.4138;
+      ["r0t","r0f","r0p"].forEach(function(x){
+        var bb=document.getElementById(x); if(bb) bb.classList.toggle("on", x===id);
+      });
+      census();
+    });
+  });
+  // 预设（同时填 A、Z、n*、Z_eff）
+  Object.keys(PRESETS).forEach(function(k){
+    var b=document.getElementById(k==="Al"?"pAl":k==="Ni"?"pNi":k==="Ba"?"pBa":"pH");
+    if(!b) return;
+    b.addEventListener("click", function(){
+      var p=PRESETS[k];
+      cA.value=p.A; cZ.value=p.Z; cN.value=p.ns; cZe.value=p.ze;
+      census();
+    });
+  });
+  census();   // 首次渲染（默认 A=27, Z=13 = 铝，n* = 3，Z_eff = 4.04）
+})();
+</script>
+
+</body>
+</html>

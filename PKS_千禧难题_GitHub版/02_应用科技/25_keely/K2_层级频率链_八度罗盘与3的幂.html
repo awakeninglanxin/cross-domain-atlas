@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>K2 · 层级频率链：八度罗盘、3:6:9 与 3^(2ⁿ)</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%236b3fa0' stroke-width='2'/%3E%3Cpath d='M16 6 v20 M6 16 h20' stroke='%236b3fa0' stroke-width='1.4'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/site.css">
+<style>
+  .viz{background:#fff;border:1px solid var(--line-2);border-radius:12px;
+    box-shadow:var(--shadow);padding:14px 16px 10px;margin:18px 0}
+  .viz .vt{font-family:var(--serif);font-size:16px;font-weight:700;margin-bottom:3px}
+  .viz .vc{font-size:13.2px;color:var(--ink-3);margin-bottom:10px;line-height:1.6}
+  .viz canvas{width:100%;display:block;border-radius:8px;background:#fcfdff;border:1px solid var(--line)}
+  .ctl{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin:12px 0 4px;font-size:13.4px;color:var(--ink-2)}
+  .ctl label{display:flex;align-items:center;gap:7px}
+  .ctl input[type=range]{width:190px}
+  .ctl input[type=number]{font-size:13px;padding:4px 7px;border-radius:7px;
+    border:1px solid var(--line-2);background:#fff;color:var(--ink);width:118px;font-family:var(--mono)}
+  .ctl select{font-size:13px;padding:4px 7px;border-radius:7px;border:1px solid var(--line-2);background:#fff}
+  .ctl .val{font-family:var(--mono);font-size:12.8px;color:var(--warm);min-width:86px}
+  .rd{display:grid;grid-template-columns:repeat(auto-fit,minmax(146px,1fr));gap:10px;margin-top:12px}
+  .rd .r{background:var(--bg-soft);border:1px solid var(--line);border-radius:9px;padding:9px 11px}
+  .rd .r .n{font-family:var(--serif);font-size:19px;color:var(--accent-2);line-height:1.2}
+  .rd .r .l{font-size:11.8px;color:var(--ink-3);margin-top:2px}
+  .rd .r .x{font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-top:3px}
+  .eq{margin:14px 0}
+  .warnbox{background:#fdf6f6;border:1px solid rgba(179,38,30,.28);border-left:3px solid var(--bad);
+    border-radius:8px;padding:12px 15px;margin:16px 0;font-size:14px}
+  .goodbox{background:#f4faf6;border:1px solid rgba(23,114,69,.28);border-left:3px solid var(--good);
+    border-radius:8px;padding:12px 15px;margin:16px 0;font-size:14px}
+  .quote{border-left:3px solid var(--line-2);padding:2px 0 2px 14px;margin:12px 0;color:var(--ink-2);font-size:14.4px}
+  .quote .src{display:block;font-family:var(--mono);font-size:11.5px;color:var(--ink-3);margin-top:4px}
+  .cnt{font-family:var(--mono);font-size:12.6px;color:var(--ink-3)}
+  .three{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0}
+  .three .box{border:1px solid var(--line-2);border-radius:11px;padding:14px 16px;background:#fff;box-shadow:var(--shadow)}
+  .three .box .k{font-family:var(--mono);font-size:26px;font-weight:700;color:var(--accent);line-height:1}
+  .three .box .t{font-family:var(--serif);font-size:15px;font-weight:700;margin:7px 0 5px}
+  .three .box .d{font-size:13px;color:var(--ink-2);line-height:1.6}
+  .three .box.a{border-top:3px solid var(--accent)}
+  .three .box.b{border-top:3px solid var(--warm)}
+  .three .box.c{border-top:3px solid var(--violet)}
+  tr.hl td{background:#fdf3ec}
+  @media(max-width:820px){.three{grid-template-columns:1fr}.ctl input[type=range]{width:130px}}
+</style>
+<!--FXCTL:CSS--><style id="fxctl-css">
+/* ============================================================
+   PKS · 通用「调参浮窗」样式  (float_ctl.css)
+   白底 / 深蓝强调 / 与 site.css 变量兼容（变量缺失时有兜底色）
+   面板不接管页面原有控件样式，只在自己作用域内统一外观
+   ============================================================ */
+#fxp{
+  position:fixed; z-index:840; top:84px; right:16px;
+  width:322px; max-height:calc(100vh - 118px);
+  display:flex; flex-direction:column;
+  background:#fff; border:1px solid #cfd6e0; border-radius:12px;
+  box-shadow:0 2px 6px rgba(18,22,28,.08), 0 14px 40px rgba(18,22,28,.14);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:13px; color:#12161c; line-height:1.55;
+  -webkit-user-select:none; user-select:none;
+}
+#fxp.fxp-min{ width:auto; min-width:150px; }
+#fxp.fxp-min .fxp-bd{ display:none; }
+#fxp.fxp-min .fxp-c{ display:none; }
+
+/* 标题栏（拖动手柄） */
+#fxp .fxp-h{
+  display:flex; align-items:center; gap:7px;
+  padding:8px 10px 8px 9px; cursor:grab; touch-action:none;
+  border-bottom:1px solid #e6eaf0; border-radius:12px 12px 0 0;
+  background:linear-gradient(#fbfcfe,#f4f7fb);
+}
+#fxp.fxp-min .fxp-h{ border-bottom:0; border-radius:12px; }
+#fxp .fxp-h.fxp-drag{ cursor:grabbing; }
+#fxp .fxp-grip{ color:#9aa6b6; font-size:13px; letter-spacing:0 }
+#fxp .fxp-t{
+  font-family:Georgia,"Times New Roman","Songti SC",serif;
+  font-weight:700; font-size:14.5px; color:#0d2f63; letter-spacing:.2px;
+}
+#fxp .fxp-c{ font-family:Consolas,monospace; font-size:11px; color:#6b7683; margin-left:auto; white-space:nowrap }
+#fxp .fxp-h.fxp-mini-open .fxp-c{ margin-left:6px }
+#fxp .fxp-b{
+  width:22px; height:22px; padding:0; flex:0 0 22px;
+  border:1px solid #cfd6e0; background:#fff; border-radius:6px;
+  color:#3b4552; font-size:12px; line-height:1; cursor:pointer;
+}
+#fxp .fxp-b:hover{ border-color:#1b4f9c; color:#1b4f9c; background:#f4f7fb }
+#fxp .fxp-b:first-of-type{ margin-left:6px }
+
+/* 面板主体 */
+#fxp .fxp-bd{
+  padding:4px 12px 12px; overflow-y:auto; overflow-x:hidden;
+  -webkit-user-select:auto; user-select:auto;
+}
+#fxp .fxp-bd::-webkit-scrollbar{ width:8px }
+#fxp .fxp-bd::-webkit-scrollbar-thumb{ background:#d7dee8; border-radius:4px }
+#fxp .fxp-bd::-webkit-scrollbar-track{ background:transparent }
+
+/* 分组 */
+#fxp .fxp-grp{ padding:9px 0 3px }
+#fxp .fxp-grp + .fxp-grp{ border-top:1px dashed #e6eaf0; margin-top:3px }
+#fxp .fxp-gl{
+  font-family:Consolas,monospace; font-size:10.5px; letter-spacing:.04em;
+  color:#6b7683; margin:0 0 7px; display:flex; align-items:baseline; gap:6px;
+}
+#fxp .fxp-gl b{ color:#1b4f9c; font-weight:600; font-size:11px }
+#fxp .fxp-gl i{ font-style:normal; color:#9aa6b6 }
+
+/* 控件统一外观：覆盖被搬进来的块，不依赖原页面 .viz .ctl 之类选择器 */
+#fxp .ctl, #fxp .ctrl, #fxp .controls, #fxp .calc, #fxp .panel, #fxp .param-panel{
+  display:block; margin:0; padding:0; border:0; background:none; box-shadow:none;
+  width:auto; max-width:none; position:static; float:none;
+}
+#fxp .ctl > *, #fxp .ctrl > *, #fxp .controls > *, #fxp .panel > *, #fxp .calc > *{ margin-bottom:9px }
+#fxp .ctl > *:last-child, #fxp .ctrl > *:last-child,
+#fxp .controls > *:last-child, #fxp .panel > *:last-child, #fxp .calc > *:last-child{ margin-bottom:0 }
+
+/* label 行：文字在上、滑块占满整行 */
+#fxp label, #fxp .row, #fxp .prow, #fxp .slider{
+  display:flex; flex-wrap:wrap; align-items:center; gap:3px 8px;
+  width:100%; margin:0 0 10px; font-size:12.6px; color:#3b4552;
+}
+#fxp label > span, #fxp .row > span{ flex:0 0 auto }
+#fxp input[type=range]{
+  -webkit-appearance:none; appearance:none; order:3;
+  /* ⚠ 不能用 flex:0 0 100%：父级 label.row 是 align-items:center 的 flex 行，
+     交叉轴会把 input 压成 track 的 3px 高（实测 offsetHeight=3），滑块几乎被裁掉。
+     flex:none + width:100% 一样能独占一行，且高度稳定 16px。 */
+  flex:none; width:100%; min-width:90px; height:16px; margin:1px 0 0;
+  background:transparent; cursor:pointer; accent-color:#1b4f9c;
+}
+#fxp input[type=range]::-webkit-slider-runnable-track{
+  height:3px; background:#dbe2ec; border-radius:2px;
+}
+#fxp input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:13px; height:13px; margin-top:-5px;
+  background:#1b4f9c; border:2px solid #fff; border-radius:50%;
+  box-shadow:0 1px 3px rgba(18,22,28,.28);
+}
+#fxp input[type=range]:focus{ outline:none }
+#fxp input[type=range]:focus::-webkit-slider-thumb{ box-shadow:0 0 0 3px rgba(27,79,156,.18) }
+
+/* 数值 */
+#fxp .val, #fxp .v, #fxp output, #fxp .num{
+  font-family:Consolas,monospace; font-size:12px; color:#b4531f;
+  min-width:0; margin-left:auto; white-space:nowrap; order:2;
+}
+
+/* 按钮 */
+#fxp button{
+  font-family:Consolas,monospace; font-size:11.5px; padding:4px 9px;
+  border:1px solid #cfd6e0; background:#fff; color:#3b4552;
+  border-radius:7px; cursor:pointer; margin:0 5px 5px 0;
+}
+#fxp button:hover{ border-color:#1b4f9c; color:#1b4f9c; background:#f4f7fb }
+
+/* .lab / .hint / .presets（aizawa / 黄金蛋 那一族的行结构） */
+#fxp .lab{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:8px; width:100%; order:1; font-size:12.6px; color:#3b4552;
+}
+#fxp .lab .v{ margin-left:auto }
+#fxp .hint{
+  order:4; width:100%; margin:3px 0 0; font-size:11.2px; line-height:1.5;
+  color:#6b7683;
+}
+#fxp .presets{ order:5; width:100%; display:flex; flex-wrap:wrap; gap:5px; margin-top:5px }
+#fxp .presets button{ margin:0 }
+#fxp .gt{
+  font-family:Georgia,"Songti SC",serif; font-size:12.8px; font-weight:700;
+  color:#0d2f63; margin:2px 0 8px;
+}
+#fxp .grp > .gt:first-child{ margin-top:0 }
+
+#fxp button.on, #fxp button.active{ background:#1b4f9c; border-color:#1b4f9c; color:#fff }
+#fxp select{
+  font-family:inherit; font-size:12px; padding:3px 6px; max-width:100%;
+  border:1px solid #cfd6e0; border-radius:6px; background:#fff; color:#12161c;
+}
+#fxp input[type=text], #fxp input[type=number]{
+  font-family:Consolas,monospace; font-size:12px; width:78px; padding:3px 6px;
+  border:1px solid #cfd6e0; border-radius:6px;
+}
+#fxp input[type=checkbox]{ accent-color:#1b4f9c; margin-right:2px }
+
+/* 原位置留下的提示 */
+.fxp-note{
+  margin:10px 0 0; padding:5px 9px; font-size:11.8px; color:#6b7683;
+  font-family:Consolas,monospace; background:#f6f8fb;
+  border:1px dashed #d7dee8; border-radius:6px;
+}
+.fxp-note::before{ content:"⇱ "; color:#1b4f9c }
+
+/* 窄屏：底部抽屉式，不再遮挡图 */
+@media (max-width:880px){
+  #fxp{
+    top:auto; bottom:0; right:0; left:0; width:auto;
+    max-height:52vh; border-radius:12px 12px 0 0;
+    border-left:0; border-right:0; border-bottom:0;
+  }
+  #fxp .fxp-h{ cursor:default; border-radius:12px 12px 0 0 }
+  #fxp.fxp-min{ left:auto; right:10px; bottom:10px; border:1px solid #cfd6e0; border-radius:12px }
+}
+@media print{ #fxp{ display:none !important } }
+
+/* ============================================================
+   暗色主题皮肤（2026-10-19 老师：Anu 主界面是暗底，浮窗却是白底，割裂）
+   触发条件：页面 <body> 或 <html> 自己声明了暗色
+     body.theme-dark / body.dark / body.theme-night
+     html[data-theme="dark"] / body[data-theme="dark"]
+   只做覆盖，不改上面的默认（白底）规则 —— 明色页面完全不受影响。
+   配色取自 anu.css 的 --panel/--line/--text/--accent，保持同源。
+   ============================================================ */
+body.theme-dark #fxp, body.dark #fxp, body.theme-night #fxp,
+html[data-theme="dark"] #fxp, body[data-theme="dark"] #fxp{
+  background:#0e1420; border-color:#22304a;
+  box-shadow:0 2px 8px rgba(0,0,0,.45), 0 18px 48px rgba(0,0,0,.55);
+  color:#e6edf8;
+}
+body.theme-dark #fxp .fxp-h, body.dark #fxp .fxp-h, body.theme-night #fxp .fxp-h,
+html[data-theme="dark"] #fxp .fxp-h, body[data-theme="dark"] #fxp .fxp-h{
+  background:linear-gradient(#182233,#111826); border-bottom-color:#22304a;
+}
+body.theme-dark #fxp .fxp-grip, body.dark #fxp .fxp-grip, body.theme-night #fxp .fxp-grip{
+  color:#5d7093;
+}
+body.theme-dark #fxp .fxp-t, body.dark #fxp .fxp-t, body.theme-night #fxp .fxp-t,
+html[data-theme="dark"] #fxp .fxp-t, body[data-theme="dark"] #fxp .fxp-t{
+  color:#cddcff;
+}
+body.theme-dark #fxp .fxp-c, body.dark #fxp .fxp-c, body.theme-night #fxp .fxp-c{
+  color:#6b7f9e;
+}
+body.theme-dark #fxp .fxp-b, body.dark #fxp .fxp-b, body.theme-night #fxp .fxp-b,
+html[data-theme="dark"] #fxp .fxp-b, body[data-theme="dark"] #fxp .fxp-b{
+  background:#141c2b; border-color:#22304a; color:#a9bad6;
+}
+body.theme-dark #fxp .fxp-b:hover, body.dark #fxp .fxp-b:hover, body.theme-night #fxp .fxp-b:hover{
+  background:#1b2740; border-color:#4d7cff; color:#cddcff;
+}
+body.theme-dark #fxp .fxp-bd::-webkit-scrollbar-thumb,
+body.dark #fxp .fxp-bd::-webkit-scrollbar-thumb,
+body.theme-night #fxp .fxp-bd::-webkit-scrollbar-thumb{
+  background:#26334c;
+}
+body.theme-dark #fxp .fxp-grp + .fxp-grp, body.dark #fxp .fxp-grp + .fxp-grp,
+body.theme-night #fxp .fxp-grp + .fxp-grp{ border-top-color:#1e2a3f }
+body.theme-dark #fxp .fxp-gl, body.dark #fxp .fxp-gl, body.theme-night #fxp .fxp-gl{
+  color:#7d90ae;
+}
+body.theme-dark #fxp .fxp-gl b, body.dark #fxp .fxp-gl b, body.theme-night #fxp .fxp-gl b{
+  color:#7ea6ff;
+}
+body.theme-dark #fxp .fxp-gl i, body.dark #fxp .fxp-gl i, body.theme-night #fxp .fxp-gl i{
+  color:#5d7093;
+}
+body.theme-dark #fxp label, body.theme-dark #fxp .row, body.theme-dark #fxp .prow,
+body.theme-dark #fxp .slider, body.dark #fxp label, body.dark #fxp .row,
+body.dark #fxp .prow, body.dark #fxp .slider,
+body.theme-night #fxp label, body.theme-night #fxp .row,
+body.theme-night #fxp .prow, body.theme-night #fxp .slider{
+  color:#b9c8e0;
+}
+body.theme-dark #fxp input[type=range]::-webkit-slider-runnable-track,
+body.dark #fxp input[type=range]::-webkit-slider-runnable-track,
+body.theme-night #fxp input[type=range]::-webkit-slider-runnable-track{
+  background:#31425f;                    /* 不能贴地色，否则轨道看不见、只剩一个蓝点 */
+}
+body.theme-dark #fxp input[type=range]::-webkit-slider-thumb,
+body.dark #fxp input[type=range]::-webkit-slider-thumb,
+body.theme-night #fxp input[type=range]::-webkit-slider-thumb{
+  background:#4d7cff; border-color:#0e1420;
+  box-shadow:0 1px 3px rgba(0,0,0,.6);
+}
+body.theme-dark #fxp input[type=range]:focus::-webkit-slider-thumb,
+body.dark #fxp input[type=range]:focus::-webkit-slider-thumb{
+  box-shadow:0 0 0 3px rgba(77,124,255,.28);
+}
+body.theme-dark #fxp .val, body.theme-dark #fxp .v, body.theme-dark #fxp output,
+body.theme-dark #fxp .num, body.dark #fxp .val, body.dark #fxp .v,
+body.dark #fxp output, body.dark #fxp .num,
+body.theme-night #fxp .val, body.theme-night #fxp .v,
+body.theme-night #fxp output, body.theme-night #fxp .num{
+  color:#ffc861;                      /* 与页面 --gold 同源 */
+}
+body.theme-dark #fxp button, body.dark #fxp button, body.theme-night #fxp button,
+html[data-theme="dark"] #fxp button, body[data-theme="dark"] #fxp button{
+  background:#141c2b; border-color:#22304a; color:#b9c8e0;
+}
+body.theme-dark #fxp button:hover, body.dark #fxp button:hover,
+body.theme-night #fxp button:hover{
+  background:#1b2740; border-color:#4d7cff; color:#cddcff;
+}
+body.theme-dark #fxp button.on, body.theme-dark #fxp button.active,
+body.dark #fxp button.on, body.dark #fxp button.active,
+body.theme-night #fxp button.on, body.theme-night #fxp button.active{
+  background:#2f6fe0; border-color:#2f6fe0; color:#fff;
+}
+body.theme-dark #fxp .lab, body.dark #fxp .lab, body.theme-night #fxp .lab{
+  color:#b9c8e0;
+}
+body.theme-dark #fxp .hint, body.dark #fxp .hint, body.theme-night #fxp .hint{
+  color:#7d90ae;
+}
+body.theme-dark #fxp .gt, body.dark #fxp .gt, body.theme-night #fxp .gt,
+html[data-theme="dark"] #fxp .gt, body[data-theme="dark"] #fxp .gt{
+  color:#cddcff;
+}
+body.theme-dark #fxp select, body.dark #fxp select, body.theme-night #fxp select,
+body.theme-dark #fxp input[type=text], body.theme-dark #fxp input[type=number],
+body.dark #fxp input[type=text], body.dark #fxp input[type=number],
+body.theme-night #fxp input[type=text], body.theme-night #fxp input[type=number]{
+  background:#0b1019; border-color:#22304a; color:#e6edf8;
+}
+body.theme-dark .fxp-note, body.dark .fxp-note, body.theme-night .fxp-note{
+  background:#111826; border-color:#22304a; color:#7d90ae;
+}
+body.theme-dark .fxp-note::before, body.dark .fxp-note::before,
+body.theme-night .fxp-note::before{ color:#7ea6ff }
+
+/* 暗色下的窄屏抽屉边框 */
+@media (max-width:880px){
+  body.theme-dark #fxp.fxp-min, body.dark #fxp.fxp-min, body.theme-night #fxp.fxp-min{
+    border-color:#22304a;
+  }
+}
+
+</style><!--/FXCTL:CSS-->
+</head>
+<body>
+
+<nav class="topnav"><div class="inner">
+  <a class="brand" href="keely核心技术与现代声子物理技术对比.html">Keely × 现代声子物理 <span>/</span> K2</a>
+  <a class="nv on" href="#s1">① 三重身份</a>
+  <a class="nv" href="#s2">② 2 的幂骨架</a>
+  <a class="nv" href="#s3">③ 频段对照</a>
+  <a class="nv" href="#s4">④ 德拜统一</a>
+  <a class="nv" href="#s5">⑤ 3^(2ⁿ) 链</a>
+  <a class="nv" href="#s6">⑥ 八度罗盘</a>
+  <a class="nv" href="keely核心技术与现代声子物理技术对比.html">← 总入口</a>
+  <a class="nv xlink" href="09b_球腔声场_回音干涉与模态.html" title="09b：球腔里真的算出模态">09b 球腔</a>
+</div></nav>
+
+<div class="hero"><div class="wrap">
+  <div class="kicker">K2 · Frequency Ladder</div>
+  <h1>层级频率链：八度罗盘、3:6:9 与 3<sup>(2ⁿ)</sup></h1>
+  <p class="sub">
+    「3:6:9」在 Keely 体系里同时是三种东西：<b>2 的幂指数骨架</b>、<b>物质细分层级</b>、<b>材料配比</b>。
+    把它们分开以后，两条看似矛盾的级数（分子级 ×3、原子级平方递进）其实是同一个序列的两段 —— 原文自己写了这个转换。
+    本页把整条频率链与现代频段画在同一根对数轴上，落差一眼可见。
+  </p>
+  <p class="meta">资料来源：归档 A6 v6 §3–§6 · 本地 <code>00_ima归档/A6_线性尺寸定律_v6_最新.html</code></p>
+</div></div>
+
+<div class="wrap">
+
+<!-- ============ ① ============ -->
+<h2 id="s1"><span class="num">①</span>3:6:9 的三重身份（混用是过去所有矛盾的来源）</h2>
+
+<div class="three">
+  <div class="box a">
+    <div class="k">2³ / 2⁶ / 2⁹</div>
+    <div class="t">数学骨架</div>
+    <div class="d">
+      「由 2 的幂派生的立方体：2³ = 8 个体积单位，2⁶ = 64，2⁹ = 512」。<br>
+      N 每 +3 ⇒ 体积 ×8、线性 ÷2、频率 ×2 —— <b>正好一个八度</b>。
+    </div>
+  </div>
+  <div class="box b">
+    <div class="k">3 / 6 / 9</div>
+    <div class="t">细分层级</div>
+    <div class="d">
+      3 = 分子细分、6 = 原子细分、9 = 以太细分。<br>
+      对应三级「clustered thirds」，即 <b>三个八度</b>上的三簇。
+    </div>
+  </div>
+  <div class="box c">
+    <div class="k">33⅓ : 66⅔ : 100</div>
+    <div class="t">材料配比</div>
+    <div class="d">
+      银 : 金 : 铂 = 3 : 6 : 9（约简 1 : 2 : 3）。<br>
+      这是 Keely 唯一写明的<b>金属顺序与分量</b>（细节见 K3）。
+    </div>
+  </div>
+</div>
+
+<div class="quote">
+  「I attach a nodal transmitter to a soft steel mass and the other end to the clustered thirds
+  (<b>3:6:9 in three octaves</b>) of my focalizing neutral concentrator.」
+  <span class="src">— Keely 原文，英文里直接写了 "in three octaves" [pdf_4]</span>
+</div>
+
+<div class="warnbox">
+  <b>为什么必须把三者拆开：</b><br>
+  早期把「3:6:9 = 银金铂的物理归属」当成全部，于是见到「2³/2⁶/2⁹」就以为发现了矛盾；
+  后来又见到「体积比 1:2:3」又以为与「尺寸均一致」冲突。
+  <b>它们根本不在同一个层面上说话</b>：一个是数学骨架、一个是层级编号、一个是材料配比。
+  拆开之后，全部自洽。
+</div>
+
+<!-- ============ ② ============ -->
+<h2 id="s2"><span class="num">②</span>为什么指数必须是 3（不是 2、不是 4）</h2>
+
+<div class="quote">
+  「声音或能量的基本原理之一表现为（几何）体积-立方函数（n³）。合并这两个基本原理，
+  我们得到了一系列由 2 的幂派生的立方体。创建立方体的前几个幂是：<b>2³ = 8 个体积单位，
+  2⁶ = 64 个体积单位，2⁹ = 512 个体积单位</b>。」
+  <span class="src">— Keely 原文，节标题就叫「369 = 2 的幂和体积振动」[pdf_4]</span>
+</div>
+
+<div class="quote">
+  「<b>质数 2 以其任何力量都不会产生新的音符。质数 3 总是产生新的音符</b>，
+  因此它的力量被限制为第一个幂、平方和立方……」
+  <span class="src">— 「三个数学素数」[pdf_87]</span>
+</div>
+
+<p>这两段话合起来给出了一个非常干净的推导：</p>
+
+<div class="eq">
+  <b>要求 1</b>　层级之间必须保持<b>八度关系</b> ⇒ 底数只能含 2（2 的任何幂只是同一音的八度）<br>
+  <b>要求 2</b>　层级之间又必须<b>产生新的音程级</b> ⇒ 底数必须含 3（2 的幂做不到这件事）<br>
+  ⇒ 底数只能是 2，<b>而指数按 3 递增</b>：N = 3, 6, 9, …<br>
+  ⇒ 体积序列 2³ : 2⁶ : 2⁹ = <b>8 : 64 : 512</b>，相邻比恒为 8 = 一个八度的体积因子
+</div>
+
+<div class="goodbox">
+  <b>这条推导的价值：</b>它把「3、6、9 是神秘数字」变成了「3 是唯一可能的选择」。
+  <span class="cnt">只要承认"既要八度、又要新音程"这两个要求，N 的步长除了 3 没别的解。
+  这一步是本文整理，不是文献直述 —— 但结论与文献的 2³/2⁶/2⁹ 完全一致。</span>
+</div>
+
+<!-- ============ ③ ============ -->
+<h2 id="s3"><span class="num">③</span>频段对照：Keely 的整条链落在哪里</h2>
+
+<table>
+  <thead><tr><th>Keely 层级</th><th>频率</th><th>Keely 自己的数值体系内</th><th>现代对应</th></tr></thead>
+  <tbody>
+    <tr><td>分子</td><td>100 MHz</td><td>无线电（≤300 MHz）</td><td>分子间低频模式 <b>0.1–10 THz</b></td></tr>
+    <tr class="hl"><td>分子间</td><td><b>300 MHz</b></td><td><b>正好 = 微波下限</b></td><td>同上</td></tr>
+    <tr><td>原子</td><td>900 MHz</td><td>微波 UHF</td><td>分子内键振动 <b>10¹³–10¹⁴ Hz</b></td></tr>
+    <tr><td>原子间</td><td>（未给）</td><td>—</td><td><b>声子 1–40 THz</b>（Cu 7.2 / Ni 8.8 / Si 15.2 / 金刚石 40）</td></tr>
+    <tr><td>以太六度</td><td><b>8.1 GHz</b></td><td>微波 SHF 厘米波</td><td>无凝聚态对应</td></tr>
+    <tr><td>以太间九度</td><td><b>24.3 GHz</b></td><td>微波 SHF 上沿 / EHF 门口</td><td>无对应</td></tr>
+  </tbody>
+</table>
+
+<p>
+  <b>整条链（分子间 → 以太间）铺满整个微波带（300 MHz – 300 GHz）。</b>
+  这就是「原子间接近微波带宽」这句话在 Keely 自己的数值体系内自洽的原因 ——
+  他的链整体就在微波带里，原子间夹在中间，当然是微波。
+</p>
+
+<div class="viz">
+  <div class="vt">对数频段图 · 把两条链画在同一根轴上</div>
+  <div class="vc">
+    上半部分是<b>现代频段划分</b>与实测频率（色带）；下半部分是 <b>Keely 给的数</b>。
+    同一条竖线上的东西才是"同一个物理位置"。落差就是那句话：<b>他的绝对值整体偏低约 2 个数量级</b>。
+  </div>
+  <canvas id="cvBand" width="1120" height="470"></canvas>
+</div>
+
+<div class="warnbox">
+  <b>★ 判定的正确姿势（不要简单说"他错了"）：</b><br>
+  微波上限 300 GHz = <b>0.3 THz</b> = 太赫兹下限，两者直接接壤。
+  而「太赫兹」这个词要到 <b>1970 年代</b>才有。Keely 站在正确位置的门口，只是不知道门后那间房叫什么。<br>
+  <span class="cnt">相对民国，他给出的「接近微波带宽」是 19 世纪末能达到的最优解。</span>
+</div>
+
+<h3>2⁴⁰ 那块板的终点</h3>
+<div class="eq">
+  2⁴⁰ = 1,099,511,627,776 Hz ≈ <b>1.1 THz</b><br>
+  ⇒ 正好压在<b>光学声子带（1–10 THz）的下沿</b>
+</div>
+<p>
+  Keely 说 40 块板递进能把频率推到「X 射线 / 伽马以上」——<b>终点高估了</b>（X 射线是 10¹⁶–10¹⁹ Hz）。
+  但 <b>40 这个数选得极准</b>：它的终点精确落在真实的原子间振动频段。
+  这不像随手写的。
+</p>
+
+<!-- ============ ④ ============ -->
+<h2 id="s4"><span class="num">④</span>第 12 律 vs 第 14 律：它们不是两套标度</h2>
+
+<p>
+  这是本批资料最重要的一次统一。Keely 说：
+</p>
+<ul>
+  <li>第 12 律：频率 <b>反比于线性尺寸</b></li>
+  <li>第 14 律：频率 <b>反比于原子重量的立方根</b>（"立方的反比"）</li>
+</ul>
+<p>看起来是两条不相干的定律。但在现代物理里，它们是<b>同一个公式的两个偏导</b>：</p>
+
+<div class="eq">
+  <b>θ<sub>D</sub> ∝ v · (ρ/M)<sup>1/3</sup></b>　（德拜温度，v = 平均声速，M = 离子质量，ρ = 质量密度）<br>
+  展开：θ<sub>D</sub> ∝ v · ρ<sup>1/3</sup> · M<sup>−1/3</sup>
+</div>
+
+<table>
+  <thead><tr><th>固定什么</th><th>剩下什么</th><th>Keely 的哪条</th></tr></thead>
+  <tbody>
+    <tr><td>固定 ρ，只变 M</td><td><b>f ∝ M<sup>−1/3</sup></b></td><td>= <b>第 14 律</b>「原子重量的立方反比」 ✅</td></tr>
+    <tr class="hl"><td>固定 M，只变 ρ（即变原子间距 a，因 ρ ∝ M/a³）</td>
+      <td><b>f ∝ ρ<sup>1/3</sup> ∝ 1/a</b></td><td>= <b>第 12 律</b>「线性尺寸反比」 ✅</td></tr>
+  </tbody>
+</table>
+
+<div class="goodbox">
+  <b>结论：</b>Keely 把德拜公式拆成了两条单独的"律"，因为他那个时代<b>没有偏导数</b>这种表达方式，
+  只能分别陈述两种情形。<b>这不是错误，是表达受限。</b><br>
+  <span class="cnt">顺带说明一处容易误读的地方：文献里另有「T<sub>D</sub> ∝ M<sup>−1/2</sup>」的说法，
+  那是爱因斯坦/同位素效应口径（已固定刚度与密度）；M<sup>−1/3</sup> 是德拜完整式里的质量因子。两者不矛盾。</span>
+</div>
+
+<!-- ============ ⑤ ============ -->
+<h2 id="s5"><span class="num">⑤</span>分子级算术 vs 原子级几何：两条级数的统一</h2>
+
+<div class="quote">
+  「经实验证明的比例如下：<b>分子级为 1 : 3 : 9 : 27 : 81 : 243。这个算术级数在原子级变为几何级数，
+  如下：3 : 9 : 81 : 6561 : 43,046,721</b>；等等。相信这种递进方法适用于分子以上的所有振动级，
+  并很快进入数学上的无穷。」
+  <span class="src">— Keely 原文 [pdf_53]</span>
+</div>
+
+<table>
+  <thead><tr><th>域</th><th>级数</th><th>结构</th><th>相邻比</th></tr></thead>
+  <tbody>
+    <tr><td><b>分子级</b></td><td>1 : 3 : 9 : 27 : 81 : 243</td><td><b>固定 ×3</b>（算术级数）</td><td>恒为 3</td></tr>
+    <tr class="hl"><td><b>原子级</b></td><td>3 : 9 : 81 : 6561 : 43,046,721</td><td><b>平方递进</b>（几何级数）</td><td>3, 9, 81, 6561…</td></tr>
+  </tbody>
+</table>
+
+<p>原子级写成 3 的幂，规律立刻显形：</p>
+
+<table>
+  <thead><tr><th>项</th><th>3</th><th>9</th><th>81</th><th>6561</th><th>43,046,721</th></tr></thead>
+  <tbody>
+    <tr><td>写成幂</td><td>3¹</td><td>3²</td><td>3⁴</td><td>3⁸</td><td>3¹⁶</td></tr>
+    <tr class="hl"><td><b>指数</b></td><td><b>1</b></td><td><b>2</b></td><td><b>4</b></td><td><b>8</b></td><td><b>16</b></td></tr>
+    <tr><td>指数是</td><td>2⁰</td><td>2¹</td><td>2²</td><td>2³</td><td>2⁴</td></tr>
+  </tbody>
+</table>
+
+<div class="eq">
+  通式：<b>3<sup>(2ⁿ)</sup></b>　　（每项 = 前一项的平方）<br>
+  ⇒ <b>2 的幂是八度轴（当指数），3 的幂是细分轴（当底数）</b>
+</div>
+
+<div class="goodbox">
+  <b>★ 这撤销了一条旧的"矛盾"判定。</b><br>
+  此前记为「×3（十二度）vs ×2（八度）矛盾，无法定案」——<b>是误判</b>。
+  不是二选一：<b>分子域本来就走 ×3，原子域本来就走平方递进</b>，
+  而且 Keely 自己在原文里写了这个转换。两套级数不是打架，是接力。
+</div>
+
+<!-- ============ ⑥ ============ -->
+<h2 id="s6"><span class="num">⑥</span>八度罗盘：21 / 42 / 63 与 105</h2>
+
+<div class="quote">
+  「每种形式代表 <b>21 个八度音阶的罗盘</b>。每种形式或音调都可以转换为高于或低于另一个音调的等量量，
+  它在 <b>105 个八度</b>的音阶中。」
+  <span class="src">— [pdf_3][pdf_53][pdf_140]</span>
+</div>
+
+<p>
+  21 = 每种能量形式自己占的宽度；105 = 总跨度 = 21 × 5（五段）。分段是<b>显式编号</b>的：
+</p>
+
+<table>
+  <thead><tr><th>Mode</th><th>细分</th><th>八度区间（Hz = 2<sup>octave</sup>）</th><th>对应的律</th></tr></thead>
+  <tbody>
+    <tr><td>Enharmonic</td><td>Molecular / Intermolecular</td><td><b>1 – 21</b></td><td>Law of Oscillating Atomic Substances</td></tr>
+    <tr class="hl"><td>Harmonic</td><td>Atomic / Interatomic</td><td><b>21 – 42</b></td><td>Law of Sonothermity</td></tr>
+    <tr><td>Dominant</td><td>Etheric / Interetheric</td><td><b>42 – 63</b></td><td>Law of Oscillating Atoms</td></tr>
+  </tbody>
+</table>
+
+<p>边界值（这三个数是硬的，可以当校验点）：</p>
+<table>
+  <thead><tr><th>边界</th><th>2<sup>N</sup></th><th>值</th></tr></thead>
+  <tbody>
+    <tr><td>第 21 个八度</td><td>2²¹</td><td><b>2,097,152</b></td></tr>
+    <tr><td>第 42 个八度</td><td>2⁴²</td><td><b>4,398,046,511,104</b></td></tr>
+    <tr><td>第 63 个八度</td><td>2⁶³</td><td><b>9,223,372,036,854,775,808</b></td></tr>
+  </tbody>
+</table>
+
+<div class="warnbox">
+  <b>★ 更正：</b>3 : 6 : 9 分别落在 <b>1–21 / 21–42 / 42–63 三段</b>，
+  <b>不是</b>全落在 21–42 那一段。此前用 log₂ 硬套频率值算出的"全在 21–42"是错的，
+  因为当时没找到这张显式的分段表。
+</div>
+
+<h3>相对编号 vs 绝对编号</h3>
+<p>
+  「三个八度」是<b>相对编号</b>，Keely 在水解离实验里给了它锚点：620 Hz 音叉的第 1 / 2 / 3 个八度位。
+  但<b>绝对位置</b>要去查 2<sup>N</sup> 表：
+</p>
+
+<table>
+  <thead><tr><th>层级</th><th>Keely 频率</th><th>绝对八度编号（1-indexed，本文换算）</th><th>落在</th></tr></thead>
+  <tbody>
+    <tr><td>静止分子振荡</td><td>20,000</td><td>≈ 第 <b>15.3</b> 个</td><td>振荡域 ✓</td></tr>
+    <tr><td>分子</td><td>100,000,000</td><td>≈ 第 <b>27.6</b> 个</td><td>振动域</td></tr>
+    <tr><td>原子</td><td>900,000,000</td><td>≈ 第 <b>30.7</b> 个</td><td>振动域</td></tr>
+    <tr><td>以太六度</td><td>8,100,000,000</td><td>≈ 第 <b>33.9</b> 个</td><td>振动域</td></tr>
+    <tr><td>以太间九度</td><td>24,300,000,000</td><td>≈ 第 <b>35.5</b> 个</td><td>振动域</td></tr>
+  </tbody>
+</table>
+<p class="cnt">
+  换算公式：编号 = log₂(f) + 1（因为 2⁰ = 1 Hz 记为第 1 个八度）。<br>
+  ★ 修正一处口径：A6 原表用的 <b>0-indexed</b>（log₂ 直接得 14.3 / 26.6 / 29.7 / 32.9 / 34.5），
+  本页统一换成 1-indexed 以便与「第 21 个八度」直接对齐 —— 差 1 是编号惯例，不是物理差异。
+</p>
+
+<div class="goodbox">
+  <b>一个值得注意的反差：</b>静止分子的 20,000 cps 落在第 15 个八度（<b>振荡域</b>），
+  一旦被三度和声激发到 100 MHz，就越过 21 进入<b>振动域</b>。<br>
+  <span class="cnt">这个"跨段"可能正是 Keely 区分 oscillation / vibration 的实质 ——
+  同一件东西，能量不够时"振荡"，越过某个门槛就叫"振动"。</span>
+</div>
+
+<div class="viz">
+  <div class="vt">换算器 · 任何频率落在哪一段</div>
+  <div class="vc">
+    输一个频率（或拖滑块），看它的八度编号、所属域，以及它离最近的段边界有多远。
+    <b>预设按钮</b>可以直接跳到 Keely 给过的几个数。
+  </div>
+  <div class="ctl">
+    <label>频率 <input type="number" id="sF" value="1024" min="0.001" max="1e22" step="any"> Hz</label>
+    <label><input type="range" id="sFlog" min="0" max="220" value="30" step="0.5"><span class="val" id="vFlog">10³ Hz</span></label>
+  </div>
+  <div class="ctl" style="margin-top:2px">
+    <label>预设：
+      <button class="tag" data-f="1024">1024 cps</button>
+      <button class="tag" data-f="20000">20 k 静止分子</button>
+      <button class="tag" data-f="1e8">100 M 分子</button>
+      <button class="tag" data-f="3e8">300 M 分子间</button>
+      <button class="tag" data-f="9e8">900 M 原子</button>
+      <button class="tag" data-f="8.1e9">8.1 G 以太六度</button>
+      <button class="tag" data-f="2.43e10">24.3 G 以太间</button>
+      <button class="tag" data-f="1.0995e12">2⁴⁰ ≈ 1.1 T</button>
+      <button class="tag" data-f="7.2e12">Cu 声子 7.2 T</button>
+    </label>
+  </div>
+  <div class="rd">
+    <div class="r"><div class="n" id="f1">11.00</div><div class="l">八度编号（1-indexed）</div><div class="x" id="f1x">log₂(f)+1</div></div>
+    <div class="r"><div class="n" id="f2">分子域</div><div class="l">所属域</div><div class="x" id="f2x">1–21 振荡 / 21–42 振动 / 42–63 以太</div></div>
+    <div class="r"><div class="n" id="f3">10.0</div><div class="l">0-indexed 编号</div><div class="x">log₂(f)</div></div>
+    <div class="r"><div class="n" id="f4">—</div><div class="l">现代频段名</div><div class="x" id="f4x">按 ITU 划分</div></div>
+    <div class="r"><div class="n" id="f5">—</div><div class="l">距下一段边界</div><div class="x" id="f5x">还需 ×多少倍频</div></div>
+  </div>
+</div>
+
+<hr>
+<p class="cnt">
+  上一站：<a href="K1_标度律_Chladni到Lamb.html">K1 · 标度律</a>　·　
+  下一站：<a href="K3_Trexar几何_根号n等体积定案.html">K3 · Trexar 几何定案</a>　·　
+  <a href="K4_核尺度检验_GDR可证伪判据.html">K4 · 核尺度检验</a>　·　
+  <a href="keely核心技术与现代声子物理技术对比.html">← 回总入口</a>
+</p>
+
+</div>
+
+<script>
+/* =====================================================================
+   K2 · 频段图 + 八度换算器
+   ===================================================================== */
+(function(){
+'use strict';
+var $ = function(id){ return document.getElementById(id); };
+var DPR = Math.min(2, window.devicePixelRatio || 1);
+
+/* ---------- 频段定义（Hz） ---------- */
+var BANDS = [
+  {n:'无线电',    a:1e3,   b:3e8,   c:'#eef2f8'},
+  {n:'微波',      a:3e8,   b:3e11,  c:'#e6f0fb'},
+  {n:'太赫兹',    a:3e11,  b:1e13,  c:'#fdeee3'},
+  {n:'红外',      a:1e13,  b:4.3e14,c:'#fbe3e0'},
+  {n:'可见',      a:4.3e14,b:7.5e14,c:'#f3e8f7'},
+  {n:'紫外',      a:7.5e14,b:3e16,  c:'#e8e3f6'},
+  {n:'X 射线',    a:3e16,  b:3e19,  c:'#e3eef6'},
+  {n:'γ 射线',    a:3e19,  b:1e22,  c:'#eceef1'}
+];
+
+/* ---------- Keely 链 ---------- */
+var KEELY = [
+  {n:'分子',    f:1e8,      t:'100 MHz'},
+  {n:'分子间',  f:3e8,      t:'300 MHz'},
+  {n:'原子',    f:9e8,      t:'900 MHz'},
+  {n:'以太六度',f:8.1e9,    t:'8.1 GHz'},
+  {n:'以太间',  f:2.43e10,  t:'24.3 GHz'}
+];
+
+/* ---------- 现代实测 ---------- */
+var MODERN = [
+  {n:'分子间低频模式', a:1e11, b:1e13, t:'0.1–10 THz'},
+  {n:'声子（原子间）', a:1e12, b:4e13, t:'1–40 THz'},
+  {n:'分子内键振动',   a:1e13, b:1e14, t:'10¹³–10¹⁴'}
+];
+
+/* ---------- 画图 ---------- */
+var cv = $('cvBand'), cx0 = cv.getContext('2d');
+
+function fit(c){
+  var r = c.getBoundingClientRect();
+  var w = Math.max(320, Math.round(r.width)), h = parseInt(c.getAttribute('height'),10);
+  c.width = w*DPR; c.height = h*DPR; c.style.height = h+'px';
+  var g = c.getContext('2d');
+  g.setTransform(DPR,0,0,DPR,0,0);
+  return {w:w, h:h, g:g};
+}
+
+var LO = 2, HI = 22;        /* log10 范围 10² – 10²² */
+
+function drawBand(){
+  var o = fit(cv), g = o.g, W = o.w, H = o.h;
+  var PL = 118, PR = 20, PT = 34, PB = 46;
+  var pw = W-PL-PR, ph = H-PT-PB;
+  g.clearRect(0,0,W,H);
+
+  var X = function(f){ return PL + (Math.log10(f)-LO)/(HI-LO)*pw; };
+
+  /* 频段色带（最上一条） */
+  var bh = 34;
+  BANDS.forEach(function(b){
+    var x1 = X(b.a), x2 = X(b.b);
+    g.fillStyle = b.c;
+    g.fillRect(x1, PT, Math.max(0,x2-x1), bh);
+    g.strokeStyle = '#dbe2ec'; g.lineWidth = 1;
+    g.strokeRect(x1+.5, PT+.5, Math.max(0,x2-x1-1), bh-1);
+    if(x2-x1 > 34){
+      g.fillStyle = '#3b4552'; g.font = '11.5px -apple-system,"Microsoft YaHei",sans-serif';
+      g.textAlign='center'; g.textBaseline='middle';
+      g.fillText(b.n, (x1+x2)/2, PT+bh/2);
+    }
+  });
+  g.fillStyle = '#6b7683'; g.font = '11px ui-monospace,Consolas,monospace';
+  g.textAlign='right'; g.textBaseline='middle';
+  g.fillText('现代频段', PL-9, PT+bh/2);
+
+  /* 网格 + 刻度 */
+  g.strokeStyle = '#eef2f7'; g.lineWidth = 1;
+  var e;
+  for(e=2; e<=22; e++){
+    var x = Math.round(X(Math.pow(10,e)))+.5;
+    g.beginPath(); g.moveTo(x, PT+bh); g.lineTo(x, PT+ph); g.stroke();
+  }
+  g.fillStyle = '#8b95a3'; g.font = '10.5px ui-monospace,Consolas,monospace';
+  g.textAlign='center'; g.textBaseline='top';
+  for(e=2; e<=22; e+=2){
+    g.fillText('10'+sup(e), X(Math.pow(10,e)), PT+ph+7);
+  }
+  g.fillStyle = '#3b4552'; g.font='12px -apple-system,"Microsoft YaHei",sans-serif';
+  g.fillText('频率（Hz，对数轴）', PL+pw/2, PT+ph+26);
+
+  /* 现代实测区间（第二行） */
+  var yM = PT + bh + 26;
+  /* 组标题上提一行：下面每行要写"这是哪一类振动"（原来只写数值区间，
+     读者看到 1–40 THz 却不知道那是声子 —— 2026-10-17 截图发现）。 */
+  g.fillStyle = '#6b7683'; g.font='11px ui-monospace,Consolas,monospace';
+  g.textAlign='right'; g.textBaseline='middle';
+  g.fillText('现代实测', PL-9, yM-13);
+  MODERN.forEach(function(m, i){
+    var x1=X(m.a), x2=X(m.b), y=yM + i*22;
+    g.fillStyle = 'rgba(23,114,69,.14)';
+    g.fillRect(x1, y, x2-x1, 15);
+    g.strokeStyle='rgba(23,114,69,.5)'; g.lineWidth=1;
+    g.strokeRect(x1+.5, y+.5, x2-x1-1, 14);
+    /* 左侧行名 */
+    g.fillStyle='#0f5132'; g.font='10.5px -apple-system,"Microsoft YaHei",sans-serif';
+    g.textAlign='right'; g.textBaseline='middle';
+    g.fillText(m.n, PL-9, y+7.5);
+    /* 条内数值区间 */
+    g.fillStyle='#0f5132'; g.font='10.5px -apple-system,"Microsoft YaHei",sans-serif';
+    g.textAlign='left'; g.textBaseline='middle';
+    if(x2-x1 > 60) g.fillText(m.t, x1+4, y+7.5);
+    else { g.textAlign='right'; g.fillText(m.t, x2-3, y+7.5); }
+  });
+
+  /* Keely 链（下半） */
+  var yK = yM + MODERN.length*22 + 22;
+  g.fillStyle = '#6b7683'; g.font='11px ui-monospace,Consolas,monospace';
+  g.textAlign='right'; g.textBaseline='middle';
+  g.fillText('Keely 给的数', PL-9, yK+10);
+
+  g.strokeStyle = 'rgba(27,79,156,.28)'; g.lineWidth = 2;
+  g.beginPath(); g.moveTo(X(KEELY[0].f), yK+10); g.lineTo(X(KEELY[KEELY.length-1].f), yK+10); g.stroke();
+
+  KEELY.forEach(function(k, i){
+    var x = X(k.f), y = yK+10;
+    g.fillStyle = '#1b4f9c';
+    g.beginPath(); g.arc(x, y, 5, 0, 6.2832); g.fill();
+    g.strokeStyle='#fff'; g.lineWidth=1.6; g.stroke();
+    /* 标签交替上下，避免挤 */
+    var up = (i%2===0);
+    g.fillStyle='#0d2f63'; g.font='10.8px -apple-system,"Microsoft YaHei",sans-serif';
+    g.textAlign='center';
+    g.textBaseline = up ? 'bottom' : 'top';
+    g.fillText(k.n, x, up ? y-8 : y+8);
+    g.fillStyle='#6b7683'; g.font='9.8px ui-monospace,Consolas,monospace';
+    g.fillText(k.t, x, up ? y-20 : y+21);
+  });
+
+  /* 2^40 标记 */
+  var x40 = X(1.0995e12);
+  g.strokeStyle='rgba(180,83,31,.75)'; g.lineWidth=1.6; g.setLineDash([5,4]);
+  g.beginPath(); g.moveTo(x40, PT+bh+2); g.lineTo(x40, PT+ph); g.stroke();
+  g.setLineDash([]);
+  g.fillStyle='#b4531f'; g.font='10.5px -apple-system,"Microsoft YaHei",sans-serif';
+  g.textAlign='left'; g.textBaseline='top';
+  g.fillText('2⁴⁰ = 1.1 THz', x40+4, PT+bh+4);
+
+  /* 落差箭头：Keely 原子 900MHz → 现实声子 1-40THz
+     ⚠ 原来箭头文字就压在点行下方 4px 处，而「以太六度 8.1 GHz」正好落在
+       xa–xb 区间内、又是"下"标签 ⇒ 两段字叠成一团（2026-10-17 截图发现）。
+       现在把箭头整根下移 40px 自成一行，再用两条虚线从点行引下来。 */
+  var xa = X(9e8), xb = X(1e12);
+  var ya = yK+10, ay = ya + 40;
+  g.strokeStyle='rgba(179,38,30,.35)'; g.lineWidth=1.2; g.setLineDash([3,3]);
+  g.beginPath(); g.moveTo(xa, ya+7); g.lineTo(xa, ay); g.stroke();
+  g.beginPath(); g.moveTo(xb, ya+7); g.lineTo(xb, ay); g.stroke();
+  g.setLineDash([]);
+  g.strokeStyle='rgba(179,38,30,.8)'; g.lineWidth=2;
+  g.beginPath(); g.moveTo(xa, ay); g.lineTo(xb-4, ay); g.stroke();
+  g.beginPath();
+  g.moveTo(xb-4, ay); g.lineTo(xb-11, ay-4); g.lineTo(xb-11, ay+4); g.closePath();
+  g.fillStyle='rgba(179,38,30,.8)'; g.fill();
+  g.fillStyle='#b3261e'; g.font='10.5px -apple-system,"Microsoft YaHei",sans-serif';
+  g.textAlign='left'; g.textBaseline='top';
+  var at = '≈ 低 2 个数量级';
+  g.fillStyle='rgba(255,255,255,.93)';
+  g.fillRect(xa-2, ay+5, g.measureText(at).width+8, 15);
+  g.fillStyle='#b3261e';
+  g.fillText(at, xa+2, ay+7);
+
+  /* 太赫兹=微波上限接壤 标注 */
+  var xb0 = X(3e11);
+  g.fillStyle='rgba(154,103,0,.9)'; g.font='10px -apple-system,"Microsoft YaHei",sans-serif';
+  g.textAlign='left'; g.textBaseline='top';
+  g.fillText('300 GHz ⇄ 0.3 THz 接壤', xb0+3, PT-16);
+}
+
+function sup(n){ var m={0:'⁰',1:'¹',2:'²',3:'³',4:'⁴',5:'⁵',6:'⁶',7:'⁷',8:'⁸',9:'⁹'};
+  return String(n).split('').map(function(d){return m[d];}).join(''); }
+
+/* ---------- 八度换算 ---------- */
+function bandName(f){
+  for(var i=0;i<BANDS.length;i++){ if(f>=BANDS[i].a && f<BANDS[i].b) return BANDS[i].n; }
+  if(f < BANDS[0].a) return '低于 1 kHz';
+  return '高于 10²² Hz';
+}
+
+function domainOf(oct1){                    /* oct1 = 1-indexed */
+  if(oct1 <= 21) return {d:'分子域', x:'Enharmonic · 1–21（振荡）', lo:1, hi:21};
+  if(oct1 <= 42) return {d:'原子域', x:'Harmonic · 21–42（振动）', lo:21, hi:42};
+  if(oct1 <= 63) return {d:'以太域', x:'Dominant · 42–63', lo:42, hi:63};
+  return {d:'超出 63 段', x:'63 之后未给分段', lo:63, hi:63};
+}
+
+function refreshOct(){
+  var f = parseFloat($('sF').value);
+  if(!(f>0)) f = 1;
+  var oct0 = Math.log(f)/Math.LN2;          /* 0-indexed */
+  var oct1 = oct0 + 1;                      /* 1-indexed */
+  $('f1').textContent = oct1.toFixed(2);
+  $('f1x').textContent = 'log₂(' + fmtF(f) + ')+1';
+  var D = domainOf(oct1);
+  $('f2').textContent = D.d;
+  $('f2x').textContent = D.x;
+  $('f3').textContent = oct0.toFixed(2);
+  $('f4').textContent = bandName(f);
+  $('f4x').textContent = 'ITU 频段划分';
+  /* 距边界 */
+  var dist = (D.hi - oct1);
+  if(D.hi <= 63 && dist > 0){
+    $('f5').textContent = '×' + Math.pow(2, dist).toFixed(0);
+    $('f5x').textContent = '还需 ' + dist.toFixed(2) + ' 个八度到第 ' + D.hi + ' 段';
+  } else {
+    $('f5').textContent = '—';
+    $('f5x').textContent = '已在段外';
+  }
+  /* 滑块同步 */
+  $('sFlog').value = Math.max(0, Math.min(220, Math.log10(f)*10));
+  $('vFlog').textContent = '10' + sup(Math.round(Math.log10(f))) + ' Hz';
+}
+
+function fmtF(f){
+  if(f >= 1e12) return (f/1e12).toFixed(4)+'×10¹²';
+  if(f >= 1e9)  return (f/1e9).toFixed(3)+'×10⁹';
+  if(f >= 1e6)  return (f/1e6).toFixed(2)+'×10⁶';
+  if(f >= 1e3)  return (f/1e3).toFixed(2)+' kHz';
+  return f.toFixed(1);
+}
+
+/* ---------- 绑定 ---------- */
+$('sF').addEventListener('input', refreshOct);
+$('sFlog').addEventListener('input', function(){
+  $('sF').value = Math.pow(10, parseInt(this.value,10)/10);
+  refreshOct();
+});
+[].slice.call(document.querySelectorAll('button.tag')).forEach(function(b){
+  b.addEventListener('click', function(){
+    $('sF').value = b.getAttribute('data-f');
+    refreshOct();
+  });
+});
+
+var rz;
+window.addEventListener('resize', function(){ clearTimeout(rz); rz=setTimeout(drawBand,120); });
+
+drawBand();
+refreshOct();
+
+/* ---------- 钩子 ---------- */
+var checks = {
+  pow21:  Math.pow(2,21),
+  pow42:  Math.pow(2,42),
+  pow63:  Math.pow(2,63),
+  pow40:  Math.pow(2,40),
+  octOf:  function(f){ return Math.log(f)/Math.LN2 + 1; },
+  band:   bandName,
+  dom:    function(f){ return domainOf(Math.log(f)/Math.LN2+1).d; },
+  chain3: function(n){ return Math.pow(3, Math.pow(2,n)); }   /* 3^(2^n) */
+};
+window.__K2 = checks;
+})();
+</script>
+<!--FXCTL:JS--><script id="fxctl-js">
+/* ============================================================
+   PKS · 通用「调参浮窗」 (float_ctl.js)
+   作用：把页面里成块的参数控件（.ctl / .ctrl / .controls / .calc /
+        .panel[纯控件] / [data-param-panel]）收进右下角一个可拖动浮窗。
+   原则：
+     1. 只搬控件块本身，**不复制、不重建** ⇒ 原页面绑定在元素上的
+        事件监听、id、input 值全部照常工作。
+     2. 搬不走的、散的（每张卡片各一组、且组数很多）→ 整页放弃，
+        保持原样，并在 console 里说明原因，绝不半搬半留。
+     3. 位置写入 localStorage；双击标题栏回默认位；⇱/— 收起。
+   ============================================================ */
+(function () {
+  if (window.__FXCTL) return;
+
+  var SEL = '.ctl,.ctrl,.controls,.calc,.param-panel,.grp,.htgroup,[data-param-panel]';
+  var MAX_GROUPS = 16;    // 超过这个组数：判定为"散在每张卡片里"，整页跳过
+  var MIN_SHARE = 0.85;   // 收进去的滑块至少要占全页 85%，否则跳过（不做半搬半留）
+  var KEY = 'fxp:' + location.pathname;
+
+  function txt(el, n) {
+    var s = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    if (n && s.length > n) s = s.slice(0, n - 1) + '…';
+    return s;
+  }
+  function inChrome(el) {
+    return !!(el.closest && el.closest('.topnav,header,nav,.topbar,.fxp,#fxp'));
+  }
+
+  /* ---------- 1. 找参数面板 ---------- */
+  // 页面自己已经有一个"贴右边的浮动参数窗"？有就不再叠第二个
+  function hasOwnDock() {
+    var els = [].slice.call(document.querySelectorAll('body > *'));
+    // 也看一两层深，很多页把 pwin 套在 wrapper 里
+    document.querySelectorAll('body div, body section, body aside').forEach(function (x) {
+      if (els.length < 400) els.push(x);
+    });
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      if (el.id === 'fxp') continue;
+      if (getComputedStyle(el).position !== 'fixed') continue;
+      var r = el.getBoundingClientRect();
+      if (r.width > 240 && r.width < 620 && r.height > 240 &&
+          (innerWidth - r.right) < 70 && r.top < 220) return true;
+    }
+    return false;
+  }
+
+  function detect() {
+    var all = [].slice.call(document.querySelectorAll('input[type=range]'));
+    if (hasOwnDock()) {
+      return { panels: [], total: all.length, inline: 0, moved: 0, ok: false, own: true };
+    }
+    // 已经在自己的浮窗里（祖先 fixed）的滑块：不算在"待浮"里，也不搬
+    function inFixed(el) {
+      var a = el, d = 0;
+      while (a && d++ < 5) {
+        if (getComputedStyle(a).position === 'fixed') return true;
+        a = a.parentElement;
+      }
+      return false;
+    }
+    var inline = all.filter(function (i) { return !inFixed(i); });   // 仍躺在正文里的
+    var cands = [].slice.call(document.querySelectorAll(SEL)).filter(function (el) {
+      if (inChrome(el)) return false;
+      if (!el.querySelector('input[type=range]')) return false;
+      if (inFixed(el)) return false;                                 // 已在浮窗内
+      var hasCanvas = !!el.querySelector('canvas,svg,video,img');
+      var cls = el.className || '';
+      var isParamCol = /(^|\s)(ctl|ctrl|controls|calc|param-panel)(\s|$)/.test(cls);
+      if (hasCanvas && !isParamCol) return false;
+      if (el.classList.contains('panel') || el.classList.contains('grp')) {
+        return el.querySelectorAll('input[type=range]').length >= 2;
+      }
+      return true;
+    });
+    // 去重 + 保留最外层
+    cands = cands.filter(function (el, i) {
+      if (cands.indexOf(el) !== i) return false;
+      return !cands.some(function (o) { return o !== el && o.contains(el); });
+    });
+    var moved = 0;
+    cands.forEach(function (el) { moved += el.querySelectorAll('input[type=range]').length; });
+    var ok = cands.length > 0 && cands.length <= MAX_GROUPS &&
+             (inline.length ? moved / inline.length >= MIN_SHARE : false);
+    return { panels: cands, total: all.length, inline: inline.length, moved: moved, ok: ok };
+  }
+
+  /* ---------- 2. 取分组标签（最近的标题 / .vt）---------- */
+  function labelFor(el) {
+    var gt = el.querySelector && el.querySelector('.gt');
+    if (gt) return txt(gt, 22);
+    var v0 = el.closest && el.closest('.viz');
+    if (v0) { var t0 = v0.querySelector('.vt'); if (t0) return txt(t0, 22); }
+    var node = el, hop = 0;
+    while (node && hop++ < 6) {
+      var prev = node.previousElementSibling;
+      while (prev) {
+        if (/^H[1-4]$/.test(prev.tagName)) return txt(prev, 22);
+        if (prev.querySelector) {
+          var h = prev.querySelector('h2,h3,h4,.vt');
+          if (h) return txt(h, 22);
+        }
+        prev = prev.previousElementSibling;
+      }
+      node = node.parentElement;
+    }
+    return '';
+  }
+
+  /* 搬走控件后，父级若是两列网格且变空 → 收成一列，避免右侧留一条空白 */
+  function collapseTrack(el) {
+    var par = el.parentElement;
+    if (!par) return;
+    var cs = getComputedStyle(par);
+    if (cs.display !== 'grid') return;
+    var tracks = (cs.gridTemplateColumns || '').split(/\s+/).filter(function (x) { return x && x !== 'none'; });
+    if (tracks.length !== 2) return;
+    if (par.lastElementChild !== el) return;
+    par.style.gridTemplateColumns = '1fr';
+  }
+
+  /* ---------- 3. 搭面板 ---------- */
+  function build(d) {
+    var old = document.getElementById('fxp');
+    if (old) old.remove();
+
+    var p = document.createElement('div');
+    p.id = 'fxp';
+    var counts = d.panels.map(function (el) {
+      return el.querySelectorAll('input[type=range]').length;
+    });
+    var nRange = counts.reduce(function (a, b) { return a + b; }, 0);
+
+    p.innerHTML =
+      '<div class="fxp-h" id="fxpH">' +
+        '<span class="fxp-grip">⠿</span>' +
+        '<span class="fxp-t">调参</span>' +
+        '<span class="fxp-c">' + d.panels.length + ' 组 · ' + nRange + ' 滑块</span>' +
+        '<button class="fxp-b" data-a="mini" title="收起 / 展开">—</button>' +
+        '<button class="fxp-b" data-a="reset" title="回到默认位置（也可双击标题栏）">⟲</button>' +
+      '</div><div class="fxp-bd"></div>';
+
+    var bd = p.querySelector('.fxp-bd');
+    var used = {}, noteDone = false;
+    d.panels.forEach(function (el, i) {
+      var lb = labelFor(el) || ('参数组 ' + (i + 1));
+      if (used[lb]) { used[lb]++; lb = lb.slice(0, 16) + ' (' + used[lb] + ')'; } else { used[lb] = 1; }
+      var g = document.createElement('div');
+      g.className = 'fxp-grp';
+      var gl = document.createElement('div');
+      gl.className = 'fxp-gl';
+      gl.innerHTML = '<b>' + lb.replace(/</g, '&lt;') + '</b><i>' + counts[i] + '</i>';
+      g.appendChild(gl);
+
+      if (!noteDone && el.parentNode) {
+        var note = document.createElement('p');
+        note.className = 'fxp-note';
+        note.textContent = '参数已收进右侧浮窗「调参」（拖标题栏可挪走 · 双击回位）';
+        el.parentNode.insertBefore(note, el);
+        noteDone = true;
+      }
+      collapseTrack(el);
+
+      g.appendChild(el);          // ← 原节点整体搬入，事件与 id 不变
+      bd.appendChild(g);
+    });
+
+    document.body.appendChild(p);
+    return p;
+  }
+
+  /* ---------- 4. 位置 / 拖动 / 收起 ---------- */
+  function clamp(p) {
+    var r = p.getBoundingClientRect(), W = innerWidth, H = innerHeight;
+    var x = Math.min(Math.max(r.left, -r.width + 90), W - 90);
+    var y = Math.min(Math.max(r.top, 0), H - 44);
+    p.style.left = x + 'px'; p.style.top = y + 'px';
+    p.style.right = 'auto'; p.style.bottom = 'auto';
+  }
+  function defPos(p) {
+    p.style.left = ''; p.style.right = ''; p.style.top = ''; p.style.bottom = '';
+  }
+  function save(p) {
+    try {
+      var st = p.classList.contains('fxp-min');
+      if (!p.style.left) { localStorage.removeItem(KEY); return; }
+      localStorage.setItem(KEY, JSON.stringify({
+        x: parseFloat(p.style.left), y: parseFloat(p.style.top), mini: st
+      }));
+    } catch (e) {}
+  }
+  function load(p) {
+    try {
+      var s = localStorage.getItem(KEY);
+      /* 首次访问一律收起：页面本身就有「参数」竖条，浮窗默认展开会把画布挤掉 322px；
+         收起的标题条写着「调参 · N 组 · M 滑块」，一眼能看见、点一下就展开，状态会被记住。 */
+      if (!s) { p.classList.add('fxp-min'); return; }
+      var o = JSON.parse(s);
+      if (o.mini) p.classList.add('fxp-min');
+      if (typeof o.x === 'number' && isFinite(o.x)) {
+        p.style.left = o.x + 'px'; p.style.top = o.y + 'px';
+        p.style.right = 'auto'; p.style.bottom = 'auto';
+        clamp(p);
+      }
+    } catch (e) {}
+  }
+
+  function wire(p) {
+    var h = p.querySelector('#fxpH');
+    var drag = null;
+
+    h.addEventListener('pointerdown', function (ev) {
+      if (ev.target.closest('button')) return;
+      if (innerWidth <= 880) return;                 // 窄屏走底部抽屉，不拖
+      var r = p.getBoundingClientRect();
+      drag = { dx: ev.clientX - r.left, dy: ev.clientY - r.top, moved: false };
+      p.style.left = r.left + 'px'; p.style.top = r.top + 'px';
+      p.style.right = 'auto'; p.style.bottom = 'auto';
+      h.classList.add('fxp-drag');
+      h.setPointerCapture && h.setPointerCapture(ev.pointerId);
+      ev.preventDefault();
+    });
+    h.addEventListener('pointermove', function (ev) {
+      if (!drag) return;
+      drag.moved = true;
+      p.style.left = (ev.clientX - drag.dx) + 'px';
+      p.style.top = (ev.clientY - drag.dy) + 'px';
+      var r = p.getBoundingClientRect();
+      var nx = Math.min(Math.max(r.left, -r.width + 90), innerWidth - 90);
+      var ny = Math.min(Math.max(r.top, 0), innerHeight - 44);
+      p.style.left = nx + 'px'; p.style.top = ny + 'px';
+    });
+    function end() { if (drag) { h.classList.remove('fxp-drag'); save(p); drag = null; } }
+    h.addEventListener('pointerup', end);
+    h.addEventListener('pointercancel', end);
+
+    h.addEventListener('dblclick', function (ev) {
+      if (ev.target.closest('button')) return;
+      defPos(p);
+      try { localStorage.removeItem(KEY); } catch (e) {}
+    });
+
+    p.addEventListener('click', function (ev) {
+      var b = ev.target.closest('button[data-a]');
+      if (!b) return;
+      if (b.dataset.a === 'mini') { p.classList.toggle('fxp-min'); save(p); }
+      if (b.dataset.a === 'reset') { defPos(p); p.classList.remove('fxp-min'); save(p); }
+    });
+
+    addEventListener('resize', function () { if (p.style.left) clamp(p); });
+  }
+
+  /* ---------- 5. 启动 ---------- */
+  function boot() {
+    var d = detect();
+    if (!d.ok) {
+      if (d.own) {
+        console.info('[调参浮窗] 本页跳过：页面自己已有贴右的可拖动参数窗，不叠第二个');
+      } else if (d.inline === 0 && d.total > 0) {
+        console.info('[调参浮窗] 本页跳过：' + d.total + ' 个滑块全在页面自己的浮窗里，没有需要搬的');
+      } else if (d.panels.length) {
+        console.info('[调参浮窗] 本页跳过：' + d.panels.length + ' 组、待浮滑块 ' +
+          d.moved + '/' + d.inline + '（判据：≤' + MAX_GROUPS + ' 组且 ≥' +
+          Math.round(MIN_SHARE * 100) + '%；已在浮窗内的 ' + (d.total - d.inline) + ' 个不计）');
+      }
+      return;
+    }
+    var p = build(d);
+    load(p);
+    wire(p);
+    console.info('[调参浮窗] 已收 ' + d.moved + '/' + d.inline + ' 个待浮滑块，' +
+      d.panels.length + ' 组（另 ' + (d.total - d.inline) + ' 个本来就在浮窗里）');
+  }
+
+  window.__FXCTL = { detect: detect, boot: boot, build: build };
+
+  if (document.readyState === 'complete') setTimeout(boot, 60);
+  else addEventListener('load', function () { setTimeout(boot, 60); });
+})();
+
+</script><!--/FXCTL:JS-->
+</body>
+</html>

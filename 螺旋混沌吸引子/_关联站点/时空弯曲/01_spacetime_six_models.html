@@ -1,0 +1,3386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>① 时空弯曲的六种画法 · 3D 交互</title>
+<link rel="stylesheet" href="assets/css/site.css">
+<style>
+  /* 参数控件已全部移入右侧可拖动浮窗（#paramWin）——正文单栏满宽 */
+  .layout{display:block}
+  .quadlbl{position:absolute;font-family:var(--mono);font-size:11px;color:var(--ink-3);
+    background:rgba(255,255,255,.86);padding:1px 6px;border-radius:5px;pointer-events:none}
+  .qgrid{position:absolute;inset:0;pointer-events:none}
+  .modelcard{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px;background:#fff;cursor:pointer;transition:.14s}
+  .modelcard:hover{border-color:var(--accent)}
+  .modelcard.on{border-color:var(--accent);background:#f5f9ff;box-shadow:0 0 0 2px rgba(27,79,156,.10)}
+  .modelcard .t{font-family:var(--serif);font-weight:700;font-size:15px;display:flex;align-items:center;gap:7px}
+  .modelcard .d{font-size:12.5px;color:var(--ink-3);margin-top:3px;line-height:1.55}
+  .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+  .readout{font-family:var(--mono);font-size:12.5px;color:var(--ink-2);line-height:1.9}
+  .readout b{color:var(--accent-2)}
+  .bar{height:7px;background:var(--bg-soft2);border-radius:4px;overflow:hidden;margin:3px 0 9px}
+  .bar>i{display:block;height:100%;background:linear-gradient(90deg,#b3261e,#e8a33d,#1b7f4f)}
+  /* 浮窗内的模型卡片压缩一档（.pwin .notch 的通用规则在 site.css 里） */
+  .pwin .modelcard{padding:9px 10px;margin-bottom:6px}
+  .pwin .modelcard .t{font-size:13.5px}
+  .pwin .modelcard .d{font-size:11.5px}
+  .viewer{user-select:none}
+  /* 3D 未就绪时的占位提示（WebGL 失败时不会静默空白） */
+  #glHint{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:6px;color:#8a5a20;font-size:13.5px;text-align:center;padding:26px;line-height:1.8;pointer-events:none}
+  #glHint .sm{font-size:12px;color:#7b8794}
+  /* ============================================================
+     周髀弦图 · 三块新增内容（2026-10-12）
+       ① #pythTbl    全整数阶总表（通项公式的可复算落点：阶 ←→ 勾/股/弦/中孔）
+       ② #anuBridge  七阶 ↔ anu「七级螺旋 / 1680 匝」的对齐卡
+       ③ figure.refShot  两张原始扫描件（点开看原图）
+     ★ 一律白底深字（老师铁律：禁暗色系）；表头/单元格沿用 site.css 的 th/td。
+     ============================================================ */
+  #pythWrap,#anuBridge,#zhoubiRefs{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+  #pythWrap .ch,#anuBridge .ch,#zhoubiRefs .ch{font-family:var(--serif);font-size:14.5px;font-weight:700;margin:0 0 6px;color:var(--ink)}
+  .fbox{font-family:var(--mono);font-size:12.5px;line-height:1.95;background:var(--bg-soft);
+    border:1px solid var(--line-2);border-left:4px solid var(--violet);border-radius:8px;
+    padding:9px 12px;margin:8px 0;overflow-wrap:anywhere}
+  .fbox .k{color:var(--violet);font-weight:700}
+  .fbox .warn{color:var(--warn)}
+  #pythTbl{max-height:336px;overflow:auto;border:1px solid var(--line-2);border-radius:8px}
+  #pythTbl table{margin:0;font-size:12.5px}
+  #pythTbl th{position:sticky;top:0;z-index:1;font-size:12px;padding:6px 8px;background:var(--bg-soft2)}
+  #pythTbl td{padding:5px 8px;font-family:var(--mono)}
+  #pythTbl tr.cur{background:#fff8f8;box-shadow:inset 3px 0 0 #b3261e}
+  #pythTbl tr.cur td{font-weight:700;color:#b3261e}
+  #pythTbl tr.seven td.sev{color:#0f8b7a;font-weight:700}
+  #pythTbl tr.reach td.n::after{content:" ●";color:#1b4f9c;font-size:9px;vertical-align:super}
+  #pythTbl tr.multi td.n::before{content:"⇉ ";color:#c2691a;font-weight:700}
+  .refShots{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px}
+  figure.refShot{flex:1 1 300px;min-width:260px;margin:0}
+  figure.refShot img{width:100%;border:1px solid var(--line);border-radius:8px;background:#fff}
+  figure.refShot figcaption{font-size:12px;color:var(--ink-3);line-height:1.7;margin-top:6px}
+  figure.refShot a{display:block;text-decoration:none}
+  figure.refShot a:hover img{border-color:var(--accent);box-shadow:0 0 0 2px rgba(27,79,156,.12)}
+</style>
+<script>
+/* ★ SOUL 铁律 51：任何 JS 错误 / 资源加载失败，必须在页面右下角可见 */
+(function(){
+  var box = null;
+  function show(msg){
+    if (!box){
+      box = document.createElement('div');
+      box.id = '__ERRBOX__';
+      box.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:99999;max-width:470px;'
+        + 'max-height:42vh;overflow:auto;background:#fdecea;color:#8a1c12;border:1px solid #e0a49b;'
+        + 'border-radius:9px;padding:10px 12px;font:12px/1.6 Consolas,monospace;white-space:pre-wrap;'
+        + 'box-shadow:0 6px 22px rgba(0,0,0,.18)';
+      (document.body || document.documentElement).appendChild(box);
+    }
+    box.textContent += (box.textContent ? '\n' : '') + msg;
+  }
+  window.__showErr = show;
+  window.addEventListener('error', function(e){
+    var t = e.target;
+    if (t && t.tagName && (t.tagName === 'SCRIPT' || t.tagName === 'LINK' || t.tagName === 'IMG')){
+      show('资源加载失败：' + (t.src || t.href));
+    } else {
+      show('JS 错误：' + (e.message || '') + '\n  ' + (e.filename || '') + ':' + (e.lineno || ''));
+    }
+  }, true);
+  window.addEventListener('unhandledrejection', function(e){
+    show('Promise 未捕获：' + (e.reason && e.reason.message ? e.reason.message : e.reason));
+  });
+})();
+</script>
+<!--FXCTL:CSS--><style id="fxctl-css">
+/* ============================================================
+   PKS · 通用「调参浮窗」样式  (float_ctl.css)
+   白底 / 深蓝强调 / 与 site.css 变量兼容（变量缺失时有兜底色）
+   面板不接管页面原有控件样式，只在自己作用域内统一外观
+   ============================================================ */
+#fxp{
+  position:fixed; z-index:840; top:84px; right:16px;
+  width:322px; max-height:calc(100vh - 118px);
+  display:flex; flex-direction:column;
+  background:#fff; border:1px solid #cfd6e0; border-radius:12px;
+  box-shadow:0 2px 6px rgba(18,22,28,.08), 0 14px 40px rgba(18,22,28,.14);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:13px; color:#12161c; line-height:1.55;
+  -webkit-user-select:none; user-select:none;
+}
+#fxp.fxp-min{ width:auto; min-width:150px; }
+#fxp.fxp-min .fxp-bd{ display:none; }
+#fxp.fxp-min .fxp-c{ display:none; }
+
+/* 标题栏（拖动手柄） */
+#fxp .fxp-h{
+  display:flex; align-items:center; gap:7px;
+  padding:8px 10px 8px 9px; cursor:grab; touch-action:none;
+  border-bottom:1px solid #e6eaf0; border-radius:12px 12px 0 0;
+  background:linear-gradient(#fbfcfe,#f4f7fb);
+}
+#fxp.fxp-min .fxp-h{ border-bottom:0; border-radius:12px; }
+#fxp .fxp-h.fxp-drag{ cursor:grabbing; }
+#fxp .fxp-grip{ color:#9aa6b6; font-size:13px; letter-spacing:0 }
+#fxp .fxp-t{
+  font-family:Georgia,"Times New Roman","Songti SC",serif;
+  font-weight:700; font-size:14.5px; color:#0d2f63; letter-spacing:.2px;
+}
+#fxp .fxp-c{ font-family:Consolas,monospace; font-size:11px; color:#6b7683; margin-left:auto; white-space:nowrap }
+#fxp .fxp-h.fxp-mini-open .fxp-c{ margin-left:6px }
+#fxp .fxp-b{
+  width:22px; height:22px; padding:0; flex:0 0 22px;
+  border:1px solid #cfd6e0; background:#fff; border-radius:6px;
+  color:#3b4552; font-size:12px; line-height:1; cursor:pointer;
+}
+#fxp .fxp-b:hover{ border-color:#1b4f9c; color:#1b4f9c; background:#f4f7fb }
+#fxp .fxp-b:first-of-type{ margin-left:6px }
+
+/* 面板主体 */
+#fxp .fxp-bd{
+  padding:4px 12px 12px; overflow-y:auto; overflow-x:hidden;
+  -webkit-user-select:auto; user-select:auto;
+}
+#fxp .fxp-bd::-webkit-scrollbar{ width:8px }
+#fxp .fxp-bd::-webkit-scrollbar-thumb{ background:#d7dee8; border-radius:4px }
+#fxp .fxp-bd::-webkit-scrollbar-track{ background:transparent }
+
+/* 分组 */
+#fxp .fxp-grp{ padding:9px 0 3px }
+#fxp .fxp-grp + .fxp-grp{ border-top:1px dashed #e6eaf0; margin-top:3px }
+#fxp .fxp-gl{
+  font-family:Consolas,monospace; font-size:10.5px; letter-spacing:.04em;
+  color:#6b7683; margin:0 0 7px; display:flex; align-items:baseline; gap:6px;
+}
+#fxp .fxp-gl b{ color:#1b4f9c; font-weight:600; font-size:11px }
+#fxp .fxp-gl i{ font-style:normal; color:#9aa6b6 }
+
+/* 控件统一外观：覆盖被搬进来的块，不依赖原页面 .viz .ctl 之类选择器 */
+#fxp .ctl, #fxp .ctrl, #fxp .controls, #fxp .calc, #fxp .panel, #fxp .param-panel{
+  display:block; margin:0; padding:0; border:0; background:none; box-shadow:none;
+  width:auto; max-width:none; position:static; float:none;
+}
+#fxp .ctl > *, #fxp .ctrl > *, #fxp .controls > *, #fxp .panel > *, #fxp .calc > *{ margin-bottom:9px }
+#fxp .ctl > *:last-child, #fxp .ctrl > *:last-child,
+#fxp .controls > *:last-child, #fxp .panel > *:last-child, #fxp .calc > *:last-child{ margin-bottom:0 }
+
+/* label 行：文字在上、滑块占满整行 */
+#fxp label, #fxp .row, #fxp .prow, #fxp .slider{
+  display:flex; flex-wrap:wrap; align-items:center; gap:3px 8px;
+  width:100%; margin:0 0 10px; font-size:12.6px; color:#3b4552;
+}
+#fxp label > span, #fxp .row > span{ flex:0 0 auto }
+#fxp input[type=range]{
+  -webkit-appearance:none; appearance:none; order:3;
+  /* ⚠ 不能用 flex:0 0 100%：父级 label.row 是 align-items:center 的 flex 行，
+     交叉轴会把 input 压成 track 的 3px 高（实测 offsetHeight=3），滑块几乎被裁掉。
+     flex:none + width:100% 一样能独占一行，且高度稳定 16px。 */
+  flex:none; width:100%; min-width:90px; height:16px; margin:1px 0 0;
+  background:transparent; cursor:pointer; accent-color:#1b4f9c;
+}
+#fxp input[type=range]::-webkit-slider-runnable-track{
+  height:3px; background:#dbe2ec; border-radius:2px;
+}
+#fxp input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:13px; height:13px; margin-top:-5px;
+  background:#1b4f9c; border:2px solid #fff; border-radius:50%;
+  box-shadow:0 1px 3px rgba(18,22,28,.28);
+}
+#fxp input[type=range]:focus{ outline:none }
+#fxp input[type=range]:focus::-webkit-slider-thumb{ box-shadow:0 0 0 3px rgba(27,79,156,.18) }
+
+/* 数值 */
+#fxp .val, #fxp .v, #fxp output, #fxp .num{
+  font-family:Consolas,monospace; font-size:12px; color:#b4531f;
+  min-width:0; margin-left:auto; white-space:nowrap; order:2;
+}
+
+/* 按钮 */
+#fxp button{
+  font-family:Consolas,monospace; font-size:11.5px; padding:4px 9px;
+  border:1px solid #cfd6e0; background:#fff; color:#3b4552;
+  border-radius:7px; cursor:pointer; margin:0 5px 5px 0;
+}
+#fxp button:hover{ border-color:#1b4f9c; color:#1b4f9c; background:#f4f7fb }
+
+/* .lab / .hint / .presets（aizawa / 黄金蛋 那一族的行结构） */
+#fxp .lab{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:8px; width:100%; order:1; font-size:12.6px; color:#3b4552;
+}
+#fxp .lab .v{ margin-left:auto }
+#fxp .hint{
+  order:4; width:100%; margin:3px 0 0; font-size:11.2px; line-height:1.5;
+  color:#6b7683;
+}
+#fxp .presets{ order:5; width:100%; display:flex; flex-wrap:wrap; gap:5px; margin-top:5px }
+#fxp .presets button{ margin:0 }
+#fxp .gt{
+  font-family:Georgia,"Songti SC",serif; font-size:12.8px; font-weight:700;
+  color:#0d2f63; margin:2px 0 8px;
+}
+#fxp .grp > .gt:first-child{ margin-top:0 }
+
+#fxp button.on, #fxp button.active{ background:#1b4f9c; border-color:#1b4f9c; color:#fff }
+#fxp select{
+  font-family:inherit; font-size:12px; padding:3px 6px; max-width:100%;
+  border:1px solid #cfd6e0; border-radius:6px; background:#fff; color:#12161c;
+}
+#fxp input[type=text], #fxp input[type=number]{
+  font-family:Consolas,monospace; font-size:12px; width:78px; padding:3px 6px;
+  border:1px solid #cfd6e0; border-radius:6px;
+}
+#fxp input[type=checkbox]{ accent-color:#1b4f9c; margin-right:2px }
+
+/* 原位置留下的提示 */
+.fxp-note{
+  margin:10px 0 0; padding:5px 9px; font-size:11.8px; color:#6b7683;
+  font-family:Consolas,monospace; background:#f6f8fb;
+  border:1px dashed #d7dee8; border-radius:6px;
+}
+.fxp-note::before{ content:"⇱ "; color:#1b4f9c }
+
+/* 窄屏：底部抽屉式，不再遮挡图 */
+@media (max-width:880px){
+  #fxp{
+    top:auto; bottom:0; right:0; left:0; width:auto;
+    max-height:52vh; border-radius:12px 12px 0 0;
+    border-left:0; border-right:0; border-bottom:0;
+  }
+  #fxp .fxp-h{ cursor:default; border-radius:12px 12px 0 0 }
+  #fxp.fxp-min{ left:auto; right:10px; bottom:10px; border:1px solid #cfd6e0; border-radius:12px }
+}
+@media print{ #fxp{ display:none !important } }
+
+/* ============================================================
+   暗色主题皮肤（2026-10-19 老师：Anu 主界面是暗底，浮窗却是白底，割裂）
+   触发条件：页面 <body> 或 <html> 自己声明了暗色
+     body.theme-dark / body.dark / body.theme-night
+     html[data-theme="dark"] / body[data-theme="dark"]
+   只做覆盖，不改上面的默认（白底）规则 —— 明色页面完全不受影响。
+   配色取自 anu.css 的 --panel/--line/--text/--accent，保持同源。
+   ============================================================ */
+body.theme-dark #fxp, body.dark #fxp, body.theme-night #fxp,
+html[data-theme="dark"] #fxp, body[data-theme="dark"] #fxp{
+  background:#0e1420; border-color:#22304a;
+  box-shadow:0 2px 8px rgba(0,0,0,.45), 0 18px 48px rgba(0,0,0,.55);
+  color:#e6edf8;
+}
+body.theme-dark #fxp .fxp-h, body.dark #fxp .fxp-h, body.theme-night #fxp .fxp-h,
+html[data-theme="dark"] #fxp .fxp-h, body[data-theme="dark"] #fxp .fxp-h{
+  background:linear-gradient(#182233,#111826); border-bottom-color:#22304a;
+}
+body.theme-dark #fxp .fxp-grip, body.dark #fxp .fxp-grip, body.theme-night #fxp .fxp-grip{
+  color:#5d7093;
+}
+body.theme-dark #fxp .fxp-t, body.dark #fxp .fxp-t, body.theme-night #fxp .fxp-t,
+html[data-theme="dark"] #fxp .fxp-t, body[data-theme="dark"] #fxp .fxp-t{
+  color:#cddcff;
+}
+body.theme-dark #fxp .fxp-c, body.dark #fxp .fxp-c, body.theme-night #fxp .fxp-c{
+  color:#6b7f9e;
+}
+body.theme-dark #fxp .fxp-b, body.dark #fxp .fxp-b, body.theme-night #fxp .fxp-b,
+html[data-theme="dark"] #fxp .fxp-b, body[data-theme="dark"] #fxp .fxp-b{
+  background:#141c2b; border-color:#22304a; color:#a9bad6;
+}
+body.theme-dark #fxp .fxp-b:hover, body.dark #fxp .fxp-b:hover, body.theme-night #fxp .fxp-b:hover{
+  background:#1b2740; border-color:#4d7cff; color:#cddcff;
+}
+body.theme-dark #fxp .fxp-bd::-webkit-scrollbar-thumb,
+body.dark #fxp .fxp-bd::-webkit-scrollbar-thumb,
+body.theme-night #fxp .fxp-bd::-webkit-scrollbar-thumb{
+  background:#26334c;
+}
+body.theme-dark #fxp .fxp-grp + .fxp-grp, body.dark #fxp .fxp-grp + .fxp-grp,
+body.theme-night #fxp .fxp-grp + .fxp-grp{ border-top-color:#1e2a3f }
+body.theme-dark #fxp .fxp-gl, body.dark #fxp .fxp-gl, body.theme-night #fxp .fxp-gl{
+  color:#7d90ae;
+}
+body.theme-dark #fxp .fxp-gl b, body.dark #fxp .fxp-gl b, body.theme-night #fxp .fxp-gl b{
+  color:#7ea6ff;
+}
+body.theme-dark #fxp .fxp-gl i, body.dark #fxp .fxp-gl i, body.theme-night #fxp .fxp-gl i{
+  color:#5d7093;
+}
+body.theme-dark #fxp label, body.theme-dark #fxp .row, body.theme-dark #fxp .prow,
+body.theme-dark #fxp .slider, body.dark #fxp label, body.dark #fxp .row,
+body.dark #fxp .prow, body.dark #fxp .slider,
+body.theme-night #fxp label, body.theme-night #fxp .row,
+body.theme-night #fxp .prow, body.theme-night #fxp .slider{
+  color:#b9c8e0;
+}
+body.theme-dark #fxp input[type=range]::-webkit-slider-runnable-track,
+body.dark #fxp input[type=range]::-webkit-slider-runnable-track,
+body.theme-night #fxp input[type=range]::-webkit-slider-runnable-track{
+  background:#31425f;                    /* 不能贴地色，否则轨道看不见、只剩一个蓝点 */
+}
+body.theme-dark #fxp input[type=range]::-webkit-slider-thumb,
+body.dark #fxp input[type=range]::-webkit-slider-thumb,
+body.theme-night #fxp input[type=range]::-webkit-slider-thumb{
+  background:#4d7cff; border-color:#0e1420;
+  box-shadow:0 1px 3px rgba(0,0,0,.6);
+}
+body.theme-dark #fxp input[type=range]:focus::-webkit-slider-thumb,
+body.dark #fxp input[type=range]:focus::-webkit-slider-thumb{
+  box-shadow:0 0 0 3px rgba(77,124,255,.28);
+}
+body.theme-dark #fxp .val, body.theme-dark #fxp .v, body.theme-dark #fxp output,
+body.theme-dark #fxp .num, body.dark #fxp .val, body.dark #fxp .v,
+body.dark #fxp output, body.dark #fxp .num,
+body.theme-night #fxp .val, body.theme-night #fxp .v,
+body.theme-night #fxp output, body.theme-night #fxp .num{
+  color:#ffc861;                      /* 与页面 --gold 同源 */
+}
+body.theme-dark #fxp button, body.dark #fxp button, body.theme-night #fxp button,
+html[data-theme="dark"] #fxp button, body[data-theme="dark"] #fxp button{
+  background:#141c2b; border-color:#22304a; color:#b9c8e0;
+}
+body.theme-dark #fxp button:hover, body.dark #fxp button:hover,
+body.theme-night #fxp button:hover{
+  background:#1b2740; border-color:#4d7cff; color:#cddcff;
+}
+body.theme-dark #fxp button.on, body.theme-dark #fxp button.active,
+body.dark #fxp button.on, body.dark #fxp button.active,
+body.theme-night #fxp button.on, body.theme-night #fxp button.active{
+  background:#2f6fe0; border-color:#2f6fe0; color:#fff;
+}
+body.theme-dark #fxp .lab, body.dark #fxp .lab, body.theme-night #fxp .lab{
+  color:#b9c8e0;
+}
+body.theme-dark #fxp .hint, body.dark #fxp .hint, body.theme-night #fxp .hint{
+  color:#7d90ae;
+}
+body.theme-dark #fxp .gt, body.dark #fxp .gt, body.theme-night #fxp .gt,
+html[data-theme="dark"] #fxp .gt, body[data-theme="dark"] #fxp .gt{
+  color:#cddcff;
+}
+body.theme-dark #fxp select, body.dark #fxp select, body.theme-night #fxp select,
+body.theme-dark #fxp input[type=text], body.theme-dark #fxp input[type=number],
+body.dark #fxp input[type=text], body.dark #fxp input[type=number],
+body.theme-night #fxp input[type=text], body.theme-night #fxp input[type=number]{
+  background:#0b1019; border-color:#22304a; color:#e6edf8;
+}
+body.theme-dark .fxp-note, body.dark .fxp-note, body.theme-night .fxp-note{
+  background:#111826; border-color:#22304a; color:#7d90ae;
+}
+body.theme-dark .fxp-note::before, body.dark .fxp-note::before,
+body.theme-night .fxp-note::before{ color:#7ea6ff }
+
+/* 暗色下的窄屏抽屉边框 */
+@media (max-width:880px){
+  body.theme-dark #fxp.fxp-min, body.dark #fxp.fxp-min, body.theme-night #fxp.fxp-min{
+    border-color:#22304a;
+  }
+}
+
+</style><!--/FXCTL:CSS-->
+</head>
+<body>
+
+<nav class="topnav"><div class="inner">
+  <a class="brand" href="index.html">时空弯曲 <span>/</span> 曲速引擎 <span>/</span> anu</a>
+  <a class="nv on" href="01_spacetime_six_models.html">① 六种画法</a>
+  <a class="nv" href="02_warp_bubble_scanner.html">② 曲速泡扫描</a>
+  <a class="nv" href="03_pks_timescape_gyro.html">③ PKS 关联</a>
+  <a class="nv" href="04_anu_to_nucleus.html">④ anu→原子核</a>
+  <a class="nv" href="05_quark_anu.html">⑤ 夸克↔anu</a>
+  <a class="nv" href="06_seven_realms_koilon_to_cell.html">⑥ 七界 L7→L1</a>
+  <a class="nv" href="07_magnetic_charge_lo_shu.html">⑦ 磁荷·洛书</a>
+  <a class="nv xlink" href="file:///D:/AAA%E6%88%91%E7%9A%84%E6%96%87%E4%BB%B6/anu%E4%B8%8Emilnor7%E7%BB%B4%E6%B5%81%E5%BD%A2/AAA_Anu%E4%B8%83%E7%BA%A7%E8%9E%BA%E6%97%8B%E4%B8%BB%E7%95%8C%E9%9D%A2.html"
+     target="_blank" rel="noopener"
+     title="Anu 七级螺旋主界面（另一项目「anu 与 Milnor 7 维流形」，本机 file:/// 绝对路径）">Anu 七级螺旋</a>
+</div></nav>
+
+<div class="wrap">
+<div class="hero">
+  <div class="kicker">Interactive · Three.js · WebGL</div>
+  <h1>时空弯曲的六种画法 — 可拖动 3D 交互</h1>
+  <p class="sub">
+    六张图不是六个理论，而是<b>同一个几何的六种投影</b>。用滑块逐个切换，在同一坐标系里拖动、缩放、比对；
+    切换到「同一几何 · 六视角」模式，可把当前几何从六个方位一次看全。
+    <em>判据只有一条：它有没有告诉你「时间在变慢」？</em>
+  </p>
+  <div class="meta">参数 r<sub>s</sub> = 2GM/c² &nbsp;·&nbsp; 单位：r<sub>s</sub> &nbsp;·&nbsp; 拖动旋转 / 滚轮缩放 / 右键平移</div>
+</div>
+
+<div class="controls">
+  <span class="note">⚙ <b>全部可调参数都在右侧浮窗里</b>：拖动标题栏可移动，右上角「−/＋」收起；位置与收起状态自动记住。</span>
+</div>
+
+<div class="layout">
+  <div>
+    <div class="viewer" id="viewer">
+      <div class="hud" id="hud" data-hud-title="当前画法"><div class="hud-body"></div></div>
+      <div class="legend hud" id="legend" data-hud-title="图例"><div class="hud-body"></div></div>
+      <div class="qgrid" id="qgrid"></div>
+      <div class="coiltags" id="coilTags"></div>
+      <div class="badge" id="badge">XYZ · 等轴投影</div>
+      <div class="hint">拖动旋转 · 滚轮缩放 · 右键平移 · <b>Shift+拖动 搬动物体</b> · 双击归位</div>
+      <div id="glHint" style="z-index:-1">正在初始化 3D 视图…<span class="sm">若此处长时间空白，通常是浏览器未启用 WebGL / 硬件加速（页面文字与滑块不受影响）</span></div>
+    </div>
+    <div class="src" id="src" style="margin-top:10px"></div>
+
+    <!-- ② 专用：相邻小球几何（真尺度展开图 / 俯视图 + 公式 + 数值举例）
+         + ★ 右侧一列：周髀算经「勾三股四弦五」弦图（n 阶矩阵 ↔ 每匝 n 球）
+         + ★ 下方条带：不同阶（3–12）的弦图，当前阶高亮 -->
+    <div class="card soft" id="coilCard" style="display:none;margin-top:14px">
+      <div class="ch" style="font-size:16px">② 弹簧线圈 / 环上公转：相邻上下左右小球的几何关系</div>
+      <div id="coilRow" style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;margin-top:6px">
+        <div class="scroll-x" id="coilFigCol" style="flex:1 1 420px;min-width:0">
+          <canvas id="coilCv" style="display:block"></canvas>
+        </div>
+        <div id="zhoubiCol" style="flex:0 0 auto;width:324px">
+          <div id="zhoubiTitle" style="font-size:12.5px;font-weight:700;margin:0 0 4px"></div>
+          <canvas id="zhoubiCv" style="display:block"></canvas>
+          <div class="note" id="zhoubiMini" style="font-size:11px;line-height:1.6;margin-top:6px"></div>
+        </div>
+      </div>
+      <div class="scroll-x" style="margin-top:10px"><canvas id="zhoubiStrip" style="display:block"></canvas></div>
+      <div class="note" id="coilCap" style="margin-top:10px;line-height:1.7;font-size:12.5px;max-width:100%;overflow-wrap:anywhere"></div>
+      <div class="note" id="zhoubiCap" style="margin-top:10px;line-height:1.7;font-size:12.5px;max-width:100%;overflow-wrap:anywhere"></div>
+      <div id="coilFml" style="font-size:12.5px;line-height:1.8;margin-top:12px;max-width:100%;overflow-wrap:anywhere;
+        font-family:var(--mono);border-top:1px solid var(--line);padding-top:10px"></div>
+      <div id="zhoubiFml" style="font-size:12.5px;line-height:1.8;margin-top:12px;max-width:100%;overflow-wrap:anywhere;
+        font-family:var(--mono);border-top:1px solid var(--line);padding-top:10px"></div>
+
+      <!-- ============================================================
+           ③ 全整数阶总表 + 通项公式（2026-10-12 新增）
+           上面那条只说「3…12 里只有 7 阶整数」——这里把它放开到**全部阶**。
+           ★ 表体由 buildPythTable() 现场枚举填入，页面里**没有手打的阶数**；
+             枚举与闭式通项 N = g(u²+2uv−v²) 互为独立实现（对拍脚本 probe_pyth.js）。
+           ============================================================ -->
+      <div id="pythWrap">
+        <div class="ch">③ 弦图 ↔ n 阶矩阵：<b>全部</b>可闭合的阶 + 通项公式</div>
+        <div class="note" style="font-size:12.5px;line-height:1.78;max-width:100%;overflow-wrap:anywhere">
+          把每匝 <b>n</b> 球写成 <b>勾 a + 股 b = n</b>（要求 a ≥ 1），再要求
+          <b>弦 c = √(a²+b²) 也是整数</b> —— 满足这个的 n 就是「可闭合阶」。
+          上一条只枚举了 3…12，所以只看得到 7；下表放开到 <b>n ≤ 100</b>，
+          <b>由页面现场枚举</b>（不是手打的），并已与下面那条闭式通项公式互相验证。
+        </div>
+        <div class="fbox">
+          <span class="k">通项公式</span>（2026-10-12 立 · 已与暴力枚举 127/127 对拍，零偏差）<br>
+          <b>N 可闭合 &nbsp;⟺&nbsp; N = g·(u² + 2uv − v²)</b>，其中整数 <b>u &gt; v ≥ 1</b>、<b>g ≥ 1</b><br>
+          　勾 a = g·2uv　股 b = g·(u²−v²)　<b>弦 c = g·(u²+v²)</b>　中孔 = g·|u²−2uv−v²|<br>
+          <span class="note">等价（Pell 形）：令 s = u+v、t = v ⇒ <b>N = g·(s² − 2t²)</b>，条件变成 s &gt; 2t ≥ 2。
+          （反解 u = s−t；这条形式的好处是：只出现一个平方差，能直接拿去跟 Pell 方程 x²−2y² 的既有工具接）</span><br>
+          <br><span class="k">三条推论</span><br>
+          ① <b>7 = 最小的可闭合阶</b>（u=2, v=1, g=1 → 3+4=7，弦 5，中孔 1）
+          ⇒ 这就是「建议每匝 ≥ 7 球」的<b>全部</b>来源（独立复核通过）。<br>
+          ② <b>g 任取 ⇒ 7 的倍数全部可闭合</b>：n = 7g → 勾 3g／股 4g／弦 5g、中孔 g。
+          这正是扫描件《勾股定理之弦外之音》那张 7×7 … 70×70 的表 —— 那里反复出现的
+          <b>「天元数」就是 g</b>，而「弦外之弦实 N²−c²」恒等于 4Δ = 24g²、「里弦实」= g²，两条都逐行吻合。<br>
+          ③ <b>49 = 7² 是第一个「有两种不同整数拆法」的阶</b>：
+          21+28（弦 35·中 7，7g 族）与 9+40（弦 41·中 31）。
+          ⇒ 七级递推在 7 → 7² 这一步第一次<b>分叉</b>（下一节 ④ 就是讲这个）。<br>
+          <span class="note" id="pythCnt"></span>
+        </div>
+        <div id="pythTbl"></div>
+        <div class="note" id="pythNote" style="font-size:12.5px;line-height:1.78;margin-top:8px;max-width:100%;overflow-wrap:anywhere"></div>
+      </div>
+
+      <!-- ============================================================
+           ④ 七阶 ↔ anu「七级螺旋 / 1680 匝」对齐卡（2026-10-12 新增）
+           ★ 纪律：anu 侧的数字**一律标出处**（文档原文），弦图侧的数字一律由本页函数算出。
+             两边都算得出来的量（1680÷7、7^k、(7^7−1)/6、7^6 mod 1680）现场算。
+             纯同余巧合**明确标注为巧合**，不写进任何推导。
+           ============================================================ -->
+      <div id="anuBridge">
+        <div class="ch">④ 七阶 ↔ anu 的「七级螺旋」：两个系统共用同一个闭合模数 <b>7</b></div>
+        <div class="note" style="font-size:12.5px;line-height:1.78;max-width:100%;overflow-wrap:anywhere">
+          <b>anu 侧（文档原文，不是本页推出来的）</b>：Anu = <b>10 条</b>封闭螺旋线（<b>3 粗 + 7 细</b>），
+          每根线 <b>1680 匝</b>；内部是 <b>七级螺旋</b> g→f→e→d→c→b→a，且细线严格 <b>7 倍率</b>。<br>
+          <span class="note">出处：<code>01_基础理论/14_anu结构与精细结构常数的关系/OCCULT_CHEMISTRY_完整解读.md</code> §2.2
+          ——「1680 = 8!/24 = 7!×8/24 = 168×10」；<code>01_基础理论/18_宇宙系统七级浮屠/七级浮屠×PKS千禧蛋_贯通融合.md</code> §3.1
+          ——「第七级(g) = 7 个 Koilon 泡泡 → 第一级(a) = 1680 个螺旋体沿 Möbius 环缠绕」、§五「性位的 7 级螺旋递推 f<sub>k</sub> = 7<sup>k</sup>」。</span>
+        </div>
+        <div id="anuTbl"></div>
+        <div class="fbox" id="anuFbox" style="border-left-color:var(--warn)"></div>
+      </div>
+
+      <!-- ⑤ 两张原始扫描件（点图看原图；ASCII 文件名是为了躲开中文路径在 URL 编码上的坑） -->
+      <div id="zhoubiRefs">
+        <div class="ch">⑤ 原始扫描件（点击可看原图）</div>
+        <div class="refShots">
+          <figure class="refShot">
+            <a href="assets/img/zhoubi/gougu-xuanlv.jpg" target="_blank" rel="noopener">
+              <img src="assets/img/zhoubi/gougu-xuanlv.jpg" alt="《周髀算经》勾股玄律 —— 弦图原典（朱实/黄实、商高问答）">
+            </a>
+            <figcaption><b>《勾股玄律》／《周髀算经》</b> —— 弦图原典：朱实（四个直角三角形）、黄实（中孔）、
+              「弦實二十五朱及黃」，以及商高「数之法出于圆方，圆出于方，方出于矩，矩出于九九八十一」那段对答。
+              <span class="note">源文件：<code>02_应用科技/24_searl_SEG/相关图片/勾股玄律.jpg</code></span></figcaption>
+          </figure>
+          <figure class="refShot">
+            <a href="assets/img/zhoubi/xiantu-zhiyin.jpg" target="_blank" rel="noopener">
+              <img src="assets/img/zhoubi/xiantu-zhiyin.jpg" alt="勾股定理之弦外之音 —— 7 的倍数族（7×7 到 70×70）">
+            </a>
+            <figcaption><b>《勾股定理之弦外之音》</b> —— 把 3-4-5 逐级放大成 <b>7 的倍数族</b>：
+              7×7 … 70×70，逐行 49−25=24、24+1×1=25。正好是本页「通项公式推论②」那张表。<br>
+              <span class="note">⚠ 原件第 8 行印的是「56×56 = 3136 − 1600 = 1536 + 8×8 = <b>1660</b>」，
+              末值应为 <b>1600</b> —— 是原件的排版笔误（前两项 3136−1536 = 1600 自洽），本页照实说明、不跟着抄。</span>
+              <span class="note">源文件：<code>02_应用科技/24_searl_SEG/相关图片/勾股定理之弦外之音.jpg</code></span></figcaption>
+          </figure>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     右侧可拖动参数浮窗（SOUL 铁律 184）：画法选择 / 参数 / 读数 / 模型卡片
+     ============================================================ -->
+<aside class="pwin" id="paramWin" aria-label="画法选择与参数">
+  <div class="pw-head" id="pwHead">
+    <span class="grip" aria-hidden="true">⠿</span>
+    <span class="pw-title">画法 · 参数 · 读数</span>
+    <button class="pw-btn" id="pwToggle" type="button" aria-expanded="true" aria-label="收起参数面板" title="收起参数面板">−</button>
+  </div>
+  <div class="pw-body" id="pwBody">
+
+    <div class="pw-sub">① 选择画法（1 – 6）</div>
+    <div class="notch" id="notch"></div>
+    <div class="controls">
+      <div class="slider">
+        <span>滑块切模型</span>
+        <input type="range" id="mslider" min="1" max="6" step="1" value="5">
+        <span class="val" id="msliderval">5 / 6</span>
+      </div>
+    </div>
+
+    <div class="pw-sub">② 可调参数</div>
+    <div class="controls" style="margin-top:0">
+      <div class="slider">
+        <span>质量 r<sub>s</sub></span>
+        <input type="range" id="rsslider" min="0.6" max="2.6" step="0.05" value="1.4">
+        <span class="val" id="rsval">1.40</span>
+      </div>
+      <span class="note" style="font-size:11px;display:block;margin-top:4px">r<sub>s</sub> = 视界半径；落到 r &lt; r<sub>s</sub> 后向外运动学上不可能</span>
+    </div>
+
+    <div class="pw-sub">②-1 线框网格</div>
+    <div class="controls" style="margin-top:0">
+      <div class="notch" id="dirNotch">
+        <button type="button" class="on" data-d="in">向内收拢</button>
+        <button type="button" data-d="out">向外撑开</button>
+      </div>
+      <span class="note" style="font-size:11px;display:block;margin:3px 0 6px">同一张点阵，只把径向标定的<b>符号</b>翻过来 —— 本页列出的第 2 个陷阱就在这里。
+        <br><span style="color:#9a6700">⚠ 此按钮此前是坏的</span>：模块里 <code>sign</code> 读进来就再没乘进 <code>g</code>，
+        所以两个方向算出的是<b>同一个向内收拢的场</b>；现在 g = ρc²·share·sign，符号真正生效。</span>
+      <div class="slider">
+        <span>格数 N</span>
+        <input type="range" id="nslider" min="3" max="8" step="1" value="4">
+        <span class="val" id="nval">4</span>
+      </div>
+      <span class="note" style="font-size:11px;display:block;margin-top:4px">只影响第 2 张；改 N 可对齐原图格子密度，也会改畸变半径 c。</span>
+    </div>
+
+    <div class="pw-sub">②-2 转动体的摆法（绕竖直轴 z）</div>
+    <div class="controls" style="margin-top:0">
+      <div class="notch" id="coilNotch">
+        <button type="button" data-m="ring">环上公转</button>
+        <button type="button" class="on" data-m="spring">弹簧线圈</button>
+      </div>
+      <span class="note" style="font-size:11px;display:block;margin:3px 0 6px">
+        ② 是「只画空间」的图，所以这一页把竖直轴读作 <b>z</b>（圆柱轴）；弹簧 = (x,y,z)=(cos t, sin t, k·t)。</span>
+
+      <div class="slider" id="rowR">
+        <span>公转半径 R</span>
+        <input type="range" id="Rslider" min="0.20" max="7.00" step="0.001" value="2.427">
+        <span class="val" id="Rval">2.427</span>
+      </div>
+      <div class="slider" id="rowr">
+        <span>小球半径 r</span>
+        <input type="range" id="rslider2" min="0.05" max="1.80" step="0.001" value="1.021">
+        <span class="val" id="rval2">1.021</span>
+      </div>
+      <div class="slider" id="rowRingN">
+        <span>环上球数 (1–12)</span>
+        <input type="range" id="ringNslider" min="1" max="12" step="1" value="6">
+        <span class="val" id="ringNval">6</span>
+      </div>
+      <div class="slider" id="rowTurns">
+        <span>匝数 T (1–49)</span>
+        <input type="range" id="turnsSlider" min="1" max="49" step="1" value="7">
+        <span class="val" id="turnsVal">7</span>
+      </div>
+      <div class="slider" id="rowPerTurn">
+        <span>每匝球数 (1–12)</span>
+        <input type="range" id="perTurnSlider" min="1" max="12" step="1" value="7">
+        <span class="val" id="perTurnVal">7</span>
+      </div>
+      <div class="slider" id="rowK">
+        <span>螺距系数 k (0–2)</span>
+        <input type="range" id="kSlider" min="0" max="2" step="0.001" value="0.140">
+        <span class="val" id="kVal">0.140</span>
+      </div>
+      <span class="note" style="font-size:11px;display:block;margin:4px 0 7px" id="coilHint">
+        <b>k = 0 ⇒ 自动固定只有 1 匝</b>（所有匝都重合）。默认 7 匝 × 7 球/匝；每匝球数上限 12
+        （= 环上球数上限，两处口径一致）。</span>
+
+      <div class="pw-grid">
+        <button class="btn" id="fitBtn" type="button">自动适配 R,r</button>
+        <button class="btn" id="kAutoBtn" type="button">k = 均匀解</button>
+        <button class="btn" id="colAutoBtn" type="button">色标自动归一</button>
+        <button class="btn" id="tagBtn" type="button">图上标注</button>
+      </div>
+      <div class="slider" id="rowAmp">
+        <span>畸变强度</span>
+        <input type="range" id="ampSlider" min="0.20" max="3.00" step="0.01" value="1.00">
+        <span class="val" id="ampVal">1.00</span>
+      </div>
+      <span class="note" style="font-size:11px;display:block;margin:3px 0 6px">
+        叠加律是诚实的：<b>每个球各自贡献 ρc²</b>（g = Σd/s² 对 ρ 严格线性），最后乘<span style="color:#9a6700">一个全局增益</span>，
+        把全网峰值 |D| 定到「单球峰值 × 上面这个强度」。球数 1 → 343 时峰值不变、<b>形状越来越复杂</b>。
+        <br>⚠ 旧版的「总和固定 ρ/M」+ 逐点 tanh 软钳制会把位移场压成<b>近乎刚体平移</b>（实测每格弯折 均/最大 = 0.999），
+        肉眼看就是「网格完全没畸变」—— 那两条已删除。</span>
+    </div>
+
+    <div class="pw-sub">②-3 相邻小球的几何（实时）</div>
+    <div class="controls" style="margin-top:0">
+      <div class="readout" id="distInfo" style="margin-top:2px"></div>
+      <span class="note" style="font-size:11px;display:block;margin-top:6px">
+        展开图与公式见 3D 视图下方那张卡片。</span>
+    </div>
+
+    <div class="pw-sub">③ 视图操作</div>
+    <div class="pw-grid">
+      <button class="btn" id="btnQuad">同一几何 · 六视角</button>
+      <button class="btn" id="btnPlay">⏸ 暂停动画</button>
+      <button class="btn" id="btnReset">重置视角</button>
+      <button class="btn" id="panHome" title="把物体搬回原点（也可双击 3D 画面）">⌖ 物体归位</button>
+    </div>
+    <span class="note" id="panInfo" style="font-size:11px;display:block;margin-top:5px">位移 = (0.00, 0.00, 0.00)</span>
+
+    <div class="pw-sub">④ 实时读数</div>
+    <div class="readout" id="readout"></div>
+
+    <details class="card soft" style="margin-top:12px">
+      <summary>六张画法一览（点卡片即切换）</summary>
+      <div id="modelcards" style="margin-top:8px"></div>
+    </details>
+
+    <div class="card soft" style="font-size:12px;line-height:1.65">
+      <div class="ch" style="font-size:14px">怎么用</div>
+      <ul style="padding-left:16px;margin:6px 0 0;font-size:12px">
+        <li><b>左键拖动</b>旋转 &nbsp;<b>滚轮</b>缩放 &nbsp;<b>右键</b>平移</li>
+        <li><b>Shift+拖动</b> 搬动物体本体（相机不动）· <b>双击</b>归位</li>
+        <li>滑块 1→6 逐张切换，卡片同步高亮</li>
+        <li>「六视角」把同一几何切成 3×2 六个机位</li>
+        <li>调 r<sub>s</sub> 看视界位置如何改变一切</li>
+      </ul>
+    </div>
+
+  </div>
+</aside>
+
+<h2><span class="num">§1</span>六张图，各画了引力的哪一半？</h2>
+<table>
+<thead><tr><th>#</th><th>画法</th><th>数学载体</th><th>能解释</th><th>会误导</th><th>判定</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>橡胶膜凹坑</td><td><span class="tag no">无（伪嵌入）</span></td><td>「有质量会弯曲」的入门直觉</td><td>循环论证 + 伪造第 4 空间维</td><td><span class="tag no">应淘汰</span></td></tr>
+<tr><td>2</td><td>线框网格畸变</td><td>三维点阵逐顶点径向重标 <span class="lbl">X′=X−g·Σ(X−m)/(|X−m|²+c²)</span> <span class="lbl">（M=1 退化为 R(r)=r−ρc²r/(r²+c²)）</span></td><td>内在度规：尺子被改写</td><td>只画空间；拉/压符号易反</td><td><span class="tag mid">方向对</span></td></tr>
+<tr><td>3</td><td>光锥倾斜</td><td>零测地线 / 因果结构</td><td>视界＝因果边界</td><td>不解释力从哪来</td><td><span class="tag mid">因果最强</span></td></tr>
+<tr><td>4</td><td>空间河流与瀑布</td><td>GP 坐标交叉项 β(r)</td><td>视界机制：dr/dt = 1−β</td><td>不显示钟慢</td><td><span class="tag mid">不完整</span></td></tr>
+<tr><td>5</td><td>时钟速率场</td><td>g<sub>tt</sub> 的梯度 Γ<sup>i</sup><sub>tt</sub></td><td><b>引力主项在此</b>：g = −∇Φ</td><td>缺因果结构</td><td><span class="tag ok">更接近真实</span></td></tr>
+<tr><td>6</td><td>潮汐拉伸挤压</td><td>Riemann/Weyl 的 tendex 场</td><td>唯一可直接测量（LIGO 测的就是它）</td><td>最抽象</td><td><span class="tag ok">更接近真实</span></td></tr>
+</tbody>
+</table>
+
+<h2><span class="num">§2</span>底部那把钥匙：4GM/c²b</h2>
+<div class="eq">光线掠日偏折 &nbsp;α&nbsp;=&nbsp;<b>4GM/(c²b)</b>
+<span class="lbl">(t 与 r 各出一半)</span></div>
+<table>
+<thead><tr><th>步骤</th><th>内容</th><th>结果</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>只算时间分量（爱因斯坦 1911）</td><td>2GM/(c²b) &nbsp;<span class="tag mid">＝牛顿值</span></td></tr>
+<tr><td>2</td><td>只算空间分量（各向同性坐标）</td><td>2GM/(c²b)</td></tr>
+<tr><td>3</td><td>两者相加（1915 完整 GR）</td><td><b>4GM/(c²b)</b></td></tr>
+<tr><td>4</td><td>1919 爱丁顿日食实测</td><td>支持 4GM/(c²b) <span class="tag ok">✓</span></td></tr>
+</tbody>
+</table>
+<div class="card good">
+  <div class="ch">物理读法</div>
+  慢速物体（苹果、行星）几乎感觉不到空间弯曲，因为空间项的贡献被 <b>(v/c)²</b> 压制。
+  所以<b>下落 = 时间的梯度</b>。只有 v → c（光）时，空间项才重新变成「一半」。
+</div>
+
+<h2><span class="num">§3</span>每个模型的细节与出处</h2>
+<div id="detail"></div>
+
+<footer><div class="wrap">
+  <div>时空弯曲不同模型表达 · 交互页 ①</div>
+  <div>素材：<code>6种时空弯曲示意图.jpg</code> ｜ 论文：<code>01_原始论文PDF/</code>、<code>03_时空可视化与嵌入/</code></div>
+</div></footer>
+</div>
+
+<script>
+/* ★ three.js 未加载时的明确提示（避免「什么都没有」的静默失败） */
+window.addEventListener('DOMContentLoaded', function(){
+  if (typeof THREE === 'undefined'){
+    var gh = document.getElementById('glHint');
+    if (gh){
+      gh.style.zIndex = '2';
+      gh.style.pointerEvents = 'auto';
+      gh.innerHTML = '⚠ 3D 引擎 three.js 未能加载'
+        + '<span class="sm">请确认 assets/js/vendor/three.min.js 与页面一同拷贝'
+        + '（本机常见原因：只复制了 .html 单文件）</span>';
+    }
+    if (window.__showErr) window.__showErr('three.js 未加载：assets/js/vendor/three.min.js 不可达');
+  }
+});
+</script>
+<script src="assets/js/vendor/three.min.js"></script>
+<script src="assets/js/vendor/OrbitControls.js"></script>
+<script src="assets/js/param-panel.js"></script>
+<script src="assets/js/anu-coil.js"></script>
+<script>
+/* ============================================================
+   六种时空弯曲画法 · Three.js 交互
+   ============================================================ */
+const MODELS = [
+ {id:1, key:'rubber',  name:'橡胶膜凹坑',      color:'#b3261e', verdict:'应淘汰', verdictCls:'no',
+  short:'球压出一个坑 —— 但坑是怎么来的？',
+  math:'无（伪嵌入）',
+  good:'给出「有质量就弯曲」的第一眼直觉',
+  bad:'① 循环论证：用引力解释引力 ② 伪造第 4 个空间维度 ③ 漏斗方向画反（史瓦西是径向被<b>撑开</b>，不是塌陷）',
+  src:'教科书的通例画法，非物理文献。正确替代见 Flamm 1916, Phys. Z. 17, 448',
+  detail:`<h4>它错在哪</h4><ul>
+  <li><b>循环论证</b>：球之所以下陷，是因为「下方」有地球在拉 —— 用一个引力去解释另一个引力，等于什么都没解释。</li>
+  <li><b>伪造外部维度</b>：真实的曲率是<b>内在（intrinsic）</b>的，不需要第 4 个空间维度来「装」。橡胶膜必须借一个垂直方向，这个方向在广义相对论里不存在。</li>
+  <li><b>符号反了</b>：史瓦西解的空间切片是「漏斗开口向外、径向长度被撑长」，而橡胶膜是「塌陷」。两者形状相似、含义相反。</li></ul>
+  <div class="card bad"><div class="ch">结论</div>教学可用作「引子」，<b>但必须当场说明它是错的类比</b>，否则后面所有直觉都要返工。</div>`},
+
+ {id:2, key:'flamm',   name:'线框网格畸变',    color:'#1b4f9c', verdict:'方向对', verdictCls:'mid',
+  short:'尺子本身被改写，不借任何外部维度的弯曲',
+  math:'多质量叠加 X′ = X − g·Σ<sub>i</sub>(X−m<sub>i</sub>)/(|X−m<sub>i</sub>|²+c²) —— 单质量退化为 R(r) = r − ρc²r/(r²+c²)；g = ρc²·增益',
+  good:'第一张避开循环论证的图：弯曲＝度量尺畸变，账全记在网格自己身上',
+  bad:'只画空间（t=const 面），时间维完全缺席；径向标定的<b>符号</b>极易画反 —— 面板里给了方向开关',
+  src:'几何对齐 1ucasvb「3D lattice distortion」(tumblr, 2016)；度量取 Jonsson 2005, Am. J. Phys. 73, 248 → 03_时空可视化与嵌入/Jonsson2005_AJP_Visualizing_curved_spacetime.pdf',
+  detail:`<h4>数学骨架</h4>
+  <div class="eq">ds²|<sub>t=const, θ=π/2</sub> = dr²/(1 − r<sub>s</sub>/r) + r²dφ²</div>
+  <p>静止观察者量到的固有径向距离：</p>
+  <div class="eq">ds = dr / √(1 − r<sub>s</sub>/r) &gt; dr &nbsp;&nbsp;<span class="lbl">r → r<sub>s</sub> 时发散</span></div>
+  <p>而圆周方向 2πr <b>完全不变</b>。物理就这两句 —— 剩下的全部问题只是「<b>怎么把它画成一张图</b>」。</p>
+
+  <h4>本页画法：三维点阵，逐顶点做径向重标</h4>
+  <p>取一张真正三维的笛卡尔点阵（每轴 N 格，默认 N=4），把每个顶点<b>沿它到每个质量的方向</b>各做一次径向重标，再<b>把向量加起来</b>：</p>
+  <div class="eq">X′ = X − g·Σ<sub>i</sub>(X − m<sub>i</sub>)/(|X − m<sub>i</sub>|² + c²) &nbsp;&nbsp;<span class="lbl">g = ρc²·增益，c = 0.85 格（畸变作用半径），ρ 由 r<sub>s</sub> 滑块给出</span></div>
+  <p><b>M = 1 个质量时它就退化成单球原式</b> R(r) = r − ρc²r/(r²+c²)：r ≫ c 时位移 ≈ ρc²/r → 0，远端格子<b>保持笔直</b>；r ≈ c 时位移最大。格线画法是「顶点位移后连<b>直线段</b>」，所以近质量处会出现看得出来的<b>折角</b>，而不是平滑弯曲 —— 这一点刻意保留了原图的手感。</p>
+  <p style="margin:6px 0 0"><b>增益只做一件事</b>：把全网点位移峰值的口径钉在「单球峰值 × 畸变强度」。因为位移对 g <b>严格线性</b>，先只累加 Σd/s²（与 g 无关），再乘<b>一个</b>全局增益即可 —— 球数从 1 变到 343，峰值不变、<b>形状越来越复杂</b>。M = 1 时增益恒为 1，与本页原图<b>逐位</b>一致。</p>
+
+  <h4>颜色不是装饰</h4>
+  <div class="eq">色标 t = |1 − det J|，&nbsp; J = ∂X′/∂X = (1 − g·Σ1/s)·I + g·Σ 2ddᵀ/s² &nbsp;<span class="lbl">s = |X−m|²+c²</span></div>
+  <p><b>蓝 = 无畸变，绿 = 局部体积偏离 1 最大</b>。det J 就是<b>局部体积比</b>：远端为 1；<b>向内收拢</b>时靠近质量处 &lt; 1（空间被抽走），<b>向外撑开</b>时 &gt; 1（空间被拉开）。</p>
+  <div class="eq" style="font-size:13px">单质量特例：det J ≡ (R/r)²·R′(r)，&nbsp; R′(r) = 1 − ρ(c² − r²)/(r² + c²)²</div>
+  <div class="card warn"><div class="ch">为什么不用 |R′−1| 上色</div>R′(r) 在 r = c 处<b>恰好等于 1</b>，而位移峰值也<b>正好在 r = c</b> —— 用 |R′−1| 上色，会在最该发绿的地方显示「没畸变」。改用体积比后曲线单调，读图不会读反。（多质量下这就是 det J 的严格推广，已用有限差分逐点核过。）</div>
+
+  <div class="card warn"><div class="ch">⚠ 判「网格有没有形变」要看对量：位移大小不是判据</div>
+  近乎均匀的<b>整体平移</b>照样有很大的 |D|，但 det J ≈ 1 —— 画面上只是整张网挪了一下，<b>看不出任何畸变</b>。
+  真正该量的是 <b>max|1 − det J|</b> 与位移的<b>相对落差</b>（均/最大）。本页 ②-2 的弹簧版本就栽在这上面：
+  旧版用「总和固定 ρ/M」再叠一层逐点 tanh 软钳制，实测 49 个球的「每格弯折」均/最大 = <b>0.999</b>（原图单球是 0.61），
+  色标被压平 ⇒ 肉眼就是「一张直网格」。修法见 README ②-2 一节：诚实叠加 + <b>一次</b>全局标定，逐点钳制整个删掉。
+  现在同一组参数：<b>100% 的格点 |1−det J| &gt; 0.1</b>、峰值 0.794，比单球原图（57.5% / 0.992）弯得<b>更普遍</b>。</div>
+
+  <div class="card warn"><div class="ch">这张图的全部风险，就是符号</div>
+  严格按史瓦西固有长度 ds = dr/√(1−r<sub>s</sub>/r) 来画，径向是<b>被撑开</b>的（同一坐标间隔对应更长的真实距离）；而牛顿势的图像是空间<b>被吸入</b>。两者形状相似、含义相反。面板里的「向内收拢 / 向外撑开」就是把这个符号翻给你看 —— 翻一下，整张图的物理意思就反了，<b>而线条看起来都很「合理」</b>，这正是本页列出的第 2 个陷阱。</div>
+
+  <div class="card soft"><div class="ch">和 Flamm 抛物面的关系</div>
+  <p style="margin:6px 0 0">Flamm 抛物面 z(r)=2√(r<sub>s</sub>(r−r<sub>s</sub>)) 是「把 t=const 切片<b>等距嵌入</b>平直三维空间」的唯一解 —— 代价是必须借一个<b>外部维度</b>，而那个 z 轴在广义相对论里并不存在。</p>
+  <p style="margin:6px 0 0">本页换一条路：<b>不嵌入，只重标</b>。点阵仍待在三维里，畸变全部由格点自己的坐标承担 —— 这才是「<b>内在</b>曲率」的意思，不需要任何外部方向来装它。</p>
+  <p style="margin:6px 0 0">代价要说清楚：R(r) 已不再是等距嵌入的解，只保留<b>定性形状</b>。要看严格的等距嵌入请对照 03 目录的 Flamm / Jonsson 文献。</p></div>
+
+  <div class="card bad"><div class="ch">仍然丢掉的东西</div>① 时间维完全缺席 —— 对钟慢、红移、视界单向膜<b>一个字都说不出</b>；② 「空间被吸入」是牛顿势量级的图像，<b>不是</b>史瓦西精确解。</div>`},
+
+ {id:3, key:'cones',   name:'光锥倾斜',        color:'#6b3fa0', verdict:'因果最强', verdictCls:'mid',
+  short:'锥轴随 β 增大倒向中心；视界处向外那条母线被压成竖直',
+  math:'零测地线 / 因果结构（GP 或 EF 坐标）',
+  good:'视界的因果本质：未来只通向 r 减小',
+  bad:'完全看不出「力」从哪来，也不表达钟慢',
+  src:'Hamilton 黑洞可视化 jila.colorado.edu/~ajsh/ ；Kruskal–Szekeres 图',
+  detail:`<h4>坐标系是关键</h4>
+  <p>在 Schwarzschild 坐标下光锥在视界处「闭合」是<b>坐标假象</b>；换到 Eddington–Finkelstein / GP 坐标后，视界处光锥只是<b>倾斜</b>，没有任何奇点。</p>
+  <h4>右手侧的构造（本页 3D 逐项照着它画）</h4>
+  <p>在 GP 坐标里令 dt = h，直接写零条件 ds² = 0（x 为径向、z 为横向，<b>y 轴就是时间轴</b>）：</p>
+  <div class="eq">−dt² + (dr + β dt)² + r²|dΩ|² = 0 &nbsp;⇒&nbsp; (dr + βh)² + dz² = h²</div>
+  <p>配方（令 u = dr + βh）得 <b>u² + dz² = h²</b> —— 这就是<b>半径 |h| 的圆</b>，圆心落在 dr = −βh。所以每个时刻的横截面都是圆，圆心随 h 线性<b>内漂</b>：</p>
+  <div class="eq">x(h,φ) = r₀ − βh + |h|·cos φ，&nbsp; y(h,φ) = h，&nbsp; z(h,φ) = |h|·sin φ</div>
+  <p>于是每一枚都是<b>斜圆锥</b>：半顶角恒为 45°（半径 = |h|，即平直时空的光球），但圆心漂移把锥轴掰向中心，<b>锥轴倾角 = arctan β</b>。β=0 时是正立的 45° 光锥；β→1 时锥轴倾到 45°，向外那条母线（dr/dt = 1−β）被压成<b>竖直</b> —— 光在原地不动，视界成形。</p>
+  <div class="card warn"><div class="ch">画「光锥」最常见的两种错法</div>① 只给角向一个 ±sin 的厚度、<b>径向不随 φ 变</b> ⇒ 横截面的圆退化成<b>线段</b>，整枚锥被压成一张皱纸；② 上下两半锥的 h 分段写、下标写反 ⇒ 只剩<b>半个</b>锥。两条都「写得出来」，数学上看不出错，只能靠几何自检抓。</div>
+  <div class="card soft"><div class="ch">物理读法</div>视界内所有<b>未来指向</b>的时间锥都朝 r 减小方向开。这不是「引力太强拉住光」，而是<b>这个区域的时间方向本身指向圆心</b>。</div>`},
+
+ {id:4, key:'river',   name:'空间河流与瀑布',  color:'#0f7b8a', verdict:'不完整', verdictCls:'mid',
+  short:'空间以牛顿逃逸速度向内流；视界处正好达到光速',
+  math:'Gullstrand–Painlevé 交叉项 β(r)=√(r_s/r)',
+  good:'唯一把「视界为什么出不去」讲对的一张',
+  bad:'不直观显示钟变慢 —— 而钟慢才是下落的主因',
+  src:'Hamilton & Lisle 2008, Am. J. Phys. 76, 519 → 01_原始论文PDF/Hamilton_Lisle_river_model_2008__…pdf',
+  detail:`<h4>数学骨架</h4>
+  <div class="eq">ds² = −dt<sub>ff</sub>² + (dr + β dt<sub>ff</sub>)² + r²dΩ²，&nbsp; β(r) = √(2GM/r) = √(r<sub>s</sub>/r)</div>
+  <p>关键：<b>在自由落体时间 t<sub>ff</sub> 的切片上，空间部分是严格平直的</b>（dr² + r²dΩ²），全部曲率被打包进交叉项的流速场 β(r)。所以「空间在流动」是<b>数学上成立的陈述</b>，不是比喻。</p>
+  <h4>视界为什么出不去 —— 一行算出来</h4>
+  <div class="eq">−dt² + (dr + β dt)² = 0 &nbsp;⇒&nbsp; dr/dt = −β ± 1</div>
+  <p>向外取 +1：<b>dr/dt = 1 − β</b>。在 r = r<sub>s</sub> 处 β = 1，<b>dr/dt = 0</b> —— 向外飞的光在原地不动。r &lt; r<sub>s</sub> 时 β &gt; 1，连向外的光也被冲进来。</p>
+  <div class="card soft"><div class="ch">本页动画</div>粒子向内流速 ∝ β(r)，越靠近视界越快，r=r<sub>s</sub> 处流速＝光速；那颗「逆流而上」的白色光子速度恒为 1，净位移 dr/dt = 1 − β，在视界上被完全抵消。</div>`},
+
+ {id:5, key:'clocks',  name:'时钟速率场',      color:'#177245', verdict:'引力主项在此', verdictCls:'ok',
+  short:'引力主要是「时间在变慢」，空间弯曲是次要项',
+  math:'g_tt 的梯度 → Γⁱ_tt ≈ ∂ⁱΦ/c²',
+  good:'苹果为什么落地：因为时间在梯度里走快走慢',
+  bad:'不表达因果结构（看不出视界为什么是单向膜）',
+  src:'Jonsson 2005, Am. J. Phys. 73, 248 → 03_时空可视化与嵌入/Jonsson2005_AJP_Visualizing_curved_spacetime.pdf',
+  detail:`<h4>数学骨架</h4>
+  <div class="eq">ds² = −c²(1 + 2Φ/c²)dt² + (1 − 2Φ/c²)dx⃗²，&nbsp;Φ &lt; 0，&nbsp;|Φ|/c² ≪ 1</div>
+  <p>把测地线方程在慢速极限展开，所有含 v/c 的项被压掉，<b>只剩一个 Christoffel 符号存活</b>：</p>
+  <div class="eq">Γⁱ<sub>tt</sub> ≈ (1/c²)·∂ⁱΦ &nbsp;⇒&nbsp; d²xⁱ/dt² = −∂ⁱΦ &nbsp;⇒&nbsp; <b>g⃗ = −∇Φ</b></div>
+  <div class="card good"><div class="ch">牛顿的「力」从来就是 Γⁱ_tt 换了个马甲</div>时间走得慢的地方「时间更少」，物体自然朝时间流逝更慢的方向加速 —— 这就是下落。</div>
+  <h4>钟慢与红移</h4>
+  <div class="eq">dτ/dt = √(1 + 2Φ/c²) = √(1 − r<sub>s</sub>/r)，&nbsp;&nbsp; ν<sub>∞</sub>/ν<sub>r</sub> = √(1 − r<sub>s</sub>/r)</div>
+  <h4>本页动画</h4>
+  <p>地面按 dτ/dt 着色（绿＝正常，红＝极慢），钟表指针角速度 ∝ √(1−r<sub>s</sub>/r)。靠近视界的钟几乎停摆 —— 这就是「引力的一半藏在时间里」。</p>
+  <div class="card warn"><div class="ch">必须补上空间曲率</div>只算时间项算出 2GM/c²b（＝牛顿值，1911 年的爱因斯坦）；补上空间项再得 2GM/c²b；两者相加才是 <b>4GM/c²b</b>。1919 年爱丁顿测到的那个因子 2 就在这里。</div>`},
+
+ {id:6, key:'tendex',  name:'潮汐拉伸与挤压',  color:'#b4531f', verdict:'唯一可直接测量', verdictCls:'ok',
+  short:'LIGO 测的不是「引力拉镜子」，而是自由落体之间的潮汐形变',
+  math:'Riemann/Weyl 的 tendex（E）与 vortex（B）场',
+  good:'不借外部维度，也不借外部重力，是真正的曲率观测量',
+  bad:'最抽象，且难以从它一眼看出「力」的方向',
+  src:'Nichols et al. 2011 (I)、Zhang et al. 2012 (II) → 03_时空可视化与嵌入/',
+  detail:`<h4>测地线偏离方程（Jacobi 方程）</h4>
+  <div class="eq">D²ξ<sup>k</sup>/Dτ² = −R<sup>k</sup><sub>(μυν)</sub> u<sup>μ</sup> ξ<sup>ν</sup> u<sup>ν</sup></div>
+  <p>这就是<b>引力波探测器真正测的东西</b>：两团自由落体测试质量之间的相对加速度。</p>
+  <h4>Thorne 团队的严格做法（tendex / vortex lines）</h4>
+  <p>把真空中的 Weyl 张量（真空里等于 Riemann）拆成两个场，再画各自本征矢量的积分曲线：</p>
+  <table><thead><tr><th>场</th><th>含义</th><th>本页配色</th></tr></thead><tbody>
+  <tr><td><b>潮汐场 E</b></td><td>拉伸 / 挤压</td><td>红＝拉伸、蓝＝挤压</td></tr>
+  <tr><td><b>参考系拖曳场 B</b></td><td>扭转 / 涡旋</td><td>紫（本页未展开）</td></tr></tbody></table>
+  <h4>本页动画</h4>
+  <p>一团测试粒子自由下落时，沿径向被<b>拉伸</b>（红）、横向被<b>挤压</b>（蓝）：<b>R(θ) = R₀·(1 + a(t)·P₂(cos θ))</b>，其中 P₂ 是二阶勒让德多项式。a(t) 随时间增大，球被拉成雪茄形。</p>`}
+];
+
+const INFO = {
+ 1:{formula:'z ≈ −k/r（人为规定）'},
+ 2:{formula:'X′ = X − g·Σᵢ(X−mᵢ)/(|X−mᵢ|²+c²)（M=1 时退化为 R(r)=r−ρc²r/(r²+c²)）；色标 t = |1 − det J|'},
+ 3:{formula:'dr/dt = ±1 − β；零锥横截面 = 半径 |h| 的圆，锥轴倾角 arctan β'},
+ 4:{formula:'dr/dt = −β ± 1'},
+ 5:{formula:'dτ/dt = √(1 − r_s/r)'},
+ 6:{formula:'D²ξ/Dτ² = −R u ξ u'}
+};
+
+/* ---------- 场景 ---------- */
+const viewer = document.getElementById('viewer');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf9fbff);
+const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 4000);
+const HOME = new THREE.Vector3(20.5, 15.5, 23.0);
+camera.position.copy(HOME);
+camera.lookAt(0,0,0);
+const renderer = new THREE.WebGLRenderer({antialias:true, preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio||1, 2));
+/* ★ 第三参数必须为 false：默认 true 会给 canvas 写上 inline style="width:1px;height:1px"，
+   而 inline 优先级高于 .viewer canvas{width:100%}，导致 3D 被永久钉成 1 个像素 = 看起来全白 */
+renderer.setSize(1,1,false);
+viewer.insertBefore(renderer.domElement, viewer.firstChild);
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.075;
+controls.target.set(0,0,0); controls.maxDistance = 220; controls.minDistance = 1.5;
+controls.update();
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.78));
+const dl1 = new THREE.DirectionalLight(0xffffff, 0.62); dl1.position.set(18,26,14); scene.add(dl1);
+const dl2 = new THREE.DirectionalLight(0xffffff, 0.30); dl2.position.set(-16,-12,-18); scene.add(dl2);
+const hemi = new THREE.HemisphereLight(0xffffff, 0xdfe7f2, 0.35); scene.add(hemi);
+
+/* 世界坐标轴（等轴）
+   ★ 轴名随模型变：② 是「只画空间」的图，要按空间 x/y/z 读；而且弹簧线圈与「绕轴公转」
+     里的那个 z 轴 = **竖直轴**（圆柱轴），这样才和弹簧公式 (x,y,z)=(cos t, sin t, k t) 对齐。
+     其它模型竖直轴是时间轴，保持原样。
+     内部只有一套 three 坐标：three.y 竖直 ⇒ ② 的显示 z = three.y、显示 y = three.z。 */
+const axes = new THREE.Group();
+const AXIS_L = 13;
+function buildAxes(spatial){
+  clearGroup(axes);
+  const dirs = [new THREE.Vector3(1,0,0), new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,1)];
+  /* 名字与颜色成对：spatial 时竖直轴改叫 z（→ 蓝）、纵深轴改叫 y（→ 绿），颜色跟名字走 */
+  const nc = spatial
+    ? [['x', 0xb3261e], ['z', 0x1b4f9c], ['y', 0x177245]]
+    : [['x', 0xb3261e], ['y  (t)', 0x177245], ['z', 0x1b4f9c]];
+  for(let i=0;i<3;i++){
+    const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0),
+      dirs[i].clone().multiplyScalar(AXIS_L)]);
+    axes.add(new THREE.Line(g, new THREE.LineBasicMaterial({color:nc[i][1], transparent:true, opacity:.62})));
+    const hex = '#' + nc[i][1].toString(16).padStart(6,'0');
+    const sp = mkLabelSprite(nc[i][0], hex, 1.5);
+    sp.position.copy(dirs[i].clone().multiplyScalar(AXIS_L + 0.9));
+    axes.add(sp);
+  }
+}
+scene.add(axes);
+buildAxes(false);
+
+/* 网格地面（浅） */
+const grid = new THREE.GridHelper(34, 34, 0xc8d3e2, 0xe6ecf5);
+grid.position.y = -8.6; grid.material.transparent = true; grid.material.opacity = .5;
+scene.add(grid);
+
+/* ---------- 工具 ---------- */
+const C = { blue:0x1b4f9c, red:0xb3261e, green:0x177245, violet:0x6b3fa0, teal:0x0f7b8a,
+            orange:0xb4531f, gray:0x7b8794, lightgray:0xaab6c4 };
+function line(pts, col, opacity){ 
+  const g = new THREE.BufferGeometry().setFromPoints(pts);
+  return new THREE.Line(g, new THREE.LineBasicMaterial({color:col, transparent:true, opacity:opacity===undefined?1:opacity}));
+}
+/* 3D 文字标签（画到 canvas 上做成 Sprite）。
+   画布宽度按 measureText 定，Sprite 长宽比 = 画布长宽比 ⇒ 文字不会被拉扁。
+   depthTest:false ⇒ 标签永远压在几何之上，远方的小字也读得到。 */
+function mkLabelSprite(txt, hex, hWorld){
+  const fs = 40, pad = 10;
+  const c = document.createElement('canvas');
+  const m = c.getContext('2d');
+  m.font = 'bold ' + fs + 'px monospace';
+  c.width = Math.max(20, Math.ceil(m.measureText(txt).width) + pad*2);
+  c.height = fs + 18;
+  /* ⚠ 改 canvas.width/height 会重置上下文状态，所以字体/颜色必须在这之后重设一遍 */
+  const ctx = c.getContext('2d');
+  ctx.font = 'bold ' + fs + 'px monospace'; ctx.fillStyle = hex; ctx.textBaseline = 'middle';
+  ctx.fillText(txt, pad, c.height/2);
+  const tex = new THREE.CanvasTexture(c);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:false}));
+  const h = hWorld || 1.5;
+  sp.scale.set(h * c.width / c.height, h, 1);
+  return sp;
+}
+function disposeGroup(g){
+  g.traverse(o=>{ if(o.geometry) o.geometry.dispose();
+    if(o.material){ (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{ if(m.map)m.map.dispose(); m.dispose(); }); } });
+}
+function clearGroup(g){ while(g.children.length) g.remove(g.children[0]); }
+
+/* 颜色映射：0=慢(红) → 1=快(绿) */
+function rateColor(x){
+  x = Math.max(0, Math.min(1, x));
+  const stops = [[0.00,[0.72,0.10,0.08]],[0.30,[0.85,0.42,0.10]],[0.62,[0.80,0.72,0.12]],[1.00,[0.09,0.55,0.30]]];
+  let a=stops[0], b=stops[stops.length-1];
+  for(let i=0;i<stops.length-1;i++){ if(x>=stops[i][0] && x<=stops[i+1][0]){ a=stops[i]; b=stops[i+1]; break; } }
+  const t = (x-a[0])/((b[0]-a[0])||1);
+  return new THREE.Color(a[1][0]+(b[1][0]-a[1][0])*t, a[1][1]+(b[1][1]-a[1][1])*t, a[1][2]+(b[1][2]-a[1][2])*t);
+}
+
+/* ============================================================
+   六个模型构造器
+   每个返回 {group, update(dt,t), note()}
+   ============================================================ */
+const builders = {};
+
+/* ---------- 1. 橡胶膜凹坑（反面教材） ---------- */
+builders.rubber = function(rs){
+  const g = new THREE.Group();
+  const SEG = 56, S = 15;
+  const geo = new THREE.PlaneGeometry(2*S, 2*S, SEG, SEG);
+  geo.rotateX(-Math.PI/2);
+  const pos = geo.attributes.position;
+  const base = new Float32Array(pos.array);
+  // 人为下塌：z = -A/(r+eps)，并限幅
+  const A = 5.2*rs, eps = 1.6*rs;
+  for(let i=0;i<pos.count;i++){
+    const x = base[i*3], z = base[i*3+2];
+    const r = Math.sqrt(x*x+z*z);
+    const dip = -A/(r+eps) + A/(S+eps);
+    pos.setY(i, dip);
+  }
+  geo.computeVertexNormals();
+  const mat = new THREE.MeshStandardMaterial({color:0xdfe7f3, roughness:.92, metalness:.02,
+    side:THREE.DoubleSide, flatShading:false});
+  g.add(new THREE.Mesh(geo, mat));
+  g.add(new THREE.Mesh(geo.clone(), new THREE.MeshBasicMaterial({color:0x9fb0c6, wireframe:true, transparent:true, opacity:.28})));
+
+  // 坑里的球
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(0.72*Math.sqrt(rs), 26, 20),
+    new THREE.MeshStandardMaterial({color:0xb4531f, roughness:.4, metalness:.15}));
+  g.add(ball);
+  // 中心质量
+  const core = new THREE.Mesh(new THREE.SphereGeometry(0.95*rs, 26, 20),
+    new THREE.MeshStandardMaterial({color:0x2a3542, roughness:.35, metalness:.35}));
+  core.position.y = -A/(0+eps) + A/(S+eps) + 0.55*rs;
+  g.add(core);
+  const rBall = 5.4;
+  return {
+    group:g,
+    update(dt,t){
+      const th = t*0.55;
+      const rr = rBall*(1+0.10*rs);
+      const x = rr*Math.cos(th), z = rr*Math.sin(th);
+      ball.position.set(x, -A/(rr+eps) + A/(S+eps) + 0.75*Math.sqrt(rs), z);
+      pos.needsUpdate = true;
+    },
+    note:()=>'坑的深度 −A/(r+ε) 是人为规定的，不是任何解。球滚进坑靠的是不肯露面的外部重力。'
+  };
+};
+
+/* ---------- 2. 线框网格畸变：三维点阵被「一群质量」逐顶点重标 ----------
+   几何对齐 1ucasvb "3D lattice distortion"(tumblr 2016)：
+     · 真三维笛卡尔点阵；格线 = 顶点位移后连【直线段】（近质量处保留折角，不平滑）
+     · 位移场  X′ = X − g·Σᵢ(X−mᵢ)/(|X−mᵢ|²+c²)
+               单质量时退化为 D(r) = ρc²r/(r²+c²)（r≫c 时 ≈ ρc²/r → 0，远端笔直；峰值在 r=c 处 = ρc/2）
+     · 摆位（环 / 弹簧线圈）、相邻间距解析式、不重叠反解 —— 全部在 assets/js/anu-coil.js（唯一一处）
+     · 色标    t = |1 − det J| → 蓝(无畸变) 渐变 绿(局部体积偏离 1 最大)
+   方向开关 distDir:
+     'in'  向内收拢  ← 牛顿势图像，与原图一致（det J < 1，空间被抽走）
+     'out' 向外撑开  ← 史瓦西固有长度 ds=dr/√(1−rs/r) 的方向（det J > 1，空间被拉开）
+   ★ 两者只差一个符号、形状都「合理」—— 这正是本页列出的第 2 个陷阱。
+   ⚠ 1.1.1 修：sign 过去**没有乘进 g**，两个按钮算出的是同一个向内收拢的场；
+     并且逐点 tanh 钳制把场压成了近乎刚体平移（均/最大 = 0.999）。两处都已修，见 anu-coil.js 头注。
+   ============================================================ */
+const LAT_L = 7.6;      /* ② 点阵半边长度 —— 构造器与读数面板共用同一常量，勿各写一份 */
+const LAT_C = 0.85;     /* ② 畸变作用半径 / 格长（软化尺度） */
+const RHO_MAX = 1.50;   /* ② 位移幅度 ρ 的上限（r_s 滑块打到头时的值） */
+function rhoOf(rs){     /* ρ(r_s)：同样只写一份，构造器与读数面板共用 */
+  return 0.70 + (RHO_MAX-0.70)*Math.min(1, Math.max(0, (rs-0.6)/2.0));
+}
+
+/* ============================================================
+   ② 的摆位状态（浮窗 §②-2 驱动）。改一个值 → build() 重建。
+   「自动适配」= 由「不重叠 + 间距均匀 + 装得下」三条**反解** R 与 r（原始请求：k 的默认值由
+   球大小与每匝个数自然涌现、球不能重叠、R 也要适当、相邻间距尽量均匀）；
+   关掉它就是完全手动 —— 可以故意让球叠在一起，读数会用红字把「叠了多少」报出来。
+   ============================================================ */
+const SEG_BUDGET = 700000;   /* ② 采样预算 nLine·(SEG+1)·球数：343 个球也不会把帧率打死 */
+const COIL_COL = { ref:0xb3261e, same:0x0f8b7a, up:0x6b3fa0, tang:0xc2691a, horiz:0x0f7b8a };
+
+let coilMode  = 'spring';   /* 'ring' 环上公转 | 'spring' 弹簧线圈 */
+let coilR     = 2.4271;     /* 公转半径 R（世界单位） */
+let ballR     = 1.0214;     /* 小球半径 r */
+let ringN     = 6;          /* 环上球数 1..12 */
+let coilTurns = 7;          /* 匝数 1..49 */
+let perTurn   = 7;          /* 每匝球数 1..12（与「环上球数」同上限，2026-10-12 由 7 提到 12） */
+let coilKAuto = true;       /* k 自动（均匀解） */
+let coilKMan  = 0.139541;   /* k 手动值 */
+let coilAmpK  = 1.00;       /* 畸变强度：全网峰值 |D| = 单球峰值 × coilAmpK（全局标定后的目标） */
+let coilShare = 1;          /* ⚠ 已废弃：全局标定会把任何统一的比例因子吸收掉（share 变成无效参数）。
+                               模块里仍留这个键只为兼容；页面恒传 1，别再往 UI 上挂开关。 */
+let coilColorAuto = true;   /* 色标自动归一 */
+let coilFitAuto = true;     /* R 与 r 自动反解 */
+let coilTags  = true;       /* 图上标注开关 */
+let coilTagDefs = [];       /* [{obj, text, cls, dx, dy, el, lead}] —— 3D 锚点 + HTML 标签 + 引线 */
+let coilRefObj  = null;     /* 参考球位置的空对象：标签「径向外推」的圆心（见 updateCoilTags） */
+let coilLastRT = null;      /* 上一帧的运行期读数（峰值位移 / 钳制点数 / SEG …） */
+
+function coilNCell(){ return 2*LAT_L/Math.max(1, gridN|0); }
+function coilCapR(){ return AnuCoil.R_CAP_FRAC*coilNCell(); }
+function coilNPer(){ return (coilMode==='ring') ? ringN : perTurn; }
+
+/* 当前的 k：自动 = 均匀解（解析）；n = 1 时均匀条件**退化**（只剩「上下」一类邻居，
+   任何 k 都均匀），于是 k 由「装得下 + 不重叠」自然涌现 ⇒ 向 solveFit 要。
+   ⚠ 旧版这里写 `n<=1 ⇒ return 0`，又在模块里硬写 `if (n<=1) k=0`，
+   于是「每匝 1 个球」永远塌成所有球同高度；再补一条「perTurn ≤ 1 强制 1 匝」盖住症状。
+   症状补丁套症状补丁 —— 现在是：k 的自由度是真的，让式子自己给答案。 */
+function coilTurnsEff(){
+  if (coilMode !== 'spring') return 1;
+  if (!coilKAuto) return (coilKMan <= 0) ? 1 : coilTurns;   /* 手动 k = 0 ⇒ 固定 1 匝（用户规则） */
+  return coilTurns;                                         /* 自动 k 恒 > 0 ⇒ 不强制 */
+}
+/* 「装得下 + 不重叠 + 均匀」三条约束的唯一反解（模块里那一份，页面不再抄第二份） */
+function coilFitOf(){
+  return AnuCoil.solveFit({
+    mode: coilMode, n: coilNPer(), turns: coilTurnsEff(),
+    L: LAT_L, cell: coilNCell(),
+    k: coilKAuto ? null : Math.max(0, Math.min(2, coilKMan)),
+    fitK: AnuCoil.FIT_K, rGap: AnuCoil.DIST_GAP
+  });
+}
+function coilKEff(){
+  const n = coilNPer();
+  if (!coilKAuto) return Math.max(0, Math.min(2, coilKMan));
+  if (n > 1) return AnuCoil.kUniform(n);
+  return coilFitOf().k || 0;                 /* n = 1：向反解要（见上） */
+}
+/* 反解 R 与 r：只在自动模式下改写；手动模式**一点都不碰**（否则拖完滑块又被拉回去，
+   变成「显示了却改不动」的假控件 —— 这条 bug 以前真的存在） */
+function coilFit(){
+  const n = coilNPer(), T = coilTurnsEff();
+  if (coilFitAuto){
+    const f = coilFitOf();
+    coilR = +f.R.toFixed(4);
+    ballR = +f.r.toFixed(4);
+  }
+  return { n:n, T:T };
+}
+/* 交给 AnuCoil 的唯一一份摆位描述（k = null 表示让模块自己取均匀解） */
+function coilSpec(){
+  const f = coilFit();
+  const kAuto = coilKAuto && f.n > 1;      /* 只有 n ≥ 2 时「自动」才是解析的 kUniform(n) */
+  return { mode:coilMode, n:f.n, turns:f.T, R:coilR,
+           k: (coilMode === 'ring' || kAuto) ? null : coilKEff(),
+           L:LAT_L, cell:coilNCell() };
+}
+/* 相邻小品几何 + 拟合出的参数，一次算齐 */
+function coilGeo(){ const SP = coilSpec(); return { SP:SP, NB:AnuCoil.neighbours(SP) }; }
+
+/* 面板读数行（= 「写出」那部分的数字）；rt 为可选的运行期读数 */
+function coilRows(rt){
+  const GG = coilGeo(), NB = GG.NB, cell = coilNCell();
+  const fin = isFinite(NB.dmin);
+  const gap = fin ? NB.dmin - 2*ballR : Infinity;
+  const R = [];
+  R.push(['摆法', coilMode === 'ring'
+      ? ('环上公转 · ' + ringN + ' 个球（上限 12）')
+      : ('弹簧线圈 · ' + NB.turns + ' 匝 × ' + NB.n + ' 球/匝（n 上限 12）')]);
+  R.push(['球数 M', String(NB.M) + (NB.M > 186 ? ' <span style="color:#9a6700">（网格采样已自适应降级）</span>' : '')]);
+  R.push(['公转半径 R', NB.R.toFixed(3) + ' ' + (coilFitAuto ? '<span style="color:#7b8794">（自动反解）</span>' : '<span style="color:#9a6700">（手动）</span>')]);
+  R.push(['小球半径 r', ballR.toFixed(3) + '（' + (ballR/cell).toFixed(3) + ' 格）']);
+  R.push(['小球直径 2r', (2*ballR).toFixed(3)]);
+
+  if (coilMode === 'spring'){
+    /* ★ 判定用**页面状态** coilKAuto，不能用模块视角的 NB.kIsAuto：
+       n = 1 时均匀条件退化，k 由 solveFit 涌现，而页面是**显式**把这个 k 传给模块的
+       （模块只认「k 是不是 null」）⇒ 模块报 kIsAuto = false，读数就把「自动涌现」谎报成「手动」。
+       这正是老师点名的同族故障：控件/读数与实际计算不一致。 */
+    R.push(['螺距系数 k', NB.k.toFixed(6) + (coilKAuto
+        ? (NB.n >= 2
+            ? ' <span style="color:#7b8794">（= 均匀解 k* = n·sin(π/n)/(π√(n²−1))）</span>'
+            : ' <span style="color:#7b8794">（n = 1：均匀条件退化 ⇒ k 由「装得下 + 不重叠」涌现）</span>')
+        : ' <span style="color:#9a6700">（手动）</span>')]);
+    R.push(['螺旋升角 ψ', (NB.psi*180/Math.PI).toFixed(3) + '° = arctan k']);
+    if (NB.n >= 2)
+      R.push(['同匝相邻（左右）', NB.chord.toFixed(3) + ' 弦 + Δz ' + NB.dzSame.toFixed(3) + ' → <b>' + NB.dSame.toFixed(3) + '</b>']);
+    else
+      R.push(['同匝相邻（左右）', '<span style="color:#7b8794">不存在（每匝只有 1 个球）</span>']);
+    R.push(['相邻匝同相位（上下）', NB.hasUp
+        ? ('Δz = 螺距 P = <b>' + NB.dUp.toFixed(3) + '</b>')
+        : '<span style="color:#7b8794">不存在（只有 1 匝）</span>']);
+    if (NB.n >= 2) R.push(['斜上/斜下', NB.dDiag.toFixed(3)]);
+    if (NB.n >= 2) R.push(['沿面走一步弧长', NB.arcSame.toFixed(3) + '（≥ 3D 距离 ' + NB.dSame.toFixed(3) + '）']);
+    R.push(['线圈高度 T·P', NB.height.toFixed(3) + ' / 格架 ' + (2*LAT_L).toFixed(2)]);
+  } else {
+    R.push(['相邻弦 2R sin(π/n)', fin ? NB.dmin.toFixed(3) : '<span style="color:#7b8794">无（只有 1 个球）</span>']);
+  }
+  R.push(['最小中心距 dmin', fin ? NB.dmin.toFixed(3) : '<span style="color:#7b8794">无邻居</span>']);
+  R.push(['球间净距 dmin−2r', !fin
+      ? '<span style="color:#7b8794">—（只有一个球，谈不上间距）</span>'
+      : (gap >= 0
+        ? '<b style="color:#146c43">' + gap.toFixed(3) + '（不重叠）</b>'
+        : '<b style="color:#b3261e">' + gap.toFixed(3) + '（重叠）</b>')]);
+  R.push(['球半径上限', fin
+      ? (NB.dmin/2).toFixed(3)
+      : coilCapR().toFixed(3) + ' <span style="color:#7b8794">（无邻居 ⇒ 只受「别大过一格」限制）</span>']);
+  if (NB.R + ballR > LAT_L)
+    R.push(['装得下?', '<b style="color:#b3261e">R + r = ' + (NB.R+ballR).toFixed(3) + ' &gt; L = ' + LAT_L.toFixed(2) + '（球已探出格架）</b>']);
+  if (coilMode === 'spring' && NB.turns * Math.abs(NB.pitch) > 2*LAT_L + 1e-6)
+    R.push(['装得下?', '<b style="color:#b3261e">' + NB.turns + ' 匝需要高度 ' + (NB.turns*Math.abs(NB.pitch)).toFixed(2) + ' &gt; 格架 ' + (2*LAT_L).toFixed(2)
+      + ' ⇒ 上下相邻球必然重叠</b>']);
+  R.push(['间距均匀度', (coilMode === 'spring' && NB.hasUp)
+      ? ('上下/左右 = ' + NB.straight.toFixed(4) + (Math.abs(NB.straight-1) < 1e-3 ? ' <b style="color:#146c43">均匀</b>' : ' <span style="color:#9a6700">不匀</span>'))
+      : '<span style="color:#7b8794">—（指标量的是「上下/左右」之比，本图只有一类邻居）</span>']);
+  if (rt){
+    R.push(['位移峰值 / 单球峰值', rt.maxD.toFixed(3) + ' / ' + (rt.peak1).toFixed(3)
+      + (rt.gain != null && rt.gain !== 1 ? ' <span style="color:#7b8794">（全局增益 ×' + rt.gain.toFixed(3) + '）</span>' : ' <span style="color:#7b8794">（增益 ×1，与单球原图逐位一致）</span>')]);
+    R.push(['标定前峰值 |D|', (rt.rawMaxD != null ? rt.rawMaxD.toFixed(3) : '—')
+      + ' <span style="color:#7b8794">（每球同强、未标定；球数一多就很大，所以必须有那一个全局增益）</span>']);
+    R.push(['色标', '峰值 |1−det J| = ' + rt.maxRaw.toFixed(4) + (coilColorAuto ? ' <span style="color:#7b8794">（自动拉满量程）</span>' : ' <span style="color:#7b8794">（固定 ×1.9）</span>')]);
+    R.push(['网格采样 SEG', String(rt.SEG) + ' / 上限 44（点数 ' + rt.nP + '）']);
+  }
+  return R;
+}
+function coilPanelHTML(rt){
+  return coilRows(rt).map(r => r[0] + '：' + r[1]).join('<br>');
+}
+
+/* ------------------------------------------------------------
+   ② 图上的文字标签：3D 锚点 + HTML 投影
+   为什么不直接做成 THREE.Sprite？—— 场景可视角高度约 46 世界单位，要让字读得清，
+   sprite 高度得到 1.5 世界单位（约 20 px），但这么大的标签挤在线圈旁边会糊成一团；
+   而默认相机距离下 11 px 的 HTML 文字永远清晰。所以 3D 只画**线**，文字用投影覆盖层。
+   ------------------------------------------------------------ */
+function rebuildCoilTagEls(){
+  const host = document.getElementById('coilTags');
+  if (!host) return;
+  host.innerHTML = '';
+  /* 引线层：先插一张 SVG，再把文字标签压在上面。
+     为什么要引线？—— 标签被像素偏移推开了，没有引线就不知道它指的是哪个球。 */
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  host.appendChild(svg);       /* ★ SVG 必须**先**进 DOM：否则它画的引线会盖在文字标签上 */
+  coilTagDefs.forEach(function(t){
+    const ln = document.createElementNS(NS, 'line');
+    ln.setAttribute('x1', 0); ln.setAttribute('y1', 0);
+    ln.setAttribute('x2', 0); ln.setAttribute('y2', 0);
+    ln.setAttribute('stroke', t.cls === 'tag-r' ? '#b3261e'
+      : t.cls === 'tag-s' ? '#0f8b7a' : t.cls === 'tag-u' ? '#6b3fa0' : '#c2691a');
+    svg.appendChild(ln);
+    t.lead = ln;
+    const s = document.createElement('span');
+    if (t.cls) s.className = t.cls;
+    s.textContent = t.text;
+    host.appendChild(s);
+    t.el = s;
+  });
+}
+function updateCoilTags(){
+  const host = document.getElementById('coilTags');
+  if (!host) return;
+  const show = coilTags && cur === 2 && !quad && coilTagDefs.length > 0;
+  host.style.display = show ? '' : 'none';
+  if (!show) return;
+  scene.updateMatrixWorld(true);              /* 拖动位移也在这条链上，必须整链刷新 */
+  const w = viewer.clientWidth, h = viewer.clientHeight;
+  const v = new THREE.Vector3();
+  /* 参考球的屏幕位置：所有标签都从它**径向向外**推开。
+     为什么不用写死的像素偏移？—— 锚点在世界坐标里本来就挤在参考球旁边，而相机一转相对位置全变；
+     径向外推 + AABB 分离两步下来，任何视角都能自动让出中间的球团。 */
+  let rx = w/2, ry = h/2;
+  if (coilRefObj){
+    coilRefObj.getWorldPosition(v); v.project(camera);
+    rx = (v.x*0.5+0.5)*w; ry = (-v.y*0.5+0.5)*h;
+  }
+  const PUSH = Math.min(120, Math.max(56, 0.075*Math.min(w, h)));
+  const list = [];
+  coilTagDefs.forEach(function(t){
+    if (!t.el) return;
+    t.obj.getWorldPosition(v);
+    v.project(camera);
+    const ax = (v.x*0.5+0.5)*w, ay = (-v.y*0.5+0.5)*h;
+    let dx = ax - rx, dy = ay - ry;
+    const L = Math.hypot(dx, dy);
+    if (L < 1e-3){ dx = t.dx || 1; dy = t.dy || 0; }
+    const n = Math.hypot(dx, dy) || 1;
+    const x = ax + dx/n*PUSH + 0.3*(t.dx||0);
+    const y = ay + dy/n*PUSH + 0.3*(t.dy||0);
+    list.push({ t:t, ax:ax, ay:ay, x:x, y:y, w:0, h:0 });
+    t.el.style.left = x.toFixed(1) + 'px';
+    t.el.style.top  = y.toFixed(1) + 'px';
+  });
+  /* ★ 屏幕空间避让。为什么不在源码里手调偏移？—— 这几个锚点（ψ 弧端点、Δφ 弧中点、
+     左右/上下中点）在世界坐标里本来就挤在参考球旁边，而且相机一转相对位置全变，
+     写死的偏移只在某一个视角成立。改成每帧做几轮 AABB 分离，任何角度都读得清。 */
+  list.forEach(function(o){ o.w = o.t.el.offsetWidth || 100; o.h = o.t.el.offsetHeight || 18; });
+  const separate = () => {
+    for (let it = 0; it < 14; it++){
+      let moved = false;
+      for (let i = 0; i < list.length; i++) for (let j = i+1; j < list.length; j++){
+        const a = list[i], b = list[j];
+        const ox = Math.min(a.x+a.w/2, b.x+b.w/2) - Math.max(a.x-a.w/2, b.x-b.w/2);
+        const oy = Math.min(a.y+a.h/2, b.y+b.h/2) - Math.max(a.y-a.h/2, b.y-b.h/2);
+        if (ox <= 0 || oy <= 0) continue;
+        moved = true;
+        const pad = 4;
+        if (ox < oy){                                   /* 横向压得更少 ⇒ 往左右分开 */
+          const d = (ox + pad)/2 * (a.x <= b.x ? -1 : 1);
+          a.x += d; b.x -= d;
+        } else {                                        /* 否则往上下分开 */
+          const d = (oy + pad)/2 * (a.y <= b.y ? -1 : 1);
+          a.y += d; b.y -= d;
+        }
+      }
+      if (!moved) break;
+    }
+  };
+  const clampIn = () => list.forEach(function(o){
+    o.x = Math.max(o.w/2 + 2, Math.min(w - o.w/2 - 2, o.x));
+    o.y = Math.max(o.h/2 + 2, Math.min(h - o.h/2 - 2, o.y));
+  });
+  separate(); clampIn(); separate(); clampIn();
+  list.forEach(function(o){
+    o.t.el.style.left = o.x.toFixed(1) + 'px';
+    o.t.el.style.top  = o.y.toFixed(1) + 'px';
+    if (o.t.lead){
+      o.t.lead.setAttribute('x1', o.ax.toFixed(1)); o.t.lead.setAttribute('y1', o.ay.toFixed(1));
+      o.t.lead.setAttribute('x2', o.x.toFixed(1));  o.t.lead.setAttribute('y2', o.y.toFixed(1));
+    }
+    o.t.sx = o.x; o.t.sy = o.y;                          /* 供测试断言取用 */
+  });
+}
+
+/* ------------------------------------------------------------
+   ★ 画布文字落点台账（自检用 —— _check/zhoubi_test.js 的 B3 段逐条核）
+   本轮的两次缺陷都是「文字被画布边界切掉」，而在缩略图里肉眼看不出：
+     ① 弦图大图上边那排「勾/股」标签撞画布顶边（baseline = PY(n) − 6，而 y0 只留了 15 px）；
+     ② 线圈展开图的「↔ 同一个球（接缝两侧）」撞画布右边界（分栏后列宽 ~1094 → 756 px，
+        标签起点 sx(um)+11 恰好越界）。
+   教训：**画完再目测**是不可靠的（越界的那部分根本不显示，看着「挺正常」）。
+   改成「画的时候就量宽落档」：每条文字记下它的外接矩形与所在画布，测试端核
+   0 ≤ x0、x1 ≤ W、0 ≤ y0、y1 ≤ H。越界即 FAIL，并打印是哪张画布的哪条文字。
+   ⚠ 台账用**原地增删**（splice）而不是整体重新赋值，这样 window.__figLabels 里的
+     引用永远指向同一个数组、不会变陈旧。
+   ------------------------------------------------------------ */
+let figLabels = [];      /* [{cv, t, x, y, w, align, x0, x1, y0, y1, W, H}] */
+let figLabCur = null;    /* 当前正在画的画布 {cv, W, H}；每张画布开画前重置 */
+function figLabClear(cv){
+  for (let i = figLabels.length - 1; i >= 0; i--) if (figLabels[i].cv === cv) figLabels.splice(i, 1);
+}
+function figLabBegin(cv, W, H){ figLabClear(cv); figLabCur = { cv: cv, W: W, H: H }; }
+function figLabPush(g, s, x, y, align){
+  if (!figLabCur) return;
+  const al = align || 'left';
+  const wv = g.measureText(s).width;
+  const x0 = (al === 'center') ? x - wv/2 : (al === 'right') ? x - wv : x;
+  /* 字号也要落档：折行/叠字的判据里用的是「字高」而不是固定 12 px ——
+     2D 图里有 12 / 11 / 9.5 px 三种字号，一刀切会把 9.5 px 的两行小字误判成叠字。 */
+  const mfs = /(\d+(?:\.\d+)?)px/.exec(g.font || '');
+  const fs = mfs ? parseFloat(mfs[1]) : 11;
+  figLabels.push({ cv: figLabCur.cv, t: s, x: x, y: y, w: Math.round(wv), align: al, fs: fs,
+                   x0: x0, x1: x0 + wv, y0: y - fs*1.16, y1: y + fs*0.26,
+                   W: figLabCur.W, H: figLabCur.H });
+}
+
+/* ------------------------------------------------------------
+   ② 的 2D 附图：弹簧线圈「圆柱面展开图」/ 环的俯视图（真尺度）
+   ★ 必须**等比例**：展开图里螺旋线是直线 v = k·u，斜率就是 k，
+     切向角 ψ = arctan k 才能在图上量出来。任何拉伸都会让这个角变成假的。
+   ------------------------------------------------------------ */
+function drawCoilFig(){
+  const cv = document.getElementById('coilCv');
+  const card = document.getElementById('coilCard');
+  if (card) card.style.display = (cur === 2 ? '' : 'none');
+  if (!cv || cur !== 2) return;
+  /* ★ 先清掉本画布的旧档：下面各分支里有若干「几何退化就主动 return」的门卫
+     （例如 !isFinite(s) 时整条都不画）。若不先清，上一帧的文字会留在台账里冒充本帧 ⇒
+     「无文字的档」会被误判成「有文字且都没越界」，哨兵就漏了。 */
+  figLabClear('coilCv');
+  const NB = coilGeo().NB, cell = coilNCell();
+  const host = cv.parentElement || cv;
+  /* ⚠ 只从 parentElement 取宽度，绝不读 cv.clientWidth：canvas 自己撑宽了父容器之后
+     clientWidth 会被上一帧的 width 反馈，逐帧自缩到 0（这个坑踩过一次）。 */
+  const Wmax = Math.max(300, (host.clientWidth | 0) - 2);
+  const pad = 30;
+
+  /* 画布上的文字：白色描边 + 填色。
+     展开图里标签必然压在深色球带上，纯色 12px 字读不出来 —— 描一圈白边就清楚了。 */
+  function txt(g, s, x, y, col, align){
+    g.font = 'bold 12px ui-monospace,monospace';
+    g.textAlign = align || 'left';
+    g.lineWidth = 3.4; g.strokeStyle = 'rgba(255,255,255,.92)';
+    g.lineJoin = 'round';
+    g.strokeText(s, x, y);
+    g.fillStyle = col; g.fillText(s, x, y);
+    g.textAlign = 'left';
+    figLabPush(g, s, x, y, align);      /* 落档：交给 B3 核边界（右边界越界是本轮踩过的坑） */
+  }
+
+  /* ---------- A. 弹簧线圈：展开图（参考球附近 ±1.5 匝的窗口，真尺度） ----------
+     ★ 为什么画窗口而不是画整条 7 匝？
+       展开图上每匝是 2πR × 2πkR 的一条长带，宽高比 = 1/k ≈ 7.2:1；画布宽度有上限
+       ⇒ 每匝只分到约 13 px 高，而小球直径本来就占满 80% 的螺距，几匝叠上去就成了一条
+       实心灰带，什么都读不出。截 ±1.5 匝后纵向比例尺变成约 22 px/世界单位，
+       球与球之间看得见空隙，ψ 角也量得准 —— 而且仍然是**真尺度等比例**，
+       没有为了让图好看去拉伸任何一根轴。 */
+  if (coilMode === 'spring' && NB.k > 1e-6 && NB.turns >= 1){
+    const uv = new Float32Array(NB.M*2);
+    AnuCoil.helixUV(coilSpec(), uv);
+    const jc = Math.round(NB.M/2) % Math.max(1, NB.M);      /* 参考球：取中段，窗口两侧都有料 */
+    const u0 = uv[2*jc], v0 = uv[2*jc+1];
+    const win = Math.min(NB.turns, 1.5);                    /* 窗口半径（匝） */
+    const uHalf = Math.max(win*2*Math.PI*NB.R, 1.6*NB.R*NB.dt, 2.5*NB.dSame);
+    const vHalf = Math.max(win*2*Math.PI*NB.k*NB.R, 1.5*(NB.hasUp ? NB.dUp : NB.dSame));
+    /* ★ 顶部多留 52 px 作「标注带」。为什么必须留：
+       参考球周围 30 px 的竖直范围里要挤三句标注 —— 「左右 d」「上下 P」「接缝同一个球」。
+       它们任意两句的基线只差 1.6 / 27.6 px，x 区间又都压在参考球右侧那 200 px 里
+       ⇒ 挪位置就是打地鼠（先把接缝那句从右上挪到右下，立刻又压住「左右 d」，台账抓出来的）。
+       干脆在画布顶上预留一条空带：接缝那句固定写成右上角注脚，再用一条点线连回虚线右端。
+       代价为零 —— 分栏后这一格的高度本来就由右列弦图（310 px）决定，线圈图 157→179 不改变行高。 */
+    const padT = 52;
+    const s = (Wmax - 2*pad)/(2*uHalf);                     /* 由宽度定比例尺，两轴共用 */
+    if (!isFinite(s) || s <= 0) return;
+    const W = Math.round(2*uHalf*s + 2*pad), H = Math.round(2*vHalf*s + padT + pad);
+    cv.width = W; cv.height = H;
+    cv.style.width = W + 'px'; cv.style.height = H + 'px';
+    const g = cv.getContext('2d');
+    g.clearRect(0,0,W,H);
+    figLabBegin('coilCv', W, H);        /* 台账换到这张画布（同一画布上一帧的旧档先清掉） */
+    const sx = q => pad + (q - u0 + uHalf)*s;
+    const sy = q => (H - pad) - (q - v0 + vHalf)*s;
+
+    /* 底纹：每隔一整圈画一条竖线（圆柱面的接缝，u 与 u+2πR 是同一个点） */
+    g.strokeStyle = '#eef2f8'; g.lineWidth = 1;
+    for (let m = -3; m <= 3; m++){
+      const uu = u0 + m*2*Math.PI*NB.R;
+      if (uu < u0 - uHalf - 1e-9 || uu > u0 + uHalf + 1e-9) continue;
+      g.beginPath(); g.moveTo(sx(uu), sy(v0 - vHalf)); g.lineTo(sx(uu), sy(v0 + vHalf)); g.stroke();
+    }
+
+    /* 螺旋线：展开后**就是一条直线** v − v0 = k·(u − u0)，斜率 = k */
+    g.strokeStyle = '#1b4f9c'; g.lineWidth = 1.6;
+    g.beginPath(); g.moveTo(sx(u0 - uHalf), sy(v0 + NB.k*(u0 - uHalf - u0)));
+    g.lineTo(sx(u0 + uHalf), sy(v0 + NB.k*(u0 + uHalf - u0))); g.stroke();
+
+    /* 小球（含周期性镜像：u 与 u+2πR 是同一点，所以「正上方那个球」要靠在 u0 处取镜像才画得出） */
+    const rr = Math.max(2.2, ballR*s);
+    for (let m = -2; m <= 2; m++){
+      for (let j = 0; j < NB.M; j++){
+        const uu = uv[2*j] + m*2*Math.PI*NB.R, vv = uv[2*j+1];
+        if (uu < u0 - uHalf - 1e-9 || uu > u0 + uHalf + 1e-9) continue;
+        if (vv < v0 - vHalf - 1e-9 || vv > v0 + vHalf + 1e-9) continue;
+        g.beginPath(); g.arc(sx(uu), sy(vv), rr, 0, 7);
+        g.fillStyle = '#33465e'; g.fill();
+      }
+    }
+    /* 参考球 + 左右/上下两个邻居。
+       ★ 四个标签刻意分到**四个方向**（上下→右上、左右→右上偏下、参考球→左下、ψ→左下更低）：
+       展开图上参考球、右邻、上邻三点只隔约 48 px，标签却有 150 px 宽，全往右上角摆必然叠成一团。 */
+    const j0 = jc, ru = u0, rv = v0;
+    const mark = (uu, vv, col, lab, dx, dy) => {
+      g.beginPath(); g.arc(sx(uu), sy(vv), rr*1.45, 0, 7);
+      g.fillStyle = col; g.fill();
+      g.strokeStyle = col; g.lineWidth = 1.6;
+      g.beginPath(); g.moveTo(sx(ru), sy(rv)); g.lineTo(sx(uu), sy(vv)); g.stroke();
+      if (lab) txt(g, lab, sx(uu) + dx, sy(vv) + dy, col, dx < 0 ? 'right' : 'left');
+    };
+    /* 左右：同匝相邻，沿直线一步 ⇒ (Δu, Δv) = (R·dt, k·R·dt) */
+    if (NB.n >= 2) mark(ru + NB.R*NB.dt, rv + NB.k*NB.R*NB.dt, '#0f8b7a', '左右 d = ' + NB.dSame.toFixed(3), 11, -11);
+    /* 上下：相邻匝同相位。展开图上它离「本体」一整圈远，但 u 与 u+2πR 是圆柱上的同一点，
+       所以用周期性镜像画在参考球正上方 —— 竖直间隔正好一个螺距 P = 2πkR。
+       ⚠ 只有 1 匝时**不存在**上下邻居：旧版无条件调用 mark(…, rv + NaN, …)，
+       canvas 收到 NaN 会静默整条路径失效（不报错、图就少了东西），必须显式跳过。 */
+    if (NB.hasUp){
+      mark(ru, rv + NB.dUp, '#6b3fa0', '上下 P = ' + NB.dUp.toFixed(3), 11, -11);
+      const um = ru + 2*Math.PI*NB.R;
+      if (um <= u0 + uHalf - 1e-9){
+        g.strokeStyle = '#c9b6de'; g.lineWidth = 1.2;
+        g.setLineDash([3,4]);
+        g.beginPath(); g.moveTo(sx(ru) + rr*1.6, sy(rv + NB.dUp)); g.lineTo(sx(um), sy(rv + NB.dUp)); g.stroke();
+        /* 引线：虚线右端 → 右上角注脚，同色点线，让人一眼看出这句在说那条虚线 */
+        g.beginPath(); g.moveTo(sx(um), sy(rv + NB.dUp)); g.lineTo(sx(um), 22); g.stroke();
+        g.setLineDash([]);
+        /* ★ 固定写在「顶部标注带」的右上角（y0 = 16 − 14 ≥ 0），横向按实测宽度夹一次。
+           换掉原来那套「优先写虚线右侧、放不下翻到左侧」：分栏后画布只剩 754 px，
+           「↔ 同一个球（接缝两侧）」宽约 156 px，虚线右端 +11 起就冲到 768 > 754
+           （被右边界切掉）；翻到左侧又会压住「左右 d = …」。
+           写死在这个空带里，既不会越界、也不会与任何一句撞行。 */
+        const seamLab = '↔ 同一个球（接缝两侧）';
+        g.font = 'bold 12px ui-monospace,monospace';
+        const seamW = g.measureText(seamLab).width;
+        txt(g, seamLab, Math.max(4 + seamW, W - 6), 16, '#6b3fa0', 'right');
+        /* 自检用：把「旧锚点」的算式一并交出去，_check/zhoubi_test.js 的反证②要拿它算
+           「如果还写在虚线右侧，右端会到多少」—— 用的都是这一帧的真实数字。 */
+        window.__coilDiag = { W: W, H: H, seamW: seamW, seamUm: sx(um), seamY: 16,
+                              oldX0: sx(um) + 11, oldX1: sx(um) + 11 + seamW,
+                              padT: padT, topRowY: sy(rv + vHalf) };
+      }
+    } else {
+      txt(g, '只有 1 匝 ⇒ 无「上下」邻居', sx(ru) + 11, sy(rv) + 34, '#6b3fa0', 'left');
+    }
+    /* 参考球（最后画，压在最上面） */
+    g.beginPath(); g.arc(sx(ru), sy(rv), rr*1.45, 0, 7);
+    g.fillStyle = '#b3261e'; g.fill();
+    g.strokeStyle = '#fff'; g.lineWidth = 1.4; g.stroke();
+    txt(g, '参考球 #' + (j0+1), sx(ru) - 11, sy(rv) + 16, '#b3261e', 'right');
+
+    /* 切向角 ψ：直线与水平线的夹角，图上量出来就是 arctan k */
+    const R0 = Math.min(104, Math.max(52, 0.14*W));
+    const ang = Math.atan(NB.k);
+    g.strokeStyle = '#c2691a'; g.lineWidth = 1.4;
+    g.beginPath(); g.arc(sx(ru), sy(rv), R0, -ang, 0); g.stroke();     /* ψ 弧 */
+    g.beginPath(); g.moveTo(sx(ru), sy(rv)); g.lineTo(sx(ru) + R0, sy(rv)); g.stroke();  /* 水平边 */
+    g.setLineDash([4,3]);
+    g.beginPath(); g.moveTo(sx(ru), sy(rv));
+    g.lineTo(sx(ru) + R0*Math.cos(ang), sy(rv) - R0*Math.sin(ang));    /* 沿螺旋线那条边 */
+    g.stroke(); g.setLineDash([]);
+    txt(g, 'ψ = arctan k = ' + (NB.psi*180/Math.PI).toFixed(2) + '°',
+        sx(ru) - 11, sy(rv) + 40, '#c2691a', 'right');
+
+    const cap = document.getElementById('coilCap');
+    if (cap) cap.innerHTML =
+      '<b>圆柱面展开图（真尺度、等比例，只画参考球附近 ±' + win.toFixed(1) + ' 匝的窗口）</b>：'
+      + '横轴 = 沿圆周的弧长 u = Rφ，纵轴 = z = k·Rφ。'
+      + '螺旋线展开后<b>是一条直线 v = k·u</b> —— 它与水平线的夹角就是<b>螺旋升角 ψ = arctan k = '
+      + (NB.psi*180/Math.PI).toFixed(2) + '°</b>（图上直接量，不用换算）。'
+      + '淡灰竖线每 2πR = ' + (2*Math.PI*NB.R).toFixed(2) + ' 一根，是<b>圆柱面的接缝</b>：'
+      + 'u 与 u+2πR 在圆柱上是同一点，所以<b>「正上方那个球」其实是绕了一整圈的同一个球</b>，'
+      + '它的竖直间隔 = 一个螺距 P = 2πkR = ' + NB.dUp.toFixed(3) + '。'
+      + (NB.n >= 2 ? '' : '本图每匝只有 1 个球 ⇒ 没有「左右」邻居。')
+      + '<br><span style="color:#7b8794">注意区分两个量：<b>沿圆柱面</b>绕到上下邻居要走 2πR√(1+k²) = '
+      + NB.arcUp.toFixed(2) + '；而<b>直线距离</b>只有螺距 ' + NB.dUp.toFixed(3)
+      + ' —— 判定「会不会重叠」必须用直线距离，用弧长会把间隙算大 ' + (100*(NB.arcUp/NB.dUp-1)).toFixed(0) + '%。</span>';
+  }
+
+  /* ---------- B. 环上公转：俯视图 ---------- */
+  else {
+    const span = 2*(NB.R + ballR + 0.35*cell);
+    const u = Math.min((Wmax - 2*pad)/span, (300 - 2*pad)/span);
+    const W = Math.round(span*u + 2*pad), H = Math.round(span*u + 2*pad);
+    cv.width = W; cv.height = H;
+    cv.style.width = W+'px'; cv.style.height = H+'px';
+    const g = cv.getContext('2d');
+    g.clearRect(0,0,W,H);
+    figLabBegin('coilCv', W, H);
+    const cx = W/2, cy = H/2, sc = u;
+    const P = (x,z) => [cx + x*sc, cy - z*sc];
+    g.strokeStyle = '#1b4f9c'; g.lineWidth = 1.4;
+    g.beginPath(); g.arc(cx, cy, NB.R*sc, 0, 7); g.stroke();
+    g.fillStyle = '#33465e';
+    for (let i = 0; i < NB.M; i++){
+      const a = 2*Math.PI*i/NB.M, p = P(NB.R*Math.cos(a), NB.R*Math.sin(a));
+      g.beginPath(); g.arc(p[0], p[1], Math.max(2.2, ballR*sc), 0, 7); g.fill();
+    }
+    if (NB.M >= 2){
+      const a0 = 0, a1 = 2*Math.PI/NB.M;
+      const p0 = P(NB.R*Math.cos(a0), NB.R*Math.sin(a0)), p1 = P(NB.R*Math.cos(a1), NB.R*Math.sin(a1));
+      g.strokeStyle = '#0f8b7a'; g.lineWidth = 2;
+      g.beginPath(); g.moveTo(p0[0],p0[1]); g.lineTo(p1[0],p1[1]); g.stroke();
+      /* ★ 弦长标注搬到**上边距**里、右对齐。原来写在弦中点右侧（+6、左对齐）：
+         这张环视图的宽度被 `Math.min(…, (300 − 2·pad)/span)` 限死在 300 px，
+         12 阶时右端冲到 369 px —— 早就在画布外了，只是那截像素根本不显示、肉眼看不出来
+         （2026-10-12 由台账哨兵抓出）。上边距是空的（环最上沿 ≥ pad，因为
+         span 里已含 ballR + 0.35·cell），放这里既不压住任何球，也永远放得下；
+         横向再按实测宽度夹一次兜底。 */
+      const lab = '相邻弦 d = ' + NB.dmin.toFixed(3);
+      g.font = 'bold 12px ui-monospace,monospace';
+      const lw = g.measureText(lab).width;
+      txt(g, lab, Math.max(3, W - 6 - lw), 16, '#0f8b7a', 'left');
+      g.beginPath(); g.arc(p0[0], p0[1], Math.max(3.3, ballR*sc)*1.4, 0, 7); g.fillStyle = '#b3261e'; g.fill();
+    }
+    const cap = document.getElementById('coilCap');
+    if (cap) cap.innerHTML = '<b>俯视图（真尺度）</b>：' + NB.M + ' 个球均匀分布在半径 R 的圆上（绕竖直轴 z 公转），'
+      + (isFinite(NB.dmin)
+        ? ('相邻两球只有<b>弦长</b> 2R sin(π/n) = ' + NB.dmin.toFixed(3) + ' 这一个距离 —— '
+           + '相邻中心距也是它（两点同高 ⇒ 弦 = 直线距离）')
+        : '<span style="color:#7b8794">只有 1 个球，没有相邻关系</span>')
+      + (coilMode === 'ring'
+        ? '；环模式下<b>不存在</b>螺距与螺旋升角：所有球共面，没有上下邻居。'
+        : '；这里 k = ' + NB.k.toFixed(3) + '（k = 0 或只有 1 匝）⇒ 所有球落在同一高度，'
+          + '所以也<b>没有</b>上下邻居 —— 想看「上下」，把 k 调大、匝数 T 调到 ≥ 2。');
+  }
+
+  /* ---------- 公式 + 数值举例 ---------- */
+  const fml = document.getElementById('coilFml');
+  if (fml){
+    const rowsS = [];
+    if (coilMode === 'spring'){
+      rowsS.push('<b>相邻小球的几何关系（弹簧线圈 x,y,z = cos t, sin t, k·t，t ∈ [−Tπ, Tπ]）</b>');
+      rowsS.push('· <b>同匝相邻（左右）</b>：' + (NB.n >= 2
+        ? ('水平弦 = 2R sin(π/n) = <b>' + NB.chord.toFixed(3) + '</b>，同时有 z 台阶 Δz = 2πkR/n = '
+           + NB.dzSame.toFixed(3) + ' ⇒ 3D 距离 = <b>' + NB.dSame.toFixed(3) + '</b>')
+        : '<span style="color:#7b8794">不存在（每匝只有 1 个球）</span>'));
+      rowsS.push('· <b>相邻匝同相位（上下）</b>：' + (NB.hasUp
+        ? ('Δφ = 360°，Δz = 螺距 P = 2πkR = <b>' + NB.dUp.toFixed(3) + '</b>（纯竖直距离）')
+        : '<span style="color:#7b8794">不存在 —— 只有 1 匝，没有相邻匝</span>'));
+      if (NB.n >= 2){
+        rowsS.push('· <b>斜上/斜下</b>：' + NB.dDiag.toFixed(3) + '（永远比上面两个远，所以不参与「最密」判定）');
+        rowsS.push('· <b>切向角（螺旋升角）</b>：ψ = arctan k = <b>' + (NB.psi*180/Math.PI).toFixed(3) + '°</b>'
+          + '，即螺旋切向 (−R sin t, kR, R cos t) 与水平切向 (−sin t, 0, cos t) 的夹角');
+        rowsS.push('· <b>沿圆柱面走一步的弧长</b> = R√(1+k²)·2π/n = ' + NB.arcSame.toFixed(3)
+          + '（比起 3D 直线距离 ' + NB.dSame.toFixed(3) + ' 长出 ' + (100*(NB.arcSame/NB.dSame-1)).toFixed(1) + '%：弦走在圆柱内部）');
+      }
+      rowsS.push('· <b>均匀条件</b>：令上下距离 = 左右距离 ⇒ k = n·sin(π/n)/(π√(n²−1)) = <b>' + AnuCoil.kUniform(NB.n).toFixed(6) + '</b>'
+        + '（n = 1 时 sin π = 0 ⇒ 式子退化，**不是**「约定 k=0」：那时只剩「上下」一类邻居，'
+        + '任何 k 都均匀，k 由「装得下 + 不重叠」自然涌现）');
+      rowsS.push('· <b>换算</b>：R = ' + NB.R.toFixed(4) + '，k = ' + NB.k.toFixed(6) + '，n = ' + NB.n
+        + '，T = ' + NB.turns + ' ⇒ 球数 M = nT = <b>' + NB.M + '</b>，线圈高度 T·P = ' + NB.height.toFixed(3)
+        + '（格架 ' + (2*LAT_L).toFixed(2) + '，余 ' + (2*LAT_L - NB.height).toFixed(3) + '）');
+      rowsS.push('<b>举例</b>：默认 7 匝 × 7 球/匝 → R = ' + NB.R.toFixed(3) + '（由「装得下」反解），'
+        + 'k = ' + NB.k.toFixed(6) + '，ψ = ' + (NB.psi*180/Math.PI).toFixed(2) + '°，'
+        + 'dmin = ' + (isFinite(NB.dmin) ? NB.dmin.toFixed(3) : '—') + ' ⇒ 球半径上限 '
+        + (isFinite(NB.dmin) ? (NB.dmin/2).toFixed(3) : '—')
+        + '，取 r = ' + ballR.toFixed(3) + (isFinite(NB.dmin)
+          ? ('（' + (100*ballR/(NB.dmin/2)).toFixed(0) + '% 满，留 ' + (100*(1 - ballR/(NB.dmin/2))).toFixed(0) + '% 间隙）') : ''));
+      rowsS.push('<span style="color:#7b8794">反解把三件事一次钉死：dmin 目标 = 2L·0.98/T（高度预算平摊 T 步）'
+        + '⇒ <b>r 只与 T 有关、与 n 无关</b>（T = 7 时不论 n 取 2…12，都有 r = ' + ballR.toFixed(4)
+        + '、dmin = ' + (isFinite(NB.dmin) ? NB.dmin.toFixed(3) : '—') + '）—— 于是「球数不同」是一次受控比较：'
+        + '球的尺寸不变，变的只有畸变花样。</span>');
+    } else {
+      rowsS.push('<b>相邻小球的几何关系（环上公转，半径 R，共 n 个球）</b>');
+      rowsS.push('· 相邻弦 = 2R sin(π/n) = <b>' + (isFinite(NB.dmin) ? NB.dmin.toFixed(3) : '—') + '</b>'
+        + (ringN >= 2 ? '（n = ' + ringN + ' 时 π/n = ' + (180/ringN).toFixed(2) + '°）' : ''));
+      rowsS.push('· 环模式下<b>没有</b>螺距 / 螺旋升角：所有球共面（z 相同），不存在上下邻居');
+      rowsS.push('· ' + (isFinite(NB.dmin)
+        ? ('球半径上限 = 弦/2 = ' + (NB.dmin/2).toFixed(3) + '，取 r = ' + ballR.toFixed(3)
+           + '（' + (100*ballR/(NB.dmin/2)).toFixed(0) + '% 满）')
+        : '<span style="color:#7b8794">只有 1 个球，没有相邻关系，球大小只受「别大过一格」限制</span>'));
+      rowsS.push('<b>举例</b>：n = 12，R = ' + NB.R.toFixed(3) + ' ⇒ 相邻弦 = '
+        + (isFinite(NB.dmin) ? NB.dmin.toFixed(3) : '—') + '，球半径自动收到 ' + ballR.toFixed(3));
+    }
+    fml.innerHTML = rowsS.map(s => '<div>' + s + '</div>').join('');
+  }
+}
+
+/* ============================================================
+   ② 右侧：周髀算经「勾三股四弦五」弦图 ↔ n 阶矩阵（n = 每匝球数）
+   ------------------------------------------------------------
+   ★ 结构与恒等式（全部可复算，自检脚本 _check/zhoubi_test.js）：
+       外方边长 n = 勾 a + 股 b —— 把「每匝 n 球」写成**整数勾股分解**
+       四角 4 个 (a,b) 直角三角形 + 弦方内 4 个 ⇒ 共 8 个；
+       弦方的每条边**同时**是「角上那个」和「弦方内那个」的斜边（4 条边承担 8 条斜边）
+       中心小方格 (b−a)×(b−a)
+       恒等式   n² = 8·(a·b/2) + (b−a)²      7 阶：49 = 8×6 + 1（勾3 股4 弦5）
+   ★ 为什么「建议每匝 ≥ 7 球」：7 是**最小的整数勾股阶**。n ≤ 6 的弦分别是
+     √5 / √10 / √13 / √20，全无理 ⇒ 弦方边长没法用格数表达，周髀那张「整数图」还不存在。
+     ⚠ 方向性必须说清：装填约束给的是**上界**（均匀解下 dmin/R 随 n 单调下降：n=2 → 2.31、
+       n=7 → 0.88、n=12 → 0.52，球越密越挤）⇒「≥7」不可能从装填推出来，只能从结构完整性推。
+   ★ 与线圈的对应：7 球环上「走 3 步」与「走 4 步」弦长**严格相等**（4 = 7 − 3），
+     且两者都是生成元（gcd(3,7) = gcd(4,7) = 1）⇒ 互为镜像的 {7/3}、{7/4} 两条星形 ——
+     这正是弦图里 勾三 ↔ 股四 可以互换的对应物。
+   ============================================================ */
+function zhoubiSplit(n){
+  if (!(n >= 3)) return null;                      /* n < 3 拆不出 勾+股（要求 勾 ≥ 1） */
+  const a = (n % 2 === 1) ? (n - 1)/2 : n/2 - 1;   /* 最平衡、且中心小方格 ≥ 1 的拆法 */
+  const b = n - a, c2 = a*a + b*b, c = Math.sqrt(c2), ci = Math.round(c);
+  return { n:n, a:a, b:b, c:c, cInt:(ci*ci === c2), centre:b - a, cells:n*n, tri:a*b/2 };
+}
+/* ============================================================
+   ★ 2026-10-12 新增：可闭合阶（整数勾股分解）的全部机制
+   ------------------------------------------------------------
+   分工必须说清，否则两套拆法会互相打架：
+     zhoubiSplit(n)     = 「最平衡拆法」，**不查**弦是否整数。它是页面原有唯一拆法 ⇒
+                          n = 17 会给出 8+9、弦 √145；而 17 = 5+12（弦 13）明明存在。
+     zhoubiSplitAll(n)  = **定义级**枚举（O(n)，n ≤ 200 时开销可忽略，无公式依赖）。
+     zhoubiSplitBest(n) = 有整数解 → 取整数解里最端庄的那组（中孔 |股−勾| 最小）；
+                          无 → 退回 zhoubiSplit（弦无理，图上照旧标 √）。
+   ★ 升级 zhoubiSplitBest 对**滑块可达范围 3…12 零视觉变化**：3…12 里只有 7 阶有整数解，
+     而 7 的最平衡拆法本来就是 3+4（= 那唯一的整数解）。升级的意义全在 17 / 49 这些
+     只出现在总表里的阶 —— 否则「散文列了 17 = 5+12、画布却给 √145」这种自相矛盾会一直留着。
+   ------------------------------------------------------------
+   通项公式（已与上表暴力枚举 127/127 对拍，脚本 _check/_syn/probe_pyth.js）：
+     N 可闭合  ⟺  N = g·(u² + 2uv − v²)，u > v ≥ 1、g ≥ 1
+     勾 a = g·2uv，股 b = g·(u²−v²)，弦 c = g·(u²+v²)，中孔 = g·|u²−2uv−v²|
+     等价（Pell 形）：s = u+v、t = v ⇒ N = g·(s² − 2t²)，s > 2t ≥ 2
+   三条推论：① 7 最小（u=2,v=1,g=1）；② 7g 全可闭合（勾3g/股4g/弦5g，中孔 g ← 弦外之音那张表）；
+             ③ 49 = 7² 是第一个多解阶（21+28 弦35 ／ 9+40 弦41）。
+   ============================================================ */
+function zhoubiSplitAll(n){
+  const out = [];
+  if (!(n >= 3)) return out;
+  for (let a = 1; a * 2 <= n; a++){
+    const b = n - a, c2 = a*a + b*b, c = Math.round(Math.sqrt(c2));
+    if (c*c === c2) out.push({ n:n, a:a, b:b, c:c, cInt:true, centre:b - a, cells:n*n, tri:a*b/2 });
+  }
+  return out;
+}
+function zhoubiSplitBest(n){
+  const all = zhoubiSplitAll(n);
+  if (!all.length) return zhoubiSplit(n);
+  let best = all[0];
+  all.forEach(r => { if (r.centre < best.centre) best = r; });
+  return best;
+}
+/* 通项公式的「构造端」（与上面的枚举互为**独立实现** —— 测试里两法对拍，不许互相调用） */
+function pythTerm(u, v, g){
+  const lo = g * 2 * u * v, hi = g * (u*u - v*v);
+  const a = Math.min(lo, hi), b = Math.max(lo, hi), N = a + b;
+  return { N:N, a:a, b:b, c:g*(u*u + v*v), centre:b - a, u:u, v:v, g:g,
+           cInt:true, cells:N*N, tri:a*b/2 };
+}
+/* 反查 (u,v,g)：把通项在 N ≤ lim 内展开，按「N:勾:股」建索引（表里那列「通项参数」用） */
+function pythParamIndex(lim){
+  const idx = {};
+  for (let u = 2; u*u + 2*u - 1 <= lim; u++){
+    for (let v = 1; v < u; v++){
+      const base = u*u + 2*u*v - v*v;
+      for (let g = 1; g*base <= lim; g++){
+        const t = pythTerm(u, v, g);
+        const k = t.N + ':' + t.a + ':' + t.b;
+        (idx[k] = idx[k] || []).push('u=' + u + ', v=' + v + ', g=' + g);
+      }
+    }
+  }
+  return idx;
+}
+/* 整数勾股阶总表：n ≤ lim 的**全部**可闭合阶（同阶多解会展开成多行） */
+function pythOrders(lim){
+  const out = [];
+  for (let n = 3; n <= lim; n++){
+    const all = zhoubiSplitAll(n);
+    if (!all.length) continue;
+    let best = all[0]; all.forEach(r => { if (r.centre < best.centre) best = r; });
+    out.push({ n:n, all:all, best:best, multi:all.length > 1 });
+  }
+  return out;
+}
+/* 是否落在「7g 族」那条线上（勾 3g / 股 4g / 弦 5g）—— 判据要按**这一组解**判，
+   不能只看 n % 7：49 的两组解里只有 21+28 属于 7g 族，9+40 不属于。 */
+function pythIsSeven(n, r){ return (n % 7 === 0) && r.a === 3*(n/7) && r.b === 4*(n/7); }
+/* 填 #pythTbl（现场枚举；n ≤ 100 约 30 阶 / 33 行，放进 336 px 的可滚区刚好） */
+function buildPythTable(){
+  const box = document.getElementById('pythTbl');
+  if (!box) return null;
+  const LIM = 100, cur = zhoubiOrder();
+  const rows = pythOrders(LIM), idx = pythParamIndex(LIM);
+  let h = '<table><thead><tr><th>阶 n</th><th>拆法 勾+股</th><th>弦 c</th><th>中孔</th>'
+        + '<th>n² = 8·(ab/2) + (b−a)²</th><th>通项参数</th><th>标记</th></tr></thead><tbody>';
+  let nSplit = 0;
+  rows.forEach(o => o.all.forEach((r, i) => {
+    nSplit++;
+    const tags = [];
+    if (pythIsSeven(o.n, r)) tags.push('<span class="tag ok">7g 族（弦外之音）</span>');
+    if (o.n === 7) tags.push('<span class="tag v">最小阶</span>');
+    if (o.multi && i === 0) tags.push('<span class="tag mid">本阶共 ' + o.all.length + ' 组解</span>');
+    const key = r.n + ':' + r.a + ':' + r.b;
+    h += '<tr class="' + (o.n === cur ? 'cur ' : '') + (pythIsSeven(o.n, r) ? 'seven ' : '')
+       + (o.n <= 12 ? 'reach ' : '') + (o.multi ? 'multi' : '') + '">'
+       + '<td class="n">' + o.n + '</td>'
+       + '<td>' + r.a + ' + ' + r.b + '</td>'
+       + '<td>' + r.c + '</td>'
+       + '<td>' + r.centre + '</td>'
+       + '<td>' + r.cells + ' = 8×' + r.tri + ' + ' + r.centre*r.centre + '</td>'
+       + '<td>' + (idx[key] ? idx[key].join(' ／ ') : '—') + '</td>'
+       + '<td class="sev">' + tags.join(' ') + '</td></tr>';
+  }));
+  box.innerHTML = h + '</tbody></table>';
+  const cnt = document.getElementById('pythCnt');
+  if (cnt) cnt.innerHTML = '本表实测：n ≤ ' + LIM + ' 里可闭合的阶共 <b>' + rows.length + '</b> 个、'
+    + '合计 <b>' + nSplit + '</b> 组 (勾,股,弦)；其余 <b>' + (LIM - 2 - rows.length) + '</b> 个阶'
+    + '（3…' + LIM + ' 去掉可闭合的）永远凑不出整数弦。'
+    + '<br>符号：<b>●</b> = 滑块可达（每匝 3…12 球）　<b>⇉</b> = 该阶有多组解　'
+    + '「7g 族」= 勾/股/弦 = 3g/4g/5g 那一支（就是《弦外之音》的表）。';
+  const note = document.getElementById('pythNote');
+  if (note) note.innerHTML = '<b>通项公式的用法</b>：先挑 (u,v)，再把 g 从 1 往上取，'
+    + '得到的每个 N 都是可闭合阶（同一阶可能被多组 (u,v,g) 命中 —— 那就是「多解」）。'
+    + '<br>反过来判一个数 <b>M</b> 行不行：找 M 的因子 d，看 M/d 能不能写成 u²+2uv−v²。'
+    + '最省事的两个充分条件：<b>M 是 7 的倍数</b>（永远行）、或 <b>M = u²+2u−1</b>（v = 1，永远行：'
+    + 'u=2→7、3→14、4→23、5→34、6→47、7→62…）。'
+    + '<br><span class="note">自检：<code>node _check/zhoubi_test.js</code> 的 D 段（公式完整性、'
+    + 'splitBest 修正、7g 族恒等式、以及本表的 DOM 逐行核对）；纯数论复算在 <code>_check/_syn/probe_pyth.js</code>。</span>';
+  return { nOrders:rows.length, nSplits:nSplit };
+}
+/* 填 #anuTbl + #anuFbox：七级递推 ↔ 7g 族（两边都现场算） */
+function buildAnuBridge(){
+  const box = document.getElementById('anuTbl'), fb = document.getElementById('anuFbox');
+  if (!box) return null;
+  const rows = [];
+  for (let k = 0; k <= 6; k++){
+    const p7 = Math.pow(7, k);
+    /* 弦图侧：n = 7^k。k = 0 退化成 n = 1（拆不出勾+股）；k ≥ 1 一律可闭合，g = 7^(k−1) */
+    let zuo;
+    if (k === 0) zuo = 'n = 1：拆不出 勾+股（要求 勾 ≥ 1）';
+    else {
+      const g = Math.pow(7, k - 1);
+      zuo = 'n = ' + p7 + ' = 7g（g = ' + g + '）可闭合：勾 ' + 3*g + '／股 ' + 4*g + '／弦 ' + 5*g
+          + '，中孔 ' + g;
+    }
+    const anu = k === 0 ? '第七级(g)：7 个 Koilon 泡泡'
+      : (k === 1 ? '10 条线里的 <b>7 条细线</b>；每线 1680 匝 = 7!/3'
+      : (k === 2 ? '细线严格 <b>7 倍率</b>（第一级 a 的下一层）'
+      : '（文档只给到 g→f→e→d→c→b→a 这一串层级名，<b>没有逐层给数</b>）'));
+    const star = (k === 1 || k === 2) ? ' style="background:#f7fbf9"' : '';
+    rows.push('<tr' + star + '><td>' + k + '</td><td><b>7<sup>' + k + '</sup> = ' + p7 + '</b></td>'
+      + '<td>' + anu + '</td><td>' + zuo
+      + (k === 1 ? '　<b style="color:#146c43">←「每匝 ≥ 7 球」的下界</b>' : '')
+      + (k === 2 ? '　<b style="color:#c2691a">← 第一个多解阶（第一次分叉）</b>' : '')
+      + '</td></tr>');
+  }
+  box.innerHTML = '<table style="font-size:12.5px"><thead><tr><th>层 k</th><th>7<sup>k</sup></th>'
+    + '<th>anu 侧（文档原文／派生）</th><th>弦图侧（本页现场算）</th></tr></thead><tbody>'
+    + rows.join('') + '</tbody></table>';
+
+  /* 两边都能现场算的量：全部真算，不手打 */
+  const sum7 = k => { let s = 0; for (let i = 0; i <= k; i++) s += Math.pow(7, i); return s; };
+  const P6 = Math.pow(7, 6), tree = sum7(6), dev = P6 - 1680 * 70;
+  const f = v => v.toLocaleString('en-US');
+  if (fb) fb.innerHTML =
+    '<b>两边能对上的地方（如实分级）</b><br>'
+    + '<span class="tag ok">数值成立</span> <b>1680 ÷ 7 = ' + (1680/7) + '</b>　'
+    + '—— 1680 本身是 7 的整数倍，所以「每线 1680 匝」可以干净地分给 7 组；'
+    + '文档原文又给 1680 = 8!/24 = 7!÷3（本页复算：7! = 5040，5040÷3 = ' + (5040/3) + '）。<br>'
+    + '<span class="tag ok">数值成立</span> <b>七级全树节点数 Σ<sub>k=0…6</sub> 7<sup>k</sup> = (7<sup>7</sup>−1)/6 = '
+    + f(tree) + '</b>（7<sup>7</sup> = ' + f(Math.pow(7,7)) + '，本页复算）。<br>'
+    + '<span class="tag mid">结构同构</span> 弦图侧的 <b>7g 族</b>（勾 3g／股 4g／弦 5g、中孔 g）'
+    + '与 anu 侧的「每级再分 7 叉」是**同一条递推**：把 g = 7<sup>k−1</sup> 代进去，'
+    + '7<sup>k</sup> 阶恰好落在 7g 族上 ⇒ 上表第 4 列对每一层 k ≥ 1 都成立。'
+    + '<br><span class="tag ok">数值成立</span> 上表第 2 个关键点：<b>7<sup>2</sup> = 49 是弦图侧第一个多解阶</b>'
+    + '（21+28 与 9+40）—— 对应「7 → 7² 第一次分叉」。<br>'
+    + '<span class="tag mid">⚠ 纯巧合，不作推导</span> '
+    + '7<sup>6</sup> = ' + f(P6) + ' = 1680 × 70 + ' + dev + ' ⇒ 1680 | (7<sup>6</sup> − 7<sup>2</sup>) = '
+    + f(P6 - 49) + '；另外 Σ<sub>k=0…6</sub>7<sup>k</sup> = ' + f(tree)
+    + ' 的前三位恰好是 137。这两条只是同余/字面巧合，<b>不构成任何 α 或物理结论的证据</b>，'
+    + '写在这里只为「两者共享 7 这个模数」加一个数值注脚。'
+    + '<br><span class="tag no">查无实据</span> 「七级螺旋 = 7<sup>6</sup> 次方结构」这一句'
+    + '在库内文档里**没有找到逐字出处**（文档只写到「七级螺旋 g→f→e→d→c→b→a」和「f<sub>k</sub> = 7<sup>k</sup>」）。'
+    + '本页按最自然的读法理解为：七级 = 6 次分叉 ⇒ 末级 7<sup>6</sup> = ' + f(P6) + ' 个单元；'
+    + '若老师的原意是别的（例如 1680 与 7 的某种整除结构），请指正，我按原文改。';
+  return { tree:tree, P6:P6 };
+}
+/* 只更新 ③ 总表里的「当前阶」高亮行（不重建表体 ⇒ 不打断滚动位置） */
+function syncPythCur(){
+  const box = document.getElementById('pythTbl');
+  if (!box) return;
+  const cur = zhoubiOrder();
+  Array.prototype.forEach.call(box.querySelectorAll('tr'), tr => {
+    const td = tr.querySelector('td.n');
+    if (!td) return;
+    tr.classList.toggle('cur', Number(td.textContent) === cur);
+  });
+}
+/* 弦方顶点（逆时针）—— 由「两条腿轴对齐且严格等于勾、股」反解出的唯一一组 */
+function zhoubiVerts(z){ return [[z.a, 0], [z.n, z.a], [z.b, z.n], [0, z.b]]; }
+/* 8 个三角形 = 四角 4 个 + 弦方内 4 个，配对规则统一：
+     Q + 「与 Q 同 x 的弦方顶点」+「与 Q 同 y 的弦方顶点」
+   ⚠ 别写成「离 Q 最近的两个弦方顶点」—— 对中心小方格的角是错的：从 (3,3) 出发最近的
+     是 (3,0) 与 (0,4)（3 与 3.162），但内三角的两条腿必须轴对齐 ⇒ 应该连 (3,0) 与 (7,3)。 */
+function zhoubiTris(z){
+  const V = zhoubiVerts(z), at = f => V.filter(f)[0];
+  return [[0,0], [z.n,0], [z.n,z.n], [0,z.n], [z.a,z.a], [z.b,z.a], [z.b,z.b], [z.a,z.b]]
+    .map(q => [q, at(p => p[0] === q[0]), at(p => p[1] === q[1])]);
+}
+/* 当前阶 = 每匝球数（环模式就是环上球数）—— 与左图共用同一个口径 */
+function zhoubiOrder(){ return coilNPer(); }
+/* 本图的文字落点登记在两处：① 走 drawZhoubiOne 里的 txt() 的全部标注；
+   ② drawZhoubi 图例那几行（lg()）。两者都写进上面那个通用台账 figLabels，
+   由 _check/zhoubi_test.js 的 B3 统一核边界（顶边那排勾/股 就是在这条链上被抓住的）。 */
+
+/* 画一张弦图。(x0,y0) = 外方左上角，S = 外方边长（px） */
+function drawZhoubiOne(g, x0, y0, S, z, mini){
+  const n = z.n, cell = S/n;
+  const PX = X => x0 + X*cell, PY = Y => y0 + (n - Y)*cell;
+  /* ① 格：n×n 格 = n² 个球位（= n 匝 × n 球） */
+  g.strokeStyle = '#eef2f8'; g.lineWidth = 1;
+  for (let i = 1; i < n; i++){
+    g.beginPath(); g.moveTo(PX(i), PY(0)); g.lineTo(PX(i), PY(n)); g.stroke();
+    g.beginPath(); g.moveTo(PX(0), PY(i)); g.lineTo(PX(n), PY(i)); g.stroke();
+  }
+  g.strokeStyle = '#c9d3e0'; g.strokeRect(PX(0) + .5, PY(n) + .5, S - 1, S - 1);
+  /* ② 8 个直角三角形：淡填 + 两条轴对齐的腿（勾红 / 股绿） */
+  zhoubiTris(z).forEach((T, i) => {
+    g.beginPath();
+    T.forEach((p, j) => j ? g.lineTo(PX(p[0]), PY(p[1])) : g.moveTo(PX(p[0]), PY(p[1])));
+    g.closePath();
+    g.fillStyle = (i < 4) ? '#f2f6fb' : '#f7fbf9'; g.fill();
+    g.strokeStyle = '#e6ecf4'; g.lineWidth = 1; g.stroke();
+    [[T[0],T[1]], [T[0],T[2]]].forEach(pr => {
+      /* 腿轴对齐 ⇒ 曼哈顿距离就是长度，不用开方 */
+      const len = Math.abs(pr[1][0] - pr[0][0]) + Math.abs(pr[1][1] - pr[0][1]);
+      g.strokeStyle = (len === z.a) ? '#b3261e' : '#0f8b7a';
+      g.lineWidth = mini ? 1.7 : 2.8;
+      g.beginPath(); g.moveTo(PX(pr[0][0]), PY(pr[0][1]));
+      g.lineTo(PX(pr[1][0]), PY(pr[1][1])); g.stroke();
+    });
+  });
+  /* ③ 弦方：4 条边，每条都同时是两个三角形的斜边 */
+  const V = zhoubiVerts(z);
+  g.beginPath();
+  V.forEach((p, j) => j ? g.lineTo(PX(p[0]), PY(p[1])) : g.moveTo(PX(p[0]), PY(p[1])));
+  g.closePath(); g.strokeStyle = '#1b4f9c'; g.lineWidth = mini ? 1.9 : 3; g.stroke();
+  /* ④ 中心小方格 */
+  const cs = z.centre;
+  if (cs > 0){
+    g.fillStyle = '#fff6d6'; g.fillRect(PX(z.a), PY(z.b), cs*cell, cs*cell);
+    g.strokeStyle = '#b8860b'; g.lineWidth = mini ? 1 : 1.6;
+    g.strokeRect(PX(z.a) + .5, PY(z.b) + .5, cs*cell - 1, cs*cell - 1);
+  }
+  if (mini) return;
+  /* ⑤ 大图标注（白描边 + 彩字：压在淡填上也读得清） */
+  const txt = (s, x, y, col, align) => {
+    g.font = 'bold 12px ui-monospace,monospace';
+    const al = align || 'left';
+    g.textAlign = al;
+    g.lineWidth = 3.4; g.strokeStyle = 'rgba(255,255,255,.95)'; g.lineJoin = 'round';
+    g.strokeText(s, x, y); g.fillStyle = col; g.fillText(s, x, y); g.textAlign = 'left';
+    figLabPush(g, s, x, y, al);      /* 落档：把外接矩形交给 B3 核边界 */
+  };
+  /* 四条边各被切成 勾(a) + 股(b) 两段 —— 八段正好铺满周长（a + b = n） */
+  const bnd = [
+    [[0,0],[z.a,0],'#b3261e','勾' + z.a], [[z.a,0],[z.n,0],'#0f8b7a','股' + z.b],   /* 下边 */
+    [[0,0],[0,z.b],'#0f8b7a','股' + z.b], [[0,z.b],[0,z.n],'#b3261e','勾' + z.a],   /* 左边 */
+    [[z.n,0],[z.n,z.a],'#b3261e','勾' + z.a], [[z.n,z.a],[z.n,z.n],'#0f8b7a','股' + z.b], /* 右边 */
+    [[0,z.n],[z.b,z.n],'#0f8b7a','股' + z.b], [[z.b,z.n],[z.n,z.n],'#b3261e','勾' + z.a]  /* 上边 */
+  ];
+  bnd.forEach(([u, v, col, s]) => {
+    const mx = (u[0] + v[0])/2, my = (u[1] + v[1])/2;
+    if (u[1] === v[1]){                                 /* 水平段：写在下边外侧 / 上边外侧 */
+      if (my === 0) txt(s, PX(mx), PY(my) + 16, col, 'center');
+      else          txt(s, PX(mx), PY(my) - 6, col, 'center');
+    } else {                                            /* 竖直段：写在左边外侧 / 右边外侧 */
+      if (mx === 0) txt(s, PX(mx) - 6, PY(my) + 4, col, 'right');
+      else          txt(s, PX(mx) + 6, PY(my) + 4, col, 'left');
+    }
+  });
+  /* 弦：写在弦方每条边的中点，沿外法线**朝内**退开一点（4 条边都是斜边，全标）。
+     ★ 为什么朝内而不是朝外：朝外正好落进角上那个直角三角形里，和它两条腿的「勾/股」
+       边框标注抢同一块地方 —— n=4 时「弦√10」与右边那条「股3」基线只差 7 px、
+       横向叠 7 px（台账的叠字自检抓出来的）。朝内那半张弦方是干净的：
+       4 个内三角形没有别的标注，4 条弦标注彼此也隔着一整条边（≥ 145 px）。 */
+  const cc = z.cInt ? String(Math.round(z.c)) : '√' + (z.a*z.a + z.b*z.b);
+  V.forEach((p, j) => {
+    const q = V[(j+1) % 4];
+    const mx = (p[0] + q[0])/2, my = (p[1] + q[1])/2;
+    let nx = mx - n/2, ny = my - n/2;
+    const L = Math.hypot(nx, ny) || 1; nx /= L; ny /= L;
+    txt('弦' + cc, PX(mx) - nx*20, PY(my) + ny*20 + 4, '#1b4f9c', 'center');
+  });
+}
+
+/* 右列大图（当前阶）+ 下方「不同阶」条带 */
+function drawZhoubi(){
+  const card = document.getElementById('coilCard');
+  if (card) card.style.display = (cur === 2 ? '' : 'none');
+  const cvB = document.getElementById('zhoubiCv'), cvS = document.getElementById('zhoubiStrip');
+  if (!cvB || cur !== 2) return;
+  figLabClear('zhoubiCv'); figLabClear('zhoubiStrip');   /* 切到别的模型时不许留上一帧的旧档 */
+  const n = zhoubiOrder(), z = zhoubiSplitBest(n);
+  const ti = document.getElementById('zhoubiTitle'), mi = document.getElementById('zhoubiMini');
+
+  /* ---------- A. 大图（当前阶） ---------- */
+  /* ⚠ 上边那排「勾/股」标签写在方框**外侧**（baseline = PY(n) − 6），所以 y0 必须留够
+       一个字高 —— 原来 y0 = 15 时基线落在 9，字顶跑出画布被切掉（实测截图可见）。
+       现在 y0 = 28，配 Sb = 204：图上边 28 / 下边 232，图例四行基线 263/283/303。
+       Hb 取 310 是给「最后一行图例」留 7 px 余量（303 + 3 = 306，原来正好贴死底边 ⇒
+       台账一上线就会以「差 0 px」判 PASS/FAIL 摇摆，不能靠运气）。 */
+  const Wb = 320, Sb = 204, xb = (Wb - Sb)/2, yb = 28, Hb = 310;
+  cvB.width = Wb; cvB.height = Hb;
+  cvB.style.width = Wb + 'px'; cvB.style.height = Hb + 'px';
+  const g = cvB.getContext('2d');
+  g.clearRect(0, 0, Wb, Hb);
+  figLabBegin('zhoubiCv', Wb, Hb);
+  if (ti) ti.innerHTML = z
+    ? (z.n + ' 阶矩阵 · 每匝 ' + z.n + ' 球 · 外方 ' + z.n + '×' + z.n + ' = ' + z.cells + ' 格'
+       + (z.cInt ? '<span style="color:#146c43">　勾' + z.a + ' 股' + z.b + ' 弦' + Math.round(z.c)
+                 + '（整数！）</span>'
+                 : '<span style="color:#9a6700">　勾' + z.a + ' 股' + z.b + ' 弦√'
+                   + (z.a*z.a + z.b*z.b) + '（无理）</span>'))
+    : ('每匝 ' + n + ' 球：拆不出 勾+股');
+  if (z){
+    drawZhoubiOne(g, xb, yb, Sb, z, false);
+    /* 图下四行图例。⚠ 其中一行**最长**（「弦方每条边同时是 2 个三角形的斜边」），
+       也必须落档：它是右边界越界的头号嫌疑（11 px 字 × 21 个字符 + x = 22 起步）。 */
+    const lg = (s, x, y, col) => { g.font = '11px ui-monospace,monospace';
+      g.fillStyle = col; g.fillText(s, x, y); figLabPush(g, s, x, y, 'left'); };
+    g.fillStyle = '#b3261e'; g.fillRect(8, 254, 9, 9);
+    lg('勾' + z.a + '（短腿）', 22, 263, '#b3261e');
+    g.fillStyle = '#0f8b7a'; g.fillRect(132, 254, 9, 9);
+    lg('股' + z.b + '（长腿）', 146, 263, '#0f8b7a');
+    g.fillStyle = '#1b4f9c'; g.fillRect(8, 274, 9, 9);
+    lg('弦' + (z.cInt ? Math.round(z.c) : '√' + (z.a*z.a + z.b*z.b))
+       + '　弦方每条边同时是 2 个三角形的斜边', 22, 283, '#1b4f9c');
+    g.fillStyle = '#fff6d6'; g.fillRect(8, 294, 9, 9);
+    g.strokeStyle = '#b8860b'; g.lineWidth = 1; g.strokeRect(8.5, 294.5, 8, 8);
+    lg('中心小方格 ' + z.centre + '×' + z.centre + '（= 股 − 勾）', 22, 303, '#8a6400');
+  } else {
+    /* n = 1 / 2：拆不出 勾+股 的兜底文字。
+       ★ 这里一律**按实测宽度自动折行**：原来那几行是写死的长句，11 px 字下最长一行
+         宽 308 px、起点 x = 14 ⇒ 右端 322 > 画布 320，被右边切掉 2 px。
+         这种「差 2 px」肉眼绝对看不出，是台账哨兵（_check/zhoubi_test.js C 段）抓出来的。
+         折行之后无论字体 / 字号 / 文案怎么改都不会再越界 —— 修的是这一类，不只是这一处。 */
+    const wrapText = (s, x, y, maxW, col) => {
+      g.font = '11px ui-monospace,monospace';
+      g.fillStyle = col;
+      let line = '', yy = y;
+      for (const ch of s){
+        if (line && g.measureText(line + ch).width > maxW){
+          g.fillText(line, x, yy); figLabPush(g, line, x, yy, 'left');
+          line = ch; yy += 17;
+        } else line += ch;
+      }
+      if (line){ g.fillText(line, x, yy); figLabPush(g, line, x, yy, 'left'); }
+    };
+    g.font = 'bold 12px ui-monospace,monospace'; g.fillStyle = '#9a6700';
+    g.fillText('每匝 ' + n + ' 球 ⇒ 无法拆成 勾 + 股（需 勾 ≥ 1）', 14, 30);
+    figLabPush(g, '每匝 ' + n + ' 球 ⇒ 无法拆成 勾 + 股（需 勾 ≥ 1）', 14, 30, 'left');
+    wrapText('弦图要求外方边长 ≥ 3：把 n 写成 勾 + 股，两条腿都 ≥ 1。'
+             + '把「每匝球数」调到 3…12 就能看到对应阶的弦图。', 14, 54, Wb - 2*14, '#7b8794');
+  }
+  if (mi) mi.innerHTML = z
+    ? ('外方 ' + z.n + '<sup>2</sup> = 8×(' + z.a + '·' + z.b + '/2) + (' + z.b + '−' + z.a + ')<sup>2</sup> = <b>'
+       + z.cells + '</b> —— 8 个 ' + z.a + '-' + z.b + '-' + (z.cInt ? Math.round(z.c) : '√' + (z.a*z.a+z.b*z.b))
+       + ' 直角三角形 + 中心 ' + z.centre + '×' + z.centre + ' 小方格。弦方 4 条边各同时是两个三角形的斜边。')
+    : '';
+
+  /* ---------- B. 下方条带：3…12 阶 ---------- */
+  if (!cvS) return;
+  const ORD = [], S1 = 96, gapx = 10, CAP = 34;
+  for (let k = 3; k <= 12; k++) ORD.push(k);
+  const Ws = ORD.length*(S1 + gapx) + gapx, Hs = S1 + CAP + 8;
+  cvS.width = Ws; cvS.height = Hs;
+  cvS.style.width = Ws + 'px'; cvS.style.height = Hs + 'px';
+  const gs = cvS.getContext('2d');
+  gs.clearRect(0, 0, Ws, Hs);
+  /* 台账换到条带这张画布。⚠ drawZhoubiOne(…, mini=true) 在画标注**之前**就 return 了，
+     所以条带里不会混进大图那些「勾/股/弦」标注 —— 只有下面两行小字要落档。 */
+  figLabBegin('zhoubiStrip', Ws, Hs);
+  ORD.forEach((k, i) => {
+    const zk = zhoubiSplitBest(k);
+    const x = gapx + i*(S1 + gapx), y = 4;
+    const on = (k === n);
+    if (on){ gs.fillStyle = '#fff8f8'; gs.fillRect(x - 5, y - 4, S1 + 10, S1 + CAP + 4);
+             gs.strokeStyle = '#b3261e'; gs.lineWidth = 1.6;
+             gs.strokeRect(x - 4.5, y - 3.5, S1 + 9, S1 + CAP + 3); }
+    if (zk){
+      drawZhoubiOne(gs, x, y, S1, zk, true);
+      gs.font = (on ? 'bold ' : '') + '9.5px ui-monospace,monospace';
+      gs.fillStyle = on ? '#b3261e' : '#3b4a5a';
+      const capA = k + ' 阶 ' + zk.a + '+' + zk.b + '=' + k;
+      gs.fillText(capA, x, y + S1 + 12); figLabPush(gs, capA, x, y + S1 + 12, 'left');
+      gs.fillStyle = zk.cInt ? '#146c43' : '#7b8794';
+      const capB = '弦' + (zk.cInt ? Math.round(zk.c) : '√' + (zk.a*zk.a + zk.b*zk.b))
+                  + ' 中' + zk.centre;
+      gs.fillText(capB, x, y + S1 + 24); figLabPush(gs, capB, x, y + S1 + 24, 'left');
+      if (zk.cInt){ gs.fillStyle = '#146c43'; gs.fillRect(x + S1 - 9, y + S1 + 3, 9, 9);
+        gs.fillStyle = '#fff'; gs.font = 'bold 8px ui-monospace,monospace';
+        gs.fillText('整', x + S1 - 8, y + S1 + 11); }
+    }
+  });
+
+  /* ---------- C. 说明 ---------- */
+  const cap = document.getElementById('zhoubiCap');
+  if (cap) cap.innerHTML =
+    '<b>右列与下方条带：周髀算经「勾三股四弦五」弦图 ↔ n 阶矩阵</b>（n = 每匝球数）'
+    + '　外方边长 <b>n = 勾 a + 股 b</b>：四角 4 个 + 弦方内 4 个 = <b>8 个</b> (a,b) 直角三角形，'
+    + '弦方 4 条边各同时是两个三角形的斜边，中心留 <b>(股−勾)×(股−勾) 小方格</b>。'
+    + '恒等式 <b>n² = 8·(ab/2) + (b−a)²</b>。'
+    + '<br><b style="color:#146c43">★ 这就是「建议每匝至少 7 球」的理由：7 是最小的整数勾股阶。</b>'
+    + ' n = 3/4/5/6 的弦分别是 √5 / √10 / √13 / √20，<b>全无理</b> ⇒ 弦方边长没法用格数表达，'
+    + '周髀那张「整数图」还不存在；到 7 阶才第一次出现 勾3 股4 <b>弦5</b>，'
+    + '外方 49 = 8×6 + 1。<br>'
+    + '<span style="color:#7b8794">⚠ 方向性要说清：<b>装填给的是上界，不是下界</b> —— 均匀解下最近邻距离 dmin/R 随 n '
+    + '<b>单调下降</b>（n=2 → 2.31、n=7 → 0.88、n=12 → 0.52），球越密越挤，'
+    + '所以「≥7」不可能从「装得下」推出来，只能从结构完整性推 —— 而弦图给的正是这个下界。</span>'
+    + '<br><b>与线圈的对应</b>：7 球环上「走 3 步」与「走 4 步」的弦长<b>严格相等</b>（因为 4 = 7 − 3），'
+    + '且两者都是生成元（gcd(3,7) = gcd(4,7) = 1）⇒ 互为镜像的两条 {7/3}、{7/4} 星形，'
+    + '恰好对应弦图里 勾三 ↔ 股四 可以互换。'
+    + (z ? '' : '<br><b style="color:#9a6700">当前每匝 ' + n + ' 球：拆不出 勾+股（需 勾 ≥ 1，即 n ≥ 3）。</b>');
+
+  /* ---------- D. 数值表 ---------- */
+  const fml = document.getElementById('zhoubiFml');
+  if (fml){
+    const R = [];
+    R.push('<b>弦图 ↔ n 阶矩阵：逐阶数值（n = 每匝球数；外方 n×n = n² 格 = n² 个球位）</b>');
+    R.push('· 拆法（两步）：① 先找**整数解**（勾²+股² = 弦²）里中孔最小的那组 —— ' +
+      '② 没有整数解才退回最平衡拆法 a = ⌊(n−1)/2⌋、b = n − a');
+    R.push('· 恒等式：n² = 8·(a·b/2) + (b−a)²　⇒　一律成立（与 a、b 的具体取值无关）');
+    for (let k = 3; k <= 12; k++){
+      const zk = zhoubiSplitBest(k);
+      R.push('　' + String(k).padStart(2) + ' 阶：勾' + zk.a + ' + 股' + zk.b + ' = ' + k
+        + '　弦 ' + (zk.cInt ? String(Math.round(zk.c)) + '（<b>整数</b>）' : '√' + (zk.a*zk.a + zk.b*zk.b)
+          + ' ≈ ' + zk.c.toFixed(3) + '（无理）')
+        + '　中心小方 ' + zk.centre + '×' + zk.centre
+        + '　' + k*k + ' = 8×' + zk.tri + ' + ' + zk.centre*zk.centre
+        + (k === 7 ? '　<b style="color:#146c43">← 勾三股四弦五</b>' : ''));
+    }
+    R.push('· <b>3…12 阶里只有 7 阶的弦是整数</b>（弦5）—— 这就是建议下界 7 的全部来源');
+    /* ★ 这一行原来是把 17/23/31/41/47 手打进字符串的，与页面当时唯一的拆法 zhoubiSplit
+       （只取最平衡拆法）**自相矛盾**：画布在 17 阶会给 8+9 弦 √145，而散文说 5+12 弦 13。
+       现在改为现场枚举（zhoubiSplitBest 走的是同一份整数解），两处口径彻底合一。 */
+    const ext = pythOrders(100).filter(o => o.n > 12);
+    R.push('· <b>更大的可闭合阶</b>（n ≤ 100，共 ' + ext.length + ' 个 —— **现场枚举**，不再手打；'
+      + '括号里是代表拆法 / 弦 / 中孔）：');
+    for (let i = 0; i < ext.length; i += 6){
+      R.push('　' + ext.slice(i, i + 6).map(o => o.n + ' = ' + o.best.a + '+' + o.best.b
+        + '（弦' + o.best.c + '，中' + o.best.centre + (o.multi ? '，共' + o.all.length + '组解' : '') + '）')
+        .join('　'));
+    }
+    R.push('· <b>通项公式</b>：N 可闭合 ⟺ N = g·(u²+2uv−v²)（u &gt; v ≥ 1、g ≥ 1）'
+      + '　—— 全表、7g 族、7² 的第一次分叉，见下面 ③ 那一块');
+    R.push('· 自检：<code>node _check/zhoubi_test.js</code>（鞋带公式算弦方面积、八个三角形逐个点名、'
+      + 'Pick 定理核格点、+3/+4 弦长严格相等、「3…12 里只有 7」的枚举、'
+      + 'D 段：通项公式完整性 + splitBest 修正 + 总表 DOM 逐行核对）');
+    fml.innerHTML = R.map(s => '<div>' + s + '</div>').join('');
+  }
+  /* ---------- ③④ 全整数阶总表 + anu 对齐卡（2026-10-12 新增） ----------
+     ★ 只在第一次画时构建表体：这两块内容与「当前阶」无关（只差一个高亮行），
+       每次拖滑块重建 innerHTML 会把用户的滚动位置顶回去。 */
+  if (!window.__pythBuilt){ window.__pythBuilt = buildPythTable() || true; buildAnuBridge(); }
+  syncPythCur();
+}
+
+/* ---------- 2. 线框网格畸变：三维点阵被「一群质量」逐顶点重标 ---------- */
+builders.flamm = function(rs){
+  const g = new THREE.Group();
+
+  /* ===== 0. 摆位（环 / 弹簧线圈）：全部由 assets/js/anu-coil.js 唯一一处算出 ===== */
+  const SP = coilSpec();
+  const NB = AnuCoil.neighbours(SP);
+  const M  = NB.M;                              /* 球数：环 = n，弹簧 = T·n */
+  const massBase = new Float32Array(M*3);
+  const massNow  = new Float32Array(M*3);
+  AnuCoil.place(SP, massBase);
+
+  const N    = Math.max(3, Math.min(8, gridN|0));
+  const L    = LAT_L;
+  const cell = 2*L/N;
+  const sign = (distDir === 'out') ? -1 : 1;
+  const rho  = rhoOf(rs);
+  const c    = LAT_C*cell;
+  const str  = rho*c*c;                         /* 单球强度 k = ρc²（与原来同一个式子） */
+  const peak1 = str/(2*c);                      /* 单球位移峰值 = ρc/2，在 r=c 处 */
+  const share = 1;                              /* 恒 1：见 anu-coil.js 的说明，share 已被全局标定吸收 */
+  const ampK  = coilAmpK;                       /* 全局标定的目标倍数：峰值 |D| = peak1 × ampK */
+
+  /* ===== 1. 网格采样：SEG 自适应（点数 × 球数 有预算，343 个球也不掉帧） ===== */
+  const nLine = 3*(N+1)*(N+1);
+  const SEG = Math.max(6, Math.min(44, Math.floor(SEG_BUDGET/(nLine*M)) - 1));
+  const nP  = nLine*(SEG+1);
+
+  const ptBase = new Float32Array(nP*3);
+  (function(){
+    let p = 0;
+    for (let ax = 0; ax < 3; ax++){
+      const o0 = (ax+1)%3, o1 = (ax+2)%3;
+      for (let i = 0; i <= N; i++) for (let j = 0; j <= N; j++){
+        const A = -L + i*cell, B = -L + j*cell;
+        for (let t = 0; t <= SEG; t++){
+          const u = -L + 2*L*t/SEG, v = [0,0,0];
+          v[ax] = u; v[o0] = A; v[o1] = B;
+          ptBase[p++] = v[0]; ptBase[p++] = v[1]; ptBase[p++] = v[2];
+        }
+      }
+    }
+  })();
+
+  const posArr = new Float32Array(nLine*SEG*2*3);
+  const colArr = new Float32Array(nLine*SEG*2*3);
+  const ptPos  = new Float32Array(nP*3);
+  const detB   = new Float32Array(nP);
+  const tB     = new Float32Array(nP);
+  const colPt  = new Float32Array(nP*3);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(posArr,3));
+  geo.setAttribute('color',    new THREE.BufferAttribute(colArr,3));
+  const wire = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({
+    vertexColors:true, transparent:true, opacity:.98 }));
+  wire.frustumCulled = false;                   /* 位置逐帧变，勿让包围盒把它剔掉 */
+  g.add(wire);                                  /* ★ 必须留在 children[0]（旧读数/测试按位置取） */
+
+  /* ===== 2. 小球群（InstancedMesh：几百个球也只有 1 次 draw call） =====
+     ⚠ 三条被实际渲染图逼出来的改动（第一版做成了不透明的实心球管，
+     49 个球直接把点阵整个包在里面，网格畸变一点都看不见）：
+     ① 球群半透明，M 越大越透（M = 1 时仍不透明 —— 那一刻它是唯一的真质量）；
+     ② 球半径就是 r 本身，不再放 1.07 倍：r 是「不重叠」反解出来的，
+        参考球若比它大，图上反而违反自己正在说明的规则；
+     ③ 光晕只在球少时画（≤ 16），多了就是糊成一片。 */
+  const carrier = new THREE.Group();            /* 随公转相位一起转；小球与标注都挂它下面 */
+  g.add(carrier);
+  const M_OPA = (M <= 1) ? 1.00 : (M <= 4 ? 0.42 : (M <= 16 ? 0.30 : 0.22));
+  const ballGeo = new THREE.SphereGeometry(Math.max(0.03, ballR), 18, 12);
+  const ballMat = new THREE.MeshStandardMaterial({color:0x33465e, roughness:.34, metalness:.42,
+    transparent: M > 1, opacity: M_OPA, depthWrite: M <= 1});
+  const balls = new THREE.InstancedMesh(ballGeo, ballMat, M);
+  balls.frustumCulled = false;
+  const dummy = new THREE.Object3D();
+  for (let i = 0; i < M; i++){
+    dummy.position.set(massBase[3*i], massBase[3*i+1], massBase[3*i+2]);
+    dummy.updateMatrix(); balls.setMatrixAt(i, dummy.matrix);
+  }
+  balls.instanceMatrix.needsUpdate = true;
+  carrier.add(balls);
+
+  /* 影响范围（软核）—— 球多了就不画了，否则糊成一片 */
+  if (M <= 16){
+    const haloGeo = new THREE.SphereGeometry(0.62*cell, 16, 10);
+    const haloMat = new THREE.MeshBasicMaterial({color:0x0f9d58, transparent:true,
+      opacity: M <= 4 ? 0.10 : 0.06, depthWrite:false});
+    const halos = new THREE.InstancedMesh(haloGeo, haloMat, M);
+    halos.frustumCulled = false;
+    for (let i = 0; i < M; i++){
+      dummy.position.set(massBase[3*i], massBase[3*i+1], massBase[3*i+2]);
+      dummy.updateMatrix(); halos.setMatrixAt(i, dummy.matrix);
+    }
+    halos.instanceMatrix.needsUpdate = true;
+    carrier.add(halos);
+  }
+
+  /* ===== 3. 标注：参考球 + 上下左右邻居 + 切向角（3D 线）+ 投影标签（HTML） =====
+     ⚠ 第一版把标签全放在投影点上，5 个标签在球旁边叠成一坨没法读。
+     现在每个标签带一个**像素偏移** (dx,dy) 主动扇开，并用虚线引线牵回锚点。 */
+  const j0 = (coilMode === 'ring') ? 0 : (Math.round(M/2) % Math.max(1,M));
+  const nbIdx = [];
+  if (coilMode === 'ring'){
+    if (M >= 2){ nbIdx.push({i:(j0+1)%M, kind:'same'}); nbIdx.push({i:(j0-1+M)%M, kind:'same'}); }
+  } else {
+    /* ⚠ n = 1 时 j0±1 这个球**同时**是「左右」和「上下」——因为 dSame ≡ dUp = 螺距，
+       两类邻居重合成同一类。旧版两条都推 → 同一个球被画两遍（青球紫球叠一起）、
+       两条线也画两遍。按「n ≥ 2 才有左右」「有 2 匝以上才有上下」分别守卫。 */
+    if (NB.n >= 2){
+      if (j0+1 < M) nbIdx.push({i:j0+1, kind:'same'});
+      if (j0-1 >= 0) nbIdx.push({i:j0-1, kind:'same'});
+    }
+    if (NB.hasUp){
+      if (j0+NB.n < M) nbIdx.push({i:j0+NB.n, kind:'up'});
+      if (j0-NB.n >= 0) nbIdx.push({i:j0-NB.n, kind:'up'});
+    }
+  }
+  const V = i => new THREE.Vector3(massBase[3*i], massBase[3*i+1], massBase[3*i+2]);
+  const Pref = V(j0);
+  coilTagDefs = [];
+  coilRefObj  = null;
+  const anno = new THREE.Group();
+  carrier.add(anno);
+  /* 「径向外推」的圆心 = 参考球本身（标签都相对它往外让位） */
+  coilRefObj = new THREE.Object3D();
+  coilRefObj.position.copy(Pref);
+  anno.add(coilRefObj);
+  /* 锚点 + 文字 + 配色 + 屏幕像素偏移（偏移把标签彼此推开，引线再把它牵回来） */
+  const anchor = (v, text, cls, dx, dy) => {
+    const o = new THREE.Object3D(); o.position.copy(v); anno.add(o);
+    coilTagDefs.push({ obj:o, text:text, cls:cls, dx:(dx|0), dy:(dy|0) });
+    return o;
+  };
+  /* 特殊球：参考（红）/ 同匝（青）/ 相邻匝（紫）—— 半径就是真尺寸 r，不放大量：
+     r 是「不重叠」反解出来的，参考球比邻居大就会叠上，图上反而不打自招。 */
+  const mkBall = (v, col) => {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(Math.max(0.032, ballR), 20, 14),
+      new THREE.MeshStandardMaterial({color:col, roughness:.30, metalness:.40}));
+    m.position.copy(v); carrier.add(m); return m;
+  };
+  if (coilTags){
+    /* 情形 A = 真螺旋（≥2 匝且 k > 0）；否则就是「一匝」——环模式、k=0 被规则固定成 1 匝、
+       或 T 本来就取 1。两种情形的邻居结构不同（有没有「上下」），画法也要分开。 */
+    const helix = (coilMode === 'spring' && NB.k > 1e-9 && NB.turns >= 2);
+    mkBall(Pref, COIL_COL.ref);
+    for (const nb of nbIdx){
+      const Pb = V(nb.i);
+      mkBall(Pb, nb.kind === 'same' ? COIL_COL.same : COIL_COL.up);
+      anno.add(line([Pref, Pb], nb.kind === 'same' ? COIL_COL.same : COIL_COL.up, .95));
+    }
+    /* 公转圆（参考球所在的水平圆，虚线）—— 只在真螺旋时画：
+       T = 1 且 k > 0 时那一匝是**斜**的，画一个水平圆就成了假图（情形 B 画真实轨迹）。 */
+    if (helix && NB.R > 1e-6){
+      const cir = [];
+      for (let s = 0; s <= 96; s++){ const a = 2*Math.PI*s/96;
+        cir.push(new THREE.Vector3(NB.R*Math.cos(a), Pref.y, NB.R*Math.sin(a))); }
+      const cl = new THREE.Line(new THREE.BufferGeometry().setFromPoints(cir),
+        new THREE.LineDashedMaterial({color:0x9aa7b8, dashSize:0.34, gapSize:0.30, transparent:true, opacity:.85}));
+      if (cl.computeLineDistances) cl.computeLineDistances();
+      anno.add(cl);
+    }
+    /* ▽ 情形 B：**只有一匝**（环模式，或弹簧被 k=0 规则固定成 1 匝，或 T 本来就是 1）
+       这时没有「上下」邻居，只有「左右」。注意「1 匝」不等于「共面的圆」：
+       T = 1 且 k > 0 时，这一匝本身就是一条**倾斜**的圆（z 从 −kRπ 走到 +kRπ），
+       所以不能用「水平面上的弧」去画 Δφ —— 直接用参数式采样，倾斜也自动正确。
+       采样区间是 t ∈ [−Tπ, Tπ]：k = 0 时首尾落在同一点 ⇒ 画出来是闭合圆；
+       k > 0 时首尾差一个螺距 ⇒ 画出来是一条开口的斜环，两种都不撒谎。 */
+    if (helix){
+      const t0 = -NB.turns*Math.PI + j0*NB.dt;
+      const len = Math.max(0.9, 0.86*NB.dmin);
+      const T = new THREE.Vector3(-Math.sin(t0), NB.k, Math.cos(t0)).normalize();   /* 螺旋切向 */
+      const Hv = new THREE.Vector3(-Math.sin(t0), 0, Math.cos(t0));                 /* 水平切向 */
+      /* 切向箭头 + 箭头头 */
+      const tip = Pref.clone().addScaledVector(T, len);
+      anno.add(line([Pref, tip], COIL_COL.tang, .98));
+      const perp = new THREE.Vector3().crossVectors(T, new THREE.Vector3(0,1,0));
+      if (perp.lengthSq() < 1e-12) perp.set(1,0,0); else perp.normalize();
+      const h1 = tip.clone().addScaledVector(T,-0.24*len).addScaledVector(perp, 0.13*len);
+      const h2 = tip.clone().addScaledVector(T,-0.24*len).addScaledVector(perp,-0.13*len);
+      anno.add(line([tip,h1], COIL_COL.tang, .98)); anno.add(line([tip,h2], COIL_COL.tang, .98));
+      /* 水平切向箭头 */
+      const tip2 = Pref.clone().addScaledVector(Hv, len*0.86);
+      anno.add(line([Pref, tip2], COIL_COL.horiz, .95));
+      /* ψ 角弧（在 T̂ 与 ĥ 张成的平面里扫过） */
+      const arc = [], rr = len*0.46, dir = new THREE.Vector3();
+      for (let s = 0; s <= 20; s++){
+        const uu = s/20;
+        dir.copy(Hv).multiplyScalar(1-uu).addScaledVector(T, uu).normalize();
+        arc.push(Pref.clone().addScaledVector(dir, rr));
+      }
+      anno.add(line(arc, COIL_COL.tang, .95));
+      const mid = Pref.clone().addScaledVector(
+        new THREE.Vector3().copy(Hv).multiplyScalar(0.5).addScaledVector(T,0.5).normalize(), rr*1.7);
+      anchor(mid, 'ψ = arctan k = ' + (NB.psi*180/Math.PI).toFixed(2) + '°', 'tag-a', 74, -30);
+      anchor(Pref.clone().add(new THREE.Vector3(0, -1.05*Math.max(0.55,ballR), 0)),
+             '参考球 #' + (j0+1) + '（t = 0 附近）', 'tag-r', -76, 24);
+      /* Δφ 弧：同一水平圆内从参考球方位走到同匝邻居方位
+         ⚠ 每匝只有 1 个球时**没有「同匝相邻（左右）」这一类**（n=1 ⇒ 弦 = 0），
+         此时 dSame 恰好等于螺距，若照抄「左右」标签就把「上下」写成了「左右」——
+         这一版按 NB.n ≥ 2 分开写，标签与几何一一对应。 */
+      if (NB.n >= 2){
+        const same = nbIdx.find(o => o.kind === 'same' && o.i === j0+1) || nbIdx.find(o => o.kind === 'same');
+        if (same){
+          const ap = [];
+          for (let s = 0; s <= 20; s++)
+            ap.push(new THREE.Vector3(NB.R*Math.cos(t0 + NB.dt*s/20), Pref.y,
+                                      NB.R*Math.sin(t0 + NB.dt*s/20)));
+          anno.add(line(ap, COIL_COL.same, .9));
+          const am = t0 + NB.dt/2;
+          anchor(new THREE.Vector3(NB.R*1.30*Math.cos(am), Pref.y + 0.34, NB.R*1.30*Math.sin(am)),
+            'Δφ = 360°/n = ' + (360/NB.n).toFixed(2) + '°', 'tag-s', 66, -18);
+          const Pb = V(same.i);
+          const midS = Pref.clone().add(Pb).multiplyScalar(0.5);
+          anchor(midS.clone().add(new THREE.Vector3(0, -0.85*Math.max(0.55,ballR), 0)),
+            '同匝相邻（左右）d = ' + NB.dSame.toFixed(3), 'tag-s', 44, 46);
+        }
+      } else {
+        /* n = 1：整圈只有 1 个球 ⇒ Δφ = 360°，邻居只有「上下」 */
+        const ap = [];
+        for (let s = 0; s <= 40; s++)
+          ap.push(new THREE.Vector3(NB.R*Math.cos(t0 + 2*Math.PI*s/40), Pref.y,
+                                    NB.R*Math.sin(t0 + 2*Math.PI*s/40)));
+        anno.add(line(ap, COIL_COL.same, .9));
+        anchor(new THREE.Vector3(NB.R*1.34*Math.cos(t0 + Math.PI), Pref.y - 0.9, NB.R*1.34*Math.sin(t0 + Math.PI)),
+          '每匝只有 1 个球 ⇒ Δφ = 360°（没有「左右」邻居，只有「上下」）', 'tag-s', 60, 30);
+      }
+      const up = nbIdx.find(o => o.kind === 'up' && o.i === j0+NB.n) || nbIdx.find(o => o.kind === 'up');
+      if (up){
+        const midU = Pref.clone().add(V(up.i)).multiplyScalar(0.5);
+        anchor(midU, '相邻匝同相位（上下）Δz = P = ' + NB.dUp.toFixed(3), 'tag-u', -84, -20);
+      }
+      /* 弹簧轴（圆柱轴）：虚线一条，让「绕哪根轴」看得见 */
+      const zs = [], yLo = -NB.turns*NB.k*NB.R*Math.PI - 0.9, yHi = -yLo;
+      for (let s = 0; s <= 40; s++) zs.push(new THREE.Vector3(0, yLo + (yHi-yLo)*s/40, 0));
+      const zl = new THREE.Line(new THREE.BufferGeometry().setFromPoints(zs),
+        new THREE.LineDashedMaterial({color:0x1b4f9c, dashSize:0.55, gapSize:0.42, transparent:true, opacity:.8}));
+      if (zl.computeLineDistances) zl.computeLineDistances();
+      anno.add(zl);
+      anchor(new THREE.Vector3(0, yHi + 0.55, 0), '公转轴 z（圆柱轴）', 'tag-a', 0, -22);
+    } else if (M >= 2){
+      /* 参数式：环模式 y 恒为 0；弹簧模式 y = k·R·t（T=1 时就是一条倾斜的圆）。
+         两种情形共用一套采样 ⇒ Δφ 弧在倾斜圆上也画得对。 */
+      const isRing = (coilMode === 'ring');
+      const Pth = t => new THREE.Vector3(NB.R*Math.cos(t), isRing ? 0 : NB.k*NB.R*t, NB.R*Math.sin(t));
+      const thOf = i => -NB.turns*Math.PI + i*NB.dt;      /* T=1 ⇒ −π + i·dt */
+      const loop = [];
+      for (let i = 0; i <= M; i++) loop.push(Pth(thOf(i)));
+      anno.add(line(loop, 0x9aa7b8, .55));
+      if (M >= 2){
+        const Pb = V((j0+1) % M);
+        mkBall(Pb, COIL_COL.same);
+        mkBall(V((j0-1+M) % M), COIL_COL.same);
+        anno.add(line([Pref, Pb], COIL_COL.same, .95));
+        anno.add(line([Pref, V((j0-1+M)%M)], COIL_COL.same, .95));
+        const ap = [];
+        for (let s = 0; s <= 20; s++) ap.push(Pth(thOf(j0) + NB.dt*s/20));
+        anno.add(line(ap, COIL_COL.same, .9));
+        const am = Pth(thOf(j0) + NB.dt/2);
+        anchor(new THREE.Vector3(am.x*1.30, am.y + 0.34, am.z*1.30),
+          'Δφ = 360°/n = ' + (360/NB.n).toFixed(2) + '°', 'tag-s', 62, -20);
+        const midS = Pref.clone().add(Pb).multiplyScalar(0.5);
+        anchor(midS, '同匝相邻（左右）d = ' + NB.dSame.toFixed(3), 'tag-s', 46, 48);
+        anchor(Pref.clone().add(new THREE.Vector3(0, 1.05*Math.max(0.60,ballR), 0)),
+          '参考球 #' + (j0+1) + '（' + (isRing ? ('环上 ' + M + ' 个均匀分布') : '只有 1 匝') + '）', 'tag-r', -48, -32);
+        anchor(am.clone().multiplyScalar(1.0).add(new THREE.Vector3(0, -2.4*Math.max(0.55,ballR), 0)),
+          isRing ? '没有上下邻居：全部球共面'
+                 : ('没有上下邻居：只有 1 匝，这一匝还是斜的（Δz = ' + (NB.k*NB.R*NB.dt).toFixed(3) + '）'),
+          'tag-u', 0, 62);
+      }
+    }
+  }
+  rebuildCoilTagEls();
+
+  /* ===== 4. 色标（按原图取样：远端纯蓝、近端纯绿） ===== */
+  const BLUE  = new THREE.Color(0x0f47b8);
+  const GREEN = new THREE.Color(0x0aa63c);
+  const _c    = new THREE.Color();
+  let peak = 0, maxD = 0, maxRaw = 0, rawMaxD = 0, gainFGlobal = 1;
+
+  function refresh(){
+    /* 位移场 + 精确雅可比（模块内部：两遍算法 + 一次全局标定，无逐点钳制） */
+    const rt = AnuCoil.warp(ptBase, nP, massNow, M,
+      { str:str, c:c, sign:sign, share:share, gain:'auto', gainK:ampK }, ptPos, detB);
+    maxD = rt.maxD; maxRaw = rt.maxRaw; rawMaxD = rt.rawMaxD; gainFGlobal = rt.gain;
+    /* 色标 t = |1 − det J| （多质量下就是原来那个「局部体积比」的严格推广）：
+       自动归一 ⇒ 除以本帧峰值（把球数从 1 变到 343 时画面都还读得出来），否则用固定的 ×1.9 */
+    const gainF = coilColorAuto ? 1/Math.max(1e-9, maxRaw) : 1.9;
+    let mx = 0;
+    for (let p = 0; p < nP; p++){
+      const raw = Math.abs(1 - detB[p])*gainF;
+      const tt = raw > 1 ? 1 : raw;
+      if (tt > mx) mx = tt;
+      tB[p] = tt;
+      _c.copy(BLUE).lerp(GREEN, tt);
+      colPt[3*p] = _c.r; colPt[3*p+1] = _c.g; colPt[3*p+2] = _c.b;
+    }
+    peak = mx;
+    /* 逐段展开成 LineSegments（相邻两采样点成一段，颜色插值 —— 与原实现的着色口径一致） */
+    let p = 0, ci = 0;
+    for (let li = 0; li < nLine; li++){
+      const o = li*(SEG+1);
+      for (let t = 1; t <= SEG; t++){
+        const a = o+t-1, b = o+t;
+        posArr[p++] = ptPos[3*a]; posArr[p++] = ptPos[3*a+1]; posArr[p++] = ptPos[3*a+2];
+        posArr[p++] = ptPos[3*b]; posArr[p++] = ptPos[3*b+1]; posArr[p++] = ptPos[3*b+2];
+        colArr[ci++] = colPt[3*a]; colArr[ci++] = colPt[3*a+1]; colArr[ci++] = colPt[3*a+2];
+        colArr[ci++] = colPt[3*b]; colArr[ci++] = colPt[3*b+1]; colArr[ci++] = colPt[3*b+2];
+      }
+    }
+    geo.attributes.position.needsUpdate = true;
+    geo.attributes.color.needsUpdate    = true;
+  }
+
+  /* ===== 5. 面板读数（浮窗 §②-3） ===== */
+  const el = document.getElementById('distInfo');
+  let lastUI = -1e9;
+  function refreshInfo(){
+    if (!el) return;
+    const rt = { maxD:maxD, maxRaw:maxRaw, rawMaxD:rawMaxD, gain:gainFGlobal, peak1:peak1, SEG:SEG, nP:nP };
+    coilLastRT = rt;
+    el.innerHTML = '<span class="note" style="display:block;margin-bottom:5px">'
+      + '方向 <b>' + (sign>0?'向内收拢':'向外撑开') + '</b>'
+      + ' · 畸变半径 c = <b>' + c.toFixed(2) + '</b>（' + (c/cell).toFixed(2) + ' 格）'
+      + ' · 色标峰值 t = <b>' + peak.toFixed(2) + '</b></span>'
+      + coilPanelHTML(rt);
+  }
+
+  /* 相位：绕竖直轴公转（three 的 rotation.y = θ ⇔ 方位角 −θ） */
+  const ph = { th: NaN };
+  refresh(); refreshInfo();
+
+  return {
+    group: g,
+    api: {
+      mode: coilMode, M: M, seg: SEG, nP: nP, cell: cell, c: c, str: str, share: share, ampK: ampK,
+      NB: NB, R: NB.R, r: ballR, k: NB.k, sign: sign,
+      massBase: massBase, massNow: massNow, carrier: carrier, wire: wire,
+      rt: () => ({ maxD:maxD, rawMaxD:rawMaxD, gain:gainFGlobal, maxRaw:maxRaw, peak:peak }),
+      detB: detB, pos: ptPos
+    },
+    update(dt, t){
+      const th = -0.40*t;                       /* 与原来同一巡游角速度 */
+      if (!(Math.abs(th - ph.th) < 1e-12)){     /* 暂停时不重算整帧位移场 */
+        ph.th = th;
+        AnuCoil.rotY(massBase, massNow, M, th);
+        carrier.rotation.y = th;
+        refresh();
+      }
+      if (t - lastUI > 0.20){ lastUI = t; refreshInfo(); }
+    },
+    note:()=> (sign>0
+      ? '格点被向质量重标：X′ = X − g·Σᵢ(X−mᵢ)/(|X−mᵢ|²+c²)，g = ρc²·增益。远端笔直、近处收拢；绿 = 局部体积比偏离 1 最大处。'
+      : '反号：X′ = X + g·Σᵢ(X−mᵢ)/(|X−mᵢ|²+c²)，g = ρc²·增益。近处被撑开 —— 形状同样「合理」，物理含义却相反。')
+  };
+};
+
+/* ---------- 3. 光锥倾斜（GP 零锥 · 斜圆锥；四行推导，逐项可验算） ----------
+   GP 度规：  ds² = −dt² + (dr + β dt)² + r²dΩ²,   β(r) = √(r_s/r)
+   在半径 r0 处取事件 P（t=0，位置 x=r0）。设位移 (dt, dx, dz)：
+   x 是径向（局部 dr ≈ dx），z 是横向（局部 r²dΩ² = dz²）。
+       零条件：  −dt² + (dx + β dt)² + dz² = 0
+       令 dt = h：  (dx + βh)² + dz² = h²
+       配方（令 u = dx + βh）：  u² + dz² = h²
+   ⇒ 【每个时刻 h 的横截面 = 半径 |h| 的圆】，圆心落在 dx = −βh 处。
+   回到世界坐标（y 轴 = 时间轴）：
+       x(h,φ) = r0 − β·h + |h|·cos φ
+       y(h,φ) = h
+       z(h,φ) = |h|·sin φ
+   ⇒ 每一枚都是【斜圆锥】：横截面恒为半径 |h| 的圆（就是平直时空的 45° 光球），
+     但圆心随 h 线性内漂 −βh，把锥轴掰向中心，倾角 = arctan β。
+       β = 0  → 正立的 45° 光锥（平直时空）
+       β → 1  → 锥轴倾 45°，+x 那条母线被压成【竖直】= 光在原地不动 = 视界
+   ★ 两种会让「锥」不像锥的典型错法（本页原先两条都犯了）：
+     ① 只给 z 一个 ±tang、x 不随 φ 变 ⇒ 横截面的圆退化成一条线段，曲面被压成皱纸；
+     ② 上下两半锥把 h 分段写、且第二段符号写反 ⇒ 只剩上半锥。
+   两条数学上都「写得出」，只有几何自检才看得出来 —— 所以这里按上面的封闭式重新生成。
+-------------------------------------------------------------------------- */
+builders.cones = function(rs){
+  const g = new THREE.Group();
+  const NA = 72, NH = 36;
+  const radii = [rs*1.10, rs*2.2, rs*3.6, rs*5.6, rs*8.4];   // 由近及远，β 递减（间距逐级拉开，免得近处几枚咬死）
+  const H = 2.4;
+  radii.forEach((r0)=>{
+    const beta = Math.sqrt(rs/r0);            // β(r0) 取物理值，不人为截断
+    const verts=[], idx=[];
+    for(let a=0;a<=NH;a++){
+      const h = -H + 2*H*a/NH;                // h ∈ [−H, H]：上下两半锥连续，不再分段
+      const rad = Math.abs(h);                // ★ 横截面半径 = |h|，这是「45°」的来源
+      for(let b=0;b<=NA;b++){
+        const phi = 2*Math.PI*b/NA;
+        // ★ x 必须随 φ 变：否则圆退化成线段（原实现就错在这里）
+        verts.push(r0 - beta*h + rad*Math.cos(phi), h, rad*Math.sin(phi));
+      }
+    }
+    for(let a=0;a<NH;a++) for(let b=0;b<NA;b++){
+      const p=a*(NA+1)+b, q=p+1, u=(a+1)*(NA+1)+b, v=u+1;
+      idx.push(p,u,q, q,u,v);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(verts,3));
+    geo.setIndex(idx); geo.computeVertexNormals();
+    const col = new THREE.Color().setHSL(0.60 - 0.60*Math.min(1,beta), 0.62, 0.45);  // 远蓝→近红
+    g.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({color:col, side:THREE.DoubleSide,
+      transparent:true, opacity:.18, roughness:.74, metalness:.04, depthWrite:false})));
+    g.add(new THREE.Mesh(geo.clone(), new THREE.MeshBasicMaterial({color:col.getHex(), wireframe:true,
+      transparent:true, opacity:.14, depthWrite:false})));
+
+    // 锥轴：圆心轨迹 x = r0 − βh —— 「倾斜」二字就写在这条线上
+    const ax=[]; for(let a=0;a<=40;a++){ const h=-H+2*H*a/40; ax.push(new THREE.Vector3(r0-beta*h, h, 0)); }
+    g.add(line(ax, 0x8b97a8, .5));
+
+    // 两条径向母线（都在 z=0 平面内）＝ 两条零测地线，给出那个「倾斜的 V」
+    const gen = (sgn, cc) => {
+      const up=[new THREE.Vector3(r0,0,0)], dn=[new THREE.Vector3(r0,0,0)];
+      for(let a=1;a<=24;a++){
+        const h = H*a/24;
+        up.push(new THREE.Vector3(r0 + h*(sgn - beta),  h, 0));   // 未来支
+        dn.push(new THREE.Vector3(r0 - h*(sgn - beta), -h, 0));   // 过去支（同一根直线的另一半）
+      }
+      g.add(line(up, cc, .95)); g.add(line(dn, cc, .95));
+    };
+    gen(+1, beta>0.99?0xff3b1f:0x1b4f9c);   // 向外： dr/dt = 1 − β
+    gen(-1, 0x6b3fa0);                       // 向内： dr/dt = −1 − β
+  });
+
+  // 视界柱面 r = r_s（绕时间轴的一根圆柱，不是「盖子」）
+  const hp=[]; for(let j=0;j<=180;j++){ const p=2*Math.PI*j/180; hp.push(new THREE.Vector3(rs*Math.cos(p),-H*1.15,rs*Math.sin(p))); }
+  const hp2=[]; for(let j=0;j<=180;j++){ const p=2*Math.PI*j/180; hp2.push(new THREE.Vector3(rs*Math.cos(p),H*1.15,rs*Math.sin(p))); }
+  g.add(line(hp, 0xb3261e, .5)); g.add(line(hp2, 0xb3261e, .5));
+  for(let j=0;j<24;j++){
+    const p=2*Math.PI*j/24;
+    g.add(line([new THREE.Vector3(rs*Math.cos(p),-H*1.15,rs*Math.sin(p)),
+                new THREE.Vector3(rs*Math.cos(p), H*1.15,rs*Math.sin(p))], 0xd98b82, .34));
+  }
+  return {group:g, update(){}, note:()=>'★ 每枚光锥的横截面恒为半径 |h| 的圆（平直时空的 45° 光球），但圆心随 h 内漂 −βh ⇒ 锥轴以 arctanβ 的倾角倒向中心。颜色由远(蓝,β小)到近(红,β大)。蓝＝向外母线 dr/dt=1−β（β→1 时被压成竖直）；紫＝向内母线 dr/dt=−1−β；灰＝锥轴。'};
+};
+
+/* ---------- 4. 空间河流与瀑布 ---------- */
+builders.river = function(rs){
+  const g = new THREE.Group();
+  const RMAX = 12, rMin = rs*1.001;
+  // 河床：对数螺旋流线
+  const NSP = 26, NPART = 34;
+  const flows = [];
+  for(let s=0;s<NSP;s++){
+    const a0 = 2*Math.PI*s/NSP;
+    const pts = [];
+    for(let k=0;k<=40;k++){
+      const rr = RMAX*Math.pow(rMin/RMAX, k/40);
+      pts.push(new THREE.Vector3(rr*Math.cos(a0), -3.6 + 1.6*Math.log(rr/rs), rr*Math.sin(a0)));
+    }
+    g.add(line(pts, 0x9fc6d8, .55));
+  }
+  // 中央漏斗
+  const verts=[], idx=[], cols=[];
+  const M=70, N=72;
+  for(let i=0;i<=M;i++){
+    const rr = rMin + (RMAX-rMin)*Math.pow(i/M, 0.72);
+    const y = -3.6 + 3.4*Math.log(Math.max(rr, rs*0.9)/rs) * 0.55;
+    for(let j=0;j<=N;j++){
+      const p=2*Math.PI*j/N;
+      verts.push(rr*Math.cos(p), y, rr*Math.sin(p));
+      const c = rateColor(Math.min(1, Math.sqrt(rs/rr)));
+      cols.push(c.r,c.g,c.b);
+    }
+  }
+  for(let i=0;i<M;i++) for(let j=0;j<N;j++){
+    const a=i*(N+1)+j,b=a+1,c=(i+1)*(N+1)+j,d=c+1; idx.push(a,c,b,b,c,d);
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(verts,3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(cols,3));
+  geo.setIndex(idx); geo.computeVertexNormals();
+  g.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({vertexColors:true, side:THREE.DoubleSide,
+    roughness:.95, metalness:.02, transparent:true, opacity:.86})));
+
+  // 视界圈
+  const hr2=[]; for(let j=0;j<=180;j++){ const p=2*Math.PI*j/180; hr2.push(new THREE.Vector3(rs*Math.cos(p), 0, rs*Math.sin(p))); }
+  g.add(line(hr2, 0xb3261e, .9));
+
+  // 流动粒子
+  const parts=[], speeds=[];
+  for(let s=0;s<NSP;s++){
+    const a0 = 2*Math.PI*s/NSP;
+    parts.push({a:a0, r:RMAX*Math.random(), y0:0});
+  }
+  const pgeo = new THREE.BufferGeometry();
+  const ppos = new Float32Array(parts.length*3);
+  pgeo.setAttribute('position', new THREE.BufferAttribute(ppos,3));
+  const pmat = new THREE.PointsMaterial({color:0x0f7b8a, size:0.36, transparent:true, opacity:.9, sizeAttenuation:true});
+  const points = new THREE.Points(pgeo, pmat);
+  g.add(points);
+
+  // 逆流光子（白点，速度恒为 1）
+  const photon = new THREE.Mesh(new THREE.SphereGeometry(0.26,18,14),
+     new THREE.MeshStandardMaterial({color:0xffffff, emissive:0x8fb0d8, emissiveIntensity:.5, roughness:.3}));
+  g.add(photon);
+
+  const yOf = rr => -3.6 + 1.6*Math.log(Math.max(rr, rs*0.85)/rs);
+  let phR = RMAX;
+  function resetPhoton(){ phR = RMAX; }
+  resetPhoton();
+
+  return {
+    group:g,
+    reset:resetPhoton,
+    update(dt){
+      const arr = pgeo.attributes.position.array;
+      for(let i=0;i<parts.length;i++){
+        const p=parts[i];
+        const beta = Math.sqrt(rs/Math.max(p.r, rs*0.5));
+        // 视觉流速：与 β 成正比
+        p.r -= beta * dt * 7.0;
+        p.a += dt * (0.34/Math.max(p.r,0.4));
+        if(p.r <= rMin){ p.r = RMAX; p.a = Math.random()*Math.PI*2; }
+        arr[i*3]   = p.r*Math.cos(p.a);
+        arr[i*3+1] = yOf(p.r);
+        arr[i*3+2] = p.r*Math.sin(p.a);
+      }
+      pgeo.attributes.position.needsUpdate = true;
+      // 光子：dr/dt = 1 - β
+      const beta = Math.sqrt(rs/Math.max(phR, rs*0.4));
+      phR += (1 - beta) * dt * 5.0;
+      if(phR > RMAX){ resetPhoton(); }
+      if(phR < rMin){ phR = rMin; }
+      photon.position.set(phR, yOf(phR)+0.28, 0);
+    },
+    note:()=>'粒子流速 ∝ β(r)=√(rs/r)：越靠视界越快，r=rs 处＝光速。白色光子速度恒为 1，净位移 1−β，在视界上被完全抵消 → 出不去。'
+  };
+};
+
+/* ---------- 5. 时钟速率场 ---------- */
+builders.clocks = function(rs){
+  const g = new THREE.Group();
+  const M=64, N=72, RMAX=11.5, rMin=rs*1.0005;
+  const verts=[], cols=[], idx=[];
+  for(let i=0;i<=M;i++){
+    const rr = rMin + (RMAX-rMin)*Math.pow(i/M, 0.7);
+    for(let j=0;j<=N;j++){
+      const p=2*Math.PI*j/N;
+      const rate = Math.sqrt(Math.max(0, 1-rs/rr));
+      verts.push(rr*Math.cos(p), (rate-0.72)*10.0, rr*Math.sin(p));
+      const c = rateColor(rate);
+      cols.push(c.r,c.g,c.b);
+    }
+  }
+  for(let i=0;i<M;i++) for(let j=0;j<N;j++){
+    const a=i*(N+1)+j,b=a+1,c=(i+1)*(N+1)+j,d=c+1; idx.push(a,c,b,b,c,d);
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(verts,3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(cols,3));
+  geo.setIndex(idx); geo.computeVertexNormals();
+  g.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({vertexColors:true, side:THREE.DoubleSide,
+    roughness:.9, metalness:.03, transparent:true, opacity:.95})));
+
+  // 视界圈
+  const hr=[]; for(let j=0;j<=200;j++){ const p=2*Math.PI*j/200; hr.push(new THREE.Vector3(rs*Math.cos(p), (0-0.72)*10, rs*Math.sin(p))); }
+  g.add(line(hr, 0xb3261e, .95));
+
+  // 钟表指针
+  const clockHands = [];
+  const radiiList = [1.15, 1.6, 2.4, 3.6, 5.4, 8.0];
+  radiiList.forEach(f=>{
+    const rr = rs*f;
+    if(rr > RMAX) return;
+    const rate = Math.sqrt(Math.max(0, 1-rs/rr));
+    const y = (rate-0.72)*10.0 + 0.42;
+    // 表盘
+    const dial=[]; for(let j=0;j<=48;j++){ const p=2*Math.PI*j/48; dial.push(new THREE.Vector3(rr+0.85*Math.cos(p), y, 0.85*Math.sin(p))); }
+    g.add(line(dial, 0x51617a, .6));
+    // 指针
+    const hand = new THREE.Group();
+    hand.add(line([new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,0.78)], 0xb3261e, 1));
+    hand.add(line([new THREE.Vector3(0,0,0), new THREE.Vector3(0.5,0,0)], 0x37414f, 1));
+    hand.position.set(rr, y, 0);
+    g.add(hand);
+    clockHands.push({hand, rate});
+    // 标注速率
+    const c=document.createElement('canvas'); c.width=256;c.height=72;
+    const ctx=c.getContext('2d'); ctx.font='bold 42px monospace'; ctx.fillStyle='#3b4552';
+    ctx.fillText('τ̇ = '+rate.toFixed(3), 4, 50);
+    const tex=new THREE.CanvasTexture(c);
+    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+    sp.position.set(rr, y+1.35, 0); sp.scale.set(3.4,0.96,1); g.add(sp);
+  });
+  return {
+    group:g,
+    update(dt){
+      clockHands.forEach(o=>{ o.hand.rotation.y -= dt*o.rate*2.4; });
+    },
+    note:()=>'表盘指针角速度 ∝ dτ/dt = √(1−rs/r)。越靠视界指针越慢，r=rs 处完全停摆 —— 地面高度就是钟速的等高线。'
+  };
+};
+
+/* ---------- 6. 潮汐拉伸与挤压 ---------- */
+builders.tendex = function(rs){
+  const g = new THREE.Group();
+  const SEG = 34;
+  const baseR = 4.2;
+  // 用球面点云 + 线框
+  const positions = [];
+  const geo = new THREE.SphereGeometry(baseR, SEG, Math.floor(SEG*0.6));
+  const basePos = new Float32Array(geo.attributes.position.array);
+  const wire = new THREE.Mesh(geo.clone(), new THREE.MeshBasicMaterial({color:0x9aa8bb, wireframe:true, transparent:true, opacity:.42}));
+  g.add(wire);
+  // 点云着色
+  const pts = new THREE.Points(geo.clone(), new THREE.PointsMaterial({color:0xb4531f, size:0.075, transparent:true, opacity:.75}));
+  g.add(pts);
+
+  // 中心质量
+  const core = new THREE.Mesh(new THREE.SphereGeometry(rs*0.85, 26, 20),
+    new THREE.MeshStandardMaterial({color:0x2a3542, roughness:.35, metalness:.4}));
+  g.add(core);
+  // 径向轴
+  g.add(line([new THREE.Vector3(-baseR*2.2,0,0), new THREE.Vector3(baseR*2.2,0,0)], 0xb3261e, .5));
+
+  let phase = 0;
+  function deform(a){
+    const p = geo.attributes.position.array;
+    const col = new Float32Array(geo.attributes.position.count*3);
+    for(let i=0;i<geo.attributes.position.count;i++){
+      const x=basePos[i*3], y=basePos[i*3+1], z=basePos[i*3+2];
+      const r = Math.sqrt(x*x+y*y+z*z) || 1e-6;
+      const ct = x/r;                       // cos(theta)，径向取 x
+      const P2 = (3*ct*ct - 1)/2;
+      const f = 1 + a*P2;
+      p[i*3]=x*f; p[i*3+1]=y*f; p[i*3+2]=z*f;
+      const c = a*P2>=0 ? rateColor(0.0) : rateColor(1.0);
+      const w = Math.min(1, Math.abs(a*P2)*3);
+      col[i*3]   = 0.42 + w*(c.r-0.42);
+      col[i*3+1] = 0.46 + w*(c.g-0.46);
+      col[i*3+2] = 0.52 + w*(c.b-0.52);
+    }
+    geo.attributes.position.needsUpdate = true;
+    geo.setAttribute('color', new THREE.BufferAttribute(col,3));
+    geo.computeVertexNormals();
+  }
+  deform(0);
+  return {
+    group:g, update(dt){ phase += dt*0.62; deform(0.30*Math.sin(phase)); },
+    note:()=>'R(θ)=R₀(1+a·P₂(cosθ))。沿径向被拉长（红），横向被压扁（蓝）。这就是 LIGO 真正在量的东西：两团自由落体之间的相对形变。'
+  };
+};
+
+/* ============================================================
+   状态与 UI
+   ============================================================ */
+let cur = 5, rs = 1.4, playing = true, quad = false, model = null;
+let distDir = 'in', gridN = 4;      /* ② 线框网格畸变专用：径向标定方向 / 每轴格数 */
+const group = new THREE.Group(); scene.add(group);
+
+const notchEl = document.getElementById('notch');
+const cardsEl = document.getElementById('modelcards');
+const slider = document.getElementById('mslider');
+const sliderVal = document.getElementById('msliderval');
+const rsSlider = document.getElementById('rsslider');
+const rsVal = document.getElementById('rsval');
+/* ★ 铁律 184：HUD 内容由 JS 反复重写 ⇒ 只写 .hud-body，收起按钮（注入在 .hud 顶层）不会被冲掉 */
+const hudEl = document.querySelector('#hud .hud-body');
+const legendEl = document.querySelector('#legend .hud-body');
+const badgeEl = document.getElementById('badge');
+const srcEl = document.getElementById('src');
+const infoEl = document.getElementById('readout');
+const detailEl = document.getElementById('detail');
+
+MODELS.forEach(m=>{
+  const b = document.createElement('button');
+  b.textContent = m.id + '. ' + m.name;
+  b.dataset.id = m.id;
+  b.onclick = ()=> setModel(m.id);
+  notchEl.appendChild(b);
+
+  const c = document.createElement('div');
+  c.className='modelcard'; c.dataset.id=m.id;
+  c.innerHTML = '<div class="t"><span class="dot" style="background:'+m.color+'"></span>'+m.id+'. '+m.name+
+    ' <span class="tag '+m.verdictCls+'" style="margin-left:auto">'+m.verdict+'</span></div>'+
+    '<div class="d">'+m.short+'</div>';
+  c.onclick = ()=> setModel(m.id);
+  cardsEl.appendChild(c);
+});
+
+function build(){
+  disposeGroup(group);   // 先释放旧几何/材质，再摘除
+  clearGroup(group);
+  const b = builders[(MODELS[cur-1]).key];
+  if(!b) return;
+  model = b(rs);
+  group.add(model.group);
+  if (cur === 2){ syncCoilUI(); drawCoilFig(); drawZhoubi(); }   /* ② 还要同步滑块并把展开图 / 弦图重画 */
+}
+
+function setModel(i){
+  cur = i;
+  slider.value = i;
+  sliderVal.textContent = i + ' / 6';
+  [...notchEl.children].forEach(b=> b.classList.toggle('on', +b.dataset.id===i));
+  [...cardsEl.children].forEach(b=> b.classList.toggle('on', +b.dataset.id===i));
+  const m = MODELS[i-1];
+  hudEl.innerHTML = '<b>'+i+'. '+m.name+'</b><br>数学载体：'+m.math+
+     '<br><span style="color:'+m.color+'">能解释：</span>'+m.good;
+  legendEl.innerHTML = '<div><b>'+m.short+'</b></div>'+
+     '<div style="margin-top:6px">公式：<span style="font-family:var(--mono)">'+INFO[i].formula+'</span></div>';
+  srcEl.innerHTML = '出处：'+m.src;
+  badgeEl.textContent = (quad?'六视角 · ':'XYZ 等轴 · ')+m.name;
+  /* ★ 轴名随模型走：② 只画空间 ⇒ 竖直轴是 z（圆柱轴），弹簧与「绕轴公转」才读得通 */
+  buildAxes(i === 2);
+  renderReadout();          /* ★ 切模型时读数面板必须同步（原先漏了，标题会一直停在旧模型） */
+  renderDetail();
+  build();
+  drawCoilFig();
+  drawZhoubi();            /* ★ 弦图与线圈图共用同一套参数，切模型时必须一起重画 */
+}
+
+function renderDetail(){
+  detailEl.innerHTML = MODELS.map(m=>{
+    const open = m.id===cur;
+    return '<div class="card '+(m.id===cur?'':'soft')+'">'+
+      '<div class="ch">'+m.id+'. '+m.name+' <span class="tag '+m.verdictCls+'">'+m.verdict+'</span></div>'+
+      '<table><tbody><tr><th style="width:110px">数学载体</th><td>'+m.math+'</td></tr>'+
+      '<tr><th>能解释</th><td>'+m.good+'</td></tr>'+
+      '<tr><th>会误导</th><td>'+m.bad+'</td></tr></table>'+
+      (open ? m.detail : '')+
+      '<div class="src">出处：'+m.src+'</div></div>';
+  }).join('');
+}
+
+function renderReadout(){
+  const i = cur;
+
+  /* ② 线框网格畸变：读数换成点阵自己的量（钟慢那几行对它没有意义） */
+  if(i === 2){
+    const rho  = rhoOf(rs);
+    const sgn  = (distDir === 'out') ? -1 : 1;
+    const Rp0  = 1 - sgn*rho;
+    infoEl.innerHTML =
+      '<div style="font-family:var(--serif);font-size:16px;font-weight:700;color:var(--ink);margin-bottom:8px">'
+      + i + '. ' + MODELS[i-1].name + '</div>'
+      + coilPanelHTML(coilLastRT)      /* 公式与几何全在 AnuCoil，这里只排版 */
+      + '<div class="bar" style="margin-top:10px"><i style="width:'+(100*Math.min(1,rho/RHO_MAX))+'%"></i></div>'
+      + '<span class="note">位移幅度 ρ 可视化（r<sub>s</sub> 滑块驱动，上限 '+RHO_MAX.toFixed(2)+'）'
+      + (Rp0 < 0 ? ' · R′(0)&lt;0 表示中心已折叠' : '') + '</span>';
+    return;
+  }
+
+  const beta = Math.sqrt(rs/(rs*1.06));
+  const rows = [
+    ['质量 r<sub>s</sub>', rs.toFixed(2)],
+    ['视界处流速 β', '1.000'],
+    ['视界处钟速 dτ/dt', '0.000'],
+    ['r = 2r<sub>s</sub> 钟速', Math.sqrt(1-rs/(2*rs)).toFixed(4)],
+    ['r = 10r<sub>s</sub> 钟速', Math.sqrt(1-rs/(10*rs)).toFixed(4)],
+    ['r = 2r<sub>s</sub> 流速', Math.sqrt(rs/(2*rs)).toFixed(4)]
+  ];
+  infoEl.innerHTML = '<div style="font-family:var(--serif);font-size:16px;font-weight:700;color:var(--ink);margin-bottom:8px">'
+    + i + '. ' + MODELS[i-1].name + '</div>' +
+    rows.map(r=>r[0]+'：<b>'+r[1]+'</b>').join('<br>') +
+    '<div class="bar" style="margin-top:10px"><i style="width:'+(100*Math.min(1,1-Math.sqrt(Math.max(0,1-rs/2))))+'%"></i></div>' +
+    '<span class="note">r=2r<sub>s</sub> 处的钟慢程度可视化</span>';
+}
+
+slider.oninput = e => setModel(+e.target.value);
+rsSlider.oninput = e => { rs = +e.target.value; rsVal.textContent = rs.toFixed(2); build(); renderReadout(); };
+
+/* ---------- ② 线框网格畸变 专用控件 ---------- */
+const dirNotchEl = document.getElementById('dirNotch');
+const nSlider    = document.getElementById('nslider');
+const nValEl     = document.getElementById('nval');
+if(dirNotchEl) dirNotchEl.addEventListener('click', function(e){
+  const b = e.target.closest('button'); if(!b || !b.dataset.d) return;
+  distDir = b.dataset.d;
+  [...this.children].forEach(x => x.classList.toggle('on', x === b));
+  if(cur === 2) build();
+});
+if(nSlider) nSlider.oninput = e => {
+  gridN = +e.target.value; nValEl.textContent = gridN;
+  if(cur === 2) build();
+};
+
+/* ---------- ②-2 转动体摆法：环 / 弹簧线圈（绕竖直轴 z） ----------
+   三条约束反解 R 与 r（原始请求：k 由球大小与每匝个数自然涌现、球不能重叠、
+   间距尽量均匀、R 也要适当）：
+     ① 均匀   k = n·sin(π/n)/(π√(n²−1))      —— 解析，与 R 无关
+     ② 不重叠 r = 0.48·dmin（留 4% 间隙）
+     ③ 装得下 弹簧：R = 2L·0.98/(T·dminCoef(n))；半径向 R + r ≤ L
+   自动化时 R/r 的值由反解给出（滑块**不**禁用，见下）；拖动任一滑块即切手动，
+   读数会把「重叠了多少 / 装不下」一并报出来。 */
+function syncCoilUI(){
+  const isRing = (coilMode === 'ring');
+  const T = coilTurnsEff(), kEff = coilKEff();
+  const set = (id, vid, v, d) => {
+    const a = document.getElementById(id); if(a) a.value = v;
+    const b = document.getElementById(vid); if(b) b.textContent = (+v).toFixed(d);
+  };
+  set('Rslider','Rval', coilR, 3);
+  set('rslider2','rval2', ballR, 3);
+  set('ringNslider','ringNval', ringN, 0);
+  set('turnsSlider','turnsVal', T, 0);
+  set('perTurnSlider','perTurnVal', perTurn, 0);
+  set('kSlider','kVal', kEff, 3);
+  set('ampSlider','ampVal', coilAmpK, 2);
+  const show = (id, on) => { const a = document.getElementById(id); if(a) a.style.display = on ? '' : 'none'; };
+  show('rowRingN', isRing); show('rowTurns', !isRing);
+  show('rowPerTurn', !isRing); show('rowK', !isRing);
+  /* ★ R 与 r 的滑块**永远可拖**（这两个是用户点名的参数，禁用等于把它们藏了）。
+     自动模式下它们显示的是反解值，并在数值后标一个灰色「自动」；拖一下即转手动，
+     反解值停止跟随 —— 想回去就按「自动适配 R,r」。 */
+  const mark = (vid, auto) => {
+    const b = document.getElementById(vid); if(!b) return;
+    b.innerHTML = b.textContent + (auto ? ' <span style="color:#7b8794">自动</span>'
+                                       : ' <span style="color:#9a6700">手动</span>');
+  };
+  mark('Rval', coilFitAuto); mark('rval2', coilFitAuto);
+  const btn = (id, on) => { const b = document.getElementById(id); if(b) b.classList.toggle('on', !!on); };
+  btn('fitBtn', coilFitAuto); btn('kAutoBtn', coilKAuto);
+  btn('colAutoBtn', coilColorAuto); btn('tagBtn', coilTags);
+  /* 方向按钮的「亮」必须由**状态**派生，不能只在 click 里切：
+     否则任何非点击路径改 distDir（脚本/测试/复位）都会让按钮撒谎 ——
+     这一条正是用户这次报的故障的「同族」问题（控件显示与实际计算不一致）。 */
+  const dn = document.getElementById('dirNotch');
+  if (dn) [...dn.children].forEach(x => x.classList.toggle('on', x.dataset.d === distDir));
+  const hint = document.getElementById('coilHint');
+  if (hint) hint.innerHTML = isRing
+    ? ('环模式：只有「左右」一个邻居关系，相邻弦 = 2R sin(π/n)。'
+       + '自动适配把 R 顶到格架边上（球数越多、球越小，这是几何逼出来的，不是风格选择）。')
+    : ('弹簧 = (x,y,z) = (cos t, sin t, k·t)，t ∈ [−Tπ, Tπ]。<b>k = 0 ⇒ 自动固定只有 1 匝</b>。'
+       + '默认 7 匝 × 7 球/匝（每匝上限 12）。每匝 1 个球时均匀条件退化，k 由「装得下 + 不重叠」自然涌现（竖直一列）。'
+       + (coilKAuto ? '' : ' <span style="color:#9a6700">（k 已手动，点「k = 均匀解」回到均匀）</span>'));
+}
+function coilChanged(){
+  if (cur === 2) build();                 /* build() 末尾会 syncCoilUI() + drawCoilFig() */
+  else syncCoilUI();
+}
+(function bindCoil(){
+  if (typeof AnuCoil === 'undefined') return;
+  const notchC = document.getElementById('coilNotch');
+  if (notchC) notchC.addEventListener('click', function(e){
+    const b = e.target.closest('button'); if(!b || !b.dataset.m) return;
+    coilMode = b.dataset.m;
+    [...this.children].forEach(x => x.classList.toggle('on', x === b));
+    coilChanged();
+  });
+  /* 畸变强度：只改「全局标定」的那一个乘数，不动任何几何。
+     旧版这里挂的是「叠加口径 ρ/M vs ρ」两个按钮 —— 那个开关在全局标定下**数学上无效**
+     （统一的比例因子会被增益精确约掉，两个按钮必然给出逐位相同的结果），所以撤掉换成强度。 */
+  const ampS = document.getElementById('ampSlider');
+  if (ampS) ampS.oninput = e => { coilAmpK = +e.target.value; coilChanged(); };
+  const RS = document.getElementById('Rslider');
+  if (RS) RS.oninput = e => {
+    coilR = +e.target.value;
+    coilFitAuto = false;                              /* 拖 R 就接管反解（两种摆法都一样） */
+    coilChanged();
+  };
+  const rS = document.getElementById('rslider2');
+  if (rS) rS.oninput = e => { ballR = +e.target.value; coilFitAuto = false; coilChanged(); };
+  const nS = document.getElementById('ringNslider');
+  if (nS) nS.oninput = e => { ringN = +e.target.value; coilChanged(); };
+  const tS = document.getElementById('turnsSlider');
+  if (tS) tS.oninput = e => { coilTurns = +e.target.value; coilChanged(); };
+  const pS = document.getElementById('perTurnSlider');
+  if (pS) pS.oninput = e => { perTurn = +e.target.value; coilChanged(); };
+  const kS = document.getElementById('kSlider');
+  if (kS) kS.oninput = e => { coilKMan = +e.target.value; coilKAuto = false; coilChanged(); };
+  const bFit = document.getElementById('fitBtn');
+  if (bFit) bFit.onclick = () => { coilFitAuto = !coilFitAuto; coilChanged(); };
+  const bk = document.getElementById('kAutoBtn');
+  if (bk) bk.onclick = () => { coilKAuto = true; coilChanged(); };
+  const bc = document.getElementById('colAutoBtn');
+  if (bc) bc.onclick = () => { coilColorAuto = !coilColorAuto; syncCoilUI(); if(cur===2) build(); };
+  const bt = document.getElementById('tagBtn');
+  if (bt) bt.onclick = () => { coilTags = !coilTags; syncCoilUI(); if(cur===2) build(); };
+  syncCoilUI();
+})();
+document.getElementById('btnPlay').onclick = function(){
+  playing = !playing; this.textContent = playing ? '⏸ 暂停动画' : '▶ 继续动画';
+};
+document.getElementById('btnReset').onclick = ()=>{ camera.position.copy(HOME); controls.target.set(0,0,0); controls.update(); };
+document.getElementById('btnQuad').onclick = function(){
+  quad = !quad; this.classList.toggle('on', quad);
+  renderQuadLabels();
+  badgeEl.textContent = (quad?'六视角 · ':'XYZ 等轴 · ')+MODELS[cur-1].name;
+};
+
+const qgrid = document.getElementById('qgrid');
+function renderQuadLabels(){
+  qgrid.innerHTML='';
+  if(!quad) return;
+  const names=['等轴视角','正前方 (x)','正俯视 (y)','正侧方 (z)','低角度','反向等轴'];
+  for(let i=0;i<6;i++){
+    const d=document.createElement('div');
+    d.className='quadlbl';
+    d.style.left = (Math.floor(i%3)*33.34 + 0.6)+'%';
+    d.style.top = (Math.floor(i/3)*50 + 0.8)+'%';
+    d.textContent = names[i];
+    qgrid.appendChild(d);
+  }
+  // 画分隔线
+  for(let c=0;c<2;c++){
+    const v=document.createElement('div');
+    v.style.cssText='position:absolute;top:0;bottom:0;width:1px;background:#dbe3ee;left:'+((c+1)*33.333)+'%';
+    qgrid.appendChild(v);
+  }
+  const h=document.createElement('div');
+  h.style.cssText='position:absolute;left:0;right:0;height:1px;background:#dbe3ee;top:50%';
+  qgrid.appendChild(h);
+}
+
+/* ---------- 六视角相机 ---------- */
+const D = 26;
+const quadCams = {
+  iso:   new THREE.Vector3(D*0.62, D*0.50, D*0.62),
+  front: new THREE.Vector3(0, 0, D),
+  top:   new THREE.Vector3(0, D, 0.001),
+  side:  new THREE.Vector3(D, 0, 0),
+  low:   new THREE.Vector3(D*0.72, -D*0.28, D*0.66),
+  iso2:  new THREE.Vector3(-D*0.6, D*0.45, -D*0.66)
+};
+const qCam = new THREE.PerspectiveCamera(40, 1, 0.05, 4000);
+
+/* ---------- 自适应尺寸 ---------- */
+function resize(){
+  /* ★ CSS 万一没加载，.viewer 高度为 0 ⇒ 3D 区塌成一条线。这里兜一层。 */
+  if (viewer.clientHeight < 40) viewer.style.height = '620px';
+  const w = Math.max(1, viewer.clientWidth), h = Math.max(1, viewer.clientHeight);
+  renderer.setSize(w, h, false);
+  /* ★ 显式写死 CSS 尺寸，不依赖任何外部样式表，也覆盖可能残留的 inline 尺寸。
+     这是「3D 只剩一个像素/全白」的根治点。 */
+  renderer.domElement.style.width  = w + 'px';
+  renderer.domElement.style.height = h + 'px';
+  camera.aspect = w/h; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize();
+
+/* ---------- 主循环 ---------- */
+const clock = new THREE.Clock();
+let elapsed = 0, glHintDone = false;
+function loop(){
+  requestAnimationFrame(loop);
+  const dt = Math.min(0.05, clock.getDelta());
+  if(playing) elapsed += dt;
+  if(model && model.update) model.update(playing?dt:0, elapsed);
+
+  const w = viewer.clientWidth, h = viewer.clientHeight;
+  if(quad){
+    const cw = Math.floor(w/3), chh = Math.floor(h/2);
+    renderer.setScissorTest(true);
+    const keys = ['iso','front','top','side','low','iso2'];
+    keys.forEach((k, i)=>{
+      const cx = (i%3)*cw, cy = Math.floor(i/3)*chh;
+      const yb = h - cy - chh;
+      renderer.setViewport(cx, yb, cw, chh);
+      renderer.setScissor(cx, yb, cw, chh);
+      qCam.aspect = cw/chh; qCam.updateProjectionMatrix();
+      qCam.position.copy(quadCams[k]); qCam.lookAt(0,0,0);
+      qCam.up.set(0,1,0);
+      if(k==='top') qCam.up.set(0,0,-1);
+      renderer.render(scene, qCam);
+    });
+    renderer.setScissorTest(false);
+    renderer.setViewport(0,0,w,h);
+  } else {
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  /* ★ ② 的标注标签：把 3D 锚点投影到屏幕再定位 HTML（渲染之后相机矩阵才是最新的） */
+  updateCoilTags();
+  /* ★ 真正画出第一帧后，撤掉「正在初始化」占位；WebGL 挂了它就会留着，
+     用户看到的是明确原因，而不是无声的空白。 */
+  if(!glHintDone){
+    glHintDone = true;
+    const gh = document.getElementById('glHint');
+    if(gh) gh.style.display = 'none';
+  }
+}
+
+setModel(5);
+renderReadout();
+loop();
+window.addEventListener('resize', renderQuadLabels);
+window.addEventListener('resize', drawCoilFig);   /* ② 展开图按父容器宽度重排，缩放窗口要重画 */
+
+/* ============================================================
+   ★ 自检钩子（供 _check/zhoubi_test.js 使用）—— 只读，不参与任何渲染逻辑
+   __figLabels：画布文字落点台账。直接给**数组引用**（figLabBegin 是原地 splice，
+                不重新赋值）⇒ 页面每一次重画后，测试端看到的都是最新的那一份。
+   __zhoubi    ：弦图的口径与几何，直接复用页面里的函数，避免测试端另写一遍实现
+                （两边各自实现的话，「页面算错、测试也照着错」就白测了）。
+   ============================================================ */
+window.__figLabels = figLabels;
+window.__zhoubi = {
+  led: figLabels,
+  cur: () => cur,                       /* 当前模型号（② 才有弦图） */
+  n: () => zhoubiOrder(),               /* 当前阶 = 每匝球数 */
+  split: zhoubiSplit, verts: zhoubiVerts, tris: zhoubiTris,
+  orders: () => { const a = []; for (let k = 3; k <= 12; k++) a.push(k); return a; },
+  /* ★ 2026-10-12 新增：可闭合阶（整数勾股分解）那一套 —— 测试端全部走页面实现 */
+  splitAll: zhoubiSplitAll,             /* 定义级枚举：n 的全部整数拆法 */
+  splitBest: zhoubiSplitBest,           /* 有整数解取最端庄，否则退回最平衡拆法 */
+  term: pythTerm,                       /* 通项 N = g(u²+2uv−v²) 的构造端（独立实现，供对拍） */
+  pythOrders: pythOrders,               /* n ≤ lim 的全部可闭合阶 */
+  isSeven: pythIsSeven,                 /* 该组解是否落在 7g 族 */
+  buildTable: buildPythTable,           /* 重建 ③ 总表，返回 {nOrders, nSplits} */
+  buildAnu: buildAnuBridge             /* 重建 ④ anu 对齐卡，返回 {tree, P6} */
+};
+
+/* ============================================================
+   浮窗 / HUD / Shift 拖动 —— 统一初始化（SOUL 铁律 184 / 185）
+   ============================================================ */
+(function(){
+  if (typeof ParamPanel === 'undefined') return;
+
+  /* ① 所有可调参数收进右侧浮窗：标题栏可拖动，右上角 −/＋ 收起，状态入 localStorage */
+  ParamPanel.attach({ win:'paramWin', head:'pwHead', toggle:'pwToggle', key:'sixmodels' });
+
+  /* ② 图内读数板加「可收起」按钮（内容由 setModel() 反复重写 ⇒ 已给显式 .hud-body） */
+  ParamPanel.hud(document.querySelectorAll('#viewer .hud'));
+
+  /* ③ Shift + 拖动 = 搬动物体本体（相机 / 坐标轴 / 参考网格不动）；双击画布归位 */
+  function showPan(o){
+    var el = document.getElementById('panInfo');
+    if (el) el.textContent = '位移 = (' + o.x.toFixed(2) + ', ' + o.y.toFixed(2) + ', ' + o.z.toFixed(2) + ')';
+  }
+  /* ⚠ 六视角模式下画布被切成 6 块小视口，此时不接管拖动，避免与 scissor 渲染混淆 */
+  var pan = ParamPanel.bindShiftPan({
+    viewer:'viewer', camera:camera, target:controls.target,
+    object:group, limit:14, yMin:-14, onDelta:showPan
+  });
+  var home = document.getElementById('panHome');
+  if (home) home.onclick = function(){
+    if (pan) pan.home();
+    else { group.position.set(0,0,0); showPan({x:0,y:0,z:0}); }
+  };
+  showPan({x:0,y:0,z:0});
+})();
+</script>
+<!--FXCTL:JS--><script id="fxctl-js">
+/* ============================================================
+   PKS · 通用「调参浮窗」 (float_ctl.js)
+   作用：把页面里成块的参数控件（.ctl / .ctrl / .controls / .calc /
+        .panel[纯控件] / [data-param-panel]）收进右下角一个可拖动浮窗。
+   原则：
+     1. 只搬控件块本身，**不复制、不重建** ⇒ 原页面绑定在元素上的
+        事件监听、id、input 值全部照常工作。
+     2. 搬不走的、散的（每张卡片各一组、且组数很多）→ 整页放弃，
+        保持原样，并在 console 里说明原因，绝不半搬半留。
+     3. 位置写入 localStorage；双击标题栏回默认位；⇱/— 收起。
+   ============================================================ */
+(function () {
+  if (window.__FXCTL) return;
+
+  var SEL = '.ctl,.ctrl,.controls,.calc,.param-panel,.grp,.htgroup,[data-param-panel]';
+  var MAX_GROUPS = 16;    // 超过这个组数：判定为"散在每张卡片里"，整页跳过
+  var MIN_SHARE = 0.85;   // 收进去的滑块至少要占全页 85%，否则跳过（不做半搬半留）
+  var KEY = 'fxp:' + location.pathname;
+
+  function txt(el, n) {
+    var s = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    if (n && s.length > n) s = s.slice(0, n - 1) + '…';
+    return s;
+  }
+  function inChrome(el) {
+    return !!(el.closest && el.closest('.topnav,header,nav,.topbar,.fxp,#fxp'));
+  }
+
+  /* ---------- 1. 找参数面板 ---------- */
+  // 页面自己已经有一个"贴右边的浮动参数窗"？有就不再叠第二个
+  function hasOwnDock() {
+    var els = [].slice.call(document.querySelectorAll('body > *'));
+    // 也看一两层深，很多页把 pwin 套在 wrapper 里
+    document.querySelectorAll('body div, body section, body aside').forEach(function (x) {
+      if (els.length < 400) els.push(x);
+    });
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      if (el.id === 'fxp') continue;
+      if (getComputedStyle(el).position !== 'fixed') continue;
+      var r = el.getBoundingClientRect();
+      if (r.width > 240 && r.width < 620 && r.height > 240 &&
+          (innerWidth - r.right) < 70 && r.top < 220) return true;
+    }
+    return false;
+  }
+
+  function detect() {
+    var all = [].slice.call(document.querySelectorAll('input[type=range]'));
+    if (hasOwnDock()) {
+      return { panels: [], total: all.length, inline: 0, moved: 0, ok: false, own: true };
+    }
+    // 已经在自己的浮窗里（祖先 fixed）的滑块：不算在"待浮"里，也不搬
+    function inFixed(el) {
+      var a = el, d = 0;
+      while (a && d++ < 5) {
+        if (getComputedStyle(a).position === 'fixed') return true;
+        a = a.parentElement;
+      }
+      return false;
+    }
+    var inline = all.filter(function (i) { return !inFixed(i); });   // 仍躺在正文里的
+    var cands = [].slice.call(document.querySelectorAll(SEL)).filter(function (el) {
+      if (inChrome(el)) return false;
+      if (!el.querySelector('input[type=range]')) return false;
+      if (inFixed(el)) return false;                                 // 已在浮窗内
+      var hasCanvas = !!el.querySelector('canvas,svg,video,img');
+      var cls = el.className || '';
+      var isParamCol = /(^|\s)(ctl|ctrl|controls|calc|param-panel)(\s|$)/.test(cls);
+      if (hasCanvas && !isParamCol) return false;
+      if (el.classList.contains('panel') || el.classList.contains('grp')) {
+        return el.querySelectorAll('input[type=range]').length >= 2;
+      }
+      return true;
+    });
+    // 去重 + 保留最外层
+    cands = cands.filter(function (el, i) {
+      if (cands.indexOf(el) !== i) return false;
+      return !cands.some(function (o) { return o !== el && o.contains(el); });
+    });
+    var moved = 0;
+    cands.forEach(function (el) { moved += el.querySelectorAll('input[type=range]').length; });
+    var ok = cands.length > 0 && cands.length <= MAX_GROUPS &&
+             (inline.length ? moved / inline.length >= MIN_SHARE : false);
+    return { panels: cands, total: all.length, inline: inline.length, moved: moved, ok: ok };
+  }
+
+  /* ---------- 2. 取分组标签（最近的标题 / .vt）---------- */
+  function labelFor(el) {
+    var gt = el.querySelector && el.querySelector('.gt');
+    if (gt) return txt(gt, 22);
+    var v0 = el.closest && el.closest('.viz');
+    if (v0) { var t0 = v0.querySelector('.vt'); if (t0) return txt(t0, 22); }
+    var node = el, hop = 0;
+    while (node && hop++ < 6) {
+      var prev = node.previousElementSibling;
+      while (prev) {
+        if (/^H[1-4]$/.test(prev.tagName)) return txt(prev, 22);
+        if (prev.querySelector) {
+          var h = prev.querySelector('h2,h3,h4,.vt');
+          if (h) return txt(h, 22);
+        }
+        prev = prev.previousElementSibling;
+      }
+      node = node.parentElement;
+    }
+    return '';
+  }
+
+  /* 搬走控件后，父级若是两列网格且变空 → 收成一列，避免右侧留一条空白 */
+  function collapseTrack(el) {
+    var par = el.parentElement;
+    if (!par) return;
+    var cs = getComputedStyle(par);
+    if (cs.display !== 'grid') return;
+    var tracks = (cs.gridTemplateColumns || '').split(/\s+/).filter(function (x) { return x && x !== 'none'; });
+    if (tracks.length !== 2) return;
+    if (par.lastElementChild !== el) return;
+    par.style.gridTemplateColumns = '1fr';
+  }
+
+  /* ---------- 3. 搭面板 ---------- */
+  function build(d) {
+    var old = document.getElementById('fxp');
+    if (old) old.remove();
+
+    var p = document.createElement('div');
+    p.id = 'fxp';
+    var counts = d.panels.map(function (el) {
+      return el.querySelectorAll('input[type=range]').length;
+    });
+    var nRange = counts.reduce(function (a, b) { return a + b; }, 0);
+
+    p.innerHTML =
+      '<div class="fxp-h" id="fxpH">' +
+        '<span class="fxp-grip">⠿</span>' +
+        '<span class="fxp-t">调参</span>' +
+        '<span class="fxp-c">' + d.panels.length + ' 组 · ' + nRange + ' 滑块</span>' +
+        '<button class="fxp-b" data-a="mini" title="收起 / 展开">—</button>' +
+        '<button class="fxp-b" data-a="reset" title="回到默认位置（也可双击标题栏）">⟲</button>' +
+      '</div><div class="fxp-bd"></div>';
+
+    var bd = p.querySelector('.fxp-bd');
+    var used = {}, noteDone = false;
+    d.panels.forEach(function (el, i) {
+      var lb = labelFor(el) || ('参数组 ' + (i + 1));
+      if (used[lb]) { used[lb]++; lb = lb.slice(0, 16) + ' (' + used[lb] + ')'; } else { used[lb] = 1; }
+      var g = document.createElement('div');
+      g.className = 'fxp-grp';
+      var gl = document.createElement('div');
+      gl.className = 'fxp-gl';
+      gl.innerHTML = '<b>' + lb.replace(/</g, '&lt;') + '</b><i>' + counts[i] + '</i>';
+      g.appendChild(gl);
+
+      if (!noteDone && el.parentNode) {
+        var note = document.createElement('p');
+        note.className = 'fxp-note';
+        note.textContent = '参数已收进右侧浮窗「调参」（拖标题栏可挪走 · 双击回位）';
+        el.parentNode.insertBefore(note, el);
+        noteDone = true;
+      }
+      collapseTrack(el);
+
+      g.appendChild(el);          // ← 原节点整体搬入，事件与 id 不变
+      bd.appendChild(g);
+    });
+
+    document.body.appendChild(p);
+    return p;
+  }
+
+  /* ---------- 4. 位置 / 拖动 / 收起 ---------- */
+  function clamp(p) {
+    var r = p.getBoundingClientRect(), W = innerWidth, H = innerHeight;
+    var x = Math.min(Math.max(r.left, -r.width + 90), W - 90);
+    var y = Math.min(Math.max(r.top, 0), H - 44);
+    p.style.left = x + 'px'; p.style.top = y + 'px';
+    p.style.right = 'auto'; p.style.bottom = 'auto';
+  }
+  function defPos(p) {
+    p.style.left = ''; p.style.right = ''; p.style.top = ''; p.style.bottom = '';
+  }
+  function save(p) {
+    try {
+      var st = p.classList.contains('fxp-min');
+      if (!p.style.left) { localStorage.removeItem(KEY); return; }
+      localStorage.setItem(KEY, JSON.stringify({
+        x: parseFloat(p.style.left), y: parseFloat(p.style.top), mini: st
+      }));
+    } catch (e) {}
+  }
+  function load(p) {
+    try {
+      var s = localStorage.getItem(KEY);
+      /* 首次访问一律收起：页面本身就有「参数」竖条，浮窗默认展开会把画布挤掉 322px；
+         收起的标题条写着「调参 · N 组 · M 滑块」，一眼能看见、点一下就展开，状态会被记住。 */
+      if (!s) { p.classList.add('fxp-min'); return; }
+      var o = JSON.parse(s);
+      if (o.mini) p.classList.add('fxp-min');
+      if (typeof o.x === 'number' && isFinite(o.x)) {
+        p.style.left = o.x + 'px'; p.style.top = o.y + 'px';
+        p.style.right = 'auto'; p.style.bottom = 'auto';
+        clamp(p);
+      }
+    } catch (e) {}
+  }
+
+  function wire(p) {
+    var h = p.querySelector('#fxpH');
+    var drag = null;
+
+    h.addEventListener('pointerdown', function (ev) {
+      if (ev.target.closest('button')) return;
+      if (innerWidth <= 880) return;                 // 窄屏走底部抽屉，不拖
+      var r = p.getBoundingClientRect();
+      drag = { dx: ev.clientX - r.left, dy: ev.clientY - r.top, moved: false };
+      p.style.left = r.left + 'px'; p.style.top = r.top + 'px';
+      p.style.right = 'auto'; p.style.bottom = 'auto';
+      h.classList.add('fxp-drag');
+      h.setPointerCapture && h.setPointerCapture(ev.pointerId);
+      ev.preventDefault();
+    });
+    h.addEventListener('pointermove', function (ev) {
+      if (!drag) return;
+      drag.moved = true;
+      p.style.left = (ev.clientX - drag.dx) + 'px';
+      p.style.top = (ev.clientY - drag.dy) + 'px';
+      var r = p.getBoundingClientRect();
+      var nx = Math.min(Math.max(r.left, -r.width + 90), innerWidth - 90);
+      var ny = Math.min(Math.max(r.top, 0), innerHeight - 44);
+      p.style.left = nx + 'px'; p.style.top = ny + 'px';
+    });
+    function end() { if (drag) { h.classList.remove('fxp-drag'); save(p); drag = null; } }
+    h.addEventListener('pointerup', end);
+    h.addEventListener('pointercancel', end);
+
+    h.addEventListener('dblclick', function (ev) {
+      if (ev.target.closest('button')) return;
+      defPos(p);
+      try { localStorage.removeItem(KEY); } catch (e) {}
+    });
+
+    p.addEventListener('click', function (ev) {
+      var b = ev.target.closest('button[data-a]');
+      if (!b) return;
+      if (b.dataset.a === 'mini') { p.classList.toggle('fxp-min'); save(p); }
+      if (b.dataset.a === 'reset') { defPos(p); p.classList.remove('fxp-min'); save(p); }
+    });
+
+    addEventListener('resize', function () { if (p.style.left) clamp(p); });
+  }
+
+  /* ---------- 5. 启动 ---------- */
+  function boot() {
+    var d = detect();
+    if (!d.ok) {
+      if (d.own) {
+        console.info('[调参浮窗] 本页跳过：页面自己已有贴右的可拖动参数窗，不叠第二个');
+      } else if (d.inline === 0 && d.total > 0) {
+        console.info('[调参浮窗] 本页跳过：' + d.total + ' 个滑块全在页面自己的浮窗里，没有需要搬的');
+      } else if (d.panels.length) {
+        console.info('[调参浮窗] 本页跳过：' + d.panels.length + ' 组、待浮滑块 ' +
+          d.moved + '/' + d.inline + '（判据：≤' + MAX_GROUPS + ' 组且 ≥' +
+          Math.round(MIN_SHARE * 100) + '%；已在浮窗内的 ' + (d.total - d.inline) + ' 个不计）');
+      }
+      return;
+    }
+    var p = build(d);
+    load(p);
+    wire(p);
+    console.info('[调参浮窗] 已收 ' + d.moved + '/' + d.inline + ' 个待浮滑块，' +
+      d.panels.length + ' 组（另 ' + (d.total - d.inline) + ' 个本来就在浮窗里）');
+  }
+
+  window.__FXCTL = { detect: detect, boot: boot, build: build };
+
+  if (document.readyState === 'complete') setTimeout(boot, 60);
+  else addEventListener('load', function () { setTimeout(boot, 60); });
+})();
+
+</script><!--/FXCTL:JS-->
+</body>
+</html>

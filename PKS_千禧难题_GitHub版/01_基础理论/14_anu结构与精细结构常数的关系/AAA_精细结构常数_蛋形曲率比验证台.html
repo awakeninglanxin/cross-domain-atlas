@@ -1,0 +1,2344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>α = 蛋形尖/钝曲率比？· 可调参验证台</title>
+<style>
+  :root{
+    --ink:#1d2433; --ink2:#46506a; --ink3:#727b96;
+    --line:#e3e7f0; --bg:#fbfbfd; --card:#ffffff;
+    --purple:#6b3fa0; --blue:#1f6fd0; --green:#17724a; --red:#b3261e; --amber:#a86600;
+    --tip:#d9472b; --blunt:#2a72c9;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--ink);
+    font:14px/1.75 system-ui,-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrapbox{max-width:1280px;margin:0 auto;padding:26px 22px 70px}
+  /* 浮窗展开时给它让出右侧一条通道（否则正文会被压住）；收起后自动收回 */
+  .pgmain{padding:0 18px}
+  @media (min-width:1101px){
+    body:not(.pw-min) .pgmain{padding-right:412px}
+  }
+  header.hd{border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:20px}
+  h1{font-size:26px;line-height:1.35;margin:0 0 6px;letter-spacing:.2px}
+  h1 .sub{font-size:14px;font-weight:500;color:var(--ink3);margin-left:10px}
+  .lead{margin:8px 0 0;color:var(--ink2);max-width:1000px}
+  .lead code{background:#eef1f8;padding:1px 5px;border-radius:4px;font-size:12.5px}
+
+  .topV{
+    margin-top:14px;padding:12px 16px;border-radius:8px;
+    border-left:5px solid var(--red);background:#fdf1f0;color:#7a1c16;font-size:14.5px;
+  }
+  .topV.ok{border-left-color:var(--green);background:#eef8f2;color:#0f5133}
+  .topV.warn{border-left-color:var(--amber);background:#fdf6e8;color:#6b4200}
+  .topV b{font-size:15px}
+
+  /* 2026-10-19 判决条：本页从「验证台」降级为「反例教学页」 */
+  .vdict{margin:14px 0 4px;padding:13px 16px 14px;border-radius:9px;
+    border:1px solid #e6c9c5;border-left:5px solid var(--red);background:#fdf3f2;color:#6f1b15;
+    font-size:13.6px;line-height:1.85}
+  .vdict .vt{display:block;font-size:11.5px;letter-spacing:.6px;color:var(--red);
+    font-weight:700;margin-bottom:5px}
+  .vdict b{color:#4a120d}
+  .vdict ol{margin:6px 0 2px;padding-left:20px}
+  .vdict li{margin:4px 0}
+  .vdict .tag2{display:inline-block;background:#b3261e;color:#fff;border-radius:4px;
+    padding:0 6px;font-size:11px;line-height:1.6;margin-right:6px;vertical-align:1px}
+
+  /* 正文单栏满宽；参数控件全部收进右侧固定浮窗（项目统一约定，见 _check/struct_test.js） */
+  main{display:block}
+
+  .stage{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px}
+  #cv{display:block;width:100%;height:606px;border-radius:6px}
+  .cap{font-size:12.5px;color:var(--ink3);padding:8px 6px 2px;line-height:1.7}
+  .cap b{color:var(--ink2)}
+
+  /* ── 调参浮窗（右·固定·可拖·可折叠；与 ①②③ 页同一套约定） ───────── */
+  aside.panel{
+    position:fixed; z-index:840; top:84px; right:16px;
+    width:342px; max-height:calc(100vh - 104px);
+    display:flex; flex-direction:column;
+    background:var(--card); border:1px solid #cfd6e0; border-radius:12px;
+    padding:0; overflow:hidden;
+    box-shadow:0 2px 6px rgba(18,22,28,.08), 0 14px 40px rgba(18,22,28,.14);
+  }
+  .pw-h{
+    display:flex; align-items:center; gap:7px; padding:8px 9px 8px 10px;
+    cursor:grab; touch-action:none; border-bottom:1px solid var(--line);
+    background:linear-gradient(#fbfcfe,#f4f7fb); font-size:12.5px; color:var(--ink2);
+  }
+  .pw-h.drag{cursor:grabbing}
+  .pw-h .grip{color:#9aa6b6;font-size:13px}
+  .pw-h b{font-size:14px;color:#0d2f63;letter-spacing:.3px}
+  .pw-h .cnt{margin-left:auto;font:11px Consolas,monospace;color:#6b7683;white-space:nowrap}
+  .pw-x{
+    width:22px;height:22px;flex:0 0 22px;padding:0;line-height:1;
+    border:1px solid #cfd6e0;background:#fff;border-radius:6px;
+    color:#3b4552;font-size:12px;cursor:pointer;font-family:inherit;
+  }
+  .pw-x:hover{border-color:#1f6fd0;color:#1f6fd0;background:#f4f7fb}
+  .pw-bd{overflow:auto;padding:12px 15px 14px;flex:1 1 auto}
+  .pw-bd::-webkit-scrollbar{width:8px}
+  .pw-bd::-webkit-scrollbar-thumb{background:#d7dee8;border-radius:4px}
+  .pw-adv{margin-top:12px;padding-top:8px;border-top:1px dashed var(--line)}
+  .pw-adv summary{cursor:pointer;font-size:12px;color:var(--ink2);padding:3px 0 5px;list-style:none}
+  .pw-adv summary::-webkit-details-marker{display:none}
+  .pw-adv summary::before{content:"▸ ";color:#9aa6b6}
+  .pw-adv[open] summary::before{content:"▾ "}
+  aside.panel.min{width:auto;min-width:176px}
+  aside.panel.min .pw-bd{display:none}
+  aside.panel.min .pw-h{border-bottom:0}
+  @media (max-width:1180px){
+    aside.panel{width:min(342px, calc(100vw - 24px))}
+  }
+  @media print{ aside.panel{display:none !important} }
+  .prow{margin:12px 0 4px}
+  .plab{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;color:var(--ink2)}
+  .plab b{font-size:15px;color:var(--ink);font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;margin:6px 0 2px;accent-color:#6b3fa0}
+  .hint{font-size:11.8px;color:var(--ink3);line-height:1.65}
+
+  .btns{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px}
+  .btn{
+    border:1px solid #cfd6e6;background:#f7f9fd;color:#2b3550;border-radius:6px;
+    padding:5px 9px;font-size:12px;cursor:pointer;font-family:inherit;
+  }
+  .btn:hover{background:#eef2fb}
+  .btn.on{background:linear-gradient(#f3ecff,#e8dcff);border-color:#8f6bc4;color:#4c2a7a;font-weight:600}
+  .btn.acc{border-color:#d9a94a;background:#fff8e8;color:#7a5200;font-weight:600}
+
+  dl.read{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;margin:12px 0 0;font-size:12.6px}
+  dl.read dt{color:var(--ink3)}
+  dl.read dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink)}
+  dl.read dd.hl{font-weight:700}
+
+  .verdict{margin-top:12px;padding:9px 11px;border-radius:7px;font-size:12.8px;line-height:1.65}
+  .verdict.bad{background:#fdf1f0;border:1px solid #f0c9c5;color:#8a221b}
+  .verdict.mid{background:#fdf6e8;border:1px solid #efd9a8;color:#6b4200}
+  .verdict.good{background:#eef8f2;border:1px solid #bfe3cf;color:#0f5133}
+  .verdict .big{display:block;font-size:15px;font-weight:700;margin-bottom:2px}
+
+  section.scan{margin-top:22px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+  section.scan h2, section.cards h2, section.method h2{
+    font-size:15px;margin:0 0 10px;letter-spacing:.3px
+  }
+  section.scan h2 span, section.cards h2 span, section.method h2 span{
+    font-weight:400;font-size:12px;color:var(--ink3);margin-left:8px
+  }
+  #cv2{display:block;width:100%;height:250px;border-radius:6px}
+  #cv3{display:block;width:100%;height:238px;border-radius:6px}
+
+  /* §2b 并列双图：左截面 / 右 3D 锥切 */
+  section.cutpair{margin-top:22px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+  section.cutpair h2{font-size:15px;margin:0 0 10px;letter-spacing:.3px}
+  section.cutpair h2 span{font-weight:400;font-size:12px;color:var(--ink3);margin-left:8px}
+  .lead2{margin:0 0 12px;color:var(--ink2);font-size:13px;line-height:1.85;max-width:1080px}
+  .lead2 code{background:#eef1f8;padding:1px 5px;border-radius:4px;font-size:12.3px}
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width:980px){ .duo{grid-template-columns:1fr} }
+  .duo .cell{border:1px solid var(--line);border-radius:8px;padding:8px;background:#fcfcfe;min-width:0}
+  .duo canvas{display:block;width:100%;height:340px;border-radius:6px;touch-action:none;cursor:grab}
+  .duo canvas:active{cursor:grabbing}
+  .duo .lab2{font-size:12px;color:var(--ink3);padding:7px 3px 2px;line-height:1.65}
+  .duo .lab2 b{color:var(--ink2)}
+  .duo .lab2 code{background:#eef1f8;padding:0 3px;border-radius:3px}
+  .kbrow{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:12px 0 8px}
+  @media (max-width:1080px){ .kbrow{grid-template-columns:repeat(2,1fr)} }
+  .kbrow .dbox .v{font-size:15px}
+  .cutctl{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0 6px}
+  .cutctl .sep{width:1px;height:18px;background:var(--line);margin:0 5px}
+  .cutctl .note{font-size:11.6px;color:var(--ink3);line-height:1.6}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:8px 0 2px}
+  @media (max-width:700px){ .row2{grid-template-columns:1fr} }
+  .row2 .plab2{display:flex;justify-content:space-between;font-size:12px;color:var(--ink2)}
+  .row2 .plab2 b{color:var(--ink);font-variant-numeric:tabular-nums}
+
+  /* §5 白银比一节：老师立论用紫框，和页内其它"立论层"同一套色 */
+  .teacher{
+    margin:12px 0 4px;padding:12px 14px;border-radius:8px;
+    border-left:5px solid var(--purple);background:#f7f2fd;color:#3d2357;font-size:13px;line-height:1.8;
+  }
+  .teacher .who{font-weight:700;font-size:11.5px;letter-spacing:.6px;color:var(--purple);display:block;margin-bottom:4px}
+  .teacher q{font-style:italic}
+  .dgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0 6px}
+  @media (max-width:900px){ .dgrid{grid-template-columns:repeat(2,1fr)} }
+  .dbox{background:#f7f9fd;border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+  .dbox .k{font-size:11.5px;color:var(--ink3);display:block;margin-bottom:2px}
+  .dbox .v{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink)}
+  .dbox .n{font-size:11px;color:var(--ink3);display:block;margin-top:2px}
+  .dbox.hot{background:#fdf1f0;border-color:#f0c9c5}
+  .dbox.hot .v{color:var(--red)}
+  .dbox.ok{background:#eef8f2;border-color:#bfe3cf}
+  .dbox.ok .v{color:var(--green)}
+  code.f{background:#eef1f8;padding:2px 6px;border-radius:4px;font-size:12.5px}
+
+  section.cards{margin-top:22px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media (max-width:1040px){ section.cards{grid-template-columns:1fr} }
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 15px}
+  .card .lv{font-size:11.5px;font-weight:700;letter-spacing:.6px;margin-bottom:6px}
+  .card.blue{border-top:3px solid var(--blue)} .card.blue .lv{color:var(--blue)}
+  .card.purple{border-top:3px solid var(--purple)} .card.purple .lv{color:var(--purple)}
+  .card.red{border-top:3px solid var(--red)} .card.red .lv{color:var(--red)}
+  .card h4{margin:0 0 6px;font-size:14px}
+  .card p{margin:0 0 8px;font-size:12.8px;color:var(--ink2)}
+  .card p:last-child{margin-bottom:0}
+  .card .mono{font-family:ui-monospace,Consolas,monospace;font-size:12.2px;background:#f4f6fb;padding:6px 8px;border-radius:5px;display:block;line-height:1.7;color:#2b3550}
+  .card .kbad{color:var(--red);font-weight:700}
+  .card .kok{color:var(--green);font-weight:700}
+
+  section.method{margin-top:22px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+  section.method ol{margin:6px 0 0;padding-left:22px}
+  section.method li{margin:6px 0;color:var(--ink2);font-size:13px}
+  section.method li b{color:var(--ink)}
+  .foot{margin-top:26px;font-size:12px;color:var(--ink3);line-height:1.8;border-top:1px solid var(--line);padding-top:12px}
+  .foot code{background:#eef1f8;padding:1px 5px;border-radius:4px}
+  table.mini{border-collapse:collapse;font-size:12.3px;margin:8px 0 2px;width:100%}
+  table.mini th,table.mini td{border-bottom:1px solid var(--line);padding:5px 8px;text-align:left}
+  table.mini th{color:var(--ink3);font-weight:500;background:#f7f9fd}
+  table.mini td.n{text-align:right;font-variant-numeric:tabular-nums}
+  table.mini td.ok-td{background:#f1f9f4}
+  table.mini td.warn-td{background:#fdf7ea}
+  table.mini td.bad-td{background:#fdf1f0;color:#7a1c16}
+
+  /* ── §3b Leadbeater 内观尺度阶梯 ─────────────────────────────── */
+  #cvLB{display:block;width:100%;height:236px;background:#fff;border:1px solid var(--line);border-radius:8px;margin:10px 0 2px}
+  table.lbtab{margin-top:10px}
+  table.lbtab td.lv{white-space:nowrap;font-size:11.8px}
+  .lvtag{display:inline-block;padding:1px 6px;border-radius:4px;font-size:11px;border:1px solid}
+  .lvtag.pu{color:#6b3fa0;border-color:#cbb6e2;background:#f7f2fd}
+  .lvtag.bl{color:#1f6fd0;border-color:#bcd4ef;background:#f1f7fe}
+  .lvtag.gr{color:#17724a;border-color:#b7ddc9;background:#eef8f2}
+  .lbtry{
+    display:flex;flex-wrap:wrap;align-items:center;gap:10px;
+    margin:12px 0 4px;padding:11px 13px;border:1px solid var(--line);
+    border-radius:8px;background:#f9fafd;
+  }
+  .lbtry input[type=range]{flex:1 1 220px;margin:0}
+  .lbtry .val{font:13px Consolas,monospace;min-width:56px;text-align:right;color:var(--ink)}
+  .lbtry .rl{font-size:12.4px;color:var(--ink2)}
+</style>
+</head>
+<body>
+<div class="pgmain">
+<div class="wrapbox">
+
+<header class="hd">
+  <h1>α = 蛋形尖/钝曲率比？<span class="sub">一个反例：能凑上 α，不等于解释了 α</span></h1>
+
+  <div class="vdict" id="topVerdict">
+    <span class="vt">2026-10-19 判决 · 本模型不作为 α 的解释，本页降级为反例教学页</span>
+    <span class="tag2">不成立</span><b>不是"暂时没算准"，是方法上不可能成立。</b>
+    理由只有一条，但它是决定性的：
+    <ol>
+      <li><b>单参数族 + 单目标 ⇒ 中间值定理保证有解。</b>蛋形族只有一个形状自由度 <code>k_E</code>，
+        比值 <code>R_tip/R_blunt</code> 随它单调变化；只要两端扫到的值跨过 α，<b>就必然存在一个 k_E 让比值正好等于 α</b>。
+        这与"α 是多少"无关 —— 把 α 换成 1/π、1/e、0.123456，同样能反解出一个 k_E。所以"解出来"这件事<b>零信息量</b>。</li>
+      <li><b>那个解落在边界上。</b>反解出的 <code>k_E = 2.409930</code> 处，判别式只剩 <b>6.3×10⁻⁶</b>
+        （几乎退化），尖端曲率半径只占长轴 <b>0.126%</b>。解不是"落在族内部"，是<b>被挤到边界挤出来的</b>。</li>
+      <li><b>它没有第二个可检验量。</b>模型里除了 α 没有别的靶子 —— 不能预言任何独立的数，
+        所以永远无法被"算错"。</li>
+    </ol>
+    <b>真正能判它死刑的是对比</b>：同样是把 α 读成两个长度之比，环面模型那两个长度
+    （R_c、a₀）<b>都是可独立测量的物理长度</b>；蛋形这两个长度是<b>曲率半径</b>，是导出量，没有独立测量。
+    所以按"能不能被检验"排序：<b>环面 &gt; 蛋形</b> —— 这一点老师的判断是对的（详见 §6b）。<br>
+    <b>但环面也不是全胜</b>：把 Reed 的环面接到 anu 的 1680 匝上，几何会差 3.90 倍（§6b 有算式）。
+    <b>结构对、数量不对</b> —— 这是目前这条线最诚实的结论。
+  </div>
+
+  <p class="lead">
+    这一页只做一件事：把「精细结构常数 α = 蛋形尖端曲率半径 ÷ 钝端曲率半径」这句话，
+    放回<b>项目自己那份蛋形方程</b>里去算。蛋形族用
+    <code>14_anu结构与精细结构常数的关系</code> 所属的同一套双曲锥斜截式
+    （<code>egg_curve.py</code> / <code>egg_analytic.py</code>），
+    曲率取<b>解析式</b>（不是差分，两端不发散）。
+    右上浮窗里的滑条可以拖、也可以反解 —— <b>算出来的数是什么就显示什么</b>。
+    <b>而现在仍然保留这一页的唯一理由，是它可以当作"事后拟合长什么样"的标本</b>（§4 讲清了判据）。
+  </p>
+  <div class="topV" id="topV">正在计算…</div>
+</header>
+
+<main>
+  <section class="stage">
+    <canvas id="cv"></canvas>
+    <div class="cap" id="cap1">
+      <b>怎么读</b>：蛋尖朝上、钝端朝下。两条彩色圆弧是两端<b>曲率圆</b>（osculating circle）——
+      圆越小表示那一点弯得越急。淡色梳齿是<b>曲率梳</b>，齿越长曲率越大。
+      半径是<b>归一化</b>的（尖顶高度 z₁ = 1），所以只看比值，不看绝对尺寸。
+    </div>
+  </section>
+
+  <aside class="panel" id="pWin">
+    <div class="pw-h" id="pwH" title="拖动移动 · 双击回到默认位置">
+      <span class="grip">⠿</span><b>调参浮窗</b>
+      <span class="cnt" id="pwCnt">1 滑块</span>
+      <button class="pw-x" id="pwMin" title="收起 / 展开">—</button>
+      <button class="pw-x" id="pwReset" title="回到默认位置（也可双击标题栏）">⟲</button>
+    </div>
+    <div class="pw-bd" id="pwBd">
+    <div class="hint" style="margin:-2px 0 8px">改一个数，全页跟着重算</div>
+
+    <div class="prow">
+      <div class="plab"><span>k_E（蛋形度 = z₂/z₁）</span><b id="vKE">—</b></div>
+      <input type="range" id="sKE" min="1.005" max="2.4142" step="0.0001" value="1.9371">
+      <div class="hint" id="hKE">—</div>
+    </div>
+
+    <div class="btns">
+      <button class="btn" id="bGolden">黄金蛋</button>
+      <button class="btn" id="bOct">八度蛋</button>
+      <button class="btn" id="bBall">近球形</button>
+      <button class="btn" id="bSilver">白银比 1+√2</button>
+      <button class="btn acc" id="bSolve">★ 反解：让比值 = α</button>
+    </div>
+
+    <dl class="read">
+      <dt>截面倾角 θ_cut</dt><dd id="rTh">—</dd>
+      <dt>尖端曲率半径 R_tip</dt><dd id="rRT">—</dd>
+      <dt>钝端曲率半径 R_blunt</dt><dd id="rRB">—</dd>
+      <dt><b>R_tip / R_blunt</b></dt><dd id="rRatio" class="hl">—</dd>
+      <dt><b>α = 1/137.036</b></dt><dd id="rAlpha" class="hl">—</dd>
+      <dt><b>比值 ÷ α</b></dt><dd id="rTimes" class="hl">—</dd>
+      <dt>κ_tip / κ_blunt</dt><dd id="rKap">—</dd>
+      <dt>长宽比 H/W（实际轮廓）</dt><dd id="rKS">—</dd>
+      <dt>尖端判别式 b²−4a</dt><dd id="rDisc">—</dd>
+      <dt>距白银比 δ = (1+√2) − k_E</dt><dd id="rDel">—</dd>
+      <dt>δ ÷ α</dt><dd id="rDelA">—</dd>
+    </dl>
+
+    <div class="verdict bad" id="pv">
+      <span class="big" id="pvBig">—</span>
+      <span id="pvTxt"></span>
+    </div>
+
+    <div class="hint" style="margin-top:10px">
+      滑条上限 <b>2.4142 = 1+√2</b>：到这里尖端支的 t 根判别式 → 0，尖端退化为<b>尖点</b>，
+      曲率 → ∞。再往上项目旧代码用 <code>−t_blunt</code> 兜底，那是近似、不是几何，本页不画。
+    </div>
+
+    <details class="pw-adv">
+      <summary>§2b · k 与 b（进阶）</summary>
+      <div class="hint" style="margin:0 0 6px">锁族时由 k_E 唯一决定；点「锁在 Schauberger 族」解锁后可手调</div>
+      <div class="plab"><span>k（切平面斜率）</span><b id="vK">—</b></div>
+      <input type="range" id="sK" min="-3.2" max="2.0" step="0.001" value="-0.618">
+      <div class="plab" style="margin-top:8px"><span>b（切平面截距）</span><b id="vB">—</b></div>
+      <input type="range" id="sB" min="0.25" max="4.5" step="0.001" value="1.618">
+    </details>
+    </div>
+  </aside>
+</main>
+
+<section class="cutpair">
+  <h2>§2b · k 与 b 到底怎么变 <span>左：截面展平　右：平面 z = kx + b 斜切超双曲锥</span></h2>
+  <p class="lead2">
+    右上浮窗里那个「反解」拧的只是一个数 <code>k_E = z₂/z₁</code>。可它落到 Schauberger 的原始构造里，是
+    <b>两个</b>参数：把 <code>z = 1/x</code> 绕 <b>z 轴</b>旋成超双曲锥 <code>x² + y² = 1/z²</code>，
+    再用<b>沿 y 方向铺开</b>的平面 <code>z = kx + b</code> 去斜切它。两者的关系是闭式的：
+  </p>
+  <p class="lead2" style="text-align:center;font-size:14px;background:#f7f9fd;border:1px solid var(--line);border-radius:8px;padding:10px 12px">
+    <code>k = −tan α = −k_E(k_E − 1)/(1 + k_E)</code>　　
+    <code>b = z₀ = (1 + k_E²)/(1 + k_E)</code>　　⇒　<b style="color:#6b3fa0">b = 1 − k</b>
+  </p>
+  <p class="lead2">
+    <b>拖右上浮窗里的 k_E，右图的两个数会跟着变；点「解锁」后还能在浮窗里直接拖 k、b</b>，看这一刀切出什么。
+    下面两张图读的是<b>同一组点</b> —— 右图是空间里的交线，左图是把它展平到切平面里的样子。
+    <span class="hint">（几何取自
+    <code>03_验证工具/01_geometry/蛋形对比_六公式vsPreston_双锥斜切/蛋形双锥斜切_3D交互对照.html</code>
+    的同一套推导 —— 那边用 three.js，这里换成 2D 手写投影重画，便于放进本页。）</span>
+  </p>
+
+  <div class="duo">
+    <div class="cell">
+      <canvas id="cvCut"></canvas>
+      <div class="lab2"><b>① 截面轮廓</b>（展平坐标 <code>u = x·√(1+k²)</code>、<code>v = y</code>）
+        <br><span id="cutLab1">—</span></div>
+    </div>
+    <div class="cell">
+      <canvas id="cvCone"></canvas>
+      <div class="lab2"><b>② 3D</b>（灰 = 超双曲锥　绿 = 切平面　橙 = 交线）
+        <br><span>拖动旋转 · 滚轮缩放 · 双击复位</span></div>
+    </div>
+  </div>
+
+  <div class="kbrow">
+    <div class="dbox"><span class="k">k（平面斜率）</span><span class="v" id="kbK">—</span><span class="n" id="kbKn">—</span></div>
+    <div class="dbox"><span class="k">b（平面截距）</span><span class="v" id="kbB">—</span><span class="n" id="kbBn">—</span></div>
+    <div class="dbox"><span class="k">Δ = b² + 4k</span><span class="v" id="kbD">—</span><span class="n" id="kbDn">—</span></div>
+    <div class="dbox"><span class="k">这一刀切出</span><span class="v" id="kbKind">—</span><span class="n" id="kbKindN">—</span></div>
+    <div class="dbox"><span class="k">子午线交点 x</span><span class="v" id="kbX">—</span><span class="n" id="kbXn">—</span></div>
+  </div>
+
+  <div class="cutctl">
+    <button class="btn on" id="cbLock">🔒 锁在 Schauberger 族</button>
+    <span class="sep"></span>
+    <button class="btn" id="cbEgg">蛋形（Δ &gt; 0）</button>
+    <button class="btn" id="cbTan">相切（Δ = 0）</button>
+    <button class="btn" id="cbOpen">开口（Δ &lt; 0）</button>
+    <span class="note" id="cbNote">—</span>
+  </div>
+
+
+  <div class="cap">
+    <b>为什么 k、b 不是随便两个数。</b> 这一族切平面<b>恒过双曲线上的定点 (1, 1)</b> ——
+    因为把 <code>k = −tanα</code>、<code>b = z₀</code> 代进去，<code>b = 1 − k</code> 是<b>恒等式</b>。
+    于是 <code>Δ = b² + 4k = (1+k)²</code> 是<b>完全平方</b>：<b>族内永远是蛋形</b>，
+    唯一的退化点是 <code>k = −1</code>，也就是 <code>k_E = 1+√2</code> —— 那一刀正好在 <b>(1,1)</b>
+    这个点上与双曲线<b>相切</b>。所以 §5 里「尖端曲率半径归零」不是数值巧合，是<b>这里相切</b>的直接结果。
+    要让 Δ 变负（切出不闭合的开口），必须<b>离开这一族</b>（<code>b ≠ 1−k</code>）—— 解锁后拖 b 就能看到。
+  </div>
+</section>
+
+<section class="scan">
+  <h2>整族扫描 <span>横轴 k_E，纵轴 log₁₀(R_tip/R_blunt)；红线是 α</span></h2>
+  <canvas id="cv2"></canvas>
+  <div class="cap">
+    这条曲线说明一件事：<b>整族都在 α 的上方几十倍</b>，直到 k_E 逼近 1+√2 的退化点，比值才被拉到 α 以下。
+    也就是说「能凑出 α」不是这个几何的胜利，而是<b>单参数族本来就能扫过任何目标值</b>（见下面 §4）。
+  </div>
+</section>
+
+<section class="cards">
+  <div class="card blue">
+    <div class="lv">原文层 · 蓝</div>
+    <h4>α = R₀/R_c 是恒等式，不是预言</h4>
+    <p>
+      R₀ = 经典电子半径 <span class="mono" id="cR0">—</span>
+      R_c = 约化康普顿波长 <span class="mono" id="cRC">—</span>
+    </p>
+    <p>两者之比：<span class="mono" id="cRatio">—</span></p>
+    <p>
+      这条等式<b>恒成立</b>，因为 R₀ 的定义里就带一个 e²，而 α 的定义里也带一个 e² ——
+      它和蛋形没有关系，换成任何一个数都能写成某个比值。把它当"几何推导"，是把定义当成了结论。
+    </p>
+  </div>
+
+  <div class="card purple">
+    <div class="lv">老师立论 · 紫</div>
+    <h4>把两个半径读成蛋的两端</h4>
+    <p>
+      原话（<code>Anu_Alpha_Fine_Structure.md</code> §2.1）：
+      R₀「对应蛋形尖端曲率半径（曲率最大处）」，R_c「对应蛋形钝端曲率半径（曲率最小处）」，
+      两者之比"正是蛋形度 k_E 的倒数"。
+    </p>
+    <p>
+      这是一个<b>可被证伪的几何命题</b>：只要在蛋形族里算出 R_tip/R_blunt，就能判它成不成立。
+      本页做的就是这件事 —— 不替这句话圆，也不替它加条件。
+    </p>
+    <p class="hint">
+      顺带一处命名坑：蛋形代码里 <code>alpha</code> 指的是<b>截面倾角</b>
+      （<code>kE_to_alpha_deg</code>），和精细结构 α 完全不是一个东西。两个 α 混在一个 doc 里，
+      很容易读成"同一个 α 被推导出来了"。
+    </p>
+  </div>
+
+  <div class="card red">
+    <div class="lv">数值复算 · 红</div>
+    <h4 id="cNumH">黄金蛋：比值 0.635，比 α 大 87 倍</h4>
+    <p id="cNumP">—</p>
+    <p>
+      反解能对上：<b id="cSolve">—</b>。但那时尖端曲率半径只剩长轴的
+      <b id="cTipFrac">—</b>、长宽比 <b id="cKS2">—</b>、判别式 <b id="cDisc2">—</b> ——
+      尖端已经贴着尖点，不再是光滑的蛋。
+    </p>
+  </div>
+</section>
+
+<section class="method" id="lb">
+  <h2>§3b · R₀ 与 R_c，放进 Leadbeater 内观体系是哪两把尺 <span>2026-10-19 老师提问</span></h2>
+
+  <p>
+    老师问：<b>2.817940×10⁻¹⁵ m（经典电子半径）与 3.861593×10⁻¹³ m（约化康普顿波长），
+    按 Leadbeater 内观原子／元素内部的那套层级来讲，是哪两个东西的尺寸之比？</b>
+    先给三句话，再逐条摆证据：
+  </p>
+
+  <ol>
+    <li>
+      <b>严格说：不是"两个粒子"，是同一个电子的两把尺。</b>
+      R₀ 是「电荷自能 = mₑc²」折出来的球半径，R_c 是「质量对应的量子波长」。
+      两者之比恒等于 α —— 因为 R₀ 的定义里就带 e²、α 的定义里也带 e²，
+      这是<b>定义级恒等式</b>（比值 <span id="lbK1">—</span>，残差 0），不是测量出来的巧合。
+    </li>
+    <li>
+      <b>放进内观层级，唯一撑得住的读法是「同一个 anu 的芯 ↔ 整团外包络」。</b>
+      R₀ ↔ UPA 中心那个 koilon 凹口／单根螺旋丝的丝径（电荷的最小闭合处）；
+      R_c ↔ 10 根丝（3 粗 7 细）绕成的整团外径（质量／惯性的整体尺度）。
+      这个读法正好是老师「蛋形尖端／钝端」那句话在<b>单个 anu 内部</b>的版本。
+    </li>
+    <li>
+      <b>"anu ↔ 化学原子（MPA）"这个更顺口的读法，当场不成立。</b>
+      它要求 MPA 装得下 137³ ≈ <span id="lbCube">—</span> 个 anu；
+      而按 OC 自己的 number weight 规则（anu 数 ≈ 18 × 原子量）外推到铀，也只有
+      <span id="lbU">—</span> 个 —— 差 <b id="lbGap">—</b> 倍。数量级就不对，不必谈细节。
+    </li>
+  </ol>
+
+  <table class="mini lbtab">
+    <thead>
+      <tr>
+        <th style="width:112px">半径</th>
+        <th style="width:150px">CODATA 2018</th>
+        <th>传统定义</th>
+        <th>内观体系里最贴的对应（本页读法）</th>
+        <th style="width:92px">口径</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><b>R₀</b> 经典电子半径</td>
+        <td class="n" id="lbRe">—</td>
+        <td>把电子当带电球，静电能 = mₑc² 时的半径</td>
+        <td><b>anu 的「芯」</b>：UPA 中心的 koilon 凹口，或单根螺旋丝的丝径 —— 电荷能待住的<b>最小闭合处</b></td>
+        <td class="lv"><span class="lvtag pu">立论</span></td>
+      </tr>
+      <tr>
+        <td><b>R_c</b> 约化康普顿波长</td>
+        <td class="n" id="lbLc">—</td>
+        <td>ħ/(mₑc)：质量—动量对应的量子波长 ÷ 2π</td>
+        <td><b>同一个 anu 的「整团外包络」</b>：10 根丝绕成的心形蛋整体外径 —— 质量／惯性的<b>整体波尺度</b></td>
+        <td class="lv"><span class="lvtag pu">立论</span></td>
+      </tr>
+      <tr>
+        <td><b>a₀</b> 玻尔半径</td>
+        <td class="n" id="lbA0">—</td>
+        <td>氢基态电子云半径 = R_c/α</td>
+        <td><b>化学原子 MPA 的「力场壳」</b>：OC 图最外那层（H = 18、O = 290 个 anu 撑起来的空腔）</td>
+        <td class="lv"><span class="lvtag pu">立论·更弱</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <canvas id="cvLB"></canvas>
+  <div class="cap">
+    <b>这不是三个粒子，是一条台阶。</b> 每往上一级就乘一个 α⁻¹：
+    <code>R₀ × <span id="lbK2">—</span> = R_c</code>，<code>R_c × <span id="lbK3">—</span> = a₀</code>，
+    三步走完正好 <code>a₀/R₀ = α⁻² = <span id="lbK4">—</span></code>。
+    所以 α 在这套层级里的身份是<b>相邻两级的公比</b>，而不是"某两个粒子谁比谁大"。
+  </div>
+
+  <p style="margin-top:14px">
+    <b>为什么 137 在 OC 的账本里根本找不到。</b> OC 正文能查到的是<b>计数</b>，通读时未见以米制标定的尺寸（若原书某页确实写了绝对尺寸，这一栏要改）：
+    每根丝 <b>1680 匝</b>（5 转：外 2.5 + 内 2.5）、10 根丝（3 粗 7 细）、
+    氢 18 个 anu、氦 72、碳 216、氧 290，一个物理原子 = 49 个星光原子。
+    这些数里没有 137，也没有任何一个层级比接近 137：按体积折算，49 倍个数的线性放大只有
+    <span id="lbLin">—</span> 倍。所以 α 只能是<b>同一结构的两把尺</b>之比，
+    不可能是"相邻两级 anu 聚集体"之比 —— 后者连数都对不上。
+  </p>
+
+  <p>
+    <b>那条还活着的读法，可以被一张图当场判死或判活。</b>
+    "芯／整团 = α"要求：在 OC 那张线描 UPA 图上，
+    <b>单根丝的线宽（或中心凹口直径）÷ 整团外径 ≈ 1/137 = 0.73%</b>。
+    这个可以直接拿尺子量。下面把它做成判据 —— <b>量出来是多少就填多少，页面不替它圆</b>：
+  </p>
+
+  <div class="lbtry">
+    <span class="rl">我在 OC 图上量到「芯 ÷ 整团」=</span>
+    <input type="range" id="sLB" min="0.0005" max="0.2" step="0.00001" value="0.06">
+    <span class="val" id="vLB">—</span>
+    <span class="rl">= <b id="rLB">—</b> × α</span>
+    <button class="btn" id="bLBalpha" style="padding:3px 8px;font-size:11.5px">设成 α（看它该多小）</button>
+  </div>
+  <div class="verdict" id="lbV">—</div>
+
+  <p class="hint" style="margin-top:12px">
+    参考量级：OC 原图上那个心形凹口肉眼约占整团的 <b>1/4 ~ 1/3</b>（25%~33%），
+    比 0.73% 大 <b>30~45 倍</b>。若您量出来也是这个数，那"芯／整团 = α"这条<b>不成立</b>，
+    只能说 R₀ 落在 anu 这一层（量级对），但<b>不是</b>它与整团的比。
+    单根丝的线宽是另一个候选 —— 那个确实很细，但线描图的线宽有印刷下限（约 0.2~0.3 mm），
+    量出来的百分比跟原图尺寸有关，不能直接当物理比。这条要成立，得拿原书图版的高清扫描件重量。
+  </p>
+</section>
+
+<section class="method">
+  <h2>§4 · 为什么"能凑上"不构成验证 <span>这一节比上面的图重要</span></h2>
+  <ol>
+    <li>
+      <b>自由度账</b>：这个蛋形族只有 <b>一个</b>可调参数 k_E；目标也只有 <b>一个</b>数 α。
+      一元连续函数扫过 (0, 1)，中间值定理保证<b>必有解</b>。所以"存在一个 k_E 使比值 = α"
+      这句话<b>零信息量</b> —— 它对任何目标数都成立，包括 1/π、1/e、0.123456。
+    </li>
+    <li>
+      <b>有信息量的检验长什么样</b>：① <b>不调参</b>就命中（项目里黄金蛋 k_E=1.9371 是解
+      φk²−φ²k−1=0 得来的，不是为 α 凑的 —— 它给出 0.635，差了 87 倍，这才是真检验）；
+      ② 命中之后还能<b>预测另一个独立量</b>（比如同时给出某个可测的质量比），而不只是回代自己。
+    </li>
+    <li>
+      <b>对照一条更强的说法</b>：<code>α⁻¹ ≈ 20φ⁴ = <span id="m20p4">—</span></code>，
+      与 <code>α⁻¹ = <span id="m137">—</span></code> 差 <b id="mErr">—</b>。
+      这条的"自由参数"更少（只用了 φ），所以比"曲率比"硬；但它仍然是<b>事后挑出来的组合</b>
+      （20 和 4 都是选的），不是从第一原理推的。判断标准要一致：都只能算"巧合等级"，不能算"证明"。
+    </li>
+    <li>
+      <b>顺手挑出的两个小错</b>（不影响上面的结论，但会误导读者）：
+      ① md 第 42 行把 R₀ 写成 <code>2.879×10⁻¹⁵ m</code>，实际是
+      <code>2.81794×10⁻¹⁵ m</code>，差 2.2%；
+      ② md 说 R₀/R_c「正是 k_E 的倒数的某种形式」—— 本页实测黄金蛋
+      1/k_E = <span id="mInv">—</span>，而 R_tip/R_blunt = <span id="mRat">—</span>，
+      两者不等，"某种形式"这四个字没有可检验的内容。
+    </li>
+    <li>
+      <b>项目里已经标了 ✅ 的地方，建议降级</b>：<code>宇宙统一论导读_从Koilon到人类.md</code>
+      第 452 行把这条写成「✅ <b>已推导</b>：α = R₀/R_c（蛋形尖端/钝端曲率比）」。
+      按本页的复算，几何层站不住（差 87 倍），能站住的只有恒等式层和一个<b>可调参插值</b>。
+      建议改成「⚠️ 待定：需 k_E ≈ 2.41 且尖端近尖点」，或直接注明"这是诠释、不是推导"。
+      <span class="hint">（本页不改 md —— 改稿要老师点头。）</span>
+    </li>
+  </ol>
+</section>
+
+<section class="method">
+  <h2>§5 · 白银比 1+√2：这不是"另一个候选值"，而是这一族的尖点边界 <span>2026-10-19 老师提出</span></h2>
+  <p style="margin:2px 0 10px;color:var(--ink2);font-size:13.2px;line-height:1.85">
+    老师看到反解的 <code class="f">k_E = <span id="dKS">—</span></code> 与白银比
+    <code class="f">1+√2 = <span id="dKC">—</span></code> 只差一点点，提出这点差别可能来自
+    「外宇宙灵魂出去 / 本宇宙灵魂进来」这类交互。这一节分三步：
+    <b>先算准差多少</b> → <b>再看白银比在这个族里究竟是什么</b> → <b>最后说这个说法能被什么证伪</b>。
+  </p>
+
+  <div class="dgrid">
+    <div class="dbox"><span class="k">反解 k_E（比值 = α）</span><span class="v" id="dKS2">—</span><span class="n">点右侧 ★ 反解同一算法</span></div>
+    <div class="dbox"><span class="k">白银比 1+√2</span><span class="v" id="dKC2">—</span><span class="n">判别式 = 0 的二重根</span></div>
+    <div class="dbox hot"><span class="k">差值 δ</span><span class="v" id="dDel">—</span><span class="n" id="dRel">—</span></div>
+    <div class="dbox ok"><span class="k">一阶斜率 c∞</span><span class="v" id="dC">—</span><span class="n" id="dCn">—</span></div>
+  </div>
+
+  <canvas id="cv3"></canvas>
+  <div class="cap" style="padding:6px 2px 0">
+    横轴是<b>离白银比的距离</b> δ（最左 0 = 白银比本身，往右 k_E 递减）。紫线是真实比值，
+    灰虚线是一阶近似 <code class="f">R_tip/R_blunt = c∞·δ</code>，红线是 α ——
+    <b>交点就是反解出来的那个 k_E</b>。注意最左端 δ=0 处曲线<b>贴到 0</b>：
+    在白银比上，曲率半径比不是"接近 α"，是<b>精确等于 0</b>。
+    （点右侧「白银比 1+√2」可以直接看那个尖点长什么样。）
+  </div>
+
+  <h3 style="font-size:13.5px;margin:20px 0 4px">§5.1 白银比特殊在哪（解析，不是拟合）</h3>
+  <ol>
+    <li>
+      <b>z₀ 恰好是整数 2。</b>
+      判别式为零要求 <code class="f">(1+k²)² = 4k(k²−1)</code>，移项后正好是
+      <code class="f">(k²−2k−1)² = 0</code> ⇒ <code class="f">k = 1±√2</code>，取正根即白银比，
+      <b>而且是二重根</b>。代回去 <code class="f">z₀ = (1+k²)/(1+k) = 2</code>，精确。
+    </li>
+    <li>
+      <b>截面角恰好 45°。</b> <code class="f">tanθ = k(k−1)/(1+k)</code> 在 k = 1+√2 处等于 1
+      ⇒ θ = 45°，<code class="f">sinθ = cosθ</code>，尖端两个 t 根合并。
+    </li>
+    <li>
+      <b>尖端曲率半径归零。</b> 该点 <code class="f">V′(t)</code> 严格为 0（本页实测
+      <span id="dVt">—</span>），而 <code class="f">R_tip = |V′|/2</code> ⇒ R_tip = 0、曲率 → ∞：
+      <b>"蛋"退化成尖点</b>。不是数值巧合，是这一族蛋形的相变点。
+    </li>
+    <li>
+      <b>二重根 ⇒ 一阶线性。</b> 二重根使判别式 <code class="f">D ∝ δ²</code>，而
+      <code class="f">R_tip ∝ √D ∝ δ</code>，所以<b>比值对边距是线性的</b>，斜率数值上等于
+      <code class="f">1 + 1/√2 = <span id="dCid">—</span></code>（本页差分实测 <span id="dCchk">—</span>，
+      差 <span id="dCdev">—</span>）。
+    </li>
+  </ol>
+
+  <h3 style="font-size:13.5px;margin:20px 0 4px">§5.2 关键翻面：那 0.18% 不是"精度误差"，它就是 α 本身</h3>
+  <p style="margin:0 0 8px;color:var(--ink2);font-size:13.2px;line-height:1.85">
+    一阶关系 <code class="f">R比 = c∞·δ</code> 可以反过来读：<code class="f">δ = R比 / c∞</code>。
+    于是「k_E 停在白银比」⇔ δ=0 ⇔ <b>R比 = 0</b>；而「R比 = α」⇔ δ = α/c∞。
+    换句话说：<b>从 0 长到 α 的全部距离，就是这 0.177%</b>。在 k_E 标度上它很小，
+    在比值标度上它是从 0 到 100% 的全部。
+  </p>
+  <table class="mini">
+    <tr><th>量</th><th class="n">数值</th><th>怎么读</th></tr>
+    <tr><td>δ = (1+√2) − k_E*</td><td class="n" id="tDel">—</td><td>白银比到 α 的距离（k_E 单位）</td></tr>
+    <tr><td>δ / (1+√2)</td><td class="n" id="tRel">—</td><td>"只差一点点"的准确写法</td></tr>
+    <tr><td>R比 在白银比上</td><td class="n">0</td><td><b>不是 α，是 0</b>（尖端已退化）</td></tr>
+    <tr><td>R比 在 k_E* 上</td><td class="n" id="tRat">—</td><td>这 0.177% 的全部效果</td></tr>
+    <tr><td>δ / α</td><td class="n" id="tDa">—</td><td>= 1/c∞，纯几何（= 2−√2 的一阶值）</td></tr>
+  </table>
+  <p style="margin:8px 0 0;color:var(--ink2);font-size:13.2px;line-height:1.85">
+    所以「差 0.18% 就得到 α」与「差 0.18% <b>才</b>得到 α」是同一件事的两种说法：
+    前者读起来像命中，后者才是几何事实。<b>小的是 k_E 的步子，不是比值的误差。</b>
+  </p>
+
+  <h3 style="font-size:13.5px;margin:20px 0 4px">§5.3 所以这是一次<b>改写</b>，不是新预言</h3>
+  <p style="margin:0 0 8px;color:var(--ink2);font-size:13.2px;line-height:1.85">
+    把 c∞ = 1+1/√2 代进去，反解点可以写成
+  </p>
+  <p style="margin:0 0 8px;text-align:center">
+    <code class="f" style="font-size:14px">k_E* = (1+√2) − (2−√2)·α + O(α²)</code>
+  </p>
+  <p style="margin:0 0 8px;color:var(--ink2);font-size:13.2px;line-height:1.85">
+    数值上 <code class="f">(2−√2)·α = <span id="dLin">—</span></code>，
+    给出 <code class="f">k_E ≈ <span id="dLinK">—</span></code>，与精确值差
+    <code class="f"><span id="dLinD">—</span></code>（二阶项补上）。
+    <b>这条式子里没有新信息</b> ——「白银比 + 偏移」和「α」是同一句话的两种写法，
+    与 §4 第一条是同一个病：一个参数、一个目标。除非 <b>δ 能被独立算出来</b>，
+    否则它只是把 α 换成了"离边界的距离"。
+  </p>
+
+  <div class="teacher">
+    <span class="who">老师立论 · 紫（诠释层，本页既不能证明也不能否证）</span>
+    <q>反解 k_E = 2.409930：比值 = α 这个和白银比（1+根号2）非常接近。
+    我认为这一点点的误差来自于外宇宙灵魂，本宇宙灵魂出去这种交互产生的一个误差。</q>
+    <div style="margin-top:8px;font-size:12.6px;color:#4b3068">
+      本页能做的只有三件事：① 把「非常接近」量化为 <b><span id="dRel2">—</span></b>；
+      ② 指出在白银比上比值<b>精确为 0</b>，所以这个差承担了 α 的全部；
+      ③ 把「交互」翻译成<b>可证伪</b>的判据（下面 §5.4）。<b>不替这个说法圆，也不替它下判决。</b>
+    </div>
+  </div>
+
+  <h3 style="font-size:13.5px;margin:20px 0 4px">§5.4 这个说法能被什么证伪（三条，按强度排）</h3>
+  <ol>
+    <li>
+      <b>跨族同值 —— 最强的一条。</b>
+      白银比不是这一族独有的边界：任何退化条件落到 <code class="f">k²−2k−1=0</code> 的几何族，
+      边界都在同一处。若 δ 真是"宇宙级交互"的残留，那么<b>换一个族去算，δ 必须还是同一个数</b>
+      —— 本族给出的基准是 <span id="dRel3">—</span>，这就是待比对的靶子。
+      双锥斜切、四次卵形、Preston 方程都能做这个测量。
+      <b>δ 变 ⇒ 这个说法要加条件；δ 不变 ⇒ 才配叫"跨族不变量"。</b>
+    </li>
+    <li>
+      <b>常数性。</b> δ 必须与尺度、材料、温度、时间、以及任何可调控的旋钮无关。
+      本页只有几何，测不了这一条 —— 但这正是它和"可调参插值"的分界线：
+      <b>插值会跟着参数跑，物理常数不会。</b>
+    </li>
+    <li>
+      <b>形式自洽。</b> 若把 δ 读成双向通量的净残留 <code class="f">(进−出)/(进+出)</code>，
+      它必须是纯数、落在 (0,1)，且 δ→0 时通量精确平衡（净流为零）。
+      <span id="dForm">—</span> <b>但形式满足不算证据</b> —— 任何小数都能塞进这个式子，
+      能算出差值才算。
+    </li>
+  </ol>
+
+  <div class="topV warn" style="margin-top:14px">
+    <b>本页立场：白银比是真的特殊，0.177% 是真的小，但"小"不等于"命中"。</b>
+    要把「交互」从诠释变成物理，缺的就是 §5.4 第 1 条那个<b>跨族测量</b> ——
+    那是一个可以用现有代码直接做的实验，不需要新理论。
+  </div>
+</section>
+
+<section class="method">
+  <h2>§6 · 另一种画法：Larry Reed 的「电子环面 / 闭环驻波」 <span>2026-10-19 老师提供图源 · 独立子页</span></h2>
+  <p>
+    老师给了 Larry Reed《Quantum Wave Mechanics》第 20／21 章那张 α 幻灯片：电子被画成一个
+    <b>闭环驻波环面</b> —— 环向流是电荷路径，极向流是旋量 ψ，外面再叠一圈<b>进动</b>；
+    α 在其中被写成好几种「比值」。我把这个环面按同一组几何关系<b>重画成可拖拽、可调参的 3D 结构</b>，
+    并把图里 <b>22 条公式</b>逐条用 CODATA 2018 复算。这样两种模型第一次能放进同一张表里比：
+  </p>
+
+  <table class="mini">
+    <thead><tr><th style="width:88px">维度</th><th>蛋形（本页）</th><th>环面（Reed）</th></tr></thead>
+    <tbody>
+      <tr><td>α 读作</td><td><code>R_tip / R_blunt</code>：两个<b>曲率半径</b></td><td><code>R_c / R_tbw</code>：两个<b>物理长度</b></td></tr>
+      <tr><td>不调参结果</td><td class="n"><span id="s6Egg">—</span>（α 的 <span id="s6Times">—</span> 倍）</td>
+          <td>精确 α —— 但靠 <code>ω_p = α·ω_c</code> 的定义</td></tr>
+      <tr><td>关键长度</td><td>曲率半径（导出量，不可独立测）</td>
+          <td>R_c = <span id="s6RC">—</span> m；R_tbw = <span id="s6R">—</span> m = <b>玻尔半径</b></td></tr>
+      <tr><td>自由参数</td><td>1 个（k_E）</td><td>名义 0 个，实际 1 个（α 藏在 ω_p 定义里）</td></tr>
+      <tr><td>实空间尺寸</td><td>无（纯几何比）</td><td>5.29×10⁻¹¹ m ⇒ 与散射上限 10⁻¹⁸ m 差 7 个数量级</td></tr>
+    </tbody>
+  </table>
+
+  <p>
+    复算结论很短：图里真正成立的只有 <b>5 条恒等式</b>（<code>R₀/R_c</code>、<code>R_c = λ_c/2π</code>、
+    <code>ω_c = c/R_c</code>、<code>F_e/F_m</code>、<code>R_tbw = c/ω_p</code>），
+    其中两条恰好把 <b>ħc 整个消掉</b> —— 看起来像「算出了 α」，其实是 α 在等式两边各出现了一次。
+    另外查出 <b>3 处量纲错</b>、<b>2 处指数笔误</b>（例如 <code>F_e</code> 写成 1.547×10³ N，应为 10⁻³）、
+    <b>5 处不成立</b>，全部在子页逐条列出，可直接对照原图看。
+  </p>
+
+  <p style="margin:12px 0 2px">
+    <a class="btn" href="AAA_精细结构常数_环面模型_Reed对照.html"
+       style="display:inline-block;text-decoration:none;padding:7px 14px;font-size:13px">打开「环面对照台」→</a>
+    <span class="hint" style="margin-left:10px">含 3D 环面（可拖拽 / 可调绕数 m,n，n 上限已放到 <b>1680</b>）、22 条公式复算表、尺寸判据、<b>§7 的 1680 匝 whorl 展开台</b></span>
+  </p>
+</section>
+
+<section class="blk" id="s6b">
+  <h2>§6b · 老师的最后一版：whorl = anu 展开成的环中心线 <span>2026-10-19 · 这一版可以算死</span></h2>
+
+  <p>
+    老师把落点定得更具体，也比前面几版都硬：
+    <b>Reed 那条环面曲线的中心线，就是 anu 的一条 whorl（1680 匝弹簧）首尾相接卷成的那个环</b>；
+    而 <b>R₀ 与 R_c 分别是「弹簧的直径」与「环中心线的直径」</b>。
+    这句话的好处是：它把模型从"看起来像"变成了<b>三个数之间的一条几何约束</b>，所以能当场判。
+  </p>
+
+  <h3>① 结构这一半：成立</h3>
+  <p>
+    一条绕 N 匝的弹簧首尾相接，在几何上就是环面纽结 <code>(m,n) = (1,N)</code> ——
+    这一点已在环面子页 §7.1 逐点验到 <b>10⁻¹³</b>（whorl 参数化与主台 <code>tp(u,1680)</code> 解析重合，
+    双向 Hausdorff ≈ 2×10⁻¹³）。<b>所以"whorl = anu 展开成环"这一半没有争议，可以直接采用。</b>
+  </p>
+
+  <h3>② 数量这一半：不成立，差 3.90 倍</h3>
+  <p>
+    环中心线的周长是 <code>2πR</code>，1680 匝要挤在它上面，每匝只能分到
+    <code>2πR/1680 = R/267.4</code>；而弹簧的直径若取 <code>2a = 2R₀</code>，
+    它就是<b>每匝间距的 <span id="m3gap">—</span> 倍</b>。
+    也就是说：<b>线圈要互相穿插着绕四遍，才塞得进 1680 匝</b> —— 那不是弹簧，是一团缠住的线。
+  </p>
+  <div class="qbox q-warn">
+    <b class="t">这一条是整数级的缺口，不是精度问题</b>
+    不重叠的必要条件 <code>2a ≤ 2πR/N</code> 化简后只有一句：<b><code>α⁻¹ ≥ N/π</code></b>。
+    <ul style="margin:5px 0 2px">
+      <li>取 <b>N = 1680</b> ⇒ 要求比值至少 <b>1 : <span id="m3need">—</span></b>；而 α⁻¹ = 137.036 ⇒ 差 <b><span id="m3gap2">—</span> 倍</b>。</li>
+      <li>取 <b>α⁻¹ = 137.036</b> ⇒ 最多只能排 <b><span id="m3nmax">—</span> 匝</b>；而 anu 是 1680 匝 ⇒ 同样差 3.90 倍。</li>
+    </ul>
+    <b>三个数（匝数、比值、弹簧/环径比）只能自由取两个 —— anu 已经把匝数钉死在 1680，于是比值被锁死为 1 : 535，α 就进不来了。</b>
+  </div>
+
+  <h3>③ 绝对尺寸：对得上（这一条通过）</h3>
+  <p>
+    把环半径取作 R_c，则<b>环的直径 <span id="m3ring">—</span></b>，而氢原子（玻尔）直径是
+    <b><span id="m3hyd">—</span></b> —— 恰好差 137.036 倍。<b>但这一步是定义，不是发现</b>：
+    R_c 与 a₀ 本来就差一个 α（<code>a₀ ≡ R_c/α</code>），所以"对上"是必然的，说明不了任何事。<br>
+    另一条<b>确实过关</b>的：弹簧尺寸 R₀ = 2.82×10⁻¹⁵ m，是 Phillips 记下的 micro-psi 分辨率下限
+    （"can discern objects smaller than 10⁻¹⁵ cm" = 10⁻¹⁷ m）的 <b><span id="m3res">—</span> 倍</b> ——
+    <b>在内观能看见的范围内</b>。这一条是这条线里少数没有被几何否掉的环节。
+  </p>
+
+  <h3>④ 三个模型横评</h3>
+  <table class="mini">
+    <thead><tr><th style="width:150px">判据</th><th>蛋形曲率比（本页）</th><th>Reed 环面（原始）</th><th>环面 + 1680 匝（老师版）</th></tr></thead>
+    <tbody>
+      <tr><td>α 读作</td><td>两个曲率半径之比</td><td>管半径 : 大半径 = R_c : a₀</td><td>弹簧半径 : 环半径 = R₀ : R_c</td></tr>
+      <tr><td>两个长度可否独立测</td><td class="warn-td">否（曲率半径是导出量）</td><td class="ok-td">是（都可测）</td><td class="ok-td">是（都可测）</td></tr>
+      <tr><td>有没有第二预言</td><td class="warn-td">没有</td><td class="warn-td">没有</td><td class="warn-td">没有</td></tr>
+      <tr><td>能不能被内在结构判死</td><td>无结构可判（纯几何）</td><td>无（未定绕数）</td><td class="bad-td"><b>能，且已被判：差 3.90 倍</b></td></tr>
+      <tr><td>实空间尺寸</td><td>无</td><td>a₀ = 5.3×10⁻¹¹ m ⇒ 超散射上限 7 个量级</td><td>2R_c = 0.77 pm ⇒ 仍是原子核的百倍</td></tr>
+      <tr><td>本页判定</td><td class="bad-td"><b>反例：事后拟合</b></td><td class="warn-td">图像可用，α 是输入</td><td class="warn-td"><b>结构成立 / 数量不成立</b></td></tr>
+    </tbody>
+  </table>
+
+  <div class="qbox q-teach">
+    <b class="t">所以老师那句判断对在哪、需要修正在哪</b>
+    <b>对的</b>：环面确实比蛋形靠谱 —— 它有两个可测长度、有流动与绕数、还能被 1680 这个整数接住；
+    蛋形连"可测"这一关都过不了，而且单参数凑单目标是必然有解、零信息。<b>这一条不动摇。</b><br>
+    <b>要修正的只有一格数</b>：把 α 放在 <code>弹簧直径 : 环中心线径</code> 上，与 1680 匝不相容，差 3.90 倍。
+    若要把这条线救回来，只有三条路：<b>①</b> 改匝数（但 1680 是数出来的，不能改）；
+    <b>②</b> 改比值（那 α 就没了）；<b>③</b> 承认弹簧直径不是 2R₀ 而是更细的东西
+    —— <b>③ 是唯一没被否掉的路，但它需要一个新的、独立于 α 的尺度定义，本页还没有。</b>
+  </div>
+</section>
+
+<div class="foot">
+  <b>口径</b>：本页所有几何量都在浏览器里用解析式现算，没有任何预存结果；
+  物理常数取 CODATA 2018（α⁻¹ = 137.035999084，R₀ = 2.8179403262×10⁻¹⁵ m，
+  R_c = 3.8615926796×10⁻¹³ m）。蛋形方程与 <code>egg_curve.py</code> /
+  <code>egg_analytic.py</code> 逐字一致：
+  z₀=(z₁²+z₂²)/(z₁+z₂)，θ=arctan[z₁z₂(z₂−z₁)/(z₁+z₂)]，
+  极点曲率 |κ|=2/|V′(t_pole)|，V(t)=1/(z₀+t·sinθ)²−(t·cosθ)²。
+  <br>
+  <b>本页立场</b>：结论是算出来的，不是想出来的。若老师要的是"它成立"，
+  这一页会如实告诉您它在什么条件下成立、代价是什么 —— 而不是把它圆过去。
+</div>
+
+</div>
+
+</div>
+
+<script>
+/* =========================================================================
+ * 0. 常数（外部输入，标注来源；其余全部现算）
+ * ========================================================================= */
+var ALPHA = 1/137.035999084;      /* CODATA 2018 精细结构常数 */
+var R0_PHYS = 2.8179403262e-15;   /* 经典电子半径 m */
+var RC_PHYS = 3.8615926796e-13;   /* 约化康普顿波长 ħ/(m_e c) m */
+var SQ2P1 = 1 + Math.SQRT2;       /* 2.414213562… 尖端支退化点 */
+var PHI = (1+Math.sqrt(5))/2;
+var GOLDEN_KE = 1.9371;           /* 项目黄金极限蛋（φk²−φ²k−1=0 的正根） */
+var OCT_KE = 2.0;
+
+/* =========================================================================
+ * 1. 蛋形几何（与 egg_curve.py / egg_analytic.py 同一套解析式）
+ *    x = √V(t), y = −t；尖朝上
+ * ========================================================================= */
+function eggGeom(kE){
+  var z1 = 1, z2 = kE;
+  var z0 = (z1*z1 + z2*z2)/(z1+z2);
+  var th = Math.atan(z1*z2*(z2-z1)/(z1+z2));
+  var sa = Math.sin(th), ca = Math.cos(th);
+  var a = sa*ca, b = z0*ca;
+
+  var discB = b*b + 4*a;          /* 钝端 t 方程：a t² + b t − 1 = 0 */
+  var discT = b*b - 4*a;          /* 尖端 t 方程：a t² + b t + 1 = 0 */
+  var tB = (-b + Math.sqrt(discB))/(2*a);
+  var tT = discT >= 0 ? (-b + Math.sqrt(discT))/(2*a) : -tB;
+
+  function Vp(t){ var u = z0 + t*sa; return -2*sa/(u*u*u) - 2*t*ca*ca; }
+  /* 极点曲率：κ = −2/|V′| ⇒ R = |V′|/2 （在 V=0 处取极限，不加差分） */
+  var RT = Math.abs(Vp(tT))/2;
+  var RB = Math.abs(Vp(tB))/2;
+
+  return {
+    kE:kE, z0:z0, th:th, sa:sa, ca:ca, a:a, b:b,
+    tT:tT, tB:tB, discT:discT, discB:discB,
+    RT:RT, RB:RB, kapT:1/RT, kapB:1/RB,
+    ratio:RT/RB,
+    yTop:-tT, yBot:-tB,
+    kS:(z1+z2)/ca/(2/z0),          /* 长宽比 l_H / l_N */
+    ok: discT > 0
+  };
+}
+/* 单点曲率（解析式，两端有限） */
+function kapAt(g, t){
+  var u = g.z0 + t*g.sa;
+  var V = 1/(u*u) - (t*g.ca)*(t*g.ca);
+  if(V < 0) V = 0;
+  var Vp = -2*g.sa/(u*u*u) - 2*t*g.ca*g.ca;
+  var Vpp = 6*g.sa*g.sa/(u*u*u*u) - 2*g.ca*g.ca;
+  var num = 4*V + Vp*Vp;
+  if(num < 1e-14) return 1/ (g.RT||1);
+  return Math.abs(2*(2*V*Vpp - Vp*Vp)/Math.pow(num, 1.5));
+}
+/* 曲线采样：Chebyshev 两端聚集（极区不丢点） */
+function eggPts(g, N){
+  var out = [], maxX = 0;
+  for(var i=0;i<=N;i++){
+    var v = i/N, u = 0.5*(1 - Math.cos(Math.PI*v));
+    var t = g.tT + (g.tB - g.tT)*u;
+    var uu = g.z0 + t*g.sa;
+    var V = 1/(uu*uu) - (t*g.ca)*(t*g.ca);
+    if(V < 0) V = 0;
+    var x = Math.sqrt(V);
+    if(x > maxX) maxX = x;
+    out.push({x:x, y:-t, kap:kapAt(g,t)});
+  }
+  out.maxX = maxX;
+  return out;
+}
+/* 反解：让 R_tip/R_blunt = α（对数域二分，k∈(1.005, 1+√2) 内比值单调降到 0） */
+function solveKE(alpha){
+  var lo = 1.005, hi = SQ2P1 - 1e-12;
+  var fLo = Math.log(eggGeom(lo).ratio/alpha);   /* > 0 */
+  var fHi = Math.log(eggGeom(hi).ratio/alpha);   /* < 0 */
+  if(!(fLo > 0 && fHi < 0)) return null;
+  for(var i=0;i<200;i++){
+    var m = (lo+hi)/2;
+    var f = Math.log(eggGeom(m).ratio/alpha);
+    if(f > 0) lo = m; else hi = m;
+  }
+  return (lo+hi)/2;
+}
+
+/* ★ 边界附近的高精度比值：eggGeom 用 discT = b²−4a 相减，δ→0 时两数几乎相等，
+ *   双精度会丢有效位（δ=1e-6 时相对误差 ~1e-4）。这里直接代入解析闭式
+ *     D = (k²−2k−1)² / [(1+k)²(1+tan²θ)]
+ *   开方不再有抵消，δ=1e-8 仍能拿到 9 位有效数字。只用于 §5 的斜率，不改全局几何。 */
+function ratioHi(k){
+  var z0 = (1+k*k)/(1+k), T = k*(k-1)/(1+k);
+  var den = (1+k)*(1+k)*(1+T*T);
+  var s = k*k - 2*k - 1;
+  var D = s*s/den;
+  var th = Math.atan(T), sa = Math.sin(th), ca = Math.cos(th);
+  var a = sa*ca, b = z0*ca;
+  var tT = (-b + Math.sqrt(D))/(2*a);
+  var tB = (-b + Math.sqrt(b*b + 4*a))/(2*a);
+  function Vp(t){ var u = z0 + t*sa; return -2*sa/(u*u*u) - 2*t*ca*ca; }
+  return Math.abs(Vp(tT))/Math.abs(Vp(tB));
+}
+
+/* =========================================================================
+ * 1b. 白银比边界 1+√2（老师 2026-10-19 提出「差的这一点点是不是交互残留」）
+ *     全页只在这里算一次，面板 / §5 / 画布都读同一个结果 —— 免得三处数字对不上。
+ * ========================================================================= */
+function silverInfo(){
+  var kc = SQ2P1;                         /* 判别式二重根 (k²−2k−1)²=0 的正根 */
+  var ks = solveKE(ALPHA);                /* 比值 = α 的那个 k_E */
+  var d  = kc - ks;                       /* 边距 δ */
+  /* 一阶斜率：取 δ=1e-7 与 1e-8 的割线（用 ratioHi，不受相减误差影响） */
+  var cAsym = (ratioHi(kc-1e-7) - ratioHi(kc-1e-8))/9e-8;
+  /* 边界处的 V′(t_tip)：解析上必须是 0，这里实测给个数 */
+  var gb = eggGeom(kc-1e-12);
+  var ub = gb.z0 + gb.tT*gb.sa;
+  var VtB = -2*gb.sa/(ub*ub*ub) - 2*gb.tT*gb.ca*gb.ca;
+  return {
+    kc:kc, ks:ks, delta:d,
+    rel:d/kc, inv:kc/d,
+    cAsym:cAsym, cIdeal:1+1/Math.SQRT2,
+    cSec:ALPHA/d, dOverAlpha:d/ALPHA,
+    Vt:VtB
+  };
+}
+/** 实际轮廓半宽（V 的最大值开方）。
+ *  ★ 为什么要它：项目 `EggParams.k_S = (z1+z2)/cosθ ÷ (2/z0)` 与 t 参数化**画出来的轮廓**
+ *    不是同一个量（黄金蛋 k_S=2.793，而图上 H/W=1.3952，见 egg_golden_outline_A.png）。
+ *    页面上的长宽比一律用画出来的 H/W，免得读数和眼睛看到的不是一回事。 */
+function eggMaxX(g){
+  var m = 0, N = 240;
+  for(var i=0;i<=N;i++){
+    var t = g.tT + (g.tB-g.tT)*i/N;
+    var u = g.z0 + t*g.sa;
+    var V = 1/(u*u) - (t*g.ca)*(t*g.ca);
+    if(V > m) m = V;
+  }
+  return Math.sqrt(Math.max(m, 0));
+}
+
+/* =========================================================================
+ * 2. 状态与 DOM
+ * ========================================================================= */
+var $ = function(id){ return document.getElementById(id); };
+var state = { kE:GOLDEN_KE, showComb:true, showCircle:true, solvedKE:null };
+var cv = $('cv'), ctx = cv.getContext('2d');
+var cv2 = $('cv2'), ctx2 = cv2.getContext('2d');
+var cv3 = $('cv3'), ctx3 = cv3.getContext('2d');
+var CW=0, CH=0, CW2=0, CH2=0, CW3=0, CH3=0;
+
+function fit(cnv, cx2d){
+  var dpr = Math.min(2, window.devicePixelRatio || 1);
+  var r = cnv.getBoundingClientRect();
+  var w = Math.max(1, Math.round(r.width)), h = Math.max(1, Math.round(r.height));
+  cnv.width = Math.round(w*dpr); cnv.height = Math.round(h*dpr);
+  cx2d.setTransform(dpr,0,0,dpr,0,0);
+  return {w:w, h:h};
+}
+
+/* =========================================================================
+ * 3. 主画布：蛋形 + 曲率梳 + 两端曲率圆
+ * ========================================================================= */
+function drawEgg(){
+  var g = eggGeom(state.kE);
+  var S = fit(cv, ctx);
+  CW = S.w; CH = S.h;
+
+  ctx.clearRect(0,0,CW,CH);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,CW,CH);
+
+  var pts = eggPts(g, 900);
+  var maxX = eggMaxX(g) || pts.maxX || 1e-9;
+  var spanY = g.yTop - g.yBot, spanX = 2*maxX;
+  var padT = 74, padB = 58, padL = 46, padR = 46;
+  var sc = Math.min((CW - padL - padR)/spanX, (CH - padT - padB)/spanY);
+  var cx = CW/2, ymid = (g.yTop + g.yBot)/2;
+  function sx(x){ return cx + x*sc; }
+  function sy(y){ return (padT + (CH-padT-padB)/2) - (y - ymid)*sc; }
+
+  /* 中轴 */
+  ctx.save();
+  ctx.strokeStyle = '#eef1f8'; ctx.lineWidth = 1;
+  ctx.setLineDash([5,6]);
+  ctx.beginPath(); ctx.moveTo(cx, 12); ctx.lineTo(cx, CH-12); ctx.stroke();
+  ctx.restore();
+
+  /* 轮廓（右半 + 镜像左半） */
+  function pathHalf(){
+    ctx.beginPath();
+    for(var i=0;i<pts.length;i++){
+      var X = sx(pts[i].x), Y = sy(pts[i].y);
+      if(i) ctx.lineTo(X,Y); else ctx.moveTo(X,Y);
+    }
+  }
+  ctx.save();
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#26314a'; ctx.lineWidth = 2.1;
+  pathHalf(); ctx.stroke();
+  ctx.beginPath();
+  for(var i=pts.length-1;i>=0;i--){
+    var X = sx(-pts[i].x), Y = sy(pts[i].y);
+    if(i<pts.length-1) ctx.lineTo(X,Y); else ctx.moveTo(X,Y);
+  }
+  ctx.stroke();
+  ctx.restore();
+
+  /* 曲率梳 */
+  if(state.showComb){
+    var kmax = Math.max(g.kapT, g.kapB);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(107,63,160,.40)'; ctx.lineWidth = 1;
+    var step = 7;
+    /* 两端各 3% 弧长不画：极点附近 κ 最大，梳齿会变成"刷毛"，把曲率最该看清的地方糊住 */
+    var i0 = Math.round(pts.length*0.03), i1 = Math.round(pts.length*0.97);
+    for(var i=Math.max(step,i0);i<Math.min(pts.length-step,i1);i+=step){
+      var A = pts[i-1], B = pts[i+1], P = pts[i];
+      var tx = (sx(B.x)-sx(A.x)), ty = (sy(B.y)-sy(A.y));
+      var L = Math.hypot(tx,ty); if(L < 1e-9) continue;
+      tx/=L; ty/=L;
+      var nx = -ty, ny = tx;
+      /* 判外法向：右半曲线取 nx>0；极点处按上/下取 ny */
+      var dx = P.x - 0;
+      if(Math.abs(dx) > maxX*0.02){ if(nx*dx < 0){ nx=-nx; ny=-ny; } }
+      else {
+        if(P.y > 0 && ny > 0){ nx=-nx; ny=-ny; }      /* 尖端：外法向朝上（屏幕 y 减小） */
+        if(P.y < 0 && ny < 0){ nx=-nx; ny=-ny; }      /* 钝端：外法向朝下 */
+      }
+      /* 梳齿长度用 log 归一：线性/开方在 κ 跨两个数量级时，除尖端外全被压成 2px，等于没画 */
+      var len = Math.min(22, 22*Math.log1p(P.kap)/Math.log1p(Math.max(kmax,1.0001)));
+      var X0 = sx(P.x), Y0 = sy(P.y);
+      ctx.beginPath(); ctx.moveTo(X0,Y0); ctx.lineTo(X0+nx*len, Y0+ny*len); ctx.stroke();
+      /* 左侧镜像 */
+      ctx.beginPath(); ctx.moveTo(CW-X0,Y0); ctx.lineTo(CW-X0-nx*len, Y0+ny*len); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /* 两端曲率圆 */
+  if(state.showCircle){
+    var rT = g.RT*sc, rB = g.RB*sc;
+    ctx.save();
+    ctx.lineWidth = 1.6;
+    ctx.setLineDash([4,4]);
+    /* 尖端：圆心在中轴上，距尖端 R_tip（在蛋内部，即屏幕下方） */
+    ctx.strokeStyle = 'rgba(217,71,43,.85)';
+    ctx.beginPath(); ctx.arc(cx, sy(g.yTop)+rT, Math.max(rT,0.6), 0, 2*Math.PI); ctx.stroke();
+    /* 钝端：圆心在钝端上方 R_blunt */
+    ctx.strokeStyle = 'rgba(42,114,201,.85)';
+    ctx.beginPath(); ctx.arc(cx, sy(g.yBot)-rB, Math.max(rB,0.6), 0, 2*Math.PI); ctx.stroke();
+    ctx.restore();
+
+    /* 半径线段 */
+    ctx.save();
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = 'rgba(217,71,43,.75)';
+    ctx.beginPath(); ctx.moveTo(cx, sy(g.yTop)); ctx.lineTo(cx, sy(g.yTop)+rT); ctx.stroke();
+    ctx.strokeStyle = 'rgba(42,114,201,.75)';
+    ctx.beginPath(); ctx.moveTo(cx, sy(g.yBot)); ctx.lineTo(cx, sy(g.yBot)-rB); ctx.stroke();
+    ctx.restore();
+  }
+
+  /* 文字标注 */
+  var fmt = function(v){ return v >= 0.01 ? v.toFixed(4) : v.toExponential(2); };
+  ctx.save();
+  ctx.font = '600 13px system-ui,"Microsoft YaHei",sans-serif';
+  ctx.fillStyle = '#d9472b';
+  ctx.fillText('R_tip = ' + fmt(g.RT), 16, 24);
+  ctx.font = '500 12px system-ui,"Microsoft YaHei",sans-serif';
+  ctx.fillStyle = '#8a3a26';
+  ctx.fillText('尖端 · 曲率 κ = ' + g.kapT.toFixed(2), 16, 43);
+
+  ctx.font = '600 13px system-ui,"Microsoft YaHei",sans-serif';
+  ctx.fillStyle = '#2a72c9';
+  ctx.fillText('R_blunt = ' + fmt(g.RB), 16, CH-30);
+  ctx.font = '500 12px system-ui,"Microsoft YaHei",sans-serif';
+  ctx.fillStyle = '#245a96';
+  ctx.fillText('钝端 · 曲率 κ = ' + g.kapB.toFixed(2), 16, CH-11);
+
+  /* 右上：比值与 α */
+  var times = g.ratio/ALPHA;
+  ctx.textAlign = 'right';
+  ctx.font = '600 14px system-ui,"Microsoft YaHei",sans-serif';
+  ctx.fillStyle = '#26314a';
+  ctx.fillText('R_tip / R_blunt = ' + g.ratio.toPrecision(6), CW-16, 26);
+  ctx.font = '600 13px system-ui,"Microsoft YaHei",sans-serif';
+  ctx.fillStyle = (Math.abs(Math.log10(times)) < 0.05) ? '#17724a' : '#b3261e';
+  ctx.fillText('÷ α = ' + (times >= 1 ? times.toFixed(2) + ' 倍' : (times*100).toFixed(2) + '%'), CW-16, 48);
+  ctx.textAlign = 'left';
+  ctx.restore();
+
+  /* ---- 尖端放大窗 ----
+     反解档 R_tip = 2.5e-3 ⇒ 主图上曲率圆不到 1 px，"圆"和"点"就分不出来了。
+     不放大就等于让读者相信一个他看不见的东西 —— 这里给一个 inset，把尖端局部放大。 */
+  if(g.RT*sc < 8){
+    var iw = 158, ih = 158, ix = CW - iw - 18, iy = CH - ih - 18;
+    var hw = Math.min(0.34, Math.max(g.RT*3.0, 0.008));     /* 世界坐标半宽 */
+    var isc = iw/(2*hw);
+    var wx = function(x){ return ix + iw/2 + x*isc; };
+    var wy = function(y){ return iy + (g.yTop - y)*isc; };   /* 尖端贴窗口顶边 */
+
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(ix, iy, iw, ih);
+    ctx.strokeStyle = '#cfd6e6'; ctx.lineWidth = 1;
+    ctx.strokeRect(ix, iy, iw, ih);
+
+    /* 窗口内的轮廓（左右两半） */
+    ctx.save();
+    ctx.beginPath(); ctx.rect(ix, iy, iw, ih); ctx.clip();
+    ctx.strokeStyle = '#26314a'; ctx.lineWidth = 1.8;
+    for(var side=-1; side<=1; side+=2){
+      ctx.beginPath();
+      var started = false;
+      for(var i2=0;i2<pts.length;i2++){
+        var P2 = pts[i2];
+        if(P2.y < g.yTop - 2*hw) break;
+        var X2 = wx(side*P2.x), Y2 = wy(P2.y);
+        if(!started){ ctx.moveTo(X2,Y2); started=true; } else ctx.lineTo(X2,Y2);
+      }
+      ctx.stroke();
+    }
+    /* 尖端曲率圆 —— inset 里必须能看清它贴着顶点 */
+    ctx.strokeStyle = 'rgba(217,71,43,.9)'; ctx.lineWidth = 1.5; ctx.setLineDash([4,3]);
+    ctx.beginPath(); ctx.arc(wx(0), wy(g.yTop - g.RT), Math.max(g.RT*isc, 0.8), 0, 2*Math.PI); ctx.stroke();
+    ctx.setLineDash([]);
+    /* 圆心 + 半径 */
+    ctx.fillStyle = '#d9472b';
+    ctx.beginPath(); ctx.arc(wx(0), wy(g.yTop - g.RT), 2.2, 0, 2*Math.PI); ctx.fill();
+    ctx.restore();
+
+    var mag = isc/sc;
+    ctx.fillStyle = '#6e7793';
+    ctx.font = '10.5px system-ui,"Microsoft YaHei",sans-serif';
+    ctx.textAlign = 'left';
+    /* 文字放窗口底部：尖端在上半部，标题压上去会挡住"到底圆不圆" */
+    ctx.fillText('尖端放大 ×' + (mag < 10 ? mag.toFixed(1) : Math.round(mag)), ix+7, iy+ih-20);
+    ctx.fillStyle = '#b3261e';
+    ctx.fillText('曲率圆 R = ' + g.RT.toExponential(2) + '（虚线）', ix+7, iy+ih-6);
+    ctx.restore();
+  }
+}
+
+/* =========================================================================
+ * 4. 扫描图：log10(ratio) vs k_E
+ * ========================================================================= */
+function drawScan(){
+  var S = fit(cv2, ctx2);
+  CW2 = S.w; CH2 = S.h;
+  ctx2.clearRect(0,0,CW2,CH2);
+  ctx2.fillStyle='#fff'; ctx2.fillRect(0,0,CW2,CH2);
+
+  var padL = 62, padR = 22, padT = 20, padB = 34;
+  var kMin = 1.005, kMax = SQ2P1 - 1e-6;
+  var yMin = -4.2, yMax = 0.35;
+  function X(k){ return padL + (k-kMin)/(kMax-kMin)*(CW2-padL-padR); }
+  function Y(v){ return padT + (yMax-v)/(yMax-yMin)*(CH2-padT-padB); }
+
+  /* 网格与轴 */
+  ctx2.save();
+  ctx2.strokeStyle='#eef1f8'; ctx2.lineWidth=1;
+  for(var e=0; e>=-4; e--){
+    ctx2.beginPath(); ctx2.moveTo(padL, Y(e)); ctx2.lineTo(CW2-padR, Y(e)); ctx2.stroke();
+    ctx2.fillStyle='#9aa3b8'; ctx2.font='11px ui-monospace,Consolas,monospace'; ctx2.textAlign='right';
+    ctx2.fillText('10^'+e, padL-8, Y(e)+4);
+  }
+  ctx2.textAlign='center';
+  var ks=[1.2,1.5,1.9371,2.0,2.2,2.4142];
+  for(var i=0;i<ks.length;i++){
+    ctx2.beginPath(); ctx2.moveTo(X(ks[i]), padT); ctx2.lineTo(X(ks[i]), CH2-padB); ctx2.stroke();
+    ctx2.fillStyle='#9aa3b8';
+    ctx2.fillText(ks[i].toFixed(ks[i]===1.9371?4:(ks[i]===2.4142?4:2)), X(ks[i]), CH2-padB+16);
+  }
+  ctx2.restore();
+
+  /* 曲线 */
+  ctx2.save();
+  ctx2.strokeStyle='#6b3fa0'; ctx2.lineWidth=2; ctx2.beginPath();
+  var first=true;
+  for(var j=0;j<=420;j++){
+    var k = kMin + (kMax-kMin)*j/420;
+    var g = eggGeom(k);
+    var v = Math.log10(Math.max(g.ratio, 1e-9));
+    if(v < yMin){ first=true; continue; }
+    if(first){ ctx2.moveTo(X(k), Y(v)); first=false; }
+    else ctx2.lineTo(X(k), Y(v));
+  }
+  ctx2.stroke();
+  ctx2.restore();
+
+  /* α 线 */
+  var ya = Math.log10(ALPHA);
+  ctx2.save();
+  ctx2.strokeStyle='#b3261e'; ctx2.lineWidth=1.4; ctx2.setLineDash([6,4]);
+  ctx2.beginPath(); ctx2.moveTo(padL, Y(ya)); ctx2.lineTo(CW2-padR, Y(ya)); ctx2.stroke();
+  ctx2.setLineDash([]);
+  ctx2.fillStyle='#b3261e'; ctx2.font='600 11.5px system-ui,"Microsoft YaHei",sans-serif'; ctx2.textAlign='left';
+  ctx2.fillText('α = 1/137.036', padL+6, Y(ya)-6);
+  ctx2.restore();
+
+  /* 黄金蛋 / 八度蛋标记 */
+  function mark(k, label, color){
+    var g = eggGeom(k), v = Math.log10(Math.max(g.ratio,1e-9));
+    if(v < yMin) return;
+    ctx2.save();
+    ctx2.fillStyle=color;
+    ctx2.beginPath(); ctx2.arc(X(k), Y(v), 3.4, 0, 2*Math.PI); ctx2.fill();
+    ctx2.font='11px system-ui,"Microsoft YaHei",sans-serif'; ctx2.textAlign='center';
+    ctx2.fillText(label, X(k), Y(v)-9);
+    ctx2.restore();
+  }
+  mark(GOLDEN_KE, '黄金蛋 1.9371', '#d9472b');
+  mark(OCT_KE, '八度蛋 2.0', '#2a72c9');
+
+  /* 退化点 */
+  ctx2.save();
+  ctx2.strokeStyle='#b9c0cf'; ctx2.setLineDash([3,4]);
+  ctx2.beginPath(); ctx2.moveTo(X(SQ2P1-1e-6), padT); ctx2.lineTo(X(SQ2P1-1e-6), CH2-padB); ctx2.stroke();
+  ctx2.setLineDash([]);
+  ctx2.fillStyle='#8b94a9'; ctx2.font='11px system-ui,"Microsoft YaHei",sans-serif'; ctx2.textAlign='right';
+  ctx2.fillText('1+√2 退化点 →', X(SQ2P1-1e-6)-4, padT+12);
+  ctx2.restore();
+
+  /* 当前 k_E 竖线 */
+  ctx2.save();
+  ctx2.strokeStyle='#26314a'; ctx2.lineWidth=1.2;
+  ctx2.beginPath(); ctx2.moveTo(X(state.kE), padT); ctx2.lineTo(X(state.kE), CH2-padB); ctx2.stroke();
+  var gcur = eggGeom(state.kE), vc = Math.log10(Math.max(gcur.ratio,1e-9));
+  if(vc >= yMin){
+    ctx2.fillStyle='#26314a';
+    ctx2.beginPath(); ctx2.arc(X(state.kE), Y(vc), 4.6, 0, 2*Math.PI); ctx2.fill();
+  }
+  ctx2.restore();
+}
+
+/* =========================================================================
+ * 4b. 边距图：R_tip/R_blunt 对 δ = (1+√2) − k_E
+ *     这张图只回答一个问题：白银比上比值是 0，那 α 离 0 有多远？
+ * ========================================================================= */
+function drawDelta(){
+  var S = fit(cv3, ctx3);
+  CW3 = S.w; CH3 = S.h;
+  ctx3.clearRect(0,0,CW3,CH3);
+  ctx3.fillStyle='#fff'; ctx3.fillRect(0,0,CW3,CH3);
+
+  var si = silverInfo();
+  var padL = 62, padR = 20, padT = 18, padB = 34;
+  var dMax = 0.010, rMax = 0.0175;
+  function X(d){ return padL + d/dMax*(CW3-padL-padR); }
+  function Y(r){ return CH3-padB - r/rMax*(CH3-padT-padB); }
+
+  /* 网格 */
+  ctx3.save();
+  ctx3.strokeStyle='#eef1f8'; ctx3.lineWidth=1;
+  ctx3.font='10.5px ui-monospace,Consolas,monospace';
+  for(var r=0; r<=0.0151; r+=0.005){
+    ctx3.beginPath(); ctx3.moveTo(padL, Y(r)); ctx3.lineTo(CW3-padR, Y(r)); ctx3.stroke();
+    ctx3.fillStyle='#9aa3b8'; ctx3.textAlign='right';
+    ctx3.fillText(r.toFixed(3), padL-7, Y(r)+4);
+  }
+  ctx3.textAlign='center';
+  for(var d=0; d<=0.0101; d+=0.002){
+    ctx3.beginPath(); ctx3.moveTo(X(d), padT); ctx3.lineTo(X(d), CH3-padB); ctx3.stroke();
+    ctx3.fillStyle='#9aa3b8';
+    ctx3.fillText(d===0 ? '0' : d.toFixed(3), X(d), CH3-padB+15);
+  }
+  ctx3.fillStyle='#727b96'; ctx3.font='11px system-ui,"Microsoft YaHei",sans-serif';
+  ctx3.textAlign='right';
+  ctx3.fillText('δ = (1+√2) − k_E', CW3-padR, CH3-8);
+  ctx3.restore();
+
+  /* 一阶近似 c∞·δ */
+  ctx3.save();
+  ctx3.strokeStyle='#b9b0cc'; ctx3.lineWidth=1.4; ctx3.setLineDash([5,4]);
+  ctx3.beginPath(); ctx3.moveTo(X(0), Y(0)); ctx3.lineTo(X(dMax), Y(si.cIdeal*dMax)); ctx3.stroke();
+  ctx3.restore();
+
+  /* 真实曲线 */
+  ctx3.save();
+  ctx3.strokeStyle='#6b3fa0'; ctx3.lineWidth=2.2; ctx3.beginPath();
+  for(var j=0;j<=400;j++){
+    var dc = dMax*j/400;
+    var rr = eggGeom(SQ2P1 - dc).ratio;
+    if(j===0) ctx3.moveTo(X(dc), Y(rr)); else ctx3.lineTo(X(dc), Y(rr));
+  }
+  ctx3.stroke();
+  ctx3.restore();
+
+  /* α 水平线 */
+  ctx3.save();
+  ctx3.strokeStyle='#b3261e'; ctx3.lineWidth=1.4; ctx3.setLineDash([6,4]);
+  ctx3.beginPath(); ctx3.moveTo(padL, Y(ALPHA)); ctx3.lineTo(CW3-padR, Y(ALPHA)); ctx3.stroke();
+  ctx3.setLineDash([]);
+  ctx3.fillStyle='#b3261e'; ctx3.font='600 11.5px system-ui,"Microsoft YaHei",sans-serif'; ctx3.textAlign='left';
+  ctx3.fillText('α = '+ALPHA.toPrecision(6), padL+6, Y(ALPHA)-6);
+  ctx3.restore();
+
+  /* 交点与 δ* 竖线 */
+  var xx = X(si.delta), yy = Y(ALPHA);
+  ctx3.save();
+  ctx3.strokeStyle='#17724a'; ctx3.lineWidth=1.2; ctx3.setLineDash([3,3]);
+  ctx3.beginPath(); ctx3.moveTo(xx, CH3-padB); ctx3.lineTo(xx, yy); ctx3.stroke();
+  ctx3.setLineDash([]);
+  ctx3.fillStyle='#17724a';
+  ctx3.beginPath(); ctx3.arc(xx, yy, 4.8, 0, 2*Math.PI); ctx3.fill();
+  ctx3.font='600 11.5px system-ui,"Microsoft YaHei",sans-serif'; ctx3.textAlign='right';
+  ctx3.fillText('δ* = '+si.delta.toFixed(6)+'（'+(si.rel*100).toFixed(3)+'% of 1+√2）', xx-8, yy-15);
+  ctx3.restore();
+
+  /* 左上角公式 */
+  ctx3.save();
+  ctx3.fillStyle='#4b3068'; ctx3.font='11.5px system-ui,"Microsoft YaHei",sans-serif'; ctx3.textAlign='left';
+  ctx3.fillText('一阶：R比 = (1+1/√2)·δ', padL+8, padT+14);
+  ctx3.fillStyle='#8b94a9'; ctx3.font='10.5px system-ui,"Microsoft YaHei",sans-serif';
+  ctx3.fillText('δ = 0 处比值精确为 0（尖点），不是 α', padL+8, padT+30);
+  ctx3.restore();
+}
+
+/* =========================================================================
+ * 5. 面板与结论（含 §5 白银比：数字一律运行时回填）
+ * ========================================================================= */
+function paint(){
+  var g = eggGeom(state.kE);
+  var HWg = (g.yTop - g.yBot)/(2*eggMaxX(g));      /* 画出来的实际长宽比 */
+  var gG0 = eggGeom(GOLDEN_KE);
+  var HWgG = (gG0.yTop - gG0.yBot)/(2*eggMaxX(gG0));
+  $('vKE').textContent = state.kE.toFixed(4);
+  $('rTh').textContent    = (g.th*180/Math.PI).toFixed(3) + '°';
+  $('rRT').textContent    = g.RT.toPrecision(5);
+  $('rRB').textContent    = g.RB.toPrecision(5);
+  $('rRatio').textContent = g.ratio.toPrecision(6);
+  $('rAlpha').textContent = ALPHA.toPrecision(6);
+  var tm = g.ratio/ALPHA;
+  $('rTimes').textContent = tm >= 0.01 ? tm.toFixed(2) + ' 倍' : tm.toExponential(3) + ' 倍';
+  $('rKap').textContent   = (g.kapT/g.kapB).toFixed(4);
+  $('rKS').textContent    = HWg.toFixed(4);
+  $('rDisc').textContent  = g.discT.toExponential(3);
+  $('rDel').textContent   = (SQ2P1 - state.kE).toFixed(6) + '  (δ)';
+  $('rDelA').textContent  = ((SQ2P1 - state.kE)/ALPHA).toFixed(4);
+
+  /* 判词 */
+  var times = g.ratio/ALPHA;
+  var pv = $('pv'), big = $('pvBig'), txt = $('pvTxt');
+  pv.className = 'verdict';
+  if(Math.abs(Math.log10(times)) < 0.02){
+    pv.className = 'verdict mid';
+    big.textContent = '数字对上了 —— 代价在尖端，不在轮廓';
+    txt.innerHTML = 'R_tip/R_blunt = α（差 ' + ((times-1)*100).toFixed(4) + '%）。' +
+      '代价：尖端曲率半径从黄金蛋的 ' + eggGeom(GOLDEN_KE).RT.toFixed(4) + ' 塌到 <b>' + g.RT.toExponential(3) +
+      '</b>（1/' + (eggGeom(GOLDEN_KE).RT/g.RT).toFixed(0) + '），判别式 <b>' + g.discT.toExponential(2) +
+      '</b> 贴着 1+√2 退化边界。整体轮廓只从 H/W ' + HWgG.toFixed(3) + ' 变到 ' +
+      HWg.toFixed(3) + ' —— 肉眼不容易看出来，这正是它容易被当成"验证"的原因。';
+  } else if (times > 1) {
+    pv.className = 'verdict bad';
+    big.textContent = '不成立：比 α 大 ' + times.toFixed(1) + ' 倍';
+    txt.innerHTML = '这个形状的尖/钝曲率半径比是 <b>' + g.ratio.toPrecision(5) + '</b>，' +
+      '要等于 α 还得让尖端再紧 <b>' + times.toFixed(1) + '</b> 倍。滑条往右拖可以看到要到哪一步才行。';
+  } else {
+    pv.className = 'verdict mid';
+    big.textContent = '比 α 小 ' + (1/times).toFixed(1) + ' 倍';
+    txt.innerHTML = '已经越过 α。比值 <b>' + g.ratio.toPrecision(5) + '</b>；' +
+      '尖端曲率半径 ' + g.RT.toExponential(3) + '，判别式 ' + g.discT.toExponential(2) + '，接近退化。';
+  }
+
+  /* 顶部结论条（只在默认/反解两种状态给强判词，避免乱） */
+  var tv = $('topV');
+  if(Math.abs(Math.log10(times)) < 0.02){
+    tv.className = 'topV warn';
+    tv.innerHTML = '<b>反解成立，但不是"验证"。</b> k_E = ' + state.kE.toFixed(6) +
+      ' 确实让 R_tip/R_blunt = α（差 ' + ((times-1)*100).toFixed(4) + '%）。' +
+      '代价：尖端曲率半径 = 长轴 H 的 ' + (g.RT/(g.yTop-g.yBot)*100).toFixed(3) + '%（黄金蛋是 ' +
+      (gG0.RT/(gG0.yTop-gG0.yBot)*100).toFixed(1) + '%），' +
+      '判别式 ' + g.discT.toExponential(1) + ' → 0（尖点），H/W = ' + HWg.toFixed(3) +
+      '。而单参数族命中单个数是<b>必然而非预言</b>（§4）。';
+  } else if (times > 1){
+    tv.className = 'topV';
+    tv.innerHTML = '<b>当前 k_E = ' + state.kE.toFixed(4) + '：不成立。</b> R_tip/R_blunt = ' +
+      '<b>' + g.ratio.toPrecision(5) + '</b>，是 α 的 <b>' + times.toFixed(2) + ' 倍</b>。' +
+      '黄金蛋（项目定值 1.9371）给 ' + eggGeom(GOLDEN_KE).ratio.toPrecision(5) + '，差 ' +
+      (eggGeom(GOLDEN_KE).ratio/ALPHA).toFixed(1) + ' 倍。';
+  } else {
+    tv.className = 'topV warn';
+    tv.innerHTML = '<b>当前 k_E = ' + state.kE.toFixed(4) + '：比值已小于 α。</b> ' + g.ratio.toExponential(3) +
+      '，判别式 ' + g.discT.toExponential(1) + ' —— 尖端接近尖点。';
+  }
+
+  /* 滑块说明 */
+  $('hKE').innerHTML = '当前 <b>' + state.kE.toFixed(4) + '</b>：' +
+    'k_E=1.9371 黄金蛋 · 2.0 八度蛋 · →1 球形 · →1+√2 尖端退化';
+
+  /* 卡片里的数 */
+  var gG = gG0;
+  $('cR0').textContent = R0_PHYS.toExponential(6) + ' m';
+  $('cRC').textContent = RC_PHYS.toExponential(6) + ' m';
+  $('cRatio').textContent = (R0_PHYS/RC_PHYS).toPrecision(9) + '   （α = ' + ALPHA.toPrecision(9) + '）';
+  $('cNumP').innerHTML = '黄金蛋 R_tip = ' + gG.RT.toPrecision(5) + '、R_blunt = ' + gG.RB.toPrecision(5) +
+    '，比值 <b class="kbad">' + gG.ratio.toPrecision(5) + '</b>，α 的 <b class="kbad">' +
+    (gG.ratio/ALPHA).toFixed(2) + ' 倍</b>。';
+
+  var kSolve = state.solvedKE || solveKE(ALPHA) || SQ2P1;
+  var gs = eggGeom(kSolve);
+  if(state.solvedKE){
+    $('cNumH').textContent = '反解 k_E = ' + state.solvedKE.toFixed(6) + '：比值 = α';
+    $('cSolve').textContent = 'k_E = ' + state.solvedKE.toFixed(6);
+    $('cTipFrac').textContent = (gs.RT/(gs.yTop-gs.yBot)*100).toFixed(3) + '%';
+    $('cKS2').textContent = ((gs.yTop-gs.yBot)/(2*eggMaxX(gs))).toFixed(3);
+    $('cDisc2').textContent = gs.discT.toExponential(2);
+  } else {
+    $('cNumH').textContent = '黄金蛋：比值 ' + gG.ratio.toPrecision(4) +
+      '，比 α 大 ' + (gG.ratio/ALPHA).toFixed(0) + ' 倍';
+    $('cSolve').textContent = '点右边 ★ 反解按钮';
+    $('cTipFrac').textContent = '—';
+    $('cKS2').textContent = '—';
+    $('cDisc2').textContent = '—';
+  }
+
+  /* §4 里的数 */
+  var inv20p4 = 20*Math.pow(PHI,4);
+  $('m20p4').textContent = inv20p4.toFixed(6);
+  $('m137').textContent = (1/ALPHA).toFixed(6);
+  $('mErr').textContent = ((inv20p4 - 1/ALPHA)/(1/ALPHA)*100 >= 0 ? '+' : '') +
+    ((inv20p4 - 1/ALPHA)/(1/ALPHA)*100).toFixed(4) + '%';
+  $('mInv').textContent = (1/gG.kE).toPrecision(6);
+  $('mRat').textContent = gG.ratio.toPrecision(6);
+
+  /* ---- §5 白银比：全部运行时算 ---- */
+  var si = silverInfo();
+  $('dKS').textContent   = si.ks.toFixed(6);
+  $('dKC').textContent   = si.kc.toFixed(6);
+  $('dKS2').textContent  = si.ks.toFixed(9);
+  $('dKC2').textContent  = si.kc.toFixed(9);
+  $('dDel').textContent  = si.delta.toFixed(6);
+  $('dRel').textContent  = '占 1+√2 的 ' + (si.rel*100).toFixed(5) + '% = 1/' + si.inv.toFixed(1);
+  $('dC').textContent    = si.cAsym.toFixed(6);
+  $('dCn').textContent   = '数值 = 1+1/√2 = ' + si.cIdeal.toFixed(6);
+  $('dVt').textContent   = si.Vt.toExponential(2);
+  $('dCid').textContent  = si.cIdeal.toFixed(6);
+  $('dCchk').textContent = si.cAsym.toFixed(6);
+  $('dCdev').textContent = (function(){
+    var dev = (si.cAsym/si.cIdeal-1)*100;
+    return Math.abs(dev) < 1e-4 ? dev.toExponential(1) : dev.toFixed(4) + '%';
+  })();
+
+  $('tDel').textContent  = si.delta.toFixed(9);
+  $('tRel').textContent  = (si.rel*100).toFixed(5) + '%  =  1/' + si.inv.toFixed(1);
+  $('tRat').textContent  = ALPHA.toPrecision(9);
+  $('tDa').textContent   = si.dOverAlpha.toFixed(6);
+  $('dRel2').textContent = (si.rel*100).toFixed(4) + '%（1/' + si.inv.toFixed(0) + '）';
+  $('dRel3').textContent = 'δ/(1+√2) = ' + (si.rel*100).toFixed(4) + '%';
+  $('dForm').textContent = 'δ = ' + si.delta.toFixed(6) + ' 是纯数，落在 (0,1) —— 形式这一关过。';
+
+  var lin = (2-Math.SQRT2)*ALPHA;
+  $('dLin').textContent  = lin.toFixed(9);
+  $('dLinK').textContent = (si.kc-lin).toFixed(9);
+  $('dLinD').textContent = Math.abs(si.kc-lin-si.ks).toExponential(2);
+
+  /* ---- §6 环面模型：同一套常数，数字运行时给 ---- */
+  $('s6Egg').textContent   = gG.ratio.toPrecision(5);
+  $('s6Times').textContent = (gG.ratio/ALPHA).toFixed(1);
+  $('s6RC').textContent    = RC_PHYS.toExponential(4);
+  $('s6R').textContent     = (RC_PHYS/ALPHA).toExponential(4);
+}
+
+/* =========================================================================
+ * 2b. 平面 z = kx + b 斜切超双曲锥 x² + y² = 1/z²
+ *     ★ 左图（展平截面）与右图（3D）读的是同一组交线点，不各画一份。
+ *     ★ ρ(θ) = 2/(b + √(b² + 4k·cosθ))  —— 有理化形式，k→0（水平面）也不除零。
+ *     ★ Δ = b² + 4k 的符号决定轮廓：>0 闭合蛋形 / =0 相切退化 / <0 断开开口。
+ * ========================================================================= */
+var CUT = { k:-0.6180437881, b:1.6180437881, lock:true,
+            yaw:-0.63, pitch:0.36, zoom:1, cache:null, drag:null };
+
+var cvCut = $('cvCut'), ctxC = cvCut.getContext('2d');
+var cvCone = $('cvCone'), ctx3d = cvCone.getContext('2d');
+
+/* k_E → (k, b)：k = −tan α，b = z₀（与 egg_curve.py 的 EggParams 同源，闭式） */
+function kOfKE(K){ return -K*(K-1)/(1+K); }
+function bOfKE(K){ return (1+K*K)/(1+K); }
+
+/* 交线采样：θ 从【斜切方向 x】量起 */
+function cutProfile(k, b, N){
+  var segs = [], cur = null, closed = true, ok = 0;
+  for(var i=0;i<=N;i++){
+    var th = i/N*Math.PI*2, cs = Math.cos(th), sn = Math.sin(th);
+    var disc = b*b + 4*k*cs, rho = 0, hit = false;
+    if(disc >= 0){
+      var den = b + Math.sqrt(disc);
+      if(den > 1e-13){ rho = 2/den; hit = rho > 1e-9; }
+    }
+    if(hit){
+      ok++;
+      if(!cur){ cur = []; segs.push(cur); }
+      cur.push({
+        rho:rho, z:1/rho, th:th,
+        x:rho*cs, y:rho*sn,
+        u:rho*cs*Math.sqrt(1+k*k),   /* 展平：沿切平面内的斜切方向 */
+        v:rho*sn                      /* 展平：沿 y（平面延伸方向） */
+      });
+    } else {
+      closed = false; cur = null;
+    }
+  }
+  return { segs:segs, D:b*b + 4*k, closed:closed, frac:ok/(N+1) };
+}
+function cutData(){
+  if(CUT.cache && CUT.cache.k === CUT.k && CUT.cache.b === CUT.b) return CUT.cache.pr;
+  var pr = cutProfile(CUT.k, CUT.b, 720);
+  CUT.cache = { k:CUT.k, b:CUT.b, pr:pr };
+  return pr;
+}
+
+/* ---------- 左图：把交线展平到切平面里 ---------- */
+function cutDrawLeft(){
+  var S = fit(cvCut, ctxC), W = S.w, H = S.h;
+  ctxC.clearRect(0,0,W,H);
+  ctxC.fillStyle = '#ffffff'; ctxC.fillRect(0,0,W,H);
+
+  var pr = cutData();
+  if(!pr.segs.length){
+    ctxC.fillStyle = '#b3261e';
+    ctxC.font = '13px system-ui,"Microsoft YaHei",sans-serif';
+    ctxC.textAlign = 'center';
+    ctxC.fillText('平面与锥面没有交线（Δ = ' + pr.D.toFixed(3) + '，b 太小）', W/2, H/2);
+    return;
+  }
+
+  var uMin = 1e9, uMax = -1e9, vMax = 0, pMin = null, pMax = null;
+  for(var s=0;s<pr.segs.length;s++){
+    var arr = pr.segs[s];
+    for(var i=0;i<arr.length;i++){
+      var P = arr[i];
+      if(P.u < uMin){ uMin = P.u; pMin = P; }
+      if(P.u > uMax){ uMax = P.u; pMax = P; }
+      var av = P.v < 0 ? -P.v : P.v;
+      if(av > vMax) vMax = av;
+    }
+  }
+  if(!(uMax > uMin + 1e-12)) uMax = uMin + 1e-6;
+  if(vMax < 1e-9) vMax = 1e-3;
+
+  var padT = 48, padB = 52, padL = 40, padR = 40;
+  /* ★ 必须以 u = 0（双曲线的轴线，不是轮廓中点）为基准 ——
+     否则「1.1756 : 0.6069 = 1.937」会被画成一个看着对称的椭圆，读数和眼睛对不上。 */
+  var uAbs = Math.max(Math.abs(uMin), Math.abs(uMax));
+  if(!(uAbs > 1e-12)) uAbs = 1e-3;
+  var sc = Math.min((W-padL-padR)/(2*uAbs), (H-padT-padB)/(2*vMax));
+  var cx = W/2, cy = padT + (H-padT-padB)/2;
+  function SX(u){ return cx + u*sc; }
+  function SY(v){ return cy - v*sc; }
+
+  /* 切平面里的中轴 */
+  ctxC.save();
+  ctxC.strokeStyle = '#eef1f8'; ctxC.lineWidth = 1; ctxC.setLineDash([5,6]);
+  ctxC.beginPath(); ctxC.moveTo(cx, 14); ctxC.lineTo(cx, H-14); ctxC.stroke();
+  ctxC.restore();
+
+  /* 闭合时先填一层淡色，能立刻看出「是不是一个蛋」 */
+  if(pr.closed && pr.segs.length === 1){
+    var A0 = pr.segs[0];
+    ctxC.beginPath();
+    for(var j0=0;j0<A0.length;j0++){
+      var X0 = SX(A0[j0].u), Y0 = SY(A0[j0].v);
+      if(j0) ctxC.lineTo(X0,Y0); else ctxC.moveTo(X0,Y0);
+    }
+    ctxC.closePath();
+    ctxC.fillStyle = 'rgba(217,71,43,.055)';
+    ctxC.fill();
+  }
+
+  /* 轮廓 */
+  ctxC.save();
+  ctxC.lineJoin = 'round'; ctxC.lineCap = 'round';
+  ctxC.strokeStyle = '#d9472b'; ctxC.lineWidth = 2.2;
+  for(var s2=0;s2<pr.segs.length;s2++){
+    var A = pr.segs[s2];
+    ctxC.beginPath();
+    for(var j=0;j<A.length;j++){
+      var X = SX(A[j].u), Y = SY(A[j].v);
+      if(j) ctxC.lineTo(X,Y); else ctxC.moveTo(X,Y);
+    }
+    if(pr.closed) ctxC.closePath();
+    ctxC.stroke();
+  }
+  ctxC.restore();
+
+  /* 两端：小圆 + 标签（★ 标签放到轮廓【外侧】，不许压在曲线上 —— 压住以后
+     尖端看起来就被"填平"了，肉眼读到的形状和读数会对不上） */
+  function endMark(P, col, tag, side){
+    if(!P) return;
+    var X = SX(P.u), Y = SY(P.v);
+    ctxC.beginPath(); ctxC.arc(X, Y, 4, 0, Math.PI*2);
+    ctxC.fillStyle = '#fff'; ctxC.fill();
+    ctxC.strokeStyle = col; ctxC.lineWidth = 2; ctxC.stroke();
+    ctxC.fillStyle = col;
+    ctxC.font = '11.5px system-ui,"Microsoft YaHei",sans-serif';
+    /* 标签默认朝外；贴到画布边缘就自动翻到内侧，免得被裁掉 */
+    var tw = ctxC.measureText(tag).width, sd = side;
+    if(sd > 0 && X + 10 + tw > W - 4) sd = -1;
+    if(sd < 0 && X - 10 - tw < 4) sd = +1;
+    ctxC.textAlign = sd > 0 ? 'left' : 'right';
+    ctxC.fillText(tag, X + sd*10, Y + 4);
+  }
+  if(pr.closed){
+    /* ★ 哪端是尖？按【曲率半径】判，不按名字判：
+       u 大的一侧 R_tip = 0.325（弯得急），同时半长也更大 —— 蛋的长头就是尖头。
+       相切档能直接验：Δ=0 时右侧退化成尖点，正是这一侧。 */
+    endMark(pMax, '#d9472b', '尖端 R_tip', +1);
+    endMark(pMin, '#2a72c9', '钝端 R_blunt', -1);
+  } else {
+    /* 开口：两端是曲线被"切断"的地方，取每段的首尾点 ——
+       不是 u 的极值点（那一点在弧的中段，不在端头） */
+    ctxC.fillStyle = '#8a93a8';
+    ctxC.font = '11.5px system-ui,"Microsoft YaHei",sans-serif';
+    ctxC.textAlign = 'center';
+    for(var s3=0;s3<pr.segs.length;s3++){
+      var S3 = pr.segs[s3];
+      var e0 = S3[0], e1 = S3[S3.length-1];
+      for(var q3=0;q3<2;q3++){
+        var EE = q3 ? e1 : e0;
+        var XX = SX(EE.u), YY = SY(EE.v);
+        ctxC.beginPath(); ctxC.arc(XX, YY, 3.5, 0, Math.PI*2);
+        ctxC.fillStyle = '#fff'; ctxC.fill();
+        ctxC.strokeStyle = '#8a93a8'; ctxC.lineWidth = 1.6; ctxC.stroke();
+        ctxC.fillStyle = '#8a93a8';
+        ctxC.fillText('断', XX, YY + (EE.v > 0 ? -10 : 18));
+      }
+    }
+  }
+
+  /* 顶部说明 */
+  ctxC.textAlign = 'left';
+  ctxC.font = '11.5px system-ui,"Microsoft YaHei",sans-serif';
+  ctxC.fillStyle = '#727b96';
+  ctxC.fillText(pr.closed ? '闭合轮廓（Δ = ' + pr.D.toExponential(2) + ' > 0）'
+                          : '开口轮廓：θ 可解 ' + (pr.frac*100).toFixed(1) + '%（Δ = ' + pr.D.toExponential(2) + '）', 12, 20);
+  ctxC.fillStyle = '#46506a';
+  ctxC.fillText('u = x·√(1+k²)　v = y', 12, 38);
+}
+
+/* ---------- 右图：3D 超双曲锥 + 切平面 + 交线 ---------- */
+function cutDrawRight(){
+  var S = fit(cvCone, ctx3d), W = S.w, H = S.h;
+  ctx3d.clearRect(0,0,W,H);
+  ctx3d.fillStyle = '#ffffff'; ctx3d.fillRect(0,0,W,H);
+
+  var pr = cutData(), k = CUT.k, b = CUT.b;
+
+  var zMin = 1e9, zMax = -1e9, rMax = 0.6, xMaxA = 0.4;
+  for(var s=0;s<pr.segs.length;s++){
+    for(var i=0;i<pr.segs[s].length;i++){
+      var P = pr.segs[s][i];
+      if(P.z < zMin) zMin = P.z;
+      if(P.z > zMax) zMax = P.z;
+      if(P.rho > rMax) rMax = P.rho;
+      var ax = P.x < 0 ? -P.x : P.x;
+      if(ax > xMaxA) xMaxA = ax;
+    }
+  }
+  if(zMin > zMax){ zMin = 0.7; zMax = 1.9; }
+
+  var zLo = Math.max(0.40, zMin*0.62);
+  var zHi = Math.min(3.8, zMax*1.40);
+  var Rtop = 1/zLo;
+
+  var cp = Math.cos(CUT.pitch), sp = Math.sin(CUT.pitch);
+  var cyw = Math.cos(CUT.yaw), syw = Math.sin(CUT.yaw);
+  /* ★ 定标必须把【倾斜后】的上下界都算进去：up = Y·sin p + z·cos p，
+     Y 最大到 Rtop（锥的后方），只按 zHi 定标会让锥顶被画布上沿裁掉。 */
+  var upMax = zHi*cp + Rtop*sp*1.2;
+  var upMin = zLo*cp - Rtop*sp*1.2;
+  var S0 = Math.min((W-34)/(2*Rtop*1.12), (H-26)/Math.max(upMax - upMin, 0.8)) * CUT.zoom;
+  var cx = W/2, cy = 12 + upMax*S0;
+
+  function PJ(x,y,z){
+    var X = x*cyw - y*syw;
+    var Y = x*syw + y*cyw;
+    var up = Y*sp + z*cp;
+    var d  = Y*cp - z*sp;
+    var f  = 5.2/(5.2 + d);
+    return { x: cx + X*f*S0, y: cy - up*f*S0, d: d };
+  }
+
+  var far = [], near = [];
+  function seg(a, bb, col, w, grp){
+    if(!isFinite(a.x) || !isFinite(bb.x)) return;
+    grp.push({ a:a, b:bb, c:col, w:w });
+  }
+
+  /* 纬线（水平圆） */
+  var NL = 16, NT = 72;
+  for(var li=0; li<=NL; li++){
+    var zz = zLo + (zHi-zLo)*li/NL, rr = 1/zz;
+    var prev = null;
+    for(var t=0;t<=NT;t++){
+      var th = t/NT*Math.PI*2;
+      var q = PJ(rr*Math.cos(th), rr*Math.sin(th), zz);
+      if(prev) seg(prev, q, null, 1, (prev.d + q.d)*0.5 > 0 ? far : near);
+      prev = q;
+    }
+  }
+  /* 经线（母线） */
+  var NM = 24, NZ = 26;
+  for(var mi=0; mi<NM; mi++){
+    var th2 = mi/NM*Math.PI*2, cs2 = Math.cos(th2), sn2 = Math.sin(th2);
+    var prev2 = null;
+    for(var zi=0; zi<=NZ; zi++){
+      var zz2 = zLo + (zHi-zLo)*zi/NZ, rr2 = 1/zz2;
+      var q2 = PJ(rr2*cs2, rr2*sn2, zz2);
+      if(prev2) seg(prev2, q2, null, 1, (prev2.d + q2.d)*0.5 > 0 ? far : near);
+      prev2 = q2;
+    }
+  }
+
+  function paintGroup(g, col, w){
+    ctx3d.strokeStyle = col; ctx3d.lineWidth = w;
+    ctx3d.beginPath();
+    for(var i=0;i<g.length;i++){
+      ctx3d.moveTo(g[i].a.x, g[i].a.y);
+      ctx3d.lineTo(g[i].b.x, g[i].b.y);
+    }
+    ctx3d.stroke();
+  }
+  paintGroup(far,  '#e4e9f3', 1);
+  paintGroup(near, '#c2cddf', 1);
+
+  /* 切平面：z = kx + b，沿 y 方向铺开 */
+  var Xm = Math.max(xMaxA*1.30, 0.55), Ym = Math.max(rMax*1.85, 0.85);
+  var c00 = PJ(-Xm,-Ym, k*(-Xm)+b), c10 = PJ( Xm,-Ym, k*Xm+b);
+  var c11 = PJ( Xm, Ym, k*Xm+b), c01 = PJ(-Xm, Ym, k*(-Xm)+b);
+  ctx3d.beginPath();
+  ctx3d.moveTo(c00.x,c00.y); ctx3d.lineTo(c10.x,c10.y);
+  ctx3d.lineTo(c11.x,c11.y); ctx3d.lineTo(c01.x,c01.y);
+  ctx3d.closePath();
+  ctx3d.fillStyle = 'rgba(23,114,69,.10)';
+  ctx3d.fill();
+  ctx3d.strokeStyle = 'rgba(23,114,69,.55)'; ctx3d.lineWidth = 1.4;
+  ctx3d.stroke();
+
+  /* z 轴 */
+  var a0 = PJ(0,0,zLo*0.9), a1 = PJ(0,0,zHi*1.04);
+  ctx3d.save();
+  ctx3d.setLineDash([4,5]); ctx3d.strokeStyle = '#cdd5e4'; ctx3d.lineWidth = 1;
+  ctx3d.beginPath(); ctx3d.moveTo(a0.x,a0.y); ctx3d.lineTo(a1.x,a1.y); ctx3d.stroke();
+  ctx3d.restore();
+  ctx3d.fillStyle = '#9aa6bd';
+  ctx3d.font = '11px system-ui,"Microsoft YaHei",sans-serif';
+  ctx3d.textAlign = 'left';
+  ctx3d.fillText('z', a1.x + 5, a1.y + 4);
+
+  /* 交线（裁到可视 z 范围内，超出就断 —— 开口曲线会自然"消失在边缘"） */
+  ctx3d.save();
+  ctx3d.strokeStyle = '#d9472b'; ctx3d.lineWidth = 2.6;
+  ctx3d.lineJoin = 'round'; ctx3d.lineCap = 'round';
+  for(var s3=0;s3<pr.segs.length;s3++){
+    var A = pr.segs[s3];
+    ctx3d.beginPath();
+    var started = false;
+    for(var j=0;j<A.length;j++){
+      var Q = A[j];
+      if(Q.z < zLo*0.98 || Q.z > zHi*1.02){ started = false; continue; }
+      var q3 = PJ(Q.x, Q.y, Q.z);
+      if(!started){ ctx3d.moveTo(q3.x, q3.y); started = true; }
+      else ctx3d.lineTo(q3.x, q3.y);
+    }
+    ctx3d.stroke();
+  }
+  ctx3d.restore();
+
+  /* 左上角读数（★ 加白底：切平面会铺到这里，不垫底整行字都糊在绿面上） */
+  var inFam3 = (b + k - 1)*(b + k - 1) < 1e-18;
+  var lines3 = [
+    { t:'z = ' + k.toFixed(4) + '·x + ' + b.toFixed(4), c:'#46506a' },
+    { t: inFam3 ? '过定点 (1,1)：族内' : '不在族内（b ≠ 1−k）', c: inFam3 ? '#17724a' : '#b3261e' },
+    { t:'Δ = ' + pr.D.toExponential(2), c:'#727b96' }
+  ];
+  ctx3d.textAlign = 'left';
+  ctx3d.font = '11.5px system-ui,"Microsoft YaHei",sans-serif';
+  var wL = 0;
+  for(var li3=0; li3<lines3.length; li3++){
+    wL = Math.max(wL, ctx3d.measureText(lines3[li3].t).width);
+  }
+  ctx3d.fillStyle = 'rgba(255,255,255,.90)';
+  ctx3d.fillRect(6, 6, wL + 14, 58);
+  for(var lj3=0; lj3<lines3.length; lj3++){
+    ctx3d.fillStyle = lines3[lj3].c;
+    ctx3d.fillText(lines3[lj3].t, 12, 20 + lj3*18);
+  }
+}
+
+/* ---------- 读数 ---------- */
+function cutPaint(){
+  var k = CUT.k, b = CUT.b, D = b*b + 4*k;
+  var inFam = (b + k - 1)*(b + k - 1) < 1e-18;
+  /* ★ 族内的 k_E 必须由 (k, b) 反算，不能读 state.kE ——
+     否则点「相切」预设后 k 已经变了、state.kE 还停在旧值，两处读数会自相矛盾。
+     K² − (1−k)K + k = 0  ⇒  K = [(1−k) + √((1−k)²−4k)] / 2 */
+  var Kfam = null;
+  if(inFam){
+    var q1 = 1 - k, qd = q1*q1 - 4*k;
+    if(qd >= 0) Kfam = (q1 + Math.sqrt(qd))/2;
+  }
+
+  $('kbK').textContent = (k >= 0 ? '+' : '') + k.toFixed(6);
+  $('kbKn').textContent = CUT.lock ? '= −tan α（由 k_E 定）' : '自由值';
+  $('kbB').textContent = b.toFixed(6);
+  $('kbBn').textContent = inFam ? '= 1 − k（过定点 1,1）' : '≠ 1 − k：已离开该族';
+  $('kbD').textContent = D.toExponential(3);
+  $('kbDn').textContent = inFam ? '族内 = (1+k)²' : '自由（可正可负）';
+
+  var kind, kindN;
+  if(D > 1e-7){ kind = '蛋形'; kindN = '闭合：θ 全周有解'; }
+  else if(D > -1e-7){ kind = '相切'; kindN = '尖点：一端曲率半径 → 0'; }
+  else { kind = '开口'; kindN = 'θ 有断开区间，不闭合'; }
+  $('kbKind').textContent = kind;
+  $('kbKindN').textContent = kindN;
+
+  if(Math.abs(k) > 1e-9 && D >= 0){
+    var q = Math.sqrt(D);
+    var x1 = (-b + q)/(2*k), x2 = (-b - q)/(2*k);
+    var lo = Math.min(x1,x2), hi = Math.max(x1,x2);
+    $('kbX').textContent = lo.toFixed(4) + ' / ' + hi.toFixed(4);
+    $('kbXn').textContent = 'z = 1/x 与 z = kx+b 的两根';
+  } else {
+    $('kbX').textContent = '—';
+    $('kbXn').textContent = D < 0 ? 'Δ < 0：无实交点' : 'k ≈ 0：水平面，圆';
+  }
+
+  $('vK').textContent = k.toFixed(4);
+  $('vB').textContent = b.toFixed(4);
+
+  /* 左右两端的距离比 —— 这是 k_E 在展平坐标里的同一个数 */
+  var pr = cutData(), uMin = 1e9, uMax = -1e9;
+  for(var s=0;s<pr.segs.length;s++){
+    for(var i=0;i<pr.segs[s].length;i++){
+      var P = pr.segs[s][i];
+      if(P.u < uMin) uMin = P.u;
+      if(P.u > uMax) uMax = P.u;
+    }
+  }
+  if(uMin <= uMax && Math.abs(uMin) > 1e-12 && pr.closed){
+    var rr = Math.abs(uMax)/Math.abs(uMin);
+    var tag = (Kfam !== null) ? ('= k_E = ' + Kfam.toFixed(4)) : '（已离开该族，不再等于 k_E）';
+    var tail = (Kfam !== null) ? ('　长头即尖头：R_tip = ' + eggGeom(Kfam).RT.toFixed(3)) : '';
+    $('cutLab1').textContent = '尖端 : 钝端 = ' + Math.abs(uMax).toFixed(4) + ' : ' +
+      Math.abs(uMin).toFixed(4) + ' = ' + rr.toFixed(4) + '　' + tag + tail;
+  } else {
+    $('cutLab1').textContent = pr.closed ? '—' : '开口轮廓：没有对称的两个端点';
+  }
+
+  $('cbNote').textContent = CUT.lock
+    ? '锁定时拖 k_E = 转这一刀的角度，b 自动跟着走'
+    : '已解锁：k、b 独立可拖，Δ 可正可负（主图不受影响）';
+}
+
+function cutRedrawAll(){ cutDrawLeft(); cutDrawRight(); cutPaint(); }
+
+function cutSyncFromKE(){
+  CUT.k = kOfKE(state.kE);
+  CUT.b = bOfKE(state.kE);
+  $('sK').value = String(CUT.k);
+  $('sB').value = String(CUT.b);
+}
+function cutSetLock(on){
+  CUT.lock = !!on;
+  var btn = $('cbLock');
+  btn.classList.toggle('on', CUT.lock);
+  btn.textContent = CUT.lock ? '🔒 锁在 Schauberger 族' : '🔓 已解锁（k、b 自由）';
+  if(CUT.lock) cutSyncFromKE();
+}
+
+/* 交互 */
+$('cbLock').onclick = function(){ cutSetLock(!CUT.lock); cutRedrawAll(); };
+$('sK').addEventListener('input', function(){
+  CUT.k = parseFloat(this.value);
+  cutSetLock(false);
+  cutRedrawAll();
+});
+$('sB').addEventListener('input', function(){
+  CUT.b = parseFloat(this.value);
+  cutSetLock(false);
+  cutRedrawAll();
+});
+function cutPreset(k, b){
+  cutSetLock(false);
+  CUT.k = k; CUT.b = b;
+  $('sK').value = String(k); $('sB').value = String(b);
+  cutRedrawAll();
+}
+$('cbEgg').onclick  = function(){ cutPreset(kOfKE(GOLDEN_KE), bOfKE(GOLDEN_KE)); };
+$('cbTan').onclick  = function(){ cutPreset(-1, 2); };
+$('cbOpen').onclick = function(){ cutPreset(-1, 1.15); };
+
+(function bindConeDrag(){
+  var el = cvCone, last = null;
+  el.addEventListener('pointerdown', function(e){
+    last = { x:e.clientX, y:e.clientY, yaw:CUT.yaw, pitch:CUT.pitch };
+    if(el.setPointerCapture){ try{ el.setPointerCapture(e.pointerId); }catch(_){} }
+    e.preventDefault();
+  });
+  el.addEventListener('pointermove', function(e){
+    if(!last) return;
+    CUT.yaw   = last.yaw + (e.clientX - last.x)*0.008;
+    CUT.pitch = Math.max(-0.25, Math.min(1.15, last.pitch + (e.clientY - last.y)*0.006));
+    cutDrawRight();
+  });
+  function up(e){
+    if(!last) return;
+    last = null;
+    if(el.releasePointerCapture){ try{ el.releasePointerCapture(e.pointerId); }catch(_){} }
+  }
+  el.addEventListener('pointerup', up);
+  el.addEventListener('pointercancel', up);
+  el.addEventListener('wheel', function(e){
+    e.preventDefault();
+    var f = e.deltaY > 0 ? 0.92 : 1.087;
+    CUT.zoom = Math.max(0.45, Math.min(3.2, CUT.zoom*f));
+    cutDrawRight();
+  }, { passive:false });
+  el.addEventListener('dblclick', function(){
+    CUT.yaw = -0.63; CUT.pitch = 0.36; CUT.zoom = 1;
+    cutDrawRight();
+  });
+})();
+
+function redraw(){
+  drawEgg();
+  drawScan();
+  drawDelta();
+  if(CUT.lock) cutSyncFromKE();   /* 锁族时 k、b 由 k_E 唯一决定 */
+  cutRedrawAll();
+  paint();
+}
+
+/* =========================================================================
+ * 6. 交互
+ * ========================================================================= */
+$('sKE').addEventListener('input', function(){
+  state.kE = parseFloat(this.value);
+  redraw();
+});
+function quick(k, btn){
+  state.kE = k; $('sKE').value = String(k);
+  var ids=['bGolden','bOct','bBall','bSilver','bSolve'];
+  for(var i=0;i<ids.length;i++) $(ids[i]).classList.remove('on');
+  if(btn) $(btn).classList.add('on');
+  if(!CUT.lock) cutSetLock(true);   /* 点这些按钮 = 回到族内，k、b 重新跟随 k_E */
+  redraw();
+}
+$('bGolden').onclick = function(){ quick(GOLDEN_KE, 'bGolden'); };
+$('bOct').onclick    = function(){ quick(OCT_KE, 'bOct'); };
+$('bBall').onclick   = function(){ quick(1.02, 'bBall'); };
+/* 白银比：停在退化点前 1e-6（再往上 discT≤0，尖端 t 根不存在，只能兜底近似） */
+$('bSilver').onclick = function(){ quick(SQ2P1 - 1e-6, 'bSilver'); };
+$('bSolve').onclick  = function(){
+  var k = solveKE(ALPHA);
+  if(k === null){ alert('未找到解'); return; }
+  state.solvedKE = k;
+  quick(k, 'bSolve');
+};
+
+window.addEventListener('resize', function(){ redraw(); });
+
+/* =========================================================================
+ * 7. 右侧参数浮窗：固定 / 可拖 / 可收起 / 记住位置
+ *    （项目统一约定：所有可调控件必须在 #pWin 里，正文单栏满宽）
+ * ========================================================================= */
+(function bindFloatPanel(){
+  var p = $('pWin'), h = $('pwH');
+  if(!p || !h) return;
+  var KEY = 'alphaEgg.pwin.v1';
+
+  var nR = p.querySelectorAll('input[type=range]').length;
+  if($('pwCnt')) $('pwCnt').textContent = nR + ' 滑块';
+
+  function bodyCls(){
+    document.body.classList.toggle('pw-min', p.classList.contains('min'));
+  }
+
+  function clamp(){
+    var r = p.getBoundingClientRect(), W = innerWidth, H = innerHeight;
+    var maxL = Math.max(6, W - r.width - 6);
+    var maxT = Math.max(6, H - 46);
+    var l = Math.min(Math.max(r.left, 6), maxL);
+    var t = Math.min(Math.max(r.top, 6), maxT);
+    p.style.left = l + 'px'; p.style.top = t + 'px'; p.style.right = 'auto';
+  }
+  function save(){
+    try{
+      var r = p.getBoundingClientRect();
+      localStorage.setItem(KEY, JSON.stringify({
+        left:Math.round(r.left), top:Math.round(r.top), min:p.classList.contains('min')
+      }));
+    }catch(_){}
+  }
+  function reset(){
+    p.classList.remove('min');
+    p.style.left = 'auto'; p.style.right = '16px'; p.style.top = '84px';
+    clamp(); save(); bodyCls();
+  }
+  function restore(){
+    var s = null;
+    try{ s = JSON.parse(localStorage.getItem(KEY) || 'null'); }catch(_){}
+    if(s && isFinite(s.left) && isFinite(s.top)){
+      p.style.left = s.left + 'px'; p.style.top = s.top + 'px'; p.style.right = 'auto';
+      if(s.min) p.classList.add('min');
+    }else if(innerWidth <= 1180){
+      p.classList.add('min');          /* 窄屏默认收起，先别挡正文 */
+    }
+    clamp(); bodyCls();
+  }
+  restore();
+
+  var drag = null;
+  h.addEventListener('pointerdown', function(e){
+    if(e.target.closest && e.target.closest('button')) return;
+    var r = p.getBoundingClientRect();
+    drag = { dx:e.clientX - r.left, dy:e.clientY - r.top };
+    h.classList.add('drag');
+    if(h.setPointerCapture){ try{ h.setPointerCapture(e.pointerId); }catch(_){} }
+    e.preventDefault();
+  });
+  h.addEventListener('pointermove', function(e){
+    if(!drag) return;
+    p.style.left = (e.clientX - drag.dx) + 'px';
+    p.style.top  = (e.clientY - drag.dy) + 'px';
+    p.style.right = 'auto';
+    clamp();
+  });
+  function endDrag(){
+    if(!drag) return;
+    drag = null; h.classList.remove('drag'); save();
+  }
+  h.addEventListener('pointerup', endDrag);
+  h.addEventListener('pointercancel', endDrag);
+  h.addEventListener('dblclick', function(e){
+    if(e.target.closest && e.target.closest('button')) return;
+    reset();
+  });
+  $('pwMin').onclick = function(){
+    p.classList.toggle('min');
+    if(!p.classList.contains('min')) clamp();
+    save(); bodyCls();
+  };
+  $('pwReset').onclick = reset;
+  window.addEventListener('resize', clamp);
+
+  /* 探针接口 */
+  window.__pwin = {
+    pos:function(){ return getComputedStyle(p).position; },
+    rect:function(){
+      var r = p.getBoundingClientRect();
+      return { l:r.left, t:r.top, w:r.width, h:r.height, rightGap:innerWidth - r.right };
+    },
+    min:function(){ return p.classList.contains('min'); },
+    toggle:function(){ $('pwMin').click(); return p.classList.contains('min'); },
+    reset:reset,
+    rangeCount:function(){ return p.querySelectorAll('input[type=range]').length; },
+    titleVisible:function(){
+      var r = h.getBoundingClientRect();
+      return r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth;
+    },
+    stored:function(){ try{ return JSON.parse(localStorage.getItem(KEY)||'null'); }catch(_){ return null; } }
+  };
+})();
+
+/* =========================================================================
+ * 8. §3b 尺度阶梯（R₀ → R_c → a₀）+ OC 图上「芯/整团」判据
+ * ========================================================================= */
+var A0_BOHR = 5.29177210903e-11;   /* 玻尔半径 m（CODATA 2018） */
+
+function sciHTML(x, d){
+  d = (d == null ? 6 : d);
+  var e = Math.floor(Math.log10(Math.abs(x)));
+  var m = x / Math.pow(10, e);
+  if(Math.abs(m) >= 10){ m /= 10; e += 1; }
+  var sup = {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
+  var es = String(Math.abs(e)).split('').map(function(c){ return sup[c]; }).join('');
+  return m.toFixed(d) + '×10' + (e < 0 ? '⁻' : '') + es + ' m';
+}
+function thou(n, d){
+  var v = (d == null ? Math.round(n) : n).toFixed(d == null ? 0 : d);
+  var p = v.split('.');
+  p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return p.join('.');
+}
+
+var LB_LABELS = [];   /* 供探针核“文字有没有被画布裁掉” */
+function drawLB(){
+  var cvL = $('cvLB'); if(!cvL) return;
+  var cx = cvL.getContext('2d');
+  var S = fit(cvL, cx), W = S.w, H = S.h;
+  LB_LABELS = [];
+  cx.clearRect(0,0,W,H);
+  cx.fillStyle = '#fff'; cx.fillRect(0,0,W,H);
+
+  var padL = 26, padR = 22, axisY = H - 40;
+  var lo = -16, hi = -10;
+  function X(v){ return padL + (Math.log(v)/Math.LN10 - lo)/(hi-lo)*(W-padL-padR); }
+
+  /* 轴线与十倍刻度 */
+  cx.strokeStyle = '#dfe4ee'; cx.lineWidth = 1;
+  cx.beginPath(); cx.moveTo(padL-8, axisY); cx.lineTo(W-padR+6, axisY); cx.stroke();
+  cx.font = '10.5px Consolas,monospace'; cx.textAlign = 'center'; cx.textBaseline = 'top';
+  for(var e = lo; e <= hi; e++){
+    var x = X(Math.pow(10,e));
+    cx.strokeStyle = '#e8ecf4';
+    cx.beginPath(); cx.moveTo(x, axisY-4); cx.lineTo(x, axisY+4); cx.stroke();
+    if(W > 520 || (e % 2 === 0)){
+      cx.fillStyle = '#98a1b5';
+      cx.fillText('10' + String(e).replace('-','⁻'), x, axisY + 8);
+    }
+  }
+
+  var items = [
+    {v:R0_PHYS, c:'#b3261e', n:'R₀ 经典电子半径', s:'anu 的芯（凹口 / 丝径）'},
+    {v:RC_PHYS, c:'#1f6fd0', n:'R_c 约化康普顿波长', s:'同一个 anu 的整团外包络'},
+    {v:A0_BOHR, c:'#17724a', n:'a₀ 玻尔半径', s:'化学原子 MPA 的力场壳'}
+  ];
+  var xs = [];
+  var narrow = W < 620;
+  for(var i = 0; i < items.length; i++){
+    var it = items[i], x0 = X(it.v), y0 = narrow ? 78 : 86;
+    xs.push(x0);
+    cx.strokeStyle = it.c; cx.lineWidth = 1.2;
+    cx.globalAlpha = .45;
+    cx.beginPath(); cx.moveTo(x0, y0); cx.lineTo(x0, axisY); cx.stroke();
+    cx.globalAlpha = 1;
+    cx.fillStyle = '#fff'; cx.beginPath(); cx.arc(x0, y0, 6, 0, 6.2832); cx.fill();
+    cx.strokeStyle = it.c; cx.lineWidth = 2;
+    cx.beginPath(); cx.arc(x0, y0, 6, 0, 6.2832); cx.stroke();
+    cx.fillStyle = it.c; cx.beginPath(); cx.arc(x0, y0, 2.2, 0, 6.2832); cx.fill();
+
+    /* 每一行文字各自按自身宽度夹进画布（右侧 a₀ 最容易撞边） */
+    cx.textAlign = 'center'; cx.textBaseline = 'alphabetic';
+    function put(txt, color, font, y){
+      cx.font = font; cx.fillStyle = color;
+      var tw = cx.measureText(txt).width;
+      var xx = Math.min(Math.max(x0, tw/2 + 4), W - tw/2 - 4);
+      cx.fillText(txt, xx, y);
+      LB_LABELS.push({ t:txt, x:xx, w:tw });
+    }
+    put(narrow ? it.n.split(' ')[0] : it.n, it.c,
+        (narrow ? '600 11.5px ' : '600 12.5px ') + 'system-ui,"Microsoft YaHei",sans-serif',
+        narrow ? 36 : 40);
+    put(sciHTML(it.v, 5).replace(' m',''), '#2b3550', '11px Consolas,monospace', narrow ? 51 : 57);
+    if(!narrow){
+      put(it.s, '#727b96', '11px system-ui,"Microsoft YaHei",sans-serif', 73);
+    }
+  }
+
+  /* 相邻两级：× α⁻¹ */
+  var k = RC_PHYS / R0_PHYS;
+  for(var j = 0; j < xs.length - 1; j++){
+    var a = xs[j] + 12, b = xs[j+1] - 12, yy = 104;
+    cx.strokeStyle = '#6b3fa0'; cx.lineWidth = 1.2;
+    cx.beginPath(); cx.moveTo(a, yy); cx.lineTo(b, yy); cx.stroke();
+    cx.beginPath(); cx.moveTo(b, yy); cx.lineTo(b-6, yy-3.4); cx.lineTo(b-6, yy+3.4); cx.closePath();
+    cx.fillStyle = '#6b3fa0'; cx.fill();
+    cx.textAlign = 'center'; cx.textBaseline = 'bottom';
+    cx.font = '600 11px Consolas,monospace'; cx.fillStyle = '#6b3fa0';
+    cx.fillText('× ' + k.toFixed(3), (a+b)/2, yy - 4);
+  }
+  cx.textAlign = 'left'; cx.textBaseline = 'alphabetic';
+  cx.fillStyle = '#98a1b5'; cx.font = '10.5px system-ui,"Microsoft YaHei",sans-serif';
+  cx.fillText('对数轴（每格 10 倍）· 三级台阶，每上一级乘一个 α⁻¹', padL - 6, H - 8);
+}
+
+function lbFill(){
+  var k = RC_PHYS / R0_PHYS;
+  var k3 = A0_BOHR / R0_PHYS;
+  var cube = Math.pow(k, 3);
+  var nU = 18 * 238;                    /* OC 规则：anu 数 = 18 × 原子量；铀 238 */
+  var gap = cube / nU;
+  var lin49 = Math.cbrt(49);
+
+  if($('lbRe')) $('lbRe').textContent = sciHTML(R0_PHYS, 6);
+  if($('lbLc')) $('lbLc').textContent = sciHTML(RC_PHYS, 6);
+  if($('lbA0')) $('lbA0').textContent = sciHTML(A0_BOHR, 6);
+  if($('lbK1')) $('lbK1').textContent = k.toFixed(6);
+  if($('lbK2')) $('lbK2').textContent = k.toFixed(3);
+  if($('lbK3')) $('lbK3').textContent = (A0_BOHR / RC_PHYS).toFixed(3);
+  if($('lbK4')) $('lbK4').textContent = k3.toFixed(2);
+  if($('lbCube')) $('lbCube').textContent = thou(cube);
+  if($('lbU')) $('lbU').textContent = thou(nU);
+  if($('lbGap')) $('lbGap').textContent = thou(gap);
+  if($('lbLin')) $('lbLin').textContent = lin49.toFixed(2);
+}
+
+function lbCheck(){
+  var v = parseFloat($('sLB').value);
+  var t = v / ALPHA;
+  if($('vLB')) $('vLB').textContent = (v*100).toFixed(2) + '%';
+  if($('rLB')) $('rLB').textContent = t.toFixed(2);
+
+  var el = $('lbV'); if(!el) return;
+  var cls, big, txt;
+  if(t <= 1.5){
+    cls = 'good';
+    big = '落在 α 上（' + t.toFixed(2) + ' × α）';
+    txt = '这条读法通过量纲外的第一道关：芯／整团 ≈ 1/137。接下来要拿原书高清图版复量三次，并从别的元素（O、Fe、U）的 UPA 图各量一遍 —— 若三个元素都停在 0.7% 附近，它才配叫“结构证据”。';
+  }else if(t <= 3){
+    cls = 'mid';
+    big = '同量级，但差 ' + t.toFixed(2) + ' 倍';
+    txt = '既不能算命中，也不能当场否掉。这个区间最容易被“差不多”糊过去 —— 判据要落到“三次独立复量是否都 ≤1.5α”。';
+  }else{
+    cls = 'bad';
+    big = '对不上：差 ' + t.toFixed(2) + ' 倍';
+    txt = '若您在 OC 原图上量到的就是 ' + (v*100).toFixed(1) + '%，那“芯／整团 = α”这条不成立。可以退一步只保留弱结论：R₀ 落在 anu 这一层（量级 10⁻¹⁵ m 对），但它不是“整团的 1/137”。';
+  }
+  el.className = 'verdict ' + cls;
+  el.innerHTML = '<span class="big">' + big + '</span>' + txt;
+}
+
+(function lbInit(){
+  window.__lbLabels = function(){ return LB_LABELS.slice(); };
+  lbFill();
+  drawLB();
+  if($('sLB')){
+    $('sLB').addEventListener('input', lbCheck);
+    lbCheck();
+  }
+  if($('bLBalpha')) $('bLBalpha').onclick = function(){
+    $('sLB').value = String(ALPHA);
+    lbCheck();
+  };
+  window.addEventListener('resize', function(){ drawLB(); });
+})();
+
+/* 初始 */
+(function init(){
+  $('sKE').value = String(GOLDEN_KE);
+  state.kE = GOLDEN_KE;
+  $('bGolden').classList.add('on');
+  redraw();
+})();
+
+/* 探针接口 */
+window.__vt = {
+  alpha: ALPHA, R0: R0_PHYS, RC: RC_PHYS, golden: GOLDEN_KE, oct: OCT_KE, deg: SQ2P1,
+  geom: eggGeom, solve: solveKE, kapAt: kapAt,
+  silver: silverInfo,
+  state: function(){ return {kE:state.kE, solved:state.solvedKE, comb:state.showComb, circle:state.showCircle}; },
+  setKE: function(k){ state.kE=k; $('sKE').value=String(k); redraw(); return state.kE; },
+  ratio: function(){ return eggGeom(state.kE).ratio; },
+  times: function(){ return eggGeom(state.kE).ratio/ALPHA; },
+  drawn: function(){
+    var d = ctx.getImageData(0,0,cv.width,cv.height).data, n=0;
+    for(var i=0;i<d.length;i+=4) if(d[i]<245||d[i+1]<245||d[i+2]<245) n++;
+    return n;
+  },
+  /* §2b 双图：k/b 与交线 */
+  kOfKE: kOfKE, bOfKE: bOfKE, cutProfile: cutProfile,
+  cut: function(){
+    var pr = cutData();
+    return { k:CUT.k, b:CUT.b, lock:CUT.lock, D:CUT.b*CUT.b + 4*CUT.k,
+             inFam: Math.abs(CUT.b + CUT.k - 1) < 1e-9,
+             closed: pr.closed, frac: pr.frac, segs: pr.segs.length };
+  },
+  setCut: function(k, b){ cutPreset(k, b); return { k:CUT.k, b:CUT.b }; },
+  setCutLock: function(on){ cutSetLock(!!on); cutRedrawAll(); return CUT.lock; },
+  cutDrawn: function(){
+    var a = cvCut.getContext('2d').getImageData(0,0,cvCut.width,cvCut.height).data;
+    var b = cvCone.getContext('2d').getImageData(0,0,cvCone.width,cvCone.height).data;
+    var na = 0, nb = 0;
+    for(var i=0;i<a.length;i+=4) if(a[i] < 245 || a[i+1] < 245 || a[i+2] < 245) na++;
+    for(var j=0;j<b.length;j+=4) if(b[j] < 245 || b[j+1] < 245 || b[j+2] < 245) nb++;
+    return { left:na, right:nb };
+  }
+};
+</script>
+
+<script>
+/* §6b 的量级核验：全部现算，不写死任何结果。
+   判据只有一条 —— 1680 匝排在周长 2πR 上，每匝间距 2πR/N 必须 ≥ 弹簧直径 2a。 */
+(function(){
+  var AL = 1/137.035999084;              /* CODATA 2018 */
+  var RC = 1.054571817e-34/(9.1093837015e-31*299792458);   /* 约化康普顿波长 */
+  var R0 = 2.8179403262e-15;
+  var A0 = 5.29177210903e-11;
+  var N  = 1680;
+
+  var pitch  = 2*Math.PI*RC/N;           /* 沿环每匝间距 */
+  var spring = 2*R0;                     /* 弹簧直径（老师读法） */
+  var gap    = spring/pitch;
+  var needIn = N/Math.PI;                /* 不重叠要求 α⁻¹ ≥ N/π */
+  var nMax   = Math.PI/AL;
+
+  function put(id, txt){ var e=document.getElementById(id); if(e) e.textContent = txt; }
+  put('m3gap',  gap.toFixed(3));
+  put('m3gap2', gap.toFixed(3));
+  put('m3need', needIn.toFixed(1));
+  put('m3nmax', nMax.toFixed(1));
+  put('m3ring', (2*RC*1e12).toFixed(4) + ' pm');
+  put('m3hyd',  (2*A0*1e12).toFixed(3) + ' pm');
+  put('m3res',  (R0/1e-17).toFixed(1));
+
+  /* 暴露给探针，便于 Node 侧独立复算比对 */
+  window.__egg6b = {
+    alpha: AL, RC: RC, R0: R0, a0: A0, N: N,
+    pitch: pitch, spring: spring, gap: gap, needInv: needIn, nMax: nMax,
+    ringD: 2*RC, hydD: 2*A0, res: R0/1e-17
+  };
+})();
+</script>
+</body>
+</html>

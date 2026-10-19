@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>九宫格天地图卷 - 从天到地各路大神谱系</title>
+<style>
+/* ===== CSS Variables ===== */
+:root {
+  --bg: #050010;
+  --gold: #E8C268;
+  --purple: #9333EA;
+  --cyan: #06B6D4;
+  --rose: #FF4D6D;
+  --text-primary: #FFFFFF;
+  --text-secondary: #A8A8C2;
+  --card-bg: rgba(255,255,255,0.05);
+  --card-border-subtle: rgba(255,255,255,0.10);
+  --layer-bg: rgba(255,255,255,0.03);
+  --canvas-width: 1280;
+  --canvas-height: 3720;
+}
+
+/* ===== Reset & Base ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #000;
+  font-family: 'Inter', 'Noto Sans SC', 'Noto Sans JP', sans-serif;
+  color: var(--text-primary);
+  overflow-x: hidden;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+}
+
+/* ===== Canvas Wrapper ===== */
+.canvas-wrapper {
+  position: relative;
+  width: calc(var(--canvas-width) * 1px);
+  transform-origin: top center;
+}
+
+/* ===== Main Canvas ===== */
+.canvas {
+  position: relative;
+  width: calc(var(--canvas-width) * 1px);
+  min-height: calc(var(--canvas-height) * 1px);
+  background: var(--bg);
+  padding: 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+  overflow: hidden;
+}
+
+/* ===== Top Glow ===== */
+.canvas::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 600px;
+  background: radial-gradient(ellipse 50% 50% at 50% 0%, rgba(147,51,234,0.30) 0%, transparent 65%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ===== Header ===== */
+.header-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  position: relative;
+  z-index: 1;
+}
+.main-title {
+  font-family: 'Noto Serif', 'Noto Serif SC', 'SimSun', serif;
+  font-size: 60px;
+  font-weight: 900;
+  color: var(--gold);
+  letter-spacing: 6px;
+  text-align: center;
+  line-height: 1.1;
+}
+.sub-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  letter-spacing: 4px;
+  text-align: center;
+}
+
+/* ===== Intro Section ===== */
+.intro-section {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.10);
+}
+.intro-text {
+  font-family: 'Noto Sans SC', 'Noto Sans JP', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+/* ===== Dimension Layer ===== */
+.layer-container {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 24px;
+  background: var(--layer-bg);
+  background-size: cover;
+  background-position: center;
+  border-radius: 16px;
+}
+/* Dark overlay to keep text readable on scene background */
+.layer-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(5,0,16,0.52);
+  border-radius: 16px;
+  z-index: 0;
+  pointer-events: none;
+}
+.layer-container > * {
+  position: relative;
+  z-index: 1;
+}
+.layer-container.layer-gold  { border: 1px solid rgba(232,194,104,0.35); }
+.layer-container.layer-purple { border: 1px solid rgba(147,51,234,0.35); }
+.layer-container.layer-cyan   { border: 1px solid rgba(6,182,212,0.35); }
+.layer-container.layer-rose   { border: 1px solid rgba(255,77,109,0.35); }
+
+.layer-title {
+  font-family: 'Noto Serif', 'Noto Serif SC', 'SimSun', serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--gold);
+}
+.layer-gold  .layer-title, .layer-title.text-gold  { color: var(--gold); }
+.layer-purple .layer-title, .layer-title.text-purple { color: var(--purple); }
+.layer-cyan   .layer-title, .layer-title.text-cyan   { color: var(--cyan); }
+.layer-rose   .layer-title, .layer-title.text-rose   { color: var(--rose); }
+
+/* ===== Card Grid ===== */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+/* ===== Card Image ===== */
+.card-image {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 2px;
+}
+.has-image {
+  padding-top: 14px;
+}
+
+/* ===== Deity Card ===== */
+.deity-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px;
+  background: var(--card-bg);
+  border-radius: 16px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.deity-card:hover {
+  background: rgba(255,255,255,0.08);
+}
+.card-gold  { border: 1px solid rgba(232,194,104,0.20); }
+.card-purple { border: 1px solid rgba(147,51,234,0.20); }
+.card-cyan   { border: 1px solid rgba(6,182,212,0.20); }
+.card-rose   { border: 1px solid rgba(255,77,109,0.25); }
+
+.card-code {
+  font-family: 'JetBrains Mono', 'Consolas', 'Courier New', monospace;
+  font-size: 20px;
+  font-weight: 400;
+}
+.code-gold  { color: var(--gold); }
+.code-purple { color: var(--purple); }
+.code-cyan   { color: var(--cyan); }
+.code-rose   { color: var(--rose); }
+
+.card-name {
+  font-family: 'Noto Serif', 'Noto Serif SC', 'SimSun', serif;
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.card-role {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ===== Credits ===== */
+.credits-section {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px;
+}
+.credit-line {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  letter-spacing: 2px;
+  text-align: center;
+  opacity: 0.6;
+}
+.credit-sub {
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--text-secondary);
+  text-align: center;
+  opacity: 0.4;
+}
+</style>
+</head>
+<body>
+<div class="canvas-wrapper" id="canvasWrapper">
+<div class="canvas">
+
+  <!-- Header -->
+  <div class="header-section">
+    <h1 class="main-title">九宫格天地图卷</h1>
+    <p class="sub-title">从天到地 · 各路大神谱系</p>
+  </div>
+
+  <!-- Intro -->
+  <div class="intro-section">
+    <p class="intro-text">九宫格数字组合承载着从高维本源到物质界的完整神祇谱系。本图卷自天而地，分六层铺陈：本源层为宇宙图书馆管理员太上老君、最强大心神与大心神须菩提；创世管理层为新维度播种玉皇、宇宙拆迁总工程师、天琴萨满；先天童子层为诸清玉皇、财神玉皇、西王母、孙悟空、斗战胜佛、齐天大圣、三清天使、观音、接引道人、图特；后天精英层为先天财神、大心神、天地人财神、土财神、水财神与翻译善知识院长；基础职能层为服务执行组、财富天使、九天玄女、哪吒、童子唐僧、诸清天使、猴族、执行官、拆迁队；物质界特殊课题层为猎户魔王黑龙、取经唐僧、沙僧、大黑天马哈卡拉、牛魔王、刑天、猪八戒、白骨精、迷路弥勒及跌落诸唐僧。各位大神的数字组合即其灵魂代码。</p>
+  </div>
+
+  <!-- 大神卡片区域（由 deities.js 自动生成） -->
+  <div id="layersRoot"></div>
+
+  <!-- Credits -->
+  <div class="credits-section">
+    <p class="credit-line">慈海九宫格图腾数据库 · 从天到地各路大神谱系</p>
+    <p class="credit-sub">数字组合即灵魂代码 · 跌落路径即修行之路</p>
+  </div>
+
+</div>
+</div>
+
+<script src="deities.js"></script>
+<script>
+/* ===== 数据驱动渲染：从 deities.js 的 LAYERS 生成卡片 ===== */
+(function renderLayers() {
+  const root = document.getElementById('layersRoot');
+  if (!root || !window.LAYERS) return;
+
+  const frag = document.createDocumentFragment();
+
+  window.LAYERS.forEach(function(layer) {
+    const layerEl = document.createElement('div');
+    layerEl.className = 'layer-container layer-' + layer.color;
+    if (layer.bg) {
+      layerEl.setAttribute('style', "background-image:url('" + layer.bg + "')");
+    }
+
+    const titleEl = document.createElement('h2');
+    titleEl.className = 'layer-title';
+    titleEl.textContent = layer.title;
+    layerEl.appendChild(titleEl);
+
+    const gridEl = document.createElement('div');
+    gridEl.className = 'card-grid';
+
+    layer.deities.forEach(function(d) {
+      const card = document.createElement('div');
+      card.className = 'deity-card card-' + layer.color + (d.image ? ' has-image' : '');
+
+      if (d.image) {
+        const img = document.createElement('img');
+        img.className = 'card-image';
+        img.src = d.image;
+        img.alt = d.name;
+        img.loading = 'lazy';
+        card.appendChild(img);
+      }
+
+      const codeEl = document.createElement('span');
+      codeEl.className = 'card-code code-' + layer.color;
+      codeEl.textContent = d.code;
+      card.appendChild(codeEl);
+
+      const nameEl = document.createElement('span');
+      nameEl.className = 'card-name';
+      nameEl.textContent = d.name;
+      card.appendChild(nameEl);
+
+      const roleEl = document.createElement('span');
+      roleEl.className = 'card-role';
+      roleEl.textContent = d.role;
+      card.appendChild(roleEl);
+
+      gridEl.appendChild(card);
+    });
+
+    layerEl.appendChild(gridEl);
+    frag.appendChild(layerEl);
+  });
+
+  root.appendChild(frag);
+})();
+
+/* ===== Responsive Scaling ===== */
+(function() {
+  const CANVAS_WIDTH = 1280;
+  const wrapper = document.getElementById('canvasWrapper');
+
+  function applyScale() {
+    const vw = window.innerWidth;
+    const scale = Math.min(vw / CANVAS_WIDTH, 1);
+    wrapper.style.transform = `scale(${scale})`;
+  }
+
+  window.addEventListener('resize', applyScale);
+  applyScale();
+})();
+</script>
+</body>
+</html>

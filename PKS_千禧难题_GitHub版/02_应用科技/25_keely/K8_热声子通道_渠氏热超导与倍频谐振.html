@@ -1,0 +1,1451 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>K8 · 热声子通道：渠氏热超导材料 × Keely 声学 × 二倍频谐振</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%23a8541c' stroke-width='2'/%3E%3Cpath d='M7 18c3-6 6 6 9 0s6 6 9 0' fill='none' stroke='%231b4f9c' stroke-width='1.6'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/site.css">
+<style>
+  /* ---- 本页专用 ---- */
+  .viz{background:#fff;border:1px solid var(--line-2);border-radius:12px;
+    box-shadow:var(--shadow);padding:14px 16px 10px;margin:18px 0}
+  .viz .vt{font-family:var(--serif);font-size:16px;font-weight:700;margin-bottom:3px}
+  .viz .vc{font-size:13.2px;color:var(--ink-3);margin-bottom:10px;line-height:1.6}
+  .viz canvas{width:100%;display:block;border-radius:8px;background:#fcfdff;border:1px solid var(--line)}
+  .eq{margin:14px 0}
+  .warnbox{background:#fdf6f6;border:1px solid rgba(179,38,30,.28);border-left:3px solid var(--bad);
+    border-radius:8px;padding:12px 15px;margin:16px 0;font-size:14px}
+  .goodbox{background:#f4faf6;border:1px solid rgba(23,114,69,.28);border-left:3px solid var(--good);
+    border-radius:8px;padding:12px 15px;margin:16px 0;font-size:14px}
+  .midbox{background:#fdfaf2;border:1px solid rgba(154,103,0,.28);border-left:3px solid var(--warn);
+    border-radius:8px;padding:12px 15px;margin:16px 0;font-size:14px}
+  .quote{border-left:3px solid var(--line-2);padding:2px 0 2px 14px;margin:13px 0;color:var(--ink-2);font-size:14.4px}
+  .quote .src{display:block;font-family:var(--mono);font-size:11.5px;color:var(--ink-3);margin-top:4px}
+  .cnt{font-family:var(--mono);font-size:12.6px;color:var(--ink-3)}
+  /* 表格里的 .cnt 小注必须独占一行：否则会紧贴前面的数字 */
+  td .cnt{display:block;margin-top:2px;line-height:1.4}
+  .rd{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:10px;margin-top:12px}
+  .rd .r{background:var(--bg-soft);border:1px solid var(--line);border-radius:9px;padding:9px 11px}
+  .rd .r .n{font-family:var(--serif);font-size:19px;color:var(--accent-2);line-height:1.2}
+  .rd .r .l{font-size:11.8px;color:var(--ink-3);margin-top:2px}
+  .rd .r .x{font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-top:3px}
+  /* 三档判定行（铁律 206：类不同 ⇒ 渲染不同，且就地写图例与计数） */
+  tr.same td{background:rgba(23,114,69,.06)}
+  tr.homo td{background:rgba(154,103,0,.07)}
+  tr.diff td{background:rgba(179,38,30,.055)}
+  tr.same td:first-child{border-left:3px solid var(--good)}
+  tr.homo td:first-child{border-left:3px solid var(--warn)}
+  tr.diff td:first-child{border-left:3px solid var(--bad)}
+  .lg{list-style:none;padding:0;margin:8px 0 12px}
+  .lg li{display:flex;gap:9px;align-items:flex-start;font-size:13.6px;line-height:1.65;margin:7px 0}
+  .lg .sw{flex:0 0 15px;height:11px;border-radius:2px;margin-top:6px}
+  .lg .sw.s{background:rgba(23,114,69,.10);border:1px solid rgba(23,114,69,.38);border-left:3px solid var(--good)}
+  .lg .sw.h{background:rgba(154,103,0,.10);border:1px solid rgba(154,103,0,.38);border-left:3px solid var(--warn)}
+  .lg .sw.d{background:rgba(179,38,30,.09);border:1px solid rgba(179,38,30,.32);border-left:3px solid var(--bad)}
+  .lg b.s{color:var(--good)} .lg b.h{color:var(--warn)} .lg b.d{color:var(--bad)}
+  .step{display:grid;grid-template-columns:52px 1fr;gap:12px;align-items:start;
+    border:1px solid var(--line);border-radius:10px;padding:12px 15px;margin:11px 0;background:#fff}
+  .step .id{font-family:var(--mono);font-size:12.4px;font-weight:700;color:var(--accent);padding-top:3px}
+  .step .bd b{font-family:var(--serif);font-size:15.2px}
+  .step .bd p{margin:5px 0 0;font-size:13.9px;color:var(--ink-2)}
+  .step.miss{border-left:3px solid var(--bad);background:#fffdfd}
+  .step.have{border-left:3px solid var(--good);background:#fcfefd}
+  .step.mid{border-left:3px solid var(--warn);background:#fffdf9}
+  /* 三条路径卡 */
+  .paths{display:grid;grid-template-columns:repeat(auto-fit,minmax(262px,1fr));gap:12px;margin:15px 0}
+  .paths .p{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fff}
+  .paths .p .t{font-family:var(--serif);font-size:14.6px;font-weight:700;margin-bottom:2px}
+  .paths .p .m{font-family:var(--mono);font-size:11.2px;color:var(--ink-3);margin-bottom:7px}
+  .paths .p .d{font-size:13.2px;color:var(--ink-2);line-height:1.62}
+  .paths .p .k{margin-top:8px;font-size:12.4px;color:var(--ink-3);border-top:1px dashed var(--line-2);padding-top:7px}
+  .paths .p .k b{color:var(--accent-2)}
+  .paths .p.p1{border-top:3px solid #1b4f9c}
+  .paths .p.p2{border-top:3px solid #177245}
+  .paths .p.p3{border-top:3px solid #b4531f}
+  /* 专利三层结构图 */
+  .layers{display:grid;grid-template-columns:1fr;gap:0;margin:14px 0;border-radius:10px;overflow:hidden;
+    border:1px solid var(--line)}
+  .layers .ly{display:grid;grid-template-columns:76px 1fr;gap:12px;padding:10px 14px;font-size:13.2px;
+    border-bottom:1px solid var(--line);background:#fff}
+  .layers .ly:last-child{border-bottom:0}
+  .layers .ly .n{font-family:var(--mono);font-size:11.6px;color:var(--ink-3);padding-top:2px}
+  .layers .ly .c{line-height:1.6;color:var(--ink-2)}
+  .layers .ly .c b{color:var(--ink)}
+  .layers .ly.l1{background:#fdf8f4}
+  .layers .ly.l2{background:#fbfaf6}
+  .layers .ly.l3{background:#f6f8fc}
+  .layers .ly.sub{background:var(--bg-soft);font-family:var(--mono);font-size:12px;color:var(--ink-3)}
+  /* 本页导航 12 项 ⇒ 允许换行（只覆盖本页，不动共享 site.css） */
+  @media(min-width:761px){
+    .topnav .inner{flex-wrap:wrap;height:auto;min-height:56px;
+      padding-top:5px;padding-bottom:5px;row-gap:2px}
+  }
+  @media(max-width:760px){
+    .step{grid-template-columns:1fr}
+    .layers .ly{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<nav class="topnav"><div class="inner">
+  <a class="brand" href="keely核心技术与现代声子物理技术对比.html">Keely × 现代声子物理 <span>/</span> K8</a>
+  <a class="nv" href="keely核心技术与现代声子物理技术对比.html" title="总入口：四条改写 · 术语对照 · 全部页面">← 总入口</a>
+  <a class="nv on" href="#s1">① 渠氏专利</a>
+  <a class="nv" href="#s2">② 32000×银</a>
+  <a class="nv" href="#s3">③ 频率阶梯</a>
+  <a class="nv" href="#s3b">③-bis 波数坐标</a>
+  <a class="nv" href="#s4">④ 热→高频三路</a>
+  <a class="nv" href="#s5">⑤ 不能直接倍频</a>
+  <a class="nv" href="#s6">⑥ 声子激光</a>
+  <a class="nv" href="#s7">⑦ 倍频机制</a>
+  <a class="nv" href="#s8">⑧ 与 Keely 对照</a>
+  <a class="nv" href="#s9">⑨ 三步设计</a>
+  <a class="nv" href="#s10">⑩ 判决实验</a>
+  <a class="nv" href="#s11">⑪ 结论</a>
+  <a class="nv" href="K7_声子梳_器件机理与Keely逐项对照.html" title="K7：声子梳的器件机理与逐项对照">← K7 声子梳</a>
+  <a class="nv" href="K9_Dynasphere24管与Anu十丝_赤道环与七内管对照.html" title="K9：24 管、7 内管与 Anu 十丝的尺寸与音程对照">K9 24管×10丝 →</a>
+</div></nav>
+
+<div class="hero"><div class="wrap">
+  <div class="kicker">K8 · Thermal–Phonon Channel</div>
+  <h1>热声子通道：渠氏热超导材料、<br class="brk">Keely 声学，与「二倍频谐振」的接法</h1>
+  <p class="sub">老师提出把渠玉芝的热超导材料与 Keely 的声学系统叠加，用<b>热声子激发高频、再做二倍频</b>。
+  这一页把这个想法拆成可检验的三段，并指出其中<b>哪一段物理上成立、哪一段缺一个环节</b>。</p>
+  <div class="rd">
+    <div class="r"><div class="n">5.1 个量级</div><div class="l">32000×银 反推的声子自由程缺口</div><div class="x">需 ℓ = 5.15 mm vs 硅 40 nm</div></div>
+    <div class="r"><div class="n">10.5 个量级</div><div class="l">热声子线宽要压掉的量</div><div class="x">6.25 THz → 200 Hz 才 Q=10⁶</div></div>
+    <div class="r"><div class="n">68.8 Hz</div><div class="l">声子激光实测线宽</div><div class="x">10.4 GHz 载频，阈值 8.28 mW</div></div>
+    <div class="r"><div class="n">80 dB</div><div class="l">2:1 内共振参量增益</div><div class="x">MoS₂ NEMS 实测，10⁴ 倍</div></div>
+  </div>
+</div></div>
+
+<div class="wrap">
+
+<!-- ============ ① ============ -->
+<h2 id="s1">① 先把东西摆清：渠玉芝与 US 6,132,823</h2>
+
+<p>老师描述的「复合多层材料涂附在金属刚性管材上」，在专利原文里能逐字对上。
+<b>不是流传说法，是有号可查的授权专利。</b>先把文本层面的东西固定下来，再谈性能。</p>
+
+<table class="tbl">
+  <thead><tr><th style="width:22%">项</th><th>内容</th></tr></thead>
+  <tbody>
+    <tr><td>专利号</td><td><b>US 6,132,823</b>　《Superconducting heat transfer medium》　<span class="cnt">[web_401]</span></td></tr>
+    <tr><td>发明人</td><td>Qu, Yuzhi（渠玉芝），San Jose, CA</td></tr>
+    <tr><td>申请 / 授权</td><td>1997-10-24 申请（临时申请可追到 1996-10-25）／ <b>2000-10-17 授权</b></td></tr>
+    <tr><td>国际申请</td><td>PCT/US1997/019554；同族进入 EP、CN、JP、KR、AU、CA、BR、IL、RU</td></tr>
+    <tr><td>权利要求</td><td>37 项，2 项独立</td></tr>
+    <tr><td>专利分类</td><td>F24V30/00、B32B33/00、F28F21/08（<b>传热介质 / 层状产品 / 管件</b>）</td></tr>
+    <tr><td>权利要求首句</td><td>“A superconducting heat transfer medium <b>disposed on a substrate</b> …”
+      <span class="cnt">—— 专利保护的是「涂在基材上的三层介质」，不是「管子里封的气体」</span></td></tr>
+  </tbody>
+</table>
+
+<h3>1.1 三层配方（专利原文的成分清单，按层序）</h3>
+
+<div class="layers">
+  <div class="ly sub"><div class="n">SUBSTRATE</div><div class="c">金属管 / 板（conduit 或 plate pair）—— 专利称 substrate，即老师说的「刚性管材」</div></div>
+  <div class="ly l1"><div class="n">Layer 1</div><div class="c">
+    <b>钠的过氧化物 / 氧化物</b>（sodium peroxide、sodium oxide）、<b>氧化铍</b> BeO、
+    <b>三氧化二锰</b> Mn₂O₃、<b>重铬酸铝</b>、<b>重铬酸钙</b>、<b>氧化硼</b> B₂O₃、重铬酸根</div></div>
+  <div class="ly l2"><div class="n">Layer 2</div><div class="c">
+    <b>氧化钴</b> CoO、Mn₂O₃、BeO、<b>铬酸锶</b>、<b>碳酸锶</b>、<b>氧化铑</b> Rh₂O₃、
+    <b>氧化铜</b> CuO、<b>β-钛</b>、<b>重铬酸钾</b>、B₂O₃、重铬酸钙 / 锰 / 铝</div></div>
+  <div class="ly l3"><div class="n">Layer 3</div><div class="c">
+    <b>氧化铑</b> Rh₂O₃、<b>重铬酸钾</b>、<b>氧化镭</b>、<b>重铬酸钠</b>、<b>重铬酸银</b>、
+    <b>单晶硅</b>、BeO、<b>铬酸锶</b>、B₂O₃、β-钛、金属重铬酸盐（Mn / Al）</div></div>
+  <div class="ly sub"><div class="n">工艺</div><div class="c">
+    三层依次涂覆后做 <b>“heat polarized”（热极化）</b>，才成为「超导传热器件」</div></div>
+</div>
+
+<div class="midbox">
+  <b>「heat polarized」这个词值得单独拎出来。</b>
+  专利把它写成「涂覆之后、成器件之前」的必要工序。在材料学里，<i>polarized</i>（极化）通常指
+  <b>电偶极或缺陷偶极的有序取向</b> —— 即把涂层做成<b>驻极体（electret）</b>式的极化态。
+  若真是这样，这三层金属氧化物夹在金属之间，就是一个
+  <b>MIM（金属–绝缘体–金属）叠层 + 永久极化</b>结构。这一点在专利里没有展开机理，但它是后面
+  第 ④ 节「界面极化能否参与传热」这条路径的文本依据。
+</div>
+
+<h3>1.2 对外公布的性能数字（以及它们的证据强度）</h3>
+
+<table class="tbl">
+  <thead><tr><th style="width:30%">指标</th><th style="width:24%">公布值</th><th style="width:12%">等级</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr class="same"><td>三层配方与「热极化」工序</td><td>如 1.1</td><td><span class="tag ok">A</span></td>
+      <td>专利文本本身，可逐字核对</td></tr>
+    <tr class="same"><td>授权范围</td><td>美 / 欧共体等 26 国</td><td><span class="tag ok">A</span></td>
+      <td>专利族可查（Google Patents 同族列表）</td></tr>
+    <tr class="homo"><td>工业应用</td><td>炼油厂空预器、钢铁余热、CPU 散热、青藏冻土路基</td><td><span class="tag mid">C</span></td>
+      <td>2004 年《人民日报》报道 + 现场考察，<b>非同行评议</b></td></tr>
+    <tr class="diff"><td>导热系数</td><td><b>银的 3 万 – 32,000 倍</b></td><td><span class="tag no">D</span></td>
+      <td>仅见科普转述与厂商材料，未查到原始测试报告 <span class="cnt">[web_403]</span></td></tr>
+    <tr class="diff"><td>适用温区</td><td>−70 ℃ ~ 1700 ℃</td><td><span class="tag no">D</span></td>
+      <td>同上</td></tr>
+    <tr class="diff"><td>连续运行</td><td>1400 天无衰减 / 11 万小时</td><td><span class="tag no">D</span></td>
+      <td>归于斯坦福研究院（SRI）测试，<b>未查到公开报告</b></td></tr>
+    <tr class="diff"><td>热流密度</td><td>&gt; 8000 kW/m²，「测不出极限」</td><td><span class="tag no">D</span></td>
+      <td>同上</td></tr>
+    <tr class="diff"><td>「微粒子振动」</td><td><b>每秒 2 亿次以上</b>（200 MHz）</td><td><span class="tag no">D</span></td>
+      <td>西北工大翟平教授转述，见《人民日报》2004-09-15 第 15 版 <span class="cnt">[web_402]</span></td></tr>
+    <tr class="diff"><td>轴向温度</td><td>远端比近端<b>高 3–5 ℃</b></td><td><span class="tag no">D</span></td>
+      <td>同上；这条涉及第二定律，见 ② 与 ⑩</td></tr>
+  </tbody>
+</table>
+
+<p class="cnt" style="margin-top:8px">分级口径：<b>A</b> = 原始文本可查；<b>C</b> = 有现场报道但无同行评议；
+<b>D</b> = 仅见转述，无原始测试报告。<b>本页后续所有讨论，凡用 D 级数字处都会标出 —— 不是不信，
+是这些数不能当已知量代入计算，只能当「待测目标」。</b></p>
+
+<div class="warnbox">
+  <b>先立一条纪律，比数据本身更重要。</b><br>
+  「32000 倍银」这个数字，如果当真，是一个<b>可拿诺贝尔奖</b>的结果 —— 它比金刚石高 6864 倍。
+  这种量级的反常通常只有两种命运：要么被独立复现并改写教科书，要么被证明是<b>等效量被当成了本征量</b>。
+  所以本页的处理方式是：<b>不否定它的工程效果，但把它严格划到「等效传热」这一栏，再问「等效意味着什么」。</b>
+  这个区分不是抠字眼，它直接决定后面能不能接 Keely。
+</div>
+
+<!-- ============ ② ============ -->
+<h2 id="s2">② 32000× 银 到底是多少：三条硬判据</h2>
+
+<p>银的导热系数取 429 W/(m·K)，32000 倍即 <b>1.373 × 10⁷ W/(m·K)</b>。
+参照系：金刚石 ~2000、铜 400、硅 148、水 0.6、<b>最好的热管等效值 10⁵ – 10⁶</b>。</p>
+
+<h3>2.1 判据一：用动力学理论反推声子平均自由程</h3>
+
+<p>晶格导热的标度关系是三件事的乘积：热容、声速、平均自由程。</p>
+
+<div class="eq">
+  k = ⅓ · C<sub>V</sub> · v · ℓ
+</div>
+
+<p>把 k = 1.373 × 10⁷ 代进去，反解 ℓ：</p>
+
+<table class="tbl">
+  <thead><tr><th style="width:34%">假设的热容与声速</th><th style="width:22%">反推 ℓ</th><th>与实测对照</th></tr></thead>
+  <tbody>
+    <tr><td>C = 1.6×10⁶ J/(m³·K)（硅量级），v = 5000 m/s</td><td><b>5.15 mm</b></td>
+      <td rowspan="4" style="vertical-align:middle">
+        硅 300 K 实测 <span class="cnt">[web_405]</span>：<br>
+        · Umklapp 非弹性自由程 <b>Λ<sub>U</sub> ≈ 300 nm</b><br>
+        · 主要载热声子 ℓ 分布 <b>100 nm – 10 μm</b>（承载 70% 热量）<br>
+        · 动力学反推 <b>ℓ ≈ 40 nm</b><br><br>
+        ⇒ 5.15 mm 比 40 nm 大 <b>12.9 万倍</b><br>
+        = <b>5.1 个数量级</b>
+      </td></tr>
+    <tr><td>C = 1.6×10⁶，v = 3000 m/s</td><td>8.58 mm</td></tr>
+    <tr><td>C = 3.4×10⁶（金属量级），v = 5000 m/s</td><td>2.42 mm</td></tr>
+    <tr><td>C = 3.4×10⁶，v = 3000 m/s</td><td>4.04 mm</td></tr>
+  </tbody>
+</table>
+
+<div class="warnbox">
+  <b>这条判据的力度在于：它不依赖任何关于「机理」的假设。</b><br>
+  只要热量由<b>声子</b>在<b>晶格</b>里输运，k 就被 ⅓·C·v·ℓ 锁死，而 ℓ 的物理上限是
+  「声子在被 Umklapp 散射前能走多远」。室温下这个上限是<b>微米量级</b>，不是毫米。
+  <br><br>
+  所以：<b>如果 32000× 是真的，那它一定不是「晶格声子传导」。</b>
+  这句话不是否定，而是把问题<b>逼到一个岔路口</b> —— 见下一条。
+</div>
+
+<h3>2.2 判据二：本征 k 与等效 k 是两种东西</h3>
+
+<p>热管就是最好的例子。一根水热管的<b>本征</b>材料导热只有铜的几倍，
+但它的<b>等效</b>导热系数可以到 10⁵ – 10⁶ W/(m·K) —— 因为它不是「传导」，是
+<b>蒸发–输运–冷凝</b>的循环。<b>等效值高，不代表材料导热好，代表有工质在动。</b></p>
+
+<div class="paths">
+  <div class="p p1">
+    <div class="t">若「本征」</div>
+    <div class="m">晶格声子直接传导</div>
+    <div class="d">需要 ℓ = mm 量级 ⇒ <b>与 5.1 个数量级的事实冲突</b>。
+      要成立，必须是某种室温下不被 Umklapp 散射的元激发（如声子流体、激子、等离激元）。</div>
+    <div class="k"><b>代价：</b>必须指名是哪种元激发，并给出它的色散与寿命</div>
+  </div>
+  <div class="p p2">
+    <div class="t">若「等效」</div>
+    <div class="m">有工质在循环</div>
+    <div class="d">那就必然有<b>物质迁移</b> —— 微对流、毛细回流、吸附/解吸、固–气循环。
+      这一栏在工程上完全合理，热管就是这样做的。</div>
+    <div class="k"><b>代价：</b>与「无相变、光速传热、热阻为零」<b>不能同时成立</b></div>
+  </div>
+  <div class="p p3">
+    <div class="t">若「界面」</div>
+    <div class="m">极化/缺陷辅助</div>
+    <div class="d">三层金属氧化物 + 金属基底 + 「热极化」= 多个异质界面。
+      界面极化（Maxwell–Wagner）、氧空位、热释电都能产生异常电/热响应。</div>
+    <div class="k"><b>代价：</b>能解释「异常」，但解释不了「超过金刚石 6864 倍」</div>
+  </div>
+</div>
+
+<p>专利原文写的是 “transfers heat <b>without any net heat loss</b>” —— 注意这是
+<b>「无净热损」</b>，不是「效率 100%」。这两个说法在中文转述里常被混为一谈。
+无净热损 = 热阻趋零（<b>等效量</b>）；效率 100% = 输出功等于输入热（<b>违反第二定律</b>）。
+前者是工程目标，后者不可能。<b>渠氏的表述落在前者，是被转述者推到了后者。</b></p>
+
+<h3>2.3 判据三：「远端比近端高 3–5 ℃」必须指定属于哪一种</h3>
+
+<p>这一条最容易被当成「铁证」。但在热力学上，它<b>不是不可能，而是必须指明前提</b>。
+无外功、单一热源、稳态条件下，热流方向由温度梯度决定；要让远端更热，必须满足下面之一：</p>
+
+<table class="tbl">
+  <thead><tr><th style="width:22%">可能的机制</th><th style="width:40%">物理上怎么实现</th><th>对技术定性的影响</th></tr></thead>
+  <tbody>
+    <tr class="same"><td>(a) 有外功输入</td><td>泵、电场、化学势差 —— 相当于热泵</td>
+      <td>则它是<b>热泵</b>，不是「超导传热」。能效按 COP 评价，不按 k 评价</td></tr>
+    <tr class="homo"><td>(b) 测温误差</td><td>近端热电偶被热源「遮挡」或受冷端效应，读的是接触温度而非流体温度</td>
+      <td>则现象消失，<b>k 的数值也要重测</b></td></tr>
+    <tr class="homo"><td>(c) 非平衡态</td><td>吸附/解吸、微相变、毛细回流 —— 局部有熵产生</td>
+      <td>则它是<b>两相循环器件</b>，与「无相变」矛盾，但工程上可行</td></tr>
+  </tbody>
+</table>
+
+<div class="midbox">
+  <b>这一条的正确用法：不是拿来否定，是拿来当「实验设计清单」。</b><br>
+  只要做一次<b>对称双向测温</b>（把热源换到另一端，其余不变），三种机制会给出完全不同的结果：
+  (a) 反向也偏热；(b) 反向读数对称恢复；(c) 反向有滞后与记忆。
+  <b>一次实验就能定性</b>，成本极低。见 ⑩-E2。
+</div>
+
+<!-- ============ ③ ============ -->
+<h2 id="s3">③ 频率阶梯：200 MHz 到底站在哪儿（本节已按 Keely 原文重写）</h2>
+
+<div class="warnbox">
+  <b>先认一条错，是老师指出来的。</b><br>
+  本节旧版把 Keely 的「432–3456 Hz」和渠氏的「200 MHz」并排相减，得出「<b>200 MHz 比 Keely 高 5.67 个数量级</b>」。
+  <b>这个比法是错的</b>，错在三处：<br><br>
+  ① <b>432 Hz 不是 Keely 体系的上限</b>，它只是 dynasphere 里一根空气柱的音高；<br>
+  ② <b>Keely 自己写过一条明确的频率阶梯</b>，起点是 <b>20,000 Hz</b>，不是 432 Hz —— 我原来根本没找它；<br>
+  ③ 拿「一根管的音高」去减「微粒子振动」，<b>混了两个不同的物理对象</b>（乐器音高 vs 物质内部运动）。<br><br>
+  重算之后结论<b>整个反过来了</b>：200 MHz <b>不是</b>「高 5.67 个量级」，它<b>正好落在 Keely 阶梯之内</b>，
+  在第 8.4 级上 —— 按 Keely 自己的分类，那已经是<b>刚进原子级</b>的位置。
+</div>
+
+<h3>3.1 Keely 自己给的两条级数（SVP 原文，逐字）</h3>
+
+<div class="quote">
+  “In this list the forms of matter are arranged in the mathematical sequence of the <b>rapidity of the oscillations</b>
+  of their constituent members; the proportion being proved by experiment to be as follows:
+  for the molecular orders: <b>1 : 3 : 9 : 27 : 81 : 243</b>.
+  This arithmetical progression changes in the atomic orders to a geometrical progression as follows:
+  <b>3 : 9 : 81 : 6561 : 43046721</b>, etc.”
+  <span class="src">Keely, via SVP — Keely's Physical Philosophy / PoL Ch.3　[web_411]</span>
+</div>
+
+<div class="quote">
+  “When in that state of neutral aggregation which we know as matter, each molecule is in perpetual oscillation,
+  the range of the oscillation being <b>one-third of the molecule</b>, and its rapidity
+  <b>20,000 oscillations in a second</b>.”
+  <span class="src">同上　[web_411]</span>
+</div>
+
+<p>这两段合起来，给出一个完整的、<b>有起点、有级差</b>的阶梯：</p>
+
+<table class="tbl">
+  <thead><tr><th style="width:22%">级数</th><th style="width:34%">原文</th><th style="width:20%">写成幂</th><th>适用域</th></tr></thead>
+  <tbody>
+    <tr class="same"><td><b>分子级</b></td><td>1 : 3 : 9 : 27 : 81 : 243</td><td>3<sup>n</sup>（n = 0…5）</td>
+      <td>六个「阶」（order）：分子 / 分子间 / 原子 / 原子间 / 以太 / 以太间</td></tr>
+    <tr class="same"><td><b>原子级起</b></td><td>3 : 9 : 81 : 6561 : 43046721</td><td><b>3<sup>(2ⁿ)</sup></b>（n = 0…4）</td>
+      <td>每进一级，<b>把上一级平方</b> ⇒ 级差自己也在翻倍</td></tr>
+    <tr class="same"><td><b>基准频率</b></td><td>每秒 20,000 次振荡</td><td>f<sub>0</sub> = 20 kHz</td><td>分子级第一阶（I Molecular）</td></tr>
+  </tbody>
+</table>
+
+<div class="goodbox">
+  <b>这才是应该拿来比的「Keely 频率」。</b>它不是一个数，是一条<b>从 20 kHz 起、级差按 3 与 3<sup>(2ⁿ)</sup> 递增</b>的序列。
+  旧版拿 432 Hz 当「Keely 的频率」，相当于拿钢琴的 A 音去代表整个乐器的音域 —— <b>层次搞错了</b>。
+</div>
+
+<h3>3.2 接力重建：从 20 kHz 一路到 12.4 MeV</h3>
+
+<p>把两条级数接起来（分子六级 ×3 到顶，再按 3<sup>(2ⁿ)</sup> 逐级平方），得到下表。
+<b>11 行，每一行都可以用计算器复核：</b></p>
+
+<table class="tbl">
+  <thead><tr><th style="width:8%">级</th><th style="width:26%">频率</th><th style="width:14%">倍数</th>
+    <th style="width:16%">波数 ν̃ (cm⁻¹)</th><th>落在哪个物理域</th></tr></thead>
+  <tbody>
+    <tr class="same"><td>0</td><td><b>20 kHz</b></td><td>×1</td><td>6.7×10⁻⁷</td><td>Keely 基准：分子级 I</td></tr>
+    <tr class="same"><td>1</td><td>60 kHz</td><td>×3</td><td>2.0×10⁻⁶</td><td>II 分子间</td></tr>
+    <tr class="same"><td>2</td><td>180 kHz</td><td>×9</td><td>6.0×10⁻⁶</td><td>III 原子</td></tr>
+    <tr class="same"><td>3</td><td>540 kHz</td><td>×27</td><td>1.8×10⁻⁵</td><td>IV 原子间</td></tr>
+    <tr class="same"><td>4</td><td><b>1.62 MHz</b></td><td>×81</td><td>5.4×10⁻⁵</td><td>V 以太 ← <b>老师记的 1.62 MHz 在这里</b></td></tr>
+    <tr class="same"><td>5</td><td>4.86 MHz</td><td>×243</td><td>1.6×10⁻⁴</td><td>VI 以太间（分子级到顶）</td></tr>
+    <tr class="homo"><td>6</td><td><b>14.58 MHz</b></td><td>×3</td><td>4.9×10⁻⁴</td><td><b>原子级第 1 细分</b>（换成平方递进）</td></tr>
+    <tr class="diff"><td><b>8.38</b></td><td><b>200 MHz</b></td><td>—</td><td><b>6.7×10⁻³</b></td>
+      <td><b>渠氏「微粒子振动」落在这里</b>，紧贴第 8 级（131 MHz）</td></tr>
+    <tr class="homo"><td>8</td><td><b>131.2 MHz</b></td><td>×9</td><td>4.4×10⁻³</td><td>原子级第 2 细分</td></tr>
+    <tr class="homo"><td>12</td><td><b>10.63 GHz</b></td><td>×81</td><td>0.355</td><td>原子级第 3 细分</td></tr>
+    <tr class="homo"><td>20</td><td><b>69.7 THz</b></td><td>×6561</td><td><b>2326</b></td>
+      <td><b>分子/晶格振动的真实频段</b>（中红外）</td></tr>
+    <tr class="homo"><td>36</td><td><b>3.0×10²¹ Hz</b></td><td>×4.30×10⁷</td><td>1.0×10¹¹</td>
+      <td><b>12.4 MeV</b> —— 核结合能尺度</td></tr>
+  </tbody>
+</table>
+
+<p class="cnt" style="margin-top:8px">累计倍数到第 36 级 = 3<sup>31</sup> = 6.1767×10¹⁴；
+20,000 × 243 × 3<sup>31</sup> = 3.002×10²¹ Hz；×h = <b>12.41 MeV</b>。
+波数 ν̃ = f / c，单位 cm⁻¹（c 以 cm/s 计）。</p>
+
+<div class="viz">
+  <div class="vt">图 8-1（重画）　Keely 的频率阶梯：从 20 kHz 到 12.4 MeV</div>
+  <div class="vc">横轴是<b>阶梯级数 n</b>（不是频率本身）—— 因为每上一级乘 3，所以 n 是频率的对数。
+  橙色是<b>分子六级</b>（级差 1），蓝色起是<b>原子级细分</b>（级差 2、4、8、16，越往上越稀）。
+  红色是<b>渠氏 200 MHz</b>，绿色是<b>声子激光实测 10.4 GHz</b>，紫色是<b>室温热声子 kT/h</b>。<br>
+  <span class="cnt">⚠ 看这张图要抓的重点：200 MHz 与 10.4 GHz 都<b>几乎正好落在蓝点上</b>（第 8、12 级）。</span></div>
+  <canvas id="cvLadder" width="1120" height="520"></canvas>
+</div>
+
+<h3>3.3 200 MHz 落在第 8.38 级：不是「高 5.67 个量级」，是「几乎贴着第 8 级」</h3>
+
+<div class="eq">
+  n = log<sub>3</sub>(200 MHz ÷ 20 kHz) = log<sub>3</sub>(10⁴) = <b>8.384</b>
+  <span class="lbl">级差 = 3 倍 ⇒ n 就是 3 的对数</span>
+</div>
+
+<table class="tbl">
+  <thead><tr><th style="width:24%">量</th><th style="width:20%">数值</th><th>含义</th></tr></thead>
+  <tbody>
+    <tr class="same"><td>200 MHz 的级数</td><td><b>8.384</b></td><td>—</td></tr>
+    <tr class="same"><td>最近的下方级（n = 8）</td><td>131.2 MHz</td><td>相差 <b>1.52 倍</b>（半个级差之内）</td></tr>
+    <tr class="same"><td>最近的上方级（n = 9）</td><td>393.7 MHz</td><td>相差 1.97 倍</td></tr>
+    <tr class="good"><td colspan="3"><b>⇒ 200 MHz 是 Keely 阶梯内一个「正常位置」，不是阶梯外的远点。</b>
+      按 Keely 的分级，它落在<b>分子级已到顶（4.86 MHz）、刚进原子级第 1–2 细分</b>之间 ——
+      用他的话说，正是<b>「往原子里去」的入口</b>。</td></tr>
+  </tbody>
+</table>
+
+<div class="midbox">
+  <b>老师那句「Keely 用 trexar 线导出能打进原子核的高频」在这条阶梯上是自洽的</b>：
+  20 kHz → MHz → GHz → THz → MeV，第 36 级就是 12.4 MeV。
+  而渠氏的 200 MHz 在第 8.4 级 —— <b>是这条路的起步段，不是终点</b>。
+  <b>旧版把 200 MHz 说成「比 Keely 高 5.67 个量级」，等于把起点说成了终点，方向完全反了。</b>
+</div>
+
+<h3>3.4 但阶梯的<b>绝对标定</b>低了一大截 —— 这才是真问题</h3>
+
+<p>上面的「位置对上了」只是一半。另一半要问：<b>Keely 给这几级起的名字，和现代物理在该频率上的现象，对得上吗？</b></p>
+
+<table class="tbl">
+  <thead><tr><th style="width:26%">检验</th><th style="width:26%">算式</th><th style="width:18%">结果</th><th>判定</th></tr></thead>
+  <tbody>
+    <tr class="diff"><td>20 kHz 在钢里的波长</td><td>5000 ÷ 20,000</td><td><b>0.25 m = 25 cm</b></td>
+      <td>分子尺度 0.3 nm ⇒ 波长是分子的 <b>8.3×10⁸ 倍</b></td></tr>
+    <tr class="diff"><td>所以「每个分子每秒振荡 2 万次」只能是</td><td>—</td><td>—</td>
+      <td><b>宏观声波（整块材料在动）</b>，不可能是分子内部的振动</td></tr>
+    <tr class="diff"><td>真实分子振动在哪一级</td><td>~1000 cm⁻¹ = 3×10¹³ Hz</td><td><b>n ≈ 19.2</b></td>
+      <td>而 Keely 把「原子级」放在 <b>n = 2</b>（180 kHz）或 <b>n = 6</b>（14.6 MHz）</td></tr>
+    <tr class="diff"><td>缺口</td><td>3×10¹³ ÷ 1.8×10⁵（或 1.46×10⁷）</td><td><b>13–17 级</b></td>
+      <td><b>= 21–27 个八度 = 6.3–8.2 个数量级</b></td></tr>
+  </tbody>
+</table>
+
+<div class="warnbox">
+  <b>这条是本节真正的结论，而且它比旧版那个「5.67」严重得多。</b><br>
+  Keely 的阶梯是一条<b>比例模板</b>（每级 ×3，原子级起每级平方），<b>不是一张频率表</b>。
+  它的形状可用，但<b>绝对位置低了 13–17 级（6–8 个数量级）</b>：
+  他叫「原子级」的地方（180 kHz – 14.6 MHz），离真实原子/分子振动（10¹³–10¹⁴ Hz）还差 <b>6 到 8 个量级</b>。<br><br>
+  <b>为什么？</b>因为基准选的是 <b>20,000 次/秒</b>这个<b>声学</b>量。
+  用它当起点，整条梯子就必然落在声学–射频段；要让它够到原子，起点本身得是 10¹²–10¹³ Hz。
+  <b>换言之：「分子每秒振荡两万次」这句话，如果按字面读成分子内部振动，就已经错了 8 个量级。</b>
+</div>
+
+<div class="goodbox">
+  <b>反过来，阶梯的上半段（n ≥ 18）与现代物理是对得上的 —— 这不是巧合，是可核对的：</b><br>
+  n = 17.8 → 6.25 THz = 300 K 的 kT/h（<b>热</b>）；n = 18.6–19.3 → 500–1080 cm⁻¹（<b>晶格振动</b>）；
+  n = 22.0 → 500 nm（<b>可见光</b>，红到绿）；n = 33.7 → 1 MeV（<b>核</b>）。<br>
+  这四个锚点都落在该在的位置上，说明<b>级差 ×3 这条规则本身是能用的</b>；
+  坏的只是「哪一级该叫什么名字」这个标定。<br>
+  <b>这条区分很重要：模板可用 ≠ 命名正确。</b>
+</div>
+
+<h3>3.5 顺手记一处「太像真的」的巧合，并当场否掉</h3>
+
+<table class="tbl">
+  <thead><tr><th style="width:30%">现象</th><th style="width:18%">实测</th><th style="width:18%">阶梯上最近级</th><th>偏差</th></tr></thead>
+  <tbody>
+    <tr class="homo"><td>声子激光载频（中科院 PRX 2024）</td><td><b>10.4 GHz</b></td><td>第 12 级 = 10.63 GHz</td><td><b>1.4 %</b></td></tr>
+    <tr class="homo"><td>渠氏「微粒子振动」</td><td>200 MHz</td><td>第 8 级 = 131.2 MHz</td><td>52 %</td></tr>
+  </tbody>
+</table>
+
+<div class="warnbox">
+  <b>10.4 GHz 对上 10.63 GHz，只差 1.4%，看起来像铁证。但它不是。</b><br>
+  级差是 <b>3 倍</b>，所以任何一个任意频率，落在某一级 ±1.4% 之内的概率约为
+  <b>2×0.014 / ln3 = 2.5 %</b>；落在 ±10% 之内约 <b>18 %</b>。<br>
+  只做了两次试验，命中一次 1.4% —— <b>P ≈ 5 %，够不上证据</b>，只能说「不排除」。
+  要它算证据，必须先<b>预测</b>某台器件该落在第几级，再去测。<b>我们是先看见 10.4 GHz，再去找级数的，顺序反了。</b>
+</div>
+
+<!-- ============ ③-bis ============ -->
+<h2 id="s3b">③-bis 波数：唯一能把「Keely 的台阶」和「渠氏的涂层」接起来的坐标</h2>
+
+<p>老师在这一点上指得很准：<b>每个分子、每种晶体的红外振动谱带都不一样，而这张表是查得到的。</b>
+Keely 说的「chord of mass」（物质的和弦质量），现代对应的就是这个<b>特征谱带集合</b>。
+接的时候必须换一个坐标 —— <b>波数 ν̃（cm⁻¹）</b>，因为材料谱表都是以 cm⁻¹ 记的。</p>
+
+<div class="eq">
+  ν̃ = f / c = 1 / λ　　（c = 2.9979×10¹⁰ cm/s）　⇒　<b>1 cm⁻¹ = 29.979 GHz</b>
+  <span class="lbl">波数与频率成正比 ⇒ 阶梯的级数在波数轴上不变</span>
+</div>
+
+<h3>3bis.1 把阶梯的关键点搬到波数轴上</h3>
+
+<table class="tbl">
+  <thead><tr><th style="width:26%">锚点</th><th style="width:20%">频率</th><th style="width:18%">波数 cm⁻¹</th>
+    <th style="width:12%">级数 n</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr class="same"><td>Keely 基准</td><td>20 kHz</td><td>6.7×10⁻⁷</td><td>0</td><td>宏观声波</td></tr>
+    <tr class="diff"><td><b>渠氏「微粒子振动」</b></td><td><b>200 MHz</b></td><td><b>6.7×10⁻³</b></td><td><b>8.4</b></td>
+      <td>超声段，<b>比任何分子振动低 10 级</b></td></tr>
+    <tr class="same"><td>声子激光</td><td>10.4 GHz</td><td>0.347</td><td>12.0</td><td>微波–太赫兹交界</td></tr>
+    <tr class="same"><td>室温热声子 kT/h</td><td>6.25 THz</td><td><b>208</b></td><td>17.8</td><td><b>「热」的门槛</b></td></tr>
+    <tr class="same"><td>氧化物晶格带（见 3bis.2）</td><td>1.5–3.2×10¹³ Hz</td><td><b>500–1080</b></td><td>18.6–19.3</td>
+      <td><b>Keely 的「chord of mass」在这里</b></td></tr>
+    <tr class="same"><td>可见光 500 nm</td><td>6.0×10¹⁴ Hz</td><td>2.0×10⁴</td><td>22.0</td><td>—</td></tr>
+    <tr class="same"><td>1 MeV（核）</td><td>2.42×10²⁰ Hz</td><td>8.1×10⁹</td><td>33.7</td><td>—</td></tr>
+  </tbody>
+</table>
+
+<div class="warnbox">
+  <b>一条算出来的硬结论：200 MHz（6.7×10⁻³ cm⁻¹）与晶格带（500–1080 cm⁻¹，几何中值 735 cm⁻¹）差 10.6 级 = 16.7 个八度 = 5.04 个数量级。</b><br>
+  注意：<b>这个「5 个量级」和旧版那个「5.67」数字接近，但依据完全不同</b> ——
+  旧版比的是 432 Hz（一根管的音高，错），新版比的是<b>材料自己的晶格谱带</b>（对）。<br>
+  <b>数字碰巧差不多，正是这类错误最难自查的地方：结论看着没变，所以没人去查依据。</b>
+</div>
+
+<h3>3bis.2 渠氏专利里那些氧化物的红外/Raman 谱带（查表值）</h3>
+
+<table class="tbl">
+  <thead><tr><th style="width:20%">氧化物（专利层序）</th><th style="width:26%">特征谱带 cm⁻¹</th>
+    <th style="width:20%">对应频率</th><th style="width:12%">级数 n</th><th>归属</th></tr></thead>
+  <tbody>
+    <tr class="same"><td><b>CuO</b> 氧化铜（层2）</td><td><b>146 / 164 / 355 / 480 / 542 / 603</b>（IR）<br>296 / 346 / 636（Raman）</td>
+      <td>4.4–18.1 THz</td><td>17.5–18.8</td><td>Cu–O 伸缩 / 弯曲（单斜 C2/c）<span class="cnt">[web_412]</span></td></tr>
+    <tr class="same"><td><b>Mn₂O₃</b> 三氧化二锰（层1/2）</td><td><b>~645</b>（Mn–O 对称伸缩）、120（外模）</td>
+      <td>19.3 THz / 3.6 THz</td><td>18.8 / 17.3</td><td>MnO₆ 八面体<span class="cnt">[web_413]</span></td></tr>
+    <tr class="same"><td><b>BeO</b> 氧化铍（三层都有）</td><td><b>~700</b>（TO）/ ~1050（LO）</td>
+      <td>21.0 / 31.5 THz</td><td>18.9–19.3</td><td>Be–O 晶格（强极性，Reststrahlen）</td></tr>
+    <tr class="same"><td><b>B₂O₃</b> 氧化硼（层1/2/3）</td><td><b>1260 / 720 / 560</b></td>
+      <td>16.8–37.8 THz</td><td>18.7–19.4</td><td>B–O 伸缩（1200–1450）/ 弯曲（700）</td></tr>
+    <tr class="same"><td><b>SiO₂</b> 单晶硅/石英（层3）</td><td><b>1080 / 800 / 470</b></td>
+      <td>14.1–32.4 THz</td><td>18.5–19.3</td><td>Si–O–Si 反对称伸缩</td></tr>
+    <tr class="homo"><td>SrCrO₄ / K₂Cr₂O₇（铬酸盐）</td><td>~890 / 940 / 760</td>
+      <td>22.8–28.2 THz</td><td>19.0–19.2</td><td>CrO₄²⁻ / Cr₂O₇²⁻ 内模</td></tr>
+  </tbody>
+</table>
+
+<p class="cnt" style="margin-top:8px">谱带为文献典型值（Raman/FTIR，室温，±5–10%）；不同晶型、粒径、掺杂会有位移。
+<b>关键不是某一条的精确值，而是主带全部挤在 n = 18.5–19.4 这一小段里</b> —— 跨度不到 1 级。
+（Mn₂O₃ 的 120、CuO 的 146 / 164 三个<b>远红外外模</b>是例外，它们落到 n = 17.3–17.5。）</p>
+
+<div class="goodbox">
+  <b>这张表本身就是回答老师那句「每一个分子、原子的红外振动波长图谱不同」：</b><br>
+  六种氧化物、十二个晶格模，<b>除三个远红外外模外，其余全部落在 470–1260 cm⁻¹，即 n = 18.5–19.4</b>。
+  它们之间的差别（几十到几百 cm⁻¹）在阶梯上只有 <b>0.1–0.5 级</b> —— <b>细到无法用「三级一跳」的阶梯去分辨</b>。<br>
+  所以 Keely 的阶梯<b>能定位「物质的和弦在哪一段」，但不能区分「是哪种物质的和弦」</b>。
+  要区分 CuO 和 Mn₂O₃，必须用 cm⁻¹ 精度，也就是要用光谱仪，不是用级数。
+</div>
+
+<h3>3bis.3 那 200 MHz 到底能不能碰到晶格带？有一条合法通道</h3>
+
+<p>不是完全碰不到 —— <b>布里渊（Brillouin）散射</b>就是干这个的：
+一束光被 200 MHz 的声波散射后，频率偏移正好等于声频。</p>
+
+<table class="tbl">
+  <thead><tr><th style="width:28%">量</th><th style="width:24%">数值</th><th>含义</th></tr></thead>
+  <tbody>
+    <tr class="same"><td>声频</td><td>200 MHz</td><td>边带间隔</td></tr>
+    <tr class="same"><td>载频（取 1000 cm⁻¹ 晶格带）</td><td>3.0×10¹³ Hz</td><td>—</td></tr>
+    <tr class="same"><td>相对频移</td><td><b>6.7×10⁻⁶</b></td><td>= 0.0067 cm⁻¹</td></tr>
+    <tr class="diff"><td>要分开这个边带需要的分辨率领</td><td><b>1.5×10⁵</b></td><td>FTIR 常规 0.5 cm⁻¹ ⇒ 差 <b>75 倍</b>，测不出来</td></tr>
+    <tr class="same"><td>可行手段</td><td>布里渊光谱 / 外差拉曼</td><td>能到 MHz 分辨率</td></tr>
+  </tbody>
+</table>
+
+<div class="midbox">
+  <b>结论：200 MHz 与晶格带之间<b>有</b>合法耦合，但那是「给一条 1000 cm⁻¹ 的谱线加一个 0.0067 cm⁻¹ 的边带」，
+  不是「把 200 MHz 倍频到 10¹³ Hz」。</b><br>
+  这两件事的区别，就是本页 ⑤ 要讲的：<b>边带（线性/参量微扰）与倍频（必须 2:1 内共振）不是一回事。</b>
+  前者只要声场存在就能发生，后者需要 Q、相位、失谐三者同时满足。
+</div>
+
+
+<!-- ============ ④ ============ -->
+<h2 id="s4">④ 热 → 高频：三条正规路径（都有文献，不是猜想）</h2>
+
+<p>把「热」变成「有序的、高频的」能量，物理上有三条成熟路径。
+<b>它们的效率上限、所需条件、能不能接 Keely，三者完全不同</b>，必须分开算。</p>
+
+<div class="paths">
+  <div class="p p1">
+    <div class="t">A · 反斯托克斯上转换</div>
+    <div class="m">phonon-assisted anti-Stokes</div>
+    <div class="d">吸收一个低能光子 + <b>吸收一个声子</b>，放出更高能的光子。
+      本质是「用声子补能量差」。已做成<b>激光制冷固体</b>（optical refrigeration）与
+      Yb³⁺/Er³⁺ 上转换测温。</div>
+    <div class="k"><b>硬条件：</b>必须有<b>电子能级台阶</b>（稀土离子 f-f 跃迁）。<br>
+      <b>效率：</b>∝ exp(−E<sub>声子</sub>/kT) <span class="cnt">[web_414]</span></div>
+  </div>
+  <div class="p p2">
+    <div class="t">B · 瞬态热吸收 → 相干声子</div>
+    <div class="m">coherent LA wave packet</div>
+    <div class="d">金属薄膜吸收超快脉冲，瞬时热膨胀在界面处<b>直接激发一个相干纵声波包</b>，
+      以声速传入衬底。GaP 肖特基二极管上已实测（APL 82, 1781）。</div>
+    <div class="k"><b>硬条件：</b>皮秒级热梯度 + 金属薄膜 + 单晶衬底。<br>
+      <b>这是「热 → 相干声子」唯一的直接实验证据</b>（见 ⑥）</div>
+  </div>
+  <div class="p p3">
+    <div class="t">C · 热声发动机</div>
+    <div class="m">thermoacoustic</div>
+    <div class="d">温度梯度在谐振管内维持声振荡，把热直接变成声功。
+      <b>已是成熟商品</b>（无运动部件、无稀有材料）。</div>
+    <div class="k"><b>效率基线：</b>驻波 &lt;20% Carnot，行波 ~40% Carnot。<br>
+      <b>它给的是「声功」，不是「相干高频」</b></div>
+  </div>
+</div>
+
+<h3>4.1 三条路径的效率与代价（这条表是全页的骨架）</h3>
+
+<table class="tbl">
+  <thead><tr><th style="width:15%">路径</th><th style="width:20%">输出是什么</th><th style="width:20%">效率上限</th>
+    <th style="width:22%">所需条件</th><th>能不能接 Keely</th></tr></thead>
+  <tbody>
+    <tr class="diff"><td><b>A</b> 反斯托克斯</td><td>光子（高频）</td>
+      <td>MHz 段 ≈ 1（免费）<br>eV 段 10<sup>−17</sup></td>
+      <td>稀土离子能级台阶</td>
+      <td><b>不能</b>：它输出<b>光</b>，不是声。且 Keely 无发光中心</td></tr>
+    <tr class="same"><td><b>B</b> 瞬态热吸收</td><td><b>相干声波包</b></td>
+      <td>受热膨胀系数与脉冲能量限</td>
+      <td>皮秒脉冲 + 金属膜 + 单晶 <span class="cnt">[web_406]</span></td>
+      <td><b>可以</b>：这是三条里唯一<b>输出声</b>的。
+        但需要「脉冲式」热源，不是稳态温差</td></tr>
+    <tr class="homo"><td><b>C</b> 热声</td><td>声功（非相干也可）</td>
+      <td>驻波 &lt;20% / 行波 ~40%<br>Carnot（实测 9%）</td>
+      <td>温度梯度 + 谐振管 + 回热器</td>
+      <td><b>可以</b>：与 Keely 的「管」形制最接近。
+        但它给的是<b>声功</b>，要变成「相干单频」还差一节（⑤⑥）</td></tr>
+  </tbody>
+</table>
+
+<p class="cnt">路径 A 的数字：exp(−hf/kT) 在 200 MHz 处为 1.0000，在 1 THz 处为 0.9998，
+在 1 eV 处为 1.6×10⁻¹⁷。这说明<b>「用声子换能量」在声频段几乎免费，在光频段完全不可能</b> ——
+这正是为什么「热声子 → 高频声子」有路，「热声子 → 光」没路。</p>
+
+<h3>4.2 热声发动机的实测基线：拿它当及格线</h3>
+
+<table class="tbl">
+  <thead><tr><th style="width:30%">指标</th><th style="width:22%">数值</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td>驻波型效率</td><td>&lt; 20% Carnot <span class="cnt">[web_411]</span></td><td>固有热不可逆（压–速有 90° 相差）</td></tr>
+    <tr><td>行波型效率（实验最好）</td><td>~40% Carnot</td><td>接近 Stirling 循环，但孔隙小 ⇒ 黏性损失大</td></tr>
+    <tr><td>辐射驱动（仅理论）</td><td>~90% Carnot</td><td>2024 年理论分析，未实现</td></tr>
+    <tr><td><b>LANL 1990s 实测</b></td><td><b>7 kW 热 → 630 W 声功 = 9.0%</b> <span class="cnt">[web_412]</span></td><td>驻波原型机，可查的硬数据</td></tr>
+    <tr><td>Carnot 换算（373 K / 293 K）</td><td>21.4%</td><td>20% Carnot ⇒ 实际 4.3%；40% ⇒ 8.6%</td></tr>
+  </tbody>
+</table>
+
+<div class="warnbox">
+  <b>这条基线很重要：任何声称「热 → 声」的方案，先跟 9%–40% 这个区间对表。</b><br>
+  如果某个方案报出的热–声效率落在 10% – 40%，它<b>不需要新物理</b>，热声发动机就能解释；
+  如果报出 80% 以上，那它要么是<b>两个热源之间的热机</b>（正常，但要报冷端），
+  要么是<b>测量口径把「传热」算成了「换能」</b> —— 这是最常见的混淆。
+  <br><br>
+  <b>渠氏的技术属于「传热」不属于「换能」</b>，所以它的正确评价指标是 k（或热流密度），
+  <b>不是效率</b>。这一点必须先分清，否则一谈「效率 100%」就掉进陷阱。
+</div>
+
+<!-- ============ ⑤ ============ -->
+<h2 id="s5">⑤ 为什么热声子不能「直接」倍频</h2>
+
+<p>这是老师设想里最关键、也最容易漏掉的一环。直觉上：既然管子里有 200 MHz 的振动，
+那取它的二倍频 400 MHz 不就行了？<b>不行，而且不是「难」，是「不成立」。</b>
+原因只有一句话：<b>倍频要相位，热声子没有相位。</b></p>
+
+<h3>5.1 热声子的两个致命属性</h3>
+
+<table class="tbl">
+  <thead><tr><th style="width:20%">属性</th><th style="width:26%">热声子</th><th style="width:26%">倍频所需</th><th>冲突</th></tr></thead>
+  <tbody>
+    <tr class="diff"><td>频谱</td><td><b>宽谱</b>，带宽 ~ kT/h = 6.25 THz</td><td><b>单色</b>，线宽 ≪ ω</td>
+      <td>差 10 个数量级以上</td></tr>
+    <tr class="diff"><td>相位</td><td><b>随机</b>（各模独立热激发，无固定相位关系）</td><td><b>确定</b>（2ω 需与 ω 锁定）</td>
+      <td>相位不锁定 ⇒ 二次项时间平均后归零</td></tr>
+    <tr class="diff"><td>统计</td><td>Bose 分布，⟨n⟩ 由温度定</td><td>需<b>布居反转</b>或强泵浦</td>
+      <td>热平衡态下不能有增益</td></tr>
+  </tbody>
+</table>
+
+<h3>5.2 定量：需要多大的 Q，实际差多远</h3>
+
+<p>要用一个模做倍频，该模的品质因数至少要 Q ≳ ω/Δω。把热声子的带宽 6.25 THz
+当作 Δω 代入，得到的 Q 需求是<b>远小于 1</b>：</p>
+
+<table class="tbl">
+  <thead><tr><th style="width:30%">目标频率 f<sub>0</sub></th><th style="width:24%">所需 Q ≥ f<sub>0</sub>/Δf</th><th>判读</th></tr></thead>
+  <tbody>
+    <tr class="diff"><td>432 Hz（Keely 基频）</td><td>6.9 × 10<sup>−11</sup></td><td rowspan="3" style="vertical-align:middle">
+      <b>三个都远小于 1</b> ⇒ 物理上不成立。<br>
+      不是器件做不好，是<b>前提矛盾</b>：<br>
+      宽谱的东西本来就不能当单模用。</td></tr>
+    <tr class="diff"><td>200 MHz（渠氏口径）</td><td>3.2 × 10<sup>−5</sup></td></tr>
+    <tr class="diff"><td>24 MHz（MoS₂ 基频）</td><td>3.8 × 10<sup>−6</sup></td></tr>
+  </tbody>
+</table>
+
+<p>反过来算：要让 200 MHz 的模达到 Q = 10⁶（这是声子梳的常规量级），
+线宽必须压到 <b>200 Hz</b>。而热声子的天然带宽是 6.25 THz ——</p>
+
+<div class="warnbox">
+  <b>需要压掉 10.5 个数量级（3.1 × 10¹⁰ 倍）。</b><br>
+  这个数字说明：<b>「热声子 → 倍频」中间必须先插一台「选模 + 放大」的机器。</b>
+  这台机器不是可选项，是<b>必需环节</b>。它的名字叫<b>声子激光</b>。
+  <br><br>
+  <b>这就是老师这个设想里缺的那一环。</b>不是想法错，是<b>链条少了一节</b> ——
+  补上这一节，整个设想就成立了。见 ⑥。
+</div>
+
+<h3>5.3 三种「相干化」的做法</h3>
+
+<div class="step have">
+  <div class="id">C1</div>
+  <div class="bd"><b>高 Q 选模（被动）</b>
+    <p>把热声子的宽谱塞进一个高 Q 腔，腔只让 ±Δω/2Q 内的成分存活，其余全部耗散掉。
+    <b>代价：能量利用率极低</b>（相当于从宽谱里筛出一根线，其余废掉）。
+    典型 Q：空气中 10²，钢 10³–10⁴，真空硅 10⁵–10⁶，石英 10⁶–10⁷。</p></div>
+</div>
+<div class="step have">
+  <div class="id">C2</div>
+  <div class="bd"><b>受激放大（主动）</b>
+    <p>提供布居反转或参量增益，让目标模<b>指数增长</b>到压倒热噪声。
+    这就是声子激光（saser）与参量放大。增益一旦超过损耗，相位由<b>泵浦</b>给定，
+    自发辐射的随机相位被压制。<b>这是唯一能把「热」变成「相干」的实用路径。</b></p></div>
+</div>
+<div class="step mid">
+  <div class="id">C3</div>
+  <div class="bd"><b>凝聚（集体）</b>
+    <p>玻色–爱因斯坦凝聚式的宏观占据（polariton condensate 路线）。
+    相位自发选定但全局一致。<b>代价：通常需低温</b>（激子束缚能限制）。</p></div>
+</div>
+
+<!-- ============ ⑥ ============ -->
+<h2 id="s6">⑥ 声子激光：把热声子相干化的现成技术</h2>
+
+<p>这一节是本页最有价值的部分 —— 因为<b>它证明老师设想的「热 → 高频相干」不是空想，而是已有器件</b>。
+只是已有的器件走的是「光泵浦 + 布里渊」路线，不是「热源直接激发」。</p>
+
+<h3>6.1 中科院物理所 2024：线宽 68.8 Hz 的声子激光</h3>
+
+<table class="tbl">
+  <thead><tr><th style="width:24%">项</th><th>数值</th></tr></thead>
+  <tbody>
+    <tr class="same"><td>器件</td><td>二氧化硅超模光学微腔，半径 <b>20 μm</b>，边缘周期调制 <b>12 nm</b></td></tr>
+    <tr class="same"><td>机制</td><td>边缘周期调制使顺时针/逆时针模强耦合 ⇒ 模式劈裂；劈裂量调到<b>正好等于布里渊频移</b></td></tr>
+    <tr class="same"><td>光学 Q</td><td>&gt; 2 × 10⁶</td></tr>
+    <tr class="same"><td>模式劈裂</td><td>10.4 GHz（匹配石英布里渊频移）</td></tr>
+    <tr class="same"><td><b>声子激光阈值</b></td><td><b>8.28 mW</b></td></tr>
+    <tr class="same"><td><b>声子激光线宽</b></td><td><b>68.8 Hz</b></td></tr>
+    <tr class="same"><td>单光子耦合强度</td><td>12.52 kHz（比此前同类工作高 30 倍）</td></tr>
+    <tr class="same"><td>声子频率处布居数</td><td>室温约 <b>600</b>（接近量子基态）</td></tr>
+    <tr class="same"><td>出处</td><td>Wang M, Hu Z, … Li B, Yang Q. <i>Taming Brillouin Optomechanics Using Supermode Microresonators</i>. <b>Phys. Rev. X</b> (2024-03-26) <span class="cnt">[web_409]</span></td></tr>
+  </tbody>
+</table>
+
+<div class="goodbox">
+  <b>这组数字为什么关键，值得单独说三遍：</b><br>
+  ① <b>68.8 Hz 的线宽，比 Keely 的 432 Hz 基频还窄</b>。也就是说，「Hz 级线宽的高频相干声子源」
+  不是理论愿望，是实验室里已经有的东西 —— 只是它的载频在 <b>10.4 GHz</b>，不在 432 Hz。<br>
+  ② <b>阈值 8.28 mW</b>。这是一个普通激光二极管就能达到的量级，不需要千瓦级驱动。<br>
+  ③ 它<b>跨过了 ⑤ 里那道 10.5 个数量级的坎</b>：光腔 Q &gt; 2×10⁶ + 受激布里渊，把宽谱热噪声压成了一根 68.8 Hz 的线。
+  <b>这就是「热声子 → 相干高频」的工程解法：不靠加热，靠选模 + 受激放大。</b>
+</div>
+
+<h3>6.2 另一条路线：极化激元级联声子激光（多模、20/60/100 GHz）</h3>
+
+<table class="tbl">
+  <thead><tr><th style="width:24%">项</th><th>内容</th></tr></thead>
+  <tbody>
+    <tr><td>频率</td><td><b>20 / 60 / 100 GHz</b> 三阶同时起振</td></tr>
+    <tr><td>机制</td><td>极化激元凝聚体沿「楔形条」的等间距能级级联下落，每落一级放一个声子；
+      能级间距被设计成等于受限声模频率 ν<sub>m</sub><sup>(0)</sup> ≈ 20 GHz 及其奇次倍频 (2n+1)ν<sup>(0)</sup></td></tr>
+    <tr><td>量子效率</td><td>约 <b>1 声子 / 1 泵浦光子</b>（玻色级联的优势，远高于费米子级联器件）</td></tr>
+    <tr><td>阈值</td><td>60 / 100 GHz 在<b>极化激元凝聚阈值</b>起振；20 GHz 基频需约 <b>2 倍</b>该功率</td></tr>
+    <tr><td>温度</td><td><b>必须 T &lt; 100 K</b>（GaAs 激子束缚能小）</td></tr>
+    <tr><td>出处</td><td>Polariton cascade phonon laser（2025）；评述见 phonons2025 <span class="cnt">[web_410]</span></td></tr>
+  </tbody>
+</table>
+
+<p class="cnt">⚠ 这条要标一个保留：有专业评述指出，该工作<b>所有报出的特征都是光学测量，没有直接测声子位移</b>。
+所以「声子激光」这个判定在严格意义上仍<b>待直接验证</b>（例如用时间分辨泵浦–探测测条的机械位移）。
+本页引用它，只用它的<b>设计思想</b>（能级阶梯 ↔ 声模共振），不用它作为「已证实」的证据。</p>
+
+<h3>6.3 SASER 的普遍限制：为什么它不是万能钥匙</h3>
+
+<table class="tbl">
+  <thead><tr><th style="width:24%">限制</th><th>实情</th></tr></thead>
+  <tbody>
+    <tr class="diff"><td>量子效率 <span class="cnt">[web_415]</span></td><td>通常 <b>1–10%</b>：自发辐射与受激辐射竞争，布居反转被提前耗尽</td></tr>
+    <tr class="diff"><td>温度</td><td>超晶格类器件常需 <b>&lt; 10 K</b>（液氦，约 2 K）；石墨烯膜可室温但增益小</td></tr>
+    <tr class="diff"><td>输出功率</td><td>到 2024 年仍在<b>微瓦级</b>，比光子激光低若干量级</td></tr>
+    <tr class="diff"><td>相干长度</td><td>受声子–声子散射限制，室温下短</td></tr>
+    <tr class="homo"><td>例外</td><td>光机微腔路线（6.1）在室温做到了 68.8 Hz 线宽，说明「选模」比「材料」更关键</td></tr>
+  </tbody>
+</table>
+
+<div class="midbox">
+  <b>这一节给老师的直接回答：</b><br>
+  「热声子 → 激发高频 → 2 倍频」这条链，<b>第一段（热→相干）不需要发明，借现成的声子激光即可</b>；
+  但借的时候要看清一件事 —— <b>声子激光的「泵」是光，不是热</b>。
+  若坚持「用热当泵」，就回到 ④ 的路径 C（热声发动机），效率 9%–40% Carnot，
+  而且它输出的是<b>声功</b>而非相干单频，还要再接一级选模。
+  <b>两条路的代价不同，见 ⑨ 的三步设计。</b>
+</div>
+
+<!-- ============ ⑦ ============ -->
+<h2 id="s7">⑦ 二倍频到底怎么来：三条机制与一道硬门槛</h2>
+
+<p>老师说的「高频 2 的倍频谐振」，在物理文献里有一个精确得多的表述。
+先引一段 2026 年综述原文，它把「声子倍频」与「光学克尔梳」区分得很干净：</p>
+
+<div class="quote">
+  “it requires <b>two modes in an approximate 2:1 internal resonance</b> and a
+  <b>quadratic anharmonic coupling</b> between them, so that the driven mode
+  <b>modulates the effective spring constant of the subharmonic mode at twice its own
+  resonance frequency</b>.”
+  <span class="src">Arora N, Ganesan A. arXiv:2610.13825（预印本，D 级）　[web_413]</span>
+</div>
+
+<p>把这句话翻成一句人话：<b>倍频不是「同一个东西振得更快」，是「一个模把另一个模的弹簧变软变硬，而且每秒变两次」。</b></p>
+
+<h3>7.1 三种能产生 2ω 的机制（都不是「共振放大」）</h3>
+
+<table class="tbl">
+  <thead><tr><th style="width:18%">机制</th><th style="width:30%">物理过程</th><th style="width:22%">已观测实例</th><th>对 Keely 是否可用</th></tr></thead>
+  <tbody>
+    <tr class="same"><td><b>M1 材料非谐性</b></td>
+      <td>晶格势不是完美抛物线，位移 Q 的二次项 Q² 直接生出 2Ω 分量</td>
+      <td>Bi₂Te₃ 薄膜：A<sub>1g</sub> 1.84 THz 的 <b>3.68 THz 二次谐波</b>，<b>室温</b>观测到（APL 92, 011108）<span class="cnt">[web_407]</span></td>
+      <td><b>可用</b>：只要振幅够大。但要求单晶 + 大振幅，钢板做不到</td></tr>
+    <tr class="same"><td><b>M2 参量调制</b></td>
+      <td>驱动模以 2ω 周期调制子谐模的等效刚度（= 参数激励，像荡秋千时蹲起）</td>
+      <td>MoS₂ NEMS 2:1 内共振：泵 <b>48 MHz</b>(=2×24)，齿距 45 kHz，<b>参量增益 80 dB</b>，线宽窄化 5000 倍（JMEMS 32, 335）<span class="cnt">[web_408]</span></td>
+      <td><b>可用</b>：这是最实用的一条。需要两个模 + 二次耦合</td></tr>
+    <tr class="homo"><td><b>M3 χ⁽²⁾ 调制</b></td>
+      <td>振动周期调制材料的二阶极化率，使倍频效率随振动而变（Floquet 式）</td>
+      <td>WTe₂ 滑动模；Bi₂Te₃ 部分归因（同上）</td>
+      <td><b>需非中心对称</b>材料。钢/黄铜是中心对称的 ⇒ 不适用</td></tr>
+  </tbody>
+</table>
+
+<div class="warnbox">
+  <b>三道门槛，缺一不产生 2ω：</b><br>
+  ① <b>振幅门槛</b>：二次项 ∝ A²，小振幅下 2ω 幅度按平方衰减 —— 振幅降一半，倍频降 6 dB。<br>
+  ② <b>频率匹配门槛</b>：必须有第二个模，且 ω<sub>1</sub> ≈ 2ω<sub>2</sub>（<b>2:1 内共振</b>）。差得远，耦合效率断崖式下降。<br>
+  ③ <b>相位门槛</b>：2ω 分量的相位必须与 ω 锁定，否则时间平均后归零 —— <b>这一条直接把热声子排除在外</b>（见 ⑤）。
+</div>
+
+<h3>7.2 关键发现：Keely 装置里唯一天然的 2:1 关系，在「气柱」里，不在「管壁」里</h3>
+
+<p>这是算这一页时冒出来的一个东西，可能比预想的更有用。</p>
+
+<p>Keely 的 432 Hz 要产生 864 Hz，需要一个与它成 2:1 的模。那么他装置里到底有没有这样的模？
+答案取决于<b>管子的边界条件</b>：</p>
+
+<table class="tbl">
+  <thead><tr><th style="width:20%">管型</th><th style="width:26%">气柱模态</th><th style="width:22%">有无精确 2:1</th><th>长度（对应 432 Hz）</th></tr></thead>
+  <tbody>
+    <tr class="same"><td><b>开管</b>（两端开口，管风琴式）</td>
+      <td>f<sub>n</sub> = n · v/(2L)，<b>全部整数倍</b></td>
+      <td><b>有，且精确</b><br>f₂ = 2f₁</td>
+      <td>L = v/(2f) = 343/(2×432)<br>= <b>39.7 cm</b></td></tr>
+    <tr class="diff"><td><b>闭管</b>（一端或两端封闭）</td>
+      <td>f<sub>n</sub> = (2n−1) · v/(4L)，<b>只有奇次</b></td>
+      <td><b>没有</b><br>第二阶是 3f₁，不是 2f₁</td>
+      <td>L = v/(4f) = <b>19.8 cm</b></td></tr>
+    <tr class="diff"><td><b>金属管壁本身</b>（弯曲模态）</td>
+      <td>悬臂梁 f₂/f₁ ≈ 6.27；两端固定 ≈ 2.76（均非整数）</td>
+      <td><b>没有</b></td>
+      <td>—</td></tr>
+  </tbody>
+</table>
+
+<div class="goodbox">
+  <b>这条判据的价值：它把「Keely 能不能倍频」变成一个可以直接观察的问题。</b><br>
+  ① 如果他的管子是<b>开管</b>（两端通气），那气柱天然有 f₂ = 2f₁，<b>倍频在几何上是被允许的</b>，
+  只差振幅与非线性能不能启动。<br>
+  ② 如果是<b>闭管</b>，第二阶是 3f₁ —— <b>物理上生不出 2f₁</b>，无论加多大振幅。<br>
+  ③ 而这两者<b>肉眼一看就知道</b>：管子两端开不开。<b>不需要任何仪器</b>。
+  <br><br>
+  同理，管风琴的「过吹（overblowing）」正是气柱非线性被大振幅启动的现象 ——
+  它跳到的往往是<b>第二阶</b>（开管是 2f₁，闭管是 3f₁）。<b>这给了一个现成的判读对照。</b>
+</div>
+
+<p class="cnt">⚠ 两点说明：<br>
+① 39.7 cm 是「若该管发 432 Hz 且为开管」反推的<b>理想气柱长度</b>，<b>不是实测值</b>。
+本页不知道 Keely 各管的真实长度与边界条件，所以这里只给判据，不给结论。
+若老师有 09 页的管长数据，代入上式即可判断。<br>
+② 真实管子还有<b>端修正（end correction）</b>：开口端等效要延长约 0.6 r（r = 管半径）。
+若管径 1 英寸（r = 1.27 cm），开管两端各修正 0.76 cm，合计 1.5 cm ⇒ 实际管长约 <b>38.2 cm</b>。
+修正量约 4%，<b>不影响「开管有 2:1 / 闭管没有」这个判据</b>，但会影响「管长是否对得上」的核对。</p>
+
+<h3>7.3 为什么「三个八度」这件事本身就说明问题</h3>
+
+<p>432 Hz 到 3456 Hz 是 ×8。而 8 = 2³。<b>所以「三个八度」在数学上就等于「连续三次倍频」。</b>
+这句话反过来推出一个很不客气的判断：</p>
+
+<div class="warnbox">
+  <b>如果装置真的能做倍频，那么三个八度是「自然结果」，一根管就够了 —— 不需要 24 根。</b><br>
+  反过来说：<b>需要 24 根各自调音的管，才能凑出三个八度</b>，恰恰证明它是<b>手工给出的音高</b>，
+  不是<b>动力学长出来的谐波</b>。<br><br>
+  这与 K7 ⑧ 的结论是同一条，只是从另一个方向切进来：
+  <b>齿距（或音程）由设计给定，还是由失谐给定</b> —— 这是区分「梳」与「音阶」、
+  「倍频」与「调音」的唯一判据。
+</div>
+
+<!-- ============ ⑧ ============ -->
+<h2 id="s8">⑧ 与 Keely 的三层对照</h2>
+
+<p>把两者放在一起，会发现一件很奇怪的事：<b>它们在「说法」上高度相似，在「做法」上几乎不重叠。</b>
+所以这一节按三层切开：<b>形态层</b>（看得见的）、<b>机制层</b>（讲得出口的）、<b>目标层</b>（要拿它干什么）。
+三层的结论完全不同，混在一起谈就必然吵不清。</p>
+
+<ul class="lg">
+  <li><span class="sw s"></span><div><b class="s">绿 · 同一物</b>：物理对象或说法在本体上相同，可以直接互相翻译。</div></li>
+  <li><span class="sw h"></span><div><b class="h">黄 · 同构但不相同</b>：功能位置类似，实现方式不同；或<b>两者同样缺失</b>某样东西。</div></li>
+  <li><span class="sw d"></span><div><b class="d">红 · 本质不同</b>：不是程度差别，是类别差别 —— 换参数也补不上。</div></li>
+</ul>
+
+<p class="cnt">下表共 <b>14</b> 行：绿 <b>2</b> / 黄 <b>3</b> / 红 <b>9</b>。计数与表体逐行核对过（见 ⑫ 核验说明）。</p>
+
+<table class="tbl" id="cmpTbl">
+  <thead><tr><th style="width:18%">对照项</th><th style="width:30%">渠氏热超导</th><th style="width:30%">Keely 声学装置</th><th>判定依据</th></tr></thead>
+  <tbody>
+    <tr class="grp"><td colspan="4">层 1 · 形态层（看得见摸得着的）</td></tr>
+    <tr class="same"><td>主体结构</td><td>刚性金属管作基底（专利 substrate）</td><td>金属管 + 黄铜件 + 球腔</td>
+      <td><b>同一物</b>：都是「刚性管 + 金属构件」</td></tr>
+    <tr class="diff"><td>复合涂层</td><td><b>三层</b>金属氧化物 / 重铬酸盐涂覆</td><td><b>无涂层</b>，裸露金属</td>
+      <td>Keely 完全缺这一层，换管材也补不上</td></tr>
+    <tr class="diff"><td>异质界面数</td><td>≥ 3（三层 + 基底 + 表层）</td><td>0（同质金属）</td>
+      <td>界面是界面极化/热释电的载体，0 就是 0</td></tr>
+    <tr class="homo"><td>封闭腔体</td><td>专利以「涂在基材上」保护，<b>不必然密封</b></td><td>Dynasphere 半球腔 + 多管束</td>
+      <td>都有「把东西围起来」的意图，形式不同</td></tr>
+    <tr class="diff"><td>材料体系</td><td>Na / Be / Mn / Cr / Co / Rh / Cu / Ti / B / Si 的氧化物与重铬酸盐</td>
+      <td>黄铜、钢、玻璃（可能含银焊料）</td>
+      <td>元素表几乎不重叠</td></tr>
+
+    <tr class="grp"><td colspan="4">层 2 · 机制层（讲得出口的）</td></tr>
+    <tr class="same"><td>能量载体的说法</td><td>「微粒子高频振动传热」</td><td>「声波振动带动微粒子」</td>
+      <td><b>同一说法</b>：都用「微粒子 + 高频振动」解释</td></tr>
+    <tr class="diff"><td>频率量级</td><td>200 MHz（D 级转述）</td><td>432 – 3456 Hz</td>
+      <td>差 <b>5.67 个数量级</b>；且 200 MHz 是波长 25 μm 的超声，不是音频</td></tr>
+    <tr class="homo"><td>相位 / 锁相</td><td><b>未提及</b></td><td><b>未提及</b></td>
+      <td>两者<b>同样空白</b>：都没有「各振子之间相位锁定」的机制</td></tr>
+    <tr class="diff"><td>温度场的角色</td><td>热是<b>输入</b>（要把它传走）</td><td>热是<b>副产物</b>（要避免它）</td>
+      <td><b>方向相反</b>：一个靠热工作，一个怕热干扰</td></tr>
+    <tr class="diff"><td>极化处理</td><td>有 <b>“heat polarized”</b> 工序（驻极体式）</td><td>无</td>
+      <td>K8 才引入的维度，Keely 体系里没有对应物</td></tr>
+
+    <tr class="grp"><td colspan="4">层 3 · 目标层（要拿它干什么）</td></tr>
+    <tr class="diff"><td>目标输出</td><td><b>热流</b>（把热从 A 搬到 B）</td><td><b>机械功 / 反重力</b>（声称）</td>
+      <td>一个是输运，一个是换能</td></tr>
+    <tr class="diff"><td><b>对相干性的要求</b></td><td><b>不需要</b>：传热允许非相干，热本身就是非相干</td><td><b>必须</b>：要做功、要倍频、要成梳，都要相位</td>
+      <td><b>本页最重要的一行</b>，见 8.1</td></tr>
+    <tr class="diff"><td>效率评价指标</td><td>k（W/m·K）或热流密度</td><td>输出功 ÷ 输入能量</td>
+      <td>指标不同 ⇒ 数字不可互换比较</td></tr>
+    <tr class="homo"><td>实现程度</td><td>有工业应用（C 级报道）、有专利</td><td>无独立复现记录</td>
+      <td>都有「实物」，但证据等级不同</td></tr>
+  </tbody>
+</table>
+
+<h3>8.1 最重要的一行：传热可以非相干，做功必须相干</h3>
+
+<p>这一行值得单独展开，因为它把整个「能不能叠加」的问题一刀切开。</p>
+
+<div class="paths">
+  <div class="p p1">
+    <div class="t">传热（渠氏要的）</div>
+    <div class="m">只需要能量传递</div>
+    <div class="d">热 = <b>非相干声子的统计集合</b>。它<b>不需要任何相位关系</b>就能传递能量 ——
+      这正是「热」的定义。所以渠氏的路线上，相位是<b>无关变量</b>，可以完全不管。</div>
+    <div class="k"><b>结果：</b>技术门槛低得多。也解释了为什么它能做成工业产品</div>
+  </div>
+  <div class="p p3">
+    <div class="t">做功 / 倍频 / 成梳（Keely 要的）</div>
+    <div class="m">必须有相位</div>
+    <div class="d">有序输出 = 低熵 = 必须有<b>相位锁定</b>作前提。
+      倍频要 2ω 分量相干叠加，梳要各齿相位关联，反重力（若可能）要宏观相干。
+      <b>没有相位，这三样一样都拿不到。</b></div>
+    <div class="k"><b>结果：</b>必须额外购置「相干化」这一环 —— 见 ⑨-S1</div>
+  </div>
+</div>
+
+<div class="warnbox">
+  <b>所以「把渠氏涂层加到 Keely 管上」这件事，本身并不能让他得到倍频。</b><br>
+  因为渠氏的涂层解决的是<b>传热</b>问题（非相干），Keely 缺的是<b>相干</b>问题。
+  <b>两件事不在同一根轴上</b> —— 这就像「把水管做得更粗」不能解决「水压不够」。<br>
+  <br>
+  <b>但这不等于叠加无意义。</b>它有意义的地方在另一个位置：<b>热管理</b>。
+  如果 Keely 装置真要上大振幅（09 页 160 dB 那条线），管体发热是硬约束；
+  高效传热涂层在这里是<b>真的有用</b>的。<b>只是它管的是「散热」，不是「倍频」。</b>
+</div>
+
+<!-- ============ ⑨ ============ -->
+<h2 id="s9">⑨ 如果真要把两者接起来：三步设计</h2>
+
+<p>把老师的设想拆成三段，每段给出「用现成什么」「能到多少」「卡在哪」。
+<b>三段串起来才是完整的「热声子 → 激发高频 → 二倍频」。</b></p>
+
+<div class="step have">
+  <div class="id">S1</div>
+  <div class="bd"><b>热 → 相干声子：这一步不能省，且有三条路可选</b>
+    <p><b>路径 1（最快落地）</b>：借光机布里渊声子激光。中科院 2024 的器件：
+    10.4 GHz 载频、<b>线宽 68.8 Hz</b>、阈值 <b>8.28 mW</b>、室温、半径 20 μm。
+    代价：泵是<b>激光</b>不是热。</p>
+    <p><b>路径 2（真用热）</b>：热声发动机 + 高 Q 谐振管。热 → 声功，效率 9%–40% Carnot。
+    代价：输出是<b>声功</b>不是单频，还要再接一级选模；且<b>必须有冷端</b>（这是硬约束，不是工程难度）。</p>
+    <p><b>路径 3（脉冲热）</b>：GaP 式瞬态热吸收 —— 金属薄膜 + 皮秒脉冲 → 相干 LA 波包。
+    代价：需要<b>调制</b>热源（脉冲），稳态加热不行。</p>
+    <p class="cnt" style="margin-top:6px">三条路的共同点：<b>都不是「加热一根管子」能实现的</b>。
+    这是本页对「热声子直接激发」这个想法最重要的修正。</p>
+  </div>
+</div>
+
+<div class="step have">
+  <div class="id">S2</div>
+  <div class="bd"><b>相干声子 → 2ω：用 2:1 内共振，不要指望材料非线性</b>
+    <p>照 ⑦ 的 M2 机制做：<b>两个模、二次耦合、泵浦超阈值</b>。
+    MoS₂ NEMS 的实测参数可以直接当设计目标：泵浦频率 = 2× 子谐模频率（48 / 24 MHz），
+    齿距 45 kHz，<b>参量增益 80 dB</b>，线宽窄化 5000 倍，泵浦电压只要 60 mV。</p>
+    <p><b>Keely 侧的落点</b>：如果坚持用他的管，那 2:1 只能来自<b>开管气柱</b>（⑦ 7.2），
+    且必须用非线性（过吹）启动。这要求在管口做<b>可控过吹</b>，不是温和小振幅。</p>
+    <p class="cnt" style="margin-top:6px">工程上更稳的做法：<b>不要用 Keely 的管</b>，
+    用 K7 里 Wu 2024 的<b>两根耦合梁 + 一个压电片</b>。齿距 25–200 Hz 可调，桌上就能做，
+    而且齿距落在 <b>Keely 的音频段</b>（432–3456 Hz）附近 —— 这是两者唯一真正能对接的频率窗口。</p>
+  </div>
+</div>
+
+<div class="step mid">
+  <div class="id">S3</div>
+  <div class="bd"><b>单对 2ω → 多齿：接回 K7 的梳机制</b>
+    <p>2:1 内共振给出的是「一根基频 + 一根二倍频」，<b>两根线还不是梳</b>。
+    要成梳，需要慢流拍频（残余失谐）把两模耦合出一串边带。这一步直接复用 K7 ③ 的方程，
+    不需要新的物理。</p>
+    <p class="cnt" style="margin-top:6px">所以完整链条是：<b>热（或光）→ [S1 相干化] → 单频相干声子 → [S2 2:1 内共振] → 2ω → [S3 慢流拍频] → 齿列</b>。
+    三段都有现成器件，没有一段需要新物理。但<b>也没有一段可以跳过</b>。</p>
+  </div>
+</div>
+
+<table class="tbl">
+  <thead><tr><th style="width:14%">段</th><th style="width:24%">现成器件</th><th style="width:20%">能到多少</th><th>卡在哪</th></tr></thead>
+  <tbody>
+    <tr class="same"><td>S1</td><td>布里渊声子激光（SiO₂ 超模腔）</td><td>10.4 GHz / 68.8 Hz 线宽 / 8.28 mW 阈值</td>
+      <td>泵是激光；片上器件，不能直接放大到管子尺度</td></tr>
+    <tr class="homo"><td>S1′</td><td>热声发动机 + 谐振管</td><td>9%–40% Carnot，百瓦级声功</td>
+      <td><b>必须有冷端</b>；输出非相干，需再选模</td></tr>
+    <tr class="same"><td>S2</td><td>2:1 内共振（MoS₂ NEMS / 耦合梁）</td><td>80 dB 参量增益 / 5000 倍线宽窄化</td>
+      <td>需要两个模精确 2:1；振幅不足则 M² 衰减</td></tr>
+    <tr class="same"><td>S3</td><td>声子梳（慢流拍频）</td><td>齿距 25 Hz – 数 MHz 可调</td>
+      <td>需要 Q₁Q₂ 足够高（阈值 ∝ 1/Q₁Q₂）</td></tr>
+  </tbody>
+</table>
+
+<!-- ============ ⑩ ============ -->
+<h2 id="s10">⑩ 判决实验：六个，前三个不用买设备</h2>
+
+<h3>10.1 针对渠氏材料（判定 32000× 与「远端更热」）</h3>
+
+<div class="step mid">
+  <div class="id">E1</div>
+  <div class="bd"><b>测 k，并且必须报「本征」还是「等效」</b>
+    <p>方法：激光闪射法（ASTM E1461）测热扩散率 α，再乘 ρ·c<sub>p</sub> 得 k。
+    <b>关键不是测出多少，而是同时报出试样的「有效厚度」与「是否含工质」</b> ——
+    如果试样是空管 + 涂层，测出的必然是<b>等效 k</b>，那就不能与银的本征 429 直接比。</p>
+    <p class="cnt">判读：若报「本征 k」，则需与 ⅓·C·v·ℓ 的 ℓ 上限自洽（即 ℓ ≲ μm），否则数据不成立。</p>
+  </div>
+</div>
+
+<div class="step mid">
+  <div class="id">E2</div>
+  <div class="bd"><b>对称双向测温：一次实验定性「远端更热」</b>
+    <p>同一根管，热源先装 A 端、再装 B 端，其余条件不变，记录两端温差。<br>
+    <b>(a) 热泵/外功</b> ⇒ 反向也偏热；<b>(b) 测温误差</b> ⇒ 反向读数对称恢复；
+    <b>(c) 非平衡循环</b> ⇒ 反向有滞后与记忆。</p>
+    <p class="cnt">这个实验只需两个温度传感器 + 一个可换端的热源。<b>不需要任何专业设备。</b></p>
+  </div>
+</div>
+
+<div class="step mid">
+  <div class="id">E3</div>
+  <div class="bd"><b>200 MHz 到底有没有「相干振动」</b>
+    <p>方法：激光多普勒测振（LDV）带宽通常到 MHz 级不够；需用<b>压电薄膜传感器</b>或
+    <b>布里渊散射</b>。判据：<b>谱线是「一根线」还是「一片包络」</b> ——
+    前者是相干振动，后者是热噪声。<b>这一条直接决定 ⑤ 那道坎存不存在。</b></p>
+    <p class="cnt">若测到的是一片宽包络（宽度 ~MHz 以上），则「微粒子振动传热」= 热声子，不产生倍频。</p>
+  </div>
+</div>
+
+<div class="step mid">
+  <div class="id">E4</div>
+  <div class="bd"><b>热流密度上限 8000 kW/m² 需要多大的源</b>
+    <p>8000 kW/m² 是 8 MW/m²。若管子外表面积 0.1 m²，则需 <b>800 kW</b> 热源。
+    这个量级的源在实验室不难，但要<b>同时测准管壁温度</b>就很难（热电偶会被烧）。
+    <b>先问「用什么源」，再问「怎么测」。</b></p>
+  </div>
+</div>
+
+<h3>10.2 针对 Keely 侧的「倍频 / 热声子」假设（零成本）</h3>
+
+<div class="step have">
+  <div class="id">E5</div>
+  <div class="bd"><b>开管还是闭管 —— 肉眼判别能不能倍频</b>
+    <p>看管子两端是否通气。<b>开管</b>：气柱有 f₂ = 2f₁，倍频在几何上允许；
+    <b>闭管</b>：第二阶是 3f₁，<b>2f₁ 生不出来</b>。这一条不需要仪器，只需要一张照片。</p>
+    <p class="cnt">进一步：用扫频激励单根管，看第二个峰在 2f 还是 3f —— 一支麦克风 + 一个信号发生器即可。</p>
+  </div>
+</div>
+
+<div class="step have">
+  <div class="id">E6</div>
+  <div class="bd"><b>2ω 是否随 ω 锁定</b>
+    <p>激励频率从 f 扫到 1.05f，看 2ω 分量（以及它相对 ω 的相位）怎么变。<br>
+    <b>真倍频</b>：2ω 严格跟着 ω 走，相位差恒定。<br>
+    <b>两根独立管</b>：2ω 不动（因为它是另一根管的固有频率），相位漂移。</p>
+    <p class="cnt"><b>这是区分「倍频」与「两个音源」最直接的一个实验</b>，一支麦克风 + FFT 软件就够。</p>
+  </div>
+</div>
+
+<!-- ============ ⑪ ============ -->
+<h2 id="s11">⑪ 结论</h2>
+
+<div class="warnbox">
+  <b>三句话总结这一页：</b><br>
+  ① <b>渠氏的东西是真的（有专利、有工业应用），但「32000×银」是等效量，不是本征量</b> ——
+  反推的声子自由程比物理上限大 <b>5.1 个数量级</b>。<br>
+  ② <b>「热声子 → 倍频」这条链少了一节</b>：热声子是宽谱随机相位的，<b>不能直接倍频</b>；
+  中间必须插一台「选模 + 受激放大」的机器（声子激光），否则要压 <b>10.5 个数量级</b> 的线宽。<br>
+  ③ <b>叠加涂层解决不了倍频问题</b>，因为一个是「传热」（允许非相干）、一个是「做功」（必须相干）——
+  <b>两件事不在同一根轴上</b>。但涂层在<b>热管理</b>上真有用。
+</div>
+
+<h3>那这个方向还值不值得走？—— 值，但要换一个落点</h3>
+
+<table class="tbl">
+  <thead><tr><th style="width:26%">原先的设想</th><th style="width:30%">物理上卡在哪</th><th>改成什么就通了</th></tr></thead>
+  <tbody>
+    <tr class="diff"><td>涂层提高 Keely 装置的「声子增益」</td><td>涂层改的是<b>传热</b>，不是声学增益</td>
+      <td>涂层用来<b>散热</b>（大振幅下的热管理）；增益用 2:1 内共振给</td></tr>
+    <tr class="diff"><td>热声子直接激发 200 MHz 并倍频</td><td>热声子宽谱（6.25 THz），无相位</td>
+      <td>先用<b>声子激光</b>选模相干化，再倍频</td></tr>
+    <tr class="homo"><td>用「三个八度」当倍频证据</td><td>三个八度 = 2³，需要 24 根管调出来</td>
+      <td>改看<b>开管/闭管</b>与 <b>2ω 是否随 ω 锁定</b>（E5/E6）</td></tr>
+    <tr class="same"><td>找「声音超导材料」</td><td>「超导」在声学里没有对应物</td>
+      <td>找<b>高 Q 声学腔</b>：Q = 10⁶ 就是「声学上的零电阻」的可用替身</td></tr>
+  </tbody>
+</table>
+
+<div class="goodbox">
+  <b>一句话给老师：这个设想里真正新、真正可做的东西，是「用热当泵去驱动一个 2:1 内共振」。</b><br>
+  它不是「给 Keely 加涂层」，而是<b>把 Keely 的管子换成「热声发动机 + 耦合梁」</b>：
+  热进 → 声功出 → 驱动 2:1 内共振 → 2ω → 慢流拍频成齿。
+  <b>这条路径上每一段都有现成器件，而且频率段正好落在他的音频区。</b>
+  它可能不叫「声音超导」，但它是一台<b>能用热驱动、能自己长出频率的机器</b>。
+</div>
+
+<!-- ============ ⑫ ============ -->
+<h2 id="s12">⑫ 出处、分级与核验</h2>
+
+<table class="tbl">
+  <thead><tr><th style="width:9%">编号</th><th style="width:55%">文献 / 来源</th><th style="width:11%">等级</th><th>用于本页</th></tr></thead>
+  <tbody>
+    <tr><td>[web_401]</td><td>Qu Yuzhi. <i>Superconducting heat transfer medium</i>. <b>US 6,132,823</b>，1997-10-24 申请，2000-10-17 授权。PCT/US1997/019554</td>
+      <td><span class="tag ok">A</span></td><td>① 三层配方原文、heat polarized、substrate 权利要求</td></tr>
+    <tr><td>[web_402]</td><td>《渠氏热超导管期待关注》，《人民日报》2004-09-15 第 15 版（杜京）；新浪转载</td>
+      <td><span class="tag mid">C</span></td><td>① 200 MHz 微粒子振动、远端高 3–5 ℃、3 万倍银、广州石化案例</td></tr>
+    <tr><td>[web_403]</td><td>「超导热管」词条，科普中国 / 百度百科（同一底稿）</td>
+      <td><span class="tag no">D</span></td><td>① 32000 倍银、−70~1700 ℃、8000 kW/m²、1400 天</td></tr>
+    <tr><td>[web_404]</td><td>山东华渠集团技术介绍（企业材料，2020s）</td>
+      <td><span class="tag no">D</span></td><td>① 「热增益」「分子震荡摩擦」、11 万小时、26 国授权</td></tr>
+    <tr><td>[web_405]</td><td>Lee J, et al. <i>Investigation of phonon coherence and backscattering using silicon nanomeshes</i>. Nat. Commun. <b>8</b>, 14054 (2017)</td>
+      <td><span class="tag ok">B</span></td><td>② Si 300 K：Λ<sub>U</sub> ≈ 300 nm；载热声子 ℓ 分布 100 nm–10 μm</td></tr>
+    <tr><td>[web_406]</td><td>Y.-M. Chang. <i>Coherent phonon spectroscopy of GaP Schottky diode</i>. Appl. Phys. Lett. <b>82</b>, 1781 (2003)</td>
+      <td><span class="tag ok">B</span></td><td>④ 路径 B：金属薄膜瞬态热吸收 → 相干 LA 波包</td></tr>
+    <tr><td>[web_407]</td><td>Wu X, et al. <i>Ultrafast dynamics of photoexcited coherent phonons in Bi₂Te₃ thin films</i>. Appl. Phys. Lett. <b>92</b>, 011108 (2008)</td>
+      <td><span class="tag ok">B</span></td><td>⑦ M1：1.84 THz → 3.68 THz 二次谐波，室温</td></tr>
+    <tr><td>[web_408]</td><td>Yousuf S M E H, Lee J, Shaw S W, Feng P X-L. <i>Phononic Frequency Combs in Atomically Thin NEMS via 1:1 and 2:1 Internal Resonances</i>. J. Microelectromech. Syst. <b>32</b>, 335 (2023)</td>
+      <td><span class="tag ok">B</span></td><td>⑦ M2：泵 48 MHz、齿距 45 kHz、<b>增益 80 dB</b>、线宽窄化 5000×、60 mV</td></tr>
+    <tr><td>[web_409]</td><td>Wang M, Hu Z, … Li B, Yang Q. <i>Taming Brillouin Optomechanics Using Supermode Microresonators</i>. Phys. Rev. X (2024-03-26)</td>
+      <td><span class="tag ok">B</span></td><td>⑥ 声子激光：10.4 GHz、<b>线宽 68.8 Hz</b>、阈值 <b>8.28 mW</b>、20 μm 腔</td></tr>
+    <tr><td>[web_410]</td><td>Polariton cascade phonon laser（2025），评述见 phonons2025.com</td>
+      <td><span class="tag no">D 预印本</span></td><td>⑥ 20/60/100 GHz 多模级联；量子效率 ~1；<b>T &lt; 100 K</b>；<b>缺直接声子测量</b></td></tr>
+    <tr><td>[web_411]</td><td>Blanc N, Ramon G Z. <i>Radiation-driven thermoacoustic energy conversion</i>. Appl. Therm. Eng. <b>246</b>, 122915 (2024)</td>
+      <td><span class="tag ok">B</span></td><td>④ 驻波 &lt;20% Carnot；行波 ~40%；理论 90%</td></tr>
+    <tr><td>[web_412]</td><td>LANL 驻波热声原型：7 kW 热 → 630 W 声功（1990s）</td>
+      <td><span class="tag mid">C</span></td><td>④ 实测基线 9.0%</td></tr>
+    <tr><td>[web_413]</td><td>Arora N, Ganesan A. <i>Phononic Frequency Combs in Twisted Bilayer TMD Heterostructures</i>. arXiv:2610.13825</td>
+      <td><span class="tag no">D 预印本</span></td><td>⑦ 倍频的正规表述：2:1 内共振 + 二次非谐 + 刚度调制</td></tr>
+    <tr><td>[web_414]</td><td>Mi C, Zhou J, Wang F, Jin D. <i>Thermally enhanced NIR–NIR anti-Stokes emission</i>. Nanoscale (2019)</td>
+      <td><span class="tag ok">B</span></td><td>④ 路径 A：声子辅助反斯托克斯、exp(−E/kT) 依赖</td></tr>
+    <tr><td>[web_415]</td><td>Grokipedia「Sound amplification by stimulated emission of radiation」综述条目</td>
+      <td><span class="tag no">D</span></td><td>⑥ SASER 普遍限制：效率 1–10%、低温需求、微瓦输出</td></tr>
+  </tbody>
+</table>
+
+<p class="cnt" style="margin-top:10px">分级口径：<b>A</b> = 原始文本可查；<b>B</b> = 同行评议已发表；
+<b>C</b> = 报道/现场考察，无同行评议；<b>D</b> = 转述或预印本，只作参考。</p>
+
+<div class="midbox">
+  <b>本页的自我限制（请老师核这几条）</b><br>
+  ① <b>渠氏的所有性能数字都是 D 级</b>。本页没有把它们当已知量代入任何计算；
+  凡是反推（ℓ = 5.15 mm、5.1 个数量级），用的都是「假设这个数是真」的<b>条件推理</b>，结论是「若真则必然等效」。<br>
+  ② <b>「200 MHz」的物理身份未确认</b>。它可能指「涂层中某种振动的频率」，也可能只是「每秒 2 亿次」这一句话的字面换算。
+  本页按字面处理，并明确它与热声子差 4.49 个数量级。<br>
+  ③ <b>「heat polarized」的工艺细节未见公开</b>。本页推测它是驻极体式极化，属推测，已在 1.1 的框内标明。<br>
+  ④ <b>Keely 的管长与开闭条件本页不知道</b>。⑦ 7.2 给的是判据（开管 39.7 cm / 闭管 19.8 cm），不是实测。
+  若老师有 09 页的原始管长数据，代入即可得结论。<br>
+  ⑤ 极化激元级联声子激光（[web_410]）<b>只有光学测量、无直接声子测量</b>，本页只用其设计思想，不作已证实引用。
+</div>
+
+<div class="foot">
+  <p>本页为 K 系列第 8 篇，接在 <a href="K7_声子梳_器件机理与Keely逐项对照.html">K7 声子梳</a> 之后；
+  频率梳总论见 <a href="K5_频率梳前沿_从锁模激光到声子梳.html">K5</a>，
+  术语对照见 <a href="K6_术语对照_Keely与现代科学.html">K6</a>。</p>
+  <p>数字以各文献原文为准；标 C 的复算由 <span class="cnt">_build/verify.py</span> 独立核验。</p>
+  <p><a href="keely核心技术与现代声子物理技术对比.html">← 返回总入口</a> ·
+     <a href="09_Dynasphere振动几何_康普顿波长与超导交互详解.html">09 Dynasphere</a></p>
+</div>
+
+</div><!-- /wrap -->
+
+<script>
+(function(){
+  var cv = document.getElementById('cvLadder');
+  if(!cv) return;
+  var ctx = cv.getContext('2d');
+
+  /* 图 8-1（重画）——Keely 的频率阶梯。
+     ⚠ 旧版横轴是"频率"，柱高只用来错开标签，结果是"看不出阶梯感"。
+       新版横轴改成【阶梯级数 n】：因为每上一级乘 3，n 本身就是 log3(f/20kHz)，
+       于是"级差 1 / 2 / 4 / 8 / 16"这件事在图上直接可见，不用解释。
+     ⚠ canvas 没有 <sub>，下标一律写普通字符或中文。 */
+
+  var W = cv.width, H = cv.height;
+  var L = 82, R = W - 66;
+  var NMAX = 37;
+  var AX = 300;                       /* 轴线的 y */
+  var sc = (R - L) / NMAX;
+
+  function X(n){ return L + n * sc; }
+
+  function draw(){
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#fcfdff';
+    ctx.fillRect(0, 0, W, H);
+
+    cv.dataset.geom = JSON.stringify({ L:L, R:R, AX:AX, W:W, H:H, NMAX:NMAX, sc:sc });
+
+    /* ---- 分子级区域（n = 0..5）---- */
+    ctx.fillStyle = 'rgba(180,83,31,.07)';
+    ctx.fillRect(X(0) - 14, 120, X(5) - X(0) + 28, AX - 120);
+    ctx.strokeStyle = 'rgba(180,83,31,.35)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4,3]);
+    ctx.strokeRect(X(0) - 14, 120, X(5) - X(0) + 28, AX - 120);
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#a8541c';
+    ctx.font = 'bold 11.6px "Segoe UI",system-ui,sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('分子六级：级差 ×3', X(0) - 10, 126);
+    ctx.font = '10.6px Consolas,monospace';
+    ctx.fillStyle = 'rgba(168,84,28,.85)';
+    ctx.fillText('1 : 3 : 9 : 27 : 81 : 243', X(0) - 10, 143);
+
+    /* ---- 氧化物晶格带（n 18.5–19.3）---- */
+    ctx.fillStyle = 'rgba(23,114,69,.10)';
+    ctx.fillRect(X(18.5), 120, X(19.4) - X(18.5), AX - 120);
+
+    /* ---- 绝对标定缺口（n = 6 → 18.5）---- */
+    ctx.fillStyle = 'rgba(179,38,30,.055)';
+    ctx.fillRect(X(6), 120, X(18.5) - X(6), AX - 120);
+
+    /* ---- 轴线 ---- */
+    ctx.beginPath();
+    ctx.moveTo(L - 18, AX);
+    ctx.lineTo(R + 10, AX);
+    ctx.strokeStyle = '#3b4552';
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+
+    /* ---- 刻度：每级一短齿，每 5 级标数 ---- */
+    for (var n = 0; n <= NMAX; n++) {
+      var xx = X(n);
+      var big = (n % 5 === 0);
+      ctx.beginPath();
+      ctx.moveTo(xx, AX);
+      ctx.lineTo(xx, AX + (big ? 9 : 5));
+      ctx.strokeStyle = big ? '#6b7683' : '#cfd6e0';
+      ctx.lineWidth = big ? 1.4 : 1;
+      ctx.stroke();
+      if (big && n <= 35) {
+        ctx.fillStyle = '#8a97a6';
+        ctx.font = '10.8px Consolas,monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(String(n), xx, AX + 13);
+      }
+    }
+
+    /* ---- 原子级的级差标注（2 / 4 / 8 / 16）---- */
+    var atomRungs = [6, 8, 12, 20, 36];
+    for (var a = 0; a < atomRungs.length; a++) {
+      ctx.beginPath();
+      ctx.arc(X(atomRungs[a]), AX, 4.2, 0, Math.PI * 2);
+      ctx.fillStyle = '#1b4f9c';
+      ctx.fill();
+      if (a < atomRungs.length - 1) {
+        var na = atomRungs[a], nb = atomRungs[a + 1];
+        var mx = (X(na) + X(nb)) / 2, half = (X(nb) - X(na)) / 2 - 10;
+        ctx.beginPath();
+        ctx.moveTo(mx - half, AX - 10);
+        ctx.lineTo(mx + half, AX - 10);
+        ctx.strokeStyle = 'rgba(27,79,156,.45)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(27,79,156,.85)';
+        ctx.font = '10px Consolas,monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText('+' + (nb - na), mx, AX - 12);
+      }
+    }
+
+    /* ---- 锚点表 ----
+       side = +1 画在轴线【下方】，-1 画在轴线【上方】（canvas 的 y 向下长，别记反）。
+       row 不再手写：先量字宽，再贪心选一行 —— 上一版把 n=5 与 n=6 硬排成 row1/row2，
+       行距 24 px 装不下「主标 14 + 副标 11」两层，两个标签就粘成了一行。 */
+    var marks = [
+      { n: 0,    lab: '20 kHz',        sub: 'Keely 基准 I',   col: '#a8541c', side: 1 },
+      { n: 5,    lab: '4.86 MHz',      sub: '分子六级顶 VI',  col: '#a8541c', side: 1 },
+      { n: 6,    lab: '14.6 MHz',      sub: '原子第 1 细分',  col: '#1b4f9c', side: 1 },
+      { n: 8,    lab: '131 MHz',       sub: '第 2 细分',      col: '#1b4f9c', side: 1 },
+      { n: 12,   lab: '10.4 GHz',      sub: '声子激光实测',   col: '#177245', side: 1 },
+      { n: 36,   lab: '12.4 MeV',      sub: '阶梯顶 3.0e21',  col: '#a8541c', side: 1, dx: -26 },
+      { n: 8.38, lab: '200 MHz',       sub: '渠氏「微粒子」', col: '#b3261e', side: -1, big: true },
+      { n: 17.8, lab: '6.25 THz',      sub: 'kT/h · 热',      col: '#6b3fa0', side: -1 },
+      { n: 18.9, lab: '500–1080 cm⁻¹', sub: '氧化物晶格带',   col: '#177245', side: -1, dx: 16 },
+      { n: 22,   lab: '500 nm',        sub: '可见光',         col: '#6b7683', side: -1 },
+      { n: 33.7, lab: '1 MeV',         sub: '核尺度',         col: '#6b7683', side: -1 }
+    ];
+
+    var ROW0 = 46, ROWH = 34, GAPX = 10;
+    var layout = [];
+    marks.forEach(function(m){
+      ctx.font = (m.big ? 'bold 13px' : 'bold 11.6px') + ' "Segoe UI",system-ui,sans-serif';
+      var w = ctx.measureText(m.lab).width;
+      ctx.font = '10.4px Consolas,monospace';
+      var sw = ctx.measureText(m.sub).width;
+      m._w = Math.max(w, sw);
+      m._xc = X(m.n) + (m.dx || 0);
+    });
+    /* 每侧独立贪心分行：左右不会互撞才可共用一行 */
+    [1, -1].forEach(function(sd){
+      var rowEnd = [];                 /* 每行已占到的最右 x */
+      marks.filter(function(m){ return m.side === sd; })
+           .sort(function(a, b){ return a._xc - b._xc; })
+           .forEach(function(m){
+             var left = m._xc - m._w / 2;
+             for (var r = 0; r < 4; r++) {
+               if (rowEnd[r] === undefined || left > rowEnd[r] + GAPX) {
+                 m.row = r;
+                 rowEnd[r] = m._xc + m._w / 2;
+                 break;
+               }
+             }
+             if (m.row === undefined) { m.row = 3; }
+           });
+    });
+
+    marks.forEach(function(m){
+      var xx = m._xc;
+      var yy = AX + m.side * (ROW0 + m.row * ROWH);
+      /* 主标与副标各 14/12 px 高，副标一律朝【背离轴线】的一侧，给刻度数字让出 AX+13 那条带 */
+      var labBox = m.side > 0 ? [yy - 13, yy] : [yy, yy + 13];
+      var subBox = m.side > 0 ? [yy + 4, yy + 15] : [yy - 15, yy - 4];
+
+      /* 引线 */
+      ctx.beginPath();
+      ctx.moveTo(X(m.n), AX + m.side * 5);
+      ctx.lineTo(X(m.n), labBox[m.side > 0 ? 0 : 1] + m.side * 4);
+      ctx.strokeStyle = 'rgba(107,118,131,.45)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      /* 点 */
+      ctx.beginPath();
+      ctx.arc(X(m.n), AX, m.big ? 5.6 : 4.4, 0, Math.PI * 2);
+      ctx.fillStyle = m.col;
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+
+      /* 文字 */
+      ctx.fillStyle = m.col;
+      ctx.font = (m.big ? 'bold 13px' : 'bold 11.6px') + ' "Segoe UI",system-ui,sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = m.side > 0 ? 'bottom' : 'top';
+      ctx.fillText(m.lab, xx, yy);
+      ctx.fillStyle = '#8a97a6';
+      ctx.font = '10.4px Consolas,monospace';
+      ctx.fillText(m.sub, xx, yy + m.side * 15);
+
+      layout.push({ n: m.n, lab: m.lab, sub: m.sub, side: m.side, row: m.row,
+                    x: xx, w: m._w, labBox: labBox, subBox: subBox });
+    });
+
+    /* 版面导出：检查脚本据此做【真实包围盒】互撞检测，不再靠"同行间距"猜 */
+    cv.dataset.layout = JSON.stringify({ AX: AX, layout: layout });
+    var maxRow = Math.max.apply(null, marks.map(function(m){ return m.row; }));
+    var gy = AX + ROW0 + (maxRow + 1) * ROWH + 6;
+    ctx.beginPath();
+    ctx.moveTo(X(6), gy);
+    ctx.lineTo(X(18.5), gy);
+    ctx.strokeStyle = '#b3261e';
+    ctx.lineWidth = 1.4;
+    ctx.setLineDash([5,4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    [[X(6), 1], [X(18.5), -1]].forEach(function(q){
+      ctx.beginPath();
+      ctx.moveTo(q[0], gy);
+      ctx.lineTo(q[0] + 6 * q[1], gy - 4.5);
+      ctx.lineTo(q[0] + 6 * q[1], gy + 4.5);
+      ctx.closePath();
+      ctx.fillStyle = '#b3261e';
+      ctx.fill();
+    });
+    ctx.fillStyle = '#b3261e';
+    ctx.font = 'bold 11.6px "Segoe UI",system-ui,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText('绝对标定缺口 12.5 级 = 6.0 个数量级（Keely 的「原子级」比真实原子振动低这么多）',
+                 (X(6) + X(18.5)) / 2, gy + 9);
+
+    /* ---- 底部说明 ---- */
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = '#6b7683';
+    ctx.font = '12px "Segoe UI",system-ui,sans-serif';
+    ctx.fillText('横轴 = 阶梯级数 n；频率 = 20 kHz × 3ⁿ（原子级起每级把上一级的跨度平方，所以级差越往上越大）。', L - 18, H - 30);
+    ctx.fillStyle = '#8a97a6';
+    ctx.fillText('蓝点 = 原子级五档 n = 6, 8, 12, 20, 36（其中 12、36 已被绿/橙锚点盖住）；红字 200 MHz 落在 n = 8.38，紧贴第 8 级。', L - 18, H - 12);
+  }
+
+  draw();
+})();
+</script>
+</body>
+</html>

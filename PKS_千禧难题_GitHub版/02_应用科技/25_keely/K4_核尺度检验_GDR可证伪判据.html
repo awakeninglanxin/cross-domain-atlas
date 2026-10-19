@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>K4 · 核尺度检验：3¹⁶、GDR 与可证伪判据</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='4' fill='%23b3261e'/%3E%3Ccircle cx='16' cy='16' r='10' fill='none' stroke='%23b3261e' stroke-width='1.4' stroke-dasharray='3 3'/%3E%3Ccircle cx='16' cy='16' r='14' fill='none' stroke='%239aa5b4' stroke-width='1.2'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/site.css">
+<style>
+  .viz{background:#fff;border:1px solid var(--line-2);border-radius:12px;
+    box-shadow:var(--shadow);padding:14px 16px 10px;margin:18px 0}
+  .viz .vt{font-family:var(--serif);font-size:16px;font-weight:700;margin-bottom:3px}
+  .viz .vc{font-size:13.2px;color:var(--ink-3);margin-bottom:10px;line-height:1.6}
+  .viz canvas{width:100%;display:block;border-radius:8px;background:#fcfdff;border:1px solid var(--line)}
+  .ctl{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin:12px 0 4px;font-size:13.4px;color:var(--ink-2)}
+  .ctl label{display:flex;align-items:center;gap:7px}
+  .ctl input[type=range]{width:200px}
+  .ctl select{font-size:13px;padding:4px 7px;border-radius:7px;border:1px solid var(--line-2);background:#fff}
+  .ctl .val{font-family:var(--mono);font-size:12.8px;color:var(--warm);min-width:96px}
+  .rd{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:12px}
+  .rd .r{background:var(--bg-soft);border:1px solid var(--line);border-radius:9px;padding:9px 11px}
+  .rd .r .n{font-family:var(--serif);font-size:19px;color:var(--accent-2);line-height:1.2}
+  .rd .r .l{font-size:11.8px;color:var(--ink-3);margin-top:2px}
+  .rd .r .x{font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-top:3px}
+  .rd .r.hot{background:#fdf6f6;border-color:rgba(179,38,30,.3)}
+  .rd .r.hot .n{color:var(--bad)}
+  .eq{margin:14px 0}
+  .warnbox{background:#fdf6f6;border:1px solid rgba(179,38,30,.28);border-left:3px solid var(--bad);
+    border-radius:8px;padding:12px 15px;margin:16px 0;font-size:14px}
+  .goodbox{background:#f4faf6;border:1px solid rgba(23,114,69,.28);border-left:3px solid var(--good);
+    border-radius:8px;padding:12px 15px;margin:16px 0;font-size:14px}
+  .quote{border-left:3px solid var(--line-2);padding:2px 0 2px 14px;margin:12px 0;color:var(--ink-2);font-size:14.4px}
+  .quote .src{display:block;font-family:var(--mono);font-size:11.5px;color:var(--ink-3);margin-top:4px}
+  .cnt{font-family:var(--mono);font-size:12.6px;color:var(--ink-3)}
+  .lv{display:grid;grid-template-columns:70px 1fr;gap:12px;align-items:start;
+    border:1px solid var(--line);border-radius:10px;padding:11px 14px;margin:9px 0;background:#fff}
+  .lv .id{font-family:var(--mono);font-size:12.5px;font-weight:700;color:var(--accent);padding-top:2px}
+  .lv .bd p{margin:4px 0 0;font-size:13.6px;color:var(--ink-2)}
+  .lv .bd b{font-family:var(--serif);font-size:15px}
+  .lv.top{border-left:3px solid var(--bad);background:#fffafa}
+  tr.hl td{background:#fdf3ec}
+  tr.best td{background:#d9ede1;font-weight:600}
+  tr.no td{background:#fdf6f6;color:var(--ink-3)}
+  @media(max-width:800px){.lv{grid-template-columns:1fr}.ctl input[type=range]{width:130px}}
+</style>
+<!--FXCTL:CSS--><style id="fxctl-css">
+/* ============================================================
+   PKS · 通用「调参浮窗」样式  (float_ctl.css)
+   白底 / 深蓝强调 / 与 site.css 变量兼容（变量缺失时有兜底色）
+   面板不接管页面原有控件样式，只在自己作用域内统一外观
+   ============================================================ */
+#fxp{
+  position:fixed; z-index:840; top:84px; right:16px;
+  width:322px; max-height:calc(100vh - 118px);
+  display:flex; flex-direction:column;
+  background:#fff; border:1px solid #cfd6e0; border-radius:12px;
+  box-shadow:0 2px 6px rgba(18,22,28,.08), 0 14px 40px rgba(18,22,28,.14);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:13px; color:#12161c; line-height:1.55;
+  -webkit-user-select:none; user-select:none;
+}
+#fxp.fxp-min{ width:auto; min-width:150px; }
+#fxp.fxp-min .fxp-bd{ display:none; }
+#fxp.fxp-min .fxp-c{ display:none; }
+
+/* 标题栏（拖动手柄） */
+#fxp .fxp-h{
+  display:flex; align-items:center; gap:7px;
+  padding:8px 10px 8px 9px; cursor:grab; touch-action:none;
+  border-bottom:1px solid #e6eaf0; border-radius:12px 12px 0 0;
+  background:linear-gradient(#fbfcfe,#f4f7fb);
+}
+#fxp.fxp-min .fxp-h{ border-bottom:0; border-radius:12px; }
+#fxp .fxp-h.fxp-drag{ cursor:grabbing; }
+#fxp .fxp-grip{ color:#9aa6b6; font-size:13px; letter-spacing:0 }
+#fxp .fxp-t{
+  font-family:Georgia,"Times New Roman","Songti SC",serif;
+  font-weight:700; font-size:14.5px; color:#0d2f63; letter-spacing:.2px;
+}
+#fxp .fxp-c{ font-family:Consolas,monospace; font-size:11px; color:#6b7683; margin-left:auto; white-space:nowrap }
+#fxp .fxp-h.fxp-mini-open .fxp-c{ margin-left:6px }
+#fxp .fxp-b{
+  width:22px; height:22px; padding:0; flex:0 0 22px;
+  border:1px solid #cfd6e0; background:#fff; border-radius:6px;
+  color:#3b4552; font-size:12px; line-height:1; cursor:pointer;
+}
+#fxp .fxp-b:hover{ border-color:#1b4f9c; color:#1b4f9c; background:#f4f7fb }
+#fxp .fxp-b:first-of-type{ margin-left:6px }
+
+/* 面板主体 */
+#fxp .fxp-bd{
+  padding:4px 12px 12px; overflow-y:auto; overflow-x:hidden;
+  -webkit-user-select:auto; user-select:auto;
+}
+#fxp .fxp-bd::-webkit-scrollbar{ width:8px }
+#fxp .fxp-bd::-webkit-scrollbar-thumb{ background:#d7dee8; border-radius:4px }
+#fxp .fxp-bd::-webkit-scrollbar-track{ background:transparent }
+
+/* 分组 */
+#fxp .fxp-grp{ padding:9px 0 3px }
+#fxp .fxp-grp + .fxp-grp{ border-top:1px dashed #e6eaf0; margin-top:3px }
+#fxp .fxp-gl{
+  font-family:Consolas,monospace; font-size:10.5px; letter-spacing:.04em;
+  color:#6b7683; margin:0 0 7px; display:flex; align-items:baseline; gap:6px;
+}
+#fxp .fxp-gl b{ color:#1b4f9c; font-weight:600; font-size:11px }
+#fxp .fxp-gl i{ font-style:normal; color:#9aa6b6 }
+
+/* 控件统一外观：覆盖被搬进来的块，不依赖原页面 .viz .ctl 之类选择器 */
+#fxp .ctl, #fxp .ctrl, #fxp .controls, #fxp .calc, #fxp .panel, #fxp .param-panel{
+  display:block; margin:0; padding:0; border:0; background:none; box-shadow:none;
+  width:auto; max-width:none; position:static; float:none;
+}
+#fxp .ctl > *, #fxp .ctrl > *, #fxp .controls > *, #fxp .panel > *, #fxp .calc > *{ margin-bottom:9px }
+#fxp .ctl > *:last-child, #fxp .ctrl > *:last-child,
+#fxp .controls > *:last-child, #fxp .panel > *:last-child, #fxp .calc > *:last-child{ margin-bottom:0 }
+
+/* label 行：文字在上、滑块占满整行 */
+#fxp label, #fxp .row, #fxp .prow, #fxp .slider{
+  display:flex; flex-wrap:wrap; align-items:center; gap:3px 8px;
+  width:100%; margin:0 0 10px; font-size:12.6px; color:#3b4552;
+}
+#fxp label > span, #fxp .row > span{ flex:0 0 auto }
+#fxp input[type=range]{
+  -webkit-appearance:none; appearance:none; order:3;
+  /* ⚠ 不能用 flex:0 0 100%：父级 label.row 是 align-items:center 的 flex 行，
+     交叉轴会把 input 压成 track 的 3px 高（实测 offsetHeight=3），滑块几乎被裁掉。
+     flex:none + width:100% 一样能独占一行，且高度稳定 16px。 */
+  flex:none; width:100%; min-width:90px; height:16px; margin:1px 0 0;
+  background:transparent; cursor:pointer; accent-color:#1b4f9c;
+}
+#fxp input[type=range]::-webkit-slider-runnable-track{
+  height:3px; background:#dbe2ec; border-radius:2px;
+}
+#fxp input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:13px; height:13px; margin-top:-5px;
+  background:#1b4f9c; border:2px solid #fff; border-radius:50%;
+  box-shadow:0 1px 3px rgba(18,22,28,.28);
+}
+#fxp input[type=range]:focus{ outline:none }
+#fxp input[type=range]:focus::-webkit-slider-thumb{ box-shadow:0 0 0 3px rgba(27,79,156,.18) }
+
+/* 数值 */
+#fxp .val, #fxp .v, #fxp output, #fxp .num{
+  font-family:Consolas,monospace; font-size:12px; color:#b4531f;
+  min-width:0; margin-left:auto; white-space:nowrap; order:2;
+}
+
+/* 按钮 */
+#fxp button{
+  font-family:Consolas,monospace; font-size:11.5px; padding:4px 9px;
+  border:1px solid #cfd6e0; background:#fff; color:#3b4552;
+  border-radius:7px; cursor:pointer; margin:0 5px 5px 0;
+}
+#fxp button:hover{ border-color:#1b4f9c; color:#1b4f9c; background:#f4f7fb }
+
+/* .lab / .hint / .presets（aizawa / 黄金蛋 那一族的行结构） */
+#fxp .lab{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:8px; width:100%; order:1; font-size:12.6px; color:#3b4552;
+}
+#fxp .lab .v{ margin-left:auto }
+#fxp .hint{
+  order:4; width:100%; margin:3px 0 0; font-size:11.2px; line-height:1.5;
+  color:#6b7683;
+}
+#fxp .presets{ order:5; width:100%; display:flex; flex-wrap:wrap; gap:5px; margin-top:5px }
+#fxp .presets button{ margin:0 }
+#fxp .gt{
+  font-family:Georgia,"Songti SC",serif; font-size:12.8px; font-weight:700;
+  color:#0d2f63; margin:2px 0 8px;
+}
+#fxp .grp > .gt:first-child{ margin-top:0 }
+
+#fxp button.on, #fxp button.active{ background:#1b4f9c; border-color:#1b4f9c; color:#fff }
+#fxp select{
+  font-family:inherit; font-size:12px; padding:3px 6px; max-width:100%;
+  border:1px solid #cfd6e0; border-radius:6px; background:#fff; color:#12161c;
+}
+#fxp input[type=text], #fxp input[type=number]{
+  font-family:Consolas,monospace; font-size:12px; width:78px; padding:3px 6px;
+  border:1px solid #cfd6e0; border-radius:6px;
+}
+#fxp input[type=checkbox]{ accent-color:#1b4f9c; margin-right:2px }
+
+/* 原位置留下的提示 */
+.fxp-note{
+  margin:10px 0 0; padding:5px 9px; font-size:11.8px; color:#6b7683;
+  font-family:Consolas,monospace; background:#f6f8fb;
+  border:1px dashed #d7dee8; border-radius:6px;
+}
+.fxp-note::before{ content:"⇱ "; color:#1b4f9c }
+
+/* 窄屏：底部抽屉式，不再遮挡图 */
+@media (max-width:880px){
+  #fxp{
+    top:auto; bottom:0; right:0; left:0; width:auto;
+    max-height:52vh; border-radius:12px 12px 0 0;
+    border-left:0; border-right:0; border-bottom:0;
+  }
+  #fxp .fxp-h{ cursor:default; border-radius:12px 12px 0 0 }
+  #fxp.fxp-min{ left:auto; right:10px; bottom:10px; border:1px solid #cfd6e0; border-radius:12px }
+}
+@media print{ #fxp{ display:none !important } }
+
+/* ============================================================
+   暗色主题皮肤（2026-10-19 老师：Anu 主界面是暗底，浮窗却是白底，割裂）
+   触发条件：页面 <body> 或 <html> 自己声明了暗色
+     body.theme-dark / body.dark / body.theme-night
+     html[data-theme="dark"] / body[data-theme="dark"]
+   只做覆盖，不改上面的默认（白底）规则 —— 明色页面完全不受影响。
+   配色取自 anu.css 的 --panel/--line/--text/--accent，保持同源。
+   ============================================================ */
+body.theme-dark #fxp, body.dark #fxp, body.theme-night #fxp,
+html[data-theme="dark"] #fxp, body[data-theme="dark"] #fxp{
+  background:#0e1420; border-color:#22304a;
+  box-shadow:0 2px 8px rgba(0,0,0,.45), 0 18px 48px rgba(0,0,0,.55);
+  color:#e6edf8;
+}
+body.theme-dark #fxp .fxp-h, body.dark #fxp .fxp-h, body.theme-night #fxp .fxp-h,
+html[data-theme="dark"] #fxp .fxp-h, body[data-theme="dark"] #fxp .fxp-h{
+  background:linear-gradient(#182233,#111826); border-bottom-color:#22304a;
+}
+body.theme-dark #fxp .fxp-grip, body.dark #fxp .fxp-grip, body.theme-night #fxp .fxp-grip{
+  color:#5d7093;
+}
+body.theme-dark #fxp .fxp-t, body.dark #fxp .fxp-t, body.theme-night #fxp .fxp-t,
+html[data-theme="dark"] #fxp .fxp-t, body[data-theme="dark"] #fxp .fxp-t{
+  color:#cddcff;
+}
+body.theme-dark #fxp .fxp-c, body.dark #fxp .fxp-c, body.theme-night #fxp .fxp-c{
+  color:#6b7f9e;
+}
+body.theme-dark #fxp .fxp-b, body.dark #fxp .fxp-b, body.theme-night #fxp .fxp-b,
+html[data-theme="dark"] #fxp .fxp-b, body[data-theme="dark"] #fxp .fxp-b{
+  background:#141c2b; border-color:#22304a; color:#a9bad6;
+}
+body.theme-dark #fxp .fxp-b:hover, body.dark #fxp .fxp-b:hover, body.theme-night #fxp .fxp-b:hover{
+  background:#1b2740; border-color:#4d7cff; color:#cddcff;
+}
+body.theme-dark #fxp .fxp-bd::-webkit-scrollbar-thumb,
+body.dark #fxp .fxp-bd::-webkit-scrollbar-thumb,
+body.theme-night #fxp .fxp-bd::-webkit-scrollbar-thumb{
+  background:#26334c;
+}
+body.theme-dark #fxp .fxp-grp + .fxp-grp, body.dark #fxp .fxp-grp + .fxp-grp,
+body.theme-night #fxp .fxp-grp + .fxp-grp{ border-top-color:#1e2a3f }
+body.theme-dark #fxp .fxp-gl, body.dark #fxp .fxp-gl, body.theme-night #fxp .fxp-gl{
+  color:#7d90ae;
+}
+body.theme-dark #fxp .fxp-gl b, body.dark #fxp .fxp-gl b, body.theme-night #fxp .fxp-gl b{
+  color:#7ea6ff;
+}
+body.theme-dark #fxp .fxp-gl i, body.dark #fxp .fxp-gl i, body.theme-night #fxp .fxp-gl i{
+  color:#5d7093;
+}
+body.theme-dark #fxp label, body.theme-dark #fxp .row, body.theme-dark #fxp .prow,
+body.theme-dark #fxp .slider, body.dark #fxp label, body.dark #fxp .row,
+body.dark #fxp .prow, body.dark #fxp .slider,
+body.theme-night #fxp label, body.theme-night #fxp .row,
+body.theme-night #fxp .prow, body.theme-night #fxp .slider{
+  color:#b9c8e0;
+}
+body.theme-dark #fxp input[type=range]::-webkit-slider-runnable-track,
+body.dark #fxp input[type=range]::-webkit-slider-runnable-track,
+body.theme-night #fxp input[type=range]::-webkit-slider-runnable-track{
+  background:#31425f;                    /* 不能贴地色，否则轨道看不见、只剩一个蓝点 */
+}
+body.theme-dark #fxp input[type=range]::-webkit-slider-thumb,
+body.dark #fxp input[type=range]::-webkit-slider-thumb,
+body.theme-night #fxp input[type=range]::-webkit-slider-thumb{
+  background:#4d7cff; border-color:#0e1420;
+  box-shadow:0 1px 3px rgba(0,0,0,.6);
+}
+body.theme-dark #fxp input[type=range]:focus::-webkit-slider-thumb,
+body.dark #fxp input[type=range]:focus::-webkit-slider-thumb{
+  box-shadow:0 0 0 3px rgba(77,124,255,.28);
+}
+body.theme-dark #fxp .val, body.theme-dark #fxp .v, body.theme-dark #fxp output,
+body.theme-dark #fxp .num, body.dark #fxp .val, body.dark #fxp .v,
+body.dark #fxp output, body.dark #fxp .num,
+body.theme-night #fxp .val, body.theme-night #fxp .v,
+body.theme-night #fxp output, body.theme-night #fxp .num{
+  color:#ffc861;                      /* 与页面 --gold 同源 */
+}
+body.theme-dark #fxp button, body.dark #fxp button, body.theme-night #fxp button,
+html[data-theme="dark"] #fxp button, body[data-theme="dark"] #fxp button{
+  background:#141c2b; border-color:#22304a; color:#b9c8e0;
+}
+body.theme-dark #fxp button:hover, body.dark #fxp button:hover,
+body.theme-night #fxp button:hover{
+  background:#1b2740; border-color:#4d7cff; color:#cddcff;
+}
+body.theme-dark #fxp button.on, body.theme-dark #fxp button.active,
+body.dark #fxp button.on, body.dark #fxp button.active,
+body.theme-night #fxp button.on, body.theme-night #fxp button.active{
+  background:#2f6fe0; border-color:#2f6fe0; color:#fff;
+}
+body.theme-dark #fxp .lab, body.dark #fxp .lab, body.theme-night #fxp .lab{
+  color:#b9c8e0;
+}
+body.theme-dark #fxp .hint, body.dark #fxp .hint, body.theme-night #fxp .hint{
+  color:#7d90ae;
+}
+body.theme-dark #fxp .gt, body.dark #fxp .gt, body.theme-night #fxp .gt,
+html[data-theme="dark"] #fxp .gt, body[data-theme="dark"] #fxp .gt{
+  color:#cddcff;
+}
+body.theme-dark #fxp select, body.dark #fxp select, body.theme-night #fxp select,
+body.theme-dark #fxp input[type=text], body.theme-dark #fxp input[type=number],
+body.dark #fxp input[type=text], body.dark #fxp input[type=number],
+body.theme-night #fxp input[type=text], body.theme-night #fxp input[type=number]{
+  background:#0b1019; border-color:#22304a; color:#e6edf8;
+}
+body.theme-dark .fxp-note, body.dark .fxp-note, body.theme-night .fxp-note{
+  background:#111826; border-color:#22304a; color:#7d90ae;
+}
+body.theme-dark .fxp-note::before, body.dark .fxp-note::before,
+body.theme-night .fxp-note::before{ color:#7ea6ff }
+
+/* 暗色下的窄屏抽屉边框 */
+@media (max-width:880px){
+  body.theme-dark #fxp.fxp-min, body.dark #fxp.fxp-min, body.theme-night #fxp.fxp-min{
+    border-color:#22304a;
+  }
+}
+
+</style><!--/FXCTL:CSS-->
+</head>
+<body>
+
+<nav class="topnav"><div class="inner">
+  <a class="brand" href="keely核心技术与现代声子物理技术对比.html">Keely × 现代声子物理 <span>/</span> K4</a>
+  <a class="nv on" href="#s1">① 能量阶梯</a>
+  <a class="nv" href="#s2">② 3¹⁶ 与七级</a>
+  <a class="nv" href="#s3">③ 三元 ↔ 夸克</a>
+  <a class="nv" href="#s4">④ GDR 判据</a>
+  <a class="nv" href="#s5">⑤ 设备与量程</a>
+  <a class="nv" href="#s6">⑥ 判读</a>
+  <a class="nv" href="keely核心技术与现代声子物理技术对比.html">← 总入口</a>
+  <a class="nv xlink" href="00_ima归档/B2_GDR核信号检验_v2_最新.html" title="归档原文：完整方案（判据表 / SOP / 统计方法）">GDR 方案原文 ↗</a>
+</div></nav>
+
+<div class="hero"><div class="wrap">
+  <div class="kicker">K4 · Falsifiable Test</div>
+  <h1>核尺度检验：3<sup>16</sup>、GDR 与可证伪判据</h1>
+  <p class="sub">
+    整套 Keely 层级说里，<b>只有一条能被仪器当场判生死</b>：如果第七级（Compound Interetheric）
+    真落在 MeV 核尺度，装置旁边放一台 NaI 谱仪就该测到中子或高能 γ。
+    <b>测到 = 有大事；测不到 = 层级说止步于第六级。</b>阴性结果是本实验最有价值的产出。
+  </p>
+  <p class="meta">资料来源：归档 A6 v6 §8 + B2 GDR v2 全文 · 本地 <code>00_ima归档/B2_GDR核信号检验_v2_最新.html</code></p>
+</div></div>
+
+<div class="wrap">
+
+<!-- ============ ① ============ -->
+<h2 id="s1"><span class="num">①</span>先摆硬约束：机械振动到不了核，差 8–9 个数量级</h2>
+
+<table>
+  <thead><tr><th>能量尺度</th><th>数值</th><th>换算到 eV</th></tr></thead>
+  <tbody>
+    <tr><td>THz 声子（1 THz）</td><td>4.14 meV</td><td>4.14×10⁻³ eV</td></tr>
+    <tr class="hl"><td>核第一激发态</td><td><b>~1 MeV</b></td><td>1×10⁶ eV</td></tr>
+    <tr><td>GDR 共振（¹⁹⁷Au）</td><td><b>13.7 MeV</b></td><td>1.37×10⁷ eV</td></tr>
+  </tbody>
+</table>
+
+<div class="warnbox">
+  <b>★ 这句话必须放在最前面，否则整个实验会被误读：</b><br>
+  <b>GDR 是被 γ 光子激发的光核反应 (γ,n)，不是被机械振动直接激发的。</b><br>
+  纯 THz 机械振动只有 meV 级，而 GDR 要 MeV 级 —— 中间<b>没有已知路径</b>能把能量集中 8–9 个数量级。
+</div>
+
+<div class="quote">
+  「最重要的一个被称为<b>巨偶极共振</b>，通常描述为核内质子相对中子的受激集体振荡。
+  这个激发态通常通过发射一个或多个<b>光中子（photoneutron）</b>退激。」
+  <span class="src">— GDR 的标准定义</span>
+</div>
+
+<div class="viz">
+  <div class="vt">能量阶梯图 · 把声子和核放在同一根轴上</div>
+  <div class="vc">
+    横轴是能量（eV，对数）。上半是<b>凝聚态侧</b>（声子、化学键、光），下半是<b>核侧</b>。
+    中间那道空白，就是"8–9 个数量级"的形状。
+  </div>
+  <canvas id="cvE" width="1120" height="420"></canvas>
+</div>
+
+<div class="goodbox">
+  <b>正因为差这么多，这个检验的定位是「证伪」，不是「证实」：</b><br>
+  <b>测到核信号</b> → 装置内发生了<b>非机械的能量集中过程</b> → 异常，值得追查（比 Keely 理论本身重要得多）。<br>
+  <b>测不到</b>（理论预期）→ 层级说到<b>第六级（Interetheric）为止</b>，第七级不成立。<br>
+  <span class="cnt">阴性结果能写进结论，而且是干净的那种 —— 这比一堆无法判定的定性讨论有价值。</span>
+</div>
+
+<!-- ============ ② ============ -->
+<h2 id="s2"><span class="num">②</span>3<sup>16</sup> 为什么落在核尺度（以及这个数字有多脆弱）</h2>
+
+<p>Keely 的原子级几何级数最后一项是 <b>3¹⁶ = 43,046,721</b>。把它当频率倍数，基准取分子振动 ~10¹³ Hz：</p>
+
+<div class="eq">
+  43,046,721 × 10¹³ Hz = <b>4.3 × 10²⁰ Hz</b><br>
+  E = h·f ⇒ <b>≈ 1.8 MeV</b>　<span class="cnt">（本文换算）</span>
+</div>
+
+<p>现实对照：</p>
+<div class="quote">
+  「对于中等质量核，第一激发振动态典型地在约 <b>1 MeV</b> 激发能，由 E = ℏω 换算得 ω ≈ 10²¹ Hz。」<br>
+  「巨偶极共振……振动频率量级 <b>5 × 10²¹ Hz</b>，对应能量约 <b>15 MeV</b>。」
+  <span class="src">— [web_254][web_251]</span>
+</div>
+
+<p><b>1.8 MeV 对 1 MeV —— 同一量级。</b>这个吻合度不像巧合。</p>
+
+<div class="viz">
+  <div class="vt">换算器 · 七级细分落在哪（基准可调）</div>
+  <div class="vc">
+    <b>★ 这个计算器故意把基准做成可调的</b>，因为 1.8 MeV 这个数<b>依赖基准选择</b>：
+    基准取 10¹² 还是 10¹⁴，结果差 100 倍。诚实地看见这个敏感性，比背下"1.8 MeV"更重要。
+  </div>
+  <div class="ctl">
+    <label>基准频率 <input type="range" id="sBase" min="10" max="15" value="13" step="0.1"><span class="val" id="vBase">10¹³ Hz</span></label>
+  </div>
+  <canvas id="cvLv" width="1120" height="330"></canvas>
+  <div class="rd">
+    <div class="r"><div class="n" id="e1">3.0×10¹³</div><div class="l">III Atomic　3¹</div><div class="x" id="e1x">—</div></div>
+    <div class="r"><div class="n" id="e2">9.0×10¹³</div><div class="l">IV Interatomic　3²</div><div class="x" id="e2x">—</div></div>
+    <div class="r"><div class="n" id="e3">8.1×10¹⁴</div><div class="l">V Etheric　3⁴</div><div class="x" id="e3x">—</div></div>
+    <div class="r"><div class="n" id="e4">6.6×10¹⁶</div><div class="l">VI Interetheric　3⁸</div><div class="x" id="e4x">—</div></div>
+    <div class="r hot"><div class="n" id="e5">4.3×10²⁰</div><div class="l">VII Compound　3¹⁶</div><div class="x" id="e5x">—</div></div>
+  </div>
+</div>
+
+<div class="warnbox">
+  <b>★ 诚实边界：</b>「3¹⁶ ≈ 1.8 MeV」是<b>本文换算</b>，不是文献直述。
+  它的可信度取决于两个假设：① 基准取 10¹³ Hz；② 3¹⁶ 是频率倍数而不是别的量。<br>
+  <span class="cnt">所以本页把它当<b>量级估计</b>用（"落在 MeV 附近"是稳的），
+  不当"精确预测 1.8 MeV"用。真正硬的预测来自 GDR 公式 E ≈ 80·A<sup>−1/3</sup> MeV，那是有核数据支撑的。</span>
+</div>
+
+<h3>七级细分对照表（基准 10¹³ Hz 时）</h3>
+<table>
+  <thead><tr><th>细分</th><th>级数</th><th>频率</th><th>现代对应</th></tr></thead>
+  <tbody>
+    <tr><td>III. Atomic</td><td>3¹ = 3</td><td>3×10¹³</td><td>分子内振动</td></tr>
+    <tr><td>IV. Interatomic</td><td>3² = 9</td><td>9×10¹³</td><td>—（Keely 未给）</td></tr>
+    <tr><td>V. Etheric</td><td>3⁴ = 81</td><td>8.1×10¹⁴</td><td>可见光 / 紫外边</td></tr>
+    <tr><td>VI. Interetheric</td><td>3⁸ = 6561</td><td>6.6×10¹⁶</td><td>软 X 射线</td></tr>
+    <tr class="best"><td><b>VII. Compound Interetheric</b></td><td><b>3¹⁶ = 43,046,721</b></td><td><b>4.3×10²⁰ ≈ 1.8 MeV</b></td><td><b>核激发态</b> ✓</td></tr>
+  </tbody>
+</table>
+
+<p>
+  ⇒ <b>「打到核内」对应的是第七级（Compound Interetheric），不是整个原子级。</b>
+  这个区分很重要：说"Keely 打到原子核"会被化学与核物理同时驳倒，说"第七级落在核尺度"则是一个可以检验的命题。
+</p>
+
+<!-- ============ ③ ============ -->
+<h2 id="s3"><span class="num">③</span>三元嵌套 ↔ 夸克：资料自己画出来的对应</h2>
+
+<div class="quote">
+  「原子具有与分子相同的旋转包层……旋转包层怀抱着原子间物质和静息于其中的<b>三个原子（three atomoles）</b>……
+  <b>三重秩序是绝对普适的（The threefold order is absolutely universal）。</b>」
+  <span class="src">— Keely 原文 [pdf_53]</span>
+</div>
+
+<div class="quote">
+  「<b>原子摩尔（atomole）类似于我们的夸克</b>，因为电子中包含三个夸克，
+  我们可以假设质子甚至中子中也包含三个夸克。」
+  <span class="src">— Dale Pond 自己说的，不是后人的推测 [pdf_3]</span>
+</div>
+
+<p>知识库甚至把费曼图与 Keely 图并列，电荷标注完全是现代值：</p>
+<div class="eq">
+  u(+2/3)　d(−1/3)　d(−1/3)　→　<b>neutron(0)</b><br>
+  u(+2/3)　u(+2/3)　d(−1/3)　→　<b>proton(+1)</b>
+</div>
+<p>
+  现实：质子 = uud，中子 = udd，u 电荷 +2/3e，d 电荷 −1/3e。<b>完全一致。</b>
+</p>
+
+<h3>「6」的出处：1 × 2 × 3 = 3!</h3>
+<div class="quote">
+  「没有任何力流能仅由一种振动模态构成，而必须总是由<b>三个模态以不同的三分（thirds）结合</b>而成，
+  于是我们有 <b>1 × 2 × 3 = 6</b> 作为交感重合的全部可能形式……
+  <b>这些就是基利所说的六个原子细分秩序。</b>」
+  <span class="src">— [pdf_53]</span>
+</div>
+<p>
+  <b>六个细分 = 三个模态的全部排列数 = 3!</b> 这解释了"为什么是 6 个层级"，
+  而不只是记录"有 6 个"。之前只记了现象，没记原因。
+</p>
+
+<h3>★ 必要精确化（三处，不做这三处修正会被当成民科）</h3>
+<table>
+  <thead><tr><th>说法</th><th>修正</th><th>为什么</th></tr></thead>
+  <tbody>
+    <tr class="no"><td>「打到原子核内」</td>
+      <td>改为<b>「原子内三单元」</b></td>
+      <td>Keely 写这些是 1894 年前后。卢瑟福 1911 才提出原子核，<b>晚 17 年</b>；中子 1932；夸克 1964。
+        他脑子里那个 atom 是道尔顿式的实心最小单位，<b>没有核概念</b>。atomole 对应的是亚原子粒子层级</td></tr>
+    <tr class="no"><td>「夸克有 3 个 ⇒ 频率比该是 3」</td>
+      <td><b>组成数 ≠ 递进比</b></td>
+      <td>两个 3 很可能反映同一个底层三重性，但<b>不能直接互推</b>。中间缺一步论证</td></tr>
+    <tr class="no"><td>「任何分子中的原子数不能多于或少于三个」</td>
+      <td>化学上<b>错</b>，但作为<b>结构原则</b>成立</td>
+      <td>H₂O 是 3 个 ✓，但 CH₄ 是 5 个、乙醇是 9 个。<b>这不是化学计数</b></td></tr>
+  </tbody>
+</table>
+<div class="goodbox">
+  <b>承认这三点的好处：</b>Keely 才不被当成民科，而是一个<b>用 19 世纪术语逼近现代结构的观察者</b>。
+  他的价值不在"说对了夸克"，而在"用三个一组的递归结构描述物质层次"这个<em>方法论</em>。
+</div>
+
+<!-- ============ ④ ============ -->
+<h2 id="s4"><span class="num">④</span>GDR 判据体系：天然本底到 2.62 MeV 就断了</h2>
+
+<div class="quote">
+  <b>天然 γ 本底最高只到 ²⁰⁸Tl 的 2614.5 keV。</b>超过约 2.62 MeV 基本无天然 γ 源（宇宙射线除外）。
+  <span class="src">— 整个判据体系的地基</span>
+</div>
+
+<h3>GDR 参数（这是有核数据支撑的硬预测）</h3>
+<table>
+  <thead><tr><th>参数</th><th>值</th></tr></thead>
+  <tbody>
+    <tr><td>共振能量范围（多数元素）</td><td><b>13–26 MeV</b></td></tr>
+    <tr><td>质量依赖</td><td>随 <b>A<sup>−1/3</sup></b> 缓慢下降</td></tr>
+    <tr><td>共振宽度 Γ</td><td>3–6 MeV（另源 3–9 MeV）</td></tr>
+    <tr><td>重元素总截面</td><td>几百 mb</td></tr>
+    <tr><td>光核反应阈值</td><td>≥5 MeV</td></tr>
+  </tbody>
+</table>
+
+<table>
+  <thead><tr><th>核素</th><th>阈值 E<sub>min</sub></th><th>共振能 E₀</th><th>Γ<sub>fwhm</sub></th><th>峰值截面</th></tr></thead>
+  <tbody>
+    <tr><td>¹²C</td><td>18.72 MeV</td><td>~23 MeV</td><td>~3.7</td><td>~7 mb</td></tr>
+    <tr><td>²⁷Al</td><td>13.03 MeV</td><td>~22 MeV</td><td>~6.7</td><td>~11 mb</td></tr>
+    <tr><td>nat Cu</td><td>9.91 MeV</td><td>~17 MeV</td><td>~7.8</td><td>~70 mb</td></tr>
+    <tr><td>⁹³Nb</td><td>8.8 MeV</td><td>16.59 MeV</td><td>5.05</td><td>200 mb</td></tr>
+    <tr class="best"><td><b>¹⁹⁷Au</b></td><td>~8 MeV</td><td><b>13.7 MeV</b></td><td><b>4.76</b></td><td>—</td></tr>
+    <tr><td>²⁰⁸Pb</td><td>7.38 MeV</td><td>13.46 MeV</td><td>3.90</td><td>491 mb</td></tr>
+  </tbody>
+</table>
+
+<p>GDR 公式可以直接算预期峰位（选核素看数）：</p>
+<div class="viz">
+  <div class="vt">E<sub>GDR</sub> ≈ 80 · A<sup>−1/3</sup> MeV</div>
+  <div class="vc">选一个核素，看公式给出的预期共振能。Trexar 中间层是金，所以 ¹⁹⁷Au 那一行最相关。</div>
+  <div class="ctl">
+    <label>核素
+      <select id="sIso">
+        <option value="197">¹⁹⁷Au（A=197，Trexar 中间层）</option>
+        <option value="195">¹⁹⁵Pt（A=195，Trexar 外层）</option>
+        <option value="107.9">¹⁰⁸Ag（A=107.9，Trexar 芯层）</option>
+        <option value="63.5">nat Cu（A=63.5）</option>
+        <option value="208">²⁰⁸Pb（A=208）</option>
+        <option value="27">²⁷Al（A=27）</option>
+        <option value="12">¹²C（A=12）</option>
+      </select>
+    </label>
+  </div>
+  <div class="rd">
+    <div class="r"><div class="n" id="g1">13.7</div><div class="l">公式给出 E<sub>GDR</sub>（MeV）</div><div class="x">80·A^(−1/3)</div></div>
+    <div class="r"><div class="n" id="g2">197</div><div class="l">质量数 A</div><div class="x">g/mol 近似</div></div>
+    <div class="r"><div class="n" id="g3">13.7</div><div class="l">实测 E₀（MeV）</div><div class="x" id="g3x">与公式对照</div></div>
+    <div class="r" id="g4c"><div class="n" id="g4">0.0%</div><div class="l">偏差</div><div class="x">公式 vs 实测</div></div>
+  </div>
+</div>
+
+<h3>★ 金箔一物二用（这条救活了最弱的判据）</h3>
+<p>
+  便携 NaI 测不到 13.7 MeV 的直接峰（康普顿主导、效率低）。但 <b>Au 的 (γ,n) 阈值只有 ~8 MeV，远低于 GDR 峰位</b>
+  —— 只要 GDR 区被触及，(γ,n) 必然发生。同一片金箔可以同时给出两个独立信号：
+</p>
+
+<table>
+  <thead><tr><th>产物</th><th>反应</th><th>截面</th><th>半衰期</th><th>γ</th><th>证明什么</th></tr></thead>
+  <tbody>
+    <tr class="best"><td><b>¹⁹⁸Au</b></td><td>¹⁹⁷Au(<b>n,γ</b>)</td><td>9.88 b</td><td><b>2.69 天</b></td><td><b>411.8 keV</b></td><td><b>存在中子</b></td></tr>
+    <tr class="best"><td><b>¹⁹⁶ᵍ⁺ᵐAu</b></td><td>¹⁹⁷Au(<b>γ,n</b>)</td><td><b>2.19 b</b></td><td><b>6.16 天</b></td><td><b>355.73 keV</b></td><td><b>存在 &gt;8 MeV 高能 γ</b></td></tr>
+  </tbody>
+</table>
+
+<div class="goodbox">
+  两个半衰期相差 <b>2.3 倍</b>（2.69 d vs 6.16 d），可用<b>双指数衰变拟合干净分离</b>。<br>
+  <b>半衰期验证是防伪关键</b>：只有衰减曲线对上 2.69 天 / 6.16 天，才采信；对不上的一律当污染处理。
+</div>
+
+<h3>完整判据表（按信噪比排序）</h3>
+<table>
+  <thead><tr><th>优先级</th><th>信号</th><th>物理来源</th><th>天然本底</th><th>可测性</th></tr></thead>
+  <tbody>
+    <tr class="best"><td><b>1</b></td><td>¹⁹⁸Au 411.8 keV（2.69 d）</td><td>中子活化</td><td>无</td><td>✅ 金箔 + NaI</td></tr>
+    <tr class="best"><td><b>2</b></td><td>¹⁹⁶Au 355.73 keV（6.16 d）</td><td>&gt;8 MeV 高能 γ</td><td>无</td><td>✅ 同一片金箔</td></tr>
+    <tr><td>3</td><td>中子直接计数</td><td>GDR 主衰变通道</td><td>几乎为零</td><td>✅ He-3 / BNC（可选）</td></tr>
+    <tr><td>4</td><td>2.223 MeV γ 峰</td><td>¹H(n,γ)²H 热中子俘获</td><td>无</td><td>✅ 但接近量程上限</td></tr>
+    <tr><td>5</td><td>511 keV 峰增强</td><td>&gt;1.022 MeV γ 的电子对湮灭</td><td>极低</td><td>✅</td></tr>
+    <tr><td>6</td><td>&gt;2.62 MeV 的 γ</td><td>超出天然本底上限</td><td>仅宇宙射线</td><td>⚠️ 需扩量程</td></tr>
+    <tr class="no"><td>7</td><td>13.7 MeV 直接峰</td><td>Au GDR</td><td>无</td><td>❌ 便携 NaI 测不了</td></tr>
+  </tbody>
+</table>
+
+<!-- ============ ⑤ ============ -->
+<h2 id="s5"><span class="num">⑤</span>设备：一个会卡住实验的硬问题</h2>
+
+<div class="warnbox">
+  <b>⚠️ 国产便携谱仪能量范围几乎清一色 20 keV – 3 MeV。</b><br>
+  FY-PDGS-75：20 keV–3 MeV　·　中辐院 PDGS-750：20 keV–3 MeV<br>
+  XH-3235：30 keV–3 MeV　·　GEORADIS GT-40：0.03–3 MeV<br>
+  ⇒ <b>判据 6（&gt;3 MeV）和判据 7（13.7 MeV）在标准配置下直接测不了。</b>
+</div>
+
+<p>
+  解决办法：<b>NaI + PMT 的高压是可调的</b>（100–1500 V 连续可调），降高压即可扩量程到更高能量，
+  代价是低能区分辨率变差。所以正确做法是<b>双量程分段测</b>：
+</p>
+<div class="eq">
+  低量程（常规高压）→ 511 keV / 411.8 keV / 2.223 MeV<br>
+  高量程（降高压）　→ 扫 3–20 MeV
+</div>
+<p><b>询价时必须把"支持 0–20 MeV 双段量程、高压与增益手动连续可调"写成技术要求。</b></p>
+
+<table>
+  <thead><tr><th>型号</th><th>探测器</th><th>关键规格</th><th>报价</th></tr></thead>
+  <tbody>
+    <tr class="best"><td><b>BH1324F</b></td><td><b>Φ75×75 mm NaI(Tl)</b></td>
+      <td>低钾，分辨率 ≤8.0%，本底 ≤450 cpm，铅室屏蔽因子 ≥80，<b>高压 0–1500 V 可调、增益 0–160 可调</b>，80 MHz ADC</td>
+      <td><b>¥5–10 万</b></td></tr>
+    <tr><td>天众 TZ-8125</td><td>Φ50×50 mm NaI</td><td>低本底铅室 + 低钾探头，512–16384 道</td><td>¥9.8 万</td></tr>
+    <tr><td>HD-WF300（霍尔德）</td><td>Φ50×50 mm NaI</td><td>16 位 80 MSPS ADC，LIST-MODE，时钟同步 ≥15 ns</td><td>¥11 万</td></tr>
+    <tr><td>中核 ZK1101</td><td>NaI 2″/3″、LaBr₃ 2″</td><td>分辨率 ≤7%，256–2048 道</td><td>¥10–20 万</td></tr>
+    <tr><td>XH-3235（博将）</td><td>Ø50×50 NaI + GM</td><td>≤7% @661 keV，2048 道，<b>上限 3 MeV</b></td><td>¥2–5 万</td></tr>
+  </tbody>
+</table>
+
+<div class="quote">
+  <b>询价第一句就问：</b>「能不能支持 0–20 MeV 双段量程？高压和增益是否手动连续可调？」<br>
+  这句话决定判据 6 / 7 能不能保留。如果厂家说扩不了，实验就退化成只剩活化箔 + 511 keV + 2.223 MeV
+  —— 其实也够用（活化箔是主判据，信噪比最高），但<b>先问清楚，别等设备到了才发现</b>。
+</div>
+
+<h3>金箔：50 μm 定案</h3>
+<table>
+  <thead><tr><th>参数</th><th>值</th><th>依据</th></tr></thead>
+  <tbody>
+    <tr><td>厚度</td><td><b>50 μm（0.05 mm）</b></td><td>25 μm 太脆；100 μm 自吸收翻倍</td></tr>
+    <tr><td>纯度</td><td><b>≥99.998%</b></td><td>杂质（Ag、Cu）会活化出干扰峰，污染 411.8 keV 区</td></tr>
+    <tr><td>自吸收 F<sub>g</sub></td><td><b>1.0102（+1.0%）</b> @411.8 keV<br>1.0110（+1.1%）@355.73 keV</td>
+      <td>t<sub>m</sub> = 19.30×0.005 = 0.0965 g/cm²；μ<sub>m</sub> = 0.207 cm²/g（NIST-XCOM）</td></tr>
+    <tr><td>文献效率</td><td>井型 NaI 对 411.8 keV = <b>0.7659 ± 0.0011</b></td><td>50 μm 箔的实测值，可直接引用</td></tr>
+    <tr><td>计数窗口</td><td>292–518 keV（¹⁹⁸Au）；另开 355.7 keV 窗监测 ¹⁹⁶Au</td><td>—</td></tr>
+  </tbody>
+</table>
+
+<p><b>自吸收计算（可手算复核）：</b></p>
+<div class="eq">
+  F<sub>g</sub> = μ<sub>m</sub>·t<sub>m</sub> / (1 − e<sup>−μ<sub>m</sub>t<sub>m</sub></sup>)<br>
+  μ<sub>m</sub>·t<sub>m</sub> = 0.207 × 0.0965 = 0.01998<br>
+  F<sub>g</sub> = 0.01998 / (1 − e<sup>−0.01998</sup>) = 0.01998 / 0.019781 = <b>1.0102</b>
+</div>
+
+<h3>镉比法：把"有中子"升级成"有热中子"</h3>
+<p>镉吸收 &lt;0.4 eV 的热中子。裸箔 = 热 + 超热；镉包箔 = 只有超热；<b>差值 = 纯热中子</b>。</p>
+<div class="eq">
+  R<sub>Cd</sub> = A<sub>bare</sub> / A<sub>Cd</sub>　（镉比）<br>
+  F<sub>Cd</sub> = (R<sub>Cd</sub> − 1)/R<sub>Cd</sub>　（热中子份额因子）<br>
+  φ<sub>th</sub> = e<sup>λt<sub>d</sub></sup>·A<sub>tot</sub>·F<sub>Cd</sub> / [σ<sub>th</sub>·G<sub>th</sub>·N·(1−e<sup>−λt<sub>i</sub></sup>)]
+</div>
+<p class="cnt">
+  镉片厚 <b>1 mm</b>，Cd 截止 ~0.4 eV；Au 的超热活化主要来自 0.4–2 eV 的大共振。<br>
+  ⚠ 镉包箔之间需间隔 ≥2 cm，否则互相压低活化。<b>操作镉片必须戴手套 —— 镉有毒。</b>
+</p>
+
+<!-- ============ ⑥ ============ -->
+<h2 id="s6"><span class="num">⑥</span>判读：四种结果，四种结论</h2>
+
+<table>
+  <thead><tr><th>观测</th><th>结论</th></tr></thead>
+  <tbody>
+    <tr><td>¹⁹⁸Au（2.69 d）成立</td><td><b>存在中子</b> → GDR 通道被触及</td></tr>
+    <tr><td>¹⁹⁶Au（6.16 d）成立</td><td><b>存在 &gt;8 MeV 高能 γ</b> → 已进入 GDR 能区</td></tr>
+    <tr class="hl"><td>两者皆成立</td><td>装置产生核尺度效应 → <b>重大异常，升级 HPGe 精细测量</b></td></tr>
+    <tr class="best"><td>四项判据全无，低于 L<sub>D</sub></td><td><b>层级说到第六级为止，第七级不成立</b>（预期结果）</td></tr>
+    <tr class="no"><td>Level 0 阳性但无对应峰</td><td>多为电磁干扰或 GM 管伪响应，<b>不采信</b></td></tr>
+  </tbody>
+</table>
+
+<h3>统计判据必须写死：Currie 探测限</h3>
+<div class="eq">
+  L<sub>D</sub> = 2.71 + 4.65·√B　　MDA = L<sub>D</sub> / (ε · y · t)<br>
+  算例：B = 100 counts（1 min），ε = 0.30，y = 0.85<br>
+  → L<sub>D</sub> = 2.71 + 4.65×10 = <b>49.2 counts</b><br>
+  → MDA = 49.2 / (0.30 × 0.85 × 60) ≈ <b>3.2 Bq</b>
+</div>
+
+<p><b>承认标准（任一信号要成立，必须同时满足四条）：</b></p>
+<ol>
+  <li>在<b>差分谱</b>（实验 − 对照）上超过 Currie 探测限 L<sub>D</sub></li>
+  <li><b>两次独立重复可复现</b></li>
+  <li>对活化产物：<b>实测半衰期与文献值（2.69 d / 6.16 d）在误差内吻合</b></li>
+  <li>已排除对应干扰项（温度漂移、宇宙射线、⁴⁰K、²¹⁴Bi、快中子 (n,2n) 道）</li>
+</ol>
+
+<h3>SOP（八步）</h3>
+<ol>
+  <li><b>本底</b>：装置移走，NaI 测 24 h → 建立本底谱 + 四峰校正曲线</li>
+  <li><b>对照</b>：装置就位、<b>不通电</b>，同几何测 24 h</li>
+  <li><b>布置箔片</b>：裸金箔 + 镉包金箔（间隔 ≥2 cm）+（可选）铟箔</li>
+  <li><b>实验</b>：按 3:6:9 设定激励，测 24 h（或更长）</li>
+  <li><b>差分谱</b>：实验 − 对照 → 检查 511 keV / 2.223 MeV / &gt;2.62 MeV</li>
+  <li><b>箔片计数</b>：取出后立即测 411.8 keV 与 355.73 keV</li>
+  <li><b>衰变追踪</b>：连续测 <b>≥40 天</b>，双指数拟合分离 2.69 d 与 6.16 d</li>
+  <li><b>镉比计算</b>：R<sub>Cd</sub> = A<sub>bare</sub>/A<sub>Cd</sub> → 得热中子通量</li>
+</ol>
+
+<div class="warnbox">
+  <b>★ 两个必须提前做的基础工作（不做会让伪峰自己长出来）：</b><br>
+  ① <b>本底 24–48 h，而且记温度</b>。NaI 峰位会随温度漂，12 小时内 ⁴⁰K 峰能漂 55 道（1024 道制），
+  必须靠 <b>239 / 609 / 1462 / 2614 keV 四峰递归校正</b>。<br>
+  ② <b>效率必须用标准源实测，不能套厂家曲线</b>。ε = 净计数率/(A×y)，每个能量窗各建一次。
+</div>
+
+<div class="goodbox">
+  <b>一句话总结（归档原文）：</b><br>
+  天然 γ 本底到 2614.5 keV 就断了。<b>任何中子、任何活化产物、任何 511 keV 增强，
+  都是自然界不会平白给你的东西。</b><br>
+  一片 50 μm 的金箔同时盯着两个半衰期：<b>2.69 天的是中子，6.16 天的是高能 γ。</b><br>
+  测到 = 有大事；测不到 = 把 Keely 层级说的边界钉死在核尺度之下。<b>两者都是硬结论。</b>
+</div>
+
+<hr>
+<p class="cnt">
+  上一站：<a href="K3_Trexar几何_根号n等体积定案.html">K3 · Trexar 几何定案</a>　·　
+  <a href="K2_层级频率链_八度罗盘与3的幂.html">K2 · 层级频率链</a>　·　
+  <a href="K1_标度律_Chladni到Lamb.html">K1 · 标度律</a>　·　
+  <a href="keely核心技术与现代声子物理技术对比.html">← 回总入口</a>
+</p>
+
+</div>
+
+<script>
+/* =====================================================================
+   K4 · 能量阶梯图 + 3^(2n) 换算器 + E_GDR 计算器
+   ===================================================================== */
+(function(){
+'use strict';
+var $ = function(id){ return document.getElementById(id); };
+var DPR = Math.min(2, window.devicePixelRatio || 1);
+var H_EV = 4.135667696e-15;          /* eV·s */
+
+function fit(c){
+  var r = c.getBoundingClientRect();
+  var w = Math.max(320, Math.round(r.width)), h = parseInt(c.getAttribute('height'),10);
+  c.width = w*DPR; c.height = h*DPR; c.style.height = h+'px';
+  var g = c.getContext('2d');
+  g.setTransform(DPR,0,0,DPR,0,0);
+  return {w:w, h:h, g:g};
+}
+
+/* ============ 能量阶梯图 ============ */
+var cvE = $('cvE');
+var ELO = -4, EHI = 8;               /* log10(eV)：0.1 meV – 100 MeV */
+
+/* 凝聚态侧 */
+var COND = [
+  {n:'声子 1 THz',      a:-3,     b:-2.7,  t:'4.14 meV'},
+  {n:'声子 1–40 THz',   a:-2.39,  b:-0.78, t:'4–165 meV'},
+  {n:'化学键',          a:0,      b:1,     t:'1–10 eV'},
+  {n:'可见光',          a:0.26,   b:0.49,  t:'1.8–3.1 eV'}
+];
+/* 核侧 */
+var NUCL = [
+  {n:'核第一激发态',    a:6,      b:6.3,   t:'~1 MeV'},
+  {n:'GDR 巨共振',      a:7.08,   b:7.41,  t:'12–26 MeV'}
+];
+
+function drawE(){
+  var o = fit(cvE), g = o.g, W = o.w, H = o.h;
+  var PL = 122, PR = 22, PT = 40, PB = 52;
+  var pw = W-PL-PR, ph = H-PT-PB;
+  g.clearRect(0,0,W,H);
+  var X = function(e){ return PL + (Math.log10(e)-ELO)/(EHI-ELO)*pw; };
+
+  /* 网格 */
+  g.strokeStyle='#eef2f7'; g.lineWidth=1;
+  for(var e=ELO; e<=EHI; e++){
+    var x = Math.round(X(Math.pow(10,e)))+.5;
+    g.beginPath(); g.moveTo(x,PT); g.lineTo(x,PT+ph); g.stroke();
+  }
+  /* 轴 */
+  g.strokeStyle='#9aa5b4'; g.lineWidth=1.2;
+  g.beginPath(); g.moveTo(PL,PT); g.lineTo(PL,PT+ph); g.lineTo(PL+pw,PT+ph); g.stroke();
+
+  /* 两块区域底色 */
+  g.fillStyle='rgba(27,79,156,.04)';
+  g.fillRect(PL, PT, X(2.5)-PL, ph);
+  g.fillStyle='rgba(179,38,30,.05)';
+  g.fillRect(X(2.5), PT, PL+pw-X(2.5), ph);
+  /* 中间空白带（8-9 数量级落差） */
+  var gx1 = X(1.0), gx2 = X(6.0);
+  g.fillStyle='rgba(154,103,0,.07)';
+  g.fillRect(gx1, PT, gx2-gx1, ph);
+
+  /* 刻度 */
+  g.fillStyle='#8b95a3'; g.font='10.5px ui-monospace,Consolas,monospace';
+  g.textAlign='center'; g.textBaseline='top';
+  for(var e2=ELO; e2<=EHI; e2+=2){
+    g.fillText('10'+sup(e2), X(Math.pow(10,e2)), PT+ph+7);
+  }
+  g.fillStyle='#3b4552'; g.font='12px -apple-system,"Microsoft YaHei",sans-serif';
+  g.fillText('能量（eV，对数轴）', PL+pw/2, PT+ph+26);
+
+  /* 凝聚态带 */
+  var y1 = PT+44, y2 = PT+44;
+  g.fillStyle='#6b7683'; g.font='11px ui-monospace,Consolas,monospace';
+  g.textAlign='right'; g.textBaseline='middle';
+  g.fillText('凝聚态侧', PL-9, y1+16);
+  COND.forEach(function(c, i){
+    var x1=X(Math.pow(10,c.a)), x2=X(Math.pow(10,c.b)), y=y1+i*30;
+    g.fillStyle='rgba(27,79,156,.16)';
+    g.fillRect(x1,y,x2-x1,20);
+    g.strokeStyle='rgba(27,79,156,.55)'; g.lineWidth=1;
+    g.strokeRect(x1+.5,y+.5,x2-x1-1,19);
+    g.fillStyle='#0d2f63'; g.font='10.8px -apple-system,"Microsoft YaHei",sans-serif';
+    g.textAlign='left'; g.textBaseline='middle';
+    var lbl = c.n + '　' + c.t;
+    if(x2-x1 > 100) g.fillText(lbl, x1+5, y+10);
+    else { g.textAlign='right'; g.fillText(c.n, x2-3, y+10); }
+  });
+  /* 核侧带 */
+  var y3 = PT+ph-86;
+  g.fillStyle='#6b7683'; g.font='11px ui-monospace,Consolas,monospace';
+  g.textAlign='right'; g.textBaseline='middle';
+  g.fillText('核侧', PL-9, y3+22);
+  NUCL.forEach(function(c, i){
+    var x1=X(Math.pow(10,c.a)), x2=X(Math.pow(10,c.b)), y=y3+i*30;
+    g.fillStyle='rgba(179,38,30,.18)';
+    g.fillRect(x1,y,Math.max(6,x2-x1),20);
+    g.strokeStyle='rgba(179,38,30,.6)'; g.lineWidth=1;
+    g.strokeRect(x1+.5,y+.5,Math.max(6,x2-x1)-1,19);
+    g.fillStyle='#7a1a14'; g.font='10.8px -apple-system,"Microsoft YaHei",sans-serif';
+    g.textAlign='left'; g.textBaseline='middle';
+    /* ⚠ GDR 那条紧贴右边界，文字一律右溢出被裁成 "12–26 M..."（2026-10-17 放大发现）。
+       这里统一做边界收口：放不下就改用右对齐贴在绘图区右沿。 */
+    var nl = c.n + '　' + c.t;
+    var wl = g.measureText(nl).width;
+    if(x1 + 5 + wl > PL + pw - 2){
+      /* 右侧放不下 ⇒ 优先放到色块**左边**（右对齐收口），
+         只有左边也放不下才退回贴绘图区右沿 —— 否则字会压在自己的色块上。 */
+      if(x1 - 8 - wl > PL + 2){ g.textAlign='right'; g.fillText(nl, x1 - 8, y+10); }
+      else { g.textAlign='right'; g.fillText(nl, PL + pw - 4, y+10); }
+    } else {
+      g.fillText(nl, x1+5, y+10);
+    }
+  });
+
+  /* 8–9 数量级落差标注
+     ⚠ 原来放在 ph/2 处，正好压在「可见光」那一行条带上（2026-10-17 放大发现）。
+       现在下移到凝聚态条带收尾之后、核侧条带之前的那段空白里。 */
+  var ax = (gx1+gx2)/2;
+  var ay = Math.min(y3 - 44, y1 + COND.length*30 + 26);
+  g.strokeStyle='rgba(154,103,0,.85)'; g.lineWidth=2;
+  g.beginPath(); g.moveTo(gx1+30, ay); g.lineTo(gx2-30, ay); g.stroke();
+  g.beginPath();
+  g.moveTo(gx1+30, ay); g.lineTo(gx1+40, ay-6); g.lineTo(gx1+40, ay+6); g.closePath();
+  g.fillStyle='rgba(154,103,0,.85)'; g.fill();
+  g.beginPath();
+  g.moveTo(gx2-30, ay); g.lineTo(gx2-40, ay-6); g.lineTo(gx2-40, ay+6); g.closePath(); g.fill();
+  g.fillStyle='#9a6700'; g.font='13px -apple-system,"Microsoft YaHei",sans-serif';
+  g.textAlign='center'; g.textBaseline='bottom';
+  g.fillText('8–9 个数量级的空白', ax, ay-14);
+  g.font='11px -apple-system,"Microsoft YaHei",sans-serif';
+  g.textBaseline='top'; g.fillStyle='#8a6a12';
+  g.fillText('没有已知路径把 meV 集中到 MeV', ax, ay+8);
+
+  /* 3^16 位置（基准 10^13 Hz） */
+  var f16 = 43046721*1e13, E16 = f16*H_EV;
+  var x16 = X(E16);
+  if(x16>PL && x16<PL+pw){
+    g.strokeStyle='#b4531f'; g.lineWidth=1.8; g.setLineDash([5,4]);
+    g.beginPath(); g.moveTo(x16, PT); g.lineTo(x16, PT+ph); g.stroke();
+    g.setLineDash([]);
+    g.fillStyle='#b4531f'; g.font='11px -apple-system,"Microsoft YaHei",sans-serif';
+    g.textAlign='center'; g.textBaseline='top';
+    g.fillText('3¹⁶ (基准 10¹³)', x16, PT-16);
+    g.fillText('≈1.8 MeV', x16, PT-3);
+  }
+}
+
+function sup(n){
+  var m={'-':'⁻','0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
+  return String(n).split('').map(function(d){ return m[d]||d; }).join('');
+}
+
+/* ============ 3^(2n) 换算 ============ */
+var LV = [
+  {k:'III Atomic',        e:1,  id:'e1', ex:'e1x'},
+  {k:'IV Interatomic',    e:2,  id:'e2', ex:'e2x'},
+  {k:'V Etheric',         e:4,  id:'e3', ex:'e3x'},
+  {k:'VI Interetheric',   e:8,  id:'e4', ex:'e4x'},
+  {k:'VII Compound',      e:16, id:'e5', ex:'e5x'}
+];
+
+function fmtHz(f){
+  if(f >= 1e18) return (f/1e18).toFixed(2)+'×10¹⁸';
+  if(f >= 1e15) return (f/1e15).toFixed(2)+'×10¹⁵';
+  if(f >= 1e12) return (f/1e12).toFixed(2)+'×10¹²';
+  if(f >= 1e9)  return (f/1e9).toFixed(2)+'×10⁹';
+  if(f >= 1e6)  return (f/1e6).toFixed(2)+'×10⁶';
+  return f.toExponential(2);
+}
+function fmtE(ev){
+  if(ev >= 1e6) return (ev/1e6).toFixed(2)+' MeV';
+  if(ev >= 1e3) return (ev/1e3).toFixed(2)+' keV';
+  if(ev >= 1)   return ev.toFixed(2)+' eV';
+  if(ev >= 1e-3) return (ev*1e3).toFixed(2)+' meV';
+  return ev.toExponential(2)+' eV';
+}
+
+var cvL = $('cvLv');
+function drawLv(base){
+  var o = fit(cvL), g = o.g, W = o.w, H = o.h;
+  var PL = 74, PR = 24, PT = 26, PB = 40;
+  var pw = W-PL-PR, ph = H-PT-PB;
+  g.clearRect(0,0,W,H);
+
+  var vals = LV.map(function(L){ return Math.pow(3, L.e); });
+  var all = vals.map(function(m){ return m*base; });
+  var lo = Math.log10(all[0])-0.6, hi = Math.log10(all[all.length-1])+1.0;
+  var X = function(f){ return PL + (Math.log10(f)-lo)/(hi-lo)*pw; };
+
+  /* 基线 */
+  g.strokeStyle='#9aa5b4'; g.lineWidth=1.2;
+  g.beginPath(); g.moveTo(PL, PT+ph/2); g.lineTo(PL+pw, PT+ph/2); g.stroke();
+
+  /* 参考：核第一激发态 1 MeV */
+  var fNuc = 1e6/H_EV;
+  if(fNuc > Math.pow(10,lo) && fNuc < Math.pow(10,hi)){
+    var xn = X(fNuc);
+    g.strokeStyle='rgba(179,38,30,.6)'; g.lineWidth=1.4; g.setLineDash([6,4]);
+    g.beginPath(); g.moveTo(xn, PT+8); g.lineTo(xn, PT+ph-8); g.stroke();
+    g.setLineDash([]);
+    g.fillStyle='#b3261e'; g.font='10.5px -apple-system,"Microsoft YaHei",sans-serif';
+    g.textAlign='center'; g.textBaseline='top';
+    g.fillText('核第一激发态 1 MeV', xn, PT+ph-4);
+  }
+
+  /* 各级点 */
+  LV.forEach(function(L, i){
+    var f = Math.pow(3, L.e)*base;
+    var x = X(f);
+    var up = (i%2===0);
+    var y = PT+ph/2 + (up? -22 : 22);
+    /* 竖线连接到轴 */
+    g.strokeStyle='rgba(27,79,156,.3)'; g.lineWidth=1;
+    g.beginPath(); g.moveTo(x, PT+ph/2); g.lineTo(x, y); g.stroke();
+    g.fillStyle = (L.e===16) ? '#b3261e' : '#1b4f9c';
+    g.beginPath(); g.arc(x, y, (L.e===16?7:5), 0, 6.2832); g.fill();
+    g.strokeStyle='#fff'; g.lineWidth=1.6; g.stroke();
+    g.fillStyle='#0d2f63'; g.font='10.5px -apple-system,"Microsoft YaHei",sans-serif';
+    g.textAlign='center';
+    g.textBaseline = up ? 'bottom' : 'top';
+    g.fillText('3'+sup(L.e), x, up ? y-9 : y+9);
+    g.fillStyle='#6b7683'; g.font='9.8px ui-monospace,Consolas,monospace';
+    g.fillText(fmtE(f*H_EV), x, up ? y-21 : y+20);
+  });
+}
+
+function refreshLv(){
+  var ex = parseFloat($('sBase').value);
+  var base = Math.pow(10, ex);
+  $('vBase').textContent = '10'+sup(ex.toFixed(1))+' Hz';
+  LV.forEach(function(L){
+    var f = Math.pow(3, L.e)*base;
+    var ev = f*H_EV;
+    $(L.id).textContent = fmtHz(f);
+    $(L.ex).textContent = fmtE(ev);
+  });
+  drawLv(base);
+}
+
+/* ============ E_GDR ============ */
+var MEAS = { '197':13.7, '195':13.7, '107.9':null, '63.5':17.0, '208':13.46, '27':22.0, '12':23.0 };
+
+function refreshG(){
+  var A = parseFloat($('sIso').value);
+  var egdr = 80/Math.pow(A, 1/3);
+  $('g1').textContent = egdr.toFixed(2);
+  $('g2').textContent = (A%1===0? A : A.toFixed(1));
+  var m = MEAS[$('sIso').value];
+  if(m){
+    $('g3').textContent = m.toFixed(2);
+    $('g3x').textContent = '与公式相减';
+    var d = (egdr-m)/m*100;
+    $('g4').textContent = (d>0?'+':'') + d.toFixed(1)+'%';
+    $('g4c').classList.toggle('hot', Math.abs(d)>10);
+  } else {
+    $('g3').textContent = '—';
+    $('g3x').textContent = '该项无实测值引用';
+    $('g4').textContent = '—';
+    $('g4c').classList.remove('hot');
+  }
+}
+
+/* ---------- 绑定 ---------- */
+$('sBase').addEventListener('input', refreshLv);
+$('sIso').addEventListener('change', refreshG);
+
+var rz;
+window.addEventListener('resize', function(){ clearTimeout(rz); rz=setTimeout(function(){ drawE(); drawLv(Math.pow(10,parseFloat($('sBase').value))); },120); });
+
+drawE();
+refreshLv();
+refreshG();
+
+/* ---------- 钩子 ---------- */
+window.__K4 = {
+  hEV: H_EV,
+  chain: function(n, base){ return Math.pow(3, Math.pow(2,n))*base; },
+  energyOf: function(f){ return f*H_EV; },
+  gdr: function(A){ return 80/Math.pow(A,1/3); },
+  e16_mev: function(base){ return Math.pow(3,16)*base*H_EV/1e6; },
+  fg: function(umu, rho, tcm){ var tm=rho*tcm; var x=umu*tm; return x/(1-Math.exp(-x)); }
+};
+})();
+</script>
+<!--FXCTL:JS--><script id="fxctl-js">
+/* ============================================================
+   PKS · 通用「调参浮窗」 (float_ctl.js)
+   作用：把页面里成块的参数控件（.ctl / .ctrl / .controls / .calc /
+        .panel[纯控件] / [data-param-panel]）收进右下角一个可拖动浮窗。
+   原则：
+     1. 只搬控件块本身，**不复制、不重建** ⇒ 原页面绑定在元素上的
+        事件监听、id、input 值全部照常工作。
+     2. 搬不走的、散的（每张卡片各一组、且组数很多）→ 整页放弃，
+        保持原样，并在 console 里说明原因，绝不半搬半留。
+     3. 位置写入 localStorage；双击标题栏回默认位；⇱/— 收起。
+   ============================================================ */
+(function () {
+  if (window.__FXCTL) return;
+
+  var SEL = '.ctl,.ctrl,.controls,.calc,.param-panel,.grp,.htgroup,[data-param-panel]';
+  var MAX_GROUPS = 16;    // 超过这个组数：判定为"散在每张卡片里"，整页跳过
+  var MIN_SHARE = 0.85;   // 收进去的滑块至少要占全页 85%，否则跳过（不做半搬半留）
+  var KEY = 'fxp:' + location.pathname;
+
+  function txt(el, n) {
+    var s = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    if (n && s.length > n) s = s.slice(0, n - 1) + '…';
+    return s;
+  }
+  function inChrome(el) {
+    return !!(el.closest && el.closest('.topnav,header,nav,.topbar,.fxp,#fxp'));
+  }
+
+  /* ---------- 1. 找参数面板 ---------- */
+  // 页面自己已经有一个"贴右边的浮动参数窗"？有就不再叠第二个
+  function hasOwnDock() {
+    var els = [].slice.call(document.querySelectorAll('body > *'));
+    // 也看一两层深，很多页把 pwin 套在 wrapper 里
+    document.querySelectorAll('body div, body section, body aside').forEach(function (x) {
+      if (els.length < 400) els.push(x);
+    });
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      if (el.id === 'fxp') continue;
+      if (getComputedStyle(el).position !== 'fixed') continue;
+      var r = el.getBoundingClientRect();
+      if (r.width > 240 && r.width < 620 && r.height > 240 &&
+          (innerWidth - r.right) < 70 && r.top < 220) return true;
+    }
+    return false;
+  }
+
+  function detect() {
+    var all = [].slice.call(document.querySelectorAll('input[type=range]'));
+    if (hasOwnDock()) {
+      return { panels: [], total: all.length, inline: 0, moved: 0, ok: false, own: true };
+    }
+    // 已经在自己的浮窗里（祖先 fixed）的滑块：不算在"待浮"里，也不搬
+    function inFixed(el) {
+      var a = el, d = 0;
+      while (a && d++ < 5) {
+        if (getComputedStyle(a).position === 'fixed') return true;
+        a = a.parentElement;
+      }
+      return false;
+    }
+    var inline = all.filter(function (i) { return !inFixed(i); });   // 仍躺在正文里的
+    var cands = [].slice.call(document.querySelectorAll(SEL)).filter(function (el) {
+      if (inChrome(el)) return false;
+      if (!el.querySelector('input[type=range]')) return false;
+      if (inFixed(el)) return false;                                 // 已在浮窗内
+      var hasCanvas = !!el.querySelector('canvas,svg,video,img');
+      var cls = el.className || '';
+      var isParamCol = /(^|\s)(ctl|ctrl|controls|calc|param-panel)(\s|$)/.test(cls);
+      if (hasCanvas && !isParamCol) return false;
+      if (el.classList.contains('panel') || el.classList.contains('grp')) {
+        return el.querySelectorAll('input[type=range]').length >= 2;
+      }
+      return true;
+    });
+    // 去重 + 保留最外层
+    cands = cands.filter(function (el, i) {
+      if (cands.indexOf(el) !== i) return false;
+      return !cands.some(function (o) { return o !== el && o.contains(el); });
+    });
+    var moved = 0;
+    cands.forEach(function (el) { moved += el.querySelectorAll('input[type=range]').length; });
+    var ok = cands.length > 0 && cands.length <= MAX_GROUPS &&
+             (inline.length ? moved / inline.length >= MIN_SHARE : false);
+    return { panels: cands, total: all.length, inline: inline.length, moved: moved, ok: ok };
+  }
+
+  /* ---------- 2. 取分组标签（最近的标题 / .vt）---------- */
+  function labelFor(el) {
+    var gt = el.querySelector && el.querySelector('.gt');
+    if (gt) return txt(gt, 22);
+    var v0 = el.closest && el.closest('.viz');
+    if (v0) { var t0 = v0.querySelector('.vt'); if (t0) return txt(t0, 22); }
+    var node = el, hop = 0;
+    while (node && hop++ < 6) {
+      var prev = node.previousElementSibling;
+      while (prev) {
+        if (/^H[1-4]$/.test(prev.tagName)) return txt(prev, 22);
+        if (prev.querySelector) {
+          var h = prev.querySelector('h2,h3,h4,.vt');
+          if (h) return txt(h, 22);
+        }
+        prev = prev.previousElementSibling;
+      }
+      node = node.parentElement;
+    }
+    return '';
+  }
+
+  /* 搬走控件后，父级若是两列网格且变空 → 收成一列，避免右侧留一条空白 */
+  function collapseTrack(el) {
+    var par = el.parentElement;
+    if (!par) return;
+    var cs = getComputedStyle(par);
+    if (cs.display !== 'grid') return;
+    var tracks = (cs.gridTemplateColumns || '').split(/\s+/).filter(function (x) { return x && x !== 'none'; });
+    if (tracks.length !== 2) return;
+    if (par.lastElementChild !== el) return;
+    par.style.gridTemplateColumns = '1fr';
+  }
+
+  /* ---------- 3. 搭面板 ---------- */
+  function build(d) {
+    var old = document.getElementById('fxp');
+    if (old) old.remove();
+
+    var p = document.createElement('div');
+    p.id = 'fxp';
+    var counts = d.panels.map(function (el) {
+      return el.querySelectorAll('input[type=range]').length;
+    });
+    var nRange = counts.reduce(function (a, b) { return a + b; }, 0);
+
+    p.innerHTML =
+      '<div class="fxp-h" id="fxpH">' +
+        '<span class="fxp-grip">⠿</span>' +
+        '<span class="fxp-t">调参</span>' +
+        '<span class="fxp-c">' + d.panels.length + ' 组 · ' + nRange + ' 滑块</span>' +
+        '<button class="fxp-b" data-a="mini" title="收起 / 展开">—</button>' +
+        '<button class="fxp-b" data-a="reset" title="回到默认位置（也可双击标题栏）">⟲</button>' +
+      '</div><div class="fxp-bd"></div>';
+
+    var bd = p.querySelector('.fxp-bd');
+    var used = {}, noteDone = false;
+    d.panels.forEach(function (el, i) {
+      var lb = labelFor(el) || ('参数组 ' + (i + 1));
+      if (used[lb]) { used[lb]++; lb = lb.slice(0, 16) + ' (' + used[lb] + ')'; } else { used[lb] = 1; }
+      var g = document.createElement('div');
+      g.className = 'fxp-grp';
+      var gl = document.createElement('div');
+      gl.className = 'fxp-gl';
+      gl.innerHTML = '<b>' + lb.replace(/</g, '&lt;') + '</b><i>' + counts[i] + '</i>';
+      g.appendChild(gl);
+
+      if (!noteDone && el.parentNode) {
+        var note = document.createElement('p');
+        note.className = 'fxp-note';
+        note.textContent = '参数已收进右侧浮窗「调参」（拖标题栏可挪走 · 双击回位）';
+        el.parentNode.insertBefore(note, el);
+        noteDone = true;
+      }
+      collapseTrack(el);
+
+      g.appendChild(el);          // ← 原节点整体搬入，事件与 id 不变
+      bd.appendChild(g);
+    });
+
+    document.body.appendChild(p);
+    return p;
+  }
+
+  /* ---------- 4. 位置 / 拖动 / 收起 ---------- */
+  function clamp(p) {
+    var r = p.getBoundingClientRect(), W = innerWidth, H = innerHeight;
+    var x = Math.min(Math.max(r.left, -r.width + 90), W - 90);
+    var y = Math.min(Math.max(r.top, 0), H - 44);
+    p.style.left = x + 'px'; p.style.top = y + 'px';
+    p.style.right = 'auto'; p.style.bottom = 'auto';
+  }
+  function defPos(p) {
+    p.style.left = ''; p.style.right = ''; p.style.top = ''; p.style.bottom = '';
+  }
+  function save(p) {
+    try {
+      var st = p.classList.contains('fxp-min');
+      if (!p.style.left) { localStorage.removeItem(KEY); return; }
+      localStorage.setItem(KEY, JSON.stringify({
+        x: parseFloat(p.style.left), y: parseFloat(p.style.top), mini: st
+      }));
+    } catch (e) {}
+  }
+  function load(p) {
+    try {
+      var s = localStorage.getItem(KEY);
+      /* 首次访问一律收起：页面本身就有「参数」竖条，浮窗默认展开会把画布挤掉 322px；
+         收起的标题条写着「调参 · N 组 · M 滑块」，一眼能看见、点一下就展开，状态会被记住。 */
+      if (!s) { p.classList.add('fxp-min'); return; }
+      var o = JSON.parse(s);
+      if (o.mini) p.classList.add('fxp-min');
+      if (typeof o.x === 'number' && isFinite(o.x)) {
+        p.style.left = o.x + 'px'; p.style.top = o.y + 'px';
+        p.style.right = 'auto'; p.style.bottom = 'auto';
+        clamp(p);
+      }
+    } catch (e) {}
+  }
+
+  function wire(p) {
+    var h = p.querySelector('#fxpH');
+    var drag = null;
+
+    h.addEventListener('pointerdown', function (ev) {
+      if (ev.target.closest('button')) return;
+      if (innerWidth <= 880) return;                 // 窄屏走底部抽屉，不拖
+      var r = p.getBoundingClientRect();
+      drag = { dx: ev.clientX - r.left, dy: ev.clientY - r.top, moved: false };
+      p.style.left = r.left + 'px'; p.style.top = r.top + 'px';
+      p.style.right = 'auto'; p.style.bottom = 'auto';
+      h.classList.add('fxp-drag');
+      h.setPointerCapture && h.setPointerCapture(ev.pointerId);
+      ev.preventDefault();
+    });
+    h.addEventListener('pointermove', function (ev) {
+      if (!drag) return;
+      drag.moved = true;
+      p.style.left = (ev.clientX - drag.dx) + 'px';
+      p.style.top = (ev.clientY - drag.dy) + 'px';
+      var r = p.getBoundingClientRect();
+      var nx = Math.min(Math.max(r.left, -r.width + 90), innerWidth - 90);
+      var ny = Math.min(Math.max(r.top, 0), innerHeight - 44);
+      p.style.left = nx + 'px'; p.style.top = ny + 'px';
+    });
+    function end() { if (drag) { h.classList.remove('fxp-drag'); save(p); drag = null; } }
+    h.addEventListener('pointerup', end);
+    h.addEventListener('pointercancel', end);
+
+    h.addEventListener('dblclick', function (ev) {
+      if (ev.target.closest('button')) return;
+      defPos(p);
+      try { localStorage.removeItem(KEY); } catch (e) {}
+    });
+
+    p.addEventListener('click', function (ev) {
+      var b = ev.target.closest('button[data-a]');
+      if (!b) return;
+      if (b.dataset.a === 'mini') { p.classList.toggle('fxp-min'); save(p); }
+      if (b.dataset.a === 'reset') { defPos(p); p.classList.remove('fxp-min'); save(p); }
+    });
+
+    addEventListener('resize', function () { if (p.style.left) clamp(p); });
+  }
+
+  /* ---------- 5. 启动 ---------- */
+  function boot() {
+    var d = detect();
+    if (!d.ok) {
+      if (d.own) {
+        console.info('[调参浮窗] 本页跳过：页面自己已有贴右的可拖动参数窗，不叠第二个');
+      } else if (d.inline === 0 && d.total > 0) {
+        console.info('[调参浮窗] 本页跳过：' + d.total + ' 个滑块全在页面自己的浮窗里，没有需要搬的');
+      } else if (d.panels.length) {
+        console.info('[调参浮窗] 本页跳过：' + d.panels.length + ' 组、待浮滑块 ' +
+          d.moved + '/' + d.inline + '（判据：≤' + MAX_GROUPS + ' 组且 ≥' +
+          Math.round(MIN_SHARE * 100) + '%；已在浮窗内的 ' + (d.total - d.inline) + ' 个不计）');
+      }
+      return;
+    }
+    var p = build(d);
+    load(p);
+    wire(p);
+    console.info('[调参浮窗] 已收 ' + d.moved + '/' + d.inline + ' 个待浮滑块，' +
+      d.panels.length + ' 组（另 ' + (d.total - d.inline) + ' 个本来就在浮窗里）');
+  }
+
+  window.__FXCTL = { detect: detect, boot: boot, build: build };
+
+  if (document.readyState === 'complete') setTimeout(boot, 60);
+  else addEventListener('load', function () { setTimeout(boot, 60); });
+})();
+
+</script><!--/FXCTL:JS-->
+</body>
+</html>

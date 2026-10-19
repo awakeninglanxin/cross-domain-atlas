@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anu (UPA) 爱心双螺旋 · 七级螺旋 · 递归正交细分</title>
+<link rel="stylesheet" href="css/anu.css">
+<!--FXCTL:CSS--><style id="fxctl-css">
+/* ============================================================
+   PKS · 通用「调参浮窗」样式  (float_ctl.css)
+   白底 / 深蓝强调 / 与 site.css 变量兼容（变量缺失时有兜底色）
+   面板不接管页面原有控件样式，只在自己作用域内统一外观
+   ============================================================ */
+#fxp{
+  position:fixed; z-index:840; top:84px; right:16px;
+  width:322px; max-height:calc(100vh - 118px);
+  display:flex; flex-direction:column;
+  background:#fff; border:1px solid #cfd6e0; border-radius:12px;
+  box-shadow:0 2px 6px rgba(18,22,28,.08), 0 14px 40px rgba(18,22,28,.14);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:13px; color:#12161c; line-height:1.55;
+  -webkit-user-select:none; user-select:none;
+}
+#fxp.fxp-min{ width:auto; min-width:150px; }
+#fxp.fxp-min .fxp-bd{ display:none; }
+#fxp.fxp-min .fxp-c{ display:none; }
+
+/* 标题栏（拖动手柄） */
+#fxp .fxp-h{
+  display:flex; align-items:center; gap:7px;
+  padding:8px 10px 8px 9px; cursor:grab; touch-action:none;
+  border-bottom:1px solid #e6eaf0; border-radius:12px 12px 0 0;
+  background:linear-gradient(#fbfcfe,#f4f7fb);
+}
+#fxp.fxp-min .fxp-h{ border-bottom:0; border-radius:12px; }
+#fxp .fxp-h.fxp-drag{ cursor:grabbing; }
+#fxp .fxp-grip{ color:#9aa6b6; font-size:13px; letter-spacing:0 }
+#fxp .fxp-t{
+  font-family:Georgia,"Times New Roman","Songti SC",serif;
+  font-weight:700; font-size:14.5px; color:#0d2f63; letter-spacing:.2px;
+}
+#fxp .fxp-c{ font-family:Consolas,monospace; font-size:11px; color:#6b7683; margin-left:auto; white-space:nowrap }
+#fxp .fxp-h.fxp-mini-open .fxp-c{ margin-left:6px }
+#fxp .fxp-b{
+  width:22px; height:22px; padding:0; flex:0 0 22px;
+  border:1px solid #cfd6e0; background:#fff; border-radius:6px;
+  color:#3b4552; font-size:12px; line-height:1; cursor:pointer;
+}
+#fxp .fxp-b:hover{ border-color:#1b4f9c; color:#1b4f9c; background:#f4f7fb }
+#fxp .fxp-b:first-of-type{ margin-left:6px }
+
+/* 面板主体 */
+#fxp .fxp-bd{
+  padding:4px 12px 12px; overflow-y:auto; overflow-x:hidden;
+  -webkit-user-select:auto; user-select:auto;
+}
+#fxp .fxp-bd::-webkit-scrollbar{ width:8px }
+#fxp .fxp-bd::-webkit-scrollbar-thumb{ background:#d7dee8; border-radius:4px }
+#fxp .fxp-bd::-webkit-scrollbar-track{ background:transparent }
+
+/* 分组 */
+#fxp .fxp-grp{ padding:9px 0 3px }
+#fxp .fxp-grp + .fxp-grp{ border-top:1px dashed #e6eaf0; margin-top:3px }
+#fxp .fxp-gl{
+  font-family:Consolas,monospace; font-size:10.5px; letter-spacing:.04em;
+  color:#6b7683; margin:0 0 7px; display:flex; align-items:baseline; gap:6px;
+}
+#fxp .fxp-gl b{ color:#1b4f9c; font-weight:600; font-size:11px }
+#fxp .fxp-gl i{ font-style:normal; color:#9aa6b6 }
+
+/* 控件统一外观：覆盖被搬进来的块，不依赖原页面 .viz .ctl 之类选择器 */
+#fxp .ctl, #fxp .ctrl, #fxp .controls, #fxp .calc, #fxp .panel, #fxp .param-panel{
+  display:block; margin:0; padding:0; border:0; background:none; box-shadow:none;
+  width:auto; max-width:none; position:static; float:none;
+}
+#fxp .ctl > *, #fxp .ctrl > *, #fxp .controls > *, #fxp .panel > *, #fxp .calc > *{ margin-bottom:9px }
+#fxp .ctl > *:last-child, #fxp .ctrl > *:last-child,
+#fxp .controls > *:last-child, #fxp .panel > *:last-child, #fxp .calc > *:last-child{ margin-bottom:0 }
+
+/* label 行：文字在上、滑块占满整行 */
+#fxp label, #fxp .row, #fxp .prow, #fxp .slider{
+  display:flex; flex-wrap:wrap; align-items:center; gap:3px 8px;
+  width:100%; margin:0 0 10px; font-size:12.6px; color:#3b4552;
+}
+#fxp label > span, #fxp .row > span{ flex:0 0 auto }
+#fxp input[type=range]{
+  -webkit-appearance:none; appearance:none; order:3;
+  /* ⚠ 不能用 flex:0 0 100%：父级 label.row 是 align-items:center 的 flex 行，
+     交叉轴会把 input 压成 track 的 3px 高（实测 offsetHeight=3），滑块几乎被裁掉。
+     flex:none + width:100% 一样能独占一行，且高度稳定 16px。 */
+  flex:none; width:100%; min-width:90px; height:16px; margin:1px 0 0;
+  background:transparent; cursor:pointer; accent-color:#1b4f9c;
+}
+#fxp input[type=range]::-webkit-slider-runnable-track{
+  height:3px; background:#dbe2ec; border-radius:2px;
+}
+#fxp input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:13px; height:13px; margin-top:-5px;
+  background:#1b4f9c; border:2px solid #fff; border-radius:50%;
+  box-shadow:0 1px 3px rgba(18,22,28,.28);
+}
+#fxp input[type=range]:focus{ outline:none }
+#fxp input[type=range]:focus::-webkit-slider-thumb{ box-shadow:0 0 0 3px rgba(27,79,156,.18) }
+
+/* 数值 */
+#fxp .val, #fxp .v, #fxp output, #fxp .num{
+  font-family:Consolas,monospace; font-size:12px; color:#b4531f;
+  min-width:0; margin-left:auto; white-space:nowrap; order:2;
+}
+
+/* 按钮 */
+#fxp button{
+  font-family:Consolas,monospace; font-size:11.5px; padding:4px 9px;
+  border:1px solid #cfd6e0; background:#fff; color:#3b4552;
+  border-radius:7px; cursor:pointer; margin:0 5px 5px 0;
+}
+#fxp button:hover{ border-color:#1b4f9c; color:#1b4f9c; background:#f4f7fb }
+
+/* .lab / .hint / .presets（aizawa / 黄金蛋 那一族的行结构） */
+#fxp .lab{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:8px; width:100%; order:1; font-size:12.6px; color:#3b4552;
+}
+#fxp .lab .v{ margin-left:auto }
+#fxp .hint{
+  order:4; width:100%; margin:3px 0 0; font-size:11.2px; line-height:1.5;
+  color:#6b7683;
+}
+#fxp .presets{ order:5; width:100%; display:flex; flex-wrap:wrap; gap:5px; margin-top:5px }
+#fxp .presets button{ margin:0 }
+#fxp .gt{
+  font-family:Georgia,"Songti SC",serif; font-size:12.8px; font-weight:700;
+  color:#0d2f63; margin:2px 0 8px;
+}
+#fxp .grp > .gt:first-child{ margin-top:0 }
+
+#fxp button.on, #fxp button.active{ background:#1b4f9c; border-color:#1b4f9c; color:#fff }
+#fxp select{
+  font-family:inherit; font-size:12px; padding:3px 6px; max-width:100%;
+  border:1px solid #cfd6e0; border-radius:6px; background:#fff; color:#12161c;
+}
+#fxp input[type=text], #fxp input[type=number]{
+  font-family:Consolas,monospace; font-size:12px; width:78px; padding:3px 6px;
+  border:1px solid #cfd6e0; border-radius:6px;
+}
+#fxp input[type=checkbox]{ accent-color:#1b4f9c; margin-right:2px }
+
+/* 原位置留下的提示 */
+.fxp-note{
+  margin:10px 0 0; padding:5px 9px; font-size:11.8px; color:#6b7683;
+  font-family:Consolas,monospace; background:#f6f8fb;
+  border:1px dashed #d7dee8; border-radius:6px;
+}
+.fxp-note::before{ content:"⇱ "; color:#1b4f9c }
+
+/* 窄屏：底部抽屉式，不再遮挡图 */
+@media (max-width:880px){
+  #fxp{
+    top:auto; bottom:0; right:0; left:0; width:auto;
+    max-height:52vh; border-radius:12px 12px 0 0;
+    border-left:0; border-right:0; border-bottom:0;
+  }
+  #fxp .fxp-h{ cursor:default; border-radius:12px 12px 0 0 }
+  #fxp.fxp-min{ left:auto; right:10px; bottom:10px; border:1px solid #cfd6e0; border-radius:12px }
+}
+@media print{ #fxp{ display:none !important } }
+
+/* ============================================================
+   暗色主题皮肤（2026-10-19 老师：Anu 主界面是暗底，浮窗却是白底，割裂）
+   触发条件：页面 <body> 或 <html> 自己声明了暗色
+     body.theme-dark / body.dark / body.theme-night
+     html[data-theme="dark"] / body[data-theme="dark"]
+   只做覆盖，不改上面的默认（白底）规则 —— 明色页面完全不受影响。
+   配色取自 anu.css 的 --panel/--line/--text/--accent，保持同源。
+   ============================================================ */
+body.theme-dark #fxp, body.dark #fxp, body.theme-night #fxp,
+html[data-theme="dark"] #fxp, body[data-theme="dark"] #fxp{
+  background:#0e1420; border-color:#22304a;
+  box-shadow:0 2px 8px rgba(0,0,0,.45), 0 18px 48px rgba(0,0,0,.55);
+  color:#e6edf8;
+}
+body.theme-dark #fxp .fxp-h, body.dark #fxp .fxp-h, body.theme-night #fxp .fxp-h,
+html[data-theme="dark"] #fxp .fxp-h, body[data-theme="dark"] #fxp .fxp-h{
+  background:linear-gradient(#182233,#111826); border-bottom-color:#22304a;
+}
+body.theme-dark #fxp .fxp-grip, body.dark #fxp .fxp-grip, body.theme-night #fxp .fxp-grip{
+  color:#5d7093;
+}
+body.theme-dark #fxp .fxp-t, body.dark #fxp .fxp-t, body.theme-night #fxp .fxp-t,
+html[data-theme="dark"] #fxp .fxp-t, body[data-theme="dark"] #fxp .fxp-t{
+  color:#cddcff;
+}
+body.theme-dark #fxp .fxp-c, body.dark #fxp .fxp-c, body.theme-night #fxp .fxp-c{
+  color:#6b7f9e;
+}
+body.theme-dark #fxp .fxp-b, body.dark #fxp .fxp-b, body.theme-night #fxp .fxp-b,
+html[data-theme="dark"] #fxp .fxp-b, body[data-theme="dark"] #fxp .fxp-b{
+  background:#141c2b; border-color:#22304a; color:#a9bad6;
+}
+body.theme-dark #fxp .fxp-b:hover, body.dark #fxp .fxp-b:hover, body.theme-night #fxp .fxp-b:hover{
+  background:#1b2740; border-color:#4d7cff; color:#cddcff;
+}
+body.theme-dark #fxp .fxp-bd::-webkit-scrollbar-thumb,
+body.dark #fxp .fxp-bd::-webkit-scrollbar-thumb,
+body.theme-night #fxp .fxp-bd::-webkit-scrollbar-thumb{
+  background:#26334c;
+}
+body.theme-dark #fxp .fxp-grp + .fxp-grp, body.dark #fxp .fxp-grp + .fxp-grp,
+body.theme-night #fxp .fxp-grp + .fxp-grp{ border-top-color:#1e2a3f }
+body.theme-dark #fxp .fxp-gl, body.dark #fxp .fxp-gl, body.theme-night #fxp .fxp-gl{
+  color:#7d90ae;
+}
+body.theme-dark #fxp .fxp-gl b, body.dark #fxp .fxp-gl b, body.theme-night #fxp .fxp-gl b{
+  color:#7ea6ff;
+}
+body.theme-dark #fxp .fxp-gl i, body.dark #fxp .fxp-gl i, body.theme-night #fxp .fxp-gl i{
+  color:#5d7093;
+}
+body.theme-dark #fxp label, body.theme-dark #fxp .row, body.theme-dark #fxp .prow,
+body.theme-dark #fxp .slider, body.dark #fxp label, body.dark #fxp .row,
+body.dark #fxp .prow, body.dark #fxp .slider,
+body.theme-night #fxp label, body.theme-night #fxp .row,
+body.theme-night #fxp .prow, body.theme-night #fxp .slider{
+  color:#b9c8e0;
+}
+body.theme-dark #fxp input[type=range]::-webkit-slider-runnable-track,
+body.dark #fxp input[type=range]::-webkit-slider-runnable-track,
+body.theme-night #fxp input[type=range]::-webkit-slider-runnable-track{
+  background:#31425f;                    /* 不能贴地色，否则轨道看不见、只剩一个蓝点 */
+}
+body.theme-dark #fxp input[type=range]::-webkit-slider-thumb,
+body.dark #fxp input[type=range]::-webkit-slider-thumb,
+body.theme-night #fxp input[type=range]::-webkit-slider-thumb{
+  background:#4d7cff; border-color:#0e1420;
+  box-shadow:0 1px 3px rgba(0,0,0,.6);
+}
+body.theme-dark #fxp input[type=range]:focus::-webkit-slider-thumb,
+body.dark #fxp input[type=range]:focus::-webkit-slider-thumb{
+  box-shadow:0 0 0 3px rgba(77,124,255,.28);
+}
+body.theme-dark #fxp .val, body.theme-dark #fxp .v, body.theme-dark #fxp output,
+body.theme-dark #fxp .num, body.dark #fxp .val, body.dark #fxp .v,
+body.dark #fxp output, body.dark #fxp .num,
+body.theme-night #fxp .val, body.theme-night #fxp .v,
+body.theme-night #fxp output, body.theme-night #fxp .num{
+  color:#ffc861;                      /* 与页面 --gold 同源 */
+}
+body.theme-dark #fxp button, body.dark #fxp button, body.theme-night #fxp button,
+html[data-theme="dark"] #fxp button, body[data-theme="dark"] #fxp button{
+  background:#141c2b; border-color:#22304a; color:#b9c8e0;
+}
+body.theme-dark #fxp button:hover, body.dark #fxp button:hover,
+body.theme-night #fxp button:hover{
+  background:#1b2740; border-color:#4d7cff; color:#cddcff;
+}
+body.theme-dark #fxp button.on, body.theme-dark #fxp button.active,
+body.dark #fxp button.on, body.dark #fxp button.active,
+body.theme-night #fxp button.on, body.theme-night #fxp button.active{
+  background:#2f6fe0; border-color:#2f6fe0; color:#fff;
+}
+body.theme-dark #fxp .lab, body.dark #fxp .lab, body.theme-night #fxp .lab{
+  color:#b9c8e0;
+}
+body.theme-dark #fxp .hint, body.dark #fxp .hint, body.theme-night #fxp .hint{
+  color:#7d90ae;
+}
+body.theme-dark #fxp .gt, body.dark #fxp .gt, body.theme-night #fxp .gt,
+html[data-theme="dark"] #fxp .gt, body[data-theme="dark"] #fxp .gt{
+  color:#cddcff;
+}
+body.theme-dark #fxp select, body.dark #fxp select, body.theme-night #fxp select,
+body.theme-dark #fxp input[type=text], body.theme-dark #fxp input[type=number],
+body.dark #fxp input[type=text], body.dark #fxp input[type=number],
+body.theme-night #fxp input[type=text], body.theme-night #fxp input[type=number]{
+  background:#0b1019; border-color:#22304a; color:#e6edf8;
+}
+body.theme-dark .fxp-note, body.dark .fxp-note, body.theme-night .fxp-note{
+  background:#111826; border-color:#22304a; color:#7d90ae;
+}
+body.theme-dark .fxp-note::before, body.dark .fxp-note::before,
+body.theme-night .fxp-note::before{ color:#7ea6ff }
+
+/* 暗色下的窄屏抽屉边框 */
+@media (max-width:880px){
+  body.theme-dark #fxp.fxp-min, body.dark #fxp.fxp-min, body.theme-night #fxp.fxp-min{
+    border-color:#22304a;
+  }
+}
+
+</style><!--/FXCTL:CSS-->
+</head>
+<body class="theme-dark">
+
+<header class="topbar">
+  <div class="brand">
+    <span class="dot"></span>
+    <h1>Anu (UPA) 爱心双螺旋</h1>
+    <span class="sub">10 根 whorl（3 粗 7 细）· 2.5 圈下行 + 2.5 圈上行 = 5 圈 · 每丝 1680 匝弹簧</span>
+  </div>
+  <div class="topbar-right">
+    <!-- 🔴 2026-10-13 老师：「这个网页要增加一个超链接，链接到……里面的那个**最终版的 aizawa.html** 网页，
+         因为这个**混沌吸引子用于描述 anu 的动力学结构更好**。」
+         ⇒ 指向项目根 `aizawa.html`（自包含单文件，纯 Canvas 2D，零外部依赖）。
+           该文件连同配套资料已归档在 `Aizawa资料\`（见其中《归档说明.md`）。
+           用相对路径 ⇒ 发布镜像会自动把它一起带走，分享链接离线可用。 -->
+    <a class="btn-ghost" href="aizawa.html" target="_blank" rel="noopener"
+       title="Aizawa 混沌吸引子 · 呼吸孔径动画 —— 用同一个 ODE 的相空间几何描述 Anu 的动力学结构（外扁椭球／内沙漏剖面、收缩-喉道-扩张三段与 Schauberger 吸推结构对应）">🌀 Aizawa 吸引子 · Anu 动力学 →</a>
+    <!-- 🔴 2026-10-14 老师：「把你做好的这个网页的超链接加入到这个网页的右上角，放在
+         『Aizawa吸引子·Anu 动力学』按钮的旁边。」
+         源页：`D:\AAA我的文件\螺旋混沌吸引子\黄金极限蛋外鞘_呼吸渐变动画.html`
+           —— 自包含单文件、纯 Canvas 2D、**零外部依赖**（59 KB），把 `黄金极限蛋外鞘_呼吸渐变.mp4`
+           做成可在浏览器里播放的动画：λ∈[0,1] 呼吸，λ=0 是单位球壳、λ=1 是黄金极限蛋。
+         ⚠️ 源页在**另一个目录**，而预览面板 / 静态服务把「页面所在目录」当服务根，
+            `../` 会在根处被按 RFC 3986 remove_dot_segments 截断 ⇒ 越根 403/404
+            （这就是「本地双击能开、预览面板点开报 Not Found」的由来；junction/symlink
+            重解析后仍在根外，同样 403）。故本目录下的 `螺旋混沌吸引子\` 是**硬链接镜像**：
+            0 字节新增、`st_nlink=3`、`st_ino` 与源完全相同，**不是**项目副本，里面只有这一个 html。
+         刷新（源页改动后重跑一次即可；脚本按 `st_ino` 判过期并**自动替换**旧链）：
+            python "C:\Users\ThinkPad\.workbuddy\skills\html-cross-dir-link\scripts\mirror_page.py" ^
+              --src "D:/AAA我的文件/螺旋混沌吸引子" ^
+              --page "黄金极限蛋外鞘_呼吸渐变动画.html" ^
+              --proj "D:/AAA我的文件/anu与milnor7维流形" --mirror-name "螺旋混沌吸引子"
+         ⚠️ 该脚本 2026-10-14 前只判「目标存在就跳过」⇒ 源被整体替换（换 inode）后**重跑也修不了**，
+            已在脚本里按 inode 判过期并补上替换分支。删镜像目录是安全的（硬链接断开、源不受影响，
+            与 junction 不同）；但动手前仍建议确认它不是 junction（`GetFileAttributesW & 0x400`）。
+         用**根内相对路径** ⇒ `_同步发布网页.py` 顺着 href 把它一并收进发布镜像，分享链接离线可用。 -->
+    <a class="btn-ghost" href="螺旋混沌吸引子/黄金极限蛋外鞘_呼吸渐变动画.html" target="_blank" rel="noopener"
+       title="黄金极限蛋外鞘 · 呼吸渐变动画 —— 同一台「混沌吸引子」在另一枚不变流形上的呼吸：λ 从 0 到 1，外鞘由单位球连续张成黄金极限蛋（k=1/φ、b=φ、蛋形度 k_E=1.937087243…），并把「各参数的最优解是怎么找到的」逐条运行时复算（Fibonacci 斜切族 k_n·b_n≡1 的唯一极限 / 唯一性 g≡1 / Z_HI÷|Z_LO| ≡ k_E(λ) 沿呼吸全程成立）">🥚 黄金极限蛋外鞘 · 呼吸渐变 →</a>
+    <!-- 🔴 2026-10-17 老师：「魔角石墨烯……你看怎么建立与之前各网页的一些联系，与其它之前的网页建立链接。」
+         归档：`_yb_魔角石墨烯归档_2026-10-17/`（元宝 22 轮 / 10 版，最终版 task-92f9ca02，101,612 B）。
+         入口页 `魔角石墨烯_归档入口.html` 给出六条跨页对照，其中两条直接关系本页：
+           ① 「逐级 ×7」≠ 分形 —— 判据是盒维数 D（Hexaflake 挖空 ⇒ ln7/ln3=1.771244；
+              莫尔/Anu 细分若填满 ⇒ D=2 或 3）。1680=8!/24=7!/3 是计数恒等式，不含维数信息。
+           ② φ 的唯一性 —— 贵金属比族 (m+√(m²+4))/2 只有 φ 落在魔角天花板 λ≤2 内，
+              四层魔角 = 1.1°×φ = 1.7798°（文献 1.78°）。
+         用根内相对路径 ⇒ 发布镜像会一并带走。 -->
+    <a class="btn-ghost" href="魔角石墨烯_归档入口.html" target="_blank" rel="noopener"
+       title="魔角石墨烯（元宝 22 轮 / 10 版）归档入口 —— 六条跨页联系：φ 是唯一能当魔角放大倍数的贵金属比（1.1°×φ=1.7798°，文献 1.78°）；「逐级 ×7」本身不是分形，要看盒维数 D（Hexaflake 1.771244 vs 空间填充 D=2）；尺度级联的守恒律 M^j_max≈D/a；平带=动能项关掉 ⇒ 线性框架失效（给 09 页 P1 判据的实物证据）">🧊 魔角石墨烯 · 跨页对照 →</a>
+    <a class="btn-ghost" href="AAA_Leadbeater证据链.html" target="_blank" rel="noopener"
+       title="Leadbeater 证据链（IMA 知识库「anu 与意识」37 条笔记的总集）—— ① 十根各自闭合、Phillips 判过第三版插图把两根粗旋接成一根是错的（10→9）；② 那个「+1」的同一条规则 E(n)=25n+1：76 / 176 / 251；③ 1680 与 700/704 的复核等级不对称，且 Leadbeater 本人把 704 写成「正在生长」；④ 意识 = 自上而下的灌入，活力球 vs 氧气 7 是唯一一组对照记录；⑤ Monad-Ego-Anu 三线只在最底层碰头">🧠 Leadbeater 证据链 · 十根与那个「+1」→</a>
+    <!-- 🔴 2026-10-19 老师：「这里面的 有1680 你和 leadbeater 讲的 anu 的 1680 匝数……在对应的子网页里面进行关联。
+         注意这个 4×10²³ Hz 量级是否应和 anu 的尺寸大小算出的频率。1680 不是相位值，但它决定了这个态的量子相位每秒旋转 4×10²³ 圈」
+         源：元宝对话 yb.tencent.com/s/ZNDNufBErMAx（φ(1680) 介子 1680 MeV ↔ E=hν ↔ Anu 1680 匝）。
+         新页给出三种「接线模型」下 4.06×10²³ Hz 反解出的尺寸（0.235 fm / 0.395 pm / 1.4×10⁻¹⁹ m），
+         并裁决：三个 1680 里只有两个独立，第三个是单位换算；对应目前是 D 级待验证假设。 -->
+    <a class="btn-ghost" href="AAA_1680_匝数相位频率_三重身份与尺寸自洽检验.html" target="_blank" rel="noopener"
+       title="1680 的三重身份 —— ① Leadbeater 每丝 1680 匝（无量纲计数）② φ(1680) 介子 1680 MeV（能量）③ 由 E=hν 得来的 4.0622×10²³ Hz（相位的转速）。本页用「尺寸 ↔ 频率」反查裁决三者是否同一：H1/H2/H3 三种接线模型分别要求 0.235 fm / 0.395 pm / 1.4×10⁻¹⁹ m，而 Anu 尺寸从未被测过；结论是 D 级待验证假设，并单列唯一可否证的预言 P1（回路周长 = 1680×0.738 fm = 1.24 pm）">🔢 1680 三重合 →</a>
+    <a class="btn-ghost" href="AAA_Milnor28主界面.html">← Milnor 七维怪球 28 种结构</a>
+    <button id="btnTheme" class="btn-ghost" type="button">切换亮色</button>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- 🗕 2026-10-14 老师：「这里面的参数框和一打开在图前弹出的框都默认折叠，别挡住我看图」
+       ⇒ 左侧「参数框」**默认折叠**成一条竖排窄条（只留下面这枚按钮），点一下展开、再点收起。
+       实现取巧：**不包 `.panel-body`**，只加这一枚 `.panel-toggle`，
+       正文一律靠 CSS `.panel.is-min > *:not(.panel-toggle) { display: none }` 整体隐藏
+       —— 零结构改动、不碰任何 `.grp` / `.theory` 选择器，自检桩里缺元素也只是静默跳过。 -->
+  <aside class="panel is-min" id="panel">
+    <button class="panel-toggle" id="panelLToggle" type="button"
+            aria-expanded="false" title="展开参数框">▸ 参数</button>
+    <section class="grp">
+      <h2>预设</h2>
+      <div id="presetBox" class="preset-box"></div>
+    </section>
+
+    <section class="grp">
+      <h2>结构参数</h2>
+      <label class="row">
+        <span>阶数（递归层数）D <b id="vDepth">7</b></span>
+        <input type="range" id="rngDepth" min="1" max="7" step="1" value="7">
+      </label>
+      <p class="hint">D 现在是<b>真的生效</b>（爱心与阶梯共用同一台逐级细分引擎）：
+        第 1 阶 = 丝绕 1680 匝（1st-order spirillae）；第 2–7 阶 = 每级在上一级的<b>最后一匝</b>上再绕 <b>7</b> 匝。
+        爱心模式把 D 拖到 <b>7</b> 就会一路画到 7th-order spirillae
+        （该阶 7 匝 × 每匝 7 颗 = <b>49 颗 koilon 珍珠</b>/丝）。</p>
+      <label class="row">
+        <span>主弹簧匝数 T₁（第 1 阶 spirilla）<b id="vTurns1">1680</b></span>
+        <input type="range" id="rngTurns1" min="3" max="1684" step="1" value="1680">
+      </label>
+      <label class="row">
+        <span>细分匝数 T（第 2 阶 spirilla；第 2–7 阶固定 7 匝）<b id="vTurns">7</b></span>
+        <input type="range" id="rngTurns" min="7" max="7" step="1" value="7" disabled>
+      </label>
+      <label class="row">
+        <span>充填比（粗细）<b id="vFill">1.00</b></span>
+        <input type="range" id="rngFill" min="10" max="100" step="1" value="100">
+      </label>
+      <!-- 🔴🔴 2026-10-08 老师（配截图）：「**缠绕模式** —— 无论我选哪个：缠绕模式 还是 交替正交
+           下面那个缠绕模式，**都看不出变化**，默认应该是**全环向，也就是经典超螺旋**。」
+           ⇒ ① 默认改成 normal（全环向）；② 修好三处「传不下去」的断点
+             （onParam 爱心分支漏 state.mode、rebuildHeart 不传 mode、makeWhorl 写死 'normal'）。 -->
+      <label class="row">
+        <span>缠绕模式 <span class="tag-default">默认 全环向</span></span>
+        <select id="selMode">
+          <option value="normal" selected>全环向（绕丝，经典超螺旋）<b>默认</b></option>
+          <option value="alternate">交替正交（相邻两阶平面 ⊥）</option>
+          <option value="axial">全轴向（含丝平面起伏）</option>
+        </select>
+      </label>
+      <p class="hint">这一次它<b>真的生效</b>了（此前有三处断点，下拉框完全空转）。三种模式的差别：<br>
+        · <b>全环向</b>（默认）= 每一级的缠绕平面都 <b>⊥ 该处切向</b> ⇒ 就是文献那根
+          <b>tightly twisted endless coil</b>（经典超螺旋）；各级缠绕平面<b>互相平行</b>。<br>
+        · <b>全轴向</b> = 每一级的缠绕平面都<b>含切向</b> ⇒ 第 1 阶从「立体螺旋」变成
+          <b>平面锯齿</b>，<b>一眼可辨</b>。<br>
+        · <b>交替正交</b> = 奇数级环向、偶数级轴向 ⇒ <b>相邻两级缠绕平面严格 90°</b>
+          （文献：each finer coil <i>to which its axis lies at right angles</i>）。<br>
+        ⚠️ <b>第 1 阶</b>在「全环向」与「交替正交」下<b>本来就是同一条骨架</b>
+        （两者都从 normal 起步）⇒ 差别要到<b>第 2 阶</b>才出现（第 2 阶只有 1/7 大，要放大才看得清）。
+        这是几何事实，不是没修好 —— HUD 标题里会显示<b>逐级模式链</b>（环=全环向 / 轴=全轴向），
+        切换时还有一条提示告诉你到底变了什么。</p>
+      <label class="row">
+        <span>丝数（Anu = 3 粗 + 7 细）</span>
+        <select id="selWires">
+          <option value="1" selected>1 丝（单根 spirilla）</option>
+          <option value="3">3 粗丝（米白 · 同一方程）</option>
+          <option value="7">7 细丝（光谱七色）</option>
+          <option value="10">10 丝（3 粗 + 7 细）</option>
+        </select>
+      </label>
+      <!-- 🔴🔴 2026-10-08 老师（新功能）：「结构参数 里面 点一下 **anu镜像**，
+           就把 anu **以中轴为镜**、把左右反过来。这样俯视图看 anu 的双丝，
+           **顺时针沿着直锥下旋**就变**逆时针下旋**。这两种 anu 都是存在的，
+           顺时针沿直锥下旋 = **negative 负磁荷**；逆时针 = **positive 正磁荷**。
+           你需要在**网页图片左上角栏标签**里面 label 出来。」 -->
+      <label class="row">
+        <span>Anu 镜像（以中轴为镜 · 左右互换）<span class="tag-default">影响磁荷极性</span></span>
+        <button id="btnMirror" class="btn" type="button">🪞 镜像：关</button>
+      </label>
+      <p class="hint">点一下就把整个 Anu <b>以中轴为镜翻面</b>（φ → −φ，等价 z → −z）：
+        <b>半径与高度逐点不变</b>（同一条闭轨道、同一组上下孔，孔处的 C∞ 接头<b>一点都不会坏</b>），
+        只有<b>绕向</b>翻过来。于是俯视图里<b>内程（沿直锥下旋那一程）由顺时针变逆时针</b>（再点一次变回去）。<br>
+        这两种 Anu <b>都是真实存在的</b>，对应两种磁荷极性 ——
+        <b>顺时针（俯视）沿直锥下旋 = <span class="pol-neg">negative 负磁荷</span></b>、
+        <b>逆时针 = <span class="pol-pos">positive 正磁荷</span></b>。
+        当前极性实时显示在舞台<b>左上角标签</b>里。
+        <b>中央螺旋（中轴芯）也一起翻</b>，否则「整个 Anu 镜像」只做了一半。</p>
+    </section>
+
+    <section class="grp">
+      <h2>显示</h2>
+      <label class="chk"><input type="checkbox" id="chkShell" checked> 参考球壳（Anu 外形）</label>
+      <label class="chk"><input type="checkbox" id="chkBase" checked> 基准圆（丝展开后的圆）</label>
+      <label class="chk"><input type="checkbox" id="chkBubbles" checked> koilon 气泡点阵（珍珠）</label>
+      <label class="chk"><input type="checkbox" id="chkPlanes"> 正交平面指示（逐阶）</label>
+      <!-- 🔴 2026-10-08 老师：「显示 选项卡 里面要有 **3d xyz axis** 打勾选项」
+           ＋（第一次交付后立即订正）「**3D XYZ 坐标轴 的位置不对，应该在 anu 的质心或 图的原点**」
+           ＋（第二次订正 · 真浏览器核实【C】抓出）位置必须钉在**图的原点**（世界 (0,0,0)），
+              而**不是** `cam.target`（相机注视点：Shift 拖拽平移会改它、「逐级放大」会把它挪到
+              某一阶的焦点上）—— 拿注视点当原点，平移一次坐标架就与图脱钩
+              （实测：图移动 156 px，坐标架只动 0.1 px）。
+           ⇒ 世界系三轴指示器（X 红 / Y 绿 / Z 蓝）**钉在图形自身的原点 = 世界 (0,0,0)**
+              （几何就是绕它建的 ⇒ 也在 anu 的质心处），**不是**屏幕角上的小罗盘；
+              姿态与世界系对齐 ⇒ 相机一转，三轴上屏朝向就跟着转；
+              图怎么平移/缩放，坐标架都跟着图一起走。
+              长度 = min(0.30×视距, 0.5)，上限 0.5 = 参考球壳半径的一半 ⇒ 全景时是「半个图形大小」的坐标架。
+              默认**开**（老师要的就是「看得见」）；不想要在这个勾里取消即可。 -->
+      <label class="chk"><input type="checkbox" id="chkAxes" checked> <b>3D XYZ 坐标轴</b>（X 红 / Y 绿 / Z 蓝，<b>钉在图形原点</b>）<span class="tag-default">默认</span></label>
+      <!-- 🔴 2026-10-08 老师第 ⑤ 条：「默认改为**按丝着色**（3 粗米白 / 7 细七色）」
+           ⇒ 默认勾选「按丝着色」、取消勾选「双色图着色」（两者互斥，勾一个自动取消另一个）。 -->
+      <label class="chk"><input type="checkbox" id="chkCmap"> 双色图着色（3 粗 = <code>hot</code> 金黄→白 ／ 7 细 = <code>rainbow</code> 彩虹）</label>
+      <label class="chk"><input type="checkbox" id="chkWireColor" checked> <b>按丝着色</b>（3 粗米白 / 7 细七色）<span class="tag-default">默认</span></label>
+      <label class="chk"><input type="checkbox" id="chkLevelColor"> 按阶着色（看嵌套）</label>
+      <!-- ⚠️ 2026-10-08 已删除「7 细族相位速度倍率」滑块：老师指出「两族的动力学公式是一样的，
+           两族就是旋转了 180 度」—— 给两族各配一个速度会破坏「一个方程管 10 根丝」的前提。
+           现在 10 丝共用唯一的 ω = turnsPerLeg，两族只差初始相位 π（= 绕中轴 180°）。 -->
+      <!-- 🔴 2026-10-08 老师：「螺旋线你是不是没有用 bspline 连接散点，一点不丝滑，像 dna」
+           ＋「螺旋线放大看像很多折线」＋「4 个点太少了吧，建议是 7 的倍数整数」
+           ⇒ ① 每匝 spirilla 采样点数改为 **7 的倍数**（步长锁 7）；
+              ② 连点之前先用 centripetal Catmull-Rom（三次 B-spline 插值）细分，棱角消失。 -->
+      <label class="row">
+        <span>弹簧采样（点/匝，锁 7 的倍数）<b id="vMicroSpp">14</b></span>
+        <input type="range" id="rngMicroSpp" min="7" max="49" step="7" value="14">
+      </label>
+      <label class="row">
+        <span>曲线平滑 B-spline <b id="vSplineSub">×2</b></span>
+        <input type="range" id="rngSplineSub" min="1" max="4" step="1" value="2">
+      </label>
+      <!-- 🔴 2026-10-08 老师：「『双丝分离（更远离苹果壁）』和『苹果壳厚（外壁↔内壁）』
+           这两个功能重复了，#选这个就ok（指双丝分离）」。
+           核实（`anu-heart.js:radOffsets()`）：两个滑块最终都只给**同一个量** `layer` 加 ±Δ/2
+           （粗丝 +½、细丝 −½，**导数完全相同**）⇒ 数学上就是同一个旋钮，
+           唯一差别是「壳厚」顺带把**两条壁线**也一起张开了。
+           ⇒ 删掉「苹果壳厚」滑块：`shellGap` 固定为**参考壳厚 0.072**（= 2·coilRThick，两层恰好相切）；
+             保留本滑块作为**唯一**的两族分离旋钮，值域放宽到 0..0.200（覆盖旧壳厚的全量程）。 -->
+      <label class="row">
+        <span>双丝分离（更远离苹果壁）<b id="vSpread">0.050</b><span class="tag-default">默认 0.05</span></span>
+        <input type="range" id="rngSpread" min="0" max="200" step="1" value="50">
+      </label>
+      <p class="hint">把<b>粗、细两族丝</b>沿径向相对拉开：<b>3 粗丝外膨 +Δ/2、7 细丝内敛 −Δ/2</b>
+        （Δ = 本滑块读数）。<b>默认 0.050</b>（粗 +0.025 / 细 −0.025，两族各离壁 0.025）；
+        <b>0.000 = 两层恰好相切</b>，即参考壳厚 <code>0.072</code> 时的外观
+        （与旧版逐点相同）。两端仍用窗口归零 ⇒ 丝照样精确落在上/下孔上，闭合不破。<br>
+        图中<b>紫色虚线 = 细丝层外缘</b>（恒画）、<b>金色虚线 = 粗丝层外缘</b>（Δ &gt; 0 时才画）：
+        Δ = 0 时分别重合于<b>苹果内壁 / 外壁</b>，拖动时随两族一起张开，可直接当尺子读
+        「各离开了壁多少」。<br>
+        ⚠️ 原「苹果壳厚」滑块已<b>并入本项</b> —— 它俩动的是同一个量（见上方注释）。</p>
+      <label class="row">
+        <span>弹簧边贴壁方式<span class="tag-default">默认：同时贴锥壁</span></span>
+        <!-- 🔴 2026-10-08 老师：「网页里面**默认设置弹簧边贴壁方式：弹簧边同时贴锥壁（内程也外移）**」
+             ⇒ `both` 提到第一个并 `selected`（与 `anu-heart.js: DEFAULTS` / `anu-app.js: state` 三处同口径）。 -->
+        <select id="selSurface">
+          <option value="both" selected>弹簧边同时贴锥壁（内程也外移）</option>
+          <option value="shell">弹簧边贴苹果内/外壁（只外程）</option>
+          <option value="off">中心线落在壁面上（不内收，仅对照）</option>
+        </select>
+      </label>
+      <label class="row">
+        <span>气泡大小 <b id="vBubble">1.5</b></span>
+        <input type="range" id="rngBubble" min="5" max="40" step="1" value="15">
+      </label>
+      <!-- 🔴 2026-10-08 老师第 ④ 条：「koilon 珍珠**每匝 7 颗**要作为网页默认设置，
+           仅仅是放大到 7th order 螺旋线才能看到每匝是 7 颗」⇒ 默认值 1 → 7。 -->
+      <label class="row">
+        <span>koilon 珍珠 <b id="vPearls">每匝 7 颗</b><span class="tag-default">默认 7</span></span>
+        <input type="range" id="rngPearls" min="1" max="8" step="1" value="7">
+      </label>
+      <p class="hint">珍珠<b>只在「最低阶 spirilla」那一阶</b>画 —— 也就是<b>每级 7 匝</b>的那一阶：
+        阶梯 = 第 7 阶、爱心 = 第 D 阶（D ≥ 2）。默认<b>每匝 7 颗</b> ⇒ 该阶 7 匝共
+        <b>49 颗/丝</b>（10 丝 = 490 颗）；正是「串在看不见的线上的珍珠」。
+        <b>1st-order spirillae（1680 匝）不是 koilon ⇒ 不画散点</b>；其余各阶只有发亮的 spirillae 曲线
+        —— 所以<b>只有一路放大到 7th-order spirillae 才看得到「每匝 7 颗」</b>。</p>
+      <label class="row">
+        <span>螺旋线亮度 <b id="vLineBright">0.55</b></span>
+        <input type="range" id="rngLineBright" min="3" max="100" step="1" value="55">
+      </label>
+    </section>
+
+    <!-- 🔴 2026-10-17 老师：「M4 给 Anu 页加一个小控件，按分辨率即时算出『最多看得见几级』」
+         —— 把「几何上细分了几级」与「屏幕上真能分辨几级」分开算。
+         判据：某一阶的螺旋直径投到屏上若 < N px，它在这一屏上就退化成一根直线（看不见）。
+         数值全部**运行时**算（`js/anu-app.js: lodUpdate()`），不写死任何一级的 px。 -->
+    <section class="grp">
+      <h2>分辨率 · 最多看得见几级</h2>
+      <p class="hint">「几何上画到第几级」≠「这一屏分得清第几级」：
+        第 k 阶直径 <code>2·r_k</code> 投到屏上只有 <code>2·r_k·ppu</code> 像素，
+        <b>小于判据就退化成一根直线</b>（再放大也只是变粗，看不出是螺旋）。
+        读数随滚轮<b>实时变</b> —— 放大到「逐级比」那么多倍才多看清一级
+        （理论 <code>1/ρ = 2.1232</code>，实测 <b id="lodRatioTip">2.12</b>）。</p>
+      <label class="row">
+        <span>判据：一阶至少占多宽才算「看得见」<b id="vLodPx">3.0 px</b></span>
+        <input type="range" id="rngLodPx" min="1" max="12" step="1" value="3">
+      </label>
+      <table class="theory">
+        <tr><td>当前缩放（每世界单位）</td><td><b id="lodPpu">—</b></td></tr>
+        <tr><td>第 1 阶 spirilla 直径</td><td><b id="lodD1">—</b></td></tr>
+        <tr><td>第 <span id="lodN">7</span> 阶 spirilla 直径</td><td><b id="lodDN">—</b></td></tr>
+        <tr><td><b>这一屏最多看得见</b></td><td><b id="lodMax">—</b></td></tr>
+        <tr><td>要看清下一级需再放大</td><td><b id="lodZoom">—</b></td></tr>
+      </table>
+      <p class="hint" id="lodChain">逐级直径（px）：计算中…</p>
+      <p class="hint" id="lodNote">—</p>
+    </section>
+
+    <section class="grp">
+      <h2>外场（形态 / 锥管）</h2>
+      <!-- 🔴 2026-10-08 老师第 ⑥ 条：外场球面切片 ↔ 苹果切片，两个按钮互换 -->
+      <!-- 🔴🔴 2026-10-08 老师（本轮新需求）：
+           「外场边界形态（0 = 球面 / 1 = 苹果）我发现你接近 0 的时候，直锥角为何没有啥变化，
+            应该角度更小，直锥从底到顶点的高应该比原先更大，你用 h = 1/外场边界形态值 这个公式，
+            但注意 外场边界形态值由于是 h 公式的分母，建议最小值从 0.1 开始到 1」
+           ⇒ 滑块 min 由 0 改为 10（= 0.10）；且该值现在**同时驱动中轴直锥的半锥角**：
+             tan(θ_eff) = tan(基准半角) × 外场边界形态，锥高 = 口沿半径 / tan(θ_eff) = 基准锥高 × (1/f)。 -->
+      <label class="row">
+        <span>外场边界形态（0.1 = 球面 / 1 = 苹果）<b id="vField">1.00</b></span>
+        <input type="range" id="rngField" min="10" max="100" step="1" value="100">
+      </label>
+      <div class="btn-row">
+        <button id="btnSphere" class="btn" type="button">⭘ 外场球面切片（0.1）</button>
+        <button id="btnApple" class="btn on" type="button">🍎 苹果切片（1.0）</button>
+      </div>
+      <p class="hint"><b>苹果切片</b>（默认）= 老师红线描的那条轮廓：上半两个圆肩 + 下半椭圆苹果底。
+        <b>球形态切片</b> = <b>端部向内凹陷</b>的球（腰部仍是半径 1），被同一根中轴锥管切出的两个孔之间那段弧
+        ⇒ 外场边界变成一个「<b>鼓腹 + 上下收口</b>」的环状体，丝在上下孔处<b>向内向球心凹陷、交接到锥面上</b>。
+        两条切片<b>同参数化</b>（u = 0 上孔、u = 1 下孔、按弧长等距）⇒ 滑块一动就是连续形变。</p>
+      <p class="hint">🔴 <b>这个滑块同时驱动中轴直锥的半锥角</b>（两根滑块会<b>一起动</b>）：
+        <code>锥高 h = 1 / 外场边界形态值</code>（口沿半径锁死 <b>0.1428</b> ⇒
+        <code>tan(半角) = 0.1428 / h</code>）。于是<b>越接近球面，锥角越小、锥越长</b>：
+        <b>1.00 → 2.950°</b>（锥高 ×1.00，= 原直锥，逐位不变）、
+        <b>0.50 → 1.475°</b>（×2.00）、<b>0.10 → 0.295°</b>（×<b>10</b>.01）。
+        这正是老师要的「接近球面时<b>直锥角更小、从底到顶点的高更大</b>」。
+        下限锁死 <b>0.1</b>（这一项在 h 公式的<b>分母</b>上，取 0 会让锥顶跑到无穷远）。</p>
+      <!-- 🔴 2026-10-08 老师第 ⑦ 条「新增滑条 B」：直锥 → 接近但不等于直圆柱管
+           🔴🔴 本轮修订：老师要求「**中轴锥管半锥角（度）这个也需要参与生长呼吸动画**
+              ……外场边界形态和中轴锥管半锥角（度）要**同时同步动**」
+           ⇒ 这一根现在显示的是**当前生效半角**（会随呼吸实时变），
+             并与「外场边界形态」保持 θ = 参考角 × f 的联动（唯一实现在 anu-app.js: applyFieldShape）。
+             滑块分辨率随之从 0.01° 提到 **0.001°**（value 单位 = 0.001°，故 min/max/value 各 ×10）。 -->
+      <label class="row">
+        <span>中轴锥管半锥角（度）<b id="vTubeAngle">2.950</b></span>
+        <input type="range" id="rngTubeAngle" min="50" max="2950" step="1" value="2950">
+      </label>
+      <p class="hint">🔴 这一根<b>与外场边界形态联动、会一起动</b>（呼吸动画时尤其明显）：
+        <b>当前生效半角 = 参考角（苹果态）× 外场边界形态</b> ——
+        苹果态取<b>最大</b> <b>2.950°</b>、球形态取<b>最小</b> <b>0.295°</b>。
+        当前：参考角 <b id="vTubeAngleRef">2.95°</b> → 生效 <span id="vTubeEff">2.950°</span>，
+        锥高 <b id="vTubeMul">×1.00</b>。<br>
+        把这一根滑到最左（0.050°）就是老师要的「<b>接近但不等于直圆柱管</b>」：
+        <b>口沿半径锁死 0.1428（= 原直锥上底面半径，管径恒定）</b>，
+        而 <code>apexY = mouthY − mouthR/tan(半角)</code> ⇒ 半角越小，<b>锥顶越快地向下远离</b>
+        （半角 → 0 时锥顶沉到无穷远），锥壁半径 <code>wallR(y) = (y − apexY)·tan(半角)</code>
+        随之从「上大下小」变成「上下等径」⇒ 下孔被撑开、外场边界自动趋近球面。<br>
+        ⚠️ 手动拖这一根会按<b>当前</b>外场形态<b>反解</b>出新的「参考角」⇒
+        「临时把锥调细」在之后拖外场形态时<b>仍然生效</b>（不会被一键抹掉）。</p>
+      <label class="chk"><input type="checkbox" id="chkBreath"> <b>Sin 呼吸播放</b>（外场从球形 → 苹果 → 球形循环）</label>
+      <label class="row">
+        <span>呼吸周期（秒）<b id="vBreath">12</b></span>
+        <input type="range" id="rngBreath" min="4" max="40" step="1" value="12">
+      </label>
+      <div class="btn-row">
+        <button id="btnGif" class="btn" type="button">🎞 录一个呼吸周期 → GIF</button>
+      </div>
+      <div id="gifBox" class="gif-box"></div>
+    </section>
+
+    <section class="grp">
+      <h2>播放</h2>
+      <div class="btn-row">
+        <button id="btnPlay" class="btn primary" type="button">▶ 生长动画</button>
+        <button id="btnZoomPlay" class="btn" type="button">🔍 逐级放大播放</button>
+      </div>
+      <label class="row">
+        <span>生长进度 <b id="vGrowth">100%</b></span>
+        <input type="range" id="rngGrowth" min="0" max="1000" step="1" value="1000">
+      </label>
+      <!-- 🔴 2026-10-08 老师：「**生长动画也可以导出为 gif 小于等于 5mb**」。
+           与呼吸组那个「录一个呼吸周期 → GIF」共用同一套流水线（`js/anu-app.js: exportGif(kind)`）：
+           尺寸压缩 → 编码 → 超限降级（256→64 色 → 帧数减半）→ 预览 + 下载。
+           差别只在「每帧怎么推进」：呼吸 = 改外场形态并**逐帧重建**；
+           生长 = 只改 `drawRange`（**不重建**）⇒ 按当前阶数 D 如实录、**不降档**。
+           录制期间不自转（与呼吸一致），只看到「丝从 0% 长到 100%」。 -->
+      <div class="btn-row">
+        <button id="btnGifGrow" class="btn" type="button">🎞 录生长动画 → GIF（≤5 MB）</button>
+      </div>
+      <div id="gifBoxGrow" class="gif-box"></div>
+      <!-- 🔴 2026-10-08 老师：「点击 **逐级放大播放** 这个出现的**动态变化示意**
+           也要能导出小于 5mb 的 gif 图」。
+           录制走的是**同一个剧本**（`js/anu-app.js: buildZoomScript()/zoomAt()`）：
+           全景 → 第 1 阶 → … → 第 D 阶 → 回到全景；所以 GIF 与屏幕上看到的**逐帧一致**，
+           首末帧都停在全景 ⇒ 循环无缝。帧上会烧一行「第 k 阶 / 共 D 阶」
+           （屏幕字幕是 DOM 覆盖层、不在画布里，不烧字的话走出 GIF 就不知道讲到第几阶）。 -->
+      <div class="btn-row">
+        <button id="btnGifZoom" class="btn" type="button">🎞 录逐级放大 → GIF（≤5 MB）</button>
+      </div>
+      <div id="gifBoxZoom" class="gif-box"></div>
+      <label class="row">
+        <span>自转速度 <b id="vSpeed">0.22</b></span>
+        <input type="range" id="rngSpeed" min="0" max="120" step="1" value="22">
+      </label>
+      <!-- 🔴 2026-10-08 老师第 ⑧⑨ 条：Shift+拖拽平移原点；网页默认原点下移 1/4 屏高 -->
+      <label class="row">
+        <span>原点上下偏移（屏高比）<b id="vViewDrop">0.00</b><span class="tag-default">0 = 居中</span></span>
+        <input type="range" id="rngViewDrop" min="-60" max="60" step="1" value="0">
+      </label>
+      <p class="hint"><b>Shift</b> + 拖拽 = <b>平移整个原点</b>（像平移页面一样，不转视角）；
+        上面这个滑块就是默认下移量 —— <b>0.25 = 世界原点落在画面中心下方 1/4 屏高处</b>，
+        让上半屏留白给标题/图例。偏移按「屏高比例」现算，所以<b>放大缩小都不漂</b>。</p>
+      <label class="chk"><input type="checkbox" id="chkRotate"> 自动旋转</label>
+      <div class="btn-row">
+        <button id="btnReset" class="btn" type="button">重置视角</button>
+        <button id="btnTop" class="btn" type="button">俯视</button>
+      </div>
+    </section>
+
+    <p class="foot-note">
+      拖拽旋转 · <b>Shift + 拖拽平移</b> · 滚轮缩放 · 双指拖动（触屏）。<br>
+      <b>①</b> 画的是 <b>Anu 整体形态（上端爱心 · 下端苹果）</b>：上半是<b>左右两个圆肩</b>，
+      中央有<b>顶中凹口</b>（<b>顶上不是平的</b>）；下半是<b>苹果式圆底</b>。
+      轴向 10 根 whorl（3 粗 7 细，沿 36° 均分 ⇒ 3 粗的对面 180° 恰是细丝）。<br>
+      每根 whorl 一程<b>下行 2.5 圈（走内程 —— 贴着中轴直锥的锥壁缠绕，从上孔一路收到下孔）</b>，
+      再<b>上行 2.5 圈（顺着苹果的边界缠绕）</b>回到上孔 —— <b>合计 5 圈</b>；
+      这根 5 圈的路径本身再绕 <b>T₁ 匝</b>（1st-order spirillae，默认 1680）；
+      再逐级 ×7 细分到第 <b>D</b> 阶（默认 7 ⇒ 7th-order spirillae）。<br>
+      中轴是口大下小的<b>直锥管</b>（半角 2.95° / 锥角 5.90°）。<br>
+      <b>苹果壳有厚度 ⇒ 外程分居两层</b>：<b>3 粗丝的外缘贴「外壁」</b>、
+      <b>7 细丝的外缘贴「内壁」</b>（两壁相距一个<b>参考壳厚 0.072</b> = 2 × 粗丝半径，
+      恰好两层相切不重叠）。拖「双丝分离」时以<b>中性面</b>为轴把两族
+      <b>对称拉开</b>：<b>粗丝外膨 +Δ/2、细丝内敛 −Δ/2</b>（各走一半）；
+      两端仍用窗口归零 ⇒ 两族在<b>上/下孔处收拢重合</b>，所以丝仍精确落在孔上。
+      <b>内程则粗细同贴直锥外壁、不分层</b>。<br>
+      <b>上孔 / 下孔 = 子午线与锥壁的交点</b>：因锥口大下小，必然 <b>上孔径 0.1364 &gt; 下孔径 0.0422</b>，
+      锥管正好穿在这两个孔里。底端是「环形回转」而不是针尖 —— 下半段是<b>椭圆弧</b>
+      （<code>bottomHe = 1.0</code> 苹果式圆底），在下孔处留一个<b>果蒂环孔</b>。<br>
+      <b>②</b> 把其中<b>一匝抽出来放大</b>：自身先绕 1680 匝（1st-order spirillae），
+      再在上一级的每一匝上绕 7 匝（2nd-order……），一路细分到第 7 级。<br>
+      <b>🪞 Anu 镜像</b>（结构参数里那个按钮）= 把整个 Anu <b>以中轴为镜翻面</b>
+      （φ → −φ，等价 z → −z）：<b>半径与高度逐点不变</b> ⇒ 同一条闭轨道、同一组上下孔、
+      孔处的 C∞ 接头<b>一点都不会坏</b>，只有<b>绕向</b>翻过来。于是俯视图里
+      <b>内程（沿直锥下旋那一程）由顺时针变逆时针</b>（再点一次变回去）。
+      这两种 Anu <b>都是真实存在的</b>：<b>顺时针 = negative 负磁荷</b>、
+      <b>逆时针 = positive 正磁荷</b> —— 当前极性实时标在舞台<b>左上角</b>。
+      <b>中央螺旋（中轴芯）也一起翻</b>。<br>
+      本页几何为<b>递归正交弹簧</b>，与 Milnor 怪球的「环套环」分形结构<b>原理不同</b>。
+    </p>
+  </aside>
+
+  <section class="stage">
+    <canvas id="cv"></canvas>
+
+    <!-- data-min-label：收起后胶囊上显示的短名字（标题那串太长，收起时必须换掉） -->
+    <div class="hud is-min" id="hud" data-min-label="参数标签">
+      <!-- 🗕 2026-10-08 老师：「anu 图前置的浮窗 label 标签右上角允许点击『—』缩小」
+           ⇒ 右上角一枚「—」，点一下把这块浮窗**收起**（只剩一枚写着「参数标签」的小胶囊），
+              再点变「＋」展开；收起只隐藏 `.hud-body` / `.hud-title`，**不冻数据**。
+           ⚠️ 浮窗整块是 `pointer-events: none`（好让拖拽穿透到画布）⇒
+              这枚按钮必须在 CSS 里显式 `pointer-events: auto`，否则点不到。
+           🗕 2026-10-14 老师：「参数框和一打开在图前弹出的框都默认折叠，别挡住我看图」
+              ⇒ 初始 class 直接带上 `.is-min`（**HTML 里就折着**，不依赖 JS 执行时机），
+                 按钮初始为「＋」/ `aria-expanded="false"`，展开逻辑不变。 -->
+      <button class="pane-min" id="hudMin" type="button"
+              aria-expanded="false" aria-controls="hudBody" title="展开标签">＋</button>
+      <div class="hud-title"><span id="hudMode">单丝递归</span></div>
+      <div class="hud-body" id="hudBody">
+        <!-- 🔴🔴 2026-10-08 老师：「你需要在**网页图片左上角栏标签**里面 label 出来」
+             —— 磁荷极性标签（俯视内程：顺时针 = negative 负磁荷 / 逆时针 = positive 正磁荷）。
+             极性由 `anu-heart.js` 的 `polarityOf()` 记账，`anu-app.js` 每帧写回这里。 -->
+        <div class="hud-polarity" id="hudPolarity">极性（磁荷）：<b>negative 负磁荷</b> · 顺时针下旋</div>
+        <table>
+          <tr><td>当前阶</td><td><b id="hudDepth">3 / 3</b></td></tr>
+          <tr><td>本阶圈数</td><td><b id="hudTurn">4</b></td></tr>
+          <tr><td>累计圈数</td><td><b id="hudAccum">64</b></td></tr>
+          <tr><td>丝内 spirillae</td><td><b id="hudSpr">—</b></td></tr>
+          <tr><td>本阶半径</td><td><b id="hudRadius">0.0494</b></td></tr>
+          <tr><td>逐级半径比</td><td><b id="hudRatio">—</b></td></tr>
+          <tr><td>顶点数</td><td><b id="hudPoints">512</b></td></tr>
+          <tr><td>相邻平面夹角</td><td><b id="hudAngle">90.0°</b></td></tr>
+        </table>
+      </div><!-- /.hud-body（收起点：`.hud.is-min` 时整块 display:none） -->
+    </div>
+
+    <div class="legend is-min" id="legend" data-min-label="图例">
+      <!-- 🗕 同 HUD：右上角「—」收起，`data-min-label` 供收起后显示名字（否则只剩一枚「＋」认不出来）。
+           🗕 2026-10-14：同 HUD **默认折叠**（初始就带 `.is-min`）；
+               胶囊名字从「图例（颜色对照）」缩短成「图例」—— 收起态就要短，别自己再挡一块。 -->
+      <button class="pane-min" id="legendMin" type="button"
+              aria-expanded="false" aria-controls="legendBody" title="展开图例">＋</button>
+      <div class="legend-body" id="legendBody">
+        <span><i class="sw-spectrum"></i>光谱七色（七根细丝的对应色）</span>
+        <span><i class="sw-thick"></i>粗丝（3 根，对面 180° 是细丝）</span>
+        <span><i class="sw-shell"></i>轮廓侧影（圆肩 + 苹果底）</span>
+        <span><i class="sw-inner"></i>苹果内壁（= 细丝层外缘，紫虚线）</span>
+        <span><i class="sw-tube"></i>中轴直锥管（半角 2.95° / 锥角 5.90°）</span>
+      </div>
+    </div>
+
+    <div class="caption" id="caption"></div>
+    <div class="toast" id="toast"></div>
+  </section>
+
+  <!-- 🗕 同左侧：右侧「资料框」（文献数值 + 核心机制 + 与 Milnor 对比）**默认折叠**。
+       ⚠️ 原先这个 `<aside>` **没有 id** ⇒ 加 `id="panelR"` 才能被 ui 模块与核实脚本寻址。 -->
+  <aside class="panel right is-min" id="panelR">
+    <button class="panel-toggle" id="panelRToggle" type="button"
+            aria-expanded="false" title="展开资料框">▸ 数值</button>
+    <section class="grp">
+      <h2>正统 Anu 数值（文献）</h2>
+      <table class="theory">
+        <tr><td>每根 whorl 宏观圈数</td><td><b>5 圈</b>（2.5 下行 + 2.5 上行）</td></tr>
+        <tr><td>每根丝 1 阶 spirilla</td><td><b>1680 匝</b></td></tr>
+        <tr><td>束数（每丝）</td><td><b>10 根</b>（3 粗 + 7 细）</td></tr>
+        <tr><td>spirilla 阶数</td><td><b>7 阶</b></td></tr>
+        <tr><td>每阶分叉</td><td><b>7</b>（七根细丝）</td></tr>
+        <tr><td>最低阶 spirilla</td><td><b>7 个气泡</b></td></tr>
+        <tr><td>单丝气泡总数</td><td><b>≈1.38×10⁹</b></td></tr>
+        <tr><td>十丝合计</td><td><b>≈1.38×10¹⁰</b></td></tr>
+      </table>
+      <p class="cite">
+        “This coil is itself a spiral containing 1,680 turns ... There are in each wire
+        seven sets of such coils or spirillae, each finer than the preceding coil
+        <b>to which its axis lies at right angles</b>.”
+        <br>—— Besant &amp; Leadbeater,《Occult Chemistry》(1908/1951)
+      </p>
+      <p class="cite" style="border-left-color:#b08a2e">
+        <b>1680 的三重身份</b>：这个 1680 是<b>匝数</b>（无量纲）。它和一个偶然同名的
+        <b>φ(1680) 介子</b>（1680 MeV）以及由 <code>E=hν</code> 得来的 <b>4.06×10²³ Hz</b> 之间，
+        到底有没有物理通道？→ <a href="AAA_1680_匝数相位频率_三重身份与尺寸自洽检验.html">用尺寸反查做一次裁决</a>
+        <span style="opacity:.75">（三种接线模型反解出 0.235 fm / 0.395 pm / 1.4×10⁻¹⁹ m；结论：D 级待验证）</span>
+      </p>
+    </section>
+
+    <section class="grp">
+      <h2>本页实现的核心机制</h2>
+      <ol class="mech">
+        <li><b>先定整体形态，再谈细分</b>（预设 ①）：子午线 = <b>上半两个圆肩 + 下半椭圆苹果底</b>。
+          · 上半：绕 <code>(±lobeC, 0)</code> 的圆（<code>lobeC = 0.45</code>）⇒ 两个<b>宽圆肩</b>，
+            中央自然形成 <b>cusp 凹口</b>；
+          · 下半：<b>四分之一椭圆弧</b> <code>r = cos φ, y = −bottomHe·sin φ</code>
+            （<code>bottomHe = 1.00</code>，底端切向水平 ⇒ <b>苹果式圆底</b>）；
+          接缝处两段切向都铅垂 ⇒ <b>C¹ 连续</b>。
+          因为它是<b>旋转体的子午线</b>，正视时本身就是外轮廓。
+          🔴 旧版用经典心形线 <code>r = sin³t</code>，它的两瓣半宽只有最宽的 0.49（天生上窄下宽 ⇒ 像<b>梨</b>）；
+          按原图 <code>anu直锥红色线.png</code> 逐行量得的半宽分布（近顶处仍有 0.54~0.67）重做成圆肩 + 苹果底。</li>
+        <li><b>一程内、一程外，2.5 + 2.5 = 5 圈</b>：
+          <b>外程 = 顺着苹果的边界缠绕</b>（半径取子午线本身，贴苹果壳外侧）；
+          <b>内程 = 顺着绿色直锥缠绕</b>（半径取<b>锥壁</b> <code>r = (y − apexY)·tan2.95°</code>）——
+          于是内程从上孔 <b>0.1364</b> 一路收到下孔 <b>0.0422</b>，真正贴着锥管下行。
+          两程在上下孔处严格重合（因为<b>孔就是子午线与锥壁的交点</b>）⇒ 曲线自闭合，不需过渡弧；
+          触底前另有 <code>flipSoft</code> 一段 smoothstep 圆角，让翻转<b>丝滑</b>。</li>
+        <li><b>苹果壳有厚度 ⇒ 外程分居两层</b>（老师 2026-10-07 追加）：
+          <b>3 粗丝的外缘贴「外壁」</b>（= 子午线本身，半径 <b>0.9857</b>）⇒ 中心线 <code>prof − coilRThick·win</code>；
+          <b>7 细丝的外缘贴「内壁」</b>（= 外壁内向一个<b>参考壳厚</b> <code>shellGap = 0.072</code>，半径 <b>0.9137</b>）⇒
+          中心线 <code>prof − (shellGap + coilR)·win</code>。
+          两层中段间隔 = <code>coilRThick + coilR = 0.0600</code>（正好相切堆叠）；
+          <b>内程</b>则由下拉框决定：<b>默认 <code>both</code> ⇒ 也外移一个弹簧半径、弹簧内缘贴锥外壁</b>
+          （<code>shell</code> 才是「中心线即在锥壁上」的旧画法）。
+          <code>win(u)</code> 是<b>两端归零</b>的平滑窗口 ⇒ 两族在上/下孔处收拢重合，
+          丝仍精确落在孔上（逐点偏差 <b>5.55e-17</b>，闭合 <b>1.67e-16</b>）。
+          <b>「双丝分离」滑块</b>再以中性面为轴把两族对称拉开（粗 <b>+Δ/2</b> / 细 <b>−Δ/2</b>）；
+          Δ = 0 时就是上表这个相切状态（原「苹果壳厚」滑块与之重复，已并入本项）。
+          三档（下拉「弹簧边贴壁方式」）：<code>both</code> <b>（默认）</b>内程也外移一个弹簧半径；
+          <code>shell</code> 只外程贴苹果内/外壁；<code>off</code> 中心线落在壁面上（仅对照）。</li>
+        <li><b>「反向缠绕」已作废 —— 文献说的「反向」其实是<span style="color:#ffd88a">翻转</span></b>
+          （2026-10-08 老师裁定）：文献里那个词描述的只是「<b>内程下到底 → 翻转 → 走外程回到上孔</b>」
+          这一件事，<b>不是</b>两根丝对着扭。所以十丝在内外两程一律<b>同向</b>：
+          下行 <code>φ₀ → φ₀ + 2.5 圈</code>，到底翻转，上行 <code>→ φ₀ + 5 圈 ≡ φ₀</code>。
+          旧版那个「回程段 3 粗反向 / 7 细正向」的复选框已被<b>删除</b>
+          —— 它正是下面 180° 对望被破坏的根源。</li>
+        <li><b>为什么 2.5 这个半整数是对的</b>：相位取
+          <code>φ<sub>下行</sub>=φ₀+2πm·u</code>、<code>φ<sub>上行</sub>=φ₀+2πm(2−u)</code>（m = 2.5）。
+          u=1 处严丝合缝接上尖端；u=0 处回到 <code>φ₀+2π·2m = φ₀+2π·5 ≡ φ₀</code>，
+          <b>要求 2m 为整数</b> —— 所以每程 2.5 圈、合计 5 圈能闭合，而 2.3 圈就不行。
+          「一粗一细正视像爱心」也是这 5(1−u) 匝相位差织出来的。</li>
+        <li><b>3 粗 ↔ 7 细 严格 180° 对望</b>（2026-10-08 老师裁定：「只是两族螺旋线绕中轴圆周阵列
+          180° 旋转的关系」）：10 丝按 36° 均分，粗丝落 0°/36°/72°，其对面 180°/216°/252°
+          恰是细丝（<b>3 对，偏差 0.00°</b>），且整个 10 丝阵列旋转 180° 后<b>自身不变</b>。</li>
+        <li><b>一个方程管 10 根丝</b>（老师 2026-10-08：「<b>两族的动力学公式是一样的</b>，
+          为何计算结果不一样？<b>两族就是旋转了 180 度</b>」）：
+          10 丝共用<b>唯一</b>的相位方程 —— 内程 <code>φ_j(u) = φ_j0 + ω·2π·u</code>、
+          外程 <code>φ_j(u) = φ_j0 + ω·2π + ρ·ω·2π·(1−u)</code>，其中
+          <code>ω = turnsPerLeg = 2.5</code>（<b>唯一的动力学参数</b>）、
+          <code>ρ = +1</code>（外程方向，两族共用），唯一的族间差异是初始相位
+          <code>φ_j0 = 2π·j/10</code>。<b>粗 / 细的差别只在几何半径</b>
+          （<code>coilRThick</code> vs <code>coilR</code>、外壁 vs 内壁），<b>不在动力学</b>。</li>
+        <li><b>于是「180° 对望」是直接推论，不是调参调出来的</b>：
+          <code>φ_(j+5)0 − φ_j0 = π</code> ⇒ 第 j+5 根的<b>整条路径</b> = 第 j 根<b>绕中轴旋转 180°</b>
+          （逐点偏差 &lt; 1e-13）。所以 3 粗（j = 0,1,2）的对面必然是 7 细（j = 5,6,7）。</li>
+        <li><b>底端是环形回转，不是针尖</b>（老师订正：「上端像爱心、下端像苹果」）：
+          下半段是<b>椭圆弧</b>（椭率 <code>bottomHe = 1.00</code>，底端切向水平 ⇒ 圆润苹果底），
+          子午线止于<b>下孔</b> <code>r = 0.0422</code> ⇒ 底部是一个<b>有孔的回转环</b>（whorl 在此掉头）。
+          方案由老师 2026-10-07 从四选一裁决图（<code>预览_Anu形状候选.png</code>）中选定。</li>
+        <li><b>中轴锥管是直锥体</b>：原图 FUNNEL TUBE 放大后可见「口沿是张开的椭圆、两壁向下缓慢收拢」。
+          沿管壁最小二乘拟合两条边线，得<b>半锥角 2.95°（锥角 5.90°）</b>——是根<b>细长尖锥</b>；
+          口沿半径取 <b>0.1428</b>（= 管口处的实测径），反解出
+          <code>apexY = mouthY − mouthR/tan2.95° ≈ −2.078</code>
+          ⇒ 锥管穿过底尖（−0.976）一直沉到 <b>TORRENT</b> 段，与原图画法一致。
+          上孔 <b>0.1364</b>（落在凹口内壁上）、下孔 <b>0.0422</b>，都精确落在锥壁上。</li>
+        <li><b>整条轨迹其实是一个「吸引子」</b>（老师问「怎么做成混沌吸引子公式」）：
+          "贴哪一层壳"不必靠 <code>if/else</code> 分段 —— 它可以写成一个 <b>4 维自治系统</b>
+          （见 <code>Anu七级螺旋_使用与原理.md</code> §2.6 与 <code>_scratch/anu_attractor.js</code>）：
+          <code>ρ̇ = κρ[R<sub>w</sub>(y) − ρ]</code>、<code>ẏ = v·tanh(λω)</code>、<code>θ̇ = ω</code>、
+          <code>ẇ = μ[w − w³ + a(y)]</code>。
+          <code>w</code> 是"壳选择"变量，<code>a(y)</code> 的<b>倾斜双稳</b>让它在到底 / 到顶时<b>自动翻壳</b>。
+          数值积分结果：<b>贴锥壁 2.53 圈 + 贴苹果壳 2.43 圈 ≈ 5 圈</b>，
+          轴向自动停在上下孔（偏差 &lt; 0.007），无人为分段。</li>
+        <li><b>局部永远是弹簧</b>：每根 whorl 的 5 圈宏观路径再作为父曲线，交
+          <code>AnuGeo.subdivide()</code> 绕 1680 匝 ⇒ 每根丝本身就是一根弹簧；
+          10 丝合计 16800 匝 1 阶 spirillae。</li>
+        <li><b>两族正交缠绕平面</b>：父丝标架 (T,N,B) 给出
+          <code>span(N,B)</code>（法向 T）与 <code>span(N,T)</code>（法向 B），
+          因 T ⊥ B 二面严格垂直。</li>
+        <li><b>逐阶交替</b>：相邻两阶分别取这两族平面 ⇒
+          缠绕平面相差 90°。</li>
+        <li><b>逐级细分</b>：每阶把上一阶的丝替换为 T 匝更细的弹簧，
+          累计匝数按 ∏T 增长。</li>
+        <li><b>七级阶梯的画法</b>：全量细分需 1680×7⁶ ≈ 2×10⁸ 匝，不可渲染。
+          故每一级只取上一级<b>最后那一匝</b>作基准 —— 与文献图版
+          “Piece of Atomic Spiral with 1st, 2nd and 3rd Spirillae” 同一做法，
+          顶点数恒定，第 7 级仍然看得见。</li>
+        <li><b>半径比是自然涌现的</b>：每匝长度 = √(pitch² + (2πr)²)，代入 r = fill·pitch/2
+          与下级匝数 T 得
+          <code>r<sub>k+1</sub>/r<sub>k</sub> = √(1+(π·fill)²) / T</code>。
+          fill = 1（匝刚好相接）时 = <b>0.471 ≈ 1/2</b> —— 不用手调，由几何自洽唯一确定。</li>
+        <li><b>最深一级</b>：第 7 阶 spirilla 由 <b>7 个 koilon 泡泡</b>组成
+          （“串在看不见的线上的珍珠”）。</li>
+      </ol>
+    </section>
+
+    <section class="grp">
+      <h2>与 Milnor 版的区别</h2>
+      <table class="theory">
+        <tr><th></th><th>Milnor 怪球</th><th>Anu（本页）</th></tr>
+        <tr><td>底层结构</td><td>环套环（同族平面）</td><td><b>弹簧套弹簧</b></td></tr>
+        <tr><td>平面关系</td><td>同族 / 平行</td><td><b>逐阶垂直</b></td></tr>
+        <tr><td>递归方式</td><td>环面嵌套</td><td><b>正交细分</b></td></tr>
+        <tr><td>匝数原型</td><td>16 个 S³ 丛</td><td><b>1680 匝</b></td></tr>
+      </table>
+    </section>
+  </aside>
+
+</main>
+
+<div class="cursor-hint" id="cursorHint">拖拽以旋转</div>
+
+<script src="vendor/three.min.js"></script>
+<script src="js/anu-smooth.js"></script>
+<script src="js/anu-cmap.js"></script>
+<script src="js/anu-geometry.js"></script>
+<script src="js/anu-heart.js"></script>
+<!-- 🔴 2026-10-08 老师第 ③ 条：「旧版蛋形演示图在网页里移除，是多余的」
+     ⇒ 预设 ①b（`anuOvoid`）与其模块 `js/anu-ovoid.js` 一并下线，不再加载。 -->
+<!-- 🔴 2026-10-08 老师第 ⑦ 条：「把完整 Anu 呼吸的周期保存为 ≤5MB 的 GIF 动画」
+     ⇒ 自带的纯 JS GIF89a 编码器（零依赖，见 js/anu-gif.js 头部注释）。
+     必须排在 anu-app.js **之前**（导出时要用 window.AnuGif）。 -->
+<script src="js/anu-gif.js"></script>
+<script src="js/anu-scene.js"></script>
+<script src="js/anu-ui.js"></script>
+<script src="js/anu-app.js"></script>
+<!--FXCTL:JS--><script id="fxctl-js">
+/* ============================================================
+   PKS · 通用「调参浮窗」 (float_ctl.js)
+   作用：把页面里成块的参数控件（.ctl / .ctrl / .controls / .calc /
+        .panel[纯控件] / [data-param-panel]）收进右下角一个可拖动浮窗。
+   原则：
+     1. 只搬控件块本身，**不复制、不重建** ⇒ 原页面绑定在元素上的
+        事件监听、id、input 值全部照常工作。
+     2. 搬不走的、散的（每张卡片各一组、且组数很多）→ 整页放弃，
+        保持原样，并在 console 里说明原因，绝不半搬半留。
+     3. 位置写入 localStorage；双击标题栏回默认位；⇱/— 收起。
+   ============================================================ */
+(function () {
+  if (window.__FXCTL) return;
+
+  var SEL = '.ctl,.ctrl,.controls,.calc,.param-panel,.grp,.htgroup,[data-param-panel]';
+  var MAX_GROUPS = 16;    // 超过这个组数：判定为"散在每张卡片里"，整页跳过
+  var MIN_SHARE = 0.85;   // 收进去的滑块至少要占全页 85%，否则跳过（不做半搬半留）
+  var KEY = 'fxp:' + location.pathname;
+
+  function txt(el, n) {
+    var s = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    if (n && s.length > n) s = s.slice(0, n - 1) + '…';
+    return s;
+  }
+  function inChrome(el) {
+    return !!(el.closest && el.closest('.topnav,header,nav,.topbar,.fxp,#fxp'));
+  }
+
+  /* ---------- 1. 找参数面板 ---------- */
+  // 页面自己已经有一个"贴右边的浮动参数窗"？有就不再叠第二个
+  function hasOwnDock() {
+    var els = [].slice.call(document.querySelectorAll('body > *'));
+    // 也看一两层深，很多页把 pwin 套在 wrapper 里
+    document.querySelectorAll('body div, body section, body aside').forEach(function (x) {
+      if (els.length < 400) els.push(x);
+    });
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      if (el.id === 'fxp') continue;
+      if (getComputedStyle(el).position !== 'fixed') continue;
+      var r = el.getBoundingClientRect();
+      if (r.width > 240 && r.width < 620 && r.height > 240 &&
+          (innerWidth - r.right) < 70 && r.top < 220) return true;
+    }
+    return false;
+  }
+
+  function detect() {
+    var all = [].slice.call(document.querySelectorAll('input[type=range]'));
+    if (hasOwnDock()) {
+      return { panels: [], total: all.length, inline: 0, moved: 0, ok: false, own: true };
+    }
+    // 已经在自己的浮窗里（祖先 fixed）的滑块：不算在"待浮"里，也不搬
+    function inFixed(el) {
+      var a = el, d = 0;
+      while (a && d++ < 5) {
+        if (getComputedStyle(a).position === 'fixed') return true;
+        a = a.parentElement;
+      }
+      return false;
+    }
+    var inline = all.filter(function (i) { return !inFixed(i); });   // 仍躺在正文里的
+    var cands = [].slice.call(document.querySelectorAll(SEL)).filter(function (el) {
+      if (inChrome(el)) return false;
+      if (!el.querySelector('input[type=range]')) return false;
+      if (inFixed(el)) return false;                                 // 已在浮窗内
+      var hasCanvas = !!el.querySelector('canvas,svg,video,img');
+      var cls = el.className || '';
+      var isParamCol = /(^|\s)(ctl|ctrl|controls|calc|param-panel)(\s|$)/.test(cls);
+      if (hasCanvas && !isParamCol) return false;
+      if (el.classList.contains('panel') || el.classList.contains('grp')) {
+        return el.querySelectorAll('input[type=range]').length >= 2;
+      }
+      return true;
+    });
+    // 去重 + 保留最外层
+    cands = cands.filter(function (el, i) {
+      if (cands.indexOf(el) !== i) return false;
+      return !cands.some(function (o) { return o !== el && o.contains(el); });
+    });
+    var moved = 0;
+    cands.forEach(function (el) { moved += el.querySelectorAll('input[type=range]').length; });
+    var ok = cands.length > 0 && cands.length <= MAX_GROUPS &&
+             (inline.length ? moved / inline.length >= MIN_SHARE : false);
+    return { panels: cands, total: all.length, inline: inline.length, moved: moved, ok: ok };
+  }
+
+  /* ---------- 2. 取分组标签（最近的标题 / .vt）---------- */
+  function labelFor(el) {
+    var gt = el.querySelector && el.querySelector('.gt');
+    if (gt) return txt(gt, 22);
+    var v0 = el.closest && el.closest('.viz');
+    if (v0) { var t0 = v0.querySelector('.vt'); if (t0) return txt(t0, 22); }
+    var node = el, hop = 0;
+    while (node && hop++ < 6) {
+      var prev = node.previousElementSibling;
+      while (prev) {
+        if (/^H[1-4]$/.test(prev.tagName)) return txt(prev, 22);
+        if (prev.querySelector) {
+          var h = prev.querySelector('h2,h3,h4,.vt');
+          if (h) return txt(h, 22);
+        }
+        prev = prev.previousElementSibling;
+      }
+      node = node.parentElement;
+    }
+    return '';
+  }
+
+  /* 搬走控件后，父级若是两列网格且变空 → 收成一列，避免右侧留一条空白 */
+  function collapseTrack(el) {
+    var par = el.parentElement;
+    if (!par) return;
+    var cs = getComputedStyle(par);
+    if (cs.display !== 'grid') return;
+    var tracks = (cs.gridTemplateColumns || '').split(/\s+/).filter(function (x) { return x && x !== 'none'; });
+    if (tracks.length !== 2) return;
+    if (par.lastElementChild !== el) return;
+    par.style.gridTemplateColumns = '1fr';
+  }
+
+  /* ---------- 3. 搭面板 ---------- */
+  function build(d) {
+    var old = document.getElementById('fxp');
+    if (old) old.remove();
+
+    var p = document.createElement('div');
+    p.id = 'fxp';
+    var counts = d.panels.map(function (el) {
+      return el.querySelectorAll('input[type=range]').length;
+    });
+    var nRange = counts.reduce(function (a, b) { return a + b; }, 0);
+
+    p.innerHTML =
+      '<div class="fxp-h" id="fxpH">' +
+        '<span class="fxp-grip">⠿</span>' +
+        '<span class="fxp-t">调参</span>' +
+        '<span class="fxp-c">' + d.panels.length + ' 组 · ' + nRange + ' 滑块</span>' +
+        '<button class="fxp-b" data-a="mini" title="收起 / 展开">—</button>' +
+        '<button class="fxp-b" data-a="reset" title="回到默认位置（也可双击标题栏）">⟲</button>' +
+      '</div><div class="fxp-bd"></div>';
+
+    var bd = p.querySelector('.fxp-bd');
+    var used = {}, noteDone = false;
+    d.panels.forEach(function (el, i) {
+      var lb = labelFor(el) || ('参数组 ' + (i + 1));
+      if (used[lb]) { used[lb]++; lb = lb.slice(0, 16) + ' (' + used[lb] + ')'; } else { used[lb] = 1; }
+      var g = document.createElement('div');
+      g.className = 'fxp-grp';
+      var gl = document.createElement('div');
+      gl.className = 'fxp-gl';
+      gl.innerHTML = '<b>' + lb.replace(/</g, '&lt;') + '</b><i>' + counts[i] + '</i>';
+      g.appendChild(gl);
+
+      if (!noteDone && el.parentNode) {
+        var note = document.createElement('p');
+        note.className = 'fxp-note';
+        note.textContent = '参数已收进右侧浮窗「调参」（拖标题栏可挪走 · 双击回位）';
+        el.parentNode.insertBefore(note, el);
+        noteDone = true;
+      }
+      collapseTrack(el);
+
+      g.appendChild(el);          // ← 原节点整体搬入，事件与 id 不变
+      bd.appendChild(g);
+    });
+
+    document.body.appendChild(p);
+    return p;
+  }
+
+  /* ---------- 4. 位置 / 拖动 / 收起 ---------- */
+  function clamp(p) {
+    var r = p.getBoundingClientRect(), W = innerWidth, H = innerHeight;
+    var x = Math.min(Math.max(r.left, -r.width + 90), W - 90);
+    var y = Math.min(Math.max(r.top, 0), H - 44);
+    p.style.left = x + 'px'; p.style.top = y + 'px';
+    p.style.right = 'auto'; p.style.bottom = 'auto';
+  }
+  function defPos(p) {
+    p.style.left = ''; p.style.right = ''; p.style.top = ''; p.style.bottom = '';
+  }
+  function save(p) {
+    try {
+      var st = p.classList.contains('fxp-min');
+      if (!p.style.left) { localStorage.removeItem(KEY); return; }
+      localStorage.setItem(KEY, JSON.stringify({
+        x: parseFloat(p.style.left), y: parseFloat(p.style.top), mini: st
+      }));
+    } catch (e) {}
+  }
+  function load(p) {
+    try {
+      var s = localStorage.getItem(KEY);
+      /* 首次访问一律收起：页面本身就有「参数」竖条，浮窗默认展开会把画布挤掉 322px；
+         收起的标题条写着「调参 · N 组 · M 滑块」，一眼能看见、点一下就展开，状态会被记住。 */
+      if (!s) { p.classList.add('fxp-min'); return; }
+      var o = JSON.parse(s);
+      if (o.mini) p.classList.add('fxp-min');
+      if (typeof o.x === 'number' && isFinite(o.x)) {
+        p.style.left = o.x + 'px'; p.style.top = o.y + 'px';
+        p.style.right = 'auto'; p.style.bottom = 'auto';
+        clamp(p);
+      }
+    } catch (e) {}
+  }
+
+  function wire(p) {
+    var h = p.querySelector('#fxpH');
+    var drag = null;
+
+    h.addEventListener('pointerdown', function (ev) {
+      if (ev.target.closest('button')) return;
+      if (innerWidth <= 880) return;                 // 窄屏走底部抽屉，不拖
+      var r = p.getBoundingClientRect();
+      drag = { dx: ev.clientX - r.left, dy: ev.clientY - r.top, moved: false };
+      p.style.left = r.left + 'px'; p.style.top = r.top + 'px';
+      p.style.right = 'auto'; p.style.bottom = 'auto';
+      h.classList.add('fxp-drag');
+      h.setPointerCapture && h.setPointerCapture(ev.pointerId);
+      ev.preventDefault();
+    });
+    h.addEventListener('pointermove', function (ev) {
+      if (!drag) return;
+      drag.moved = true;
+      p.style.left = (ev.clientX - drag.dx) + 'px';
+      p.style.top = (ev.clientY - drag.dy) + 'px';
+      var r = p.getBoundingClientRect();
+      var nx = Math.min(Math.max(r.left, -r.width + 90), innerWidth - 90);
+      var ny = Math.min(Math.max(r.top, 0), innerHeight - 44);
+      p.style.left = nx + 'px'; p.style.top = ny + 'px';
+    });
+    function end() { if (drag) { h.classList.remove('fxp-drag'); save(p); drag = null; } }
+    h.addEventListener('pointerup', end);
+    h.addEventListener('pointercancel', end);
+
+    h.addEventListener('dblclick', function (ev) {
+      if (ev.target.closest('button')) return;
+      defPos(p);
+      try { localStorage.removeItem(KEY); } catch (e) {}
+    });
+
+    p.addEventListener('click', function (ev) {
+      var b = ev.target.closest('button[data-a]');
+      if (!b) return;
+      if (b.dataset.a === 'mini') { p.classList.toggle('fxp-min'); save(p); }
+      if (b.dataset.a === 'reset') { defPos(p); p.classList.remove('fxp-min'); save(p); }
+    });
+
+    addEventListener('resize', function () { if (p.style.left) clamp(p); });
+  }
+
+  /* ---------- 5. 启动 ---------- */
+  function boot() {
+    var d = detect();
+    if (!d.ok) {
+      if (d.own) {
+        console.info('[调参浮窗] 本页跳过：页面自己已有贴右的可拖动参数窗，不叠第二个');
+      } else if (d.inline === 0 && d.total > 0) {
+        console.info('[调参浮窗] 本页跳过：' + d.total + ' 个滑块全在页面自己的浮窗里，没有需要搬的');
+      } else if (d.panels.length) {
+        console.info('[调参浮窗] 本页跳过：' + d.panels.length + ' 组、待浮滑块 ' +
+          d.moved + '/' + d.inline + '（判据：≤' + MAX_GROUPS + ' 组且 ≥' +
+          Math.round(MIN_SHARE * 100) + '%；已在浮窗内的 ' + (d.total - d.inline) + ' 个不计）');
+      }
+      return;
+    }
+    var p = build(d);
+    load(p);
+    wire(p);
+    console.info('[调参浮窗] 已收 ' + d.moved + '/' + d.inline + ' 个待浮滑块，' +
+      d.panels.length + ' 组（另 ' + (d.total - d.inline) + ' 个本来就在浮窗里）');
+  }
+
+  window.__FXCTL = { detect: detect, boot: boot, build: build };
+
+  if (document.readyState === 'complete') setTimeout(boot, 60);
+  else addEventListener('load', function () { setTimeout(boot, 60); });
+})();
+
+</script><!--/FXCTL:JS-->
+</body>
+</html>

@@ -1,0 +1,2268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>克拉德尼图形 · 圆盘与方盘 · 交互台</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%2312305e' stroke-width='2'/%3E%3Cpath d='M16 4v24M4 16h24' stroke='%23b4531f' stroke-width='1.6'/%3E%3C/svg%3E">
+<style>
+*{box-sizing:border-box}
+:root{
+  --bg:#fff; --bg2:#fafbfd; --ink:#16181d; --ink2:#46505f; --ink3:#7b8595;
+  --line:#e5e8ee; --line2:#d3dae5; --accent:#0b57a4; --navy:#12305e;
+  --warm:#b4531f; --good:#177245; --bad:#b3261e; --gold:#c98a1e;
+  --mono:Consolas,"Courier New",monospace;
+  --serif:Georgia,"Songti SC","Times New Roman",serif;
+}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.78 -apple-system,"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+code{background:#f3f5f9;border:1px solid #e3e7ef;border-radius:3px;padding:.5px 4px;
+  font-family:var(--mono);font-size:12.8px;color:#243040}
+.wrap{max-width:1180px;margin:0 auto;padding:0 26px 96px}
+
+/* ---------- 顶部导航 ---------- */
+.topnav{position:sticky;top:0;z-index:80;background:#0f1c2e;color:#dbe4f0;
+  box-shadow:0 1px 0 rgba(0,0,0,.15)}
+.topnav .in{max-width:1180px;margin:0 auto;padding:8px 26px;display:flex;flex-wrap:wrap;
+  gap:3px 15px;align-items:center;font-size:13px}
+.topnav .brand{color:#fff;font-weight:700;letter-spacing:.3px;margin-right:6px}
+.topnav .brand span{color:#6f8db5;font-weight:400}
+.topnav a{color:#c2d5ee;padding:2px 0;border-bottom:1px solid transparent;white-space:nowrap}
+.topnav a:hover{color:#fff;border-bottom-color:#7ea4d0;text-decoration:none}
+.topnav a.on{color:#ffd591;border-bottom-color:#ffd591}
+
+/* ---------- 页头 ---------- */
+.hero{padding:26px 0 4px}
+.kicker{font-family:var(--mono);font-size:11.6px;letter-spacing:1.6px;color:var(--warm);
+  text-transform:uppercase;margin-bottom:8px}
+h1{font-family:var(--serif);font-size:31px;line-height:1.34;margin:0 0 10px;font-weight:700;
+  letter-spacing:-.2px}
+h1 em{font-style:normal;color:var(--navy)}
+.lede{font-size:15.6px;color:var(--ink2);max-width:820px;margin:0 0 14px}
+.meta{font-size:12.6px;color:var(--ink3);font-family:var(--mono);margin-bottom:6px}
+
+h2{font-family:var(--serif);font-size:22px;margin:44px 0 12px;padding-bottom:8px;
+  border-bottom:2px solid var(--line);font-weight:700;letter-spacing:-.1px}
+h2 .no{display:inline-block;background:var(--navy);color:#fff;font-size:12.5px;font-family:var(--mono);
+  font-weight:600;border-radius:4px;padding:1px 8px;margin-right:9px;vertical-align:2px;letter-spacing:0}
+h3{font-size:16.5px;margin:24px 0 8px;color:var(--navy)}
+p{margin:9px 0}
+
+/* ---------- 盒子 ---------- */
+.box{border-radius:8px;padding:13px 17px;margin:16px 0;font-size:14.2px;line-height:1.76}
+.info{background:#f3f8ff;border:1px solid #c9dcf5;border-left:4px solid #2f6fb5}
+.ok{background:#f4faf5;border:1px solid #c6e2cc;border-left:4px solid var(--good)}
+.warn{background:#fdf6f6;border:1px solid rgba(179,38,30,.26);border-left:4px solid var(--bad)}
+.gray{background:#fafbfd;border:1px solid #e4e8f0;border-left:4px solid #b9c4d6;
+  font-size:13.4px;color:#4a5566}
+.box b{color:var(--navy)}
+.box.warn b{color:var(--bad)}
+
+/* ---------- 表 ---------- */
+table.t{border-collapse:collapse;width:100%;font-size:13.5px;margin:12px 0}
+table.t th,table.t td{border:1px solid #e2e7ef;padding:7px 10px;vertical-align:top;text-align:left}
+table.t thead th{background:#eef2f8;font-weight:600;font-size:12.8px;white-space:nowrap}
+table.t tbody tr:nth-child(even){background:#fafbfd}
+table.t td.c,table.t th.c{text-align:center}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tw table.t{min-width:560px}
+
+/* ---------- 实验台 ---------- */
+.stage-card{border:1px solid var(--line2);border-radius:14px;background:#fff;
+  box-shadow:0 2px 14px rgba(18,48,94,.07);padding:0;overflow:hidden;margin:18px 0 8px}
+.stage-head{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;
+  padding:12px 16px;background:linear-gradient(180deg,#f7f9fc,#eef2f8);border-bottom:1px solid var(--line2)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tab{border:1px solid var(--line2);background:#fff;color:var(--ink2);font-size:13px;
+  padding:5px 12px;border-radius:20px;cursor:pointer;font-family:inherit;transition:.15s}
+.tab:hover{border-color:#9fb6d4;color:var(--navy)}
+.tab.on{background:var(--navy);border-color:var(--navy);color:#fff;font-weight:600}
+.stage-body{display:grid;grid-template-columns:1fr 292px;gap:0}
+#plateBox{position:relative;background:#fbfaf7;min-height:420px}
+#plate{display:block;width:100%;height:100%;touch-action:none}
+.badge{position:absolute;left:14px;top:12px;font-family:var(--mono);font-size:11.6px;
+  color:#8a7b66;background:rgba(255,255,255,.82);border:1px solid #e6e0d4;border-radius:6px;
+  padding:3px 9px;line-height:1.6;pointer-events:none}
+.badge b{color:#5a4a33}
+.panel{border-left:1px solid var(--line2);padding:14px 16px 18px;background:#fcfdff;
+  font-size:13.2px;color:var(--ink2);max-height:100%;overflow-y:auto}
+.grp{margin-bottom:14px}
+.grp .gt{font-family:var(--mono);font-size:11px;letter-spacing:1.2px;color:var(--ink3);
+  text-transform:uppercase;margin-bottom:7px;border-bottom:1px dashed var(--line2);padding-bottom:4px}
+.row{display:flex;align-items:center;gap:9px;margin:7px 0}
+.row label{flex:0 0 62px;font-size:12.8px;color:var(--ink2)}
+.row input[type=range]{flex:1;min-width:0;accent-color:var(--navy);height:18px}
+.row .v{flex:0 0 46px;margin-left:3px;text-align:right;font-family:var(--mono);font-size:12.4px;color:var(--warm)}
+.btnrow{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.btn{border:1px solid var(--line2);background:#fff;border-radius:6px;padding:5px 10px;
+  font-size:12.4px;cursor:pointer;color:var(--ink2);font-family:inherit;transition:.14s}
+.btn:hover{border-color:#9fb6d4;color:var(--navy);background:#f6f9fe}
+.btn.pri{background:var(--navy);border-color:var(--navy);color:#fff}
+.btn.pri:hover{background:#1b4478;color:#fff}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.readout{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:2px}
+.ro{background:#f5f7fb;border:1px solid var(--line);border-radius:7px;padding:6px 8px}
+.ro .k{font-size:10.6px;color:var(--ink3);letter-spacing:.4px}
+.ro .n{font-family:var(--mono);font-size:13.6px;color:var(--navy);line-height:1.4;white-space:nowrap}
+.ro .n small{font-size:10.5px;color:var(--ink3);font-family:inherit}
+.swatches{display:flex;gap:7px}
+.sw{width:22px;height:22px;border-radius:50%;border:2px solid #fff;
+  box-shadow:0 0 0 1px var(--line2);cursor:pointer}
+.sw.on{box-shadow:0 0 0 2px var(--navy)}
+.chk{display:flex;align-items:center;gap:7px;margin:6px 0;font-size:12.8px;cursor:pointer}
+.chk input{accent-color:var(--navy)}
+
+/* ---------- 画廊 ---------- */
+.gal{display:grid;gap:9px;margin:14px 0 6px}
+.gal.sq{grid-template-columns:repeat(5,minmax(0,1fr))}
+.gal.ci{grid-template-columns:repeat(5,minmax(0,1fr))}
+.cell{border:1px solid var(--line2);border-radius:9px;overflow:hidden;background:#fff;cursor:pointer;
+  transition:.15s;position:relative;padding:0}
+.cell:hover{border-color:#8aa8cd;box-shadow:0 3px 12px rgba(18,48,94,.16);transform:translateY(-1px)}
+.cell.cur{border-color:var(--warm);box-shadow:0 0 0 2px rgba(180,83,31,.3)}
+.cell.dim{opacity:.34;cursor:not-allowed;filter:grayscale(.55)}
+.cell canvas{display:block;width:100%;height:auto;background:#1b1916}
+.cell .cap{font-size:10.8px;font-family:var(--mono);color:var(--ink3);text-align:center;
+  padding:3px 2px 4px;background:#fff;line-height:1.5}
+.cell .cap b{color:var(--navy);font-weight:600}
+.cell .tip{position:absolute;top:5px;right:6px;font-size:10px;background:#fff;color:#b4531f;
+  border:1px solid #e6d8c6;border-radius:4px;padding:0 4px;line-height:15px;font-family:var(--mono);
+  box-shadow:0 1px 3px rgba(0,0,0,.3)}
+/* ---------- 原图（书页照片）格 ---------- */
+.cell img{display:block;width:100%;height:auto;aspect-ratio:1/1;object-fit:cover;background:#131110}
+.cell.ph .num{position:absolute;top:4px;left:5px;font-family:var(--mono);font-size:9.6px;
+  color:#f2e8d6;background:rgba(0,0,0,.55);border-radius:3px;padding:0 4px;line-height:14px}
+.cell.ph .cf{position:absolute;top:4px;right:5px;width:8px;height:8px;border-radius:50%;
+  box-shadow:0 0 0 1.5px rgba(0,0,0,.45)}
+.cf.a{background:#2f9e5f}.cf.b{background:#d99a25}.cf.c{background:#98a2b3}
+.gal.p55{grid-template-columns:repeat(8,minmax(0,1fr));gap:6px}
+.gal.p55 .cell .cap{font-size:9.4px;padding:1px 0 2px}
+.cell.ph.ref{cursor:zoom-in}
+.cell.occ::after{content:'被原截图按钮压住';position:absolute;left:0;right:0;bottom:0;
+  background:rgba(150,74,20,.86);color:#fff;font-size:9px;text-align:center;padding:1px 0;
+  font-family:var(--mono)}
+.cell.occ img{opacity:.55}
+/* ---------- 反推表 ---------- */
+.calt{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;font-size:13px;color:var(--ink2);
+  background:#f5f7fb;border:1px solid var(--line2);border-radius:9px;padding:11px 15px;margin:14px 0 4px}
+.calt label{font-family:var(--mono);font-size:12.4px;color:var(--ink3)}
+.calt input[type=number]{width:78px;border:1px solid #cdd6e3;border-radius:5px;padding:3px 6px;
+  font-family:var(--mono);font-size:13px;color:var(--navy);background:#fff}
+.calt b{font-family:var(--mono);color:var(--warm);font-weight:600}
+table.rev td.hz{font-family:var(--mono);font-weight:700;color:var(--navy);white-space:nowrap}
+table.rev td.cf{text-align:center;font-family:var(--mono);font-size:11.4px;white-space:nowrap}
+table.rev tr.lo{color:#8b95a5}
+table.rev img{width:52px;height:52px;border-radius:6px;display:block;object-fit:cover}
+
+/* ---------- 图例 / 小标记 ---------- */
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:12.4px;color:var(--ink3);
+  margin-top:8px;font-family:var(--mono)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;
+  vertical-align:-2px;border:1px solid rgba(0,0,0,.15)}
+
+details.math{border:1px solid var(--line);border-radius:9px;padding:10px 15px;margin:14px 0;
+  background:var(--bg2);font-size:13.8px}
+details.math summary{cursor:pointer;font-weight:600;color:var(--navy);font-size:14px}
+details.math[open] summary{margin-bottom:8px;border-bottom:1px dashed var(--line2);padding-bottom:6px}
+.eq{font-family:var(--mono);font-size:13.4px;background:#fff;border:1px solid var(--line);
+  border-radius:6px;padding:9px 12px;margin:9px 0;overflow-x:auto;color:#22303f;line-height:1.9}
+.eq b{color:var(--warm);font-weight:600}
+
+/* ---------- MD 卡片 ---------- */
+.mdcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(258px,1fr));gap:12px;margin:16px 0}
+.mdcard{border:1px solid var(--line2);border-radius:10px;padding:13px 15px;background:#fff;
+  transition:.15s;display:block}
+.mdcard:hover{border-color:#8aa8cd;box-shadow:0 3px 14px rgba(18,48,94,.13);text-decoration:none}
+.mdcard .ic{font-family:var(--mono);font-size:10.4px;color:var(--warm);letter-spacing:1px}
+.mdcard .ti{font-weight:700;color:var(--navy);font-size:14.4px;margin:3px 0 5px;line-height:1.5}
+.mdcard .ds{font-size:12.7px;color:var(--ink3);line-height:1.7}
+.mdcard .fn{font-family:var(--mono);font-size:10.8px;color:#9aa5b4;margin-top:7px;
+  word-break:break-all}
+
+.foot{margin-top:60px;padding-top:15px;border-top:1px solid var(--line);color:var(--ink3);
+  font-size:12.4px;line-height:1.9}
+.foot code{font-size:11.6px}
+
+@media(max-width:1000px){
+  .stage-body{grid-template-columns:1fr}
+  .panel{border-left:none;border-top:1px solid var(--line2)}
+}
+@media(max-width:430px){
+  .gal.p55{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media(max-width:680px){
+  .wrap{padding:0 15px 70px}
+  h1{font-size:24px}
+  h2{font-size:19px}
+  .gal.sq,.gal.ci{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .gal.p55{grid-template-columns:repeat(5,minmax(0,1fr))}
+  .calt{gap:6px 14px;font-size:12.4px}
+  .calt input[type=number]{width:64px}
+  #plateBox{min-height:320px}
+  .topnav .in{padding:7px 15px;font-size:12.2px}
+}
+</style>
+<!--FXCTL:CSS--><style id="fxctl-css">
+/* ============================================================
+   PKS · 通用「调参浮窗」样式  (float_ctl.css)
+   白底 / 深蓝强调 / 与 site.css 变量兼容（变量缺失时有兜底色）
+   面板不接管页面原有控件样式，只在自己作用域内统一外观
+   ============================================================ */
+#fxp{
+  position:fixed; z-index:840; top:84px; right:16px;
+  width:322px; max-height:calc(100vh - 118px);
+  display:flex; flex-direction:column;
+  background:#fff; border:1px solid #cfd6e0; border-radius:12px;
+  box-shadow:0 2px 6px rgba(18,22,28,.08), 0 14px 40px rgba(18,22,28,.14);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:13px; color:#12161c; line-height:1.55;
+  -webkit-user-select:none; user-select:none;
+}
+#fxp.fxp-min{ width:auto; min-width:150px; }
+#fxp.fxp-min .fxp-bd{ display:none; }
+#fxp.fxp-min .fxp-c{ display:none; }
+
+/* 标题栏（拖动手柄） */
+#fxp .fxp-h{
+  display:flex; align-items:center; gap:7px;
+  padding:8px 10px 8px 9px; cursor:grab; touch-action:none;
+  border-bottom:1px solid #e6eaf0; border-radius:12px 12px 0 0;
+  background:linear-gradient(#fbfcfe,#f4f7fb);
+}
+#fxp.fxp-min .fxp-h{ border-bottom:0; border-radius:12px; }
+#fxp .fxp-h.fxp-drag{ cursor:grabbing; }
+#fxp .fxp-grip{ color:#9aa6b6; font-size:13px; letter-spacing:0 }
+#fxp .fxp-t{
+  font-family:Georgia,"Times New Roman","Songti SC",serif;
+  font-weight:700; font-size:14.5px; color:#0d2f63; letter-spacing:.2px;
+}
+#fxp .fxp-c{ font-family:Consolas,monospace; font-size:11px; color:#6b7683; margin-left:auto; white-space:nowrap }
+#fxp .fxp-h.fxp-mini-open .fxp-c{ margin-left:6px }
+#fxp .fxp-b{
+  width:22px; height:22px; padding:0; flex:0 0 22px;
+  border:1px solid #cfd6e0; background:#fff; border-radius:6px;
+  color:#3b4552; font-size:12px; line-height:1; cursor:pointer;
+}
+#fxp .fxp-b:hover{ border-color:#1b4f9c; color:#1b4f9c; background:#f4f7fb }
+#fxp .fxp-b:first-of-type{ margin-left:6px }
+
+/* 面板主体 */
+#fxp .fxp-bd{
+  padding:4px 12px 12px; overflow-y:auto; overflow-x:hidden;
+  -webkit-user-select:auto; user-select:auto;
+}
+#fxp .fxp-bd::-webkit-scrollbar{ width:8px }
+#fxp .fxp-bd::-webkit-scrollbar-thumb{ background:#d7dee8; border-radius:4px }
+#fxp .fxp-bd::-webkit-scrollbar-track{ background:transparent }
+
+/* 分组 */
+#fxp .fxp-grp{ padding:9px 0 3px }
+#fxp .fxp-grp + .fxp-grp{ border-top:1px dashed #e6eaf0; margin-top:3px }
+#fxp .fxp-gl{
+  font-family:Consolas,monospace; font-size:10.5px; letter-spacing:.04em;
+  color:#6b7683; margin:0 0 7px; display:flex; align-items:baseline; gap:6px;
+}
+#fxp .fxp-gl b{ color:#1b4f9c; font-weight:600; font-size:11px }
+#fxp .fxp-gl i{ font-style:normal; color:#9aa6b6 }
+
+/* 控件统一外观：覆盖被搬进来的块，不依赖原页面 .viz .ctl 之类选择器 */
+#fxp .ctl, #fxp .ctrl, #fxp .controls, #fxp .calc, #fxp .panel, #fxp .param-panel{
+  display:block; margin:0; padding:0; border:0; background:none; box-shadow:none;
+  width:auto; max-width:none; position:static; float:none;
+}
+#fxp .ctl > *, #fxp .ctrl > *, #fxp .controls > *, #fxp .panel > *, #fxp .calc > *{ margin-bottom:9px }
+#fxp .ctl > *:last-child, #fxp .ctrl > *:last-child,
+#fxp .controls > *:last-child, #fxp .panel > *:last-child, #fxp .calc > *:last-child{ margin-bottom:0 }
+
+/* label 行：文字在上、滑块占满整行 */
+#fxp label, #fxp .row, #fxp .prow, #fxp .slider{
+  display:flex; flex-wrap:wrap; align-items:center; gap:3px 8px;
+  width:100%; margin:0 0 10px; font-size:12.6px; color:#3b4552;
+}
+#fxp label > span, #fxp .row > span{ flex:0 0 auto }
+#fxp input[type=range]{
+  -webkit-appearance:none; appearance:none; order:3;
+  /* ⚠ 不能用 flex:0 0 100%：父级 label.row 是 align-items:center 的 flex 行，
+     交叉轴会把 input 压成 track 的 3px 高（实测 offsetHeight=3），滑块几乎被裁掉。
+     flex:none + width:100% 一样能独占一行，且高度稳定 16px。 */
+  flex:none; width:100%; min-width:90px; height:16px; margin:1px 0 0;
+  background:transparent; cursor:pointer; accent-color:#1b4f9c;
+}
+#fxp input[type=range]::-webkit-slider-runnable-track{
+  height:3px; background:#dbe2ec; border-radius:2px;
+}
+#fxp input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:13px; height:13px; margin-top:-5px;
+  background:#1b4f9c; border:2px solid #fff; border-radius:50%;
+  box-shadow:0 1px 3px rgba(18,22,28,.28);
+}
+#fxp input[type=range]:focus{ outline:none }
+#fxp input[type=range]:focus::-webkit-slider-thumb{ box-shadow:0 0 0 3px rgba(27,79,156,.18) }
+
+/* 数值 */
+#fxp .val, #fxp .v, #fxp output, #fxp .num{
+  font-family:Consolas,monospace; font-size:12px; color:#b4531f;
+  min-width:0; margin-left:auto; white-space:nowrap; order:2;
+}
+
+/* 按钮 */
+#fxp button{
+  font-family:Consolas,monospace; font-size:11.5px; padding:4px 9px;
+  border:1px solid #cfd6e0; background:#fff; color:#3b4552;
+  border-radius:7px; cursor:pointer; margin:0 5px 5px 0;
+}
+#fxp button:hover{ border-color:#1b4f9c; color:#1b4f9c; background:#f4f7fb }
+
+/* .lab / .hint / .presets（aizawa / 黄金蛋 那一族的行结构） */
+#fxp .lab{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:8px; width:100%; order:1; font-size:12.6px; color:#3b4552;
+}
+#fxp .lab .v{ margin-left:auto }
+#fxp .hint{
+  order:4; width:100%; margin:3px 0 0; font-size:11.2px; line-height:1.5;
+  color:#6b7683;
+}
+#fxp .presets{ order:5; width:100%; display:flex; flex-wrap:wrap; gap:5px; margin-top:5px }
+#fxp .presets button{ margin:0 }
+#fxp .gt{
+  font-family:Georgia,"Songti SC",serif; font-size:12.8px; font-weight:700;
+  color:#0d2f63; margin:2px 0 8px;
+}
+#fxp .grp > .gt:first-child{ margin-top:0 }
+
+#fxp button.on, #fxp button.active{ background:#1b4f9c; border-color:#1b4f9c; color:#fff }
+#fxp select{
+  font-family:inherit; font-size:12px; padding:3px 6px; max-width:100%;
+  border:1px solid #cfd6e0; border-radius:6px; background:#fff; color:#12161c;
+}
+#fxp input[type=text], #fxp input[type=number]{
+  font-family:Consolas,monospace; font-size:12px; width:78px; padding:3px 6px;
+  border:1px solid #cfd6e0; border-radius:6px;
+}
+#fxp input[type=checkbox]{ accent-color:#1b4f9c; margin-right:2px }
+
+/* 原位置留下的提示 */
+.fxp-note{
+  margin:10px 0 0; padding:5px 9px; font-size:11.8px; color:#6b7683;
+  font-family:Consolas,monospace; background:#f6f8fb;
+  border:1px dashed #d7dee8; border-radius:6px;
+}
+.fxp-note::before{ content:"⇱ "; color:#1b4f9c }
+
+/* 窄屏：底部抽屉式，不再遮挡图 */
+@media (max-width:880px){
+  #fxp{
+    top:auto; bottom:0; right:0; left:0; width:auto;
+    max-height:52vh; border-radius:12px 12px 0 0;
+    border-left:0; border-right:0; border-bottom:0;
+  }
+  #fxp .fxp-h{ cursor:default; border-radius:12px 12px 0 0 }
+  #fxp.fxp-min{ left:auto; right:10px; bottom:10px; border:1px solid #cfd6e0; border-radius:12px }
+}
+@media print{ #fxp{ display:none !important } }
+
+/* ============================================================
+   暗色主题皮肤（2026-10-19 老师：Anu 主界面是暗底，浮窗却是白底，割裂）
+   触发条件：页面 <body> 或 <html> 自己声明了暗色
+     body.theme-dark / body.dark / body.theme-night
+     html[data-theme="dark"] / body[data-theme="dark"]
+   只做覆盖，不改上面的默认（白底）规则 —— 明色页面完全不受影响。
+   配色取自 anu.css 的 --panel/--line/--text/--accent，保持同源。
+   ============================================================ */
+body.theme-dark #fxp, body.dark #fxp, body.theme-night #fxp,
+html[data-theme="dark"] #fxp, body[data-theme="dark"] #fxp{
+  background:#0e1420; border-color:#22304a;
+  box-shadow:0 2px 8px rgba(0,0,0,.45), 0 18px 48px rgba(0,0,0,.55);
+  color:#e6edf8;
+}
+body.theme-dark #fxp .fxp-h, body.dark #fxp .fxp-h, body.theme-night #fxp .fxp-h,
+html[data-theme="dark"] #fxp .fxp-h, body[data-theme="dark"] #fxp .fxp-h{
+  background:linear-gradient(#182233,#111826); border-bottom-color:#22304a;
+}
+body.theme-dark #fxp .fxp-grip, body.dark #fxp .fxp-grip, body.theme-night #fxp .fxp-grip{
+  color:#5d7093;
+}
+body.theme-dark #fxp .fxp-t, body.dark #fxp .fxp-t, body.theme-night #fxp .fxp-t,
+html[data-theme="dark"] #fxp .fxp-t, body[data-theme="dark"] #fxp .fxp-t{
+  color:#cddcff;
+}
+body.theme-dark #fxp .fxp-c, body.dark #fxp .fxp-c, body.theme-night #fxp .fxp-c{
+  color:#6b7f9e;
+}
+body.theme-dark #fxp .fxp-b, body.dark #fxp .fxp-b, body.theme-night #fxp .fxp-b,
+html[data-theme="dark"] #fxp .fxp-b, body[data-theme="dark"] #fxp .fxp-b{
+  background:#141c2b; border-color:#22304a; color:#a9bad6;
+}
+body.theme-dark #fxp .fxp-b:hover, body.dark #fxp .fxp-b:hover, body.theme-night #fxp .fxp-b:hover{
+  background:#1b2740; border-color:#4d7cff; color:#cddcff;
+}
+body.theme-dark #fxp .fxp-bd::-webkit-scrollbar-thumb,
+body.dark #fxp .fxp-bd::-webkit-scrollbar-thumb,
+body.theme-night #fxp .fxp-bd::-webkit-scrollbar-thumb{
+  background:#26334c;
+}
+body.theme-dark #fxp .fxp-grp + .fxp-grp, body.dark #fxp .fxp-grp + .fxp-grp,
+body.theme-night #fxp .fxp-grp + .fxp-grp{ border-top-color:#1e2a3f }
+body.theme-dark #fxp .fxp-gl, body.dark #fxp .fxp-gl, body.theme-night #fxp .fxp-gl{
+  color:#7d90ae;
+}
+body.theme-dark #fxp .fxp-gl b, body.dark #fxp .fxp-gl b, body.theme-night #fxp .fxp-gl b{
+  color:#7ea6ff;
+}
+body.theme-dark #fxp .fxp-gl i, body.dark #fxp .fxp-gl i, body.theme-night #fxp .fxp-gl i{
+  color:#5d7093;
+}
+body.theme-dark #fxp label, body.theme-dark #fxp .row, body.theme-dark #fxp .prow,
+body.theme-dark #fxp .slider, body.dark #fxp label, body.dark #fxp .row,
+body.dark #fxp .prow, body.dark #fxp .slider,
+body.theme-night #fxp label, body.theme-night #fxp .row,
+body.theme-night #fxp .prow, body.theme-night #fxp .slider{
+  color:#b9c8e0;
+}
+body.theme-dark #fxp input[type=range]::-webkit-slider-runnable-track,
+body.dark #fxp input[type=range]::-webkit-slider-runnable-track,
+body.theme-night #fxp input[type=range]::-webkit-slider-runnable-track{
+  background:#31425f;                    /* 不能贴地色，否则轨道看不见、只剩一个蓝点 */
+}
+body.theme-dark #fxp input[type=range]::-webkit-slider-thumb,
+body.dark #fxp input[type=range]::-webkit-slider-thumb,
+body.theme-night #fxp input[type=range]::-webkit-slider-thumb{
+  background:#4d7cff; border-color:#0e1420;
+  box-shadow:0 1px 3px rgba(0,0,0,.6);
+}
+body.theme-dark #fxp input[type=range]:focus::-webkit-slider-thumb,
+body.dark #fxp input[type=range]:focus::-webkit-slider-thumb{
+  box-shadow:0 0 0 3px rgba(77,124,255,.28);
+}
+body.theme-dark #fxp .val, body.theme-dark #fxp .v, body.theme-dark #fxp output,
+body.theme-dark #fxp .num, body.dark #fxp .val, body.dark #fxp .v,
+body.dark #fxp output, body.dark #fxp .num,
+body.theme-night #fxp .val, body.theme-night #fxp .v,
+body.theme-night #fxp output, body.theme-night #fxp .num{
+  color:#ffc861;                      /* 与页面 --gold 同源 */
+}
+body.theme-dark #fxp button, body.dark #fxp button, body.theme-night #fxp button,
+html[data-theme="dark"] #fxp button, body[data-theme="dark"] #fxp button{
+  background:#141c2b; border-color:#22304a; color:#b9c8e0;
+}
+body.theme-dark #fxp button:hover, body.dark #fxp button:hover,
+body.theme-night #fxp button:hover{
+  background:#1b2740; border-color:#4d7cff; color:#cddcff;
+}
+body.theme-dark #fxp button.on, body.theme-dark #fxp button.active,
+body.dark #fxp button.on, body.dark #fxp button.active,
+body.theme-night #fxp button.on, body.theme-night #fxp button.active{
+  background:#2f6fe0; border-color:#2f6fe0; color:#fff;
+}
+body.theme-dark #fxp .lab, body.dark #fxp .lab, body.theme-night #fxp .lab{
+  color:#b9c8e0;
+}
+body.theme-dark #fxp .hint, body.dark #fxp .hint, body.theme-night #fxp .hint{
+  color:#7d90ae;
+}
+body.theme-dark #fxp .gt, body.dark #fxp .gt, body.theme-night #fxp .gt,
+html[data-theme="dark"] #fxp .gt, body[data-theme="dark"] #fxp .gt{
+  color:#cddcff;
+}
+body.theme-dark #fxp select, body.dark #fxp select, body.theme-night #fxp select,
+body.theme-dark #fxp input[type=text], body.theme-dark #fxp input[type=number],
+body.dark #fxp input[type=text], body.dark #fxp input[type=number],
+body.theme-night #fxp input[type=text], body.theme-night #fxp input[type=number]{
+  background:#0b1019; border-color:#22304a; color:#e6edf8;
+}
+body.theme-dark .fxp-note, body.dark .fxp-note, body.theme-night .fxp-note{
+  background:#111826; border-color:#22304a; color:#7d90ae;
+}
+body.theme-dark .fxp-note::before, body.dark .fxp-note::before,
+body.theme-night .fxp-note::before{ color:#7ea6ff }
+
+/* 暗色下的窄屏抽屉边框 */
+@media (max-width:880px){
+  body.theme-dark #fxp.fxp-min, body.dark #fxp.fxp-min, body.theme-night #fxp.fxp-min{
+    border-color:#22304a;
+  }
+}
+
+</style><!--/FXCTL:CSS-->
+</head>
+<body>
+
+<div class="topnav"><div class="in">
+  <span class="brand">克拉德尼图形 <span>/ Chladni</span></span>
+  <a href="#s1" class="on">① 两族板</a>
+  <a href="#s2">② 实验台</a>
+  <a href="#s3">③ 砂粒物理</a>
+  <a href="#s4">④ 方盘图版</a>
+  <a href="#s5">⑤ 圆花反推</a>
+  <a href="#s6">⑥ 频率</a>
+  <a href="#s7">⑦ 模型边界</a>
+  <a href="#s8">⑧ 资源清单</a>
+  <a href="#s9">⑨ 笔记</a>
+</div></div>
+
+<div class="wrap">
+
+<div class="hero">
+  <div class="kicker">Cymatics · Chladni Figures · 2026-10-18</div>
+  <h1>克拉德尼图形：<em>圆盘与方盘是两族不同的函数</em>，不是同一块板换个形状</h1>
+  <p class="lede">砂粒在振动板上的花纹，1787 年由克拉德尼（Ernst Chladni）系统记录，两百多年后成了声学、
+  乐器制作、乃至"声致图形（cymatics）"的入门实验。本页把两族板的本征函数、砂粒为什么会停在节线上、
+  以及一个能真正跑起来的交互台放在一起——<b>公式是真的解，砂粒是真的在梯度上下坡</b>，
+  不是滤镜。</p>
+  <div class="meta">源：元宝对话《Chladni 圆盘方盘仿真程序 GitHub 资源》 yb.tencent.com/s/lyHdMfYTtkbH ｜ 提问原文："这本书内容关于 chladni 圆盘和方盘分两种实验，类型不一样节点图纹，是否有在 GitHub 下载到现成的仿真程序项目呢？"</div>
+</div>
+
+<!-- ==================== ① ==================== -->
+<h2 id="s1"><span class="no">01</span>两族板：从"换个形状"到"换一套函数"</h2>
+
+<p>老师的书里把这件事分成两种实验，这个分法是对的，而且比"圆的和方的"要深一层。振动板的花纹由
+<b>板的本征函数</b>决定，而本征函数的形式完全由坐标系的<b>可分离性</b>决定：</p>
+
+<div class="tw">
+<table class="t">
+<thead><tr><th style="width:14%">　</th><th style="width:43%">方盘（矩形 / 正方形）</th><th style="width:43%">圆盘</th></tr></thead>
+<tbody>
+<tr><td><b>坐标系</b></td><td>直角坐标 (x, y)，x、y 方向各自独立</td><td>极坐标 (r, θ)，径向与角向分开</td></tr>
+<tr><td><b>本征函数</b></td>
+  <td><code>w = cos(nπx)·cos(mπy) ± cos(mπx)·cos(nπy)</code><br>
+      <span style="color:#7b8595;font-size:12.6px">两项之和 = "和式"（sum），之差 = "差式"（difference）</span></td>
+  <td><code>w = J<sub>n</sub>(k·r)·cos(nθ)</code>，<code>k = j′<sub>n,s</sub>/R</code><br>
+      <span style="color:#7b8595;font-size:12.6px">J<sub>n</sub> 是第一类贝塞尔函数；j′ 是 J<sub>n</sub>′ 的第 s 个零点</span></td></tr>
+<tr><td><b>节线长相</b></td>
+  <td><b>直线族</b>：一组近乎平行的横线 + 一组竖线，交叉成网格；差式则变成"斜向十字 + 边缘弧"。
+      所有节线都<b>通到板边</b>。</td>
+  <td><b>辐条 + 同心圆</b>：n 条过圆心的直径（辐条），加若干个同心节圆。
+      n=0 时一条辐条也没有，只剩圆环——这就是书里那一列"纯圈"。</td></tr>
+<tr><td><b>退化 / 陷阱</b></td>
+  <td><b>n = m 时差式恒等于 0</b>（两项相消），<b>整个板不振</b>。所以 5×5 表里那条对角线必须标灰，
+      不能画。另外 (n,m) 与 (m,n) 图像完全一样（差式只差一个负号），表是沿对角线镜像对称的。</td>
+  <td><b>n=0 时 cos(0·θ)=1</b>，角向信息全丢，只剩径向；这是合法的，不是 bug。
+      另外 J<sub>n</sub>′ 在原点有个零（n≥2 时），扫零点要从 r&gt;0 开始，不然会算出 k=0 的"整板平移"。</td></tr>
+<tr><td><b>频率标度</b></td>
+  <td>简支边界下 <code>f ∝ n² + m²</code>；自由边要用 cos/cosh 组合，标度偏移但趋势相同。</td>
+  <td><code>f ∝ (j′<sub>n,s</sub>)²</code>。这是 <b>k²</b> 关系（板弯曲波是色散的，ω ∝ k²），
+      不是弦的 ω ∝ k。</td></tr>
+<tr><td><b>书里对应</b></td>
+  <td>n, m = 1…5 的 <b>5×5 表</b>（本页 §04）</td>
+  <td>3 行 × 5 列 = <b>15 个圆花</b>（本页 §05，对应 p.48）</td></tr>
+</tbody></table>
+</div>
+
+<div class="box info">
+<b>一句话记住差别：</b>方盘的节线是"直的被边界截断"，圆盘的节线是"圆的和辐射的"。
+它们不能互相近似——把方盘做圆，不会得到圆盘的花纹；把圆盘做大，也不会出现网格。
+原因是这两族函数的<b>正交基不同</b>，不是同一个解的两种画法。
+</div>
+
+<!-- ==================== ② ==================== -->
+<h2 id="s2"><span class="no">02</span>实验台（真算，不是贴图）</h2>
+
+<p>下面这块板是实时的：改模态立刻重算振幅场，砂粒每帧沿 <b>−∇(A²)</b> 下坡、带着与局部振幅成正比的
+随机扰动，最后停在节线上。<b>没有一张预渲染的图</b>。</p>
+
+<div class="stage-card">
+  <div class="stage-head">
+    <div class="tabs">
+      <button class="tab on" data-mode="sq-sum">方盘 · 和式</button>
+      <button class="tab" data-mode="sq-diff">方盘 · 差式</button>
+      <button class="tab" data-mode="ci">圆膜 · Bessel</button>
+    </div>
+    <div class="tabs">
+      <button class="btn" id="btnReset">重撒砂</button>
+      <button class="btn" id="btnTone">播放音调</button>
+      <button class="btn" id="btnTour">扫频巡演</button>
+      <button class="btn pri" id="btnPng">导出 PNG</button>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div id="plateBox">
+      <canvas id="plate"></canvas>
+      <div class="badge" id="badge">方盘 · 和式 · n=3, m=5</div>
+    </div>
+    <div class="panel">
+      <div class="grp" id="grpSq">
+        <div class="gt">方盘 · 节线数</div>
+        <div class="row"><label>n（竖）</label><input type="range" id="rn" min="1" max="8" step="1" value="3"><span class="v" id="vn">3</span></div>
+        <div class="row"><label>m（横）</label><input type="range" id="rm" min="1" max="8" step="1" value="5"><span class="v" id="vm">5</span></div>
+      </div>
+      <div class="grp" id="grpCi" style="display:none">
+        <div class="gt">圆 · 辐条 / 节圆</div>
+        <div class="row"><label>n 辐条</label><input type="range" id="rcn" min="0" max="6" step="1" value="2"><span class="v" id="vcn">2</span></div>
+        <div class="row"><label>s 径向阶</label><input type="range" id="rcs" min="1" max="4" step="1" value="1"><span class="v" id="vcs">1</span></div>
+        <label class="chk"><input type="checkbox" id="ckMem" checked>夹紧边（膜 · 书 p.48 的 eidophone）</label>
+        <div class="row"><label>膜速 c</label><input type="range" id="rcm" min="10" max="80" step="0.5" value="34.2"><span class="v" id="vcm">34.2</span></div>
+      </div>
+      <div class="grp">
+        <div class="gt">板与砂</div>
+        <div class="row"><label>板尺寸</label><input type="range" id="rL" min="150" max="500" step="10" value="300"><span class="v" id="vL">300</span></div>
+        <div class="row"><label>板厚</label><input type="range" id="rh" min="0.3" max="3" step="0.1" value="1"><span class="v" id="vh">1.0</span></div>
+        <div class="row" style="margin-top:9px"><label>砂色</label>
+          <div class="swatches">
+            <div class="sw on" data-sand="#e9d6a6" style="background:#e9d6a6" title="河砂"></div>
+            <div class="sw" data-sand="#f4f1ea" style="background:#f4f1ea" title="白砂"></div>
+            <div class="sw" data-sand="#b9762f" style="background:#b9762f" title="铜粉"></div>
+            <div class="sw" data-sand="#7fd0c0" style="background:#7fd0c0" title="荧光砂"></div>
+          </div>
+        </div>
+        <label class="chk"><input type="checkbox" id="ckAnti">砂粒堆<b>腹点</b>（膜 / 气流口径，书 p.48 那 15 张）</label>
+        <label class="chk"><input type="checkbox" id="ckLine" checked>叠加节线（理论 0 线）</label>
+        <label class="chk"><input type="checkbox" id="ckField" checked>显示振幅底纹</label>
+      </div>
+      <div class="grp">
+        <div class="gt">读数</div>
+        <div class="readout">
+          <div class="ro"><div class="k">模态</div><div class="n" id="roMode">3,5</div></div>
+          <div class="ro"><div class="k">频率 f</div><div class="n" id="roF">— <small>Hz</small></div></div>
+          <div class="ro"><div class="k">波数 k</div><div class="n" id="roK">— <small>1/m</small></div></div>
+          <div class="ro"><div class="k">节线占比</div><div class="n" id="roNode">— <small>%</small></div></div>
+        </div>
+        <div class="ro" style="margin-top:6px"><div class="k">砂粒平均振幅（越小越收敛）</div>
+          <div class="n" id="roConv">—</div></div>
+      </div>
+      <div class="box gray" style="margin:10px 0 0;padding:9px 11px;font-size:12px">
+        钢：E=200 GPa，ν=0.30，ρ=7850 kg/m³。频率按基尔霍夫薄板理论算，<b>是理论值，不是出厂标定值</b>。
+      </div>
+    </div>
+  </div>
+</div>
+<div class="legend">
+  <span><i style="background:#1b1916"></i>板面</span>
+  <span><i style="background:#e9d6a6"></i>砂（停在节线）</span>
+  <span><i style="background:#4fb0f0"></i>理论节线</span>
+  <span>拖动滑块改模态 → 花纹即时重算</span>
+</div>
+
+<!-- ==================== ③ ==================== -->
+<h2 id="s3"><span class="no">03</span>砂粒为什么停在节线：它是被"赶"出去的，不是被"吸"过去的</h2>
+
+<p>很多人第一反应的图景是"节点像磁铁把砂吸住"，这是反的。<b>节线上板根本不动</b>，砂粒在那里只是
+没有理由离开；而波腹处板动得最猛，砂粒被弹得最高，落地时就不一定回原位了。净效果是<b>从波腹向节线
+输运</b>。</p>
+
+<p>定量的说法：板上一点 (x,y) 的加速度幅值是 <code>a(x,y) = ω²·A(x,y)</code>。砂粒每次"跳起—落下"的
+水平漂移量与局部加速度的<b>梯度</b>成正比，取时间平均后就是一个确定性的漂移速度：</p>
+
+<div class="eq">v<sub>drift</sub> ∝ −∇(A²)　　　　（砂粒朝振幅平方下降最快的方向走）</div>
+
+<p>注意是 <b>A²</b> 而不是 A。这一点在代码里差不了几行，但物理上决定了"节线附近收敛得多快"：
+A² 的梯度在 A 小的地方也小，所以砂粒靠近节线时会自己减速，不会冲过头来回震荡。</p>
+
+<p>本页的粒子循环就三行核心：</p>
+<div class="eq">g = ∇(A²)[p]　→　p −= K·g　→　p += ξ·A(p)</div>
+
+<p>第三行 <code>ξ·A(p)</code> 是随机项，<b>强度正比于该点振幅</b>——这是让模拟"像真的"的关键。
+如果噪声是均匀的，砂粒会被随机游走慢慢糊满整块板，节线永远是毛的；只有"振幅大→跳得乱、振幅小→
+几乎不动"，砂粒才能真的<b>停在</b>线上。这条规则在所有像样的克拉德尼模拟里都能找到
+（例如 <code>evoluteur/cymatics</code> 的 README 就写明了这个思路）。</p>
+
+<div class="box ok">
+<b>可自己验的一件事：</b>把"板厚"从 1.0 mm 调到 3.0 mm，频率会涨 3 倍（f ∝ h），
+但<b>花纹一模一样</b>——因为节线位置只由 n,m（或 n,s）决定，与频率无关。这正是实验里
+"加厚板子只能改音高、改不了图样"的原因。<b>要改图样，只能改驱动频率去命中另一个模态。</b>
+</div>
+
+<div class="box warn">
+<b>但上面这套"粉落节线"只对<b>板</b>成立。</b>书 p.48 那台 eidophone（绷膜 + 侧管）是<b>气泵</b>：
+粉被气流带走，堆在<b>振动最大</b>的地方，也就是<b>腹点</b>。所以本页多了一个开关
+——<b>"砂粒堆腹点（膜/气流口径）"</b>，勾上以后粒子的运动方向整支反过来（沿 +∇(A²) 上坡，
+到振幅 >0.94 处粘住）。
+<p style="margin:8px 0 0">怎么判断该用哪个？看照片：<b>粉堆成"团"的地方是腹点，粉铺成"细线"的地方是节线</b>。
+书里 p.55 的方板图是细白线 → 节线；p.48 的圆花是成团的亮块 → 腹点。
+第 07 格（只有一个中心大堆）是决定性证据：基模没有内部节线，正中间只可能是腹点。</p>
+</div>
+
+<!-- ==================== ④ ==================== -->
+<h2 id="s4"><span class="no">04</span>方盘画廊 · n,m = 1…5 的 5×5 表</h2>
+
+<p>对应书里的第一组图版。点任意一格直接送进上面的实验台。表会跟着当前是"和式"还是"差式"重画——
+<b>这是两套不同的图，不能混着看</b>。</p>
+
+<div class="gal sq" id="galSq"></div>
+<div class="legend">
+  <span>灰格 = <b>n=m 差式退化</b>（恒为 0，物理上不振）</span>
+  <span>右上角 <code>≡</code> = 与对角线另一侧同图</span>
+</div>
+
+<div class="box gray">
+<b>为什么有镜像重复：</b>和式 <code>cos(nπx)cos(mπy)+cos(mπx)cos(nπy)</code> 对 n↔m 完全对称；
+差式交换后整体变号，而 |w| 不变，所以花纹相同。真正的独立图样只有上三角（含对角线，且对角线在差式下为空）。
+表仍是 5×5，是因为书上也这么排——<b>镜像重复是这张表的固有冗余，不是数据错误</b>。
+</div>
+
+<!-- ---------- 书 p.55 原图 ---------- -->
+<h3>书 p.55 的 40 格原图（这是"上面那张表的实物版"）</h3>
+
+<p>老师给的第二张照片就是方板那一版，<b>5 列 × 8 行 = 40 格</b>。它就是 p.48 正文里说的
+"a more complete set of Chladni figures … all two- or fourfold because they were produced on a square plate"。
+<b>每格约 97 像素</b>，所以这里只把它当"图像档案"看，<b>不逐格标 (n,m)</b> ——细节见下面那张按族分类的说明。</p>
+
+<div class="gal p55" id="galP55"></div>
+
+<div class="legend">
+  <span>点任意一格 → 送进 §02 实验台，按"格子型"口径给一个 (n,m) 初值</span>
+  <span>白线 = <b>节线</b>（粉被振离腹点、落在节线上）</span>
+</div>
+
+<div class="box info">
+<b>这张图版怎么读（四族，按节线形状分）：</b>
+<ul style="margin:6px 0 0;padding-left:20px">
+<li><b>格子型</b>（第 1 行 1、4、5 格，第 2 行 3、5 格…）：两组互相垂直的直线，数出来就是
+<code>(n,m)</code>，频率 <code>f ∝ n²+m²</code>。<b>这是唯一能"数一条得一个数"的一族。</b></li>
+<li><b>对角型</b>（画着 X 的那几格）：来自<b>差式组合</b> <code>cos(nπu)cos(mπv) − cos(mπu)cos(nπv)</code>，
+n≠m 时才存在；n=m 时恒为 0（所以 5×5 表对角线必须留空/标灰）。</li>
+<li><b>弯曲型</b>（节线是波浪/双曲线）：|n−m| 较大的差式组合，节线被"拉弯"穿过中心区。</li>
+<li><b>中心环型</b>（中间一个椭圆/圆，外面挂几条线）：高阶差式组合，节线在中心附近收拢成一个闭合环。</li>
+</ul>
+<b>关键一点：</b>理想方板里，和式与差式是<b>同一频率的两种组合</b>（二重简并）——
+所以书里常把"格子"和"X"两格画在同一音高位置。真实板子边缘自由，两者会裂开一点点，
+这就是为什么实拍图里"X"格的中心常常有点歪。
+</div>
+
+<!-- ==================== ⑤ ==================== -->
+<h2 id="s5"><span class="no">05</span>15 张圆花：从照片反推 (n,s)，再算 Hz</h2>
+
+<p>这一节跟上一版<b>换了内容</b>：老师把原书照片给过来了，所以下面 15 格是<b>照片本身</b>，
+不是我按结构画的。同时有一个<b>模型更正</b>必须先讲清楚，不然频率全错。</p>
+
+<div class="box warn">
+<b>更正：这 15 张不是"板"，是"膜"。</b>
+p.48 的正文写得很明白：这些圆纹是 1880 年代 Margaret Watts Hughes 用一台 <b>eidophone</b> 拍的——
+"a hollow base with a membrane stretched across it and a tube attached to its base with a mouthpiece at the other end"。
+膜<b>边缘是夹紧的</b>，所以边界条件是 <code>J<sub>n</sub>(kR)=0</code>，用 <b>j<sub>n,s</sub></b>；
+不是自由边圆盘的 <b>j′<sub>n,s</sub></b>（上一版我用的是这个，对这 15 张是错的）。
+两套零点差得不小：j<sub>0,1</sub>=<b>2.4048</b>，j′<sub>0,1</sub>=<b>3.8317</b>，差 37%。
+</div>
+
+<p>膜和板的物理也不是同一套：板是<b>弯曲波</b>，<code>ω ∝ k²</code>（要板厚、要 E/ρ）；
+膜是<b>张力波</b>，<code>ω ∝ k</code>（只要张力与面密度）。所以这 15 格的频率只有一条式子：</p>
+
+<div class="eq">f<sub>n,s</sub> = j<sub>n,s</sub> · c / (2πR)　，　c = √(T/σ)</div>
+<p>R 是膜半径，T 是面张力（N/m），σ 是面密度（kg/m²）。<b>照片里没有比例尺，书上也没写她唱的是哪个音</b>，
+所以绝对 Hz 不能从图里"算出来"，只能"标定出来"；但<b>比值是硬的</b>：
+<code>f<sub>n,s</sub> / f<sub>0,1</sub> = j<sub>n,s</sub> / 2.4048</code>，这一列不依赖任何假设。</p>
+
+<div class="gal ci" id="galCi"></div>
+<div class="legend">
+  <span>左上 <code>#nn</code> = 书里自左至右、自上而下的序号</span>
+  <span>右上圆点：<span style="color:#2f9e5f">●</span> 确定　<span style="color:#d99a25">●</span> 较可信　<span style="color:#98a2b3">●</span> 存疑</span>
+  <span>点格子 → 送进 §02，看该 (n,s) 的理论图</span>
+</div>
+
+<details class="math">
+<summary>怎么从一堆亮斑读出 (n,s)：三条判据</summary>
+<p><b>判据 0：亮的是腹点，不是节点。</b>平板上粉被振离腹点、落在节线上（所以方盘图里白线是节线）；
+这台装置是"空腔 + 管"，粉被气流带走，堆在<b>振动最大</b>处。证据就在第 07 格：
+整格只有一个中心大堆——那是基模 (0,1) 的腹点，不可能是节点（基模没有内部节线）。</p>
+<p><b>判据 1：数一圈亮堆的夹角 → n。</b>节直径与节圆相交，腹点成对出现，故同一环上相邻两堆夹角
+≈ 180°/n，即 <code>n ≈ 180° / 夹角</code>。但人声是从<b>侧管</b>灌进去的，激励本身不轴对称，
+经常有一两个腹点被压制——所以"少数了一个"是常态，不是判错。</p>
+<p><b>判据 2：数环 → s。</b>内部节圆数 = s−1；反过来数"亮环"的层数，也能定 s（腹点带夹在节圆之间）。</p>
+<p><b>判据 3：环半径比值交叉验证。</b>第 i 个节圆在 <code>r/R = j<sub>n,i</sub> / j<sub>n,s</sub></code>，
+这个比值对 n 敏感（n=3 时内环在 0.50R，n=6 时在 0.66R），可以反过来排除 n。</p>
+<p style="color:#7b8595;font-size:12.9px;margin-bottom:0">
+<b>分辨率上限：</b>原书这一版每格只有约 <b>92 像素</b>（手机翻拍书页，整幅 790×1920），
+而且书页略斜（圆被压成轻微椭圆），所以本页给出的 n 误差约 ±1、s 误差约 ±1。
+<b>凡标灰点的行，请当"候选"看，不要当结论用。</b></p>
+</details>
+
+<h3>反推结果表</h3>
+
+<div class="calt">
+  <label>膜半径 R = <input type="number" id="calR" value="10" min="3" max="30" step="0.5"> cm</label>
+  <label>波速 c = √(T/σ) = <input type="number" id="calC" value="34.2" min="5" max="120" step="0.5"> m/s</label>
+  <span>→ 基模 f<sub>0,1</sub> = <b id="calF0">—</b> Hz</span>
+  <span style="color:#7b8595;font-size:12.2px">（橡胶膜 0.2 mm 约 20–40 m/s；薄乳胶可到 60）</span>
+</div>
+
+<div class="tw">
+<table class="t rev" id="tblRev">
+<thead><tr>
+  <th class="c">#</th><th>照片</th><th>看到的</th><th class="c">(n,s)</th><th class="c">j<sub>n,s</sub></th>
+  <th class="c">f / f<sub>0,1</sub></th><th class="c">f (Hz)</th><th class="c">最近音 · 音分</th><th class="c">置信</th>
+</tr></thead>
+<tbody></tbody></table>
+</div>
+
+<div class="box info">
+<b>三个必须交代的边界：</b>
+<ul style="margin:6px 0 0;padding-left:20px">
+<li><b>书上没标 Hz。</b>p.48 的说明只写了 "sang diatonic scales"，<b>一个频率数字都没有</b>。
+所以"验证书上标的频率对不对"这件事不存在——能对的只有<b>图样</b>，对不了数值。我上次说"顺便验证书上标的频率"
+是没核过原书就许的诺，这里更正。</li>
+<li><b>最近音那一列会整体平移。</b>改 R 或 c，所有频率等比缩放，那一列跟着走；
+它只是"离最近半音差多少"的现场读数，<b>不是结论</b>。</li>
+<li><b>同一 (n,s) 出现多次是正常的。</b>驱动相位、气流强弱、拍摄时机不同，同一模的腹点权重会变，
+拍出来就像两张图；书上这 15 张也未必是同一天、同一台装置拍的。</li>
+</ul>
+</div>
+
+<div class="box gray">
+<b>顺带一个可检验的推论：</b>膜的各阶频率是 j<sub>n,s</sub> 的比值（2.40 / 3.83 / 5.14 / 5.52 / 6.38 …），
+<b>不是整数倍</b>——这就是"鼓声不成调"的原因。所以她照着音阶一个个音唱过去时，只有<b>正好踩中</b>某个模式的音
+才会把图样"点亮"（共振峰很窄），落在两个模式中间的音只会让粉乱跳、图样模糊。
+这 15 张，就是踩中的那些。<b>这也解释了为什么它们排不出漂亮的顺序</b>——它们本来就不在一条音阶上。
+</div>
+
+<!-- ==================== ⑥ ==================== -->
+<h2 id="s6"><span class="no">06</span>频率：Chladni 定律是经验式，别拿它当定理用</h2>
+
+<p>板弯曲波的色散关系是 <code>ω = k²·√(D/ρh)</code>（<b>k 的平方</b>，不是弦的 ω = ck），
+所以：</p>
+
+<div class="eq">f = <b>k²</b> / (2π) · √( D / (ρh) )　，　D = E h³ / [ 12(1 − ν²) ]</div>
+<div class="eq">√(D/ρh) = h · √( E / [12(1 − ν²)ρ] )　→　<b>f ∝ h</b>（板越厚，音越高，线性）</div>
+
+<p>把钢的参数代进去（E=200 GPa，ν=0.30，ρ=7850），厚度 1 mm 时 √(D/ρh) ≈ <b>1.528 m²/s</b>。
+于是 300 mm 的方盘、n=m=1 给 53 Hz，n=m=5 给 2666 Hz；150 mm 半径的圆盘、j′<sub>4,3</sub>=12.68
+给 1736 Hz。都在人耳灵敏段，所以"播放音调"按钮是真的能听见的。</p>
+
+<h3>Chladni 定律 vs 贝塞尔严格值</h3>
+
+<div class="box gray" style="font-size:13.4px">
+<b>先分清两套零点，别混：</b>下面这条经验式是<b>板</b>的（Chladni 当年用的金属板，自由边 → <b>j′</b>）；
+而 §05 那 15 张 eidophone 圆花是<b>膜</b>（夹紧边 → <b>j</b>）。两套零点不能互相代入：
+j′<sub>0,1</sub>=3.8317 对 j<sub>0,1</sub>=2.4048，差 37%；而板是 <b>k² 律</b>、膜是 <b>k 律</b>，
+所以两者的频率差还不是同一个倍数（随 k·R 变）。§02 里"夹紧边"那个勾选，就是在这两套之间切换。
+</div>
+<p>书上常见的经验式是 <code>f = C·(m + 2n)²</code>（m = 节直径数，<b>n = 节圆数，不是径向阶 s</b>）。
+它是<b>经验拟合</b>，不是解，而且常数 C 每块板都得重拟。把 <code>(n+2c)²</code>（c = 实际数出来的节圆数）
+和精确值 <code>j′²</code> 并排看，比值是这样的：</p>
+
+<div class="tw">
+<table class="t" id="tblLaw">
+<thead><tr><th class="c">n 辐条</th><th class="c">s 径向阶</th><th class="c">j′<sub>n,s</sub></th>
+<th class="c">c 节圆</th><th class="c">f = j′²</th><th class="c">Chladni (n+2c)²</th><th class="c">比值</th></tr></thead>
+<tbody></tbody></table>
+</div>
+<p style="font-size:12.9px;color:#7b8595">红底 = 比值 &gt; 3.2（纯辐条模态），蓝底 = 比值 &lt; 2.4（节圆多的模态）。
+比值不是常数，就是这张表要说的事。</p>
+
+<div class="box info">
+<b>结论（本页最该记住的一条）：</b>比值落在 <b>1.77 – 3.67</b>（跨一个因子 2.1），
+说明<b>没有哪一个 C 能把 15 个模态同时套住</b>。同一列 c 内比值随 n 单调缓降，
+是"两条曲线形状本来就不同"，不是"差一个常数"。所以：
+<ul style="margin:6px 0 0;padding-left:20px">
+<li>用它<b>排序、估数量级、讲"为什么图越复杂音越高"</b>可以；</li>
+<li>用它<b>反解频率不行</b>——必须解 J<sub>n</sub>′ 的零点再乘 k²；</li>
+<li>书上如果只给频率不给模态号，那条频率只能当"大致落在哪个八度"，<b>不能反推 n,m</b>；</li>
+<li>c 越大经验式越好用（c=2 那五行起伏只有 15%），<b>c=0 的纯辐条族误差最大</b>。</li>
+</ul>
+</div>
+
+<!-- ==================== ⑦ ==================== -->
+<h2 id="s7"><span class="no">07</span>模型边界：这页算不出来的六件事</h2>
+
+<div class="tw">
+<table class="t">
+<thead><tr><th style="width:26%">模型给的</th><th style="width:37%">真实板里的</th><th style="width:37%">偏差方向 / 怎么补</th></tr></thead>
+<tbody>
+<tr><td><b>cos·cos ± 两项</b></td>
+    <td>自由边矩形板的严格解是 <code>cos·cosh ± cosh·cos</code> 的组合（含指数项）</td>
+    <td>节线会<b>整体内缩一点</b>，越靠边越明显；低阶几乎看不出，高阶边缘处会偏。
+        要精确就得解双调和方程（<code>DC-Creatives-Club/vibrational-modes-plates</code> 那类有限差分）。</td></tr>
+<tr><td><b>纯 J<sub>n</sub>(kr)</b></td>
+    <td>严格解是 J<sub>n</sub> 与 I<sub>n</sub> 的线性组合，系数由边界条件定</td>
+    <td>节圆半径偏大约几个百分点；边缘附近的节线形状会变钝。</td></tr>
+<tr><td><b>板是均匀、各向同性、等厚</b></td>
+    <td>轧制钢板有<b>残余应力</b>和厚度公差</td>
+    <td>简并模态<b>劈裂</b>：(n,m) 与 (m,n) 本来同频，实测会差几 Hz，于是两个模态会<b>混合</b>，
+        拍出"既不像和式也不像差式"的杂图。这就是现场演示时"Why 这次的花纹和上次不一样"的主要来源。</td></tr>
+<tr><td><b>砂粒只做漂移</b></td>
+    <td>砂粒真的在跳（hop）、有摩擦、有回弹、有大小分布</td>
+    <td>真实砂纹有<b>颗粒感与堆积厚度</b>，细砂上线更细、粗砂会成"墙"。本页的粒子是点，
+        所以线宽只由数值阈值决定，<b>不能用来判断砂的粒径</b>。</td></tr>
+<tr><td><b>膜就是理想 J<sub>n</sub> 解</b></td>
+    <td>真实膜有<b>空气附加质量</b>（两面贴着空气，等效面密度变大）、张力会<b>蠕变</b>、
+        粉本身也有质量；振幅大到非线性时，模态之间会<b>锁频/混频</b></td>
+    <td>空气附加质量让频率<b>整体偏低</b>（几 % 到十几 %）；张力蠕变让频率<b>随时间往下漂</b>——
+        这正是 eidophone 这类装置"图样会自己变形"的物理原因，也是 §05 里同一模式拍出两种样子的合理解释之一。
+        注意：夹紧边的<b>均匀膜</b>用 J<sub>n</sub> 是<b>精确</b>的，不需要像板那样加 I<sub>n</sub> 修正。</td></tr>
+<tr><td><b>频率是线性本征值</b></td>
+    <td>驱动点、支撑点、换能器质量都会移动模态，非线性还会让频率随振幅漂</td>
+    <td>实测共振频率通常比理论值<b>低</b>几个百分点；支撑点本身必须落在节线上，否则把模态"压死"。</td></tr>
+</tbody></table>
+</div>
+
+<div class="box warn">
+<b>所以：</b>这页能告诉老师"<b>这个模态长什么样、为什么长这样、频率大致在哪个量级</b>"，
+不能告诉老师"<b>我这块板在 1.234 kHz 时会出第 5 号图</b>"。后者只能实测。
+任何号称能从频率反推图样的网页（包括本页）都只在该板的理想模型里成立。
+</div>
+
+<!-- ==================== ⑧ ==================== -->
+<h2 id="s8"><span class="no">08</span>资源清单：现成的仿真程序在哪、先看哪个</h2>
+
+<p>这是元宝那份回答的核对版。三类分开：<b>能直接跑出图</b>、<b>能读源码改</b>、<b>只能对图/查公式</b>。
+第四列是我的判断，不是元宝的排序。</p>
+
+<div class="tw">
+<table class="t">
+<thead><tr><th style="width:27%">项目 / 页面</th><th style="width:12%">形态</th><th style="width:15%">板型</th>
+<th style="width:46%">值不值得看</th></tr></thead>
+<tbody>
+<tr><td colspan="4" style="background:#eef4fc;font-weight:600;color:#12305e;font-size:12.8px">
+  ── A · 带方盘/圆盘切换、能直接跑 ──</td></tr>
+<tr><td><a href="https://github.com/evoluteur/cymatics" target="_blank" rel="noopener">evoluteur/cymatics</a>
+    <br><span style="font-size:11.6px;color:#8a95a5">MIT · 纯 JS 无依赖</span></td>
+    <td>交互网页</td><td>方盘（自由边 1mm 钢板）+ 鼓面（边缘固定）</td>
+    <td><b>最贴书上的实验</b>：真粒子、沿梯度下坡、停在节线；公式直接写在 README 里。
+        <b>读源码首选这一个</b>，两百来行就能看完。</td></tr>
+<tr><td><a href="https://github.com/CeponisM/cymatic-visual" target="_blank" rel="noopener">CeponisM/cymatic-visual</a>
+    <br><span style="font-size:11.6px;color:#8a95a5">React + WebGL · 2 万粒子</span></td>
+    <td>网页</td><td>圆 / 方 / 三角</td>
+    <td>三种板型齐全、可导出 PNG。<b>要"漂亮"选它，要"看懂"不选它</b>——WebGL 那层把物理埋得比较深。</td></tr>
+<tr><td><a href="https://github.com/JimRou/Chladni-simulator" target="_blank" rel="noopener">JimRou/Chladni-simulator</a>
+    <br><span style="font-size:11.6px;color:#8a95a5">p5.js</span></td>
+    <td>网页</td><td>可切板型</td>
+    <td>结构最简单，<b>改起来最容易</b>。适合当"教学版"的骨架。</td></tr>
+<tr><td><a href="https://github.com/yangling-happy/cladni-patterns" target="_blank" rel="noopener">yangling-happy/cladni-patterns</a>
+    <br><span style="font-size:11.6px;color:#8a95a5">中文 README · React19 + Canvas</span></td>
+    <td>网页</td><td>方盘为主</td>
+    <td>中文注释，<b>找"这段代码在干嘛"的时候省时间</b>。</td></tr>
+
+<tr><td colspan="4" style="background:#eef4fc;font-weight:600;color:#12305e;font-size:12.8px">
+  ── B · Python：自己算节线、出图、做反演 ──</td></tr>
+<tr><td><a href="https://github.com/ratwolfzero/Chladni_Figures" target="_blank" rel="noopener">ratwolfzero/Chladni_Figures</a></td>
+    <td>Python</td><td>两者</td>
+    <td>README 极详细：<b>本征频率自由振动 vs 受迫振动、阻尼因子如何影响模态叠加</b>，
+        还有量级/相位两种视图。<b>想懂"为什么真实图会糊"，看这个。</b></td></tr>
+<tr><td><a href="https://github.com/clayton-r/PyChladni" target="_blank" rel="noopener">clayton-r/PyChladni</a></td>
+    <td>Python</td><td>矩形为主</td>
+    <td>Ritz 法 + 对称性破缺，能复现<b>模式竞争</b>，可音频驱动出动画。<b>最接近"真板"的一支。</b></td></tr>
+<tr><td><a href="https://github.com/CuriousAvenger/pyChladniPlate" target="_blank" rel="noopener">CuriousAvenger/pyChladniPlate</a></td>
+    <td>Python</td><td>两者</td>
+    <td><b>反着玩</b>：拍一张砂纹照片，程序反推是几号模态、多少 Hz。
+        <b>老师手上有书页照片的话，用它比"肉眼对图"可靠。</b></td></tr>
+<tr><td><a href="https://github.com/DC-Creatives-Club/vibrational-modes-plates" target="_blank" rel="noopener">DC-Creatives-Club/vibrational-modes-plates</a></td>
+    <td>Python</td><td>任意边界</td>
+    <td>有限差分解 <b>Kirchhoff–Love 双调和方程</b>，可选 Dirichlet/Neumann。
+        <b>最"照着物理算"的</b>，也是本页 §07 那张表里"更精确"的出路。</td></tr>
+
+<tr><td colspan="4" style="background:#eef4fc;font-weight:600;color:#12305e;font-size:12.8px">
+  ── C · 网页直接玩 / 对图 / 查公式（不装环境）──</td></tr>
+<tr><td><a href="https://paulbourke.net/geometry/chladni" target="_blank" rel="noopener">Paul Bourke · Chladni</a></td>
+    <td>网页</td><td>两者</td>
+    <td><b>经典页面</b>：方盘 n,m=1…5 的图 + 圆盘贝塞尔公式。<b>对图第一站，公式也在这里。</b></td></tr>
+<tr><td><a href="https://www.dynamicmath.xyz/chladni-patterns" target="_blank" rel="noopener">dynamicmath.xyz</a></td>
+    <td>网页</td><td>方盘</td>
+    <td>n,m 到 8，含 3D 曲面视图。<b>看"振幅场是长什么样"比看二维图直观。</b></td></tr>
+<tr><td><a href="https://neumanncondition.com/articles/the-quest-to-finding-chladni-patterns-2" target="_blank" rel="noopener">Neumann Condition · 两篇</a></td>
+    <td>文章</td><td>方盘 + 圆盘</td>
+    <td>方盘讲"平方和搜索模态"，圆盘给 <code>scipy.special.jnp_zeros</code> 的<b>完整代码</b>。
+        <b>要抄零点算法就抄这篇</b>（本页的 JS 零点也是这个思路）。</td></tr>
+<tr><td><a href="https://www.physics.utoronto.ca/~nonlin/chladni.html" target="_blank" rel="noopener">多伦多大学物理系</a></td>
+    <td>图库</td><td>两者</td>
+    <td><b>实测图 + 真实频率</b>：圆盘 10/14 辐条、方盘各模态实测 Hz。
+        <b>唯一能给"理论 vs 实测差多少"提供数字的地方。</b></td></tr>
+<tr><td><a href="https://www.unige.ch/~gander/Preprints/ChladniTacoma.pdf" target="_blank" rel="noopener">Gander &amp; Kwok《Chladni Figures and the Tacoma Bridge》</a></td>
+    <td>PDF</td><td>两者</td>
+    <td>把克拉德尼图形和塔科马桥共振放在一起讲，<b>附录带 MATLAB 源码</b>。
+        <b>要"一篇读完就懂全貌"，读这个 PDF。</b></td></tr>
+<tr><td><a href="https://people.sc.fsu.edu/~jburkardt/m_src/chladni_figures/chladni_figures.html" target="_blank" rel="noopener">Burkardt · chladni_figures</a></td>
+    <td>MATLAB/Octave</td><td>方盘</td>
+    <td>FSU 的标准教学代码，<b>干净、短、可逐行读</b>。</td></tr>
+<tr><td><a href="https://www.mdpi.com/1099-4300/26/3/264" target="_blank" rel="noopener">MDPI Entropy 2024</a></td>
+    <td>论文</td><td>圆/方/三角</td>
+    <td>三板的节线图与<b>实验拟合</b>，有定量对照。<b>写报告要引用时用它。</b></td></tr>
+<tr><td><a href="https://mdphys.org/PDF/internoiseMAGPIE_2024.pdf" target="_blank" rel="noopener">MAGPIE（Nemus-Project）</a></td>
+    <td>MATLAB+Python</td><td>任意边界</td>
+    <td>Jupyter 界面的板模态分析工具，<b>工业级、偏重</b>。除非要做非规则板，否则不必上。</td></tr>
+</tbody></table>
+</div>
+
+<div class="box ok">
+<b>如果只做三件事：</b>① 打开 <code>evoluteur/cymatics</code> 读那两百行，把"砂粒下坡"的写法看懂；
+② 用 Paul Bourke 的图对一遍方盘 5×5；③ 拿 <code>pyChladniPlate</code> 反推书页照片。
+<b>三件做完，书里那两族图就彻底通了。</b>
+</div>
+
+<!-- ==================== ⑨ ==================== -->
+<h2 id="s9"><span class="no">09</span>MD 笔记（本页所有推导都落在这四篇里）</h2>
+
+<div class="mdcards">
+  <a class="mdcard" href="克拉德尼_核心公式与两族节线.md">
+    <div class="ic">NOTE 01 · MATH</div>
+    <div class="ti">核心公式与两族节线</div>
+    <div class="ds">薄板方程 → 色散 ω∝k² → 方盘 cos·cos± 的来历 → 圆盘 J<sub>n</sub>(kr) 与 j′ 零点表
+      → Chladni 经验式与 exact 值的逐格对照 → 膜与板两套零点 → 全部常数与单位。</div>
+    <div class="fn">克拉德尼_核心公式与两族节线.md</div>
+  </a>
+  <a class="mdcard" href="克拉德尼_第48页_十五个圆花_对标.md">
+    <div class="ic">NOTE 02 · BOOK</div>
+    <div class="ti">书 p.48 的十五个圆花 · 逐格对标</div>
+    <div class="ds">拿到原图后的逐格读数：每格看到什么、反推的 (n,s)、置信度、另一解，
+      以及"亮块是腹点不是节点"这条判据的来历。原来"403 打不开"的记录保留在文末。</div>
+    <div class="fn">克拉德尼_第48页_十五个圆花_对标.md</div>
+  </a>
+  <a class="mdcard" href="克拉德尼_反推模态号与Hz_方法.md">
+    <div class="ic">NOTE 03 · INVERSE</div>
+    <div class="ti">反推模态号与 Hz：方法与结果</div>
+    <div class="ds">从 92 像素的格子能反推出什么、不能反推出什么；j 零点表、比值表、
+      R 与 c 的标定关系、为什么"绝对 Hz"必须靠标定、以及船上/书上的频率到底有没有可校对的数。</div>
+    <div class="fn">克拉德尼_反推模态号与Hz_方法.md</div>
+  </a>
+  <a class="mdcard" href="克拉德尼_资源清单_与模型边界.md">
+    <div class="ic">NOTE 04 · SOURCES</div>
+    <div class="ti">资源清单与模型边界</div>
+    <div class="ds">18 个仓库/页面的分类与取舍理由、本页算法逐条说明（含参数与容差）、
+      六条模型失效边界、以及"要更准该往哪走"的三条路。</div>
+    <div class="fn">克拉德尼_资源清单_与模型边界.md</div>
+  </a>
+</div>
+
+<div class="foot">
+  建页：2026-10-18 ｜ 全部单文件、无外部依赖（贝塞尔函数与零点搜索均在页内用级数实现，未引任何库）<br>
+  物理模型：Kirchhoff 薄板理论 + 自由边近似；砂粒输运为 −∇(A²) 漂移 + 振幅比例噪声的唯象模型<br>
+  来源：元宝对话 <a href="https://yb.tencent.com/s/lyHdMfYTtkbH" target="_blank" rel="noopener">yb.tencent.com/s/lyHdMfYTtkbH</a>
+  ，书页照片因私有桶 403 未能取得（详见 NOTE 02）<br>
+  返回 <a href="../AAA_跨界总入口_总网页.html">跨界总入口</a> ｜ 相邻主题：
+  <a href="../harmonograph/（总入口）全部网页总览.html">harmonograph 画形仪</a> ·
+  <a href="../PKS_千禧难题_GitHub版/02_应用科技/25_keely/K1_标度律_Chladni到Lamb.html">K1 标度律（Keely 侧）</a>
+</div>
+
+</div><!-- /wrap -->
+
+<script>
+"use strict";
+/* =========================================================================
+   1. 贝塞尔：J_n(x)、J_n'(x)、J_n' 的零点（全部页内数值实现）
+   ========================================================================= */
+function besselJ(n, x){
+  if(n < 0) return (n % 2 === 0) ? besselJ(-n, x) : -besselJ(-n, x);
+  const h = x / 2;
+  let fact = 1;
+  for(let i = 2; i <= n; i++) fact *= i;          // n!
+  let term = Math.pow(h, n) / fact;
+  let sum = term;
+  for(let k = 1; k < 120; k++){
+    term *= -(h * h) / (k * (n + k));
+    sum += term;
+    if(Math.abs(term) < 1e-17 * Math.abs(sum)) break;
+  }
+  return sum;
+}
+function besselJp(n, x){
+  if(n === 0) return -besselJ(1, x);              // J0' = -J1
+  return 0.5 * (besselJ(n - 1, x) - besselJ(n + 1, x));
+}
+/* 扫 J_n' 在 (0, 40] 的零点，用二分细化 */
+function jpZeros(n, count){
+  const out = [];
+  const XMAX = 40, STEP = 0.02;
+  let x0 = 0.02, f0 = besselJp(n, x0);
+  for(let x = x0 + STEP; x <= XMAX && out.length < count; x += STEP){
+    const f1 = besselJp(n, x);
+    if(f0 === 0 || f0 * f1 < 0){
+      let a = x - STEP, b = x, fa = f0;
+      for(let it = 0; it < 80; it++){
+        const mid = 0.5 * (a + b), fm = besselJp(n, mid);
+        if(fa * fm <= 0){ b = mid; } else { a = mid; fa = fm; }
+      }
+      const z = 0.5 * (a + b);
+      if(z > 0.01 && (out.length === 0 || z - out[out.length - 1] > 0.05)) out.push(z);
+    }
+    f0 = f1; x0 = x;
+  }
+  return out;
+}
+const JPZ = {};
+for(let n = 0; n <= 6; n++) JPZ[n] = jpZeros(n, 6);
+
+/* 扫 J_n 在 (0,40] 的零点：膜（夹紧边）用这一套 */
+function jZeros(n, count){
+  const out = [];
+  const XMAX = 40, STEP = 0.02;
+  let x0 = (n === 0) ? 0.02 : 0.06;
+  let f0 = besselJ(n, x0);
+  for(let x = x0 + STEP; x <= XMAX && out.length < count; x += STEP){
+    const f1 = besselJ(n, x);
+    if(f0 === 0 || f0 * f1 < 0){
+      let a = x - STEP, b = x, fa = f0;
+      for(let it = 0; it < 80; it++){
+        const mid = 0.5 * (a + b), fm = besselJ(n, mid);
+        if(fa * fm <= 0){ b = mid; } else { a = mid; fa = fm; }
+      }
+      const z = 0.5 * (a + b);
+      if(z > 0.01 && (out.length === 0 || z - out[out.length - 1] > 0.05)) out.push(z);
+    }
+    f0 = f1;
+  }
+  return out;
+}
+const JZ = {};
+for(let n = 0; n <= 6; n++) JZ[n] = jZeros(n, 6);
+
+/* J_n 在 (0,k] 内的零点个数 = 内部节圆数 */
+function countCircles(n, kmax){
+  let c = 0, prev = besselJ(n, 1e-4);
+  const M = 900;
+  for(let i = 1; i <= M; i++){
+    const cur = besselJ(n, kmax * i / M);
+    if(prev === 0 || prev * cur < 0) c++;
+    prev = cur;
+  }
+  return c;
+}
+
+/* =========================================================================
+   2. 模态定义与振幅求值
+   ========================================================================= */
+const TAU = Math.PI * 2;
+const STEEL = { E: 200e9, nu: 0.30, rho: 7850 };
+
+const S = {
+  mode: 'sq-sum',        // 'sq-sum' | 'sq-diff' | 'ci'
+  n: 3, m: 5,            // 方盘
+  cn: 2, cs: 1,          // 圆盘：辐条数 / 径向阶
+  edge: 'mem',           // 'mem' = 夹紧边膜（eidophone，书 p.48）| 'free' = 自由边板
+  cMem: 34.2,            // 膜波速 √(T/σ) m/s
+  L: 300, h: 1.0,        // mm
+  sand: '#e9d6a6',
+  sandMode: 'node',      // 'node' = 粉落节线（板）| 'antinode' = 粉堆腹点（膜/气流）
+  showLine: true, showField: true,
+  NP: 14000
+};
+
+function zerosOf(n, s, edge){
+  const T = (edge === 'mem') ? JZ : JPZ;
+  return T[n][Math.min(s, 6) - 1];
+}
+
+function evalW(u, v){
+  if(S.mode === 'ci'){
+    const r = Math.hypot(u, v);
+    if(r > 1.0001) return NaN;
+    const k = zerosOf(S.cn, S.cs, S.edge);
+    const th = Math.atan2(v, u);
+    return besselJ(S.cn, k * Math.min(r, 1)) * Math.cos(S.cn * th);
+  }
+  const n = S.n, m = S.m, P = Math.PI;
+  const c1 = Math.cos(n * P * u) * Math.cos(m * P * v);
+  const c2 = Math.cos(m * P * u) * Math.cos(n * P * v);
+  return S.mode === 'sq-sum' ? c1 + c2 : c1 - c2;
+}
+
+/* 频率与波数（物理量） */
+function physics(){
+  const Lm = S.L / 1000, hm = S.h / 1000;
+  const fac = hm * Math.sqrt(STEEL.E / (12 * (1 - STEEL.nu * STEEL.nu) * STEEL.rho)); // m^2/s
+  let k, f, label;
+  if(S.mode === 'ci'){
+    const R = Lm / 2;
+    const z = zerosOf(S.cn, S.cs, S.edge);
+    k = z / R;
+    if(S.edge === 'mem'){
+      f = z * S.cMem / TAU / R;                 // 膜：f = j·c/(2πR)，线性于 k
+      label = 'j' + S.cn + ',' + S.cs + ' = ' + z.toFixed(4) + '（膜·夹紧边）';
+      return { k: k, f: f, label: label, fac: NaN, mem: true };
+    }
+    f = k * k / TAU * fac;
+    label = 'j′' + S.cn + ',' + S.cs + ' = ' + z.toFixed(4) + '（自由边板）';
+    return { k: k, f: f, label: label, fac: fac, mem: false };
+  }
+  k = Math.PI * Math.sqrt(S.n * S.n + S.m * S.m) / Lm;      // 简支近似
+  label = 'π√(n²+m²)/L';
+  f = k * k / TAU * fac;
+  return { k: k, f: f, label: label, fac: fac, mem: false };
+}
+
+/* =========================================================================
+   3. 振幅网格（给粒子梯度用）
+   ========================================================================= */
+const G = 192;
+const gridA2 = new Float32Array(G * G);   // A² 归一
+const gridA  = new Float32Array(G * G);   // A 归一
+const gridOk = new Uint8Array(G * G);     // 1 = 板内
+let nodeRatio = 0;
+
+function buildGrid(){
+  const wf = new Float32Array(G * G);
+  let mx = 0;
+  for(let j = 0; j < G; j++){
+    const v = 1 - 2 * (j + 0.5) / G;
+    for(let i = 0; i < G; i++){
+      const u = -1 + 2 * (i + 0.5) / G;
+      const w = evalW(u, v);
+      const idx = j * G + i;
+      if(!isFinite(w)){ gridOk[idx] = 0; wf[idx] = 0; continue; }
+      gridOk[idx] = 1; wf[idx] = w;
+      const a = Math.abs(w);
+      if(a > mx) mx = a;
+    }
+  }
+  if(mx < 1e-9) mx = 1;
+  let nodeCnt = 0, okCnt = 0;
+  for(let i = 0; i < G * G; i++){
+    if(!gridOk[i]){ gridA[i] = 9; gridA2[i] = 81; continue; }
+    const a = Math.abs(wf[i]) / mx;
+    gridA[i] = a; gridA2[i] = a * a;
+    okCnt++;
+    if(a < 0.045) nodeCnt++;
+  }
+  nodeRatio = okCnt ? nodeCnt / okCnt : 0;
+  return mx;
+}
+
+/* 双线性采样 A² */
+function sampA2(u, v){
+  const fx = (u + 1) * 0.5 * (G - 1);
+  const fy = (v + 1) * 0.5 * (G - 1);
+  let i0 = fx | 0, j0 = fy | 0;
+  if(i0 < 0) i0 = 0; if(i0 > G - 2) i0 = G - 2;
+  if(j0 < 0) j0 = 0; if(j0 > G - 2) j0 = G - 2;
+  const tx = fx - i0, ty = fy - j0;
+  const k00 = j0 * G + i0, k10 = k00 + 1, k01 = k00 + G, k11 = k01 + 1;
+  const a = gridA2[k00] * (1 - tx) + gridA2[k10] * tx;
+  const b = gridA2[k01] * (1 - tx) + gridA2[k11] * tx;
+  return a * (1 - ty) + b * ty;
+}
+function sampA(u, v){
+  const fx = (u + 1) * 0.5 * (G - 1);
+  const fy = (v + 1) * 0.5 * (G - 1);
+  let i0 = fx | 0, j0 = fy | 0;
+  if(i0 < 0) i0 = 0; if(i0 > G - 2) i0 = G - 2;
+  if(j0 < 0) j0 = 0; if(j0 > G - 2) j0 = G - 2;
+  const tx = fx - i0, ty = fy - j0;
+  const k00 = j0 * G + i0, k10 = k00 + 1, k01 = k00 + G, k11 = k01 + 1;
+  const a = gridA[k00] * (1 - tx) + gridA[k10] * tx;
+  const b = gridA[k01] * (1 - tx) + gridA[k11] * tx;
+  return a * (1 - ty) + b * ty;
+}
+function gradA2(u, v, out){
+  const du = 2 / (G - 1);
+  out[0] = (sampA2(u + du, v) - sampA2(u - du, v)) / (2 * du);
+  out[1] = (sampA2(u, v + du) - sampA2(u, v - du)) / (2 * du);
+}
+
+/* =========================================================================
+   4. 板面图像（320×320，模式变化时重绘一次）
+   ========================================================================= */
+const FW = 320;
+const fieldCv = document.createElement('canvas');
+fieldCv.width = fieldCv.height = FW;
+const fctx = fieldCv.getContext('2d');
+const fimg = fctx.createImageData(FW, FW);
+
+function renderField(){
+  const d = fimg.data;
+  const wf = new Float32Array(FW * FW);
+  let mx = 0;
+  for(let j = 0; j < FW; j++){
+    const v = 1 - 2 * (j + 0.5) / FW;
+    for(let i = 0; i < FW; i++){
+      const u = -1 + 2 * (i + 0.5) / FW;
+      const w = evalW(u, v);
+      const idx = j * FW + i;
+      if(!isFinite(w)){ wf[idx] = NaN; continue; }
+      wf[idx] = w;
+      const a = Math.abs(w);
+      if(a > mx) mx = a;
+    }
+  }
+  if(mx < 1e-9) mx = 1;
+
+  for(let j = 0; j < FW; j++){
+    for(let i = 0; i < FW; i++){
+      const idx = j * FW + i, o = idx * 4;
+      const w = wf[idx];
+      if(isNaN(w)){ d[o + 3] = 0; continue; }
+      const a = Math.abs(w) / mx;
+      // 底：暖黑金属，波腹略亮（视觉上"在动"）
+      let r = 26, g = 23, b = 20;
+      if(S.showField){
+        const lit = 12 + 30 * a;
+        r += lit; g += lit * 0.92; b += lit * 0.78;
+      }
+      // 理论节线：|w| 极小处染青（细、半透，别压住砂）
+      if(S.showLine){
+        const t = Math.max(0, 1 - a / 0.042);
+        if(t > 0){
+          const s = t * t * (3 - 2 * t) * 0.52;
+          r = r * (1 - s) + 96 * s;
+          g = g * (1 - s) + 186 * s;
+          b = b * (1 - s) + 238 * s;
+        }
+      }
+      // 边缘一圈暗角，像被支撑住
+      const u = -1 + 2 * (i + 0.5) / FW, v = 1 - 2 * (j + 0.5) / FW;
+      const edge = S.mode === 'ci' ? Math.hypot(u, v) : Math.max(Math.abs(u), Math.abs(v));
+      if(edge > 0.90){
+        const k2 = Math.min(1, (edge - 0.90) / 0.10);
+        const f2 = 1 - 0.55 * k2;
+        r *= f2; g *= f2; b *= f2;
+      }
+      d[o] = r; d[o + 1] = g; d[o + 2] = b; d[o + 3] = 255;
+    }
+  }
+  fctx.putImageData(fimg, 0, 0);
+}
+
+/* =========================================================================
+   5. 砂粒
+   ========================================================================= */
+let NP = S.NP;
+let px = new Float32Array(NP), py = new Float32Array(NP);
+
+function seedParticles(){
+  NP = S.NP;
+  px = new Float32Array(NP); py = new Float32Array(NP);
+  for(let i = 0; i < NP; i++){
+    if(S.mode === 'ci'){
+      const r = Math.sqrt(Math.random()) * 0.98, th = Math.random() * TAU;
+      px[i] = r * Math.cos(th); py[i] = r * Math.sin(th);
+    } else {
+      px[i] = (Math.random() * 2 - 1) * 0.985;
+      py[i] = (Math.random() * 2 - 1) * 0.985;
+    }
+  }
+}
+
+const gtmp = [0, 0];
+let convAvg = 0;
+
+function stepParticles(sub){
+  const K = 0.0055;      // 下坡强度
+  const NOISE = 0.020;   // 与振幅成正比的随机扰动
+  const up = (S.sandMode === 'antinode') ? -1 : 1;   // 腹点模式 = 反向（往大振幅处堆）
+  let sum = 0;
+  for(let s = 0; s < sub; s++){
+    for(let p = 0; p < NP; p++){
+      let u = px[p], v = py[p];
+      const a = sampA(u, v);
+      gradA2(u, v, gtmp);
+      let gx = gtmp[0] * up, gy = gtmp[1] * up;
+      const gn = Math.hypot(gx, gy) + 0.35;      // 饱和，避免节线附近暴走
+      const stick = (up > 0) ? (a < 0.03 ? 0.25 : 1) : (a > 0.94 ? 0.25 : 1);  // 到站就"粘住"
+      u -= K * gx / gn * stick;
+      v -= K * gy / gn * stick;
+      const jit = NOISE * a;
+      u += (Math.random() - 0.5) * 2 * jit;
+      v += (Math.random() - 0.5) * 2 * jit;
+
+      if(S.mode === 'ci'){
+        const r = Math.hypot(u, v);
+        if(r > 0.985){ u *= 0.985 / r; v *= 0.985 / r; }
+      } else {
+        if(u > 0.985) u = 0.985; else if(u < -0.985) u = -0.985;
+        if(v > 0.985) v = 0.985; else if(v < -0.985) v = -0.985;
+      }
+      px[p] = u; py[p] = v;
+      if(s === sub - 1) sum += a;
+    }
+  }
+  convAvg = sum / NP;
+}
+
+/* =========================================================================
+   6. 画布与渲染
+   ========================================================================= */
+const cv = document.getElementById('plate');
+const ctx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+
+function resize(){
+  const box = document.getElementById('plateBox');
+  const w = box.clientWidth || 700;
+  const h = Math.max(box.clientHeight || 460, 380);
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  W = w; H = h;
+  cv.width = Math.round(w * DPR);
+  cv.height = Math.round(h * DPR);
+  cv.style.width = w + 'px';
+  cv.style.height = h + 'px';
+}
+
+function plateGeo(){
+  const S0 = Math.min(W, H) * 0.435;
+  return { cx: W / 2, cy: H / 2, s: S0 };
+}
+
+function draw(){
+  const g = plateGeo();
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#fbfaf7';
+  ctx.fillRect(0, 0, W, H);
+
+  // 桌面投影
+  ctx.save();
+  ctx.translate(g.cx, g.cy);
+  ctx.shadowColor = 'rgba(60,45,30,.22)';
+  ctx.shadowBlur = 26;
+  ctx.shadowOffsetY = 9;
+  ctx.fillStyle = '#1b1916';
+  ctx.beginPath();
+  const R = g.s;
+  if(S.mode === 'ci'){
+    ctx.arc(0, 0, R, 0, TAU);
+  } else {
+    const rr = R * 0.055;
+    ctx.moveTo(-R + rr, -R);
+    ctx.lineTo(R - rr, -R); ctx.quadraticCurveTo(R, -R, R, -R + rr);
+    ctx.lineTo(R, R - rr);  ctx.quadraticCurveTo(R, R, R - rr, R);
+    ctx.lineTo(-R + rr, R); ctx.quadraticCurveTo(-R, R, -R, R - rr);
+    ctx.lineTo(-R, -R + rr);ctx.quadraticCurveTo(-R, -R, -R + rr, -R);
+    ctx.closePath();
+  }
+  ctx.fill();
+  ctx.restore();
+
+  // 振幅底图
+  ctx.save();
+  ctx.translate(g.cx - g.s, g.cy - g.s);
+  ctx.beginPath();
+  if(S.mode === 'ci'){
+    ctx.arc(g.s, g.s, g.s, 0, TAU);
+  } else {
+    ctx.rect(0, 0, g.s * 2, g.s * 2);
+  }
+  ctx.clip();
+  ctx.imageSmoothingEnabled = true;
+  ctx.globalAlpha = 0.96;
+  ctx.drawImage(fieldCv, 0, 0, g.s * 2, g.s * 2);
+  ctx.globalAlpha = 1;
+  ctx.restore();
+
+  // 砂粒
+  const sand = S.sand;
+  ctx.save();
+  ctx.translate(g.cx, g.cy);
+  ctx.beginPath();
+  if(S.mode === 'ci'){
+    ctx.arc(0, 0, g.s, 0, TAU);
+  } else {
+    ctx.rect(-g.s, -g.s, g.s * 2, g.s * 2);
+  }
+  ctx.clip();
+  ctx.fillStyle = sand;
+  ctx.beginPath();
+  const dot = Math.max(1.3, g.s * 0.0052);
+  for(let i = 0; i < NP; i++){
+    const x = px[i] * g.s, y = -py[i] * g.s;
+    ctx.rect(x, y, dot, dot);
+  }
+  ctx.fill();
+  ctx.restore();
+
+  // 板边描一圈
+  ctx.save();
+  ctx.translate(g.cx, g.cy);
+  ctx.strokeStyle = 'rgba(255,255,255,.30)';
+  ctx.lineWidth = 1.1;
+  ctx.beginPath();
+  if(S.mode === 'ci'){ ctx.arc(0, 0, g.s, 0, TAU); }
+  else { ctx.rect(-g.s, -g.s, g.s * 2, g.s * 2); }
+  ctx.stroke();
+  ctx.restore();
+}
+
+/* =========================================================================
+   7. 主循环
+   ========================================================================= */
+let running = true, lastT = 0;
+function loop(t){
+  if(!running) return;
+  if(t - lastT > 15){
+    lastT = t;
+    stepParticles(2);
+    draw();
+  }
+  requestAnimationFrame(loop);
+}
+
+/* =========================================================================
+   8. 读数与 UI
+   ========================================================================= */
+function fmt(n, d){ return (n >= 1000) ? n.toFixed(0) : n.toFixed(d === undefined ? 1 : d); }
+
+function updateReadout(){
+  const p = physics();
+  document.getElementById('roF').innerHTML = fmt(p.f, 1) + ' <small>Hz</small>';
+  document.getElementById('roK').innerHTML = p.k.toFixed(1) + ' <small>1/m</small>';
+  document.getElementById('roNode').innerHTML = (nodeRatio * 100).toFixed(1) + ' <small>%</small>';
+  if(S.mode === 'ci'){
+    const z = zerosOf(S.cn, S.cs, S.edge);
+    const cir = countCircles(S.cn, z);
+    const mem = (S.edge === 'mem');
+    document.getElementById('roMode').textContent = 'n' + S.cn + 's' + S.cs + '·' + cir + '圆' + S.cn + '直' + (mem ? '·膜' : '');
+    document.getElementById('badge').innerHTML =
+      '<b>' + (mem ? '圆膜 · 夹紧边' : '圆板 · 自由边') + '</b> · n=' + S.cn + ' 辐条, s=' + S.cs + ' 径向阶<br>' +
+      (mem ? 'j' : 'j′') + ' = ' + z.toFixed(4) + ' · ' + cir + ' 个节圆' +
+      (mem ? ' · c=' + S.cMem.toFixed(1) + ' m/s' : '');
+  } else {
+    document.getElementById('roMode').textContent = S.n + ',' + S.m;
+    document.getElementById('badge').innerHTML =
+      '<b>方盘 · ' + (S.mode === 'sq-sum' ? '和式' : '差式') + '</b> · n=' + S.n + ', m=' + S.m +
+      (S.n === S.m && S.mode === 'sq-diff' ? '<br><span style="color:#b3261e">n=m → 差式恒为 0，整板不振</span>' : '');
+  }
+  document.getElementById('roConv').textContent = convAvg.toFixed(4);
+}
+
+function applyMode(){
+  buildGrid();
+  renderField();
+  if(S.mode !== 'ci' && S.n === S.m && S.mode === 'sq-diff'){
+    // 退化：砂粒贴在原地（场恒 0）
+    for(let i = 0; i < NP; i++){ }
+  }
+  seedParticles();
+  updateReadout();
+  draw();
+}
+
+/* ---- 控件绑定 ---- */
+function syncUI(){
+  document.querySelectorAll('.tab[data-mode]').forEach(function(b){
+    b.classList.toggle('on', b.dataset.mode === S.mode);
+  });
+  document.getElementById('grpSq').style.display = (S.mode === 'ci') ? 'none' : 'block';
+  document.getElementById('grpCi').style.display = (S.mode === 'ci') ? 'block' : 'none';
+  document.getElementById('rn').value = S.n; document.getElementById('vn').textContent = S.n;
+  document.getElementById('rm').value = S.m; document.getElementById('vm').textContent = S.m;
+  document.getElementById('rcn').value = S.cn; document.getElementById('vcn').textContent = S.cn;
+  document.getElementById('rcs').value = S.cs; document.getElementById('vcs').textContent = S.cs;
+  document.getElementById('ckMem').checked = (S.edge === 'mem');
+  document.getElementById('rcm').value = S.cMem; document.getElementById('vcm').textContent = S.cMem.toFixed(1);
+  document.getElementById('rL').value = S.L; document.getElementById('vL').textContent = S.L;
+  document.getElementById('rh').value = S.h; document.getElementById('vh').textContent = S.h.toFixed(1);
+  markGallery();
+}
+
+document.querySelectorAll('.tab[data-mode]').forEach(function(b){
+  b.addEventListener('click', function(){
+    S.mode = b.dataset.mode;
+    syncUI(); applyMode(); renderGalSq(); // 方盘画廊随和/差式变
+  });
+});
+document.getElementById('rn').addEventListener('input', function(e){
+  S.n = +e.target.value; document.getElementById('vn').textContent = S.n;
+  applyMode(); markGallery();
+});
+document.getElementById('rm').addEventListener('input', function(e){
+  S.m = +e.target.value; document.getElementById('vm').textContent = S.m;
+  applyMode(); markGallery();
+});
+document.getElementById('rcn').addEventListener('input', function(e){
+  S.cn = +e.target.value; document.getElementById('vcn').textContent = S.cn;
+  applyMode(); markGallery();
+});
+document.getElementById('rcs').addEventListener('input', function(e){
+  S.cs = +e.target.value; document.getElementById('vcs').textContent = S.cs;
+  applyMode(); markGallery();
+});
+document.getElementById('ckAnti').addEventListener('change', function(e){
+  S.sandMode = e.target.checked ? 'antinode' : 'node';
+  seedParticles(); draw();
+});
+document.getElementById('ckMem').addEventListener('change', function(e){
+  S.edge = e.target.checked ? 'mem' : 'free';
+  applyMode();
+});
+document.getElementById('rcm').addEventListener('input', function(e){
+  S.cMem = +e.target.value; document.getElementById('vcm').textContent = S.cMem.toFixed(1);
+  updateReadout();
+});
+['calR', 'calC'].forEach(function(id){
+  document.getElementById(id).addEventListener('input', renderRev);
+});
+document.getElementById('rL').addEventListener('input', function(e){
+  S.L = +e.target.value; document.getElementById('vL').textContent = S.L; updateReadout();
+});
+document.getElementById('rh').addEventListener('input', function(e){
+  S.h = +e.target.value; document.getElementById('vh').textContent = S.h.toFixed(1); updateReadout();
+});
+document.querySelectorAll('.sw').forEach(function(s){
+  s.addEventListener('click', function(){
+    document.querySelectorAll('.sw').forEach(function(x){ x.classList.remove('on'); });
+    s.classList.add('on'); S.sand = s.dataset.sand; draw();
+  });
+});
+document.getElementById('ckLine').addEventListener('change', function(e){
+  S.showLine = e.target.checked; renderField(); draw();
+});
+document.getElementById('ckField').addEventListener('change', function(e){
+  S.showField = e.target.checked; renderField(); draw();
+});
+document.getElementById('btnReset').addEventListener('click', function(){ seedParticles(); });
+document.getElementById('btnPng').addEventListener('click', function(){
+  const a = document.createElement('a');
+  a.download = 'chladni_' + (S.mode === 'ci' ? ('n' + S.cn + 's' + S.cs) : (S.mode.replace('sq-', '') + '_' + S.n + 'x' + S.m)) + '.png';
+  a.href = cv.toDataURL('image/png');
+  a.click();
+});
+document.getElementById('btnTone').addEventListener('click', function(){
+  const p = physics();
+  playTone(p.f);
+});
+document.getElementById('btnTour').addEventListener('click', function(){
+  if(tourTimer){ stopTour(); return; }
+  startTour();
+});
+
+/* ---- 音调 ---- */
+let AC = null;
+function playTone(f){
+  try{
+    if(!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+    if(AC.state === 'suspended') AC.resume();
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = 'sine';
+    o.frequency.value = Math.max(40, Math.min(8000, f));
+    g.gain.setValueAtTime(0.0001, AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.16, AC.currentTime + 0.04);
+    g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + 1.35);
+    o.connect(g); g.connect(AC.destination);
+    o.start(); o.stop(AC.currentTime + 1.4);
+  }catch(err){ /* 静默失败 */ }
+}
+
+/* ---- 扫频巡演 ---- */
+let tourTimer = null;
+function startTour(){
+  const btn = document.getElementById('btnTour');
+  btn.textContent = '停止巡演'; btn.classList.add('pri');
+  let i = 0;
+  tourTimer = setInterval(function(){
+    if(S.mode === 'ci'){
+      const seq = [[0,1],[1,1],[2,1],[3,1],[4,1],[0,2],[2,2],[4,2],[1,3],[3,3]];
+      const q = seq[i % seq.length];
+      S.cn = q[0]; S.cs = q[1];
+    } else {
+      const seq = [[1,1],[2,1],[3,1],[4,1],[5,1],[2,2],[3,2],[4,2],[3,3],[4,4],[5,5],[8,6]];
+      const q = seq[i % seq.length];
+      S.n = q[0]; S.m = q[1];
+    }
+    i++;
+    playTone(physics().f);
+    syncUI(); applyMode();
+  }, 1700);
+}
+function stopTour(){
+  clearInterval(tourTimer); tourTimer = null;
+  const btn = document.getElementById('btnTour');
+  btn.textContent = '扫频巡演'; btn.classList.remove('pri');
+}
+
+/* =========================================================================
+   9. 画廊缩略图
+   ========================================================================= */
+const THUMB = 104;
+
+/* 共享离屏，96×96 生成后放大 */
+const tOff = document.createElement('canvas');
+tOff.width = tOff.height = 96;
+const tCtx = tOff.getContext('2d');
+const tImg = tCtx.createImageData(96, 96);
+
+function paintThumb(type, a, b, form){
+  const N = 96, d = tImg.data;
+  const wf = new Float32Array(N * N);
+  let mx = 0;
+  for(let j = 0; j < N; j++){
+    const v = 1 - 2 * (j + 0.5) / N;
+    for(let i = 0; i < N; i++){
+      const u = -1 + 2 * (i + 0.5) / N;
+      let w;
+      if(type === 'ci'){
+        const r = Math.hypot(u, v);
+        if(r > 1.0001){ wf[j * N + i] = NaN; continue; }
+        const z = JPZ[a][b - 1];
+        w = besselJ(a, z * Math.min(r, 1)) * Math.cos(a * Math.atan2(v, u));
+      } else {
+        const n = a, m = b, P = Math.PI;
+        const c1 = Math.cos(n * P * u) * Math.cos(m * P * v);
+        const c2 = Math.cos(m * P * u) * Math.cos(n * P * v);
+        w = (form === 'sum') ? c1 + c2 : c1 - c2;
+      }
+      wf[j * N + i] = w;
+      if(Math.abs(w) > mx) mx = Math.abs(w);
+    }
+  }
+  if(mx < 1e-9) mx = 1;
+  for(let j = 0; j < N; j++){
+    for(let i = 0; i < N; i++){
+      const idx = j * N + i, o = idx * 4;
+      const w = wf[idx];
+      if(isNaN(w)){ d[o + 3] = 0; continue; }
+      const av = Math.abs(w) / mx;
+      const t = Math.max(0, 1 - av / 0.070);
+      const sm = t * t * (3 - 2 * t);
+      const base = 20 + 14 * av;
+      const r = base * (1 - sm) + 233 * sm;
+      const g = (base * 0.96) * (1 - sm) + 214 * sm;
+      const bl = (base * 0.90) * (1 - sm) + 166 * sm;
+      d[o] = r; d[o + 1] = g; d[o + 2] = bl; d[o + 3] = 255;
+    }
+  }
+  tCtx.putImageData(tImg, 0, 0);
+}
+
+function makeCell(label, sub, onClick, key){
+  const cell = document.createElement('div');
+  cell.className = 'cell';
+  cell.dataset.key = key || '';
+  const c = document.createElement('canvas');
+  c.width = THUMB; c.height = THUMB;
+  cell.appendChild(c);
+  const cap = document.createElement('div');
+  cap.className = 'cap';
+  cap.innerHTML = '<b>' + label + '</b>' + (sub ? '<br>' + sub : '');
+  cell.appendChild(cap);
+  if(onClick){ cell.addEventListener('click', onClick); }
+  return cell;
+}
+
+function drawThumbInto(cell, src){
+  const c = cell.querySelector('canvas');
+  const g = c.getContext('2d');
+  g.clearRect(0, 0, THUMB, THUMB);
+  g.imageSmoothingEnabled = true;
+  g.drawImage(tOff, 0, 0, THUMB, THUMB);
+}
+
+function renderGalSq(){
+  const host = document.getElementById('galSq');
+  host.innerHTML = '';
+  const form = (S.mode === 'sq-diff') ? 'diff' : 'sum';
+  for(let n = 1; n <= 5; n++){
+    for(let m = 1; m <= 5; m++){
+      const degen = (form === 'diff' && n === m);
+      const mirror = (m > n);
+      let label = n + ',' + m;
+      let sub = degen ? '差式退化' : (mirror ? '≡ 同图' : '');
+      const cell = makeCell(label, sub, function(){
+        if(degen) return;
+        S.mode = (form === 'diff') ? 'sq-diff' : 'sq-sum';
+        S.n = n; S.m = m;
+        syncUI(); applyMode();
+        document.getElementById('s2').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 'sq:' + n + ':' + m);
+      if(degen){
+        cell.classList.add('dim');
+        cell.style.background = '#eef1f5';
+        const c = cell.querySelector('canvas');
+        c.style.background = '#eef1f5';
+      } else {
+        paintThumb('sq', n, m, form);
+        drawThumbInto(cell, tOff);
+      }
+      if(mirror && !degen){
+        const tip = document.createElement('div');
+        tip.className = 'tip'; tip.textContent = '≡';
+        cell.appendChild(tip);
+      }
+      host.appendChild(cell);
+    }
+  }
+  markGallery();
+}
+
+/* =========================================================================
+   9b. 书 p.48 的 15 张原图 + 反推表
+   ========================================================================= */
+const CONF = { a: '● 确定', b: '◐ 较可信', c: '○ 存疑' };
+
+/* n / s 为我从照片读出的值；alt = 若按"腹点=节直径交点(2n)"的另一口径的解 */
+const P48 = [
+  { no: 1,  n: 1, s: 2, conf: 'c', desc: '单臂 S 螺旋（行波）', alt: 'n=1，s 不可定' },
+  { no: 2,  n: 3, s: 2, conf: 'b', desc: '一圈 6 堆 + 中心', alt: '(3,2)/(6,2)=11.06' },
+  { no: 3,  n: 4, s: 1, conf: 'a', desc: '8 条辐射（45° 一条）', alt: '(8,1)=9.76' },
+  { no: 4,  n: 4, s: 3, conf: 'b', desc: '两环各 8 堆', alt: '(8,3)=16.88' },
+  { no: 5,  n: 3, s: 3, conf: 'b', desc: '两环各 6 堆', alt: '(6,3)=14.37' },
+  { no: 6,  n: 0, s: 2, conf: 'b', desc: '一线 3 堆（环腹点裂成两）', alt: 'n=0 无角向结构' },
+  { no: 7,  n: 0, s: 1, conf: 'a', desc: '<b>单中心堆 = 基模</b>', alt: '唯一解' },
+  { no: 8,  n: 3, s: 2, conf: 'b', desc: '3 大堆呈 120°', alt: '(6,2)=11.06' },
+  { no: 9,  n: 3, s: 4, conf: 'c', desc: '多环 + 6 堆', alt: '(6,4)=17.62' },
+  { no: 10, n: 3, s: 3, conf: 'b', desc: '两环各 6 堆', alt: '(6,3)=14.37' },
+  { no: 11, n: 5, s: 2, conf: 'c', desc: '约 10 堆铺开', alt: '(10,2)≈13.8' },
+  { no: 12, n: 5, s: 2, conf: 'c', desc: '大中心 + 外环 10 堆', alt: '(10,2)≈13.8' },
+  { no: 13, n: 3, s: 2, conf: 'b', desc: '6 堆一圈', alt: '(6,2)=11.06' },
+  { no: 14, n: 2, s: 1, conf: 'a', desc: '4 堆成十字', alt: '(4,1)=7.59' },
+  { no: 15, n: 3, s: 3, conf: 'b', desc: '6 堆 + 内环', alt: '(6,3)=14.37' }
+];
+
+function photoCell(no, tag, cap, cls){
+  const cell = document.createElement('div');
+  cell.className = 'cell ph' + (cls ? ' ' + cls : '');
+  if(tag) cell.dataset.key = tag;
+  const img = document.createElement('img');
+  img.src = 'img/p48_' + (no < 10 ? '0' + no : no) + '.jpg';
+  img.alt = 'p48 #' + no;
+  cell.appendChild(img);
+  const num = document.createElement('div');
+  num.className = 'num'; num.textContent = '#' + no;
+  cell.appendChild(num);
+  if(cap){
+    const cp = document.createElement('div');
+    cp.className = 'cap'; cp.innerHTML = cap;
+    cell.appendChild(cp);
+  }
+  return cell;
+}
+
+function renderGalCi(){
+  const host = document.getElementById('galCi');
+  host.innerHTML = '';
+  P48.forEach(function(r){
+    const cell = photoCell(r.no, 'ci:' + r.n + ':' + r.s,
+      '<b>(' + r.n + ',' + r.s + ')</b> ' + r.desc, '');
+    const cf = document.createElement('div');
+    cf.className = 'cf ' + r.conf;
+    cf.title = CONF[r.conf] + (r.alt ? ' ｜ 另一解 ' + r.alt : '');
+    cell.appendChild(cf);
+    cell.addEventListener('click', function(){
+      S.mode = 'ci'; S.cn = r.n; S.cs = r.s; S.edge = 'mem'; S.sandMode = 'antinode';
+      document.getElementById('ckAnti').checked = true; document.getElementById('ckMem').checked = true;
+      S.L = Math.round((parseFloat(document.getElementById('calR').value) || 10) * 20);
+      S.cMem = parseFloat(document.getElementById('calC').value) || 34.2;
+      syncUI(); applyMode();
+      document.getElementById('s2').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    host.appendChild(cell);
+  });
+  markGallery();
+}
+
+/* 书 p.55 的 40 格：只做图像档案 + 点击放大 */
+function renderP55(){
+  const host = document.getElementById('galP55');
+  host.innerHTML = '';
+  for(let no = 1; no <= 40; no++){
+    const cell = document.createElement('div');
+    cell.className = 'cell ph ref';
+    if([16, 17, 21, 22].indexOf(no) >= 0) cell.classList.add('occ');
+    const img = document.createElement('img');
+    img.src = 'img/p55_' + (no < 10 ? '0' + no : no) + '.jpg';
+    img.alt = 'p55 #' + no;
+    cell.appendChild(img);
+    const num = document.createElement('div');
+    num.className = 'num';
+    num.textContent = (Math.floor((no - 1) / 5) + 1) + '-' + ((no - 1) % 5 + 1);
+    cell.appendChild(num);
+    cell.addEventListener('click', function(){
+      openLb('img/p55_' + (no < 10 ? '0' + no : no) + '.jpg',
+        '书 p.55 第 ' + (Math.floor((no - 1) / 5) + 1) + ' 行第 ' + ((no - 1) % 5 + 1) + ' 格');
+    });
+    host.appendChild(cell);
+  }
+}
+
+/* 放大看 */
+let lbEl = null;
+function openLb(src, cap){
+  if(!lbEl){
+    lbEl = document.createElement('div');
+    lbEl.style.cssText = 'position:fixed;inset:0;background:rgba(12,16,22,.86);z-index:999;' +
+      'display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px;cursor:zoom-out';
+    lbEl.innerHTML = '<img style="max-width:min(86vw,360px);max-height:62vh;border-radius:8px;' +
+        'box-shadow:0 10px 40px rgba(0,0,0,.6);image-rendering:auto">' +
+      '<div style="color:#e8eef7;font-family:var(--mono);font-size:12.5px"></div>';
+    lbEl.addEventListener('click', function(){ lbEl.style.display = 'none'; });
+    document.body.appendChild(lbEl);
+  }
+  lbEl.querySelector('img').src = src;
+  lbEl.querySelector('div').textContent = cap;
+  lbEl.style.display = 'flex';
+}
+
+/* 反推表：R 与 c 一改，全部重算 */
+function nearestNote(f){
+  const nm = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const m = 69 + 12 * Math.log2(f / 440);
+  const r = Math.round(m), ct = Math.round((m - r) * 100);
+  return { name: nm[((r % 12) + 12) % 12] + (Math.floor(r / 12) - 1), cents: ct };
+}
+
+function renderRev(){
+  const R = Math.max(1, parseFloat(document.getElementById('calR').value) || 10) / 100;
+  const c = Math.max(1, parseFloat(document.getElementById('calC').value) || 34.2);
+  const j01 = JZ[0][0];
+  const f0 = j01 * c / TAU / R;
+  document.getElementById('calF0').textContent = f0.toFixed(1);
+  S.cMem = c;
+  if(S.mode === 'ci'){ S.L = Math.round(R * 2000);
+    document.getElementById('vcm').textContent = c.toFixed(1);
+    document.getElementById('rcm').value = c;
+    document.getElementById('vL').textContent = S.L;
+    document.getElementById('rL').value = S.L;
+    updateReadout(); }
+  const tb = document.querySelector('#tblRev tbody');
+  tb.innerHTML = P48.map(function(r){
+    const j = JZ[r.n][r.s - 1];
+    const f = j * c / TAU / R;
+    const nn = nearestNote(f);
+    return '<tr' + (r.conf === 'c' ? ' class="lo"' : '') + '>' +
+      '<td class="c">' + r.no + '</td>' +
+      '<td><img src="img/p48_' + (r.no < 10 ? '0' + r.no : r.no) + '.jpg" alt=""></td>' +
+      '<td>' + r.desc + '</td>' +
+      '<td class="c"><b>(' + r.n + ',' + r.s + ')</b></td>' +
+      '<td class="c">' + j.toFixed(4) + '</td>' +
+      '<td class="c">' + (j / j01).toFixed(3) + '</td>' +
+      '<td class="c hz">' + f.toFixed(1) + '</td>' +
+      '<td class="c">' + nn.name + ' ' + (nn.cents >= 0 ? '+' : '') + nn.cents + '¢</td>' +
+      '<td class="cf">' + CONF[r.conf] + '</td></tr>';
+  }).join('');
+}
+
+function markGallery(){
+  const cur = (S.mode === 'ci') ? ('ci:' + S.cn + ':' + S.cs) : (S.mode + ':' + S.n + ':' + S.m);
+  document.querySelectorAll('.cell').forEach(function(c){
+    c.classList.toggle('cur', c.dataset.key === cur);
+  });
+}
+
+/* =========================================================================
+   10. Chladni 定律对照表
+   ========================================================================= */
+function renderLawTable(){
+  const tb = document.querySelector('#tblLaw tbody');
+  const rows = [];
+  for(let s = 1; s <= 3; s++){
+    for(let n = 0; n <= 4; n++){
+      const z = JPZ[n][s - 1];
+      const c = countCircles(n, z);
+      rows.push({ n: n, s: s, j: z, c: c, f: z * z, law: (n + 2 * c) * (n + 2 * c) });
+    }
+  }
+  tb.innerHTML = rows.map(function(r){
+    const ratio = r.f / r.law;
+    let cls = '';
+    if(ratio > 3.2) cls = ' style="background:#fdf2f2"';
+    else if(ratio < 2.4) cls = ' style="background:#f3f8ff"';
+    return '<tr' + cls + '><td class="c">' + r.n + '</td><td class="c">' + r.s + '</td>' +
+      '<td class="c">' + r.j.toFixed(4) + '</td>' +
+      '<td class="c">' + r.c + '</td>' +
+      '<td class="c">' + r.f.toFixed(2) + '</td>' +
+      '<td class="c">' + r.law + '</td>' +
+      '<td class="c"><b>' + ratio.toFixed(2) + '</b></td></tr>';
+  }).join('');
+}
+
+/* =========================================================================
+   11. 启动
+   ========================================================================= */
+function boot(){
+  resize();
+  buildGrid();
+  renderField();
+  seedParticles();
+  updateReadout();
+  draw();
+  renderGalSq();
+  renderGalCi();
+  renderP55();
+  renderRev();
+  renderLawTable();
+  syncUI();
+  requestAnimationFrame(loop);
+
+  let rt = null;
+  window.addEventListener('resize', function(){
+    clearTimeout(rt);
+    rt = setTimeout(function(){ resize(); draw(); }, 160);
+  });
+  // 顶部导航高亮
+  const secs = ['s1','s2','s3','s4','s5','s6','s7','s8','s9'];
+  window.addEventListener('scroll', function(){
+    let cur = 's1';
+    secs.forEach(function(id){
+      const el = document.getElementById(id);
+      if(el && el.getBoundingClientRect().top < 130) cur = id;
+    });
+    document.querySelectorAll('.topnav a[href^="#"]').forEach(function(a){
+      a.classList.toggle('on', a.getAttribute('href') === '#' + cur);
+    });
+  }, { passive: true });
+}
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', boot);
+} else { boot(); }
+</script>
+<!--FXCTL:JS--><script id="fxctl-js">
+/* ============================================================
+   PKS · 通用「调参浮窗」 (float_ctl.js)
+   作用：把页面里成块的参数控件（.ctl / .ctrl / .controls / .calc /
+        .panel[纯控件] / [data-param-panel]）收进右下角一个可拖动浮窗。
+   原则：
+     1. 只搬控件块本身，**不复制、不重建** ⇒ 原页面绑定在元素上的
+        事件监听、id、input 值全部照常工作。
+     2. 搬不走的、散的（每张卡片各一组、且组数很多）→ 整页放弃，
+        保持原样，并在 console 里说明原因，绝不半搬半留。
+     3. 位置写入 localStorage；双击标题栏回默认位；⇱/— 收起。
+   ============================================================ */
+(function () {
+  if (window.__FXCTL) return;
+
+  var SEL = '.ctl,.ctrl,.controls,.calc,.param-panel,.grp,.htgroup,[data-param-panel]';
+  var MAX_GROUPS = 16;    // 超过这个组数：判定为"散在每张卡片里"，整页跳过
+  var MIN_SHARE = 0.85;   // 收进去的滑块至少要占全页 85%，否则跳过（不做半搬半留）
+  var KEY = 'fxp:' + location.pathname;
+
+  function txt(el, n) {
+    var s = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    if (n && s.length > n) s = s.slice(0, n - 1) + '…';
+    return s;
+  }
+  function inChrome(el) {
+    return !!(el.closest && el.closest('.topnav,header,nav,.topbar,.fxp,#fxp'));
+  }
+
+  /* ---------- 1. 找参数面板 ---------- */
+  // 页面自己已经有一个"贴右边的浮动参数窗"？有就不再叠第二个
+  function hasOwnDock() {
+    var els = [].slice.call(document.querySelectorAll('body > *'));
+    // 也看一两层深，很多页把 pwin 套在 wrapper 里
+    document.querySelectorAll('body div, body section, body aside').forEach(function (x) {
+      if (els.length < 400) els.push(x);
+    });
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      if (el.id === 'fxp') continue;
+      if (getComputedStyle(el).position !== 'fixed') continue;
+      var r = el.getBoundingClientRect();
+      if (r.width > 240 && r.width < 620 && r.height > 240 &&
+          (innerWidth - r.right) < 70 && r.top < 220) return true;
+    }
+    return false;
+  }
+
+  function detect() {
+    var all = [].slice.call(document.querySelectorAll('input[type=range]'));
+    if (hasOwnDock()) {
+      return { panels: [], total: all.length, inline: 0, moved: 0, ok: false, own: true };
+    }
+    // 已经在自己的浮窗里（祖先 fixed）的滑块：不算在"待浮"里，也不搬
+    function inFixed(el) {
+      var a = el, d = 0;
+      while (a && d++ < 5) {
+        if (getComputedStyle(a).position === 'fixed') return true;
+        a = a.parentElement;
+      }
+      return false;
+    }
+    var inline = all.filter(function (i) { return !inFixed(i); });   // 仍躺在正文里的
+    var cands = [].slice.call(document.querySelectorAll(SEL)).filter(function (el) {
+      if (inChrome(el)) return false;
+      if (!el.querySelector('input[type=range]')) return false;
+      if (inFixed(el)) return false;                                 // 已在浮窗内
+      var hasCanvas = !!el.querySelector('canvas,svg,video,img');
+      var cls = el.className || '';
+      var isParamCol = /(^|\s)(ctl|ctrl|controls|calc|param-panel)(\s|$)/.test(cls);
+      if (hasCanvas && !isParamCol) return false;
+      if (el.classList.contains('panel') || el.classList.contains('grp')) {
+        return el.querySelectorAll('input[type=range]').length >= 2;
+      }
+      return true;
+    });
+    // 去重 + 保留最外层
+    cands = cands.filter(function (el, i) {
+      if (cands.indexOf(el) !== i) return false;
+      return !cands.some(function (o) { return o !== el && o.contains(el); });
+    });
+    var moved = 0;
+    cands.forEach(function (el) { moved += el.querySelectorAll('input[type=range]').length; });
+    var ok = cands.length > 0 && cands.length <= MAX_GROUPS &&
+             (inline.length ? moved / inline.length >= MIN_SHARE : false);
+    return { panels: cands, total: all.length, inline: inline.length, moved: moved, ok: ok };
+  }
+
+  /* ---------- 2. 取分组标签（最近的标题 / .vt）---------- */
+  function labelFor(el) {
+    var gt = el.querySelector && el.querySelector('.gt');
+    if (gt) return txt(gt, 22);
+    var v0 = el.closest && el.closest('.viz');
+    if (v0) { var t0 = v0.querySelector('.vt'); if (t0) return txt(t0, 22); }
+    var node = el, hop = 0;
+    while (node && hop++ < 6) {
+      var prev = node.previousElementSibling;
+      while (prev) {
+        if (/^H[1-4]$/.test(prev.tagName)) return txt(prev, 22);
+        if (prev.querySelector) {
+          var h = prev.querySelector('h2,h3,h4,.vt');
+          if (h) return txt(h, 22);
+        }
+        prev = prev.previousElementSibling;
+      }
+      node = node.parentElement;
+    }
+    return '';
+  }
+
+  /* 搬走控件后，父级若是两列网格且变空 → 收成一列，避免右侧留一条空白 */
+  function collapseTrack(el) {
+    var par = el.parentElement;
+    if (!par) return;
+    var cs = getComputedStyle(par);
+    if (cs.display !== 'grid') return;
+    var tracks = (cs.gridTemplateColumns || '').split(/\s+/).filter(function (x) { return x && x !== 'none'; });
+    if (tracks.length !== 2) return;
+    if (par.lastElementChild !== el) return;
+    par.style.gridTemplateColumns = '1fr';
+  }
+
+  /* ---------- 3. 搭面板 ---------- */
+  function build(d) {
+    var old = document.getElementById('fxp');
+    if (old) old.remove();
+
+    var p = document.createElement('div');
+    p.id = 'fxp';
+    var counts = d.panels.map(function (el) {
+      return el.querySelectorAll('input[type=range]').length;
+    });
+    var nRange = counts.reduce(function (a, b) { return a + b; }, 0);
+
+    p.innerHTML =
+      '<div class="fxp-h" id="fxpH">' +
+        '<span class="fxp-grip">⠿</span>' +
+        '<span class="fxp-t">调参</span>' +
+        '<span class="fxp-c">' + d.panels.length + ' 组 · ' + nRange + ' 滑块</span>' +
+        '<button class="fxp-b" data-a="mini" title="收起 / 展开">—</button>' +
+        '<button class="fxp-b" data-a="reset" title="回到默认位置（也可双击标题栏）">⟲</button>' +
+      '</div><div class="fxp-bd"></div>';
+
+    var bd = p.querySelector('.fxp-bd');
+    var used = {}, noteDone = false;
+    d.panels.forEach(function (el, i) {
+      var lb = labelFor(el) || ('参数组 ' + (i + 1));
+      if (used[lb]) { used[lb]++; lb = lb.slice(0, 16) + ' (' + used[lb] + ')'; } else { used[lb] = 1; }
+      var g = document.createElement('div');
+      g.className = 'fxp-grp';
+      var gl = document.createElement('div');
+      gl.className = 'fxp-gl';
+      gl.innerHTML = '<b>' + lb.replace(/</g, '&lt;') + '</b><i>' + counts[i] + '</i>';
+      g.appendChild(gl);
+
+      if (!noteDone && el.parentNode) {
+        var note = document.createElement('p');
+        note.className = 'fxp-note';
+        note.textContent = '参数已收进右侧浮窗「调参」（拖标题栏可挪走 · 双击回位）';
+        el.parentNode.insertBefore(note, el);
+        noteDone = true;
+      }
+      collapseTrack(el);
+
+      g.appendChild(el);          // ← 原节点整体搬入，事件与 id 不变
+      bd.appendChild(g);
+    });
+
+    document.body.appendChild(p);
+    return p;
+  }
+
+  /* ---------- 4. 位置 / 拖动 / 收起 ---------- */
+  function clamp(p) {
+    var r = p.getBoundingClientRect(), W = innerWidth, H = innerHeight;
+    var x = Math.min(Math.max(r.left, -r.width + 90), W - 90);
+    var y = Math.min(Math.max(r.top, 0), H - 44);
+    p.style.left = x + 'px'; p.style.top = y + 'px';
+    p.style.right = 'auto'; p.style.bottom = 'auto';
+  }
+  function defPos(p) {
+    p.style.left = ''; p.style.right = ''; p.style.top = ''; p.style.bottom = '';
+  }
+  function save(p) {
+    try {
+      var st = p.classList.contains('fxp-min');
+      if (!p.style.left) { localStorage.removeItem(KEY); return; }
+      localStorage.setItem(KEY, JSON.stringify({
+        x: parseFloat(p.style.left), y: parseFloat(p.style.top), mini: st
+      }));
+    } catch (e) {}
+  }
+  function load(p) {
+    try {
+      var s = localStorage.getItem(KEY);
+      /* 首次访问一律收起：页面本身就有「参数」竖条，浮窗默认展开会把画布挤掉 322px；
+         收起的标题条写着「调参 · N 组 · M 滑块」，一眼能看见、点一下就展开，状态会被记住。 */
+      if (!s) { p.classList.add('fxp-min'); return; }
+      var o = JSON.parse(s);
+      if (o.mini) p.classList.add('fxp-min');
+      if (typeof o.x === 'number' && isFinite(o.x)) {
+        p.style.left = o.x + 'px'; p.style.top = o.y + 'px';
+        p.style.right = 'auto'; p.style.bottom = 'auto';
+        clamp(p);
+      }
+    } catch (e) {}
+  }
+
+  function wire(p) {
+    var h = p.querySelector('#fxpH');
+    var drag = null;
+
+    h.addEventListener('pointerdown', function (ev) {
+      if (ev.target.closest('button')) return;
+      if (innerWidth <= 880) return;                 // 窄屏走底部抽屉，不拖
+      var r = p.getBoundingClientRect();
+      drag = { dx: ev.clientX - r.left, dy: ev.clientY - r.top, moved: false };
+      p.style.left = r.left + 'px'; p.style.top = r.top + 'px';
+      p.style.right = 'auto'; p.style.bottom = 'auto';
+      h.classList.add('fxp-drag');
+      h.setPointerCapture && h.setPointerCapture(ev.pointerId);
+      ev.preventDefault();
+    });
+    h.addEventListener('pointermove', function (ev) {
+      if (!drag) return;
+      drag.moved = true;
+      p.style.left = (ev.clientX - drag.dx) + 'px';
+      p.style.top = (ev.clientY - drag.dy) + 'px';
+      var r = p.getBoundingClientRect();
+      var nx = Math.min(Math.max(r.left, -r.width + 90), innerWidth - 90);
+      var ny = Math.min(Math.max(r.top, 0), innerHeight - 44);
+      p.style.left = nx + 'px'; p.style.top = ny + 'px';
+    });
+    function end() { if (drag) { h.classList.remove('fxp-drag'); save(p); drag = null; } }
+    h.addEventListener('pointerup', end);
+    h.addEventListener('pointercancel', end);
+
+    h.addEventListener('dblclick', function (ev) {
+      if (ev.target.closest('button')) return;
+      defPos(p);
+      try { localStorage.removeItem(KEY); } catch (e) {}
+    });
+
+    p.addEventListener('click', function (ev) {
+      var b = ev.target.closest('button[data-a]');
+      if (!b) return;
+      if (b.dataset.a === 'mini') { p.classList.toggle('fxp-min'); save(p); }
+      if (b.dataset.a === 'reset') { defPos(p); p.classList.remove('fxp-min'); save(p); }
+    });
+
+    addEventListener('resize', function () { if (p.style.left) clamp(p); });
+  }
+
+  /* ---------- 5. 启动 ---------- */
+  function boot() {
+    var d = detect();
+    if (!d.ok) {
+      if (d.own) {
+        console.info('[调参浮窗] 本页跳过：页面自己已有贴右的可拖动参数窗，不叠第二个');
+      } else if (d.inline === 0 && d.total > 0) {
+        console.info('[调参浮窗] 本页跳过：' + d.total + ' 个滑块全在页面自己的浮窗里，没有需要搬的');
+      } else if (d.panels.length) {
+        console.info('[调参浮窗] 本页跳过：' + d.panels.length + ' 组、待浮滑块 ' +
+          d.moved + '/' + d.inline + '（判据：≤' + MAX_GROUPS + ' 组且 ≥' +
+          Math.round(MIN_SHARE * 100) + '%；已在浮窗内的 ' + (d.total - d.inline) + ' 个不计）');
+      }
+      return;
+    }
+    var p = build(d);
+    load(p);
+    wire(p);
+    console.info('[调参浮窗] 已收 ' + d.moved + '/' + d.inline + ' 个待浮滑块，' +
+      d.panels.length + ' 组（另 ' + (d.total - d.inline) + ' 个本来就在浮窗里）');
+  }
+
+  window.__FXCTL = { detect: detect, boot: boot, build: build };
+
+  if (document.readyState === 'complete') setTimeout(boot, 60);
+  else addEventListener('load', function () { setTimeout(boot, 60); });
+})();
+
+</script><!--/FXCTL:JS-->
+</body>
+</html>

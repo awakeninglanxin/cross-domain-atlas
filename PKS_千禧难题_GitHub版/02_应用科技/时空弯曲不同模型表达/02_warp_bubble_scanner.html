@@ -1,0 +1,2507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>② 曲速泡能量条件扫描器</title>
+<link rel="stylesheet" href="assets/css/site.css">
+<style>
+  /* 参数控件已全部移入右侧可拖动浮窗（#paramWin）——正文单栏满宽 */
+  .layout{display:block}
+  .metric{border:1px solid var(--line);border-radius:10px;padding:11px 14px;margin-bottom:9px;background:#fff}
+  .metric .k{font-size:12px;color:var(--ink-3);font-family:var(--mono)}
+  .metric .v{font-family:var(--mono);font-size:19px;color:var(--accent-2);letter-spacing:-.2px}
+  .metric .u{font-size:12px;color:var(--ink-3);margin-left:5px}
+  .metric.hot .v{color:var(--bad)}
+  canvas.chart{width:100%;display:block;border:1px solid var(--line);border-radius:10px;background:#fff}
+  /* §2-2 结果表里的 3D 等角视图缩略图。★ 尺寸写死在 canvas 属性里（118×108 逻辑像素），
+     不给它响应式宽度 —— 表格是 overflow-x 横滚的，宽度一变比例尺就变了，
+     而"五张图共用一个比例尺"正是这一列的意义所在。 */
+  td.isoCell{padding:5px 7px;text-align:center;vertical-align:middle}
+  canvas.isoTh{display:block;margin:0 auto;border:1px solid var(--line-2);border-radius:8px;
+    background:linear-gradient(#fcfdff,#f6f9fd)}
+  tr.isoWin td.isoCell canvas.isoTh{border-color:#4a1d8a;box-shadow:0 0 0 2px rgba(74,29,138,.16)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:900px){.two{grid-template-columns:1fr}}
+  .heatcell{font-family:var(--mono);font-size:11.5px;text-align:center;padding:5px 4px;border-radius:4px}
+  .steps{counter-reset:s;list-style:none;padding-left:0}
+  .steps li{counter-increment:s;padding-left:34px;position:relative;margin:10px 0}
+  .steps li:before{content:counter(s);position:absolute;left:0;top:1px;width:22px;height:22px;border-radius:50%;
+    background:var(--accent);color:#fff;font-family:var(--mono);font-size:12px;display:flex;align-items:center;justify-content:center}
+  .viewer{user-select:none}
+</style>
+
+<style>
+  /* 3D 未就绪时的占位提示（WebGL 失败时不会静默空白） */
+  #glHint{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:6px;color:#8a5a20;font-size:13.5px;text-align:center;padding:26px;line-height:1.8;pointer-events:none}
+  #glHint .sm{font-size:12px;color:#7b8794}
+</style>
+<script>
+/* ★ SOUL 铁律 51：任何 JS 错误 / 资源加载失败，必须在页面右下角可见 */
+(function(){
+  var box = null;
+  function show(msg){
+    if (!box){
+      box = document.createElement('div');
+      box.id = '__ERRBOX__';
+      box.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:99999;max-width:470px;'
+        + 'max-height:42vh;overflow:auto;background:#fdecea;color:#8a1c12;border:1px solid #e0a49b;'
+        + 'border-radius:9px;padding:10px 12px;font:12px/1.6 Consolas,monospace;white-space:pre-wrap;'
+        + 'box-shadow:0 6px 22px rgba(0,0,0,.18)';
+      (document.body || document.documentElement).appendChild(box);
+    }
+    box.textContent += (box.textContent ? '\n' : '') + msg;
+  }
+  window.__showErr = show;
+  window.addEventListener('error', function(e){
+    var t = e.target;
+    if (t && t.tagName && (t.tagName === 'SCRIPT' || t.tagName === 'LINK' || t.tagName === 'IMG')){
+      show('资源加载失败：' + (t.src || t.href));
+    } else {
+      show('JS 错误：' + (e.message || '') + '\n  ' + (e.filename || '') + ':' + (e.lineno || ''));
+    }
+  }, true);
+  window.addEventListener('unhandledrejection', function(e){
+    show('Promise 未捕获：' + (e.reason && e.reason.message ? e.reason.message : e.reason));
+  });
+})();
+</script>
+</head>
+<body>
+
+<nav class="topnav"><div class="inner">
+  <a class="brand" href="index.html">时空弯曲 <span>/</span> 曲速引擎 <span>/</span> anu</a>
+  <a class="nv" href="01_spacetime_six_models.html">① 六种画法</a>
+  <a class="nv on" href="02_warp_bubble_scanner.html">② 曲速泡扫描</a>
+  <a class="nv" href="03_pks_timescape_gyro.html">③ PKS 关联</a>
+  <a class="nv" href="04_anu_to_nucleus.html">④ anu→原子核</a>
+  <a class="nv" href="05_quark_anu.html">⑤ 夸克↔anu</a>
+  <a class="nv" href="06_seven_realms_koilon_to_cell.html">⑥ 七界 L7→L1</a>
+  <a class="nv" href="07_magnetic_charge_lo_shu.html">⑦ 磁荷·洛书</a>
+  <a class="nv xlink" href="file:///D:/AAA%E6%88%91%E7%9A%84%E6%96%87%E4%BB%B6/anu%E4%B8%8Emilnor7%E7%BB%B4%E6%B5%81%E5%BD%A2/AAA_Anu%E4%B8%83%E7%BA%A7%E8%9E%BA%E6%97%8B%E4%B8%BB%E7%95%8C%E9%9D%A2.html"
+     target="_blank" rel="noopener"
+     title="Anu 七级螺旋主界面（另一项目「anu 与 Milnor 7 维流形」，本机 file:/// 绝对路径）">Anu 七级螺旋</a>
+</div></nav>
+
+<div class="wrap">
+<div class="hero">
+  <div class="kicker">Alcubierre 1994 → Natário 2001 → Lentz 2021 → Fuchs 2024</div>
+  <h1>曲速泡能量条件扫描器</h1>
+  <p class="sub">
+    曲速泡的全部代价，浓缩成两个数：<b>哪里需要负能量</b>（一个环绕航向轴的环面），和<b>要多少</b>
+    （体积积分量词 M<sub>warp</sub>）。本页把 Alcubierre 度规的度规能量密度<b>逐点算出来</b>，
+    再对 (v, R, Δ) 三个参数做网格扫描 —— 结构与 MWO 线圈 / SEG 磁路的参数扫描完全同构（见 §5）。
+  </p>
+  <div class="meta">单位 G = c = 1 &nbsp;·&nbsp; 长度 m &nbsp;·&nbsp; M<sub>kg</sub> = M<sub>m</sub> · c²/G = M<sub>m</sub> / 7.4257×10⁻²⁸</div>
+</div>
+
+<div class="layout">
+  <div>
+    <div class="viewer" id="viewer" style="height:600px">
+      <div class="hud" id="hud" data-hud-title="读数"><div class="hud-body"></div></div>
+      <div class="legend hud" id="legend" data-hud-title="图例"><div class="hud-body"></div></div>
+      <div class="badge" id="badge">航向轴 = z &nbsp;·&nbsp; 负能量环面</div>
+      <div class="hint">拖动旋转 · 滚轮缩放 · <b>Shift+拖动 搬动泡体</b> · 双击归位</div>
+      <div id="glHint" style="z-index:-1">正在初始化 3D 视图…<span class="sm">若此处长时间空白，通常是浏览器未启用 WebGL / 硬件加速（页面文字与滑块不受影响）</span></div>
+    </div>
+    <div class="src" id="src" style="margin-top:10px"></div>
+
+    <h3 style="margin-top:26px">子午面能量密度图（横截面）</h3>
+    <p style="font-size:14px;color:var(--ink-2)">
+      横轴 = 横向半径 ρ̃ = √(x²+y²)，纵轴 = 航向 z。颜色 = |ρ|。
+      <b>密度在航向轴上恒为 0</b>（因子 sin²θ），最大值出现在 r ≈ R 的赤道带 —— 绕轴旋转即得环面。
+    </p>
+    <div class="two">
+      <div>
+        <canvas class="chart" id="heat" height="360"></canvas>
+        <div class="note" style="margin-top:6px">子午面 |ρ(ρ̃, z)| 热图 · 白圈 = r=R，橙圈 = r=0.5R</div>
+      </div>
+      <div>
+        <canvas class="chart" id="prof" height="360"></canvas>
+        <div class="note" style="margin-top:6px">赤道剖面 ρ(r) 与 f(r) · 壁越薄峰值越尖</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     右侧可拖动参数浮窗：所有可调参数 + 实时读数 + 判定（SOUL 铁律 184）
+     标题栏可拖动；右上角 −/＋ 收起（状态入 localStorage）；双击标题栏回到默认位
+     ============================================================ -->
+<aside class="pwin" id="paramWin" aria-label="扫描参数与读数">
+  <div class="pw-head" id="pwHead">
+    <span class="grip" aria-hidden="true">⠿</span>
+    <span class="pw-title">扫描参数 · 读数 · 判定</span>
+    <button class="pw-btn" id="pwToggle" type="button" aria-expanded="true" aria-label="收起参数面板" title="收起参数面板">−</button>
+  </div>
+  <div class="pw-body" id="pwBody">
+
+    <div class="pw-sub">① 可调参数（拖动实时重算）</div>
+    <div class="controls" style="margin-top:0">
+      <div class="slider"><span>v (c)</span><input type="range" id="sv" min="0.05" max="3" step="0.05" value="1"><span class="val" id="svv">1.00</span></div>
+    </div>
+    <div class="controls">
+      <div class="slider"><span>R (m)</span><input type="range" id="sR" min="1" max="300" step="1" value="100"><span class="val" id="sRv">100</span></div>
+    </div>
+    <div class="controls">
+      <div class="slider"><span>Δ = 1/σ (m)</span><input type="range" id="sD" min="0.05" max="4" step="0.05" value="1"><span class="val" id="sDv">1.00</span></div>
+    </div>
+    <div class="pw-grid" style="margin-top:10px">
+      <button class="btn sm" id="pA">v=c, R=100, Δ=1</button>
+      <button class="btn sm" id="pB">薄壁 Δ=0.1</button>
+      <button class="btn sm" id="pC">大泡 R=300</button>
+      <button class="btn sm" id="pD">近光速 v=3c</button>
+    </div>
+
+    <div class="pw-sub">② 3D 物体位置（铁律 185）</div>
+    <div class="controls" style="margin:0">
+      <button class="btn sm" id="panHome" title="把泡体搬回原点（也可双击 3D 画面）">⌖ 泡体归位</button>
+      <button class="btn sm" id="fitCam" title="把当前可见的对照体 / 泡全部框进画面（保持视线方向；改大 A 幅度或直锥参数后点它）">⌖ 框住对照体</button>
+      <span class="note" id="panInfo" style="font-size:11.5px;display:block;margin-top:5px">位移 = (0.0, 0.0, 0.0)</span>
+    </div>
+
+    <div class="pw-sub">③ 实时读数</div>
+    <div id="metrics"></div>
+
+    <div class="pw-sub">④ 判定</div>
+    <div class="card bad" id="verdict" style="margin-bottom:6px"></div>
+
+    <div class="pw-sub">⑤ anu 蛋形环面 ↔ 直锥体 对照</div>
+    <div class="controls" style="margin-top:0">
+      <div class="notch" id="eggNotch">
+        <button type="button" data-v="both" class="on">两者</button>
+        <button type="button" data-v="egg">蛋形环面</button>
+        <button type="button" data-v="cone">直锥体</button>
+        <button type="button" data-v="off">关</button>
+      </div>
+    </div>
+    <div class="controls">
+      <div class="notch" id="puffNotch">
+        <button type="button" data-v="off">不画</button>
+        <button type="button" data-v="origin">各自·几何原点</button>
+        <button type="button" data-v="centroid" class="on">各自·质心</button>
+      </div>
+    </div>
+    <span class="note" style="font-size:11px;display:block;margin:2px 0 6px">
+      <b>泡心</b>＝「泡」画在谁的哪里。选「各自…」时<b>每个对照体各得一个独立的泡</b>
+      （同半径 Rs、同一份负能量点云，只是整体平移到该体自己的中心），
+      同时主泡收起 —— 否则三个泡会挤成一团。<br>
+      <b>几何原点</b>＝该对照体自身坐标系的 (0, 0, 0)（即 ζ = 0 那层的轴心，随对齐方式移动）；
+      <b>质心</b>＝旋转面（薄壳）的形心，在轴上。两者都在 ⑤-3 读数里给出确切 ζ 与世界坐标。
+    </span>
+    <div class="controls">
+      <div class="notch" id="alignNotch">
+        <button type="button" data-v="equator" class="on">赤道对齐</button>
+        <button type="button" data-v="axis">轴对齐(原样)</button>
+        <button type="button" data-v="center">中心对齐</button>
+      </div>
+    </div>
+    <div class="controls">
+      <div class="notch" id="laysNotch">
+        <button type="button" data-v="side" class="on">并排</button>
+        <button type="button" data-v="cut">并排 · 剖切</button>
+        <button type="button" data-v="same">同轴重叠</button>
+      </div>
+    </div>
+    <span class="note" style="font-size:11px;display:block;margin:2px 0 6px">
+      <b>赤道对齐</b>＝把两者的「腰带」（半径最大处）落到同一平面 z = 0，即负能量最强环所在平面；
+      <b>轴对齐(原样)</b>＝只统一 +z 朝向、原点不动（保留母线的内禀轴向偏移）。
+      <b>并排 · 剖切</b>＝蛋形环面只扫 180° 方位角，<b>孔与那条 d=0 母线直接暴露出来</b>；
+      <b>同轴重叠</b>＝字面同轴，此时蛋形环面自动降到 0.26 透明度，好让直锥体透出来。
+    </span>
+    <div class="pw-sub">⑤-1 蛋形环面参数（anu 最简参数方程，绕 z 旋转）</div>
+    <div class="controls" style="margin-top:0">
+      <div class="slider"><span>A 幅度</span><input type="range" id="sA" min="0.2" max="2" step="0.02" value="1"><span class="val" id="sAv">1.00</span></div>
+    </div>
+    <div class="controls">
+      <div class="slider"><span>a 高矮</span><input type="range" id="sa" min="0.5" max="8" step="0.05" value="3"><span class="val" id="sav">3.00</span></div>
+    </div>
+    <div class="controls">
+      <div class="slider"><span>b 漏斗</span><input type="range" id="sb" min="1.05" max="6" step="0.01" value="2.76"><span class="val" id="sbv">2.76</span></div>
+    </div>
+    <div class="controls">
+      <div class="slider"><span>c 中孔</span><input type="range" id="sc" min="-1.8" max="1.6" step="0.01" value="-0.92"><span class="val" id="scv">-0.92</span></div>
+    </div>
+    <div class="controls">
+      <div class="slider"><span>k 胖瘦</span><input type="range" id="sk" min="0.5" max="8" step="0.05" value="3.6"><span class="val" id="skv">3.60</span></div>
+    </div>
+    <div class="controls">
+      <div class="slider"><span>d 绕数</span><input type="range" id="sd" min="0" max="12" step="1" value="0"><span class="val" id="sdv">0</span></div>
+    </div>
+    <div class="pw-grid">
+      <button class="btn sm" id="eggReset" title="回到链接里 CalcPlot3D 的原参数 a=3 b=2.76 c=-0.92 k=3.6 d=0">↺ 原参数</button>
+      <button class="btn sm" id="eggZeroD" title="换成 anu3d曲线.py 那一组：a=3 b=3 c=1 k=3 d=5">↺ py 原式</button>
+    </div>
+
+    <div class="pw-sub">⑤-2 直锥体参数（母线是一段直线）</div>
+    <div class="controls" style="margin-top:0">
+      <div class="notch" id="coneSrc">
+        <button type="button" data-v="follow" class="on">跟随蛋形（同步）</button>
+        <button type="button" data-v="free">独立可调</button>
+      </div>
+    </div>
+    <div class="controls">
+      <div class="slider"><span>底半径</span><input type="range" id="sCB" min="0.1" max="2" step="0.01" value="1" disabled><span class="val" id="sCBv">1.00</span></div>
+    </div>
+    <div class="controls">
+      <div class="slider"><span>顶半径</span><input type="range" id="sCT" min="0" max="1.5" step="0.01" value="0" disabled><span class="val" id="sCTv">0.00</span></div>
+    </div>
+    <div class="controls">
+      <div class="slider"><span>高 H</span><input type="range" id="sCH" min="0.2" max="2.5" step="0.02" value="1" disabled><span class="val" id="sCHv">1.00</span></div>
+    </div>
+    <div class="controls">
+      <div class="slider"><span>底面 ζ₀</span><input type="range" id="sCZ" min="-0.6" max="1" step="0.01" value="0" disabled><span class="val" id="sCZv">0.00</span></div>
+    </div>
+    <span class="note" style="font-size:11px;display:block;margin:2px 0 4px">
+      底/顶半径的单位是<b>蛋形腰半径的倍数</b>，高的单位是<b>蛋形轴向跨度 Δz 的倍数</b>，
+      ζ₀ 是底面在 [0,1] 归一轴上的位置（ζ₀ = 0.233 即底面与蛋形腰带、也就是 z = 0 赤道面同高）。
+      <b>拖动任一直锥滑块会自动切到「独立可调」</b>，不用先点按钮。
+    </span>
+    <div class="pw-grid">
+      <button class="btn sm" id="coneTopBtn" title="顶半径 = 蛋形顶盖处的半径 / 腰半径">顶=蛋形顶盖</button>
+      <button class="btn sm" id="coneCylBtn" title="底=顶=腰半径、高不变 ⇒ 直圆柱，用来看「把蛋形拉直成直母线」最极端的样子">拉成直柱</button>
+    </div>
+
+    <div class="pw-sub">⑤-3 实时几何读数</div>
+    <span class="note" id="eggInfo" style="font-size:11.5px;display:block"></span>
+
+    <details class="card soft">
+      <summary>关键公式</summary>
+      <div class="eq">f(r) = [tanh σ(r+R) − tanh σ(r−R)] / (2 tanh σR)</div>
+      <div class="eq">ρ = −<span style="font-size:11px">v²</span>/(32π) · (x²+y²)/r² · (df/dr)²  &lt; 0</div>
+      <div class="eq">M<sub>warp</sub> = −<span style="font-size:11px">v²</span>/12 ∫ (df/dr)² r² dr</div>
+    </details>
+
+    <div class="pw-sub">⑥ 形状寻优（§2-2 的自动求解）</div>
+    <div class="controls" style="margin-top:0">
+      <div class="notch" id="optCase">
+        <button type="button" data-v="A" class="on">等表面积</button>
+        <button type="button" data-v="V">等体积</button>
+        <button type="button" data-v="free">自由（不限）</button>
+      </div>
+    </div>
+    <div class="controls">
+      <button class="btn sm" id="optRun" title="把三种约束（等表面积 / 等体积 / 自由）在当前 R/Δ 下全部跑一遍，约 0.5–1.5 秒">⟳ 三档全跑</button>
+      <button class="btn sm" id="optApply" title="把「蛋形环面族」在当前情况下的最优 a/b/c 写回 ⑤ 的滑块，3D 视图实时变成那条最优母线">↓ 最优蛋形参数写回 ⑤</button>
+    </div>
+    <span class="note" id="optInfo" style="font-size:11px;display:block;margin:2px 0 6px"></span>
+
+  </div>
+</aside>
+
+<h2><span class="num">§1</span>代价的解析标度：M<sub>warp</sub> = −(1/36)·v²R²/Δ</h2>
+<p>
+  对 tanh 形状函数做数值积分，在 R ≫ Δ 极限下比例系数收敛到常数 <b>1/36 = 0.02778</b>（本页右侧读数里 <code>M/(v²R²/Δ)</code> 一栏就是它）。
+  三条推论直接读出来：
+</p>
+<table>
+<thead><tr><th>依赖</th><th>含义</th><th>物理后果</th></tr></thead>
+<tbody>
+<tr><td><b>∝ v²</b></td><td>速度一超光速，代价二次方上涨</td><td>v 从 1c 到 3c，|M| 变 9 倍</td></tr>
+<tr><td><b>∝ R²</b></td><td>泡的表面积</td><td>泡大一倍，代价四倍</td></tr>
+<tr><td><b>∝ 1/Δ</b></td><td>壁越薄越贵（导数 (df/dr)² 发散）</td><td>想把壁压薄来省能量？<b>代价反涨</b></td></tr>
+</tbody>
+</table>
+<div class="card warn">
+  <div class="ch">这里已经埋下了量子层级的炸弹</div>
+  经典层只要求「有负能量」，量级还算温和。但一旦把<b>量子不等式（QI）</b>叠加上去，它会反过来
+  约束壁厚 Δ，而 Δ 又出现在分母上 —— 于是负能量总额被推到天文数字。这正是 §4 的内容。
+</div>
+
+<h2><span class="num">§2</span>为什么负能量必须长成一个环面</h2>
+<div class="eq">ρ ∝ − (x²+y²)/r² · (df/dr)²</div>
+<p>
+  两个因子相乘，形状就被锁死了：
+</p>
+<ul>
+<li><b>(df/dr)²</b> 只在泡壁上非零 → 把密度限制在 r ≈ R 的一层壳里。</li>
+<li><b>(x²+y²)/r² = sin²θ</b> 在航向轴（θ=0）上为零、在赤道（θ=π/2）上为 1 →
+    壳在「两极」被抹掉，只在「腰带」留下。</li>
+</ul>
+<p>两者相乘：<b>一层去掉两极的球壳 = 一个环绕航向轴的环面（甜甜圈）</b>。左侧热图里那两个亮斑就是它的横截面。</p>
+<div class="card soft">
+  <div class="ch">推论一：飞船在泡心很舒服</div>
+  泡内 f = 1，度规在泡内是严格平直的闵可夫斯基度规 —— 飞船处于自由落体，感受不到加速度，
+  也不是「被推着走」，而是<b>泡带着它一起被时空本身搬走</b>。这就是曲速引擎与普通火箭的根本差别。
+</div>
+<div class="card soft">
+  <div class="ch">推论二：航向轴是唯一「免费」的地方</div>
+  因为因子 sin²θ 的存在，正前方与正后方的轴线上 ρ = 0。这解释了为什么某些改良方案
+  （Van den Broeck 1999 的「颈口」结构）把负能量搬到更细的环上就能省下数量级。
+</div>
+
+<h3>把上面这句话变成一个能算出数的问题 —— 三个量、一个评分、三个哨兵</h3>
+<p>
+  上面那段是**定性**的。要判断它对不对、要挑出最优的形状，必须先回答一个可计算的问题：
+  <b>「把 §7 那条母线做成一层厚 Δ 的壳，它到底接住了多少 §1 要求的负能量？」</b>
+  三个量都只用本页同一条 ρ 公式（唯一来源在 <code>assets/js/warp-opt.js</code>），无需引入任何新假设：
+</p>
+<div class="scroll-x"><table>
+<thead><tr><th>量</th><th>定义</th><th>怎么算</th></tr></thead>
+<tbody>
+<tr><td><b>E<sub>need</sub></b><br><span class="note">要多少</span></td>
+    <td>这幅度规<b>总共需要</b>的负能量</td>
+    <td>就是 §1 的 |M<sub>warp</sub>| = (1/36)·v²R²/Δ（本页读数里那一栏）</td></tr>
+<tr><td><b>E<sub>shell</sub></b><br><span class="note">接住多少</span></td>
+    <td>这条母线做成的壳<b>真的接住</b>的负能量</td>
+    <td>对壳体（母线扫出的管，管径 = 壁厚 Δ）做体积分 ∭|ρ| dV</td></tr>
+<tr><td><b>κ = E<sub>shell</sub>/E<sub>need</sub></b><br><span class="note">兑现率</span></td>
+    <td><b>泡能真转起来的比例</b> —— 也就是<b>可兑现的推力份额</b></td>
+    <td>∈ [0, 1]；<b>κ 越大 = 同样的度规要求，这条母线越能把它撑起来</b></td></tr>
+<tr><td><b>A</b> / <b>V<sub>in</sub></b></td>
+    <td>壳的侧面积（异物质用量 ∝ A·Δ）／ 壳围出的空间（飞船能待的地方）</td>
+    <td>A = 2π∮ρ̃ ds（Pappus 旋转面）；V<sub>in</sub> = 2π·A<sub>母线</sub>·r̄</td></tr>
+</tbody>
+</table></div>
+<div class="eq">推力评分　Φ = κ / (A / R²)　　<span class="lbl">单位制造面积能兑现的推力份额（无量纲，越大越好）</span></div>
+<p class="note" style="display:block">
+  ★ 三件事必须写在明处，否则这个模型会被误读：
+  <br>① <b>它不是一个度规求解器</b>。它固定在 Alcubierre 的 ansatz 里（平直区 = r &lt; R、壁在 r ≈ R），
+      只问「把负能量摆在哪儿最划算」；换 f(r) 的改良（Natário / Lentz）不在射程内。
+  <br>② <b>κ 与 v 无关</b>（v² 在分子分母同时出现），只依赖 R/Δ —— 所以寻优只需一个无量纲输入。
+  <br>③ 壳厚取成 §1 的 Δ（最公平的取法），于是有一条**天花板**：见下面那张卡片。
+</p>
+<div class="card warn">
+  <div class="ch">★ 球壳接住的是 64.3833%，不是 100% —— 这是算出来的、不是估的</div>
+  (df/dr)² ∝ sech⁴u（u = (r−R)/Δ），而 sech⁴ 的**有效宽度是 4Δ/3**，比壳厚 Δ 还宽。
+  于是厚度 Δ 的壳只装得进 sech⁴ 峰的中段，<b>覆盖全部立体角</b>的球壳只能接住
+  <div class="eq">κ<sub>ceil</sub> = ∫<sub>−1/2</sub><sup>1/2</sup>sech⁴u du ⁄ ∫<sub>ℝ</sub>sech⁴u du
+    = (tanh½ − tanh³½/3)·2 ⁄ (4/3) = <b>0.6438326526</b></div>
+  <b>适用边界（数值实测，别把这句话说满）：</b>κ<sub>ceil</sub> 是「<b>径向带宽 = Δ、覆盖全部立体角</b>」
+  这一类形状的上限 —— 球壳达到它，而 R/Δ ≥ 10 时<b>五个候选族没有一个能超过它</b>（本页 <code>κ/κ<sub>ceil</sub></code>
+  一栏最大就是 1.000）。但 R/Δ ≲ 4 时前提垮掉（§1 的 1/36 定律本来也要求 R/Δ ≥ 6）：
+  实拍 R/Δ = 2 时超椭球族到 <b>1.027</b>、蛋形族到 <b>1.003</b> —— 它们用<b>更宽的径向带</b>
+  把 sech⁴ 的尾巴也啃下来一块。所以准确说法是：<b>κ 本身没有普适上限；有上限的是
+  Φ = κ/(A/R²)</b> —— 多接住的那些要靠更多材料换，Φ 反而未必更高。
+  <br>⇒ 想全接住，得把壳做到 ~4Δ 厚，材料代价 4 倍 —— <b>没有免费午餐</b>。
+  这一条把 §4 的量子不等式接上了：QI 把 Δ 钉在普朗克尺度，代价就跟着一起致命。
+  本页 <code>κ/κ<sub>ceil</sub></code> 一栏读作「把球壳那份厚度预算用到了几成」。
+</div>
+
+<h3>自动寻优：三种约束下的最优形状轮廓（右侧浮窗 ⑥）</h3>
+<p>
+  右侧浮窗 <b>⑥</b> 可以在五个候选母线族里自动求解 —— <b>不是手调</b>。做法：
+  固定要优化的参数做网格 + 局部细化，另一维旋钮用<b>割线法反解</b>使约束恰好命中
+  （A、V<sub>in</sub> 对旋钮都单调增，所以反解一定收敛）。三种情况：
+</p>
+<table>
+<thead><tr><th>情况</th><th>约束</th><th>在问什么</th></tr></thead>
+<tbody>
+<tr><td><b>等表面积</b></td><td>A = A<sub>球壳</sub> = 4πR²</td><td>异物质用量一样多时，哪种母线接住的负能量最多？</td></tr>
+<tr><td><b>等体积</b></td><td>V<sub>in</sub> = V<sub>球壳</sub> = (4/3)πR³</td><td>飞船能待的地方一样大时，哪种母线接得最多？</td></tr>
+<tr><td><b>自由（不限）</b></td><td>无</td><td>只看单位面积的兑现率，最优会走到哪里去？</td></tr>
+</tbody>
+</table>
+<p class="note" style="display:block">
+  ★ 候选族里有一个 <b>超椭球族</b> ρ̃(ζ) = R·(1 − |2ζ−1|<sup>p</sup>)<sup>1/q</sup>，它<b>同时含球壳与双锥</b>：
+  p = q = 2 就是半圆母线（球壳），p = q = 1 就是双锥。这是有意的 ——
+  <b>「最优解是不是球壳」必须由搜索自己搜出来，不能由我点上去</b>。
+  <br>★ 下面的表里，每一行都带一张 <b>3D 等角视图缩略图</b>（正等测）：
+  把该行<b>最优母线</b>绕 z 轴扫出的壳体画成线框 —— 母线用的是<b>与算 A / V / κ 完全相同的那一份数据</b>，
+  不是另画的示意图。图里红环 = 腰带 (ρ̃ = R, z = 0)，<b>五张图共用一个比例尺</b>（红环等大 ⇒ 可直接互比大小）。
+</p>
+<div class="scroll-x"><table id="optTbl"><thead></thead><tbody></tbody></table></div>
+<p class="note" id="optNote" style="display:block;margin-top:6px"></p>
+
+<h3>三档并排：蛋形环面 / 直锥体 在每种约束下的最优参数（右侧浮窗 ⑥ 的「⟳ 三档全跑」）</h3>
+<p>
+  上面那张表只展开<b>当前选中</b>的那一档。这张把三档并排 —— 它直接回答
+  「同样的材料预算下，蛋形环面与直锥体各自该怎么调参数、能拿到多少推力」。
+  参数一栏就是<b>可以直接写进 ⑤ 的滑块</b>的值（点「↓ 最优蛋形参数写回 ⑤」就是这件事）。
+</p>
+<div class="scroll-x"><table id="allTbl"><thead></thead><tbody></tbody></table></div>
+<p class="note" id="allNote" style="display:block;margin-top:6px">
+  ★ 换 R 或 Δ 之后，未被重算的那两档会标成「待重算」而<b>不会</b>拿旧值充数 ——
+  不同 R/Δ 下的 κ、Φ 不可比（它们只依赖 R/Δ）。
+</p>
+
+<h3>母线对照：最优轮廓长什么样（叠在 Alcubierre |ρ| 上）</h3>
+<div class="two" id="optTwo">
+  <div><canvas class="chart" id="optChart"></canvas></div>
+  <div>
+    <p style="font-size:14px;color:var(--ink-2);margin-top:0">
+      <b>左栏</b>：整幅子午面（等尺，1 = 泡半径 R）—— 紫色洋葱 = |ρ| ≥ 10% / ≥ 50% 峰值的区域。
+      <b>但 Δ = R/100 时那一层只有 ~1 px 厚</b>，左栏只能看"腰带在哪"，
+      结构必须看<b>右栏</b>那个以 Δ 为单位的放大窗（各向同尺，半宽 6Δ）。几条母线放在一起比：
+    </p>
+    <ul style="font-size:14px;color:var(--ink-2);line-height:1.85" id="optLegend"></ul>
+    <div class="card soft" style="margin-top:4px">
+      <div class="ch">读法</div>
+      <b>母线越贴着右栏那条最深的带（x = (ρ̃−R)/Δ ≈ 0，即 ρ̃ = R、z ≈ 0），κ 越高</b>；
+      跑到 r 远大于 R 去的部分（比如直锥的斜边、幂律颈的两端鼓包）
+      <b>一个负能量都接不到</b>，纯粹白花材料。<br>
+      橙虚线 = 壳自己的径向范围 |r−R| ≤ Δ/2 —— 它比 |ρ| 的带<b>窄</b>，
+      这就是那条 64.4% 上限的来源（看右栏：壳只盖住带的中段）。
+    </div>
+  </div>
+</div>
+
+<h3 id="conclHead">寻优给出的三条结论（含对上面那句论断的修正）</h3>
+<div class="card good">
+  <div class="ch">结论一：不加约束 ⇒ 赤道细带胜出，正是「环面」直觉的极限状态</div>
+  自由情况下最优解落到<b>幂律颈族 B = 1、h → 最小</b>，也就是<b>一圈贴在赤道腰带上的细带</b>，
+  Φ 达到球壳的 <b>1.50 倍</b>。这条把 §2 的直觉<b>量化</b>了：单位制造面积上，赤道确实最划算。
+</div>
+<div class="card warn">
+  <div class="ch">结论二：但只要要求「装得下东西」，球壳立刻反超 —— 而且 Φ 与带宽无关</div>
+  细带的围出体积只有球壳的 <b>4.5%</b>（装不了东西），而且 <b>Φ 与带宽无关</b>：
+  带再细，Φ 都是同一个数（尺度不变）。<b>所以「不约束」时根本不存在唯一最优解</b> ——
+  必须钉住 V<sub>in</sub> 或 A 才谈得上「最优」。一旦钉住：
+  <b>等表面积与等体积两种情况的最优解都是球壳</b>（κ 顶到天花板，κ/κ<sub>ceil</sub> = 1.000）。
+</div>
+<div class="card bad">
+  <div class="ch">结论三（对上面那句论断的修正）：负能量不是「只在腰带」，而是「按 sin²θ 加权在整壳体上」</div>
+  严格说 ρ 只在轴线上（θ = 0、π）为零，是**一个测度零的集合**；sin²θ 是一条<b>很宽</b>的分布 ——
+  数值上 <b>90% 的负能量落在离赤道 ±34° 以内</b>（fraction = 1.5·Δθ），但 ±62° 以内仍是肉眼可见的量。
+  所以正确的说法是：<b>「必须贴在 r ≈ R 的壳层上，赤道最强、两极最弱，但并不为零」</b>；
+  3D 视图里看到的那个「甜甜圈」是 <b>22% 显示阈值</b>切出来的观感，不是 ρ 的真实支撑集。
+  <br><br>这条修正<b>不动结论</b>（负能量确实向赤道集中，环面确实是最省材料的极限形状），
+  但它改掉了「环面」这个说法本身 —— 因为按支撑集讲，那是<b>整张球壳</b>。
+</div>
+<p class="note" id="conclNote" style="display:block">
+  数值全部可当场复算：模块 <code>assets/js/warp-opt.js</code>，
+  自检脚本 <code>_check/opt_test.js</code>（含「球壳 κ 必须等于独立的一维径向积分比」这条硬哨兵，
+  两条完全独立的代码路径互查）。寻优在 R/Δ = 100 下用 200 点母线采样，球壳 κ 的偏差 &lt; 1×10⁻⁴。
+  <br><b>最近新增的四条哨兵</b>（都是先出过事、才补上的）：
+  · <code>A18</code> 等值线折线在放大窗内必须贴着真曲线 —— 等值线在赤道附近是<b>竖直</b>的
+    （z ∝ √(r−r_E)），而 r 网格在带沿附近一格就跳到 dz ≈ 28Δ，只连端点与下一个网格点会画出一条
+    斜穿窗口的长弦（假"扇面"）。修前最差偏差 189%，修后 0.12%；
+  · <code>B7</code> 读数不许慢一拍 —— HUD 的 ζ 必须就是<b>当前</b>几何的 ζ。
+    <code>update()</code> 原本"先写读数、后重建几何"，于是 ζ / 世界心 / Rs 全是上一轮的
+    （实测 a 滑块 3→1.5 时几何 ζ = 0.42175，HUD 却仍写 0.4264）；
+  · <code>B8</code> 三档「写回 ⑤」后的 ζ 必须互不相同 —— 同时守着"写回没重建几何"和"读数滞后"两种毛病；
+  · <code>B9</code> <b>窗内文字不许落在负能量深带上</b>。右栏那条深带是<b>贯穿整高</b>的竖条
+    （等值线近乎垂直 ⇒ 每一档都从窗顶连到窗底），所以"往左挪一点"救不回来：
+    原图注「腰带：ρ̃ = R, z = 0（|ρ| 最强环）」从基线中段起档位就走到 3→6，
+    尾字"最强环"恰好读不出来。现在绘制时就把每段落点连同背景档位存进
+    <code>__optChartGeo.labels</code>，逐个自检（窗内最差档位 ≤ 2，含"旧位置必须仍是暗的"反证）；
+    窗内只留两字短签「腰带」钉在最左白带上 + 引线指窗心，整句解释移入下方图例。
+  <br><b>写回 ⑤ 时页面会直接报出新的 ζ 与世界心</b>（默认蛋形 ζ = 0.4264；等表面积档 → 0.4368、
+  等体积档 → 0.4416、自由档 → 0.4254），这三个数就是「最优轮廓」在 ⑤ 里的位置读数。
+</p>
+
+
+<h2><span class="num">§3</span>参数扫描器：同构于 MWO / SEG 的磁路扫描</h2>
+<p>
+  下表对泡半径 R 与壁厚 Δ 做网格扫描（取 v = c），格内为 |M<sub>warp</sub>|（单位：太阳质量 M<sub>☉</sub>）。
+  颜色越深＝代价越大。<b>这个「几何参数 → 场 → 积分成本」的三段式，与 MWO 线圈的
+  (环数, 直径, 间隔) 网格评分、SEG 磁路的参数搜索完全同构。</b>
+</p>
+<div class="scroll-x"><table id="scan"><thead></thead><tbody></tbody></table></div>
+<p class="note" style="display:block;margin-top:6px">
+  ⚠ 读数 <code>M/(v²R²/Δ)</code> 收敛到 −1/36 的前提是 <b>R ≫ Δ</b>（实测 R/Δ ≈ 6 以上偏差已 &lt; 0.5%）。
+  表中 R = 1 m 那一行相对 Δ 偏厚，属于「厚壁」区，1/36 定律不适用 —— 这时必须直接用数值积分，本页即如此。
+</p>
+
+<h3>三段式的同构对照</h3>
+<table>
+<thead><tr><th>环节</th><th>曲速泡（本页）</th><th>MWO 线圈 / LC 谐振放电</th><th>SEG 磁路通道</th></tr></thead>
+<tbody>
+<tr><td>① 几何参数</td><td>v, R, Δ</td><td>环数 N, 直径 D, 匝间距 g</td><td>m 折返面位置, p 极对数</td></tr>
+<tr><td>② 场量</td><td>ρ(x) 能量密度</td><td>L(几何), 场强 B(r,z), 放电波形</td><td>Δp 转位量, 磁通分布</td></tr>
+<tr><td>③ 积分成本 / 评分</td><td>M<sub>warp</sub> = ∫ρ d³x</td><td>∫B²dV / 谐振效率评分</td><td>净推力量 / 场不对称度</td></tr>
+<tr><td>④ 约束不等式</td><td>NEC / WEC / QI</td><td>材料屈服、饱和磁通、电容耐压</td><td>能量守恒、退磁极限</td></tr>
+<tr><td>⑤ 目标</td><td>找 |M<sub>warp</sub>| 极小且满足能量条件</td><td>找评分最高的 (N, D, g)</td><td>找最大 Δp 转位量</td></tr>
+</tbody>
+</table>
+<div class="card warn">
+  <div class="ch">⚠ 边界声明</div>
+  以上是<b>方法论结构的同构</b>（同一套「参数 → 场 → 积分 → 约束」搜索范式），
+  <b>不是物理等价</b>。要落地任何一条，都必须先写出对应的度规或场方程。
+</div>
+
+<h2><span class="num">§4</span>四道闸门：为什么 1994 年以来这条路一直没通</h2>
+
+<h3>闸门 1：WEC / NEC 被处处违反</h3>
+<div class="eq">T<sub>μν</sub>U<sup>μ</sup>U<sup>ν</sup> = −(v²/32π)·[(∂f/∂x)² + (∂f/∂y)²] &lt; 0</div>
+<p>「这个类别的时空里，能量密度<b>没有一处为正</b>」（原文：<i>the energy density for this class of spacetimes is nowhere positive</i>）。</p>
+
+<h3>闸门 2：量子不等式（Pfenning–Ford 1997）把壁厚钉在普朗克尺度</h3>
+<p>把 (8) 式代入 QI，得到对采样时间与壁厚的联合约束：</p>
+<div class="eq">t₀ ∫ (v²/r²)(df/dr)² dt/(t²+t₀²) ≤ 3/(ρ²t₀⁴) &nbsp;⟹&nbsp; Δ ≤ (3/4)√(3/π) · v<sub>b</sub>/α²</div>
+<p>取 α = 1/10：</p>
+<div class="eq">Δ ≤ 10² · v<sub>b</sub> · L<sub>Planck</sub> &nbsp;&nbsp;<span class="lbl">除非 v 极大，壁厚不能高于普朗克尺度</span></div>
+<p>对应的负能量总额：</p>
+<div class="eq">E ≲ −3 × 10²⁰ · M<sub>galaxy</sub> · v<sub>b</sub></div>
+<div class="card bad">
+  <div class="ch">这就是那个著名数字的来源</div>
+  比可观测宇宙总质量还大<b>约十个数量级</b>。注意：这是<b>量子不等式</b>给出的约束，不是经典爱因斯坦方程的要求
+  —— 两者差着约 30 个数量级（本页右侧把两层并列显示）。
+</div>
+
+<h3>闸门 3：光锥 / 视界问题</h3>
+<p>泡壁内部的视界使船长<b>无法在泡形成后向前发指令去关闭前壁</b> —— 那需要超光速信号。这就是「你没法按需启动/刹车」的根源。</p>
+
+<h3>闸门 4：闭合类时曲线（CTC）</h3>
+<p>两个泡串联（Krasnikov 管）可构造出闭合类时曲线，即时间机器。这是物理上最被忌讳的副产品。</p>
+
+<h2><span class="num">§5</span>2001 年后的改良谱系（以及各自被卡在哪）</h2>
+<table>
+<thead><tr><th>年份</th><th>方案</th><th>做了什么</th><th>结果</th></tr></thead>
+<tbody>
+<tr><td>1994</td><td><b>Alcubierre</b></td><td>首次给出超光速泡度规；靠前缩后胀搬运</td><td>需要处处为负的 WEC 违反能量</td></tr>
+<tr><td>1999</td><td>Van den Broeck</td><td>把负能量压缩到细颈上，泡内体积做大</td><td>总量降到几倍太阳质量量级（经典层）</td></tr>
+<tr><td>2001</td><td><b>Natário</b></td><td>显式构造<b>零膨胀</b>的解，证明「前缩后胀只是 Alcubierre 选择的副产物」</td><td>负能量照旧；但把「膨胀」从必要项里除掉</td></tr>
+<tr><td>1997</td><td>Pfenning–Ford</td><td>把 QI 施加到泡上</td><td>壁厚 ≲ 普朗克尺度；能量 ≳ 宇宙质量的 10¹⁰ 倍</td></tr>
+<tr><td>2021</td><td><b>Lentz</b></td><td>构造双曲（soliton）解，声称<b>处处正能量密度</b>，且可由导电等离子体＋经典电磁场供能</td><td>声称成立；有效争议</td></tr>
+<tr><td>2021</td><td><b>Bobrick–Martire</b></td><td>提出「物理曲速引擎」分类：Ⅰ 亚光速温和／Ⅱ 表观超光速／Ⅲ 极端；并指出 Lentz 解不是严格意义上的曲速引擎</td><td>把整个领域重新划了标尺</td></tr>
+<tr><td>2024</td><td><b>Fuchs et al.</b></td><td>给出<b>恒速物理曲速引擎</b>解，在特定 shell 参数下 ADM 能量为正</td><td>唯一在「正质量」方向上真正推进的一支</td></tr>
+</tbody>
+</table>
+<div class="card good">
+  <div class="ch">读法</div>
+  这条线的走向很清楚：<b>从「能不能超光速」转向「能不能用正能量」</b>。
+  2021 年 Bobrick–Martire 的分类把「曲速引擎」拆成三类之后，Lentz 式解是否算数才有了可判定的标准；
+  2024 年 Fuchs 等人给出一支可正质量化的恒速解 —— 这是目前最值得盯的方向。
+</div>
+
+<h2><span class="num">§6</span>与 anu / 微观灵视的联系（预留接口）</h2>
+<p>
+  曲速泡的负能量环面与 <a href="05_quark_anu.html">anu 的 10 条「线圈」结构</a>在<b>几何描述层面</b>有可对话之处：
+  两者都是「一条绕轴的能量流形成闭合拓扑，轴的端点/极点处量值为零」。
+  这属于结构性类比，<b>不构成物理断言</b>；把它写成可检验命题，需要先给出 anu 的场方程。
+</p>
+
+<h2><span class="num">§7</span>anu 最简参数曲线 → 蛋形环面 ↔ 直锥体</h2>
+
+<p>
+  本项目的 anu 几何起点是一条**最简可控参数方程**（本机出处：
+  <code>01_基础理论/14_anu结构与精细结构常数的关系/DXF生成程序集/anu3d曲线.py</code>）：
+</p>
+<div class="eq">x(t) = −k(c − arctan sin t)·sin(dt) / (cos t + b) &nbsp;&nbsp;·&nbsp;&nbsp; y(t) = −k(c − arctan sin t)·cos(dt) / (cos t + b) &nbsp;&nbsp;·&nbsp;&nbsp; z(t) = a·arctan(1 + cos t) + b</div>
+<p>
+  取 <b>d = 0</b>，则 <code>sin(dt) ≡ 0</code>、<code>cos(dt) ≡ 1</code>，曲线落到 (x = 0) 子午半平面里，
+  成为一条<b>闭合的蛋形母线</b>；<b>把它绕中轴 z 旋转 360°</b>，就得到本页 3D 视图里那个<b>蛋形环面</b>。
+  它是有孔的甜甜圈（亏格 1），孔沿航向轴贯通 —— 而航向轴正是 Alcubierre 泡里唯一 ρ = 0 的「免费通道」。
+</p>
+
+<h3>四个参数各自管什么（实测，不是命名猜测）</h3>
+<table>
+<thead><tr><th>参数</th><th>本机实测的严格关系</th><th>几何后果</th></tr></thead>
+<tbody>
+<tr><td><b>a 高矮</b></td><td>轴向跨度 Δz = a·arctan 2 = <b>1.1071·a</b>（严格线性）</td><td>直接定蛋的高矮</td></tr>
+<tr><td><b>b 漏斗</b></td><td>外缘半径 = k|c|/(b−1) → b→1⁺ 时<b>发散</b>；b ≤ 1 母线不闭合</td><td>控制喇叭口开多大</td></tr>
+<tr><td><b>c 中孔</b></td><td>r<sub>min</sub> 随 c 增大而减小；<b>c 过零 ⇒ 母线跨轴</b></td><td>跨轴后拓扑从环面变成球状（孔消失）</td></tr>
+<tr><td><b>k 胖瘦</b></td><td>半径 <b>r ∝ k</b>（纯缩放，形状不变）</td><td>整体胖瘦</td></tr>
+<tr><td><b>d 绕数</b></td><td>d = 0 ⇒ 平面母线；d ≠ 0 ⇒ 绕 z 轴 d 圈的 3D 螺旋</td><td><b>只多画一条参考螺旋线，不参与成面</b></td></tr>
+</tbody>
+</table>
+
+<h3>「直锥体」是哪来的 —— 它不是随便找的参照物</h3>
+<p>
+  本机 <code>16_schauberger…/DXF生成程序集/01_直锥螺旋管/</code> 里那份
+  「<b>最简原始模版用于生成直锥螺旋管</b>」是<b>所有螺旋程序的共同祖先</b>，其母线是
+  <code>r(t) = R₀ + (R₁−R₀)·t</code>，<b>一条直线</b>；同目录 <code>README_程序族详解.md</code> 写明：
+  <b>「直锥是蛋形在螺距恒定时退化版」</b>。所以「直锥体」与「蛋形环面」是<b>同一族的两端</b> ——
+  母线一个直、一个蛋。这就是本节要做的对照。
+</p>
+<div class="card soft">
+  <div class="ch">对照的公平约定</div>
+  两个对照体<b>共用同一条 z 轴、同一个 +z 朝向、同一个轴向跨度、同一个腰半径（r 最大处）</b>。
+  于是两条母线唯一的差别只剩：<b>直线 vs 蛋形闭合环</b>。差异全部归因到形状本身。
+</div>
+
+<h3>泡画在哪：每个对照体各得一个独立的泡</h3>
+<p>
+  右侧浮窗 ⑤ 的 <b>泡心</b> 决定「泡」画在谁的哪里。选「各自…」时，蛋形环面与直锥体
+  <b>各自带一个完整的泡</b>（泡壁半径同为 Rs、共用同一份负能量点云，只是整体平移到该体自己的中心），
+  同时<b>主泡收起</b> —— 否则三个泡在并排视角下两两相交，谁也看不出泡心搬到了哪。两个口径：
+</p>
+<div class="eq">几何原点 = 该对照体自身坐标系的 (0, 0, 0)　·　质心 = 旋转面（薄壳）的形心，在轴上</div>
+<p>
+  两者都换算成同一个归一 ζ，再走唯一那条 <code>Z(ζ) = sc·(ζ·A + zOff)</code>。
+  默认参数 + 赤道对齐下：原点的泡心在 z = −4.136（两者同高，都落在 ζ = 0 那层）；
+  质心的泡心在 z = +3.457（蛋形）／ +1.800（直锥）。直锥形心有<b>闭式</b>
+  <code>h·(底+2·顶)/(3(底+顶))</code>：锥 → h/3，柱 → h/2，与采样密度无关。
+  图上用小<b>黑点</b>标出泡心位置，不靠读数板口头声明。
+</p>
+
+<h3>母线对照（归一化：横轴 ρ̃/R，纵轴 z/R，等比例——形状对照不能被拉伸）</h3>
+<div class="two">
+  <div>
+    <canvas class="chart" id="merCmp"></canvas>
+    <div class="note" style="margin-top:6px">
+      紫晕 = Alcubierre 子午面 |ρ|（灰虚线 = 泡壁 f=0.5）· <b style="color:#b3261e">红实线 = 蛋形母线</b> ·
+      <b style="color:#c2691a">橙实线 = 直锥母线</b>
+    </div>
+  </div>
+  <div>
+    <p style="font-size:14px;color:var(--ink-2);margin-top:0">
+      这张图就是整个对照的要害，三句话读完：
+    </p>
+    <ul style="font-size:14px;color:var(--ink-2);line-height:1.85">
+      <li>紫晕<b>极其薄</b>、只贴在 ρ̃ = R 那条赤道带上 —— 泡壁越薄（Δ/R 越小）它越像一根头发丝。
+        所以「负能量环面」在真实参数下是一圈<b>细腰带</b>，不是一个大甜甜圈。</li>
+      <li>橙线是<b>一条直线</b>（直锥的母线），从底面 (1, 0) 直接收到轴上一点。</li>
+      <li>红线是<b>闭合的蛋形环</b>：它<b>最宽的地方正好落在 z = 0、ρ̃ = R</b> 那一点上
+        —— 这不是巧合，是「赤道对齐」按定义摆出来的。</li>
+    </ul>
+    <div class="card soft" style="margin-top:4px">
+      <div class="ch">一句话结论</div>
+      直锥与蛋形环面<b>共用轴、共用跨度、共用腰半径</b>，唯一的差别就是母线：<b>直线 vs 闭合环</b>。
+      直线给出一个<b>没有孔</b>的锥面（顶部是曲率奇点）；闭合环给出一个<b>有贯通孔</b>的环面
+      —— 而那个孔，正好套在「ρ ≡ 0 的航向轴」上。
+    </div>
+  </div>
+</div>
+
+<h3>对照表（随右侧滑块实时重算）</h3>
+<div class="scroll-x"><table id="eggTbl"><thead></thead><tbody></tbody></table></div>
+<div class="note" style="display:block;margin-top:6px">
+  归一化说明：两体的坐标都按 <b>腰半径 = 泡半径 R</b> 缩放（即幅度 A = 1.00 的默认值），所以两列可直接比大小。
+  右列括号里是「蛋形 ÷ 直锥」的倍数。
+  <br><b>★ 先把「哪个数是算出来的、哪个数是外部目标」分清</b>：本表里只有
+  <b>「孔/腰半径比 r<sub>min</sub>/r<sub>max</sub>」那一行是页面对当前母线真的算出来的</b>
+  （默认参数 = 0.064042，来自 anu 母线的 r<sub>min</sub>/r<sub>max</sub>）；
+  最后一行里的 <b>0.007297 不是涌现值</b> —— 它就是 <code>1/137.036</code> 的十进制写法
+  （α 的目标常数，写在代码里、不是解出来的），页面拿它当分母，只用来说明
+  「本页自然值离它有多远（8.8×）」。见下面 §「与 PKS α 命题的关系」。
+</div>
+
+<h3>与 PKS「α = 曲率比」命题的关系 —— 一句诚实的结论</h3>
+<p>
+  项目里有一条主张（<code>PKS_Millennium_Egg_超双曲锥到射影几何_完整分析.md</code> §4.3）：
+  电性走线性分支得<b>直锥</b>、磁性走倒数分支得<b>蛋形</b>，而
+  <code>α = R₀/R_c = 蛋形尖端曲率 / 直锥基准曲率 ≈ 1/137.036</code>。
+  本页把这条主张<b>当真做了两个检查</b>，结论如下（都可当场复算）：
+</p>
+<table>
+<thead><tr><th>检查</th><th>结果</th><th>判定</th></tr></thead>
+<tbody>
+<tr><td><b>先问：本页到底"算"出了哪个数？</b></td>
+    <td>只有 <b>r<sub>min</sub>/r<sub>max</sub> = 0.064042</b>。链条是
+      <code>(a,b,c) = (3, 2.76, −0.92) → anu 最简母线（唯一来源 AnuRevolve.meridian）
+      → r<sub>max</sub> = 0.748573、r<sub>min</sub> = 0.047940 → 0.064042</code>。
+      这就是"自然涌现"的全部含义：<b>由参数经一条公式链落下来的数</b>。</td>
+    <td><span class="tag ok">涌现值</span></td></tr>
+<tr><td>那 <b>0.007297</b> 是怎么来的？</td>
+    <td><b>它不是涌现出来的</b> —— 它是 <code>1/137.036</code> 这个<b>写在代码里的常数</b>的十进制写法
+      （CODATA 的 α 目标值）。页面只是把 <code>holeRatio</code> 拿它当分母做除法。
+      换句话说：这个数<b>可以</b>从本页得到，但只在「先把它当输入」的前提下。</td>
+    <td><span class="tag mid">外部目标</span></td></tr>
+<tr><td>若 R_c 指<b>直锥母线的曲率半径</b></td><td>直锥母线是直线 ⇒ <b>κ ≡ 0</b>，曲率半径 ≡ ∞，比值为 0 或未定义</td><td><span class="tag mid">定义待补</span></td></tr>
+<tr><td>取<b>孔/腰半径比</b> r<sub>min</sub>/r<sub>max</sub> 当 α，用默认参数</td><td>0.064042，与 1/137.036 = 0.007297 <b>差 8.8 倍</b></td><td><span class="tag no">不符</span></td></tr>
+<tr><td>这个比值能不能被<b>调到</b> 1/137.036？</td><td>能。<b>单独动 b</b>：b* = 1.0605（c = −0.92 固定）<br><b>单独动 c</b>：c* = −0.79930（b = 2.76 固定）</td><td><span class="tag mid">可调量</span></td></tr>
+<tr><td>灵敏度</td><td>Δc = 10⁻³ ⇒ 比值变 ±7.1%；要钉在 1% 内，c 需准到 ~10⁻⁵</td><td></td></tr>
+<tr><td>★ 那项目里 α 的<b>另一条</b>路线呢？<br>
+      （<code>舒伯格公式 — 导读.md</code> §五：α⁻¹ ≈ 20φ⁴）</td>
+    <td>φ = (1+√5)/2 = 1.618033989 ⇒ <b>20φ⁴ = 137.082039</b>，
+      与 CODATA 的 α⁻¹ = 137.035999 相对偏差 <b>+0.0336%</b>（纯 φ 算出来的，没有自由参数）。
+      反向看：若把 20φ⁴ 当成定义，则 (α⁻¹/20)^¼ = 1.617898 vs φ = 1.618034，差 <b>1.36×10⁻⁴</b>。
+      <br><span class="note">复算脚本 <code>_check/_syn/probe_alpha.js</code>（连同下面那条 r<sub>min</sub>/r<sub>max</sub> 路线一起打）</span></td>
+    <td><span class="tag ok">数值成立</span></td></tr>
+</tbody>
+</table>
+<div class="card warn">
+  <div class="ch">所以：现在这条 α 命题还不是「预测」，而是「可调量」—— 但项目里另有一条是「数值成立」的</div>
+  r<sub>min</sub>/r<sub>max</sub> 在本参数族里由 (b, c) 两个自由参数连续控制，范围是从 0 到 0.0789，
+  <b>1/137.036 落在可达区间内部</b> —— 想让它等于 α，只需把 b 或 c 拧到上面那两个值。
+  要把 α 变成<b>可证伪的预言</b>，必须先有一条<b>独立</b>确定 b 或 c 的方程（例如把 b 与 1/b 的
+  ab = 1 极化原理写成对参数本身的约束），否则「算出了 1/137」只是一个巧合级别的吻合。
+  <br><br>
+  ★ 区别在这里：<b>r<sub>min</sub>/r<sub>max</sub> 那条路要把参数拧过去才等于 α（可调量）；
+  而 <code>20φ⁴ = 137.0820</code> 这条**一个自由参数都没有**</b> ——
+  φ 是黄金比、(20, 4) 是公式里数出来的，值与 CODATA 的 α⁻¹ 差 <b>0.0336%</b>。
+  这才是本项目里唯一具备「涌现」资格的 α 路线（出处 <code>舒伯格公式 — 导读.md</code> §五）。
+  不过它是否算<b>导出</b>，仍取决于「20」和「4」的来历能否独立说明 —— 本页只负责把数值复算出来，
+  并对两条路线给出<b>不同</b>的判定，不替它们下物理结论。
+  <br><br>本条只陈述<b>可以从代码/闭式复算的事实</b>，不对 α 的物理来源下结论。
+</div>
+
+<footer><div class="wrap">
+  <div>时空弯曲不同模型表达 · 交互页 ②</div>
+  <div>公式出处：Alcubierre &amp; Lobo 2021, arXiv:2103.05610（<code>02_曲速引擎/</code>）；Pfenning &amp; Ford 1997 CQG 14 1743</div>
+</div></footer>
+</div>
+
+<script>
+/* ★ three.js 未加载时的明确提示（避免「什么都没有」的静默失败） */
+window.addEventListener('DOMContentLoaded', function(){
+  if (typeof WarpOpt === 'undefined'){
+    if (window.__showErr) window.__showErr('warp-opt.js 未加载：assets/js/warp-opt.js 不可达（ρ 与 |M_warp| 的唯一来源）');
+  }
+  if (typeof THREE === 'undefined'){
+    var gh = document.getElementById('glHint');
+    if (gh){
+      gh.style.zIndex = '2';
+      gh.style.pointerEvents = 'auto';
+      gh.innerHTML = '⚠ 3D 引擎 three.js 未能加载'
+        + '<span class="sm">请确认 assets/js/vendor/three.min.js 与页面一同拷贝'
+        + '（本机常见原因：只复制了 .html 单文件）</span>';
+    }
+    if (window.__showErr) window.__showErr('three.js 未加载：assets/js/vendor/three.min.js 不可达');
+  }
+});
+</script>
+<script src="assets/js/vendor/three.min.js"></script>
+<script src="assets/js/vendor/OrbitControls.js"></script>
+<script src="assets/js/param-panel.js"></script>
+<script src="assets/js/anu-revolve.js"></script>
+<script src="assets/js/warp-opt.js"></script>
+<script>
+/* ============================================================
+   曲速泡能量条件扫描器
+   公式：Alcubierre & Lobo 2021 (arXiv:2103.05610) Eq.(1)(2)(7)(8)(10)
+   ============================================================ */
+const H = 24;      // 渲染尺度：把 R 映射到 3D 世界
+let V = 1.0, R = 100, TH = 1.0;   // v/c, 泡半径(m), 壁厚(m)
+const G_over_c2 = 7.4257e-28;     // m/kg
+const M_SUN = 1.98892e30;         // kg
+const M_GAL = 1.0e42;             // kg, 银河系质量量级
+
+/* ---------- ρ 与总能量：**唯一来源在 assets/js/warp-opt.js** ----------
+   ★ 铁律：同一个公式不许有两份 —— 两份就会漂。
+     这两个函数现在被 §2-2 的形状寻优与页面读数同时使用，一漂就是
+     「图上说的和表里算的不是一回事」。所以物理层整体搬进模块，
+     这里只保留同名转发，调用处一行不改。 */
+const sech2  = WarpOpt.sech2;
+const shape  = WarpOpt.shape;
+const dshape = WarpOpt.dshape;
+const rhoMag = WarpOpt.rhoMag;
+const mWarp  = WarpOpt.mWarp;
+
+/* ============================================================
+   3D：负能量环面点云 + 泡壁 + 航向轴
+   ============================================================ */
+const viewer = document.getElementById('viewer');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf9fbff);
+const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 4000);
+/* ★ HOME 只当**视线方向**用：距离不再吃这个常数（见 fitCamera）。 */
+const HOME = new THREE.Vector3(46, 30, 52);
+camera.position.copy(HOME);
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+viewer.insertBefore(renderer.domElement, viewer.firstChild);
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = .08;
+controls.maxDistance = 400; controls.minDistance = 4; controls.update();
+
+scene.add(new THREE.AmbientLight(0xffffff,.82));
+const L1 = new THREE.DirectionalLight(0xffffff,.60); L1.position.set(24,34,18); scene.add(L1);
+const L2 = new THREE.DirectionalLight(0xffffff,.28); L2.position.set(-22,-16,-24); scene.add(L2);
+
+/* 坐标轴 */
+(function(){
+  const Ln = 17;
+  const mk=(d,c)=>{ const g=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),d.clone().multiplyScalar(Ln)]);
+    return new THREE.Line(g,new THREE.LineBasicMaterial({color:c,transparent:true,opacity:.55})); };
+  scene.add(mk(new THREE.Vector3(1,0,0),0xc0392b));
+  scene.add(mk(new THREE.Vector3(0,1,0),0x27732f));
+  scene.add(mk(new THREE.Vector3(0,0,1),0x1b4f9c));   // 航向轴
+})();
+const grid = new THREE.GridHelper(40, 40, 0xc8d3e2, 0xe9eef6);
+grid.rotation.x = Math.PI/2;   // 让网格垂直于航向轴（横截面）
+grid.position.set(0,0,-20);
+grid.material.transparent = true; grid.material.opacity = .38;
+scene.add(grid);
+
+const bubbleGroup = new THREE.Group(); scene.add(bubbleGroup);
+let cloud = null, cloudGeo = null, wallMesh = null, ringMesh = null, axisArrow = null;
+/* ★ 主泡的零件清单：选「各自·泡心」时要整组收起（否则主泡 + 两个对照体泡 = 三个泡挤成一团）。
+   逐个 visibility 切换而不是不建 —— 不建会让「切回不画」那一帧缺件。 */
+let mainParts = [];
+/* ★ 负能量点云的几何**共用一份**：主泡与各对照体的泡用的是同一条采样律、同一个阈值，
+   共用几何既省显存，也从根上保证三个泡的点云逐位相同（对照才成立）。 */
+let beltGeo = null, beltMat = null;
+/* ★ Rs 提升为模块级：蛋形环面 / 直锥体要按同一比例放进场景。
+   绝不在别处重写一遍这个公式（否则 W/Δ 缩放一旦调整，对照体就会错位）。 */
+let Rs = 1;
+/* 对照体的摆放参数也提到模块级：泡心要按同一套换算算世界坐标（off/sc/A/zOff）。 */
+let anuSc = 1, anuOff = 0, anuZOff = 0, anuA = 1;
+
+function exoticColor(t){    // t∈[0,1] 弱→强
+  t = Math.max(0, Math.min(1, t));
+  const a=[0.83,0.78,0.94], b=[0.29,0.10,0.55];
+  return new THREE.Color(a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t);
+}
+
+function rebuild(){
+  /* ★ 递归释放：蛋形环面 / 直锥体是 Group，只放 direct child 会漏掉它们内部的
+     geometry / material —— 每次拖滑块 rebuild 一次就漏一份显存。 */
+  function disposeNode(o){
+    if(o.children && o.children.length) o.children.slice().forEach(disposeNode);
+    /* ★ beltGeo / beltMat 被主泡与各对照体的泡**共用**（这是有意的：保证三个泡的点云逐位相同）。
+       共用就意味着会被 dispose 三次 —— 加哨兵，顺带把 material 也一样处理。 */
+    if(o.geometry && !o.geometry.__wbDisposed){ o.geometry.__wbDisposed = 1; o.geometry.dispose(); }
+    if(o.material) (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{
+      if(m.__wbDisposed) return; m.__wbDisposed = 1;
+      if(m.map)m.map.dispose(); m.dispose();
+    });
+  }
+  while(bubbleGroup.children.length){ const o=bubbleGroup.children[0]; bubbleGroup.remove(o); disposeNode(o); }
+
+  const s = 1/TH;
+  Rs = R*(H/(R+3*TH))*0.62;          // 世界坐标下的泡半径（随 R/Δ 自适应）★ 模块级，见声明处
+  const ths = TH*(H/(R+3*TH))*0.62;
+
+  /* --- 负能量环面 --------------------------------------------------------
+     ρ ∝ (ρ̃²/r²)·(df/dr)² 只在 r ≈ R 的一层壳里非零，壳厚量级 = Δ。
+     ⇒ 必须按 (r, θ) 采样。旧版在 (ρ̃, z) 矩形里撒 80×80 网格：默认 R/Δ = 100 时
+        几乎整片落空，实测只剩 162 个点，"紫色点云 = 负能量环面"这句话当场不成立。 */
+  const pts = [], cols = [];
+  const NR = 84, NA = 120;
+  const rLo = Math.max(0.01*R, R - 6*TH), rHi = R + 6*TH;
+  const WS = (H/(R+3*TH))*0.62;
+  let rmax = 1e-30;
+  for(let i=0;i<NR;i++){
+    const r = rLo + (rHi-rLo)*(i+0.5)/NR;
+    for(let j=0;j<NA;j++){
+      const th = Math.PI*(j+0.5)/NA;
+      rmax = Math.max(rmax, rhoMag(r*Math.sin(th), r*Math.cos(th), R, s, V));
+    }
+  }
+  for(let i=0;i<NR;i++){
+    const r = rLo + (rHi-rLo)*(i+0.5)/NR;
+    for(let j=0;j<NA;j++){
+      const th = Math.PI*(j+0.5)/NA;
+      const rt = r*Math.sin(th), z = r*Math.cos(th);
+      const w = rhoMag(rt, z, R, s, V);
+      /* 显示阈值 = 22% 峰值。ρ ∝ sin²θ 是**宽**的角向分布：阈值取 1% 时几乎整球都有点，
+         两极空洞看不出来，"负能量长成环面（腰带）"这句话在图上就立不住。 */
+      if(w < rmax*0.22) continue;
+      const nrep = 1 + Math.floor(3*w/rmax);
+      for(let q=0;q<nrep;q++){
+        /* ★ 方位角必须**确定性**：旧版用 Math.random()，每拖一次滑块就重掷一次骰子，
+           整片紫色点云跟着抖（看起来像在漏点），截图也没法复现。
+           哈希取模：无状态、零成本、分布足够散。 */
+        const phi = 2*Math.PI*(((i*73 + j*151 + q*211) % 1009) / 1009);
+        pts.push(rt*Math.cos(phi)*WS, rt*Math.sin(phi)*WS, z*WS);
+        const c = exoticColor(Math.pow(w/rmax, .55));
+        cols.push(c.r,c.g,c.b);
+      }
+    }
+  }
+  /* ★ 负能量点云的几何**只建一次**，主泡与各对照体的泡共用（beltGeo / beltMat 是模块级）。
+     共用不只是省显存：它从根上保证「三个泡的负能量分布逐位相同」——否则各自随机取方位角，
+     三个泡看起来就不是同一个泡，对照当场失效。 */
+  cloudGeo = new THREE.BufferGeometry();
+  cloudGeo.setAttribute('position', new THREE.Float32BufferAttribute(pts,3));
+  cloudGeo.setAttribute('color', new THREE.Float32BufferAttribute(cols,3));
+  beltGeo = cloudGeo;
+  beltMat = new THREE.PointsMaterial({size:0.40, vertexColors:true,
+     transparent:true, opacity:.9, sizeAttenuation:true, depthWrite:false});
+  cloud = new THREE.Points(beltGeo, beltMat);
+  cloud.renderOrder = 1;
+  bubbleGroup.add(cloud);
+  mainParts = [cloud];
+
+  /* --- 泡壁（f = 0.5 球面） --- */
+  wallMesh = new THREE.Mesh(new THREE.SphereGeometry(Rs, 44, 30),
+     new THREE.MeshBasicMaterial({color:0x9fb2cc, wireframe:true, transparent:true, opacity:.20}));
+  bubbleGroup.add(wallMesh);
+
+  /* --- 航向轴上的「飞船」与小箭头 --- */
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(Rs*0.16, Rs*0.44, 20),
+     new THREE.MeshStandardMaterial({color:0x1b4f9c, roughness:.45, metalness:.3}));
+  cone.rotation.x = Math.PI/2;
+  bubbleGroup.add(cone);
+  axisArrow = new THREE.ArrowHelper(new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,Rs*1.15),
+     Rs*1.1, 0x1b4f9c, Rs*0.22, Rs*0.13);
+  bubbleGroup.add(axisArrow);
+  const spine = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,-Rs*1.9), new THREE.Vector3(0,0,Rs*1.9)]),
+    new THREE.LineDashedMaterial({color:0xb3261e, dashSize:0.4, gapSize:0.28, transparent:true, opacity:.8}));
+  spine.computeLineDistances(); bubbleGroup.add(spine);
+
+  /* --- 两处「壁厚」标注 --- */
+  const cvs = document.createElement('canvas'); cvs.width=512; cvs.height=96;
+  const cx = cvs.getContext('2d');
+  cx.font='bold 46px monospace'; cx.fillStyle='#7a3ba8';
+  cx.fillText('ρ < 0  （奇异物质）', 6, 62);
+  const tex = new THREE.CanvasTexture(cvs);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:false}));
+  sp.position.set(0, Rs*1.25, 0); sp.scale.set(Rs*1.5, Rs*0.28, 1);
+  bubbleGroup.add(sp);
+
+  /* --- 主泡的零件登记（供「各自·泡心」模式整组收起） --- */
+  mainParts.push(wallMesh, cone, axisArrow, spine, sp);
+
+  /* --- anu 蛋形环面 / 直锥体对照体（同属 bubbleGroup ⇒ Shift 拖动一起搬） --- */
+  rebuildAnu();
+
+  /* --- 泡心：选「各自…」时**收起主泡**，每个对照体带自己的泡 ---
+     为什么必须收：并排时两个对照体在 x = ∓1.25·Rs，主泡半径 Rs 居中，
+     三个泡两两相交、糊成一团，谁也看不出「泡心搬到了哪」。
+     选回「不画」即刻还原本来的单泡视图。 */
+  const showMain = !(anuPuff !== 'off' && anuShow !== 'off');
+  mainParts.forEach(o => { if (o) o.visible = showMain; });
+  /* 出画救援（见 fitCameraIfCropped 注释）：只在 ⑤ 对照体可见时管。
+     主泡随 (v, R, Δ) 长大的表达不能被自动取景压平，所以刻意不覆盖主泡那一路。 */
+  if (anuShow !== 'off') fitCameraIfCropped();
+}
+
+/* ============================================================
+   读数 / 判定
+   ============================================================ */
+function fmt(x, d){ 
+  if(!isFinite(x)) return '—';
+  const ax = Math.abs(x);
+  if(ax !== 0 && (ax < 1e-3 || ax >= 1e5)){
+    const e = Math.floor(Math.log10(ax));
+    return (x/Math.pow(10,e)).toFixed(2) + '×10' + String(e).replace('-','⁻').replace(/[0-9]/g, m=>'⁰¹²³⁴⁵⁶⁷⁸⁹'[+m]);
+  }
+  return x.toFixed(d===undefined?3:d);
+}
+function update(){
+  const s = 1/TH;
+  const M = mWarp(V, R, s);                  // m 单位
+  const Mkg = M/G_over_c2;
+  const Msun = Mkg/M_SUN;
+  /* 峰值 |ρ| 解析值：ρ ∝ sin²θ·(df/dr)²，极大在 θ = π/2、r = R ⇒ (v²/32π)·(df/dr|_R)²。
+     旧版用 60×60 矩形网格扫 —— 默认参数下漏掉峰值，低估约 20%（0.002 vs 0.002487）。 */
+  const pk = (V*V/(32*Math.PI)) * Math.pow(dshape(R, R, s), 2);
+  const QI = 3e20 * M_GAL * V;               // Pfenning-Ford 量级 (kg)  式(21)
+  const wallPL = 100*V*1.616255e-35;         // Δ ≤ 10² v L_Planck       式(20)
+  const UNIV = 1.0e53;                        // 可见宇宙总质量量级 (kg)
+
+  document.getElementById('metrics').innerHTML = [
+    ['M/(v²R²/Δ)',      (M/(V*V*R*R*s)).toFixed(5), (R/TH>=6 ? '→ −1/36 极限' : '⚠ R/Δ='+(R/TH).toFixed(1)+' 厚壁区')],
+    ['壁厚 Δ',           TH.toFixed(2), 'm'],
+    ['壁厚 / 泡半径',     (TH/R).toExponential(2), ''],
+    ['峰值 |ρ|',         fmt(pk,3), 'm⁻² (几何单位)'],
+    ['M_warp',           fmt(M,3), 'm'],
+    ['M_warp',           fmt(Mkg,3), 'kg'],
+    ['M_warp',           fmt(Msun,3), 'M☉'],
+    ['QI 约束的 E',       '−'+fmt(QI,2), 'kg（量级）'],
+    ['QI 允许的壁厚',     fmt(wallPL,2), 'm（α=1/10）']
+  ].map(r=>'<div class="metric"><div class="k">'+r[0]+'</div><div class="v">'+r[1]+
+      (r[2]?'<span class="u">'+r[2]+'</span>':'')+'</div></div>').join('');
+
+  const ratio = Math.abs(Msun);
+  const qRatio = (Math.abs(Mkg) > 0) ? (QI/Math.abs(Mkg)) : 0;
+  document.getElementById('verdict').innerHTML =
+    '<div class="ch">判定</div>'+
+    '<div style="font-size:13.5px;line-height:1.85">'+
+    '<span class="tag no">WEC 违反</span> ρ 处处 ≤ 0，恒不为正<br>'+
+    '<span class="tag no">NEC 违反</span> 对 ±ẑ 平均后仍为负，<b>对所有 v 成立</b><br>'+
+    '<span class="tag mid">经典量级</span> |M<sub>warp</sub>| ≈ '+fmt(ratio,3)+' M<sub>☉</sub>（'+fmt(Math.abs(Mkg),2)+' kg）<br>'+
+    '<span class="tag no">量子量级</span> 壁厚需 ≲ 10²v·L<sub>Planck</sub> = '+fmt(wallPL,2)+' m，'+
+    '对应 E ≳ '+fmt(QI,2)+' kg<br>'+
+    '<span class="note" style="display:block;margin-top:7px">'+
+      '两层相差约 10<sup>'+Math.round(Math.log10(qRatio))+'</sup> 倍；'+
+      'QI 那一层 ≈ 10<sup>'+Math.round(Math.log10(QI/UNIV))+'</sup> 倍可见宇宙总质量（10⁵³ kg）。'+
+      '<br>换言之：<b>经典层「只差钱」，量子层「差一个宇宙」。</b></span>'+
+    '</div>';
+
+  /* ★ 几何**必须先于读数**重建（2026-10-12 修，原来这一组在函数末尾）。
+     下面 #hud / #legend / #src 里的 ζ、世界心、Rs 全都不是直接读 MT：
+       · HUD 的 ζ/世界心来自 puffInfo（只在 rebuildAnu() 里填）
+       · Rs 本身就是 rebuild() 里算出来的（世界坐标下的泡半径）
+       · drawProfile / drawScan 也要读 MT / FR
+     而 rebuild() 原本排在最后 ⇒ 这些读数拿到的全是**上一轮**的几何。
+     实测：a 滑块 3 → 1.5 时几何 ζ = 0.42175，HUD 却仍写 0.4264；复原后又反过来写 0.4217。
+     这就是「界面撒谎」——读数板与屏幕上那条母线对不上。
+     rebuild() 只读模块状态（V/R/TH/AP/coneP/anu*），不依赖本函数上面的局部量，所以可以整体前移。
+     anuEnsure() 的签名闸门保证同一次 update 只采一遍样，拖滑块不会因此变慢。 */
+  rebuild(); drawHeat(); drawProfile(); drawScan(); drawMerCmp(); refreshEggInfo();
+
+  document.querySelector('#hud .hud-body').innerHTML =
+    '<b>Alcubierre 泡</b> v = '+V.toFixed(2)+'c，R = '+Math.round(R)+' m，Δ = '+TH.toFixed(2)+' m<br>'+
+    '<span style="color:#4a1d8a">紫色点云</span> = 负能量腰带（只画 |ρ| ≥ 0.22·峰值 处，<br>'+
+    '&nbsp;&nbsp;∴ 两极那两顶「帽子」是空的 —— 那里 ρ ≡ 0，正是飞船的通道）<br>'+
+    '灰线框球 = 泡壁 f = 0.5 &nbsp;|&nbsp; 红虚线 = 航向轴 z<br>'+
+    anuHudLine();
+  document.querySelector('#legend .hud-body').innerHTML =
+    '<div><b>ρ &lt; 0 环绕航向轴</b></div>'+
+    '<div style="margin-top:5px">轴向（θ=0）恒为 0</div>'+
+    '<div>赤道带（θ=π/2）最强</div>'+
+    '<div style="margin-top:4px;color:#4a1d8a">紫点阈值：|ρ| ≥ 0.22·峰值</div>'+
+    '<div style="margin-top:5px;color:#0f8b7a">青＝蛋形环面（anu 母线绕 z）</div>'+
+    '<div>橙＝直锥体（蛋形的退化对照）</div>'+
+    (anuPuff === 'off' ? '' :
+      '<div style="margin-top:5px;color:#4a1d8a">深紫圈＝泡赤道腰带（半径 Rs）</div>'+
+      '<div style="color:#374151">黑点＝泡心（各对照体自己的中心）</div>'+
+      '<div class="note">选「各自·泡心」时主泡收起</div>');
+  document.getElementById('src').innerHTML =
+    '能量密度式 (8)、体积积分量词式 (10) 照录自 Alcubierre &amp; Lobo, “Warp drive basics”, arXiv:2103.05610；'+
+    'QI 式 (19)(20)(21) 同源，原始结果见 Pfenning &amp; Ford 1997, Class. Quantum Grav. 14, 1743。'+
+    '蛋形母线参数方程见本机 <code>01_基础理论/14_anu结构与精细结构常数的关系/DXF生成程序集/anu3d曲线.py</code>；'+
+    '「直锥」退化体见 <code>16_schauberger…/DXF生成程序集/01_直锥螺旋管/</code>。';
+}
+
+/* ---------- 子午面热图 ---------- */
+function drawHeat(){
+  const cv = document.getElementById('heat');
+  const W = cv.width = cv.clientWidth, Hh = cv.height = 360;
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0,0,W,Hh);
+  const s = 1/TH;
+  const RT = R*2.1, ZT = R*1.6;
+  let mx = 1e-30;
+  const NX=190, NY=150;
+  const buf = new Float32Array(NX*NY);
+  for(let i=0;i<NX;i++) for(let j=0;j<NY;j++){
+    const rt = RT*i/NX, z = -ZT + 2*ZT*j/NY;
+    const w = rhoMag(rt,z,R,s,V); buf[i*NY+j]=w; if(w>mx) mx=w;
+  }
+  const img = ctx.createImageData(NX, NY);
+  for(let i=0;i<NX;i++) for(let j=0;j<NY;j++){
+    const t = Math.pow(buf[i*NY+j]/mx, .45);
+    const c = exoticColor(t);
+    const idx = ((NY-1-j)*NX + i)*4;
+    img.data[idx]=255*1.0-(255*1.0-255*c.r)*t; img.data[idx+1]=255-255*t*(1-c.g)*1.0;
+    // 简化：直接线性混合白→紫
+    const rr = 255 + (80-255)*t, gg = 255 + (30-255)*t, bb = 255 + (150-255)*t;
+    img.data[idx]=rr; img.data[idx+1]=gg; img.data[idx+2]=bb; img.data[idx+3]=255;
+  }
+  const off = document.createElement('canvas'); off.width=NX; off.height=NY;
+  off.getContext('2d').putImageData(img,0,0);
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(off, 0, 0, W, Hh);
+  // 参考圈
+  const cxp = W*(0/RT) , cyp = Hh/2;
+  const sx = W/RT, sy = Hh/(2*ZT);
+  ctx.strokeStyle='#ffffff'; ctx.lineWidth=2; ctx.beginPath();
+  ctx.ellipse(0, cyp, R*sx, R*sy, 0, 0, Math.PI*2); ctx.stroke();
+  ctx.strokeStyle='#e8a33d'; ctx.beginPath();
+  ctx.ellipse(0, cyp, 0.5*R*sx, 0.5*R*sy, 0, 0, Math.PI*2); ctx.stroke();
+  ctx.fillStyle='#3b4552'; ctx.font='12px monospace';
+  ctx.fillText('ρ̃ (横向半径) →', W-150, Hh-10);
+  ctx.save(); ctx.translate(14, 16); ctx.fillText('z ↑',0,0); ctx.restore();
+  ctx.fillStyle='#fff'; ctx.font='bold 12px monospace';
+  ctx.fillText('r = R', R*sx+6, cyp-6);
+}
+
+/* ---------- 赤道剖面 ---------- */
+function drawProfile(){
+  const cv = document.getElementById('prof');
+  const W = cv.width = cv.clientWidth, Hh = cv.height = 360;
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0,0,W,Hh);
+  const pad = 42;
+  const s = 1/TH;
+  const rMax = R*2.0;
+  // 采样
+  const N=400, pr=[], pf=[];
+  let pmax = 1e-30;
+  for(let i=0;i<=N;i++){
+    const r = rMax*i/N;
+    const d = dshape(r,R,s);
+    const val = (V*V/(32*Math.PI))*d*d;   // 赤道 θ=π/2 → sin²=1
+    pr.push(val); pf.push(shape(r,R,s)); if(val>pmax) pmax=val;
+  }
+  // 坐标框
+  ctx.strokeStyle='#d7dfe9'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(pad,Hh-pad); ctx.lineTo(W-14,Hh-pad); ctx.moveTo(pad,14); ctx.lineTo(pad,Hh-pad); ctx.stroke();
+  // ρ 曲线
+  ctx.strokeStyle='#4a1d8a'; ctx.lineWidth=2.2; ctx.beginPath();
+  for(let i=0;i<=N;i++){
+    const x = pad + (W-pad-14)*i/N;
+    const y = (Hh-pad) - (Hh-pad-20)*(pr[i]/pmax);
+    i?ctx.lineTo(x,y):ctx.moveTo(x,y);
+  }
+  ctx.stroke();
+  // f 曲线
+  ctx.strokeStyle='#1b4f9c'; ctx.lineWidth=1.8; ctx.setLineDash([5,4]); ctx.beginPath();
+  for(let i=0;i<=N;i++){
+    const x = pad + (W-pad-14)*i/N;
+    const y = (Hh-pad) - (Hh-pad-20)*pf[i];
+    i?ctx.lineTo(x,y):ctx.moveTo(x,y);
+  }
+  ctx.stroke(); ctx.setLineDash([]);
+  // R 位置
+  const xR = pad + (W-pad-14)*(R/rMax);
+  ctx.strokeStyle='#b3261e'; ctx.setLineDash([3,3]); ctx.beginPath();
+  ctx.moveTo(xR,14); ctx.lineTo(xR,Hh-pad); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle='#b3261e'; ctx.font='12px monospace';
+  ctx.fillText('r = R', xR+5, 26);
+  // 图例
+  ctx.fillStyle='#4a1d8a'; ctx.fillText('— ρ(r) 赤道密度', pad+6, 26);
+  ctx.fillStyle='#1b4f9c'; ctx.fillText('- - f(r) 形状函数', pad+6, 42);
+  ctx.fillStyle='#6b7683'; ctx.font='12px monospace';
+  ctx.fillText('r (m)', W-80, Hh-18);
+  ctx.fillText('Δ = '+TH.toFixed(2)+' m → 壁越薄峰越尖', pad+6, Hh-16);
+}
+
+/* ---------- 参数扫描网格 ---------- */
+function drawScan(){
+  const Rv = [1,10,100,1000];
+  const Dv = [0.1,0.5,1,2,5];
+  let th = '<tr><th>R ↓ / Δ →</th>' + Dv.map(d=>'<th>Δ = '+d+' m</th>').join('') + '</tr>';
+  const cells = [];
+  let mx = 0;
+  Rv.forEach(rr=>{
+    const row = [];
+    Dv.forEach(dd=>{
+      const M = Math.abs(mWarp(1.0, rr, 1/dd)/G_over_c2/M_SUN);
+      row.push(M); mx = Math.max(mx, M);
+    });
+    cells.push(row);
+  });
+  document.getElementById('scan').querySelector('thead').innerHTML = th;
+  let body = '';
+  Rv.forEach((rr,i)=>{
+    body += '<tr><th style="white-space:nowrap">R = '+rr+' m</th>';
+    Dv.forEach((dd,j)=>{
+      const M = cells[i][j];
+      const t = Math.pow(M/mx, .38);
+      const bg = 'rgba(74,29,138,'+(0.04+0.62*t).toFixed(3)+')';
+      const fg = t>0.45 ? '#fff' : '#2b2140';
+      body += '<td style="padding:4px"><div class="heatcell" style="background:'+bg+';color:'+fg+'">'+fmt(M,2)+'</div></td>';
+    });
+    body += '</tr>';
+  });
+  const tb = document.getElementById('scan').querySelector('tbody');
+  tb.innerHTML = body;
+}
+
+/* ---------- 预设 ---------- */
+function preset(v,r,d){ V=v; R=r; TH=d;
+  document.getElementById('sv').value=v; document.getElementById('svv').textContent=v.toFixed(2);
+  document.getElementById('sR').value=r; document.getElementById('sRv').textContent=r;
+  document.getElementById('sD').value=d; document.getElementById('sDv').textContent=d.toFixed(2);
+  update(); }
+document.getElementById('pA').onclick=()=>preset(1,100,1);
+document.getElementById('pB').onclick=()=>preset(1,100,0.1);
+document.getElementById('pC').onclick=()=>preset(1,300,1);
+document.getElementById('pD').onclick=()=>preset(3,100,1);
+
+document.getElementById('sv').oninput = e=>{ V=+e.target.value; document.getElementById('svv').textContent=V.toFixed(2); update(); };
+/* R 与 Δ 一改就要重跑 §2-2 的形状寻优（κ、Φ ∝ R/Δ）；v 不影响，故 sv 不挂。 */
+document.getElementById('sR').oninput = e=>{ R=+e.target.value|0; document.getElementById('sRv').textContent=R; update(); optSchedule(); };
+document.getElementById('sD').oninput = e=>{ TH=+e.target.value; document.getElementById('sDv').textContent=TH.toFixed(2); update(); optSchedule(); };
+
+/* ============================================================
+   anu 蛋形环面 ↔ 直锥体 对照
+   · 成面永远用 d=0 的平面母线；d≠0 只多画一条 3D 螺旋参考线
+   · 与泡体同属 bubbleGroup ⇒ Shift 拖动一起搬（铁律 185）
+   · 参数控件全部在右侧可拖动浮窗内（铁律 189）
+   ============================================================ */
+let anuShow  = 'both';        // both | egg | cone | off
+let anuAlign = 'equator';     // equator | axis | center
+let anuLayout = 'side';       // side（两轴平行、错开摆）| cut（并排 + 蛋形剖切 180°）| same（字面同轴重叠）
+let anuAmp   = 1.0;           // 「A 幅度」：1.00 ⇒ 腰带半径 = 泡半径 Rs
+/* ★ 泡心口径（老师 2026-10-11 要求）：每个对照体各画一个**独立**的泡，
+   泡心取该对照体自己的「几何原点」或「质心」，而不是场景原点。
+     off     不画（回到旧版：只有主泡在原点）
+     origin  各自·几何原点（对照体自身坐标系的 (0,0,0)）
+     centroid 各自·质心（旋转面薄壳的形心，在轴上） */
+let anuPuff  = 'centroid';    // off | origin | centroid
+let puffInfo = [];            // rebuildAnu 填：每个对照体的泡心 {which, zeta, x, z, Rs}
+/* ★ 泡心标记（黑点）不能只按「世界尺寸」定大小 —— 那个尺寸投到屏幕上会小到看不见。
+   实测教训（2026-10-11）：按 Rs 的 3.5% 取半径（Rs = 14.45 → 半径 0.506 世界单位），
+   投影后半径只有 1.78 px（蛋形，远）／2.62 px（直锥，近），直径 3.6~5.2 px；
+   直锥那颗还能勉强认出一团泥棕色，蛋形那颗直接和青绿线框糊在一起。
+   用像素扫描验证「有没有黑点」时，整个画布压根找不到一个 < 40 的像素 ——
+   图注写着「图上用小黑点标出泡心」，可读者什么也看不见，那就是空话。
+   故：标记额外给一个**屏幕最小半径**（px），每帧按相机距离反算世界缩放。
+   只放大不缩小（scale 上限 4 倍），近处不虚胖、远处不消失。 */
+const PUFF_MARK_MIN_PX = 7, PUFF_MARK_MAX_GROW = 4;
+let puffMarks = [];           // [{ mesh, r0 }] 每次 rebuildAnu 重建
+let AP = { a:3.0, b:2.76, c:-0.92, k:3.6, d:0 };
+/* 直锥体自己的参数（归一单位）；coneSrc='follow' 时忽略它们，改为跟随蛋形 */
+let coneSrc = 'follow';       // follow（底=腰半径/顶=0/高=1）| free（用下面四个滑块）
+let coneP = { rBase:1.0, rTop:0.0, hFrac:1.0, zeta0:0.0 };
+let MT = null, FR = null, CG = null, eggGrp = null, coneGrp = null;
+
+function anuScale(){ return anuAmp * (Rs || 1); }
+function coneOpts(){
+  if (coneSrc === 'follow') return { rBase:1, rTop:0, heightFrac:1, zeta0:0 };
+  return { rBase:coneP.rBase, rTop:coneP.rTop, heightFrac:coneP.hFrac, zeta0:coneP.zeta0 };
+}
+/* 放在模块级（不在 bindAnu 内）：预设按钮改完 coneP 后要靠它把界面同步成 free */
+function setConeSrc(src){
+  coneSrc = src;
+  const el = (typeof document !== 'undefined') && document.getElementById('coneSrc');
+  if (el) [...el.children].forEach(b => b.classList.toggle('on', b.dataset.v === src));
+  ['sCB','sCT','sCH','sCZ'].forEach(id => {
+    const inp = (typeof document !== 'undefined') && document.getElementById(id);
+    if (!inp) return;
+    inp.disabled = (src === 'follow');
+    const wrap = inp.closest ? inp.closest('.slider') : null;
+    if (wrap) wrap.style.opacity = (src === 'follow') ? '.45' : '';
+  });
+}
+/* 同上：泡心按钮的高亮必须按**状态**同步。只在 click 里切的话，
+   预设按钮 / 程序化改 anuPuff 之后按钮会停在旧选项 —— 界面撒谎。 */
+function syncPuffNotch(){
+  const el = (typeof document !== 'undefined') && document.getElementById('puffNotch');
+  if (el) [...el.children].forEach(b => b.classList.toggle('on', b.dataset.v === anuPuff));
+}
+function anuRecalc(){
+  if (typeof AnuRevolve === 'undefined') return false;
+  MT = AnuRevolve.metrics(AP, 1400);
+  /* ★ 直锥几何必须从**同一份 MT** 派生：coneMetrics(AP,…) 会另采一次样，
+     采样点数不同 ⇒ CG.rBase 与 rBaseNorm·MT.rMax 差 1e-6，
+     「底半径 = 倍数 × 腰半径」就不是恒等式了（_check/egg_test.js 抓到的）。 */
+  CG = AnuRevolve.coneGeomFrom(MT, coneOpts());
+  FR = AnuRevolve.frenet(AP, 2400);
+  return true;
+}
+/* ★ 「按需重算」的闸门（2026-10-12 修）。
+   为什么需要它：update() 是**先写读数、后重建几何** ——
+     926 行写 #hud（→ anuHudLine() → puffZetaOf() → MT / CG）
+     949 行才 drawHeat/…/rebuild()（→ rebuildAnu() → anuRecalc() 重算 MT）
+   于是「ζ 与世界心」这两个读数是拿**上一轮**的 MT 算出来的，永远慢一拍。
+   实测（a 滑块 3 → 1.5）：几何 ζ = 0.42175，HUD 却还写 0.4264；复原后反倒写 0.4217。
+   这就是「界面撒谎」：读数板与屏幕上那条母线对不上。
+   办法：写 HUD 之前先 anuEnsure() 把 MT 更新到位；rebuildAnu() 也改走它，
+   于是同一次 update 只采一遍样（否则拖一次滑块要采两遍，明显变卡）。
+   签名要含直锥那四个参数：CG 是从 (MT, coneOpts()) 派生的，漏了它们，
+   拖直锥滑块时 CG 会停在上一次的值上。 */
+var anuSig = null;
+function anuEnsure(){
+  if (typeof AnuRevolve === 'undefined') return false;
+  const co = coneOpts();
+  const sig = [AP.a, AP.b, AP.c, AP.k, AP.d, coneSrc,
+               co.rBase, co.rTop, co.heightFrac, co.zeta0].join('|');
+  if (sig === anuSig && MT && CG && FR) return true;   /* 已是最新，别白算 */
+  anuSig = sig;
+  return anuRecalc();
+}
+/* ---------- ⑤ 泡心：把「泡」搬到各对照体**自己**的中心 ----------
+   两个口径都在**同一个归一 ζ** 里给值，再走同一条换算 Z(ζ) = sc·(ζ·A + zOff)：
+     origin    几何原点 = 该对照体自身坐标系的 (0,0,0)（即 ζ = 0 那层的轴心）
+     centroid  质心     = 旋转面（薄壳）的形心（模块给：直锥是闭式，蛋形是解析矩）
+   为什么只写一条换算：ζ→Z 全项目只在 zAspect()/zOffOf() 里有定义，
+   这里再写第二份就会出现「图上的泡心与读数里的泡心差 1.23 倍」那种自相矛盾。 */
+function puffZetaOf(which){
+  if (anuPuff !== 'centroid') return 0;
+  if (which === 'cone') return AnuRevolve.coneGeomFrom(MT, coneOpts()).centroidZeta;
+  return MT.centroidSurf.zeta;
+}
+/* 一个「泡」单元：位置 = 泡心；内容与主泡同口径（共用 beltGeo / beltMat） */
+function puffUnitAt(cx, cz, tint){
+  const G = new THREE.Group();
+  G.position.set(cx, 0, cz);
+  /* 泡壁 f = 0.5：与主泡**同半径 Rs**。三个泡同尺才叫对照；
+     用对照体的颜色描线，是为了让「这个泡跟着这个体」一眼看得出来。 */
+  G.add(new THREE.Mesh(new THREE.SphereGeometry(Rs, 40, 26),
+    new THREE.MeshBasicMaterial({ color:tint, wireframe:true, transparent:true, opacity:.16 })));
+  if (beltGeo){
+    const pt = new THREE.Points(beltGeo, beltMat);     /* ★ 共用同一份点云几何 */
+    pt.renderOrder = 1; G.add(pt);
+  }
+  /* 赤道腰带圈：ρ 最强的那一圈，半径 = Rs，与泡壁赤道同圆 ——
+     它就是「与对照体腰带对齐」的那个候选圈。 */
+  const rr = [];
+  for (let j = 0; j <= 128; j++){ const a = 2*Math.PI*j/128;
+    rr.push(new THREE.Vector3(Rs*Math.cos(a), Rs*Math.sin(a), 0)); }
+  const belt = new THREE.Line(new THREE.BufferGeometry().setFromPoints(rr),
+    new THREE.LineBasicMaterial({ color:0x4a1d8a, transparent:true, opacity:.62 }));
+  belt.renderOrder = 3; G.add(belt);
+  /* 泡心标记：一个小黑球。★「以谁为中心」必须**看得见**，不能只写在读数里。
+     ★ 这里踩过坑，记下来免得再犯：只按世界尺寸取半径，投影后会小到看不见，
+       而且半透明泡壁（opacity .16）叠在上面还会把它冲成泥棕色。
+       两条对策——(1) 半径先给 Rs 的 9%（世界尺寸的自然大小）；
+       (2) transparent + renderOrder 9 + depthTest false：让它在**所有**泡壁之后画，
+           不受泡壁 alpha 影响、也不被自己那层泡壁的深度挡掉（泡壁 depthWrite 默认开，
+           若照常测深度，泡心在球心、近侧球壳在它前面，它会被判为被遮挡而整颗消失）。
+       (3) 还有屏幕最小半径，见 syncPuffMarkSize()，每帧按相机距离补偿。 */
+  const r0 = Math.max(0.28, Rs*0.09);
+  const dot = new THREE.Mesh(new THREE.SphereGeometry(r0, 16, 12),
+    new THREE.MeshBasicMaterial({ color:0x111827, transparent:true, opacity:1,
+                                  depthTest:false, depthWrite:false }));
+  dot.renderOrder = 9; G.add(dot);
+  dot.userData.kind = 'puffMark';
+  puffMarks.push({ mesh:dot, r0:r0 });
+  G.userData = { kind:'puff', cx:cx, cz:cz, r:Rs };
+  return G;
+}
+/* 泡心标记的屏幕尺寸补偿：相机拉远时把标记按比例放大，使其始终 ≥ PUFF_MARK_MIN_PX 像素。
+   ★ 只放大、不缩小（缩放下界 1）：近处不该虚胖成一坨，远处也不该缩成看不见的沙粒。
+   公式：世界半径 s 在距离 d 处投影为 s/(2·d·tan(fov/2))·H 像素（H = 画布 CSS 高度）。
+   ★ 为什么必须每帧算：标记大小依赖相机距离，用户随时会滚轮/拖动，一次算完就会失真。 */
+function syncPuffMarkSize(){
+  if (!puffMarks.length) return;
+  const el = renderer.domElement;
+  const H = el.clientHeight || el.height || 1;
+  const k = 2 * Math.tan(camera.fov * Math.PI / 360) / H;      /* px = s / (k·d) */
+  const wp = new THREE.Vector3();
+  puffMarks.forEach(m => {
+    if (!m.mesh || !m.mesh.parent) return;
+    m.mesh.getWorldPosition(wp);
+    const d = Math.max(1e-3, camera.position.distanceTo(wp));
+    const rWanted = PUFF_MARK_MIN_PX * k * d;                  /* 想要 minPx 像素需要多大世界半径 */
+    m.mesh.scale.setScalar(Math.max(1, Math.min(PUFF_MARK_MAX_GROW, rWanted / m.r0)));
+  });
+}
+function rebuildAnu(){
+  puffInfo = [];
+  puffMarks = [];            /* 旧标记随 bubbleGroup 清空一起丢，这里只清引用 */
+  if (!anuEnsure()) return;
+  if (anuShow === 'off') return;
+  const sc = anuScale();
+  /* 「并排」= 两条 z 轴平行、朝向一致、错开销开摆 —— 否则蛋形环面会把直锥体整个包住，
+     同轴时橙色像素只剩 684（<800），等于"看得见声明、看不见物体"（见 _check/egg_test.js）。 */
+  const side = (anuLayout === 'side' || anuLayout === 'cut');
+  /* ★ 1.25 这个系数是量出来的：并排时总跨度为 2·(1.25+1)·sc = 4.5Rs，
+     配合下面拉远的 HOME，三个物体（泡 + 蛋形 + 直锥）才同时落在视口内。
+     ★ 再补一条下界 1.50·Rs：泡半径是 **Rs**（不随 A 幅度缩），
+       若把 A 拉到 0.2，旧口径 1.25·sc = 0.25·Rs 会让两个泡深深互穿。
+       取 max 后：默认 A = 1.00 时间距由 1.25·Rs 放到 1.50·Rs ——
+       因为泡半径就是 Rs，1.25 时两个球在**透视**下会互相压边（近的那个看起来更大），
+       实测投影左右边界交叠；1.50·Rs 给出 ~13 个世界单位（0.45·Rs）的净间隙，两个泡一眼分得开。
+       总跨度从 4.5·Rs 变成 5.0·Rs，取景由 fitCamera 重算，不再依赖手调常数。 */
+  const off  = side ? Math.max(1.25 * sc, (anuPuff === 'off' ? 0 : 1.50 * Rs)) : 0;
+  const sweep = (anuLayout === 'cut') ? 0.5 : 1;   // 剖切：只扫 180° 方位角
+  const eqOp = side ? 0.46 : 0.26;          // 同轴时把蛋形降到 0.26，直锥才透得出来
+  const cnOp = side ? 0.42 : 0.55;
+  if (anuShow === 'egg' || anuShow === 'both'){
+    eggGrp = AnuRevolve.buildEgg(AP, { scale:sc, align:anuAlign, nT:160, nPhi:72,
+                                       color:0x0f8b7a, opacity:eqOp, sweep:sweep, metrics:MT });
+    eggGrp.position.x = -off;
+    bubbleGroup.add(eggGrp);
+  }
+  if (anuShow === 'cone' || anuShow === 'both'){
+    coneGrp = AnuRevolve.buildCone(AP, Object.assign({}, coneOpts(),
+      { scale:sc, align:anuAlign, color:0xc2691a, opacity:cnOp, metrics:MT }));
+    coneGrp.position.x = +off;
+    bubbleGroup.add(coneGrp);
+  }
+  /* 「z 轴上半轴方向对齐」这件事必须看得见：每个对照体各画一条沿 +z 的虚线轴。
+     轴的长度按「蛋形 + 直锥」的并集取，否则一改直锥参数虚线轴就短了。
+     ★ zOff 与 ζ→z 的换算统一走模块：zAspect = Δz/rMax，两轴同尺，图与表才一致。 */
+  const A = anuA = AnuRevolve.zAspect(MT);
+  const zOff = anuZOff = AnuRevolve.zOffOf(MT, anuAlign);
+  anuSc = sc; anuOff = off;
+  const co = coneOpts();
+  const zLo = Math.min(0, co.zeta0 * A) - 0.30;
+  const zHi = Math.max(A, (co.zeta0 + co.heightFrac) * A) + 0.22;
+  const axisAt = (x, col) => {
+    const g = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(x, 0, sc * (zLo + zOff)), new THREE.Vector3(x, 0, sc * (zHi + zOff))]);
+    const l = new THREE.Line(g, new THREE.LineDashedMaterial({ color:col, dashSize:0.36, gapSize:0.3, transparent:true, opacity:.9 }));
+    if (l.computeLineDistances) l.computeLineDistances();
+    return l;
+  };
+  const xs = (anuShow === 'both') ? [-off, off] : (anuShow === 'egg' ? [-off] : [off]);
+  xs.forEach((x, i) => bubbleGroup.add(axisAt(x, (anuShow === 'both' && i === 1) ? 0xc2691a : 0x0f8b7a)));
+  /* 赤道对齐时把 z = 0 赤道圈画出来 —— 让「对齐到哪个平面」看得见，而不是嘴上说。
+     颜色必须按站位分：直锥那侧若也画青色，读者会以为那是蛋形的零件。 */
+  if (anuAlign === 'equator'){
+    (side ? [-off, off] : [0]).forEach((x, i) => {
+      const p = [];
+      for (let j = 0; j <= 128; j++){ const a = 2*Math.PI*j/128; p.push(new THREE.Vector3(x + sc*Math.cos(a), sc*Math.sin(a), 0)); }
+      const ring = new THREE.Line(new THREE.BufferGeometry().setFromPoints(p),
+        new THREE.LineDashedMaterial({color:(anuShow === 'both' && i === 1) ? 0xc2691a : 0x0f8b7a,
+          dashSize:0.5, gapSize:0.42, transparent:true, opacity:.9}));
+      if (ring.computeLineDistances) ring.computeLineDistances();
+      bubbleGroup.add(ring);
+    });
+  }
+  /* ---------- 泡心：每个对照体各一个**独立**的泡 ----------
+     内容 = 泡壁（f = 0.5，半径 Rs）+ 负能量腰带点云（与主泡同一份几何）+ 赤道腰带圈 + 泡心标记。
+     泡心取该对照体自己的中心（见 puffZetaOf），因此两个泡互不共用圆心。 */
+  if (anuPuff !== 'off'){
+    const which = (anuShow === 'both') ? ['egg', 'cone'] : [anuShow];
+    which.forEach(w => {
+      const zeta = puffZetaOf(w);
+      const cz = sc * (zeta * A + zOff);                 /* 唯一换算：Z(ζ) = sc·(ζA + zOff) */
+      const cx = (w === 'cone') ? +off : -off;
+      bubbleGroup.add(puffUnitAt(cx, cz, (w === 'cone') ? 0xc2691a : 0x0f8b7a));
+      puffInfo.push({ which: w, zeta: zeta, x: cx, z: cz, Rs: Rs, sc: sc });
+    });
+  }
+}
+function anuHudLine(){
+  if (anuShow === 'off') return '<span style="color:#7b8794">对照体已关闭</span>';
+  const nm = anuShow === 'cone' ? '直锥体' : (anuShow === 'egg' ? '蛋形环面' : '蛋形环面 + 直锥体');
+  const al = anuAlign === 'equator' ? '赤道对齐' : (anuAlign === 'center' ? '中心对齐' : '轴对齐(原样)');
+  const ly = anuLayout === 'cut' ? '并排·剖切' : (anuLayout === 'same' ? '同轴重叠' : '并排');
+  const co = coneOpts();
+  const srcTxt = (coneSrc === 'follow')
+    ? '跟随蛋形'
+    : ('独立 底' + co.rBase.toFixed(2) + '/顶' + co.rTop.toFixed(2) + '/高' + co.heightFrac.toFixed(2) +
+       '/ζ₀' + co.zeta0.toFixed(2));
+  const puffTxt = (anuPuff === 'off')
+    ? '<span style="color:#7b8794">泡心 = 不画（回到「只有主泡在原点」）</span>'
+    : ('<b>泡心 = 各自·' + (anuPuff === 'centroid' ? '质心' : '几何原点') +
+       '</b>：每个对照体各一个<b>独立</b>的泡（泡壁半径同为 Rs = ' + Rs.toFixed(3) + '，共用同一份负能量点云）' +
+       puffInfo.map(u => '<br>&nbsp;&nbsp;· ' + (u.which === 'cone' ? '直锥体' : '蛋形环面') +
+         '　ζ = ' + u.zeta.toFixed(4) + ' ⇒ 世界心 (' + u.x.toFixed(2) + ', 0, ' + u.z.toFixed(2) + ')').join(''));
+  return '<span style="color:#0f8b7a">青</span>／<span style="color:#c2691a">橙</span> = anu ' + nm +
+         '（' + al + ' · ' + ly + '，A = ' + anuAmp.toFixed(2) + '）<br>' +
+         'a = ' + AP.a.toFixed(2) + ' · b = ' + AP.b.toFixed(2) + ' · c = ' + AP.c.toFixed(2) +
+         ' · k = ' + AP.k.toFixed(2) + ' · d = ' + AP.d.toFixed(0) +
+         (anuShow === 'egg' ? '' : '<br>直锥：' + srcTxt +
+           (coneSrc === 'free' && MT ? '（× 腰半径 / × Δz）· 全顶角 ' +
+             (CG.apexAngle*180/Math.PI).toFixed(1) + '°' : '（底 = 腰半径，顶 = 0，高 = Δz）')) +
+         '<br>' + puffTxt;
+}
+
+/* ---------- 对照表 ---------- */
+function refreshEggInfo(){
+  if (!MT || !CG) return;
+  const el = document.getElementById('eggInfo');
+  const A = AnuRevolve.zAspect(MT);
+  const off = (anuAlign === 'axis') ? (anuAmp * MT.zWaistNorm * A) : 0;
+  const srcTxt = (coneSrc === 'follow')
+    ? '跟随蛋形（底 = 腰半径，顶 = 0，高 = Δz）'
+    : ('独立：底 ' + CG.rBaseNorm.toFixed(2) + ' × 腰 · 顶 ' + CG.rTopNorm.toFixed(2) +
+       ' × 腰 · 高 ' + CG.heightFrac.toFixed(2) + ' × Δz · ζ₀ = ' + CG.zeta0.toFixed(2));
+  if (el) el.innerHTML =
+    '<b>蛋形环面</b>：Δz = ' + MT.dz.toFixed(3) + ' · 腰半径 ' + MT.rMax.toFixed(3) +
+    ' · 中孔 ' + MT.rMin.toFixed(3) + ' · 腰带在 ζ = ' + MT.zWaistNorm.toFixed(3) + '<br>' +
+    '圆度 4πA/L² = ' + MT.isoQ.toFixed(4) + '（圆 = 1）· 曲率半径 顶点 ' + fmt(MT.rhoTop,3) +
+    ' / 腰带 ' + fmt(MT.rhoWaist,3) + '<br>' +
+    '<b>轴向换算 A = Δz/腰半径 = ' + A.toFixed(4) + '</b>：ζ 乘它才变成与半径同尺的长度，' +
+    '所以图上蛋形高 ' + A.toFixed(3) + ' R、外径 2.00 R（两轴同尺，图与表自洽）<br>' +
+    '蛋形顶盖半径 / 腰半径 = ' + MT.rhoAtZmaxNorm.toFixed(4) + '（即「顶=蛋形顶盖」按钮取的值）<br>' +
+    '3D 螺旋 Frenet：κ<sub>max</sub> = ' + fmt(FR.kappaMax,3) + ' · τ<sub>max</sub> = ' + fmt(FR.tauMax,3) +
+    '（d = 0 时 τ ≡ 0，平面曲线的必然结果）<br>' +
+    '<b>直锥体</b>：' + srcTxt + '<br>' +
+    '　侧面积 ' + CG.surface.toFixed(3) + ' · 体积 ' + CG.volume.toFixed(3) +
+    ' · 全顶角 ' + (CG.apexAngle*180/Math.PI).toFixed(2) + '° · 母线长 ' + CG.slant.toFixed(3) +
+    '<br>　图上的全顶角与这里的 ' + (CG.apexAngle*180/Math.PI).toFixed(2) +
+    '° <b>一致</b>（等比例作图，tan(顶角/2) = 底−顶 / (高·A)）' +
+    (anuAlign === 'axis' ? '<br><b style="color:#b3261e">轴对齐（原样）：腰带停在 z = +' + off.toFixed(3) +
+      '·Rs，内禀轴向偏移没被抹掉</b>' : '') +
+    (anuPuff === 'off' ? '<br><b>泡心</b>：不画（只有主泡在原点）'
+      : '<br><b>泡心 · 各自' + (anuPuff === 'centroid' ? '质心' : '几何原点') + '</b>：' +
+        puffInfo.map(u => (u.which === 'cone' ? '直锥' : '蛋形') +
+          ' ζ = ' + u.zeta.toFixed(4) + ' → 世界 z = ' + u.z.toFixed(3)).join(' · ') +
+        '<br>　可选中心（归一 ζ）：原点 = 0 · 薄壳形心 = ' + MT.centroidSurf.zeta.toFixed(4) +
+        '（蛋形） / ' + CG.centroidZeta.toFixed(4) + '（直锥 = 离底 ' + CG.centroidFrac.toFixed(4) +
+        '×高，闭式）· 实体形心 = ' + MT.centroidSolid.zeta.toFixed(4) + ' / ' +
+        CG.centroidZetaSolid.toFixed(4) + '（差 ' +
+        (100*Math.abs(MT.centroidSurf.zeta - MT.centroidSolid.zeta)).toFixed(2) + '%，示意用薄壳口径）');
+
+  const tb = document.getElementById('eggTbl');
+  if (!tb) return;
+  tb.querySelector('thead').innerHTML =
+    '<tr><th>对照项</th><th>蛋形环面（anu 母线绕 z）</th><th>直锥体（母线为直线）</th></tr>';
+  const rowz = (k, a, b) => '<tr><td>' + k + '</td><td>' + a + '</td><td>' + b + '</td></tr>';
+  const same = (coneSrc === 'follow');
+  tb.querySelector('tbody').innerHTML =
+    rowz('母线', 'd = 0 的闭合蛋形环', '<b>一条直线段</b>（κ ≡ 0）') +
+    rowz('母线曲率半径', '顶点 ' + fmt(MT.rhoTop,3) + ' · 腰带 ' + fmt(MT.rhoWaist,3), '≡ ∞（除顶点奇点）') +
+    rowz('轴向跨度 Δz', MT.dz.toFixed(3) + '（= a·arctan2）',
+         CG.height.toFixed(3) + (same ? '（同，约定）' : ' <span class="note">(' + CG.heightFrac.toFixed(2) + '·Δz)</span>')) +
+    rowz('腰半径 ρ<sub>max</sub>', MT.rMax.toFixed(3),
+         CG.rBase.toFixed(3) + (same ? '（同，约定）' : ' <span class="note">(' + CG.rBaseNorm.toFixed(2) + '×腰)</span>')) +
+    rowz('顶半径', MT.rhoAtZmax.toFixed(3) + '（顶盖处）',
+         CG.rTop.toFixed(3) + (CG.rTopNorm < 1e-9 ? '（收到顶点）' : '')) +
+    rowz('中孔（面到轴最近）', MT.rMin.toFixed(3), '0（收到顶点）') +
+    rowz('底面 ζ₀', '环底在 ζ = 0', CG.zeta0.toFixed(3) +
+         (Math.abs(CG.zeta0 - MT.zWaistNorm) < 0.005 ? ' <span class="note">＝蛋形腰带 ⇔ z = 0</span>' : '')) +
+    rowz('拓扑', MT.crossAxis
+        ? '<b style="color:#c2691a">母线跨轴 ⇒ 孔消失</b>'
+        : '亏格 1，孔沿 z 贯通', '单连通，顶点是曲率奇点') +
+    rowz('侧面（母面）面积', MT.surface.toFixed(2), CG.surface.toFixed(2) +
+        ' <span class="note">(' + (CG.surface > 1e-9 ? (MT.surface/CG.surface).toFixed(2) : '—') + '×)</span>') +
+    rowz('旋转体体积', MT.volume.toFixed(2), CG.volume.toFixed(2) +
+        ' <span class="note">(' + (CG.volume > 1e-9 ? (MT.volume/CG.volume).toFixed(2) : '—') + '×)</span>') +
+    rowz('全顶角', '—（闭合环无顶点）', (CG.apexAngle*180/Math.PI).toFixed(2) + '°') +
+    rowz('侧视母线形状', '闭合环（<b>绕轴一圈</b>）', '开口斜线') +
+    rowz('旋转面形心（归一 ζ）', MT.centroidSurf.zeta.toFixed(4) + ' <span class="note">（薄壳口径；实体 ' + MT.centroidSolid.zeta.toFixed(4) + '）</span>',
+         CG.centroidZeta.toFixed(4) + ' <span class="note">（离底 ' + CG.centroidFrac.toFixed(4) + '×高，闭式）</span>') +
+    rowz('孔/腰半径比 r<sub>min</sub>/r<sub>max</sub>', MT.holeRatio.toFixed(6), '0') +
+  /* ★ 这一行曾经把「1/137.036」这个**常数**直接印在「蛋形环面」那一栏里（写成 0.007297），
+     读起来就像"页面算出了 0.007297"。它不是算出来的 —— 它是 α 的目标值（硬编码），
+     页面唯一算出来的是上一行的 r_min/r_max。现在两栏都写清楚口径：
+       蛋形栏 = 自然值 ÷ α 的倍数（这才是"离它多远"），直锥栏 = 无孔、与 α 无从比较。 */
+  rowz('与 α = 1/137.036 的对照<br><span class="note">α 是外部目标常数，本页不产生它</span>',
+       '自然值 ' + MT.holeRatio.toFixed(6) + ' ÷ α = <b>' +
+       (MT.holeRatio/(1/137.036)).toFixed(2) + '×</b>' +
+       '<br><span class="note">拧 b → 1.0605 或 c → −0.79930 才相等 ⇒ 是「可调量」，不是预言</span>',
+       '恒 0（直锥无孔）<br><span class="note">与 α 无从比较</span>');
+}
+
+/* ---------- 母线对照图（含 Alcubierre 子午面 |ρ|） ---------- */
+function drawMerCmp(){
+  const cv = document.getElementById('merCmp');
+  if (!cv || !MT) return;
+  const pad = 32, HMAX = 560;
+  /* ★ 尺寸必须按「等比例」定：先算 units-per-pixel，再回写 canvas 的 CSS 尺寸。
+     坑：绝不能用 cv.clientWidth 当输入 —— 一旦我们把它写小了，下一帧读回来就更小，
+     会逐帧缩成 0。所以宽度只从**父容器**读。 */
+  const host = cv.parentElement || cv;
+  const Wmax = Math.max(260, host.clientWidth | 0);
+  /* ★ 视野必须**跟着参数走**。原先 X1/Y0/Y1 是写死的 1.58 / ±1.06，
+     于是把直锥底半径调到 2×腰、或把高调到 2.5Δz，橙线就跑到画布外被静默裁掉 ——
+     用户拖滑块看到的是「图没反应」。这里按实际要画的东西取并集。
+     ★★ 而且**两轴必须同尺**：横轴单位是蛋形腰半径（= 泡半径 R），
+        纵轴必须也是「R」而不是「Δz」。ζ 要乘 A = Δz/rMax 才对。
+        否则这条母线图是各向异性拉伸的：图上量到 90° 的锥，表里写着 78.11°。 */
+  const A = AnuRevolve.zAspect(MT);
+  const zOffM = AnuRevolve.zOffOf(MT, anuAlign);
+  const coM = coneOpts();
+  const X1 = Math.max(1.12, anuAmp, anuAmp * Math.max(coM.rBase, coM.rTop));
+  const yConeLo = anuAmp * (coM.zeta0 * A + zOffM);
+  const yConeHi = anuAmp * ((coM.zeta0 + coM.heightFrac) * A + zOffM);
+  const Y0 = Math.min(-1.10, zOffM, yConeLo) - 0.16;
+  const Y1 = Math.max( 1.10, A + zOffM, yConeHi) + 0.16;
+  const u = Math.min((Wmax - 2*pad) / X1, (HMAX - 2*pad) / (Y1 - Y0));
+  if (!isFinite(u) || u <= 1) return;
+  const W = cv.width = Math.round(X1*u + 2*pad), Hh = cv.height = Math.round((Y1-Y0)*u + 2*pad);
+  cv.style.width = W + 'px'; cv.style.height = Hh + 'px'; cv.style.marginLeft = 'auto'; cv.style.marginRight = 'auto';
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, W, Hh);
+  const sx = v => pad + v*u;
+  const sy = v => (Hh - pad) - (v - Y0)*u;
+
+  /* ① Alcubierre 子午面 |ρ|（归一坐标：1 = 泡半径 R），离屏位图铺底。
+     指数取 1.6 而不是 0.42：sin²θ 是**宽**的角向分布，指数太小会把 ±60° 也糊成不透明，
+     那样看起来是个球壳而不是「赤道腰带」，与物理结论不符。
+     位图分辨率按视野宽度走，否则视野一放大底图就糊。 */
+  const PXU = 108;
+  const bw = Math.max(170, Math.round(X1*PXU)), bh = Math.max(230, Math.round((Y1-Y0)*PXU));
+  const off = document.createElement('canvas'); off.width = bw; off.height = bh;
+  const oc = off.getContext('2d'), img = oc.createImageData(bw, bh);
+  const s = 1/TH, tmp = new Float32Array(bw*bh);
+  let mx = 1e-30;
+  for (let j=0;j<bh;j++) for (let i=0;i<bw;i++){
+    const rt = X1*(i+.5)/bw*R;
+    const z  = (Y1 - (Y1-Y0)*(j+.5)/bh)*R;     /* 行 0 = 图顶 = Y1 */
+    const v = rhoMag(rt, z, R, s, V);
+    tmp[j*bw+i] = v; if (v > mx) mx = v;
+  }
+  for (let k=0;k<bw*bh;k++){
+    const t = Math.pow(tmp[k]/mx, 1.6), o = k*4;
+    img.data[o]   = 74 + (150-74)*t;
+    img.data[o+1] = 29 + (96-29)*t;
+    img.data[o+2] = 138 + (206-138)*t;
+    img.data[o+3] = Math.round(250*t);
+  }
+  oc.putImageData(img, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(off, sx(0), sy(Y1), X1*u, (Y1-Y0)*u);
+
+  /* ② 网格 + 轴 */
+  ctx.strokeStyle = '#e4eaf3'; ctx.lineWidth = 1;
+  for (let g=0.25; g<=X1; g+=0.25){ ctx.beginPath(); ctx.moveTo(sx(g), sy(Y0)); ctx.lineTo(sx(g), sy(Y1)); ctx.stroke(); }
+  for (let g=Math.ceil(Y0/0.25)*0.25; g<=Y1; g+=0.25){ ctx.beginPath(); ctx.moveTo(sx(0), sy(g)); ctx.lineTo(sx(X1), sy(g)); ctx.stroke(); }
+  ctx.strokeStyle = '#9fb2cc';
+  ctx.beginPath(); ctx.moveTo(sx(0), sy(0)); ctx.lineTo(sx(X1), sy(0)); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(sx(0), sy(Y0)); ctx.lineTo(sx(0), sy(Y1)); ctx.stroke();
+
+  /* ③ 泡壁 f = 0.5（单位圆） */
+  ctx.setLineDash([5,4]); ctx.strokeStyle = '#7b8794'; ctx.lineWidth = 1.3;
+  ctx.beginPath();
+  for (let j=0;j<=180;j++){ const a = Math.PI*j/180;
+    const x = sx(Math.sin(a)), y = sy(Math.cos(a)); j ? ctx.lineTo(x,y) : ctx.moveTo(x,y); }
+  ctx.stroke(); ctx.setLineDash([]);
+
+  /* ④ 直锥母线（橙，直线）——用**实际**的直锥参数，不是写死的约定值
+     （zOffM / A 已在函数开头算好，这里复用，不再重算一遍） */
+  const zOff = zOffM;
+  const coneZ0 = anuAmp * (CG.zeta0 * A + zOff);
+  const coneZ1 = anuAmp * ((CG.zeta0 + CG.heightFrac) * A + zOff);
+  ctx.strokeStyle = '#c2691a'; ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(sx(anuAmp*CG.rBaseNorm), sy(coneZ0));
+  ctx.lineTo(sx(anuAmp*CG.rTopNorm),  sy(coneZ1));
+  ctx.stroke();
+  /* 底圆 / 顶圆所在的水平线（虚线，一眼看出直锥占多高） */
+  ctx.setLineDash([3,3]); ctx.strokeStyle = 'rgba(194,105,26,.55)'; ctx.lineWidth = 1;
+  [coneZ0, coneZ1].forEach(zc => {
+    ctx.beginPath(); ctx.moveTo(sx(0), sy(zc)); ctx.lineTo(sx(anuAmp*Math.max(CG.rBaseNorm, CG.rTopNorm)), sy(zc)); ctx.stroke();
+  });
+  ctx.setLineDash([]);
+
+  /* ⑤ 蛋形母线（红，闭合环） */
+  const M = AnuRevolve.meridian(AP, 700);
+  ctx.strokeStyle = '#b3261e'; ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  for (let i=0;i<=M.n;i++){
+    const zeta = (M.z[i] - MT.zMin) / MT.dz;
+    const x = sx(anuAmp*(M.r[i]/MT.rMax)), y = sy(anuAmp*(zeta*A + zOff));
+    i ? ctx.lineTo(x,y) : ctx.moveTo(x,y);
+  }
+  ctx.stroke();
+
+  /* ⑥ 负能量最强环的物理位置（ρ̃ = R, z = 0）——与蛋形腰带的交点即为「赤道对齐」的证据 */
+  ctx.fillStyle = '#4a1d8a';
+  ctx.beginPath(); ctx.arc(sx(1), sy(0), 3.6, 0, 2*Math.PI); ctx.fill();
+  ctx.fillStyle = '#3b4a5a'; ctx.font = '11px system-ui,sans-serif';
+  ctx.fillText('|ρ| 最强环', sx(1) + 7, sy(0) - 7);
+  ctx.fillText('ρ̃ / R', W - pad - 36, sy(Y0) + 15);
+  ctx.save(); ctx.translate(sx(0) - 18, sy(Y1) + 42); ctx.rotate(-Math.PI/2);
+  ctx.fillText('z / R', 0, 0); ctx.restore();
+}
+
+/* ============================================================
+   §2-2 形状寻优：把「哪条母线最划算」交给搜索，而不是靠人挑
+   ------------------------------------------------------------
+   模型与哨兵全在 assets/js/warp-opt.js（那边有完整推导）。这里只做三件事：
+     ① 算基准（球壳 = Alcubierre 原形）与三个约束目标；
+     ② 跑自动寻优、把结果写成表；
+     ③ 画一张「最优母线叠在 |ρ| 上」的对照图，并把最优蛋形参数写回 ⑤。
+   ★ 为什么基准取球壳：它是 §1 那条 1/36 定律的载体，也是唯一覆盖全部立体角的形状
+     ⇒ 它的 κ 就是天花板本身。别拿 §7 的蛋形当基准，那会把「谁更差」当成 100%。
+   ============================================================ */
+let optCase = 'A';              // A 等表面积 | V 等体积 | free 自由
+let optRes = null;              // 最近一次寻优的完整结果
+const OPT_CASE_NAME = { A: '等表面积（A = 4πR²）', V: '等体积（V = 4πR³/3）', free: '自由（不限）' };
+const OPT_PARAM_NAME = { pow: 'p', q: 'q', hFrac: 'h', rTopNorm: '顶/腰', a: 'a', b: 'b', c: 'c', bulge: 'B', sharp: 'n' };
+
+/* 基准 + 目标：分母 Eneed 与天花板 ceil 只依赖 (v,R,Δ) ⇒ 算一次传进去。
+   （不传的话 shellStat 每次都会重跑一条 3000 点的 mWarp；寻优要跑几千次。） */
+function optBase(){
+  const Eneed = Math.abs(mWarp(V, R, 1/TH));
+  const ceil  = WarpOpt.kappaCeil(R, TH);
+  const n     = Math.max(120, Math.min(320, Math.round(2*R/TH)));   // 采样：Δs/Δ ≈ π/2 ⇒ κ 误差 < 1e-4
+  const ctx   = { R: R, D: TH, v: V, n: n, Eneed: Eneed, ceil: ceil, AnuRevolve: AnuRevolve };
+  const sph   = WarpOpt.shellStat(WarpOpt.profileSphere(R, {}, { n: n }), ctx);
+  return { ctx: ctx, sph: sph, Eneed: Eneed, ceil: ceil, n: n };
+}
+function fmtP(params){
+  if (!params) return '—';
+  const ks = Object.keys(params);
+  if (!ks.length) return '（无形状自由度）';
+  return ks.map(k => (OPT_PARAM_NAME[k] || k) + ' = ' + (+params[k]).toFixed(3)).join('　');
+}
+/* 约束目标取**解析值**（4πR² / (4/3)πR³），不取离散球壳自己算出来的那个数 ——
+   否则标签写「A = 4πR²」而实际目标是 4πR²·(1−3e-5)，标签就在撒谎。
+   球壳没有旋钮可解，它只能待在解析值的 3e-5 以内（n=200 的多边形内接误差），
+   这点残差在表里如实留着。 */
+function optTargetOf(k){
+  return (k === 'A') ? 4*Math.PI*R*R : (k === 'V') ? (4/3)*Math.PI*R*R*R : null;
+}
+function optOne(k, b){
+  const r = WarpOpt.optimize(k, optTargetOf(k), b.ctx);
+  r.sph = b.sph;
+  return r;
+}
+/* 三档结果缓存。★ 每档都记下算它时的 (R,Δ) 签名：
+   拖 R/Δ 滑块只会重算**当前选中**那一档（要快），另外两档就变成"旧值"——
+   表里如实标成待重算，绝不让两种 R/Δ 下的数并排装作可比。 */
+let optAll = {}, optAllSig = '';
+function optSig(){ return R + '|' + TH; }
+function runOptimize(all){
+  const info = document.getElementById('optInfo');
+  if (typeof WarpOpt === 'undefined'){
+    if (info) info.innerHTML = '⚠ warp-opt.js 未加载，无法寻优';
+    return;
+  }
+  const b = optBase(), sig = optSig();
+  if (all){
+    /* ★ 这里曾经只清了缓存、却没真跑另外两档 —— 「⟳ 三档全跑」于是第一屏只有当前档有数，
+       另外两行停在「点它计算」。清缓存 ≠ 重算，两件事都得做。 */
+    optAll = {};
+    ['A', 'V', 'free'].forEach(k => { optAll[k] = { res: optOne(k, b), sig: sig }; });
+  } else {
+    optAll[optCase] = { res: optOne(optCase, b), sig: sig };
+  }
+  optAllSig = sig;
+  const res = optRes = optAll[optCase].res;
+  renderOptTable(res);
+  drawOptChart(res);
+  renderAllTable();
+  if (info){
+    const win = res.rows[0], target = optTargetOf(optCase);
+    info.innerHTML =
+      '当前 <b>' + OPT_CASE_NAME[optCase] + '</b>　R/Δ = ' + (R/TH).toFixed(1) + ' · 母线采样 ' + b.n + ' 点<br>' +
+      (target !== null ? '目标：' + (optCase === 'A' ? 'A' : 'V') + ' = ' + target.toExponential(3) + '（解析值）<br>' : '') +
+      '基准球壳：κ = ' + res.sph.kappa.toFixed(4) + ' · A/R² = ' + res.sph.aN.toFixed(3) +
+      ' · V/R³ = ' + res.sph.vN.toFixed(3) + ' · Φ = ' + res.sph.phi.toFixed(5) + '<br>' +
+      '球壳 κ（= 参照值 κ<sub>ceil</sub>） = ' + res.ceil.toFixed(6) + '（见下方卡片的适用范围）<br>' +
+      '最优：<b>' + (win && win.st ? win.name : '—') + '</b>' +
+      (win && win.st ? '　Φ = ' + win.st.phi.toFixed(5) +
+        '（球壳的 ' + (win.st.phi/res.sph.phi).toFixed(3) + ' 倍）' : '');
+  }
+  /* 自检钩子：_check/opt_test.js 靠它等首屏寻优落地（否则要 for 循环 sleep 猜时间）。 */
+  window.__optReady = true;
+}
+/* 动态重算：R / Δ 一变，κ、Φ 与最优母线**全都变**（∝ R/Δ），所以要跟着重跑 ——
+   这正是「怎样动态调参数」的那半个问题。
+   ★ 但 v 不需要：κ = E_shell/E_need，而 E_need 与 E_shell 都 ∝ v² ⇒ v 全约掉，
+     κ、Φ 与 v 无关（文件头第 4 条口径）。所以只挂在 R 与 Δ 两个滑块上。
+   ★ 拖滑块一次会连发几十个 oninput，而一次寻优 0.2–0.5 s ⇒ 必须去抖，
+     否则主线程被塞满、3D 视图卡成 PPT。250 ms 静默后只跑最后一次。 */
+let optTimer = 0;
+function optSchedule(){
+  if (optTimer) clearTimeout(optTimer);
+  optTimer = setTimeout(() => { optTimer = 0; runOptimize(); }, 250);
+}
+/* 三档对照表：把用户点名的两个形状（蛋形环面 / 直锥体）在三种约束下的最优参数并排列出。
+   ★ 每档都自带一份 (R,Δ) 签名；与当前 R/Δ 不符的档直接标成「待重算」，
+     绝不把两种 R/Δ 下的数并排装作可比 —— 这是上一轮"比例尺不可比"那条铁律的同一精神。 */
+function renderAllTable(){
+  const tb = document.getElementById('allTbl');
+  if (!tb) return;
+  const cur = optSig();
+  tb.querySelector('thead').innerHTML =
+    '<tr><th>情况</th><th>冠军（全部五族）</th><th>蛋形环面族 · 最优参数</th>' +
+    '<th>蛋形 κ／Φ／×球壳</th><th>直锥族 · 最优参数</th><th>直锥 Φ／×球壳</th></tr>';
+  const body = ['A', 'V', 'free'].map(k => {
+    const e = optAll[k];
+    if (!e || e.sig !== cur){
+      const pv = e ? e.sig.split('|') : null;
+      return '<tr><td><b>' + OPT_CASE_NAME[k] + '</b></td><td colspan="5"><span class="note">' +
+        '<b>待重算</b>：' + (e ? '它算的是上一组 R=' + pv[0] + '、Δ=' + pv[1] +
+          '，与本页现在的 R=' + R + '、Δ=' + TH + ' 不可比 —— 点「⟳ 三档全跑」在当前 R/Δ 下重算'
+        : '点「⟳ 三档全跑」计算') + '</span></td></tr>';
+    }
+    const res = e.res, sph = res.sph, rows = res.rows;
+    const rk = id => rows.filter(r => r.id === id && r.st)[0];
+    const win = rows[0], eg = rk('egg'), co = rk('cone');
+    const fx = r => r ? 'Φ = <b>' + r.st.phi.toFixed(5) + '</b>　×' + (r.st.phi/sph.phi).toFixed(3) : '—';
+    return '<tr' + (k === optCase ? ' style="background:#eefaf4"' : '') + '>' +
+      '<td><b>' + OPT_CASE_NAME[k] + '</b></td>' +
+      '<td>' + (win && win.st ? win.name + '<br><span class="note">Φ = ' + win.st.phi.toFixed(5) + '</span>' : '—') + '</td>' +
+      '<td class="note" style="font-size:11.5px">' + (eg ? fmtP(eg.params) : '—') + '</td>' +
+      '<td>κ = ' + (eg ? eg.st.kappa.toFixed(4) : '—') + '<br>' + fx(eg) + '</td>' +
+      '<td class="note" style="font-size:11.5px">' + (co ? fmtP(co.params) : '—') + '</td>' +
+      '<td>' + fx(co) + '</td></tr>';
+  });
+  tb.querySelector('tbody').innerHTML = body.join('');
+}
+/* ============================================================
+   §2-2 的 3D 等角视图缩略图（正等测 isometric）
+   ------------------------------------------------------------
+   需求（老师 2026-10-12）：结果表里五个候选族只有名字和数字，看不出「这是个什么立体」。
+     而五个族的差别**恰恰全在母线形状上**（球 / 锥 / 药丸 / 哑铃 / 环）——
+     2D 母线图分不出来，等角视图一眼就分得出来。
+
+   ---- 口径（与页面别处必须一致）----
+     · 母线点直接取 WarpOpt 寻优返回的那份 prof（与算 A / V / κ 的是**同一份数据**），
+       只按 res.R 归一成「R = 1」，绝不另画一条"看起来像"的曲线 ——
+       否则缩略图会与表里的面积/体积读数对不上。
+     · 投影 = 正等测：三个坐标轴在图上等长、两两 120°（这就是「等角」）
+         X = (x − y)·cos30°,   Y = (x + y)·sin30° − z      （z 向上）
+     · ★★ 省掉整套轮廓包络算法的关键事实：**一条纬线**（高度 z、半径 r 的圆）
+       在正等测里**恰好是一个椭圆**：
+         横半轴 √2·cos30°·r = 1.2247 r，  纵半轴 √2·sin30°·r = 0.7071 r，  心在 (0, −z)
+       （因为 cosθ − sinθ = √2 cos(θ+45°)、cosθ + sinθ = √2 sin(θ+45°)）
+       所以「画 N 条纬线椭圆 + M 条经线」就是一张**精确**的线框立体图：
+       不需要 marching、不需要求包络，而且球壳的轮廓自然落成半径 1.2247R 的圆 ——
+       这一点被 _check/opt_test.js 的 B10 直接断言，不靠"看起来对"。
+     · 深度提示：视线方向 = 零空间 d = (1,1,1)/√3 ⇒ 按 (x+y+z) 分 6 档 alpha，近亮远淡。
+     · ★ **统一比例尺**：五族都过 (R, 0)（赤道对齐的硬约定）⇒ 用**与情形无关**的固定尺
+       （参考盒 宽 2.449 = 2×1.2247、高 3.55 = 三档实测最大投影高 3.492 + 1.6% 余量），
+       五个缩略图之间、乃至换「等表面积 / 等体积 / 自由」三档之间，大小都**直接可比**：
+       红环（腰带 ρ̃ = R, z = 0）于是成了每张图自带的**等大标尺**。
+       再按本档实测包围盒收一次（取 min），保证任何情形都不裁切。
+   ============================================================ */
+const ISO_TAU = Math.PI*2;
+const ISO_C30 = Math.cos(Math.PI/6), ISO_S30 = Math.sin(Math.PI/6);
+const ISO_W = 118, ISO_H = 108, ISO_PAD = 5;
+const ISO_REF = { w: 2.449, h: 3.55 };          /* 单位 R：宽 = 2·1.2247 */
+/* 每族一色，与 §2-2 母线对照图里的曲线颜色**同名同色**（球壳灰 / 直锥橙 / 蛋形绿），
+   免得读者在两张图之间对不上号。 */
+const ISO_COLOR = { sphere: '#8a93a3', cone: '#c2691a', ellip: '#1b4f9c',
+                    neck: '#7a3ba8', egg: '#0f8b7a' };
+const ISO_TAUNAME = { sphere: '球壳', cone: '单锥', ellip: '超椭球', neck: '幂律颈', egg: '蛋形环' };
+
+/* 把一条母线（prof）在正等测下画成线框立体图。u = 像素/单位R（五张图共用，由 drawOptThumbs 定）。 */
+function drawIsoThumb(cv, prof, res, u, famId){
+  const dpr = Math.min(3, Math.max(1, window.devicePixelRatio || 1));
+  cv.width = Math.round(ISO_W*dpr); cv.height = Math.round(ISO_H*dpr);
+  cv.style.width = ISO_W + 'px'; cv.style.height = ISO_H + 'px';
+  const g = cv.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, ISO_W, ISO_H);
+  const col = ISO_COLOR[famId] || '#5c6b7f';
+  const geo = { fam: famId, u: u, W: ISO_W, H: ISO_H, ok: false };
+  cv.__iso = geo;
+
+  if (!prof || !prof.pts || prof.pts.length < 3){
+    g.font = '11px ui-monospace,monospace'; g.fillStyle = '#98a2b3';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('无解', ISO_W/2, ISO_H/2);
+    geo.note = 'no-profile';
+    return geo;
+  }
+
+  /* ---- 归一 R = 1，并把每个点投影出去 ---- */
+  const S = 1/(res.R || 1);
+  const pts = prof.pts.map(q => ({ r: q.r*S, z: q.z*S }));
+  const prj = (r, th, z) => {
+    const x = r*Math.cos(th), y = r*Math.sin(th);
+    return { X: (x - y)*ISO_C30, Y: (x + y)*ISO_S30 - z, D: x + y + z };
+  };
+  const NR = 16, NT = 48, NA = 8;
+  /* 沿**弧长**等距取 16 条纬线（不是按下标取：闭合母线的点密度不均匀，
+     按下标取会在腰带附近堆成一团、在两极稀疏）。取 (k+0.5)/NR 避开接缝。 */
+  const cum = [0];
+  for (let i = 1; i < pts.length; i++)
+    cum.push(cum[i-1] + Math.hypot(pts[i].r - pts[i-1].r, pts[i].z - pts[i-1].z));
+  const Ltot = cum[cum.length-1] || 1;
+  const rings = [];
+  for (let k = 0; k < NR; k++){
+    const t = (k + 0.5)/NR*Ltot;
+    let i = 0; while (i < cum.length - 2 && cum[i+1] < t) i++;
+    const r = pts[i].r, z = pts[i].z, arr = [];
+    for (let j = 0; j < NT; j++) arr.push(prj(r, ISO_TAU*j/NT, z));
+    rings.push(arr);
+  }
+  /* 8 条经线：就是母线本身（按全等测**仿射**映到图上，不是另算曲线） */
+  const step = Math.max(1, Math.floor(pts.length/64)), mers = [];
+  for (let a = 0; a < NA; a++){
+    const th = ISO_TAU*a/NA, arr = [];
+    for (let i = 0; i < pts.length; i += step) arr.push(prj(pts[i].r, th, pts[i].z));
+    const last = pts[pts.length-1];
+    if ((pts.length-1) % step) arr.push(prj(last.r, th, last.z));
+    mers.push(arr);
+  }
+
+  /* ---- 取景：包围盒 + 深度范围（含腰带环，否则它可能被裁） ---- */
+  let X0 = 1e9, X1 = -1e9, Y0 = 1e9, Y1 = -1e9, D0 = 1e9, D1 = -1e9;
+  const scan = p => { X0 = Math.min(X0,p.X); X1 = Math.max(X1,p.X);
+                      Y0 = Math.min(Y0,p.Y); Y1 = Math.max(Y1,p.Y);
+                      D0 = Math.min(D0,p.D); D1 = Math.max(D1,p.D); };
+  rings.forEach(a => a.forEach(scan));
+  mers.forEach(a => a.forEach(scan));
+  const belt = [];                                    /* ρ̃ = R, z = 0 那圈（|ρ| 最强环） */
+  for (let j = 0; j <= 64; j++){ const p = prj(1, ISO_TAU*j/64, 0); belt.push(p); scan(p); }
+  const ox = ISO_W/2 - u*(X0 + X1)/2, oy = ISO_H/2 - u*(Y0 + Y1)/2;
+  const px = p => [ox + u*p.X, oy + u*p.Y];
+  const dn = p => (D1 > D0) ? (p.D - D0)/(D1 - D0) : 0.5;
+
+  /* ---- ① 航向轴（虚线，压在最底下） ---- */
+  let zLo = 1e9, zHi = -1e9;
+  pts.forEach(q => { zLo = Math.min(zLo, q.z); zHi = Math.max(zHi, q.z); });
+  const aT = px(prj(0, 0, zHi)), aB = px(prj(0, 0, zLo));
+  g.save();
+  g.setLineDash([2, 3]); g.strokeStyle = '#cbd5e1'; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(aT[0], aT[1]); g.lineTo(aB[0], aB[1]); g.stroke();
+  g.restore();
+
+  /* ---- ② 极淡的体色：把每条纬线椭圆的内部叠一层低 alpha，出体积不出实心 ---- */
+  g.save(); g.globalAlpha = 0.05; g.fillStyle = col;
+  rings.forEach(arr => {
+    g.beginPath();
+    arr.forEach((p, i) => { const q = px(p); if (i) g.lineTo(q[0], q[1]); else g.moveTo(q[0], q[1]); });
+    g.closePath(); g.fill();
+  });
+  g.restore();
+
+  /* ---- ③ 线框：按深度分 6 档（远淡近实），同档一次 stroke（省状态切换） ---- */
+  const NB = 6, bk = [];
+  for (let b = 0; b < NB; b++) bk.push([]);
+  const addSeg = (p0, p1) => {
+    let b = Math.floor(0.5*(dn(p0) + dn(p1))*NB);
+    if (!(b >= 0)) b = 0; if (b > NB-1) b = NB-1;
+    bk[b].push([p0, p1]);
+  };
+  rings.forEach(arr => { for (let j = 0; j < arr.length; j++) addSeg(arr[j], arr[(j+1)%arr.length]); });
+  mers.forEach(arr => { for (let i = 0; i < arr.length-1; i++) addSeg(arr[i], arr[i+1]); });
+  g.lineJoin = 'round'; g.lineCap = 'round';
+  bk.forEach((segs, b) => {
+    if (!segs.length) return;
+    g.globalAlpha = 0.16 + 0.66*(b + 0.5)/NB;
+    g.strokeStyle = col; g.lineWidth = (b >= NB - 2) ? 1.15 : 0.8;
+    g.beginPath();
+    segs.forEach(([p0, p1]) => { const A2 = px(p0), B2 = px(p1);
+      g.moveTo(A2[0], A2[1]); g.lineTo(B2[0], B2[1]); });
+    g.stroke();
+  });
+  g.globalAlpha = 1;
+
+  /* ---- ④ 腰带：ρ̃ = R, z = 0（|ρ| 最强环）—— 也是五张图共用的等大标尺 ---- */
+  g.beginPath();
+  belt.forEach((p, i) => { const q = px(p); if (i) g.lineTo(q[0], q[1]); else g.moveTo(q[0], q[1]); });
+  g.closePath();
+  g.lineWidth = 3.4; g.strokeStyle = 'rgba(255,255,255,.92)'; g.stroke();
+  g.lineWidth = 1.7; g.strokeStyle = '#b3261e'; g.stroke();
+
+  geo.ok = true;
+  geo.closed = !!prof.closed;
+  geo.nRings = rings.length; geo.nMer = mers.length;
+  geo.bbox = { X0: X0, X1: X1, Y0: Y0, Y1: Y1 };
+  geo.spanX = X1 - X0; geo.spanY = Y1 - Y0;
+  geo.rMax = Math.max.apply(null, pts.map(q => q.r));
+  geo.beltW = 2*Math.SQRT2*ISO_C30*u;       /* 腰带环在图上恒为此宽（像素） */
+  return geo;
+}
+/* 把 #optTbl 里每一行的缩略图画出来。★ 每次重画表格都要**重画**（寻优换了约束 ⇒ 最优母线变了）。 */
+function drawOptThumbs(res){
+  const tbs = document.querySelectorAll('#optTbl canvas.isoTh');
+  const out = [];
+  if (!tbs.length || !res || !res.rows) { window.__optThumbs = out; return out; }
+  /* 统一比例尺：固定参考尺（保证跨档可比）为主，再被本档实测最"胖"的那张收一次（保证不裁切） */
+  let u = Math.min((ISO_W - 2*ISO_PAD)/ISO_REF.w, (ISO_H - 2*ISO_PAD)/ISO_REF.h);
+  res.rows.forEach(r => {
+    if (!r.prof) return;
+    const S = 1/(res.R || 1); let X1 = 0, Ylo = 1e9, Yhi = -1e9;
+    r.prof.pts.forEach(q => {
+      const rr = q.r*S, zz = q.z*S;
+      X1 = Math.max(X1, Math.SQRT2*ISO_C30*rr);
+      Ylo = Math.min(Ylo, -zz - Math.SQRT2*ISO_S30*rr);
+      Yhi = Math.max(Yhi, -zz + Math.SQRT2*ISO_S30*rr);
+    });
+    u = Math.min(u, (ISO_W - 2*ISO_PAD)/(2*X1), (ISO_H - 2*ISO_PAD)/(Yhi - Ylo));
+  });
+  Array.prototype.forEach.call(tbs, cv => {
+    const id = cv.getAttribute('data-fam');
+    const row = res.rows.filter(x => x.id === id)[0];
+    out.push(drawIsoThumb(cv, row && row.prof, res, u, id));
+  });
+  window.__optThumbs = out;
+  return out;
+}
+
+/* 结果表：一行一族。κ/κ_ceil 一栏是「把厚度天花板的 64% 折掉之后还剩几成」。 */
+function renderOptTable(res){
+  const tb = document.getElementById('optTbl');
+  if (!tb) return;
+  tb.querySelector('thead').innerHTML =
+    '<tr><th>#</th><th>候选母线族</th>' +
+    '<th>3D 等角视图<br><span class="note">母线绕 z 扫出的壳</span></th>' +
+    '<th>最优参数</th><th>κ<br><span class="note">兑现率</span></th>' +
+    '<th>κ/κ<sub>ceil</sub></th><th>A/R²</th><th>V<sub>in</sub>/R³</th><th>Φ<br><span class="note">推力评分</span></th>' +
+    '<th>Φ/Φ<sub>球壳</sub></th></tr>';
+  const sph = res.sph;
+  tb.querySelector('tbody').innerHTML = res.rows.map((r, i) => {
+    if (!r.st) return '<tr><td>' + (i+1) + '</td><td>' + r.name + '</td>' +
+      '<td class="isoCell"><canvas class="isoTh" data-fam="' + r.id + '"></canvas></td>' +
+      '<td colspan="7">' +
+      '<span class="note">参数盒内命中不了该约束（' + r.note + '）</span></td></tr>';
+    /* ★ 超椭球搜到 p = q = 2 **就是球壳本身**。不标出来，读者会看到「两个同形的排前两名、
+       且第一名的数比第二名大 1e-4」而以为是两种形状 —— 那是离散化取点方式不同
+       （超椭球按 ζ 均匀、球壳按极角均匀），不是物理差异。 */
+    const isSph = (r.id === 'ellip' && r.params &&
+                   Math.abs(r.params.pow - 2) < 0.03 && Math.abs(r.params.q - 2) < 0.03);
+    const nm = '<b>' + r.name + '</b>' +
+      (isSph ? ' <span class="note" style="color:#0f8b7a">（p=q=2 ⇒ 就是球壳）</span>' : '');
+    /* 冠军行：底色照旧（表格行），另外给缩略图加一圈紫框 —— 两者都要，
+       少了底色就看不出"第一名"，少了紫框在一屏滚动里也认不出是哪张图。 */
+    const hot = (i === 0) ? ' class="isoWin" style="background:#eefaf4"' : '';
+    return '<tr' + hot + '><td>' + (i+1) + '</td><td title="' + r.note + '">' + nm + '</td>' +
+      '<td class="isoCell"><canvas class="isoTh" data-fam="' + r.id + '"></canvas></td>' +
+      '<td class="note" style="font-size:11.5px">' + fmtP(r.params) + '</td>' +
+      '<td>' + r.st.kappa.toFixed(4) + '</td>' +
+      '<td>' + r.st.fill.toFixed(3) + '</td>' +
+      '<td>' + r.st.aN.toFixed(3) + '</td>' +
+      '<td>' + r.st.vN.toFixed(3) + '</td>' +
+      '<td><b>' + r.st.phi.toFixed(5) + '</b></td>' +
+      '<td>' + (r.st.phi/sph.phi).toFixed(3) + '</td></tr>';
+  }).join('');
+  /* ★ 表格的 HTML 换好之后才画（canvas 得先在 DOM 里）。顺序反了就是"白框"，
+     而且 find 不到元素不会报错 —— 这种静默失败只会在截图里露出来。 */
+  drawOptThumbs(res);
+  const nt = document.getElementById('optNote');
+  if (nt) nt.innerHTML =
+    '三列读法：<b>κ</b> = 这条母线接住了多少该有的负能量（可兑现推力份额）；'
+    + '<b>A/R²</b> = 制造面积（异物质用量的量纲）；<b>Φ</b> = 每单位面积的兑现率，越大越好。'
+    + '<b>V<sub>in</sub>/R³</b> 是壳围出的空间 —— 它太小就意味着「装不了东西」，'
+    + '正是自由情况下细带的致命伤。'
+    + '<br><b>3D 等角视图</b>（正等测，三轴等长、两两 120°）：母线（<b>与算 A / V / κ 用的是同一份数据</b>）'
+    + '绕 z 轴扫出的壳体线框 —— 16 条纬线 + 8 条经线。每张图里的<b style="color:#b3261e">红环</b>'
+    + '是腰带 (ρ̃ = R, z = 0)（|ρ| 最强环），<b>五张图共用同一个比例尺</b>，'
+    + '所以红环大小一致、可直接互比大小；灰虚线是航向轴 z。'
+    + '这张图回答的是"最优解<b>长什么样</b>"（前两列的数字回答"有多好"）。';
+}
+/* ============================================================
+   §2-2 的对照图：整幅子午面 |ρ| 场 + 一个**以 Δ 为单位**的放大窗
+   ------------------------------------------------------------
+   第一版有两个致命问题，都是"看图"才发现的：
+     ① **尺度混用**：optimize() 返回的 prof 是**物理尺**（R = 100），
+        而球壳 / 蛋形 / 直锥三条是**归一尺**（R = 1）。第一版把两者一起算包围盒，
+        于是整幅被那条放大 100 倍的最优母线撑开、其余三条被压到原点旁一个点上
+        （实测画布 328×588、只有 2.3 px/单位；图例 4 条、画面只剩 1 弧）。
+        ⇒ 现在一律 scale1(prof, res.R) 归一到 R = 1 再进包围盒。
+     ② **线性热图看不见壁**：R/Δ = 100 时壁厚只占画布 ~0.9 px，
+        (w/mx)^1.6 满屏 ≈ 0，只剩一层看不见的淡紫，"母线贴不贴腰带"根本无从判断。
+        ⇒ 换成对数级等值线 + 一个 Δ 单位的放大窗。
+
+   为什么等值线可以**精确**画（不用 marching squares）：
+     ρ(ρ̃,z) = (v²/32π)·sin²θ·D(r)²，其中 r = √(ρ̃²+z²)、sin²θ = ρ̃²/r²，
+     而 D(r) = dshape(r,1,s) **只依赖 r**（导出量 rhoMag 用的就是这个式子）。
+     ⇒ 等值线 {ρ = L} ⇔ sin²θ = L/(K·D(r)²)，K = v²/32π。
+       对 r 从 ρ 峰值两侧扫一遍、逐点反解 θ，等值线就出来了 —— 精确、平滑、便宜。
+   ============================================================ */
+/* 物理尺 → 归一尺（R = 1）。★ 混了尺度就会画出"只剩一条弧"的图。 */
+function scale1(prof, S){ return { pts: prof.pts.map(q => ({ r: q.r/S, z: q.z/S })),
+                                  closed: prof.closed, tag: prof.tag }; }
+/* |ρ| 的等值线与线段裁剪都在模块里（唯一来源，可被 _check/opt_test.js 逐步验）：
+     rhoContour(s, v, {fracs})  —— 用 ρ 的可分离性精确扫出等值线
+     clipSeg(...)               —— Liang–Barsky，放大窗里裁母线
+     rhoPeak(s, v)              —— |ρ| 的峰值（归一坐标固定在 (1,0)） */
+const rhoContours = (sN, v, fracs) => WarpOpt.rhoContour(sN, v, { fracs: fracs });
+const clipSeg = WarpOpt.clipSeg;
+function drawOptChart(res){
+  const cv = document.getElementById('optChart');
+  if (!cv || !res) return;
+  const pad = 30, gap = 16, Hh = 520;
+  const host = cv.parentElement || cv;
+  const Wavail = Math.max(320, host.clientWidth | 0);
+  const sN = R/TH, dtil = 1/sN;                       /* Δ̃ = Δ/R，归一坐标里的壁厚 */
+  const LFR = [0.5, 0.1, 0.01, 1e-3, 1e-5];           /* 等值线：峰值的一半 → 十万分之一 */
+  const LCL = ['#3b1a6e', '#5c2b96', '#7d47b8', '#9d70d2', '#bfa7e6'];
+
+  /* ---- 四条母线，**全部归一到 R = 1**（尺度混用就是第一版那个 bug） ---- */
+  const curves = [];
+  curves.push({ p: WarpOpt.profileSphere(1, {}, { n: 160 }), c: '#8a93a3', w: 1.6, tag: '球壳（基准）' });
+  const eg = WarpOpt.profileEgg(1, { a: AP.a, b: AP.b, c: AP.c }, { AnuRevolve: AnuRevolve, n: 240 });
+  if (eg) curves.push({ p: eg, c: '#0f8b7a', w: 1.8, tag: '§7 蛋形环面（当前参数）' });
+  const co = coneOpts();
+  /* 直锥的高在 ⑤ 里以 Δz 为单位 ⇒ 换成归一 R 单位要乘 A = Δz/rMax（与图上同尺，别各写一份） */
+  const A0 = (MT ? AnuRevolve.zAspect(MT) : 1.2325);
+  curves.push({ p: WarpOpt.profileCone(1, { hFrac: co.heightFrac * A0, rTopNorm: co.rTop }, { n: 64 }),
+                c: '#c2691a', w: 1.8, tag: '§7 直锥体（当前参数）' });
+  const win = res.rows[0];
+  if (win && win.prof) curves.push({ p: scale1(win.prof, res.R || R), c: '#4a1d8a', w: 3.0,
+                                     tag: '本次最优：' + win.name });
+
+  /* ---- 视野：左栏整幅（等尺），右栏 Δ 单位的放大窗 ---- */
+  let X1 = 0.6, Y0 = 0, Y1 = 0;
+  curves.forEach(c => c.p.pts.forEach(q => {
+    if (q.r > X1) X1 = q.r; if (q.z > Y1) Y1 = q.z; if (q.z < Y0) Y0 = q.z; }));
+  X1 = Math.max(1.18, X1)*1.05;
+  Y1 = Math.max(1.18, Y1)*1.05; Y0 = Math.min(-1.18, Y0)*1.05;
+  const ZW = 6;                                        /* 放大窗半宽（单位 Δ）；1e-5 级要 |u| ≤ ~2.9Δ */
+
+  /* ★ 两栏**各用各的比例尺**：左栏是 R 尺度、右栏是 Δ 尺度，量级差 R/Δ = 100 倍，
+     共用比例尺只会把左栏压成一条 14 px 的竖线（第一版就错了这一步）。
+     铁律「两轴同尺」指的是**同一栏之内** x/y 同尺 —— 那才是形状不失真的条件。 */
+  const avail = Wavail - 2*pad - gap;
+  const uA = Math.max(1, Math.min(avail*0.46/Math.max(0.5, X1), (Hh-2*pad)/(Y1-Y0)));
+  const WL = X1*uA;
+  const WR = Math.max(120, avail - WL);
+  const uB = Math.max(1, Math.min(WR/(2*ZW), (Hh-2*pad)/(2*ZW)));
+  /* ★ W 绝不越过实测可用宽：`.two` 是 1fr 网格，而 grid 轨道的 auto 下限会跟着内容长，
+     一旦画布比格子宽就会「画布变宽 → 可用宽变大 → 画布更宽」，跨次重绘滚雪球。 */
+  const W = cv.width = Math.min(Wavail, Math.round(2*pad + WL + gap + 2*ZW*uB));
+  cv.height = Hh;
+  cv.style.width = W + 'px'; cv.style.height = Hh + 'px';
+  cv.style.marginLeft = 'auto'; cv.style.marginRight = 'auto';
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, W, Hh);
+  ctx.font = '11px system-ui,sans-serif';
+
+  /* ================= 左栏：整幅子午面（等尺）================= */
+  const ox = pad, oy = pad + Math.max(0, ((Hh-2*pad)-(Y1-Y0)*uA)/2);
+  const sx = v => ox + v*uA, sy = v => (oy + (Y1-Y0)*uA) - (v - Y0)*uA;
+
+  /* 网格 + 轴 */
+  ctx.strokeStyle = '#e9eef6'; ctx.lineWidth = 1;
+  for (let g=0.5; g<=X1; g+=0.5){ ctx.beginPath(); ctx.moveTo(sx(g), sy(Y0)); ctx.lineTo(sx(g), sy(Y1)); ctx.stroke(); }
+  for (let g=Math.ceil(Y0/0.5)*0.5; g<=Y1; g+=0.5){ ctx.beginPath(); ctx.moveTo(sx(0), sy(g)); ctx.lineTo(sx(X1), sy(g)); ctx.stroke(); }
+  ctx.strokeStyle = '#9fb2cc';
+  ctx.beginPath(); ctx.moveTo(sx(0), sy(0)); ctx.lineTo(sx(X1), sy(0)); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(sx(0), sy(Y0)); ctx.lineTo(sx(0), sy(Y1)); ctx.stroke();
+  ctx.fillStyle = '#3b4a5a';
+  ctx.fillText('ρ̃ / R', ox + X1*uA - 34, sy(Y0) + 14);
+  ctx.save(); ctx.translate(ox - 16, sy(Y1) + 62); ctx.rotate(-Math.PI/2);
+  ctx.fillText('z / R（航向轴）', 0, 0); ctx.restore();
+  ctx.fillStyle = '#6b7683';
+  ctx.fillText('① 整幅（等尺，1 = 泡半径 R）', ox, oy - 9);
+
+  /* |ρ| 在**整幅里只有 ~1 px 厚**（Δ = R/100）—— 画成细线只会被母线压住、看着像多余母线。
+     所以整幅里只画两层"洋葱"填色（≥50% / ≥10% 峰值），把"腰带在哪"表意清楚；
+     真正的结构留给右栏那个以 Δ 为单位的放大窗。 */
+  const CON = rhoContours(sN, V, LFR);
+  [1, 0].forEach(ci => {                       /* 先画宽的 10%，再叠 50% */
+    const c = CON[ci]; if (!c) return;
+    ctx.fillStyle = (ci === 0) ? 'rgba(92,43,150,.42)' : 'rgba(160,120,214,.34)';
+    ctx.beginPath();
+    c.up.forEach((q, j) => { const x = sx(q.r), y = sy(q.z); j ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    for (let j = c.dn.length - 1; j >= 0; j--) ctx.lineTo(sx(c.dn[j].r), sy(c.dn[j].z));
+    ctx.closePath(); ctx.fill();
+  });
+  /* 四条母线 */
+  curves.forEach(c => {
+    ctx.strokeStyle = c.c; ctx.lineWidth = c.w;
+    ctx.beginPath();
+    c.p.pts.forEach((q, i) => { const x = sx(q.r), y = sy(q.z); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    if (c.p.closed) ctx.closePath();
+    ctx.stroke();
+  });
+  ctx.fillStyle = '#4a1d8a';
+  ctx.beginPath(); ctx.arc(sx(1), sy(0), 3.4, 0, 2*Math.PI); ctx.fill();
+
+  /* ================= 右栏：Δ 单位的放大窗（各向同尺）================= */
+  const bx = pad + WL + gap, by = pad + Math.max(0, ((Hh-2*pad)-2*ZW*uB)/2);
+  const X2 = v => bx + (v + ZW)*uB,          /* v = (ρ̃−R)/Δ */
+        Y2 = v => (by + 2*ZW*uB) - (v + ZW)*uB; /* v = z/Δ        */
+  /* ① 填色：按 |ρ| 的十进制量级分带（16 个量级压缩成 7 带，才看得见结构） */
+  const bw = Math.max(80, Math.round(2*ZW*uB)), bh = bw;
+  const off = document.createElement('canvas'); off.width = bw; off.height = bh;
+  const oc = off.getContext('2d'), img = oc.createImageData(bw, bh);
+  const mxRho = WarpOpt.rhoPeak(sN, V);   /* (ρ̃,z) = (1,0) 即 |ρ| 的峰（模块里算，别在这儿手抄）*/
+
+  /* ---- 标签落点自检（2026-10-12 加）：右栏里"哪能写字"不看肉眼，看档位 ----------------
+     band 0 = 白（离腰带 ≥6 个数量级），band 6 = 最深（距峰 <1 个数量级）。
+     右栏的深带是**贯穿整高**的竖条（等值线近乎垂直），所以只要 |dx| ≲ 3.5Δ 就是暗的，
+     "往左挪一点"根本救不回来 —— 唯一的出路是挪到窗外、或钉在最左那条白带上。
+     画文字一律走 putText，落点顺手存档，交给 _check/opt_test.js 的 B9 当哨兵。 */
+  const bandAtPx = (xpx, ypx) => {
+    const dx = (xpx - bx)/uB - ZW, dz = ZW - (ypx - by)/uB;   /* 反解 X2 / Y2 */
+    if (Math.abs(dx) > ZW || Math.abs(dz) > ZW) return -1;    /* 窗外 = 白底，-1 表示无需查 */
+    const wv = WarpOpt.rhoMag(1 + dx*dtil, dz*dtil, 1, sN, V);
+    if (!(wv > 0) || !(mxRho > 0)) return 0;
+    return Math.max(0, Math.min(6, 6 + Math.min(0, Math.ceil(Math.log10(wv/mxRho)))));
+  };
+  const lbls = [];
+  /* 沿基线等距采 9 点 ×（基线／字腰／字顶）三层，取最差档位 —— 只查左端点会漏掉长句子的尾巴 */
+  const putText = (t, x, y, color) => {
+    ctx.fillStyle = color;
+    const wdt = ctx.measureText(t).width;      /* 必须在 font 已定之后量，故只在原位替换 fillText */
+    let mx = -1;
+    for (let u = 0; u <= 8; u++) for (let d = 0; d <= 2; d++) {
+      const bd = bandAtPx(x + wdt*u/8, y - d*4);
+      if (bd > mx) mx = bd;
+    }
+    lbls.push({ t: t, x: Math.round(x), y: Math.round(y), w: Math.round(wdt), maxBand: mx });
+    ctx.fillText(t, x, y);
+    return wdt;
+  };
+
+  /* 填色带：把 7 个十进制量级压成 7 档（t = log₁₀(|ρ|/|ρ|max) ∈ (−1,0] 为最亮档，
+     越淡越远离腰带）。★ 索引必须先算对再取色：band 落在 [0,6] 才不会是 undefined。 */
+  for (let j=0;j<bh;j++) for (let i=0;i<bw;i++){
+    const dx = -ZW + 2*ZW*(i+.5)/bw, dz = ZW - 2*ZW*(j+.5)/bh;
+    const rt = 1 + dx*dtil, z = dz*dtil;
+    /* 直接用同一个 rhoMag（唯一来源），不在这里手抄公式 */
+    const wv = WarpOpt.rhoMag(rt, z, 1, sN, V);
+    let band = 0;
+    if (wv > 0 && mxRho > 0){
+      const t = Math.log10(wv/mxRho);
+      band = 6 + Math.min(0, Math.ceil(t));
+    }
+    band = Math.max(0, Math.min(6, band));
+    const o = (j*bw+i)*4;
+    img.data[o]   = [246,234,218,198,172,143,104][band];
+    img.data[o+1] = [240,216,190,160,128, 96, 58][band];
+    img.data[o+2] = [250,242,234,224,212,196,150][band];
+    img.data[o+3] = 255;
+  }
+  oc.putImageData(img, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(off, X2(-ZW), Y2(ZW), 2*ZW*uB, 2*ZW*uB);
+  ctx.imageSmoothingEnabled = true;
+  ctx.strokeStyle = '#c9d3e0'; ctx.lineWidth = 1;
+  ctx.strokeRect(X2(-ZW)+.5, Y2(ZW)+.5, 2*ZW*uB-1, 2*ZW*uB-1);
+
+  /* ② 等值线（同一组级别，颜色与左栏一致）+ 网格 */
+  ctx.strokeStyle = '#dfe7f1';
+  for (let g=-ZW+1; g<ZW; g++){ if (!g) continue;
+    ctx.beginPath(); ctx.moveTo(X2(g), Y2(-ZW)); ctx.lineTo(X2(g), Y2(ZW)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(X2(-ZW), Y2(g)); ctx.lineTo(X2(ZW), Y2(g)); ctx.stroke(); }
+  CON.forEach((c, i) => {
+    ctx.strokeStyle = LCL[i]; ctx.lineWidth = 1.5;
+    [c.up, c.dn].forEach(arc => {
+      ctx.beginPath();
+      arc.forEach((q, j) => { const x = X2((q.r-1)/dtil), y = Y2(q.z/dtil);
+        j ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+      ctx.stroke();
+    });
+  });
+  /* ③ 壳的径向范围 |r−R| ≤ Δ/2（赤道附近才有意义，画成短虚线并标注） */
+  ctx.setLineDash([4,3]); ctx.strokeStyle = '#c2691a'; ctx.lineWidth = 1.2;
+  [-0.5, 0.5].forEach(g => { ctx.beginPath(); ctx.moveTo(X2(g), Y2(-ZW)); ctx.lineTo(X2(g), Y2(ZW)); ctx.stroke(); });
+  ctx.setLineDash([]);
+  /* ④ 母线裁进窗内 */
+  curves.forEach(c => {
+    ctx.strokeStyle = c.c; ctx.lineWidth = c.w; ctx.beginPath();
+    const P = c.p.pts.map(q => ({ x: (q.r-1)/dtil, y: q.z/dtil }));
+    const n = P.length, segs = c.p.closed ? n : n-1;
+    for (let i=0;i<segs;i++){
+      const a = P[i], b = P[(i+1)%n];
+      if (!isFinite(a.x) || !isFinite(b.x)) continue;
+      const s2 = clipSeg(a.x, a.y, b.x, b.y, -ZW, ZW, -ZW, ZW);
+      if (!s2) continue;
+      ctx.moveTo(X2(s2.x0), Y2(s2.y0)); ctx.lineTo(X2(s2.x1), Y2(s2.y1));
+    }
+    ctx.stroke();
+  });
+  ctx.fillStyle = '#4a1d8a';
+  ctx.beginPath(); ctx.arc(X2(0), Y2(0), 3.4, 0, 2*Math.PI); ctx.fill();
+  /* ⑤ 窗口标注。★ 文字不能压在深色带上（那里读不出来）—— 一律放在窗内的浅色区或窗外。
+       ★ 2026-10-12 修：原来「腰带：ρ̃ = R, z = 0（|ρ| 最强环）」整句放在赤道下方 7px，
+       实测从第 15 个字起档位就是 3→6，尾字（最关键的"最强环"）全被深带吃掉；
+       而右栏的深带是贯穿整高的竖条（等值线近乎垂直），所以「往左挪一点」救不回来。
+       现在：窗内只留**两字短签**「腰带」，钉在最左那条白带（band 0）上 + 一根引线指到窗心；
+       整句解释搬进下方 #optLegend（那一栏本来就是干这个用的）。 */
+  const wBand = putText('腰带', X2(-ZW) + 4, Y2(0) + 7, '#4a1d8a');
+  ctx.strokeStyle = '#8a93a3'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(X2(-ZW) + 9 + wBand, Y2(0) + 3); ctx.lineTo(X2(0) + 6, Y2(0) + 3); ctx.stroke();
+  putText('② 放大：x = (ρ̃−R)/Δ　y = z/Δ（各向同尺，半宽 ' + ZW + 'Δ）', bx, by - 9, '#3b4a5a');
+  putText('橙虚线 = 壳的径向范围 |r−R| ≤ Δ/2', bx + 4, by + 2*ZW*uB + 14, '#c2691a');
+  putText('Δ = R/' + (R/TH).toFixed(0) + ' ⇒ 壁厚 Δ 在左栏只占 ' + (dtil*uA).toFixed(1) +
+          ' px（所以必须放大），右栏 1Δ = ' + uB.toFixed(0) + ' px', bx, by + 2*ZW*uB + 30, '#3b4a5a');
+  /* ⑥ 左栏那个"看不出东西"的腰带，用一个小方框 + 引线指到右栏 */
+  ctx.setLineDash([3,3]); ctx.strokeStyle = '#b0bccb'; ctx.lineWidth = 1;
+  const zb = ZW*dtil;
+  ctx.strokeRect(sx(Math.max(0, 1-zb)), sy(zb), 2*zb*uA, 2*zb*uA);
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(sx(Math.max(0, 1-zb)) + 2*zb*uA, sy(zb));
+  ctx.lineTo(bx - 6, by + 2*ZW*uB*0.5);
+  ctx.moveTo(sx(Math.max(0, 1-zb)) + 2*zb*uA, sy(-zb));
+  ctx.lineTo(bx - 6, by + 2*ZW*uB*0.5);
+  ctx.stroke();
+
+  const lg = document.getElementById('optLegend');
+  /* 自检钩子：_check/opt_test.js 靠它验「两栏各用各的比例尺」「画布没越界」「腰带落在窗心」 */
+  window.__optChartGeo = { W: W, H: Hh, uA: uA, uB: uB, WL: WL, ZW: ZW, bx: bx, by: by,
+                           X1: X1, Y0: Y0, Y1: Y1, dtil: dtil, Wavail: Wavail, nCurves: curves.length,
+                           /* B9 哨兵用：每条文字的落点 + 最差背景档位；bandAtPx 供反证脚本直接点名查 */
+                           labels: lbls, bandAtPx: bandAtPx };
+  /* 级别文字自己格式化：1e-5 这类走 (f*100).toFixed(2) 会印成 "0.00%"，等于撒谎 */
+  const fmtLv = f => (f >= 0.01) ? (f*100).toFixed(f*100 % 1 ? 1 : 0) + '%'
+                                 : '1e' + String(Math.round(Math.log10(f))).replace('-', '−');
+  if (lg) lg.innerHTML = curves.map(c =>
+    '<li><b style="color:' + c.c + '">■</b> ' + c.tag + '</li>').join('') +
+    /* 这句原来是画在右栏里的，压在负能量深带上读不出来（见 ⑤ 的注释）—— 搬到这里 */
+    '<li style="margin-top:4px"><b style="color:#4a1d8a">●</b> 腰带（ρ̃ = R, z = 0）：'
+    + '|ρ| 最强环，就是右栏窗心那个点（负能量最集中处；壳的径向范围是它左右那对橙虚线）</li>' +
+    '<li style="margin-top:4px"><b style="color:#5c2b96">—</b> |ρ| 等值线（相对峰值 '
+    + LFR.map(fmtLv).join(' / ') + '，越深越靠腰带）</li>' +
+    '<li style="color:var(--ink-3)">右栏 x = (ρ̃−R)/Δ、y = z/Δ：±' + ZW +
+    'Δ 的窗，所以 Δ 才看得见（左栏 1Δ 只有 ' + (dtil*uA).toFixed(1) + ' px）</li>';
+}
+
+/* ---------- 控件绑定 ---------- */
+function anuSyncSliders(){
+  const set = (id, vid, v, d) => { const a = document.getElementById(id); if(a) a.value = v;
+    const b = document.getElementById(vid); if(b) b.textContent = (+v).toFixed(d); };
+  set('sA','sAv',anuAmp,2); set('sa','sav',AP.a,2); set('sb','sbv',AP.b,2);
+  set('sc','scv',AP.c,2);   set('sk','skv',AP.k,2); set('sd','sdv',AP.d,0);
+  /* 直锥四个参数（归一单位）：无论 follow/free 都把数值写上，
+     这样从 free 切回 free、或点预设按钮后，滑块位置与模型永远一致。 */
+  set('sCB','sCBv',coneP.rBase,2); set('sCT','sCTv',coneP.rTop,2);
+  set('sCH','sCHv',coneP.hFrac,2); set('sCZ','sCZv',coneP.zeta0,2);
+  setConeSrc(coneSrc);
+  syncPuffNotch();
+}
+(function bindAnu(){
+  const notch = (id, fn) => {
+    const el = document.getElementById(id); if (!el) return;
+    el.addEventListener('click', ev => {
+      const b = ev.target.closest('button'); if (!b || !el.contains(b)) return;
+      [...el.children].forEach(x => x.classList.toggle('on', x === b));
+      fn(b.dataset.v);
+    });
+  };
+  notch('eggNotch',  v => { anuShow  = v; update(); });
+  notch('puffNotch', v => { anuPuff  = v; update(); });
+  notch('alignNotch',v => { anuAlign = v; update(); });
+  /* ★ 只有**布局**切换跟着重框：并排 ↔ 同轴重叠，所需取景差一倍以上，
+     而且这两种布局的比例尺本来就不可比（物体位置都变了），重框没有副作用。
+     「两者/蛋形/直锥」与「泡心」刻意**不**重框 —— 那两种切换必须保持同一比例尺，
+     否则前后两张图的物体大小不一样，对照就失去了意义。 */
+  notch('laysNotch', v => { anuLayout = v; camUserTook = false; update(); fitCamera(1.18); });
+  notch('coneSrc',   v => { setConeSrc(v); update(); });
+
+  const bind = (id, vid, dec, fn) => {
+    const el = document.getElementById(id); if (!el) return;
+    el.oninput = e => { const v = +e.target.value; fn(v);
+      const b = document.getElementById(vid); if (b) b.textContent = v.toFixed(dec); update(); };
+  };
+  bind('sA','sAv',2, v => anuAmp = v);
+  bind('sa','sav',2, v => AP.a = v);
+  bind('sb','sbv',2, v => AP.b = v);
+  bind('sc','scv',2, v => AP.c = v);
+  bind('sk','skv',2, v => AP.k = v);
+  bind('sd','sdv',0, v => AP.d = v);
+
+  /* ---------- 直锥体的四个参数：拖动即自动切到「独立可调」 ---------- */
+  /* setConeSrc 已提到模块级（anuSyncSliders / 预设按钮都要用），此处只负责绑定 */
+  const cbind = (id, vid, key) => {
+    const el = document.getElementById(id); if (!el) return;
+    el.oninput = e => {
+      const v = +e.target.value; coneP[key] = v;
+      if (coneSrc !== 'free') setConeSrc('free');      /* 一拖就切独立，省一步点击 */
+      const b = document.getElementById(vid); if (b) b.textContent = v.toFixed(2);
+      update();
+    };
+  };
+  cbind('sCB','sCBv','rBase'); cbind('sCT','sCTv','rTop');
+  cbind('sCH','sCHv','hFrac'); cbind('sCZ','sCZv','zeta0');
+  setConeSrc('follow');
+
+  const rst = document.getElementById('eggReset');
+  if (rst) rst.onclick = () => { AP = { a:3.0, b:2.76, c:-0.92, k:3.6, d:0 }; anuAmp = 1.0; anuSyncSliders(); update(); };
+  const pyv = document.getElementById('eggZeroD');
+  if (pyv) pyv.onclick = () => { AP = { a:3.0, b:3.0, c:1.0, k:3.0, d:5 }; anuAmp = 1.0; anuSyncSliders(); update(); };
+  /* ★ 四个直锥滑块的 step 都是 0.01。range 输入在**真浏览器里会把 .value 吸附到步长网格上**
+     （写 0.327 读回来是 0.33），所以预设值必须自己先落到同一网格：否则模型用 0.327、
+     滑块显示 0.33，读数板与滑块互相矛盾 —— 就是「界面撒谎」。
+     精确值不会丢：⑤-3 读数里 rhoAtZmaxNorm 仍然给到 4 位小数。 */
+  const snapC = (v, st) => { st = st || 0.01; return +(Math.round(v / st) * st).toFixed(2); };
+  const ctop = document.getElementById('coneTopBtn');
+  if (ctop) ctop.onclick = () => {
+    coneP = { rBase:1.0, rTop:snapC(MT.rhoAtZmaxNorm), hFrac:1.0, zeta0:snapC(MT.zWaistNorm) };
+    setConeSrc('free'); anuSyncSliders(); update();
+  };
+  const ccyl = document.getElementById('coneCylBtn');
+  if (ccyl) ccyl.onclick = () => {
+    coneP = { rBase:1.0, rTop:1.0, hFrac:1.0, zeta0:0.0 };
+    setConeSrc('free'); anuSyncSliders(); update();
+  };
+
+  /* ---------- ⑥ 形状寻优：换情况即重算；写回滑块即「动态调参」 ---------- */
+  /* 换档只重算那一档（快，拖滑块时够用）；「三档全跑」才把另外两档也重算。 */
+  notch('optCase', v => { optCase = v; runOptimize(false); });
+  const orb = document.getElementById('optRun');
+  if (orb) orb.onclick = () => runOptimize(true);
+
+  const oap = document.getElementById('optApply');
+  if (oap) oap.onclick = () => {
+    const info = document.getElementById('optInfo');
+    const eg = optRes && optRes.rows.filter(r => r.id === 'egg' && r.st)[0];
+    if (!eg || !eg.params){
+      if (info) info.innerHTML += '<br>⚠ 蛋形环面族在当前情况下没有可用解，无法写回 ⑤。';
+      return;
+    }
+    /* ★ 滑块 step：a 是 0.05，b/c 是 0.01。range 输入在真浏览器里会把 .value 吸附到
+       步长网格上（写 0.857 读回来是 0.85），所以**写回前必须自己先落到同一网格**——
+       否则模型用 0.857、滑块显示 0.85，读数板与滑块互相矛盾，就是「界面撒谎」。
+       （同一坑先前在直锥四个滑块上踩过，见上面 snapC 的注释。） */
+    const snap = (v, st) => Math.round(v / st) * st;
+    const a2 = +snap(eg.params.a, 0.05).toFixed(2),
+          b2 = +snap(eg.params.b, 0.01).toFixed(2),
+          c2 = +snap(eg.params.c, 0.01).toFixed(2);
+    AP = Object.assign({}, AP, { a: a2, b: b2, c: c2 });
+    anuSyncSliders(); update(); runOptimize(false);
+    /* 用**取整后**的参数复算一次，把真正写进去的那条的 Φ 报出来 ——
+       不许拿未取整的数值吹牛，取整误差要摊在明面上。 */
+    const b0 = optBase();
+    const p2 = WarpOpt.profileEgg(b0.ctx.R, { a: a2, b: b2, c: c2 }, { AnuRevolve: AnuRevolve, n: b0.n });
+    const st2 = p2 ? WarpOpt.shellStat(p2, b0.ctx) : null;
+    /* ★ 写回后要说清「蛋形环面的形心 ζ 与世界心变成了多少」——
+       老师点名要的就是这两个量（原状态 ζ = 0.4264、世界心 (−22.25, 0, 3.55)）。
+       几何是刚重build过的，所以这里读到的 MT / puffInfo 都是**当轮**的，不是上一轮
+       （update() 里已把 rebuild 提前到写读数之前，见那段注释）。 */
+    const zNow = (MT && MT.centroidSurf) ? MT.centroidSurf.zeta : null;
+    const pe = (typeof puffInfo !== 'undefined') ? puffInfo.filter(u => u.which === 'egg')[0] : null;
+    if (info) info.innerHTML +=
+      '<br>↓ 已写回 ⑤：<b>a = ' + a2.toFixed(2) + '　b = ' + b2.toFixed(2) + '　c = ' + c2.toFixed(2) + '</b>' +
+      (st2 ? '　取整后实测 Φ = ' + st2.phi.toFixed(5) +
+             '（球壳的 ' + (st2.phi / b0.sph.phi).toFixed(3) + ' 倍，κ = ' + st2.kappa.toFixed(4) + '）' : '') +
+      '<br><span style="color:var(--ink-3)">3D 视图已是这条母线（几何已重建）' +
+      (zNow !== null ? '；蛋形薄壳形心 <b>ζ = ' + zNow.toFixed(4) + '</b>' : '') +
+      (pe ? ' ⇒ <b>世界心 (' + pe.x.toFixed(2) + ', 0, ' + pe.z.toFixed(2) + ')</b>'
+          : '（泡心未开，世界心不显示 —— 在 ⑤ 里选「各自·质心」即可看到）') + '</span>';
+  };
+})();
+
+
+/* ---------- 自适应 & 主循环 ---------- */
+function resize(){
+  /* ★ CSS 万一没加载，.viewer 高度为 0 ⇒ 3D 区塌成一条线。这里兜一层。 */
+  if (viewer.clientHeight < 40) viewer.style.height = '600px';
+  const w = Math.max(1, viewer.clientWidth), h = Math.max(1, viewer.clientHeight);
+  renderer.setSize(w, h, false);
+  /* ★ 显式写死 CSS 尺寸，不依赖任何外部样式表，也覆盖可能残留的 inline 尺寸。
+     这是「3D 只剩一个像素/全白」的根治点。 */
+  renderer.domElement.style.width  = w + 'px';
+  renderer.domElement.style.height = h + 'px';
+  camera.aspect = w/h; camera.updateProjectionMatrix();
+}
+/* ---------- 取景：把当前**可见**内容框进画布（保持视线方向） ----------
+   旧版靠一个手调常数 HOME = (46,30,52)，它只对「主泡 + 两对照体并排」那一种组合成立。
+   实测默认 ⑤ 视图（各自·质心）内容盒投影到 y ∈ [493, 1125]，而画布只有 y ∈ [396, 994]
+   —— 下沿超出 131 px，泡的下半部分是**被画布裁掉**的，不是没画。
+   这里改成按内容包围球 + 当前视线方向反算距离。
+   ★ 调用时机刻意**不是**每次 rebuild：
+     ① 主泡随 (v, R, Δ) 长大是这一页本来的表达，自动取景会把它抹平成「泡永远同样大小」；
+     ② 切「两者/蛋形/直锥」时若也重框，两次的**比例尺会不一样**，对照就没法比了。
+     所以只在启动、以及点「⌖ 框住对照体」时各框一次；方向取当前视线，绝不把用户的轨道角度甩掉。 */
+/* 可见内容的并集包围盒（被收起的件不算）—— fitCamera 与「出画保护」共用同一口径，
+   免得两处各写一份、判据悄悄不一致。 */
+function visibleContentBox(){
+  const box = new THREE.Box3();
+  bubbleGroup.traverse(o => {
+    if (!o.geometry) return;
+    /* three.js 的 Box3.setFromObject 不看 visible，所以自己沿父链核一遍可见性：
+       被收起的主泡不该参与取景。 */
+    for (let q = o; q && q !== bubbleGroup; q = q.parent) if (!q.visible) return;
+    o.geometry.computeBoundingBox();
+    const gb = o.geometry.boundingBox;
+    if (gb && isFinite(gb.min.x) && isFinite(gb.max.x)) box.union(gb.clone().applyMatrix4(o.matrixWorld));
+  });
+  return box;
+}
+/* 内容投影到屏幕后四边的余量（px；负数 = 被裁）。用于「不许出画」的判定。 */
+function contentMargins(){
+  const box = visibleContentBox();
+  if (box.isEmpty()) return null;
+  camera.updateMatrixWorld();
+  const r = renderer.domElement.getBoundingClientRect();
+  const v = new THREE.Vector3();
+  let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+  for (const X of [box.min.x, box.max.x]) for (const Y of [box.min.y, box.max.y]) for (const Z of [box.min.z, box.max.z]){
+    v.set(X, Y, Z).project(camera);
+    const px = (v.x*.5 + .5)*r.width, py = (-v.y*.5 + .5)*r.height;
+    x0 = Math.min(x0, px); x1 = Math.max(x1, px); y0 = Math.min(y0, py); y1 = Math.max(y1, py);
+  }
+  return [x0, r.width - x1, y0, r.height - y1];    /* 左 右 上 下 */
+}
+/* ★ 用户一旦自己动过相机（拖 / 滚轮），自动取景就交还给用户，不再插手 ——
+   否则用户刚放大看细节，一拖滑块就被弹回去，比「不出画」更烦人。
+   重新交回自动的时机：点「⌖ 框住对照体」、或切换 ⑤ 的并排/同轴布局。 */
+let camUserTook = false;
+controls.addEventListener('start', () => { camUserTook = true; });
+/* 出画救援：**只在内容真的被裁**时才动相机。
+   为什么不每次 rebuild 都 fit：① 主泡随 (v, R, Δ) 长大是页面既有的表达，
+   一律自动取景会把它压平；② 「各自·质心 / 各自·几何原点 / 不画」三张图必须同一比例才能对照。
+   这两条都只在「余量为正时不许动相机」的前提下成立，所以判据用余量，不用「是否 rebuild」。
+   实测触发场景：直锥自由参数拉到「底 2.0×腰 / 高 1.4×Δz」时下沿溢 −53 px。 */
+function fitCameraIfCropped(){
+  if (camUserTook) return;
+  const m = contentMargins();
+  if (!m) return;
+  if (m.some(v => v < 8)) fitCamera(1.18);       /* 留 8 px 缓冲：贴边也算要躲开 */
+}
+function fitCamera(k){
+  const box = visibleContentBox();
+  if (box.isEmpty()) return;
+  const sph = box.getBoundingSphere(new THREE.Sphere());
+  if (!(sph.radius > 1e-6)) return;
+  const dir = camera.position.clone().sub(controls.target);
+  if (dir.lengthSq() < 1e-12) dir.copy(HOME);
+  dir.normalize();
+  const vFov = camera.fov * Math.PI / 180;
+  const hFov = 2 * Math.atan(Math.tan(vFov / 2) * Math.max(0.1, camera.aspect));
+  const half = Math.min(vFov, hFov) / 2;
+  const kk = (isFinite(k) && k > 0) ? k : 1.18;
+  const L = sph.radius / Math.sin(half) * kk;
+  camera.position.copy(sph.center).addScaledVector(dir, L);
+  controls.target.copy(sph.center);
+  controls.update();
+}
+window.addEventListener('resize', ()=>{ resize(); drawHeat(); drawProfile(); drawMerCmp(); });
+resize(); update(); fitCamera(1.18);
+/* §2-2 的寻优晚一拍跑：它要 0.2–0.5 s，压在首帧前会让「正在初始化」占位多留半秒。
+   放到下一拍，3D 先出画面，表格随后填上。首屏跑「三档全跑」把三张表一次填满。 */
+setTimeout(() => runOptimize(true), 80);
+
+const clk = new THREE.Clock();
+let glHintDone = false;
+function loop(){
+  requestAnimationFrame(loop);
+  const t = clk.getElapsedTime();
+  if(cloud) cloud.material.size = 0.40 + 0.07*Math.sin(t*2.1);
+  controls.update();
+  syncPuffMarkSize();          /* 泡心标记按屏幕像素保底，见函数注释 */
+  renderer.render(scene, camera);
+  /* ★ 真正画出第一帧后，撑掉「正在初始化」占位；WebGL 挂了它就会留着。 */
+  if(!glHintDone){
+    glHintDone = true;
+    var gh = document.getElementById('glHint');
+    if(gh) gh.style.display = 'none';
+  }
+}
+loop();
+
+/* ============================================================
+   浮窗 / HUD / Shift 拖动 —— 统一初始化（SOUL 铁律 184 / 185）
+   ============================================================ */
+(function(){
+  if (typeof ParamPanel === 'undefined') return;
+
+  /* ① 所有可调参数收进右侧浮窗：标题栏可拖动，右上角 −/＋ 收起，状态入 localStorage */
+  ParamPanel.attach({ win:'paramWin', head:'pwHead', toggle:'pwToggle', key:'warp2' });
+
+  /* ② 图内读数板加「可收起」按钮（#hud / #legend 由 update() 反复 innerHTML 重写
+        ⇒ 已给显式 .hud-body，JS 只写 body，按钮不会被冲掉） */
+  ParamPanel.hud(document.querySelectorAll('#viewer .hud'));
+
+  /* ③ Shift + 拖动 = 搬动泡体本体；相机 / 坐标轴 / 参考网格纹丝不动 */
+  function showPan(o){
+    var el = document.getElementById('panInfo');
+    if (el) el.textContent = '位移 = (' + o.x.toFixed(1) + ', ' + o.y.toFixed(1) + ', ' + o.z.toFixed(1) + ')';
+  }
+  var pan = ParamPanel.bindShiftPan({
+    viewer:'viewer', camera:camera, target:controls.target,
+    object:bubbleGroup, limit:30, yMin:-30, onDelta:showPan
+  });
+  var home = document.getElementById('panHome');
+  if (home) home.onclick = function(){
+    if (pan) pan.home();
+    else { bubbleGroup.position.set(0,0,0); showPan({x:0,y:0,z:0}); }
+  };
+  var fitb = document.getElementById('fitCam');
+  if (fitb) fitb.onclick = function(){ camUserTook = false; fitCamera(1.18); };
+  showPan({x:0,y:0,z:0});
+})();
+</script>
+</body>
+</html>

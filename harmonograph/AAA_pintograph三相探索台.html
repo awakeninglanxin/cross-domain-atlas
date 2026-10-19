@@ -1,0 +1,1384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>pintograph 探索台 · 三相 120° / 单向矢量 / 三盘</title>
+<style>
+*{box-sizing:border-box}
+:root{
+  --bg:#f5f6fa;--panel:#ffffff;--panel2:#f0f2f8;--line:#e3e6ef;
+  --fg:#1b1f2a;--dim:#6b7280;--dim2:#9aa1b1;
+  --acc:#6b4eff;--acc2:#0ea5e9;--gold:#c8870f;--ok:#0f9d58;--warn:#c0392b;
+}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font-family:"Microsoft YaHei","PingFang SC",-apple-system,"Segoe UI",sans-serif;
+  line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1220px;margin:0 auto;padding:26px 20px 60px}
+
+header{border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:18px}
+h1{margin:0 0 6px;font-size:23px;letter-spacing:.3px}
+h1 b{color:var(--acc)}
+.sub{color:var(--dim);font-size:13px;margin:0}
+.go3d{display:inline-flex;align-items:center;gap:7px;background:var(--acc);color:#fff;text-decoration:none;
+  padding:8px 15px;border-radius:9px;font-size:13px;font-weight:600;line-height:1.2;
+  box-shadow:0 2px 8px rgba(107,78,255,.28)}
+.go3d:hover{filter:brightness(1.08);box-shadow:0 4px 14px rgba(107,78,255,.36)}
+.go3d b{font-weight:800}
+.tag{display:inline-block;background:#efe9ff;border:1px solid #ddd0ff;color:#5a3fd6;
+  border-radius:999px;padding:1px 10px;font-size:11.5px;margin-left:8px;vertical-align:middle}
+.tag.g{background:#e8f7ef;border-color:#c3ecd6;color:#0b7a44}
+
+.desk{display:block}
+.stage{display:flex;flex-direction:column;gap:10px}
+@media(min-width:1040px){.stage{padding-right:400px}}
+@media(min-width:1440px){.stage{padding-left:388px}}
+canvas{width:100%;height:520px;display:block;border-radius:10px;background:#fff;
+  border:1px solid var(--line)}
+@media(max-width:900px){canvas{height:340px}}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+
+/* ---------- 可拖动浮窗 ---------- */
+.fwin{position:fixed;max-height:calc(100vh - 124px);overflow-y:auto;overflow-x:hidden;
+  z-index:70;padding:0;border-color:#dcd6f7;box-shadow:0 16px 46px rgba(27,31,42,.18)}
+#ctrl{right:22px;top:92px;width:386px}
+#ceWin{left:22px;top:92px;width:372px;z-index:71}
+.fwin.dragging{box-shadow:0 24px 64px rgba(27,31,42,.28)}
+.fwin.dragging .dragbar{border-bottom-color:var(--acc)}
+.fwin .dragbar{position:sticky;top:0;z-index:3;display:flex;align-items:center;gap:7px;
+  padding:9px 11px;background:linear-gradient(180deg,#fbfaff,#f4f2fd);
+  border-bottom:1px solid var(--line);border-radius:14px 14px 0 0;
+  cursor:move;user-select:none;touch-action:none}
+.fwin .dragbar .dt{flex:1;font-size:12.6px;font-weight:600;color:#5a3fd6;
+  display:flex;align-items:center;gap:7px;padding-left:2px}
+.fwin .dragbar .dt::before{content:"";width:13px;height:2px;border-radius:2px;
+  box-shadow:0 4px 0 currentColor,0 -4px 0 currentColor;opacity:.45}
+.fwin .dbtn{flex:0 0 auto;width:22px;height:22px;line-height:20px;text-align:center;
+  border-radius:6px;border:1px solid var(--line);background:#fff;color:var(--dim);
+  cursor:pointer;font-size:13px;font-family:Consolas,monospace}
+.fwin .dbtn:hover{border-color:var(--acc);color:var(--acc)}
+.fwin .cbody{padding:12px 13px 15px}
+.fwin.collapsed{max-height:none;overflow:visible}
+.fwin.collapsed .cbody{display:none}
+@media(max-width:1039px){
+  .fwin{position:static;width:auto;max-height:none;box-shadow:none;
+    border-color:var(--line);margin-top:14px}
+  .fwin .dragbar{cursor:default;position:static}
+  .fwin .dragbar .dbtn{display:none}
+}
+
+/* 参数行：输入框 + 滑块 */
+.prow{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.prow .plab{flex:0 0 auto;width:56px;font-size:12.2px;color:var(--dim);
+  font-family:Consolas,"Microsoft YaHei",monospace}
+.prow .numin{width:66px;flex:0 0 auto}
+.prow input[type=range]{flex:1;min-width:0;height:16px}
+
+.status{display:flex;flex-wrap:wrap;gap:5px 13px;font-size:12.5px;color:var(--dim);
+  background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 12px;
+  line-height:1.75}
+.status b{color:var(--fg);font-weight:600;font-family:Consolas,monospace}
+.status .warn{color:var(--warn);font-weight:600}
+.status .good{color:var(--ok);font-weight:600}
+.status .sep{color:#c9cdd8}
+
+.grp{margin-bottom:12px}
+.glab{display:flex;justify-content:space-between;align-items:baseline;
+  font-size:12.6px;color:var(--dim);margin-bottom:4px}
+.glab b{color:var(--fg);font-family:Consolas,monospace;font-size:12.4px}
+input[type=range]{width:100%;accent-color:var(--acc);height:20px;cursor:pointer}
+select{width:100%;background:#fff;border:1px solid var(--line);border-radius:8px;
+  padding:6px 9px;font-size:12.8px;color:var(--fg);font-family:inherit;outline:none}
+.row{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.btn{flex:1 1 auto;background:#fff;border:1px solid var(--line);border-radius:8px;
+  padding:7px 11px;font-size:12.6px;color:var(--fg);cursor:pointer;font-family:inherit;
+  transition:.15s;white-space:nowrap}
+.btn:hover{border-color:var(--acc);color:var(--acc)}
+.btn.on{background:#efe9ff;border-color:var(--acc);color:#5a3fd6;font-weight:600}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+.btn.pri:hover{background:#5a3fd6;color:#fff}
+.btn.sm{flex:0 0 auto;padding:4px 11px;font-size:12.2px}
+.hint{font-size:11.6px;color:var(--dim2);margin:3px 0 0}
+
+/* 通项面板 */
+.axi{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-bottom:8px;
+  background:linear-gradient(180deg,#fbfbff,#f6f7fd)}
+.axi-h{display:flex;align-items:center;gap:7px;font-size:12.4px;color:var(--fg);
+  margin-bottom:6px;flex-wrap:wrap}
+.axi-h .bd{flex:0 0 auto;width:18px;height:18px;line-height:18px;text-align:center;
+  border-radius:5px;font-size:11.5px;font-weight:700;color:#fff;background:var(--acc);
+  font-family:Consolas,monospace}
+.axi-h .fx{font-family:Consolas,monospace;font-size:12px;color:#5a3fd6;background:#f0edff;
+  border:1px solid #e0daff;border-radius:5px;padding:0 6px}
+.axi-b{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12.3px;color:var(--dim)}
+.numin{width:50px;background:#fff;border:1px solid var(--line);border-radius:6px;
+  padding:3px 5px;font-size:12.3px;font-family:Consolas,monospace;color:var(--fg);
+  text-align:center;outline:none}
+.numin:focus{border-color:var(--acc)}
+.pred{font-size:11.8px;font-family:Consolas,monospace;color:#5a3fd6;
+  background:#f0edff;border:1px solid #e0daff;border-radius:5px;padding:1px 7px}
+.pred.bad{color:var(--warn);background:#fdeeee;border-color:#f6d4d4}
+.pred.good{color:#0b7a44;background:#e8f7ef;border-color:#c3ecd6}
+.fxline{font-size:11.4px;color:var(--dim2);font-family:Consolas,monospace;
+  margin-top:4px;word-break:break-all}
+
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:#fff;border:1px solid var(--line);border-radius:999px;
+  padding:5px 12px;font-size:12.1px;color:var(--dim);cursor:pointer;transition:.15s;
+  font-family:inherit}
+.chip:hover{border-color:var(--acc);color:var(--acc)}
+.chip.hot{border-color:#ffd9a0;background:#fff8ec;color:#a5670a}
+.chip.on{border-color:var(--acc);background:#efe9ff;color:#5a3fd6;font-weight:600}
+
+.sec{margin-top:30px}
+.shd{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+  border-left:4px solid var(--acc);padding-left:10px;margin-bottom:6px}
+.shd h2{margin:0;font-size:17px}
+.shd .note{color:var(--dim);font-size:12.4px}
+.sdesc{color:var(--dim);font-size:12.7px;margin:0 0 14px;padding-left:14px}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:13px}
+.card{display:flex;flex-direction:column;text-decoration:none;color:inherit;
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:14px 16px 12px;position:relative;overflow:hidden;transition:.16s}
+.card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:linear-gradient(180deg,var(--acc),var(--acc2));opacity:.5;transition:.16s}
+.card:hover{transform:translateY(-3px);border-color:#c9bcff;
+  box-shadow:0 12px 30px rgba(90,63,214,.12)}
+.card:hover::before{opacity:1}
+.card[data-kind="原文"]::before{background:linear-gradient(180deg,var(--gold),#ffb648)}
+.card[data-kind="工具"]::before{background:linear-gradient(180deg,#0f9d58,#4fd8a0)}
+.card[data-kind="源码"]::before{background:linear-gradient(180deg,#e0533d,#ffa07a)}
+.chd{display:flex;align-items:flex-start;gap:9px;margin-bottom:6px}
+.num{flex:0 0 auto;font-size:11px;color:#6a52c9;background:#efe9ff;
+  border:1px solid #ddd0ff;border-radius:6px;padding:1px 7px;
+  font-family:Consolas,monospace;margin-top:3px}
+.chd h3{margin:0;font-size:14.6px;line-height:1.4;flex:1}
+.desc{margin:0 0 9px;font-size:12.7px;color:var(--dim);flex:1}
+.desc b{color:#5a3fd6}
+.kx{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px}
+.kx span{font-size:11.2px;background:var(--panel2);border:1px solid var(--line);
+  border-radius:5px;padding:1px 7px;color:#5b6474}
+.cft{display:flex;justify-content:space-between;align-items:center;
+  font-size:12px;color:var(--dim2);border-top:1px dashed var(--line);padding-top:8px}
+.cft .go{color:var(--acc);font-weight:600}
+.card:hover .cft .go{text-decoration:underline}
+
+.note-box{margin-top:16px;background:#eef6ff;border:1px solid #cfe6ff;
+  border-left:4px solid var(--acc2);border-radius:10px;padding:11px 15px;
+  font-size:12.6px;color:#33566e}
+.note-box b{color:#123c57}
+code{font-family:Consolas,monospace;font-size:12px;background:#f0f2f8;
+  border:1px solid var(--line);padding:0 4px;border-radius:4px;color:#5a3fd6}
+footer{margin-top:38px;border-top:1px solid var(--line);padding-top:16px;
+  color:var(--dim2);font-size:12.3px}
+
+.tbl{width:100%;border-collapse:collapse;font-size:11.6px;margin-top:2px}
+.tbl th,.tbl td{border:1px solid var(--line);padding:4px 5px;text-align:center;
+  color:var(--dim);font-family:Consolas,"Microsoft YaHei",monospace}
+.tbl th{background:var(--panel2);color:var(--fg);font-weight:600}
+.tbl td.f{text-align:left;letter-spacing:.2px}
+.tbl tr.act td{background:#efe9ff;color:#4a34b8;font-weight:600}
+
+details.acc{border:1px solid var(--line);border-radius:10px;padding:8px 12px;
+  background:#fbfbfe;margin-top:8px}
+details.acc summary{cursor:pointer;font-size:12.5px;color:#5a3fd6;font-weight:600}
+details.acc p{font-size:12.1px;color:var(--dim);margin:8px 0 2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>pintograph <b>探索台</b><span class="tag">三相 120° · 单向矢量 · 三盘</span><span class="tag g">同余判据</span></h1>
+  <p class="sub">三种画图机器一个台子：线性振子（对称阶≤2）、单向旋转矢量（任意 m 重）、三盘 pintograph。文字从简，推导与穷举全在下方 md。</p>
+  <p style="margin:10px 0 0"><a class="go3d" href="AAA_pintograph3D_莫比乌斯8字环.html" target="_blank">↗ 立体 3D 版 · 莫比乌斯 8 字环　<b>把左上那张 2D k 矢量花型抬成 z 轴 8 字 + 扭转</b></a></p>
+</header>
+
+<!-- ============ 工作台 ============ -->
+<div class="desk">
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <div class="status" id="st">—</div>
+    <div class="chips" id="presets"></div>
+  </div>
+
+  <div class="panel fwin" id="ctrl">
+    <div class="dragbar" data-win="ctrl">
+      <span class="dt">可调参数</span>
+      <span class="dbtn" data-act="collapse" title="折叠 / 展开">−</span>
+      <span class="dbtn" data-act="reset" title="复位">⤢</span>
+    </div>
+    <div class="cbody">
+    <div class="grp">
+      <div class="glab">模型</div>
+      <select id="mode">
+        <option value="lin">线性振子 · m 相（奇数）· 间隔 Δ（三相 120° 对称阶≤2）</option>
+        <option value="quad">单向旋转矢量 · k 矢量（任意 m 重）</option>
+        <option value="pg">三盘 pintograph（三点连杆）</option>
+      </select>
+      <p class="hint" id="modeHint"></p>
+    </div>
+
+    <!-- 线性振子 -->
+    <div id="linBox">
+      <div class="grp">
+        <div class="glab">振子数 m（奇数）<b id="vm">3</b></div>
+        <div class="prow"><span class="plab">m</span>
+          <input class="numin" type="number" id="mN" min="3" max="11" step="2" value="3">
+          <input type="range" id="m" min="3" max="11" step="2" value="3"></div>
+        <p class="hint">3 / 5 / 7 / 9 / 11 —— 奇数振子时 Δ=360°/m 每相地位等价，是三相等幅 120° 的自然推广。
+          偶数相会解锁镜像对称（m|4），属另一类机器。</p>
+      </div>
+      <div class="grp">
+        <div class="glab">间隔 Δ（相位 / 方向）<b id="vd">120°</b></div>
+        <div class="prow"><span class="plab">Δ (°)</span>
+          <input class="numin" type="number" id="dN" min="0" max="180" step="1" value="120">
+          <input type="range" id="dphi" min="0" max="180" step="1" value="120"></div>
+        <div class="row" style="margin-top:5px">
+          <button class="btn sm" id="bAuto">Δ = 360°/m</button>
+          <button class="btn sm" id="bBinBack">Δ = 90°</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 单向旋转矢量 -->
+    <div id="quadBox" style="display:none">
+      <div class="grp">
+        <div class="glab">矢量数 k（振子 2k）<b id="vrot_k">2</b></div>
+        <div class="prow"><span class="plab">k</span>
+          <input class="numin" type="number" id="kN" min="1" max="8" step="1" value="2">
+          <input type="range" id="k" min="1" max="8" step="1" value="2"></div>
+        <p class="hint">每 2 个正交振子合成 1 个单向旋转矢量；k=2 就是 4 振子</p>
+      </div>
+      <div class="grp">
+        <div class="glab">矢量间隔 Δ <b id="vd2">60°</b></div>
+        <div class="prow"><span class="plab">Δ₂ (°)</span>
+          <input class="numin" type="number" id="dN2" min="0" max="180" step="1" value="60">
+          <input type="range" id="dphi2" min="0" max="180" step="1" value="60"></div>
+        <p class="hint">θ_k = k·Δ，只改起笔朝向，不改阶</p>
+      </div>
+      <div class="grp">
+        <div class="glab">等差一键：f = 1 + k·m<b id="vmq">6</b></div>
+        <div class="prow"><span class="plab">目标 m</span>
+          <input class="numin" type="number" id="mqN" min="2" max="20" step="1" value="6">
+          <input type="range" id="mq" min="2" max="20" step="1" value="6"></div>
+        <p class="hint">改 m → 当前 k 个频率取 (1, 1+m, 1+2m, …)，恰好 m 重</p>
+      </div>
+      <div class="grp">
+        <div class="glab">等差通项对照（m = <b id="cm">6</b>）</div>
+        <table class="tbl" id="tbl"></table>
+        <p class="hint" id="tblNote"></p>
+      </div>
+    </div>
+
+    <!-- 三盘 pintograph -->
+    <div id="pgBox" style="display:none">
+      <p class="hint" style="margin-top:0">用 f₁ f₂ f₃ 与间隔 Δ：三个圆盘上的销钉驱动两杆，笔尖落在连杆交点。改频率即改花型。</p>
+    </div>
+
+    <!-- 频率滑块（按模型显示数量） -->
+    <div class="grp" id="freqWrap">
+      <div class="glab">频率 <b id="vfc">f₁~f₃</b></div>
+      <div id="freqRows"></div>
+    </div>
+
+    <div class="grp">
+      <div class="glab">幅值失衡 <b id="vimb">0.00</b></div>
+      <div class="prow"><span class="plab">失衡</span>
+        <input class="numin" type="number" id="imbN" min="0" max="1" step="0.01" value="0">
+        <input type="range" id="imb" min="0" max="1" step="0.01" value="0"></div>
+    </div>
+    <div class="grp">
+      <div class="glab">阻尼 d <b id="vk">0.000</b></div>
+      <div class="prow"><span class="plab">d</span>
+        <input class="numin" type="number" id="dampN" min="0" max="0.02" step="0.0005" value="0">
+        <input type="range" id="damp" min="0" max="0.02" step="0.0005" value="0"></div>
+      <p class="hint">d&gt;0 → 衰减螺旋（真 harmonograph 笔迹）</p>
+    </div>
+
+    <div class="grp">
+      <div class="glab">旋转叠加 fold <b id="vf">1</b></div>
+      <div class="prow"><span class="plab">fold</span>
+        <input class="numin" type="number" id="foldN" min="1" max="12" step="1" value="1">
+        <input type="range" id="fold" min="1" max="12" step="1" value="1"></div>
+      <p class="hint">复制 fold 份各转 2π/fold，强制 fold 重对称（钞票防伪底纹做法）</p>
+    </div>
+
+    <div class="grp">
+      <div class="glab">采样率 N（t 散点数）<b id="vnN">16000 · 自动</b></div>
+      <div class="prow"><span class="plab">N</span>
+        <input class="numin" type="number" id="nN" min="500" max="60000" step="100" value="16000">
+        <input type="range" id="nSlider" min="0" max="1000" step="1" value="744"></div>
+      <div class="row" style="margin-top:5px">
+        <button class="btn sm" id="bAutoN">自动最优</button>
+        <span class="hint" style="margin:6px 0 0" id="nNote"></span>
+      </div>
+    </div>
+
+    <div class="grp">
+      <div class="row">
+        <button class="btn" id="mirror">镜像 D_fold</button>
+      </div>
+    </div>
+
+    <div class="grp">
+      <div class="row">
+        <button class="btn" id="play">▶ 看它画</button>
+        <button class="btn" id="bRand">随机</button>
+        <button class="btn pri" id="bSave">保存 PNG</button>
+      </div>
+    </div>
+
+    <div class="grp">
+      <div class="glab">色标</div>
+      <select id="cmap"></select>
+      <div class="row" style="margin-top:7px">
+        <button class="btn" id="cyc">色相 2 圈</button>
+        <button class="btn" id="rev">反转</button>
+      </div>
+    </div>
+    <p class="hint" id="figNote"></p>
+    </div>
+  </div>
+
+  <!-- ============ 浮窗 2：通项反例 ============ -->
+  <div class="panel fwin" id="ceWin">
+    <div class="dragbar" data-win="ceWin">
+      <span class="dt">通项反例 · A / B / C</span>
+      <span class="dbtn" data-act="collapse" title="折叠 / 展开">−</span>
+      <span class="dbtn" data-act="reset" title="复位">⤢</span>
+    </div>
+    <div class="cbody">
+      <div class="axi">
+        <div class="axi-h"><span class="bd">A</span>等差<span class="fx">f_k = n + k·(n·q)</span>
+          <span style="color:var(--dim2);font-size:11.4px">k=0..n−1，n∤q</span></div>
+        <div class="axi-b">
+          n <input class="numin" id="aN" type="number" value="3" min="2" max="8" step="1">
+          q <input class="numin" id="aQ" type="number" value="2" min="1" max="40" step="1">
+          <button class="btn sm" id="aApply">应用</button>
+          <span class="pred" id="aPred">阶 = q</span>
+        </div>
+        <div class="fxline" id="aFx"></div>
+      </div>
+
+      <div class="axi">
+        <div class="axi-h"><span class="bd" style="background:#0ea5e9">B</span>极端
+          <span class="fx">f_k = (k+1)·d</span>
+          <span style="color:var(--dim2);font-size:11.4px">完全无旋转对称</span></div>
+        <div class="axi-b">
+          d <input class="numin" id="bD" type="number" value="7" min="2" max="40" step="1">
+          <button class="btn sm" id="bApply">应用</button>
+          <span class="pred bad" id="bPred">阶恒 = 1</span>
+        </div>
+        <div class="fxline" id="bFx"></div>
+      </div>
+
+      <div class="axi">
+        <div class="axi-h"><span class="bd" style="background:#c8870f">C</span>一般
+          <span class="fx">ν₀ = n·a, gcd(Δ) = n·q</span>
+          <span style="color:var(--dim2);font-size:11.4px">覆盖 100% 反例</span></div>
+        <div class="axi-b">
+          n <input class="numin" id="cN" type="number" value="3" min="2" max="8" step="1">
+          a <input class="numin" id="cA" type="number" value="1" min="1" max="20" step="1">
+          q <input class="numin" id="cQ" type="number" value="2" min="1" max="40" step="1">
+          <button class="btn sm" id="cApply">应用</button>
+          <span class="pred" id="cPred">阶 = q/gcd(a,q)</span>
+        </div>
+        <div class="fxline" id="cFx"></div>
+      </div>
+
+      <div class="row" style="margin-top:4px">
+        <button class="btn" id="bCE">批量造反例</button>
+        <button class="btn" id="toQuad">切单向矢量并应用</button>
+      </div>
+      <p class="hint" id="cev"></p>
+      <p class="hint">
+        三种通项属<b>单向支撑集</b> ⇒ 只在「单向旋转矢量」模型里才拿得到阶 = q。
+        线性振子（奇数相 120° 族）下阶被 ±ν 对锁死在 ≤2。
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 成果库 ============ -->
+<section class="sec">
+  <div class="shd"><h2>成果库</h2><span class="note">按主题拆成 8 份 md，点开看细节</span></div>
+  <p class="sdesc">网页只放结论，推导、穷举数据、通项公式与原文全部落在 md 里。</p>
+  <div class="grid" id="cards"></div>
+</section>
+
+<!-- ============ 源码归档 ============ -->
+<section class="sec">
+  <div class="shd"><h2>源码与图示归档</h2><span class="note">元宝那轮对话的 zip / html / py 已全部落到本地</span></div>
+  <p class="sdesc">共 39 个 COS 资源（13 个 zip · 13 个 lab.html · 10 个 py）已下载；最新版解压在 <code>pintograph_src/</code>。</p>
+  <div class="grid" id="srcs"></div>
+</section>
+
+<!-- ============ 主工具 ============ -->
+<section class="sec">
+  <div class="shd"><h2>主工具入口</h2><span class="note">本机已有的 harmonograph 系列页面</span></div>
+  <div class="grid" id="tools"></div>
+</section>
+
+<div class="note-box">
+  <b>多彩渲染：</b>沿参数把折线切成最多 2400 段，逐段取色后 <code>stroke()</code>——一条曲线可见成百上千种颜色过渡。
+  色标沿用了浑天仪探索器的做法（<code>hsv2rgb</code> 色相环 + matplotlib 同源锚点色标共 10 种）。
+</div>
+
+<footer>
+  数据来源：与元宝的两轮对话「三相相位差 120 度波形编程实现」「页面状态条提示与批量反例通项公式」。
+  核心判据 <code>阶 = gcd(Δᵢ)/gcd(ν₀,D)</code>。内容仅供研究参考。
+</footer>
+
+</div>
+
+<script>
+/* =====================================================================
+   pintograph 探索台（融合版）
+     模型 lin : z = Σ_k amp_k·e^{-d t}·sin(2π f_k t + kΔ)·e^{i kΔ}   双向支撑集 ⇒ 阶 ≤ 2
+     模型 quad: z = Σ_k (-i)·amp_k·e^{-d t}·e^{i(2π f_k t + kΔ)}      单向支撑集 ⇒ 阶 = D/gcd(ν₀,D)
+     模型 pg  : 三盘 pintograph（三点连杆几何）
+   多彩渲染：沿参数分段取色（沿用浑天仪探索器思路）
+   ===================================================================== */
+var cv = document.getElementById('cv');
+var ctx = cv.getContext('2d');
+var dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+
+var S = {
+  mode: 'lin',
+  m: 3,                          /* 线性振子相数（奇数 3~11） */
+  k: 2,                          /* 单向矢量数 */
+  f: [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23],  /* 12 个频率槽 */
+  dphi: 120,                     /* lin 间隔 */
+  dphi2: 60,                     /* quad 间隔 */
+  damp: 0,
+  imb: 0,
+  mq: 6,                         /* quad 等差一键的目标重数 */
+  fold: 1,
+  mirror: false,
+  cmap: 'hsv',
+  cyc: 1,
+  rev: false,
+  N: 16000,          /* 手动采样点数 */
+  autoN: true,       /* true → 按曲线复杂度实时估算最优 N */
+  lw: 1.15
+};
+
+var PURPLE = '#800080';
+
+/* ---------- 色标 ---------- */
+function hsv2rgb(h, s, v) {
+  h = ((h % 1) + 1) % 1;
+  var i = Math.floor(h * 6), f = h * 6 - i;
+  var p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s);
+  var r, g, b;
+  switch (i % 6) {
+    case 0: r = v; g = t; b = p; break;
+    case 1: r = q; g = v; b = p; break;
+    case 2: r = p; g = v; b = t; break;
+    case 3: r = p; g = q; b = v; break;
+    case 4: r = t; g = p; b = v; break;
+    default: r = v; g = p; b = q;
+  }
+  return [r * 255, g * 255, b * 255];
+}
+var ANCH = {
+  viridis: [[68,1,84],[72,40,120],[62,74,137],[49,104,142],[38,130,142],[31,158,137],[53,183,121],[109,205,89],[180,222,44],[253,231,37]],
+  plasma: [[13,8,135],[75,3,161],[125,3,168],[168,34,150],[203,70,121],[229,107,93],[248,148,65],[253,195,40],[240,249,33]],
+  inferno: [[0,0,4],[22,11,57],[66,10,104],[106,23,110],[147,38,103],[188,55,84],[221,81,58],[243,120,25],[252,165,10],[246,215,70],[252,255,164]],
+  turbo: [[48,18,59],[70,107,227],[40,187,235],[31,238,169],[120,254,80],[205,225,42],[253,163,42],[238,77,20],[122,4,3]],
+  coolwarm: [[59,76,192],[221,221,221],[180,4,38]],
+  spectral: [[158,1,66],[213,62,79],[244,109,67],[254,224,139],[255,255,191],[230,245,152],[171,221,164],[102,194,165],[50,136,189],[94,79,162]],
+  twilight: [[226,217,226],[151,164,208],[66,102,158],[20,49,102],[31,29,60],[76,49,100],[128,72,122],[175,110,131],[214,163,161],[240,220,213]]
+};
+var CMAP_LIST = [
+  ['hsv','hsv 色相环'],['rainbow','rainbow'],['purple','单色紫'],
+  ['turbo','turbo'],['viridis','viridis'],['plasma','plasma'],['inferno','inferno'],
+  ['coolwarm','coolwarm'],['spectral','spectral'],['twilight','twilight']
+];
+function cmapRGB(name, u) {
+  u = Math.max(0, Math.min(1, u));
+  if (name === 'hsv') return hsv2rgb(u, 1, 1);
+  if (name === 'rainbow') return hsv2rgb(0.70 * (1 - u), 0.95, 1);
+  var a = ANCH[name];
+  if (!a) return [128, 0, 128];
+  var x = u * (a.length - 1), i = Math.min(a.length - 2, Math.floor(x)), f = x - i;
+  return [a[i][0] + (a[i+1][0] - a[i][0]) * f,
+          a[i][1] + (a[i+1][1] - a[i][1]) * f,
+          a[i][2] + (a[i+1][2] - a[i][2]) * f];
+}
+function cmapCss(name, u) {
+  if (name === 'purple') return PURPLE;
+  var c = cmapRGB(name, u);
+  return 'rgb(' + (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0) + ')';
+}
+function cmapU(u) {
+  var v = S.rev ? 1 - u : u;
+  if (S.cyc > 1) v = (v * S.cyc) % 1;
+  return v;
+}
+
+/* ---------- 幅值失衡 ---------- */
+function amp(k, n) {
+  if (k === 0) return 1;
+  return Math.max(0.05, 1 - S.imb * (0.5 + 0.22 * k));
+}
+function deltaRad() { return (S.mode === 'quad' ? S.dphi2 : S.dphi) * Math.PI / 180; }
+
+/* ---------- 曲线求值 ---------- */
+function pointLin(t) {                     /* 线性振子：m 个 sin 振子 */
+  var p = deltaRad(), d = S.damp, n = S.m;
+  var e = d ? Math.exp(-d * t) : 1;
+  var zx = 0, zy = 0;
+  for (var k = 0; k < n; k++) {
+    var s = e * amp(k, n) * Math.sin(2 * Math.PI * S.f[k] * t + k * p);
+    zx += s * Math.cos(k * p);
+    zy += s * Math.sin(k * p);
+  }
+  return [zx, zy];
+}
+function pointQuad(t) {                    /* 单向旋转矢量：-i·e^{i(wt+θ)} */
+  var p = deltaRad(), d = S.damp, n = S.k;
+  var e = d ? Math.exp(-d * t) : 1;
+  var zx = 0, zy = 0;
+  for (var k = 0; k < n; k++) {
+    var th = 2 * Math.PI * S.f[k] * t + k * p;
+    var a = e * amp(k, n);
+    zx += a * Math.sin(th);
+    zy += -a * Math.cos(th);
+  }
+  return [zx, zy];
+}
+function pointPg(t) {                      /* 三盘 pintograph */
+  var sp = deltaRad();
+  var r = [0.9, 0.55, 0.30], c = [[-0.85, 0], [0.85, 0], [0, 0.55]], a0 = 1.75, a1 = 1.75;
+  var px = [], py = [];
+  for (var k = 0; k < 3; k++) {
+    var th = 2 * Math.PI * S.f[k] * t + k * sp;
+    px.push(c[k][0] + r[k] * Math.cos(th));
+    py.push(c[k][1] + r[k] * Math.sin(th));
+  }
+  var dx = px[1] - px[0], dy = py[1] - py[0];
+  var dd = Math.min(Math.max(Math.hypot(dx, dy), Math.abs(a0 - a1) + 1e-6), a0 + a1 - 1e-6);
+  var aa = (a0 * a0 - a1 * a1 + dd * dd) / (2 * dd), h = Math.sqrt(Math.max(a0 * a0 - aa * aa, 0));
+  var L = Math.max(Math.hypot(dx, dy), 1e-12);
+  return [px[0] + aa * dx / L - h * dy / L - px[2],
+          py[0] + aa * dy / L + h * dx / L - py[2]];
+}
+function point(t) {
+  if (S.mode === 'quad') return pointQuad(t);
+  if (S.mode === 'pg') return pointPg(t);
+  return pointLin(t);
+}
+function activeFreqs() {
+  if (S.mode === 'quad') return S.f.slice(0, S.k);
+  if (S.mode === 'pg') return S.f.slice(0, 3);
+  return S.f.slice(0, S.m);
+}
+
+/* ---------- 周期 / 闭合 / 对称阶 ---------- */
+function gcd2(a, b) { a = Math.abs(a); b = Math.abs(b); while (b) { var t = a % b; a = b; b = t; } return a; }
+function lcm2(a, b) { return a / gcd2(a, b) * b; }
+function ratApprox(x, maxDen) {
+  var bestP = 1, bestQ = 1, bestE = Infinity;
+  for (var q = 1; q <= maxDen; q++) {
+    var p = Math.round(x * q), e = Math.abs(x - p / q);
+    if (e < bestE - 1e-15) { bestE = e; bestP = p; bestQ = q; }
+  }
+  return { p: bestP, q: bestQ, e: bestE };
+}
+/* 统一分析：闭合 / 整数比 / 周期 / D / g / 阶
+   mode 可显式指定（对照表固定用 'quad' 的单向规则） */
+function analyze(freqs, mode) {
+  var mode = mode || S.mode;
+  var k = freqs.length, r = [], i;
+  for (i = 0; i < k; i++) r.push(ratApprox(freqs[i], 240));
+  var closed = true;
+  for (i = 0; i < k; i++) if (r[i].e >= 1e-9) closed = false;
+  var res = { closed: closed, k: k, osc: (mode === 'quad' ? 2 * k : k),
+              ratio: null, raw: null, T: null, D: null, g: null,
+              order: null, lobes: null, freqs: freqs.slice() };
+  if (!closed) return res;
+  var L = 1;
+  for (i = 0; i < k; i++) L = lcm2(L, r[i].q);
+  var n = [];
+  for (i = 0; i < k; i++) n.push(r[i].p * (L / r[i].q));
+  var g = 0;
+  for (i = 0; i < k; i++) g = gcd2(g, n[i]);
+  if (!g) g = 1;
+  res.g = g; res.T = L / g;
+  res.raw = n.join(':');
+  res.ratio = n.map(function (v) { return v / g; }).join(':');
+  var red = n.map(function (v) { return v / g; });
+  if (k < 2) { res.order = 0; return res; }
+  if (mode === 'lin') {                        /* 双向支撑集：阶 ≤ 2 */
+    if (red.every(function (v) { return v === red[0]; })) { res.order = 0; return res; } /* 全同频 → 正圆 */
+    res.order = red.every(function (v) { return Math.abs(v) % 2 === 1; }) ? 2 : 1;
+    return res;
+  }
+  /* 单向支撑集：阶 = D / gcd(|ν₀|, D) */
+  var s = red.slice().sort(function (a, b) { return a - b; });
+  var D = 0;
+  for (i = 1; i < s.length; i++) D = gcd2(D, Math.abs(s[i] - s[0]));
+  res.D = D;
+  if (!D) { res.order = 0; return res; }
+  res.n0 = s[0];
+  res.g0 = gcd2(Math.abs(s[0]), D);
+  res.order = D / res.g0;
+  res.lobes = res.order >= 1 ? res.order * (k - 1) : null;
+  return res;
+}
+function analyzeNow() { return analyze(activeFreqs()); }
+
+/* 等差通项：(1, 1+m, 1+2m, …) ⇒ 阶 = m */
+function equiFreqs(m, k) {
+  var a = [];
+  for (var i = 0; i < k; i++) a.push(1 + i * m);
+  return a;
+}
+
+/* ---------- 采样率：自动最优 ---------- */
+var N_MIN = 500, N_MAX = 60000;
+/* 滑块 0..1000 对数映射到 500..60000，低端也能精细调 */
+function nFromSlider(v) {
+  var r = N_MAX / N_MIN;
+  v = Math.max(0, Math.min(1000, v));
+  return Math.round(N_MIN * Math.pow(r, v / 1000) / 100) * 100;
+}
+function sliderFromN(n) {
+  var r = N_MAX / N_MIN;
+  n = Math.max(N_MIN, Math.min(N_MAX, n));
+  return Math.round(1000 * Math.log(n / N_MIN) / Math.log(r));
+}
+/* 自动最优：按「时长 T 内各分量总振荡次数」估点
+   · 每振荡 ≈110 点（曲线往返一次画够平滑）
+   · 最高频分量每周期 ≥48 点（保高频花瓣细节）
+   · 不闭合 → 稠密填满，给 18000 兜底
+   · fold / 镜像副本自带密度增益 → 按 √份数 折减，防卡顿 */
+function autoN() {
+  var an = analyzeNow(), fr = activeFreqs();
+  var T = (an.T && an.T > 0 && an.T <= 400) ? an.T : 1;
+  var sf = 0, fmax = 0, i;
+  for (i = 0; i < fr.length; i++) {
+    var a = Math.abs(fr[i]);
+    sf += a; if (a > fmax) fmax = a;
+  }
+  var n = 110 * T * sf;
+  n = Math.max(n, 48 * fmax * T);
+  if (!an.closed) n = Math.max(n, 18000);
+  var rep = Math.max(1, S.fold) * (S.mirror ? 2 : 1);
+  n = n / Math.sqrt(rep);
+  return Math.max(2000, Math.min(N_MAX, Math.round(n / 100) * 100));
+}
+/* 当前生效的点数（自动 / 手动） */
+function curN() { return S.autoN ? autoN() : Math.max(2, Math.round(S.N)); }
+
+/* ---------- 采样 ---------- */
+var _sb = { n: 0, xs: null, ys: null };
+function sample() {
+  var N = curN(), T = 1, an = analyzeNow();
+  if (an.T && an.T > 0 && an.T <= 400) T = an.T;
+  if (_sb.n !== N) { _sb.n = N; _sb.xs = new Float64Array(N); _sb.ys = new Float64Array(N); }
+  var xs = _sb.xs, ys = _sb.ys, m = 0;
+  for (var i = 0; i < N; i++) {
+    var q = point(i * T / (N - 1));
+    xs[i] = q[0]; ys[i] = q[1];
+    var ax = Math.abs(q[0]), ay = Math.abs(q[1]);
+    if (ax > m) m = ax;
+    if (ay > m) m = ay;
+  }
+  return { xs: xs.subarray(0, N), ys: ys.subarray(0, N), rmax: m || 1, N: N, T: T };
+}
+
+/* ---------- 分段多彩描边 ---------- */
+function strokeSeg(ctx, xs, ys, toX, toY, lw) {
+  ctx.lineWidth = lw; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  var N = xs.length;
+  if (S.cmap === 'purple') {
+    ctx.strokeStyle = PURPLE; ctx.beginPath();
+    for (var i = 0; i < N; i++) {
+      var X = toX(xs[i]), Y = toY(ys[i]);
+      if (i) ctx.lineTo(X, Y); else ctx.moveTo(X, Y);
+    }
+    ctx.stroke(); return;
+  }
+  var cap = Math.max(200, Math.round(2400 / Math.max(1, S.fold)));
+  var SEG = Math.max(48, Math.min(cap, Math.round(N / 6)));
+  for (var s = 0; s < SEG; s++) {
+    var a = Math.floor(s * (N - 1) / SEG), b = Math.floor((s + 1) * (N - 1) / SEG);
+    if (b <= a) continue;
+    ctx.strokeStyle = cmapCss(S.cmap, cmapU((a + b) / 2 / (N - 1)));
+    ctx.beginPath();
+    for (var j = a; j <= b; j++) {
+      var X2 = toX(xs[j]), Y2 = toY(ys[j]);
+      if (j === a) ctx.moveTo(X2, Y2); else ctx.lineTo(X2, Y2);
+    }
+    ctx.stroke();
+  }
+}
+
+/* ---------- 绘制 ---------- */
+var prog = 1;
+function draw() {
+  var W = cv.width / dpr, H = cv.height / dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
+
+  var d = sample();
+  var cut = Math.max(2, Math.floor(prog * d.xs.length));
+  var xs = d.xs, ys = d.ys;
+  if (cut < xs.length) { xs = xs.subarray(0, cut); ys = ys.subarray(0, cut); }
+
+  var cx = W / 2, cy = H / 2, R = Math.min(W, H) * 0.44;
+  var toX = function (X) { return cx + X / d.rmax * R; };
+  var toY = function (Y) { return cy - Y / d.rmax * R; };
+
+  ctx.strokeStyle = 'rgba(0,0,0,0.10)'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx - 8, cy); ctx.lineTo(cx + 8, cy);
+  ctx.moveTo(cx, cy - 8); ctx.lineTo(cx, cy + 8);
+  ctx.stroke();
+
+  var folds = S.fold, i, j, n = xs.length;
+  var buf = drawBuf(n);
+  for (j = 0; j < folds; j++) {
+    var ang = j * 2 * Math.PI / folds;
+    var ca = Math.cos(ang), sa = Math.sin(ang);
+    var rx = buf.rx, ry = buf.ry;
+    for (i = 0; i < n; i++) { rx[i] = xs[i] * ca - ys[i] * sa; ry[i] = xs[i] * sa + ys[i] * ca; }
+    strokeSeg(ctx, rx.subarray(0, n), ry.subarray(0, n), toX, toY, S.lw);
+    if (S.mirror) {
+      var mx = buf.mx, my = buf.my;
+      for (i = 0; i < n; i++) { mx[i] = rx[i]; my[i] = -ry[i]; }
+      strokeSeg(ctx, mx.subarray(0, n), my.subarray(0, n), toX, toY, S.lw);
+    }
+  }
+}
+/* 复用旋转缓冲，避免每帧分配（大 N + 大 fold 时省 GC） */
+var _db = { n: 0, rx: null, ry: null, mx: null, my: null };
+function drawBuf(n) {
+  if (_db.n !== n) {
+    _db.n = n;
+    _db.rx = new Float64Array(n); _db.ry = new Float64Array(n);
+    _db.mx = new Float64Array(n); _db.my = new Float64Array(n);
+  }
+  return _db;
+}
+
+/* ---------- 状态条 ---------- */
+function status() {
+  var el = $('st'), parts = [];
+  var an = analyzeNow();
+  var isQuad = (S.mode === 'quad');
+
+  if (S.mode === 'pg') parts.push('模型 <b>三盘 pintograph</b>（3 圆盘点驱动连杆）');
+
+  if (!an.closed) {
+    parts.push('闭合 <b class="warn">否</b>');
+    parts.push('非整数比 → 稠密填满，永不闭合');
+    if (isQuad) parts.push('振荡器 <b>' + an.osc + '</b>');
+  } else {
+    parts.push('闭合 <b class="good">是</b>');
+    parts.push('整数比 <b>' + (an.raw === an.ratio ? an.ratio : an.raw + '→' + an.ratio) + '</b>');
+    parts.push('周期 <b>T=' + (+an.T.toFixed(4)) + '</b>');
+    if (isQuad) {
+      parts.push('振荡器 <b>' + an.osc + '</b>');
+      if (an.order === 0) parts.push('单一频率 → <b>正圆</b>');
+      else if (an.order <= 1) {
+        parts.push('旋转阶 <b class="warn">1 重（无对称）</b>');
+        parts.push('gcd(Δ)=<b>' + an.D + '</b>÷gcd(ν₀,D)=<b>' + an.g0 + '</b>');
+      } else {
+        parts.push('旋转阶 <b class="good">' + an.order + ' 重</b>');
+        parts.push('花瓣 ≈ <b>' + an.lobes + '</b>');
+        parts.push('阶 = D/gcd(ν₀,D) = <b>' + an.D + '</b>/<b>' + an.g0 + '</b>');
+      }
+      /* 同余判据分解 */
+      var s = an.freqs.map(function (v) { return Math.round(v); }).sort(function (a, b) { return a - b; });
+      var dl = [];
+      for (var i = 1; i < s.length; i++) dl.push(s[i] - s[i - 1]);
+      if (dl.length) {
+        parts.push('Δ=<b>' + dl.join(',') + '</b>');
+        var mult = dl.every(function (v) { return v % Math.min.apply(null, dl.map(Math.abs)) === 0; });
+        parts.push(mult ? '（差值互成倍数）' : '（<b>差值不成倍数</b>，照样对称）');
+      }
+      /* 通项归属 */
+      var tag = classifyForm(an);
+      if (tag) parts.push(tag);
+    } else {
+      if (an.order === 0) {
+        parts.push('全同频 → <b>正圆</b>（恒幅旋转矢量，无穷阶）');
+      } else {
+        parts.push('对称阶 ' + (an.order === 2
+          ? '<b class="good">2 重（中心对称）</b>'
+          : '<b class="warn">1 重（无对称）</b>'));
+      }
+      parts.push('间隔 Δ <b>' + S.dphi + '°</b>（' + S.m + ' 相）');
+    }
+  }
+  if (S.fold > 1 || S.mirror) {
+    var grp = S.mirror ? 'D' + S.fold + '（' + (2 * S.fold) + ' 条轴）' : S.fold + ' 重旋转';
+    parts.push('叠加强制 <b class="good">' + grp + '</b>');
+  }
+  parts.push('采样 N <b>' + curN() + '</b>' + (S.autoN ? '（自动）' : '（手动）'));
+  el.innerHTML = parts.join('<span class="sep">·</span>');
+}
+
+/* 通项 A/B/C 归属识别（基于约分后整数比） */
+function classifyForm(an) {
+  if (an.order === null || an.order <= 1) return null;
+  var red = [];
+  var L = 1, r = [], i;
+  var fr = an.freqs;
+  for (i = 0; i < fr.length; i++) r.push(ratApprox(fr[i], 240));
+  for (i = 0; i < fr.length; i++) L = lcm2(L, r[i].q);
+  for (i = 0; i < fr.length; i++) red.push(r[i].p * (L / r[i].q));
+  var g = 0; for (i = 0; i < red.length; i++) g = gcd2(g, red[i]);
+  var s = red.map(function (v) { return v / g; }).sort(function (a, b) { return a - b; });
+  var n = s.length;
+  var D = an.D || 0;
+  var isB = (D > 0 && Math.abs(s[0]) % D === 0);
+  var isA = (s[0] === n);
+  if (isB) return '<span class="good">通项 B</span>：D | ν₀ ⇒ 阶恒 1';
+  if (isA) return '<span class="good">通项 A</span>：ν₀=n ⇒ 阶 = q = <b>' + an.order + '</b>';
+  if (D > 0 && D % n === 0) return '<span class="good">通项 C</span>：阶 = q/gcd(a,q)';
+  return null;
+}
+
+/* ---------- 渲染调度 ---------- */
+var raf = 0;
+function kick() {
+  if (raf) return;
+  raf = requestAnimationFrame(function () { raf = 0; status(); renderTable(); predAll(); draw(); });
+}
+
+/* 等差通项对照表（quad） */
+function renderTable() {
+  var t = $('tbl'); if (!t) return;
+  var m = S.mq;
+  $('cm').textContent = m;
+  var rows = '';
+  for (var kk = 1; kk <= 8; kk++) {
+    var fr = equiFreqs(m, kk);
+    var a = analyze(fr, 'quad');
+    var ord, lob;
+    if (a.order === 0) { ord = '圆'; lob = '—'; }
+    else if (a.order <= 1) { ord = '1'; lob = '—'; }
+    else { ord = a.order; lob = a.lobes; }
+    rows += '<tr' + (kk === S.k ? ' class="act"' : '') + '>' +
+      '<td>' + (2 * kk) + '</td><td>' + kk + '</td>' +
+      '<td class="f">' + fr.join(', ') + '</td>' +
+      '<td>' + ord + '</td><td>' + lob + '</td></tr>';
+  }
+  t.innerHTML = '<tr><th>振子</th><th>k</th><th>频率组合（等差）</th><th>阶</th><th>花瓣</th></tr>' + rows;
+
+  var ar = analyze(S.f.slice(0, S.k), 'quad'), nt = $('tblNote');
+  var cur = S.f.slice(0, S.k).map(function (v) { return +(+v).toFixed(2); });
+  if (ar.order === 0) nt.textContent = '当前 f = (' + cur.join(', ') + ') → 正圆';
+  else if (!ar.closed) nt.textContent = '当前 f = (' + cur.join(', ') + ') → 非整数比，不闭合';
+  else {
+    var eq = equiFreqs(m, S.k), same = true;
+    for (var i = 0; i < S.k; i++) if (Math.abs(S.f[i] - eq[i]) > 1e-9) same = false;
+    nt.innerHTML = same
+      ? '当前与上表 k=' + S.k + ' 行一致 ✓（阶 ' + ar.order + '、花瓣 ' + ar.lobes + '）'
+      : '<b style="color:#a5670a">当前已被手动改动</b>：f=(' + cur.join(', ') + ') ⇒ 阶 ' +
+        (ar.order <= 1 ? '1' : ar.order) + '、花瓣 ' + (ar.lobes || '—');
+  }
+}
+
+/* ---------- 三种通项：预测 + 应用 ---------- */
+function famA(n, q) { var a = []; for (var k = 0; k < n; k++) a.push(n + k * (n * q)); return a; }
+function famB(d, m) { var a = []; for (var k = 0; k < m; k++) a.push((k + 1) * d); return a; }
+function famC(n, a0, q, m) { var s = n * a0, o = [s]; for (var k = 1; k < m; k++) o.push(o[k - 1] + n * q); return o; }
+
+function predAll() {
+  var n1 = clampInt($('aN').value, 2, 8), q1 = clampInt($('aQ').value, 1, 40);
+  var fA = famA(n1, q1);
+  var okA = (q1 % n1 !== 0);
+  $('aFx').textContent = 'f = (' + fA.join(', ') + ')';
+  $('aPred').className = 'pred ' + (okA ? 'good' : 'bad');
+  $('aPred').textContent = okA ? ('阶 = q = ' + q1) : ('n|q → 退化为通项 B，阶 = 1');
+
+  var dd = clampInt($('bD').value, 2, 40);
+  $('bFx').textContent = 'f = (' + famB(dd, S.m).join(', ') + ')';
+  $('bPred').textContent = '阶恒 = 1';
+
+  var n2 = clampInt($('cN').value, 2, 8), a2 = clampInt($('cA').value, 1, 20), q2 = clampInt($('cQ').value, 1, 40);
+  var g2 = gcd2(a2, q2), pred2 = q2 / g2;
+  var fC = famC(n2, a2, q2, n2);
+  $('cFx').textContent = 'f = (' + fC.join(', ') + ')';
+  var okC = (pred2 % n2 !== 0);
+  $('cPred').className = 'pred ' + (okC ? 'good' : 'bad');
+  $('cPred').textContent = okC ? ('阶 = q/gcd(a,q) = ' + pred2) : ('n|q/gcd(a,q) → 阶 = 1');
+}
+function clampInt(v, lo, hi) { v = parseInt(v, 10); if (isNaN(v)) v = lo; return Math.max(lo, Math.min(hi, v)); }
+
+var lastApply = null;   /* 记录最后一次应用的通项，供"切单向"复用 */
+/* 振子数只取奇数（3/5/7/9/11）：偶数相会解锁镜像，属另一类机器 */
+function oddClamp(v) {
+  v = Math.round(v);
+  if (v < 3) v = 3;
+  if (v > 11) v = 11;
+  if (v % 2 === 0) v -= 1;
+  return v;
+}
+
+function applyFreqs(fr, mode) {
+  for (var i = 0; i < 12; i++) S.f[i] = (i < fr.length ? fr[i] : S.f[i]);
+  if (mode === 'quad') { S.k = Math.min(8, Math.max(1, fr.length)); }
+  else { S.m = oddClamp(fr.length); }
+  lastApply = { fr: fr.slice(), mode: mode };
+  if (S.mode === 'lin' && mode === 'quad') {
+    $('cev').innerHTML = '<b style="color:#c0392b">⚠ 当前是线性振子（三相）模型：这三种通项要拿到阶，请切「单向旋转矢量」。</b>';
+  }
+  prog = 1; syncUI(); kick();
+}
+function doApplyFreqs(fr) {
+  applyFreqs(fr, S.mode === 'quad' ? 'quad' : 'lin');
+}
+
+/* ---------- 预设 ---------- */
+var PRESETS = [
+  { t: '正圆 1:1:1', m: 3, f: [1, 1, 1] },
+  { t: '三瓣 1:1:2', m: 3, f: [1, 1, 2] },
+  { t: '编织带 1:5:5', m: 3, f: [1, 5, 5] },
+  { t: '玫瑰 5:6:7', m: 3, f: [5, 6, 7] },
+  { t: '蕾丝 5:7:9', m: 3, f: [5, 7, 9] },
+  { t: '中心对称 1:3:5', m: 3, f: [1, 3, 5], hot: 1 },
+  { t: '穿心带 1:9:9', m: 3, f: [1, 9, 9], hot: 1 },
+  { t: '失谐 1:1.01:0.99', m: 3, f: [1, 1.01, 0.99] },
+  { t: '反例 3:6:9（1重）', m: 3, f: [3, 6, 9], hot: 1 },
+  { t: '反例 3:9:15（2重）', m: 3, f: [3, 9, 15], hot: 1 },
+  { t: '5 相 72° 全奇', m: 5, f: [1, 3, 5, 7, 9], dphi: 72 },
+  { t: '7 相 51° 全奇', m: 7, f: [1, 3, 5, 7, 9, 11, 13], dphi: 51, hot: 1 },
+  { t: '9 相 40° 全奇', m: 9, f: [1, 3, 5, 7, 9, 11, 13, 15, 17], dphi: 40 },
+  { t: '单向 6 重 (1,7)', mode: 'quad', k: 2, rf: [1, 7], mq: 6, hot: 1 },
+  { t: '单向 7 重 (1,8)', mode: 'quad', k: 2, rf: [1, 8], mq: 7 },
+  { t: '单向 12 重 (1,13)', mode: 'quad', k: 2, rf: [1, 13], mq: 12 },
+  { t: '原生 6 重 1:7:13', mode: 'quad', k: 3, rf: [1, 7, 13], mq: 6 },
+  { t: '原生 8 重 1:9:17:25', mode: 'quad', k: 4, rf: [1, 9, 17, 25], mq: 8 },
+  { t: '非等差也 6 重 1,7,19', mode: 'quad', k: 3, rf: [1, 7, 19], mq: 6, hot: 1 },
+  { t: '非等差也 12 重 1,13,37', mode: 'quad', k: 3, rf: [1, 13, 37], mq: 12, hot: 1 },
+  { t: 'Δ=6,9 非倍数 ⇒ 3 重', mode: 'quad', k: 3, rf: [1, 7, 16], mq: 6, hot: 1 },
+  { t: 'ν₀ 吃阶 3,15,21 ⇒ 2 重', mode: 'quad', k: 3, rf: [3, 15, 21], mq: 6, hot: 1 },
+  { t: '通项A n=3 q=2 ⇒ 阶2', mode: 'quad', k: 3, rf: [3, 9, 15], mq: 6 },
+  { t: '通项A n=3 q=4 ⇒ 阶4', mode: 'quad', k: 3, rf: [3, 15, 27], mq: 6 },
+  { t: '通项B (7,14,21) 阶1', mode: 'quad', k: 3, rf: [7, 14, 21], mq: 6 },
+  { t: '三盘 pintograph', mode: 'pg', m: 3, f: [5, 6, 7], dphi: 120, hot: 1 },
+  { t: '三盘 慢速', mode: 'pg', m: 3, f: [3, 5, 8], dphi: 120 },
+  { t: '叠加 D6 花窗', m: 3, f: [5, 6, 7], fold: 6, mirror: 1, hot: 1 },
+  { t: '衰减螺旋', mode: 'quad', k: 4, rf: [1, 7, 13, 19], mq: 6, damp: 0.008 }
+];
+
+/* ---------- UI ---------- */
+function $(id) { return document.getElementById(id); }
+
+/* 回写输入框：正在输入的控件不打断（避免 "1." 被抹成 "1"） */
+function setVal(id, v) {
+  var el = $(id); if (!el) return;
+  if (typeof document !== 'undefined' && document.activeElement === el) return;
+  el.value = v;
+}
+function freqCount() {
+  return (S.mode === 'quad' ? S.k : (S.mode === 'pg' ? 3 : S.m));
+}
+function setFreq(idx, v) {
+  if (isNaN(v)) return;
+  S.f[idx] = v;
+  setVal('fin' + idx, v);
+  var b = $('fsl' + idx);
+  if (b) b.value = Math.max(0.5, Math.min(64, v));
+}
+function buildFreqRows() {
+  var box = $('freqRows'); if (!box) return;
+  var n = freqCount();
+  $('vfc').textContent = 'f₁ ~ f' + n + '（共 ' + n + ' 个）';
+  var html = '';
+  for (var i = 0; i < n; i++) {
+    html += '<div class="prow"><span class="plab">f' + (i + 1) + '</span>' +
+      '<input class="numin" type="number" id="fin' + i + '" min="0.5" max="64" step="0.01" value="' + S.f[i] + '">' +
+      '<input type="range" id="fsl' + i + '" min="0.5" max="64" step="0.01" value="' + S.f[i] + '"></div>';
+  }
+  box.innerHTML = html + '<p class="hint">左侧数字框可直接输入，右侧滑块连续调</p>';
+  for (var j = 0; j < n; j++) {
+    (function (idx) {
+      var num = $('fin' + idx), sld = $('fsl' + idx);
+      if (num) num.addEventListener('input', function () { setFreq(idx, parseFloat(this.value)); kick(); });
+      if (sld) sld.addEventListener('input', function () { setFreq(idx, parseFloat(this.value)); kick(); });
+    })(j);
+  }
+}
+function syncFreqRows() {
+  var n = freqCount();
+  for (var i = 0; i < n; i++) { setVal('fin' + i, S.f[i]); var b = $('fsl' + i); if (b) b.value = S.f[i]; }
+}
+var curFreqCount = -1;
+function ensureFreqRows() {
+  var n = freqCount();
+  if (n !== curFreqCount) { curFreqCount = n; buildFreqRows(); }
+  else syncFreqRows();
+}
+
+function syncUI() {
+  $('mode').value = S.mode;
+  $('linBox').style.display = S.mode === 'lin' ? '' : 'none';
+  $('quadBox').style.display = S.mode === 'quad' ? '' : 'none';
+  $('pgBox').style.display = S.mode === 'pg' ? '' : 'none';
+
+  $('vm').textContent = S.m;
+  $('m').value = S.m; setVal('mN', S.m);
+  $('vd').textContent = S.dphi + '°';
+  $('dphi').value = S.dphi; setVal('dN', S.dphi);
+  $('vrot_k').textContent = S.k + '（振子 ' + (2 * S.k) + '）';
+  $('k').value = S.k; setVal('kN', S.k);
+  $('vd2').textContent = S.dphi2 + '°';
+  $('dphi2').value = S.dphi2; setVal('dN2', S.dphi2);
+  $('vmq').textContent = S.mq;
+  $('mq').value = S.mq; setVal('mqN', S.mq);
+  $('vimb').textContent = S.imb.toFixed(2);
+  $('imb').value = S.imb; setVal('imbN', S.imb);
+  $('vk').textContent = S.damp.toFixed(3);
+  $('damp').value = S.damp; setVal('dampN', S.damp);
+  $('vf').textContent = S.fold;
+  $('fold').value = S.fold; setVal('foldN', S.fold);
+  /* 采样率 */
+  var cnn = curN();
+  $('vnN').textContent = cnn + (S.autoN ? ' · 自动' : ' · 手动');
+  setVal('nN', cnn);
+  $('nSlider').value = sliderFromN(cnn);
+  $('bAutoN').className = 'btn sm' + (S.autoN ? ' on' : '');
+  $('nNote').textContent = S.autoN
+    ? '自动：按当前曲线复杂度实时估算（共 ' + freqCount() + ' 个频率）'
+    : '手动：拖动或输入即锁定点数';
+  $('mirror').className = 'btn' + (S.mirror ? ' on' : '');
+  $('cyc').className = 'btn' + (S.cyc > 1 ? ' on' : '');
+  $('rev').className = 'btn' + (S.rev ? ' on' : '');
+  $('modeHint').innerHTML = S.mode === 'quad'
+    ? '每个频率用一对正交振子合成单向矢量 → 支撑集只剩 {f_k} → 频率可各自独立调，拿任意 m 重。'
+    : (S.mode === 'pg'
+      ? '三圆盘销钉 + 两杆：笔尖落在连杆交点，是经典 pintograph 的几何模型。'
+      : '一个 sin 振子 = 两个反向旋转矢量 → 支撑集 {±ν} → 对称阶锁死在 ≤2（奇数相 120° 族的天花板）。');
+  ensureFreqRows();
+}
+
+function bindSlider(id, fn) {
+  $(id).addEventListener('input', function () { fn(parseFloat(this.value)); syncUI(); kick(); });
+}
+/* 数字输入框：可直接键入数值（与滑块双向同步） */
+function bindNum(id, fn) {
+  var el = $(id); if (!el) return;
+  el.addEventListener('input', function () {
+    var v = parseFloat(this.value);
+    if (isNaN(v)) return;
+    fn(v); syncUI(); kick();
+  });
+}
+bindSlider('m', function (v) { S.m = oddClamp(v); });
+bindSlider('dphi', function (v) { S.dphi = v; });
+bindSlider('imb', function (v) { S.imb = v; });
+bindSlider('damp', function (v) { S.damp = v; });
+bindSlider('k', function (v) { S.k = Math.round(v); });
+bindSlider('dphi2', function (v) { S.dphi2 = v; });
+bindSlider('mq', function (v) {
+  S.mq = Math.round(v);
+  var fr = equiFreqs(S.mq, S.k);
+  for (var i = 0; i < fr.length; i++) S.f[i] = fr[i];
+});
+bindSlider('fold', function (v) { S.fold = Math.round(v); });
+
+bindNum('mN', function (v) { S.m = oddClamp(v); });
+bindNum('dN', function (v) { S.dphi = Math.max(0, Math.min(180, Math.round(v))); });
+bindNum('kN', function (v) { S.k = Math.max(1, Math.min(8, Math.round(v))); });
+bindNum('dN2', function (v) { S.dphi2 = Math.max(0, Math.min(180, Math.round(v))); });
+bindNum('mqN', function (v) { S.mq = Math.max(2, Math.min(20, Math.round(v))); applyEqui(S.mq); });
+bindNum('imbN', function (v) { S.imb = Math.max(0, Math.min(1, v)); });
+bindNum('dampN', function (v) { S.damp = Math.max(0, Math.min(0.02, v)); });
+bindNum('foldN', function (v) { S.fold = Math.max(1, Math.min(12, Math.round(v))); });
+
+/* 采样率：一旦手动拖/输入 → 自动关闭；点按钮交还自动 */
+bindSlider('nSlider', function (v) { S.N = nFromSlider(v); S.autoN = false; });
+bindNum('nN', function (v) { S.N = Math.max(500, Math.min(N_MAX, Math.round(v))); S.autoN = false; });
+$('bAutoN').addEventListener('click', function () { S.autoN = true; syncUI(); kick(); });
+
+$('mode').addEventListener('change', function () { S.mode = this.value; syncUI(); kick(); });
+$('mirror').addEventListener('click', function () { S.mirror = !S.mirror; syncUI(); kick(); });
+$('cyc').addEventListener('click', function () { S.cyc = S.cyc > 1 ? 1 : 2; syncUI(); kick(); });
+$('rev').addEventListener('click', function () { S.rev = !S.rev; syncUI(); kick(); });
+$('bAuto').addEventListener('click', function () { S.dphi = Math.round(360 / S.m); syncUI(); kick(); });
+$('bBinBack').addEventListener('click', function () { S.dphi = 90; syncUI(); kick(); });
+
+['aN','aQ','bD','cN','cA','cQ'].forEach(function (id) {
+  $(id).addEventListener('input', function () { predAll(); });
+});
+$('aApply').addEventListener('click', function () {
+  doApplyFreqs(famA(clampInt($('aN').value, 2, 8), clampInt($('aQ').value, 1, 40)));
+});
+$('bApply').addEventListener('click', function () {
+  doApplyFreqs(famB(clampInt($('bD').value, 2, 40), S.mode === 'quad' ? S.k : S.m));
+});
+$('cApply').addEventListener('click', function () {
+  var n = clampInt($('cN').value, 2, 8);
+  doApplyFreqs(famC(n, clampInt($('cA').value, 1, 20), clampInt($('cQ').value, 1, 40), n));
+});
+$('toQuad').addEventListener('click', function () {
+  S.mode = 'quad';
+  if (lastApply) {
+    S.k = Math.min(8, Math.max(1, lastApply.fr.length));
+    for (var i = 0; i < lastApply.fr.length && i < 12; i++) S.f[i] = lastApply.fr[i];
+  }
+  syncUI(); kick();
+});
+
+/* 批量造反例：A 族 n=3~5 各 q + B 族 */
+var CES = (function () {
+  var out = [];
+  for (var n = 3; n <= 5; n++) for (var q = 1; q <= 6; q++)
+    if (q % n !== 0) out.push({ n: n, q: q, f: famA(n, q) });
+  out.push({ n: 3, q: 0, f: [7, 14, 21], tag: 'B' });
+  out.push({ n: 3, q: 0, f: [10, 20, 30], tag: 'B' });
+  out.push({ n: 4, q: 0, f: [8, 16, 24, 32], tag: 'B' });
+  return out;
+})();
+var ceIdx = 0;
+$('bCE').addEventListener('click', function () {
+  var e = CES[ceIdx % CES.length]; ceIdx++;
+  S.mode = 'quad';
+  S.k = Math.min(8, Math.max(1, e.f.length));
+  for (var i = 0; i < 12; i++) S.f[i] = (i < e.f.length ? e.f[i] : 1);
+  S.damp = 0; S.fold = 1; S.mirror = false; S.imb = 0;
+  S.dphi2 = Math.round(360 / S.k);
+  lastApply = { fr: e.f.slice(), mode: 'quad' };
+  var o = analyze(S.f.slice(0, S.k));
+  $('cev').innerHTML = (e.tag === 'B')
+    ? '<b>通项 B</b> (d,2d,3d…) 阶恒 <b class="warn">1</b> — [' + ceIdx + '/' + CES.length + ']'
+    : '<b>通项 A</b> n=' + e.n + ' q=' + e.q + ' ⇒ 预测阶 <b class="warn">' + e.q +
+      '</b>，实测 <b class="good">' + o.order + '</b> — [' + ceIdx + '/' + CES.length + ']';
+  syncUI(); kick();
+});
+
+$('play').addEventListener('click', function () {
+  prog = 0;
+  var t0 = performance.now(), dur = 1600;
+  (function step(now) {
+    var p = Math.min(1, (now - t0) / dur);
+    prog = p * p * (3 - 2 * p);
+    status(); draw();
+    if (p < 1) requestAnimationFrame(step);
+    else { prog = 1; draw(); }
+  })(t0);
+});
+
+/* 色标下拉 */
+(function () {
+  var sel = $('cmap');
+  CMAP_LIST.forEach(function (it) {
+    var o = document.createElement('option');
+    o.value = it[0]; o.textContent = it[1];
+    if (it[0] === S.cmap) o.selected = true;
+    sel.appendChild(o);
+  });
+  sel.addEventListener('change', function () { S.cmap = this.value; kick(); });
+})();
+
+/* 预设 chip */
+(function () {
+  var box = $('presets');
+  PRESETS.forEach(function (p) {
+    var b = document.createElement('button');
+    b.className = 'chip' + (p.hot ? ' hot' : '');
+    b.textContent = p.t;
+    b.addEventListener('click', function () {
+      if (p.mode) S.mode = p.mode;
+      if (p.f) for (var i = 0; i < 12; i++) S.f[i] = (i < p.f.length ? p.f[i] : S.f[i]);
+      if (p.m !== undefined) S.m = oddClamp(p.m);
+      if (p.k !== undefined) S.k = p.k;
+      if (p.dphi !== undefined) S.dphi = p.dphi;
+      if (p.dphi2 !== undefined) S.dphi2 = p.dphi2;
+      if (p.mq !== undefined) S.mq = p.mq;
+      if (p.damp !== undefined) S.damp = p.damp;
+      S.fold = p.fold || 1;
+      S.mirror = !!p.mirror;
+      S.imb = 0;
+      prog = 1;
+      lastApply = null;
+      syncUI(); kick();
+    });
+    box.appendChild(b);
+  });
+})();
+
+/* 成果卡片 */
+(function () {
+  var CARDS = [
+    { kind: '原文', num: '00', t: '元宝对话原文存档（第一轮）', d: '15 轮问答逐条摘录，含全部公式、穷举数据与修正记录。', k: ['溯源', '全文', '问答'], f: 'pintograph_md/00_元宝对话原文.md' },
+    { kind: '结论', num: '01', t: '三相模型与闭合条件', d: '核心方程、<b>闭合 ⟺ 三频可公度</b>、最小周期 T=D/g、2 重天花板与三个坑。', k: ['方程', '闭合判据', '三个坑'], f: 'pintograph_md/01_三相模型与闭合条件.md' },
+    { kind: '结论', num: '02', t: '三频之美 · 三族规律', d: '编织带族花瓣=2b、玫瑰族花瓣=2n+4d、中心对称族；三族能否叠加 + n≤16 全扫描。', k: ['编织带', '玫瑰', '中心对称'], f: 'pintograph_md/02_三频之美_三族规律.md' },
+    { kind: '结论', num: '03', t: '旋转对称重数理论（核心）', d: '同余判据 <b>阶=gcd(Δᵢ)/gcd(ν₀,D)</b>、必要非充分、通项 A/B/C、单向支撑集突破 2 重。', k: ['同余', '通项ABC', '单向矢量'], f: 'pintograph_md/03_旋转对称重数理论.md' },
+    { kind: '结论', num: '04', t: '最省振荡器与物理对应', d: '4 振荡器是硬下界、花瓣=m·(k−1)、万花尺同构；QCD/光频梳/纳米管等 7 条物理对应。', k: ['硬下界', '万花尺', '物理'], f: 'pintograph_md/04_最省振荡器与物理对应.md' },
+    { kind: '结论', num: '05', t: '机械实现三方案', d: '4 摆机械式 / X-Y 平台 2 电机 / 激光振镜 2 振镜，叠加发生在哪一层。', k: ['4摆', 'XY平台', '振镜'], f: 'pintograph_md/05_机械实现三方案.md' },
+    { kind: '结论', num: '06', t: '批量反例与三种通项公式', d: '充要条件 <b>n|D 且 n∤D/gcd(ν₀,D)</b>；通项 A/B/C 及覆盖率 100% 的验证。', k: ['反例', '充要条件', '通项ABC'], f: 'pintograph_md/06_批量反例通项公式.md', hot: 1 },
+    { kind: '原文', num: '07', t: '元宝对话原文存档（第二轮）', d: '「页面状态条提示与批量反例通项公式」全文摘录，含 A/B/C 三通项原始表格。', k: ['溯源', '全文', '反例'], f: 'pintograph_md/07_元宝原文_反例通项.md' }
+  ];
+  var box = $('cards');
+  CARDS.forEach(function (c) {
+    var a = document.createElement('a');
+    a.className = 'card'; a.href = c.f; a.target = '_blank'; a.setAttribute('data-kind', c.kind);
+    a.innerHTML =
+      '<div class="chd"><span class="num">' + c.num + '</span><h3>' + c.t + '</h3></div>' +
+      '<p class="desc">' + c.d + '</p>' +
+      '<div class="kx">' + c.k.map(function (k) { return '<span>' + k + '</span>'; }).join('') + '</div>' +
+      '<div class="cft"><span>' + c.kind + ' · md</span><span class="go">打开 →</span></div>';
+    box.appendChild(a);
+  });
+
+  var SRCS = [
+    { t: '元宝原始 lab 页（暗色）', en: 'three_phase_lab.html · 3 模型 · m 2~8 · 批量反例 · 保存 PNG', f: 'pintograph_src/_latest/three_phase/three_phase_lab.html' },
+    { t: '成果包 README（完整推导）', en: '方程 / 闭合 / 三族 / 重数 / 通项 / 物理 / 机械 全篇', f: 'pintograph_src/_latest/three_phase/README.md' },
+    { t: '批量反例通项图 fig17', en: 'Δ 全为 n 的倍数，阶却不是 —— 6 格对照', f: 'pintograph_src/_latest/three_phase/fig17_counterexamples.png' },
+    { t: '高对称绕行方案 fig11', en: '3 相 120° 天花板 · 旋转叠加 / 镜像 / 4 相 90°', f: 'pintograph_src/_latest/three_phase/fig11_high_symmetry.png' },
+    { t: '原生 6/7 重 fig12', en: '单向支撑集挣开 ±ν 对', f: 'pintograph_src/_latest/three_phase/fig12_native_6_7fold.png' },
+    { t: 'Python 源码目录', en: 'closure / patterns / native / mfold / congruence / hybrid / bigsweep / minimal 等', f: 'pintograph_src/_latest/three_phase/' }
+  ];
+  var sb = $('srcs');
+  SRCS.forEach(function (t) {
+    var a = document.createElement('a');
+    a.className = 'card'; a.href = t.f; a.target = '_blank'; a.setAttribute('data-kind', '源码');
+    a.innerHTML =
+      '<div class="chd"><span class="num">归档</span><h3>' + t.t + '</h3></div>' +
+      '<p class="desc">' + t.en + '</p>' +
+      '<div class="cft"><span>本地 · 已下载</span><span class="go">打开 →</span></div>';
+    sb.appendChild(a);
+  });
+
+  var TOOLS = [
+    { t: 'pintograph 3D · 莫比乌斯 8 字环 ★', en: '把 2D 花型抬成立体：z 轴 8 字往复 + 绕切线扭转 → 莫比乌斯环 · 16 预设 · 可拖可转', f: 'AAA_pintograph3D_莫比乌斯8字环.html' },
+    { t: '浑天仪探索器 v3', en: '四频率独立可调 · 20 色标 · 弦网/包络/维数体检 · GIF 导出', f: '浑天仪探索器.html' },
+    { t: '全部网页总览（总入口）', en: '瑟尔 nb 网页版 + harmonograph 全项目导航', f: '（总入口）全部网页总览.html' },
+    { t: '瑟尔 harmonograph · 花纹成因解剖', en: '浮点相消残差 × 自适应细分，解释"浑天仪"花纹', f: '瑟尔harmonograph_花纹成因解剖.html' },
+    { t: '瑟尔 harmonograph · 怪异花纹数学涌现原理', en: '花纹为何涌现"怪异"结构', f: '瑟尔harmonograph_怪异花纹_数学涌现原理.html' },
+    { t: '瑟尔 harmonograph · 按住松手之谜', en: '按住/松手为何换一张图', f: '瑟尔harmonograph_按住松手之谜.html' },
+    { t: 'harmonograph 网页工作台', en: '参数调试工作台', f: 'harmonograph网页工作台.html' }
+  ];
+  var tb = $('tools');
+  TOOLS.forEach(function (t) {
+    var a = document.createElement('a');
+    a.className = 'card'; a.href = t.f; a.target = '_blank'; a.setAttribute('data-kind', '工具');
+    a.innerHTML =
+      '<div class="chd"><span class="num">工具</span><h3>' + t.t + '</h3></div>' +
+      '<p class="desc">' + t.en + '</p>' +
+      '<div class="cft"><span>HTML</span><span class="go">打开 →</span></div>';
+    tb.appendChild(a);
+  });
+})();
+
+/* 保存 PNG */
+$('bSave').addEventListener('click', function () {
+  prog = 1; draw();
+  try {
+    var a = document.createElement('a');
+    a.href = cv.toDataURL('image/png');
+    a.download = 'pintograph_' + S.mode + '_' + activeFreqs().map(function (v) { return (+v).toFixed(0); }).join('_') + '.png';
+    a.click();
+  } catch (e) { }
+});
+
+/* 随机 */
+$('bRand').addEventListener('click', function () {
+  var d = Math.max(1, Math.round(Math.random() * 4) + S.k % 3);
+  var n = (S.mode === 'quad' ? S.k : S.m);
+  for (var k = 0; k < n; k++) S.f[k] = 1 + k * d;
+  lastApply = null;
+  syncUI(); kick();
+});
+
+/* ---------- 可拖动浮窗（通用：拖动 / 折叠 / 复位 / 记忆） ---------- */
+function makeFloatWin(el, key) {
+  if (!el) return;
+  var bar = el.querySelector ? el.querySelector('.dragbar') : null;
+  if (!bar) return;
+  var dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
+
+  function clamp(x, y) {
+    var w = el.offsetWidth, h = Math.min(el.offsetHeight, 80);
+    var maxX = Math.max(4, window.innerWidth - w - 4);
+    var maxY = Math.max(4, window.innerHeight - h - 4);
+    return [Math.max(4, Math.min(maxX, x)), Math.max(4, Math.min(maxY, y))];
+  }
+  function setPos(x, y) {
+    el.style.left = x + 'px'; el.style.top = y + 'px'; el.style.right = 'auto';
+  }
+  function down(e) {
+    var tg = e.target || {};
+    if (tg.dataset && tg.dataset.act) return;      /* 点按钮不触发拖动 */
+    var r = el.getBoundingClientRect();
+    setPos(r.left, r.top);
+    dragging = true; sx = e.clientX; sy = e.clientY; ox = r.left; oy = r.top;
+    el.classList.add('dragging');
+    if (e.cancelable && e.preventDefault) e.preventDefault();
+  }
+  function move(e) {
+    if (!dragging) return;
+    var p = clamp(ox + (e.clientX - sx), oy + (e.clientY - sy));
+    setPos(p[0], p[1]);
+  }
+  function up() {
+    if (!dragging) return;
+    dragging = false;
+    el.classList.remove('dragging');
+    try { localStorage.setItem('pg_win_' + key, JSON.stringify([el.style.left, el.style.top])); } catch (e2) { }
+  }
+  bar.addEventListener('pointerdown', down);
+  window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', up);
+  window.addEventListener('pointercancel', up);
+
+  var btns = (bar.querySelectorAll ? bar.querySelectorAll('.dbtn') : []);
+  for (var i = 0; i < btns.length; i++) {
+    (function (b) {
+      b.addEventListener('click', function () {
+        var act = (b.dataset && b.dataset.act) || '';
+        if (act === 'collapse') {
+          var c = el.classList.toggle('collapsed');
+          b.textContent = c ? '+' : '−';
+        } else {
+          el.classList.remove('collapsed');
+          var cb = bar.querySelector ? bar.querySelector('[data-act="collapse"]') : null;
+          if (cb) cb.textContent = '−';
+          el.style.left = ''; el.style.top = ''; el.style.right = '';
+          try { localStorage.removeItem('pg_win_' + key); } catch (e3) { }
+        }
+      });
+    })(btns[i]);
+  }
+
+  try {   /* 记忆上次位置（仅宽屏） */
+    if (window.innerWidth >= 1040) {
+      var saved = JSON.parse(localStorage.getItem('pg_win_' + key) || 'null');
+      if (saved && saved[0] && saved[1]) {
+        var p = clamp(parseFloat(saved[0]), parseFloat(saved[1]));
+        setPos(p[0], p[1]);
+      }
+    }
+  } catch (e4) { }
+}
+makeFloatWin($('ctrl'), 'ctrl');
+makeFloatWin($('ceWin'), 'ce');
+
+/* ---------- 初始化 ---------- */
+function resize() {
+  var r = cv.getBoundingClientRect();
+  cv.width = Math.round(r.width * dpr);
+  cv.height = Math.round(r.height * dpr);
+  draw();
+}
+window.addEventListener('resize', resize);
+syncUI();
+predAll();
+resize();
+status();
+renderTable();
+</script>
+</body>
+</html>
