@@ -88,6 +88,10 @@ button.gh.srcsel.on{background:linear-gradient(135deg,#0b5c46,#12a97c);
   border-color:#3cffbe;color:#eafff8;font-weight:600;
   box-shadow:0 0 12px rgba(60,255,190,.32)}
 button.gh.srcsel.on::before{content:'● ';color:#7dffd2}
+/* 单丝按钮：button.gh 的 transparent 会盖掉 button.on 的渐变（同特异性、后定义），
+   所以单开一条把它提成紫色 —— 状态必须一眼看得见，不能只靠一点点光晕。 */
+button.gh#onewire.on{background:linear-gradient(135deg,#3a1f8c,#7d4bff);
+  border-color:#b79cff;color:#f4efff;font-weight:600;box-shadow:0 0 12px rgba(140,105,255,.40)}
 .spacer{flex:1}
 
 /* 参数浮窗：原为底部抽屉（占 #app flex 流 52% 高度 ⇒ 把画布压矮），
@@ -519,6 +523,7 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
     <button id="reset" class="gh">重置</button>
     <button id="togp" class="gh on">剖面</button>
     <button id="part" class="gh">🌫 粒子</button>
+    <button id="onewire" class="gh" title="只显示一根丝：等于「开启 Anu 十丝 + 丝数 1」，会顺手关掉粒子层；再点一次把十丝开关 / 丝数 / 粗丝数 / 粒子层全部还原">🧵 单丝</button>
     <div class="spacer"></div>
     <!-- 缩放读数常驻底栏：HUD（左上）被「曲速引擎结果」浮窗压住、右下提示被参数窗压住，
          只有底栏既不会被浮窗盖、也不会随画布缩放跑掉。 -->
@@ -752,6 +757,14 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
         </div>
       </div>
       <div class="hint" id="pStat">—</div>
+      <div class="hint" style="border-left:2px solid rgba(88,170,255,.55);padding-left:8px">
+        <b style="color:#8ecbff">🫧 泡泡膜（粒子一开就有）</b>：粒子外面会裹一张<b>蓝色网格膜</b>。
+        它不是画上去的球壳 —— <b>膜半径逐高度取自粒子自身的最大半径</b>（每层一个数），
+        再过 3 点空间核 + <b>非对称时间低通</b>（撑开快 τ≈70 ms、松弛慢 τ≈340 ms）⇒
+        撒入时膜被撑开、粒子被卷进去时膜跟着收；两端封口，所以是<b>闭合泡泡</b>而不是筒。
+        膜是纯渲染层：不参与积分、不改 ODE / 粒子 / 十丝。z 两端各 1% 的尾点会露在膜外，
+        这是有意的上限（否则一个跑飞的点就能把膜顶爆）。
+      </div>
       <div class="hint">
         <b>怎么读</b>：涡环的闭合环流 = <b>环外下沉 / 环心上喷</b>。
         粒子从上方环外被卷下来 → 到底部收向中轴 → 再沿中轴向上喷出，
@@ -1286,10 +1299,207 @@ function drawSrcBox(tp,K,cx,cy,fx,fy,count){
   ctx.restore();
 }
 
+/* ==========================================================================
+ * 泡泡膜（老师 2026-10-20）：「粒子层一开，画一张柔性的蓝色网格膜把粒子包起来」
+ * --------------------------------------------------------------------------
+ * 它是什么：一张**由粒子自己长出来的**网格曲面 —— 不是固定球，也不是贴图。
+ *   ① 按 z 分 MEM.NZ 层，每层取该层粒子的**最大半径**当膜半径
+ *      （取最大而不是平均：平均会切进粒子里面，「包裹」当场不成立）；
+ *   ② 半径先过 3 点空间核，再过**非对称时间低通**（撑开 τ=70 ms / 松弛 τ=340 ms）
+ *      ——「柔性」就是这两个滤波，不是为了好看随手加的抖动；
+ *   ③ 两端各加 12% 高度做**封口**（r ∝ √(1−t²) 收到 0）⇒ 膜是闭合的，有内外两面；
+ *   ④ 再叠 θ 方向 2/3/5 阶行波，幅值合计 4.8%，且**整体抬高 5.2%**
+ *      —— 抬高是刻意的：波谷也不能低于实测包络，否则粒子会刺破膜。
+ *
+ * 口径（不许含混）：
+ *   · 膜是**纯渲染层**：不参与积分、不改 ODE / 粒子 / 十丝，唯一输入是粒子坐标；
+ *   · 关掉粒子层就没有膜（它不是场景装饰）；
+ *   · z 两端各 1% 的尾部点会落在膜外 —— 膜包住的是主体，不是牢笼。
+ * ========================================================================== */
+var MEM={on:true, NZ:14, NM:18, NS:26, NR:8, BANDS:6, alpha:0.58,
+         segs:0, wrap:0, ready:false, lastT:0, T:0,
+         zlo:-0.5, zhi:2.3, R:new Float32Array(16), Rt:new Float32Array(16)};
+var memVX=null, memVY=null, memVD=null, memBuf=null, memTop=null, memH=null, memCum=null;
+var memD0=0, memDS=1, memQ=[0,0,0,0,0];
+function memAlloc(){
+  var NV=(MEM.NM+1)*(MEM.NS+1), i;
+  memVX=new Float32Array(NV); memVY=new Float32Array(NV); memVD=new Float32Array(NV);
+  var NSG=MEM.NM*(MEM.NS+1)+MEM.NR*MEM.NM;
+  memBuf=[];
+  for(i=0;i<MEM.BANDS;i++) memBuf.push({n:0, a:new Float32Array(NSG*4)});
+  memTop=new Float32Array(MEM.NZ); memH=new Int32Array(48); memCum=new Int32Array(49);
+}
+/** 与 trPt 逐字同一套变换，只多写一个 out[4]=深度。
+ *  ⚠ 两份代码必须同步：window.__mem.selfTest() 逐点对拍 (sx,sy)，差 >1e-9 就报错。 */
+function trPtD(tp,X,Y,Z,out){
+  var u=(Z-tp.zlo)/tp.span; if(u<0)u=0; if(u>1)u=1;
+  var s=Math.exp(tp.logR*(1-smooth(u)));
+  if(tp.TAU>1e-6){
+    if(u<tp.TAU)          s*=Math.sqrt(Math.max(0,1-Math.pow((tp.TAU-u)/tp.TAU,2)));
+    else if(u>1-tp.TAU)   s*=Math.sqrt(Math.max(0,1-Math.pow((u-(1-tp.TAU))/tp.TAU,2)));
+  }
+  var Xs=X*s, Ys=Y*s;
+  var u0=(Z-tp.zc)/tp.ha; if(u0<-1)u0=-1; if(u0>1)u0=1;
+  var Zw=tp.zc+tp.ha*tp.LAM*(u0+tp.GAM*u0*u0);
+  var x1s=Xs*tp.caz-Ys*tp.saz, y1s=Xs*tp.saz+Ys*tp.caz;
+  var ups=y1s*tp.cel+Zw*tp.sel, dzs=-y1s*tp.sel+Zw*tp.cel;
+  var pc=6/(6-dzs*0.5);
+  out[0]=x1s*pc; out[1]=-ups*pc; out[4]=dzs;
+  return out;
+}
+/** 膜半径：按高度在 NZ 个数之间线性插值（x 取桶中心对齐），已含 2% 余量 */
+function memR(u){
+  var N=MEM.NZ, x=u*N-0.5;
+  if(x<0)x=0; if(x>N-1)x=N-1;
+  var i=x|0, f=x-i, j=(i<N-1)?i+1:i;
+  return (MEM.R[i]*(1-f)+MEM.R[j]*f)*1.02;
+}
+function memProfile(now){
+  if(!memTop) memAlloc();
+  var m=PART.n, i, k, N=MEM.NZ;
+  /* ① z 的 1% / 99% 分位：48 桶直方图两遍扫（不排序 900 个数，O(n)） */
+  var H=memH, Z0=-1.70, Z1=3.10, inv=47/(Z1-Z0);
+  for(i=0;i<48;i++)H[i]=0;
+  for(i=0;i<m;i++){ k=((pZ[i]-Z0)*inv)|0; if(k<0)k=0; if(k>47)k=47; H[k]++; }
+  var cum=memCum; cum[0]=0;
+  for(i=0;i<48;i++)cum[i+1]=cum[i]+H[i];
+  var lo=cum[48]*0.01, hi=cum[48]*0.99, b0=47, b1=0;
+  for(i=0;i<48;i++) if(cum[i+1]>=lo){ b0=i; break; }
+  for(i=47;i>=0;i--) if(cum[i]<hi){ b1=i; break; }
+  if(b1<b0) b1=b0;
+  var zl=Z0+(b0/48)*(Z1-Z0), zh=Z0+((b1+1)/48)*(Z1-Z0);
+  if(zh-zl<0.5) zh=zl+0.5;
+  if(!MEM.ready){ MEM.zlo=zl; MEM.zhi=zh; }
+  else { MEM.zlo+=(zl-MEM.zlo)*0.10; MEM.zhi+=(zh-MEM.zhi)*0.10; }
+  var span=MEM.zhi-MEM.zlo, hh=span/N;
+  /* ② 每层最大半径（平方比较，最后统一开方） */
+  for(i=0;i<N;i++) memTop[i]=0;
+  for(i=0;i<m;i++){
+    k=((pZ[i]-MEM.zlo)/hh)|0;
+    if(k<0||k>=N) continue;
+    var r2=pX[i]*pX[i]+pY[i]*pY[i];
+    if(r2>memTop[k]) memTop[k]=r2;
+  }
+  for(i=0;i<N;i++) memTop[i]=Math.sqrt(memTop[i]);
+  /* 空层借邻层（先下→上，再上→下） */
+  for(i=1;i<N;i++) if(memTop[i]<0.02) memTop[i]=memTop[i-1];
+  for(i=N-2;i>=0;i--) if(memTop[i]<0.02) memTop[i]=memTop[i+1];
+  /* ③ 3 点空间核 */
+  for(i=0;i<N;i++){
+    var a=memTop[i>0?i-1:0], b=memTop[i], c=memTop[i<N-1?i+1:N-1];
+    MEM.Rt[i]=Math.max(0.20, a*0.25+b*0.5+c*0.25);
+  }
+  /* ④ 非对称时间低通：被撑开是弹性的（快），回缩是黏的（慢） */
+  var dt=now-MEM.lastT; if(!(dt>0)||dt>200)dt=16; MEM.lastT=now;
+  for(i=0;i<N;i++){
+    var cur=MEM.R[i], tg=MEM.Rt[i];
+    if(!MEM.ready){ MEM.R[i]=tg; continue; }
+    var kk=1-Math.exp(-dt/(tg>cur?70:340));
+    MEM.R[i]=cur+(tg-cur)*kk;
+  }
+  MEM.ready=true;
+}
+function memPush(i1,j1,i2,j2){
+  var NM=MEM.NM, a=i1*(NM+1)+j1, b=i2*(NM+1)+j2;
+  var d=((memVD[a]+memVD[b])*0.5-memD0)/memDS;
+  if(d<0)d=0; else if(d>1)d=1;
+  var bi=(d*(MEM.BANDS-1)+0.5)|0;
+  if(bi<0)bi=0; else if(bi>=MEM.BANDS)bi=MEM.BANDS-1;
+  var buf=memBuf[bi], p=buf.n;
+  if((p+1)*4>buf.a.length) return;
+  buf.a[p*4]=memVX[a];   buf.a[p*4+1]=memVY[a];
+  buf.a[p*4+2]=memVX[b]; buf.a[p*4+3]=memVY[b];
+  buf.n=p+1;
+}
+/** 画膜。返回实际画出的段数（0 = 没画），供探针判「真的每帧在画」而不是只画了一次。 */
+function drawMembrane(tp,K,cx,cy,fx,fy){
+  if(!MEM.on||!PART.on){ MEM.segs=0; return 0; }
+  var m=PART.n; if(m<24){ MEM.segs=0; return 0; }
+  if(!memVX) memAlloc();
+  var now=performance.now();
+  memProfile(now);
+  MEM.T=now*0.001;
+  var NM=MEM.NM, NS=MEM.NS, i, j, b, u, zz, rr, th, w, rw, idx, T=MEM.T, t1, t2;
+  var zl=MEM.zlo, zh=MEM.zhi, span=Math.max(0.2, zh-zl);
+  var uA=-0.09, uB=1.09, uR=uB-uA, dmin=1e9, dmax=-1e9;
+  var bx0=1e9,bx1=-1e9,by0=1e9,by1=-1e9,nan=0;
+  var q=memQ;
+  for(i=0;i<=NS;i++){
+    u=uA+uR*i/NS;
+    if(u<0){ t1=-u/0.09; zz=zl+u*span; rr=memR(0)*Math.sqrt(Math.max(0,1-t1*t1)); }
+    else if(u>1){ t2=(u-1)/0.09; zz=zh+(u-1)*span; rr=memR(1)*Math.sqrt(Math.max(0,1-t2*t2)); }
+    else { zz=zl+u*span; rr=memR(u); }
+    if(rr<0.03) rr=0.03;
+    for(j=0;j<=NM;j++){
+      th=2*Math.PI*j/NM;
+      /* 鼓动：只留 2/3 阶（NM=18 时 3θ 每周期还有 6 个采样，再高就混叠）；
+         整体抬高到 1.062 ⇒ 波谷也不会低于实测包络，粒子不会刺破膜 */
+      w=1.062 + 0.030*Math.sin(2*th+1.15*T+2.2*u)
+               + 0.020*Math.sin(3*th-1.70*T+3.1*u)
+               + 0.020*Math.sin(2.4*Math.PI*u+0.9*T);
+      rw=rr*w;
+      trPtD(tp, rw*Math.cos(th), rw*Math.sin(th), zz, q);
+      idx=i*(NM+1)+j;
+      /* ★ 必须在这里就把"投影坐标"换成**屏幕坐标**：与 drawParticles 里
+         sx=cx+(pTP[0]-fx)*K 逐字同一式。第一版漏了这一步，膜全挤在画布左上角
+         （坐标只有 ±1.7 像素）⇒ 段数 680 却一个像素都看不见。 */
+      if(!isFinite(q[0])||!isFinite(q[1])){ memVX[idx]=cx; memVY[idx]=cy; nan++; }
+      else {
+        memVX[idx]=cx+(q[0]-fx)*K; memVY[idx]=cy+(q[1]-fy)*K;
+        if(memVX[idx]<bx0)bx0=memVX[idx]; if(memVX[idx]>bx1)bx1=memVX[idx];
+        if(memVY[idx]<by0)by0=memVY[idx]; if(memVY[idx]>by1)by1=memVY[idx];
+      }
+      memVD[idx]=q[4];
+      if(q[4]<dmin)dmin=q[4]; if(q[4]>dmax)dmax=q[4];
+    }
+  }
+  memD0=dmin; memDS=Math.max(1e-6,dmax-dmin);
+  for(b=0;b<MEM.BANDS;b++) memBuf[b].n=0;
+  for(j=0;j<NM;j++) for(i=0;i<NS;i++) memPush(i,j,i+1,j);        /* 经线 */
+  for(b=0;b<MEM.NR;b++){                                          /* 纬线（6 圈） */
+    var ii=((b+0.5)/MEM.NR*NS)|0; if(ii>NS)ii=NS;
+    for(j=0;j<NM;j++) memPush(ii,j,ii,j+1);
+  }
+  /* 画：由远到近分成 6 档 alpha（每档一次 beginPath ⇒ 每帧只有 12 次 stroke） */
+  var tot=0, dA=decayA()*(typeof pAlpha==='number'?pAlpha:1)*MEM.alpha;
+  ctx.save();
+  ctx.globalCompositeOperation='lighter';
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  for(b=0;b<MEM.BANDS;b++){
+    var B=memBuf[b]; if(!B.n) continue;
+    var al=dA*(0.04+0.46*(b/(MEM.BANDS-1)));
+    ctx.beginPath();
+    for(i=0;i<B.n;i++){
+      ctx.moveTo(B.a[i*4],B.a[i*4+1]);
+      ctx.lineTo(B.a[i*4+2],B.a[i*4+3]);
+    }
+    ctx.strokeStyle='rgba(58,140,255,'+(al*0.22).toFixed(3)+')';
+    ctx.lineWidth=2.4; ctx.stroke();
+    ctx.strokeStyle='rgba(150,216,255,'+al.toFixed(3)+')';
+    ctx.lineWidth=1.0; ctx.stroke();
+    tot+=B.n;
+  }
+  ctx.restore();
+  MEM.segs=tot;
+  MEM.bb={x0:bx0,x1:bx1,y0:by0,y1:by1,nan:nan,cx:cx,cy:cy,K:K,W:W,H:H,dA:dA};
+  /* 包裹率：与 memR 同一口径（膜最小处 = 1.052−0.048 = 1.004 倍），供页面/探针共用 */
+  var inside=0, n=0, uu;
+  for(i=0;i<m;i++){
+    zz=pZ[i]; if(zz<zl||zz>zh) continue;
+    uu=(zz-zl)/span;
+    rr=Math.sqrt(pX[i]*pX[i]+pY[i]*pY[i]);
+    n++; if(rr<=memR(uu)*1.004+0.015) inside++;
+  }
+  MEM.wrap=n?inside/n:0;
+  return tot;
+}
+
 /** 画粒子：小亮点 + 一条**速度短线**（长度 ∝ 速度，方向 = 该点的 (ẋ,ẏ,ż) 投影）。 */
 function drawParticles(tp,K,cx,cy,fx,fy){
-  if(!PART.on) return 0;
+  if(!PART.on){ MEM.segs=0; return 0; }   /* 没粒子就没有膜，段数也要归零，别留上一帧的读数 */
   if(!pOff) partResize();
+  /* 先画膜、再贴粒子：膜在"后面"，粒子浮在膜内 —— additive 下不会互相吃掉 */
+  drawMembrane(tp,K,cx,cy,fx,fy);
   var m=PART.n, h=0.038, drawn=0, i, w, x, y, z, sx, sy, ex, ey, k=pSC;
   var g=pCtx;
   g.setTransform(1,0,0,1,0,0);
@@ -2530,6 +2740,7 @@ function setAnuRigid(on){
 var ckAnu=document.getElementById('ckAnu');
 if(ckAnu)ckAnu.addEventListener('change',function(){
   ANU.on=ckAnu.checked; AFITK=null;
+  if(ONE && ONE.on && !ONE.silent && !ANU.on){ ONE.on=false; oneSync(); }
   if(ANU.on&&!ANU.rigid)aWarm();
   anuHint();
 });
@@ -2538,6 +2749,7 @@ bind('sAM','vAM','aMaj',function(x){return String(Math.round(x));},function(){
 });
 bind('sAW','vAW','aWire',function(x){return String(Math.round(x));},function(){
   ANU.nWire=Math.max(1,Math.min(10,Math.round(P.aWire)));
+  if(ONE && ONE.on && !ONE.silent && ANU.nWire!==1){ ONE.on=false; oneSync(); }
   if(ANU.on&&!ANU.rigid)aWarmSoon();          /* 独立积分：初相位要跟着 360/N 重播 */
   AFITK=null; anuHint();
 });
@@ -2557,6 +2769,8 @@ anuHint();
 var ckPart=document.getElementById('ckPart'), btnPart=document.getElementById('part');
 function setPart(on){
   PART.on=!!on;
+  /* 手动把粒子打开 ⇒ 已经不是「只显示单丝」了，按钮自动松开（见 setOneWire） */
+  if(ONE && ONE.on && PART.on && !ONE.silent){ ONE.on=false; oneSync(); }
   if(ckPart)ckPart.checked=PART.on;
   if(btnPart)btnPart.className='gh'+(PART.on?' on':'');
   if(PART.on){ partReset(); partPaint(); }
@@ -2568,6 +2782,57 @@ function setPart(on){
   }
 }
 if(ckPart)ckPart.addEventListener('change',function(){ setPart(ckPart.checked); });
+
+/* ---------- 单丝按钮（老师 2026-10-20）：一键「只留一根丝」 ----------
+ * 它不是第三条渲染管线：**它就是「开启 Anu 十丝 + 丝数 1」**（面板 sAW=1 的那一格），
+ * 所以画出来的东西与手拨滑块逐像素相同。只多两件事：
+ *   ① 顺手把粒子层关掉（否则"只显示单丝"名不副实）；
+ *   ② 记住点之前的 十丝开关 / 丝数 / 粗丝数 / 粒子开关，再点一次全部还原。
+ * 手动改滑块或关十丝时按钮自动松开（ONE.on=false）—— 不能让按钮亮着而状态不是它设的。 */
+var ONE={on:false, snap:null, silent:false};
+function oneSync(){
+  var b=document.getElementById('onewire'); if(!b) return;
+  b.className='gh'+(ONE.on?' on':'');
+}
+/** 演示结束后按真实状态回写按钮（SNAP 只记滑条与勾选，不记这个按钮） */
+function oneReconcile(){ ONE.on=!!(ANU.on && (ANU.nWire|0)===1 && !PART.on); oneSync(); }
+function setOneWire(on){
+  if(on){
+    if(ONE.on) return;
+    ONE.snap={anu:ANU.on, wire:ANU.nWire|0, maj:ANU.nMaj|0, part:PART.on};
+    ONE.silent=true;
+    if(ckAnu) ckAnu.checked=true;
+    ANU.on=true; AFITK=null;
+    setSlider('sAW','1');                      /* 走真 bind ⇒ 读数 / 提示 / 独立积分重播全跟着走 */
+    if(PART.on) setPart(false);
+    ONE.silent=false;
+    if(ANU.on&&!ANU.rigid)aWarm();
+    anuHint();
+    ONE.on=true;
+  }else{
+    if(!ONE.on) return;
+    var s=ONE.snap;
+    ONE.silent=true;
+    if(s){
+      if((ANU.nMaj|0)!==s.maj) setSlider('sAM',String(s.maj));
+      if((ANU.nWire|0)!==s.wire) setSlider('sAW',String(s.wire));
+      ANU.on=!!s.anu;
+      if(ckAnu) ckAnu.checked=!!s.anu;
+      AFITK=null;
+      if(s.part && !PART.on) setPart(true);
+      if(ANU.on&&!ANU.rigid)aWarm();
+      anuHint();
+    }
+    ONE.silent=false;
+    ONE.on=false;
+  }
+  oneSync();
+}
+(function(){
+  var b=document.getElementById('onewire');
+  if(b) b.onclick=function(){ setOneWire(!ONE.on); };
+})();
+oneSync();
 if(btnPart)btnPart.onclick=function(){ setPart(!PART.on); };
 bind('sPN','vPN','pn',function(x){return String(Math.round(x));},function(){
   var v=Math.max(200,Math.min(2000,Math.round(P.pn)));
@@ -3021,6 +3286,35 @@ function fitWres(){
   w.style.maxHeight=Math.max(110,Math.round(window.innerHeight-8-w.getBoundingClientRect().top))+'px';
 }
 window.addEventListener('resize',fitWres);
+/* 泡泡膜的探针口：selfTest 逐点对拍 trPt / trPtD（两份代码不许漂），
+   state 报"画了多少段 / 包裹率 / 每层膜半径"，rAt 让 Node 侧自己算"粒子在不在膜内"。 */
+window.__mem={
+  state:function(){
+    return {on:MEM.on, segs:MEM.segs, wrap:MEM.wrap, n:PART.n, ready:MEM.ready, bb:MEM.bb,
+            nm:MEM.NM, ns:MEM.NS, nr:MEM.NR,
+            zlo:MEM.zlo, zhi:MEM.zhi, T:MEM.T,
+            R:Array.prototype.slice.call(MEM.R,0,MEM.NZ)};
+  },
+  set:function(v){ MEM.on=!!v; },
+  /* 画出来的膜在任意 z 处的半径 —— **含两端封口**（z 超出 [zlo,zhi] 时按 √(1−t²) 收口） */
+  rAt:function(z){
+    var s=MEM.zhi-MEM.zlo; if(s<1e-6) return NaN;
+    var u=(z-MEM.zlo)/s;
+    if(u>=0&&u<=1) return memR(u);
+    var t=(u<0?-u:(u-1))/0.09;
+    if(t>=1) return 0;
+    return memR(u<0?0:1)*Math.sqrt(1-t*t);
+  },
+  selfTest:function(){
+    var tp=mkTP(), o1=[0,0,0,0], o2=[0,0,0,0], worst=0, i, X, Y, Z;
+    for(i=0;i<240;i++){
+      X=2.4*Math.sin(i*12.9898); Y=2.4*Math.cos(i*7.233); Z=-0.9+3.2*((i*0.6180339887)%1);
+      trPt(tp,X,Y,Z,o1); trPtD(tp,X,Y,Z,o2);
+      worst=Math.max(worst, Math.abs(o1[0]-o2[0]), Math.abs(o1[1]-o2[1]));
+    }
+    return worst;
+  }
+};
 window.__fitWres=fitWres;
 
 /* ---------- Anu 十丝 · 探针接口（供真浏览器回归断言取真实数值） ---------- */
@@ -4071,6 +4365,8 @@ requestAnimationFrame(frame);
     if (mk) mk.style.opacity = '0';
     /* 8) 轨迹重建一次：d 与画面严格一致，且可复现 */
     if (typeof rebuildForD === 'function') rebuildForD(true);
+    /* 9) 单丝按钮按真实状态回写（SNAP 不记这个按钮，只记它背后的滑条与勾选） */
+    if (typeof oneReconcile === 'function') oneReconcile();
     return true;
   }
 
