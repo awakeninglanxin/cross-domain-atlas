@@ -92,6 +92,9 @@ button.gh.srcsel.on::before{content:'● ';color:#7dffd2}
    所以单开一条把它提成紫色 —— 状态必须一眼看得见，不能只靠一点点光晕。 */
 button.gh#onewire.on{background:linear-gradient(135deg,#3a1f8c,#7d4bff);
   border-color:#b79cff;color:#f4efff;font-weight:600;box-shadow:0 0 12px rgba(140,105,255,.40)}
+/* 镜像按钮：同上，单开一条青色激活态（与中缝/两侧标注同色系，一眼看出"现在是并排对比"） */
+button.gh#mirror.on{background:linear-gradient(135deg,#0a3a5c,#0f8fc4);
+  border-color:#7fd8ff;color:#eaf7ff;font-weight:600;box-shadow:0 0 12px rgba(127,216,255,.38)}
 .spacer{flex:1}
 
 /* 参数浮窗：原为底部抽屉（占 #app flex 流 52% 高度 ⇒ 把画布压矮），
@@ -529,6 +532,7 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
     <button id="togp" class="gh on">剖面</button>
     <button id="part" class="gh">🌫 粒子</button>
     <button id="onewire" class="gh" title="只显示一根丝：等于「开启 Anu 十丝 + 丝数 1」，会顺手关掉粒子层；再点一次把十丝开关 / 丝数 / 粗丝数 / 粒子层全部还原">🧵 单丝</button>
+    <button id="mirror" class="gh" title="镜像并排：左＝原旋转方向（dθ/dt=+d，右手螺旋），右＝镜像（θ→−θ，左手螺旋）。做法是**整幅像素左右翻转**（不是再解一次 −d 的方程），所以两边同一取景、同一呼吸、同一次 DECAY 断点、逐像素严格对称；代价是右侧的丝相对真解差半圈相位（轴对成的蛋壳完全等价）。再点一次回到单幅">🪞 镜像</button>
     <div class="spacer"></div>
     <!-- 缩放读数常驻底栏：HUD（左上）被「曲速引擎结果」浮窗压住、右下提示被参数窗压住，
          只有底栏既不会被浮窗盖、也不会随画布缩放跑掉。 -->
@@ -2068,6 +2072,9 @@ var az=0, tBreath=0, fps=0, lastT=performance.now(), fAcc=0, fN=0;
  *   推导：s = C + O + (g−F)K，要让 s 不变 ⇒ O' = (sp−C)(1−r) + O·r （r = 新/旧倍率）。
  */
 var VIEW={z:1, ox:0, oy:0, min:0.25, max:16};
+/* 镜像并排开关（老师 2026-10-20）。**必须在这里就声明**：drawAnu 每帧读它，
+   而按钮的绑定代码在后面（同一段脚本里更靠后），声明晚了首帧会读到 undefined。 */
+var MIR={on:false};
 var bufX=new Float32Array(MAXN),bufY=new Float32Array(MAXN),bufC=new Int32Array(MAXN);
 
 function smooth(u){return u*u*(3-2*u);}
@@ -2803,8 +2810,32 @@ var aRsum=new Float64Array(ANW), aRn=new Int32Array(ANW), aRavg=[];
 /* cmap 分段描边的暂存（每根丝最多 m ≤ MAXN 个点；wT = 沿丝长的归一化位置）
    wBk[i]=1 表示"这里断了一截"（DECAY 整段丢弃），描边时要 moveTo 重开 subpath */
 var wX=new Float32Array(MAXN), wY=new Float32Array(MAXN), wBk=new Uint8Array(MAXN), wT=new Float32Array(MAXN);
+/* 镜像并排模式下画布的**可用区**（右侧参数浮窗占位，见 mirArea）。W 是画布 CSS 宽。 */
+var _mirArea={l:0, r:0, n:0};
+function mirArea(){
+  if((_mirArea.n++ % 15)===0 || !_mirArea.r){
+    var r=W, l=0, pn=document.getElementById('panel'), wr=document.getElementById('wres');
+    var cb=cv.getBoundingClientRect();
+    if(pn){
+      var pb=pn.getBoundingClientRect(), left=pb.left-cb.left;
+      /* 只有"浮窗确实开在右半"才扣它；折叠成小条时不该扣 */
+      if(pb.width>120 && left>W*0.45) r=Math.min(r, left-10);
+    }
+    if(wr){
+      var wb=wr.getBoundingClientRect();
+      /* 左侧「曲速引擎·结果」浮窗同理：宽过 120 才当成占位，收起时（宽度 0）自动忽略 */
+      if(wb.width>120) l=Math.max(l, wb.right-cb.left+10);
+    }
+    _mirArea.l=l; _mirArea.r=Math.max(l+320, r);
+  }
+  return _mirArea;
+}
 function drawAnu(){
   var tp=mkTP(), N=Math.max(1,ANU.nWire|0), maj=Math.min(N,ANU.nMaj|0);
+  /* 镜像并排的**可用区** [_aL,_aR]：右侧参数浮窗会压住画布右缘（~364px），
+     不扣掉的话右幅正好被它盖住。每 15 帧量一次 —— getBoundingClientRect 会触发布局，不能每帧调。 */
+  var _mir=MIR.on, _ma=_mir?mirArea():null,
+      _aL=_mir?_ma.l:0, _aR=_mir?_ma.r:W, _mid=(_aL+_aR)*0.5;
   /* 湮灭：丝一根根熄灭（10→1），配合下面的整段断裂与 alpha 衰减 */
   if(DECAY>0){
     N=Math.max(1,Math.round((ANU.nWire|0)*(1-0.82*DECAY)));
@@ -2853,13 +2884,21 @@ function drawAnu(){
       }
     }
     var fw=Math.max(fx1-fx0,1e-3), fh=Math.max(fy1-fy0,1e-3);
-    var kt=Math.min(0.86*W/fw, 0.80*H/fh);
+    /* 镜像并排时每幅只占**半个可用区** ⇒ 横向预算按半个算（否则两幅都会各被裁掉）。
+       并排时把留白系数放宽一点（0.86/0.80 → 0.94/0.86）：两幅本来就小，
+       再按单幅的留白算会小得看不清；中缝靠 clip 兜住，不会溢出到对面。 */
+    var kt=Math.min((_mir?0.94:0.86)*(_mir?(_aR-_aL)*0.5:W)/fw, (_mir?0.86:0.80)*H/fh);
     if(kt>900)kt=900; if(kt<5)kt=5;
     var xt=(fx0+fx1)/2, yt=(fy0+fy1)/2;
     if(AFITK===null){AFITK=kt;AFITX=xt;AFITY=yt;}
     else{AFITK+=(kt-AFITK)*FITLERP;AFITX+=(xt-AFITX)*FITLERP;AFITY+=(yt-AFITY)*FITLERP;}
   }
-  var K=(AFITK===null?1:AFITK)*P.S*VIEW.z, cx=W/2+VIEW.ox, cy=H/2+VIEW.oy, nPt=0;
+  var K=(AFITK===null?1:AFITK)*P.S*VIEW.z,
+      cx=(_mir? _aL+(_aR-_aL)*0.25 : W/2)+VIEW.ox, cy=H/2+VIEW.oy, nPt=0;
+  /* 镜像并排：正片只画在**中缝左侧**，右侧最后用一次 drawImage 镜像过去。
+     所以绘制期先把画布裁到 [0,_mid] —— 否则放大(VIEW.z>1)时内容会溢到右半，
+     而镜像副本的透明像素盖不住它，接缝上会留一条"没镜像"的残影。 */
+  if(_mir){ ctx.save(); ctx.beginPath(); ctx.rect(0,0,_mid,H); ctx.clip(); }
   ctx.globalCompositeOperation='lighter';
   ctx.lineCap='round'; ctx.lineJoin='round';
   var lwT=2.2*P.LW, lwN=0.9*P.LW;
@@ -2933,6 +2972,43 @@ function drawAnu(){
   for(w=0;w<ANW;w++) aRavg[w]= aRn[w] ? Math.sqrt(aRsum[w]/aRn[w]) : 0;
   anuDrawN=nPt;
   drawParticles(mkTP(), K, cx, cy, (AFITK===null?0:AFITX), (AFITK===null?0:AFITY));
+  if(_mir){
+    ctx.restore();                        /* 解除中缝左侧裁剪 */
+    /* 一次 drawImage 把中缝左侧整幅镜像到右侧：丝线 / 蛋壳 / 粒子 / 膜一起镜像。
+       为什么不去重画第二遍丝线：① 省一半投影开销；② DECAY 的断点用 Math.random()，
+       重画会有另一套断点，两幅就不是严格镜像了；③ 粒子/膜在独立离屏层，单独镜像很麻烦。
+       ⚠ 源矩形用**设备像素**（×DPR），目标矩形才用 CSS px —— 画布本身是 DPR 缩放的。 */
+    ctx.save();
+    ctx.beginPath(); ctx.rect(_mid,0,W-_mid,H); ctx.clip();
+    ctx.translate(_mid*2,0); ctx.scale(-1,1);      /* x → 2·mid − x ⇒ 严格镜像 */
+    ctx.drawImage(cv, 0,0, _mid*DPR, H*DPR, 0,0, _mid,H);
+    ctx.restore();
+    /* 中缝 + 两侧标题：**画在镜像之后**，所以标题文字本身不会被反过来 */
+    ctx.save();
+    ctx.globalCompositeOperation='source-over';
+    ctx.strokeStyle='rgba(127,216,255,0.20)'; ctx.lineWidth=1; ctx.setLineDash([5,6]);
+    ctx.beginPath(); ctx.moveTo(_mid,0); ctx.lineTo(_mid,H); ctx.stroke(); ctx.setLineDash([]);
+    ctx.font='11px system-ui,-apple-system,"Microsoft YaHei",sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    /* 两侧标题放在**底部提示行 #viewhint 的上方**。
+       原来写在 H-8：那里正好被 #viewhint（占 H-26..H-12）压住，两行字叠在一起，
+       实测截图里完全糊成一片（见 _z_bottom.png）。这里抬到 H-40，留 12px 间隙。 */
+    var _labY=H-40,
+        _labTxt=['原方向　dθ/dt = +d', '镜像　θ → −θ（左手螺旋）'],
+        _labX=[_aL+(_aR-_aL)*0.25, _aL+(_aR-_aL)*0.75];
+    for(var _li=0;_li<2;_li++){
+      var _s=_labTxt[_li], _lx=_labX[_li], _tw=ctx.measureText(_s).width;
+      var _pw=_tw+16, _ph=18;
+      ctx.fillStyle='rgba(4,8,14,0.62)';           /* 药丸底：丝/蛋壳暴涨到这儿时字也读得清 */
+      ctx.beginPath();
+      if(ctx.roundRect){ ctx.roundRect(_lx-_pw/2, _labY-_ph/2, _pw, _ph, 9); }
+      else { ctx.rect(_lx-_pw/2, _labY-_ph/2, _pw, _ph); }
+      ctx.fill();
+      ctx.fillStyle=(_li?'rgba(127,216,255,0.78)':'rgba(255,216,122,0.78)');
+      ctx.fillText(_s, _lx, _labY+0.5);
+    }
+    ctx.restore();
+  }
   drawProfile();
   phyDraw();
 }
@@ -4024,6 +4100,31 @@ function setOneWire(on){
   var b=document.getElementById('onewire');
   if(b) b.onclick=function(){ setOneWire(!ONE.on); };
 })();
+
+/* ---------- 镜像并排（老师 2026-10-20：「单丝右边加一个镜像…并排左右对齐显示」）----------
+ * 为什么需要：Aizawa 的方位角速度 dθ/dt ≡ d **恒为正**（见 SO(2) 定理），
+ *   所以一页只能画出一条手性的螺旋。把 θ 取反就得到左手螺旋（几何镜像），
+ *   再把两幅并排放在同一取景 / 同一相位 / 同一呼吸下 —— 这才是"两种旋转方式同屏对比"。
+ * 实现（不是第二条渲染管线，只是取景 + 一次合成）：
+ *   ① 取景横向预算减半（0.86·W → 0.86·W/2），cx 挪到 W/4，正片只画左半区；
+ *   ② 右半区用一次 drawImage 把左半区整幅镜像过去（丝线 / 蛋壳 / 粒子 / 膜一起镜像）；
+ *   ③ 中缝虚线 + 两侧标注写在镜像**之后**，所以字不会被反过来。
+ * 代价：每幅只有单幅时的一半大小 —— 并排的固有代价，关掉即恢复。 */
+function mirSync(){
+  var b=document.getElementById('mirror'); if(b) b.className='gh'+(MIR.on?' on':'');
+}
+function setMirror(on){
+  on=!!on; if(on===MIR.on){ return; }
+  MIR.on=on; AFITK=null;                     /* 立刻重取景，不做渐变（否则会先挤一下再放开） */
+  mirSync();
+  if(ANU.on&&!ANU.rigid)aWarm();
+  anuHint();
+}
+(function(){
+  var b=document.getElementById('mirror');
+  if(b) b.onclick=function(){ setMirror(!MIR.on); };
+  mirSync();
+})();
 /* 丝线配色下拉：CMAP.mode 一改，下一帧 drawAnu 立刻换色（无需重启动画） */
 (function(){
   var s=document.getElementById('cmapSel'), v=document.getElementById('vCM');
@@ -4563,6 +4664,16 @@ window.__az={
     if(rigid!==undefined)setAnuRigid(rigid);
     else{ AFITK=null; if(ANU.on&&!ANU.rigid)aWarm(); anuHint(); }
   },
+  /* 镜像并排（2026-10-20）：开关 + 读数 + 两半区的屏幕变换，供探针断言"左右严格镜像" */
+  MIR:MIR,
+  setMirror:function(on){ setMirror(on); return MIR.on; },
+  mirrorState:function(){
+    var K=(AFITK===null?1:AFITK)*P.S*VIEW.z;
+    var ma=mirArea(), aL=MIR.on?ma.l:0, aR=MIR.on?ma.r:W, mid=(aL+aR)*0.5;
+    var cxL=(MIR.on? aL+(aR-aL)*0.25 : W/2)+VIEW.ox;
+    return {on:MIR.on, K:K, aL:aL, aR:aR, mid:mid, cxL:cxL, cxR:2*mid-cxL,
+            cy:H/2+VIEW.oy, W:W, H:H, DPR:DPR, ox:VIEW.ox, zoom:VIEW.z};
+  },
   setWire:function(n,maj){
     ANU.nWire=Math.max(1,Math.min(10,n|0));
     if(maj!==undefined)ANU.nMaj=Math.max(0,Math.min(10,maj|0));
@@ -4628,8 +4739,12 @@ window.__az={
     var zz=eggZof(zeta), o=[0,0,0,0];
     eggTr(tp,rr*Math.cos(th),rr*Math.sin(th),zz,o);
     var fk=(AFITK===null?1:AFITK), K=fk*P.S*VIEW.z;
-    return [W/2+VIEW.ox+(o[0]-(AFITK===null?0:AFITX))*K,
-            H/2+VIEW.oy+(o[1]-(AFITK===null?0:AFITY))*K, rr, zz];
+    /* 镜像并排时正片画在中缝左侧的**四分之一处**，不是 W/2 —— 探针必须跟着搬，
+       否则 mirror 模式下这里报的屏幕坐标整体偏一整幅，核对"屏上半径=显示半径"会假失败。 */
+    var ma=MIR.on?mirArea():null, aL=MIR.on?ma.l:0, aR=MIR.on?ma.r:W;
+    var cx=(MIR.on? aL+(aR-aL)*0.25 : W/2)+VIEW.ox, cy=H/2+VIEW.oy;
+    return [cx+(o[0]-(AFITK===null?0:AFITX))*K,
+            cy+(o[1]-(AFITK===null?0:AFITY))*K, rr, zz];
   },
 
   /* ---------- 空气粒子（示踪散点）探针接口 ---------- */
