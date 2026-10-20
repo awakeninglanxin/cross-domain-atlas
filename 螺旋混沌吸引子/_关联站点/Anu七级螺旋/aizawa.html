@@ -22,6 +22,31 @@ canvas{display:block;width:100%;height:100%}
   background:rgba(5,8,18,.62);border:1px solid #1e2740;border-radius:8px;pointer-events:none}
 #proft{position:absolute;left:16px;bottom:184px;font-size:9.5px;color:#5d6f92;
   pointer-events:none;letter-spacing:1px}
+/* ===== 叶序盘（Phyllotaxis）· 与 #prof 同尺寸并列 =====
+   映射：3D 绕轴一圈 → 盘上一颗点；点的角度 = 该圈的真实方位角 θ；
+        半径 = √n（Vogel 叶序律）；颜色 = 该圈的 z；整盘随呼吸 R 胀缩。 */
+#phy{position:fixed;left:152px;bottom:56px;width:132px;height:184px;z-index:12;
+  background:rgba(5,8,18,.62);border:1px solid #1e2740;border-radius:8px;
+  touch-action:none;overflow:hidden}
+/* 不给 width/height 加 transition：页面在后台或 headless 时过渡会被暂停，
+   收起后宽度会卡在 132px（踩过）。尺寸瞬时切换反而更利落。 */
+#phy.drag{transition:none;border-color:#2f7fae;box-shadow:0 6px 20px rgba(0,0,0,.6)}
+#phyCv{position:absolute;left:0;top:0;width:132px;height:184px;display:block}
+#phy .ph{position:absolute;left:0;top:0;right:0;height:15px;display:flex;align-items:center;
+  gap:3px;padding:0 4px;font-size:8.5px;color:#5d6f92;letter-spacing:.4px;
+  cursor:grab;user-select:none;-webkit-user-select:none;
+  background:linear-gradient(rgba(5,8,18,.85),rgba(5,8,18,0))}
+#phy .ph .sp{flex:1}
+#phy .ph .mn{font:inherit;font-size:9px;line-height:1;padding:1px 4px;border-radius:4px;
+  background:transparent;border:1px solid #232c46;color:#8092b5;cursor:pointer}
+#phy .ph .mn:hover{border-color:#7fd8ff;color:#7fd8ff}
+#phy.min{width:26px;height:26px;border-radius:7px}
+#phy.min #phyCv{display:none}
+#phy.min .ph{height:26px;background:none;justify-content:center;padding:0;font-size:13px}
+#phy.min .ph .tt,#phy.min .ph .mn{display:none}
+#phy.min .ph .ico{display:block}
+#phy .ph .ico{display:none}
+@media (max-width:760px){#phy{left:12px;bottom:206px}}
 #badge{position:absolute;right:12px;top:12px;font-size:11px;padding:5px 11px;
   border-radius:20px;background:rgba(0,0,0,.45);border:1px solid #26304d;
   color:#7fd8ff;pointer-events:none;letter-spacing:.5px}
@@ -470,6 +495,11 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
     <div id="badge">AIZAWA</div>
     <canvas id="prof" width="132" height="184"></canvas>
     <div id="proft">剖面</div>
+    <!-- 叶序盘：3D 每绕一圈 → 一颗点；角度=真实 θ，半径=√n（Vogel），颜色=z -->
+    <div id="phy">
+      <canvas id="phyCv" width="132" height="184"></canvas>
+      <div class="ph" id="phyH"><span class="ico">🌻</span><span class="tt">叶序盘</span><span class="sp"></span><button class="mn" id="phyMn" title="收起 / 展开">−</button></div>
+    </div>
     <div id="viewhint"><b>拖动 3D 画面</b> 转视角 · 横拖=方位 / 竖拖=俯仰 · <b>滚轮</b> 缩放（对准哪放大哪） · <b>中键拖动</b> 平移 · 双击复位</div>
     <!-- 曲速引擎「计算结果」浮窗（左侧 · 可收起 · 可拖动）：参数留在右侧参数卡，
          按参数算出来的结果（几何映射 / θ / ρ_E / E / P_z / γ）搬到这个独立窗口。 -->
@@ -533,6 +563,7 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
           <button class="gh" id="rpb3" data-rp="3.25" data-rd="7">3.25 配 d=7 梯度最强</button>
           <button class="gh" id="rpb4" data-rp="1.82" data-rd="3.5">1.82 极保守(配 d=3.5)</button>
           <button class="gh" id="rpb5" data-rp="3" data-rd="3.5">3.00 原值(配 d=3.5)</button>
+          <button class="gh" id="rpb6" data-rp="2.5" data-rd="5">2.50 配 d=5（R=0.5d）</button>
           <button class="gh" id="btnRecR">0.9×安全线(按当前 d)</button>
         </div>
         <div class="hint" id="hR4"></div>
@@ -566,7 +597,11 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
         <button class="gh" data-d="7">7 梯度最强★</button>
         <button class="gh" data-d="8">8 锁相失效</button>
         <button class="gh" data-d="10.618">10.618 大 d 黄金</button>
+        <button class="gh" id="btnDSpec" style="border-color:#2f7fae;color:#bfe9ff">📊 d 分类谱（实测）</button>
+        <button class="gh" id="btnDMode" style="border-color:#7a5cff;color:#c9bcff">⚡ 强制重建</button>
+        <button class="gh" id="btnDScan" style="border-color:#7a5cff;color:#c9bcff">⚡ 一键扫描 2.5→10</button>
       </div>
+      <div class="hint" id="hDS"></div>
     </div>
 
     <div class="grp">
@@ -933,6 +968,7 @@ function push(x,y,z){tx[head]=x;ty[head]=y;tz[head]=z;head=(head+1)%MAXN;if(coun
 function reset(){count=0;head=0;st=[0.1,0,0];zlo=-0.4;zhi=1.85;zinit=false;warm();
   if(ANU.on){ AFITK=null; aWarm(); }
   if(typeof PART!=='undefined'&&PART.on) partReset(); }   /* Anu 十丝：连 10 丝一起重播 */
+  phyReset();
 function warm(){
   // 丢弃瞬态，落到吸引子上
   for(var i=0;i<2500;i++)step();
@@ -1356,6 +1392,262 @@ var PZlo=PZ[0], PZhi=PZ[PZ.length-1], PZspan=PZhi-PZlo, PZc=(PZlo+PZhi)/2, PHa=P
 /* 实时剖面小图：外围 + 内围，等轴 */
 var pcv=document.getElementById('prof');
 var pcx=(pcv&&pcv.getContext)?pcv.getContext('2d'):null;
+/* ==========================================================================
+ * 叶序盘（Phyllotaxis）—— 与 3D 螺旋逐圈同步
+ * --------------------------------------------------------------------------
+ * 映射（唯一接口是"方位角"，不是另编一套参数）：
+ *   ① 3D 轨迹每绕轴 +2π  ⇒  盘上加一颗点，点角度 = 该圈真实 θ
+ *   ② 点半径 = R0·√(i/N)  ⇒  Vogel 叶序律，越晚出现的越靠外
+ *   ③ 点颜色按该圈的 z    ⇒ 冷蓝(底) → 青(中) → 暖黄(顶)
+ *   ④ 整盘半径随呼吸 R 胀缩（0.84+0.16·R/Rmax）
+ * 于是：3D 里"几条带" ⇒ 盘上"几条辐条"；3D 里 σ 抖动 ⇒ 盘上毛刺。
+ * 理想叶序是每圈固定错开 137.5°，本页实测见 d 分类谱。
+ * ========================================================================== */
+var PHY_N = 180;
+var phyPts = [], phyPrevZ = null, phyPrevTh = 0, phyLastOff = null;
+var phyAccR = 0, phyAccN = 0, phyArmed = false;   /* 一圈内 r 的均值，用来着色（z 在截面上恒定，不能用来分色）*/
+var phyCvEl = null, phyCtx = null, phyMin = false, phyDragged = false;
+
+function phyInit(){
+  phyCvEl = document.getElementById('phyCv');
+  if(!phyCvEl) return;
+  phyCtx = phyCvEl.getContext('2d');
+  var panel = document.getElementById('phy');
+  var head  = document.getElementById('phyH');
+  var mn    = document.getElementById('phyMn');
+  var KEYP = 'aizawa_phy_pos', KEYM = 'aizawa_phy_min';
+
+  /* ---- 默认贴在 #prof 右边；用户拖过就不再自动摆 ---- */
+  function place(){
+    if(phyDragged) return;
+    var pr = document.getElementById('prof');
+    if(!pr) return;
+    var r = pr.getBoundingClientRect();
+    /* 只跟 #prof 走（老师要"并列"）：左侧那两个浮窗（曲速演算 / 自动演示字幕）
+       会把这一带盖住，那是临时状态——演算窗可收、字幕 68 s 后自己收。 */
+    panel.style.left = (r.right + 8) + 'px';
+    panel.style.top  = r.top + 'px';
+    panel.style.bottom = 'auto';
+  }
+  place();
+  setTimeout(place, 400); setTimeout(place, 1500);
+  addEventListener('resize', place);
+
+  try{
+    var sv = localStorage.getItem(KEYP);
+    if(sv){
+      var o = JSON.parse(sv);
+      /* 换到窄屏时旧位置可能整个飞到屏外 ⇒ 必须夹回视口 */
+      var L = Math.max(0, Math.min(Math.max(0, innerWidth - 138), o.l));
+      var T = Math.max(0, Math.min(Math.max(0, innerHeight - 192), o.t));
+      panel.style.left = L + 'px'; panel.style.top = T + 'px';
+      panel.style.bottom = 'auto'; phyDragged = true;
+    }
+    if(localStorage.getItem(KEYM) === '1') setMin(true);
+  }catch(e){}
+
+  /* ---- 拖动（抓标题栏；只在自己这个面板上生效，不抢 3D 视角） ---- */
+  var dragging = false, ox = 0, oy = 0;
+  head.addEventListener('pointerdown', function(e){
+    if(e.target === mn) return;
+    if(phyMin) return;
+    dragging = true; phyDragged = true;
+    var r = panel.getBoundingClientRect();
+    ox = e.clientX - r.left; oy = e.clientY - r.top;
+    panel.classList.add('drag');
+    panel.style.left = r.left + 'px'; panel.style.top = r.top + 'px'; panel.style.bottom = 'auto';
+    head.style.cursor = 'grabbing';
+    e.preventDefault(); e.stopPropagation();
+  });
+  addEventListener('pointermove', function(e){
+    if(!dragging) return;
+    var l = Math.max(0, Math.min(innerWidth - panel.offsetWidth, e.clientX - ox));
+    var t = Math.max(0, Math.min(innerHeight - panel.offsetHeight, e.clientY - oy));
+    panel.style.left = l + 'px'; panel.style.top = t + 'px';
+  });
+  addEventListener('pointerup', function(){
+    if(!dragging) return;
+    dragging = false; panel.classList.remove('drag'); head.style.cursor = 'grab';
+    try{ localStorage.setItem(KEYP, JSON.stringify({
+      l: Math.round(parseFloat(panel.style.left)), t: Math.round(parseFloat(panel.style.top)) })); }catch(e){}
+  });
+
+  /* ---- 收起 / 展开 ---- */
+  function setMin(v){
+    phyMin = !!v;
+    panel.classList.toggle('min', phyMin);
+    mn.textContent = phyMin ? '' : '−';
+    try{ localStorage.setItem(KEYM, phyMin ? '1' : '0'); }catch(e){}
+    if(!phyMin) phyDraw();
+  }
+  mn.onclick = function(e){ e.stopPropagation(); setMin(!phyMin); };
+  panel.addEventListener('dblclick', function(e){
+    if(e.target === mn) return;
+    setMin(!phyMin);
+  });
+  window.__phyTog = setMin;
+}
+
+function phyReset(){
+  /* 坑：本模块插在 reset() 之后，但 reset() 在初始化阶段就会被调用，
+     那时 var phyPts 还是 undefined（var 提升只提升声明、不提升赋值）⇒
+     不判空会直接 "Cannot set properties of undefined (setting 'length')"，
+     整个主脚本中断（__azDemo / __phy 全变 undefined）。 */
+  if(!phyPts) return;
+  phyPts.length = 0; phyPrevZ = null; phyPrevTh = 0; phyLastOff = null;
+  phyAccR = 0; phyAccN = 0; phyArmed = false;
+}
+
+/* 主循环每推进一步调用：只在 z 上升穿过 b 时加一颗点。
+   ⚠ 不能按"θ 转 2π"切点 —— 那样每圈结束的 θ 必然回到原位，测出来的错开角恒为 0。
+   错开角的定义是"一个 z 循环里 θ 多转的那部分"（Δφ = 360°·frac(N)），
+   所以必须按 z 周期切。 */
+function phyTrack(x, y, z){
+  if(!phyPts) return;
+  phyAccR += Math.sqrt(x*x + y*y); phyAccN++;
+  var th = Math.atan2(y, x);
+  /* 迟滞：z 必须先跌破 b−0.15 才允许记下一次。z 在截面上会来回抖，
+     不加迟滞时一个慢循环可能被记两次（第二点角度几乎不变 ⇒ o≈0），
+     d=2.5 的 180° 会被这些 0 拉成 121°（踩过）。 */
+  if(z < P.b - 0.15) phyArmed = true;
+  if(phyArmed && phyPrevZ !== null && phyPrevZ < P.b && z >= P.b){
+    /* 穿越在步内，直接取步末的 θ 会带 d·DT ≈ 7° 的量化误差（d=6 实测 σ 被抬到 12°）。
+       按 z 的线性比例把 θ 也插回去。 */
+    var f = (z !== phyPrevZ) ? (P.b - phyPrevZ)/(z - phyPrevZ) : 1;
+    var dd = th - phyPrevTh;
+    if(dd >  Math.PI) dd -= 2*Math.PI;
+    if(dd < -Math.PI) dd += 2*Math.PI;
+    phyAdd(phyPrevTh + f*dd, z, phyAccN ? phyAccR/phyAccN : 0);
+    phyAccR = 0; phyAccN = 0; phyArmed = false; phyArmed = false;
+  }
+  phyPrevTh = th;
+  phyPrevZ  = z;
+}
+function phyAdd(th, z, rr){
+  if(phyPts.length >= PHY_N) return;
+  /* 插值后的角度可能略微越出 (-π,π]（穿越点恰在 ±π 附近时）⇒ 先归一。
+     不归一的话，错开角会被算到 2π 附近，d=2.5 的 180° 会变成 120°（踩过）。 */
+  th = th - 2*Math.PI * Math.round(th / (2*Math.PI));
+  var off = 0;
+  if(phyLastOff !== null){
+    off = th - phyLastOff;
+    if(off < 0) off += 2*Math.PI;      /* 统一到 [0,2π)：θ 单调增，错开角不带符号 */
+  }
+  phyLastOff = th;
+  phyPts.push({ a: th, z: z, o: off, r: rr || 0 });
+}
+
+/* 圆统计：合矢量长度 R ⇒ 集中度；σ_c ≡ √(−2 ln R) */
+function phyCirc(){
+  /* σ 用**逐圈错开角 o 的普通标准差**，口径与「d 分类谱」里的 σ 完全一致
+     （d=6 → 0°，d=2.5 → 7°，d=4.618 → 68°）。R 是方位角合矢量长度，看辐条聚不聚。 */
+  var n = phyPts.length;
+  if(n < 4) return { n: n, R: 1, sig: 0, off: 0 };
+  /* 换 d 之后系统要几个循环才落到新吸引子上（实测 d=6 时头 4 个点能偏 180°），
+     这几个瞬态点会把 σ 从 0.1° 抬到 9.5° ⇒ 统计时跳过最内圈那几个。
+     盘上仍然画它们（半径最小，就在中心，也如实反映"还没稳"）。 */
+  var skip = Math.min(6, Math.floor(n/4));
+  var sx = 0, sy = 0, ox = 0, oy = 0, cnt = 0;
+  for(var i = skip; i < n; i++){
+    sx += Math.cos(phyPts[i].a); sy += Math.sin(phyPts[i].a);
+    if(i > skip){ ox += Math.cos(phyPts[i].o); oy += Math.sin(phyPts[i].o); cnt++; }
+  }
+  var m = n - skip;
+  var R = Math.sqrt(sx*sx + sy*sy) / m;
+  /* 角度是圆量：必须用圆统计。d=6 时错开角在 0° 附近左右摆，
+     按普通 std 会算出 0° 与 359.8° 两极 ⇒ 假 σ=132°（踩过）。 */
+  var Ro = cnt ? Math.sqrt(ox*ox + oy*oy) / cnt : 1;
+  if(Ro > 0.999999) Ro = 0.999999;
+  var sig = Math.sqrt(-2 * Math.log(Ro)) * 180/Math.PI;
+  var off = cnt ? (Math.atan2(oy, ox) * 180/Math.PI + 360) % 360 : 0;
+  return { n: n, R: R, sig: sig, off: off };
+}
+
+function phyCol(t){
+  t = t < 0 ? 0 : (t > 1 ? 1 : t);
+  var r, g, b;
+  if(t < 0.5){ var u = t*2; r = 47 + (0-47)*u; g = 92 + (194-92)*u; b = 158 + (255-158)*u; }
+  else { var v = (t-0.5)*2; r = 0 + 255*v; g = 194 + (216-194)*v; b = 255 + (74-255)*v; }
+  return 'rgb(' + (r|0) + ',' + (g|0) + ',' + (b|0) + ')';
+}
+
+function phyDraw(){
+  if(!phyCtx || phyMin) return;
+  var W = 132, H = 184, cx = 66, cy = 101, R0 = 55;
+  var g = phyCtx;
+  g.clearRect(0, 0, W, H);
+  var br = 0.84 + 0.16 * (P.R / Math.max(0.01, P.Rmax));   /* 呼吸联动 */
+  var Rr = R0 * br;
+
+  /* 同心环（3 圈，仅作尺度参照） */
+  g.strokeStyle = 'rgba(40,56,86,.55)'; g.lineWidth = 1;
+  for(var k = 1; k <= 3; k++){
+    g.beginPath(); g.arc(cx, cy, Rr*k/3, 0, 6.2832); g.stroke();
+  }
+
+  var st = phyCirc();
+
+  /* 点：i=0 在最内，i=N-1 在最外 */
+  for(var i = 0; i < phyPts.length; i++){
+    var p = phyPts[i];
+    var rr = Rr * Math.sqrt((i + 0.7) / PHY_N);
+    var px = cx + rr * Math.cos(p.a);
+    var py = cy + rr * Math.sin(p.a);
+    /* 颜色 = 该圈的涡环半径 r（0.10→1.60 映射 冷蓝→暖黄） */
+    var tz = (p.r - 0.35) / 0.75;
+    g.fillStyle = phyCol(tz);
+    g.globalAlpha = 0.55 + 0.45 * (i / Math.max(1, PHY_N));
+    g.beginPath(); g.arc(px, py, 1.0 + 0.55*(i/PHY_N), 0, 6.2832); g.fill();
+  }
+  g.globalAlpha = 1;
+
+  /* 最新一颗点点亮 */
+  if(phyPts.length){
+    var q = phyPts[phyPts.length-1], qr = Rr*Math.sqrt((phyPts.length-1+0.7)/PHY_N);
+    g.strokeStyle = '#fff'; g.lineWidth = 1;
+    g.beginPath();
+    g.arc(cx + qr*Math.cos(q.a), cy + qr*Math.sin(q.a), 2.6, 0, 6.2832);
+    g.stroke();
+  }
+
+  /* 文字 */
+  g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+  g.fillStyle = '#5d6f92'; g.font = '8px Consolas,monospace';
+  g.fillText('n=' + phyPts.length + '/' + PHY_N + '   d=' + P.d.toFixed(2), 5, 26);
+  g.font = 'bold 9px Consolas,monospace';
+  g.fillStyle = st.sig < 8 ? '#3cffbe' : (st.sig < 30 ? '#ffd84a' : '#c39bff');
+  /* 取 ≤180° 的锐角（与 d 分类谱同口径）：否则 359.5° 会显示成 360°，180.1° 也会显示成 360° */
+  var oShow = Math.min(st.off, 360 - st.off);
+  g.fillText('Δφ=' + oShow.toFixed(0) + '°  σ=' + st.sig.toFixed(0) + '°', 5, 178);
+}
+
+(function(){
+  var boot = 0;
+  (function ready(){
+    if(document.getElementById('phyCv')){ phyInit(); phyDraw(); return; }
+    if(++boot > 100) return;
+    setTimeout(ready, 60);
+  })();
+})();
+
+window.__phy = {
+  n: function(){ return phyPts.length; },
+  circ: phyCirc,
+  reset: phyReset,
+  min: function(){ return phyMin; },
+  toggle: function(v){ if(window.__phyTog) window.__phyTog(v); },
+  pts: function(){ return phyPts.slice(0, 400); },
+  /* 探针/离线复算用：按真实积分推进 n 步（不是伪造数据，只是加速时间） */
+  advance: function(n, rec){
+    n = Math.min(200000, n|0);
+    for(var i = 0; i < n; i++){
+      step(); push(st[0], st[1], st[2]);
+      if(rec !== false) phyTrack(st[0], st[1], st[2]);
+    }
+    phyDraw();
+  }
+};
+
 var showProf=true;
 function drawProfile(){
   if(!pcx||!showProf)return;
@@ -1514,6 +1806,7 @@ function draw(){
   ctx.globalCompositeOperation='source-over';
   drawParticles(mkTP(), K, cx, cy, FITX, FITY);
   drawProfile();
+  phyDraw();
 }
 
 /* ==========================================================================
@@ -1797,6 +2090,7 @@ function drawAnu(){
   anuDrawN=nPt;
   drawParticles(mkTP(), K, cx, cy, (AFITK===null?0:AFITX), (AFITK===null?0:AFITY));
   drawProfile();
+  phyDraw();
 }
 var anuDrawN=0;
 
@@ -1817,7 +2111,7 @@ function frame(now){
     // 按真实时间推进模拟时间，保证帧率无关
     var nsteps=Math.max(1,Math.round(dts*SIMRATE/DT));
     if(nsteps>400)nsteps=400;
-    for(var i=0;i<nsteps;i++){step();push(st[0],st[1],st[2]);}
+    for(var i=0;i<nsteps;i++){step();push(st[0],st[1],st[2]);phyTrack(st[0],st[1],st[2]);}
     /* Anu 十丝 · 独立积分：主轨道即 0 号丝，另 1..9 号丝并行推进 */
     if(ANU.on&&!ANU.rigid){ aStepAll(nsteps); aPushAll(); }
     /* 空气粒子：同一份 deriv / RK4 / DT，但**步进数另乘 spd**（默认 ×0.30）——
@@ -1838,6 +2132,10 @@ function frame(now){
   document.getElementById('hRM').textContent=P.Rmax.toFixed(2);
   document.getElementById('hN').textContent=P.d.toFixed(2);
   var fo=(P.d-Math.floor(P.d))*360; if(fo>180)fo=360-fo;
+  /* 标称 frac(d)·360° 只在 T=2π 时成立（基本只有整数 d）。盘上有足够点就用实测值，
+     否则 HUD 说 187.5°、左边叶序盘说 172°，同一个量两个数（自相矛盾）。 */
+  var _pc=(typeof phyCirc==='function')?phyCirc():null;
+  if(_pc && _pc.n>=8) fo=Math.min(_pc.off,360-_pc.off);
   document.getElementById('hO').textContent=fo.toFixed(1)+'°';
   var sw=P.R/P.d;
   var hs=document.getElementById('hS');
@@ -1922,6 +2220,130 @@ function setSlider(id,v){
 }
 function setR(v){ setSlider('sR',Math.max(1,Math.min(12,v)).toFixed(2)); }
 function setD(v){ setSlider('sD',Math.max(2,Math.min(12,v)).toFixed(3)); }
+
+/* ============ 切 d 的两种响应模式（可切换） ============
+ * 旧轨迹的环形缓冲里有 8000 个点，主循环每帧只推进 6 步 ⇒ 新 d 的形状
+ * 要 8000/6 ≈ 1330 帧 ≈ 22 秒 才能把整条轨迹完全覆盖掉。
+ * 这 22 秒里画面几乎不动，看着像"点了没反应"。
+ *
+ *   force  ⚡ 强制重建：reset() 清缓冲 + warm() 一次推 16400 步 ⇒ 几十毫秒立刻换形
+ *                     （同一初值 ⇒ 同 d 每次结果完全可复现）
+ *   buffer 🕐 自然缓冲：不动旧轨迹，让新形状按真实速度一点点铺开
+ *                     （好处：能看清"新形态如何吃掉旧形态"，且不打断正在看的细节；
+ *                       代价：约 22 s 才铺满，中途整段是两套形状叠在一起）
+ *
+ * 一键切换，选择记在 localStorage['aizawa_d_mode']；刷新后保持上次的模式。
+ */
+var DMODE_KEY = 'aizawa_d_mode';
+var dMode = 'force';
+try{
+  var _dm = localStorage.getItem(DMODE_KEY);
+  if(_dm === 'force' || _dm === 'buffer') dMode = _dm;
+}catch(e){}
+
+var dRebuildT = 0;      /* 上次强制重建耗时 ms */
+var dRebuildN = 0;      /* 强制重建累计次数（探针用） */
+var dBufAt    = 0;      /* 上次进入缓冲模式的时间戳 */
+
+function dModeName(){ return dMode === 'force' ? '强制重建' : '自然缓冲'; }
+
+function dStatus(){
+  var e = document.getElementById('hDS'); if(!e) return;
+  var last = dRebuildN
+    ? '<b style="color:#7fd8ff">' + dRebuildT.toFixed(0) + ' ms</b>（第 ' + dRebuildN + ' 次）'
+    : '—';
+  if(dMode === 'force'){
+    e.innerHTML = '模式：<b style="color:#c9bcff">⚡ 强制重建</b>　·　上次重建 ' + last +
+      '　·　切完立刻是新形状（不重建要等 ~22 s 才看得出变化）';
+  }else{
+    e.innerHTML = '模式：<b style="color:#e2d19a">🕐 自然缓冲</b>　·　旧轨迹保留，' +
+      '新形状按每帧 6 步 / 缓冲 8000 点 ≈ <b>22 s</b> 铺满　·　上次强制重建 ' + last +
+      '<br><span style="color:#8a7a4a">想立刻看形态差异就点这个按钮切回「强制重建」</span>';
+  }
+}
+
+function dModePaint(){
+  var b = document.getElementById('btnDMode');
+  if(b){
+    b.className = 'gh' + (dMode === 'force' ? ' on' : '');
+    b.style.borderColor = dMode === 'force' ? '#7a5cff' : '#8a7a4a';
+    b.style.color       = dMode === 'force' ? '#c9bcff' : '#e2d19a';
+    b.textContent = dMode === 'force' ? '⚡ 强制重建' : '🕐 自然缓冲';
+    b.title = dMode === 'force'
+      ? '切 d 后立刻 reset()+warm() 重算轨迹（几十 ms 换形）—— 再点一下改成「自然缓冲」'
+      : '切 d 后不动旧轨迹，等新形状自然覆盖缓冲（约 22 s）—— 再点一下改回「强制重建」';
+  }
+  dStatus();
+  window.__dMode = dMode;
+}
+
+function dModeToggle(){
+  dMode = (dMode === 'force') ? 'buffer' : 'force';
+  try{ localStorage.setItem(DMODE_KEY, dMode); }catch(e){}
+  dModePaint();
+  return dMode;
+}
+
+/* force===true 的调用（一键扫描）无视用户选的模式，始终重建：
+ * 否则扫描 850 ms/档、每档都停在缓冲期里，等于什么都没演出来。 */
+function rebuildForD(force){
+  var useForce = (force === true) || (dMode === 'force');
+  if(!useForce){
+    dBufAt = performance.now();
+    var eb = document.getElementById('hDS');
+    if(eb){
+      var last2 = dRebuildN ? dRebuildT.toFixed(0) + ' ms' : '—';
+      eb.innerHTML = '模式：<b style="color:#e2d19a">🕐 自然缓冲</b>　·　本档<b>不重建</b>：' +
+        '旧轨迹留着，看新形状一点点覆盖它（约 22 s 铺满）　·　上次强制重建 ' + last2;
+    }
+    return false;
+  }
+  if(typeof reset !== 'function') return false;
+  var t0 = performance.now();
+  reset();                 /* 内含 phyReset()：叶序盘也一起从头长 */
+  dRebuildT = performance.now() - t0;
+  dRebuildN++;
+  window.__dRebuildT = dRebuildT;
+  window.__dRebuildCount = dRebuildN;
+  window.__dMode = dMode;
+  dStatus();
+  return true;
+}
+
+/* 一键扫描：按顺序过一遍关键 d，每个停 0.85 s，直接把"形态随 d 变"演出来 */
+var DSCAN = [2.5, 3, 3.5, 4, 4.618, 5, 6, 7, 8, 10.618];
+var dScanT = null, dScanI = 0;
+function dScanToggle(){
+  var btn = document.getElementById('btnDScan');
+  if(dScanT){                                  /* 再点一次 = 停 */
+    clearTimeout(dScanT); dScanT = null;
+    if(btn){ btn.classList.remove('on'); btn.textContent = '⚡ 一键扫描 2.5→10'; }
+    return;
+  }
+  dScanI = 0;
+  if(btn){ btn.classList.add('on'); btn.textContent = '⏹ 停止扫描'; }
+  (function step(){
+    if(dScanI >= DSCAN.length){ dScanT = null; dScanToggle(); return; }
+    var v = DSCAN[dScanI++];
+    setD(v);
+    rebuildForD(true);   /* 扫描无视模式：每档必须立刻换形 */
+    markActive(DP_IDS, 'dp' + (DSCAN.indexOf(v) + 1));
+    v = null;
+    dScanT = setTimeout(step, 850);
+  })();
+}
+window.__dScan = { start: dScanToggle, list: function(){ return DSCAN.slice(); } };
+window.__dModeApi = {
+  get: function(){ return dMode; },
+  toggle: dModeToggle,
+  mode: function(v){
+    if(v !== 'force' && v !== 'buffer') return dMode;
+    if(v !== dMode){ dMode = v; try{ localStorage.setItem(DMODE_KEY, dMode); }catch(e){} dModePaint(); }
+    return dMode;
+  },
+  t: function(){ return dRebuildN ? dRebuildT : null; },
+  count: function(){ return dRebuildN; }
+};
 // 高亮选中的预设按钮
 function markActive(ids,onId){
   for(var k=0;k<ids.length;k++){
@@ -1929,7 +2351,7 @@ function markActive(ids,onId){
     el.className=(ids[k]===onId)?'gh on':'gh';
   }
 }
-var RP_IDS=['rpb1','rpb2','rpb3','rpb4','rpb5'];
+var RP_IDS=['rpb1','rpb2','rpb3','rpb4','rpb5','rpb6'];
 function bindRP(id){
   var b=document.getElementById(id); if(!b)return;
   b.onclick=function(){
@@ -1992,18 +2414,20 @@ var sD=bind('sD','vD','d',f2,function(){
   var lockzone = d<=7.2;
   var extra='';
   if(lockzone && (isInt||Math.abs(fr)<0.06)){
-    extra='<br><b style="color:#00c2ff">锁相区（d≲7）：N 被锁定为整数，T=2π ⇒ 闭合</b>　σ_θ='+
-      ({3:'3.3',5:'12.5',6:'1.2',7:'7.7'})[Math.round(d)]+'°（越小越闭合）';
+    extra='<br><b style="color:#00c2ff">锁相区（d≲7）：N 被锁定为整数，T=2π ⇒ 闭合</b>'+
+      '　σ 实测见左下<b>叶序盘</b>'+
+      '（旧版这里写死 3→3.3°/5→12.5°/6→1.2°/7→7.7°，与离线实测 d=5→1.9° 不符，已撤）';
   } else if(bigD){
     extra='<br><b style="color:#ff5b7f">锁相失效（d≳8）：N=0.963·d 不再是整数 ⇒ 永不闭合</b>'+
       '，σ_θ≈120°；与奇偶无关，是 T→6.049 造成的';
   }
   document.getElementById('hD').innerHTML=
-    '<b style="color:#7fd8ff">N = d = '+d.toFixed(3)+'</b> 圈 / 循环　·　'+
+    '<b style="color:#7fd8ff">N = d = '+d.toFixed(3)+'</b> 圈 / 循环<span style="color:#4e5c7a">（标称，假设 T=2π）</span>　·　'+
     '每循环错开 <b style="color:'+(golden?'#ffd84a':'#7fd8ff')+'">'+
     (fr*360>180?(360-fr*360):fr*360).toFixed(1)+'°</b>　·　'+tag+ extra +
     '<br><span style="color:#4e5c7a">柱坐标下 dr/dt=(z−b)r、dθ/dt=d、ż 不含 d ⇒ d 只改绕速不改 (r,z) 投影；'+
     '标准参数下 z 循环周期 T≈2π ⇒ N=d，故 frac(d) 就是每循环错开的比例</span>';
+  phyReset();
   rHint();
 });
 bind('sS','vS','S',f2);
@@ -2219,6 +2643,7 @@ for(var i=0;i<ps.length;i++){
     var rv=parseFloat(el.getAttribute('data-d'));
     if(!isFinite(rv))return;
     setD(rv);
+    rebuildForD();
     markActive(DP_IDS,'');
     var h=document.getElementById('hD'); if(h) h.innerHTML=h.innerHTML;
   };
@@ -2279,6 +2704,20 @@ function clearOnManual(id, ids){
 }
 clearOnManual('sR',RP_IDS);
 clearOnManual('sD',DP_IDS);
+/* 拖滑块时不能每帧重建（会卡死），松手（change）再重建一次 */
+(function(){
+  var el = document.getElementById('sD');
+  if(el) el.addEventListener('change', function(){ rebuildForD(); });
+})();
+(function(){
+  var b = document.getElementById('btnDScan');
+  if(b) b.onclick = dScanToggle;
+})();
+(function(){
+  var b = document.getElementById('btnDMode');
+  if(b) b.onclick = dModeToggle;
+  dModePaint();
+})();
 clearOnManual('sL',SH_IDS);
 clearOnManual('sG',SH_IDS);
 clearOnManual('sT',SH_IDS);
@@ -3398,6 +3837,57 @@ requestAnimationFrame(frame);
     animation:azpl 1.05s ease-in-out 3}
   @keyframes azpl{0%,100%{background:transparent}50%{background:rgba(255,216,74,.16)}}
   @media (max-width:760px){#azDemo .adk{display:none}}
+/* ===== d 三类落点 · 实测图谱（浮层） =====
+   口径：本页默认参数组（f=0.1 / b=0.7 / e=0.25 / c=0.6 / a=0.95），RK4 DT=0.02。
+   全部数字由 _check/classify_d.py + scan_d.py 离线实测，非文案推断。 */
+#dSpec{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;
+  background:rgba(3,5,12,.86);backdrop-filter:blur(3px);padding:18px}
+#dSpec.off{display:none}
+#dSpec .box{width:min(920px,100%);max-height:100%;display:flex;flex-direction:column;
+  background:#080b14;border:1px solid #222c48;border-radius:14px;overflow:hidden;
+  box-shadow:0 20px 60px rgba(0,0,0,.7)}
+#dSpec .hd{display:flex;align-items:center;gap:10px;padding:11px 14px;flex:none;
+  border-bottom:1px solid #1a2036;background:#0d1220;flex-wrap:wrap}
+#dSpec .hd .t{font-size:14px;font-weight:700;color:#e8ecf5;letter-spacing:.5px}
+#dSpec .hd .s{font-size:11px;color:#5d6f92}
+#dSpec .hd .sp{flex:1}
+#dSpec .bd{overflow:auto;padding:14px 16px 20px;color:#cfdcee;font-size:12.5px;line-height:1.75}
+#dSpec h4{font-size:13px;color:#7fd8ff;margin:16px 0 7px;font-weight:700;letter-spacing:.4px}
+#dSpec h4:first-child{margin-top:0}
+#dSpec .f{background:#0c1120;border:1px solid #1c2740;border-left:3px solid #00c2ff;
+  border-radius:8px;padding:9px 12px;margin:6px 0 4px;font-family:Consolas,monospace;
+  font-size:12px;line-height:1.9;color:#bfe9ff;overflow-x:auto;white-space:pre}
+#dSpec .f b{color:#ffd84a}
+#dSpec .k{color:#ffd84a;font-weight:700}
+#dSpec .g{color:#3cffbe;font-weight:700}
+#dSpec .r{color:#ff5b7f;font-weight:700}
+#dSpec .dim{color:#6b7b90}
+#dSpec canvas{display:block;width:100%;border-radius:8px;background:#070a12;border:1px solid #1a2238}
+#dSpec .leg{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:#8fa3c8;margin-top:6px}
+#dSpec .leg i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:middle}
+#dSpec .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+#dSpec .cell{background:#0a0f1c;border:1px solid #1a2238;border-radius:9px;padding:7px}
+#dSpec .cell canvas{height:118px;border:0;background:transparent}
+#dSpec .cell .ct{font-size:11.5px;font-weight:700;color:#e8ecf5;margin-bottom:1px}
+#dSpec .cell .cn{font-size:10.5px;color:#7f93b8;line-height:1.5;margin-top:2px}
+#dSpec .cell .cs{font-size:10px;color:#5d6f92;font-variant-numeric:tabular-nums}
+#dSpec table{width:100%;border-collapse:collapse;font-size:11.5px;
+  font-variant-numeric:tabular-nums}
+#dSpec th,#dSpec td{padding:4px 6px;border-bottom:1px solid #161e33;text-align:right}
+#dSpec th{color:#7f93b8;font-weight:600;text-align:right;border-bottom:1px solid #24304d}
+#dSpec td:first-child,#dSpec th:first-child{text-align:left}
+#dSpec td:last-child,#dSpec th:last-child{text-align:left}
+#dSpec tr.l0 td:last-child{color:#3cffbe}
+#dSpec tr.l2 td:last-child{color:#ff5b7f}
+#dSpec .note{background:rgba(255,216,74,.07);border:1px solid rgba(255,216,74,.28);
+  border-radius:8px;padding:9px 12px;margin:10px 0;color:#e6d9a8;font-size:12px}
+#dSpec .warn{background:rgba(255,91,127,.08);border:1px solid rgba(255,91,127,.3);
+  border-radius:8px;padding:9px 12px;margin:10px 0;color:#f7c3ce;font-size:12px}
+@media (max-width:640px){
+  #dSpec{padding:8px}
+  #dSpec .bd{padding:10px 11px 16px;font-size:12px}
+  #dSpec .grid{grid-template-columns:repeat(2,1fr)}
+}
 </style>
 
 <script>
@@ -3416,7 +3906,10 @@ requestAnimationFrame(frame);
     if (!!c.checked !== !!on) c.click();
   }
   function pressD(v){
-    var b = D.querySelector('button[data-d="' + v + '"]'); if (b) b.click(); return !!b;
+    var b = D.querySelector('button[data-d="' + v + '"]'); if (b) b.click();
+    /* 演示必须立刻换形：用户若选了「自然缓冲」，切 d 要等 22 s，演示就白放了 */
+    if (typeof rebuildForD === 'function') rebuildForD(true);
+    return !!b;
   }
   function openPanel(){
     if (panel && panel.classList.contains('hide')) click('tog');
@@ -3490,6 +3983,95 @@ requestAnimationFrame(frame);
       }
       requestAnimationFrame(tick);
     });
+  }
+
+  /* ---------- 演示前快照 / 演示后还原 ----------
+   * 老师的要求：页面打开自动播放，但点「✕ 结束」必须回到播放之前的动态图设置。
+   * 演示真正会动的东西全在快照里：27 个滑条 + 3 个勾选框 + 4 个开关按钮
+   * + 注入位置 + 预设高亮 + 参数窗/结果窗开合。
+   * 还原仍走**真 UI**（写 value 后派发 input；状态不符的按钮真点一下），
+   * 最后强制定向重建一次轨迹（同初值 ⇒ 同形态），不留"半个演示"的残留。
+   * 视角 az 不入快照：八步脚本从不改视角，而自转一直在走，写回反而不自然。
+   */
+  var TOGGLES = ['play', 'breath', 'togp', 'part'];
+  var SRCBTNS = ['psBox', 'psTop', 'psBot'];
+  var SNAP = null;
+
+  function presetBtns(){
+    var out = [], all = D.querySelectorAll('.presets button');
+    for (var i = 0; i < all.length; i++){
+      var b = all[i];
+      if (!b.id) continue;
+      if (SRCBTNS.indexOf(b.id) >= 0 || TOGGLES.indexOf(b.id) >= 0) continue;
+      out.push(b);
+    }
+    return out;
+  }
+
+  function snapNow(){
+    var s = { rng: {}, chk: {}, cls: {}, tg: {}, src: null,
+              panel: !!(panel && !panel.classList.contains('hide')),
+              wres: !!(wres && !wres.classList.contains('off')), at: Date.now() };
+    var i, e, rs = D.querySelectorAll('input[type=range]');
+    for (i = 0; i < rs.length; i++) if (rs[i].id) s.rng[rs[i].id] = rs[i].value;
+    var cs = D.querySelectorAll('input[type=checkbox]');
+    for (i = 0; i < cs.length; i++) if (cs[i].id) s.chk[cs[i].id] = !!cs[i].checked;
+    presetBtns().forEach(function(b){ s.cls[b.id] = b.className; });
+    TOGGLES.forEach(function(id){
+      var el2 = D.getElementById(id);
+      s.tg[id] = el2 ? /\bon\b/.test(el2.className) : null;
+    });
+    for (i = 0; i < SRCBTNS.length; i++){
+      e = D.getElementById(SRCBTNS[i]);
+      if (e && /\bon\b/.test(e.className)){ s.src = SRCBTNS[i]; break; }
+    }
+    return s;
+  }
+
+  function restore(){
+    var s = SNAP; if (!s) return false;
+    SNAP = null;
+    var id, e;
+    /* 1) 滑条：写回值 + 派发 input（P、读数、提示由真 handler 一起拉回来） */
+    for (id in s.rng){
+      e = D.getElementById(id); if (!e) continue;
+      if (e.value !== s.rng[id]){
+        e.value = s.rng[id];
+        e.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
+    /* 2) 勾选框 */
+    for (id in s.chk){
+      e = D.getElementById(id); if (!e) continue;
+      if (!!e.checked !== s.chk[id]) e.click();
+    }
+    /* 3) 开关按钮：粒子 / 呼吸 / 剖面 / 播放 */
+    TOGGLES.forEach(function(tid){
+      var b = D.getElementById(tid);
+      if (!b || s.tg[tid] === null || s.tg[tid] === undefined) return;
+      if (/\bon\b/.test(b.className) !== s.tg[tid]) b.click();
+    });
+    /* 4) 注入位置（这三个按钮的 class 就是状态，但内部 PART.src 也得跟着回，所以真点） */
+    if (s.src){
+      var sb = D.getElementById(s.src);
+      if (sb && !/\bon\b/.test(sb.className)) sb.click();
+    }
+    /* 5) 预设高亮：按快照字符串原样写回（预设只影响 P，P 已在第 1 步恢复） */
+    for (id in s.cls){
+      var pb = D.getElementById(id);
+      if (pb) pb.className = s.cls[id];
+    }
+    /* 6) 参数窗 / 结果窗开合 */
+    if (typeof setPanelOpen === 'function') setPanelOpen(s.panel);
+    if (wres && wresH){
+      if ((!wres.classList.contains('off')) !== s.wres) wresH.click();
+    }
+    /* 7) 收掉第 ⑥ 步那个黄色高亮框 */
+    var mk = D.getElementById('azMark');
+    if (mk) mk.style.opacity = '0';
+    /* 8) 轨迹重建一次：d 与画面严格一致，且可复现 */
+    if (typeof rebuildForD === 'function') rebuildForD(true);
+    return true;
   }
 
   /* ---------- 八步脚本 ---------- */
@@ -3656,17 +4238,20 @@ requestAnimationFrame(frame);
     if (running) { goTo(0); return; }
     running = true; idx = -1;
     if (!el) build();
+    SNAP = snapNow();        /* 演示开始前的样子 —— 结束/中途退出都恢复到这一张 */
     goTo(0);
   }
   function stop(){
-    running = false; tok++; paused = false;
+    running = false; tok++; setPaused(false);
     if (el) el.classList.add('off');
     if (pill) pill.classList.add('show');      /* 退出后留一个「▶ 自动演示」随时重放 */
+    restore();                                 /* ← 回到播放之前的动态图设置 */
   }
   function finish(){
-    running = false; tok++;
+    running = false; tok++; setPaused(false);
     if (el) el.classList.add('off');
     if (pill) pill.classList.add('show');
+    restore();                                 /* ← 走完最后一步也照样还原 */
   }
 
   window.__azDemo = {
@@ -3676,6 +4261,8 @@ requestAnimationFrame(frame);
     idx: function(){ return idx; }, n: function(){ return STEPS.length; },
     title: function(){ return idx >= 0 ? STEPS[idx].t : null; },
     paused: function(){ return paused; }, running: function(){ return running; },
+    hasSnap: function(){ return !!SNAP; }, snapshot: function(){ return SNAP; },
+    restore: restore,
     steps: function(){ return STEPS.map(function(s){ return { t: s.t, ms: s.ms }; }); }
   };
 
@@ -3690,5 +4277,235 @@ requestAnimationFrame(frame);
   })();
 })();
 </script>
+
+<!-- ===== d 三类落点 · 实测图谱（离线实测数据，见 _check/classify_d.py） ===== -->
+<div id="dSpec" class="off">
+  <div class="box">
+    <div class="hd">
+      <span class="t">d 的三类落点 · 实测图谱</span>
+      <span class="s">本页默认参数组 f=0.1 · b=0.7 · e=0.25 · c=0.6 · a=0.95 · RK4 DT=0.02</span>
+      <span class="sp"></span>
+      <button id="dsClose" class="gh">关闭 ✕</button>
+    </div>
+    <div class="bd">
+      <h4>一、真正的参数不是 d，是 N</h4>
+      <div class="f">N(d) = d · <b>T(d)</b> / 2π　　　← 一个 z 循环里实际绕了几圈
+Δφ   = 360° · frac(N)　　← 每循环错开多少度
+σ    = 逐圈 Δφ 的标准差　← 判"真锁相"还是"糊"
+q    = 分母(最简 frac(N)) ← 画面上看到几条带
+<b>R = sw · d</b>　　　　　← 孔径不是独立参数，≤0.50d 安全 / ≥0.91d 崩解</div>
+      <p>d 只改<b>绕速</b>（θ̇ ≡ d 精确成立），不改 (r,z) 投影。但 z 的周期由
+      <code>f·z·x³</code> 这一项偷偷吃到 d，于是 <b>T 会自己动</b>：
+      从 5.44 到 6.79 都出现过。<b>N 才是那个被系统钉住的量</b>。</p>
+
+      <h4>二、N–d 阶梯：看得到"台阶"，才叫锁相</h4>
+      <canvas id="dsLadder" height="330"></canvas>
+      <div class="leg">
+        <span><i style="background:#3cffbe"></i>锁相 σ&lt;0.11°（N 精确整数）</span>
+        <span><i style="background:#ffd84a"></i>弱锁 0.11°–17°</span>
+        <span><i style="background:#7a5cff"></i>未锁 &gt;17°（sweep 里最高 73.5°）</span>
+        <span class="dim">虚线 N=d 是"T 恰好=2π"的标称线；所有点都贴在它附近，但真正落在整数上的只有台阶。</span>
+      </div>
+      <p>台阶宽度随 N <b>急剧变窄</b>：N=3 宽 0.76，N=7 宽 0.47，N=10 只 0.08，N=11 只 0.02。
+      所以 <span class="k">d=8 不锁、d=8.2 反而锁</span>——不是"8 这个数犯忌"，
+      而是 <b>8.0 正好掉在 [7.47, 8.15] 这条缝里</b>。这条判据可当场证伪。</p>
+
+      <h4>三、每圈起点的方位角（n = 第几圈）</h4>
+      <div class="grid" id="dsGrid"></div>
+      <div class="note">注意第 4 格：<b>3+√2 = 4.414 是无理数，画面却和整数 6 一样只有一条带</b>。
+      它被 N=4 的锁相带吞了。<b>"含不含根号"在这里不起作用</b>，起作用的是"离最近整数 N 有多远"。</div>
+
+      <h4>四、分类表（本参数组实测）</h4>
+      <table><thead><tr><th>d</th><th>数学类型</th><th>N 实测</th><th>Δφ ≤180°</th><th>σ</th><th>判定</th></tr></thead>
+      <tbody id="dsTab"></tbody></table>
+      <p class="dim">σ 是逐圈错开角的标准差。σ 精确为 0 ⇒ 周期轨道；σ 大到几十度 ⇒ 每圈都不一样，条带被打散。</p>
+
+      <h4>五、两类"最优"，各有各的道理</h4>
+      <p><span class="g">最闭合</span>：落在整数台阶正中 ⇒ N 整数、σ=0、<b>1 条带，永久清晰</b>。
+      d=6（N=6，R 安全线 2.75）、d=7（N=7，R 3.25）是这一类的代表。</p>
+      <p><span class="r">最均匀</span>：落在两条台阶之间最宽的缝里 ⇒ σ 最大、<b>条带被彻底打散</b>。
+      实测最深处是 d≈4.56（σ=73.5°）与 d≈3.50（σ=70.7°）。
+      3+φ=4.618 就在这条缝里（σ=68°），所以它<b>确实铺得最匀</b>——理由是"抖散了"，
+      <b>不是"137.5° 黄金角"</b>。</p>
+
+      <div class="warn"><b>页面原口径必须改一处</b>：原文案 "N = d ⇒ frac(d) 就是错开比例" 只在
+      <b>T = 2π</b> 时成立。而 T=2π 基本只出现在整数 d（锁相把它拉回 2π）。于是逻辑上：
+      要 137.5° 就得 T=2π，要 T=2π 就得 d 近似整数，而整数 d 的 frac 是 0。
+      <b>所以 137.5° 在本方程里不可达</b>。实测：4.618 → Δφ=176°±68°，7.618 → 120°（1/3），
+      10.618 → 78°。三个 φ 档位没有一个给出 137.5°。</div>
+
+      <h4>六、为何 6+φ 不考虑 —— 它其实该考虑，但落点差</h4>
+      <p>三个 φ 档位同族（frac(d) 都是 0.618），可 <b>N 落点完全不同</b>：</p>
+      <p>· <b>4.618</b> → N≈4.50，卡在最大缝里，σ=68° ⇒ 糊得最匀，<b>视觉最优</b><br>
+         · <b>7.618</b> → N=22/3 精确，σ=11.5° ⇒ <b>3 条带</b>，不是糊，是"三瓣"<br>
+         · <b>10.618</b> → N=235/23，σ=4.8° ⇒ 23 条带挤在一起，接近均匀但 <b>R 安全线要 5.3</b></p>
+      <p>所以 6+φ 不是"不能考虑"，而是<b>它落到 1/3 共振上</b>，出来是三瓣不是均匀一片。
+      若目标是"最均匀"，4.618 更好；若目标是"大 d 且别锁相"，10.618 更稳。</p>
+
+      <h4>七、R 的通项：R ≈ 0.5 d</h4>
+      <p>把页面那张实测安全线表按 R/d 归一，除 d=3.5 外全部落在 <b>0.46–0.54</b>：
+      R*(45°) ≈ <b>0.50 d</b>，R**(60° 崩解) ≈ <b>0.88 d</b>。
+      因为判据本来就是 sw=R/d（&gt;0.91 崩、&gt;0.52 临界）——<b>R 从来不是独立参数</b>。</p>
+      <div class="warn"><b>表里 d=3.5 那行口径不一致</b>：R*=2.50 ⇒ R/d=0.714，比同类高 43%；
+      R**=4.50 ⇒ 1.286。其余 9 行都在 0.5 附近。<b>要么改成 R*=1.75，要么单独注明 3.5 用的是另一套判据。</b></div>
+      <p class="dim">口径限制：以上"锁相/未锁"结论绑定 f=0.1 这一组参数。f 调大 ⇒ 周期窗出现、
+      锁相带整体变宽；f→0 ⇒ z 子系统与 d 完全解耦，T 恒为 2π，那时 frac(N)=frac(d) 的老口径才真正成立。</p>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var D=document.getElementById('dSpec'); if(!D) return;
+  var DATA={"panels":[{"d":6.0,"l":"6 · 整数","note":"锁相 N=6 ⇒ 1 条带","q":1,"sig":0.0,"frac":0.0,"ph":[179.7,179.7,179.7,179.7,179.7,179.7,179.7,179.7,179.7,179.7,179.7,179.7,179.7,179.7,179.7,179.7,179.7,179.7,179.7,179.8,179.8,179.8,179.8,179.8,179.8,179.8,179.8,179.8,179.8,179.8,179.8,179.8,179.8,179.8,179.8,179.8,179.8,179.8,179.8,179.8,179.8,179.8,179.8,179.8,179.8,179.8,179.8,179.8,179.8,179.8,179.8,179.9,179.9,179.9,179.9,179.9,179.9,179.9,179.9,179.9,179.9,179.9,179.9,179.9,179.9,179.9,179.9,179.9,179.9,179.9,179.9,179.9,179.9,179.9,179.9,179.9,179.9,179.9,179.9,179.9,179.9,179.9,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.1,180.1,180.1,180.1,180.1,180.1,180.1,180.1,180.1,180.1,180.1,180.1,180.1,180.1,180.1,180.1,180.1,180.1,180.1,180.1,180.1,180.1,180.1,180.1,180.1,180.1,180.1,180.1,180.1,180.1,180.1,180.1,180.2,180.2,180.2,180.2,180.2,180.2,180.2,180.2,180.2,180.2,180.2,180.2,180.2,180.2,180.2,180.2,180.2,180.2,180.2,180.2,180.2,180.2,180.2,180.2,180.2,180.2,180.2,180.2,180.2,180.2,180.2,180.2,180.3,180.3,180.3,180.3,180.3,180.3,180.3,180.3,180.3,180.3,180.3,180.3,180.3,180.3,180.3,180.3,180.3,180.3,180.3]},{"d":2.5,"l":"2.5 · 半整数","note":"N=5/2 ⇒ 2 条带","q":1,"sig":7.2,"frac":0.5,"ph":[266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6,266.4,93.6]},{"d":7.618,"l":"7.618 = 6+φ","note":"N=22/3 ⇒ 3 条带","q":1,"sig":11.5,"frac":0.3334,"ph":[66.5,184.2,291.4,66.5,184.2,291.5,66.5,184.3,291.5,66.6,184.3,291.5,66.6,184.3,291.6,66.6,184.4,291.6,66.7,184.4,291.6,66.7,184.4,291.7,66.7,184.5,291.7,66.8,184.5,291.7,66.8,184.5,291.8,66.8,184.6,291.8,66.9,184.6,291.8,66.9,184.6,291.8,66.9,184.7,291.9,67.0,184.7,291.9,67.0,184.7,291.9,67.0,184.7,292.0,67.1,184.8,292.0,67.1,184.8,292.0,67.1,184.8,292.1,67.2,184.9,292.1,67.2,184.9,292.1,67.2,184.9,292.2,67.2,185.0,292.2,67.3,185.0,292.2,67.3,185.0,292.3,67.4,185.1,292.3,67.4,185.1,292.3,67.4,185.1,292.4,67.4,185.2,292.4,67.5,185.2,292.4,67.5,185.2,292.5,67.5,185.3,292.5,67.6,185.3,292.5,67.6,185.3,292.6,67.6,185.4,292.6,67.7,185.4,292.6,67.7,185.4,292.6,67.7,185.5,292.7,67.8,185.5,292.7,67.8,185.5,292.7,67.8,185.6,292.8,67.9,185.6,292.8,67.9,185.6,292.8,67.9,185.6,292.9,68.0,185.7,292.9,68.0,185.7,292.9,68.0,185.7,293.0,68.0,185.8,293.0,68.1,185.8,293.0,68.1,185.8,293.1,68.1,185.9,293.1,68.2,185.9,293.1,68.2,185.9,293.2,68.2,186.0,293.2,68.3,186.0,293.2,68.3,186.0,293.3,68.3,186.1,293.3,68.4,186.1,293.3,68.4,186.1,293.3,68.4,186.2,293.4,68.5,186.2,293.4,68.5,186.2,293.4,68.5,186.2,293.5,68.6,186.3,293.5,68.6,186.3]},{"d":4.414,"l":"4.414 = 3+√2","note":"锁 N=4 ⇒ 1 条带（无理，却和整数一样）","q":1,"sig":0.0,"frac":0.0,"ph":[179.9,179.9,180.0,179.9,179.9,180.0,179.9,179.9,180.0,180.0,179.9,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.0,180.1,180.0,180.1,180.1,180.1,180.1,180.1]},{"d":4.618,"l":"4.618 = 3+φ","note":"未锁 ⇒ 糊成一片","q":1,"sig":67.6,"frac":0.5122,"ph":[100.9,230.0,19.5,169.7,16.2,332.5,241.5,22.2,112.6,245.2,19.9,117.6,261.1,29.3,94.6,187.2,22.7,328.4,225.1,20.4,166.7,12.8,326.9,220.8,21.2,186.2,26.2,330.1,231.2,20.1,142.5,329.7,198.0,27.0,294.1,106.3,245.4,20.3,115.9,255.9,25.1,98.0,199.2,25.4,306.3,144.8,343.9,248.9,26.2,101.1,208.2,24.6,274.2,57.8,125.6,273.0,43.4,102.4,205.7,25.0,284.9,81.4,177.5,17.5,329.6,230.3,20.2,145.7,336.9,223.0,20.8,176.8,22.0,337.7,259.5,36.7,99.0,197.8,25.3,310.4,158.9,7.8,318.7,191.0,27.8,317.2,182.8,26.7,334.7,247.8,25.6,102.2,211.8,23.9,259.1,34.3,97.4,193.8,24.9,319.5,191.5,27.8,315.7,177.2,24.6,340.3,268.6,50.1,113.1,237.1,18.9,144.4,334.2,213.6,23.1,222.5,20.9,185.5,26.1,331.3,235.5,20.6,128.5,292.9,84.1,183.0,21.4,331.4,236.2,20.8,126.5,287.0,70.1,149.2,333.6,209.2,24.4,244.5,22.7,109.3,234.6,19.1,153.1,352.2,273.6,58.7,127.3,277.9,51.2,112.9,235.8,19.0,149.5,345.1,250.6,27.4,99.6,203.1,25.4,294.2,106.5,245.6,20.4,115.7,255.0,24.5,99.2,202.8,25.4,295.3,109.7,254.9,24.9,99.0,202.1,25.5,297.8,117.4,276.2,50.2,111.6,231.9,19.3,165.5,11.4,324.2,210.5,24.0,237.5,20.5,126.7,287.7,71.8,152.8,341.3,235.1,20.5,130.6,298.6,98.7]},{"d":3.5,"l":"3.5 · 半整数","note":"未锁 ⇒ 糊成一片（不是 2 条带）","q":1,"sig":68.6,"frac":0.3093,"ph":[35.8,60.5,115.2,273.5,68.1,172.3,336.9,178.9,336.4,135.4,324.0,216.4,340.0,24.2,44.3,74.3,154.6,331.9,216.0,339.5,24.7,45.5,77.4,163.9,335.7,204.5,334.3,43.3,91.0,210.0,333.1,43.7,92.6,214.6,334.4,33.9,67.9,139.1,317.9,196.6,333.6,63.9,149.3,329.3,217.2,340.5,23.6,43.0,71.1,144.6,323.9,209.0,335.8,33.7,67.0,136.5,314.4,187.7,334.5,96.0,245.6,7.3,36.9,62.9,121.8,288.4,111.0,287.6,113.3,292.4,128.2,317.5,202.7,334.1,46.7,100.1,236.9,352.7,22.1,35.4,52.4,91.1,205.6,332.6,55.4,124.6,296.7,136.8,327.1,223.2,345.9,21.4,36.5,55.5,99.5,231.1,345.6,19.4,32.5,46.8,76.9,161.6,335.0,208.8,335.6,34.3,68.5,140.9,320.2,201.7,333.9,49.4,107.3,256.9,27.6,70.7,151.0,329.9,216.5,340.0,24.2,44.4,74.5,154.9,332.1,215.9,339.4,24.8,45.8,78.2,166.3,336.2,199.1,333.6,57.5,130.3,306.7,166.9,338.4,182.8,335.6,118.6,299.1,148.0,335.1,227.0,350.0,22.3,36.7,55.6,99.7,231.4,346.0,19.4,32.5,46.7,76.5,160.4,334.6,210.8,336.5,31.1,60.7,118.2,280.8,88.3,230.8,346.7,19.9,33.0,47.8,79.4,169.5,336.5,190.7,334.1,86.1,216.8,335.7,29.3,56.8,107.3,253.7,20.7,57.6,113.6,270.5,60.2,149.7,330.1,218.3,341.3,22.9,41.2,66.8,131.9,307.2,167.5,338.4,180.7]}],"ladder":[[2.0,2.0,0],[2.01,2.0,0],[2.02,2.0,0],[2.03,2.0,0],[2.04,2.0,0],[2.05,2.0,0],[2.06,2.0,0],[2.07,2.0,0],[2.08,2.0,0],[2.09,2.0,0],[2.1,2.0,0],[2.11,2.0,0],[2.12,2.0,0],[2.13,2.0,0],[2.14,2.0,0],[2.15,2.0,0],[2.16,2.0,0],[2.17,2.0,0],[2.18,2.0,0],[2.19,2.0,0],[2.2,2.0,0],[2.21,2.0,0],[2.22,2.0,0],[2.23,2.0,0],[2.24,2.0,0],[2.25,2.0,0],[2.26,2.0,0],[2.27,2.0,0],[2.28,2.0,0],[2.29,2.0,0],[2.3,2.0,0],[2.31,2.0,0],[2.32,2.0,0],[2.33,2.0,0],[2.34,2.0,0],[2.35,2.0,0],[2.36,2.0,0],[2.37,2.18,2],[2.38,2.237,2],[2.39,2.333,2],[2.4,2.334,1],[2.41,2.333,1],[2.42,2.302,2],[2.43,2.291,2],[2.44,2.318,2],[2.45,2.362,2],[2.46,2.372,2],[2.47,2.401,2],[2.48,2.433,2],[2.49,2.5,1],[2.5,2.5,1],[2.51,2.5,1],[2.52,2.5,1],[2.53,2.5,1],[2.54,2.5,1],[2.55,2.5,2],[2.56,2.499,2],[2.57,2.5,2],[2.58,2.5,2],[2.59,2.499,2],[2.6,2.501,2],[2.61,2.5,2],[2.62,2.499,2],[2.63,2.513,2],[2.64,2.666,2],[2.65,2.667,2],[2.66,2.5,1],[2.67,2.5,1],[2.68,2.5,1],[2.69,2.5,1],[2.7,2.687,2],[2.71,2.763,2],[2.72,3.0,0],[2.73,3.0,0],[2.74,3.0,0],[2.75,3.0,0],[2.76,3.0,0],[2.77,3.0,0],[2.78,3.0,0],[2.79,3.0,0],[2.8,3.0,0],[2.81,3.0,0],[2.82,3.0,0],[2.83,3.0,0],[2.84,3.0,0],[2.85,3.0,0],[2.86,3.0,0],[2.87,3.0,0],[2.88,3.0,0],[2.89,3.0,0],[2.9,3.0,0],[2.91,3.0,0],[2.92,3.0,0],[2.93,3.0,0],[2.94,3.0,0],[2.95,3.0,0],[2.96,3.0,0],[2.97,3.0,0],[2.98,3.0,0],[2.99,3.0,0],[3.0,3.0,0],[3.01,3.0,0],[3.02,3.0,0],[3.03,3.0,0],[3.04,3.0,0],[3.05,3.0,0],[3.06,3.0,0],[3.07,3.0,0],[3.08,3.0,0],[3.09,3.0,0],[3.1,3.0,0],[3.11,3.0,0],[3.12,3.0,0],[3.13,3.0,0],[3.14,3.0,0],[3.15,3.0,0],[3.16,3.0,0],[3.17,3.0,0],[3.18,3.0,0],[3.19,3.0,0],[3.2,3.0,0],[3.21,3.0,0],[3.22,3.0,0],[3.23,3.0,0],[3.24,3.0,0],[3.25,3.0,0],[3.26,3.0,0],[3.27,3.0,0],[3.28,3.0,0],[3.29,3.0,0],[3.3,3.0,0],[3.31,3.0,0],[3.32,3.0,0],[3.33,3.0,0],[3.34,3.0,0],[3.35,3.0,0],[3.36,3.0,0],[3.37,3.0,0],[3.38,3.0,0],[3.39,3.0,0],[3.4,3.0,0],[3.41,3.0,0],[3.42,3.0,0],[3.43,3.0,0],[3.44,3.0,0],[3.45,3.0,0],[3.46,3.0,0],[3.47,3.0,0],[3.48,3.0,0],[3.49,3.0,0],[3.5,3.312,2],[3.51,3.327,2],[3.52,3.353,2],[3.53,3.378,2],[3.54,3.405,2],[3.55,3.418,2],[3.56,3.441,2],[3.57,3.489,2],[3.58,3.515,2],[3.59,3.471,2],[3.6,3.513,2],[3.61,3.53,2],[3.62,3.579,2],[3.63,3.627,2],[3.64,3.661,2],[3.65,4.0,0],[3.66,4.0,0],[3.67,4.0,0],[3.68,4.0,0],[3.69,4.0,0],[3.7,4.0,0],[3.71,4.0,0],[3.72,4.0,0],[3.73,4.0,0],[3.74,4.0,0],[3.75,4.0,0],[3.76,3.5,1],[3.77,3.5,1],[3.78,4.0,0],[3.79,4.0,1],[3.8,4.0,1],[3.81,4.0,1],[3.82,4.0,1],[3.83,4.0,1],[3.84,4.0,1],[3.85,4.0,1],[3.86,4.0,1],[3.87,4.0,1],[3.88,4.0,1],[3.89,4.0,1],[3.9,4.0,1],[3.91,4.0,1],[3.92,4.0,1],[3.93,4.0,1],[3.94,4.0,1],[3.95,4.0,1],[3.96,4.0,1],[3.97,4.0,1],[3.98,4.0,1],[3.99,4.0,1],[4.0,4.0,1],[4.01,4.0,1],[4.02,4.0,1],[4.03,4.0,1],[4.04,4.0,1],[4.05,4.0,1],[4.06,4.0,1],[4.07,4.0,1],[4.08,4.0,1],[4.09,4.0,1],[4.1,4.0,1],[4.11,4.0,1],[4.12,4.0,1],[4.13,4.0,1],[4.14,4.0,1],[4.15,4.0,1],[4.16,4.0,0],[4.17,4.0,0],[4.18,4.0,0],[4.19,4.0,0],[4.2,4.0,0],[4.21,4.0,0],[4.22,4.0,0],[4.23,4.0,0],[4.24,4.0,0],[4.25,4.0,0],[4.26,4.0,0],[4.27,4.0,0],[4.28,4.0,0],[4.29,4.0,0],[4.3,4.0,0],[4.31,4.0,0],[4.32,4.0,0],[4.33,4.0,0],[4.34,4.0,0],[4.35,4.0,0],[4.36,4.0,0],[4.37,4.0,0],[4.38,4.0,0],[4.39,4.0,0],[4.4,4.0,0],[4.41,4.0,0],[4.42,4.0,0],[4.43,4.0,0],[4.44,4.0,0],[4.45,4.0,0],[4.46,4.0,0],[4.47,4.0,0],[4.48,4.0,0],[4.49,4.0,0],[4.5,4.0,0],[4.51,4.0,0],[4.52,4.0,0],[4.53,4.0,0],[4.54,4.0,0],[4.55,4.0,0],[4.56,4.338,2],[4.57,4.397,2],[4.58,4.4,2],[4.59,4.448,2],[4.6,4.518,2],[4.61,4.5,2],[4.62,4.497,2],[4.63,4.478,2],[4.64,5.0,0],[4.65,5.0,0],[4.66,5.0,0],[4.67,5.0,0],[4.68,5.0,0],[4.69,5.0,0],[4.7,5.0,0],[4.71,5.0,0],[4.72,5.0,0],[4.73,5.0,0],[4.74,5.0,0],[4.75,5.0,0],[4.76,5.0,0],[4.77,5.0,0],[4.78,5.0,0],[4.79,5.0,0],[4.8,5.0,0],[4.81,5.0,0],[4.82,5.0,0],[4.83,5.0,0],[4.84,5.0,1],[4.85,5.0,1],[4.86,5.0,1],[4.87,5.0,1],[4.88,5.0,1],[4.89,5.0,1],[4.9,5.0,1],[4.91,5.0,1],[4.92,5.0,1],[4.93,5.0,1],[4.94,5.0,1],[4.95,5.0,1],[4.96,5.0,1],[4.97,5.0,1],[4.98,5.0,1],[4.99,5.0,1],[5.0,5.0,1],[5.01,5.0,1],[5.02,5.0,1],[5.03,5.0,1],[5.04,5.0,1],[5.05,5.0,1],[5.06,5.0,1],[5.07,5.0,1],[5.08,5.0,1],[5.09,5.0,1],[5.1,5.0,1],[5.11,5.0,1],[5.12,5.0,1],[5.13,5.0,1],[5.14,5.0,0],[5.15,5.0,0],[5.16,5.0,0],[5.17,5.0,0],[5.18,5.0,0],[5.19,5.0,0],[5.2,5.0,0],[5.21,5.0,0],[5.22,5.0,0],[5.23,5.0,0],[5.24,5.0,0],[5.25,5.0,0],[5.26,5.0,0],[5.27,5.0,0],[5.28,5.0,0],[5.29,5.0,0],[5.3,5.0,0],[5.31,5.0,0],[5.32,5.0,0],[5.33,5.0,0],[5.34,5.0,0],[5.35,5.0,0],[5.36,5.0,0],[5.37,5.0,0],[5.38,5.0,0],[5.39,5.0,0],[5.4,5.0,0],[5.41,5.0,0],[5.42,5.0,0],[5.43,5.0,0],[5.44,5.0,0],[5.45,5.0,0],[5.46,5.0,0],[5.47,5.0,0],[5.48,5.0,0],[5.49,5.0,0],[5.5,5.0,0],[5.51,5.0,0],[5.52,5.0,0],[5.53,5.0,0],[5.54,5.0,0],[5.55,5.447,2],[5.56,5.417,2],[5.57,5.369,2],[5.58,5.399,2],[5.59,5.422,2],[5.6,5.415,2],[5.61,5.431,2],[5.62,5.439,2],[5.63,5.443,2],[5.64,5.409,2],[5.65,5.333,2],[5.66,5.466,2],[5.67,5.485,2],[5.68,5.501,2],[5.69,5.5,2],[5.7,5.504,2],[5.71,5.667,2],[5.72,5.569,2],[5.73,5.6,2],[5.74,5.581,2],[5.75,5.574,2],[5.76,5.551,2],[5.77,5.545,2],[5.78,5.5,2],[5.79,5.5,2],[5.8,5.5,1],[5.81,5.5,1],[5.82,5.5,1],[5.83,6.0,0],[5.84,6.0,0],[5.85,6.0,0],[5.86,6.0,0],[5.87,6.0,0],[5.88,6.0,0],[5.89,6.0,0],[5.9,6.0,0],[5.91,6.0,0],[5.92,6.0,0],[5.93,6.0,0],[5.94,6.0,0],[5.95,6.0,0],[5.96,6.0,0],[5.97,6.0,0],[5.98,6.0,0],[5.99,6.0,0],[6.0,6.0,0],[6.01,6.0,0],[6.02,6.0,0],[6.03,6.0,0],[6.04,6.0,0],[6.05,6.0,0],[6.06,6.0,0],[6.07,6.0,0],[6.08,6.0,0],[6.09,6.0,0],[6.1,6.0,0],[6.11,6.0,0],[6.12,6.0,0],[6.13,6.0,0],[6.14,6.0,0],[6.15,6.0,0],[6.16,6.0,0],[6.17,6.0,0],[6.18,6.0,0],[6.19,6.0,0],[6.2,6.0,0],[6.21,6.0,0],[6.22,6.0,0],[6.23,6.0,0],[6.24,6.0,0],[6.25,6.0,0],[6.26,6.0,0],[6.27,6.0,0],[6.28,6.0,0],[6.29,6.0,0],[6.3,6.0,0],[6.31,6.0,0],[6.32,6.0,0],[6.33,6.0,0],[6.34,6.0,0],[6.35,6.0,0],[6.36,6.0,0],[6.37,6.0,0],[6.38,6.0,0],[6.39,6.0,0],[6.4,6.0,0],[6.41,6.0,0],[6.42,6.0,0],[6.43,6.0,0],[6.44,6.0,0],[6.45,6.0,0],[6.46,6.0,0],[6.47,6.0,0],[6.48,6.0,0],[6.49,6.0,0],[6.5,6.0,0],[6.51,6.0,0],[6.52,6.184,2],[6.53,6.22,2],[6.54,6.334,2],[6.55,6.333,2],[6.56,6.317,2],[6.57,6.29,2],[6.58,6.25,2],[6.59,6.33,2],[6.6,6.333,2],[6.61,6.357,2],[6.62,6.354,2],[6.63,6.333,2],[6.64,6.333,2],[6.65,6.436,2],[6.66,6.5,1],[6.67,6.5,1],[6.68,6.5,1],[6.69,6.5,1],[6.7,6.5,1],[6.71,6.5,1],[6.72,6.5,1],[6.73,6.5,1],[6.74,6.5,1],[6.75,6.5,1],[6.76,6.5,1],[6.77,6.5,1],[6.78,6.5,1],[6.79,6.5,1],[6.8,6.5,1],[6.81,6.5,1],[6.82,6.572,2],[6.83,6.573,2],[6.84,6.571,2],[6.85,6.667,2],[6.86,6.667,2],[6.87,6.666,2],[6.88,6.666,2],[6.89,6.667,2],[6.9,6.667,2],[6.91,6.666,2],[6.92,6.666,2],[6.93,6.75,2],[6.94,6.73,2],[6.95,6.751,2],[6.96,6.788,2],[6.97,6.75,2],[6.98,6.813,2],[6.99,6.837,2],[7.0,7.0,0],[7.01,7.0,0],[7.02,7.0,0],[7.03,7.0,0],[7.04,7.0,0],[7.05,7.0,0],[7.06,7.0,0],[7.07,7.0,0],[7.08,7.0,0],[7.09,7.0,0],[7.1,7.0,0],[7.11,7.0,0],[7.12,7.0,0],[7.13,7.0,0],[7.14,7.0,0],[7.15,7.0,0],[7.16,7.0,0],[7.17,7.0,0],[7.18,7.0,0],[7.19,7.0,0],[7.2,7.0,0],[7.21,7.0,0],[7.22,7.0,0],[7.23,7.0,0],[7.24,7.0,0],[7.25,7.0,0],[7.26,7.0,0],[7.27,7.0,0],[7.28,7.0,0],[7.29,7.0,0],[7.3,7.0,0],[7.31,7.0,0],[7.32,7.0,0],[7.33,7.0,0],[7.34,7.0,0],[7.35,7.0,0],[7.36,7.0,0],[7.37,7.0,0],[7.38,7.0,0],[7.39,7.0,0],[7.4,7.0,0],[7.41,7.0,0],[7.42,7.0,0],[7.43,7.0,0],[7.44,7.0,0],[7.45,7.0,0],[7.46,7.0,0],[7.47,7.0,0],[7.48,7.088,2],[7.49,7.121,2],[7.5,7.144,2],[7.51,7.166,2],[7.52,7.2,2],[7.53,7.2,2],[7.54,7.222,2],[7.55,7.241,2],[7.56,7.251,2],[7.57,7.25,2],[7.58,7.273,2],[7.59,7.286,2],[7.6,7.3,2],[7.61,7.318,2],[7.62,7.333,1],[7.63,7.333,1],[7.64,7.333,1],[7.65,7.345,1],[7.66,7.362,1],[7.67,7.375,1],[7.68,7.388,1],[7.69,7.4,1],[7.7,7.41,1],[7.71,7.423,1],[7.72,7.435,1],[7.73,7.447,1],[7.74,7.462,1],[7.75,7.48,1],[7.76,7.5,1],[7.77,7.5,1],[7.78,7.5,1],[7.79,7.5,1],[7.8,7.5,1],[7.81,7.5,1],[7.82,7.5,1],[7.83,7.525,1],[7.84,7.541,1],[7.85,7.554,1],[7.86,7.567,1],[7.87,7.578,1],[7.88,7.59,1],[7.89,7.6,1],[7.9,7.612,1],[7.91,7.623,1],[7.92,7.634,1],[7.93,7.646,1],[7.94,7.661,2],[7.95,7.666,1],[7.96,7.667,1],[7.97,7.684,2],[7.98,7.696,2],[7.99,7.707,2],[8.0,7.719,2],[8.01,7.732,2],[8.02,7.745,2],[8.03,7.75,2],[8.04,7.765,2],[8.05,7.778,2],[8.06,7.791,2],[8.07,7.802,2],[8.08,7.817,2],[8.09,7.833,2],[8.1,7.846,2],[8.11,7.862,2],[8.12,7.879,2],[8.13,7.902,2],[8.14,7.928,2],[8.15,8.0,0],[8.16,8.0,0],[8.17,8.0,0],[8.18,8.0,0],[8.19,8.0,0],[8.2,8.0,0],[8.21,8.0,0],[8.22,8.0,0],[8.23,8.0,0],[8.24,8.0,0],[8.25,8.0,0],[8.26,8.0,0],[8.27,8.0,0],[8.28,8.0,0],[8.29,8.0,0],[8.3,8.0,0],[8.31,8.0,0],[8.32,8.0,0],[8.33,8.0,0],[8.34,8.0,0],[8.35,8.0,0],[8.36,8.0,0],[8.37,8.0,0],[8.38,8.0,0],[8.39,8.0,0],[8.4,8.0,0],[8.41,8.0,0],[8.42,8.0,0],[8.43,8.0,0],[8.44,8.0,0],[8.45,8.051,2],[8.46,8.081,2],[8.47,8.102,2],[8.48,8.12,2],[8.49,8.136,2],[8.5,8.15,2],[8.51,8.163,2],[8.52,8.176,2],[8.53,8.188,2],[8.54,8.2,2],[8.55,8.212,2],[8.56,8.223,1],[8.57,8.235,1],[8.58,8.246,1],[8.59,8.256,1],[8.6,8.267,1],[8.61,8.277,1],[8.62,8.288,1],[8.63,8.299,1],[8.64,8.309,1],[8.65,8.319,1],[8.66,8.332,1],[8.67,8.338,1],[8.68,8.349,1],[8.69,8.359,1],[8.7,8.37,1],[8.71,8.38,1],[8.72,8.39,1],[8.73,8.4,1],[8.74,8.41,1],[8.75,8.42,1],[8.76,8.43,1],[8.77,8.44,1],[8.78,8.45,1],[8.79,8.461,1],[8.8,8.471,1],[8.81,8.482,1],[8.82,8.498,1],[8.83,8.5,1],[8.84,8.5,1],[8.85,8.515,1],[8.86,8.526,1],[8.87,8.536,1],[8.88,8.547,1],[8.89,8.557,1],[8.9,8.566,1],[8.91,8.577,1],[8.92,8.587,1],[8.93,8.596,1],[8.94,8.606,1],[8.95,8.616,1],[8.96,8.626,1],[8.97,8.636,1],[8.98,8.646,1],[8.99,8.656,1],[9.0,8.667,1],[9.01,8.676,1],[9.02,8.686,1],[9.03,8.696,1],[9.04,8.706,1],[9.05,8.716,1],[9.06,8.726,1],[9.07,8.736,1],[9.08,8.747,1],[9.09,8.756,1],[9.1,8.767,1],[9.11,8.777,1],[9.12,8.788,1],[9.13,8.799,1],[9.14,8.809,1],[9.15,8.819,1],[9.16,8.83,1],[9.17,8.842,2],[9.18,8.853,2],[9.19,8.864,2],[9.2,8.876,2],[9.21,8.888,2],[9.22,8.9,2],[9.23,8.914,2],[9.24,8.928,2],[9.25,8.944,2],[9.26,8.967,1],[9.27,9.0,0],[9.28,9.0,0],[9.29,9.0,0],[9.3,9.0,0],[9.31,9.0,0],[9.32,9.0,0],[9.33,9.0,0],[9.34,9.0,0],[9.35,9.0,0],[9.36,9.0,0],[9.37,9.0,0],[9.38,9.0,0],[9.39,9.0,0],[9.4,9.0,0],[9.41,9.0,0],[9.42,9.0,0],[9.43,9.025,1],[9.44,9.05,1],[9.45,9.066,1],[9.46,9.081,1],[9.47,9.095,1],[9.48,9.106,1],[9.49,9.118,1],[9.5,9.13,1],[9.51,9.141,1],[9.52,9.152,1],[9.53,9.163,1],[9.54,9.173,1],[9.55,9.183,1],[9.56,9.194,1],[9.57,9.205,1],[9.58,9.214,1],[9.59,9.224,1],[9.6,9.235,1],[9.61,9.245,1],[9.62,9.255,1],[9.63,9.265,1],[9.64,9.274,1],[9.65,9.285,1],[9.66,9.294,1],[9.67,9.304,1],[9.68,9.314,1],[9.69,9.324,1],[9.7,9.333,1],[9.71,9.343,1],[9.72,9.353,1],[9.73,9.363,1],[9.74,9.373,1],[9.75,9.382,1],[9.76,9.392,1],[9.77,9.402,1],[9.78,9.412,1],[9.79,9.421,1],[9.8,9.431,1],[9.81,9.441,1],[9.82,9.45,1],[9.83,9.46,1],[9.84,9.47,1],[9.85,9.48,1],[9.86,9.49,1],[9.87,9.5,1],[9.88,9.508,1],[9.89,9.518,1],[9.9,9.528,1],[9.91,9.537,1],[9.92,9.547,1],[9.93,9.557,1],[9.94,9.567,1],[9.95,9.576,1],[9.96,9.586,1],[9.97,9.596,1],[9.98,9.605,1],[9.99,9.615,1],[10.0,9.625,1],[10.01,9.635,1],[10.02,9.644,1],[10.03,9.654,1],[10.04,9.664,1],[10.05,9.673,1],[10.06,9.683,1],[10.07,9.693,1],[10.08,9.702,1],[10.09,9.712,1],[10.1,9.722,1],[10.11,9.732,1],[10.12,9.742,1],[10.13,9.751,1],[10.14,9.761,1],[10.15,9.771,1],[10.16,9.78,1],[10.17,9.791,1],[10.18,9.8,1],[10.19,9.81,1],[10.2,9.82,1],[10.21,9.83,1],[10.22,9.84,1],[10.23,9.85,1],[10.24,9.86,1],[10.25,9.87,1],[10.26,9.881,1],[10.27,9.89,1],[10.28,9.901,1],[10.29,9.912,1],[10.3,9.923,1],[10.31,9.933,1],[10.32,9.945,1],[10.33,9.958,1],[10.34,9.973,1],[10.35,10.0,0],[10.36,10.0,0],[10.37,10.0,0],[10.38,10.0,0],[10.39,10.0,0],[10.4,10.0,0],[10.41,10.0,0],[10.42,10.0,0],[10.43,10.0,0],[10.44,10.029,1],[10.45,10.044,1],[10.46,10.056,1],[10.47,10.067,1],[10.48,10.078,1],[10.49,10.089,1],[10.5,10.1,1],[10.51,10.11,1],[10.52,10.12,1],[10.53,10.131,1],[10.54,10.14,1],[10.55,10.15,1],[10.56,10.161,1],[10.57,10.17,1],[10.58,10.18,1],[10.59,10.19,1],[10.6,10.2,1],[10.61,10.21,1],[10.62,10.219,1],[10.63,10.229,1],[10.64,10.239,1],[10.65,10.248,1],[10.66,10.258,1],[10.67,10.268,1],[10.68,10.278,1],[10.69,10.287,1],[10.7,10.297,1],[10.71,10.307,1],[10.72,10.316,1],[10.73,10.326,1],[10.74,10.336,1],[10.75,10.345,1],[10.76,10.355,1],[10.77,10.365,1],[10.78,10.374,1],[10.79,10.384,1],[10.8,10.394,1],[10.81,10.403,1],[10.82,10.413,1],[10.83,10.423,1],[10.84,10.432,1],[10.85,10.442,1],[10.86,10.451,1],[10.87,10.461,1],[10.88,10.471,1],[10.89,10.48,1],[10.9,10.49,1],[10.91,10.499,1],[10.92,10.509,1],[10.93,10.519,1],[10.94,10.529,1],[10.95,10.538,1],[10.96,10.548,1],[10.97,10.557,1],[10.98,10.567,1],[10.99,10.577,1],[11.0,10.586,1],[11.01,10.596,1],[11.02,10.606,1],[11.03,10.615,1],[11.04,10.625,1],[11.05,10.635,1],[11.06,10.644,1],[11.07,10.654,1],[11.08,10.664,1],[11.09,10.673,1],[11.1,10.683,1],[11.11,10.692,1],[11.12,10.702,1],[11.13,10.712,1],[11.14,10.721,1],[11.15,10.731,1],[11.16,10.741,1],[11.17,10.75,1],[11.18,10.76,1],[11.19,10.77,1],[11.2,10.779,1],[11.21,10.789,1],[11.22,10.799,1],[11.23,10.808,1],[11.24,10.818,1],[11.25,10.828,1],[11.26,10.838,1],[11.27,10.847,1],[11.28,10.857,1],[11.29,10.867,1],[11.3,10.876,1],[11.31,10.886,1],[11.32,10.896,1],[11.33,10.906,1],[11.34,10.916,1],[11.35,10.925,1],[11.36,10.936,1],[11.37,10.946,1],[11.38,10.956,1],[11.39,10.967,1],[11.4,10.979,1],[11.41,11.0,0],[11.42,11.0,0],[11.43,11.0,0],[11.44,11.0,0],[11.45,11.005,1],[11.46,11.021,1],[11.47,11.033,1],[11.48,11.045,1],[11.49,11.055,1],[11.5,11.065,1],[11.51,11.075,1],[11.52,11.085,1],[11.53,11.095,1],[11.54,11.105,1],[11.55,11.114,1],[11.56,11.124,1],[11.57,11.134,1],[11.58,11.143,1],[11.59,11.153,1],[11.6,11.163,1],[11.61,11.173,1],[11.62,11.182,1],[11.63,11.192,1],[11.64,11.202,1],[11.65,11.211,1],[11.66,11.221,1],[11.67,11.231,1],[11.68,11.24,1],[11.69,11.25,1],[11.7,11.26,1],[11.71,11.269,1],[11.72,11.279,1],[11.73,11.288,1],[11.74,11.298,1],[11.75,11.308,1],[11.76,11.317,1],[11.77,11.327,1],[11.78,11.337,1],[11.79,11.346,1],[11.8,11.356,1],[11.81,11.365,1],[11.82,11.375,1],[11.83,11.385,1],[11.84,11.394,1],[11.85,11.404,1],[11.86,11.414,1],[11.87,11.423,1],[11.88,11.433,1],[11.89,11.442,1],[11.9,11.452,1],[11.91,11.462,0],[11.92,11.471,0],[11.93,11.481,1],[11.94,11.491,1],[11.95,11.5,1],[11.96,11.51,1],[11.97,11.519,1],[11.98,11.529,1],[11.99,11.539,1],[12.0,11.548,1]],"tab":[{"d":3.0,"kind":"整数","n":"3","judge":"锁","off":0.0,"sig":0.0},{"d":2.5,"kind":"半整数 5/2","n":"5/2","judge":"弱锁","off":180.0,"sig":7.2},{"d":3.5,"kind":"半整数 7/2","n":"3.31","judge":"未锁","off":111.4,"sig":68.6},{"d":4.414,"kind":"无理 3+√2","n":"4","judge":"锁","off":0.0,"sig":0.0},{"d":4.618,"kind":"无理 3+φ","n":"≈9/2","judge":"未锁","off":175.6,"sig":67.6},{"d":4.718,"kind":"无理 2+e","n":"5","judge":"锁","off":0.0,"sig":0.0},{"d":4.732,"kind":"无理 3+√3","n":"5","judge":"锁","off":0.0,"sig":0.0},{"d":5.0,"kind":"整数","n":"5","judge":"锁","off":0.0,"sig":1.9},{"d":5.142,"kind":"无理 2+π","n":"5","judge":"锁","off":0.0,"sig":0.0},{"d":6.0,"kind":"整数","n":"6","judge":"锁","off":0.0,"sig":0.0},{"d":7.0,"kind":"整数","n":"7","judge":"锁","off":0.0,"sig":0.0},{"d":7.618,"kind":"无理 6+φ","n":"22/3","judge":"弱锁","off":120.0,"sig":11.5},{"d":8.0,"kind":"整数","n":"7.72","judge":"未锁","off":100.9,"sig":22.0},{"d":10.0,"kind":"整数","n":"9.62","judge":"弱锁","off":135.1,"sig":4.3},{"d":10.618,"kind":"无理 9+φ","n":"235/23","judge":"弱锁","off":78.3,"sig":4.8}]};
+  var cv=document.getElementById('dsLadder');
+  function open(){ D.classList.remove('off'); drawLadder(); drawPanels(); }
+  function close(){ D.classList.add('off'); }
+  document.getElementById('dsClose').onclick=close;
+  D.addEventListener('click',function(e){ if(e.target===D) close(); });
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape'&&!D.classList.contains('off')) close();
+  });
+  window.__dSpec={open:open,close:close};
+
+  function drawLadder(){
+    if(!cv) return;
+    var dpr=Math.min(2,window.devicePixelRatio||1);
+    var W=cv.clientWidth||820, H=330;
+    cv.width=W*dpr; cv.height=H*dpr; cv.style.height=H+'px';
+    var g=cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0);
+    g.clearRect(0,0,W,H);
+    var L=44,R=14,T=16,B=30;
+    var x0=L,x1=W-R,y0=H-B,y1=T;
+    var dmin=2,dmax=12,nmin=0,nmax=13;
+    function px(d){ return x0+(d-dmin)/(dmax-dmin)*(x1-x0); }
+    function py(n){ return y0-(n-nmin)/(nmax-nmin)*(y0-y1); }
+    // 网格
+    g.font='10px Consolas,monospace'; g.textAlign='right'; g.textBaseline='middle';
+    for(var n=0;n<=12;n++){
+      g.strokeStyle=(n%1===0)?'#141c2e':'#101726'; g.lineWidth=1;
+      g.beginPath(); g.moveTo(x0,py(n)); g.lineTo(x1,py(n)); g.stroke();
+      g.fillStyle='#5d6f92'; g.fillText(n, x0-6, py(n));
+    }
+    g.textAlign='center'; g.textBaseline='top';
+    for(var d=2;d<=12;d++){
+      g.strokeStyle='#101726'; g.beginPath(); g.moveTo(px(d),y0); g.lineTo(px(d),y1); g.stroke();
+      g.fillStyle='#5d6f92'; g.fillText(d, px(d), y0+6);
+    }
+    // N=d 标称线
+    g.setLineDash([4,4]); g.strokeStyle='#3a4763'; g.lineWidth=1;
+    g.beginPath(); g.moveTo(px(2),py(2)); g.lineTo(px(12),py(12)); g.stroke(); g.setLineDash([]);
+    // 轴标注
+    g.fillStyle='#7f93b8'; g.textAlign='right'; g.textBaseline='alphabetic';
+    g.fillText('N', x0-6, y1+2);
+    g.textAlign='right'; g.fillText('d', x1, y0+24);
+    // 锁相段：先画粗线
+    var segs=[],cur=[];
+    for(var i=0;i<DATA.ladder.length;i++){
+      var p=DATA.ladder[i];
+      if(p[2]===0){ cur.push(p); }
+      else { if(cur.length>1) segs.push(cur); cur=[]; }
+    }
+    if(cur.length>1) segs.push(cur);
+    g.lineWidth=3; g.strokeStyle='rgba(60,255,190,.55)'; g.lineCap='round';
+    for(var s=0;s<segs.length;s++){
+      g.beginPath();
+      for(var j=0;j<segs[s].length;j++){
+        var q=segs[s][j];
+        if(j===0) g.moveTo(px(q[0]),py(q[1])); else g.lineTo(px(q[0]),py(q[1]));
+      }
+      g.stroke();
+    }
+    // 点
+    var COL=['#3cffbe','#ffd84a','#7a5cff'];
+    for(var k=0;k<DATA.ladder.length;k++){
+      var r=DATA.ladder[k];
+      g.fillStyle=COL[r[2]];
+      g.globalAlpha=(r[2]===2)?0.55:1;
+      g.beginPath(); g.arc(px(r[0]),py(r[1]), r[2]===0?2.1:1.7, 0, 6.2832); g.fill();
+    }
+    g.globalAlpha=1;
+    // 标注关键档位
+    var MK=[[4.618,'3+φ',-8],[6,'6',0],[7,'7',0],[7.618,'6+φ',8],[8,'8',0],[10.618,'9+φ',-8]];
+    g.textAlign='center'; g.textBaseline='bottom'; g.font='bold 10px Consolas,monospace';
+    for(var m=0;m<MK.length;m++){
+      var dd=MK[m][0], found=null;
+      for(var z=0;z<DATA.ladder.length;z++){
+        if(Math.abs(DATA.ladder[z][0]-dd)<0.006){ found=DATA.ladder[z]; break; }
+      }
+      if(!found) continue;
+      var X=px(found[0]), Y=py(found[1]);
+      g.strokeStyle='rgba(255,216,74,.35)'; g.lineWidth=1;
+      g.beginPath(); g.moveTo(X,Y-3); g.lineTo(X,y1+2); g.stroke();
+      g.fillStyle='#ffd84a';
+      g.fillText(MK[m][1], X+MK[m][2], Y-9);
+    }
+  }
+
+  function drawPanels(){
+    var host=document.getElementById('dsGrid');
+    if(!host||host.dataset.done) return;
+    host.dataset.done='1';
+    for(var i=0;i<DATA.panels.length;i++){
+      (function(p){
+        var cell=document.createElement('div'); cell.className='cell';
+        var t=document.createElement('div'); t.className='ct'; t.textContent=p.l;
+        var c=document.createElement('canvas');
+        var n=document.createElement('div'); n.className='cn'; n.textContent=p.note;
+        var s=document.createElement('div'); s.className='cs';
+        s.textContent='Δφ='+(p.frac*360).toFixed(0)+'° · σ='+p.sig.toFixed(1)+'°';
+        cell.appendChild(t); cell.appendChild(c); cell.appendChild(n); cell.appendChild(s);
+        host.appendChild(cell);
+        var dpr=Math.min(2,window.devicePixelRatio||1);
+        var W=Math.max(100,cell.clientWidth-14), H=118;
+        c.width=W*dpr; c.height=H*dpr; c.style.width=W+'px'; c.style.height=H+'px';
+        var g=c.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0);
+        var pad=3;
+        // 网格（每 90°）
+        g.strokeStyle='#131b2c'; g.lineWidth=1;
+        for(var k=0;k<=4;k++){
+          var X=pad+(W-2*pad)*k/4;
+          g.beginPath(); g.moveTo(X,pad); g.lineTo(X,H-pad); g.stroke();
+        }
+        var col=p.sig<0.11?'#3cffbe':(p.sig<17?'#ffd84a':'#7a5cff');
+        g.fillStyle=col;
+        for(var j=0;j<p.ph.length;j++){
+          var x=pad+(W-2*pad)*(p.ph[j]/360);
+          var y=pad+(H-2*pad)*j/Math.max(1,p.ph.length-1);
+          g.beginPath(); g.arc(x,y,1.05,0,6.2832); g.fill();
+        }
+        // 底部角度标
+        g.fillStyle='#3f4d6b'; g.font='8px Consolas,monospace';
+        g.textAlign='left'; g.fillText('0°',pad,H-1);
+        g.textAlign='right'; g.fillText('360°',W-pad,H-1);
+      })(DATA.panels[i]);
+    }
+  }
+
+  function fillTab(){
+    var tb=document.getElementById('dsTab'); if(!tb||tb.dataset.done) return;
+    tb.dataset.done='1';
+    for(var i=0;i<DATA.tab.length;i++){
+      (function(r){
+        var tr=document.createElement('tr');
+        tr.className= r.judge==='锁'?'l0':(r.judge==='未锁'?'l2':'');
+        tr.innerHTML='<td>'+r.d.toFixed(3).replace(/0+$/,'').replace(/\.$/,'')+'</td>'+
+          '<td>'+r.kind+'</td><td>'+r.n+'</td>'+
+          '<td>'+(r.off===null?'—':r.off.toFixed(1)+'°')+'</td>'+
+          '<td>'+(r.sig===null?'—':r.sig.toFixed(1)+'°')+'</td>'+
+          '<td>'+r.judge+'</td>';
+        tb.appendChild(tr);
+      })(DATA.tab[i]);
+    }
+  }
+
+  // 按钮
+  var btn=document.getElementById('btnDSpec');
+  if(btn) btn.onclick=function(){ open(); fillTab(); };
+  window.addEventListener('resize',function(){
+    if(!D.classList.contains('off')){ drawLadder(); }
+  });
+})();
+</script>
+
 </body>
 </html>

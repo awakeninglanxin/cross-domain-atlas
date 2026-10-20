@@ -308,18 +308,46 @@ select {
 .sw-inner { background: repeating-linear-gradient(90deg, #b06bff 0 3px, transparent 3px 6px); }
 .sw-tube { background: linear-gradient(90deg,#6fe0c8,#2f9f86); }
 
+/* --------------------------------------------------------------- 阶段字幕
+   🔴 2026-10-20 老师（截图红框）：「这个框会档视线，你做成右上角可收起，
+      并且放在图形最左下角」
+   ⇒ 两处改动，互不相干：
+     ① **位置**：原先是 `left:50% + translateX(-50%)` 的死居中、`max-width:760px`
+        ——宽到把整个舞台下半截全盖住（图里那枚 1680 匝线圈正好在中间）。
+        现在改成**贴舞台左下角** `left:12px; bottom:12px`（舞台 = `.stage`，字幕是它的
+        绝对定位子元素 ⇒ 就是「图形最左下角」，不随页面滚动飘走），
+        宽度收到 `min(460px, 100%-24px)`：最长那条第 1 阶字幕折成 7 行、
+        **纵向占不到舞台三分之一**，右侧留给线圈本体。
+     ② **可收起**：结构与 `.hud` / `.legend` 完全一致 —— 右上角一枚 `.pane-min`（「—」/「＋」），
+        收起只是 `display:none` 掉 `.cap-body`，正文照常写进 DOM（不冻字幕、不改任何几何）。
+        收起后留一枚写着 `data-min-label`（「阶段说明」）的小胶囊，点它即可展开。
+   ⚠️ 与 hud/legend 同一条坑：整块 `.caption` 必须保持 `pointer-events:none`（让拖拽穿透到
+      canvas 转视角），所以那枚「—」得**自己**声明 `pointer-events:auto`；
+      收起态（`.caption.is-min`）再整枚胶囊开 `pointer-events:auto`，否则折叠后点不动。 */
 .caption {
-  position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%) translateY(14px);
-  max-width: min(760px, 92%); padding: 11px 16px;
+  position: absolute; left: 14px; bottom: 14px; transform: translateY(14px);
+  max-width: min(460px, calc(100% - 24px)); max-height: calc(100% - 24px);
+  overflow: hidden;
+  /* 右内边距 34px：给右上角那枚「—」让位（否则第二行文字会钻到按钮底下） */
+  padding: 10px 34px 11px 15px;
   background: color-mix(in srgb, var(--panel) 94%, transparent);
   border: 1px solid var(--line); border-left: 3px solid var(--accent-2);
-  border-radius: 11px; font-size: 13px; line-height: 1.65;
+  border-radius: 11px; font-size: 12.5px; line-height: 1.62;
   opacity: 0; transition: opacity .35s, transform .35s; pointer-events: none;
   backdrop-filter: blur(8px); box-shadow: var(--shadow);
 }
-.caption.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.caption.show { opacity: 1; transform: translateY(0); }
 .caption b { color: var(--accent-2); }
 .caption em { color: var(--gold); font-style: normal; }
+.caption .pane-min { top: 5px; right: 5px; }
+/* 收起态：只剩「阶段说明」+ 一枚「＋」的小胶囊（与 `.hud.is-min` 同一套观感） */
+.caption.is-min {
+  max-width: min(240px, calc(100% - 24px));
+  padding: 6px 28px 6px 11px;
+  pointer-events: auto; cursor: pointer;
+}
+.caption.is-min .cap-body { display: none; }
+.caption.is-min::before { content: attr(data-min-label); color: var(--text-dim); white-space: nowrap; }
 
 .toast {
   position: absolute; left: 50%; top: 14px; transform: translateX(-50%) translateY(-10px);
@@ -381,4 +409,9 @@ ol.mech code { font-size: 11.5px; background: var(--panel-2); padding: 1px 5px; 
   .topbar-right { flex: 1 1 100%; flex-wrap: wrap; justify-content: flex-end; }
   .topbar-right .btn-ghost { flex: 0 1 auto; }
   .brand h1 { white-space: normal; }
+  /* 🗕 2026-10-20：窄屏舞台只有 ~62vh 高，字幕块要**收字号 + 收到贴边**，
+     否则最长那条第 1 阶字幕（≈300 字）会占掉半个画面（纵向被 `max-height` 截掉尾巴）。
+     ⚠️ 仍然保持 `pointer-events:none`（拖拽穿透），所以这里**不开滚动** —— 靠字号先让它装得下。 */
+  .caption { font-size: 11.5px; line-height: 1.55; padding: 9px 30px 9px 12px;
+             left: 10px; bottom: 10px; max-width: calc(100% - 20px); }
 }
