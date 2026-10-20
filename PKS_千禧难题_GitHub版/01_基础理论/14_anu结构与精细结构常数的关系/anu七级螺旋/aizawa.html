@@ -3358,5 +3358,337 @@ requestAnimationFrame(frame);
 })();
 
 </script><!--/FXCTL:JS-->
+
+<!-- ==================================================================
+     自动演示（一轮 ≈ 68 s）：打开页面后自动把"参数怎么变、代表什么"走一遍
+     · 全部动作走真 UI 路径（click / 写 value + 派发 input），不绕过 bind
+     · 任何人在画布/面板上按一下 ⇒ 立刻暂停让位；空格=暂停 · ←/→=上/下一步 · Esc=退出
+     · 加 ?demo=0 可关闭自动启动
+     ================================================================== -->
+<style id="azdemo-css">
+  #azDemo{position:fixed;left:14px;bottom:60px;z-index:60;width:600px;
+    background:rgba(9,13,20,.93);border:1px solid #2b3a52;border-radius:12px;color:#e8eef8;
+    font:13px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    box-shadow:0 10px 30px rgba(0,0,0,.5);overflow:hidden;
+    transition:opacity .22s ease,transform .22s ease}
+  #azDemo.off{opacity:0;transform:translateY(12px);pointer-events:none}
+  #azDemo .adh{display:flex;align-items:center;gap:9px;padding:9px 12px 7px;border-bottom:1px solid #1d2836}
+  #azDemo .adn{font:700 11px/1 Consolas,monospace;color:#0b1017;background:#7fd8ff;
+    border-radius:5px;padding:3px 6px;flex:none}
+  #azDemo .adt{font-weight:800;color:#ffd84a;font-size:13.5px;flex:none}
+  #azDemo .adbar{flex:1;height:3px;background:#1d2836;border-radius:2px;overflow:hidden;min-width:60px}
+  #azDemo .adbar i{display:block;height:100%;width:0;
+    background:linear-gradient(90deg,#7fd8ff,#3cffbe);transition:width .3s linear}
+  #azDemo .adb{padding:8px 13px 4px;color:#cfdcee}
+  #azDemo .adb b{color:#7fd8ff}
+  #azDemo .adb em{color:#ffd84a;font-style:normal;font-weight:700}
+  #azDemo .adf{display:flex;align-items:center;gap:6px;padding:6px 12px 9px;flex-wrap:wrap}
+  #azDemo .adf button{font:inherit;font-size:12px;padding:3px 10px;border-radius:6px;cursor:pointer;
+    border:1px solid #33465e;background:#16202c;color:#cfdcee}
+  #azDemo .adf button:hover{border-color:#7fd8ff;color:#7fd8ff}
+  #azDemo .adf button.pri{background:#1c4a6b;border-color:#2f7fae;color:#bfe9ff}
+  #azDemo .adk{margin-left:auto;font-size:11px;color:#6b7b90}
+  #azDemoBtn{position:fixed;left:14px;bottom:60px;z-index:60;display:none;
+    font:13px/1 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;padding:9px 14px;
+    border-radius:20px;cursor:pointer;border:1px solid #2f7fae;background:rgba(9,13,20,.92);
+    color:#bfe9ff;box-shadow:0 4px 16px rgba(0,0,0,.45)}
+  #azDemoBtn:hover{border-color:#7fd8ff;color:#7fd8ff}
+  #azDemoBtn.show{display:block}
+  #wout .azpulse{outline:2px solid #ffd84a;outline-offset:2px;border-radius:6px;
+    animation:azpl 1.05s ease-in-out 3}
+  @keyframes azpl{0%,100%{background:transparent}50%{background:rgba(255,216,74,.16)}}
+  @media (max-width:760px){#azDemo .adk{display:none}}
+</style>
+
+<script>
+(function(){
+  if (!window.__az) return;                                   /* 页面没就绪就不装 */
+  if (location.search.indexOf('demo=0') >= 0) return;
+  var D = document, A = window.__az;
+  var panel = D.getElementById('panel'), tg = D.getElementById('tog');
+  var wres = D.getElementById('wres'), wresH = D.getElementById('wresH');
+  var el, nEl, tEl, barEl, bEl, btnPlay, pill;
+
+  /* ---------- 基础动作（全部走真 UI） ---------- */
+  function click(id){ var b = D.getElementById(id); if (b) b.click(); return !!b; }
+  function chk(id, on){
+    var c = D.getElementById(id); if (!c) return;
+    if (!!c.checked !== !!on) c.click();
+  }
+  function pressD(v){
+    var b = D.querySelector('button[data-d="' + v + '"]'); if (b) b.click(); return !!b;
+  }
+  function openPanel(){
+    if (panel && panel.classList.contains('hide')) click('tog');
+  }
+  function openWres(){
+    if (wres && wres.classList.contains('off')) { if (wresH) wresH.click(); }
+  }
+  function pulseWres(){
+    /* 结果窗在呼吸+播放时每 4 帧重渲染一次 ⇒ 往行上加 class 会被立刻冲掉。
+       改成一块独立的 fixed 高亮框，逐帧按目标行的 boundingRect 跟随。 */
+    var box = D.getElementById('azMark');
+    if (!box){
+      box = D.createElement('div'); box.id = 'azMark';
+      box.style.cssText = 'position:fixed;z-index:59;pointer-events:none;border:2px solid #ffd84a;' +
+        'border-radius:7px;box-shadow:0 0 0 3px rgba(255,216,74,.16) inset,0 0 18px rgba(255,216,74,.32);' +
+        'transition:opacity .25s;opacity:0';
+      D.body.appendChild(box);
+    }
+    var until = performance.now() + 4200;
+    (function tick(){
+      var w = D.getElementById('wres'), o = D.getElementById('wout'), node = null;
+      if (!w || w.classList.contains('off')){ box.style.opacity = '0'; }
+      else {
+        var all = o ? o.querySelectorAll('.wr, .sub') : [];
+        for (var i = 0; i < all.length; i++){
+          if ((all[i].textContent || '').indexOf('前后梯度差') >= 0 && all[i].children.length <= 3){ node = all[i]; break; }
+        }
+        if (node){
+          var r = node.getBoundingClientRect();
+          box.style.left = (r.left - 5) + 'px'; box.style.top = (r.top - 3) + 'px';
+          box.style.width = (r.width + 10) + 'px'; box.style.height = (r.height + 6) + 'px';
+          box.style.opacity = '1';
+        } else box.style.opacity = '0';
+      }
+      if (performance.now() < until) requestAnimationFrame(tick);
+      else box.style.opacity = '0';
+    })();
+  }
+
+  /* ---------- 可暂停的时钟（暂停时既不走时间也不改值） ---------- */
+  var tok = 0, paused = false, running = false, idx = -1;
+  function wait(ms, my){
+    return new Promise(function(res){
+      var acc = 0, last = performance.now();
+      function tick(now){
+        if (tok !== my) return res();
+        var dt = now - last; last = now;
+        if (!paused) acc += dt;
+        if (acc >= ms) return res();
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    });
+  }
+  function ramp(id, to, ms, my){
+    return new Promise(function(res){
+      var s = D.getElementById(id); if (!s) return res();
+      var from = parseFloat(s.value), acc = 0, last = performance.now(), done = false;
+      function tick(now){
+        if (tok !== my) return res();
+        var dt = now - last; last = now;
+        if (!paused){
+          acc += dt;
+          var k = Math.min(1, acc / ms);
+          var v = from + (to - from) * (0.5 - 0.5 * Math.cos(Math.PI * k));
+          s.value = String(v);
+          s.dispatchEvent(new Event('input', { bubbles: true }));
+          if (k >= 1 && !done){ done = true; return res(); }
+        }
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    });
+  }
+
+  /* ---------- 八步脚本 ---------- */
+  var STEPS = [
+    { t: '先看形状：这是终局，不是路径', ms: 6000,
+      d: '同一个 Aizawa 方程，随便给个初值，最后都被吸到这张蝴蝶形涡环上 —— 这是<b>终局</b>，不是路径。' +
+         '下面每动一个参数，看的都是这张终局怎么变。',
+      enter: function(){
+        if (A.partOn()) click('part');            /* 先干净地看轨道 */
+        chk('ckAnu', false);                      /* 先关十丝，单轨道＝蝴蝶本体 */
+        chk('breath', true);
+        if (!A.setPlaying()) A.setPlaying(true);
+      } },
+
+    { t: '梯度差 = z = b 这条线', ms: 10000,
+      d: 'ṙ=(z−b)r：z 低于 b，收向中轴；z 高于 b，散向外圈 —— 老师说的<em>「上下梯度差」</em>，' +
+         '在方程里就是 <b>z=b</b> 这一条水平线。现在从<b>上方环口</b>撒粒子：环外冷色往下沉、' +
+         '环心暖色往上喷，两条合起来才是闭合环流。',
+      enter: function(){
+        if (!A.partOn()) click('part');
+        click('psTop');                            /* 自动开粒子 + 慢放 6 s */
+      } },
+
+    { t: 'c 0.6 → 0.8：底部那层「沉淀」消失', ms: 10000,
+      d: 'c 是环心的上推项。<b>c=0.6</b> 时底端 z≈−1.105 是 ż 的稳定点，粒子在那儿堆到 <em>33%</em>；' +
+         '调到 <b>0.8</b>，这个点消失，堆积掉到 <em>0.4%</em>，喷射最干净。' +
+         '参数一改，「物质堆在哪」就变了 —— 这句话是可复算的，不是形容。',
+      enter: function(my){ return ramp('sC', 0.8, 3200, my); } },
+
+    { t: 'd 每循环圈数 = 螺距', ms: 9000,
+      d: '<b>d</b> 是每循环绕轴几圈，也就是螺距。整数 ⇒ 首尾对齐、<b>闭合</b>；' +
+         '黄金角 ⇒ 永不重合、均匀铺满。<b>6 最闭合</b>、<b>7 梯度最强</b> —— ' +
+         '同一条数也决定 anu 十根丝绕得多紧。',
+      enter: function(my){
+        pressD(6);
+        return wait(3600, my).then(function(){ pressD(7); return wait(1600, my); });
+      } },
+
+    { t: 'R 呼吸：孔径比在呼吸 = 曲率在呼吸', ms: 8000,
+      d: '<b>R</b> 是呼吸峰值的孔径比，R 在 1→R→1 之间走。孔径一变，泡壁的曲率就跟着变 —— ' +
+         '在这个模型里<em>时空曲率不是常数，它有一个呼吸</em>。',
+      enter: function(my){
+        openPanel(); chk('breath', true);
+        return ramp('sR', 2.2, 2800, my)
+          .then(function(){ return wait(1200, my); })
+          .then(function(){ return ramp('sR', 3.25, 2200, my); });
+      } },
+
+    { t: '梯度差 ≠ 推力：∫j_z dV ≡ 0', ms: 9000,
+      d: '把吸引子的轮廓当泡壁喂给 Alcubierre 度规：<b>前端收缩(−)、后端扩张(+)</b>，' +
+         '<b>前后梯度差不为零</b>。但全空间 ∫j_z dV ≡ 0 —— 泡本身<em>净动量为零、不产生推力</em>。' +
+         '梯度差是形变，不是推力。',
+      enter: function(){
+        if (A.partOn()) click('part');
+        openWres();
+        setTimeout(pulseWres, 400);
+      } },
+
+    { t: 'anu 在空间里怎么动：十根丝 = 一个流场的十个相位', ms: 10000,
+      d: '关掉粒子看十根丝：沿 <b>36°</b> 均分，走的是同一条流 —— <em>不是十条独立曲线，' +
+         '是同一个流场切出的十个相位</em>。粗丝外膨 3.8% 让它们不共面；一拍下去，' +
+         '十根一起绕轴转，转一圈就是 d 圈螺旋。',
+      enter: function(my){
+        chk('ckAnu', true);
+        return ramp('sBO', 0, 2400, my)
+          .then(function(){ return wait(900, my); })
+          .then(function(){ return ramp('sBO', 3.8, 2400, my); });
+      } },
+
+    { t: '收一句：每个参数都对应一句可复算的话', ms: 5000,
+      d: 'd 管螺距与闭合，c 管底部沉淀，R 管孔径与曲率，b 管<b>梯度差那条线在哪</b>。' +
+         '这些数字在页面里都能当场重算 —— 不是配图。',
+      enter: function(my){
+        if (A.partOn()) click('part');
+        return ramp('sC', 0.6, 1600, my);
+      } }
+  ];
+
+  /* ---------- 浮层 ---------- */
+  function build(){
+    el = D.createElement('div'); el.id = 'azDemo'; el.className = 'off';
+    el.innerHTML =
+      '<div class="adh"><span class="adn" id="azN">1/' + STEPS.length + '</span>' +
+      '<span class="adt" id="azT"></span><span class="adbar"><i id="azBar"></i></span></div>' +
+      '<div class="adb" id="azB"></div>' +
+      '<div class="adf">' +
+        '<button data-a="prev">◀ 上一步</button>' +
+        '<button data-a="play" class="pri" id="azPlay">⏸ 暂停</button>' +
+        '<button data-a="next">▶ 下一步</button>' +
+        '<button data-a="stop">✕ 结束</button>' +
+        '<span class="adk">空格 暂停 · ←/→ 换步 · Esc 退出</span>' +
+      '</div>';
+    D.body.appendChild(el);
+    nEl = D.getElementById('azN'); tEl = D.getElementById('azT');
+    barEl = D.getElementById('azBar'); bEl = D.getElementById('azB');
+    btnPlay = D.getElementById('azPlay');
+    pill = D.createElement('button'); pill.id = 'azDemoBtn'; pill.textContent = '▶ 自动演示';
+    D.body.appendChild(pill);
+
+    el.addEventListener('click', function(e){
+      var b = e.target.closest('button[data-a]'); if (!b) return;
+      var a = b.dataset.a;
+      if (a === 'prev') goTo(Math.max(0, idx - 1));
+      else if (a === 'next') goTo(idx + 1);
+      else if (a === 'play') setPaused(!paused);
+      else if (a === 'stop') stop();
+    });
+    pill.addEventListener('click', function(){ pill.classList.remove('show'); start(); });
+
+    /* 真人一碰画面就暂停（合成 click 不触发 pointerdown ⇒ 不会自己打断自己） */
+    D.addEventListener('pointerdown', function(e){
+      if (!running || !el || el.contains(e.target) || e.target === pill) return;
+      setPaused(true);
+    }, true);
+
+    D.addEventListener('keydown', function(e){
+      if (!running) return;
+      if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+      if (e.code === 'Space'){ e.preventDefault(); setPaused(!paused); }
+      else if (e.key === 'ArrowRight'){ e.preventDefault(); goTo(idx + 1); }
+      else if (e.key === 'ArrowLeft'){ e.preventDefault(); goTo(Math.max(0, idx - 1)); }
+      else if (e.key === 'Escape'){ stop(); }
+    });
+
+    addEventListener('resize', fit);
+    fit();
+  }
+  function fit(){
+    if (!el) return;
+    var pr = (panel && !panel.classList.contains('hide'))
+      ? panel.getBoundingClientRect().left : innerWidth;
+    var w = Math.max(300, Math.min(620, pr - 34));
+    el.style.width = w + 'px';
+  }
+  function paint(i){
+    var s = STEPS[i];
+    if (nEl) nEl.textContent = (i + 1) + '/' + STEPS.length;
+    if (tEl) tEl.textContent = s.t;
+    if (bEl) bEl.innerHTML = s.d;
+    if (barEl) barEl.style.width = ((i + 1) / STEPS.length * 100).toFixed(1) + '%';
+  }
+  function setPaused(v){
+    paused = !!v;
+    if (btnPlay) btnPlay.textContent = paused ? '▶ 继续' : '⏸ 暂停';
+    if (el) el.style.boxShadow = paused
+      ? '0 10px 30px rgba(0,0,0,.5),0 0 0 2px #ffd84a inset' : '0 10px 30px rgba(0,0,0,.5)';
+  }
+  function goTo(i){
+    tok++;                                   /* 终止上一步的等待/滑条 */
+    if (i >= STEPS.length) return finish();
+    idx = Math.max(0, i);
+    paint(idx);
+    setPaused(false);
+    if (el) el.classList.remove('off');
+    var my = tok, s = STEPS[idx];
+    (function(){
+      Promise.resolve().then(function(){ return s.enter ? s.enter(my) : null; })
+        .catch(function(e){ console.warn('[自动演示] 第 ' + (idx + 1) + ' 步出错：', e); })
+        .then(function(){ return wait(s.ms, my); })
+        .then(function(){ if (my === tok) goTo(idx + 1); });
+    })();
+  }
+  function start(){
+    if (running) { goTo(0); return; }
+    running = true; idx = -1;
+    if (!el) build();
+    goTo(0);
+  }
+  function stop(){
+    running = false; tok++; paused = false;
+    if (el) el.classList.add('off');
+    if (pill) pill.classList.add('show');      /* 退出后留一个「▶ 自动演示」随时重放 */
+  }
+  function finish(){
+    running = false; tok++;
+    if (el) el.classList.add('off');
+    if (pill) pill.classList.add('show');
+  }
+
+  window.__azDemo = {
+    start: start, stop: stop, next: function(){ goTo(idx + 1); },
+    prev: function(){ goTo(Math.max(0, idx - 1)); },
+    pause: setPaused, goTo: goTo,
+    idx: function(){ return idx; }, n: function(){ return STEPS.length; },
+    title: function(){ return idx >= 0 ? STEPS[idx].t : null; },
+    paused: function(){ return paused; }, running: function(){ return running; },
+    steps: function(){ return STEPS.map(function(s){ return { t: s.t, ms: s.ms }; }); }
+  };
+
+  /* 等画面真的出图（轨迹点 > 0）再起，别在首帧就开讲 */
+  var boot = 0;
+  (function ready(){
+    var hp = D.getElementById('hP');
+    var n = hp ? parseInt(hp.textContent, 10) || 0 : 0;
+    if (n > 200 && A.view().W > 0){ setTimeout(start, 1200); return; }
+    if (++boot > 120) { setTimeout(start, 600); return; }
+    setTimeout(ready, 120);
+  })();
+})();
+</script>
 </body>
 </html>

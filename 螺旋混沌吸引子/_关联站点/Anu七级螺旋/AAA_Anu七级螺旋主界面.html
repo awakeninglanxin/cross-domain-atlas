@@ -1188,5 +1188,220 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
 })();
 
 </script><!--/FXCTL:JS-->
+
+<!-- 自动演示序列（2026-10-19 老师）：等文字弹框消失 → 生长动画 → 逐级放大播放 → 自动旋转。
+     不用固定时长：动画总长是运行时算的（zoomScriptC.total），所以一律按**按钮状态**判定"播完"。 -->
+<script>
+(function(){
+  var LOG = [];
+  function log(x){ LOG.push(x); try{ console.log('[autoDemo]', x); }catch(e){} }
+
+  /* ---------- 演示字幕条（不压参数框 / 数值框 / HUD，pointer-events:none 不挡拖拽） ---------- */
+  function say(n, title, sub){
+    var d = document.getElementById('anuStep');
+    if (!d){
+      d = document.createElement('div');
+      d.id = 'anuStep';
+      d.setAttribute('aria-live', 'polite');
+      document.body.appendChild(d);
+    }
+    if (!d.__styled){
+      d.__styled = 1;
+      d.style.cssText = [
+        'position:fixed','left:50%','bottom:16px','transform:translateX(-50%)',
+        'max-width:min(760px,86vw)','z-index:60','pointer-events:none',
+        'background:rgba(8,12,20,.82)','color:#e7eef8','border:1px solid rgba(120,160,220,.45)',
+        'border-radius:12px','padding:9px 16px 10px','font-size:13.5px','line-height:1.55',
+        'box-shadow:0 10px 30px rgba(0,0,0,.45)','backdrop-filter:blur(6px)',
+        'transition:opacity .45s','opacity:0'
+      ].join(';');
+    }
+    d.innerHTML = '<div style="font-size:12px;letter-spacing:.08em;color:#9fb4d4">自动演示 ' +
+      n + ' / ' + STEPS.length + '</div>' +
+      '<div style="font-size:14.5px;font-weight:700;margin:1px 0 2px">' + title + '</div>' +
+      (sub ? '<div style="color:#c3d2e8">' + sub + '</div>' : '');
+    requestAnimationFrame(function(){ d.style.opacity = '1'; });
+  }
+  function sayBye(){
+    var d = document.getElementById('anuStep');
+    if (d){ d.style.opacity = '0'; setTimeout(function(){ if (d.parentNode) d.parentNode.removeChild(d); }, 700); }
+  }
+
+  /* 等 toast 的 show 类消失（最多 30s，防卡死） */
+  function waitToastGone(cb){
+    var t = document.getElementById('toast');
+    if (!t){ log('无 #toast，直接开始'); return cb(); }
+    var t0 = Date.now();
+    (function chk(){
+      if (!t.classList.contains('show')){ log('弹框已消失，用时 ' + (Date.now()-t0) + 'ms'); return cb(); }
+      if (Date.now()-t0 > 30000){ log('弹框等待超时，强行开始'); return cb(); }
+      setTimeout(chk, 100);
+    })();
+  }
+
+  /* 等某个条件成立（轮询 200ms） */
+  function waitUntil(fn, maxMs, cb, label){
+    var t0 = Date.now();
+    (function chk(){
+      if (fn()){ log((label||'条件') + ' 完成，用时 ' + ((Date.now()-t0)/1000).toFixed(1) + 's'); return cb(); }
+      if (Date.now()-t0 > maxMs){ log((label||'条件') + ' 超时'); return cb(); }
+      setTimeout(chk, 200);
+    })();
+  }
+
+  /* 「生长动画」是否还在播：按钮带 on 类，或文字变成「⏸ 暂停」 */
+  function growPlaying(){
+    var b = document.getElementById('btnPlay');
+    if (!b) return false;
+    return b.classList.contains('on') || /暂停/.test(b.textContent);
+  }
+  /* 「逐级放大播放」是否还在播：按钮带 on 类 */
+  function zoomPlaying(){
+    var b = document.getElementById('btnZoomPlay');
+    return !!(b && b.classList.contains('on'));
+  }
+
+  /* ---------- 🪞 镜像这一步要看的两件事：舞台左上角极性标签 + 按钮自身文案 ---------- */
+  function polarityText(){
+    var e = document.getElementById('hudPolarity');
+    return e ? (e.textContent || '').replace(/\s+/g, ' ').trim() : '';
+  }
+  function isPositive(){ return /positive\s*正磁荷/.test(polarityText()); }
+
+  /* 等极性标签翻到想要的那一边（帧驱动，最多 maxMs） */
+  function waitPolarity(wantPos, maxMs, cb){
+    var t0 = Date.now();
+    (function chk(){
+      if (isPositive() === !!wantPos){ return cb(true); }
+      if (Date.now() - t0 > maxMs){ return cb(false); }
+      setTimeout(chk, 120);
+    })();
+  }
+
+  /* HUD 收起时极性标签看不见 ⇒ 演示镜像前把它展开（已经展开就不动） */
+  function openHud(){
+    var box = document.getElementById('hud');
+    var btn = document.getElementById('hudMin');
+    if (!box || !btn) return false;
+    if (!box.classList.contains('is-min')) return true;
+    btn.click();
+    log('已展开左上角标签（要看磁荷极性）');
+    return !box.classList.contains('is-min');
+  }
+
+  /* 自动旋转（原第 ③ 步，现在放在最后收尾） */
+  function enableRotate(){
+    var c = document.getElementById('chkRotate');
+    if (!c){ log('无 #chkRotate'); return done(); }
+    if (!c.checked){ c.checked = true; c.dispatchEvent(new Event('change', {bubbles:true})); log('已勾选自动旋转'); }
+    else { log('自动旋转本来已开'); }
+    say(6, '⑥ 自动旋转 · 转起来看绕向', '两种镜像的 anu 都存在，差别只是<b>磁荷极性</b>（右上角标签实时显示）。');
+    done();
+  }
+
+  function done(){ cur = STEPS.length; log('自动演示结束'); setTimeout(sayBye, 7000); }
+
+  /* ---------- 演示步骤表（探针按这张表核对；改序只改这里） ---------- */
+  var STEPS = [
+    '生长动画',            /* 1 整团由无到有 */
+    '逐级放大播放',        /* 2 一路钻进第 7 阶 */
+    '俯视',                /* 3 回到整团、从轴顶往下看（镜像要看绕向） */
+    '镜像：开',            /* 4 φ→−φ 翻面 ⇒ negative 变 positive */
+    '镜像：关',            /* 5 再点一次 ⇒ 回到 negative */
+    '自动旋转'             /* 6 收尾 */
+  ];
+  var cur = 0;
+
+  function faceTop(){
+    cur = 3;
+    say(3, '③ 俯视：从轴顶往下看', '内程（沿直锥往下旋的那一程）到底<b>顺时针</b>还是<b>逆时针</b> —— 这一步先记住它。');
+    /* 俯视：`onTop` 内部 resetView(fitDist, 0.9, 0.16) —— **顺便把距离拉回 fitDist**，
+       所以逐级放大之后不用先点「重置视角」。 */
+    var t = document.getElementById('btnTop');
+    if (t){ t.click(); log('已点：俯视（看绕向用）'); }
+    else { log('无 #btnTop，跳过俯视'); }
+    setTimeout(mirrorFlip, 900);
+  }
+
+  function mirrorFlip(){
+    cur = 4;
+    var b = document.getElementById('btnMirror');
+    if (!b){ log('无 #btnMirror，跳过镜像这一步'); return enableRotate(); }
+    openHud();
+    say(4, '④ 镜像：开 —— 以中轴为镜，左右互换（φ → −φ）',
+      '半径与高度<b>逐点不变</b>（同一条闭轨道、同一组上下孔），只有绕向翻过来：' +
+      '俯视顺时针 → <b>逆时针</b> ⇒ 磁荷 <b>negative 负</b> → <b style="color:#ffd84a">positive 正</b>。');
+    b.click();
+    log('已点：Anu 镜像（开）· ' + polarityText());
+    waitPolarity(true, 5000, function(ok){
+      log(ok ? '极性已翻到 positive 正磁荷（俯视内程逆时针）—— 停 9 s 看绕向反过来'
+             : '极性未翻（' + polarityText() + '）—— 仍停 6 s');
+      setTimeout(function(){
+        cur = 5;
+        say(5, '⑤ 镜像：关 —— 再点一次，原样翻回去',
+          '两种 anu <b>都真实存在</b>，区别就是磁荷极性：镜像态 = positive 正磁荷，原态 = negative 负磁荷。');
+        b.click();
+        log('已点：Anu 镜像（关）· ' + polarityText());
+        waitPolarity(false, 5000, function(ok2){
+          log(ok2 ? '极性已还原 negative 负磁荷（顺时针下旋）'
+                  : '极性未还原（' + polarityText() + '）');
+          setTimeout(function(){ cur = 6; enableRotate(); }, 3000);
+        });
+      }, ok ? 9000 : 6000);
+    });
+  }
+
+  function run(){
+    var play = document.getElementById('btnPlay');
+    var zoom = document.getElementById('btnZoomPlay');
+    if (!play || !zoom){ log('按钮缺失，终止'); return; }
+
+    /* ① 生长动画 */
+    cur = 1;
+    say(1, '① 生长动画 · 整团由无到有', '一条 Aizawa 轨道按 36° 等分画成 10 根丝（3 粗 7 细），逐级细分到第 7 阶。');
+    play.click(); log('已点：生长动画');
+    setTimeout(function(){
+      /* 先确认它真的进入了"播放中"，否则会立刻误判为播完 */
+      if (!growPlaying()){ log('警告：生长动画未进入播放态'); }
+      waitUntil(function(){ return !growPlaying(); }, 120000, function(){
+        /* ② 逐级放大播放 */
+        cur = 2;
+        say(2, '② 逐级放大播放 · 一路钻到第 7 阶', '每一阶都长在上阶的丝上（七级 spirillae），最细一级就是 koilon。');
+        setTimeout(function(){
+          zoom.click(); log('已点：逐级放大播放');
+          setTimeout(function(){
+            waitUntil(function(){ return !zoomPlaying(); }, 180000, function(){
+              /* ③ 俯视 → ④⑤ 镜像开/关 → ⑥ 自动旋转 */
+              setTimeout(faceTop, 700);
+            }, '逐级放大');
+          }, 600);
+        }, 600);
+      }, '生长动画');
+    }, 800);
+  }
+
+  /* 对外暴露，方便手动重放或调试 */
+  window.__autoDemo = {
+    run: run,
+    log: function(){ return LOG.slice(); },
+    steps: function(){ return STEPS.slice(); },
+    idx: function(){ return cur; },
+    polarity: function(){ return polarityText(); },
+    isPositive: isPositive
+  };
+
+  /* 入口：等弹框消失后再跑。`?autodemo=0` 可关掉（调试 / 想自己点的时候用） */
+  function autoStart(){
+    if (/[?&]autodemo=0/.test(location.search)){ log('?autodemo=0，不自动演示'); return; }
+    waitToastGone(run);
+  }
+  if (document.readyState === 'complete' || document.readyState === 'interactive'){
+    setTimeout(autoStart, 600);
+  } else {
+    window.addEventListener('load', function(){ setTimeout(autoStart, 600); });
+  }
+})();
+</script>
+
 </body>
 </html>
