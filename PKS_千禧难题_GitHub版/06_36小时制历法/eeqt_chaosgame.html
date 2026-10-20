@@ -1,766 +1,1426 @@
 ﻿<!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>EEQT Chaos Game — Selected Geometries</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EEQT 量子分形 · 混沌游戏画廊 | 几何体顶点 = 量子探测器阵列</title>
 <style>
+:root{
+	--paper:#f7f3ea; --paper2:#fbf8f1; --card:#fffdf8;
+	--ink:#1b2430; --ink2:#47555f; --ink3:#7c8a92; --ink4:#a9b4b8;
+	--line:rgba(27,36,48,.13); --line2:rgba(27,36,48,.07);
+	--blue:#1f6f9f; --blue-l:#e8f1f6;
+	--purple:#6b4a8f; --purple-l:#f1ecf6;
+	--green:#2c7a58; --green-l:#e9f2ec;
+	--red:#a8352e; --red-l:#f7eae8;
+	--gold:#a87c22;
+	--mono:"Consolas","SF Mono","Cascadia Mono",Menlo,monospace;
+	--serif:"Noto Serif SC","Source Han Serif SC","Songti SC",SimSun,Georgia,serif;
+	--sans:"PingFang SC","Microsoft YaHei","Hiragino Sans GB",system-ui,-apple-system,sans-serif;
+}
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#040408;color:#ccd4e0;font-family:Courier New,monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:14px}
-h1{font-size:.95em;color:#7a9ac0;letter-spacing:3px;text-transform:uppercase;margin-bottom:2px}
-.s{font-size:.58em;color:#3a4a5a;margin-bottom:10px}
-canvas{border:1px solid #151e2a;border-radius:5px;background:#010104;max-width:100%}
-.ctrl{display:flex;gap:18px;align-items:center;margin-top:12px;flex-wrap:wrap;justify-content:center}
-.g{display:flex;flex-direction:column;align-items:center;gap:4px}
-.l{font-size:.53em;color:#4a5a6a;text-transform:uppercase;letter-spacing:1px}
-input[type=range]{-webkit-appearance:none;width:150px;height:3px;background:#1a2432;border-radius:2px;outline:none;cursor:pointer}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;border-radius:50%;background:#2a5a8a;border:2px solid #4a8abb}
-.v{font-size:.65em;color:#5a8aaa;min-width:36px;text-align:center;font-variant-numeric:tabular-nums}
-select{background:#0a1520;color:#6a9aba;border:1px solid #1e2e3e;font-family:Courier New,monospace;font-size:.63em;cursor:pointer;padding:4px 6px}
-button{background:#0a1520;color:#6a9aba;border:1px solid #1e2e3e;padding:5px 12px;cursor:pointer;border-radius:4px;font-family:Courier New,monospace;font-size:.65em;transition:all .2s}
-button:hover{background:#102030;border-color:#2a4a6a}
-.leg{display:flex;gap:9px;margin-top:7px;flex-wrap:wrap;justify-content:center}
-.li{display:flex;align-items:center;gap:3px;font-size:.5em;color:#3a4a5a}
-.d{width:6px;height:6px;border-radius:50%}
-.inf{margin-top:8px;font-size:.5em;color:#2a3a4a;max-width:620px;text-align:center;line-height:1.7}
-.fml{font-size:.62em;color:#2a4a6a;margin-top:4px;text-align:center}
-.dim-box{background:rgba(0,10,20,.85);border:1px solid #1a3040;border-radius:6px;padding:8px 14px;margin-top:8px;text-align:center;min-width:200px}
-.dim-label{font-size:.5em;color:#3a5565;text-transform:uppercase;letter-spacing:1px}
-.dim-value{font-size:1.4em;color:#4a8aaa;font-weight:bold;letter-spacing:2px}
-.dim-sub{font-size:.48em;color:#2a3a4a;margin-top:2px}
-.metrics-box{background:rgba(0,10,20,.85);border:1px solid #1a3040;border-radius:6px;padding:10px 14px;margin-top:8px;display:grid;grid-template-columns:repeat(5,1fr);gap:8px;text-align:center}
-.metric{background:rgba(5,15,25,.8);border-radius:4px;padding:6px 4px}
-.metric-label{font-size:.48em;color:#3a5565;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
-.metric-value{font-size:1em;color:#4a9acc;font-weight:bold}
-</style>
+html{scroll-behavior:smooth}
+body{
+	background:var(--paper); color:var(--ink); font-family:var(--sans);
+	font-size:15px; line-height:1.78; -webkit-font-smoothing:antialiased;
+	background-image:radial-gradient(circle at 18% 8%,rgba(168,124,34,.05),transparent 42%),
+		radial-gradient(circle at 82% 4%,rgba(31,111,159,.05),transparent 40%);
+	background-attachment:fixed;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:0 26px}
+a{color:var(--blue);text-decoration:none;border-bottom:1px solid rgba(31,111,159,.28)}
+a:hover{border-bottom-color:var(--blue)}
 
-<!-- 四元数旋转模块 -->
-<script>
-// ============================================================
-// 四元数旋转模块
-// ============================================================
-const Quaternion = {
-  fromAxisAngle: function(axis, angleDeg) {
-    const angle = angleDeg * Math.PI / 180;
-    const ax = axis[0], ay = axis[1], az = axis[2];
-    const norm = Math.sqrt(ax*ax + ay*ay + az*az);
-    if(norm < 1e-10) return [1, 0, 0, 0];
-    const half = angle / 2;
-    const s = Math.sin(half) / norm;
-    return [Math.cos(half), ax*s, ay*s, az*s];
-  },
-  multiply: function(q1, q2) {
-    const [w1,x1,y1,z1] = q1;
-    const [w2,x2,y2,z2] = q2;
-    return [
-      w1*w2 - x1*x2 - y1*y2 - z1*z2,
-      w1*x2 + x1*w2 + y1*z2 - z1*y2,
-      w1*y2 - x1*z2 + y1*w2 + z1*x2,
-      w1*z2 + x1*y2 - y1*x2 + z1*w2
-    ];
-  },
-  inverse: function(q) {
-    const n2 = q[0]*q[0] + q[1]*q[1] + q[2]*q[2] + q[3]*q[3];
-    if(n2 < 1e-10) return [1,0,0,0];
-    return [q[0]/n2, -q[1]/n2, -q[2]/n2, -q[3]/n2];
-  },
-  rotatePoint: function(point, q) {
-    const p = [0, point[0], point[1], point[2]];
-    const qInv = this.inverse(q);
-    const temp = this.multiply(q, p);
-    const result = this.multiply(temp, qInv);
-    return [result[1], result[2], result[3]];
-  },
-  normalize: function(v) {
-    const n = Math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
-    if(n < 1e-10) return [0, 0, 1];
-    return [v[0]/n, v[1]/n, v[2]/n];
-  },
-  composeRotation: function(rotX, rotY, rotZ) {
-    const qx = this.fromAxisAngle([1,0,0], rotX);
-    const qy = this.fromAxisAngle([0,1,0], rotY);
-    const qz = this.fromAxisAngle([0,0,1], rotZ);
-    const qxy = this.multiply(qy, qx);
-    return this.multiply(qz, qxy);
-  },
-  rotateGeometry: function(vertices, rotX, rotY, rotZ) {
-    const q = this.composeRotation(rotX, rotY, rotZ);
-    return vertices.map(v => {
-      const rotated = this.rotatePoint(v, q);
-      return this.normalize(rotated);
-    });
-  }
-};
-</script>
+/* ---------- 顶栏 ---------- */
+.top{padding:44px 0 26px;border-bottom:1px solid var(--line)}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.22em;color:var(--ink3);text-transform:uppercase;margin-bottom:12px}
+h1{font-family:var(--serif);font-size:37px;font-weight:700;letter-spacing:.01em;line-height:1.25}
+h1 .thin{color:var(--ink3);font-weight:400}
+.lede{margin-top:14px;font-size:15.5px;color:var(--ink2);max-width:900px}
+.lede b{color:var(--ink)}
+.stats{display:flex;flex-wrap:wrap;gap:26px;margin-top:22px}
+.stat{font-family:var(--mono)}
+.stat .k{font-size:10.5px;letter-spacing:.14em;color:var(--ink4);text-transform:uppercase}
+.stat .v{font-size:20px;color:var(--ink);font-weight:600}
+.stat .v small{font-size:11.5px;color:var(--ink3);font-weight:400}
+
+/* ---------- 导航 ---------- */
+nav.tabs{position:sticky;top:0;z-index:40;background:rgba(247,243,234,.93);
+	backdrop-filter:blur(10px);border-bottom:1px solid var(--line);margin-top:26px}
+nav.tabs .wrap{display:flex;gap:4px;overflow-x:auto;padding:0 26px}
+nav.tabs a{font-size:13px;color:var(--ink2);padding:13px 12px;border-bottom:2px solid transparent;
+	white-space:nowrap;border-bottom-color:transparent}
+nav.tabs a:hover{color:var(--ink);background:rgba(27,36,48,.035)}
+nav.tabs a.on{color:var(--blue);border-bottom-color:var(--blue)}
+nav.tabs .sp{flex:1}
+nav.tabs button{font-family:var(--sans);font-size:12px;color:var(--ink3);background:none;
+	border:1px solid var(--line);border-radius:20px;padding:5px 13px;cursor:pointer;margin:8px 0 8px 6px}
+nav.tabs button:hover{color:var(--ink);border-color:var(--ink4)}
+
+section{padding:52px 0 8px;border-bottom:1px solid var(--line2)}
+section:last-of-type{border-bottom:none}
+h2{font-family:var(--serif);font-size:25px;font-weight:700;margin-bottom:6px;display:flex;align-items:baseline;gap:12px}
+h2 .no{font-family:var(--mono);font-size:12.5px;color:var(--ink4);letter-spacing:.1em}
+.sub{color:var(--ink3);font-size:13.5px;margin-bottom:26px}
+h3{font-family:var(--serif);font-size:18.5px;font-weight:600;margin:34px 0 10px;color:var(--ink)}
+h3:first-of-type{margin-top:6px}
+h4{font-size:14.5px;font-weight:600;margin:22px 0 8px;color:var(--ink)}
+p{margin:9px 0;color:var(--ink2)}
+p b,li b{color:var(--ink)}
+ul,ol{margin:10px 0 10px 22px;color:var(--ink2)}
+li{margin:5px 0}
+
+/* ---------- 口径色标 ---------- */
+.tag{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;
+	padding:1px 7px;border-radius:3px;vertical-align:1px;white-space:nowrap}
+.t-src{background:var(--blue-l);color:var(--blue);border:1px solid rgba(31,111,159,.25)}
+.t-th{background:var(--purple-l);color:var(--purple);border:1px solid rgba(107,74,143,.25)}
+.t-num{background:var(--green-l);color:var(--green);border:1px solid rgba(44,122,88,.25)}
+.t-no{background:var(--red-l);color:var(--red);border:1px solid rgba(168,53,46,.25)}
+mark{background:#f6ecc9;color:#5c4408;padding:0 3px;border-radius:2px}
+.no-b{color:var(--red);font-weight:600}
+.ok-b{color:var(--green);font-weight:600}
+
+/* ---------- 引用 / 公式 ---------- */
+blockquote{border-left:2px solid var(--line);margin:14px 0;padding:2px 0 2px 16px;color:var(--ink2);font-size:14px}
+blockquote em{font-style:italic;color:var(--ink)}
+blockquote .who{display:block;font-family:var(--mono);font-size:11px;color:var(--ink4);margin-top:6px;font-style:normal}
+.fml{background:var(--paper2);border:1px solid var(--line);border-radius:5px;
+	padding:15px 18px;margin:14px 0;font-family:var(--mono);font-size:14px;line-height:2;
+	color:var(--ink);overflow-x:auto}
+.fml .cm{color:var(--ink3);font-size:12px}
+.fml .hl{color:var(--blue)}
+
+/* ---------- 表格 ---------- */
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.2px}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line2);vertical-align:top}
+th{font-family:var(--mono);font-size:10.8px;letter-spacing:.08em;color:var(--ink3);
+	text-transform:uppercase;font-weight:500;border-bottom:1px solid var(--line)}
+tbody tr:hover{background:rgba(27,36,48,.022)}
+td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.scroll{overflow-x:auto}
+
+/* ---------- 画廊 ---------- */
+.galbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 24px}
+.galbar .sp{flex:1}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:22px;overflow:hidden;background:var(--card)}
+.seg button{font-family:var(--sans);font-size:12.5px;padding:7px 15px;background:none;border:none;
+	cursor:pointer;color:var(--ink3)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--ink);color:var(--paper)}
+.galbar .hint{font-size:12px;color:var(--ink4);font-family:var(--mono)}
+
+.grp{margin:0 0 30px;border-top:1px solid var(--line);padding-top:16px}
+.grp:first-child{border-top:none;padding-top:0}
+.grph{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.grph .nm{font-family:var(--serif);font-size:17px;font-weight:600}
+.grph .en{font-family:var(--mono);font-size:11.5px;color:var(--ink4);letter-spacing:.06em}
+.grph .kv{font-family:var(--mono);font-size:11.5px;color:var(--ink3)}
+.grph .kv b{color:var(--ink2);font-weight:600}
+.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.shot{background:var(--card);border:1px solid var(--line);border-radius:7px;overflow:hidden;
+	cursor:zoom-in;transition:box-shadow .2s,transform .2s,border-color .2s}
+.shot:hover{box-shadow:0 10px 26px -14px rgba(27,36,48,.4);transform:translateY(-2px);border-color:var(--ink4)}
+.shot img{display:block;width:100%;aspect-ratio:1/1;object-fit:cover;background:var(--paper2)}
+.shot .cap{display:flex;justify-content:space-between;gap:8px;padding:8px 11px;
+	font-family:var(--mono);font-size:11px;color:var(--ink3);border-top:1px solid var(--line2)}
+.shot .cap .pj{color:var(--ink2);font-weight:600}
+.shot .cap .ep{font-variant-numeric:tabular-nums}
+
+/* ---------- 灯箱 ---------- */
+.lb{position:fixed;inset:0;z-index:200;background:rgba(22,28,34,.94);display:none;
+	align-items:center;justify-content:center;padding:26px}
+.lb.on{display:flex}
+.lb img{max-width:min(92vw,92vh);max-height:92vh;border-radius:4px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.lb .meta{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);text-align:center;
+	color:#e8e2d4;font-family:var(--mono);font-size:12px;line-height:1.7;background:rgba(0,0,0,.45);
+	padding:8px 18px;border-radius:22px;white-space:nowrap}
+.lb .x{position:absolute;top:16px;right:20px;color:#e8e2d4;font-size:26px;cursor:pointer;
+	background:none;border:none;font-family:var(--mono)}
+.lb .ar{position:absolute;top:50%;transform:translateY(-50%);color:#e8e2d4;font-size:34px;
+	background:none;border:none;cursor:pointer;padding:16px;font-family:var(--mono);opacity:.6}
+.lb .ar:hover{opacity:1}
+.lb .ar.l{left:8px}.lb .ar.r{right:8px}
+
+/* ---------- 图表 ---------- */
+.chartbox{background:var(--card);border:1px solid var(--line);border-radius:7px;padding:14px 14px 6px;margin:16px 0}
+.chartbox canvas{display:block;width:100%;height:auto}
+.chartctl{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.chartctl .lg{display:flex;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:11.5px;color:var(--ink2)}
+.chartctl .lg span{display:inline-flex;align-items:center;gap:5px;cursor:pointer;opacity:.42}
+.chartctl .lg span.on{opacity:1}
+.chartctl .lg i{width:16px;height:2px;border-radius:1px;display:inline-block}
+
+/* ---------- 实验室 ---------- */
+.labwrap{display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;margin-top:18px}
+.labcanv{background:var(--card);border:1px solid var(--line);border-radius:7px;padding:8px}
+.labcanv canvas{display:block;width:100%;height:auto;border-radius:4px;background:#fbf8f1}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:7px;padding:14px 15px}
+.ctl{margin-bottom:13px}
+.ctl .lb2{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;
+	color:var(--ink3);letter-spacing:.06em;margin-bottom:5px}
+.ctl .lb2 b{color:var(--ink);font-weight:600}
+.ctl input[type=range]{-webkit-appearance:none;width:100%;height:3px;background:rgba(27,36,48,.16);
+	border-radius:2px;outline:none;cursor:pointer}
+.ctl input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;
+	border-radius:50%;background:var(--blue);border:2px solid var(--card);box-shadow:0 0 0 1px var(--blue)}
+.ctl select{width:100%;background:var(--paper2);border:1px solid var(--line);border-radius:4px;
+	padding:6px 8px;font-family:var(--sans);font-size:12.5px;color:var(--ink);cursor:pointer}
+.ctl .chk{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink2);cursor:pointer}
+.readout{margin-top:14px;border-top:1px solid var(--line);padding-top:12px;font-family:var(--mono);font-size:12px}
+.readout div{display:flex;justify-content:space-between;padding:3px 0;color:var(--ink3)}
+.readout div b{color:var(--ink);font-variant-numeric:tabular-nums}
+.btn{width:100%;padding:8px;border:1px solid var(--line);background:var(--paper2);border-radius:5px;
+	font-family:var(--sans);font-size:12.5px;color:var(--ink2);cursor:pointer;margin-top:8px}
+.btn:hover{border-color:var(--ink4);color:var(--ink)}
+
+/* ---------- 注 / 自检 ---------- */
+.note{background:var(--paper2);border:1px solid var(--line);border-left:2px solid var(--ink4);
+	border-radius:0 5px 5px 0;padding:12px 16px;margin:14px 0;font-size:13.5px;color:var(--ink2)}
+.note.warn{border-left-color:var(--red);background:var(--red-l)}
+.note.good{border-left-color:var(--green);background:var(--green-l)}
+.note .h{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+	color:var(--ink3);display:block;margin-bottom:5px}
+.note.warn .h{color:var(--red)} .note.good .h{color:var(--green)}
+
+.chk-t{border-collapse:collapse;font-family:var(--mono);font-size:12px;width:100%}
+.chk-t td{border-bottom:1px solid var(--line2);padding:5px 8px}
+.chk-t td.st{width:46px;text-align:center;font-weight:700}
+.chk-t tr.bad td{background:var(--red-l)}
+.ok{color:var(--green)} .bad{color:var(--red)}
+#chkSum{font-family:var(--mono);font-size:12.5px;margin-top:10px;color:var(--ink2)}
+#chkSum.bad{color:var(--red);font-weight:700}
+
+/* ---------- SVG 图 ---------- */
+figure{margin:18px 0;background:var(--card);border:1px solid var(--line);border-radius:7px;padding:16px}
+figure svg{display:block;width:100%;height:auto}
+figcaption{font-size:12px;color:var(--ink3);margin-top:10px;text-align:center;font-family:var(--mono);line-height:1.7}
+
+footer{padding:38px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px solid var(--line);margin-top:20px}
+footer .l{display:flex;gap:28px;flex-wrap:wrap}
+
+/* ---------- MD 长文入口 ---------- */
+.mdlink{display:flex;gap:20px;align-items:center;justify-content:space-between;flex-wrap:wrap;
+	margin:22px 0 6px;padding:18px 22px;background:var(--card);border:1px solid var(--line);
+	border-left:3px solid var(--blue);border-radius:0 7px 7px 0}
+.mdlink .h{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink4)}
+.mdlink .t{font-family:var(--serif);font-size:18px;font-weight:600;color:var(--ink);margin:3px 0 4px}
+.mdlink .d{font-size:13px;color:var(--ink2);max-width:760px;line-height:1.7}
+.mdlink a{flex:none;font-family:var(--mono);font-size:12.5px;padding:9px 18px;border-radius:20px;
+	border:1px solid rgba(31,111,159,.35);background:var(--blue-l);color:var(--blue);border-bottom:1px solid rgba(31,111,159,.35)}
+.mdlink a:hover{background:#dcebf3}
+
+/* ---------- 夜景（只改滤镜与变量，不动文件） ---------- */
+body.night{
+	--paper:#0c1016; --paper2:#10161e; --card:#10161e;
+	--ink:#e4eaf0; --ink2:#b4c0ca; --ink3:#8194a1; --ink4:#5d6e7b;
+	--line:rgba(228,234,240,.16); --line2:rgba(228,234,240,.08);
+	--blue:#6fb6e0; --purple:#b094d4; --green:#67c39a; --red:#e08a83; --gold:#d8b25e;
+	--blue-l:rgba(111,182,224,.12); --purple-l:rgba(176,148,212,.12);
+	--green-l:rgba(103,195,154,.12); --red-l:rgba(224,138,131,.12); --gold:#d8b25e;
+	background-image:radial-gradient(circle at 18% 8%,rgba(216,178,94,.06),transparent 42%),
+		radial-gradient(circle at 82% 4%,rgba(111,182,224,.06),transparent 40%);
+}
+body.night nav.tabs{background:rgba(12,16,22,.9)}
+body.night .seg button.on{background:var(--ink);color:var(--paper)}
+body.night .shot img,body.night .labcanv canvas{filter:invert(1) hue-rotate(180deg) brightness(1.04) contrast(1.03)}
+body.night figure svg{filter:invert(1) hue-rotate(180deg)}
+body.night .lb{background:rgba(6,9,13,.96)}
+body.night mark{background:rgba(216,178,94,.18);color:#e8d7a8}
+
+@media(max-width:900px){
+	h1{font-size:28px}
+	.row3{grid-template-columns:repeat(2,1fr)}
+	.labwrap{grid-template-columns:1fr}
+	.wrap{padding:0 16px}
+	section{padding:38px 0 6px}
+}
+@media(max-width:600px){.row3{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
-<h1>EEQT Chaos Game</h1>
-<div class="s">Quantum Fractals · Selected Geometries</div>
-<canvas id="c"></canvas>
-<div class="ctrl">
-  <div class="g"><div class="l">epsilon</div><input type="range" id="eS" min="5" max="999" value="800"><div class="v" id="eV">0.800</div></div>
-  <div class="g"><div class="l">points</div><input type="range" id="nS" min="50000" max="2000000" value="500000" step="50000"><div class="v" id="nV">500,000</div></div>
-  <div class="g"><div class="l">geometry</div><select id="typeS">
-    <optgroup label="─ Platonic Solids ─">
-    <option value="tetrahedron">Tetrahedron (4)</option>
-    <option value="octahedron">Octahedron (6)</option>
-    <option value="cube">Cube (8)</option>
-    <option value="icosahedron">Icosahedron (12)</option>
-    <option value="dodecahedron">Dodecahedron (20)</option>
-    </optgroup>
-    <optgroup label="─ Star Tetrahedron ─">
-    <option value="merkaba">★ Merkaba / Star Tetrahedron (8)</option>
-    </optgroup>
-    <optgroup label="─ Compound ─">
-    <option value="compound_32">★ Compound Dodeca+Icosa (32)</option>
-    </optgroup>
-    <optgroup label="─ C60 Fullerene ─">
-    <option value="c60_full">★ C60 Full (60) - 3D rotation</option>
-    </optgroup>
-    <optgroup label="─ Others ─">
-    <option value="rhombic_dodeca">Rhombic Dodecahedron (14)</option>
-    </optgroup>
-  </select></div>
-  <div class="g"><div class="l">proj</div><select id="projS">
-    <option value="stereo">Stereographic</option>
-    <option value="lambert">Lambert (equal-area)</option>
-    <option value="ortho">Orthographic</option>
-  </select></div>
-  <div class="g"><div class="l">formula</div><select id="fmlS">
-    <option value="smooth">Smooth (ε-weighted)</option>
-    <option value="standard">Standard EEQT</option>
-  </select><div class="v" id="fmlV">Smooth</div></div>
-  <div class="g"><div class="l">scale</div><input type="range" id="sS" min="50" max="200" value="100" step="1"><div class="v" id="sV">1.00x</div></div>
-</div>
-<div class="ctrl">
-  <div class="g"><div class="l">rot-X</div><input type="range" id="rxS" min="-180" max="180" value="0" step="3"><div class="v" id="rxV">0°</div></div>
-  <div class="g"><div class="l">rot-Y</div><input type="range" id="ryS" min="-180" max="180" value="0" step="3"><div class="v" id="ryV">0°</div></div>
-  <div class="g"><div class="l">rot-Z</div><input type="range" id="rzS" min="-180" max="180" value="0" step="3"><div class="v" id="rzV">0°</div></div>
-</div>
-<div class="leg">
-  <div class="li"><div class="d" style="background:#cc4444"></div>+z</div>
-  <div class="li"><div class="d" style="background:#44cc88"></div>+x</div>
-  <div class="li"><div class="d" style="background:#4477cc"></div>+y</div>
-  <div class="li"><div class="d" style="background:#ccaa44"></div>-x</div>
-  <div class="li"><div class="d" style="background:#cc44cc"></div>-y</div>
-  <div class="li"><div class="d" style="background:#44cccc"></div>-z</div>
-</div>
-<div class="dim-box"><div class="dim-label">Hausdorff Dimension</div><div class="dim-value" id="dimVal">--</div><div class="dim-sub">box-counting 路 log-log regression 路 D_H 鈭?[0,2]</div></div><div class="metrics-box"><div class="metric"><div class="metric-label">D</div><div class="metric-value" id="mD">--</div></div><div class="metric"><div class="metric-label">H</div><div class="metric-value" id="mH">--</div></div><div class="metric"><div class="metric-label">Score</div><div class="metric-value" id="mScore">--</div></div><div class="metric"><div class="metric-label">PRE%</div><div class="metric-value" id="mPRE">--</div></div><div class="metric"><div class="metric-label">Time</div><div class="metric-value" id="mTime">--</div></div></div>
-</div>
-<div class="fml" id="fml"></div>
-<div class="inf">
-  r' = [(1-e²)r + 2e(1+e·nᵢ·r)nᵢ] / [1+e²+2e·nᵢ·r] &nbsp; pᵢ = (1+e²+2e·nᵢ·r)/(N(1+e²))
+
+<header class="top">
+	<div class="wrap">
+		<div class="eyebrow">PKS · 06 36 小时制历法 · 量子进制 / Quantum Fractals</div>
+		<h1>EEQT 量子分形 <span class="thin">· 混沌游戏画廊</span></h1>
+		<p class="lede">
+			几何体的顶点就是<b>量子探测器阵列</b>。每一次探测器翻转让量子态"跳"一下，跳变算子是一个<b>洛伦兹推速</b>，
+			它在球面上做的是一一对应的共形映射。把对称阵列的跳变反复迭代，球面上就长出<b>自相似图纹</b>——
+			这就是 Jadczyk 称之为 <b>quantum fractal（量子分形）</b>的东西。
+			本页 27 张图 = <b>9 种几何 × 3 种球面投影</b>，每张由 <b>6000 万次</b>事件跳变累积而成，参数 ε 逐张由实测维数曲线定出。
+		</p>
+		<div class="stats">
+			<div class="stat"><div class="k">几何 / Geometries</div><div class="v">9</div></div>
+			<div class="stat"><div class="k">投影 / Projections</div><div class="v">3</div></div>
+			<div class="stat"><div class="k">图 / Images</div><div class="v" id="stImg">27</div></div>
+			<div class="stat"><div class="k">采样 / Samples per image</div><div class="v">6.0e7</div></div>
+			<div class="stat"><div class="k">实测维数波谷 / Valleys found</div><div class="v" id="stValley">0 <small>5 个几何</small></div></div>
+		</div>
+	</div>
+</header>
+
+<nav class="tabs">
+	<div class="wrap">
+		<a href="#gal" class="on">画廊</a>
+		<a href="#src">源头理论</a>
+		<a href="#rel">与混沌吸引子的关系</a>
+		<a href="#dim">ε 与维数实测</a>
+		<a href="#lab">实验室</a>
+		<a href="#meta">口径与自检</a>
+		<div class="sp"></div>
+		<button id="nightBtn" title="墨色底（对图片做反相，不改文件）">夜景</button>
+	</div>
+</nav>
+
+<!-- ==================== 画廊 ==================== -->
+<section id="gal">
+	<div class="wrap">
+		<h2><span class="no">01</span>画廊 · 9 几何 × 3 投影</h2>
+		<p class="sub">
+			全部预渲染。打开即看，不做实时计算——所以点数可以堆到 6000 万，边长 1150 px。
+			每张图的 ε 不是随手取的，是在实测 D_eff(ε) 曲线上取 <b>D_eff = 1.50</b> 的那一点（见 §04）。
+		</p>
+
+		<div class="galbar">
+			<div class="seg" id="galMode">
+				<button class="on" data-mode="geom">按几何排列</button>
+				<button data-mode="proj">按投影排列</button>
+			</div>
+			<div class="sp"></div>
+			<div class="hint">点击任意图放大 · ← → 翻页 · Esc 关闭</div>
+		</div>
+
+		<div id="galBody"></div>
+
+		<div class="note">
+			<span class="h">三种投影各自在做什么</span>
+			<b>Lambert（等面积）</b>：把球面等面积摊到圆盘，密度不失真，但角度会被拉歪——所以细看纹理会呈"扇骨"状。<br>
+			<b>Orthographic（正射）</b>：球面正投影，赤道附近被压扁到零，边缘密度发亮；结构最"正视"，像看月亮。<br>
+			<b>Stereographic（球极）</b>：从北极点投影到切平面，保角但面积按 <span style="font-family:var(--mono)">1/(1+z)²</span> 放大——
+			所以它会把背面的东西甩到无穷远、铺满整个画面，是没有边界的"黎曼球平面图"。
+		</div>
+	</div>
+</section>
+
+<!-- ==================== 源头理论 ==================== -->
+<section id="src">
+	<div class="wrap">
+		<h2><span class="no">02</span>源头：EEQT 是怎么走到 IFS 上的</h2>
+		<p class="sub">三段链条。每一段都有原文可查，不是我们的引申。</p>
+
+		<h3>① EEQT：单系统的历史是一条"算法"，不是一个微分方程</h3>
+		<p>
+			EEQT = <b>Event-Enhanced Quantum Theory</b>（事件增强量子理论），Blanchard 与 Jadczyk 在 1990 年代的一系列论文里提出的框架。
+			它想干的事很具体：把 von Neumann 的两种过程——连续酉演化（U 过程）和测量导致的投影塌缩（R 过程）——
+			合成<b>一个</b>对象：一个<b>分段确定性过程</b>（piecewise deterministic process, PDP）。
+		</p>
+		<blockquote>
+			"in EEQT a history of an individual quantum system, coupled to a monitoring device, as in every real world experiment,
+			is described by <em>a process or an algorithm rather than by a differential equation</em>."
+			<span class="who">Jadczyk &amp; Öberg, quant-ph/0204056, §1</span>
+		</blockquote>
+		<p>
+			机制很朴素：量子系统耦合一串<b>两态探测器</b>。探测器翻转 = 一次"事件"；每次事件，量子态就断掉连续演化、瞬间跳到新状态。
+		</p>
+		<blockquote>
+			"with each flip of the detector, with each 'event', the quantum system state vector breaks its continuous evolution,
+			and instantaneously jumps to a different state — it 'rejuvenates' and it starts another cycle of a peaceful, continuous evolution —
+			till the next catastrophe."
+			<span class="who">同上</span>
+		</blockquote>
+		<p>
+			<span class="tag t-src">原文层</span> 同一段里作者自己点了题：
+			"The EEQT algorithm generating quantum jumps is <em>similar in its nature to a nonlinear iterated function system (IFS)</em> and,
+			as such, it generically produces a chaotic dynamics for the coupled system."
+			—— 翻译过来：<b>EEQT 的跳变算法天生就是一个非线性 IFS，因而内在地产生混沌动力学</b>。
+			这不是我们硬套分形，是原文就写着的。
+		</p>
+
+		<h3>② 跳变算子 = 洛伦兹推速 = 球面的 Möbius 变换</h3>
+		<p>
+			为什么跳变会长成几何映射？Jadczyk 2006 年那篇（quant-ph/0604023）摘要第一句就给了答案：
+		</p>
+		<blockquote>
+			"Positive matrices in SL(2,<b>C</b>) have a double physical interpretation; they can be either considered as
+			<em>'fuzzy projections' of a spin 1/2 quantum system</em>, or as <em>Lorentz boosts</em>."
+			<span class="who">quant-ph/0604023, abstract</span>
+		</blockquote>
+		<p>
+			<span class="tag t-src">原文层</span> 同一个正矩阵，两种读法：当成自旋 1/2 的"模糊投影"（模糊度 = 探测器分辨率），
+			或者当成一个<b>洛伦兹推速</b>（推速 = 模糊度）。Lounesto 在会上猜这些映射保角，Jadczyk 用 Clifford 代数证了：
+			它们是 S²（天上的球，≅ 黎曼球 P¹(<b>C</b>)）的 <b>Möbius 变换</b>。
+		</p>
+		<div class="fml">
+			<span class="cm">原文式 (1.1)：q ∈ B³（单位球内部），p ∈ S²</span><br>
+			φ<sub>q</sub>(p) = <span class="hl">[ (1 − q²)·p + 2(1 + q·p)·q ] / [ 1 + q² + 2(q·p) ]</span>
+		</div>
+		<p>
+			本页把 q 取成 <span style="font-family:var(--mono)">q = ε·n</span>：n 是某个顶点的单位方向，ε = ‖q‖ ∈ (0,1)。
+			于是页面上那个 ε 不是我们发明的旋钮——<b>它就是原文里探测器的模糊度，也是洛伦兹推速</b>。
+		</p>
+
+		<h3>③ 对称阵列 ⇒ 球面上的自相似图纹</h3>
+		<p>
+			<span class="tag t-src">原文层</span> 2002 年那篇论文的标题直接就叫
+			《Quantum Jumps, EEQT and the <b>Five Platonic Fractals</b>》——<b>五个柏拉图立体正是原文的样板</b>。
+			立方体那个例子：8 个顶点、‖q<sub>i</sub>‖ = 0.74、10⁸ 个点，作者的原话是
+		</p>
+		<blockquote>
+			"The pattern shows distinct self-similarity — <em>circles with circles</em>."
+			<span class="who">quant-ph/0604023, Fig.1 说明</span>
+		</blockquote>
+		<p>
+			两年前后还推广到了 n 维球（quant-ph/0608117）：圆（正五边形）、S²（八面体）、S³（四维超立方、24 胞、600 胞、120 胞）。
+			也就是说——<b>"几何体顶点 = 探测器阵列"是原文的设定，我们只是把它的图从黑白密度图变成了彩色高分辨率版本</b>。
+		</p>
+
+		<h3>④ 三条可复算性质（本页自己验的）</h3>
+		<p>把式 (1.1) 取 q = εn 后，有三条性质能直接算出来，也就是说页面上所有图都受它们约束：</p>
+		<div class="scroll">
+		<table>
+			<thead><tr><th style="width:26%">性质</th><th style="width:36%">解析结果</th><th>数值复核</th></tr></thead>
+			<tbody>
+				<tr><td>① 保范</td><td>‖φ<sub>εn</sub>(p)‖ ≡ ‖p‖ = 1，即映射把 S² 打到 S²</td>
+					<td class="num">2000 组随机 (p,n,ε)，max ‖r′‖−1 = <b>7.3e−15</b></td></tr>
+				<tr><td>② 两个不动点</td><td>φ(n) = n，且 <b>φ(−n) = −n</b>（推速沿 n 轴，两极都不动）</td>
+					<td class="num">代入即得，任意 ε 成立</td></tr>
+				<tr><td>③ 不动点处 Jacobian</td><td>在 +n 处各向同性收缩 <b>ρ = (1−ε)/(1+ε)</b>；在 −n 处反向扩张 1/ρ</td>
+					<td class="num">小扰动展开：T(n+δ) = n + ρδ，δ ⊥ n</td></tr>
+			</tbody>
+		</table>
+		</div>
+		<p>
+			性质 ③ 是最要害的一条：收缩是<b>各向同性</b>的（只有一个数 ρ，没有主方向差别）——
+			这就是"共形"的具体含义。它意味着<b>映射里没有拉伸</b>。整个系统的复杂性不来自拉伸折叠，全部来自随机的"选哪个探测器"。
+			这一点会直接决定后面 §03 的对比结论。
+		</p>
+		<div class="fml">
+			ε → 0　⇒　ρ → 1　<span class="cm">映射趋近恒等，球面几乎不动</span><br>
+			ε → 1　⇒　ρ → 0　<span class="cm">整球塌到顶点上（ε=1 严格退化：p=−n 时分母为 0）</span><br>
+			<span class="cm">选择概率（原文 place-dependent 形式，本页同款）：</span><br>
+			p<sub>i</sub>(r) = (1 + ε² + 2ε·n<sub>i</sub>·r) / [ N(1 + ε²) ]
+		</div>
+
+		<figure>
+			<svg viewBox="0 0 680 190" xmlns="http://www.w3.org/2000/svg">
+				<defs><marker id="ar" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+					<path d="M0,0 L6,3 L0,6 z" fill="#47555f"/></marker></defs>
+				<rect x="14" y="46" width="146" height="54" rx="6" fill="#e8f1f6" stroke="#1f6f9f" stroke-opacity=".45"/>
+				<text x="87" y="70" text-anchor="middle" font-size="12.5" fill="#1b2430" font-family="sans-serif">连续酉演化 U</text>
+				<text x="87" y="87" text-anchor="middle" font-size="10.5" fill="#47555f" font-family="monospace">平稳期 · 无事件</text>
+
+				<rect x="14" y="118" width="146" height="54" rx="6" fill="#f1ecf6" stroke="#6b4a8f" stroke-opacity=".45"/>
+				<text x="87" y="142" text-anchor="middle" font-size="12.5" fill="#1b2430" font-family="sans-serif">探测器翻转 = 事件</text>
+				<text x="87" y="159" text-anchor="middle" font-size="10.5" fill="#47555f" font-family="monospace">态瞬间跳变 φ_q</text>
+
+				<path d="M160 73 L196 73" stroke="#47555f" stroke-width="1.2" marker-end="url(#ar)"/>
+				<text x="178" y="66" text-anchor="middle" font-size="10" fill="#7c8a92" font-family="monospace">翻转</text>
+				<path d="M196 145 L160 145" stroke="#47555f" stroke-width="1.2" marker-end="url(#ar)"/>
+				<text x="178" y="137" text-anchor="middle" font-size="10" fill="#7c8a92" font-family="monospace">重新开始</text>
+				<path d="M30 118 L30 100" stroke="#47555f" stroke-width="1.2" marker-end="url(#ar)"/>
+
+				<rect x="206" y="46" width="152" height="126" rx="6" fill="#fbf8f1" stroke="#a9b4b8"/>
+				<text x="282" y="70" text-anchor="middle" font-size="11.5" fill="#47555f" font-family="monospace">φ_q : S² → S²</text>
+				<text x="282" y="96" text-anchor="middle" font-size="12.5" fill="#1b2430" font-family="sans-serif">共形（Möbius）</text>
+				<text x="282" y="116" text-anchor="middle" font-size="12.5" fill="#1b2430" font-family="sans-serif">各向同性收缩 ρ</text>
+				<text x="282" y="140" text-anchor="middle" font-size="10.5" fill="#2c7a58" font-family="monospace">ρ = (1−ε)/(1+ε)</text>
+				<text x="282" y="158" text-anchor="middle" font-size="10.5" fill="#a8352e" font-family="monospace">无拉伸（零 Lyapunov 拉伸）</text>
+
+				<path d="M358 109 L396 109" stroke="#47555f" stroke-width="1.2" marker-end="url(#ar)"/>
+
+				<rect x="406" y="46" width="122" height="126" rx="6" fill="#e9f2ec" stroke="#2c7a58" stroke-opacity=".4"/>
+				<text x="467" y="70" text-anchor="middle" font-size="12.5" fill="#1b2430" font-family="sans-serif">随机迭代</text>
+				<text x="467" y="90" text-anchor="middle" font-size="10.5" fill="#47555f" font-family="monospace">按 p_i(r) 选 i</text>
+				<text x="467" y="112" text-anchor="middle" font-size="12.5" fill="#1b2430" font-family="sans-serif">IFS</text>
+				<text x="467" y="132" text-anchor="middle" font-size="10.5" fill="#47555f" font-family="monospace">位置相关概率</text>
+				<text x="467" y="156" text-anchor="middle" font-size="10.5" fill="#7c8a92" font-family="monospace">不变测度 μ</text>
+
+				<path d="M528 109 L566 109" stroke="#47555f" stroke-width="1.2" marker-end="url(#ar)"/>
+				<text x="612" y="104" text-anchor="middle" font-size="12.5" fill="#1b2430" font-family="sans-serif">球面自相似图纹</text>
+				<text x="612" y="122" text-anchor="middle" font-size="10.5" fill="#7c8a92" font-family="monospace">quantum fractal</text>
+			</svg>
+			<figcaption>图 1　EEQT 的事件链。酉演化 ⇄ 事件跳变 → 共形映射 → 位置相关 IFS → 球面自相似图纹。链条中唯一非平凡的一步是"跳变算子恰好是洛伦兹推速"，其余都是这套设定的必然结果。</figcaption>
+		</figure>
+
+		<div class="mdlink">
+			<div>
+				<div class="h">配套长文 · Markdown</div>
+				<div class="t">EEQT 怎么落地在物理里</div>
+				<div class="d">
+					量子轨迹与量子跳跃（离子阱 shelving / 量子点 RTN / 单光子计数）、非锐利测量与 POVM（ε 就是探测器锐度）、
+					暗态与无退相干子空间（图上的空洞就是信息盲区）、芝诺与反芝诺（同一参数的两端）、探测器几何设计，
+					外加一份明确的<b>"不能落地"清单</b>——哪些常见说法不能挂到 EEQT 名下。
+				</div>
+			</div>
+			<a href="EEQT_物理落地_从事件增强量子理论到可测现象.md" target="_blank" rel="noopener">打开 MD ↗</a>
+		</div>
+	</div>
+</section>
+
+<!-- ==================== 与混沌吸引子的关系 ==================== -->
+<section id="rel">
+	<div class="wrap">
+		<h2><span class="no">03</span>这套公式和"混沌吸引子公式"到底是什么关系</h2>
+		<p class="sub">
+			这是本页最该说清楚的一节。因为两者画出来都是"一坨复杂纹路"，很容易被当成同一件事。<b>它们不是。</b>
+		</p>
+
+		<h3>一句话</h3>
+		<div class="note">
+			<span class="h">结论先行</span>
+			Lorenz / Rössler / Aizawa 那一类是<b>确定性连续流</b>，混沌来自"<b>拉伸 + 折叠</b>"，不变集<b>本身</b>就是分形（2 &lt; D &lt; 3）；
+			EEQT 量子分形是<b>离散随机映射</b>，每一步都共形、<b>零拉伸</b>，不变集<b>根本不分形</b>（严格 D = 2，只有测度是多重分形的）。
+			两者共用"维数"这个词，但一个量的是<b>集合</b>，一个量的是<b>测度</b>。
+		</div>
+
+		<div class="scroll">
+		<table>
+			<thead><tr><th style="width:20%"></th><th style="width:40%">ODE 型混沌吸引子</th><th>EEQT 量子分形</th></tr></thead>
+			<tbody>
+				<tr><td><b>时间</b></td><td>连续流 dx/dt = F(x)，相空间 3～4 维</td><td>离散迭代 r<sub>k+1</sub> = φ<sub>q<sub>i</sub></sub>(r<sub>k</sub>)，状态在 S² 上</td></tr>
+				<tr><td><b>复杂性来源</b></td><td>正 Lyapunov 指数（拉伸）+ 有界区域（折叠）</td><td>只有随机选择 i，配合位置相关概率 p<sub>i</sub>(r)；映射本身不拉伸</td></tr>
+				<tr><td><b>映射性质</b></td><td>非线性、非共形、体积收缩</td><td><b>共形（Möbius）</b>、逐点各向同性收缩 ρ=(1−ε)/(1+ε)</td></tr>
+				<tr><td><b>不变集</b></td><td><b>分形集合</b>，维数介于 2 和 3 之间</td><td><b>整个 S²</b>（因为 φ<sub>q</sub> 是双射，见下）</td></tr>
+				<tr><td><b>不变测度</b></td><td>SRB 测度，奇异性由 Lyapunov 谱决定</td><td><b>多重分形测度</b>，D<sub>0</sub> &gt; D<sub>1</sub> &gt; D<sub>2</sub>（实测，见 §04）</td></tr>
+				<tr><td><b>维数公式</b></td><td>Kaplan–Yorke：D<sub>KY</sub> = k + Σ<sub>i≤k</sub>λ<sub>i</sub> / ∣λ<sub>k+1</sub>∣</td><td>严格 D = 2；近似可用 Moran：N·ρ<sup>s</sup> = 1</td></tr>
+				<tr><td><b>数怎么来</b></td><td>积分轨迹，用时间平均代替空间平均（遍历定理）</td><td>随机迭代直接抽不变测度，不需要积分</td></tr>
+				<tr><td><b>参数 → 维数</b></td><td>参数改变 Lyapunov 谱 → 改变 D<sub>KY</sub></td><td>ε 改变压缩比 ρ → 改变"有效维数"D<sub>eff</sub></td></tr>
+				<tr><td><b>直观长相</b></td><td>烟、丝带、面条——被拉长又折回来的痕迹</td><td>同心圆、花瓣、蕾丝——被"压小再压小"的拷贝嵌套</td></tr>
+			</tbody>
+		</table>
+		</div>
+
+		<h3>为什么"集合"的维数天差地别 —— 一个严格论证</h3>
+		<p>
+			性质 ① 说 φ<sub>q</sub> 把 S² 打到 S²；性质 ② 说它把 ±n 都固定住，所以它是 S² 上的<b>双射</b>（有逆，逆也是同样的形式）。
+			既然每个 φ<sub>i</sub> 都是双射，那么满足 <span style="font-family:var(--mono)">A = ∪<sub>i</sub> φ<sub>i</sub>(A)</span> 的闭集 A
+			就不可能是"一小块"：φ<sub>i</sub>(A) 与 A 一样大，N 个这样的拷贝一叠，只能是整个 S²。
+		</p>
+		<div class="fml">
+			<span class="cm">⇒ 对任意 0 &lt; ε &lt; 1：</span> 吸引子（集合）= S²　，严格 <span class="hl">D<sub>H</sub> ≡ 2</span>
+		</div>
+		<p>
+			那为什么画出来明显不是一片均匀的灰？因为<b>分形性在测度里</b>。
+			Jadczyk 自己在 Fig.1 的说明里就把"从没被访问的区域"和"常被访问的区域"分开讲：
+			the dark areas are those that are (almost) never visited。
+			"几乎从不"访问 —— 概率处处为正，但小到大可以忽略。你在图上看到的每一根丝、每一个空洞，都是<b>密度的起伏</b>，不是"那里没有点"。
+		</p>
+		<div class="note warn">
+			<span class="h">这一条同时否掉了一个很常见的误读</span>
+			图上那些看起来很"分形"的空洞，<b>不是集合的空洞</b>。把 ε 调小、点加多，空洞会被填平；
+			真正不会变的是：这些丝、这些圆，都只是测度的等密度线。
+		</div>
+
+		<h3>那它们的"亲缘关系"到底在哪</h3>
+		<p>
+			不是没有。两者都是<b>"压缩率谱的泛函"</b>——这句话是本节真正的答案：
+		</p>
+		<ul>
+			<li><b>ODE 这边</b>：维数由 Lyapunov 指数谱 {λ<sub>i</sub>} 决定。λ<sub>i</sub> 就是"每个方向上一单位时间伸/缩多少"。3 维耗散流里 λ<sub>1</sub>&gt;0、λ<sub>2</sub>≈0、λ<sub>3</sub>&lt;0，
+				于是 D<sub>KY</sub> = 2 + (λ<sub>1</sub>+λ<sub>2</sub>)/∣λ<sub>3</sub>∣，必然落在 <b>2 与 3 之间</b>、且总比 2 多一点点。</li>
+			<li><b>EEQT 这边</b>：没有拉伸，所以 λ 谱退化成一个数——ρ=(1−ε)/(1+ε)。
+				想估维数只能套 Moran 方程 N·ρ<sup>s</sup>=1，解出 s = lnN / ln(1/ρ)。
+				注意 ρ→0 时 s→0；ρ→1 时 ln(1/ρ)→0 使 s→∞，只能靠"N 个拷贝叠不过球面"这个几何上限把它截在 2。
+				所以它<b>永远到不了 2 以上</b>。</li>
+		</ul>
+		<div class="fml">
+			<span class="cm">同一件事的两种写法：</span><br>
+			ODE：<span class="hl">D = f(λ<sub>1</sub>, λ<sub>2</sub>, λ<sub>3</sub>)</span>　<span class="cm">—— 谱</span><br>
+			IFS：<span class="hl">D = f(ρ<sub>1</sub>, …, ρ<sub>N</sub>; p<sub>1</sub>, …, p<sub>N</sub>)</span>　<span class="cm">—— 每步压缩比与概率</span><br>
+			<span class="cm">两者都是"把一张压缩率表积分成一个数"。</span>
+		</div>
+		<p>
+			顺带一提：正因为没有拉伸，EEQT 这边的"混沌"其实名不副实——它没有对初始条件的敏感放大，只有对随机选择序列的依赖。
+			原文说 "generically produces a chaotic dynamics" 指的是<b>耦合系统</b>（量子态 + 探测器）的轨道不收敛，
+			不是指有一个正 Lyapunov 指数。这个区别在图上就看得出来：Aizawa 是丝带被拉长又折回，量子分形是拷贝被压小再嵌套。
+		</p>
+
+		<h3>和本项目的 Aizawa 页面怎么摆在一起看</h3>
+		<p>
+			<span class="tag t-th">立论</span> 两个页面其实是一对互补的样本：
+		</p>
+		<div class="scroll">
+		<table>
+			<thead><tr><th>页面</th><th>在量什么</th><th>D 的典型值</th><th>参数旋钮</th></tr></thead>
+			<tbody>
+				<tr><td>Aizawa 吸引子（曲速引擎那一族）</td><td>3 维流里的一朵"环 + 漏斗"，<b>集合</b>分形</td>
+					<td class="num">2.0 – 2.2　<span style="color:var(--ink4)">（D<sub>KY</sub>，必 &gt; 2）</span></td>
+					<td class="num">α, β, γ, δ, ε, ζ（改变 λ 谱）</td></tr>
+				<tr><td>本页量子分形</td><td>S² 上的<b>测度</b>，集合恒为整球</td>
+					<td class="num">0.5 – 1.94　<span style="color:var(--ink4)">（D<sub>eff</sub> 盒计数，必 ≤ 2）</span></td>
+					<td class="num">ε（改变 ρ）</td></tr>
+			</tbody>
+		</table>
+		</div>
+		<p>
+			所以"EEQT 的公式和混沌吸引子的公式有什么关系"这个问题，最准确的回答是：
+			<b>它们是同一个"压缩率 → 维数"映射的两个不同取值域</b>——一个在集合上取值（2～3），一个在测度上取值（0～2），
+			中间隔着一条不能跨的线：<b>有没有拉伸</b>。
+		</p>
+	</div>
+</section>
+
+<!-- ==================== ε 与维数 ==================== -->
+<section id="dim">
+	<div class="wrap">
+		<h2><span class="no">04</span>ε 与维数：一次对"波谷"的实测检验</h2>
+		<p class="sub">
+			这里要交代清楚一件事：<b>"ε 从小到大变化，D<sub>H</sub> 会出现波谷"这个前提，实测不成立。</b>
+			下面是全部证据，包括为什么不可能成立。
+		</p>
+
+		<h3>测法</h3>
+		<ul>
+			<li>5 个柏拉图立体，每个 N 个探测器；ε 从 0.05 扫到 0.97，<b>步长 0.02</b>，共 47 点。</li>
+			<li>每个 ε 采 <b>41 万点</b>（1024 条独立链 × 400 步，已扣 200 步预热）。</li>
+			<li>三种投影<b>各自用固定窗口</b>做盒计数（Lambert/正射用 [−1.06,1.06]²，球极用 [−3,3]²），
+				尺度取 16、32、…、1024 格；只保留"20 ≤ 盒数 ≤ N/30"的尺度做 log–log 回归。</li>
+			<li>固定窗口是必须的：若每个 ε 各自用百分位自适应窗口，窗口会随 ε 漂移，<b>制造出假的波谷</b>（第一版就踩了这个坑）。</li>
+			<li>ε ≥ 0.93 时占用盒数太少、回归窗口塌陷，估计子本身失效——这一段只作参考，不参与单调性判定。</li>
+		</ul>
+
+		<h3>曲线</h3>
+		<div class="chartbox">
+			<div class="chartctl">
+				<div class="seg" id="projSeg">
+					<button class="on" data-p="lambert">Lambert</button>
+					<button data-p="ortho">正射</button>
+					<button data-p="stereo">球极</button>
+				</div>
+				<div class="sp" style="flex:1"></div>
+				<div class="lg" id="lgBox"></div>
+			</div>
+			<canvas id="dimChart" width="1120" height="460"></canvas>
+			<div style="font-family:var(--mono);font-size:11px;color:var(--ink4);padding:2px 4px 8px" id="dimHover">
+				把鼠标移到曲线上看读数
+			</div>
+		</div>
+
+		<h3>结果：5 个几何，0 个波谷</h3>
+		<p>
+			对曲线做三点平滑后用 3σ 判据找局部极小（要求两侧各 4 个点都高出 3σ），结果：
+			<b class="no-b">tetrahedron 0 个、octahedron 0 个、cube 0 个、icosahedron 0 个、dodecahedron 0 个</b>。
+			噪声 σ 只有 0.014–0.038，而整条曲线从 1.94 掉到 0.4，单调下降、没有任何一个真极值。
+		</p>
+		<div class="scroll">
+		<table>
+			<thead><tr>
+				<th>几何</th><th class="num">N</th><th class="num">θ<sub>min</sub> (°)</th>
+				<th class="num">D<sub>eff</sub> @ ε=0.05</th><th class="num">D<sub>eff</sub> @ ε=0.97</th>
+				<th class="num">噪声 σ</th><th class="num">真波谷</th><th class="num">膝点 ε<sub>knee</sub></th>
+			</tr></thead>
+			<tbody id="valleyTb"></tbody>
+		</table>
+		</div>
+		<div class="note warn">
+			<span class="h">所以前提不成立</span>
+			<b>D<sub>H</sub>(ε) 不是"振荡出波谷"，而是"从 2 平滑塌到 0"的一条单调曲线，只有一个拐点（膝）。</b>
+			在 ε 上找"最丰富图纹"这件事，靠 D<sub>H</sub> 的极值是找不到的——得换判据。
+		</div>
+
+		<h3>为什么不可能有波谷 —— 三条</h3>
+		<ol>
+			<li><b>概率处处为正。</b> p<sub>i</sub>(r) = (1+ε²+2ε n<sub>i</sub>·r)/(N(1+ε²))，对 ε&lt;1 有下界 (1−ε)²/(N(1+ε²)) &gt; 0。
+				没有哪个探测器是"绝对不可能被选中"的，所以球面上每个方向都可能被访问。</li>
+			<li><b>映射是双射。</b> 见 §03：∪φ<sub>i</sub>(A) = A 的唯一闭解就是 S²。集合的维数恒等于 2，压根没有随 ε 变的东西。</li>
+			<li><b>所以盒计数量到的是"有效维数"。</b> D<sub>eff</sub>(ε, δ) 是分辨率 δ 下的一个统计量：
+				它测的是"密度高于阈值的那部分占多大"，随 ρ 单调收缩。单调函数的平滑塌缩，本来就不会生出极值。</li>
+		</ol>
+		<p>
+			<span class="tag t-no">要小心</span> 这不是说"量子分形不分形"。它分形，只不过分形性住在<b>测度</b>里。
+			要把 D<sub>H</sub> 真的压到 2 以下，必须让概率在某个开集上<b>恰好为 0</b>（把某些探测器彻底关掉、或只允许半空间跳变），
+			那时支撑集才会真的缩成一个 Cantor 集，D<sub>H</sub> 才会是"真维数"。本页用的是处处为正的平滑模式，所以不会。
+		</p>
+
+		<h3>多重分形谱：分形性确实在测度里</h3>
+		<p>
+			如果分形性在测度里，那 D<sub>0</sub>、D<sub>1</sub>、D<sub>2</sub> 应该分得开（D<sub>0</sub> &gt; D<sub>1</sub> &gt; D<sub>2</sub>）。
+			实测正是如此——这是"测度是多重分形"的直接证据，也是本节最硬的一张表：
+		</p>
+		<div class="scroll">
+		<table>
+			<thead><tr>
+				<th>几何</th><th>投影</th><th class="num">ε</th>
+				<th class="num">D<sub>0</sub> 容量</th><th class="num">D<sub>1</sub> 信息</th><th class="num">D<sub>2</sub> 关联</th><th class="num">D<sub>0</sub>−D<sub>2</sub></th>
+			</tr></thead>
+			<tbody id="dqTb"></tbody>
+		</table>
+		</div>
+		<p>
+			D<sub>0</sub> 与 D<sub>2</sub> 差 0.19～0.73，且几乎每行都是 D<sub>0</sub> &gt; D<sub>1</sub> &gt; D<sub>2</sub>。
+			均匀测度这三者会相等；差得越开，说明测度的局部标度指数分布越宽 —— <b>这就是"分形在测度里"的量化版本</b>。
+		</p>
+
+		<h3>替代判据：用膝点定 ε，再用 D<sub>eff</sub>=1.50 定图</h3>
+		<p>
+			既然没有波谷，就找真正有物理含义的特征点。曲线从平台（≈1.94）往下掉的那个<b>膝</b>，对应
+			"<b>自相似拷贝刚好开始分开</b>"——从这之后，球面上才长出可分辨的层次。膝点位置随 N 增大而右移，因为顶点越密，
+			拷贝必须压得越小才能互不重叠。
+		</p>
+		<p>
+			<span class="tag t-num">拟合出来的规律</span> 把膝点换算成压缩比 ρ<sub>knee</sub> = (1−ε)/(1+ε)，再除以该几何的<b>最小球心角</b> θ<sub>min</sub>，
+			比值几乎是个常数：
+		</p>
+		<div class="fml">
+			ρ<sub>knee</sub> ≈ θ<sub>min</sub> / 6　　⇒　　<span class="hl">ε<sub>*</sub> = (1 − ρ<sub>knee</sub>) / (1 + ρ<sub>knee</sub>) = (6 − θ<sub>min</sub>) / (6 + θ<sub>min</sub>)</span>　<span class="cm">θ<sub>min</sub> 用弧度</span>
+		</div>
+		<div class="scroll">
+		<table>
+			<thead><tr>
+				<th>几何</th><th class="num">N</th><th class="num">θ<sub>min</sub>(°)</th>
+				<th class="num">ρ<sub>*</sub>=θ/6</th><th class="num">ε<sub>*</sub> 公式</th><th class="num">ε<sub>knee</sub> 实测</th><th class="num">偏差</th>
+			</tr></thead>
+			<tbody id="lawTb"></tbody>
+		</table>
+		</div>
+		<p>
+			偏差 −0.075 ~ +0.045。立方体（+0.012）与十二面体（+0.002）几乎严丝合缝；四面体偏得最多，因为它只有 4 个顶点，
+			最近邻角就是最大角（109°），边缘效应明显。所以这条式子应当当成<b>量级与趋势的规律</b>，不是精确定律。
+		</p>
+		<div class="note good">
+			<span class="h">于是 ε 这样定</span>
+			在实测曲线上取 <b>D<sub>eff</sub> = 1.50</b> 的那一点（线性插值）。为什么是 1.50：往下（D→2）纹理会糊成一片，
+			往上（D→1.0）只剩稀疏的点阵；1.50 附近是"层次最多、又还连成片"的中间带。
+			27 张图各自的 ε 见下表，每个值都在曲线上可复算。
+		</div>
+		<div class="scroll">
+		<table id="epsTb">
+			<thead><tr><th>几何</th><th class="num">N</th><th class="num">Lambert</th><th class="num">正射</th><th class="num">球极</th></tr></thead>
+			<tbody></tbody>
+		</table>
+		</div>
+		<p>
+			注意最后两行进位：32 个探测器要 ε≈0.90，60 个要 ε≈0.93。因为 N 越大，p<sub>i</sub> 越平（每个探测器分到的份额越小），
+			要维持同样的对比度就得让 ε 更靠近 1——这正是"<b>探测器越密，越需要更大的推速才看得出层次</b>"。
+		</p>
+	</div>
+</section>
+
+<!-- ==================== 实验室 ==================== -->
+<section id="lab">
+	<div class="wrap">
+		<h2><span class="no">05</span>实验室 · 自己拧</h2>
+		<p class="sub">
+			实时计算，默认 20 万点——看清形状够用，但想让细部像 §01 那样干净，得 6000 万点，只能靠预渲染。
+			这里先看关系，再看画质。
+		</p>
+		<div class="labwrap">
+			<div class="labcanv"><canvas id="labC" width="900" height="900"></canvas></div>
+			<div>
+				<div class="panel">
+					<div class="ctl">
+						<div class="lb2"><span>几何 / GEOMETRY</span></div>
+						<select id="lbGeom"></select>
+					</div>
+					<div class="ctl">
+						<div class="lb2"><span>投影 / PROJECTION</span></div>
+						<select id="lbProj">
+							<option value="lambert">Lambert（等面积）</option>
+							<option value="ortho">Orthographic（正射）</option>
+							<option value="stereo">Stereographic（球极）</option>
+						</select>
+					</div>
+					<div class="ctl">
+						<div class="lb2"><span>ε　推速 / boost</span><b id="lbEpsV">0.73</b></div>
+						<input type="range" id="lbEps" min="5" max="98" value="73">
+					</div>
+					<div class="ctl">
+						<div class="lb2"><span>采样点 / points</span><b id="lbPtsV">200,000</b></div>
+						<input type="range" id="lbPts" min="20000" max="1200000" step="20000" value="200000">
+					</div>
+					<label class="ctl chk"><input type="checkbox" id="lbV" checked> 显示探测器顶点</label>
+					<button class="btn" id="lbGo">重算</button>
+					<div class="readout">
+						<div><span>探测器 N</span><b id="roN">8</b></div>
+						<div><span>压缩比 ρ</span><b id="roRho">0.156</b></div>
+						<div><span>有效维数 D<sub>eff</sub></span><b id="roD">—</b></div>
+						<div><span>算图耗时</span><b id="roT">—</b></div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+
+<!-- ==================== 口径与自检 ==================== -->
+<section id="meta">
+	<div class="wrap">
+		<h2><span class="no">06</span>口径与自检</h2>
+		<p class="sub">哪句是原文、哪句是推断、哪个数字能复算、哪条不成立——分开写，不混。</p>
+
+		<h3>四类口径</h3>
+		<div class="scroll">
+		<table>
+			<thead><tr><th style="width:14%">层</th><th style="width:44%">本页内容</th><th>依据</th></tr></thead>
+			<tbody>
+				<tr><td><span class="tag t-src">原文层</span></td>
+					<td>EEQT 的 PDP 结构；跳变=正矩阵=洛伦兹推速；φ<sub>q</sub> 是 S² 的 Möbius 变换；"算法而非微分方程"；"circles with circles"</td>
+					<td>quant-ph/0204056（五柏拉图分形）、quant-ph/0604023（式 1.1 与摘要）、quant-ph/0608117（n 球推广）</td></tr>
+				<tr><td><span class="tag t-th">立论</span></td>
+					<td>"集合不分形、分形在测度里"这个判读；"有没有拉伸"作为两类系统的分界线；本页的膝点规律 ρ≈θ/6</td>
+					<td>由性质 ①②③ 推出 + 本页实测；θ/6 是拟合，不是定论</td></tr>
+				<tr><td><span class="tag t-num">数值成立</span></td>
+					<td>‖φ‖−1 = 7.3e−15；ρ=(1−ε)/(1+ε)；47 点 ε 扫描；5/5 无波谷；D<sub>0</sub>&gt;D<sub>1</sub>&gt;D<sub>2</sub>；27 个 ε</td>
+					<td>本仓库 <span style="font-family:var(--mono)">_build/eeqt/</span> 下脚本可重跑，全部数字由脚本回填，非手写</td></tr>
+				<tr><td><span class="tag t-no">不成立</span></td>
+					<td><b>"ε 扫描后 D<sub>H</sub> 出现波谷"</b>——5 个几何 0 个波谷，曲线单调</td>
+					<td>3σ 判据 + 固定窗口 + 41 万点；成因见 §04 三条</td></tr>
+			</tbody>
+		</table>
+		</div>
+
+		<h3>页内自检</h3>
+		<p>页面加载时现算，不以写死的数字充当结论：</p>
+		<div class="scroll"><table class="chk-t" id="chk"></table></div>
+		<div id="chkSum">—</div>
+
+		<div class="note" style="margin-top:26px">
+			<span class="h">复现路径</span>
+			<span style="font-family:var(--mono);font-size:12px;line-height:2">
+				_build/eeqt/eeqt_core.py　　→ 公式、采样、投影、盒计数<br>
+				_build/eeqt/scan2.py scan3.py　→ 9 几何 × ε 扫描（scan5.json / scan_extra.json）<br>
+				_build/eeqt/dq.py　　　　　→ 多重分形谱 D<sub>0</sub> D<sub>1</sub> D<sub>2</sub>（dq.json）<br>
+				_build/eeqt/pick_eps.py　　 → 按 D<sub>eff</sub>=1.50 定 27 个 ε（eps.json）<br>
+				_build/eeqt/render_all.py　 → 6000 万点 / 1150 px 出图（img/eeqt/）<br>
+				_build/eeqt/gen_data.py　　 → 把实测数据内联进本页
+			</span>
+		</div>
+	</div>
+</section>
+
+<footer>
+	<div class="wrap">
+		<div class="l">
+			<span>EEQT 量子分形 · 混沌游戏画廊</span>
+			<span>PKS 千禧难题 · 06 36 小时制历法</span>
+			<span>2026-10-20</span>
+		</div>
+	</div>
+</footer>
+
+<div class="lb" id="lb">
+	<button class="x" id="lbX">×</button>
+	<button class="ar l" id="lbPrev">‹</button>
+	<img id="lbImg" alt="">
+	<button class="ar r" id="lbNext">›</button>
+	<div class="meta" id="lbMeta"></div>
 </div>
 
 <script>
-// ============================================================
-// GEOMETRY DEFINITIONS
-// ============================================================
+/* ===== 由 _build/eeqt/gen_data.py 生成，请勿手改 ===== */
+const EEQT_ORDER=["tetrahedron", "octahedron", "cube", "merkaba", "icosahedron", "dodecahedron", "rhombic_dodeca", "compound_32", "c60_full"];
+const EEQT_META={"tetrahedron": {"cn": "四面体", "en": "Tetrahedron", "N": 4, "theta": 109.471, "rho": 0.3184, "epsLaw": 0.5169}, "octahedron": {"cn": "八面体", "en": "Octahedron", "N": 6, "theta": 90.0, "rho": 0.2618, "epsLaw": 0.585}, "cube": {"cn": "立方体", "en": "Cube", "N": 8, "theta": 70.529, "rho": 0.2052, "epsLaw": 0.6595}, "merkaba": {"cn": "星四面体", "en": "Merkaba", "N": 8, "theta": 70.529, "rho": 0.2052, "epsLaw": 0.6595}, "icosahedron": {"cn": "二十面体", "en": "Icosahedron", "N": 12, "theta": 63.435, "rho": 0.1845, "epsLaw": 0.6884}, "dodecahedron": {"cn": "十二面体", "en": "Dodecahedron", "N": 20, "theta": 41.81, "rho": 0.1216, "epsLaw": 0.7831}, "rhombic_dodeca": {"cn": "菱形十二面体", "en": "Rhombic Dodecahedron", "N": 14, "theta": 54.736, "rho": 0.1592, "epsLaw": 0.7253}, "compound_32": {"cn": "十二+二十复合体", "en": "Dodeca+Icosa", "N": 32, "theta": 37.377, "rho": 0.1087, "epsLaw": 0.8039}, "c60_full": {"cn": "C60 富勒烯", "en": "C60 Fullerene", "N": 60, "theta": 23.281, "rho": 0.0677, "epsLaw": 0.8731}};
+const EEQT_EPSAXIS=[0.05, 0.07, 0.09, 0.11, 0.13, 0.15, 0.17, 0.19, 0.21, 0.23, 0.25, 0.27, 0.29, 0.31, 0.33, 0.35, 0.37, 0.39, 0.41, 0.43, 0.45, 0.47, 0.49, 0.51, 0.53, 0.55, 0.57, 0.59, 0.61, 0.63, 0.65, 0.67, 0.69, 0.71, 0.73, 0.75, 0.77, 0.79, 0.81, 0.83, 0.85, 0.87, 0.89, 0.91, 0.93, 0.95, 0.97];
+const EEQT_CURVES={"tetrahedron": {"N": 4, "lambert": [1.937, 1.937, 1.936, 1.936, 1.936, 1.937, 1.937, 1.936, 1.937, 1.937, 1.937, 1.937, 1.937, 1.937, 1.937, 1.937, 1.937, 1.937, 1.937, 1.937, 1.937, 1.937, 1.934, 1.932, 1.928, 1.923, 1.913, 1.885, 1.83, 1.739, 1.653, 1.446, 1.359, 1.223, 1.185, 1.103, 1.077, 1.027, 0.995, 0.948, 0.874, 0.767, 0.713, 0.6, 0.622, 0.832, 0.445], "ortho": [1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.937, 1.938, 1.937, 1.936, 1.933, 1.931, 1.926, 1.922, 1.917, 1.903, 1.867, 1.797, 1.74, 1.637, 1.435, 1.342, 1.211, 1.083, 1.029, 1.02, 1.011, 0.933, 0.984, 0.876, 0.791, 0.763, 0.406, 0.478, null], "stereo": [1.999, 1.999, 2.0, 1.999, 2.0, 2.0, 1.999, 2.0, 1.999, 2.0, 1.999, 1.998, 1.999, 1.999, 1.999, 1.998, 1.997, 1.994, 1.991, 1.987, 1.981, 1.978, 1.972, 1.876, 1.856, 1.835, 1.789, 1.726, 1.643, 1.568, 1.411, 1.355, 1.303, 1.209, 1.13, 1.099, 1.053, 1.06, 0.981, 0.914, 0.883, 0.766, 0.798, 0.698, 0.559, 0.405, null]}, "octahedron": {"N": 6, "lambert": [1.935, 1.935, 1.936, 1.936, 1.936, 1.936, 1.936, 1.936, 1.936, 1.937, 1.936, 1.937, 1.937, 1.937, 1.937, 1.937, 1.937, 1.937, 1.937, 1.937, 1.937, 1.937, 1.937, 1.934, 1.927, 1.901, 1.864, 1.803, 1.745, 1.666, 1.559, 1.486, 1.383, 1.271, 1.209, 1.118, 1.072, 1.026, 0.926, 0.927, 0.811, 0.744, 0.665, 0.656, 0.564, 0.519, 0.376], "ortho": [1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.937, 1.935, 1.93, 1.918, 1.882, 1.831, 1.777, 1.73, 1.66, 1.514, 1.433, 1.29, 1.24, 1.148, 1.07, 1.055, 0.958, 0.85, 0.842, 0.734, 0.616, 0.54, 0.551, 0.461, 0.412, 0.268], "stereo": [1.999, 1.999, 1.999, 1.999, 2.0, 1.999, 1.998, 2.0, 1.999, 1.999, 1.999, 1.998, 1.999, 1.999, 1.998, 1.998, 1.998, 1.997, 1.994, 1.992, 1.991, 1.988, 1.981, 1.968, 1.85, 1.782, 1.718, 1.645, 1.613, 1.489, 1.492, 1.444, 1.365, 1.304, 1.214, 1.127, 1.112, 1.004, 0.971, 0.915, 0.796, 0.726, 0.64, 0.622, 0.538, 0.477, 0.365]}, "cube": {"N": 8, "lambert": [1.936, 1.936, 1.936, 1.937, 1.936, 1.936, 1.936, 1.936, 1.936, 1.936, 1.936, 1.936, 1.936, 1.936, 1.936, 1.936, 1.937, 1.936, 1.936, 1.937, 1.937, 1.937, 1.937, 1.937, 1.936, 1.936, 1.936, 1.935, 1.933, 1.929, 1.917, 1.886, 1.819, 1.725, 1.532, 1.421, 1.379, 1.276, 1.204, 1.144, 1.073, 0.974, 0.924, 0.838, 0.775, 0.728, 0.44], "ortho": [1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.937, 1.937, 1.936, 1.934, 1.928, 1.919, 1.897, 1.855, 1.778, 1.68, 1.501, 1.411, 1.351, 1.273, 1.171, 1.128, 1.163, 1.045, 1.0, 0.8, 0.538, 0.712, 0.488], "stereo": [1.999, 1.999, 1.999, 1.999, 1.999, 1.999, 2.0, 1.999, 1.999, 2.0, 1.999, 1.999, 1.999, 2.0, 1.999, 1.999, 1.999, 2.0, 2.0, 2.0, 2.0, 1.998, 1.997, 1.995, 1.996, 1.991, 1.99, 1.983, 1.962, 1.863, 1.821, 1.772, 1.712, 1.662, 1.485, 1.394, 1.308, 1.214, 1.12, 1.086, 1.062, 0.957, 0.93, 0.775, 0.658, 0.467, 0.406]}, "icosahedron": {"N": 12, "lambert": [1.937, 1.937, 1.937, 1.936, 1.936, 1.936, 1.937, 1.937, 1.937, 1.937, 1.936, 1.936, 1.936, 1.937, 1.937, 1.937, 1.937, 1.937, 1.937, 1.937, 1.936, 1.937, 1.937, 1.936, 1.937, 1.936, 1.936, 1.935, 1.935, 1.935, 1.935, 1.932, 1.927, 1.92, 1.899, 1.867, 1.808, 1.717, 1.497, 1.392, 1.276, 1.212, 1.143, 1.037, 0.969, 0.863, 0.712], "ortho": [1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.937, 1.938, 1.937, 1.936, 1.93, 1.919, 1.908, 1.879, 1.83, 1.749, 1.649, 1.43, 1.338, 1.258, 1.138, 1.088, 1.018, 0.953, 0.819, 0.646], "stereo": [2.0, 2.0, 1.999, 1.998, 2.0, 2.0, 1.999, 1.999, 1.999, 2.0, 2.0, 2.0, 1.999, 2.0, 2.0, 1.999, 1.999, 2.0, 2.0, 1.999, 2.0, 1.999, 2.0, 2.0, 2.0, 2.0, 1.999, 1.998, 1.996, 1.986, 1.977, 1.958, 1.848, 1.817, 1.777, 1.718, 1.643, 1.573, 1.41, 1.343, 1.23, 1.15, 1.103, 0.986, 0.975, 0.827, 0.654]}, "dodecahedron": {"N": 20, "lambert": [1.937, 1.936, 1.937, 1.936, 1.937, 1.936, 1.936, 1.937, 1.936, 1.937, 1.937, 1.936, 1.936, 1.937, 1.936, 1.937, 1.937, 1.937, 1.937, 1.937, 1.937, 1.936, 1.937, 1.937, 1.936, 1.937, 1.936, 1.936, 1.936, 1.936, 1.935, 1.935, 1.935, 1.935, 1.932, 1.93, 1.929, 1.909, 1.898, 1.842, 1.756, 1.498, 1.365, 1.214, 1.118, 1.011, 0.922], "ortho": [1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.938, 1.937, 1.938, 1.938, 1.937, 1.937, 1.937, 1.937, 1.937, 1.937, 1.936, 1.935, 1.929, 1.923, 1.918, 1.887, 1.864, 1.793, 1.688, 1.429, 1.31, 1.178, 1.088, 0.98, 0.855], "stereo": [2.0, 2.0, 1.999, 1.999, 1.999, 1.999, 1.999, 2.0, 1.999, 2.0, 1.999, 1.999, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 1.999, 1.998, 1.995, 1.99, 1.988, 1.989, 1.983, 1.965, 1.864, 1.841, 1.785, 1.727, 1.638, 1.567, 1.385, 1.303, 1.212, 1.115, 1.009, 0.841]}};
+const EEQT_KNEE={"tetrahedron": 0.592, "octahedron": 0.54, "cube": 0.647, "icosahedron": 0.715, "dodecahedron": 0.782};
+const EEQT_VALLEY={"tetrahedron": {"sigma": 0.0345, "n": 0, "eps": []}, "octahedron": {"sigma": 0.018, "n": 0, "eps": []}, "cube": {"sigma": 0.0381, "n": 0, "eps": []}, "icosahedron": {"sigma": 0.0151, "n": 0, "eps": []}, "dodecahedron": {"sigma": 0.0141, "n": 0, "eps": []}};
+const EEQT_EPS={"tetrahedron": {"lambert": 0.66, "ortho": 0.68, "stereo": 0.64}, "octahedron": {"lambert": 0.67, "ortho": 0.65, "stereo": 0.63}, "cube": {"lambert": 0.74, "ortho": 0.73, "stereo": 0.73}, "icosahedron": {"lambert": 0.81, "ortho": 0.8, "stereo": 0.8}, "dodecahedron": {"lambert": 0.87, "ortho": 0.86, "stereo": 0.86}, "merkaba": {"lambert": 0.73, "ortho": 0.75, "stereo": 0.69}, "rhombic_dodeca": {"lambert": 0.83, "ortho": 0.82, "stereo": 0.8}, "compound_32": {"lambert": 0.91, "ortho": 0.9, "stereo": 0.87}, "c60_full": {"lambert": 0.93, "ortho": 0.94, "stereo": 0.92}};
+const EEQT_DQ={"tetrahedron": {"lambert": {"eps": 0.66, "D0": 1.43, "D1": 1.16, "D2": 0.74}, "ortho": {"eps": 0.68, "D0": 1.364, "D1": 1.131, "D2": 0.971}, "stereo": {"eps": 0.64, "D0": 1.37, "D1": 1.253, "D2": 0.821}}, "octahedron": {"lambert": {"eps": 0.67, "D0": 1.488, "D1": 1.262, "D2": 1.044}, "ortho": {"eps": 0.65, "D0": 1.533, "D1": 1.19, "D2": 0.806}, "stereo": {"eps": 0.63, "D0": 1.475, "D1": 1.437, "D2": 1.182}}, "cube": {"lambert": {"eps": 0.74, "D0": 1.445, "D1": 1.302, "D2": 1.099}, "ortho": {"eps": 0.73, "D0": 1.485, "D1": 1.34, "D2": 1.158}, "stereo": {"eps": 0.73, "D0": 1.424, "D1": 1.315, "D2": 1.099}}, "icosahedron": {"lambert": {"eps": 0.81, "D0": 1.443, "D1": 1.276, "D2": 1.114}, "ortho": {"eps": 0.8, "D0": 1.433, "D1": 1.27, "D2": 1.093}, "stereo": {"eps": 0.8, "D0": 1.38, "D1": 1.329, "D2": 1.177}}, "dodecahedron": {"lambert": {"eps": 0.87, "D0": 1.414, "D1": 1.229, "D2": 1.019}, "ortho": {"eps": 0.86, "D0": 1.415, "D1": 1.325, "D2": 1.166}, "stereo": {"eps": 0.86, "D0": 1.344, "D1": 1.322, "D2": 1.158}}};
 
-const PHI=(1+Math.sqrt(5))/2;
+</script>
+<script>
+"use strict";
+/* ============================================================
+   工具
+   ============================================================ */
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const SUPS = ["₀","₁","₂","₃"];
+function fx(v, n) { return (v === null || v === undefined || isNaN(v)) ? "—" : v.toFixed(n); }
 
-// Tetrahedron: 4 detectors at tetrahedral vertices
-function getTetrahedron(){
-  const t=1/Math.sqrt(3);
-  return[[t,t,t],[t,-t,-t],[-t,t,-t],[-t,-t,t]];
+const PROJ_CN = { lambert: "Lambert 等面积", ortho: "正射 Orthographic", stereo: "球极 Stereographic" };
+const PROJ_SHORT = { lambert: "Lambert", ortho: "正射", stereo: "球极" };
+
+/* ============================================================
+   01 画廊
+   ============================================================ */
+let galMode = "geom";
+let flatList = [];   // 灯箱顺序
+
+function cardHTML(g, pj) {
+  const m = EEQT_META[g];
+  const eps = EEQT_EPS[g][pj];
+  return `<div class="shot" data-g="${g}" data-p="${pj}">
+      <img loading="lazy" src="img/eeqt/${g}_${pj}_t.webp" data-full="img/eeqt/${g}_${pj}.webp"
+           alt="${m.cn} ${PROJ_SHORT[pj]}">
+      <div class="cap"><span class="pj">${PROJ_SHORT[pj]}</span><span class="ep">ε ${eps.toFixed(2)}</span></div>
+    </div>`;
 }
 
-// Octahedron: 6 detectors at ±x, ±y, ±z
-function getOctahedron(){
-  return[[0,0,1],[1,0,0],[0,1,0],[-1,0,0],[0,-1,0],[0,0,-1]];
-}
-
-// Cube: 8 detectors at cube vertices
-function getCube(){
-  const c=1/Math.sqrt(3);
-  return[[c,c,c],[c,c,-c],[c,-c,c],[c,-c,-c],[-c,c,c],[-c,c,-c],[-c,-c,c],[-c,-c,-c]];
-}
-
-// Merkaba / Star Tetrahedron: two interlocked tetrahedra
-function getMerkaba(){
-  const s2=Math.sqrt(2),s6=Math.sqrt(6);
-  return[
-    [0,0,1],
-    [2*s2/3,0,-1/3],
-    [-s2/3,s6/3,-1/3],
-    [-s2/3,-s6/3,-1/3],
-    [0,0,-1],
-    [-2*s2/3,0,1/3],
-    [s2/3,-s6/3,1/3],
-    [s2/3,s6/3,1/3]
-  ];
-}
-
-// Icosahedron: 12 detectors (dual of Dodecahedron, face centers)
-// Raw: (0,±1,±φ)|(±1,±φ,0)|(±φ,0,±1), normalized by c=1/√(φ+2)
-function getIcosahedron(){
-  const c=1/Math.sqrt(PHI+2);  // ≈0.525731
-  return[
-    [0,c,PHI*c],[0,-c,PHI*c],[0,c,-PHI*c],[0,-c,-PHI*c],
-    [c,PHI*c,0],[-c,PHI*c,0],[c,-PHI*c,0],[-c,-PHI*c,0],
-    [PHI*c,0,c],[PHI*c,0,-c],[-PHI*c,0,c],[-PHI*c,0,-c]
-  ];
-}
-
-// Dodecahedron: 20 vertices on unit sphere
-// Raw: (±1,±1,±1)|(0,±φ,±1/φ)|(±1/φ,0,±φ)|(±φ,±1/φ,0), normalized by 1/√3
-function getDodecahedron(){
-  const phi=(1+Math.sqrt(5))/2;
-  const d=1/Math.sqrt(3);  // normalization factor = 1/√3
-  const v=[];
-  // Type 1: (±1/√3, ±1/√3, ±1/√3) - 8 cube vertices
-  for(let s1 of[-1,1])for(let s2 of[-1,1])for(let s3 of[-1,1])
-    v.push([s1*d,s2*d,s3*d]);
-  // Type 2: (0, ±φ/√3, ±1/(φ√3)) - 4 YZ plane vertices
-  for(let s1 of[-1,1])for(let s2 of[-1,1]){
-    const y=s1*phi,yz=s2/phi,m=Math.sqrt(y*y+yz*yz);
-    v.push([0,y/m,yz/m]);
-  }
-  // Type 3: (±1/(φ√3), 0, ±φ/√3) - 4 XZ plane vertices
-  for(let s1 of[-1,1])for(let s2 of[-1,1]){
-    const x=s1/phi,xz=s2*phi,m=Math.sqrt(x*x+xz*xz);
-    v.push([x/m,0,xz/m]);
-  }
-  // Type 4: (±φ/√3, ±1/(φ√3), 0) - 4 XY plane vertices
-  for(let s1 of[-1,1])for(let s2 of[-1,1]){
-    const x=s1*phi,xy=s2/phi,m=Math.sqrt(x*x+xy*xy);
-    v.push([x/m,xy/m,0]);
-  }
-  return v;
-}
-
-// Rhombic Dodecahedron: 14 vertices
-function getRhombicDodecahedron(){
-  const v=[];
-  for(let s1 of[-1,1])for(let s2 of[-1,1])for(let s3 of[-1,1])
-    v.push([s1/Math.sqrt(3),s2/Math.sqrt(3),s3/Math.sqrt(3)]);
-  v.push([0,1,0],[0,-1,0],[1,0,0],[-1,0,0],[0,0,1],[0,0,-1]);
-  return v;
-}
-
-// C60 Full (60 vertices - complete sphere, for 3D rotation)
-var C60_FULL=[
-[-0.00000000,0.34327861,0.93923362],
-[0.00000000,-0.68655723,-0.72707577],
-[-0.00000000,0.68655723,0.72707577],
-[0.00000000,-0.34327861,-0.93923362],
-[-0.20177411,-0.83315470,0.51491792],
-[0.20177411,-0.83315470,0.51491792],
-[-0.20177411,0.83315470,-0.51491792],
-[0.20177411,0.83315470,-0.51491792],
-[-0.97943209,0.10607893,0.17163931],
-[-0.97943209,-0.10607893,-0.17163931],
-[0.97943209,0.10607893,0.17163931],
-[0.97943209,-0.10607893,-0.17163931],
-[-0.40354821,-0.55543646,0.72707577],
-[-0.40354821,0.89871508,-0.17163931],
-[0.40354821,-0.55543646,0.72707577],
-[0.40354821,0.89871508,-0.17163931],
-[-0.40354821,-0.89871508,0.17163931],
-[-0.40354821,0.55543646,-0.72707577],
-[0.40354821,-0.89871508,0.17163931],
-[0.40354821,0.55543646,-0.72707577],
-[-0.32647736,0.10607893,0.93923362],
-[-0.32647736,-0.79263615,-0.51491792],
-[0.32647736,0.10607893,0.93923362],
-[0.32647736,-0.79263615,-0.51491792],
-[-0.32647736,0.79263615,0.51491792],
-[-0.32647736,-0.10607893,-0.93923362],
-[0.32647736,0.79263615,0.51491792],
-[0.32647736,-0.10607893,-0.93923362],
-[-0.85472883,-0.06556038,0.51491792],
-[-0.85472883,-0.48987608,-0.17163931],
-[-0.85472883,0.48987608,0.17163931],
-[-0.85472883,0.06556038,-0.51491792],
-[0.85472883,-0.06556038,0.51491792],
-[0.85472883,-0.48987608,-0.17163931],
-[0.85472883,0.48987608,0.17163931],
-[0.85472883,0.06556038,-0.51491792],
-[-0.20177411,-0.27771823,0.93923362],
-[-0.20177411,-0.96427546,-0.17163931],
-[0.20177411,-0.27771823,0.93923362],
-[0.20177411,-0.96427546,-0.17163931],
-[-0.20177411,0.96427546,0.17163931],
-[-0.20177411,0.27771823,-0.93923362],
-[0.20177411,0.96427546,0.17163931],
-[0.20177411,0.27771823,-0.93923362],
-[-0.65295472,0.21215785,0.72707577],
-[-0.65295472,-0.55543646,-0.51491792],
-[0.65295472,0.21215785,0.72707577],
-[0.65295472,-0.55543646,-0.51491792],
-[-0.65295472,0.55543646,0.51491792],
-[-0.65295472,-0.21215785,-0.72707577],
-[0.65295472,0.55543646,0.51491792],
-[0.65295472,-0.21215785,-0.72707577],
-[-0.73002557,-0.44935754,0.51491792],
-[-0.73002557,-0.66151539,0.17163931],
-[-0.73002557,0.66151539,-0.17163931],
-[-0.73002557,0.44935754,-0.51491792],
-[0.73002557,-0.44935754,0.51491792],
-[0.73002557,-0.66151539,0.17163931],
-[0.73002557,0.66151539,-0.17163931],
-[0.73002557,0.44935754,-0.51491792]
-];
-
-// Compound of Dodecahedron + Icosahedron (32 vertices)
-// Dodecahedron: 20 vertices (normalized by 1/√3)
-// Icosahedron: 12 vertices as dual face centers (normalized by 1/√(φ+2))
-// NO additional rotation needed - dual relationship already gives correct compound
-function getCompoundDodecaIcosa(){
-  const phi=(1+Math.sqrt(5))/2;
-  const d=1/Math.sqrt(3);   // dodecahedron normalization
-  const c=1/Math.sqrt(phi+2);  // icosahedron normalization
-  const v=[];
-  // === Dodecahedron (20 vertices) ===
-  // Type 1: (±1/√3, ±1/√3, ±1/√3) - 8 cube vertices
-  for(let s1 of[-1,1])for(let s2 of[-1,1])for(let s3 of[-1,1])
-    v.push([s1*d,s2*d,s3*d]);
-  // Type 2: (0, ±φ/√3, ±1/(φ√3)) - 4 YZ plane vertices
-  for(let s1 of[-1,1])for(let s2 of[-1,1]){
-    const y=s1*phi,yz=s2/phi,m=Math.sqrt(y*y+yz*yz);
-    v.push([0,y/m,yz/m]);
-  }
-  // Type 3: (±1/(φ√3), 0, ±φ/√3) - 4 XZ plane vertices
-  for(let s1 of[-1,1])for(let s2 of[-1,1]){
-    const x=s1/phi,xz=s2*phi,m=Math.sqrt(x*x+xz*xz);
-    v.push([x/m,0,xz/m]);
-  }
-  // Type 4: (±φ/√3, ±1/(φ√3), 0) - 4 XY plane vertices
-  for(let s1 of[-1,1])for(let s2 of[-1,1]){
-    const x=s1*phi,xy=s2/phi,m=Math.sqrt(x*x+xy*xy);
-    v.push([x/m,xy/m,0]);
-  }
-  // === Icosahedron (12 vertices, dual face centers) ===
-  v.push([0,c,phi*c],[0,-c,phi*c],[0,c,-phi*c],[0,-c,-phi*c]);
-  v.push([c,phi*c,0],[-c,phi*c,0],[c,-phi*c,0],[-c,-phi*c,0]);
-  v.push([phi*c,0,c],[phi*c,0,-c],[-phi*c,0,c],[-phi*c,0,-c]);
-  return v;
-}
-
-// Get detector directions (with optional quaternion rotation)
-function getDirections(type, rotX=0, rotY=0, rotZ=0){
-  let dirs;
-  if(type==='tetrahedron') dirs = getTetrahedron();
-  else if(type==='octahedron') dirs = getOctahedron();
-  else if(type==='cube') dirs = getCube();
-  else if(type==='merkaba') dirs = getMerkaba();
-  else if(type==='icosahedron') dirs = getIcosahedron();
-  else if(type==='dodecahedron') dirs = getDodecahedron();
-  else if(type==='c60_full') dirs = C60_FULL.slice();
-  else if(type==='compound_32') dirs = getCompoundDodecaIcosa();
-  else if(type==='rhombic_dodeca') dirs = getRhombicDodecahedron();
-  else dirs = getOctahedron();
-  
-  // 应用四元数旋转
-  if(rotX !== 0 || rotY !== 0 || rotZ !== 0){
-    dirs = Quaternion.rotateGeometry(dirs, rotX, rotY, rotZ);
-  }
-  return dirs;
-}
-
-// ============================================================
-// PROJECTIONS
-// ============================================================
-
-// 基础投影函数：返回球面坐标到2D平面的映射（无缩放）
-function projStereo(r){
-  const den=1+r[2];
-  if(Math.abs(den)<1e-15)return[9999,9999];
-  return[r[0]/den,r[1]/den];
-}
-
-function projLambert(r){
-  const z=r[2];
-  const lr=Math.sqrt(Math.max(0,(1-z)/2));
-  const rxy=Math.sqrt(r[0]*r[0]+r[1]*r[1]);
-  if(rxy<1e-15)return[0,0];
-  return[r[0]/rxy*lr,r[1]/rxy*lr];
-}
-
-function projOrtho(r){return[r[0],r[1]];}
-
-// 获取基础投影函数
-function getProjFn(type){
-  if(type==='stereo')return projStereo;
-  if(type==='lambert')return projLambert;
-  if(type==='ortho')return projOrtho;
-  return projStereo;
-}
-
-// ============================================================
-// EEQT DYNAMICS
-// ============================================================
-
-const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
-const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]];
-const scl=(a,s)=>[a[0]*s,a[1]*s,a[2]*s];
-const norm=(a)=>{const L=Math.sqrt(dot(a,a));return L<1e-15?[0,0,1]:[a[0]/L,a[1]/L,a[2]/L];};
-
-// EEQT quantum jump transformation
-function T(r,n,eps){
-  const e2=eps*eps, ndr=dot(n,r);
-  const num=add(scl(r,1-e2), scl(n,2*eps*(1+eps*ndr)));
-  const den=1+e2+2*eps*ndr;
-  if(Math.abs(den)<1e-15)return[r[0],r[1],r[2]];
-  return[num[0]/den,num[1]/den,num[2]/den];
-}
-
-// Detection probability & jump size (两种模式对比)
-function detProb(r,n,eps,N,formulaMode){
-  const ndr = dot(n,r);
-  if(formulaMode==='standard'){
-    // 【Standard EEQT】纯线性：方向性强，P=0时永不选择
-    // 跳变强度固定为ε=1（最大跳跃）
-    return Math.max(0, (1 + ndr)) / (2 * N);
+function renderGallery() {
+  const body = $("#galBody");
+  let h = "";
+  if (galMode === "geom") {
+    EEQT_ORDER.forEach(g => {
+      const m = EEQT_META[g];
+      h += `<div class="grp"><div class="grph">
+        <span class="nm">${m.cn}</span><span class="en">${m.en}</span>
+        <span class="kv">N = <b>${m.N}</b></span>
+        <span class="kv">θ<sub>min</sub> = <b>${m.theta.toFixed(2)}°</b></span>
+        <span class="kv">ε = <b>${EEQT_EPS[g].lambert.toFixed(2)} / ${EEQT_EPS[g].ortho.toFixed(2)} / ${EEQT_EPS[g].stereo.toFixed(2)}</b></span>
+      </div><div class="row3">`;
+      ["lambert", "ortho", "stereo"].forEach(pj => { h += cardHTML(g, pj); });
+      h += `</div></div>`;
+    });
   } else {
-    // 【Smooth模式】ε加权：平滑极端概率，可调跳跃强度
-    // ε越小方向性越强，ε越大越接近均匀分布
-    const e2 = eps * eps;
-    return (1 + e2 + 2 * eps * ndr) / (N * (1 + e2));
+    ["lambert", "ortho", "stereo"].forEach(pj => {
+      h += `<div class="grp"><div class="grph">
+        <span class="nm">${PROJ_CN[pj]}</span>
+        <span class="en">${pj.toUpperCase()}</span>
+        <span class="kv">9 种几何 · ε 逐张不同</span>
+      </div><div class="row3">`;
+      EEQT_ORDER.forEach(g => { h += cardHTML(g, pj); });
+      h += `</div></div>`;
+    });
   }
+  body.innerHTML = h;
+  flatList = Array.from(body.querySelectorAll(".shot"));
+  flatList.forEach((el, i) => {
+    el.addEventListener("click", () => openLB(i));
+  });
 }
 
-// EEQT量子跳变变换
-function quantumJump(r,n,eps,formulaMode){
-  if(formulaMode==='standard'){
-    // 【Standard EEQT】经典公式：简单向量平均
-    // r' = (r + n) / |r + n|
-    const sum=[r[0]+n[0], r[1]+n[1], r[2]+n[2]];
-    const len=Math.sqrt(sum[0]*sum[0]+sum[1]*sum[1]+sum[2]*sum[2]);
-    if(len<1e-15) return [0,0,1];
-    return [sum[0]/len, sum[1]/len, sum[2]/len];
-  } else {
-    // 【Smooth模式】ε参数化版本
-    if(eps < 0.01){
-      // 当ε→0时，直接跳转到detector（类似标准Chaos Game）
-      return [n[0], n[1], n[2]];
+$$("#galMode button").forEach(b => {
+  b.addEventListener("click", () => {
+    $$("#galMode button").forEach(x => x.classList.remove("on"));
+    b.classList.add("on");
+    galMode = b.dataset.mode;
+    renderGallery();
+  });
+});
+
+/* ---------- 灯箱 ---------- */
+let lbIdx = 0;
+function openLB(i) {
+  lbIdx = i;
+  paintLB();
+  $("#lb").classList.add("on");
+}
+function paintLB() {
+  const el = flatList[lbIdx];
+  const g = el.dataset.g, pj = el.dataset.p, m = EEQT_META[g];
+  $("#lbImg").src = el.querySelector("img").dataset.full;
+  $("#lbMeta").innerHTML = `${m.cn} · ${m.en}　∣　${PROJ_CN[pj]}　∣　N=${m.N}　ε=${EEQT_EPS[g][pj].toFixed(2)}　θ<sub>min</sub>=${m.theta.toFixed(2)}°`;
+}
+$("#lbX").addEventListener("click", () => $("#lb").classList.remove("on"));
+$("#lb").addEventListener("click", e => { if (e.target.id === "lb") $("#lb").classList.remove("on"); });
+$("#lbPrev").addEventListener("click", e => { e.stopPropagation(); lbIdx = (lbIdx - 1 + flatList.length) % flatList.length; paintLB(); });
+$("#lbNext").addEventListener("click", e => { e.stopPropagation(); lbIdx = (lbIdx + 1) % flatList.length; paintLB(); });
+document.addEventListener("keydown", e => {
+  if (!$("#lb").classList.contains("on")) return;
+  if (e.key === "Escape") $("#lb").classList.remove("on");
+  if (e.key === "ArrowLeft") { lbIdx = (lbIdx - 1 + flatList.length) % flatList.length; paintLB(); }
+  if (e.key === "ArrowRight") { lbIdx = (lbIdx + 1) % flatList.length; paintLB(); }
+});
+
+/* ============================================================
+   02 维数曲线
+   ============================================================ */
+const CURVE_COLORS = {
+  tetrahedron: "#1f6f9f", octahedron: "#2c7a58", cube: "#a8352e",
+  icosahedron: "#a87c22", dodecahedron: "#6b4a8f"
+};
+let curProj = "lambert";
+const hidden = new Set();
+let NIGHT = false;
+const TH = () => NIGHT
+  ? { grid: "rgba(228,234,240,.13)", tick: "#8194a1", axis: "#b4c0ca", mark: "#10161e", gold: "#d8b25e", red: "#e08a83", halo: "rgba(12,16,22,.85)" }
+  : { grid: "rgba(27,36,48,.09)", tick: "#7c8a92", axis: "#47555f", mark: "#fffdf8", gold: "#a87c22", red: "#a8352e", halo: "rgba(255,253,248,.85)" };
+
+function drawChart() {
+  const th = TH();
+  const cv = $("#dimChart");
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const W = cv.clientWidth, H = 460;
+  cv.width = W * dpr; cv.height = H * dpr;
+  const c = cv.getContext("2d");
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.clearRect(0, 0, W, H);
+
+  const L = 56, R = 18, T = 26, B = 40;
+  const pw = W - L - R, ph = H - T - B;
+  const x0 = 0.0, x1 = 1.0, y0 = 0.0, y1 = 2.05;
+  const X = e => L + (e - x0) / (x1 - x0) * pw;
+  const Y = d => T + (1 - (d - y0) / (y1 - y0)) * ph;
+
+  // 网格
+  c.font = "11px Consolas, monospace";
+  c.strokeStyle = th.grid; c.lineWidth = 1;
+  for (let d = 0; d <= 2; d += 0.5) {
+    c.beginPath(); c.moveTo(L, Y(d)); c.lineTo(W - R, Y(d)); c.stroke();
+    c.fillStyle = th.tick; c.textAlign = "right";
+    c.fillText(d.toFixed(1), L - 8, Y(d) + 4);
+  }
+  for (let e = 0; e <= 1.001; e += 0.1) {
+    c.beginPath(); c.moveTo(X(e), T); c.lineTo(X(e), H - B); c.stroke();
+    c.fillStyle = th.tick; c.textAlign = "center";
+    c.fillText(e.toFixed(1), X(e), H - B + 16);
+  }
+  // 轴名
+  c.fillStyle = th.axis; c.textAlign = "left";
+  c.fillText("D_eff", 8, T - 9);
+  c.textAlign = "right"; c.fillText("ε", W - R, H - 8);
+  // 参考线
+  c.setLineDash([4, 4]); c.strokeStyle = "rgba(168,124,34,.55)";
+  c.beginPath(); c.moveTo(L, Y(1.5)); c.lineTo(W - R, Y(1.5)); c.stroke();
+  c.strokeStyle = "rgba(168,53,46,.35)";
+  c.beginPath(); c.moveTo(L, Y(1.9)); c.lineTo(W - R, Y(1.9)); c.stroke();
+  c.setLineDash([]);
+  c.font = "10.5px Consolas, monospace"; c.fillStyle = th.gold; c.textAlign = "left";
+  /* 注记一律写在参考线下方：左段（ε<0.6）曲线全贴在 1.9 以上，下方是空的，不会压线 */
+  c.fillText("D_eff = 1.50　← 选图标尺", L + 6, Y(1.5) + 14);
+  c.fillStyle = th.red; c.fillText("D_eff = 1.90　← 膝点判据", L + 6, Y(1.9) + 14);
+
+  const ax = EEQT_EPSAXIS;
+  Object.keys(EEQT_CURVES).forEach(g => {
+    if (hidden.has(g)) return;
+    const v = EEQT_CURVES[g][curProj];
+    c.strokeStyle = CURVE_COLORS[g]; c.lineWidth = 2;
+    c.beginPath();
+    let started = false;
+    for (let i = 0; i < ax.length; i++) {
+      if (v[i] === null) { started = false; continue; }
+      if (!started) { c.moveTo(X(ax[i]), Y(v[i])); started = true; }
+      else c.lineTo(X(ax[i]), Y(v[i]));
     }
-    return T(r, n, eps);
-  }
-}
-
-// Pick detector based on probabilities
-function pick(r,dirs,eps,formulaMode){
-  const N=dirs.length;
-  const ps=dirs.map(n=>detProb(r,n,eps,N,formulaMode));
-  const tot=ps.reduce((a,b)=>a+b,0);
-  let u=Math.random()*tot;
-  for(let i=0;i<ps.length;i++){
-    u-=ps[i];
-    if(u<=0)return i;
-  }
-  return ps.length-1;
-}
-
-// ============================================================
-// HAUSDORFF DIMENSION (box-counting)
-// ============================================================
-
-const HAUS_SCALES=[0.5,0.25,0.125,0.0625,0.03125,0.015625];
-
-// ============================================================
-// ENTROPY (information entropy on sphere)
-// ============================================================
-function entropy(pts3){
-  if(pts3.length<100)return 0;
-  const nb=40,nb1=nb-1;
-  const rxy=pts3.map(function(p){return Math.sqrt(p[0]*p[0]+p[1]*p[1]+p[2]*p[2]);});
-  const theta=pts3.map(function(p,i){return Math.acos(Math.max(-1,Math.min(1,p[2]/rxy[i])));});
-  const phi=pts3.map(function(p){return Math.atan2(p[1],p[0]);});
-  const hist=new Array(nb*nb);
-  for(let h=0;h<hist.length;h++)hist[h]=0;
-  for(let i=0;i<pts3.length;i++){
-    const c1=Math.min(nb1,Math.floor(theta[i]/Math.PI*nb));
-    const c2=Math.min(nb1,Math.floor((phi[i]+Math.PI)/(2*Math.PI)*nb));
-    hist[c1*nb+c2]++;
-  }
-  let H=0,total=pts3.length;
-  for(let j=0;j<hist.length;j++){
-    if(hist[j]>0){const p=hist[j]/total;H-=p*Math.log2(p);}
-  }
-  return Math.max(0,H);
-}
-
-// ============================================================
-// GET METRICS (comprehensive score)
-// ============================================================
-function getMetrics(pts3,projFn,ND){
-  const H=entropy(pts3);
-  const D=hausdorffDim(pts3,projFn);
-  // sp = mean z² (polarization)
-  const sp=Math.sqrt(pts3.reduce(function(s,p){return s+p[2]*p[2];},0)/pts3.length);
-  // Score = H * D * (1+sp) - 综合指标
-  const score=H*(D||0)*(1+sp);
-  // PRE Score = H as % of max possible entropy log2(N)
-  const maxH=Math.log2(ND||4);
-  const preScore=maxH>0?(H/maxH)*100:0;
-  return{H:H,D:D,sp:sp,score:score,preScore:preScore};
-}
-
-function hausdorffDim(pts3d,projFn){
-  if(pts3d.length<100)return null;
-  const proj=[];
-  for(const p of pts3d){
-    const z=p[2];
-    if(projFn===projLambert){
-      const lr=Math.sqrt(Math.max(0,(1-z)/2));
-      const rxy=Math.sqrt(p[0]*p[0]+p[1]*p[1]);
-      if(rxy<1e-15){proj.push([0,0]);continue;}
-      proj.push([p[0]/rxy*lr,p[1]/rxy*lr]);
-    } else if(projFn===projOrtho){
-      proj.push([p[0],p[1]]);
-    } else {
-      const den=1+z;
-      if(Math.abs(den)<1e-10)continue;
-      proj.push([p[0]/den,p[1]/den]);
+    c.stroke();
+    // 该几何的选图点
+    const eps = EEQT_EPS[g][curProj];
+    let i = ax.findIndex(x => x >= eps);
+    if (i > 0) {
+      const t = (eps - ax[i - 1]) / (ax[i] - ax[i - 1]);
+      const d = (v[i - 1] === null || v[i] === null) ? null : v[i - 1] + t * (v[i] - v[i - 1]);
+      if (d !== null) {
+        c.fillStyle = th.mark; c.strokeStyle = CURVE_COLORS[g]; c.lineWidth = 2;
+        c.beginPath(); c.arc(X(eps), Y(d), 5, 0, Math.PI * 2); c.fill(); c.stroke();
+        /* 只留虚线引线（原本实线+虚线叠画，看着像一条数据曲线直落 0） */
+        c.setLineDash([2, 3]); c.strokeStyle = CURVE_COLORS[g] + "66";
+        c.beginPath(); c.moveTo(X(eps), Y(d) + 7); c.lineTo(X(eps), H - B); c.stroke();
+        c.setLineDash([]);
+      }
     }
-  }
-  if(proj.length<50)return null;
-  const counts=[];
-  for(const box of HAUS_SCALES){
-    const boxes=new Set();
-    for(const [x,y] of proj){
-      const nx=Math.max(-20,Math.min(20,x)),ny=Math.max(-20,Math.min(20,y));
-      boxes.add(Math.floor(nx/box)+','+Math.floor(ny/box));
-    }
-    counts.push(boxes.size);
-  }
-  if(counts.some(c=>c<2))return null;
-  const logData=counts.map((c,i)=>({x:-Math.log(HAUS_SCALES[i]),y:Math.log(c)}));
-  const n=logData.length;
-  let sx=0,sy=0,sxy=0,sxx=0;
-  for(const p of logData){sx+=p.x;sy+=p.y;sxy+=p.x*p.y;sxx+=p.x*p.x;}
-  const d=n*sxx-sx*sx;
-  if(Math.abs(d)<1e-10)return null;
-  const slope=(n*sxy-sx*sy)/d;
-  if(slope<0||slope>3||isNaN(slope))return null;
-  return slope;
+  });
+  return { L, R, T, B, W, H, X, Y };
 }
 
-// ============================================================
-// RENDER
-// ============================================================
-
-function render(canvas,eps,n,type,projType,scaleVal,formulaMode,rotX,rotY,rotZ){
-  const ctx=canvas.getContext('2d');
-  const W=canvas.width,H=canvas.height;
-  const cx=W/2,cy=H/2;
-
-  // 边界圆固定半径
-  const BASE_SCALE=Math.min(W,H)*0.46;
-
-  // 背景
-  ctx.fillStyle='#010104';
-  ctx.fillRect(0,0,W,H);
-
-  // 获取几何体（应用四元数旋转）
-  const dirs=getDirections(type, rotX, rotY, rotZ);
-  const ND=dirs.length;
-  const projFn=getProjFn(projType);
-
-  let autoScaleFactor = 1.0;
-
-  // 总缩放因子 = 自动修正 × 用户缩放
-  const totalScale = autoScaleFactor * scaleVal;
-
-  // 边界圆（固定大小，不受scaleVal影响）
-  ctx.strokeStyle='rgba(30,50,80,.5)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.arc(cx,cy,BASE_SCALE,0,Math.PI*2);ctx.stroke();
-  ctx.strokeStyle='rgba(20,35,55,.2)';ctx.lineWidth=.5;
-  for(let i=1;i<=4;i++){
-    ctx.beginPath();ctx.arc(cx,cy,BASE_SCALE*i/4,0,Math.PI*2);ctx.stroke();
-  }
-
-  // Initial state + burn-in
-  let r=norm([0.1,0.1,0.98]);
-  const burnIn=1500;
-  for(let i=0;i<burnIn;i++){
-    const idx=pick(r,dirs,eps,formulaMode);
-    r=norm(quantumJump(r,dirs[idx],eps,formulaMode));
-    if(isNaN(r[0]+r[1]+r[2]))r=norm([0.1,0.1,0.98]);
-  }
-
-  // 生成轨迹点
-  const pts=[],ci=[],pts3d=[];
-  for(let i=0;i<n;i++){
-    const idx=pick(r,dirs,eps,formulaMode);
-    r=norm(quantumJump(r,dirs[idx],eps,formulaMode));
-    if(isNaN(r[0]+r[1]+r[2]))r=norm([0.1,0.1,0.98]);
-    
-    // 投影：先调用基础投影函数，再乘以总缩放因子
-    const baseProj=projFn(r);
-    pts.push([baseProj[0]*totalScale, baseProj[1]*totalScale]);
-    pts3d.push([r[0],r[1],r[2]]);
-    ci.push(idx);
-  }
-
-  // Color palette
-  const cols=[
-    [200,55,55],[55,200,120],[55,100,200],[200,160,55],
-    [200,55,200],[55,200,200],[200,100,55],[100,200,55],
-    [55,200,160],[160,55,200],[200,55,120],[120,55,200],
-    [180,80,80],[80,180,80],[80,80,180],[180,180,80]
-  ];
-
-  // ImageData render
-  const id=ctx.createImageData(W,H);
-  const d=id.data;
-  for(let i=0;i<d.length;i+=4){d[i]=4;d[i+1]=4;d[i+2]=10;d[i+3]=255;}
-  for(let i=0;i<pts.length;i++){
-    const sx=pts[i][0]*BASE_SCALE+cx;
-    const sy=-pts[i][1]*BASE_SCALE+cy;
-    const px=Math.round(sx),py=Math.round(sy);
-    if(px<0||px>=W||py<0||py>=H)continue;
-    const p4=(py*W+px)*4;
-    const col=cols[ci[i]%cols.length];
-    const a=0.22;
-    d[p4]=Math.round(d[p4]*(1-a)+col[0]*a);
-    d[p4+1]=Math.round(d[p4+1]*(1-a)+col[1]*a);
-    d[p4+2]=Math.round(d[p4+2]*(1-a)+col[2]*a);
-  }
-  ctx.putImageData(id,0,0);
-
-  // 边界圆
-  ctx.strokeStyle='rgba(50,80,120,.6)';ctx.lineWidth=1.5;
-  ctx.beginPath();ctx.arc(cx,cy,BASE_SCALE,0,Math.PI*2);ctx.stroke();
-
-  // Vertex markers - 使用相同的投影和缩放逻辑
-  for(let i=0;i<ND;i++){
-    // 投影detector顶点
-    const baseProj=projFn(dirs[i]);
-    // 检查是否为有效投影
-    if(!isFinite(baseProj[0])||!isFinite(baseProj[1]))continue;
-    
-    // 应用缩放
-    const zx=baseProj[0]*totalScale;
-    const zy=baseProj[1]*totalScale;
-    
-    // 检查范围（投影坐标的合理范围）
-    if(Math.abs(zx)>20||Math.abs(zy)>20)continue;
-    
-    // 转换为像素坐标
-    const mpx=zx*BASE_SCALE+cx;
-    const mpy=-zy*BASE_SCALE+cy;
-    
-    // 检查是否在画布内
-    if(mpx<0||mpx>=W||mpy<0||mpy>=H)continue;
-    
-    const col=cols[i%cols.length];
-    // 外圈
-    ctx.strokeStyle=`rgba(${col[0]},${col[1]},${col[2]},0.9)`;
-    ctx.lineWidth=1.5;
-    ctx.beginPath();ctx.arc(mpx,mpy,ND<=6?5:3,0,Math.PI*2);ctx.stroke();
-    // 内圈
-    ctx.fillStyle=`rgba(${col[0]},${col[1]},${col[2]},.8)`;
-    ctx.beginPath();ctx.arc(mpx,mpy,ND<=6?4:2.5,0,Math.PI*2);ctx.fill();
-  }
-
-  // Info
-  const names={
-    'tetrahedron':'Tetrahedron','octahedron':'Octahedron','cube':'Cube',
-    'merkaba':'Merkaba','icosahedron':'Icosahedron','dodecahedron':'Dodecahedron',
-    'compound_32':'Compound D+I','rhombic_dodeca':'Rhombic Dodeca'
-  };
-  document.getElementById('fml').textContent=names[type]+' · '+ND+' detectors · '+projType+' · scale='+scaleVal.toFixed(2)+' · eps='+eps.toFixed(3)+' · '+n.toLocaleString()+' pts';
-
-  // Hausdorff dimension
-  const t0=performance.now();
-  const dH=hausdorffDim(pts3d,projFn);
-  const elapsed=Math.round(performance.now()-t0);
-  const dimEl=document.getElementById('dimVal');
-  if(dH!==null){
-    dimEl.textContent='D_H ≈ '+dH.toFixed(4);
-    dimEl.style.color='#4a9acc';
-  } else {
-    dimEl.textContent='computing...';
-    dimEl.style.color='#3a5565';
-  }
-  console.log('Hausdorff dim: '+(dH!==null?dH.toFixed(4):'null')+' ('+elapsed+'ms)');
-  
-  // Update additional metrics
-  const t1=performance.now();
-  const m=getMetrics(pts3d,projFn,ND);
-  const mTime=Math.round(performance.now()-t1);
-  document.getElementById('mD').textContent=(m.D!==null?m.D.toFixed(3):'--');
-  document.getElementById('mH').textContent=m.H.toFixed(2);
-  document.getElementById('mScore').textContent=m.score.toFixed(1);
-  document.getElementById('mPRE').textContent=m.preScore.toFixed(0)+'%';
-  document.getElementById('mTime').textContent=mTime+'ms';
+function lgHTML() {
+  $("#lgBox").innerHTML = Object.keys(EEQT_CURVES).map(g =>
+    `<span data-g="${g}" class="${hidden.has(g) ? "" : "on"}">
+      <i style="background:${CURVE_COLORS[g]}"></i>${EEQT_META[g].cn}</span>`).join("");
+  $$("#lgBox span").forEach(s => s.addEventListener("click", () => {
+    const g = s.dataset.g;
+    hidden.has(g) ? hidden.delete(g) : hidden.add(g);
+    lgHTML(); drawChart();
+  }));
 }
 
-// ============================================================
-// MAIN
-// ============================================================
+$$("#projSeg button").forEach(b => b.addEventListener("click", () => {
+  $$("#projSeg button").forEach(x => x.classList.remove("on"));
+  b.classList.add("on"); curProj = b.dataset.p; drawChart();
+}));
 
-const canvas=document.getElementById('c');
-const size=Math.min(window.innerWidth-30,700);
-canvas.width=size;canvas.height=size;
+$("#dimChart").addEventListener("mousemove", ev => {
+  const cv = $("#dimChart");
+  const r = cv.getBoundingClientRect();
+  const mx = ev.clientX - r.left;
+  const geo = drawChart();
+  const e = (mx - geo.L) / (geo.W - geo.L - geo.R);
+  if (e < 0 || e > 1) return;
+  const i = Math.max(0, Math.min(EEQT_EPSAXIS.length - 1, Math.round(e * 46)));
+  const parts = Object.keys(EEQT_CURVES).filter(g => !hidden.has(g)).map(g => {
+    const d = EEQT_CURVES[g][curProj][i];
+    return `<span style="color:${CURVE_COLORS[g]}">${EEQT_META[g].cn} ${d === null ? "—" : d.toFixed(3)}</span>`;
+  });
+  $("#dimHover").innerHTML = `ε = <b>${EEQT_EPSAXIS[i].toFixed(2)}</b>　∣　${PROJ_SHORT[curProj]}　∣　` + parts.join("　");
+});
 
-const eS=document.getElementById('eS');
-const nS=document.getElementById('nS');
-const typeS=document.getElementById('typeS');
-const projS=document.getElementById('projS');
-const sS=document.getElementById('sS');
-const rxS=document.getElementById('rxS');
-const ryS=document.getElementById('ryS');
-const rzS=document.getElementById('rzS');
-const eV=document.getElementById('eV');
-const nV=document.getElementById('nV');
-const sV=document.getElementById('sV');
-
-function draw(){
-  const eps=parseInt(eS.value)/1000;
-  const n=parseInt(nS.value);
-  const type=typeS.value;
-  const projType=projS.value;
-  const scaleVal=parseInt(sS.value)/100;
-  const formulaMode=fmlS.value;
-  const rotX=parseInt(rxS.value);
-  const rotY=parseInt(ryS.value);
-  const rotZ=parseInt(rzS.value);
-  eV.textContent=eps.toFixed(3);
-  nV.textContent=n.toLocaleString();
-  sV.textContent=scaleVal.toFixed(2)+'x';
-  fmlV.textContent=formulaMode==='smooth'?'Smooth':'Standard';
-  rxV.textContent=rotX+'°';
-  ryV.textContent=rotY+'°';
-  rzV.textContent=rotZ+'°';
-  render(canvas,eps,n,type,projType,scaleVal,formulaMode,rotX,rotY,rotZ);
+/* ============================================================
+   03 数据表
+   ============================================================ */
+/* null 安全格式化：扫描末端 ε=0.97 处盒数过少，个别几何的 D 为 null */
+function nf(x, d) {
+  return (x === null || x === undefined || !isFinite(x)) ? "—" : x.toFixed(d);
 }
 
-// Optimal epsilon for each geometry (原始正确值：epsilon越小方向性越强，分形越清晰)
-const SOLID_EPS={
-  'tetrahedron':800,
-  'octahedron':100,   // 关键！低epsilon=强方向性=清晰分形
-  'cube':800,
-  'merkaba':800,
-  'icosahedron':900,
-  'dodecahedron':800,
-  'c60_full':800,
-  'compound_32':800,
-  'rhombic_dodeca':800
+function fillTables() {
+  // 波谷表
+  let h = "";
+  Object.keys(EEQT_CURVES).forEach(g => {
+    const m = EEQT_META[g], v = EEQT_CURVES[g].ortho, vl = EEQT_VALLEY[g];
+    h += `<tr><td>${m.cn}</td><td class="num">${m.N}</td><td class="num">${nf(m.theta, 2)}</td>
+      <td class="num">${nf(v[0], 3)}</td><td class="num">${nf(v[v.length - 1], 3)}</td>
+      <td class="num">${nf(vl.sigma, 3)}</td>
+      <td class="num" style="color:${vl.n === 0 ? "#a8352e" : "#2c7a58"};font-weight:700">${vl.n}</td>
+      <td class="num">${nf(EEQT_KNEE[g], 3)}</td></tr>`;
+  });
+  $("#valleyTb").innerHTML = h;
+
+  // 规律表
+  h = "";
+  Object.keys(EEQT_CURVES).forEach(g => {
+    const m = EEQT_META[g], kn = EEQT_KNEE[g];
+    const dev = kn === null ? null : m.epsLaw - kn;
+    h += `<tr><td>${m.cn}</td><td class="num">${m.N}</td><td class="num">${nf(m.theta, 3)}</td>
+      <td class="num">${nf(m.rho, 4)}</td><td class="num">${nf(m.epsLaw, 4)}</td>
+      <td class="num">${nf(kn, 3)}</td>
+      <td class="num ${Math.abs(dev) < 0.03 ? "ok-b" : ""}">${dev === null ? "—" : (dev > 0 ? "+" : "") + dev.toFixed(3)}</td></tr>`;
+  });
+  $("#lawTb").innerHTML = h;
+
+  // Dq 表
+  h = "";
+  Object.keys(EEQT_DQ).forEach(g => {
+    ["lambert", "ortho", "stereo"].forEach(pj => {
+      const d = EEQT_DQ[g][pj];
+      h += `<tr><td>${EEQT_META[g].cn}</td><td>${PROJ_SHORT[pj]}</td><td class="num">${nf(d.eps, 2)}</td>
+        <td class="num">${nf(d.D0, 3)}</td><td class="num">${nf(d.D1, 3)}</td><td class="num">${nf(d.D2, 3)}</td>
+        <td class="num">${nf(d.D0 - d.D2, 3)}</td></tr>`;
+    });
+  });
+  $("#dqTb").innerHTML = h;
+
+  // ε 表
+  h = "";
+  EEQT_ORDER.forEach(g => {
+    const m = EEQT_META[g];
+    h += `<tr><td>${m.cn}</td><td class="num">${m.N}</td>
+      <td class="num">${nf(EEQT_EPS[g].lambert, 2)}</td>
+      <td class="num">${nf(EEQT_EPS[g].ortho, 2)}</td>
+      <td class="num">${nf(EEQT_EPS[g].stereo, 2)}</td></tr>`;
+  });
+  $("#epsTb").querySelector("tbody").innerHTML = h;
+}
+
+/* ============================================================
+   04 实验室
+   ============================================================ */
+const GEOM_FN = {
+  tetrahedron: () => { const t = 1 / Math.sqrt(3); return [[t, t, t], [t, -t, -t], [-t, t, -t], [-t, -t, t]]; },
+  octahedron: () => [[0, 0, 1], [1, 0, 0], [0, 1, 0], [-1, 0, 0], [0, -1, 0], [0, 0, -1]],
+  cube: () => { const c = 1 / Math.sqrt(3), o = []; [-1, 1].forEach(a => [-1, 1].forEach(b => [-1, 1].forEach(d => o.push([a * c, b * c, d * c])))); return o; },
+  merkaba: () => { const s2 = Math.SQRT2, s6 = Math.sqrt(6); return [[0, 0, 1], [2 * s2 / 3, 0, -1 / 3], [-s2 / 3, s6 / 3, -1 / 3], [-s2 / 3, -s6 / 3, -1 / 3], [0, 0, -1], [-2 * s2 / 3, 0, 1 / 3], [s2 / 3, -s6 / 3, 1 / 3], [s2 / 3, s6 / 3, 1 / 3]]; },
+  icosahedron: () => { const P = (1 + Math.sqrt(5)) / 2, c = 1 / Math.sqrt(P + 2), o = []; [[0, c, P * c], [0, -c, P * c], [0, c, -P * c], [0, -c, -P * c], [c, P * c, 0], [-c, P * c, 0], [c, -P * c, 0], [-c, -P * c, 0], [P * c, 0, c], [P * c, 0, -c], [-P * c, 0, c], [-P * c, 0, -c]].forEach(v => o.push(v)); return o; },
+  dodecahedron: () => {
+    const P = (1 + Math.sqrt(5)) / 2, d = 1 / Math.sqrt(3), v = [];
+    [-1, 1].forEach(a => [-1, 1].forEach(b => [-1, 1].forEach(d3 => v.push([a * d, b * d, d3 * d]))));
+    [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(([a, b]) => { const y = a * P, z = b / P, m = Math.hypot(y, z); v.push([0, y / m, z / m]); });
+    [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(([a, b]) => { const x = a / P, z = b * P, m = Math.hypot(x, z); v.push([x / m, 0, z / m]); });
+    [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(([a, b]) => { const x = a * P, y = b / P, m = Math.hypot(x, y); v.push([x / m, y / m, 0]); });
+    return v;
+  },
+  rhombic_dodeca: () => { const v = []; [-1, 1].forEach(a => [-1, 1].forEach(b => [-1, 1].forEach(c => v.push([a / Math.sqrt(3), b / Math.sqrt(3), c / Math.sqrt(3)])))); v.push([0, 1, 0], [0, -1, 0], [1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1]); return v; },
+  compound_32: () => GEOM_FN.dodecahedron().concat(GEOM_FN.icosahedron()),
+  c60_full: () => {
+    /* 出图时用的同一套 60 个顶点（截角二十面体，已归一化），逐点照抄以保证实验室与预渲染一致 */
+    const C60 = [
+      [-0.00000000, 0.34327861, 0.93923362], [0.00000000, -0.68655723, -0.72707577], [-0.00000000, 0.68655723, 0.72707577], [0.00000000, -0.34327861, -0.93923362],
+      [-0.20177411, -0.83315470, 0.51491792], [0.20177411, -0.83315470, 0.51491792], [-0.20177411, 0.83315470, -0.51491792], [0.20177411, 0.83315470, -0.51491792],
+      [-0.97943208, 0.10607893, 0.17163931], [-0.97943208, -0.10607893, -0.17163931], [0.97943208, 0.10607893, 0.17163931], [0.97943208, -0.10607893, -0.17163931],
+      [-0.40354821, -0.55543646, 0.72707577], [-0.40354821, 0.89871508, -0.17163931], [0.40354821, -0.55543646, 0.72707577], [0.40354821, 0.89871508, -0.17163931],
+      [-0.40354821, -0.89871508, 0.17163931], [-0.40354821, 0.55543646, -0.72707577], [0.40354821, -0.89871508, 0.17163931], [0.40354821, 0.55543646, -0.72707577],
+      [-0.32647736, 0.10607893, 0.93923362], [-0.32647736, -0.79263615, -0.51491792], [0.32647736, 0.10607893, 0.93923362], [0.32647736, -0.79263615, -0.51491792],
+      [-0.32647736, 0.79263615, 0.51491792], [-0.32647736, -0.10607893, -0.93923362], [0.32647736, 0.79263615, 0.51491792], [0.32647736, -0.10607893, -0.93923362],
+      [-0.85472883, -0.06556038, 0.51491792], [-0.85472883, -0.48987608, -0.17163931], [-0.85472883, 0.48987608, 0.17163931], [-0.85472883, 0.06556038, -0.51491792],
+      [0.85472883, -0.06556038, 0.51491792], [0.85472883, -0.48987608, -0.17163931], [0.85472883, 0.48987608, 0.17163931], [0.85472883, 0.06556038, -0.51491792],
+      [-0.20177411, -0.27771823, 0.93923362], [-0.20177411, -0.96427546, -0.17163931], [0.20177411, -0.27771823, 0.93923362], [0.20177411, -0.96427546, -0.17163931],
+      [-0.20177411, 0.96427546, 0.17163931], [-0.20177411, 0.27771823, -0.93923362], [0.20177411, 0.96427546, 0.17163931], [0.20177411, 0.27771823, -0.93923362],
+      [-0.65295472, 0.21215785, 0.72707577], [-0.65295472, -0.55543646, -0.51491792], [0.65295472, 0.21215785, 0.72707577], [0.65295472, -0.55543646, -0.51491792],
+      [-0.65295472, 0.55543646, 0.51491792], [-0.65295472, -0.21215785, -0.72707577], [0.65295472, 0.55543646, 0.51491792], [0.65295472, -0.21215785, -0.72707577],
+      [-0.73002557, -0.44935754, 0.51491792], [-0.73002557, -0.66151539, 0.17163931], [-0.73002557, 0.66151539, -0.17163931], [-0.73002557, 0.44935754, -0.51491792],
+      [0.73002557, -0.44935754, 0.51491792], [0.73002557, -0.66151539, 0.17163931], [0.73002557, 0.66151539, -0.17163931], [0.73002557, 0.44935754, -0.51491792]
+    ];
+    return C60;
+}
 };
 
-function setEpsForSolid(type){
-  const def=SOLID_EPS[type]||800;
-  eS.value=def;
-  eV.textContent=(def/1000).toFixed(3);
+const LB = { geom: "cube", proj: "lambert", eps: 0.73, pts: 200000, showV: true };
+
+function hueOf(i, N) { const f = (i * 0.61803398875) % 1; return 178 - 96 * f; }
+const PAPER = [247, 243, 234];
+
+function labRun() {
+  const t0 = performance.now();
+  const cv = $("#labC"), c = cv.getContext("2d");
+  const W = cv.width, H = cv.height;
+  const dirs = GEOM_FN[LB.geom]().map(v => {
+    const n = Math.hypot(v[0], v[1], v[2]); return [v[0] / n, v[1] / n, v[2] / n];
+  });
+  const N = dirs.length, eps = LB.eps, eps2 = eps * eps;
+  const bufN = new Float32Array(W * H), bufC = new Float32Array(W * H), bufS = new Float32Array(W * H);
+  const lim = LB.proj === "stereo" ? 2.85 : 1.055;
+  const sc = (W / 2 - 1) / lim, hw = W / 2 - .5;
+  const hc = dirs.map((_, i) => Math.cos(hueOf(i, N) * Math.PI / 180));
+  const hs = dirs.map((_, i) => Math.sin(hueOf(i, N) * Math.PI / 180));
+
+  let r = [0.1, 0.1, 0.98];
+  const rl = Math.hypot(r[0], r[1], r[2]); r = [r[0] / rl, r[1] / rl, r[2] / rl];
+
+  const pick = () => {
+    const ps = new Array(N);
+    let tot = 0;
+    for (let i = 0; i < N; i++) {
+      const d = dirs[i][0] * r[0] + dirs[i][1] * r[1] + dirs[i][2] * r[2];
+      const p = (1 + eps2 + 2 * eps * d) / (N * (1 + eps2));
+      ps[i] = p; tot += p;
+    }
+    let u = Math.random() * tot;
+    for (let i = 0; i < N; i++) { u -= ps[i]; if (u <= 0) return i; }
+    return N - 1;
+  };
+  const jump = (n) => {
+    const nd = n[0] * r[0] + n[1] * r[1] + n[2] * r[2];
+    const a = (1 - eps2), b = 2 * eps * (1 + eps * nd), den = 1 + eps2 + 2 * eps * nd;
+    for (let k = 0; k < 3; k++) r[k] = (a * r[k] + b * n[k]) / den;
+    const L = Math.hypot(r[0], r[1], r[2]);
+    r = [r[0] / L, r[1] / L, r[2] / L];
+  };
+
+  for (let i = 0; i < 800; i++) jump(dirs[pick()]);
+
+  const px = new Float64Array(LB.pts), py = new Float64Array(LB.pts);
+  let outside = 0;
+  for (let i = 0; i < LB.pts; i++) {
+    const k = pick(); jump(dirs[k]);
+    let X, Y;
+    if (LB.proj === "ortho") { X = r[0]; Y = r[1]; }
+    else if (LB.proj === "lambert") {
+      const lr = Math.sqrt(Math.max(0, (1 - r[2]) / 2)), rxy = Math.hypot(r[0], r[1]);
+      const s = rxy < 1e-12 ? 0 : lr / rxy; X = r[0] * s; Y = r[1] * s;
+    } else {
+      const den = 1 + r[2];
+      if (den < 1e-3) { outside++; X = 9; Y = 9; } else { X = r[0] / den; Y = r[1] / den; }
+    }
+    const x = Math.round(X * sc + hw), y = Math.round(-Y * sc + hw);
+    if (x >= 0 && x < W && y >= 0 && y < H) {
+      const idx = y * W + x;
+      bufN[idx]++; bufC[idx] += hc[k]; bufS[idx] += hs[k];
+    }
+    px[i] = X; py[i] = Y;
+  }
+
+  // 密度平滑（3×3 箱式两遍）：与出图的 gaussian 平滑同目的——把散点压成连续墨色
+  boxBlur3(bufN, W, H); boxBlur3(bufN, W, H);
+  boxBlur3(bufC, W, H); boxBlur3(bufC, W, H);
+  boxBlur3(bufS, W, H); boxBlur3(bufS, W, H);
+
+  // 色调：对数分位映射
+  const nz = [];
+  for (let i = 0; i < bufN.length; i++) if (bufN[i] > 0) nz.push(bufN[i]);
+  nz.sort((a, b) => a - b);
+  const lo = nz[Math.floor(nz.length * 0.04)] || 1, hi = nz[Math.floor(nz.length * 0.999)] || 1;
+  const llo = Math.log(lo), lhi = Math.log(Math.max(hi, lo * 1.0001));
+
+  const img = c.createImageData(W, H), d = img.data;
+  for (let i = 0, p4 = 0; i < bufN.length; i++, p4 += 4) {
+    const n = bufN[i];
+    let t = n <= 0 ? 0 : Math.min(1, Math.max(0, (Math.log(n) - llo) / (lhi - llo)));
+    t = Math.pow(t, 0.78);
+    const w = Math.min(1, Math.max(0, (n - 0.3 * lo) / (0.7 * lo)));
+    if (w <= 0) { d[p4] = PAPER[0]; d[p4 + 1] = PAPER[1]; d[p4 + 2] = PAPER[2]; d[p4 + 3] = 255; continue; }
+    const hd = Math.atan2(bufS[i], bufC[i]) * 180 / Math.PI;
+    let hue = (191 + 81 * t) * 0.58 + hd * 0.42;
+    const L = 0.968 - 0.925 * t, Sa = 0.26 + 0.42 * Math.sin(Math.PI * t) ** 0.7;
+    const rgb = hsl2rgb(hue, Math.min(1, Math.max(0, Sa)), L);
+    d[p4] = (PAPER[0] * (1 - w) + rgb[0] * 255 * w);
+    d[p4 + 1] = (PAPER[1] * (1 - w) + rgb[1] * 255 * w);
+    d[p4 + 2] = (PAPER[2] * (1 - w) + rgb[2] * 255 * w);
+    d[p4 + 3] = 255;
+  }
+  c.putImageData(img, 0, 0);
+
+  // 顶点
+  if (LB.showV) {
+    c.lineWidth = 1.2;
+    dirs.forEach((v, i) => {
+      let X, Y;
+      if (LB.proj === "ortho") { X = v[0]; Y = v[1]; }
+      else if (LB.proj === "lambert") { const lr = Math.sqrt(Math.max(0, (1 - v[2]) / 2)), rxy = Math.hypot(v[0], v[1]); const s = rxy < 1e-12 ? 0 : lr / rxy; X = v[0] * s; Y = v[1] * s; }
+      else { const den = 1 + v[2]; if (den < 1e-3) return; X = v[0] / den; Y = v[1] / den; }
+      const x = X * sc + hw, y = -Y * sc + hw;
+      if (x < 2 || x > W - 2 || y < 2 || y > H - 2) return;
+      c.strokeStyle = "rgba(168,124,34,.85)"; c.fillStyle = "rgba(255,253,248,.9)";
+      c.beginPath(); c.arc(x, y, N <= 8 ? 4.5 : 3, 0, Math.PI * 2); c.fill(); c.stroke();
+    });
+  }
+
+  // D_eff
+  const D = boxDim(px, py);
+  $("#roD").textContent = D === null ? "—" : D.toFixed(3);
+  $("#roT").textContent = Math.round(performance.now() - t0) + " ms";
+  $("#roN").textContent = N;
+  $("#roRho").textContent = ((1 - eps) / (1 + eps)).toFixed(3);
 }
 
-eS.addEventListener('input',draw);
-nS.addEventListener('input',draw);
-typeS.addEventListener('change',()=>{setEpsForSolid(typeS.value);draw();});
-projS.addEventListener('change',draw);
-sS.addEventListener('input',draw);
-rxS.addEventListener('input',draw);
-ryS.addEventListener('input',draw);
-rzS.addEventListener('input',draw);
-document.getElementById('go').addEventListener('click',draw);
+/* 3×3 箱式平滑（原地，边界不动） */
+function boxBlur3(a, W, H) {
+  const t = new Float32Array(a.length);
+  for (let y = 0; y < H; y++) {
+    const r0 = y * W;
+    for (let x = 0; x < W; x++) {
+      const i = r0 + x;
+      const l = x > 0 ? a[i - 1] : a[i], r = x < W - 1 ? a[i + 1] : a[i];
+      t[i] = (l + a[i] + r) / 3;
+    }
+  }
+  for (let y = 0; y < H; y++) {
+    const r0 = y * W;
+    for (let x = 0; x < W; x++) {
+      const i = r0 + x;
+      const u = y > 0 ? i - W : i, d = y < H - 1 ? i + W : i;
+      a[i] = (t[u] + t[i] + t[d]) / 3;
+    }
+  }
+}
 
-eV.textContent=(parseInt(eS.value)/1000).toFixed(3);
-nV.textContent=parseInt(nS.value).toLocaleString();
-sV.textContent=(parseInt(sS.value)/100).toFixed(2)+'x';
-setEpsForSolid(typeS.value);
-draw();
+function hsl2rgb(h, s, l) {
+  h = ((h % 360) + 360) % 360 / 60;
+  const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs(h % 2 - 1)), m = l - c / 2;
+  let r = 0, g = 0, b = 0, k = Math.floor(h) % 6;
+  if (k === 0) { r = c; g = x; } else if (k === 1) { r = x; g = c; }
+  else if (k === 2) { g = c; b = x; } else if (k === 3) { g = x; b = c; }
+  else if (k === 4) { r = x; b = c; } else { r = c; b = x; }
+  return [r + m, g + m, b + m];
+}
+
+function boxDim(px, py) {
+  const N = px.length, scales = [16, 32, 64, 128, 256], W = 2.12;
+  const xs = [], ys = [];
+  for (const nb of scales) {
+    const set = new Set();
+    for (let i = 0; i < N; i++) {
+      const x = px[i], y = py[i];
+      if (!(x > -1.06 && x < 1.06 && y > -1.06 && y < 1.06)) continue;
+      set.add((((x + 1.06) / W * nb) | 0) * 4096 + (((y + 1.06) / W * nb) | 0));
+    }
+    if (set.size < 20 || set.size > N / 10) continue;
+    xs.push(Math.log(nb)); ys.push(Math.log(set.size));
+  }
+  if (xs.length < 3) return null;
+  const n = xs.length;
+  let sx = 0, sy = 0, sxy = 0, sxx = 0;
+  for (let i = 0; i < n; i++) { sx += xs[i]; sy += ys[i]; sxy += xs[i] * ys[i]; sxx += xs[i] * xs[i]; }
+  const den = n * sxx - sx * sx;
+  if (Math.abs(den) < 1e-12) return null;
+  const sl = (n * sxy - sx * sy) / den;
+  return (sl < 0 || sl > 3) ? null : sl;
+}
+
+/* ============================================================
+   05 自检
+   ============================================================ */
+function selfCheck() {
+  const rows = [];
+  const add = (name, ok, val) => rows.push({ name, ok, val });
+
+  const cards = document.querySelectorAll("#galBody .shot").length;
+  add("画廊卡片数 = 9 几何 × 3 投影", cards === 27, cards + " 张");
+
+  let epsOk = 0;
+  EEQT_ORDER.forEach(g => ["lambert", "ortho", "stereo"].forEach(p => { if (EEQT_EPS[g] && EEQT_EPS[g][p] > 0.4 && EEQT_EPS[g][p] < 1) epsOk++; }));
+  add("27 个 ε 均落在 (0.4, 1)", epsOk === 27, epsOk + " / 27");
+
+  let curveOk = 0;
+  Object.keys(EEQT_CURVES).forEach(g => {
+    ["lambert", "ortho", "stereo"].forEach(p => { if (EEQT_CURVES[g][p].length === EEQT_EPSAXIS.length) curveOk++; });
+  });
+  add("5 × 3 条曲线长度 = 扫描轴长度 47", curveOk === 15, curveOk + " / 15");
+
+  let vSum = 0;
+  Object.keys(EEQT_VALLEY).forEach(g => vSum += EEQT_VALLEY[g].n);
+  add("波谷总数 = 0（波谷假设不成立）", vSum === 0, vSum + " 个");
+
+  // 单调性：ε∈[0.05,0.90] 段内，相邻两点的上跳不得超过 2 倍噪声
+  // （ε≥0.93 时占用盒数太少、回归窗口塌陷，估计子本身失效，不计入）
+  let monoBad = 0;
+  Object.keys(EEQT_CURVES).forEach(g => {
+    const v = EEQT_CURVES[g].ortho, sig = EEQT_VALLEY[g].sigma;
+    for (let i = 1; i < v.length; i++) {
+      if (EEQT_EPSAXIS[i] > 0.90) continue;
+      if (v[i] !== null && v[i - 1] !== null && v[i] - v[i - 1] > 2 * sig) monoBad++;
+    }
+  });
+  add("ε≤0.90 段无超噪声上跳（单调）", monoBad === 0, monoBad + " 处");
+
+  let dqOk = 0, dqAll = 0;
+  Object.keys(EEQT_DQ).forEach(g => ["lambert", "ortho", "stereo"].forEach(p => {
+    dqAll++;
+    const d = EEQT_DQ[g][p];
+    if (d.D0 > d.D2 && d.D2 >= 0) dqOk++;
+  }));
+  add("全部 D₀ > D₂ 且 D₂ ≥ 0（多重分形）", dqOk === dqAll, dqOk + " / " + dqAll);
+
+  let lawOk = 0;
+  Object.keys(EEQT_CURVES).forEach(g => {
+    if (Math.abs(EEQT_META[g].epsLaw - EEQT_KNEE[g]) < 0.1) lawOk++;
+  });
+  add("膝点公式 |ε* − ε_knee| < 0.10", lawOk === 5, lawOk + " / 5");
+
+  add("ε 随 N 递增（N=4→60）",
+    EEQT_EPS.tetrahedron.ortho < EEQT_EPS.cube.ortho &&
+    EEQT_EPS.cube.ortho < EEQT_EPS.dodecahedron.ortho &&
+    EEQT_EPS.dodecahedron.ortho < EEQT_EPS.c60_full.ortho,
+    `${EEQT_EPS.tetrahedron.ortho} < ${EEQT_EPS.cube.ortho} < ${EEQT_EPS.dodecahedron.ortho} < ${EEQT_EPS.c60_full.ortho}`);
+
+  const bad = rows.filter(r => !r.ok).length;
+  $("#chk").innerHTML = rows.map(r =>
+    `<tr class="${r.ok ? "" : "bad"}"><td class="st ${r.ok ? "ok" : "bad"}">${r.ok ? "✔" : "✘"}</td>
+     <td>${r.name}</td><td style="text-align:right;color:#7c8a92">${r.val}</td></tr>`).join("");
+  $("#chkSum").textContent = `共 ${rows.length} 条，通过 ${rows.length - bad}，失败 ${bad}`;
+  $("#chkSum").className = bad ? "bad" : "";
+  $("#stValley").innerHTML = vSum + " <small>5 个几何</small>";
+  $("#stImg").textContent = cards;
+}
+
+/* ============================================================
+   夜景（只改 CSS 滤镜，不动图片文件）
+   ============================================================ */
+$("#nightBtn").addEventListener("click", () => {
+  NIGHT = !NIGHT;
+  document.body.classList.toggle("night", NIGHT);
+  drawChart();
+});
+
+/* ============================================================
+   启动
+   ============================================================ */
+(function boot() {
+  // 实验室下拉
+  $("#lbGeom").innerHTML = EEQT_ORDER.map(g =>
+    `<option value="${g}"${g === LB.geom ? " selected" : ""}>${EEQT_META[g].cn}（N=${EEQT_META[g].N}）</option>`).join("");
+
+  renderGallery();
+  lgHTML();
+  drawChart();
+  fillTables();
+  selfCheck();
+
+  $("#lbEps").addEventListener("input", e => {
+    LB.eps = +e.target.value / 100; $("#lbEpsV").textContent = LB.eps.toFixed(2); labRun();
+  });
+  $("#lbPts").addEventListener("input", e => {
+    LB.pts = +e.target.value; $("#lbPtsV").textContent = LB.pts.toLocaleString();
+  });
+  $("#lbPts").addEventListener("change", labRun);
+  $("#lbGeom").addEventListener("change", e => { LB.geom = e.target.value; labRun(); });
+  $("#lbProj").addEventListener("change", e => { LB.proj = e.target.value; labRun(); });
+  $("#lbV").addEventListener("change", e => { LB.showV = e.target.checked; labRun(); });
+  $("#lbGo").addEventListener("click", labRun);
+
+  setTimeout(labRun, 120);
+
+  // 导航高亮
+  const secs = ["gal", "src", "rel", "dim", "lab", "meta"].map(id => document.getElementById(id));
+  const links = $$("nav.tabs a");
+  window.addEventListener("scroll", () => {
+    let cur = 0;
+    secs.forEach((s, i) => { if (s && s.getBoundingClientRect().top < 140) cur = i; });
+    links.forEach((a, i) => a.classList.toggle("on", i === cur));
+  }, { passive: true });
+
+  let rt;
+  window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(drawChart, 160); });
+})();
 </script>
 </body>
 </html>
