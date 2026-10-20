@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SEG 双静音决策图 · L1声学 / L2电磁</title>
+<style>
+  :root{
+    --bg:#0a0e17; --panel:rgba(255,255,255,.04); --line:rgba(255,255,255,.10);
+    --txt:#e8edf5; --dim:#8a97ad; --l1:#39d0ff; --l2:#ff9d4d; --ok:#42e6a4; --bad:#ff5d6c;
+    --glow1:rgba(57,208,255,.35); --glow2:rgba(255,157,77,.35);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:radial-gradient(1200px 600px at 50% -10%,#16203a 0%,var(--bg) 60%);color:var(--txt);
+    font-family:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;min-height:100vh;padding:28px 18px 40px}
+  .wrap{max-width:1080px;margin:0 auto}
+  header{text-align:center;margin-bottom:26px}
+  h1{font-size:26px;font-weight:700;letter-spacing:.5px}
+  h1 .l1{color:var(--l1)} h1 .l2{color:var(--l2)}
+  .sub{color:var(--dim);font-size:13px;margin-top:8px;line-height:1.6}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:8px}
+  @media(max-width:780px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px 18px;
+    backdrop-filter:blur(14px) saturate(160%);position:relative;overflow:hidden}
+  .card::before{content:"";position:absolute;inset:0;border-radius:18px;pointer-events:none}
+  .card.l1::before{box-shadow:inset 0 0 60px var(--glow1)}
+  .card.l2::before{box-shadow:inset 0 0 60px var(--glow2)}
+  .card h2{font-size:17px;display:flex;align-items:center;gap:9px;margin-bottom:4px}
+  .dot{width:11px;height:11px;border-radius:50%}
+  .l1 .dot{background:var(--l1);box-shadow:0 0 12px var(--l1)}
+  .l2 .dot{background:var(--l2);box-shadow:0 0 12px var(--l2)}
+  .tag{font-size:11px;color:var(--dim);margin-bottom:14px}
+  canvas{width:100%;height:auto;display:block}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin:22px 0 6px;font-size:12px;color:var(--dim)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend i{width:14px;height:3px;border-radius:2px;display:inline-block}
+  .chain{margin-top:24px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px 20px;backdrop-filter:blur(14px)}
+  .chain h3{font-size:16px;color:var(--l2);margin-bottom:16px;text-align:center}
+  .flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;justify-content:center}
+  .node{flex:1 1 130px;min-width:120px;background:rgba(255,157,77,.07);border:1px solid rgba(255,157,77,.25);
+    border-radius:12px;padding:12px 10px;text-align:center;transition:transform .25s,box-shadow .25s;cursor:default}
+  .node:hover{transform:translateY(-4px);box-shadow:0 8px 24px var(--glow2)}
+  .node .sym{font-size:18px;font-weight:700;color:var(--l2)}
+  .node .nm{font-size:12px;color:var(--txt);margin-top:5px}
+  .node .ds{font-size:10.5px;color:var(--dim);margin-top:4px;line-height:1.4}
+  .arrow{flex:0 0 34px;display:flex;align-items:center;justify-content:center;color:var(--bad);font-size:20px;font-weight:700}
+  .arrow.up{color:var(--bad)} .arrow.down{color:var(--ok)}
+  .axis{display:flex;justify-content:space-between;font-size:11px;color:var(--dim);margin-top:14px;padding:0 4px}
+  .verdict{margin-top:16px;text-align:center;font-size:13px;color:var(--ok);background:rgba(66,230,164,.08);
+    border:1px solid rgba(66,230,164,.3);border-radius:10px;padding:10px 14px;line-height:1.6}
+  .verdict b{color:#7dffc4}
+  .foot{text-align:center;color:var(--dim);font-size:11px;margin-top:26px;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>SEG <span class="l1">双静音</span> 决策图 · <span class="l2">L1 声学 / L2 电磁</span></h1>
+    <div class="sub">两个正交维度，缺一不可 — L1 看 gcd（互质=安静），L2 看 lcm（越大=越不吵且越不退磁）<br>
+    移动鼠标 / 触摸节点查看指标变化 · 下方为 LCM 因果链全景</div>
+  </header>
+
+  <div class="grid">
+    <!-- L1 card -->
+    <div class="card l1">
+      <h2><span class="dot"></span>L1 声学 / 力学静音</h2>
+      <div class="tag">根因：gcd(定子极对数, 滚筒极对数) = 1</div>
+      <canvas id="cvL1" width="480" height="300"></canvas>
+    </div>
+    <!-- L2 card -->
+    <div class="card l2">
+      <h2><span class="dot"></span>L2 电磁静音（长寿命）</h2>
+      <div class="tag">根因：lcm(三环极对数) ↑ 最大化</div>
+      <canvas id="cvL2" width="480" height="300"></canvas>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i style="background:var(--ok)"></i>达标 / 安静</span>
+    <span><i style="background:var(--bad)"></i>未达标 / 噪声+退磁</span>
+    <span><i style="background:var(--l1)"></i>L1 路径</span>
+    <span><i style="background:var(--l2)"></i>L2 路径</span>
+  </div>
+
+  <!-- LCM chain -->
+  <div class="chain">
+    <h3>🔥 LCM 因果链（用户洞察 · 已验证）</h3>
+    <div class="flow" id="flow">
+      <div class="node" data-good="big"><div class="sym">LCM</div><div class="nm">磁极重逢周期</div><div class="ds">同一对磁极再次对齐的圈数</div></div>
+      <div class="arrow down">→</div>
+      <div class="node" data-good="small"><div class="sym">C_f</div><div class="nm">齿槽频率</div><div class="ds">∝ 1/LCM，LCM小则大</div></div>
+      <div class="arrow up">→</div>
+      <div class="node" data-good="small"><div class="sym">T_cog</div><div class="nm">齿槽转矩</div><div class="ds">定位力矩波动幅值升高</div></div>
+      <div class="arrow up">→</div>
+      <div class="node" data-good="small"><div class="sym">谐波</div><div class="nm">傅里叶分量</div><div class="ds">高频谐波含量丰富</div></div>
+      <div class="arrow up">→</div>
+      <div class="node" data-good="small"><div class="sym">P_eddy</div><div class="nm">涡流损耗</div><div class="ds">∝ f²B²，平方爆炸</div></div>
+      <div class="arrow up">→</div>
+      <div class="node" data-good="small"><div class="sym">退磁</div><div class="nm">不可逆退磁</div><div class="ds">热斑+磁饱和→加速</div></div>
+    </div>
+    <div class="axis"><span>← 让 LCM 尽量大（互异素数定子）</span><span>整条退化链被触发 →</span></div>
+    <div class="verdict">📌 <b>核心设计准则</b>：LCM 是<b>一级根因指标</b>。LCM 小 → ⑥步退化全开；LCM 大 → 齿槽稀疏、谐波最低、退磁最慢。<br>互异素数定子（如 3797·6143·9941）天然给出最大 lcm = 乘积，是寿命最优解。</div>
+  </div>
+
+  <div class="foot">
+    关联文档：SEG最优磁极数设计教程_完整推导.md（一-B节）· SEG磁齿轮最优磁极数_推导原理.md（铁律1/2）· SEG_IGV_Jellium性价比工程指南.md（第八节）<br>
+    生成于 2026-07-22 · 双静音架构升级版
+  </div>
+</div>
+
+<script>
+// ---------- shared data ----------
+const okC='#42e6a4', badC='#ff5d6c', l1C='#39d0ff', l2C='#ff9d4d';
+
+function drawTree(canvas, opts){
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height;
+  ctx.clearRect(0,0,W,H);
+  // root
+  const rx=W/2, ry=46;
+  // two branches
+  const b1x=W*0.30, b2x=W*0.70, by=140;
+  // leaves
+  const l1x=W*0.18, l2x=W*0.42, l3x=W*0.58, l4x=W*0.82, ly=248;
+
+  function line(x1,y1,x2,y2,col,w){
+    ctx.strokeStyle=col; ctx.lineWidth=w||2.5; ctx.beginPath();
+    ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  }
+  function node(x,y,r,col,label,sub){
+    ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2);
+    ctx.fillStyle=col; ctx.globalAlpha=.18; ctx.fill(); ctx.globalAlpha=1;
+    ctx.strokeStyle=col; ctx.lineWidth=2; ctx.stroke();
+    ctx.fillStyle='#fff'; ctx.font='bold 14px Segoe UI'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(label,x,y);
+    if(sub){ctx.fillStyle='#8a97ad'; ctx.font='10px Segoe UI'; ctx.fillText(sub,x,y+r+12);}
+  }
+
+  // root
+  node(rx,ry,20,opts.rootCol,opts.rootLabel,opts.rootSub);
+  // branches
+  line(rx,ry+20,b1x,by-22,opts.b1Col); line(rx,ry+20,b2x,by-22,opts.b2Col);
+  node(b1x,by,18,opts.b1Col,opts.b1Label,opts.b1Sub);
+  node(b2x,by,18,opts.b2Col,opts.b2Label,opts.b2Sub);
+  // leaves
+  line(b1x,by+18,l1x,ly-20,opts.b1Col); line(b1x,by+18,l2x,ly-20,opts.b1Col);
+  line(b2x,by+18,l3x,ly-20,opts.b2Col); line(b2x,by+18,l4x,ly-20,opts.b2Col);
+  node(l1x,ly,16,opts.b1Col,opts.l1,''); node(l2x,ly,16,opts.b1Col,opts.l2,'');
+  node(l3x,ly,16,opts.b2Col,opts.l3,''); node(l4x,ly,16,opts.b2Col,opts.l4,'');
+  // labels under leaves
+  ctx.fillStyle='#8a97ad'; ctx.font='10px Segoe UI'; ctx.textAlign='center';
+  const labs=[opts.l1t,opts.l2t,opts.l3t,opts.l4t];
+  [l1x,l2x,l3x,l4x].forEach((x,i)=>ctx.fillText(labs[i],x,ly+20));
+}
+
+// L1 tree
+drawTree(document.getElementById('cvL1'),{
+  rootCol:l1C, rootLabel:'极对数', rootSub:'三环定子',
+  b1Col:okC, b1Label:'gcd=1', b1Sub:'互质',
+  b2Col:badC, b2Label:'gcd>1', b2Sub:'可约',
+  l1:'安静', l1t:'宽带噪声', l2:'低振', l2t:'无同步脉冲',
+  l3:'磁啸', l3t:'同相叠加', l4:'刺耳', l4t:'每圈同步',
+});
+
+// L2 tree
+drawTree(document.getElementById('cvL2'),{
+  rootCol:l2C, rootLabel:'lcm', rootSub:'三环极对数',
+  b1Col:okC, b1Label:'lcm↑', b1Sub:'大',
+  b2Col:badC, b2Label:'lcm↓', b2Sub:'小',
+  l1:'Cf小', l1t:'齿槽稀疏', l2:'退磁慢', l2t:'涡流最低',
+  l3:'Cf大', l3t:'谐波富', l4:'退磁快', l4t:'热斑',
+});
+
+// hover highlight on chain nodes
+document.querySelectorAll('#flow .node').forEach(n=>{
+  n.addEventListener('mouseenter',()=>{ n.style.transform='translateY(-6px) scale(1.04)'; });
+  n.addEventListener('mouseleave',()=>{ n.style.transform=''; });
+});
+</script>
+</body>
+</html>

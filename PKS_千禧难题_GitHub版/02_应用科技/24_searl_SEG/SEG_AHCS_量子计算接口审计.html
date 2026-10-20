@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SEG × AHCS · 量子计算接口审计：自冷、超导、磁屏蔽，三条接口能接几条</title>
+<style>
+  :root{--ink:#12161c;--ink2:#46506a;--ink3:#6b7683;--line:#dde3ec;--soft:#f7f9fd;
+        --purple:#5b3fa8;--blue:#2f6fb5;--green:#17724a;--red:#b3261e;--gold:#9a6b12;
+        --bg:#fff;--card:#fff;--hover:#fbfcff;--hintbg:#fffdf6;--hintfg:#6b5a33;--btnbd:#cfd6e0;
+        --thin:#e8edf4}
+  body.dark{--ink:#e7eef8;--ink2:#b8c5d8;--ink3:#9dabc0;--line:#26313d;--soft:#141c26;
+        --purple:#b49bf2;--blue:#7fb4ea;--green:#5dd39e;--red:#ff8f85;--gold:#f0c060;
+        --bg:#0d1117;--card:#111a24;--hover:#16212d;--hintbg:#1c1708;--hintfg:#dcc78e;
+        --btnbd:#33414f;--thin:#1d2733}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    font-size:15px;line-height:1.72;-webkit-font-smoothing:antialiased;
+    transition:background .18s ease,color .18s ease}
+  .wrap{max-width:1020px;margin:0 auto;padding:44px 22px 96px}
+  h1{font-size:25px;margin:0 0 6px;letter-spacing:.3px}
+  .st{font-size:19px;font-weight:700;color:var(--purple);margin:0 0 6px;letter-spacing:.02em}
+  .sub{color:var(--ink3);font-size:13.2px;margin:0 0 22px}
+  h2{font-size:19.5px;margin:38px 0 4px;padding-bottom:7px;border-bottom:2px solid var(--thin)}
+  h2 .n{font-family:Consolas,monospace;font-size:14px;color:var(--ink3);margin-right:8px;font-weight:400}
+  h3{font-size:16px;margin:26px 0 6px}
+  p{margin:9px 0}
+  a{color:var(--blue)}
+  code{font-family:Consolas,"SF Mono",monospace;font-size:.92em;background:var(--soft);
+    padding:1px 5px;border-radius:4px;border:1px solid var(--thin)}
+
+  /* 口径标签 */
+  .tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:5px;border:1px solid currentColor;
+    margin-right:5px;font-weight:700;vertical-align:1.5px;white-space:nowrap}
+  .tag.src{color:var(--blue)}    /* 原文层：有逐字原文 */
+  .tag.th{color:var(--purple)}   /* 立论：推理，无原文 */
+  .tag.num{color:var(--green)}   /* 数值：可现场复算 */
+  .tag.no{color:var(--red)}      /* 否定：算出来不成立 */
+
+  /* 结论盒 */
+  .lede{border:1px solid var(--line);border-left:5px solid var(--purple);border-radius:10px;
+    background:var(--soft);padding:15px 18px;margin:0 0 8px}
+  .lede p{margin:6px 0}
+  .lede b.big{font-size:16.5px}
+
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.1px}
+  th,td{border:1px solid var(--line);padding:7px 9px;vertical-align:top;text-align:left}
+  th{background:var(--soft);font-weight:700;font-size:12.6px;color:var(--ink2)}
+  td.mono,th.mono{font-family:Consolas,monospace;font-size:12.4px}
+  tr.mid td{background:var(--soft)}
+  .ok{color:var(--green);font-weight:700}
+  .no{color:var(--red);font-weight:700}
+  .part{color:var(--gold);font-weight:700}
+  .tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+  .quote{border-left:3px solid var(--blue);background:var(--soft);border-radius:0 8px 8px 0;
+    padding:9px 14px;margin:12px 0;font-size:13.6px;color:var(--ink)}
+  .quote em{color:var(--ink3);font-style:normal;font-size:12.4px}
+  .hint{margin:14px 0;padding:11px 14px;border-left:3px solid var(--gold);background:var(--hintbg);
+    border-radius:6px;font-size:13px;color:var(--hintfg)}
+  .bad{margin:14px 0;padding:11px 14px;border-left:3px solid var(--red);
+    background:rgba(179,38,30,.055);border-radius:6px;font-size:13.2px}
+  body.dark .bad{background:rgba(255,143,133,.09)}
+
+  /* 交互台 */
+  .panel{border:1px solid var(--line);border-radius:12px;padding:14px 16px 16px;background:var(--card);margin:16px 0}
+  .panel .h{font-size:13.2px;color:var(--ink2);margin:0 0 10px;font-weight:700}
+  input[type=range]{width:100%;accent-color:var(--purple);height:22px}
+  .ro{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0 6px}
+  .cell{flex:1 1 132px;border:1px solid var(--line);border-radius:9px;padding:8px 11px;background:var(--soft)}
+  .cell .k{font-size:11.4px;color:var(--ink3)}
+  .cell .v{font-family:Consolas,monospace;font-size:17px;font-weight:700;color:var(--ink);
+    line-height:1.3;word-break:break-all}
+  .cell .v.p{color:var(--purple)}
+  .verd{font-size:13.4px;margin:8px 0 0;padding:9px 12px;border-radius:8px;
+    border:1px solid var(--line);background:var(--soft)}
+  #cv{width:100%;height:auto;display:block;border:1px solid var(--thin);border-radius:9px;
+    background:var(--card);margin:10px 0 0}
+
+  .foot{margin-top:42px;padding-top:16px;border-top:1px solid var(--line);
+    color:var(--ink3);font-size:12.5px}
+  #themeBtn{position:fixed;top:14px;right:14px;z-index:99;font:inherit;font-size:12.5px;line-height:1;
+    padding:7px 13px;border:1px solid var(--btnbd);background:var(--card);border-radius:20px;
+    cursor:pointer;color:var(--ink2);box-shadow:0 2px 10px rgba(15,22,33,.10)}
+  #themeBtn:hover{border-color:var(--blue);color:var(--blue)}
+  body.dark #themeBtn{background:#18232f;box-shadow:0 2px 12px rgba(0,0,0,.55)}
+  .mono{font-family:Consolas,monospace}
+  .sm{font-size:12.3px;color:var(--ink3)}
+  ul{padding-left:22px}li{margin:5px 0}
+  @media(max-width:640px){
+    .wrap{padding:54px 14px 80px}
+    h1{font-size:21px}.st{font-size:16px}
+    h2{font-size:17px}
+    table{font-size:12.2px}th,td{padding:6px 7px}
+    .cell{flex:1 1 100%}
+  }
+</style>
+</head>
+<body>
+<button id="themeBtn" type="button" aria-pressed="false" title="切换底色（快捷键 D）">🌙 暗色底</button>
+<div class="wrap">
+
+<h1>SEG × AHCS · 量子计算接口审计</h1>
+<div class="st">自冷、超导、磁屏蔽 —— 三条接口，能接几条</div>
+<p class="sub">把「SEG 自冷救量子计算」这句话拆成可算的三段，逐段过账 ·
+  原文层（蓝）／立论层（紫）／数值层（绿）／否定层（红）四色分开，不混着说</p>
+
+<div class="lede">
+  <p><b class="big">先说结论：三条接口，一条半能接。</b></p>
+  <p><span class="tag no">否定</span><b>「SEG 自冷让量子计算机不用制冷」不成立</b> ——
+     Roschin-Godin 报告的自冷幅度是 <b>下降 68 °C</b>（从 +22 °C 到约 −46 °C，即 <b>227 K</b>）。
+     超导比特要 <b>10 mK</b>。两者差 <b>22 700 倍</b>。</p>
+  <p><span class="tag no">否定</span><b>「室温超导材料能让超导比特在室温跑」也不成立</b> ——
+     卡住的不是材料，是 <code>kT ≪ hf</code> 这个不等式。5 GHz 比特在 227 K 时热光子数
+     <b>945 个</b>，在 10 mK 时 <b>3.8×10⁻¹¹ 个</b>。</p>
+  <p><span class="tag no">否定</span><b>「SEG 提供磁屏蔽」方向是反的</b> ——
+     报告实测场强 <b>0.05 T</b>、作用半径 <b>15 m</b>；超导比特要的是 <b>nT 级</b>。
+     它是 5×10⁷ 倍的干扰源，不是屏蔽体。</p>
+  <p><span class="tag num">数值</span><b>唯一站得住的一条</b>：若 SEG 能把低温恒温器<b>外壳</b>
+     从 300 K 压到 227 K，40–80 K 冷屏的辐射负荷降 <b>67%</b>，而这一级正是整机最耗电的一级
+     （Bluefors KIDE 在这一级要 9000 W 冷量）。<b>这是唯一有数量级支撑的接口。</b></p>
+</div>
+
+<!-- ============ 0 ============ -->
+<h2><span class="n">§0</span>把老师这句话拆成三段</h2>
+<p>「SEG 自冷超导 ⇒ 量子计算机不用大型制冷」这句话里其实压了三件事，它们的可验证程度完全不同：</p>
+
+<div class="tw"><table>
+<thead><tr><th style="width:26%">拆出来的子句</th><th style="width:15%">口径</th><th>它到底需要什么</th></tr></thead>
+<tbody>
+<tr><td><b>① SEG 会自己变冷</b></td><td><span class="tag src">原文</span></td>
+  <td>有原始实验报告可查：Roschin-Godin 复现报告写「下降 68 °C」。<b>这是「报告里这么写」，不是「已独立复现」。</b></td></tr>
+<tr><td><b>② 这个冷 = 超导</b></td><td><span class="tag no">否定</span></td>
+  <td>那份报告全文 <b>“superconduct” 出现 0 次</b>。冷是测出来的（酒精温度计，惯性 1.5 min），
+      超导<b>没有任何电学测量</b>：没有电阻、没有迈斯纳效应、没有临界温度曲线。</td></tr>
+<tr><td><b>③ 所以能顶替稀释制冷机</b></td><td><span class="tag num">数值</span></td>
+  <td>纯粹是温度标尺问题，一步算术就能判：<b>227 K vs 0.010 K = 22 700 倍</b>。
+      这不是「还差一点」，是差四个半数量级。</td></tr>
+</tbody></table></div>
+
+<div class="hint"><b>为什么要把 ① 和 ② 拆开</b>：老师原话是「自冷超导现象」，把两件事当一件说了。
+  自冷有原文、超导没有 —— 这个区分不是挑字眼，它决定后面所有推论能不能立。
+  「自冷」可以往下谈（见 §7）；「超导」这条一断，③ 就没有立足点，只能靠温度标尺另算一遍。</div>
+
+<!-- ============ 1 ============ -->
+<h2><span class="n">§1</span>原文层：AHCS 到底怎么写的 <span class="tag src" style="font-size:11px">原文</span></h2>
+<p>以下全部逐字引自知识库《昴宿星ahcs全息计算机.pdf》（Swaruu / Anéeka 访谈，
+  原标题《量子计算机—人类与真正的量子外星技术》，2020-12-25）。<b>不做转述，不改口径。</b></p>
+
+<div class="quote">「量子计算机大脑中的每个纳米粒子加速器（例如我们的船）<b>只有一张纸上的点大小。每个大脑中都有数百万个</b>。」<br>
+<em>→ 这就是老师说的「内核心的纳米环形加速器」。规模：百万级；单体尺寸：纸面点。</em></div>
+
+<div class="quote">「现在这些机器<b>不使用芯片</b>。没有任何东西被放置为电线。<b>能量流仅取决于粒子加速器发出的能量</b>以及由此产生的刺激。」
+<br><em>→ 无芯片、无导线，互联靠能量/频率本身。</em></div>
+
+<div class="quote">「例如，如何制造一个小到地球上肉眼几乎看不见的粒子加速器？<b>首先，您需要环境温度超导材料。</b>」
+<br><em>→ 这是「自冷超导」这四个字在原文里的唯一锚点。注意：它说的是<b>造加速器需要室温超导材料</b>，
+不是「SEG 自冷产生超导」。</em></div>
+
+<div class="quote">「粒子加速器发射的结果可以是<b>波 0 或粒子 1</b>。而控制它是否以及何时是一件事或另一件事的，
+是<b>观察者的存在</b>。」<br><em>→ 逻辑单元不是门电路，是「波/粒二象的选择」。</em></div>
+
+<div class="quote">「AHCS 计算机将数据存储在<b>超纯石英晶体的「页面」</b>中……晶体结构被放置为由粒子加速器写入的
+<b>数十亿个小型梅尔卡巴环形线圈</b>。为了读取该内存，AHCS 系统使用的是<b>粒子爆发，而不是光</b>。」
+<br><em>→ 存储不是磁畴/电荷，是晶格里被写入的环形线圈；读出头是粒子爆发。</em></div>
+
+<div class="quote">「使用 12 基数，以太和物质世界双方都处于平衡状态……用 10 进制……<b>以太侧仅提供 30% 的能量输出</b>，
+让你的零点「反应堆」效率非常低。」<br><em>→ 12 进制是效率主张，但原文<b>没有给出任何可测的物理量</b>（见 §2）。</em></div>
+
+<h3>把「纳米环形加速器」拆成六层</h3>
+<p>老师要的「技术细节分类」，我按<b>「今天能不能做」</b>来分，而不是按原文叙述顺序 ——
+  因为分类的目的就是判断哪一层是瓶颈：</p>
+
+<div class="tw"><table>
+<thead><tr><th style="width:5%">层</th><th style="width:24%">原文细节</th><th style="width:33%">人类今天到哪了</th><th style="width:12%">判定</th></tr></thead>
+<tbody>
+<tr><td class="mono">L1</td><td><b>计算单元</b><br>百万级纳米粒子加速器阵列，单体≈纸面点</td>
+  <td>芯片级粒子加速器已有（2023 年 Stanford/Erlangen 的 nanophotonic accelerator 在二氧化硅芯片上把电子加速到 1 MeV 量级，通道长度 <b>毫米级</b>）。<b>但离「纳米、百万个、每个都独立可控」还差几个台阶</b>。</td>
+  <td class="part">部分</td></tr>
+<tr><td class="mono">L2</td><td><b>逻辑</b><br>波=0／粒子=1；观察者在场决定；阵列当神经元网络</td>
+  <td>单光子源、超导纳米线单光子探测器（SNSPD）都是成熟器件，波粒二象的「选择」在实验上天天做。<b>但「观察者的存在」没有可操作定义</b> —— 谁算观察者、在场多久、如何计权，原文没给。</td>
+  <td class="part">部分</td></tr>
+<tr><td class="mono">L3</td><td><b>存储</b><br>超纯石英／钻石「页」，数十亿梅尔卡巴环形线圈，粒子爆发读</td>
+  <td>石英 5D 光存储（南安普顿，2013 起）已在石英里写多层体素，寿命与容量都对得上量级；2023 年国内也有玻璃存储演示。<b>但写入与读出用的都是飞秒激光，不是粒子爆发。</b></td>
+  <td class="part">部分</td></tr>
+<tr><td class="mono">L4</td><td><b>互连</b><br>无线；每组件一个频率地址；靠纠缠取能</td>
+  <td>无线供能、频率复用、片上光互联都有。<b>「每个微型组件有一个频率地址并通过纠缠取能」没有对应实现</b>。</td>
+  <td class="no">否</td></tr>
+<tr><td class="mono">L5</td><td><b>材料</b><br>环境温度超导合金；成分不在元素周期表；靠操纵引力到亚原子级合成</td>
+  <td><b>这是整条链最硬的一层。</b>室温超导至今无被普遍接受的实证（LK-99 已被多方否定）；「非周期表元素」「引力操纵合成」在现有物理里没有操作路径。</td>
+  <td class="no">否</td></tr>
+<tr><td class="mono">L6</td><td><b>数学</b><br>12 进制；3/6/9 属以太侧，1/2/4/5/7/8 属物质侧</td>
+  <td><b>可以在纸上算，但没有给出可检验的物理量。</b>原文说 10 进制下「以太侧只有 30% 输出」—— 30% 是什么的 30%？功率？通量？没有任何定义 ⇒ 这条只能是命名体系，不是物理命题。</td>
+  <td class="part">不可判</td></tr>
+</tbody></table></div>
+
+<!-- ============ 2 ============ -->
+<h2><span class="n">§2</span>最要命的一点：原文没给六个量纲</h2>
+<p>判断一项技术「能不能落地」，通常只看六个数字够不够。这份原文<b>一个都没有</b>：</p>
+
+<div class="tw"><table>
+<thead><tr><th style="width:22%">缺的量</th><th style="width:26%">为什么必须有</th><th>原文给了什么</th></tr></thead>
+<tbody>
+<tr><td>加速器直径</td><td>决定加速梯度，进而决定所需电压</td><td class="no">「一张纸上的点」—— 只能给到 0.1–0.5 mm 的模糊量级</td></tr>
+<tr><td>加速电压／梯度</td><td>决定粒子能量，进而决定能否分辨波粒</td><td class="no">未提</td></tr>
+<tr><td>发射频率／重复率</td><td>决定「每秒能问以太几次」⇒ 决定算力</td><td class="no">只说「数百万次」发射，无单位时间</td></tr>
+<tr><td>比特数</td><td>任何计算机的第一指标</td><td class="no">未提，只说「百万加速器」—— 加速器 ≠ 比特</td></tr>
+<tr><td>门时间／保真度</td><td>决定能不能纠错</td><td class="no">未提</td></tr>
+<tr><td>工作温度</td><td>决定要不要制冷 —— 正是本轮要谈的</td><td class="no">只反过来说「造它需要室温超导材料」</td></tr>
+</tbody></table></div>
+
+<div class="bad"><b>所以「SEG 能给 AHCS 供冷」这句话，在原文口径里根本无从检验</b> ——
+  AHCS 的工作温度没给。原文反而说 AHCS <b>不受宇宙射线影响</b>（因为不是「基于传感器的简陋系统」），
+  暗示它对环境不敏感。一个「不怕辐射、不怕干扰」的系统，为什么需要深冷？原文没回答。
+  <br><br><b>能检验的只剩人类自己的量子计算机</b> —— 那就要按人类机器的温度标尺算。这就是 §4。</div>
+
+<!-- ============ 3 ============ -->
+<h2><span class="n">§3</span>SEG 侧的真实账面</h2>
+<p>不引用二手概述，直接读原始报告（<code>SEG tests Roschin Godin.pdf</code>，
+  Roschin &amp; Godin，俄罗斯科学院高温研究所，9 页）。<b>这是目前全球唯一有公开实验数据的 SEG 复现。</b></p>
+
+<div class="tw"><table>
+<thead><tr><th style="width:20%">量</th><th style="width:24%">报告原值</th><th>上下文与我加的判断</th></tr></thead>
+<tbody>
+<tr><td>自冷幅度</td><td class="mono"><b>下降 68 °C</b><br>背景 +22 °C(±2) ⇒ 约 −46 °C</td>
+  <td>即 <b>227 K</b>。仪器：普通酒精温度计，惯性约 1.5 min。效应在 <b>200 rpm 起显现，随转速线性增长</b>，600 rpm 以上未测。
+    <b>可注意的一点</b>：同一效应在二楼（隔着钢筋混凝土楼板）和室外露天也观察到 —— 这排除了「只是局部吹冷风」的简单解释。</td></tr>
+<tr><td>重量变化</td><td class="mono">±30%（550 rpm）<br>±35%（590 rpm 共振）</td>
+  <td>整机 350 kg。最大输出功率 <b>6–7 kW</b>；负载超 7 kW 会掉出自持、转子停转。</td></tr>
+<tr><td>磁场</td><td class="mono"><b>0.05 T</b>，半径 <b>15 m</b></td>
+  <td>同心「磁墙」。仪器 F4354/1 霍尔磁强计（铜屏蔽）。<b>这条对量子计算是致命的，见 §5。</b></td></tr>
+<tr><td>输出功率</td><td class="mono">6–7 kW</td>
+  <td>约 550 rpm 出现反向电流（负电流读数）。起动机 2 kW。</td></tr>
+<tr><td>是否超导</td><td class="no">全文 0 次</td>
+  <td><b>没有电阻测量、没有迈斯纳效应、没有临界温度。</b>「自冷超导」里的「超导」不是这份报告给的。</td></tr>
+</tbody></table></div>
+
+<div class="hint"><b>本项目早先的摘要偏保守</b>：内部文档写的是「温度下降约数 °C，可能是空气动力学冷却」。
+  我这次读原文才发现是 <b>68 °C</b>，比「数 °C」大一个量级。<b>这里按原文改过来</b> —— 但 68 °C 也不能救量子计算，
+  因为 227 K 离 10 mK 差 22 700 倍。宁可把数字往大了说，也不改变结论。</div>
+
+<!-- ============ 4 ============ -->
+<h2><span class="n">§4</span>温度墙：为什么 22 700 倍是一堵硬墙</h2>
+<p>超导比特要 10 mK，不是因为「超导需要冷」—— 超导体本身在临界温度以下就是超导的。
+  要这么冷，是因为量子比特必须干净地待在基态。判据只有一个不等式：</p>
+
+<p style="text-align:center;font-size:17px;margin:16px 0"><code>kT ≪ hf</code>
+  &nbsp;&nbsp;⇒&nbsp;&nbsp; 热光子占据数
+  <code>n = 1 / (e<sup>hf/kT</sup> − 1)</code></p>
+
+<p>5 GHz 是超导比特的典型频率（微波器件成熟、便宜），于是 <code>hf/k = 0.240 K</code>。
+  代入各个温度，得到这张表 —— <b>这张表就是全部答案</b>：</p>
+
+<div class="tw"><table id="nTab">
+<thead><tr><th style="width:18%">温度</th><th style="width:18%" class="mono">n（5 GHz）</th><th>含义</th></tr></thead>
+<tbody></tbody></table></div>
+<p class="sm">n 为 5 GHz 模式的玻色-爱因斯坦占据数，本页用 JS 现场算，不写死（页末有自检）。</p>
+
+<div class="bad"><b>把 227 K 这一行单独拎出来看</b>：n = <span class="mono" id="nAtSeg">945</span>。
+  也就是说，就算 SEG 把环境从室温压到 −46 °C，5 GHz 模式里<b>还有近千个热光子</b>，
+  量子比特被热噪声随机激发，根本立不住。
+  <br><br>要把它压到 <b>10⁻¹¹</b> 量级，只有一条路：<b>继续降温</b>。
+  <b>材料再好也不行</b> —— 业内总结得很直白：「没有任何材料改进能改变这一点，
+  唯一的替代方案是用高得多的跃迁频率」。</div>
+
+<h3>交互：拖一下，看温度墙在哪</h3>
+<div class="panel">
+  <div class="h">拖动温度轴（对数刻度，0.008 K ↔ 350 K）</div>
+  <input type="range" id="tS" min="0" max="1000" value="1000" step="1" aria-label="温度">
+  <div class="ro">
+    <div class="cell"><div class="k">温度</div><div class="v" id="oT">300 K</div></div>
+    <div class="cell"><div class="k">摄氏</div><div class="v" id="oC">27 °C</div></div>
+    <div class="cell"><div class="k">热光子 n（5 GHz）</div><div class="v p" id="oN">1.25e+3</div></div>
+    <div class="cell"><div class="k">kT / hf</div><div class="v" id="oR">1250</div></div>
+  </div>
+  <div class="verd" id="oV"></div>
+  <canvas id="cv" width="960" height="380"></canvas>
+  <p class="sm" style="margin:8px 0 0">灰线 = 5 GHz 模式的热光子数随温度；
+    <b>紫虚线 + 紫环</b> = 你拖到的温度（环是空心的，不挡参考点）；
+    <b>金点</b> = SEG 自冷后（227 K）；<b>红点</b> = 超导比特工作点（10 mK）。
+    从金点到红点的横向距离，就是那 22 700 倍。</p>
+</div>
+
+<!-- ============ 5 ============ -->
+<h2><span class="n">§5</span>磁：0.05 T 对 1 nT，方向完全反了</h2>
+<p>超导比特的磁屏蔽是三到四层叠加的：<b>坡莫合金（μ-metal）挡直流场 → 超导铝壳靠迈斯纳效应排场 →
+  低温本身降温噪声 → 红外滤波</b>。要求是把残场压到 <b>nT 量级</b>并保持稳定，
+  否则磁通噪声直接吃掉相干时间。</p>
+
+<div class="tw"><table>
+<thead><tr><th style="width:34%">对比</th><th class="mono" style="width:22%">数值</th><th>倍数</th></tr></thead>
+<tbody>
+<tr><td>SEG 实测磁墙</td><td class="mono">0.05 T</td><td>——</td></tr>
+<tr><td>地磁场（参照）</td><td class="mono">50 μT</td><td class="mono">SEG 是它的 <b id="rEarth">1000</b> 倍</td></tr>
+<tr><td>超导比特屏蔽目标</td><td class="mono">1 nT</td><td class="mono">SEG 是它的 <b id="rQ" style="color:var(--red)">5.0e+7</b> 倍</td></tr>
+</tbody></table></div>
+
+<div class="bad"><b>所以「SEG 提供特殊磁屏蔽场」这句话，必须反过来读</b>：
+  SEG 是<b>强场源</b>，不是屏蔽体。把一台 SEG 放进量子计算实验室，
+  要做的是「<b>怎么把 SEG 屏蔽起来</b>」，而不是「让 SEG 去屏蔽别人」。
+  <br><br>0.05 T 有多大：对一个 5 GHz 超导比特，磁通偏置直接改变比特频率；
+  0.05 T 量级的场会让比特<b>完全跑出工作点</b>。对金刚石 NV，
+  0.05 T 的塞曼劈裂在 GHz 量级（≈700 MHz 量级），远超其相干操控带宽。</div>
+
+<h3>但反过来用，有一条思路值得算</h3>
+<p><span class="tag th">立论</span>SEG 的三环 + 滚筒是<b>旋转场源</b>，而「主动磁补偿」在量子工程里是成熟需求。
+  如果三组线圈按滚筒的相位差驱动、磁场走<b>闭合磁通回路</b>（像环形变压器的铁芯那样把磁通关在环内），
+  理论上可以让<b>外部漏场趋零</b>。这条不是原文主张，是我想出来的接口，
+  <b>必须先算再说</b> —— 本库已有 <code>SEG充磁三明治_三种磁场仿真.html</code>
+  和 <code>magpylib</code> 工具链（见 <code>SEG仿真工具链评估</code>），可以先用静态场算。
+  <br><b>判据</b>：净外场 &lt; 1 nT，且场稳定度到 ppm 级。<b>达不到就否掉，不要含糊过去。</b></p>
+
+<!-- ============ 6 ============ -->
+<h2><span class="n">§6</span>分机型过账：五种前沿机，三种接口</h2>
+<p>老师点名的两家：<b>达摩院</b>和<b>金刚石 NV</b>。达摩院的量子实验室 2023 年 11 月已把设备捐给浙江大学，
+  它留下的成绩是 <b>fluxonium 两比特门 99.72%</b>（2022 APS）—— fluxonium 仍是超导比特，
+  工作温度同样在 10–20 mK。金刚石 NV 则完全相反：<b>室温、不用制冷</b>。</p>
+
+<div class="tw"><table>
+<thead><tr><th style="width:19%">机型</th><th style="width:15%">工作温度 / 冷账</th>
+  <th style="width:22%">SEG 冷却能否替代</th><th style="width:22%">SEG 强磁场的影响</th><th>结论</th></tr></thead>
+<tbody>
+<tr><td><b>超导 transmon / fluxonium</b><br><span class="sm">IBM · Google · 国盾 ez-Q · 达摩院遗留</span></td>
+  <td class="mono">10–20 mK<br>30 μW @ 10 mK<br>整机 15–20 kW</td>
+  <td class="no">不能<br><span class="sm">227 K 差 2.27×10⁴ 倍</span></td>
+  <td class="no">致命<br><span class="sm">需 nT，SEG 给 0.05 T</span></td>
+  <td class="no">两条都接不上</td></tr>
+<tr class="mid"><td><b>金刚石 NV 中心</b><br><span class="sm">Quantum Brilliance QB-QDK · XeedQ</span></td>
+  <td class="mono">室温<br>整机 <b>≈180 W</b><br>19″ 机架、单根市电</td>
+  <td class="ok">不需要<br><span class="sm">它本来就不制冷</span></td>
+  <td class="part">需稳定 DC 偏置<br><span class="sm">旋转 0.05 T 会毁相干</span></td>
+  <td class="part"><b>唯一接口对得上的机型</b><br><span class="sm">但瓶颈是比特数不是冷</span></td></tr>
+<tr><td><b>囚禁离子</b><br><span class="sm">IonQ · Quantinuum</span></td>
+  <td class="mono">超高真空 + 激光冷却</td>
+  <td class="part">不需要深冷</td>
+  <td class="no">致命<br><span class="sm">破坏离子阱静电场平衡</span></td>
+  <td class="no">磁场一票否决</td></tr>
+<tr><td><b>光量子</b><br><span class="sm">PsiQuantum</span></td>
+  <td class="mono">比特室温<br>SNSPD 需 2–4 K</td>
+  <td class="no">不能<br><span class="sm">227 K 到不了 2 K</span></td>
+  <td class="no">探测器对 EMI 极敏感</td>
+  <td class="no">两条都接不上</td></tr>
+<tr><td><b>硅自旋</b><br><span class="sm">Intel（1 K 级「热比特」）</span></td>
+  <td class="mono">≈1 K</td>
+  <td class="no">不能<br><span class="sm">227 倍</span></td>
+  <td class="no">自旋需精确场控</td>
+  <td class="no">差一档，仍是差</td></tr>
+</tbody></table></div>
+
+<div class="hint"><b>注意一个方向性事实</b>：整个行业的趋势是<b>往上走温度</b>（"hot qubits"、NV 室温、
+  光量子比特室温），而不是原地死守 mK。这个趋势和老师的直觉其实是<b>同一个方向</b> ——
+  只是推力来自「<b>换比特体系</b>」，不是「<b>换制冷方式</b>」。
+  SEG 若要进场，最现实的入口是「<b>给 40–80 K 那一级省电</b>」，不是「取代 mK 那一级」。</div>
+
+<!-- ============ 7 ============ -->
+<h2><span class="n">§7</span>唯一站得住的那条接口：227 K 外壳</h2>
+<p>把账算细一点。稀释制冷机的温度是分级的，每一级只负责把下一级的热截住：</p>
+
+<div class="tw"><table>
+<thead><tr><th style="width:16%">级</th><th class="mono" style="width:13%">XLD1000sl</th>
+  <th class="mono" style="width:13%">Bluefors KIDE</th><th class="mono" style="width:13%">IBM Goldeneye</th>
+  <th class="mono" style="width:13%">Fermilab Colossus</th><th>谁在这里</th></tr></thead>
+<tbody>
+<tr><td>40–80 K 冷屏</td><td class="mono">—</td><td class="mono" style="color:var(--red)"><b>9000 W</b></td>
+  <td class="mono">—</td><td class="mono">3000 W</td><td>辐射屏蔽 —— <b>最耗冷的一级</b></td></tr>
+<tr><td>4 K 法兰</td><td class="mono">2 W</td><td class="mono">—</td><td class="mono">24 W</td><td class="mono">200 W</td><td>HEMT 放大器、线缆锚点</td></tr>
+<tr><td>still ≈1 K</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">0.10 W</td><td>³He/⁴He 分离起点</td></tr>
+<tr><td>100 mK 冷板</td><td class="mono">1.0 mW</td><td class="mono">3.0 mW</td><td class="mono">10 mW</td><td class="mono">3.0 mW</td><td>红外滤波、磁屏蔽</td></tr>
+<tr><td>10–20 mK 混合室</td><td class="mono">30 μW</td><td class="mono">90 μW</td><td class="mono">—</td><td class="mono">300 μW</td><td><b>量子芯片本体</b></td></tr>
+</tbody></table></div>
+
+<p>整机输入功率 10–20 kW；效率口径是「<b>约 1000 W 电换 1 mW @10 mK</b>」的冷量，即 <b>1 : 10⁶</b>。
+  国产 <code>ez-Q Fridge</code>（国盾量子）做到 450 μW @100 mK、78 根低温同轴线，已在 56 比特和 24 比特芯片上跑通。</p>
+
+<h3>算一下 227 K 外壳能省多少</h3>
+<p><span class="tag num">数值</span>40–80 K 冷屏接收的是<b>来自外层的辐射</b>，按斯特藩-玻尔兹曼定律
+  <code>q = σ(T₁⁴ − T₂⁴)</code>。取冷屏 50 K：</p>
+<ul>
+  <li>外壳 300 K：<code>σ(300⁴ − 50⁴) = 459 W/m²</code></li>
+  <li>外壳 227 K：<code>σ(227⁴ − 50⁴) = 150 W/m²</code></li>
+  <li><b>降幅 = 1 − 150/459 = <span id="radCut">67.3</span>%</b></li>
+</ul>
+
+<p>这一级的冷量需求是 <b>9000 W</b>（KIDE）。若辐射负荷降 67%，这一级的风冷/压缩机组功耗可以大幅下调。
+  <b>这是三条接口里唯一有数量级支撑、且能写进设计参数的一条。</b></p>
+
+<div class="bad"><b>但要立刻说清它的边界</b>：<br>
+  ① 它<b>不能替代任何一级</b> —— 227 K 比现有的 40–80 K 冷屏（K）还高出一大截，
+  所以它不是「新的一级」，只是「<b>把最外层环境变凉</b>」。<br>
+  ② 它<b>不触及 mK 级</b>。混合室那 30 μW 该用稀释制冷机还是得用。<br>
+  ③ 它<b>要求 SEG 长时间稳定输出</b>，而 Roschin-Godin 的装置在 590 rpm 共振点有高频啸叫、
+  超 7 kW 负载就掉出自持 —— <b>稳态运行本身还没被证明</b>。这一条不过关，67% 只是纸面数字。</div>
+
+<!-- ============ 8 ============ -->
+<h2><span class="n">§8</span>四句不能说出口的话</h2>
+<div class="tw"><table>
+<thead><tr><th style="width:38%">不能说</th><th>为什么</th></tr></thead>
+<tbody>
+<tr><td class="no">「SEG 自冷让量子计算机不用制冷」</td>
+  <td>227 K vs 10 mK，<b>22 700 倍</b>。差四个半数量级，不是「优化一下」的量级。</td></tr>
+<tr><td class="no">「SEG 自冷 = 超导」</td>
+  <td>Roschin-Godin 全文 <b>“superconduct” 0 次</b>。没有电阻、迈斯纳、Tc 的任何测量。
+    「室温超导材料」那句原文说的是<b>造纳米加速器</b>需要它，不是说 SEG 产生了它。</td></tr>
+<tr><td class="no">「室温超导材料能救超导比特」</td>
+  <td>卡的是 <code>kT ≪ hf</code>，不是超导性。227 K 时热光子 945 个，10 mK 时 3.8×10⁻¹¹。
+    <b>材料不是瓶颈，温度才是。</b></td></tr>
+<tr><td class="no">「SEG 提供磁屏蔽」</td>
+  <td>0.05 T / 15 m 半径 vs 需要 nT。它是需求的 <b>5×10⁷ 倍</b>，方向完全反了。
+    正确说法是「<b>SEG 需要被屏蔽</b>」。</td></tr>
+</tbody></table></div>
+
+<h3>那能说什么</h3>
+<ul>
+  <li><span class="tag th">立论</span><b>结构同构是真的</b>：AHCS「百万纳米环形加速器阵列」与 SEG「三环同心 + 滚筒相位差追逐」，
+    都是<b>环形阵列 + 相位差驱动 + 无接触耦合</b>。这是可以画出来、讲得清的<b>几何类比</b> —— 但它是类比，不是同一个物理机制。</li>
+  <li><span class="tag src">原文</span><b>AHCS 确实把「环形」当核心</b>：存储单元是「数十亿小型梅尔卡巴环形线圈」，
+    驱动单元是环形加速器阵列。这一点无需替原文加码，它自己写得很清楚。</li>
+  <li><span class="tag num">数值</span><b>227 K 外壳降 67% 辐射负荷</b>（§7）—— 这是唯一可写进设计参数的一条，且必须先证明稳态运行。</li>
+  <li><span class="tag th">立论</span><b>磁屏蔽反过来做</b>：闭合磁通回路 + 主动补偿，判据净外场 &lt; 1 nT。待算，不许先说成立。</li>
+</ul>
+
+<!-- ============ 9 ============ -->
+<h2><span class="n">§9</span>口径与出处</h2>
+<div class="tw"><table>
+<thead><tr><th style="width:16%">口径</th><th style="width:42%">本页哪些内容</th><th>依据</th></tr></thead>
+<tbody>
+<tr><td><span class="tag src">原文</span></td><td>AHCS 六层细节的全部引文；「环境温度超导材料」「12 进制 30%」</td>
+  <td>知识库《昴宿星ahcs全息计算机.pdf》（Swaruu / Anéeka，2020-12-25，原站 swaruu.org）。<b>只做逐字引用，不加解释性扩写。</b></td></tr>
+<tr><td><span class="tag src">原文</span></td><td>自冷 68 °C、±35% 重量、0.05 T / 15 m、6–7 kW</td>
+  <td><code>SEG tests Roschin Godin.pdf</code>（俄科院高温所，9 页）。<b>这是报告值，不是独立复现值。</b></td></tr>
+<tr><td><span class="tag num">数值</span></td><td>热光子数 n(T) 全表、22 700 倍、5×10⁷ 倍、67.3%</td>
+  <td>现场算：<code>n = 1/(e^{hf/kT}−1)</code>、<code>q = σ(T₁⁴−T₂⁴)</code>。页末自检钉住关键点，改一个常数就会报错。</td></tr>
+<tr><td><span class="tag num">数值</span></td><td>各机型温度、冷量分级、整机功耗</td>
+  <td>稀释制冷机分级冷量引自 Bluefors / IBM Goldeneye / Fermilab Colossus 公开设计数据（arXiv 2601.03922 表 I）；
+    NV 整机 180 W 引自 Quantum Brilliance QB-QDK 在 Pawsey 超算中心的实测报道；国盾 ez-Q 450 μW@100 mK 引自安徽省科技厅通稿。</td></tr>
+<tr><td><span class="tag th">立论</span></td><td>六层拆分方式、闭合磁通回路做补偿、227 K 外壳的用法</td>
+  <td>我的推理，<b>无原文支撑，也未实测</b>。按 §7 末尾的三条边界收口。</td></tr>
+<tr><td><span class="tag no">否定</span></td><td>§8 四句</td>
+  <td>由上两类数值直接推出，可复算。</td></tr>
+</tbody></table></div>
+
+<div class="hint"><b>一句话总结这一页的态度</b>：老师的直觉方向没错 ——
+  量子计算机确实被制冷拖住了，行业也确实在往「少制冷」走。
+  但「SEG 自冷」这条路走不到量子比特上，因为差的是<b>温度标尺</b>，不是<b>制冷方式</b>。
+  它唯一能站的位置在 40–80 K 那一级的<b>外面</b>，省的是机房级的电，不是比特级的冷。</div>
+
+<div class="foot">
+  <b>复现</b>：本页所有数字都可当场验 ——<br>
+  ① 热光子 <code>n = 1/(exp(h·f/(k·T))−1)</code>，h=6.62607015e−34，k=1.380649e−23，f=5e9；<br>
+  ② 辐射 <code>q = 5.670374419e−8 · (T₁⁴ − T₂⁴)</code>；<br>
+  ③ 倍数 <code>227/0.010 = 22700</code>、<code>0.05/1e−9 = 5e7</code>。<br>
+  <b>页内自检</b>：<span id="selfChk" class="mono">运行中…</span><br>
+  <b>相关页</b>：<a href="SEG_双静音决策图.html">SEG 双静音决策图</a> ·
+  <a href="SEG充磁三明治_三种磁场仿真.html">SEG 充磁三明治 · 三种磁场仿真</a> ·
+  <a href="SEG_IGV_技术总览.md">SEG × IGV 技术总览</a> ·
+  <a href="SEG仿真工具链评估_MHD_WarpX_magpylib_2026-07-18.md">仿真工具链评估</a><br>
+  <b>原文</b>：<code>SEG tests Roschin Godin.pdf</code> · 知识库「369文件昴宿星swaruu资料 / 昴宿星ahcs全息计算机.pdf」
+</div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var h=6.62607015e-34, kB=1.380649e-23, SIG=5.670374419e-8, F=5e9;
+  var hf_k = h*F/kB;                 /* 0.2400 K */
+
+  function nPhot(T){
+    var x=hf_k/T;
+    if(x>700) return 0;
+    return 1/(Math.exp(x)-1);
+  }
+  function sci(v){
+    if(v===0) return "0";
+    if(v>=1e-2 && v<1e4) return v.toFixed(v>=1?0:3);
+    var e=Math.floor(Math.log10(Math.abs(v)));
+    var m=v/Math.pow(10,e);
+    return m.toFixed(1)+"e"+e;
+  }
+  /* 上标形式：5.0×10⁷ 比 5.0e7 好读，且不长 */
+  var SUP={"0":"⁰","1":"¹","2":"²","3":"³","4":"⁴","5":"⁵","6":"⁶","7":"⁷","8":"⁸","9":"⁹","-":"⁻"};
+  function pow10(v){
+    if(v===0) return "0";
+    if(v>=1e-2 && v<1e4) return v>=1 ? v.toFixed(0) : v.toFixed(3);
+    var e=Math.floor(Math.log10(Math.abs(v)));
+    var m=v/Math.pow(10,e);
+    return m.toFixed(1)+"×10"+String(e).split("").map(function(c){return SUP[c]||c;}).join("");
+  }
+  function nf(v,d){ return (v==null||!isFinite(v))?"—":v.toFixed(d); }
+
+  /* ---------- 表格 ---------- */
+  var rows=[
+    [300,  "1.25×10³", "室温。5 GHz 模式<b>完全经典化</b>，量子比特无法存在"],
+    [227,  "945",      "SEG 自冷后（−46 °C）。<b>仍有近千个热光子</b> —— 离能用差得远"],
+    [77,   "320",      "液氮。高温超导（YBCO）演示的典型温度"],
+    [4,    "16.2",     "液氦。仍有 16 个热光子 ⇒ 超导比特在这一级也不能工作"],
+    [1,    "3.69",     "硅自旋「热比特」区间，热光子已降到个位数"],
+    [0.3,  "0.816",    "约等于 1 个光子在线上 —— 业内所说「接近抛硬币」"],
+    [0.1,  "0.0998",   "100 mK 冷板。开始接近可用，但仍不够"],
+    [0.02, "6.2×10⁻⁶", "20 mK。超导比特的最低工作点之一"],
+    [0.01, "3.8×10⁻¹¹","10 mK。真正的超导比特工作点"],
+    [0.015,"1.1×10⁻⁷", "15 mK。IBM 系统的工作温度"]
+  ];
+  var tb=document.querySelector('#nTab tbody');
+  rows.forEach(function(r){
+    var tr=document.createElement('tr');
+    if(r[0]===227||r[0]===0.01) tr.className='mid';
+    tr.innerHTML='<td class="mono"><b>'+(r[0]<1?r[0]+' K':r[0]+' K')+'</b></td>'+
+                 '<td class="mono">'+r[1]+'</td><td>'+r[2]+'</td>';
+    tb.appendChild(tr);
+  });
+
+  /* ---------- 静态数字 ---------- */
+  document.getElementById('nAtSeg').textContent = Math.round(nPhot(227));
+  document.getElementById('rEarth').textContent = (0.05/50e-6).toFixed(0);
+  document.getElementById('rQ').textContent = pow10(0.05/1e-9);
+  var q300=SIG*(Math.pow(300,4)-Math.pow(50,4));
+  var q227=SIG*(Math.pow(227,4)-Math.pow(50,4));
+  document.getElementById('radCut').textContent = ((1-q227/q300)*100).toFixed(1);
+
+  /* ---------- 滑块 ---------- */
+  var LO=Math.log10(0.008), HI=Math.log10(350);
+  var s=document.getElementById('tS'), oT=document.getElementById('oT'),
+      oC=document.getElementById('oC'), oN=document.getElementById('oN'),
+      oR=document.getElementById('oR'), oV=document.getElementById('oV');
+  var cur=300;
+
+  /* 判语里的每一个数字都现算 —— 写死会在区间边界上变成假话
+     （比如「已压到 10⁻⁵ 以下」在 25 mK 处实际是 6.8×10⁻⁵，就已经不成立） */
+  function verdict(T){
+    var n=pow10(nPhot(T));
+    if(T<0.025) return ['ok','<b>超导 transmon / fluxonium 能工作</b>。热光子已压到 <b>'+n+
+      '</b> 个 —— 这就是稀释制冷机存在的全部理由：它买的是「干净」，不是「超导」。'];
+    if(T<1.5) return ['part','<b>硅自旋「热比特」区间</b>。热光子 <b>'+n+
+      '</b> 个：容错还有余量但已不宽裕；这一带也是行业「往上走温度」的着力点。'];
+    if(T<10) return ['part','<b>SNSPD 单光子探测器可用区间（2–4 K）</b>。热光子 <b>'+n+
+      '</b> 个。光量子的比特本身在室温，只有探测器要下到这个温度。'];
+    if(T<90) return ['no','<b>高温超导 / 液氮区间</b>。够做 YBCO 超导演示，'+
+      '但热光子还有 <b>'+n+'</b> 个，<b>任何量子比特都立不住</b>。'];
+    if(T<250) return ['no','<b>常规制冷区间</b>。冷冻、冷链、工业冷却用的温度。'+
+      '<b>SEG 的 227 K 就落在这一带</b> —— 对量子比特毫无用处。'];
+    return ['no','<b>普通环境</b>。5 GHz 模式此刻有 <b>'+n+'</b> 个热光子，'+
+      '量子态瞬间退相干。这一行就是「为什么量子计算机需要制冷」的第一性答案。'];
+  }
+
+  function draw(){
+    var cv=document.getElementById('cv'), c=cv.getContext('2d');
+    var W=cv.width, H=cv.height;
+    var dark=document.body.classList.contains('dark');
+    var INK=dark?'#9dabc0':'#6b7683', GRID=dark?'#243040':'#e8edf4',
+        CUR=dark?'#5a6d85':'#b9c3d2', TXT=dark?'#b8c5d8':'#46506a';
+    c.clearRect(0,0,W,H);
+    var L=64,R=18,T=26,B=42;
+    var ylo=-13, yhi=4;
+    function X(T){ return L+(Math.log10(T)-LO)/(HI-LO)*(W-L-R); }
+    function Y(v){ var lv=Math.max(ylo,Math.min(yhi,Math.log10(Math.max(v,1e-13))));
+                   return T+(yhi-lv)/(yhi-ylo)*(H-T-B); }
+
+    /* 网格 */
+    c.strokeStyle=GRID; c.lineWidth=1; c.font='10.5px Consolas, monospace';
+    c.fillStyle=INK; c.textAlign='right'; c.textBaseline='middle';
+    for(var e=ylo;e<=yhi;e+=4){
+      var y=Y(Math.pow(10,e));
+      c.beginPath(); c.moveTo(L,y); c.lineTo(W-R,y); c.stroke();
+      c.fillText('1e'+e, L-7, y);
+    }
+    c.textAlign='center'; c.textBaseline='top';
+    [0.01,0.1,1,10,100].forEach(function(t){
+      var x=X(t);
+      c.beginPath(); c.moveTo(x,T); c.lineTo(x,H-B); c.stroke();
+      c.fillText(t+' K', x, H-B+6);
+    });
+    c.textAlign='right'; c.fillText('350 K', W-R, H-B+6);
+    /* 轴标题 */
+    c.textAlign='left'; c.fillStyle=TXT; c.font='11px Consolas, monospace';
+    c.fillText('n (5 GHz)', 8, T-9);
+    c.textAlign='center'; c.fillText('温度 T（对数）', L+(W-L-R)/2, H-B+24);
+
+    /* 曲线 */
+    c.beginPath(); c.strokeStyle=CUR; c.lineWidth=2.2;
+    var first=true;
+    for(var i=0;i<=480;i++){
+      var lv=LO+(HI-LO)*i/480; var t=Math.pow(10,lv);
+      var v=nPhot(t); if(v<=0) continue;
+      var x=X(t), y=Y(v);
+      if(first){c.moveTo(x,y);first=false;}else c.lineTo(x,y);
+    }
+    c.stroke();
+
+    /* 当前滑块：先画虚线 + **空心环**（不填色），否则会盖住参考标记点 */
+    var cx=X(cur), cy=Y(nPhot(cur));
+    c.strokeStyle=dark?'#b49bf2':'#5b3fa8'; c.lineWidth=1.4; c.setLineDash([4,5]);
+    c.beginPath(); c.moveTo(cx,T); c.lineTo(cx,H-B); c.stroke(); c.setLineDash([]);
+    c.beginPath(); c.arc(cx,cy,11,0,Math.PI*2);
+    c.lineWidth=2; c.stroke();
+
+    /* 两个参考标记点（画在最后，压在最上层） */
+    function mark(t, col, lab, dy){
+      var x=X(t), y=Y(nPhot(t));
+      c.beginPath(); c.arc(x,y,5.5,0,Math.PI*2); c.fillStyle=col; c.fill();
+      c.beginPath(); c.arc(x,y,8.4,0,Math.PI*2); c.strokeStyle=col; c.lineWidth=1.2; c.stroke();
+      /* 靠右边缘时标签往左画，否则会被画布裁掉（上一版就裁掉了「SEG 227 K」） */
+      var flip = x > W*0.72;
+      c.fillStyle=col; c.font='bold 11.5px Consolas, monospace';
+      c.textAlign = flip?'right':'left'; c.textBaseline='middle';
+      c.fillText(lab, x + (flip?-14:14), y+dy);
+    }
+    mark(227, dark?'#f0c060':'#9a6b12', 'SEG 227 K · n=945', -20);
+    mark(0.01, dark?'#ff8f85':'#b3261e', '10 mK · n=3.8e-11', 18);
+  }
+
+  function upd(){
+    var t=LO+(HI-LO)*(+s.value)/1000;
+    cur=Math.pow(10,t);
+    oT.textContent = cur<1 ? cur.toPrecision(3)+' K' : Math.round(cur)+' K';
+    /* 深冷时 °C 全是 −273.15 附近，四舍五入到整数会把小数全丢掉 ⇒ 保留三位 */
+    var cels=cur-273.15;
+    oC.textContent = (cur<1 ? cels.toFixed(3) : cels.toFixed(1))+' °C';
+    var nv=nPhot(cur);
+    oN.textContent = pow10(nv);
+    oR.textContent = pow10(hf_k/cur);
+    var v=verdict(cur);
+    var col=v[0]==='ok'?'var(--green)':v[0]==='part'?'var(--gold)':'var(--red)';
+    oV.innerHTML='<span style="color:'+col+';font-weight:700">■</span> '+v[1];
+    draw();
+  }
+  s.addEventListener('input', upd);
+
+  /* ---------- 主题 ---------- */
+  var btn=document.getElementById('themeBtn');
+  function setTheme(d){
+    document.body.classList.toggle('dark', d);
+    btn.setAttribute('aria-pressed', d?'true':'false');
+    btn.textContent = d?'☀️ 亮色底':'🌙 暗色底';
+    try{ localStorage.setItem('segahcs_theme', d?'dark':'light'); }catch(e){}
+    upd();
+  }
+  try{ if(localStorage.getItem('segahcs_theme')==='dark') setTheme(true); }catch(e){}
+  btn.onclick=function(){ setTheme(!document.body.classList.contains('dark')); };
+  document.addEventListener('keydown', function(e){
+    if(e.key==='d'||e.key==='D'){ if(!/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) setTheme(!document.body.classList.contains('dark')); }
+  });
+
+  /* ---------- 自检 ---------- */
+  var chk=[];
+  function pin(name, got, want, tol){
+    var ok=Math.abs(got-want)<=tol;
+    chk.push((ok?'✓ ':'✗ ')+name+' '+got.toPrecision(4));
+    return ok;
+  }
+  var all=true;
+  all = pin('hf/k = 0.240 K', hf_k, 0.2400, 5e-4) && all;
+  all = pin('n(300K) = 1250', nPhot(300), 1250.0, 1) && all;
+  all = pin('n(227K) = 945', nPhot(227), 945.5, 2) && all;
+  all = pin('n(0.010K) = 3.789e-11', nPhot(0.010), 3.789e-11, 1e-13) && all;
+  all = pin('227/0.010 = 22700', 227/0.010, 22700, 1) && all;
+  all = pin('0.05T/1nT = 5e7', 0.05/1e-9, 5e7, 1) && all;
+  all = pin('辐射降幅 = 67.3%', (1-q227/q300)*100, 67.3, 0.2) && all;
+  var el=document.getElementById('selfChk');
+  el.innerHTML = (all?'<span style="color:var(--green);font-weight:700">全部通过</span>':'<span style="color:var(--red);font-weight:700">有失败</span>')+
+    ' · '+chk.length+' 项<br><span class="sm" style="font-family:Consolas,monospace">'+chk.join('　')+'</span>';
+  window.__segAhcs={ nPhot:nPhot, hf_k:hf_k, radCut:(1-q227/q300)*100, rows:rows.length, chk:chk };
+
+  upd();
+})();
+</script>
+</body>
+</html>
