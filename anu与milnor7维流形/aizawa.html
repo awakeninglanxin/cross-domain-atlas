@@ -177,6 +177,11 @@ input[type=range]:disabled::-moz-range-thumb{background:#4a5570}
 .sw{display:inline-block;width:10px;height:10px;border-radius:2px;
   vertical-align:middle;margin:0 3px 0 0;border:1px solid rgba(255,255,255,.22)}
 .presets{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+/* 参数面板里的下拉（丝线配色 cmap）：深底浅字，与 range/button 同一族 */
+#panel select{width:100%;font-family:inherit;font-size:11.5px;padding:5px 7px;
+  background:#0f1526;color:#dfe7f5;border:1px solid #24304d;border-radius:7px;
+  outline:none;cursor:pointer;margin:1px 0 2px}
+#panel select:focus{border-color:#3d7bd6}
 .warp-out{margin-top:10px;font-size:11px;line-height:1.7;color:#a9b8d6;
   background:#0b1020;border:1px solid #1c2540;border-radius:9px;padding:9px 11px}
 .warp-out .wt{color:#7fd8ff;font-weight:600;letter-spacing:.5px;
@@ -761,8 +766,17 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
         <b style="color:#8ecbff">🫧 泡泡膜（粒子一开就有）</b>：粒子外面会裹一张<b>蓝色网格膜</b>。
         它不是画上去的球壳 —— <b>膜半径逐高度取自粒子自身的最大半径</b>（每层一个数），
         再过 3 点空间核 + <b>非对称时间低通</b>（撑开快 τ≈70 ms、松弛慢 τ≈340 ms）⇒
-        撒入时膜被撑开、粒子被卷进去时膜跟着收；两端封口，所以是<b>闭合泡泡</b>而不是筒。
-        膜是纯渲染层：不参与积分、不改 ODE / 粒子 / 十丝。z 两端各 1% 的尾点会露在膜外，
+        撒入时膜被撑开、粒子被卷进去时膜跟着收。
+        <br><b>两端是椭球圆顶帽</b>：帽高 = <b>0.55 ×</b> 该端膜半径（不是按总高的百分比），
+        接缝处 <b>dr/dz = 0</b> ⇒ 与筒壁 C¹ 相接，全泡再没有"被圆盘切一刀"的折线
+        —— 像水里空泡那样收成圆顶。
+        <br><b>为什么前两次改完看着还是平面</b>：几何确实是圆的，但投影把 z 钳在取景范围内，
+        帽上所有点被压到同一个高度 ⇒ 圆的<b>曲面</b>被画成了圆的<b>盘</b>。
+        这一版膜走独立的投影（不钳 z），并把泡的上下外沿并进取景，
+        所以轨迹、粒子、膜一起缩放 —— 三者比例不会被拉开。
+        <br><b>泡壁压着不抖</b>：外界往里压 ⇒ 鼓动只留原来的 <b>1/4</b>（±1.25%），
+        帽上再按 (1−s)² 收干净，泡顶基本不动；基线抬高 2% 保证粒子不刺破膜。
+        <br>膜是纯渲染层：不参与积分、不改 ODE / 粒子 / 十丝。z 两端各 1% 的尾点会露在膜外，
         这是有意的上限（否则一个跑飞的点就能把膜顶爆）。
       </div>
       <div class="hint">
@@ -801,6 +815,24 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
         <div class="lab"><span>丝数</span><span class="v" id="vAW">10</span></div>
         <input type="range" id="sAW" min="1" max="10" step="1" value="10">
         <div class="hint">Anu 原典 10 根（文献：十根互不接触的闭合丝，沿 36° 均分）；拨到 1 即单轨道对照</div>
+      </div>
+      <div class="row">
+        <div class="lab"><span>丝线配色 cmap</span><span class="v" id="vCM">自动</span></div>
+        <select id="cmapSel">
+          <option value="auto">自动：单丝 = HSV 炫彩 / 十丝 = 3 粗金 + 7 细七色</option>
+          <option value="hsv">HSV 炫彩（全色相，让开金黄禁区）</option>
+          <option value="turbo">Turbo（高对比彩虹）</option>
+          <option value="viridis">Viridis（深紫 → 黄绿）</option>
+          <option value="plasma">Plasma（深靛 → 橙黄）</option>
+          <option value="cool">Cool（青 → 品红）</option>
+          <option value="ice">Ice（青 → 紫，与本页蓝系同族）</option>
+        </select>
+        <div class="hint">颜色沿<b>丝长</b>跑 ⇒ 色彩跟着物质点流动，不是屏幕上的静态渐变。
+          <b style="color:#7fd8ff">单丝默认 HSV</b>：色相走 <b>100°→350°</b>（绿→青→蓝→紫→品红→玫红），
+          下界比 7 细的金黄禁区上界 80° 再高 20°，上界不进 350°–395° 的橙黄段 ⇒
+          <b>通体没有金黄</b>。<br>
+          <b style="color:#ffd84a">多丝选 cmap 时</b>：粗细靠<b>线宽</b>分（粗 2.2 / 细 0.9），不再靠颜色。
+          turbo / viridis / plasma 是控制点线性插值<b>近似</b>，不是 matplotlib 原表。</div>
       </div>
       <div class="row">
         <div class="lab"><span>粗丝向外膨胀</span><span class="v" id="vBO">+3.8%</span></div>
@@ -1307,23 +1339,39 @@ function drawSrcBox(tp,K,cx,cy,fx,fy,count){
  *      （取最大而不是平均：平均会切进粒子里面，「包裹」当场不成立）；
  *   ② 半径先过 3 点空间核，再过**非对称时间低通**（撑开 τ=70 ms / 松弛 τ=340 ms）
  *      ——「柔性」就是这两个滤波，不是为了好看随手加的抖动；
- *   ③ 两端各加 12% 高度做**封口**（r ∝ √(1−t²) 收到 0）⇒ 膜是闭合的，有内外两面；
- *   ④ 再叠 θ 方向 2/3/5 阶行波，幅值合计 4.8%，且**整体抬高 5.2%**
- *      —— 抬高是刻意的：波谷也不能低于实测包络，否则粒子会刺破膜。
+ *   ③ 两端各加一个**椭球圆顶帽**：帽高 = capK × 该端半径（默认 0.55），
+ *      径向半轴 = 半径，r ∝ √(1−η²) 收到 0 ⇒ 闭合、有内外两面，且接缝处 dr/dz=0 与筒壁 C¹ 相接；
+ *      （旧版是按总高的 9% 收口，帽高 0.28 对半径 1.5 ⇒ 长短轴 1:5.4，看着就是一块圆盘盖。
+ *        老师 2026-10-20 两次指出「上下界面被圆盘面截断」⇒ 先改成按半径给高度。）
+ *   ★ 但**只改几何是不够的**：老师第三次追问"为何还是一样"，真因在**投影**——
+ *      trPtD 里 u0=(Z−zc)/ha 被 clamp 到 ±1，帽上所有点被钳到同一个 Zw
+ *      ⇒ 半椭球在屏幕上被压成一块平板圆盘。几何早就是圆顶，画的却是圆的**投影**。
+ *      现在膜走专用 trPtDm（z 不钳制），并把膜的 z 外沿**并进取景**（drawTail 里 fy0/fy1），
+ *      让轨迹/粒子/膜共用同一个 K —— 否则只压粒子会把三者比例拉开。
+ *      防退化判据：_check/probe_cap_flat.cjs（侧视时帽的屏幕 y 跨度 ÷ 筒身 ≈ 帽高/span）。
+ *   ④ 再叠 θ 方向 2/3 阶行波，幅值合计 **1.25%**（= 原 4.8% × 0.26），
+ *      且整体抬高 **2.0%**；帽上幅值再乘 (1−s)² 收干净。
+ *      理由（老师 2026-10-20）：泡外有压力往里压 ⇒ 泡壁是绷着的，不该抖成果冻；
+ *      抬高 2% 保证波谷仍不低于实测包络，粒子刺不破膜。
  *
  * 口径（不许含混）：
  *   · 膜是**纯渲染层**：不参与积分、不改 ODE / 粒子 / 十丝，唯一输入是粒子坐标；
  *   · 关掉粒子层就没有膜（它不是场景装饰）；
  *   · z 两端各 1% 的尾部点会落在膜外 —— 膜包住的是主体，不是牢笼。
  * ========================================================================== */
-var MEM={on:true, NZ:14, NM:18, NS:26, NR:8, BANDS:6, alpha:0.58,
-         segs:0, wrap:0, ready:false, lastT:0, T:0,
+var MEM={on:true, NZ:14, NM:18, NS:56, NR:12, BANDS:6, alpha:0.58,
+         capK:0.55, wob:0.26,          /* 封口高度 = capK×该端半径；wob = 抖动幅值倍率（外力压着）
+                                          ⚠ capK 不能大：帽子越高越像半球，但泡的 z 总高会顶出画布
+                                          ⇒ 帽被画布边缘横切，看起来**还是平面**。0.35 是"看得出圆顶
+                                          又装得进框"的折中；配合 drawParticles 里的 K 自适应。 */
+         segs:0, wrap:0, ready:false, lastT:0, T:0, capB:0, capT:0,
          zlo:-0.5, zhi:2.3, R:new Float32Array(16), Rt:new Float32Array(16)};
-var memVX=null, memVY=null, memVD=null, memBuf=null, memTop=null, memH=null, memCum=null;
+var memVX=null, memVY=null, memVD=null, memVZ=null, memBuf=null, memTop=null, memH=null, memCum=null;
 var memD0=0, memDS=1, memQ=[0,0,0,0,0];
 function memAlloc(){
   var NV=(MEM.NM+1)*(MEM.NS+1), i;
   memVX=new Float32Array(NV); memVY=new Float32Array(NV); memVD=new Float32Array(NV);
+  memVZ=new Float32Array(NV);   /* 顶点的世界 z —— 探针靠它判「帽有没有被投影压平」 */
   var NSG=MEM.NM*(MEM.NS+1)+MEM.NR*MEM.NM;
   memBuf=[];
   for(i=0;i<MEM.BANDS;i++) memBuf.push({n:0, a:new Float32Array(NSG*4)});
@@ -1346,6 +1394,38 @@ function trPtD(tp,X,Y,Z,out){
   var pc=6/(6-dzs*0.5);
   out[0]=x1s*pc; out[1]=-ups*pc; out[4]=dzs;
   return out;
+}
+/** 膜的专用投影：与 trPtD 同一套旋转/透视，**只改一处** —— z 方向不钳制在 [zlo,zhi]。
+ *
+ *  🔴 2026-10-20 老师指出「上下还是平面」的真因就在这一行：
+ *     旧代码走 trPtD，里面 `u0=(Z−zc)/ha` 被 clamp 到 ±1 ⇒ **封口帽上所有点
+ *     投影到同一个 Zw（= zlo 或 zhi）** ⇒ 半椭球在屏幕上被压成一块平板圆盘。
+ *     几何（MEM.r / rAt）早就是圆顶了，但"圆的**曲面**"被投影成了"圆的**盘**"。
+ *     ⇒ 教训：验证曲顶不能只量几何数组，必须在**侧视角**下量屏幕像素的纵向展开。
+ *
+ *  与 trPtD 的另两处差别（都是刻意的）：
+ *    ① 不带 TAU 收口 —— 膜的收口由 rr=R√(1−η²) 自己给，再乘一次会把帽塌成一点；
+ *    ② 径向 s 的 u 仍按 [zlo,zhi] clamp —— 膜要贴合粒子的锥度，不能跟着帽一起外推。 */
+function trPtDm(tp,X,Y,Z,out){
+  var u=(Z-tp.zlo)/tp.span; if(u<0)u=0; if(u>1)u=1;
+  var s=Math.exp(tp.logR*(1-smooth(u)));
+  var Xs=X*s, Ys=Y*s;
+  var u0=(Z-tp.zc)/tp.ha;                       /* ★ 不 clamp：帽区允许外推到 |u0|>1 */
+  var Zw=tp.zc+tp.ha*tp.LAM*(u0+tp.GAM*u0*u0);
+  var x1s=Xs*tp.caz-Ys*tp.saz, y1s=Xs*tp.saz+Ys*tp.caz;
+  var ups=y1s*tp.cel+Zw*tp.sel, dzs=-y1s*tp.sel+Zw*tp.cel;
+  var pc=6/(6-dzs*0.5);
+  out[0]=x1s*pc; out[1]=-ups*pc; out[4]=dzs;
+  return out;
+}
+/** 筒身半径（含**末端 20% 平滑压平**）。drawMembrane 与 __mem.rAt 都读它 ⇒ 单一来源，
+ *  不许各写一份：压平是接缝 C¹ 的前提，谁漏了谁就在接缝处留一道折痕。 */
+function memBodyR(u){
+  var r=memR(u);
+  var e=Math.min(u,1-u)/0.20;
+  if(e>=1) return r;
+  var s=e*e*(3-2*e), Re=(u<0.5?memR(0):memR(1));
+  return Re+(r-Re)*s;
 }
 /** 膜半径：按高度在 NZ 个数之间线性插值（x 取桶中心对齐），已含 2% 余量 */
 function memR(u){
@@ -1419,26 +1499,53 @@ function drawMembrane(tp,K,cx,cy,fx,fy){
   var now=performance.now();
   memProfile(now);
   MEM.T=now*0.001;
-  var NM=MEM.NM, NS=MEM.NS, i, j, b, u, zz, rr, th, w, rw, idx, T=MEM.T, t1, t2;
+  var NM=MEM.NM, NS=MEM.NS, i, j, b, u, zz, rr, th, w, rw, idx, T=MEM.T, sB, sT;
   var zl=MEM.zlo, zh=MEM.zhi, span=Math.max(0.2, zh-zl);
-  var uA=-0.09, uB=1.09, uR=uB-uA, dmin=1e9, dmax=-1e9;
+  /* ── 封口（老师 2026-10-20 第二次）：高度按**半径**给，不按 span 的 9% ──
+     旧版封口高只有 0.09·span≈0.28，而该处半径≈1.5 ⇒ 长短轴比 1:5.4，
+     画出来就是"圆盘面"——曲率在接缝处被迫在 0.28 的高度里从竖直转到水平，
+     看起来像被一块平板截断。现在改成半椭球：短轴 = capK×半径（默认 0.72），
+     长轴 = 半径 ⇒ 比例 1:1.39，是真正的**圆顶帽**，且接缝处 dr/dz=0 ⇒ 与筒壁 C¹ 相接。 */
+  var Rb=memR(0), Rt2=memR(1);
+  var hB=MEM.capK*Rb, hT=MEM.capK*Rt2;
+  MEM.capB+=(hB-MEM.capB)*0.15; MEM.capT+=(hT-MEM.capT)*0.15;
+  hB=MEM.capB; hT=MEM.capT;
+  var totH=span+hB+hT, p1=hB/totH, p2=(hB+span)/totH;
+  /* 抖动幅值：外力压着泡壁 ⇒ 只剩 0.26× 原值（±1.25%），且在帽上再乘 (1−s)² 收干净，
+     泡顶是光滑圆顶而不是果冻。基线也从 1.062 降到 1.020（波谷仍高于实测包络）。 */
+  var wobA=MEM.wob;
+  var dmin=1e9, dmax=-1e9;
   var bx0=1e9,bx1=-1e9,by0=1e9,by1=-1e9,nan=0;
   var q=memQ;
   for(i=0;i<=NS;i++){
-    u=uA+uR*i/NS;
-    if(u<0){ t1=-u/0.09; zz=zl+u*span; rr=memR(0)*Math.sqrt(Math.max(0,1-t1*t1)); }
-    else if(u>1){ t2=(u-1)/0.09; zz=zh+(u-1)*span; rr=memR(1)*Math.sqrt(Math.max(0,1-t2*t2)); }
-    else { zz=zl+u*span; rr=memR(u); }
-    if(rr<0.03) rr=0.03;
+    u=i/NS;
+    var fade=0.12, base=1.020, e2, ss;
+    if(u<p1){                                  /* 下帽：sB=0 圆顶 → 1 接缝 */
+      sB=u/p1; zz=zl-(1-sB)*hB; rr=Rb*Math.sqrt(Math.max(0,1-(1-sB)*(1-sB)));
+      fade=0.12*sB*sB;                         /* 帽上几乎不抖（顶点处完全不动） */
+    }else if(u>p2){                            /* 上帽 */
+      sT=(u-p2)/(1-p2); zz=zh+sT*hT; rr=Rt2*Math.sqrt(Math.max(0,1-sT*sT));
+      fade=0.12*(1-sT)*(1-sT);
+    }else{                                     /* 筒身 */
+      sB=(u-p1)*totH; zz=zl+sB;
+      var uu=sB/span; rr=memBodyR(uu);
+      /* ★ C¹：末端 20% 内把半径**平滑压平**到该端值 —— 于是接缝处 dr/dz = 0，
+         正好与椭球帽的水平切线接上。不这么做的话，帽必须先"水平出发"而筒壁还在斜着走，
+         接缝处就是一个折痕（实测两侧斜率差 3.9 / 4.4）。
+         平滑用 smoothstep（两端一阶导为 0），所以压平本身也不引入新的折点。 */
+      e2=(uu<0.5?uu:1-uu)/0.20;
+      ss=(e2>=1)?1:e2*e2*(3-2*e2);
+      fade=0.12+0.88*ss;                       /* 接缝处抖动幅值与帽上连续（0.12 ↔ 0.12） */
+    }
+    if(rr<0.012) rr=0.012;                      /* 顶点兜底改成按比例的小圈（旧值 0.03 会留一个可见小洞） */
     for(j=0;j<=NM;j++){
       th=2*Math.PI*j/NM;
-      /* 鼓动：只留 2/3 阶（NM=18 时 3θ 每周期还有 6 个采样，再高就混叠）；
-         整体抬高到 1.062 ⇒ 波谷也不会低于实测包络，粒子不会刺破膜 */
-      w=1.062 + 0.030*Math.sin(2*th+1.15*T+2.2*u)
-               + 0.020*Math.sin(3*th-1.70*T+3.1*u)
-               + 0.020*Math.sin(2.4*Math.PI*u+0.9*T);
+      /* 鼓动：只留 2/3 阶（NM=18 时 3θ 每周期还有 6 个采样，再高就混叠） */
+      w=base + fade*wobA*(0.030*Math.sin(2*th+1.15*T+2.2*u)
+                        + 0.020*Math.sin(3*th-1.70*T+3.1*u)
+                        + 0.020*Math.sin(2.4*Math.PI*u+0.9*T));
       rw=rr*w;
-      trPtD(tp, rw*Math.cos(th), rw*Math.sin(th), zz, q);
+      trPtDm(tp, rw*Math.cos(th), rw*Math.sin(th), zz, q);
       idx=i*(NM+1)+j;
       /* ★ 必须在这里就把"投影坐标"换成**屏幕坐标**：与 drawParticles 里
          sx=cx+(pTP[0]-fx)*K 逐字同一式。第一版漏了这一步，膜全挤在画布左上角
@@ -1449,7 +1556,7 @@ function drawMembrane(tp,K,cx,cy,fx,fy){
         if(memVX[idx]<bx0)bx0=memVX[idx]; if(memVX[idx]>bx1)bx1=memVX[idx];
         if(memVY[idx]<by0)by0=memVY[idx]; if(memVY[idx]>by1)by1=memVY[idx];
       }
-      memVD[idx]=q[4];
+      memVD[idx]=q[4]; memVZ[idx]=zz;
       if(q[4]<dmin)dmin=q[4]; if(q[4]>dmax)dmax=q[4];
     }
   }
@@ -1498,6 +1605,11 @@ function drawMembrane(tp,K,cx,cy,fx,fy){
 function drawParticles(tp,K,cx,cy,fx,fy){
   if(!PART.on){ MEM.segs=0; return 0; }   /* 没粒子就没有膜，段数也要归零，别留上一帧的读数 */
   if(!pOff) partResize();
+  /* ⚠ 2026-10-20：**不要**在这里压 K 让泡入框 —— 试过，会出大问题：
+     K 是传进来的（轨迹那一帧算的），只压粒子/膜的 K ⇒ 彩色轨迹丝保持原大小、
+     泡泡缩在中间，两者比例被拉开，看起来像"两个图层"。
+     正确位置在 drawTail 的取景计算里：把膜的 z 外沿并进 fy0/fy1，
+     让轨迹/粒子/膜共用**同一个** FITK。 */
   /* 先画膜、再贴粒子：膜在"后面"，粒子浮在膜内 —— additive 下不会互相吃掉 */
   drawMembrane(tp,K,cx,cy,fx,fy);
   var m=PART.n, h=0.038, drawn=0, i, w, x, y, z, sx, sy, ex, ey, k=pSC;
@@ -1972,9 +2084,23 @@ function draw(){
     nPt++;
   }
 
+  /* ★ 2026-10-20（老师第三次指出"上下还是平面"后）：把**泡泡膜的 z 外沿并进取景范围**。
+     病根：取景只按轨迹算（z 跨度约 2.15），而泡的 z 跨度是 3.12（粒子云的 1%/99% 分位）
+     再加两个半球帽 ⇒ 泡的上下圆顶必然顶出画布，被画布边缘横切成"一块平面"。
+     只在**粒子模式**并入（十丝模式有自己的 AFITK，膜只是陪衬，并进去会把十丝整体缩小）。
+     这一并会让轨迹/粒子/膜用**同一个 K**，三者比例才不会被拉开。
+     符号：gy = −up0·p0，侧视时 cel=0 ⇒ gy = −Zw，故 z 越大 gy 越小。 */
+  if(MEM.ready && MEM.on && PART.on && !ANU.on){
+    var selM=Math.sin(P.EL*Math.PI/180);
+    if(Math.abs(selM)>0.05){
+      var yA=-(MEM.zhi+MEM.capT)*selM, yB=-(MEM.zlo-MEM.capB)*selM;
+      var yLo=(selM>0?yA:yB), yHi=(selM>0?yB:yA);
+      if(yLo<fy0)fy0=yLo; if(yHi>fy1)fy1=yHi;
+    }
+  }
   // 自动取景（平滑，避免抖动）
   var fw=Math.max(fx1-fx0,1e-3), fh=Math.max(fy1-fy0,1e-3);
-  var kt=Math.min(0.86*W/fw, 0.80*H/fh);
+  var kt=Math.min(0.86*W/fw, 0.88*H/fh);   /* 高度 0.80→0.88：泡并入取景后整体偏小，这里补回一点 */
   if(kt>900)kt=900; if(kt<5)kt=5;
   var xt=(fx0+fx1)/2, yt=(fy0+fy1)/2;
   if(FITK===null){FITK=kt;FITX=xt;FITY=yt;}
@@ -2147,6 +2273,70 @@ function thinHue(w,N,maj){
 function thinCh(w,N,maj){
   return hsl2rgb(thinHue(w,N,maj), 1.0, 0.62);
 }
+
+/* ==========================================================================
+ * 丝线配色 cmap（老师 2026-10-20：「单丝默认改成炫彩的比如 hsv，不要黄色」）
+ * --------------------------------------------------------------------------
+ * 为什么需要：单丝模式下 N=1 ⇒ maj=1 ⇒ 唯一那根丝被判成「粗丝」而上亮金
+ *   rgb(255,215,0)。可画面里根本只有一根丝，这条金色既单调、又与「3 粗」的
+ *   语义打架（没有 3 根）。所以 N=1 的默认色改成 **HSV 炫彩**。
+ *
+ * 「不要黄色」怎么落实（不是随口避开）：
+ *   色相不走 0→360 均分，而是走 **[100°, 350°]**：
+ *     · 下界 100° —— 比 7 细的金黄禁区上界 80° 再高 20°，把 80°–100° 这段
+ *       仍然偏黄绿的过渡色也一起让开；
+ *     · 上界 350° —— 不进 350°–395°(≡35°) 那段橙黄。
+ *   于是整根丝全程只在 绿→青→蓝→紫→品红→玫红 之间跑，一点金黄都不出现。
+ *   （page 上 7 细用的还是原来那条 80–350 的扇形，两边各自不动。）
+ *
+ * 颜色沿**丝长**跑（t = 点序 / 点总数），所以它随物质点一起流动，
+ *   不是贴在屏幕上的静态渐变。
+ *
+ * 手动可选：turbo / viridis / plasma / cool / ice。
+ * ⚠ 口径：turbo / viridis / plasma 是**发布控制点的线性插值近似**，
+ *   不是 matplotlib 原表逐位复刻（不要拿它去跟 matplotlib 截图比色差）。
+ *   取色一律走 __az.cmap(name,t)，页面与探针同一个源。
+ * ⚠ 多丝时选 cmap：每根丝再按 w/N 相移，十根合起来是一圈光谱；
+ *   粗细之分此时靠**线宽**（粗 2.2 / 细 0.9），不再靠颜色。
+ * ========================================================================== */
+var CMAP={mode:'auto'};
+/* 单丝 HSV 的色相区间（见上面那段口径）；这两个数是页面与探针共用的唯一来源 */
+var HSV_H0=100, HSV_H1=350;
+var CMAP_PTS={
+  viridis:[[.267,.005,.329],[.283,.141,.458],[.254,.265,.530],[.207,.372,.553],
+           [.164,.471,.558],[.128,.567,.551],[.135,.659,.518],[.267,.749,.441],
+           [.478,.821,.318],[.741,.873,.150],[.993,.906,.144]],
+  plasma:[[.050,.030,.528],[.294,.011,.631],[.492,.011,.658],[.658,.133,.588],
+          [.798,.280,.470],[.899,.418,.361],[.973,.580,.254],[.995,.765,.161],
+          [.940,.975,.131]],
+  turbo:[[.190,.072,.232],[.276,.365,.833],[.153,.702,.985],[.130,.930,.741],
+         [.479,.990,.354],[.833,.859,.155],[.988,.610,.114],[.948,.276,.055],
+         [.750,.086,.020],[.480,.010,.010]]
+};
+/** t∈[0,1] → [r,g,b]（0–255）。未知名字回落到金色（与 3 粗同色，不是随便给个值）。 */
+function cmapRGB(name,t){
+  t=t<0?0:(t>1?1:t);
+  if(name==='hsv') return hsl2rgb(HSV_H0+(HSV_H1-HSV_H0)*t, 1.0, 0.62);
+  if(name==='cool') return [Math.round(70+185*t), Math.round(240-165*t), 250];
+  if(name==='ice')  return hsl2rgb(191+81*t, 0.95, 0.62);
+  var A=CMAP_PTS[name];
+  if(!A) return [255,215,0];
+  var x=t*(A.length-1), i=x|0;
+  if(i>=A.length-1) i=A.length-2;
+  var f=x-i, a=A[i], b2=A[i+1];
+  return [Math.round((a[0]+(b2[0]-a[0])*f)*255),
+          Math.round((a[1]+(b2[1]-a[1])*f)*255),
+          Math.round((a[2]+(b2[2]-a[2])*f)*255)];
+}
+/** 这一帧用哪个 cmap：'auto' 时只有单丝才炫彩；返回 null = 走原来的 3 粗金 / 7 细七色 */
+function cmapActive(N){
+  if(CMAP.mode==='auto') return (N===1)?'hsv':null;
+  return CMAP.mode;
+}
+function cmapLabel(m){
+  return ({auto:'自动',hsv:'HSV 炫彩',turbo:'Turbo',viridis:'Viridis',
+           plasma:'Plasma',cool:'Cool',ice:'Ice'})[m]||String(m);
+}
 /* 对望校验：编号 k 与 k+N/2 是否严格 180°（定理保证；这里如实测） */
 function anuStat(){
   var N=Math.max(2,ANU.nWire|0), o={N:N, maj:ANU.nMaj|0, step:360/N, dev:0, opp:0, live:!ANU.rigid};
@@ -2226,6 +2416,9 @@ function aRadScale(w,N,maj){
 }
 /* 每根丝实测均方根半径（画的时候顺手算，供探针与公式对拍，不另算一遍） */
 var aRsum=new Float64Array(ANW), aRn=new Int32Array(ANW), aRavg=[];
+/* cmap 分段描边的暂存（每根丝最多 m ≤ MAXN 个点；wT = 沿丝长的归一化位置）
+   wBk[i]=1 表示"这里断了一截"（DECAY 整段丢弃），描边时要 moveTo 重开 subpath */
+var wX=new Float32Array(MAXN), wY=new Float32Array(MAXN), wBk=new Uint8Array(MAXN), wT=new Float32Array(MAXN);
 function drawAnu(){
   var tp=mkTP(), N=Math.max(1,ANU.nWire|0), maj=Math.min(N,ANU.nMaj|0);
   /* 湮灭：丝一根根熄灭（10→1），配合下面的整段断裂与 alpha 衰减 */
@@ -2264,21 +2457,24 @@ function drawAnu(){
   ctx.globalCompositeOperation='lighter';
   ctx.lineCap='round'; ctx.lineJoin='round';
   var lwT=2.2*P.LW, lwN=0.9*P.LW;
+  /* cmap：null = 原来的「3 粗金 / 7 细七色」单色路径（几何与逐像素结果都不变）；
+     非 null = 沿丝长跑色相，分段描（见下方 ②） */
+  var cmName=cmapActive(N);
   for(w=0;w<N;w++){
     var m=n[w]; if(m<2)continue;
     var isMaj=(w<maj);
     var psi2=2*Math.PI*w/N, cp2=Math.cos(psi2), sp2=Math.sin(psi2);
     kk=aRadScale(w,N,maj);
-    var col=isMaj?ANU_MAJ_RGB:thinCh(w,N,maj).join(',');
-    ctx.beginPath();
-    var first=true, skipUntil=0;
+    var aW=P.AL*(isMaj?ANU_MAJ_ALPHA:ANU_ALPHA)*trailDim()*decayA();
+    var lw=isMaj?lwT:lwN;
+    /* ① 先投影：把这一根丝的点收进 wX/wY，断点（DECAY 整段丢弃）记在 wBk 上 */
+    var np=0, skipUntil=0, brk=false;
     for(i=0;i<m;i++){
       /* DECAY：按"段"丢弃（每 26 点抽一次，整段 26 点一起丢）——
          逐点丢只会让线变淡，看不出"碎掉"；整段丢才是真的断成一截一截。 */
       if(i<skipUntil) continue;
       if(DECAY>0 && (i%26===0) && Math.random()<DECAY*0.95){
-        if(!first){ ctx.stroke(); ctx.beginPath(); first=true; }
-        skipUntil=i+26; continue;
+        skipUntil=i+26; brk=true; continue;
       }
       aPt(ANU.rigid?0:w,i,_aP);
       var Xr=(_aP[0]*cp2-_aP[1]*sp2)*kk, Yr=(_aP[0]*sp2+_aP[1]*cp2)*kk;
@@ -2288,12 +2484,40 @@ function drawAnu(){
       var sy=cy+(_aT[1]-(AFITK===null?0:AFITY))*K;
       var dsa=decayS();
       sx=cx+(sx-cx)*dsa; sy=cy+(sy-cy)*dsa;
-      if(first){ctx.moveTo(sx,sy);first=false;}else ctx.lineTo(sx,sy);
+      if(np<MAXN){ wX[np]=sx; wY[np]=sy; wBk[np]=brk?1:0; wT[np]=i/(m-1); }
+      brk=false; np++;
       if(nPt<MAXN){bufX[nPt]=sx;bufY[nPt]=sy;nPt++;}   /* 供探针对拍（单丝时应与常规渲染一致） */
     }
-    ctx.strokeStyle='rgba('+col+','+(P.AL*(isMaj?ANU_MAJ_ALPHA:ANU_ALPHA)*trailDim()*decayA()).toFixed(3)+')';
-    ctx.lineWidth=isMaj?lwT:lwN;
-    ctx.stroke();
+    if(np<2) continue;
+    /* ② 描：无 cmap ⇒ 一条 path；有 cmap ⇒ 等长分段，每段一个色（段间多连一个点，不留缝） */
+    ctx.lineWidth=lw;
+    if(!cmName){
+      var c0=isMaj?ANU_MAJ_RGB:thinCh(w,N,maj).join(',');
+      ctx.strokeStyle='rgba('+c0+','+aW.toFixed(3)+')';
+      ctx.beginPath();
+      for(i=0;i<np;i++){
+        if(i===0||wBk[i]) ctx.moveTo(wX[i],wY[i]); else ctx.lineTo(wX[i],wY[i]);
+      }
+      ctx.stroke();
+    }else{
+      var NB2=Math.max(8,Math.min(72,Math.round(np/5)));
+      var ph=(N>1)?(w/N):0;                    /* 多丝：每根再相移一圈 ⇒ 十根合起来是光谱环 */
+      for(var bi=0;bi<NB2;bi++){
+        var i0=Math.floor(bi*np/NB2), i1=Math.min(np-1,Math.floor((bi+1)*np/NB2));
+        if(i1<=i0) continue;
+        var c3=cmapRGB(cmName,(ph+wT[i0])%1);
+        ctx.strokeStyle='rgba('+c3[0]+','+c3[1]+','+c3[2]+','+aW.toFixed(3)+')';
+        ctx.beginPath();
+        var started=false;
+        for(i=i0;i<=i1;i++){
+          if(i>i0&&wBk[i]) started=false;
+          if(!started){ ctx.moveTo(wX[i],wY[i]); started=true; }
+          else ctx.lineTo(wX[i],wY[i]);
+        }
+        if(i1+1<np&&!wBk[i1+1]) ctx.lineTo(wX[i1+1],wY[i1+1]);
+        ctx.stroke();
+      }
+    }
   }
   ctx.globalCompositeOperation='source-over';
   for(w=0;w<ANW;w++) aRavg[w]= aRn[w] ? Math.sqrt(aRsum[w]/aRn[w]) : 0;
@@ -2832,6 +3056,14 @@ function setOneWire(on){
   var b=document.getElementById('onewire');
   if(b) b.onclick=function(){ setOneWire(!ONE.on); };
 })();
+/* 丝线配色下拉：CMAP.mode 一改，下一帧 drawAnu 立刻换色（无需重启动画） */
+(function(){
+  var s=document.getElementById('cmapSel'), v=document.getElementById('vCM');
+  if(!s) return;
+  function apply(){ CMAP.mode=s.value; if(v) v.textContent=cmapLabel(s.value); }
+  s.addEventListener('change',apply);
+  apply();
+})();
 oneSync();
 if(btnPart)btnPart.onclick=function(){ setPart(!PART.on); };
 bind('sPN','vPN','pn',function(x){return String(Math.round(x));},function(){
@@ -3289,6 +3521,15 @@ window.addEventListener('resize',fitWres);
 /* 泡泡膜的探针口：selfTest 逐点对拍 trPt / trPtD（两份代码不许漂），
    state 报"画了多少段 / 包裹率 / 每层膜半径"，rAt 让 Node 侧自己算"粒子在不在膜内"。 */
 window.__mem={
+  /* 顶点（屏幕坐标 + 世界 z）。判「帽被投影压平」只能靠它：
+     压平时同一帽上的顶点 Zw 被钳成常数 ⇒ 屏幕 y 与 z 的相关性塌到 0。 */
+  verts:function(){
+    if(!memVX) return {x:[],y:[],z:[],n:0};
+    var nv=(MEM.NM+1)*(MEM.NS+1);
+    return {x:Array.prototype.slice.call(memVX,0,nv),
+            y:Array.prototype.slice.call(memVY,0,nv),
+            z:Array.prototype.slice.call(memVZ,0,nv), n:nv};
+  },
   state:function(){
     return {on:MEM.on, segs:MEM.segs, wrap:MEM.wrap, n:PART.n, ready:MEM.ready, bb:MEM.bb,
             nm:MEM.NM, ns:MEM.NS, nr:MEM.NR,
@@ -3296,15 +3537,20 @@ window.__mem={
             R:Array.prototype.slice.call(MEM.R,0,MEM.NZ)};
   },
   set:function(v){ MEM.on=!!v; },
-  /* 画出来的膜在任意 z 处的半径 —— **含两端封口**（z 超出 [zlo,zhi] 时按 √(1−t²) 收口） */
+  /* 画出来的膜在任意 z 处的半径 —— **含两端椭球帽**（与 drawMembrane 同一式，改一处必须改两处） */
   rAt:function(z){
     var s=MEM.zhi-MEM.zlo; if(s<1e-6) return NaN;
     var u=(z-MEM.zlo)/s;
-    if(u>=0&&u<=1) return memR(u);
-    var t=(u<0?-u:(u-1))/0.09;
-    if(t>=1) return 0;
-    return memR(u<0?0:1)*Math.sqrt(1-t*t);
+    if(u>=0&&u<=1) return memBodyR(u);
+    var h=(u<0?MEM.capB:MEM.capT), dz=(u<0?(MEM.zlo-z):(z-MEM.zhi));
+    if(h<1e-6||dz>=h) return 0;
+    /* η = 0 在接缝、1 在圆顶：r = R·√(1−η²) —— 接缝处 dr/dz=0、圆顶处 r→0。
+       ⚠ 别写成 √(1−(1−η)²)：那是把形状整个倒过来（接缝处正好掉到 0），
+       探针里接缝斜率差 31/52 就是这么来的。 */
+    var eta=dz/h;
+    return (u<0?memR(0):memR(1))*Math.sqrt(Math.max(0,1-eta*eta));
   },
+  caps:function(){ return {B:MEM.capB, T:MEM.capT, k:MEM.capK, wob:MEM.wob}; },
   selfTest:function(){
     var tp=mkTP(), o1=[0,0,0,0], o2=[0,0,0,0], worst=0, i, X, Y, Z;
     for(i=0;i<240;i++){
@@ -3321,6 +3567,20 @@ window.__fitWres=fitWres;
 window.__az={
   ANU:ANU, aSt:aSt, aCount:aCount, aPt:aPt, aWarm:aWarm, aReset:aReset, anuStat:anuStat,
   mkTP:mkTP, trPt:trPt, thinCh:thinCh, hsl2rgb:hsl2rgb,
+  cmap:function(name,t){ return cmapRGB(name,t); },
+  hsvRange:function(){ return [HSV_H0,HSV_H1]; },
+  cmapNames:function(){ return ['hsv','turbo','viridis','plasma','cool','ice']; },
+  setCmap:function(m){
+    var ok=(m==='auto')||!!CMAP_PTS[m]||m==='hsv'||m==='cool'||m==='ice';
+    if(!ok) return CMAP.mode;
+    CMAP.mode=m;
+    var s=document.getElementById('cmapSel');
+    if(s){ s.value=m; }
+    var v=document.getElementById('vCM');
+    if(v) v.textContent=cmapLabel(m);
+    return CMAP.mode;
+  },
+  cmapMode:function(){ return CMAP.mode; },
   thinHue:function(w,N,maj){ return thinHue(w,N,maj); },
   gap:function(){ return [THIN_GAP0,THIN_GAP1]; },
   /* 十丝同步推进 n 步（与 aWarm 同口径，遍历全部 ANW 槽位），供探针做长时程定理断言 */
