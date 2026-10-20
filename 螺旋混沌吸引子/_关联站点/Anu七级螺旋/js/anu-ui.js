@@ -66,7 +66,9 @@
       hudMode: $('hudMode'), hudDepth: $('hudDepth'), hudTurn: $('hudTurn'),
       hudAccum: $('hudAccum'), hudRadius: $('hudRadius'), hudPoints: $('hudPoints'),
       hudAngle: $('hudAngle'), hudRatio: $('hudRatio'), hudSpr: $('hudSpr'),
-      caption: $('caption'), toast: $('toast'), panel: $('panel')
+      /* 🗕 2026-10-20 老师：「这个框会档视线，你做成右上角可收起」——
+         字幕正文改写到内层 `.cap-body`（按钮与正文同级的话，下一次 `innerHTML=` 会把按钮抹掉） */
+      caption: $('caption'), capBody: $('capBody'), toast: $('toast'), panel: $('panel')
     };
 
     /** 取「哪一块」GIF 状态框：'growth' → 播放组里生长那一块；'zoom' → 播放组里逐级放大那一块；
@@ -147,6 +149,14 @@
             { minTxt: '▸ 参数', openTxt: '◂ 收起参数' });
     paneAdd('panelR', '资料框', 'panelR', 'panelRToggle',
             { minTxt: '▸ 数值', openTxt: '◂ 收起数值' });
+    /* 🗕 2026-10-20 老师（截图红框那个「第 1 阶 spirilla…」大框）：
+       「这个框会档视线，你做成右上角可收起，并且放在图形最左下角」
+       ⇒ 字幕块也纳入同一套 PANES（位置与宽度由 CSS 改到舞台左下角）。
+          收起 = `display:none` 掉 `.cap-body`，字幕照常写进 DOM ⇒ 展开回来是最新的这篇，
+          **不会「冻在收起那一刻」**；逐级放大播放途中收起，后面每阶字幕也不会把它顶开。
+       ⚠️ 默认**展开**（HTML 上不带 `.is-min`）：它是 1680 匝那根线圈的唯一文字注解，
+          默认折起来等于把解释藏了；位置已经让到左下角、宽度只有 460 px。 */
+    paneAdd('caption', '说明', 'caption', 'capMin');
     /* 与 HTML 上写死的初始 `.is-min` 对齐：按钮文字 / aria-expanded / title 一次校准到位。
        ⚠️ 用**读回当前 class** 的方式（而不是无脑 setPaneMin(key,true)），
           这样将来谁把某一块改成默认展开，这里也自动跟着对。 */
@@ -155,6 +165,101 @@
         if (PANES[i].box.classList.contains('is-min')) { setPaneMin(PANES[i].key, true); }
       }
     })();
+
+    /* ------------------------------------------- 阶段字幕躲开「自动演示」字幕条
+       🔴 2026-10-20（同一次改动的副产物）：字幕块挪到**舞台左下角**后，和页面底部自动演示脚本
+          注入的固定条 `#anuStep`（`position:fixed; bottom:16px` 居中）撞上了 ——
+          实测 430×900：字幕 733–860 / 演示条 756–884，互相压掉一半，两边都看不清。
+          演示条比字幕晚出现、又会在演示结束时被移除，高度还随文字行数变（107~171 px），
+          **CSS 读不到它的高度** ⇒ 只能在显示字幕时用 JS 量一次：
+            · 两条矩形**相交** ⇒ 把字幕的 `bottom` 抬到演示条上方 10 px；
+            · 演示条不在（演示结束 / 大屏本来就不相交）⇒ 还原 CSS 里那个 `bottom`。
+       ⚠️ 两个坑：
+          ① 必须记住**原始** `bottom`（`CAP_BASE`），否则每调一次就在上次抬升的基础上再抬，
+             最终把字幕顶出舞台；
+          ② 抬升后矩形就不再相交 ⇒ 判据必须用**还原到基准后的位置**（`baseBottom/baseTop`），
+             否则会「抬 → 判为不相交 → 落回 → 又相交」来回抖。 */
+    var CAP_BASE = null;
+    function syncCapLift() {
+      var cap = el.caption, bar = document.getElementById('anuStep');
+      if (!cap || !cap.style || !cap.getBoundingClientRect) { return; }
+      if (CAP_BASE == null) {
+        var cs = getComputedStyle(cap);
+        CAP_BASE = parseFloat(cs.bottom);
+        if (!isFinite(CAP_BASE)) { CAP_BASE = 14; }
+      }
+      function restore() { cap.style.bottom = CAP_BASE + 'px'; }
+      var nowBottom = parseFloat(getComputedStyle(cap).bottom);
+      if (!isFinite(nowBottom)) { nowBottom = CAP_BASE; }
+      var lifted = nowBottom - CAP_BASE;                 /* 当前已抬升量（0 = 还没抬过）*/
+      var cr = cap.getBoundingClientRect();
+      if (!cr.height) { return restore(); }
+      /* ⚠️ 抬升是**向上**移 ⇒ 底边/顶边都变小；要还原基准位置得把抬升量**加回去**
+         （第一版写成 `-` 导致「抬→算出的基准更靠上→判为不相交→落回→又相交」每帧抖一次） */
+      /* ⚠️ 还要扣掉 `.caption` 自己的 `translateY(14px)` 出场位移：`.show` 的过渡有 .35 s，
+         慢渲染（软 GL）下实测能卡住 1 s 以上，这时量的矩形比稳态低 14 px。
+         不扣的话「该抬不抬 / 不该抬乱抬」各有一次，刚好把 10 px 的余量吃掉。 */
+      var ty = 0;
+      var tm = getComputedStyle(cap).transform;
+      if (tm && tm !== 'none') {
+        var mp = tm.match(/matrix\(([^)]+)\)/);
+        if (mp) { ty = parseFloat(mp[1].split(',')[5]) || 0; }
+      }
+      var baseBottom = cr.bottom + lifted - ty;          /* 还原到基准、且过渡走完后的底边 */
+      var baseTop = cr.top + lifted - ty;
+      if (!bar || !bar.getBoundingClientRect) { return restore(); }
+      var br = bar.getBoundingClientRect();
+      if (!br.height) { return restore(); }
+      var overlapX = (cr.right > br.left) && (cr.left < br.right);
+      /* 判据一律用**基准位置**（而不是当前抬过的位置）⇒ 调用多少次结果都一样，不会抖 */
+      var need = (overlapX && baseBottom > br.top && baseTop < br.bottom)
+        ? (baseBottom - br.top) + 10 : 0;
+      cap.style.bottom = (CAP_BASE + need) + 'px';
+    }
+    /* 滚动 / 改窗口：演示条是 fixed、字幕是 absolute ⇒ 相对位置会变，必须重算。
+       （passive + rAF 合帧，拖拽旋转时不要每次都强制同步布局） */
+    var capLiftRaf = 0;
+    function capLiftSoon() {
+      watchStepBar();
+      if (capLiftRaf) { return; }
+      capLiftRaf = requestAnimationFrame(function () { capLiftRaf = 0; syncCapLift(); });
+    }
+    if (window.addEventListener) {
+      window.addEventListener('resize', capLiftSoon);
+      window.addEventListener('scroll', capLiftSoon, true);
+    }
+    /* 🔴 只挂 resize/scroll 不够：演示条是**自动演示脚本在页面加载几秒后才注入的**，
+       而且每一步文字行数不同（实测高 86~150 px、宽随文字收缩）。
+       实测两处翻车（本文件改动的当轮）：
+        · 430×900 — 字幕先出现、演示条后出现 ⇒ 没有任何事件把字幕抬起来，仍然叠着；
+        · 1600×1000 — 抬过一次后演示条变窄、与字幕不再水平相交 ⇒ 留在半空 113 px 高。
+       ⇒ 用 MutationObserver 盯两件事，任何一处变动都重算：
+         ① body 的**直接子节点**增删（演示条注入 / 演示结束被移除）；
+         ② 演示条自己的文字变化（每步行数不同）。
+       ⚠️ 千万**不能**开 `document.body` 的 `subtree` —— HUD 每帧都在写数值（characterData），
+          会变成每帧一次强制布局。这里只盯 body 浅层 + 那一个 `#anuStep` 子树。 */
+    var stepMO = null;
+    function watchStepBar() {
+      var bar = document.getElementById('anuStep');
+      if (stepMO && stepMO.__target === bar) { return; }
+      if (stepMO) { stepMO.disconnect(); stepMO = null; }
+      if (!bar || !window.MutationObserver) { return; }
+      stepMO = new MutationObserver(capLiftSoon);
+      stepMO.__target = bar;
+      stepMO.observe(bar, { childList: true, subtree: true, characterData: true });
+    }
+    /* 🔴 再加一层：舞台自己会**改尺寸和位置** —— 点预设 / 收起左右侧栏会重排整页
+       （实测 1600 宽：舞台左边缘 70 → 320，字幕右边缘随之从 545 跑到 795，
+       一下子从「与演示条不相交」变成「相交」）。这时 window 的 resize **不会触发**，
+       所以要盯 `.stage` 自身的尺寸变化。 */
+    if (window.ResizeObserver) {
+      var stageEl = document.querySelector('.stage');
+      if (stageEl) { new ResizeObserver(capLiftSoon).observe(stageEl); }
+    }
+    if (window.MutationObserver && document.body) {
+      new MutationObserver(capLiftSoon).observe(document.body, { childList: true });
+      watchStepBar();
+    }
 
     /* ------------------------------------------------------------- 预设按钮 */
     function setPresets(list, activeId) {
@@ -573,8 +678,12 @@
          2026-10-19 老师：「打开网页后中间的文字框保留 0.5 秒就关闭」
          ⇒ 首屏那次调用传 500（见 anu-app.js 的 boot 末尾），其它提示仍是默认时长。 */
       caption: function (html, sticky, holdMs) {
-        el.caption.innerHTML = html;
+        /* 🗕 2026-10-20：写内层 `.cap-body`（按钮在它外面，不能被覆盖掉）；
+           极简 DOM（自检桩 / 老页面）里没有 `.cap-body` 就退回整块写，行为不变。 */
+        var box = el.capBody || el.caption;
+        if (box) { box.innerHTML = html; }
         el.caption.classList.add('show');
+        syncCapLift();
         if (api._capT) { clearTimeout(api._capT); api._capT = null; }
         if (!sticky) {
           api._capT = setTimeout(function () { el.caption.classList.remove('show'); },
@@ -582,6 +691,8 @@
         }
       },
       clearCaption: function () { el.caption.classList.remove('show'); },
+      /** 给外部（自检 / 其它模块）留一个手动重排入口 */
+      syncCapLift: syncCapLift,
       toast: function (msg) {
         /* ⚠️ 必须用 innerHTML（原来写的是 textContent）——`toastMode()` / `toastOnce()` 传进来的
            是**带 <b> 的 HTML 片段**，用 textContent 写会把 `<b>` 当字面文本显示在页面上，

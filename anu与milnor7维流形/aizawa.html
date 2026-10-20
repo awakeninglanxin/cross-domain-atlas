@@ -764,20 +764,25 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
       <div class="hint" id="pStat">—</div>
       <div class="hint" style="border-left:2px solid rgba(88,170,255,.55);padding-left:8px">
         <b style="color:#8ecbff">🫧 泡泡膜（粒子一开就有）</b>：粒子外面会裹一张<b>蓝色网格膜</b>。
-        它不是画上去的球壳 —— <b>膜半径逐高度取自粒子自身的最大半径</b>（每层一个数），
+        它不是画上去的球壳 —— <b>膜半径逐高度取自粒子自身的半径</b>（每层一个数），
         再过 3 点空间核 + <b>非对称时间低通</b>（撑开快 τ≈70 ms、松弛慢 τ≈340 ms）⇒
         撒入时膜被撑开、粒子被卷进去时膜跟着收。
-        <br><b>两端是椭球圆顶帽</b>：帽高 = <b>0.55 ×</b> 该端膜半径（不是按总高的百分比），
-        接缝处 <b>dr/dz = 0</b> ⇒ 与筒壁 C¹ 相接，全泡再没有"被圆盘切一刀"的折线
-        —— 像水里空泡那样收成圆顶。
-        <br><b>为什么前两次改完看着还是平面</b>：几何确实是圆的，但投影把 z 钳在取景范围内，
-        帽上所有点被压到同一个高度 ⇒ 圆的<b>曲面</b>被画成了圆的<b>盘</b>。
-        这一版膜走独立的投影（不钳 z），并把泡的上下外沿并进取景，
-        所以轨迹、粒子、膜一起缩放 —— 三者比例不会被拉开。
+        <br><b>每层取的不是"最大半径"，是稳健上界</b>（层内第 k 大）。这一条是 2026-10-20
+        那次"肩部不自然"的主因：最大值是极值统计，<b>一颗</b>飞在外面的粒子就能把整层撑大
+        —— 实测第 4 层 77 颗粒子里最大值 2.18、而 95% 的分位只有 1.05，
+        于是泡在云已经收窄的地方反而鼓出去，画面上就是两道"耳朵"。
+        <br><b>母线是一条样条，不是"筒身＋两个帽"拼的</b>：把每层的半径和两个极点连成
+        一条 <b>C² 连续</b>的 r² 三次样条 ⇒ <b>没有接缝</b>，也就没有"过渡不自然"可言：
+        层与层之间没有折点，两端自然收成 <b>r∝√(z远−z)</b> 的正规圆顶。
+        （旧的椭球帽在接缝处曲率从 0 跳到 2.45，切线虽接上、<b>弯法</b>却换了零件 ——
+        这就是那道肩折。）
+        <br><b>环的取样是余弦分布</b>（两极密、赤道疏）：极点附近半径按 √ 变化，
+        均匀取样会把最靠近极点的那一环画在半径 0.4 上，泡顶当场变成锥尖。
         <br><b>泡壁压着不抖</b>：外界往里压 ⇒ 鼓动只留原来的 <b>1/4</b>（±1.25%），
-        帽上再按 (1−s)² 收干净，泡顶基本不动；基线抬高 2% 保证粒子不刺破膜。
-        <br>膜是纯渲染层：不参与积分、不改 ODE / 粒子 / 十丝。z 两端各 1% 的尾点会露在膜外，
-        这是有意的上限（否则一个跑飞的点就能把膜顶爆）。
+        两端再收干净，泡顶基本不动；基线抬高 2% 保证粒子不刺破膜。
+        <br>膜是纯渲染层：不参与积分、不改 ODE / 粒子 / 十丝。包裹率约 <b>98–99%</b>
+        （稳健上界会放过个别刚注入/正在逃逸的点，读数照实显示，不再报 99.7%）。
+        底部 z≈−1.105 是 ż 的稳定平衡点、约 38% 的粒子堆在轴上 ⇒ 泡在底部自然收成细尾。
       </div>
       <div class="hint">
         <b>怎么读</b>：涡环的闭合环流 = <b>环外下沉 / 环心上喷</b>。
@@ -919,6 +924,151 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
     </div>
 
     <div class="grp">
+      <div class="gt">蛋形覆膜 <span class="std">（倒蛋 · 尖朝下 · Schauberger 曲面 · 只在 Anu 十丝模式下出现）</span></div>
+      <div class="row">
+        <label class="chk"><input type="checkbox" id="ckEgg" checked>
+          <span><b>开启蛋形覆膜</b>：在十丝外面套一层
+          <b style="color:#ffd700">金黄色经纬网格蛋壳</b>。两个蛋形参数 (a, b) 由
+          <b>吸引子自身的径向包络反解</b>，不用手调就能包住；呼吸时蛋壳跟着
+          <b>孔径律 s(z)=exp[ln(1/(R·C_A))·(1−smooth u)]</b> 一起变形 ——
+          所以 <b>R=1 时是近圆球</b>、<b>R→R<sub>max</sub> 时是蛋尖朝下的倒蛋</b>。</span></label>
+      </div>
+      <div class="row">
+        <label class="chk"><input type="checkbox" id="ckEggAuto" checked>
+          <span><b>自动绑定</b>：a 随呼吸相位长、b 由包络反解（关掉后 a / b 全部手动）</span></label>
+      </div>
+      <div class="row">
+        <div class="lab"><span>锥倾角 a（呼吸峰值时）</span><span class="v" id="vEGa">33.7°</span></div>
+        <input type="range" id="sEGa" min="0" max="45" step="0.1" value="33.7">
+        <div class="hint"><b>a=0 ⇒ 正球</b>；a 越大蛋尖越尖、上下越不对称。
+          <b style="color:#ffd84a">方向靠 ζ 取向定</b>：原式 <code>b − ζ·sin a</code> 的长段在 +ζ
+          ⇒ <b>上尖下钝</b>；本页镜像成 <code>b + ζ·sin a</code>，长段落到 −ζ ⇒ <b>下尖上钝（尖朝下）</b>。
+          默认 <b>33.7°</b> 与参数台「八度蛋」同一口径（那里 b=1.666 正是 1.02×闭合临界）。
+          自动绑定时 <code>a = a<sub>peak</sub>·ln R / ln R<sub>ref</sub></code>，R=1 时退成正球。</div>
+      </div>
+      <div class="row">
+        <div class="lab"><span>截距 b（腰身胖瘦）</span><span class="v" id="vEGb">1.50</span></div>
+        <input type="range" id="sEGb" min="0.30" max="8" step="0.02" value="1.5">
+        <div class="hint"><b>自动绑定下 b 由公式锁定</b>：<code>b = 1.02·b<sub>c</sub></code>、
+          <code>b<sub>c</sub> = 2√(tan a)</code>。贴着闭合临界时蛋最不对称、最像蛋；
+          b 一大，钝端那两个根就分开，曲线迅速退化成<b>对称椭球</b>（实测 a=26°、b=2.2 时
+          半高比 1.00、L/W 0.51 —— 那就是"梨"的来源）。这个滑块只在关掉自动绑定时生效。</div>
+      </div>
+      <div class="row">
+        <div class="lab"><span>高宽比 L/W（蛋的胖瘦）</span><span class="v" id="vEGw">1.30</span></div>
+        <input type="range" id="sEGw" min="0.85" max="1.80" step="0.01" value="1.30">
+        <div class="hint">屏幕上的<b>高 ÷ 宽</b>。鸡蛋实测 <b>1.30~1.35</b>，正球是 1.00。
+          蛋<b>形状</b>由 ρ(ζ) 定、<b>胖瘦</b>由它定，两者互不影响 ——
+          这是「像不像蛋」唯一的第二个旋钮。呼吸时它从 <b>1.00 连续长到本值</b>，
+          所以"圆球 → 蛋"是同一个式子变过去的，不是两套模型。<br>
+          <b style="color:#ffd84a">⚠ 它只管形状、不管松紧</b>：想更贴就把它压到 1.05~1.15，
+          但那样蛋会被压扁（<b>变形</b>换取贴合）。<b>要松、又要保持蛋形 ⇒ 调「松紧」那一项</b>，
+          本项留在 1.30 别动。</div>
+      </div>
+      <div class="row">
+        <div class="lab"><span>松紧（外膨 · 越大越松）</span><span class="v" id="vEGm">18%</span></div>
+        <input type="range" id="sEGm" min="0" max="45" step="1" value="18">
+        <div class="hint"><b style="color:#ffd84a">这是唯一的「松紧」总旋钮</b>，往右是松、往左是紧。<br>
+          蛋壳半径 = 逐高度「最外侧那根丝」× (1+<b>外膨</b>)。
+          <b>0%</b> = 蛋壳与最外那根丝<b>相切</b>（贴死）；
+          <b style="color:#ffd84a">默认 18%</b> = 壳与丝之间留出明显的空中隙，<b>不贴丝</b>。<br>
+          注意它是<b>整体放大</b>而不是只胖一圈：L/W 被锁住（见上一项），
+          所以横向松开多少，纵向就跟着松开多少 —— 上下两个蛋尖会一起往外走，
+          <b>钝端比丝高出一截正是"松"的正常代价</b>，不是错。</div>
+      </div>
+      <div class="presets">
+        <button class="gh" id="egpb1">贴丝 6%（最紧）</button>
+        <button class="gh" id="egpb2">标准 12%</button>
+        <button class="gh on" id="egpb3">松 18%（默认）</button>
+        <button class="gh" id="egpb4">很松 30%</button>
+      </div>
+      <div class="row">
+        <div class="lab"><span>网格亮度</span><span class="v" id="vEGl">0.30</span></div>
+        <input type="range" id="sEGl" min="0.02" max="0.90" step="0.01" value="0.30">
+      </div>
+      <div class="hint" id="hEgg"></div>
+      <details class="fml">
+        <summary>曲面公式 · 尖为什么朝下 · 为什么它像蛋而不像梨（点开看）</summary>
+        <div class="fmlb">
+          <p><b style="color:#ffd84a">原式（参数台那颗「八度蛋」）</b>：
+            <code>x² + y² = 1/(b − z·sin a)² − (z·cos a)²</code>，
+            默认 <code>a = 33.7°</code>、<code>b = 1.666</code>。
+            它在 ζ&gt;0 侧有两个 ρ=0 的根，取<b>跨过 0 的那一段</b>就是完整的闭合蛋。</p>
+
+          <p><b style="color:#ffd84a">① 尖朝哪边，判据是「哪一段更长」（这条我判错过两次，写死在这里）</b><br>
+            剖面 ρ 从腰 r<sub>max</sub> 落到 0 的那一段：<b>越长，侧壁越接近平直锥面 ⇒ 看起来越「尖」；
+            越短，侧壁弯得越快 ⇒ 看起来越「钝」（球冠）</b>。<br>
+            实测 <code>a=33.7°、b=1.666</code>：+ζ 段长 <b>0.99</b>、−ζ 段长 <b>0.815</b>
+            ⇒ 原式是 +ζ 长 ⇒ <b>上尖下钝（尖朝上）</b>，与参数台截图完全一致。<br>
+            ⇒ 要让<b>蛋尖朝下</b>，把 ζ 取向整体镜像：<code>b + ζ·sin a</code>，
+            长段（0.99）落到 −ζ（下方）⇒ <b>下尖上钝</b> ✓</p>
+
+          <p><b style="color:#7fd8ff">② 本页用来覆膜的式子</b><br>
+            <code>x² + y² = Sr²·[ 1/(b + ζ·sin a)² − (ζ·cos a)² ]</code>，
+            <code>z = z₀ + h·ζ</code>，<code>r = Sr·ρ(ζ)</code>。<br>
+            后两式必须<b>同时成立</b>，合起来才叫那张旋转面 —— 这是下面所有结论的前提。
+            <code>a=0</code> 时两式都退化成半径 <code>1/b</code> 的正球，
+            所以「近圆球 → 蛋尖朝下」是<b>同一个式子连续变过去的</b>，不是两个形状硬切。</p>
+
+          <p><b style="color:#7fd8ff">③ b 必须贴着「闭合临界」b<sub>c</sub> = 2√(tan a)</b><br>
+            · <code>b &lt; b<sub>c</sub></code>：D2&lt;0，钝端那两个根不存在 ⇒ 不闭合，退化成开口锥面；<br>
+            · <code>b</code> 一大：两个根分开 ⇒ 曲线立刻退化成<b>对称椭球</b>。
+            实测 a=26°、b=2.2 时半高比 <b>1.00</b>、L/W 只剩 <b>0.51</b> ——
+            <b>这就是之前那颗「梨」的第二个来源</b>。<br>
+            所以自动绑定把 b 锁在 <code>1.02·b<sub>c</sub></code>，正好复现参数台的
+            a=33.7° / b=1.666。</p>
+
+          <p><b style="color:#7fd8ff">④ 屏幕长宽比是「形状」之外唯一影响观感的旋钮</b><br>
+            ρ(ζ) 决定<b>形状</b>，h/Sr 决定<b>胖瘦</b> —— 两者在数学上互相独立。<br>
+            上一版把 h 绑在「两个蛋尖贴住数据边界」，等于把胖瘦交给数据：
+            数据本身是宽扁的（H/W≈0.77），蛋就被压成 <b>L/W=0.9</b> 的宽蛋 ⇒ 洋葱/梨的观感
+            （这是「梨」的第一个来源）。<br>
+            现在 <b>h 由目标 L/W 反解</b>（面板滑块，默认 <b>1.30</b>，鸡蛋实测 1.30~1.35），
+            呼吸时 L/W 从 <b>1.00（正球）连续长到 1.30</b>。</p>
+
+          <p><b style="color:#ffd84a">④-b 「松紧」是独立的一个数，别拿 L/W 去当松紧用</b><br>
+            <b>松紧 = 外膨 margin</b>（默认 <b>18%</b>）。它在 <code>Sr = 最紧外接 × (1+margin)</code>
+            这一步进，并且因为 <code>h ∝ Sr·(1+margin)</code>（L/W 锁住）⇒
+            <b>横向松多少、纵向就跟着松多少，整壳等比张开，ρ(ζ) 一个系数都不动</b>，
+            所以蛋形不随松紧变化。<br>
+            反过来把 L/W 从 1.30 压到 1.05~1.15 也能"更贴"，但那是在
+            <b>把蛋压扁换贴合</b>（ρ 不变、h/Sr 变）—— 形状变了，所以那一档只适合"要贴不要蛋形"。
+            <b style="color:#ffd84a">要松、还要像蛋 ⇒ 只动松紧</b>：6%（贴丝最紧）/ 12%（标准）/
+            18%（默认，明显离丝）/ 30%（很松）。</p>
+
+          <p><b style="color:#ff5b7f">⑤ 蛋壳不吃孔径律（这条是最关键的一处修正）</b><br>
+            孔径律 <code>s(z) = exp[ ln(1/(R·C_A))·(1−smooth u) ]</code> 是按高度<b>非线性</b>压半径的
+            （R=2.5 时底部只剩 38%）。如果壳也乘它，屏幕上的半径就是
+            <code>Sr · ρ(ζ) · s(z)</code> —— <b>两个函数相乘，它就不再是旋转面了</b>：
+            下半部被额外压窄、上半部保留 ⇒ 轮廓必然鼓成「上宽下缩颈」的梨。<br>
+            现在壳在<b>显示空间里原生生长</b>：横向直接给 <code>Sr·ρ(ζ)</code>、纵向直接用显示 z
+            （与丝同一根纵轴，所以仍然对齐）；<code>s(z)</code> 只保留在
+            「把丝的原半径换算成屏幕半径」那一步 —— 那是丝的口径，不是壳的形状。</p>
+
+          <p><b style="color:#7fd8ff">⑥ 包裹怎么保证</b>：
+            <code>Sr = max<sub>层</sub>[ 包络(z) / ρ(ζ) ] × (1+外膨%)</code>，
+            逐层取最紧外接 ⇒ <b>构造上不可能漏</b>；
+            <code>__az.eggCover()</code> 再用十丝的原始采样点独立复核一遍（默认 0 漏出）。
+            分桶时桶内取 ρ 最小的那个 z（桶中心 ± 半桶宽），否则桶化会让边缘的点漏出去。</p>
+
+          <p><b style="color:#7fd8ff">⑦ 口径</b>：这是<b>纯渲染层</b>（形态层 · C 级）——
+            不碰 ODE、不碰积分、不碰十丝配色；关掉勾选即逐位恢复原画面
+            （<b>包括取景</b>，见 ⑧）。</p>
+
+          <p><b style="color:#ff5b7f">⑧ 取景（2026-10-20 补的，直接后果是"画面小了一圈"）</b><br>
+            松紧一放大，蛋的<b>钝端就跑到十丝上方</b>；原来取景只框十丝的包围盒，
+            蛋顶会被画布顶边<b>直接切掉</b>（实测 R=2.5、松紧 18% 时蛋顶超出顶边 <b>245 px</b>，
+            画面上只剩一排被砍断的金色经线）。<br>
+            现在取景把<b>蛋壳的 13×12 个采样点也并进包围盒</b>（用上一帧解出的蛋；
+            EGG 只由数据包络反解、不看 K ⇒ 无循环依赖），所以整个蛋一定在画面内。<br>
+            ⇒ <b>代价说明</b>：同一个 R 下，十丝比"只框十丝"时<b>小约 18%</b>
+            （蛋比十丝高约 27%，纵向约束先到）。要恢复原来的取景大小：<b>关掉蛋形覆膜</b>，
+            或把右下角缩放 <code>1.00x</code> 往上推（推太多蛋顶会重新出画）。</p>
+        </div>
+      </details>
+    </div>
+
+    <div class="grp">
       <div class="gt">曲速引擎演算 <span class="std">（Alcubierre 度规 × 吸引子轮廓）</span></div>
       <div class="row">
         <div class="lab"><span>泡体等效半径 R<sub>phys</sub></span><span class="v" id="vRP">100 m</span></div>
@@ -971,6 +1121,106 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
             <b style="color:#00c2ff">B</b> = 文献标准结果（度规、QI、Natário、Bobrick–Martire、Bondi–Sachs、van den Broeck）；
             <b style="color:#ffd84a">C</b> = 工程类比假设（轮廓→泡壁映射、实物飞碟）。
             一切输出都是度规框架下的模型量；<b style="color:#ff5b7f">空白 ≠ 已证伪，臆测 ≠ 已证实</b>。</p>
+        </div>
+      </details>
+    </div>
+    <div class="grp">
+      <div class="gt">蛋形覆膜 ↔ Aizawa 的联动口径 <span class="std">（回答「是不是在公式根上建立因子关联」）</span></div>
+      <details class="fml">
+        <summary>它是不是「在公式根上建立因子关联」？（点开看，可再收起）</summary>
+        <div class="fmlb">
+          <p><b style="color:#ffd84a">一句话答案</b>：<b>一半是，一半不是</b>。
+            没有把 Aizawa 的 ODE 系数 (a,b,c,d,e,f) 代进蛋形曲面公式；
+            真正在<b>公式根上同源的只有一条</b> —— 孔径律 <code>s(z)</code>
+            （而且它只作用在「丝的屏幕半径」上，不作用在壳的形状上，理由见上一块⑤）。
+            其余靠 <b>3 个几何因子 + 1 个呼吸律 + 1 条比例锁定 + 1 次数值反解</b>。</p>
+
+          <p><b style="color:#7fd8ff">① 唯一真正同源的一条：孔径律</b><br>
+            丝的屏幕半径 = 世界半径 × <code>s(z)</code>，
+            <code>s(z)=exp[ ln(1/(R·C_A))·(1−smooth u) ]</code>，u 是 z 在数据范围内的归一化高度。<br>
+            蛋壳的包络比较（<code>eggScan</code> / <code>eggCover</code>）用的<b>就是这一份</b>
+            <code>eggApMul()</code>，与 <code>trPt()</code> 里那段逐字相同。
+            所以 R 一动，「要包住的那一圈丝」和「算出来的 Sr」是接在<b>同一个形变算子</b>上的。</p>
+
+          <p><b style="color:#7fd8ff">② 三个几何因子（全部由吸引子数据反解）</b><br>
+            · <b>z₀</b>（蛋腰）← 包络最宽那一层：对 ≥98.5% 峰值的所有桶做<b>加权重心</b>
+            （直接取 argmax 会在相邻两桶间跳，蛋腰抖 0.08、Sr 抖 15%）；<br>
+            · <b>z<sub>p</sub></b>（曲线真实最宽处）← <code>dρ²/dζ=0</code> 的解析根，不是 ζ=0。
+            把 z<sub>p</sub> 对齐数据最宽层，轮廓在腰上才有<b>水平切线</b>；
+            拿 ζ=0 当腰会留一道看不见的折角（ρ′(0)≠0）；<br>
+            · <b>h</b> ← <b>由目标 L/W 反解</b>：<code>h = LW·2·Sr·ρ<sub>max</sub>/(t<sub>Hi</sub>−t<sub>Lo</sub>)</code>。
+            而 Sr 又依赖 h（ζ 位置变化）⇒ 外层扫 h（对数 72 点）、内层解 Sr，
+            取「所有层都在蛋内 + L/W 最接近目标」的那个。扫描而不是迭代：
+            这个目标函数在「刚好放下」的拐点处极陡，迭代会来回跳（实测 L/W 在 0.66~1.35 乱飞）。<br>
+            · <b>Sr</b> ← <code>max<sub>层</sub>[ 包络(z) / ρ(ζ) ] × (1+外膨%)</code>，
+            逐层取<b>最紧外接</b> ⇒ <b>包裹由构造保证</b>。</p>
+
+          <p><b style="color:#7fd8ff">③ a 跟呼吸走、b 锁在闭合临界</b><br>
+            <b>a = a<sub>peak</sub> · ln R / ln R<sub>ref</sub></b>：R=1 ⇒ a=0 ⇒ <code>ρ ≡ 1</code>（正球）；
+            R=R<sub>max</sub> ⇒ a=a<sub>peak</sub>。<br>
+            <b>b = 1.02 · 2√(tan a)</b> —— 贴着闭合临界取，此时曲线最不对称、最像蛋；
+            b 一偏离，钝端两根分开、迅速退化成对称椭球（半高比 1.00、L/W 0.51），
+            观感立刻变成「梨」。<b>这不是拟合参数，是几何约束定出来的。</b></p>
+
+          <p><b style="color:#ffd84a">④ 那 Aizawa 的 a,b,c,d,e,f 到底起什么作用？</b><br>
+            诚实交代，逐个说：<br>
+            · <b>d = 3.5</b>：<code>u=x+iy ⇒ dr/dt=(z−b)r、dθ/dt ≡ d</code>。
+            d <b>只决定方位角速度</b>，(r,z) 的轮廓里<b>根本看不到 d</b> —— 进不了蛋形公式，也不需要进；<br>
+            · <b>e = 0.25</b>：只改 z 方程里 <code>−r²·e·z</code> 这一项的权重；<br>
+            · <b>f = 0.1</b>：<code>+f·z·x³</code> 破坏旋转对称，含 <code>cos³θ</code> ⇒ 只让 (r,z) <b>失相</b>；
+            那点非轴对称已被「逐层实测包络」整条吸收；<br>
+            · <b>c=0.6 / a=0.95</b>：定 z 的平衡位置 ⇒ 影响包络的高度与最宽层，同样是通过<b>实测包络</b>进来。<br>
+            ⇒ <b>(a<sub>蛋</sub>, b<sub>蛋</sub>) 与 (c,d,e,f) 之间没有解析闭式</b>。
+            硬造一个对应只会是假的；这里走的是 <b>数值反解（几何配准）</b>。</p>
+
+          <p><b style="color:#7fd8ff">⑤ 口径速查</b><br>
+            · 公式根上同源：<b>1 条</b>（孔径律 <code>s(z)</code>，只用于丝→屏幕半径）<br>
+            · 几何层绑定：<b>3 个因子</b>（z₀ / z<sub>p</sub> / Sr）+ <b>1 个纵向比例</b>（h，由 L/W 锁定）
+            + <b>1 个呼吸律</b>（a）+ <b>1 条临界约束</b>（b=1.02·b<sub>c</sub>）<br>
+            · <b>没有做</b>：(a<sub>蛋</sub>,b<sub>蛋</sub>) ↔ (c,d,e,f) 的解析映射 —— 做不到，也没必要<br>
+            · <b>实测</b>（1500×950，刚性十丝，<b>松紧 18%（现默认）</b>，读数取收敛后）：<br>
+            　R=1.00 → a=0°（正球）、b=1.000、h=1.79、Sr=1.801、<b>L/W=1.00</b>、下段/上段=1.00<br>
+            　R=1.80 → a=28.6°、b=1.506、h=1.98、Sr=1.447、L/W=1.25、下段/上段=1.21<br>
+            　R=2.50 → a=33.7°、b=1.666、h=2.05、Sr=1.372、<b>L/W=1.30</b>、<b>下段/上段=1.21（尖朝下 ✓）</b><br>
+            　R=3.25 → a=33.7°、b=1.666、h=1.97、Sr=1.323、L/W=1.30、下段/上段=1.21，
+            十丝 <b>4440 个采样点 0 漏出</b><br>
+            · <b>松紧四档实测（R=2.50，轨迹填满时；读数随采样覆盖浮动 ±5%）</b>：<br>
+            　6%　→ Sr≈1.24、h≈2.0、L/W=1.30~<b>1.42</b>、腰部余量 7%~46%<br>
+            　12% → Sr≈1.30、h≈1.93、L/W=1.30、腰部余量 12.4%~63.6%<br>
+            　<b style="color:#ffd84a">18% → Sr≈1.37、h≈2.05、L/W=1.30、腰部余量 18.7%~82.9%（默认）</b><br>
+            　30% → Sr≈1.51、h≈2.26、L/W=1.30、腰部余量 30.7%~115%<br>
+            　🔎 <b>「最紧那层」的余量 ≡ 松紧值本身</b>（6%→7.0%、12%→12.4%、18%→18.7%、30%→30.7%），
+            说明 <code>Sr = 最紧外接 × (1+margin)</code> 这条是按定义兑现的。<br>
+            　🔎 余量<b>上限</b>远大于松紧值：松紧只保证<b>最紧那一层</b>，
+            蛋面不可能在整个腰身上同时贴住每一层（Aizawa 的径向包络与 Schauberger 的 ρ(ζ) 不同族）⇒
+            其余层必然更松，这是「拟合残差」，不是漏包。<br>
+            　🔎 <b>松紧调到 6% 时 L/W 会被顶高（实测最高到 1.42，不是 1.30）</b>：贴丝贴到极限后，
+            「所有层必须落在蛋内」这条约束接管，把 h 顶高 ⇒ 蛋变瘦长。
+            这跟"轨迹还没填满、包络偏小"是两回事，两者都会让 L/W 偏离目标，所以
+            <b>要稳定就松一点（18%）</b>。</p>
+
+          <p><b style="color:#7fd8ff">⑥ 怎么验证它真抱住了（可自己复算）</b><br>
+            控制台：<code>__az.eggCover()</code> 把十丝真实采样点投回蛋壳，数漏出去的个数
+            （默认 <b>0 漏出</b>）；<code>__az.eggState()</code> 打印 a、b、h、Sr、L/W、
+            两个蛋尖 z、下段/上段、余量区间。<br>
+            包络每 <b>18 帧</b>重扫一次 ⇒ 拖 R、开呼吸、改松紧（外膨）、改 L/W 都是<b>实时重解</b>。</p>
+
+          <p><b style="color:#ffd84a">⑦ 已修 / 仍存</b>：<br>
+            · <b>已修①梨子形</b>：两个来源一起修掉了 —— 一是纵向二次项 qζ² 把 z 刻度扭歪
+            （q=−0.15~−0.22，上段压扁、下段拉长），二是 h 被绑在「贴数据边界」把 L/W 压到 0.9。
+            现在 q 彻底删除（纵向严格线性），h 由 L/W 反解。<br>
+            · <b>已修②蛋壳吃掉孔径律</b>：壳曾经也乘 s(z)，屏幕半径成了 Sr·ρ·s(z) 的乘积，
+            不再是旋转面 ⇒ 下半部压窄、上半部保留 = 洋葱。现在壳在显示空间原生生长。<br>
+            · <b>已修③方向</b>：尖/钝被我判反过一次（长段才是尖）。现用 b+ζ·sin a 把长段放到下方。<br>
+            · <b>已修④漏包</b>：包络按桶取 max、而 ρ 用桶中心算 ⇒ 桶边缘的点会漏（实测 out=190）。
+            改成桶内三点取 ρ 最小；Sr 的时间平滑也加了「不得低于本次实测需求」的硬下限。<br>
+            · <b>仍存①</b>：蛋壳上端（钝端）比吸引子高出一截 —— 因为数据宽扁（H/W≈0.77）而蛋
+            L/W=1.30，多出来的高度只能落在上下两端。<b style="color:#ffd84a">这是"松"的正常代价</b>：
+            要更贴就减<b>松紧</b>（12% / 6%），<b>别去压 L/W</b>（那是把蛋压扁，形状就没了）；
+            而减松紧到 6% 时 L/W 会被"必须包住"顶到 1.42，蛋反而更瘦长 —— 两个方向都有代价，
+            18% 是实测最平衡的一档。<br>
+            · <b>仍存②</b>：贴紧蛋尖那几层壳比丝收得慢（ρ(ζ)~√ 的性质），肉眼是尖端一小段壳先收拢；
+            要抹平得让 ρ 分段，那就不是纯 Schauberger 曲面了。</p>
         </div>
       </details>
     </div>
@@ -1090,7 +1340,11 @@ var pX=new Float32Array(PNMAX), pY=new Float32Array(PNMAX), pZ=new Float32Array(
 var pW=new Float32Array(PNMAX);          /* 当前点的 ż，用于染色 */
 var pVX=new Float32Array(PNMAX), pVY=new Float32Array(PNMAX), pVZ=new Float32Array(PNMAX);
 var pAge=new Int32Array(PNMAX);
-var PART={on:false, n:900, src:'box', life:4000, warm:400, dim:0.30,
+/* spawnR：全局撒入的出生半径（薄管半径）。1.95 = 旧值（撒满整盒，会往壳外丢离群点）；
+ * 0.34 = 纯中轴，实测**会把云的 z 分布压塌**（z 的 1% 分位从 −1.20 缩到 −0.40）；
+ * 取 1.15 是实测折中：出生点在吸引子径向外壳（q90=1.25）以内，不产生壳外离群点，
+ * 又不改变云的宏观形状。见 _check/_dbg_cloud.cjs 的扫描记录。 */
+var PART={on:false, n:900, src:'box', life:4000, warm:400, dim:0.30, spawnR:1.45,
           slowOn:true, slowK:0.12, slowMs:6000, slowUntil:0, boostUntil:0,
           spd:0.30, acc:0, lapT:15};
 /** ★ 粒子速度倍率 spd（老师 2026-10-18：「粒子飞的太快，能调速吗？」）
@@ -1117,7 +1371,15 @@ function partSpawn(i){
   var th=Math.random()*2*Math.PI, r, z;
   if(PART.src==='top'){ r=0.95+0.85*Math.random(); z=1.72+0.55*Math.random(); }
   else if(PART.src==='bot'){ r=0.95+0.85*Math.random(); z=-0.50+0.35*Math.random(); }
-  else { r=1.95*Math.sqrt(Math.random()); z=-0.50+2.80*Math.random(); }
+  /* ★ 老师 2026-10-20 的建议（"全局撒入改成从坐标原点撒入"）—— 采纳，而且这是**真因之一**：
+     旧值 1.95·√rand 把新粒子撒到 r≈0…1.95 的整个盒子里，可吸引子自己的径向外壳只在 1.5 附近
+     （实测 900 点：q95=1.44、q99=1.51、max=2.18 只有一颗）。撒在壳外的点会一路飞出去
+     （ṙ=(z−b)r，z>b 时 r 指数增长），而泡半径是"每层最大半径"这种**极值统计**
+     ⇒ 一颗壳外的点就把那一层撑大，画面上就是肩部那两道"耳朵"。
+     改成 r≤0.34 的近轴薄管：粒子出生在流场核心，被 ṙ 甩出去，抛物线一样张开，
+     既符合"从原点撒入"的直觉，也不再往壳外丢离群点。
+     z 范围不变（−0.50…2.30），这样"从下往上都有"的观感还在。 */
+  else { r=PART.spawnR*Math.sqrt(Math.random()); z=-0.50+2.80*Math.random(); }
   pX[i]=r*Math.cos(th); pY[i]=r*Math.sin(th); pZ[i]=z;
   pW[i]=0; pVX[i]=0; pVY[i]=0; pVZ[i]=0; pAge[i]=0;
 }
@@ -1335,38 +1597,45 @@ function drawSrcBox(tp,K,cx,cy,fx,fy,count){
  * 泡泡膜（老师 2026-10-20）：「粒子层一开，画一张柔性的蓝色网格膜把粒子包起来」
  * --------------------------------------------------------------------------
  * 它是什么：一张**由粒子自己长出来的**网格曲面 —— 不是固定球，也不是贴图。
- *   ① 按 z 分 MEM.NZ 层，每层取该层粒子的**最大半径**当膜半径
- *      （取最大而不是平均：平均会切进粒子里面，「包裹」当场不成立）；
- *   ② 半径先过 3 点空间核，再过**非对称时间低通**（撑开 τ=70 ms / 松弛 τ=340 ms）
- *      ——「柔性」就是这两个滤波，不是为了好看随手加的抖动；
- *   ③ 两端各加一个**椭球圆顶帽**：帽高 = capK × 该端半径（默认 0.55），
- *      径向半轴 = 半径，r ∝ √(1−η²) 收到 0 ⇒ 闭合、有内外两面，且接缝处 dr/dz=0 与筒壁 C¹ 相接；
- *      （旧版是按总高的 9% 收口，帽高 0.28 对半径 1.5 ⇒ 长短轴 1:5.4，看着就是一块圆盘盖。
- *        老师 2026-10-20 两次指出「上下界面被圆盘面截断」⇒ 先改成按半径给高度。）
- *   ★ 但**只改几何是不够的**：老师第三次追问"为何还是一样"，真因在**投影**——
- *      trPtD 里 u0=(Z−zc)/ha 被 clamp 到 ±1，帽上所有点被钳到同一个 Zw
- *      ⇒ 半椭球在屏幕上被压成一块平板圆盘。几何早就是圆顶，画的却是圆的**投影**。
- *      现在膜走专用 trPtDm（z 不钳制），并把膜的 z 外沿**并进取景**（drawTail 里 fy0/fy1），
- *      让轨迹/粒子/膜共用同一个 K —— 否则只压粒子会把三者比例拉开。
- *      防退化判据：_check/probe_cap_flat.cjs（侧视时帽的屏幕 y 跨度 ÷ 筒身 ≈ 帽高/span）。
- *   ④ 再叠 θ 方向 2/3 阶行波，幅值合计 **1.25%**（= 原 4.8% × 0.26），
- *      且整体抬高 **2.0%**；帽上幅值再乘 (1−s)² 收干净。
+ *   ① 按 z 分 MEM.NZ 层，每层取该层粒子的**稳健上界**当膜半径
+ *      （层内第 k 大，k=max(2,2%·n)：**不能用最大值**，最大值是极值统计，
+ *        一颗粒子在 r=2.18 就能把整层撑到 2.18 —— 实测第 4 层 max=2.18 而 q95=1.05，
+ *        泡因此在"云已经收窄"的地方鼓出去，画面上就是两道耳朵）；
+ *   ② 半径先过 3 点空间核 + 最小泡颈下限，再过**非对称时间低通**
+ *      （撑开 τ=70 ms / 松弛 τ=340 ms）——「柔性」就是这两个滤波，不是随手加的抖动；
+ *   ③ **母线不是拼出来的**：把"该包住哪里"写成节点（14 个层中心的 r²、两个极点的 0），
+ *      连成一条**天然三次样条**（memSpline / memProfR）。C² ⇒ 层间无折点；极点 p=0 而 p'≠0
+ *      ⇒ r∝√(z_pole−z) 的正规圆顶。"帽"这个零件、以及"接缝"这个概念都取消了。
+ *      （历史：椭球帽的 κ=R/h²≈2.45 对筒身的 κ≈0 是二阶导断口 —— 切线接上了，
+ *        "弯的方式"却在接缝处换了零件，这就是老师 2026-10-20 圈出来的那道肩折。
+ *        更早还有一层坑：trPtD 把 z 钳在取景范围内 ⇒ 帽上所有点被压到同一高度，
+ *        圆的曲面被画成圆的盘。现在膜走专用 trPtDm，不钳 z。）
+ *   ④ 环在 z 上按**余弦分布**取样（两极密、赤道疏）—— 极点附近 r∝√(z远−z)，
+ *      均匀取样会把"离极点 1/57 总高"那一环画在 r≈0.4 上，泡顶当场变成锥尖。
+ *   ⑤ 再叠 θ 方向 2/3 阶行波，幅值合计 **1.25%**（= 原 4.8% × 0.26），整体抬高 **2.0%**。
  *      理由（老师 2026-10-20）：泡外有压力往里压 ⇒ 泡壁是绷着的，不该抖成果冻；
  *      抬高 2% 保证波谷仍不低于实测包络，粒子刺不破膜。
  *
  * 口径（不许含混）：
  *   · 膜是**纯渲染层**：不参与积分、不改 ODE / 粒子 / 十丝，唯一输入是粒子坐标；
  *   · 关掉粒子层就没有膜（它不是场景装饰）；
- *   · z 两端各 1% 的尾部点会落在膜外 —— 膜包住的是主体，不是牢笼。
+ *   · 包裹率**不再是 99.7%**：稳健上界剔掉了最大的那一颗，实测 98.5–99.5%
+ *     （个别刚注入/正在逃逸的点落在膜外，这是稳健统计的代价，读数照实显示）；
+ *   · 底部 z≈−1.105 是 ż 的稳定平衡点，实测 38% 的粒子堆在轴上 ⇒ 泡在底部自然收成细尾，
+ *     最小泡颈 neck=0.10×Rmax 只是防止它拉成发丝，不是把尾巴截掉。
  * ========================================================================== */
 var MEM={on:true, NZ:14, NM:18, NS:56, NR:12, BANDS:6, alpha:0.58,
-         capK:0.55, wob:0.26,          /* 封口高度 = capK×该端半径；wob = 抖动幅值倍率（外力压着）
+         capK:0.55, neck:0.10, wob:0.26, /* capK = 极点外伸 ÷ 该端半径（母线样条的端部节点位置）；
+                                          neck = 最小泡颈 ÷ 最大半径（见 memProfile ③b）；
+                                          wob = 抖动幅值倍率（外力压着）
                                           ⚠ capK 不能大：帽子越高越像半球，但泡的 z 总高会顶出画布
                                           ⇒ 帽被画布边缘横切，看起来**还是平面**。0.35 是"看得出圆顶
                                           又装得进框"的折中；配合 drawParticles 里的 K 自适应。 */
          segs:0, wrap:0, ready:false, lastT:0, T:0, capB:0, capT:0,
          zlo:-0.5, zhi:2.3, R:new Float32Array(16), Rt:new Float32Array(16)};
 var memVX=null, memVY=null, memVD=null, memVZ=null, memBuf=null, memTop=null, memH=null, memCum=null;
+/* 层内"前 16 大"缓存 + 每层真实点数：稳健上界（第 k 大）用，见 memProfile ② */
+var memTK=null, memKN=null, memCN=null;
 var memD0=0, memDS=1, memQ=[0,0,0,0,0];
 function memAlloc(){
   var NV=(MEM.NM+1)*(MEM.NS+1), i;
@@ -1376,6 +1645,7 @@ function memAlloc(){
   memBuf=[];
   for(i=0;i<MEM.BANDS;i++) memBuf.push({n:0, a:new Float32Array(NSG*4)});
   memTop=new Float32Array(MEM.NZ); memH=new Int32Array(48); memCum=new Int32Array(49);
+  memTK=new Float32Array(MEM.NZ*16); memKN=new Int32Array(MEM.NZ); memCN=new Int32Array(MEM.NZ);
 }
 /** 与 trPt 逐字同一套变换，只多写一个 out[4]=深度。
  *  ⚠ 两份代码必须同步：window.__mem.selfTest() 逐点对拍 (sx,sy)，差 >1e-9 就报错。 */
@@ -1418,21 +1688,72 @@ function trPtDm(tp,X,Y,Z,out){
   out[0]=x1s*pc; out[1]=-ups*pc; out[4]=dzs;
   return out;
 }
-/** 筒身半径（含**末端 20% 平滑压平**）。drawMembrane 与 __mem.rAt 都读它 ⇒ 单一来源，
- *  不许各写一份：压平是接缝 C¹ 的前提，谁漏了谁就在接缝处留一道折痕。 */
-function memBodyR(u){
-  var r=memR(u);
-  var e=Math.min(u,1-u)/0.20;
-  if(e>=1) return r;
-  var s=e*e*(3-2*e), Re=(u<0.5?memR(0):memR(1));
-  return Re+(r-Re)*s;
+/* ============================================================================
+ * 母线 = 一条 r² 关于 z 的**天然三次样条**（老师 2026-10-20 第四次）
+ * ----------------------------------------------------------------------------
+ * 旧做法是"筒身 + 两个椭球帽"拼起来：筒身按 14 层插值（14 个折点），
+ * 帽在接缝处曲率从 0 跳到 R/h²≈2.45（一阶导连续、二阶导断）——
+ * 切线接上了，但"弯的方式"在接缝处换了零件，这就是老师圈出来的那道肩折。
+ * 拼装的通病是接缝永远要"对齐"，所以这次**干脆不要接缝**：
+ *   把"该包住哪里"写成节点 —— 14 个层中心的 p=r²、两个极点的 p=0 —— 连成一条样条。
+ *   · C² ⇒ 层与层之间、筒身与端部之间都没有折点；
+ *   · 极点 p=0 且 p'≠0 ⇒ r=√p ∝ √(z_pole−z) ⇒ **正规圆顶**（既不是锥尖也不是平板）；
+ *   · 样条**过节点**（插值型，不是 B 样条那种平滑型）⇒ 平滑不会削掉包裹率；
+ *   · 唯一旋钮 MEM.capK：极点外伸 = capK × 该端半径（默认 0.55）。
+ * 每帧解一次三对角（n=16，Thomas，~40 次乘加），代价可忽略。
+ * ⚠ 单一来源：drawMembrane 与 __mem.rAt 都只调 memProfR()，改一处即两处同步。
+ * ========================================================================== */
+var memSZ=null, memSP=null, memSM=null, memSC=null, memSD=null;
+/** 建样条。返回总高（span+capB+capT），并把 capB/capT 平滑更新（取景要用）。 */
+function memSpline(zl,zh){
+  var N=MEM.NZ, n=N+2, i;
+  if(!memSZ||memSZ.length!==n){
+    memSZ=new Float64Array(n); memSP=new Float64Array(n);
+    memSM=new Float64Array(n); memSC=new Float64Array(n); memSD=new Float64Array(n);
+  }
+  var span=Math.max(0.2,zh-zl), hh=span/N;
+  var hB=Math.max(0.02, MEM.capK*memR(0)), hT=Math.max(0.02, MEM.capK*memR(1));
+  MEM.capB+=(hB-MEM.capB)*0.15; MEM.capT+=(hT-MEM.capT)*0.15;
+  var Z=memSZ, P=memSP, M=memSM, cp=memSC, dp=memSD, v;
+  Z[0]=zl-MEM.capB; P[0]=0;
+  for(i=0;i<N;i++){ v=memR((i+0.5)/N); Z[i+1]=zl+(i+0.5)*hh; P[i+1]=v*v; }
+  Z[n-1]=zh+MEM.capT; P[n-1]=0;
+  /* 天然样条：M[0]=M[n−1]=0（两端曲率 0）⇒ 极点附近 p 近似线性 ⇒ r∝√· 正是圆顶 */
+  M[0]=0; M[n-1]=0;
+  for(i=1;i<=n-2;i++){
+    var hm=Z[i]-Z[i-1], hp=Z[i+1]-Z[i];
+    var a=hm, bb=2*(hm+hp), c=hp;
+    var d=6*((P[i+1]-P[i])/hp-(P[i]-P[i-1])/hm);
+    if(i===1){ cp[i]=c/bb; dp[i]=d/bb; }
+    else { var den=bb-a*cp[i-1]; cp[i]=c/den; dp[i]=(d-a*dp[i-1])/den; }
+  }
+  M[n-2]=dp[n-2];                       /* 回代，末节点 M[n−1]=0 ⇒ 直接取 d' */
+  for(i=n-3;i>=1;i--) M[i]=dp[i]-cp[i]*M[i+1];
+  return span+MEM.capB+MEM.capT;
 }
-/** 膜半径：按高度在 NZ 个数之间线性插值（x 取桶中心对齐），已含 2% 余量 */
+/** 母线在任意 z 处的半径（= 画出来的膜；极点以外返回 0）。 */
+function memProfR(z){
+  var n=MEM.NZ+2, Z=memSZ, P=memSP, M=memSM, i, h, t, p, t1;
+  if(!Z) return 0;
+  if(z<=Z[0]||z>=Z[n-1]) return 0;
+  i=0; while(i<n-2 && z>Z[i+1]) i++;
+  h=Z[i+1]-Z[i]; t=(z-Z[i])/h; t1=1-t;
+  p=P[i]*t1+P[i+1]*t + h*h/6*((t1*t1*t1-t1)*M[i]+(t*t*t-t)*M[i+1]);
+  return p>0?Math.sqrt(p):0;
+}
+/** 层值查询：u∈[0,1] → 第 i 层的稳健半径（已含 2% 余量）。
+ *  现在**只给 memSpline 取节点用**：u=(i+0.5)/N 时正好命中层中心 x=i，
+ *  所以插值方式不影响节点值；留着 Catmull–Rom 是因为 capK·memR(0/1) 取端值时
+ *  端点镜像（i−1<0 取 R[0]）给出的是精确的层值，不会因为插值把端点拉偏。
+ *  ★ 历史（别删，避免重犯）：这一层原来是**线性**插值，在 14 个层中心各留一个折点，
+ *    实测 z≈1.12 处斜率从 +0.27 跳到 −0.53（≈22°）⇒ 筒身自己就是"多边形"。
+ *    现在整条母线由 memSpline 的 C² 样条给出，这条折点问题从根上没了。 */
 function memR(u){
-  var N=MEM.NZ, x=u*N-0.5;
+  var N=MEM.NZ, x=u*N-0.5, R=MEM.R;
   if(x<0)x=0; if(x>N-1)x=N-1;
-  var i=x|0, f=x-i, j=(i<N-1)?i+1:i;
-  return (MEM.R[i]*(1-f)+MEM.R[j]*f)*1.02;
+  var i=x|0, t=x-i, t2=t*t, t3=t2*t;
+  var r0=R[i>0?i-1:0], r1=R[i], r2=R[i<N-1?i+1:N-1], r3=R[i<N-2?i+2:N-1];
+  return 0.5*(2*r1+(-r0+r2)*t+(2*r0-5*r1+4*r2-r3)*t2+(-r0+3*r1-3*r2+r3)*t3)*1.02;
 }
 function memProfile(now){
   if(!memTop) memAlloc();
@@ -1452,15 +1773,46 @@ function memProfile(now){
   if(!MEM.ready){ MEM.zlo=zl; MEM.zhi=zh; }
   else { MEM.zlo+=(zl-MEM.zlo)*0.10; MEM.zhi+=(zh-MEM.zhi)*0.10; }
   var span=MEM.zhi-MEM.zlo, hh=span/N;
-  /* ② 每层最大半径（平方比较，最后统一开方） */
-  for(i=0;i<N;i++) memTop[i]=0;
+  /* ② 每层**稳健上界** = 层内第 k 大（k = max(2, 2%·n)），不是 max
+   * --------------------------------------------------------------------
+   * 老师 2026-10-20 第四次指出「上下穹顶到外轮廓过渡不自然」——
+   * 查下来的**第一真因不是封口公式，是 max 这个统计量**：
+   *   泡半径 = 每层粒子的最大半径 ⇒ **极值统计**，一颗粒子就能决定整层。
+   *   实测（900 点、14 层、全局撒入）：
+   *     第 4 层  n=77  max=2.18  q95=1.05   ← 一颗刚注入/外抛的离群点把整层撑到 2.18
+   *     第13层  n=70  max=1.48  q95=0.80   ← 泡顶半径被一颗点钉在 1.48（云的真实半径 0.8）
+   *   于是泡在"云已经收窄"的地方反而鼓出去 —— 画面上就是两道**耳朵**（老师圈的位置）。
+   *   第二真因：全局撒入的出生区原来 r 到 1.95（partSpawn 的 1.95·√rand），
+   *   而吸引子本身的径向外壳只在 1.5 附近（全局 q99=1.51），这些点在壳外，
+   *   正好是"耳朵"的原料 ⇒ 出生半径收到 1.45（见 PART.spawnR），再用稳健上界兜住。
+   *     ⚠ 出生半径**不能收到 0**（老师提议"从坐标原点撒入"，实测照做会翻车）：
+   *       r≤0.34 时粒子几乎只在轴上走 ḃ 的一维流，云的 z 分布被压塌 ——
+   *       z 的 1% 分位从 −1.20 缩到 −0.40，泡的下半截整个没了。1.45 是实测折中。
+   * k 取 max(2, …)：永远剔掉最大的那一颗，又不至于把云的外壳削掉太多
+   * （q98 级别的覆盖 ⇒ 包裹率 98–99%，个别正在逃逸的点落在膜外是设计允许的）。
+   * 代价必须承认：包裹率不再是 99.7%（读数照实显示）。 */
+  for(i=0;i<N;i++){ memKN[i]=0; memCN[i]=0; }
   for(i=0;i<m;i++){
     k=((pZ[i]-MEM.zlo)/hh)|0;
     if(k<0||k>=N) continue;
-    var r2=pX[i]*pX[i]+pY[i]*pY[i];
-    if(r2>memTop[k]) memTop[k]=r2;
+    memCN[k]++;
+    var v2=pX[i]*pX[i]+pY[i]*pY[i], b0=k*16, kn=memKN[k], jj;
+    if(kn<16){                                  /* 不满 16：插入排序（降序） */
+      jj=kn; memTK[b0+kn]=v2; memKN[k]=kn+1;
+      while(jj>0 && memTK[b0+jj-1]<v2){ memTK[b0+jj]=memTK[b0+jj-1]; memTK[b0+jj-1]=v2; jj--; }
+    }else if(v2>memTK[b0+15]){                  /* 满了：比末位大才挤进来 */
+      jj=15; memTK[b0+15]=v2;
+      while(jj>0 && memTK[b0+jj-1]<v2){ memTK[b0+jj]=memTK[b0+jj-1]; memTK[b0+jj-1]=v2; jj--; }
+    }
   }
-  for(i=0;i<N;i++) memTop[i]=Math.sqrt(memTop[i]);
+  for(i=0;i<N;i++){
+    var n_i=memCN[i], kk;
+    if(n_i<=0){ memTop[i]=0; continue; }
+    kk=Math.max(2, Math.round(n_i*0.02))-1;      /* 0 基下标 = 第 (kk+1) 大 */
+    if(kk>memKN[i]-1) kk=memKN[i]-1;
+    if(kk>15) kk=15;
+    memTop[i]=Math.sqrt(memTK[i*16+kk]);
+  }
   /* 空层借邻层（先下→上，再上→下） */
   for(i=1;i<N;i++) if(memTop[i]<0.02) memTop[i]=memTop[i-1];
   for(i=N-2;i>=0;i--) if(memTop[i]<0.02) memTop[i]=memTop[i+1];
@@ -1469,6 +1821,19 @@ function memProfile(now){
     var a=memTop[i>0?i-1:0], b=memTop[i], c=memTop[i<N-1?i+1:N-1];
     MEM.Rt[i]=Math.max(0.20, a*0.25+b*0.5+c*0.25);
   }
+  /* ③b 最小"泡颈"：细过 neck×Rmax 的部分**不是泡，是线** —— 直接收口
+   * ---------------------------------------------------------------
+   * 底端 z≈−1.105 是 ż 的稳定平衡点 ⇒ 实测有 **38% 的粒子堆在轴上**（层内 q95≈0.02）。
+   * 稳健上界如实报出 0.21 的半径，于是母线在底部拉出一根**细针/长尾巴**（老师 2026-10-20
+   * 圈的正是底部这块）。水里的空泡不会长成针：颈部半径有下限，过了下限就是另一根泡了。
+   * 所以给母线的**目标值**加一个下限 neck×Rmax，再让样条去平滑这段过渡。
+   *   · 只抬不减 ⇒ 包裹率不受影响（轴上的粒子本来就在 r≈0，永远在膜内）；
+   *   · 端口的圆顶由 capK×该端半径给出，于是底部变成一个**钝圆的收口**而不是针尖。
+   * neck 是形状取舍不是物理常数：0.30 对应"底部圆头直径 ≈ 最宽处的 0.6 倍"。 */
+  var Rmx=0;
+  for(i=0;i<N;i++) if(MEM.Rt[i]>Rmx) Rmx=MEM.Rt[i];
+  var floorR=MEM.neck*Rmx;
+  for(i=0;i<N;i++) if(MEM.Rt[i]<floorR) MEM.Rt[i]=floorR;
   /* ④ 非对称时间低通：被撑开是弹性的（快），回缩是黏的（慢） */
   var dt=now-MEM.lastT; if(!(dt>0)||dt>200)dt=16; MEM.lastT=now;
   for(i=0;i<N;i++){
@@ -1499,20 +1864,13 @@ function drawMembrane(tp,K,cx,cy,fx,fy){
   var now=performance.now();
   memProfile(now);
   MEM.T=now*0.001;
-  var NM=MEM.NM, NS=MEM.NS, i, j, b, u, zz, rr, th, w, rw, idx, T=MEM.T, sB, sT;
+  var NM=MEM.NM, NS=MEM.NS, i, j, b, u, zz, rr, th, w, rw, idx, T=MEM.T;
   var zl=MEM.zlo, zh=MEM.zhi, span=Math.max(0.2, zh-zl);
-  /* ── 封口（老师 2026-10-20 第二次）：高度按**半径**给，不按 span 的 9% ──
-     旧版封口高只有 0.09·span≈0.28，而该处半径≈1.5 ⇒ 长短轴比 1:5.4，
-     画出来就是"圆盘面"——曲率在接缝处被迫在 0.28 的高度里从竖直转到水平，
-     看起来像被一块平板截断。现在改成半椭球：短轴 = capK×半径（默认 0.72），
-     长轴 = 半径 ⇒ 比例 1:1.39，是真正的**圆顶帽**，且接缝处 dr/dz=0 ⇒ 与筒壁 C¹ 相接。 */
-  var Rb=memR(0), Rt2=memR(1);
-  var hB=MEM.capK*Rb, hT=MEM.capK*Rt2;
-  MEM.capB+=(hB-MEM.capB)*0.15; MEM.capT+=(hT-MEM.capT)*0.15;
-  hB=MEM.capB; hT=MEM.capT;
-  var totH=span+hB+hT, p1=hB/totH, p2=(hB+span)/totH;
-  /* 抖动幅值：外力压着泡壁 ⇒ 只剩 0.26× 原值（±1.25%），且在帽上再乘 (1−s)² 收干净，
-     泡顶是光滑圆顶而不是果冻。基线也从 1.062 降到 1.020（波谷仍高于实测包络）。 */
+  /* 母线：一条 r² 的三次样条（见 memSpline 的注释）—— 没有接缝，也没有"帽"这个零件 */
+  var totH=memSpline(zl,zh);
+  var zb=zl-MEM.capB, zt=zh+MEM.capT;
+  /* 抖动幅值：外力压着泡壁 ⇒ 只剩 0.26× 原值（±1.25%），极点附近再收干净，
+     泡顶是光滑圆顶而不是果冻。基线 1.020（波谷仍高于实测包络）。 */
   var wobA=MEM.wob;
   var dmin=1e9, dmax=-1e9;
   var bx0=1e9,bx1=-1e9,by0=1e9,by1=-1e9,nan=0;
@@ -1520,24 +1878,16 @@ function drawMembrane(tp,K,cx,cy,fx,fy){
   for(i=0;i<=NS;i++){
     u=i/NS;
     var fade=0.12, base=1.020, e2, ss;
-    if(u<p1){                                  /* 下帽：sB=0 圆顶 → 1 接缝 */
-      sB=u/p1; zz=zl-(1-sB)*hB; rr=Rb*Math.sqrt(Math.max(0,1-(1-sB)*(1-sB)));
-      fade=0.12*sB*sB;                         /* 帽上几乎不抖（顶点处完全不动） */
-    }else if(u>p2){                            /* 上帽 */
-      sT=(u-p2)/(1-p2); zz=zh+sT*hT; rr=Rt2*Math.sqrt(Math.max(0,1-sT*sT));
-      fade=0.12*(1-sT)*(1-sT);
-    }else{                                     /* 筒身 */
-      sB=(u-p1)*totH; zz=zl+sB;
-      var uu=sB/span; rr=memBodyR(uu);
-      /* ★ C¹：末端 20% 内把半径**平滑压平**到该端值 —— 于是接缝处 dr/dz = 0，
-         正好与椭球帽的水平切线接上。不这么做的话，帽必须先"水平出发"而筒壁还在斜着走，
-         接缝处就是一个折痕（实测两侧斜率差 3.9 / 4.4）。
-         平滑用 smoothstep（两端一阶导为 0），所以压平本身也不引入新的折点。 */
-      e2=(uu<0.5?uu:1-uu)/0.20;
-      ss=(e2>=1)?1:e2*e2*(3-2*e2);
-      fade=0.12+0.88*ss;                       /* 接缝处抖动幅值与帽上连续（0.12 ↔ 0.12） */
-    }
-    if(rr<0.012) rr=0.012;                      /* 顶点兜底改成按比例的小圈（旧值 0.03 会留一个可见小洞） */
+    /* ★ 环在 z 上按**余弦分布**取样，不是均匀分布：
+      极点附近 r ∝ √(z远−z)，z 若均匀取样，"离极点 1/57 总高"那一环会落在 r≈0.4 上，
+      泡顶当场被画成一个**锥尖**（旧版 27 环里只有 4 环落在帽上，帽就是这么变成锥的）。
+      余弦分布 = 球面"极角均匀"那套取样：两极自然密、赤道疏，圆顶才圆得出来。 */
+    zz=zb+(zt-zb)*(0.5-0.5*Math.cos(Math.PI*u));
+    rr=memProfR(zz);
+    e2=Math.min(zz-zb, zt-zz)/(0.25*totH);
+    ss=(e2>=1)?1:e2*e2*(3-2*e2);
+    fade=0.12+0.88*ss;                          /* 极点附近几乎不抖（旧版是 (1−s)²） */
+    if(rr<0.012) rr=0.012;                      /* 顶点兜底：极点是半径 0 的退化环，给个小圈 */
     for(j=0;j<=NM;j++){
       th=2*Math.PI*j/NM;
       /* 鼓动：只留 2/3 阶（NM=18 时 3θ 每周期还有 6 个采样，再高就混叠） */
@@ -1589,13 +1939,12 @@ function drawMembrane(tp,K,cx,cy,fx,fy){
   ctx.restore();
   MEM.segs=tot;
   MEM.bb={x0:bx0,x1:bx1,y0:by0,y1:by1,nan:nan,cx:cx,cy:cy,K:K,W:W,H:H,dA:dA};
-  /* 包裹率：与 memR 同一口径（膜最小处 = 1.052−0.048 = 1.004 倍），供页面/探针共用 */
+  /* 包裹率：判据 = 画出来的母线 memProfR（不是层值 memR，也不是理论式），供页面/探针共用 */
   var inside=0, n=0, uu;
   for(i=0;i<m;i++){
     zz=pZ[i]; if(zz<zl||zz>zh) continue;
-    uu=(zz-zl)/span;
     rr=Math.sqrt(pX[i]*pX[i]+pY[i]*pY[i]);
-    n++; if(rr<=memR(uu)*1.004+0.015) inside++;
+    n++; if(rr<=memProfR(zz)+0.015) inside++;    /* 判据就是画出来的那条母线 */
   }
   MEM.wrap=n?inside/n:0;
   return tot;
@@ -2090,12 +2439,26 @@ function draw(){
      只在**粒子模式**并入（十丝模式有自己的 AFITK，膜只是陪衬，并进去会把十丝整体缩小）。
      这一并会让轨迹/粒子/膜用**同一个 K**，三者比例才不会被拉开。
      符号：gy = −up0·p0，侧视时 cel=0 ⇒ gy = −Zw，故 z 越大 gy 越小。 */
+  /* ★ 2026-10-20：取景改成**沿母线采样**，不再只看两个极点。
+     只看极点（±z·sinEL）会漏掉"最宽那一圈"的贡献：低仰角时最宽圈在屏幕上下各
+     多占 r·cosEL，再加透视（远侧放大 6/(6−0.5r)）⇒ 实测 EL=25/8 时泡顶离画布只剩
+     9–15 px，看着像被切掉。这里沿母线取 9 点，按 |z·sinEL| + r·|cosEL| 求上界。 */
   if(MEM.ready && MEM.on && PART.on && !ANU.on){
-    var selM=Math.sin(P.EL*Math.PI/180);
-    if(Math.abs(selM)>0.05){
-      var yA=-(MEM.zhi+MEM.capT)*selM, yB=-(MEM.zlo-MEM.capB)*selM;
-      var yLo=(selM>0?yA:yB), yHi=(selM>0?yB:yA);
-      if(yLo<fy0)fy0=yLo; if(yHi>fy1)fy1=yHi;
+    var selM=Math.sin(P.EL*Math.PI/180), celM=Math.cos(P.EL*Math.PI/180);
+    if(Math.abs(selM)>0.02){
+      /* 有符号取样：每一圈的上下缘 = z·sinEL ± r·cosEL（再乘透视），取整体上下界。
+         不能写成 ±max（对称化）：母线 z 从 −1.5 到 2.5 本来就不对称，对称化会让泡偏到
+         画面上半，底下空一大片（实测底部余量 211px vs 顶部 51px）。 */
+      var zbM=MEM.zlo-MEM.capB, ztM=MEM.zhi+MEM.capT, uHi=-1e9, uLo=1e9, sM, zM, rM, pcM, uA, uB;
+      for(sM=0;sM<=9;sM++){
+        zM=zbM+(ztM-zbM)*sM/9;
+        rM=memProfR(zM); pcM=6/(6-0.5*Math.max(0.2,rM));
+        uA=(zM*selM+rM*Math.abs(celM))*pcM;
+        uB=(zM*selM-rM*Math.abs(celM))*pcM;
+        if(uA>uHi)uHi=uA; if(uB>uHi)uHi=uB;
+        if(uA<uLo)uLo=uA; if(uB<uLo)uLo=uB;
+      }
+      if(-uHi<fy0)fy0=-uHi; if(-uLo>fy1)fy1=-uLo;
     }
   }
   // 自动取景（平滑，避免抖动）
@@ -2446,6 +2809,28 @@ function drawAnu(){
     }
   }
   if(any){
+    /* ---- 蛋壳也参与取景（2026-10-20 老师要"松"之后补的）----
+     * 为什么必须：外膨一加，蛋的钝端就跑到十丝的上方；若只按十丝取景，
+     * 蛋顶会被画布顶边直接切掉（实测 R=2.5 / 松紧 18% 时蛋顶超出顶边 245 px，
+     * 画面上只看得到一排被砍断的金色经线，看不出"蛋"）。
+     * 用**上一帧解出的蛋**（EGG 只由数据包络反解，不看 K）在显示空间采 13×12 个点并进包围盒，
+     * 所以没有循环依赖；首帧 EGG 还没解出时退回十丝包围盒，随后靠 FITLERP 平滑张开。
+     * 代价：整个画面会比只框十丝时小一圈 —— 这是"要把整个蛋看完"必然要付的。 */
+    if(EGG.on && EGG.ok && EGG.Sr>0 && EGG.h>0){
+      var _sAe=Math.sin(EGG.A), _cAe=Math.cos(EGG.A), _oe=[0,0,0,0];
+      for(var ezi=0;ezi<=12;ezi++){
+        var _ze=EGG.tLo+(EGG.tHi-EGG.tLo)*ezi/12;
+        var _rre=eggRhoCS(_ze,_sAe,_cAe,EGG.B)*EGG.Sr; if(!(_rre>0)) continue;
+        var _zze=EGG.z0+EGG.h*_ze;
+        for(var eth=0;eth<12;eth++){
+          var _the=eth*Math.PI/6;
+          eggTr(tp,_rre*Math.cos(_the),_rre*Math.sin(_the),_zze,_oe);
+          if(!isFinite(_oe[0])||!isFinite(_oe[1])) continue;
+          if(_oe[0]<fx0)fx0=_oe[0]; if(_oe[0]>fx1)fx1=_oe[0];
+          if(_oe[1]<fy0)fy0=_oe[1]; if(_oe[1]>fy1)fy1=_oe[1];
+        }
+      }
+    }
     var fw=Math.max(fx1-fx0,1e-3), fh=Math.max(fy1-fy0,1e-3);
     var kt=Math.min(0.86*W/fw, 0.80*H/fh);
     if(kt>900)kt=900; if(kt<5)kt=5;
@@ -2457,6 +2842,10 @@ function drawAnu(){
   ctx.globalCompositeOperation='lighter';
   ctx.lineCap='round'; ctx.lineJoin='round';
   var lwT=2.2*P.LW, lwN=0.9*P.LW;
+  /* ---- 蛋形覆膜（纯增量渲染层：先画蛋壳，十丝后画压在上面）----
+     位置刻意放在十丝描边之前：additive 下先后不影响合成结果，
+     但蛋壳先画可以让十丝的线帽/交点完整落在蛋壳之上，视觉层次更干净。 */
+  eggWrapTry(tp,K,cx,cy,(AFITK===null?0:AFITX),(AFITK===null?0:AFITY));
   /* cmap：null = 原来的「3 粗金 / 7 细七色」单色路径（几何与逐像素结果都不变）；
      非 null = 沿丝长跑色相，分段描（见下方 ②） */
   var cmName=cmapActive(N);
@@ -2527,6 +2916,512 @@ function drawAnu(){
   phyDraw();
 }
 var anuDrawN=0;
+
+/* ==========================================================================
+ * 蛋形覆膜 EGG —— 十丝外面套一层金黄色经纬网格蛋壳（2026-10-20 老师要求）
+ * --------------------------------------------------------------------------
+ * ★ 曲面公式（**尖朝下** / 倒蛋）：
+ *     原式（尖朝上）：x² + y² = 1/(b − z·sin a)²  −  (z·cos a)²
+ *     本页所用      ：x² + y² = Sr²·[ 1/(b + ζ·sin a)² − (ζ·cos a)² ] ,  ζ=(z−z₀)/h
+ *   把 (−) 换成 (+) 就是把锥顶从 +b/sin a 翻到 −b/sin a ⇒ 长锥脚落到下方 ⇒ **蛋尖朝下**。
+ *   a=0 时两式都退化成半径 1/b 的球 ⇒「近圆球 → 倒蛋」是同一个式子连续变过去的。
+ *   归一化：ρ(ζ) = b·√[ 1/(b+ζ sin a)² − (ζ cos a)² ]，ρ(0)=1 ⇒ Sr 就是蛋腰半径。
+ *
+ * ★ 三条自动绑定（全部由吸引子自己的数据反解，不手调也包得住）：
+ *   ① z₀ = 包络最宽的那一层（蛋腰对准最外侧那圈丝）
+ *   ② h  = 由「两个蛋尖恰好探出数据 z 范围」定，闭合条件 b² ≥ 4·tan a 由扫描保证
+ *   ③ Sr = max_z[ 包络(z)/ρ(ζ) ] × (1+余量)  ⇒ **包裹由构造保证**，任意 a/b 都不漏
+ *
+ * ★ 显示空间口径（关键）：十丝画的时候乘了孔径 s(z)=exp[ln(1/(R·C_A))·(1−smooth u)]，
+ *   所以「包络」也必须按 r·s(z) 来比。本层做法：蛋壳的**显示半径** R_disp = Sr·ρ(ζ)，
+ *   反解成世界半径 R_w = R_disp / s(z) 再交给 trPt ⇒ 屏上所见恰好是 R_disp，
+ *   与拟合用的量一字不差（否则 1/R 缩放会让 R=2.5 时蛋壳凭空小 2.4 倍）。
+ *   ⇒ 呼吸时 s(z) 变 ⇒ 包络与 a 一起变 ⇒ 蛋壳自然从近圆球长成倒蛋。
+ *
+ * ★ 纯增量：不碰 ODE / 积分 / 十丝配色 / 取景 / GIF；关掉勾选即逐位恢复原画面。
+ * ========================================================================== */
+var EGG={on:true, auto:true, aDeg:33.7, b:1.5, margin:0.18, pad:0.06, lwT:1.30,
+         nm:12, np:12, al:0.30, alP:0.75, lw:0.9,
+         zp:0, rmax:1, LWt:1.3,
+         A:0, B:1.5, z0:0, h:1, q:0, Sr:1, tLo:-1, tHi:1, ok:false,
+         zTipLo:0, zTipHi:0, hintSig:'',
+         slackMin:0, slackMax:0, LoverW:1, coneR:1, aLive:0, bLive:1.5, fills:0};
+var EGG_NB=40;      /* 包络分桶数：28 太粗，最宽层会在相邻两桶间来回跳 ⇒ Sr 每 18 帧抖 15%（踩过） */
+var _egZ=new Float64Array(EGG_NB), _egE=new Float64Array(EGG_NB);
+var _egT=[0,0,0,0,0];
+var _egX=new Float32Array(96), _egY=new Float32Array(96);
+var _egRefit=0;      /* 帧计数器：每 18 帧重扫一次包络（呼吸/拖参数时才需要更新） */
+
+/** 孔径系数：与 trPt 里的逐字一致（抽出来给蛋壳反解世界半径用） */
+function eggApMul(tp,Z){
+  var u=(Z-tp.zlo)/tp.span; if(u<0)u=0; if(u>1)u=1;
+  var s=Math.exp(tp.logR*(1-smooth(u)));
+  if(tp.TAU>1e-6){
+    if(u<tp.TAU)        s*=Math.sqrt(Math.max(0,1-Math.pow((tp.TAU-u)/tp.TAU,2)));
+    else if(u>1-tp.TAU) s*=Math.sqrt(Math.max(0,1-Math.pow((u-(1-tp.TAU))/tp.TAU,2)));
+  }
+  return s;
+}
+/** ★ 舒伯格蛋形旋转面（本页用来覆膜的式子）：
+ *      x²+y² = 1/(b + ζ·sin a)² − (ζ·cos a)²
+ *  剖面（归一到 ζ=0 处 = 1）：ρ(ζ) = b·√[1/(b + ζ sin a)² − (ζ cos a)²]，−1 表示该处没有壳。
+ *
+ *  ⚠️⚠️ 关于「尖朝上还是朝下」，这里踩过两次，记录下来：
+ *   ① 曲线本身：ρ 从腰 rmax 落到 0 的那一段，**越长越像"长锥"、越短越像"球冠"**。
+ *      也就是说 —— **长的那段在视觉上是"尖"，短的那段是"钝"**（不是反过来，我一开始判错了）。
+ *      实测 a=33.7°、b=1.666：+ζ 段长 0.99、−ζ 段长 0.815 ⇒ 原式(b−ζsina) 是 +ζ 长 ⇒ 上尖下钝。
+ *   ② 所以要让**蛋尖朝下**，必须用 (b + ζ·sin a)：它把整个 ρ(ζ) 沿 ζ 镜像，
+ *      长段（0.99）落到 −ζ（下方）⇒ 下尖上钝 ✓。a=0 时两式都退化为半径 1/b 的正球。
+ *  ⚠️ b 必须 > b_c = 2·√(tan a)（否则 D2<0，钝端那两个根不存在 ⇒ 不闭合）。
+ *      贴着 b_c 取最不对称、最像蛋（默认 1.02·b_c；参数台 a=33.7°/b=1.666 正是这个口径）。
+ */
+function eggRhoCS(zeta,sA,cA,b){
+  var d=b+zeta*sA; if(d<=0)return -1;
+  var q=zeta*cA, v=1/(d*d)-q*q;
+  return v>0?b*Math.sqrt(v):-1;
+}
+function eggRho(zeta,a,b){ return eggRhoCS(zeta,Math.sin(a),Math.cos(a),b); }
+/** ★ 蛋壳专用投影：与 trPt 逐项相同，**只去掉 z 的夹紧**。
+ *  为什么必须去掉：trPt 里 Zw=zc+ha·clamp((Z−zc)/ha) —— 那是为了把 LAM/GAM 的
+ *  轮廓整形夹在数据 z 范围内（十丝永远不越界，所以对它们零影响）。
+ *  但蛋壳的两个尖**本来就在吸引子 z 范围之外**，一旦被夹紧，上下两截会被压成
+ *  同一个平面 ⇒ 蛋壳看起来是个「平头桶」，蛋尖根本看不见（踩过）。
+ *  其它每一项（孔径 s、旋转、仰角、透视）与 trPt 完全一致，所以蛋壳与十丝仍然严丝合缝。 */
+var _egMul=1;
+/** 显示空间的纵向坐标：与 trPt 里 Zw 逐字一致（数据 z 都落在 [zc−ha, zc+ha] 内，clamp 无影响）。
+ *  蛋壳的 z 全部在这个坐标系里量，因此「蛋尖超出数据多少」也是显示空间的量。 */
+function eggZw(tp,Z){
+  var u=(Z-tp.zc)/tp.ha; if(u<-1)u=-1; if(u>1)u=1;
+  return tp.zc+tp.ha*tp.LAM*(u+tp.GAM*u*u);
+}
+/** ★★★ 蛋壳专用投影 —— 关键：**是「显示空间里的原生蛋」，不是「原空间的蛋投到显示空间」**。
+ *
+ *  r = Sr·ρ(ζ)、z(显示) = z₀ + h·ζ   ← 屏幕上这两个式子必须同时成立，才叫 Schauberger 旋转面。
+ *
+ *  曾经的做法是走 trPt：x_disp = (Sr·ρ·cosθ)·s(z)。问题是 s(z)=exp[logR·(1−smooth u)]
+ *  本身随高度强烈非线性（R=2.5 时底部只剩 38%），于是屏幕上的半径 =
+ *      Sr · ρ(ζ) · s(z(ζ))
+ *  两个函数相乘 ⇒ 它根本不是旋转面了：下半部被额外压窄、上半部保留，
+ *  轮廓就变成「上鼓下缩颈」的梨子（老师指出的问题，qζ² 只是叠加放大的第二个错）。
+ *  修法不是调参，而是**把 s(z) 从壳上拿掉**：
+ *    · 壳的横向半径直接给 Sr·ρ(ζ)（地球坐标系里长出来的蛋）；
+ *    · 壳的纵向坐标用显示 z（与丝同一个 z 轴，所以仍然对齐）；
+ *    · s(z) 只保留在「把丝的原半径换成显示半径」这一步（eggScan / eggCover 里），
+ *      因为它描述的是「丝在屏幕上被压缩了多少」，那是丝的口径，不是壳的形状。
+ */
+function eggTr(tp,X,Y,Zd,out){
+  var x1s=X*tp.caz-Y*tp.saz, y1s=X*tp.saz+Y*tp.caz;
+  var ups=y1s*tp.cel+Zd*tp.sel, dzs=-y1s*tp.sel+Zd*tp.cel;
+  var pf=6/(6-dzs*0.5);
+  out[0]=x1s*pf; out[1]=-ups*pf; out[2]=Zd; out[3]=dzs;
+  return out;
+}
+/** 蛋尖 ζ（解析，PLUS 式 b+ζsina）：ρ=0 ⇔ (b+ζs)(ζc) = ±1
+ *   +1: cs·ζ² + cb·ζ − 1 = 0 ⇒ 一正一负，正根 = (−cb+√D1)/(2cs)   ← 上端（止于球冠，钝）
+ *   −1: cs·ζ² + cb·ζ + 1 = 0 ⇒ 需 D2=cb²−4cs≥0，两负根，取较大 = (−cb+√D2)/(2cs) ← 下端（长，尖）
+ *  蛋段 = [tLo, tHi]，tLo 长（下，尖）、tHi 短（上，钝）。
+ *  b<b_c ⇒ D2<0 ⇒ 不闭合（开口锥面）⇒ null。 */
+function eggTips(a,b){
+  var s=Math.sin(a), c=Math.cos(a), cs=c*s;
+  if(cs<1e-9){ var t0=1/Math.max(1e-6,b); return [-t0,t0]; }   /* a=0：正球 */
+  var cb=c*b, D1=cb*cb+4*cs, D2=cb*cb-4*cs;
+  if(D2<0) return null;
+  var d2=2*cs;
+  var tHi=(-cb+Math.sqrt(D1))/d2;
+  var tLo=(-cb+Math.sqrt(D2))/d2;
+  if(!(tHi>1e-9)||!(tLo<-1e-9)) return null;
+  return [tLo,tHi];
+}
+/** 蛋腰 ζ（曲线最宽处）：−s/(b+ζs)³ − ζc² = 0 在 (tLo,0) 内的根（二分）。
+ *  **这才是曲线最宽处**，不是 ζ=0。把最宽处对齐数据最宽层，轮廓在腰上才有水平切线。 */
+function eggPeak(a,b,tLo){
+  var s=Math.sin(a), c=Math.cos(a), cc=c*c;
+  if(s<1e-9) return 0;
+  function f(z){ var d=b+z*s; return -s/(d*d*d)-z*cc; }
+  var hi=0, lo=tLo*0.999999, flo=f(lo), fhi=f(hi);
+  if(!(flo>0)||!(fhi<0)) return tLo*0.5;
+  for(var it=0;it<60;it++){
+    var mid=0.5*(lo+hi), fm=f(mid);
+    if(fm>0) lo=mid; else hi=mid;
+  }
+  return 0.5*(lo+hi);
+}
+/** 逐高度扫「最外侧那根丝」的显示半径 r·s(z)，存进 _egZ/_egE 网格 */
+function eggScan(tp){
+  var N=Math.max(1,ANU.nWire|0), i, w, k, any=false;
+  for(k=0;k<EGG_NB;k++){ _egE[k]=0; }
+  /* 分桶用**显示 z**（与蛋壳同一个纵轴）：原来按原始 z 分桶，而 trPt 的 LAM/GAM 会把 z
+   *  重新刻度，桶位与壳位就对不上，尤其 GAM≠0 时整条壳会错半层。 */
+  var Zdl=eggZw(tp,zlo), Zdh=eggZw(tp,zhi), span=(Zdh-Zdl)||1;
+  var kmax=Math.max(1+P.aBo/100, 1-P.aBi/100);   /* 粗丝外膨：包络要算到最外那根 */
+  for(w=0;w<N;w++){
+    var n=aCount(ANU.rigid?0:w); if(n<8) continue;
+    /* 每丝约 600 采样点（10 丝 6000 点，每 18 帧一次，可忽略）。
+     * 原来是 130 点 ⇒ 40 桶下每桶只分到 3~4 点，单帧会漏掉局部最宽处 ⇒
+     * Sr 逐帧抖 7%、余量读数还会假性飙到 900%（踩过）。 */
+    var stp=Math.max(1,Math.floor(n/600));
+    for(i=0;i<n;i+=stp){
+      aPt(ANU.rigid?0:w,i,_aP);
+      /* 屏幕上的半径 = 原半径 × 孔径律（只在这一步用 s(z)，壳不吃它） */
+      var r=Math.sqrt(_aP[0]*_aP[0]+_aP[1]*_aP[1])*kmax*eggApMul(tp,_aP[2]);
+      var u=(eggZw(tp,_aP[2])-Zdl)/span; if(u<0)u=0; if(u>1)u=1;
+      k=(u*EGG_NB)|0; if(k>=EGG_NB)k=EGG_NB-1;
+      if(r>_egE[k])_egE[k]=r;
+      any=true;
+    }
+  }
+  if(!any) return false;
+  for(k=0;k<EGG_NB;k++){
+    _egZ[k]=Zdl+span*(k+0.5)/EGG_NB;      /* ← 显示 z */
+    /* 空桶（该高度丝没采样到）用左右邻桶的较大值补，免得 Sr 求解时读到 0 */
+    if(_egE[k]<=0){
+      var l=(k>0?_egE[k-1]:0), rr2=(k<EGG_NB-1?_egE[k+1]:0);
+      _egE[k]=Math.max(l,rr2);
+    }
+  }
+  return true;
+}
+/** 自动绑定求解：a 随呼吸相位、b 由「最紧凑且不漏」扫描、Sr 逐层外接 */
+function eggSolve(tp){
+  var snap=!EGG.ok, prevSr=EGG.Sr, prevZc=EGG.z0;   /* 参数被改过 ⇒ 立即重解；否则走平滑 */
+  if(!eggScan(tp)){ EGG.ok=false; return; }
+  var i, bestI=0, est=0;
+  for(i=0;i<EGG_NB;i++) if(_egE[i]>est){ est=_egE[i]; bestI=i; }
+  if(!(est>1e-6)){ EGG.ok=false; return; }
+
+  /* ---------- ① 数据的腰：包络最宽层（显示 z） ---------- */
+  /* 不能直接取 argmax 桶：蛋腰附近包络几乎是平的，argmax 会在相邻两桶之间来回跳
+   * ⇒ 蛋腰抖 0.08、Sr 跟着抖 15%，画面上蛋壳会「呼吸之外还自己涨缩」。
+   * 改成「≥98.5% 峰值的所有桶做加权重心」⇒ 完全连续。 */
+  var Zc=0, ws=0;
+  for(i=0;i<EGG_NB;i++){
+    var wgt=_egE[i]-est*0.985;
+    if(wgt>0){ Zc+=wgt*_egZ[i]; ws+=wgt; }
+  }
+  Zc = ws>1e-9 ? Zc/ws : _egZ[bestI];
+  if(!snap && isFinite(prevZc) && Math.abs(Zc-prevZc)<0.3*Math.max(1e-6,Math.abs(Zc))){
+    Zc=prevZc+(Zc-prevZc)*0.6;
+  }
+
+  /* ---------- ② a：随呼吸 0 → a_peak（R=1 ⇒ 0=正球；R=Rmax ⇒ a_peak） ---------- */
+  var kk=1;
+  if(EGG.auto){
+    var rref=Math.max(2, P.Rmax);
+    kk=Math.log(Math.max(1,P.R))/Math.log(rref);
+    if(kk<0)kk=0; if(kk>1.6)kk=1.6;
+  }
+  var A=EGG.aDeg*Math.PI/180*kk;
+
+  /* ---------- ③ b：永远贴着「闭合临界」b_c=2√(tan a) 取 1.02 倍 ----------
+   *  为什么必须贴临界：b→b_c 时 (b−ζs)(ζc)=±1 的两个正根合并，蛋的钝端收到最尖，
+   *  不对称度到上限；b 一大，两个根分开 ⇒ 曲线迅速退化成对称椭球（半高比→1.00）。
+   *  实测：a=33.7°、b=1.666(=1.02·b_c) 时 L/W=1.45，正是参数台里那颗蛋的口径；
+   *        a=26°、b=2.20 时 L/W 只剩 0.51，形状已经是扁椭球（老师看到的"梨"）。 */
+  var B, tt;
+  if(A>1e-4){
+    var bc=2*Math.sqrt(Math.tan(A));
+    B=Math.max(0.04, bc*1.02);
+    tt=eggTips(A,B);
+    for(var tr=0; !tt && tr<26; tr++){ B*=1.05; tt=eggTips(A,B); }
+  }else{
+    B=1.0; tt=[-1.0,1.0];                       /* a=0：半径 1/B 的正球 */
+  }
+  if(!tt){ EGG.ok=false; return; }
+  var tL=tt[0], tH=tt[1], Lz=tH-tL;
+  var sA=Math.sin(A), cA=Math.cos(A);
+  /* 蛋腰 ζ（曲线最宽处）：把最宽处对齐数据最宽层，腰上才有水平切线 */
+  var zp=eggPeak(A,B,tL);
+  var rmax=eggRhoCS(zp,sA,cA,B);
+  if(!(rmax>0)||!(Lz>1e-6)){ EGG.ok=false; return; }
+
+  /* ---------- ④ 屏幕长宽比锁定 ----------
+   *  蛋的「形状」由 ρ(ζ) 定，而「胖瘦」由 h/Sr 定 —— 两者互相独立。
+   *  上一版把 h 绑在"两个蛋尖贴住数据边界"，等于把胖瘦交给数据 ⇒
+   *  数据本身是扁的（H/W≈0.77），蛋就被压成 L/W=0.9 的宽蛋 ⇒ 看着像梨/洋葱。
+   *  这里改成：h 由目标 L/W 反解，h = LW·2·Sr·rmax/Lz；
+   *  而 Sr 又依赖 h（ζ 位置变化）⇒ 不动点迭代，且 h 有下限（所有有丝层必须落在蛋内）。
+   *  呼吸时 LW 从 1.00（正球）连续长到 LW_peak（蛋），所以"圆球→蛋"是同一个式子变过去的。 */
+  var LWt=1+(EGG.lwT-1)*kk;
+  if(!(LWt>0.2)) LWt=1.2;
+  var zl=_egZ[0], zh=_egZ[EGG_NB-1];
+  var limLo=Math.min(zp-tL, tH-zp);            /* 腰到较近那个蛋尖的 ζ 距离 */
+  var hMin=1e-6;
+  for(i=0;i<EGG_NB;i++){
+    var dz=Math.abs(_egZ[i]-Zc), need0=dz/Math.max(1e-9,limLo*0.999);
+    if(need0>hMin) hMin=need0;
+  }
+  /* 做法：**外层扫 h、内层解 Sr**，取「可行且 L/W 最接近目标」的那个。
+   *  为什么不用不动点迭代：h 与 Sr 互为函数，目标函数在"刚好放下"的拐点处很陡，
+   *  迭代会来回跳（实测 L/W 在 0.66~1.35 之间乱飞、还会漏包）。扫描是穷举，一定稳。 */
+  var _egHalf=Math.abs(_egZ[1]-_egZ[0])*0.5;
+  var NHT=72, h=hMin, Sr=0, bestD=1e9, bestH=hMin, bestSr=0, hMax=hMin*9;
+  for(var hi2=0; hi2<=NHT; hi2++){
+    var hT=hMin*Math.pow(hMax/hMin, hi2/NHT);      /* 对数等距：小 h 侧也扫得细 */
+    var S2=0, oks=true;
+    for(i=0;i<EGG_NB;i++){
+      /* 桶内三点取「ρ 最小」：_egE[i] 是桶内最大值，而 ρ 在桶内变化，
+       * 只拿桶中心算 ρ 会偏乐观 ⇒ 桶边缘的点漏出（实测 out=190 就是这么来的）。 */
+      var rmin=1e18;
+      for(var jj=-1;jj<=1;jj++){
+        var rj=eggRhoCS(zp+((_egZ[i]+jj*_egHalf)-Zc)/hT,sA,cA,B);
+        if(rj<=0){ rmin=-1; break; }
+        if(rj<rmin) rmin=rj;
+      }
+      if(rmin<0){ oks=false; break; }              /* 有层掉到蛋外 ⇒ 这个 h 不可行 */
+      var nd=_egE[i]/rmin; if(nd>S2)S2=nd;
+    }
+    if(!oks||!(S2>0)) continue;
+    /* 必须用「含外膨」的宽度算 L/W：读数与屏幕用的都是含外膨的 Sr，
+     * 若扫描用裸 Sr，目标 1.30 会被外膨吃掉 1/(1+margin)（外膨 18% 时实测只到 1.22）。 */
+    var lwAct=hT*Lz/Math.max(1e-9,2*S2*(1+EGG.margin)*rmax);
+    var dd=Math.abs(lwAct-LWt);
+    if(dd<bestD){ bestD=dd; bestH=hT; bestSr=S2; }
+  }
+  if(!(bestSr>0)){ EGG.ok=false; return; }
+  h=bestH; Sr=bestSr;
+  /* 首选解若因扫描步长把 L/W 拉偏，就近微调（仍要复核覆盖） */
+  for(var it=0;it<20;it++){
+    /* ⚠ 这里的 L/W 也必须按「含外膨」的宽度算，与扫描（上面 lwAct）、最终读数
+     *   （LoverW，用的是已乘过 (1+margin) 的 Sr）三者同一口径。
+     *   之前这里漏了 (1+margin) ⇒ 微调把 h 一路往下拽，
+     *   目标 1.30 实际只到 1.22（外膨越大偏得越多，纵向那部分"松"被悄悄吃掉）。 */
+    var lwN=h*Lz/Math.max(1e-9,2*Sr*(1+EGG.margin)*rmax);
+    if(Math.abs(lwN-LWt)<0.004) break;
+    var hTry=h*(lwN>LWt? 0.997: 1.003);
+    var S4=0, ok4=true;
+    for(i=0;i<EGG_NB;i++){
+      var rmin4=1e18;
+      for(var jj2=-1;jj2<=1;jj2++){
+        var rj4=eggRhoCS(zp+((_egZ[i]+jj2*_egHalf)-Zc)/hTry,sA,cA,B);
+        if(rj4<=0){ rmin4=-1; break; }
+        if(rj4<rmin4) rmin4=rj4;
+      }
+      if(rmin4<0){ ok4=false; break; }
+      var nd3=_egE[i]/rmin4; if(nd3>S4)S4=nd3;
+    }
+    if(!ok4||!(S4>0)) break;
+    h=hTry; Sr=S4;
+  }
+  Sr*=1+EGG.margin;
+
+  /* 蛋腰的绝对 z：z(ζ)=z₀+h·ζ，要求 z(zp)=Zc ⇒ z₀=Zc−h·zp */
+  var z0=Zc-h*zp;
+  /* 时间平滑（包络采样噪声会让 Sr 抖 ±7%，画面蛋壳自己涨缩）。
+   *  ⚠️ 平滑只能"更松"不能"更紧"：Sr 必须 ≥ 本次实测需求，否则会漏包（踩过 out=190）。
+   *  所以先记下需求值 SrReq，平滑后取 max。 */
+  var SrReq=Sr;
+  if(!snap && isFinite(prevSr) && prevSr>0.2 && Math.abs(Sr/prevSr-1)<0.55){
+    Sr=prevSr+(Sr-prevSr)*0.6;
+    if(Sr<SrReq) Sr=SrReq;
+  }
+  EGG.A=A; EGG.B=B; EGG.z0=z0; EGG.h=h; EGG.q=0; EGG.zp=zp; EGG.Sr=Sr;
+  EGG.tLo=tL; EGG.tHi=tH; EGG.rmax=rmax; EGG.LWt=LWt;
+
+  /* ---------- ⑤ 读数 ---------- */
+  var sls=[], nst=0;
+  for(i=0;i<EGG_NB;i++){
+    if(_egE[i] < est*0.12) continue;             /* 空桶 / 尖部残余 */
+    var zz1=(_egZ[i]-z0)/h;
+    var fFrac=(zz1-tL)/Math.max(1e-9,Lz);
+    if(fFrac<0.20 || fFrac>0.80) continue;       /* 只统计腰身段：尖部 ρ~√ 收得慢，比值会假性爆表 */
+    var r3=eggRhoCS(zz1,sA,cA,B);
+    if(r3<=0) continue;
+    sls.push(r3*Sr/_egE[i]-1); nst++;
+  }
+  var smin=0, smax=0;
+  if(nst){
+    sls.sort(function(x,y){ return x-y; });
+    smin=sls[Math.min(nst-1,Math.floor(nst*0.10))];
+    smax=sls[Math.min(nst-1,Math.floor(nst*0.90))];
+  }
+  EGG.aLive=A*180/Math.PI; EGG.bLive=B;
+  EGG.slackMin=smin; EGG.slackMax=smax;
+  var ztl=z0+h*tL, zth=z0+h*tH;
+  EGG.zTipLo=ztl; EGG.zTipHi=zth;
+  EGG.LoverW=h*Lz/Math.max(1e-6,2*Sr*rmax);      /* 屏幕上的 高/宽 */
+  EGG.coneR=(Zc-ztl)/Math.max(1e-6,zth-Zc);      /* 下尖长 / 上尖长：>1 = 尖朝下 */
+  EGG.ok=true; EGG.hMin=hMin; EGG.hMax=hMax;
+  /* 读数自刷新（原来只在拖滑块时更新，自动绑定/呼吸下会一直停在「求解失败」） */
+  var sig=EGG.aLive.toFixed(1)+'|'+EGG.bLive.toFixed(2)+'|'+EGG.Sr.toFixed(3)+'|'+
+          EGG.slackMin.toFixed(3)+'|'+EGG.slackMax.toFixed(3)+'|'+EGG.LoverW.toFixed(2);
+  if(sig!==EGG.hintSig){ EGG.hintSig=sig; eggHint(); }
+}
+/** 纵向映射：z(ζ)=z₀+h·ζ —— **严格线性**。
+ *  这是 Schauberger 旋转面的定义之一（另一个是 r=Sr·ρ(ζ)）。两者必须同时成立，
+ *  否则 ρ(ζ) 不再是「高度 z 处的半径」而是「某个被扭曲的纵坐标处的半径」，
+ *  屏幕上看到的轮廓就不再是蛋剖面曲线（上一版加了 qζ² 变梨子，已彻底删除，q 只保留
+ *  字段名用于向下兼容，恒 0）。 */
+function eggZof(zeta){ return EGG.z0 + EGG.h*zeta; }
+/** 反解：给定世界 z 求 ζ（线性 ⇒ 直接除） */
+function eggZetaOfZ(z){ return (z-EGG.z0)/EGG.h; }
+function eggHint(){
+  var e=document.getElementById('hEgg'); if(!e)return;
+  if(!EGG.on){ e.innerHTML='<span style="color:#5d6f92">蛋形覆膜未开启</span>'; return; }
+  if(!EGG.ok){ e.innerHTML='<span style="color:#ff9a9a">蛋壳求解失败（换个 a/b 或等轨迹填满缓冲）</span>'; return; }
+  var t=(EGG.tHi-EGG.tLo)>0?1:0;
+  e.innerHTML=
+    '<b style="color:#ffd700">蛋壳已包裹</b>　·　a = <b>'+EGG.aLive.toFixed(1)+'°</b>'+
+    '　·　b = <b>'+EGG.bLive.toFixed(2)+'</b>'+
+    '　·　腰半径 Sr = <b>'+EGG.Sr.toFixed(3)+'</b>'+
+    '　·　松紧 <b style="color:#ffd700">'+(EGG.margin*100).toFixed(0)+'%</b>'+
+    '<br>包裹余量　腰身 <b>'+(EGG.slackMin*100).toFixed(1)+'% ~ '+(EGG.slackMax*100).toFixed(1)+'%</b>'+
+    '（0% = 蛋壳与最外那根丝相切；尖部 ρ→0 那几层不计入）'+
+    '<br>蛋尖 z　下 <b>'+EGG.zTipLo.toFixed(2)+'</b> / 上 <b>'+
+      EGG.zTipHi.toFixed(2)+'</b>　·　'+
+      '<b style="color:#ffd700">下锥脚 / 上锥脚 = '+EGG.coneR.toFixed(2)+'</b>'+
+      (EGG.coneR>1.12?'　<span style="color:#ffd700">（尖朝下 ✓）</span>'
+        :(EGG.coneR>0.9?'　<span style="color:#ffd84a">（近对称 ⇒ 接近正球）</span>'
+                       :'　<span style="color:#ff9a9a">（尖朝上）</span>'))+
+    '　·　高宽比 L/W = <b>'+EGG.LoverW.toFixed(2)+'</b>'+
+      '<span style="color:#4e5c7a">（目标 '+EGG.LWt.toFixed(2)+'）</span>'+
+    '<br><span style="color:#4e5c7a">曲面口径（ζ 取向镜像 ⇒ 尖朝下）：'+
+      'x²+y² = 1/(b+ζ·sin a)² − (ζ·cos a)²，z = z₀+h·ζ，r = Sr·ρ(ζ)。'+
+      'b 锁在闭合临界 1.02·b<sub>c</sub>（b<sub>c</sub>=2√tan a）。'+
+      'a 随 ln R 从 0 长到峰值 ⇒ R=1 时是正球。壳不在显示空间乘孔径律。</span>';
+}
+/** 状态快照（供探针/回归断言） */
+/* ---------- 纬线的「非线性（等弧长）分布」 ----------
+ * 老师 2026-10-20：「接近上下顶点/底点时网格不密，下端看起来尖尖的、不丝滑，
+ *   要智能非线性画横向网格线」。
+ * 原因：ζ 均匀取纬线 ⇒ 蛋尖附近 ρ(ζ)~√(ζ−ζ_tip) 变化极快，一圈一圈之间在**屏幕上**
+ *   越靠尖越稀（弧长差几十倍），尖部只剩 1~2 圈 ⇒ 看成折线尖。
+ * 做法：先把整条经线按**世界弧长**积分出一张表（KS=240 段），
+ *   再按「等弧长」取纬线的 ζ ⇒ 屏幕上的纬线间距基本均匀，尖部自然变密、收得丝滑。
+ *   表每帧重建一次（240 次 sqrt，可忽略），因为它随 a/b/Sr/h 一起变。 */
+var EGG_KS=240;
+var _egArc=null;
+function eggBuildArc(A,B,Sr,h){
+  if(!_egArc || _egArc.length!==EGG_KS+1) _egArc=new Float64Array(EGG_KS+1);
+  var sA=Math.sin(A), cA=Math.cos(A), t0=EGG.tLo, sp=EGG.tHi-t0;
+  var pR=0, pZ=t0*h, acc=0;
+  for(var k=0;k<=EGG_KS;k++){
+    var ze=t0+sp*k/EGG_KS;
+    var r=eggRhoCS(ze,sA,cA,B); if(r<0)r=0;
+    var R=r*Sr, Z=ze*h;                        /* 线性纵向映射：弧长按真实 z 积分 */
+    if(k>0){ var dR=R-pR, dZ=Z-pZ; acc+=Math.sqrt(dR*dR+dZ*dZ); }
+    _egArc[k]=acc; pR=R; pZ=Z;
+  }
+  EGG.arcLen=acc||1;
+}
+/** sfrac∈[0,1]（按弧长的归一化位置）→ ζ */
+function eggZetaS(sfrac){
+  var s=sfrac*EGG.arcLen, lo=0, hi=EGG_KS;
+  while(hi-lo>1){ var m=(lo+hi)>>1; if(_egArc[m]<s) lo=m; else hi=m; }
+  var a0=_egArc[lo], a1=_egArc[hi], f=(a1>a0)?(s-a0)/(a1-a0):0;
+  return EGG.tLo+(EGG.tHi-EGG.tLo)*(lo+f)/EGG_KS;
+}
+/** 纬线的「智能」分布：线性 + Chebyshev（两端密、腰稀）的混合。
+ *  纯等弧长在屏幕上仍会「尖部稀」——因为仰角 EL 把 z 压扁，尖部那一段的屏幕弧长
+ *  只有中段的几分之一。混 35% 的 Chebyshev（s'=½−½cos πs）就把纬线往两端吸，
+ *  蛋尖处一圈接一圈收得丝滑，腰身也不至于太空。 */
+function eggSpacedS(u){ return 0.65*u + 0.35*(0.5-0.5*Math.cos(Math.PI*u)); }
+function eggState(){
+  return {on:EGG.on, auto:EGG.auto, ok:EGG.ok,
+          aDeg:EGG.aLive, aPeak:EGG.aDeg, b:EGG.bLive, Sr:EGG.Sr,
+          z0:EGG.z0, h:EGG.h, tLo:EGG.tLo, tHi:EGG.tHi,
+          tipLo:EGG.zTipLo, tipHi:EGG.zTipHi, q:EGG.q,
+          zp:EGG.zp, rmax:EGG.rmax, lwT:EGG.lwT, LWt:EGG.LWt,
+          LoverW:EGG.LoverW, coneR:EGG.coneR, slackMin:EGG.slackMin, slackMax:EGG.slackMax,
+          margin:EGG.margin, R:P.R};
+}
+/** 包裹率实测：把十丝的真实采样点逐点投进蛋壳方程，数漏出去的。
+ *  （Sr 是从包络反解的，构造上应当 100%；这里用**原始点**独立复核一次，
+ *    两者口径不同 ⇒ 若对不上就是有 bug，不靠"我算过所以没问题"。） */
+function eggCover(){
+  if(!EGG.ok) return {n:0, out:0, cov:0, worst:0};
+  var tp=mkTP(), N=Math.max(1,ANU.nWire|0), i, w, k=0, out=0, worst=0;
+  var sA=Math.sin(EGG.A), cA=Math.cos(EGG.A);
+  var kmax=Math.max(1+P.aBo/100, 1-P.aBi/100);
+  for(w=0;w<N;w++){
+    var n=aCount(ANU.rigid?0:w); if(n<8) continue;
+    var stp=Math.max(1,Math.floor(n/400));
+    for(i=0;i<n;i+=stp){
+      aPt(ANU.rigid?0:w,i,_aP);
+      var zz=_aP[2];                       /* 原始 z：只用来算孔径律 */
+      var rDisp=Math.sqrt(_aP[0]*_aP[0]+_aP[1]*_aP[1])*kmax*eggApMul(tp,zz);
+      var zeta=eggZetaOfZ(eggZw(tp,zz));    /* 却用**显示 z** 去和蛋壳对位 */
+      var rEgg=eggRhoCS(zeta,sA,cA,EGG.B)*EGG.Sr;
+      k++;
+      if(rEgg<=0 || rDisp>rEgg){ out++; var ex=rEgg>0?(rDisp/rEgg-1):1; if(ex>worst)worst=ex; }
+    }
+  }
+  return {n:k, out:out, cov:k?1-out/k:0, worst:worst};
+}
+/** 画蛋壳：经纬网格，alpha 按方位角做前后明暗（sin(θ+az) 越靠后越暗） */function eggWrapTry(tp,K,cx,cy,fx,fy){
+  if(!EGG.on) return;
+  _egRefit++;
+  if(_egRefit>=18 || !EGG.ok){ _egRefit=0; eggSolve(tp); }
+  if(!EGG.ok) return;
+  var aW=EGG.al*decayA();    /* 蛋壳亮度独立于「丝线亮度 sAL」，否则调暗丝壳一起暗 */
+  if(!(aW>0.003)) return;
+  var A=EGG.A, B=EGG.B, z0=EGG.z0, h=EGG.h, Sr=EGG.Sr;
+  var sA=Math.sin(A), cA=Math.cos(A);
+  var t0=EGG.tLo, t1=EGG.tHi, spanZ=t1-t0;
+  if(!(spanZ>1e-6)) return;
+  var NM=Math.max(3,Math.min(32,EGG.nm|0)), NP=Math.max(2,Math.min(36,EGG.np|0));
+  var NS=44, i, k, psi, cs, sn, zeta, rr, zz, mul, rw;
+  var azr=az, dA=0.55;                             /* 前后明暗对比：背面压到 45% */
+  eggBuildArc(A,B,Sr,h);                           /* 等弧长表（用于纬线非线性分布） */
+  ctx.globalCompositeOperation='lighter';
+  ctx.lineCap='round'; ctx.lineJoin='round';
+
+  /* ① 经线：每条一个固定方位角 ⇒ 一个统一的明暗系数。
+     每条描两遍：先粗一圈的低 alpha 光晕（"场"的感觉），再细线本体。
+     颜色刻意用**偏白的浅金** rgb(255,232,140) —— 十丝的 3 粗是 rgb(255,215,0)，
+     太接近会糊成一片分不出"壳"和"丝"。 */
+  var lwM=Math.max(0.5, EGG.lw*P.LW);
+  for(k=0;k<NM;k++){
+    psi=2*Math.PI*k/NM; cs=Math.cos(psi); sn=Math.sin(psi);
+    var back=Math.sin(psi+azr);                    /* >0 = 后半圈（远） */
+    var al=aW*(1-dA*(0.5+0.5*back));
+    if(al<0.004) continue;
+    ctx.beginPath();
+    for(i=0;i<=NS;i++){
+      zeta=eggZetaS(0.002+0.996*(i/NS));           /* 等弧长 ⇒ 蛋尖附近点更密（两端各留 0.2% 不落到奇点） */
+      rr=eggRhoCS(zeta,sA,cA,B); if(rr<=0){ rr=0; }
+      zz=eggZof(zeta);
+      eggTr(tp,rr*Sr*cs,rr*Sr*sn,zz,_egT);        /* rr*Sr 就是**屏幕半径**：壳不吃孔径律 */
+      var sx=cx+(_egT[0]-fx)*K, sy=cy+(_egT[1]-fy)*K;
+      if(i===0) ctx.moveTo(sx,sy); else ctx.lineTo(sx,sy);
+    }
+    ctx.lineWidth=lwM*3.6;
+    ctx.strokeStyle='rgba(255,206,60,'+(al*0.20).toFixed(3)+')';
+    ctx.stroke();
+    ctx.lineWidth=lwM;
+    ctx.strokeStyle='rgba(255,232,140,'+al.toFixed(3)+')';
+    ctx.stroke();
+  }
+  /* ② 纬线：每圈按方位角分 8 段，逐段算明暗（同一圈前亮后暗） */
+  var lwP=Math.max(0.4, EGG.lw*0.75*P.LW);
+  for(k=0;k<NP;k++){
+    zeta=eggZetaS(eggSpacedS((k+0.5)/NP));         /* 等弧长 + Chebyshev 混合 ⇒ 尖部自动加密 */
+    rr=eggRhoCS(zeta,sA,cA,B); if(rr<=0) continue;
+    zz=eggZof(zeta);
+    var SEG=8, per=Math.max(4,Math.round(NS/SEG));
+    for(var q=0;q<SEG;q++){
+      var p0=2*Math.PI*q/SEG, p1=2*Math.PI*(q+1)/SEG;
+      var mid=(p0+p1)*0.5;
+      var al2=aW*EGG.alP*(1-dA*(0.5+0.5*Math.sin(mid+azr)));
+      if(al2<0.004) continue;
+      ctx.beginPath();
+      for(i=0;i<=per;i++){
+        var th=p0+(p1-p0)*i/per;
+        eggTr(tp,rr*Sr*Math.cos(th),rr*Sr*Math.sin(th),zz,_egT);
+        var s2=cx+(_egT[0]-fx)*K, s3=cy+(_egT[1]-fy)*K;
+        if(i===0) ctx.moveTo(s2,s3); else ctx.lineTo(s2,s3);
+      }
+      ctx.lineWidth=lwP*3.0;
+      ctx.strokeStyle='rgba(255,198,60,'+(al2*0.18).toFixed(3)+')';
+      ctx.stroke();
+      ctx.lineWidth=lwP;
+      ctx.strokeStyle='rgba(255,214,80,'+al2.toFixed(3)+')';
+      ctx.stroke();
+    }
+  }
+  ctx.globalCompositeOperation='source-over';
+  EGG.fills++;
+}
+
 
 function frame(now){
   var dtms=now-lastT; lastT=now; frameCount++;
@@ -2988,6 +3883,58 @@ var _b1=document.getElementById('apb1'), _b2=document.getElementById('apb2');
 if(_b1)_b1.onclick=function(){setAnuRigid(true);};
 if(_b2)_b2.onclick=function(){setAnuRigid(false);};
 anuHint();
+
+/* ---------- 蛋形覆膜 UI（2026-10-20） ---------- */
+var ckEgg=document.getElementById('ckEgg');
+if(ckEgg)ckEgg.addEventListener('change',function(){
+  EGG.on=ckEgg.checked; EGG.ok=false; _egRefit=99; eggHint();
+});
+var ckEggAuto=document.getElementById('ckEggAuto');
+if(ckEggAuto)ckEggAuto.addEventListener('change',function(){
+  EGG.auto=ckEggAuto.checked; EGG.ok=false; _egRefit=99; eggHint();
+});
+bind('sEGa','vEGa','xEggA',function(x){return x.toFixed(1)+'°';},function(){
+  EGG.aDeg=P.xEggA; EGG.ok=false; _egRefit=99; eggHint();
+});
+bind('sEGb','vEGb','xEggB',function(x){return x.toFixed(2);},function(){
+  EGG.b=P.xEggB; EGG.ok=false; _egRefit=99; eggHint();
+});
+bind('sEGm','vEGm','xEggM',function(x){return x.toFixed(0)+'%';},function(){
+  EGG.margin=P.xEggM/100; EGG.ok=false; _egRefit=99; eggHint();
+});
+bind('sEGl','vEGl','xEggL',function(x){return x.toFixed(2);},function(){
+  EGG.al=P.xEggL;
+});
+bind('sEGw','vEGw','xEggW',function(x){return x.toFixed(2);},function(){
+  EGG.lwT=P.xEggW; EGG.ok=false; _egRefit=99; eggHint();
+});
+/* 松紧预设（2026-10-20 老师：不要紧、要松）：
+ * 只改 margin 一个数 —— 因为 h 由 L/W 反解、h ∝ Sr·(1+margin)，
+ * 所以横向松多少纵向就松多少，整壳等比张开，蛋形不变。 */
+(function(){
+  var PB=[['egpb1',6],['egpb2',12],['egpb3',18],['egpb4',30]], s=document.getElementById('sEGm');
+  function pick(v){
+    if(!s) return;
+    s.value=String(v); s.dispatchEvent(new Event('input',{bubbles:true}));
+    for(var i=0;i<PB.length;i++){
+      var el=document.getElementById(PB[i][0]);
+      if(el) el.className='gh'+(PB[i][1]===v?' on':'');
+    }
+  }
+  for(var i=0;i<PB.length;i++){
+    (function(id,v){ var el=document.getElementById(id); if(el) el.onclick=function(){ pick(v); }; })(PB[i][0],PB[i][1]);
+  }
+  /* 手动拖滑块时，把不匹配的预设松开，避免高亮说谎 */
+  if(s) s.addEventListener('input',function(){
+    var v=Math.round(parseFloat(s.value));
+    for(var k=0;k<PB.length;k++){
+      var el=document.getElementById(PB[k][0]);
+      if(el && PB[k][1]!==v && el.className.indexOf('on')>=0) el.className='gh';
+    }
+  });
+  window.__egMarginPreset=pick;
+})();
+eggHint();
 
 /* ---------- 空气粒子 UI ---------- */
 var ckPart=document.getElementById('ckPart'), btnPart=document.getElementById('part');
@@ -3538,19 +4485,20 @@ window.__mem={
   },
   set:function(v){ MEM.on=!!v; },
   /* 画出来的膜在任意 z 处的半径 —— **含两端椭球帽**（与 drawMembrane 同一式，改一处必须改两处） */
+  /* 画出来的膜在任意 z 处的半径。与 drawMembrane **同一个函数**（memProfR）——
+     不再有"两处公式必须同步"的坑：以前这里单独写了一份帽公式，改一处漏一处就假绿。 */
   rAt:function(z){
-    var s=MEM.zhi-MEM.zlo; if(s<1e-6) return NaN;
-    var u=(z-MEM.zlo)/s;
-    if(u>=0&&u<=1) return memBodyR(u);
-    var h=(u<0?MEM.capB:MEM.capT), dz=(u<0?(MEM.zlo-z):(z-MEM.zhi));
-    if(h<1e-6||dz>=h) return 0;
-    /* η = 0 在接缝、1 在圆顶：r = R·√(1−η²) —— 接缝处 dr/dz=0、圆顶处 r→0。
-       ⚠ 别写成 √(1−(1−η)²)：那是把形状整个倒过来（接缝处正好掉到 0），
-       探针里接缝斜率差 31/52 就是这么来的。 */
-    var eta=dz/h;
-    return (u<0?memR(0):memR(1))*Math.sqrt(Math.max(0,1-eta*eta));
+    if(MEM.zhi-MEM.zlo<1e-6) return NaN;
+    return memProfR(z);
   },
   caps:function(){ return {B:MEM.capB, T:MEM.capT, k:MEM.capK, wob:MEM.wob}; },
+  /* 粒子云 (z,r) 快照 —— 母线设计的**唯一原始输入**：膜的半径必须由它导出，
+     离线调形时把这份数据存成 json 复现，别靠肉眼看截图猜。 */
+  cloud:function(){
+    var m=PART.n, o={z:[],r:[],n:m};
+    for(var i=0;i<m;i++){ o.z.push(pZ[i]); o.r.push(Math.sqrt(pX[i]*pX[i]+pY[i]*pY[i])); }
+    return o;
+  },
   selfTest:function(){
     var tp=mkTP(), o1=[0,0,0,0], o2=[0,0,0,0], worst=0, i, X, Y, Z;
     for(i=0;i<240;i++){
@@ -3617,6 +4565,52 @@ window.__az={
   setMajAlpha:function(v){ if(isFinite(v)&&v>0&&v<=1)ANU_MAJ_ALPHA=v; AFITK=null; return ANU_MAJ_ALPHA; },
   anuDrawN:function(){ return anuDrawN; },
 
+  /* ---------- 蛋形覆膜 · 探针（2026-10-20） ---------- */
+  EGG:EGG,
+  eggOn:function(){ return EGG.on; },
+  setEgg:function(on){
+    var c=document.getElementById('ckEgg'); if(c)c.checked=!!on;
+    EGG.on=!!on; EGG.ok=false; _egRefit=99; eggHint(); return EGG.on;
+  },
+  setEggAuto:function(on){
+    var c=document.getElementById('ckEggAuto'); if(c)c.checked=!!on;
+    EGG.auto=!!on; EGG.ok=false; _egRefit=99; eggHint(); return EGG.auto;
+  },
+  setEggAB:function(aDeg,b){
+    var ea=document.getElementById('sEGa'), eb=document.getElementById('sEGb');
+    if(ea&&aDeg!==undefined){ ea.value=String(aDeg); ea.dispatchEvent(new Event('input',{bubbles:true})); }
+    if(eb&&b!==undefined){ eb.value=String(b); eb.dispatchEvent(new Event('input',{bubbles:true})); }
+    return {a:EGG.aDeg, b:EGG.b, auto:EGG.auto};
+  },
+  eggSolveNow:function(){ eggSolve(mkTP()); eggHint(); return eggState(); },
+  eggState:function(){ return eggState(); },
+  eggRho:function(zeta,aDeg,b){ return eggRho(zeta,(aDeg===undefined?EGG.aDeg:aDeg)*Math.PI/180,(b===undefined?EGG.B:b)); },
+  apMul:function(Z){ return eggApMul(mkTP(),Z); },
+  eggDbg:function(th,zeta){
+    var tp=mkTP();
+    var rr=eggRhoCS(zeta,Math.sin(EGG.A),Math.cos(EGG.A),EGG.B)*EGG.Sr;
+    var zz=eggZof(zeta), mul=eggApMul(tp,zz);
+    var rw=rr/(mul<1e-4?1e-4:mul), o=[0,0,0,0];
+    trPt(tp,rw*Math.cos(th),rw*Math.sin(th),zz,o);
+    var fk=(AFITK===null?1:AFITK);
+    return {rr:rr, zz:zz, mul:mul, rw:rw, o:o, fk:fk, K:fk*P.S*VIEW.z,
+            Sz:VIEW.z, So:VIEW.ox, fox:AFITX, W:W, H:H, PaS:P.S};
+  },
+  eggTips:function(aDeg,b){ return eggTips((aDeg===undefined?EGG.aDeg:aDeg)*Math.PI/180,(b===undefined?EGG.B:b)); },
+  /* 包裹率实测：把十丝的真实采样点投进蛋壳方程，数有没有漏出去（独立于 Sr 的构造保证） */
+  eggCover:function(){ return eggCover(); },
+  /* 蛋壳面上的点 → 屏幕像素（供探针核对"屏上半径 = 显示半径"） */
+  eggProj:function(th,zeta){
+    var tp=mkTP(); if(!EGG.ok){ eggSolve(tp); }
+    if(!EGG.ok) return null;
+    var rr=eggRhoCS(zeta,Math.sin(EGG.A),Math.cos(EGG.A),EGG.B)*EGG.Sr;
+    var zz=eggZof(zeta), o=[0,0,0,0];
+    eggTr(tp,rr*Math.cos(th),rr*Math.sin(th),zz,o);
+    var fk=(AFITK===null?1:AFITK), K=fk*P.S*VIEW.z;
+    return [W/2+VIEW.ox+(o[0]-(AFITK===null?0:AFITX))*K,
+            H/2+VIEW.oy+(o[1]-(AFITK===null?0:AFITY))*K, rr, zz];
+  },
+
   /* ---------- 空气粒子（示踪散点）探针接口 ---------- */
   PART:PART,
   partOn:function(){ return PART.on; },
@@ -3626,6 +4620,8 @@ window.__az={
     return PART.dim; },
   setPart:function(on){ setPart(on); return PART.on; },
   partReset:partReset,
+  /* 出生半径（全局撒入用的薄管半径）。给探针做扫描用；改完自动重撒 + 预热。 */
+  spawnR:function(v){ if(typeof v==='number'&&v>0){ PART.spawnR=v; partReset(false); } return PART.spawnR; },
   partStats:partStats,
   partW:function(){ return Array.prototype.slice.call(pW, 0, PART.n); },
   partPos:function(i){ return [pX[i],pY[i],pZ[i],pW[i]]; },
