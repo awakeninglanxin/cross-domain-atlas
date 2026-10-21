@@ -462,16 +462,16 @@ input[type=checkbox]{accent-color:var(--acc);width:14px;height:14px;cursor:point
   </div>
 
   <div class="card" id="cardCam">
-    <h2>④ 视角<span class="badge" id="bCam">3/4 正交</span></h2>
+    <h2>④ 视角<span class="badge" id="bCam">俯视 · 90° / 0°</span></h2>
     <div class="grow">
       <span class="nm">方位 yaw</span>
-      <input type="range" id="sYaw" min="-180" max="180" step="1" value="-58">
-      <input type="number" id="vYaw" min="-180" max="180" step="1" value="-58">
+      <input type="range" id="sYaw" min="-180" max="180" step="1" value="90">
+      <input type="number" id="vYaw" min="-180" max="180" step="1" value="90">
     </div>
     <div class="grow">
       <span class="nm">仰角 pit</span>
-      <input type="range" id="sPit" min="-89" max="89" step="1" value="26">
-      <input type="number" id="vPit" min="-89" max="89" step="1" value="26">
+      <input type="range" id="sPit" min="-89" max="89" step="1" value="0">
+      <input type="number" id="vPit" min="-89" max="89" step="1" value="0">
     </div>
     <div class="grow">
       <span class="nm">缩放 zoom</span>
@@ -479,15 +479,18 @@ input[type=checkbox]{accent-color:var(--acc);width:14px;height:14px;cursor:point
       <input type="number" id="vZom" min="0.4" max="3.2" step="0.02" value="1">
     </div>
     <div class="row" style="margin-top:2px">
-      <button class="gg" id="bCamNb">nb 原版（沿 z 正交）</button>
-      <button class="gg" data-cam="iso">3/4 等轴测</button>
+      <button class="gg" data-cam="top">俯视（沿主环轴 y）</button>
+      <button class="gg" data-cam="iso">等角 90°/45°</button>
+      <button class="gg" data-cam="side">侧视（沿 z）</button>
+      <button class="gg" data-cam="front">端视（沿 x）</button>
       <button class="gg" data-cam="3q">另一侧 3/4</button>
-      <button class="gg" data-cam="front">正视 z</button>
-      <button class="gg" data-cam="side">侧视</button>
-      <button class="gg" data-cam="top">俯视</button>
+      <button class="gg" id="bCamNb">nb 原版（沿 z 正交）</button>
     </div>
-    <p class="note">原版 <code>ViewPoint→{0,0,100}</code>（配 <code>ViewAngle→0.01</code> 的近正交）⇒ 相机在 <b>+z</b> 上沿 <b>−z</b> 看。<br>
-      本页全部视角都用<b>正交投影</b>（和 nb 一样），3/4 视角只是把相机绕着场景转。双击画布等于「nb 原版」。</p>
+    <p class="note">⚠ <b>「俯视」不是「从上往下看 z」</b>：本页每只环的盘面法线是它自己的 <code>v̂</code>，
+      而 L0 的盘面张在 <b>xz 平面</b>里（法线 = <b>y</b>）⇒ 只有<b>沿 y 看</b>（yaw=90、pit=0）才是
+      「正对主环的俯视图」，环呈同心圆；<b>沿 z 看</b>时主环侧立、厚成一根管（旧版把这两个名字标反了）。<br>
+      本页全部视角都用<b>正交投影</b>（和 nb 一样）。默认打开就是 <b>yaw 90° / pit 0°</b>；
+      想看立体感点「等角 90°/45°」。双击画布仍等于「nb 原版」（<code>ViewPoint→{0,0,100}</code>，沿 −z）。</p>
   </div>
 
   <div class="card" id="cardShow">
@@ -1171,7 +1174,7 @@ function encodeGif(frames, W, H, delayCs) {
                    all = 逐级沿曲线滑动（会互穿）/ one = 只有第一级滑动
        revMix = 级间倍率（L1 转 φ、L2 转 mix·φ、L3 转 mix²·φ…）
        revAmp = 每级摆幅（度）；≥179.5 表示整圈 */
-    yaw: -58, pit: 26, zom: 1,
+    yaw: 90, pit: 0, zom: 1,        /* 默认 = 俯视：沿 L0 盘面法线（y）看 ⇒ 主环正对屏幕 */
     camMode: 'free',
     scheme: 'level',
     wire: false,
@@ -2346,7 +2349,10 @@ function encodeGif(frames, W, H, delayCs) {
     if (pb) pb.textContent = 'g=' + g + ' 级 · ' + (S.mode === 'self' ? '自相似' : 'nb 原版') + (_clamped ? '（已降档）' : '');
 
     var bc = $('bCam');
-    if (bc) bc.textContent = (S.camMode === 'nb' ? 'nb 原版（沿 z）' : '自由 · ' + Math.round(S.yaw) + '° / ' + Math.round(S.pit) + '°');
+    if (bc) {
+      bc.textContent = (S.camMode === 'nb') ? 'nb 原版（沿 z）'
+        : camTagName() + ' · ' + Math.round(S.yaw) + '° / ' + Math.round(S.pit) + '°';
+    }
     var bcur = $('bCur');
     if (bcur) bcur.textContent = S.curve
       ? ('L0 (' + S.nW + ',' + S.kW + ') · L1+ (' + S.nD + ',' + S.kD + ')')
@@ -2556,17 +2562,35 @@ function encodeGif(frames, W, H, delayCs) {
   }
 
   /* ======================================================== 9. 视角 */
+  /* ⚠ 命名口径（2026-10-21 纠正，旧版把俯视/侧视标反了）：
+     每只环的**盘面法线**是它自己的 v̂（torusPt 用 û、ŵ 张环面，沿 v̂ 走管）。
+     根环 u=(a,0,0)、v=(0,a,0) ⇒ 环面张在 **xz 平面**、法线 = **y**。
+     ⇒ 俯视（正对主环）= 相机在 ±y 上 = yaw 90 / pit 0
+       侧视（主环侧立）= 相机在 ±z 上 = pit ±89（沿 z 看，主环厚成一根管）
+       端视（沿链轴 x 看）= yaw 0 / pit 0
+     等角 = 在俯视基础上把相机抬起 45° = yaw 90 / pit 45。 */
   function applyCam(mode) {
     if (mode === 'nb') { S.camMode = 'nb'; }
     else {
       S.camMode = 'free';
-      if (mode === 'front') { S.yaw = 0; S.pit = 0; }
-      else if (mode === 'side') { S.yaw = 90; S.pit = 0; }
-      else if (mode === 'top') { S.yaw = -90; S.pit = 89; }
-      else if (mode === 'iso') { S.yaw = -58; S.pit = 26; }
-      else if (mode === '3q') { S.yaw = -128; S.pit = 22; }
+      if (mode === 'front') { S.yaw = 0; S.pit = 0; }          /* 端视：沿 −x */
+      else if (mode === 'side') { S.yaw = -90; S.pit = 89; }   /* 侧视：沿 −z，主环侧立 */
+      else if (mode === 'top') { S.yaw = 90; S.pit = 0; }      /* 俯视：沿 −y，主环正对屏幕 */
+      else if (mode === 'iso') { S.yaw = 90; S.pit = 45; }     /* 等角：俯视抬高 45° */
+      else if (mode === '3q') { S.yaw = -90; S.pit = 45; }     /* 另一侧等角 */
     }
     syncAll(); afterParam();
+  }
+  /* 当前角度命中的档位名（只挂在「④ 视角」的徽标上，±2° 容差） */
+  function camTagName() {
+    var y = ((Math.round(S.yaw) % 360) + 540) % 360 - 180;   /* 归一化到 [−180,180) */
+    var p = Math.round(S.pit);
+    if (Math.abs(y - 90) <= 2 && Math.abs(p) <= 2) return '俯视';
+    if (Math.abs(y - 90) <= 2 && Math.abs(p - 45) <= 2) return '等角';
+    if (Math.abs(y + 90) <= 2 && Math.abs(p - 45) <= 2) return '另一侧等角';
+    if (Math.abs(p) >= 87) return '侧视';
+    if (Math.abs(y) <= 2 && Math.abs(p) <= 2) return '端视';
+    return '自由';
   }
 
   /* ====================================================== 10. 参数联动 */
