@@ -334,7 +334,9 @@ input[type=checkbox]{accent-color:var(--acc);width:14px;height:14px;cursor:point
     </div>
     <p class="note">原版：<code>{{a,5,"thickness"},10,1,-1}</code>、<code>{{p,3,"number of tori"},Range[2,4]}</code>、
       <code>{{g,1,"level"},Range[4]}</code>。<b>「多级」就是这个 g</b>——本页把它从 4 扩到 7（默认 7）。<br>
-      环总数 <code>1+p+…+p^g</code>；超过 6000 环会自动把 g 降一档并提示（免得浏览器卡死）。</p>
+      环总数 <code>1+p+…+p^g</code>。<b>g 不再被自动降档</b>（p=7、g=7 也照画）：
+      超过 6000 只时改成<b>在绘制侧抽样</b>——浅层照旧 p 个，深层每只父环只留第 1 个子环，
+      于是 L0…L7 每层都还在、递归看得见，只是深层的兄弟被抽稀（免得浏览器卡死）。</p>
   </div>
 
   <div class="card" id="cardGrad">
@@ -1148,7 +1150,10 @@ function encodeGif(frames, W, H, delayCs) {
   var PAD = 0.050;                /* 正交视角画布边距（已按投影包围盒取景，5% 足够） */
   var NBW = 500, NBH = 350;       /* nb 的 ImageSize->{500,350} */
   var NB_TUBE = 0.5;              /* nb 里管半径恒为 0.5（generate 的基例写死） */
-  var MAXR = 6000;                /* 环总数上限（超了自动降 g） */
+  /* 绘制预算：**不再**用它砍 g。超了由 prunePlan() 在「画哪些」这一侧抽样——
+     深层每只父环只留第 1 个子环，于是每一层、每条支上都还看得见递归，
+     代价从 p^g 的指数降到「每层 p^cut」的线性。参数 g 保持用户设定。 */
+  var MAXDRAW = 6000;
   var RHO_MIN = 1 / 137;          /* ρ 的下限 = 1/137 = 0.00729927…（精细结构常数 α） */
   var RHO_MAX = 0.42;
 
@@ -1161,7 +1166,7 @@ function encodeGif(frames, W, H, delayCs) {
                     thread = 穿在曲线上（环轴 ∥ 切线，几何上必切穿，仅作对照）
                     ring   = 主圆中心线（nb 原式） */
     attach: 'curve',
-    rev: false, revMode: 'nest', revSpd: 1, revPh: 0, revMix: 0.5, revAmp: 10,
+    rev: false, revMode: 'nest', revSpd: 1, revPh: 0, revMix: 1, revAmp: 10,
     /* 一键公转：nest = 逐级绕自己父环的中轴（默认）/ axis = 整棵子树绕 L0 中轴
                    all = 逐级沿曲线滑动（会互穿）/ one = 只有第一级滑动
        revMix = 级间倍率（L1 转 φ、L2 转 mix·φ、L3 转 mix²·φ…）
@@ -1226,6 +1231,34 @@ function encodeGif(frames, W, H, delayCs) {
 
   /* ================================================ 1. 几何（nb + 自相似） */
   function ringCount(p, g) { var n = 0, k; for (k = 0; k <= g; k++) n += Math.pow(p, k); return n; }
+
+  /* 「画到第几层还全展开」的预算方案。
+     ---------------------------------------------------------------
+     整树 1+p+…+p^g 指数爆炸（p=7,g=7 是 960 800 环）。规则：
+       0…cut 层      每父 p 个子环（全展开）
+       cut+1…g 层    每父只留第 1 个子环
+     前者花 p^0+…+p^cut，后者每层固定花 p^cut ⇒ 总花费
+       full + p^cut·(g−cut) ≤ budget
+     取满足它的**最大 cut**（不是"贪心塞满"——贪心会把 budget 塞在浅层，
+     深层一只都不剩）。这样每一层都还有环，指数增长被压成线性。 */
+  function prunePlan(p, g, budget) {
+    var best = null, cut, l, n, per, tot;
+    for (cut = 0; cut <= g; cut++) {
+      n = 0; for (l = 0; l <= cut; l++) n += Math.pow(p, l);
+      per = Math.pow(p, cut);
+      tot = n + per * (g - cut);
+      if (tot <= budget && (!best || tot > best.total)) best = { cut: cut, total: tot };
+      if (cut === g && n <= budget && (!best || n > best.total)) best = { cut: g, total: n };
+    }
+    if (!best) {                    /* 连 cut=0 都放不下（p 极大）→ 只留一条主干 */
+      best = { cut: 0, total: 1 + (g > 0 ? 1 : 0) };
+    }
+    best.full = (best.cut >= g);
+    best.per = Math.pow(p, best.cut);
+    best.nFull = 0;
+    for (l = 0; l <= best.cut; l++) best.nFull += Math.pow(p, l);
+    return best;
+  }
 
   /* ρ 显示格式：极小值多给位数，正好落在 1/137 时直接标出来 */
   function rhoTxt(v) {
@@ -1377,44 +1410,77 @@ function encodeGif(frames, W, H, delayCs) {
     var nest = (rvm === 'nest');
     var hold = ax || nest;            /* 这两种都是「构建时相位定格、之后整体旋转」 */
 
+    /* 下钻：只保留「沿第 1 个子环走 dk 层」那一支，从 lv=dk 起画。
+       取景按投影包围盒算 ⇒ 那个小环自动放大到满屏，深处的 4 层才看得见。 */
+    var dk = Math.max(0, Math.min(g, S.drill | 0));
+    /* 预算按**下钻后剩下的子树**算（g−dk 层），再把 cut 平移回全局层号：
+       下钻之后子树只有几百只环，通常一层不剪。 */
+    var plan = prunePlan(p, g - dk, (S.maxDraw || MAXDRAW));
+    var cut = plan.cut + dk;
+
+    /* 第 i 个子环的 (û, v̂, 位置, 主半径, 管半径, 相位) —— 从原来的循环体里抽出来，
+       因为「下钻走链」和「正常展开」都要用它 */
+    function place(u, v, t, lv, sU, r, delta, i) {
+      var w = M3.cross(u, v);
+      var sV = M3.len(v), sW = M3.len(w);
+      var uh = M3.mul(u, 1 / sU), wh = M3.mul(w, 1 / sW), vh = M3.mul(v, 1 / sV);
+      var sC = qq * sU;
+      var rC = self ? rho * sC : NB_TUBE;
+      var nd = hold ? 0 : ((all || lv === dk) ? ph0 : 0);
+      var al = 2 * Math.PI / p;
+      var tor0 = onCur ? { t: t, uh: uh, vh: vh, wh: wh, sU: sU, r: r } : null;
+      var nk = curveNK(lv);
+      /* 曲线分支的步长不能直接用 2π/p：曲线参数 τ 里「绕大环的角」是 n·τ，
+         所以 τ 走 2π/p 时大环只走了 n·(2π/p)。n 与 p 不互质就会重合 ——
+         nW=5 而 p=5 时 5·(2π/5) = 2π，5 个子环全落在**同一个点**上（只看得见 1 个）。
+         正解：让大环角每步正好走 2π/p ⇒ τ 步长 = 2π/(n·p)。
+         （p=2/3/7 与 n=5 互质，改前改后落点集合相同，不影响既有预设；
+           深层曲线用的是 nD=1，τ 步长仍是 2π/p。） */
+      var nWind = Math.max(1, Math.abs(Math.round(nk[0]) || 1));
+      var alC = 2 * Math.PI / (nWind * p);
+      var tau = (tor0 ? alC : al) * i + delta, t1, u1, v1, fr;
+      if (tor0) {
+        fr = curveFrame(tor0, nk[0], nk[1], tau);
+        t1 = fr.P;
+        if (thr) {
+          /* 穿线：环轴 = v̂1 必须 ∥ 切线 ⇒ v1 = sC·T̂；u1 是环面内 ⊥T 的方向 */
+          var uu = perpUnit(fr.N, fr.T) || perpUnit(fr.B, fr.T) || [1, 0, 0];
+          u1 = M3.mul(uu, sC);
+          v1 = M3.mul(fr.T, sC);
+        } else {
+          u1 = M3.mul(fr.B, sC);                  /* û1 = 周向 */
+          v1 = M3.mul(M3.cross(fr.N, fr.B), sC);  /* v̂1 = N×B ⇒ 环轴 = N×B ⇒ 主平面 = 管截面 */
+        }
+      } else {
+        t1 = M3.add(t, M3.mul(M3.add(M3.mul(uh, Math.cos(tau)), M3.mul(wh, Math.sin(tau))), sU));
+        u1 = M3.mul(v, sC / sV);                /* nb: u1 = (q sU / sV) v */
+        v1 = M3.cross(M3.sub(t1, t), v);        /* nb: v1 = (t1-t) × v */
+      }
+      return [u1, v1, t1, sC, rC, nd];
+    }
+
     function rec(u, v, t, depth, lv, sU, r, delta, pi) {
-      var me = out.length;
-      out.push(null);                 /* 先占位：要记父下标（pre-order），父子对才量得准 */
+      var me = -1;
+      if (lv >= dk) { me = out.length; out.push(null); }  /* 下钻时浅层不画，也不占位 */
       if (depth > 0) {
-        var w = M3.cross(u, v);
-        var sV = M3.len(v), sW = M3.len(w);
-        var uh = M3.mul(u, 1 / sU), wh = M3.mul(w, 1 / sW), vh = M3.mul(v, 1 / sV);
-        var sC = qq * sU;
-        var rC = self ? rho * sC : NB_TUBE;
-        var nd = hold ? 0 : ((all || lv === 0) ? ph0 : 0);
-        var al = 2 * Math.PI / p, i;
-        var tor0 = onCur ? { t: t, uh: uh, vh: vh, wh: wh, sU: sU, r: r } : null;
-        var nk = curveNK(lv);
-        for (i = 1; i <= p; i++) {
-          var tau = al * i + delta, t1, u1, v1, fr;
-          if (tor0) {
-            fr = curveFrame(tor0, nk[0], nk[1], tau);
-            t1 = fr.P;
-            if (thr) {
-              /* 穿线：环轴 = v̂1 必须 ∥ 切线 ⇒ v1 = sC·T̂；u1 是环面内 ⊥T 的方向 */
-              var uu = perpUnit(fr.N, fr.T) || perpUnit(fr.B, fr.T) || [1, 0, 0];
-              u1 = M3.mul(uu, sC);
-              v1 = M3.mul(fr.T, sC);
-            } else {
-              u1 = M3.mul(fr.B, sC);                  /* û1 = 周向 */
-              v1 = M3.mul(M3.cross(fr.N, fr.B), sC);  /* v̂1 = N×B ⇒ 环轴 = N×B ⇒ 主平面 = 管截面 */
-            }
-          } else {
-            t1 = M3.add(t, M3.mul(M3.add(M3.mul(uh, Math.cos(tau)), M3.mul(wh, Math.sin(tau))), sU));
-            u1 = M3.mul(v, sC / sV);                /* nb: u1 = (q sU / sV) v */
-            v1 = M3.cross(M3.sub(t1, t), v);        /* nb: v1 = (t1-t) × v */
-          }
-          rec(u1, v1, t1, depth - 1, lv + 1, sC, rC, nd, me);
+        /* ① 下钻：浅层只沿第 1 个子环往下走
+           ② 预算：cut 以内每父 p 个，cut 以后每父只留第 1 个（深处线性、不再指数） */
+        var nCh = (lv < dk) ? 1 : ((lv + 1 <= cut) ? p : 1);
+        for (var i = 1; i <= nCh; i++) {
+          var pp = place(u, v, t, lv, sU, r, delta, i);
+          rec(pp[0], pp[1], pp[2], depth - 1, lv + 1, pp[3], pp[4], pp[5], me);
         }
       }
-      out[me] = makeTor(u, v, t, r, lv, sU, pi);
+      if (me >= 0) out[me] = makeTor(u, v, t, r, lv, sU, pi);
     }
-    rec([a, 0, 0], [0, a, 0], [0, 0, 0], g, 0, a, r0, hold ? 0 : ph0, -1);
+    /* 根环：下钻时根在 lv=dk —— 主半径 a·q^dk，自相似档管半径 ρ·(a·q^dk)，nb 档恒 NB_TUBE */
+    var sUdk = a * Math.pow(qq, dk);
+    var rDk = self ? rho * sUdk : NB_TUBE;
+    rec([a, 0, 0], [0, a, 0], [0, 0, 0], g - dk, dk, sUdk, rDk, hold ? 0 : ph0, -1);
+    out.theory = ringCount(p, g);
+    out.cut = cut;
+    out.drill = dk;
+    out.pruned = (out.theory > out.length);
     /* axis 模式：绕 L0 环的中轴（vh = 垂直于 L0 环面）整体旋转 L1 及以下。
        L0 绕自身中轴不变 ⇒ 整个场景映射成自己的刚体版本 ⇒ 所有环对距离逐字不变。 */
     if (ax && ph0) revLevels(out, ph0);
@@ -2504,11 +2570,11 @@ function encodeGif(frames, W, H, delayCs) {
   }
 
   /* ====================================================== 10. 参数联动 */
+  /* 预算不再改 g：g 是用户设定的层数，必须原样生效（p=7 也能到 g=7）。
+     画不下就由 buildScene 里的 prunePlan() 抽样 —— 见 MAXDRAW 的注释。 */
   function clampBudget() {
-    var before = S.g;
-    while (S.g > 1 && ringCount(S.p, S.g) > MAXR) S.g--;
-    _clamped = (S.g !== before);
-    return _clamped;
+    _clamped = false;
+    return false;
   }
   function afterParam() { camUnlock(); syncAll(); drawMain(); refreshReadouts(); scheduleSeq(); }
   function afterStruct() { clampBudget(); sceneDrop(); afterParam(); }
