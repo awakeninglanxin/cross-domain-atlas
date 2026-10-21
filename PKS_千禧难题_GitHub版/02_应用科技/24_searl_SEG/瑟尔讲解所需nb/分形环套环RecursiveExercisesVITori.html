@@ -427,7 +427,7 @@ input[type=checkbox]{accent-color:var(--acc);width:14px;height:14px;cursor:point
     </div>
     <div class="row" style="margin:2px 0 4px">
       <button class="gg" id="bRevSpin" style="flex:1 1 100%"
-        title="把 ρ 放到 0.06（给运动留余量），L1 摆 ±45°、L2 ±22.5°…，25 相位实测 Δmin +0.0907">🎬 逐级公转演示（自动配 ρ=0.06）</button>
+        title="ρ=0.06、整圈 360°、级间倍率 0.20：每级都朝同一方向转（L1 360°、L2 72°、L3 14.4°…），36 相位实测 Δmin +0.0918，全程不穿">🎬 逐级公转演示 · 整圈同向（ρ=0.06）</button>
     </div>
     <div class="row" style="margin:2px 0 4px">
       <button class="gg" id="bAlphaSpin" style="flex:1 1 100%"
@@ -1183,10 +1183,15 @@ function encodeGif(frames, W, H, delayCs) {
     best:  { a: 5, p: 2, g: 6, mode: 'self', q: 0.62, rho: 0.140, curve: true, nW: 5, kW: 1680, nD: 1, kD: 7, surf: 'half' },
     best3: { a: 5, p: 3, g: 6, mode: 'self', q: 0.50, rho: 0.115, curve: true, nW: 5, kW: 1680, nD: 1, kD: 7, surf: 'half' },
     tight: { a: 5, p: 2, g: 4, mode: 'self', q: 0.50, rho: 0.146, curve: true, nW: 5, kW: 1680, nD: 1, kD: 7, surf: 'half' },
-    /* 逐级公转专用：管径放细到 ρ=0.06（余量从 0.008 涨到 0.09 以上），
-       这时 L1 可以摆 ±45°、L2 ±22.5°… 全对 Δmin 实测 +0.0907（25 相位）。 */
+    /* 逐级公转演示：**整圈、单向**（不是往复摆）。
+       行程上限的实测（ρ=0.06、p=2、q=0.62、36 相位全对 Δmin，g=4/5/6 一致）：
+         mix ≤ 0.22 → +0.1480…+0.2387（与本底同值，整圈一点没恶化）
+         mix = 0.24 → +0.0104（L2 兄弟中轴圆**相切**）
+         mix ≥ 0.26 → −0.045… 起穿
+       取 mix=0.20 留余量。此时 L1 转 360°、L2 相对父环 72°、L3 14.4°、L4 2.9°…
+       —— 每级都朝**同一个方向**，只是逐级减速（齿轮组），L1 每圈回位、深层持续进动。 */
     spin:  { a: 5, p: 2, g: 6, mode: 'self', q: 0.62, rho: 0.060, curve: true, nW: 5, kW: 1680, nD: 1, kD: 7, surf: 'half',
-             revMode: 'nest', revMix: 0.5, revAmp: 45 },
+             revMode: 'nest', revMix: 0.20, revAmp: 180 },
     /* α 细丝：ρ = 1/137（精细结构常数）。管子细到屏幕上只剩一根丝，
        静止全对 Δmin = +0.163341（是 L0 管半径 0.0365 的 4.5 倍）。
        整圈 ±180° 逐级公转要 mix ≤ 0.45 才不穿；mix=0.4 实测 +0.163168（25 相位）。 */
@@ -1609,18 +1614,16 @@ function encodeGif(frames, W, H, delayCs) {
      永远给出一个正方形包围框，画布一宽就全是空边（实测只用到 60% 的画布）。
      这里把每只环的外沿圆（t + (sU+r)(cos·uh + sin·wh)）采样投影，量出屏幕上的
      真实 x/y 跨度，再分别按宽、高定缩放取小者，并把包围盒中心挪到画布正中。 */
-  function camFor(W, H, sc) {
-    var info = sceneInfo(sc), eye, up, dz, d;
-    if (S.camMode === 'nb') {
-      d = [0, 0, 1]; up = [0, 1, 0];                           /* ViewPoint->{0,0,100}：沿 -z */
-    } else {
-      var cy = Math.cos(S.pit * Math.PI / 180);
-      dz = Math.sin(S.pit * Math.PI / 180);
-      d = [cy * Math.cos(S.yaw * Math.PI / 180), cy * Math.sin(S.yaw * Math.PI / 180), dz];
-      up = Math.abs(dz) > 0.999 ? [0, 1, 0] : [0, 0, 1];
-    }
-    var eye0 = M3.add(info.c, M3.mul(d, 1e4));
-    var c0 = M3.camOrtho(W, H, eye0, info.c, up, 1);           /* 先用 scale=1 量跨度 */
+  /* 视线方向与 up（正交投影只用到这两个） */
+  function viewDir() {
+    if (S.camMode === 'nb') return [[0, 0, 1], [0, 1, 0]];      /* ViewPoint->{0,0,100}：沿 -z */
+    var dz = Math.sin(S.pit * Math.PI / 180), cy = Math.cos(S.pit * Math.PI / 180);
+    return [[cy * Math.cos(S.yaw * Math.PI / 180), cy * Math.sin(S.yaw * Math.PI / 180), dz],
+            Math.abs(dz) > 0.999 ? [0, 1, 0] : [0, 0, 1]];
+  }
+  /* 在 scale=1 的这套 c0 下，量场景「外沿圆」的投影包围盒。
+     ⚠ 一只环的外沿是 t + (sU+r)(cosθ·uh + sinθ·wh)，只要取 sU+r 的圆就够（环面必在其内）。 */
+  function projBounds(sc, c0) {
     var mnx = 1e300, mxx = -1e300, mny = 1e300, mxy = -1e300, i, a, N = 24;
     for (i = 0; i < sc.length; i++) {
       var t = sc[i], R = t.sU + t.r, uh = t.uh, wh = t.wh, tp = t.t;
@@ -1633,16 +1636,52 @@ function encodeGif(frames, W, H, delayCs) {
         if (v[1] < mny) mny = v[1]; if (v[1] > mxy) mxy = v[1];
       }
     }
+    return [mnx, mxx, mny, mxy];
+  }
+  function camFromBounds(W, H, c0, b, d, up, fallbackR) {
+    var mnx = b[0], mxx = b[1], mny = b[2], mxy = b[3];
     var bw = mxx - mnx, bh = mxy - mny;
-    if (!(bw > 1e-9)) bw = info.R * 2;                          /* 单点退化 */
-    if (!(bh > 1e-9)) bh = info.R * 2;
+    if (!(bw > 1e-9)) bw = (fallbackR || 1) * 2;                /* 单点退化 */
+    if (!(bh > 1e-9)) bh = (fallbackR || 1) * 2;
     var fill = 1 - 2 * PAD;
     var scale = Math.min(W * fill / bw, H * fill / bh) * S.zom;
     /* 包围盒中心挪到画布中心：正交下沿 s/u 平移 eye 与 target 不改变视线方向 */
-    var tgt = M3.add(info.c, M3.add(M3.mul(c0.s, (mnx + mxx) / 2), M3.mul(c0.u, (mny + mxy) / 2)));
+    var tgt = M3.add(c0.center, M3.add(M3.mul(c0.s, (mnx + mxx) / 2), M3.mul(c0.u, (mny + mxy) / 2)));
     var cam = M3.camOrtho(W, H, M3.add(tgt, M3.mul(d, 1e4)), tgt, up, scale);
     cam.center = tgt;
     return cam;
+  }
+  function camFor(W, H, sc) {
+    var info = sceneInfo(sc), du = viewDir(), d = du[0], up = du[1];
+    var c0 = M3.camOrtho(W, H, M3.add(info.c, M3.mul(d, 1e4)), info.c, up, 1);  /* 先用 scale=1 量跨度 */
+    c0.center = info.c;
+    return camFromBounds(W, H, c0, projBounds(sc, c0), d, up, info.R);
+  }
+
+  /* ── 公转期间的相机锁 ────────────────────────────────────────────────
+     ⚠ 这是「画面左右晃」的真凶之一：camFor 按**当前这一帧**的包围盒定尺度和位置，
+     公转时形状一直在变 ⇒ scale 和 center 每帧都在动 ⇒ 整幅图跟着缩放、平移。
+     做法：开转前把**整个行程上所有相位**的包围盒求并集，锁成一台固定相机。 */
+  var CAMLOCK = null;
+  function camUnlock() { CAMLOCK = null; }
+  function camLock(W, H) {
+    var du = viewDir(), d = du[0], up = du[1];
+    var info = sceneInfo(sceneStill());
+    var c0 = M3.camOrtho(W, H, M3.add(info.c, M3.mul(d, 1e4)), info.c, up, 1);
+    c0.center = info.c;
+    var A = (S.revAmp === undefined ? 180 : S.revAmp), whole = (A >= 179.5);
+    var N = 16, acc = [1e300, -1e300, 1e300, -1e300], k, ang, b;
+    for (k = 0; k < N; k++) {
+      /* 整圈档：相位 0→2π；限幅档：转角 −A→+A（revAngle 用 sin，走的就是这一段） */
+      ang = whole ? (k * 2 * Math.PI / N) : (-A + 2 * A * k / (N - 1)) * Math.PI / 180;
+      b = projBounds(buildScene(S.a, S.p, S.g, S.mode, S.q, S.rho, ang, S.revMode), c0);
+      if (b[0] < acc[0]) acc[0] = b[0];
+      if (b[1] > acc[1]) acc[1] = b[1];
+      if (b[2] < acc[2]) acc[2] = b[2];
+      if (b[3] > acc[3]) acc[3] = b[3];
+    }
+    CAMLOCK = { W: W, H: H, cam: camFromBounds(W, H, c0, acc, d, up, info.R) };
+    return CAMLOCK.cam;
   }
 
   /* ======================================================== 5. 绘制 */
@@ -1833,7 +1872,14 @@ function encodeGif(frames, W, H, delayCs) {
     var ctx = cv.getContext('2d');
     ctx.clearRect(0, 0, wh[0], wh[1]);
     var sc = sceneOf();
-    var cam = camFor(wh[0], wh[1], sc);
+    /* 公转期间用锁定相机：整个行程的包围盒并集，画面不会跟着缩放/平移 */
+    var cam;
+    if (S.rev) {
+      if (!CAMLOCK || CAMLOCK.W !== wh[0] || CAMLOCK.H !== wh[1]) camLock(wh[0], wh[1]);
+      cam = CAMLOCK.cam;
+    } else {
+      cam = camFor(wh[0], wh[1], sc);
+    }
     var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
     paintInto(ctx, wh[0], wh[1], sc, cam);
     lastStat.ms = ((window.performance && performance.now) ? performance.now() : Date.now()) - t0;
@@ -2344,23 +2390,24 @@ function encodeGif(frames, W, H, delayCs) {
           'L1 绕 L0 的中轴、L2 绕 L1 的中轴、L3 绕 L2 的中轴……父环转到哪就定在哪，' +
           '子环连同它下面整棵子树当<b>刚体</b>被带走，转完再进下一层继续递归。<br>' +
           '绝对转角逐级累加：L1 = φ、L2 = φ·(1+mix)、L3 = φ·(1+mix+mix²)… —— 一台<b>逐级减速的齿轮组</b>；' +
-          '每级都转满 2π 就各自回原位 ⇒ 周期仍是 2π，能无缝循环。<br>' +
+          '各级倍率同号 ⇒ <b>每级都朝同一个方向转</b>，只是越深越慢（L1 转 360° 时 L2 才 72°、L3 14.4°）。<br>' +
+          '⚠ 只有 <b>mix=1</b> 时才是「每级转满 2π 各自回位、周期 2π」。mix&lt;1 时 L1 回位而 L2 只走了 0.2 圈，' +
+          '若相位归零会让深层<b>瞬移 72°</b>（看着像跳帧）——所以整圈档的相位<b>不取模</b>：' +
+          'L1 每圈回原位、深层持续同向<b>进动</b>，画面上是连续的。<br>' +
           '<b>父子之间永不互穿</b>：环面绕自身中轴旋转不变，所以子环相当于<b>贴着父环的环面滑行</b>，' +
           '父子只做刚体相对转动 ⇒ 父子间隙逐字不变。<br>' +
-          '<b class="badc">但「转多少」有硬上限</b>：L1 的环面与 L0 的管面是<b>相切</b>的（贴壁挂法的必然结果），' +
-          '子环沿父环面滑行时一定会经过那个切点，于是撞上祖父。实测（q=0.62、ρ=0.14、g=6）：' +
-          'L2/L3/L4 相对父环只安全到 <b>±16°</b>；整圈 360° 时全对最小间隙 <b>−0.925</b>（L0/L2）。' +
-          '这不是分辨率问题，是几何：余量只有 0.0325，走 16° 就吃光。<br>' +
-          '把管径放细就能换回行程：ρ=0.06 时 ±60°，ρ≤0.03 时整圈都行。' +
-          '<b>ρ 的下限 1/137（α）不是临界值</b>，只是「细到只剩一根丝」的刻度：' +
-          '实测 1/33、1/137、1/200 三档的可行域图案<b>逐格相同</b>。' +
-          '真正的边界是 <b>mix ≈ 0.47</b>（中心线相切，<b>与 ρ 无关</b>）：mix=0.4 时整圈 ' +
-          'Δmin <b>+0.163168</b>（25 相位全扫）；<b>mix ≥ 0.48 必撞</b>（两只同级 L2），ρ 再小也没用。<br>' +
-          '所以本档默认 <b>±15°</b>（保守）；想看整圈就按「⚛ α 细丝 · 整圈公转」。<br>' +
-          '当前：摆幅 <b>' + (whole
-            ? ('整圈 360°' + ((S.rho <= 0.02 && (S.revMix === undefined ? 1 : S.revMix) <= 0.45)
-                ? '（α 细丝 + 倍率 ≤ 0.45，实测不穿）' : '（会切穿）'))
-            : '±' + amp + '°') + '</b>，' +
+          '<b class="badc">但「每级转多少」有硬上限</b>：L1 的环面与 L0 的管面是<b>相切</b>的（贴壁挂法的必然结果），' +
+          '子环沿父环面滑行时一定会经过那个切点，于是撞上别枝的同级环。' +
+          'ρ=0.06、q=0.62、g=6 整圈实测（36 相位、8001 对全扫）：' +
+          '<b>mix ≤ 0.22 → Δmin +0.0918</b>（与本底同值，整圈一点没恶化）；' +
+          '<b>mix=0.24 → +0.0104</b>（L2 兄弟中轴圆相切）；<b>mix ≥ 0.26 → −0.045 起穿</b>。' +
+          'ρ 越小余量越大（α 细丝 1/137 时 mix 能到 0.45），上限还随层数收紧。<br>' +
+          '<b>画面为什么不再「晃」</b>：相机原先按<b>当前这一帧</b>的投影包围盒定尺度和位置，公转时形状一直在变 ' +
+          '⇒ 缩放和平移每帧都动 ⇒ 整幅图跟着缩放/漂移。现在公转期间按<b>整个行程所有相位的包围盒并集</b>锁死相机，' +
+          '图形自己转、画框不动。<br>' +
+          '所以本档就是 <b>整圈 360°、单向</b>；想改回「±摆」把摆幅调到 &lt;180 即可（那时是 sin 往复，' +
+          '看起来就是左右晃，只在需要「小角度往复」的演示里用）。<br>' +
+          '当前：<b>' + (whole ? '整圈 360° · 单向' : '±' + amp + '° · 往复摆动') + '</b>，' +
           '级间倍率 <b>' + (S.revMix === undefined ? 1 : S.revMix).toFixed(2) + '</b>' +
           '（0 = 只有 L1 转，1 = 每级同幅）。<br>' +
           '⚠ 右栏「间隙账本」永远按<b>静止相位</b>算，公转中的真实间隙不在那一栏里。';
@@ -2462,7 +2509,7 @@ function encodeGif(frames, W, H, delayCs) {
     _clamped = (S.g !== before);
     return _clamped;
   }
-  function afterParam() { syncAll(); drawMain(); refreshReadouts(); scheduleSeq(); }
+  function afterParam() { camUnlock(); syncAll(); drawMain(); refreshReadouts(); scheduleSeq(); }
   function afterStruct() { clampBudget(); sceneDrop(); afterParam(); }
 
   var seqTimer = 0;
@@ -2519,13 +2566,19 @@ function encodeGif(frames, W, H, delayCs) {
       drawMain();
     }
     if (S.rev) {
-      S.revPh += dt * S.revSpd * 0.55;
       var TW = 2 * Math.PI;
-      if (S.revPh >= TW) {
+      var whole = ((S.revAmp === undefined ? 180 : S.revAmp) >= 179.5);
+      S.revPh += dt * S.revSpd * 0.55;
+      /* ⚠ 循环时**不能取模**（mix<1 的整圈档）：mix=0.2 时 L1 转满 360° 就回原位，
+         但 L2 只相对转了 72°、L3 14.4°…相位一归零，深层环会瞬移 72° 跳一下。
+         所以整圈档让 revPh 一直长下去（L1 每圈回位、深层同向**进动**），
+         往复档（revAmp<180，revAngle 用 sin）才有真正的 2π 周期。 */
+      if (!S.loop) {
+        if (S.revPh >= TW) { S.revPh = whole ? TW : 0; S.rev = false; camUnlock(); syncRev(); }
+      } else if (!whole && S.revPh >= TW) {
         S.revPh -= TW;
-        if (!S.loop) { S.revPh = 0; S.rev = false; syncRev(); }
       }
-      showBar(S.revPh / TW, S.revPh * 180 / Math.PI);
+      showBar(((S.revPh % TW) + TW) % TW / TW, (S.revPh * 180 / Math.PI) % 360);
       drawMain();
     }
     if (S.spin || S.rev) startLoop();
@@ -2864,6 +2917,8 @@ function encodeGif(frames, W, H, delayCs) {
     ringCount: ringCount, levelCount: levelCount, seqLevels: seqLevels,
     sceneInfo: sceneInfo, segsFor: segsFor, baseColor: baseColor, hsv2rgb: hsv2rgb,
     hasHalfTurnZ: hasHalfTurnZ, gifSpan: gifSpan, camFor: camFor,
+    camLock: camLock, camUnlock: camUnlock, projBounds: projBounds,
+    camState: function () { return CAMLOCK ? { W: CAMLOCK.W, H: CAMLOCK.H, scale: CAMLOCK.cam.scale, center: CAMLOCK.cam.center } : null; },
     /* 新增：绕行曲线 + 校验 */
     curveRaw: curveRaw, gapInfo: gapInfo, gradLimits: gradLimits, sibGap: sibGap, ringCircle: ringCircle,
     capOf: capOf, capKey: capKey, CapScan: CapScan,
