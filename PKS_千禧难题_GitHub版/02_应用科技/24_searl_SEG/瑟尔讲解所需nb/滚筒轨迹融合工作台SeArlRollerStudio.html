@@ -1,0 +1,2208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>瑟尔滚筒轨迹融合工作台 · SeArl Roller Studio</title>
+<style>
+:root{
+  --bg:#0e0c14; --panel:#171426; --panel2:#1d1930; --line:#2c2544;
+  --txt:#e8e4f5; --dim:#9a92b8; --acc:#a97bff; --acc2:#6ee7ff; --warn:#ffcf6b;
+  --cy:#00ffff; --ye:#ffff00; --bl:#0000ff; --re:#ff0000; --gr:#00aa00;
+}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{
+  margin:0;background:radial-gradient(1200px 700px at 30% 0%,#1a1530 0%,var(--bg) 60%);
+  color:var(--txt);font:14px/1.5 "Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+}
+header{padding:13px 18px 9px 18px;border-bottom:1px solid #221c38;
+  position:sticky;top:0;z-index:40;background:rgba(14,12,20,.86);backdrop-filter:blur(6px)}
+h1{margin:0;font-size:17px;font-weight:600;letter-spacing:.3px}
+h1 .en{color:var(--dim);font-size:12.5px;font-weight:400;margin-left:8px;letter-spacing:0}
+.sub{margin:3px 0 0;color:var(--dim);font-size:12px}
+
+/* ---------- 播放条 ---------- */
+#transport{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:9px}
+#transport .sp{color:var(--dim);font-size:11.8px}
+#bar{flex:1 1 220px;min-width:160px;height:5px;border-radius:4px;background:#332a52;
+  position:relative;cursor:pointer}
+#barfill{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:4px;
+  background:linear-gradient(90deg,var(--acc),var(--acc2))}
+#tnum{font-family:Consolas,Menlo,monospace;color:var(--acc2);font-size:12px;min-width:52px;text-align:right}
+
+main{padding:14px 374px 46px 16px;transition:padding .22s ease}
+body.off main{padding-right:20px}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(392px,1fr));gap:14px;align-items:start}
+.vc{background:linear-gradient(180deg,var(--panel),#141126);border:1px solid var(--line);
+  border-radius:12px;padding:11px 12px 12px;box-shadow:0 10px 26px rgba(0,0,0,.38)}
+.vc h3{margin:0 0 3px;font-size:13.6px;font-weight:600;color:#e4ddf6;display:flex;
+  align-items:center;gap:7px;flex-wrap:wrap}
+.vc h3 .src{font-size:11px;font-weight:400;color:var(--dim)}
+.vc .cap{margin:0 0 8px;font-size:11.6px;color:#8f87ab;line-height:1.5}
+.cvs{display:grid;gap:8px}
+.cvs.two{grid-template-columns:1fr 1fr}
+.cvs.three{grid-template-columns:repeat(3,1fr)}
+.cvn{font-size:11.2px;color:var(--dim);margin:0 0 3px;display:flex;justify-content:space-between}
+canvas{display:block;width:100%;background:#fff;border-radius:8px;
+  box-shadow:0 4px 14px rgba(0,0,0,.4)}
+canvas.sq{aspect-ratio:1/1}
+canvas.wide{aspect-ratio:1/1}
+.eq{margin:9px 0 0;font-size:11.6px;font-family:Consolas,Menlo,monospace;color:#c9c1e6;
+  background:#120f20;border:1px solid #2a2342;border-radius:8px;padding:7px 9px;
+  white-space:pre-wrap;line-height:1.75}
+.eq b{font-weight:600}
+.mini{display:grid;grid-template-columns:auto auto auto 1fr;gap:2px 10px;font-size:11.5px;
+  font-family:Consolas,Menlo,monospace;margin-top:8px}
+.mini .k{color:var(--dim)}
+.mini .v{color:var(--acc2)}
+
+/* ---------- 右侧浮窗 ---------- */
+.panel{position:fixed;top:12px;right:12px;width:352px;max-height:calc(100vh - 24px);
+  overflow-y:auto;overflow-x:hidden;padding:11px;z-index:50;
+  background:linear-gradient(180deg,var(--panel),#141126);
+  border:1px solid var(--line);border-radius:13px;
+  box-shadow:0 16px 40px rgba(0,0,0,.55);
+  transition:transform .22s ease,opacity .22s ease}
+body.off .panel{transform:translateX(calc(100% + 26px));opacity:0;pointer-events:none}
+.panel::-webkit-scrollbar{width:9px}
+.panel::-webkit-scrollbar-thumb{background:#372a58;border-radius:9px}
+.panel::-webkit-scrollbar-track{background:transparent}
+.panel h2{margin:0 0 8px;font-size:12.5px;cursor:pointer;user-select:none;
+  display:flex;align-items:center;gap:6px;color:#cfc6ea}
+.panel h2::after{content:"\25BE";color:var(--dim);font-size:10px;transition:transform .18s}
+.panel h2 .badge{margin-left:auto;font-size:10.5px;font-weight:400;color:var(--dim)}
+.card{background:var(--panel2);border:1px solid #251f3c;border-radius:10px;
+  padding:9px 11px;margin-bottom:8px}
+.card.fold h2{margin-bottom:0}
+.card.fold h2::after{transform:rotate(-90deg)}
+.card.fold > *:not(h2){display:none}
+
+#ptoggle{position:fixed;top:50%;right:374px;transform:translateY(-50%);z-index:60;
+  width:26px;height:52px;border-radius:9px 0 0 9px;cursor:pointer;
+  background:var(--panel);border:1px solid var(--line);border-right:none;
+  color:var(--acc);font-size:13px;line-height:1;transition:right .22s ease}
+body.off #ptoggle{right:0}
+#ptoggle:hover{color:#fff;background:#221c3a}
+
+/* ---------- 控件 ---------- */
+.row{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.grow{display:grid;grid-template-columns:96px 1fr 60px;gap:7px;align-items:center;margin:7px 0}
+.grow .nm{color:var(--dim);font-size:12px;white-space:nowrap;display:flex;align-items:center;gap:5px}
+.grow .nm i{display:inline-block;width:8px;height:8px;border-radius:2px;border:1px solid rgba(255,255,255,.25)}
+.grow.dis .nm{opacity:.42}
+.grow.dis input[type=range]{opacity:.35;pointer-events:none}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:3px;
+  background:#332a52;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;
+  background:var(--acc);border:2px solid #241c3d;cursor:pointer;
+  box-shadow:0 0 0 3px rgba(169,123,255,.18)}
+input[type=number]{width:100%;padding:3px 5px;font:12.5px/1.3 Consolas,Menlo,monospace;
+  color:var(--txt);background:#120f20;border:1px solid #332a52;border-radius:6px;text-align:right}
+input[type=number]:focus{border-color:var(--acc);background:#171331}
+input[type=color]{width:40px;height:23px;padding:0;border:1px solid #332a52;border-radius:6px;
+  background:#120f20;cursor:pointer}
+button{padding:4px 9px;font-size:12.2px;color:var(--txt);cursor:pointer;
+  background:#241d3c;border:1px solid #332a52;border-radius:7px;transition:.14s}
+button:hover{background:#2f2650;border-color:#4a3d75}
+button.on{background:linear-gradient(180deg,#6d43c9,#5a34ab);border-color:#8b63e0;color:#fff}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.gg{padding:3px 7px;font-size:11.6px}
+label.nm{color:var(--dim);font-size:12.2px;display:inline-flex;align-items:center;gap:5px;cursor:pointer}
+input[type=checkbox]{accent-color:var(--acc);width:14px;height:14px;cursor:pointer}
+
+.read{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:12.3px;margin:0}
+.read dt{color:var(--dim);white-space:nowrap}
+.read dd{margin:0;font-family:Consolas,Menlo,monospace;color:var(--acc2)}
+.note{font-size:11.6px;line-height:1.65;color:#a49cc0;margin:7px 0 0}
+.note code{color:#cbb6ff;background:#221b3a;padding:0 4px;border-radius:4px;
+  font-family:Consolas,Menlo,monospace;font-size:11.3px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg.tg button{padding:4px 8px}
+.seg.tg button .dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;
+  vertical-align:-1px;border:1px solid rgba(255,255,255,.25)}
+.sub2{font-size:11.4px;color:var(--dim);margin:8px 0 3px;border-top:1px dashed #2c2544;padding-top:6px}
+.sub2:first-child{border-top:none;padding-top:0}
+.tbl{width:100%;border-collapse:collapse;font-size:11.4px;margin-top:5px}
+.tbl th,.tbl td{border:1px solid #2c2544;padding:3px 5px;text-align:center}
+.tbl th{color:var(--dim);font-weight:400;background:#191530}
+.tbl td.f{font-family:Consolas,Menlo,monospace;color:var(--acc2)}
+.wg{display:grid;grid-template-columns:auto 1fr;gap:3px 8px;font-size:11.5px;margin-top:5px}
+.wg .k{color:var(--dim)}
+
+@media (max-width:1180px){ .panel{width:314px} #ptoggle{right:336px} main{padding-right:336px} }
+@media (max-width:880px){
+  main{padding:12px}
+  .panel{position:static;width:auto;max-height:none;margin:0 12px 12px}
+  #ptoggle{display:none}
+  .cvs.three{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>瑟尔滚筒轨迹融合工作台<span class="en">SeArl Roller · Epitrochoid Studio</span></h1>
+  <p class="sub">融合三份 nb：
+    <b>Epitrochoids</b>（Wolfram Demonstration，Bruce Fast）·
+    <b>searl单滚筒轨迹</b>（自建稿，5 个实质单元）·
+    <b>Multiple Ferris Wheels</b>（Wolfram Demonstration，Ben Dillon &amp; Charles Logue）
+    —— 先去重、后整合，共 4 个动态视窗 / 7 块画面
+  </p>
+  <div id="transport">
+    <button id="bGif" title="把每一块动态画面按 τ 扫一整圈，逐块编码成高清 GIF（单张控制在 5 MB 以内）。会先让你选一个归档目录，取消则保存到浏览器下载目录。">🎞 导出全部 GIF</button>
+    <span id="gifNote" class="sp" title="GIF 导出进度 / 结果"></span>
+    <button id="bPlay">▶ 播放</button>
+    <button id="bReset">⟲ 复位</button>
+    <span class="sp">速度</span>
+    <input type="range" id="sSpeed" min="0.1" max="4" step="0.1" value="1" style="width:92px">
+    <span id="vSpeed" class="sp" style="min-width:30px">1.0×</span>
+    <div id="bar" title="点击/拖动定位"><div id="barfill"></div></div>
+    <span id="tnum">τ 0.000</span>
+  </div>
+</header>
+
+<button id="ptoggle" title="收起 / 展开参数面板">▸</button>
+
+<main>
+  <div class="grid">
+
+    <!-- ================= 视窗 ① ================= -->
+    <section class="vc" id="v1">
+      <h3>① 单滚筒 · 几何构造<span class="src">nb#1 Epitrochoids ＋ nb#2 单元1/3</span></h3>
+      <p class="cap">定子（半径 R）上滚动半径 r 的滚筒，滚筒上距圆心 ρ·r 的笔尖描出外摆线。
+        原版两套配色（nb#1 半透明盘 / nb#2 描边圆）可在右侧切换。</p>
+      <div class="cvs"><div>
+        <div class="cvn"><span>几何构造</span><span id="v1badge"></span></div>
+        <canvas id="cv1" class="sq"></canvas>
+      </div></div>
+      <div class="mini" id="v1mini"></div>
+    </section>
+
+    <!-- ================= 视窗 ② ================= -->
+    <section class="vc" id="v2">
+      <h3>② 本轮分解 · 两向量之和<span class="src">去重出的统一内核</span></h3>
+      <p class="cap">三份 nb 的每一条曲线都是 <b>两个旋转向量之和</b>：
+        P(t)=A·cis(ω<sub>A</sub>t+φ<sub>A</sub>)＋B·cis(ω<sub>B</sub>t+φ<sub>B</sub>)。
+        这里把它显式画出来 —— 蓝色大圆 ＋ 红色小圆（本轮）＝ 合成笔尖。</p>
+      <div class="cvs"><div>
+        <div class="cvn"><span>向量合成</span><span id="v2badge"></span></div>
+        <canvas id="cv2" class="sq"></canvas>
+      </div></div>
+      <div class="mini" id="v2mini"></div>
+    </section>
+
+    <!-- ================= 视窗 ③ ================= -->
+    <section class="vc" id="v3" style="grid-column:1/-1">
+      <h3>③ 等价构造 · 双生成与线族包络<span class="src">nb#2 单元4/5</span></h3>
+      <p class="cap">同一条外摆线的两种等价画法：<b>面板A</b> 半径 r 的滚筒沿定子 n·r 外侧滚动；
+        <b>面板B</b>「双生成」——半径 (n+1)r 的大圆在半径 r 的小圆上滚动，笔尖走过的仍是同一条曲线；
+        <b>面板C</b> 把曲线看作一族动弦的包络（切线的集合）。</p>
+      <div class="cvs three">
+        <div><div class="cvn"><span>面板A · 真滚动圆</span><span id="v3abadge"></span></div>
+             <canvas id="cv3a" class="sq"></canvas></div>
+        <div><div class="cvn"><span>面板B · 双生成大圆</span><span id="v3bbadge"></span></div>
+             <canvas id="cv3b" class="sq"></canvas></div>
+        <div><div class="cvn"><span>面板C · 线族包络</span><span id="v3cbadge"></span></div>
+             <canvas id="cv3c" class="sq"></canvas></div>
+      </div>
+      <div class="mini" id="v3mini"></div>
+    </section>
+
+    <!-- ================= 视窗 ④ ================= -->
+    <section class="vc" id="v4" style="grid-column:1/-1">
+      <h3>④ 多滚筒 · 定子 ＋ n 个外围转子<span class="src">＝ 第 ① 套系统的 n 个副本（nb#3 Multiple Ferris Wheels）</span></h3>
+      <p class="cap"><b>定子（红圈，半径 R）</b>外面套 <b>n 个转子（半径 r）</b>，转子圆心均匀落在半径 R+r 的圆上、彼此错开 2π/n。
+        这三样全部由 ① 的统一模型派生（R = n·r、转子数 = n、转子半径 = r），
+        <b>右边浮窗一动，这里立刻跟着变</b>。左：俯视轨迹（每条曲线 = ① 同一条外摆线的时间平移）；
+        右：n 条 y(θ) 波形，与参数方程同源。</p>
+      <div class="cvs two">
+        <div><div class="cvn"><span>俯视轨迹</span><span id="v4abadge"></span></div>
+             <canvas id="cv4a" class="sq"></canvas></div>
+        <div><div class="cvn"><span>高度波形 y(t)</span><span id="v4bbadge"></span></div>
+             <canvas id="cv4b" class="wide"></canvas></div>
+      </div>
+      <div class="eq" id="v4eq"></div>
+    </section>
+
+  </div>
+
+  <aside class="panel" id="panel">
+
+    <div class="card" id="cardG">
+      <h2>全局播放 <span class="badge">驱动全部视窗</span></h2>
+      <div class="row">
+        <button id="bPlay2">▶ 播放</button>
+        <button id="bReset2">⟲ 复位</button>
+        <button id="bLoop">🔁 循环</button>
+      </div>
+      <p class="note">三份原版各有自己的动画机制（nb#1 <code>AutorunSequencing-&gt;{3,4}</code> 轮播 α、θ；
+        nb#2 <code>Animate</code> 扫 u；nb#3 <code>AutorunSequencing-&gt;{1}</code> 扫 θ）。
+        融合后合并成<b>一条 τ 进度条</b>，同时驱动 4 个视窗。</p>
+    </div>
+
+    <div class="card" id="cardRead">
+      <h2>实时读数</h2>
+      <dl class="read">
+        <dt>统一核</dt><dd id="rCore">—</dd>
+        <dt>① 笔尖</dt><dd id="rP1">—</dd>
+        <dt>② 合成点</dt><dd id="rP2">—</dd>
+        <dt>③ 曲线半径</dt><dd id="rP3">—</dd>
+        <dt>④ 四点 y</dt><dd id="rP4">—</dd>
+      </dl>
+    </div>
+
+    <div class="card" id="cardV1">
+      <h2>① 单滚筒参数 <span class="badge">＝ 统一模型</span></h2>
+      <p class="note" style="margin-top:2px">★ 下面这三个量就是全站的<b>统一模型</b>。<b>改它们，四张动态图一起变</b>；
+        ② ③ ④ 的对应参数会自动跟着算出来（不锁定时也能单独改）。</p>
+      <div class="grow"><span class="nm">n 定子/滚筒整数比</span>
+        <input type="range" id="sUn" min="1" max="24" step="1">
+        <input type="number" id="vUn" min="1" max="24" step="1"></div>
+      <div class="grow"><span class="nm">r 滚筒半径</span>
+        <input type="range" id="sur" min="0.05" max="3" step="0.01">
+        <input type="number" id="vur" min="0.05" max="3" step="0.01"></div>
+      <div class="grow"><span class="nm">ρ 笔距比（0 ~ 1）</span>
+        <input type="range" id="surho" min="0" max="1" step="0.01">
+        <input type="number" id="vurho" min="0" max="1" step="0.01"></div>
+      <div class="row" style="margin-top:5px">
+        <span class="nm">R 定子半径</span><b id="Rdisp" style="color:#ffd479;font-family:Consolas,monospace">2.00</b>
+        <span class="nm">= n × r（自动，整数比恒成立）</span>
+      </div>
+      <div class="row" style="margin-top:5px">
+        <span class="nm">笔距方向</span>
+        <button class="gg" id="bSign">在外（+ρ）</button>
+        <span class="nm" id="signHint">本征角速 ωB/ωA = n+1 = 5</span>
+      </div>
+      <div class="grow"><span class="nm">θ 展开角</span>
+        <input type="range" id="sTh" min="0.01" max="12.57" step="0.01">
+        <input type="number" id="vTh" min="0.01" max="12.57" step="0.01"></div>
+      <div class="sub2">配色方案（两套原版外观）</div>
+      <div class="seg">
+        <button data-skin="nb1">nb#1 半透明盘</button>
+        <button data-skin="nb2">nb#2 描边圆</button>
+      </div>
+      <div class="sub2">图层</div>
+      <div class="seg tg" id="segL1">
+        <button data-l1="stator"><i class="dot" style="background:#00aa00"></i>定子</button>
+        <button data-l1="roller"><i class="dot" style="background:#222"></i>滚筒</button>
+        <button data-l1="pen"><i class="dot" style="background:#88f"></i>笔距</button>
+        <button data-l1="arm"><i class="dot" style="background:#444"></i>臂</button>
+        <button data-l1="trace"><i class="dot" style="background:#5e81b5"></i>轨迹</button>
+        <button data-l1="pt"><i class="dot" style="background:#f00"></i>笔尖</button>
+        <button data-l1="grid"><i class="dot" style="background:#ddd"></i>网格</button>
+      </div>
+      <div class="grow"><span class="nm">网格步长</span>
+        <input type="range" id="sGs" min="0.1" max="2" step="0.05">
+        <input type="number" id="vGs" min="0.1" max="2" step="0.05"></div>
+      <div class="row" style="margin-top:6px">
+        <span class="nm">θ 上限</span>
+        <button class="gg" data-thm="one">1 圈 2π（闭合）</button>
+        <button class="gg" data-thm="nb">2 圈 4π（原版 2(p+1)π）</button>
+        <button class="gg" data-thm="close">3 圈 6π</button>
+      </div>
+    </div>
+
+    <div class="card" id="cardV2">
+      <h2>② 本轮参数 <span class="badge">＝ 统一核</span></h2>
+      <div class="row" style="margin-top:2px">
+        <label class="nm"><input type="checkbox" id="ckLock2">🔒 跟随统一模型（六元组由 ① 派生）</label>
+      </div>
+      <p class="note" id="v2derived" style="margin-top:3px">—</p>
+      <div class="grow"><span class="nm">A 主圆半径</span>
+        <input type="range" id="sA" min="-15" max="15" step="0.01">
+        <input type="number" id="vA" min="-15" max="15" step="0.01"></div>
+      <div class="grow"><span class="nm">ω<sub>A</sub> 主圆角速</span>
+        <input type="range" id="swA" min="0" max="8" step="0.01">
+        <input type="number" id="vwA" min="0" max="8" step="0.01"></div>
+      <div class="grow"><span class="nm">φ<sub>A</sub> 主圆相位</span>
+        <input type="range" id="spA" min="0" max="6.2832" step="0.01">
+        <input type="number" id="vpA" min="0" max="6.2832" step="0.01"></div>
+      <div class="grow"><span class="nm">B 本轮半径</span>
+        <input type="range" id="sB" min="-15" max="15" step="0.01">
+        <input type="number" id="vB" min="-15" max="15" step="0.01"></div>
+      <div class="grow"><span class="nm">ω<sub>B</sub> 本轮角速</span>
+        <input type="range" id="swB" min="0" max="14" step="0.01">
+        <input type="number" id="vwB" min="0" max="14" step="0.01"></div>
+      <div class="grow"><span class="nm">φ<sub>B</sub> 本轮相位</span>
+        <input type="range" id="spB" min="0" max="6.2832" step="0.01">
+        <input type="number" id="vpB" min="0" max="6.2832" step="0.01"></div>
+      <div class="grow"><span class="nm">t 上限</span>
+        <input type="range" id="sT2" min="0.5" max="37.7" step="0.01">
+        <input type="number" id="vT2" min="0.5" max="37.7" step="0.01"></div>
+      <div class="seg" style="margin-top:7px">
+        <button class="gg" data-pp="c2">nb#2 单元2 双圆</button>
+        <button class="gg" data-pp="c3">nb#2 单元3 (r=1)</button>
+        <button class="gg" data-pp="roll">滚动外摆线 R=6 r=.5</button>
+        <button class="gg" data-pp="w1">四滚筒轮1</button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <button class="gg" id="bSync">↔ 由①同步</button>
+        <button class="gg" id="bInteg">取整周期</button>
+      </div>
+      <div class="sub2">图层</div>
+      <div class="seg tg" id="segL2">
+        <button data-l2="vec"><i class="dot" style="background:#00f"></i>向量</button>
+        <button data-l2="circ"><i class="dot" style="background:#ff0"></i>两个圆</button>
+        <button data-l2="trace"><i class="dot" style="background:#5e81b5"></i>轨迹</button>
+        <button data-l2="pt"><i class="dot" style="background:#f00"></i>笔尖</button>
+      </div>
+      <p class="note" id="v2roll">—</p>
+    </div>
+
+    <div class="card" id="cardV3">
+      <h2>③ 等价构造参数</h2>
+      <div class="grow"><span class="nm">n 定子倍率 <b style="color:#7fd1a8">＝①的 n</b></span>
+        <input type="range" id="sN" min="1" max="24" step="1">
+        <input type="number" id="vN" min="1" max="24" step="1"></div>
+      <div class="grow"><span class="nm">r 滚筒半径 <b style="color:#7fd1a8">＝①的 r</b></span>
+        <input type="range" id="sR3" min="0.05" max="3" step="0.01">
+        <input type="number" id="vR3" min="0.05" max="3" step="0.01"></div>
+      <div class="grow"><span class="nm">u 滚动角</span>
+        <input type="range" id="sU" min="0" max="6.2832" step="0.001">
+        <input type="number" id="vU" min="0" max="6.2832" step="0.001"></div>
+      <div class="grow"><span class="nm">m 线族条数</span>
+        <input type="range" id="sM" min="3" max="201" step="1">
+        <input type="number" id="vM" min="3" max="201" step="1"></div>
+      <div class="grow"><span class="nm">步进段数</span>
+        <input type="range" id="sMs" min="4" max="120" step="1">
+        <input type="number" id="vMs" min="4" max="120" step="1"></div>
+      <div class="sub2">显示</div>
+      <div class="seg tg" id="segL3">
+        <button data-l3="A"><i class="dot" style="background:#00f"></i>面板A</button>
+        <button data-l3="B"><i class="dot" style="background:#00f"></i>面板B</button>
+        <button data-l3="C"><i class="dot" style="background:#f00"></i>面板C</button>
+        <button data-l3="lines"><i class="dot" style="background:#c00"></i>线族</button>
+        <button data-l3="curve"><i class="dot" style="background:#f00"></i>曲线</button>
+        <button data-l3="partial"><i class="dot" style="background:#999"></i>只画到 u</button>
+      </div>
+      <p class="note"><b>n 与 r 就是统一模型的 n、r</b>（定子半径 = n·r），改这里 ① ② ④ 一起变。
+        原版 nb#2 单元4 写死 <code>n=3, r=1</code>、单元5 写死 <code>n=12, r=1</code>；这里已并成一处。</p>
+    </div>
+
+    <div class="card" id="cardV4">
+      <h2>④ 多滚筒参数 <span class="badge">＝ 第 ① 套系统的 n 个副本</span></h2>
+      <div class="row" style="margin-top:2px">
+        <span class="nm">定子圈半径 R</span><b id="Rdisp4" style="color:#ff8a8a;font-family:Consolas,monospace">2.00</b>
+        <span class="nm">｜ 转子个数</span><b id="Ndisp4" style="color:#ffd479;font-family:Consolas,monospace">4</b>
+        <span class="nm">｜ 转子半径</span><b id="rdisp4" style="color:#ffd479;font-family:Consolas,monospace">0.50</b>
+        <span class="nm">（全部由 ① 派生）</span>
+      </div>
+      <div class="grow"><span class="nm">θ 骑行角</span>
+        <input type="range" id="sTh4" min="0.0001" max="12.5664" step="0.0001">
+        <input type="number" id="vTh4" min="0.0001" max="12.5664" step="0.0001"></div>
+      <div class="tbl" style="margin-top:8px">
+        <table class="tbl" id="t4">
+          <thead><tr><th>转子</th><th>开</th><th>半径</th><th>方向</th><th>角速 s</th><th>笔尖 (x, y)</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="row" style="margin-top:7px">
+        <button class="gg" data-p4="orig">原版四轮</button>
+        <button class="gg" data-p4="std">全部标准外摆线</button>
+        <button class="gg" data-p4="rev">交替反向</button>
+        <button class="gg" data-p4="slow">慢速</button>
+      </div>
+      <p class="note">★ 定子红圈的半径 = <code>n·r</code>、转子个数 = <code>n</code>、转子半径 = <code>r</code>
+        —— 全部与前面三张图<b>同一个来源</b>。每个转子的「半径」是只读的（=r）；<b>开 / 方向 / 角速</b>仍可逐轮单独改。
+        原版默认 <code>θ=0.0001</code>（画面几乎空白），按 <b>▶ 播放</b> 看「骑行」过程。</p>
+    </div>
+
+    <div class="card" id="cardDedup">
+      <h2>去重对照表</h2>
+      <table class="tbl">
+        <thead><tr><th>原始功能</th><th>来源</th><th>合并后落点</th></tr></thead>
+        <tbody>
+          <tr><td>定子＋滚筒＋臂＋轨迹</td><td>①②③④ 全部</td><td class="f">①（几何管线）</td></tr>
+          <tr><td>轨迹参数化</td><td>①②③④</td><td class="f">②（统一核）</td></tr>
+          <tr><td>半透明盘外观</td><td>nb#1</td><td class="f">① 配色 nb#1</td></tr>
+          <tr><td>描边圆＋网格＋笔尖点</td><td>nb#2 单元1</td><td class="f">① 配色 nb#2</td></tr>
+          <tr><td>p/q 有理比＋α 笔距</td><td>nb#1</td><td class="f">① 有理比锁定</td></tr>
+          <tr><td>R、r、a 自由滑条</td><td>nb#2 单元1/3</td><td class="f">① R/r/ρ 滑条</td></tr>
+          <tr><td>两圆和（本轮）实验</td><td>nb#2 单元2</td><td class="f">② 预设</td></tr>
+          <tr><td>(1+r)cisθ＋a cis(1+r)θ</td><td>nb#2 单元3</td><td class="f">② 预设</td></tr>
+          <tr><td>双生成＋线族包络</td><td>nb#2 单元4/5</td><td class="f">③ 三面板</td></tr>
+          <tr><td>四轮半径/方向/速度</td><td>nb#3</td><td class="f">④ 轮表</td></tr>
+          <tr><td>y(t) 波形</td><td>nb#3</td><td class="f">④ 右画面</td></tr>
+          <tr><td>参数方程显示</td><td>nb#3</td><td class="f">④ 方程条</td></tr>
+          <tr><td>三套动画机制</td><td>①②③④</td><td class="f">全局 τ 播放条</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card" id="cardExtra">
+      <h2>附加</h2>
+      <div class="row">
+        <button id="bPng">保存各视窗 PNG</button>
+        <button id="bOrig">恢复三份原版默认</button>
+      </div>
+      <p class="note" id="cpNote">—</p>
+    </div>
+
+    <div class="card fold" id="cardNote">
+      <h2>原理（统一核）</h2>
+      <p class="note">
+        三份 nb 的曲线全部可以写成<b>两个旋转向量之和</b>：<br>
+        <code>P(t) = A·cis(ω_A·t + φ_A) + B·cis(ω_B·t + φ_B)</code>，<code>cis x = (cos x, sin x)</code>。<br><br>
+        <b>① 单滚筒（滚动式）</b>：定子 R、滚筒 r、笔距比 ρ →<br>
+        <code>A = R+r，ω_A = 1，B = ρ·r，ω_B = (R+r)/r</code>（∓ 号即 ρ 的正负）。<br>
+        滚动条件 <code>ω_B = A/r</code> 是它与自由本轮的分水岭。<br><br>
+        <b>③ 双生成</b>：取 <code>A = (n+1)r，B = −r，ω_B = n+1</code>，正好满足滚动条件，
+        所以它既是「半径 r 的圆在半径 n r 外滚」，也是「半径 (n+1)r 的圆在半径 r 外滚」——同一条线两种生成。<br><br>
+        <b>④ 四滚筒</b>：第 i 轮取 <code>A = 开关，φ_A = iπ/2，B = 开关·r_i，ω_B = s_i·d_i</code>。
+        大轮周期长（ω=1）、小轮周期短，正是原版说明里「大轮用小频率、小轮用高频率的正弦和」。
+      </p>
+    </div>
+
+  </aside>
+</main>
+
+<script id="app">
+(function () {
+'use strict';
+/* =========================================================================
+   瑟尔滚筒轨迹融合工作台 · SeArl Roller Studio
+   融合三份 Mathematica nb：
+     A) 瑟尔滚筒环绕定子轨迹模拟Epitrochoids.nb   — Wolfram Demo "Epitrochoids", Bruce Fast
+     B) searl单滚筒轨迹.nb                        — 自建探索稿（5 个实质单元）
+     C) searl 4滚筒模拟MultipleFerrisWheels.nb    — Wolfram Demo "Multiple Ferris Wheels",
+                                                    Ben Dillon & Charles Logue
+   去重结论：三份的每一条曲线都是「两个旋转向量之和」
+     P(t) = A·cis(ωA·t + φA) + B·cis(ωB·t + φB)
+   ========================================================================= */
+
+/* ---------------------------------------------------------------- 1. 常量 */
+
+/* Mathematica 具名色（RGB 0~1） */
+const MMA = {
+  Blue:   [0, 0, 1],
+  Green:  [0, 1, 0],
+  Red:    [1, 0, 0],
+  Yellow: [1, 1, 0]
+};
+/* Darker[c] = c * 2/3（Mathematica 默认 1/3 变暗） */
+function darker(c) { return [c[0] * 2 / 3, c[1] * 2 / 3, c[2] * 2 / 3]; }
+
+const COL = {
+  /* 原版实际用色 */
+  defaultPlot: '#5e81b5',            /* Mathematica 默认绘图色 RGBColor[.368417,.506779,.709798] */  nb1Stator: MMA.Green,
+  nb1Roller: MMA.Blue,
+  nb1Arm:    MMA.Blue,
+  nb1Trace:  '#5e81b5',
+  nb2Stator: MMA.Blue,
+  nb2Roller: [0, 0, 0],
+  nb2Arm:    [0, 0, 0],
+  nb2Trace:  MMA.Red,
+  nb2Pt:     MMA.Red,
+  grid:      [0.9, 0.9, 0.9],        /* GrayLevel[0.9] */
+  wheel:     [darker(MMA.Blue), darker(MMA.Green), darker(MMA.Red), darker(MMA.Yellow)],
+  wheelName: ['右 R', '上 T', '左 L', '下 B'],
+  panelA:    MMA.Blue,               /* Prolog Directive[Blue,Thick] */
+  panelB:    MMA.Blue,
+  panelC:    MMA.Blue,
+  rollA:     [0, 0, 0],              /* Thick（未指定色 ⇒ 黑） */
+  curveR:    MMA.Red,                /* PlotStyle->Directive[Red,Thick] / Red */
+  axis:      [0.35, 0.35, 0.35],
+  frame:     [0.25, 0.25, 0.25],
+  v4Stator:  MMA.Red            /* ★ ④ 的定子红圈 —— 半径就是统一模型的 R = n·r */
+};
+
+/* ④ 的转子个数现在 = 统一模型的 n（1~24），配色得跟着长。
+   前 4 个沿用原版 Darker[{Blue,Green,Red,Yellow}]（保证与原版四轮逐色对照），
+   第 5 个起按色相环均分。 */
+function hsv2rgb(h, s, v) {
+  h = ((h % 1) + 1) % 1;
+  const i = Math.floor(h * 6), fr = h * 6 - i;
+  const p = v * (1 - s), q = v * (1 - fr * s), t = v * (1 - (1 - fr) * s);
+  const k = [[v, t, p], [q, v, p], [p, v, t], [p, q, v], [t, p, v], [v, p, q]][i % 6];
+  return [k[0] * 255, k[1] * 255, k[2] * 255];
+}
+function wheelColor(i) {
+  /* 第 5 个起按黄金角跳色相 —— 保证**相邻**转子颜色差异最大，且够饱和（白底上看不清就白画了） */
+  return i < 4 ? COL.wheel[i] : hsv2rgb(0.62 + (i - 4) * 0.61803398875, 0.80, 0.62);
+}
+function wheelName(i) {
+  return i < 4 ? COL.wheelName[i] : ('轮' + (i + 1));
+}
+/* ④ 的每个转子是否都还是「标准外摆线」（k_i = s_i·d_i 等于 n+1） */
+function allStd() {
+  const k0 = Core.uniK(S.uni), v = S.v4;
+  for (let i = 0; i < v.s.length; i++) if (Math.abs(v.s[i] * v.d[i] - k0) > 1e-9) return false;
+  return true;
+}
+
+/* 参数区间（照抄原版控件） */
+const RANGE = {
+  R:   { lo: 0.1, hi: 10,   step: 0.01, def: 1,     dec: 2 },
+  r:   { lo: 0.05, hi: 4,   step: 0.01, def: 4 / 7, dec: 4 },
+  k:   { lo: -2,  hi: 2,    step: 0.01, def: 1.5,   dec: 2 },
+  th:  { lo: 0.01, hi: 12.5664, step: 0.01, def: 6, dec: 2 },
+  gs:  { lo: 0.1, hi: 2,    step: 0.05, def: 0.5,   dec: 2 },
+  A:   { lo: -15, hi: 15,   step: 0.01, def: 1,     dec: 2 },
+  wA:  { lo: 0,   hi: 8,    step: 0.01, def: 1,     dec: 2 },
+  pA:  { lo: 0,   hi: 6.2832, step: 0.01, def: 0,   dec: 2 },
+  B2:  { lo: -15, hi: 15,   step: 0.01, def: 0.25,  dec: 2 },
+  wB:  { lo: 0,   hi: 14,   step: 0.01, def: 4,     dec: 2 },
+  pB:  { lo: 0,   hi: 6.2832, step: 0.01, def: 0,   dec: 2 },
+  t2:  { lo: 0.5, hi: 37.7, step: 0.01, def: 6.2832, dec: 3 },
+  n:   { lo: 1,   hi: 20,   step: 1,    def: 3,     dec: 0 },
+  r3:  { lo: 0.2, hi: 2,    step: 0.01, def: 1,     dec: 2 },
+  u:   { lo: 0,   hi: 6.2832, step: 0.001, def: 1.2, dec: 3 },
+  m:   { lo: 3,   hi: 201,  step: 1,    def: 101,   dec: 0 },
+  ms:  { lo: 4,   hi: 120,  step: 1,    def: 31,    dec: 0 },
+  th4: { lo: 0.0001, hi: 12.5664, step: 0.0001, def: 0.0001, dec: 4 },
+  r4:  { lo: 0,   hi: 0.7072, step: 0.01, dec: 2 },
+  s4:  { lo: 0,   hi: 10,   step: 0.1,  dec: 1 }
+};
+const TAU = Math.PI * 2;
+const TAU_SEC = 9;            /* 一个完整 τ 循环的秒数 */
+const SQ2 = Math.sqrt(0.5);   /* 原版滚筒半径上限 */
+
+/* ---------------------------------------------------------------- 2. 状态 */
+
+function defState() {
+  return {
+    tau: 0.55, playing: false, loop: true, speed: 1,
+    /* ★★★ 统一模型 —— 四张动态图共用的同一套物理量（老师 2026-10-07 要求）
+         · n   定子 / 滚筒半径比，**必须是 ≥1 的整数**  ⇒ R = n·r
+         · r   滚筒半径
+         · rho 笔距比，**0 ~ 1**（大小）；sign 管方向（+1 外 / −1 内）
+       由这三件套派生出 ①②③④ 的全部参数，改任何一处四张图一起变。            */
+    uni: { n: 4, r: 0.5, rho: 1, sign: 1, lock2: true, lock3: true },
+    /* ① 单滚筒几何构造（R/r/k 由 uni 派生，这里只是落点） */
+    v1: {
+      R: 2, r: 0.5, k: 1, theta: 6,
+      ratio: true, p: 1, q: 4,
+      skin: 'nb1', gridStep: 0.5, thMode: 'one',
+      layers: { stator: 1, roller: 1, pen: 1, arm: 1, trace: 1, pt: 0, grid: 0 }
+    },
+    /* ② 本轮分解（lock2 时六元组由 uni 派生） */
+    v2: {
+      A: 2.5, wA: 1, pA: 0, B: 0.5, wB: 5, pB: 0,
+      tMax: 6.2832, t: 3.4558,
+      layers: { vec: 1, circ: 1, trace: 1, pt: 1 }
+    },
+    /* ③ 等价构造（lock3 时 n/r 由 uni 派生） */
+    v3: {
+      n: 4, r: 0.5, u: 1.2, m: 101, ms: 31, discrete: true,
+      layers: { A: 1, B: 1, C: 1, lines: 1, curve: 1, partial: 1 }
+    },
+    /* ④ 多滚筒（转子个数 = n、定子半径 = n·r、转子半径 = r，全部由 uni 派生） */
+    v4: {
+      th: 0.0001,
+      on: [1, 1, 1, 1],          /* 逐轮开关（0/1），长度随 n 变 */
+      d:  [1, 1, 1, 1],          /* 逐轮方向 ±1 */
+      s:  [5, 5, 5, 5],          /* 逐轮角速，默认 = n+1（标准外摆线） */
+      stdK: 5                    /* 上一轮的「标准角速」= n+1，用来判断该不该跟着 n 自动改 */
+    },
+    showAxes: true
+  };
+}
+const S = defState();
+const ORIG = JSON.parse(JSON.stringify(S));
+
+/* ---------------------------------------------------------------- 3. 数学核
+   P(t) = A·cis(wA·t + pA) + B·cis(wB·t + pB)                                */
+const Core = {
+  cis(a) { return [Math.cos(a), Math.sin(a)]; },
+  vec2(A, wA, pA, B, wB, pB, t) {
+    return [A * Math.cos(wA * t + pA) + B * Math.cos(wB * t + pB),
+            A * Math.sin(wA * t + pA) + B * Math.sin(wB * t + pB)];
+  },
+  /* ---- ① 单滚筒：定子 R、滚筒 r、笔距比 k（有符号） ---- */
+  epi(R, r, k, t) {
+    const A = R + r, wB = (R + r) / r, B = k * r;
+    return Core.vec2(A, 1, 0, B, wB, 0, t);
+  },
+  epiCore(R, r, k) { return { A: R + r, wA: 1, pA: 0, B: k * r, wB: (R + r) / r, pB: 0 }; },
+  /* 定子/滚筒几何 */
+  rollerCenter(R, r, t) { return [(R + r) * Math.cos(t), (R + r) * Math.sin(t)]; },
+  rollerAngle(R, r, t) { return (R + r) / r * t; },           /* 臂/笔的指向角 */
+  /* nb#1 PlotRange 半宽：pr = R + r(1 + Max[1,|k|])（R=1 时与原版逐字相同） */
+  plotRange(R, r, k) { return R + r * (1 + Math.max(1, Math.abs(k))); },
+  /* nb#1 原版 θ 上限 2(Numerator[p/q]+1)π */
+  thMaxNb(p, q) { return 2 * (p + 1) * Math.PI; },
+  /* 闭合一整周 θ = 2π·Numerator[r]（r=p/q 最简） */
+  thClose(p) { return 2 * Math.PI * p; },
+  /* ---- ③ 等价构造 ---- */
+  doubleGen(n, r, u) { return Core.vec2((n + 1) * r, 1, 0, -r, n + 1, 0, u); },
+  panelACenter(n, r, u) { return [(n + 1) * r * Math.cos(u), (n + 1) * r * Math.sin(u)]; },
+  panelBCenter(n, r, u) { return [-r * Math.cos((n + 1) * u), -r * Math.sin((n + 1) * u)]; },
+  c4Circle(n, r, u) { return [(n + 2) * r * Math.cos(u), (n + 2) * r * Math.sin(u)]; },
+  c4Line(n, r, u) {
+    const c = Core.c4Circle(n, r, u), ph = (1 + n / 2) * u;
+    const dx = 2 * r * Math.cos(ph), dy = 2 * r * Math.sin(ph);
+    return [[c[0] - dx, c[1] - dy], [c[0] + dx, c[1] + dy]];
+  },
+  /* ---- ④ 多滚筒：与 ① 同构，n 个「单滚筒系统」绕中心均匀分布 ----
+     第 i 个转子的圆心 = (R+r)·cis(θ + φ_i)，φ_i = i·2π/n
+     笔尖             = (R+r)·cis(t + φ_i) + ρ·r·cis(k·(t + φ_i))
+     k = n+1（d=+1 时）就是标准外摆线 —— 与 ① 完全同一条曲线，只是差一个相位。 */
+  wheelPhi(i, nW) { return i * TAU / nW; },
+  wheelCenter(i, th, R, r, nW) {
+    const a = th + Core.wheelPhi(i, nW), m = R + r;
+    return [m * Math.cos(a), m * Math.sin(a)];
+  },
+  wheelPoint(i, t, R, r, nW, rho, k) {
+    const a = t + Core.wheelPhi(i, nW), m = R + r;
+    return [m * Math.cos(a) + rho * r * Math.cos(k * a),
+            m * Math.sin(a) + rho * r * Math.sin(k * a)];
+  },
+  /* ---- 统一模型 → 各视图参数（唯一的真值来源） ---- */
+  uniR(u) { return u.n * u.r; },                       /* 定子半径 R = n·r */
+  uniK(u) { return u.n + 1; },                         /* 本征角速 ωB/ωA = (R+r)/r = n+1 */
+  uniCore(u) { return Core.epiCore(Core.uniR(u), u.r, u.sign * u.rho); },
+  /* 统一核参数（去重对照用） */
+  fromV1() { return Core.epiCore(S.v1.R, S.v1.r, S.v1.k); },
+  fromV2() { const v = S.v2; return { A: v.A, wA: v.wA, pA: v.pA, B: v.B, wB: v.wB, pB: v.pB }; },
+  fromV3() { const v = S.v3; return { A: (v.n + 1) * v.r, wA: 1, pA: 0, B: -v.r, wB: v.n + 1, pB: 0 }; },
+  fromV4(i) {
+    const v = S.v4, u = S.uni, a = v.on[i], n = u.n;
+    const phi = Core.wheelPhi(i, n), k = v.s[i] * v.d[i], m = Core.uniR(u) + u.r;
+    return { A: a * m, wA: 1, pA: phi, B: a * u.rho * u.r, wB: k, pB: k * phi };
+  },
+  /* 滚动等价：ωB/ωA = A/r ⇒ r = A·ωA/ωB, R = A − r, ρ = B·ωB/(A·ωA)
+     只有 r>0 且 R>0（定子半径为正）才真的能读成「圆外滚圆」的外摆线。 */
+  rollingEquiv(A, wA, wB, B) {
+    if (!(wB > 1e-9) || !(wA > 1e-9) || Math.abs(A) < 1e-9) return null;
+    const r = A * wA / wB, R = A - r;
+    if (!(r > 0) || !(R > 0)) return null;
+    return { r: r, R: R, k: B * wB / (A * wA), rot: wB / wA };
+  },
+  /* 周期：ωA·T=2πm, ωB·T=2πn ⇒ T = 2π·分母(ωB/ωA) */
+  rational(x, maxDen) {
+    maxDen = maxDen || 40;
+    let best = null;
+    for (let q = 1; q <= maxDen; q++) {
+      const p = Math.round(x * q);
+      if (p === 0) continue;
+      const e = Math.abs(p / q - x);
+      if (!best || e < best.e - 1e-15) best = { p: p, q: q, e: e };
+      if (e < 1e-12) break;
+    }
+    return best;
+  },
+  periodMax(wA, wB) {
+    if (!(wA > 1e-9) || !(wB > 1e-9)) return TAU;
+    const x = wB / wA, rr = Core.rational(x, 40);
+    if (rr.e > 1e-6) return TAU;
+    return TAU * rr.q;
+  },
+  gcd(a, b) {
+    a = Math.abs(Math.round(a)); b = Math.abs(Math.round(b));
+    while (b) { const t = a % b; a = b; b = t; }
+    return a || 1;
+  }
+};
+
+/* ------------------------------------------------- 3.5 统一模型 → 全局同步
+   老师要的是「右边浮窗参数一调，左边每一张图都会变化」。
+   所以 ①②③④ 的参数不再各自独立，而是全部由 S.uni 派生：
+     改 uni 的任何一处 → syncUni() 刷新四张图的落点 → 一次重绘，四张图一起变。 */
+
+const UNI_LIM = { n: [1, 24], r: [0.05, 3], rho: [0, 1], th: [0.0001, 4 * Math.PI] };
+
+function ensureWheels() {
+  const u = S.uni, n = u.n, k0 = Core.uniK(u), v = S.v4;
+  /* 「标准」判据：全部转子的角速都还等于上一轮的标准值 k = n+1。
+     是 ⇒ 跟着新的 n+1 一起走（④ 永远 = ① 的 n 个副本）；
+     否 ⇒ 老师已经手动改过某几个轮子的角速，保持不动。 */
+  const prevK = (v.stdK === undefined) ? k0 : v.stdK;
+  let allStd = true;
+  for (let i = 0; i < v.on.length; i++) {
+    if (Math.abs(v.s[i] - prevK) > 1e-9) { allStd = false; break; }
+  }
+  while (v.on.length < n) { v.on.push(1); v.d.push(1); v.s.push(k0); }
+  v.on.length = n; v.d.length = n; v.s.length = n;
+  if (allStd) { for (let i = 0; i < n; i++) v.s[i] = k0; }
+  v.stdK = k0;
+}
+
+function syncUni() {
+  const u = S.uni;
+  u.n = Math.max(UNI_LIM.n[0], Math.min(UNI_LIM.n[1], Math.round(u.n) || 1));
+  u.r = Math.max(UNI_LIM.r[0], Math.min(UNI_LIM.r[1], +u.r || 0.5));
+  u.rho = Math.max(UNI_LIM.rho[0], Math.min(UNI_LIM.rho[1], +u.rho || 0));
+  u.sign = u.sign < 0 ? -1 : 1;
+
+  const R = Core.uniR(u);
+  /* ---- ① 单滚筒：R = n·r 恒成立（整数比锁定） ---- */
+  S.v1.R = R; S.v1.r = u.r; S.v1.k = u.sign * u.rho;
+  S.v1.ratio = true; S.v1.p = 1; S.v1.q = u.n;
+  S.v1.theta = Math.max(0.01, Math.min(S.v1.theta, thHi()));
+
+  /* ---- ② 本轮分解：锁定态直接吃统一核 ---- */
+  if (u.lock2) {
+    const c = Core.uniCore(u);
+    S.v2.A = c.A; S.v2.wA = c.wA; S.v2.pA = 0;
+    S.v2.B = c.B; S.v2.wB = c.wB; S.v2.pB = 0;
+    S.v2.tMax = TAU;
+    S.v2.t = Math.max(0.0001, Math.min(S.v2.t, TAU));
+  }
+
+  /* ---- ③ 等价构造：n、r 同名同源 ---- */
+  if (u.lock3) { S.v3.n = u.n; S.v3.r = u.r; }
+
+  /* ---- ④ 多滚筒：定子 = R、转子数 = n、转子半径 = r ---- */
+  ensureWheels();
+  S.v4.th = Math.max(UNI_LIM.th[0], Math.min(S.v4.th, UNI_LIM.th[1]));
+
+  invalidate();
+  return R;
+}
+
+/* ② 的「由①同步」与 ③ 的「跟随统一模型」都是同一个动作 */
+function syncFromUniAll() {
+  syncUni();
+  /* 注意：REF 的键名是小写 cn / cr3（由 bindSlider('sN','vN',...) 生成） */
+  ['cUn', 'cur', 'curho', 'cth', 'cn', 'cr3'].forEach(function (k) {
+    if (REF[k]) REF[k].sync();
+  });
+  syncV2();
+  buildWheelUI();            /* ④ 的轮表行数 = n，必须跟着重建 */
+  syncLock2UI();
+  syncUniLabels();
+  invalidate();
+}
+
+/* ---------------------------------------------------------------- 4. 画布工具 */
+
+/* GIF 导出用的超采样倍率：平时 1，导出时临时抬高到 k，
+   让 ctxOf 把画布 backing store 提高 k 倍（渲染仍是 CSS 像素坐标，只是更细腻）。 */
+let PIX = 1;
+
+function ctxOf(cv) {
+  const dpr = (window.devicePixelRatio || 1) * PIX;
+  const rect = cv.getBoundingClientRect();
+  const w = Math.max(80, Math.round(rect.width));
+  const h = Math.max(60, Math.round(rect.height));
+  const W = Math.round(w * dpr), H = Math.round(h * dpr);
+  if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+  const g = cv.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, w, h);
+  return { g: g, w: w, h: h };
+}
+function rgba(c, a) {
+  if (typeof c === 'string') {
+    const n = parseInt(c.slice(1), 16);
+    return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + (a === undefined ? 1 : a) + ')';
+  }
+  return 'rgba(' + Math.round(c[0] * 255) + ',' + Math.round(c[1] * 255) + ',' + Math.round(c[2] * 255) + ',' +
+         (a === undefined ? 1 : a) + ')';
+}
+/* 视窗变换：mode='uniform' 保持圆是圆；'stretch' 铺满盒子（Mathematica AspectRatio->Automatic） */
+function mkView(cv, mode, xr, yr, pad) {
+  const c = ctxOf(cv), g = c.g, w = c.w, h = c.h;
+  pad = pad === undefined ? 14 : pad;
+  let sx, sy, ox, oy;
+  if (mode === 'uniform') {
+    const s = Math.min((w - 2 * pad) / (xr[1] - xr[0]), (h - 2 * pad) / (yr[1] - yr[0]));
+    sx = sy = s;
+    ox = w / 2 - (xr[0] + xr[1]) / 2 * s;
+    oy = h / 2 + (yr[0] + yr[1]) / 2 * s;
+  } else {
+    sx = (w - 2 * pad) / (xr[1] - xr[0]);
+    sy = (h - 2 * pad) / (yr[1] - yr[0]);
+    ox = pad - xr[0] * sx;
+    oy = h - pad + yr[0] * sy;
+  }
+  return {
+    g: g, w: w, h: h, sx: sx, sy: sy, mode: mode, xr: xr, yr: yr, pad: pad,
+    X: function (x) { return ox + x * sx; },
+    Y: function (y) { return oy - y * sy; },
+    s: Math.min(sx, sy)
+  };
+}
+function seg(V, a, b, col, lw, alpha, dash) {
+  const g = V.g;
+  g.save();
+  g.strokeStyle = rgba(col, alpha === undefined ? 1 : alpha);
+  g.lineWidth = lw === undefined ? 1.4 : lw;
+  if (dash) g.setLineDash(dash);
+  g.beginPath();
+  g.moveTo(V.X(a[0]), V.Y(a[1]));
+  g.lineTo(V.X(b[0]), V.Y(b[1]));
+  g.stroke();
+  g.restore();
+}
+function poly(V, pts, col, lw, alpha, dash, close) {
+  if (!pts || pts.length < 2) return;
+  const g = V.g;
+  g.save();
+  g.strokeStyle = rgba(col, alpha === undefined ? 1 : alpha);
+  g.lineWidth = lw === undefined ? 1.4 : lw;
+  g.lineJoin = 'round';
+  if (dash) g.setLineDash(dash);
+  g.beginPath();
+  g.moveTo(V.X(pts[0][0]), V.Y(pts[0][1]));
+  for (let i = 1; i < pts.length; i++) g.lineTo(V.X(pts[i][0]), V.Y(pts[i][1]));
+  if (close) g.closePath();
+  g.stroke();
+  g.restore();
+}
+function circ(V, c, r, col, lw, alpha, dash) {
+  const g = V.g;
+  g.save();
+  g.strokeStyle = rgba(col, alpha === undefined ? 1 : alpha);
+  g.lineWidth = lw === undefined ? 1.4 : lw;
+  if (dash) g.setLineDash(dash);
+  g.beginPath();
+  g.arc(V.X(c[0]), V.Y(c[1]), Math.abs(r) * V.s, 0, TAU);
+  g.stroke();
+  g.restore();
+}
+function disc(V, c, r, col, alpha) {
+  const g = V.g;
+  g.save();
+  g.fillStyle = rgba(col, alpha === undefined ? 1 : alpha);
+  g.beginPath();
+  g.arc(V.X(c[0]), V.Y(c[1]), Math.abs(r) * V.s, 0, TAU);
+  g.fill();
+  g.restore();
+}
+function dot(V, c, rpx, col, alpha) {
+  const g = V.g;
+  g.save();
+  g.fillStyle = rgba(col, alpha === undefined ? 1 : alpha);
+  g.beginPath();
+  g.arc(V.X(c[0]), V.Y(c[1]), rpx, 0, TAU);
+  g.fill();
+  g.restore();
+}
+function arrow(V, a, b, col, lw, alpha) {
+  seg(V, a, b, col, lw, alpha);
+  const g = V.g, x1 = V.X(a[0]), y1 = V.Y(a[1]), x2 = V.X(b[0]), y2 = V.Y(b[1]);
+  const ang = Math.atan2(y2 - y1, x2 - x1), L = 8, W = 4.2;
+  g.save();
+  g.fillStyle = rgba(col, alpha === undefined ? 1 : alpha);
+  g.beginPath();
+  g.moveTo(x2, y2);
+  g.lineTo(x2 - L * Math.cos(ang - Math.atan2(W, L)), y2 - L * Math.sin(ang - Math.atan2(W, L)));
+  g.lineTo(x2 - L * Math.cos(ang + Math.atan2(W, L)), y2 - L * Math.sin(ang + Math.atan2(W, L)));
+  g.closePath();
+  g.fill();
+  g.restore();
+}
+function niceStep(span, target) {
+  const raw = span / target, e = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / e;
+  const m = f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10;
+  return m * e;
+}
+/* π 制刻度：在 [π/8, π/4, π/2, π, 2π, 4π] 里挑一个使刻度数落在 4~9 */
+function nicePiStep(span) {
+  const cands = [Math.PI / 8, Math.PI / 4, Math.PI / 2, Math.PI, 2 * Math.PI, 4 * Math.PI];
+  for (const c of cands) { if (span / c <= 9) return c; }
+  return cands[cands.length - 1];
+}
+function tickLabel(v, isPi) {
+  if (isPi) {
+    const k = v / Math.PI;
+    if (Math.abs(k) < 1e-9) return '0';
+    if (Math.abs(k - Math.round(k)) < 1e-9) return (Math.round(k) === 1 ? '' : Math.round(k)) + '\u03c0';
+    return (Math.round(k * 10) / 10) + '\u03c0';
+  }
+  return String(Math.round(v * 1e6) / 1e6);
+}
+/* Mathematica 风格坐标轴（Axes->True） */
+function drawAxes(V, isPi) {
+  const g = V.g;
+  g.save();
+  g.font = '10px Consolas,Menlo,monospace';
+  g.fillStyle = rgba(COL.axis, 0.95);
+  g.strokeStyle = rgba(COL.axis, 0.95);
+  g.lineWidth = 1;
+  const x0 = Math.max(V.pad, Math.min(V.w - V.pad, V.X(0)));
+  const y0 = Math.max(V.pad, Math.min(V.h - V.pad, V.Y(0)));
+  g.beginPath(); g.moveTo(V.pad, y0); g.lineTo(V.w - V.pad, y0); g.stroke();
+  g.beginPath(); g.moveTo(x0, V.pad); g.lineTo(x0, V.h - V.pad); g.stroke();
+  const stx = isPi ? nicePiStep(V.xr[1] - V.xr[0]) : niceStep(V.xr[1] - V.xr[0], 6);
+  const sty = niceStep(V.yr[1] - V.yr[0], 6);
+  g.textAlign = 'center'; g.textBaseline = 'top';
+  for (let v = Math.ceil(V.xr[0] / stx) * stx; v <= V.xr[1] + 1e-9; v += stx) {
+    if (Math.abs(v) < stx * 1e-6) continue;
+    const X = V.X(v);
+    if (X < V.pad - 2 || X > V.w - V.pad + 2) continue;
+    g.beginPath(); g.moveTo(X, y0 - 3); g.lineTo(X, y0 + 3); g.stroke();
+    g.fillText(tickLabel(v, isPi), X, y0 + 4);
+  }
+  g.textAlign = 'right'; g.textBaseline = 'middle';
+  for (let v = Math.ceil(V.yr[0] / sty) * sty; v <= V.yr[1] + 1e-9; v += sty) {
+    if (Math.abs(v) < sty * 1e-6) continue;
+    const Y = V.Y(v);
+    if (Y < V.pad - 2 || Y > V.h - V.pad + 2) continue;
+    g.beginPath(); g.moveTo(x0 - 3, Y); g.lineTo(x0 + 3, Y); g.stroke();
+    g.fillText(tickLabel(v, false), x0 - 5, Y);
+  }
+  g.restore();
+}
+/* Mathematica 风格边框（Frame->True，刻度朝内） */
+function drawFrame(V, isPi) {
+  const g = V.g;
+  g.save();
+  g.strokeStyle = rgba(COL.frame, 1);
+  g.fillStyle = rgba(COL.frame, 1);
+  g.lineWidth = 1;
+  g.strokeRect(V.pad + 0.5, V.pad + 0.5, V.w - 2 * V.pad - 1, V.h - 2 * V.pad - 1);
+  g.font = '10px Consolas,Menlo,monospace';
+  const stx = isPi ? nicePiStep(V.xr[1] - V.xr[0]) : niceStep(V.xr[1] - V.xr[0], 6);
+  const sty = niceStep(V.yr[1] - V.yr[0], 6);
+  g.textAlign = 'center'; g.textBaseline = 'top';
+  for (let v = Math.ceil(V.xr[0] / stx) * stx; v <= V.xr[1] + 1e-9; v += stx) {
+    const X = V.X(v);
+    g.beginPath(); g.moveTo(X, V.h - V.pad); g.lineTo(X, V.h - V.pad - 4); g.stroke();
+    if (Math.abs(v) > stx * 1e-6) g.fillText(tickLabel(v, isPi), X, V.h - V.pad + 3);
+  }
+  g.textAlign = 'right'; g.textBaseline = 'middle';
+  for (let v = Math.ceil(V.yr[0] / sty) * sty; v <= V.yr[1] + 1e-9; v += sty) {
+    const Y = V.Y(v);
+    g.beginPath(); g.moveTo(V.pad, Y); g.lineTo(V.pad + 4, Y); g.stroke();
+    if (Math.abs(v) > sty * 1e-6) g.fillText(tickLabel(v, false), V.pad - 4, Y);
+  }
+  g.restore();
+}
+function polyT(fn, t0, t1, n) {
+  const out = [];
+  n = n || 600;
+  for (let i = 0; i <= n; i++) out.push(fn(t0 + (t1 - t0) * i / n));
+  return out;
+}
+
+/* ---------------------------------------------------------------- 5. 各视窗绘制 */
+
+function drawGrid(V, step, alpha) {
+  const g = V.g;
+  g.save();
+  g.strokeStyle = rgba(COL.grid, alpha === undefined ? 1 : alpha);
+  g.lineWidth = 1;
+  for (let x = Math.ceil(V.xr[0] / step) * step; x <= V.xr[1]; x += step) {
+    g.beginPath(); g.moveTo(V.X(x), V.pad); g.lineTo(V.X(x), V.h - V.pad); g.stroke();
+  }
+  for (let y = Math.ceil(V.yr[0] / step) * step; y <= V.yr[1]; y += step) {
+    g.beginPath(); g.moveTo(V.pad, V.Y(y)); g.lineTo(V.w - V.pad, V.Y(y)); g.stroke();
+  }
+  g.restore();
+}
+
+/* ---- 视窗 ① 单滚筒几何构造 ---- */
+function drawV1() {
+  const v = S.v1, R = v.R, r = v.r, k = v.k, th = v.theta;
+  const pr = Core.plotRange(R, r, k);
+  const V = mkView(document.getElementById('cv1'), 'uniform', [-pr, pr], [-pr, pr], 16);
+  const nb1 = v.skin === 'nb1';
+
+  if (v.layers.grid) drawGrid(V, v.gridStep, 1);
+  if (S.showAxes) drawAxes(V, false);
+
+  const ctr = Core.rollerCenter(R, r, th);
+  const pen = Core.epi(R, r, k, th);
+
+  /* 定子 */
+  if (v.layers.stator) {
+    if (nb1) disc(V, [0, 0], R, COL.nb1Stator, 0.1);
+    else circ(V, [0, 0], R, COL.nb2Stator, 2.4, 1);
+  }
+  /* 滚筒 */
+  if (v.layers.roller) {
+    if (nb1) disc(V, ctr, r, COL.nb1Roller, 0.2);
+    else circ(V, ctr, r, COL.nb2Roller, 2.2, 1);
+  }
+  /* 笔距（nb#1 的 gr3：半径 |k|r 的半透明盘） */
+  if (v.layers.pen && nb1) disc(V, ctr, Math.abs(k) * r, COL.nb1Roller, 0.1);
+  /* 臂 */
+  if (v.layers.arm) {
+    seg(V, ctr, pen, nb1 ? COL.nb1Arm : COL.nb2Arm, nb1 ? 1.6 : 2.2, nb1 ? 0.2 : 1);
+  }
+  /* 轨迹 */
+  if (v.layers.trace && th > 1e-6) {
+    const n = Math.max(80, Math.min(4000, Math.ceil(th / TAU * 900)));
+    const pts = polyT(function (t) { return Core.epi(R, r, k, t); }, 0, th, n);
+    poly(V, pts, nb1 ? COL.nb1Trace : COL.nb2Trace, nb1 ? 1.9 : 2.3, 1);
+  }
+  /* 笔尖 */
+  if (v.layers.pt) dot(V, pen, nb1 ? 3.4 : 4.4, nb1 ? COL.nb1Trace : COL.nb2Pt, 1);
+  return { V: V, pen: pen, ctr: ctr, pr: pr };
+}
+
+/* ---- 视窗 ② 本轮分解 ---- */
+function drawV2() {
+  const v = S.v2;
+  const Rm = Math.max(0.05, Math.abs(v.A) + Math.abs(v.B)) * 1.06;
+  const V = mkView(document.getElementById('cv2'), 'uniform', [-Rm, Rm], [-Rm, Rm], 16);
+  if (S.showAxes) drawAxes(V, false);
+  const t1 = Core.vec2(v.A, v.wA, v.pA, 0, 0, 0, v.t);       /* 主向量末端 */
+  const P = Core.vec2(v.A, v.wA, v.pA, v.B, v.wB, v.pB, v.t); /* 合成点 */
+  if (v.layers.circ) {
+    circ(V, [0, 0], Math.abs(v.A), MMA.Blue, 1.2, 0.34, [5, 4]);
+    circ(V, t1, Math.abs(v.B), MMA.Red, 1.2, 0.34, [5, 4]);
+  }
+  if (v.layers.trace) {
+    const n = Math.max(80, Math.min(6000, Math.ceil(v.t / TAU * 1500)));
+    const pts = polyT(function (t) { return Core.vec2(v.A, v.wA, v.pA, v.B, v.wB, v.pB, t); }, 0, v.t, n);
+    poly(V, pts, COL.defaultPlot, 2.0, 1);
+  }
+  if (v.layers.vec) {
+    arrow(V, [0, 0], t1, MMA.Blue, 2.0, 1);
+    arrow(V, t1, P, MMA.Red, 2.0, 1);
+    dot(V, t1, 3.2, MMA.Blue, 1);
+  }
+  if (v.layers.pt) dot(V, P, 4.4, MMA.Red, 1);
+  return { V: V, t1: t1, P: P };
+}
+
+/* ---- 视窗 ③ 等价构造 ---- */
+function v3uo() {
+  const v = S.v3;
+  if (!(S.playing && v.discrete)) return v.u;
+  const step = TAU / v.ms;
+  return Math.round(v.u / step) * step;
+}
+function drawV3() {
+  const v = S.v3, n = v.n, r = v.r, u = v3uo();
+  const pen = Core.doubleGen(n, r, u);
+  const range1 = (n + 2) * r, range2 = (n + 4) * r;
+  const out = { u: u, pen: pen };
+
+  /* --- 面板A：真滚动圆 --- */
+  const cvA = document.getElementById('cv3a');
+  let VA = null;
+  if (v.layers.A && (!ONLYP || ONLYP === 'A')) {
+    VA = mkView(cvA, 'uniform', [-range1, range1], [-range1, range1], 14);
+    const c1 = Core.panelACenter(n, r, u);
+    circ(VA, [0, 0], n * r, COL.panelA, 2.2, 1);                 /* Prolog 定子 */
+    if (v.layers.curve) {
+      const pts = polyT(function (t) { return Core.doubleGen(n, r, t); },
+                        -1e-9, v.layers.partial ? u : TAU, 700);
+      poly(VA, pts, COL.curveR, 2.2, 1);
+    }
+    circ(VA, c1, r, COL.rollA, 2.2, 1);                          /* 半径 r 的滚动圆 */
+    seg(VA, c1, pen, COL.rollA, 2.2, 1);
+    dot(VA, pen, 4.4, MMA.Red, 1);
+    drawFrame(VA, false);
+  } else { ctxOf(cvA); }
+
+  /* --- 面板B：双生成大圆 --- */
+  const cvB = document.getElementById('cv3b');
+  let VB = null;
+  if (v.layers.B && (!ONLYP || ONLYP === 'B')) {
+    VB = mkView(cvB, 'uniform', [-range1, range1], [-range1, range1], 14);
+    const c2 = Core.panelBCenter(n, r, u);
+    circ(VB, [0, 0], n * r, COL.panelB, 2.2, 1);
+    if (v.layers.curve) {
+      const pts = polyT(function (t) { return Core.doubleGen(n, r, t); },
+                        -1e-9, v.layers.partial ? u : TAU, 700);
+      poly(VB, pts, COL.curveR, 2.2, 1);
+    }
+    circ(VB, c2, (n + 1) * r, COL.rollA, 2.2, 1);
+    seg(VB, c2, pen, COL.rollA, 2.2, 1);
+    dot(VB, pen, 4.4, MMA.Red, 1);
+    drawFrame(VB, false);
+  } else { ctxOf(cvB); }
+
+  /* --- 面板C：线族包络 --- */
+  const cvC = document.getElementById('cv3c');
+  let VC = null;
+  if (v.layers.C && (!ONLYP || ONLYP === 'C')) {
+    VC = mkView(cvC, 'uniform', [-range2, range2], [-range2, range2], 14);
+    circ(VC, [0, 0], n * r, COL.panelC, 2.2, 1);
+    if (v.layers.lines) {
+      /* 原版这里是 InfiniteLine —— 端点只用来定直线，画到框外 */
+      const mm = Math.max(2, v.m), EXT = range2 * 3;
+      for (let j = 0; j < mm; j++) {
+        const uu = TAU * j / (mm - 1);
+        const c = Core.c4Circle(n, r, uu), ph = (1 + n / 2) * uu;
+        const dx = Math.cos(ph) * EXT, dy = Math.sin(ph) * EXT;
+        seg(VC, [c[0] - dx, c[1] - dy], [c[0] + dx, c[1] + dy], [0, 0, 0], 1.0, 0.2);
+      }
+    }
+    if (v.layers.curve) {
+      const pts = polyT(function (t) { return Core.doubleGen(n, r, t); }, 0, TAU, 700);
+      poly(VC, pts, COL.curveR, 1.9, 1);
+    }
+    const cc = Core.c4Circle(n, r, u);
+    circ(VC, cc, 2 * r, COL.rollA, 2.0, 1);
+    const L = Core.c4Line(n, r, u);
+    seg(VC, L[0], L[1], MMA.Red, 1.7, 1);
+    dot(VC, pen, 3.4, MMA.Red, 0.85);
+    drawFrame(VC, false);
+  } else { ctxOf(cvC); }
+  return out;
+}
+
+/* ---- 视窗 ④ 四滚筒 ---- */
+function drawV4() {
+  /* ★★★ 与 ①②③ 同构：定子半径 R = n·r（红圈）、n 个转子（半径 r）均匀分布在外圈，
+     第 i 个转子 = ① 那套「单滚筒系统」旋转 φ_i = 2πi/n。
+     笔尖 = (R+r)·cis(t+φ_i) + ρ·r·cis(k·(t+φ_i))，k 默认 = n+1 ⇒ 标准外摆线。 */
+  const u = S.uni, v = S.v4, th = v.th;
+  const R = Core.uniR(u), r = u.r, nW = u.n;
+  const outer = R + r;                                  /* 转子圆心所在半径 */
+  const reach = outer + Math.abs(u.rho) * r;            /* 笔尖能到的最远半径 */
+  const Rm = Math.max(outer + r, reach) * 1.07;
+  const V = mkView(document.getElementById('cv4a'), 'uniform', [-Rm, Rm], [-Rm, Rm], 14);
+
+  /* 定子（红色圈）：半径 R，与 ①②③ 的 R 是同一个数 */
+  circ(V, [0, 0], R, COL.v4Stator, 2.4, 1);
+  /* 辐条：中心 → 各转子圆心（n=4 时就是原版那两条对角线） */
+  const centers = [];
+  for (let i = 0; i < nW; i++) {
+    const ci = Core.wheelCenter(i, th, R, r, nW);
+    centers.push(ci);
+    seg(V, [0, 0], ci, [0.45, 0.45, 0.45], 1.1, 0.85);
+  }
+
+  const ys = [], pts = [];
+  for (let i = 0; i < nW; i++) {
+    const c = wheelColor(i), ci = centers[i];
+    const k = v.s[i] * v.d[i];                          /* 该轮的角速（含方向） */
+    const phi = k * th;
+    const cp = Math.cos(phi), sp = Math.sin(phi);
+    /* 转子圆 */
+    circ(V, ci, r, c, 1.7, 1);
+    /* 十字线（绕转子圆心旋转 k·θ） */
+    seg(V, [ci[0] - r * cp, ci[1] - r * sp], [ci[0] + r * cp, ci[1] + r * sp], c, 1.5, 1);
+    seg(V, [ci[0] + r * sp, ci[1] - r * cp], [ci[0] - r * sp, ci[1] + r * cp], c, 1.5, 1);
+    /* 笔尖 */
+    const w = Core.wheelPoint(i, th, R, r, nW, u.rho, k);
+    dot(V, w, 3.4, c, 1);
+    /* 轨迹 */
+    const on = v.on[i];
+    ys.push(on ? w[1] : 0);
+    if (on && th > 1e-6) {
+      const nn = Math.max(90, Math.min(4000, Math.ceil(th / TAU * 1200)));
+      const cpts = polyT(function (t) { return Core.wheelPoint(i, t, R, r, nW, u.rho, k); }, 0, th, nn);
+      poly(V, cpts, c, 2.1, 1);
+      pts.push(w);
+    } else {
+      pts.push([NaN, NaN]);
+    }
+  }
+
+  /* 波形：PlotRange {{0,4π},{−reach,reach}}，横轴 π 刻度（原版是 {-2,2}，随统一模型自适应） */
+  const VB = mkView(document.getElementById('cv4b'), 'stretch', [0, 4 * Math.PI], [-reach, reach], 16);
+  drawAxes(VB, true);
+  for (let i = 0; i < nW; i++) {
+    const k = v.s[i] * v.d[i];
+    const nn = Math.max(90, Math.min(4000, Math.ceil(th / TAU * 1200)));
+    const cp = polyT(function (t) { return [t, Core.wheelPoint(i, t, R, r, nW, u.rho, k)[1]]; },
+                     0, Math.max(th, 1e-4), nn);
+    poly(VB, cp, wheelColor(i), 2.1, 1);
+  }
+  return { V: V, VB: VB, ys: ys, pts: pts, centers: centers, R: R, nW: nW, reach: reach };
+}
+
+/* ---------------------------------------------------------------- 6. 读数 / UI */
+
+function f(x, d) { return (Math.round(x * 1e6) / 1e6).toFixed(d === undefined ? 4 : d); }
+function coreStr(c) {
+  return 'A ' + f(c.A, 3) + ' ωA ' + f(c.wA, 3) + ' φA ' + f(c.pA, 3) +
+         ' | B ' + f(c.B, 3) + ' ωB ' + f(c.wB, 3) + ' φB ' + f(c.pB, 3);
+}
+function miniHTML(rows) {
+  return rows.map(function (r) { return '<span class="k">' + r[0] + '</span><span class="v">' + r[1] + '</span>'; }).join('');
+}
+
+function refreshReadouts(o) {
+  const v1 = S.v1, v2 = S.v2, v3 = S.v3, v4 = S.v4;
+  /* ① */
+  document.getElementById('v1mini').innerHTML = miniHTML([
+    ['r = p/q', v1.ratio ? (v1.p + '/' + v1.q + ' = ' + f(v1.r, 5)) : f(v1.r, 5)],
+    ['笔尖 (x,y)', '(' + f(o.v1.pen[0], 4) + ', ' + f(o.v1.pen[1], 4) + ')'],
+    ['滚筒心', '(' + f(o.v1.ctr[0], 4) + ', ' + f(o.v1.ctr[1], 4) + ')'],
+    ['臂指向角', f(Core.rollerAngle(v1.R, v1.r, v1.theta), 4) + ' rad'],
+    ['视窗半宽 pr', f(o.v1.pr, 4)],
+    ['闭合一整周 θ', f(Core.thClose(v1.p), 4) + ' = 2π·' + v1.p],
+    ['统一核', coreStr(Core.fromV1())]
+  ]);
+  document.getElementById('v1badge').textContent = v1.skin === 'nb1' ? '配色 nb#1' : '配色 nb#2';
+
+  /* ② */
+  const eq = Core.rollingEquiv(v2.A, v2.wA, v2.wB, v2.B);
+  document.getElementById('v2mini').innerHTML = miniHTML([
+    ['主向量末端', '(' + f(o.v2.t1[0], 4) + ', ' + f(o.v2.t1[1], 4) + ')'],
+    ['合成点 P(t)', '(' + f(o.v2.P[0], 4) + ', ' + f(o.v2.P[1], 4) + ')'],
+    ['|P| 到原点', f(Math.hypot(o.v2.P[0], o.v2.P[1]), 4)],
+    ['频率比 ωB/ωA', v2.wA > 1e-9 ? f(v2.wB / v2.wA, 4) : '—'],
+    ['闭合周期 2π·分母', f(Core.periodMax(v2.wA, v2.wB), 4)]
+  ]);
+  document.getElementById('v2badge').textContent = 't = ' + f(v2.t, 3);
+  const rr0 = v2.wB > 1e-9 ? v2.A * v2.wA / v2.wB : NaN;
+  document.getElementById('v2roll').innerHTML = eq
+    ? '<b>滚动等价成立</b>（ωB/ωA = A/r）⇒ 它就是外摆线：' +
+      '<code>R=' + f(eq.R, 4) + ', r=' + f(eq.r, 4) + ', ρ=' + f(eq.k, 4) + '</code>' +
+      '（比例 r/R = ' + f(eq.r / eq.R, 4) + '，即 r = ' + f(eq.rot, 4) + ' 倍频）'
+    : '<b>非滚动</b>：取 r = A·ωA/ωB = ' + (isFinite(rr0) ? f(rr0, 4) : '∞') +
+      '，则 R = A − r = ' + (isFinite(rr0) ? f(v2.A - rr0, 4) : '—') +
+      ' 不为正，读不成「定子 + 圆外滚圆」；它是自由双圆本轮。';
+
+  /* ③ */
+  document.getElementById('v3mini').innerHTML = miniHTML([
+    ['定子半径 n·r', f(v3.n * v3.r, 4)],
+    ['滚动圆半径', f(v3.r, 4) + '（面板A） / ' + f((v3.n + 1) * v3.r, 4) + '（面板B）'],
+    ['笔尖 (x,y)', '(' + f(o.v3.pen[0], 4) + ', ' + f(o.v3.pen[1], 4) + ')'],
+    ['线族条数 m', String(v3.m)],
+    ['统一核', coreStr(Core.fromV3())],
+    ['周期', '2π·Denominator[' + v3.n + '] = 2π']
+  ]);
+  document.getElementById('v3abadge').textContent = 'u = ' + f(o.v3.u, 3);
+  document.getElementById('v3bbadge').textContent = 'u = ' + f(o.v3.u, 3);
+  document.getElementById('v3cbadge').textContent = 'm = ' + v3.m;
+
+  /* ④（转子个数 = 统一模型的 n；笔尖坐标由 drawV4 算好放在 o.v4.pts） */
+  const u4 = S.uni, R4 = Core.uniR(u4), nW4 = u4.n, r4 = u4.r, k4 = Core.uniK(u4);
+  document.getElementById('v4abadge').textContent =
+    'θ = ' + f(v4.th, 4) + ' ｜ 定子 R = ' + f(R4, 3) + ' = ' + nW4 + ' × ' + f(r4, 3);
+  document.getElementById('v4bbadge').textContent = '0 … 4π ｜ n = ' + nW4 + ' 条';
+  const wcells = document.querySelectorAll('#t4 [id^="wp"]');
+  for (let i = 0; i < wcells.length; i++) {
+    const el = wcells[i], pt = (o.v4.pts || [])[i];
+    const okp = v4.on[i] && pt && isFinite(pt[0]);
+    el.textContent = okp ? ('(' + f(pt[0], 3) + ', ' + f(pt[1], 3) + ')') : '—';
+    el.style.color = rgba(wheelColor(i), 1);
+  }
+  document.getElementById('v4eq').innerHTML =
+    '统一核（第 i 个转子）：P<sub>i</sub>(t) = (R+r)·cis(t+φ<sub>i</sub>) + ρr·cis(k<sub>i</sub>(t+φ<sub>i</sub>))，' +
+    'φ<sub>i</sub> = 2πi/n，k<sub>i</sub> = s<sub>i</sub>·d<sub>i</sub><br>' +
+    '当前：R = ' + f(R4, 3) + '，n = ' + nW4 + '，r = ' + f(r4, 3) + '，ρ = ' + f(u4.rho, 2) +
+    '，每个转子错开 ' + f(360 / nW4, 2) + '°　' +
+    (allStd()
+      ? '<b>全部 = 标准外摆线（k = n+1 = ' + k4 + '）</b>' +
+        '<span style="color:#8f86ad">　⇒ 第 i 条曲线 = 第 0 条绕心旋转 ' + f(360 / nW4, 2) +
+        '°，而外摆线本身就有 n 重对称，所以 <b>n 条轨迹完全重合</b>（这就是「④ = ① 的 n 个副本」的字面意思）；' +
+        '想看成各自独立的曲线，点上面的「原版四轮」预设。</span>'
+      : '<b>角速已被单独改动</b>' +
+        '<span style="color:#8f86ad">　⇒ 各转子轨迹不再重合。</span>') + '<br>' +
+    '笔尖：' + [].map.call(wcells, function (el) { return el.textContent; }).join('   ');
+
+  /* 顶部读数 */
+  document.getElementById('rCore').textContent = coreStr(Core.fromV1());
+  document.getElementById('rP1').textContent = '(' + f(o.v1.pen[0], 3) + ', ' + f(o.v1.pen[1], 3) + ')';
+  document.getElementById('rP2').textContent = '(' + f(o.v2.P[0], 3) + ', ' + f(o.v2.P[1], 3) + ')';
+  document.getElementById('rP3').textContent = f(v3.n * v3.r, 3) + ' / ' + f((v3.n + 1) * v3.r, 3);
+  document.getElementById('rP4').textContent = (o.v4.ys || []).map(function (y) { return f(y, 3); }).join(', ');
+}
+
+/* ---------------------------------------------------------------- 7. 绑定 */
+
+function bindSlider(sid, vid, key, obj, dec, after) {
+  const s = document.getElementById(sid), n = document.getElementById(vid);
+  if (!s || !n) return;
+  const R0 = { v1: RANGE, v2: RANGE, v3: RANGE, v4: RANGE };
+  s.addEventListener('input', function () { set(key, parseFloat(s.value)); });
+  n.addEventListener('change', function () { set(key, parseFloat(n.value)); });
+  function set(k, val) {
+    if (!isFinite(val)) return;
+    obj[k] = val;
+    if (after) after(k, val);
+    syncOne(s, n, obj[k], dec);
+    invalidate();
+  }
+  function syncOne(a, b, val, d) {
+    a.value = String(val); b.value = Number(val).toFixed(d === undefined ? 3 : d);
+  }
+  syncOne(s, n, obj[key], dec);
+  return { sync: function () { syncOne(s, n, obj[key], dec); }, set: set };
+}
+
+const REF = {};   /* 所有滑条引用，便于 τ 驱动时回刷 */
+
+function bindAll() {
+  if (bindAll.done) return;      /* 幂等：boot() 可能被调两次 */
+  bindAll.done = true;
+
+  const g = document.getElementById.bind(document);
+
+  /* ---- ① ===== 统一模型三件套（n / r / ρ）：动一个，四张图一起变 ===== ---- */
+  REF.cUn = bindSlider('sUn', 'vUn', 'n', S.uni, 0, function () { syncFromUniAll(); });
+  REF.cur = bindSlider('sur', 'vur', 'r', S.uni, 2, function () { syncFromUniAll(); });
+  REF.curho = bindSlider('surho', 'vurho', 'rho', S.uni, 2, function () { syncFromUniAll(); });
+  REF.cth = bindSlider('sTh', 'vTh', 'theta', S.v1, 2);
+  REF.cgs = bindSlider('sGs', 'vGs', 'gridStep', S.v1, 2);
+
+  g('bSign').addEventListener('click', function () {
+    S.uni.sign = -S.uni.sign;
+    syncFromUniAll(); applyThMode();
+  });
+  document.querySelectorAll('#cardV1 [data-skin]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      S.v1.skin = b.getAttribute('data-skin');
+      const nb1 = S.v1.skin === 'nb1';
+      const L = S.v1.layers;            /* 原地改字段：委托闭包持有的是同一个对象 */
+      const set = nb1
+        ? { stator: 1, roller: 1, pen: 1, arm: 1, trace: 1, pt: 0, grid: 0 }
+        : { stator: 1, roller: 1, pen: 0, arm: 1, trace: 1, pt: 1, grid: 1 };
+      for (const kk in set) L[kk] = set[kk];
+      syncToggles('segL1', 'l1', function () { return S.v1.layers; });
+      syncSkinBtns(); invalidate();
+    });
+  });
+  const L1 = function () { return S.v1.layers; };
+  bindToggles('segL1', 'l1', L1);
+  document.querySelectorAll('#cardV1 [data-thm]').forEach(function (b) {
+    b.addEventListener('click', function () { S.v1.thMode = b.getAttribute('data-thm'); applyThMode(); invalidate(); });
+  });
+
+  /* ---- ② ---- */
+  REF.cA = bindSlider('sA', 'vA', 'A', S.v2, 2);
+  REF.cwA = bindSlider('swA', 'vwA', 'wA', S.v2, 2);
+  REF.cpA = bindSlider('spA', 'vpA', 'pA', S.v2, 2);
+  REF.cB = bindSlider('sB', 'vB', 'B', S.v2, 2);
+  REF.cwB = bindSlider('swB', 'vwB', 'wB', S.v2, 2);
+  REF.cpB = bindSlider('spB', 'vpB', 'pB', S.v2, 2);
+  REF.ct2 = bindSlider('sT2', 'vT2', 'tMax', S.v2, 3);
+  g('ckLock2').addEventListener('change', function () {
+    S.uni.lock2 = this.checked;
+    if (this.checked) syncFromUniAll();
+    syncLock2UI(); invalidate();
+  });
+  const P2 = {
+    c2: { A: 1, wA: 1, pA: 0, B: 0.25, wB: 4, pB: 0, tMax: TAU },
+    c3: { A: 2, wA: 1, pA: 0, B: 1, wB: 2, pB: 0, tMax: TAU },
+    roll: { A: 6.5, wA: 1, pA: 0, B: -0.5, wB: 13, pB: 0, tMax: TAU },
+    w1: { A: 1, wA: 1, pA: 0, B: 0.5, wB: 1, pB: 0, tMax: 4 * Math.PI }
+  };
+  document.querySelectorAll('#cardV2 [data-pp]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      const o = P2[b.getAttribute('data-pp')];
+      for (const k in o) S.v2[k] = o[k];
+      S.uni.lock2 = false; g('ckLock2').checked = false;    /* 用预设 ⇒ 自动解锁 */
+      syncLock2UI();
+      applyTau(); syncV2(); invalidate();
+    });
+  });
+  g('bSync').addEventListener('click', function () {
+    S.uni.lock2 = true; g('ckLock2').checked = true;
+    syncFromUniAll(); syncLock2UI(); applyTau(); invalidate();
+  });
+  g('bInteg').addEventListener('click', function () {
+    S.v2.tMax = Math.max(0.5, Math.min(37.7, Core.periodMax(S.v2.wA, S.v2.wB)));
+    applyTau(); REF.ct2.sync(); invalidate();
+  });
+  bindToggles('segL2', 'l2', function () { return S.v2.layers; });
+
+  /* ---- ③ 等价构造：n、r 直接就是统一模型的 n、r（绑到 S.uni，不是 S.v3） ---- */
+  REF.cn = bindSlider('sN', 'vN', 'n', S.uni, 0, function () { syncFromUniAll(); });
+  REF.cr3 = bindSlider('sR3', 'vR3', 'r', S.uni, 2, function () { syncFromUniAll(); });
+  REF.cu = bindSlider('sU', 'vU', 'u', S.v3, 3);
+  REF.cm = bindSlider('sM', 'vM', 'm', S.v3, 0);
+  REF.cms = bindSlider('sMs', 'vMs', 'ms', S.v3, 0);
+  bindToggles('segL3', 'l3', function () { return S.v3.layers; });
+
+  /* ---- ④ ---- */
+  REF.cth4 = bindSlider('sTh4', 'vTh4', 'th', S.v4, 4);
+  buildWheelUI();
+  /* ④ 预设：转子个数 = n、半径 = r 是不可调的（由统一模型定），
+     预设只改「开 / 方向 / 角速」这三样。 */
+  document.querySelectorAll('#cardV4 [data-p4]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      const n = S.uni.n, k0 = Core.uniK(S.uni), v = S.v4, w = b.getAttribute('data-p4');
+      for (let i = 0; i < n; i++) { v.on[i] = 1; v.d[i] = 1; v.s[i] = k0; }
+      if (w === 'orig') {
+        for (let i = 0; i < n; i++) v.s[i] = 1;              /* 复刻原版 C：角速都为 1 */
+      } else if (w === 'rev') {
+        for (let i = 0; i < n; i++) v.d[i] = (i % 2) ? -1 : 1;
+      } else if (w === 'slow') {
+        for (let i = 0; i < n; i++) { v.on[i] = (i % 2) ? 0 : 1; v.s[i] = Math.max(0.2, k0 / 3); }
+      }
+      /* 当前只剩 orig / std / rev / slow 四种；std = 全部标准外摆线（与 ① 同曲线） */
+      buildWheelUI(true); invalidate();
+    });
+  });
+
+  /* ---- 全局 ---- */
+  g('bPlay').addEventListener('click', togglePlay);
+  g('bPlay2').addEventListener('click', togglePlay);
+  g('bGif').addEventListener('click', exportAllGif);
+  g('bReset').addEventListener('click', resetTau);
+  g('bReset2').addEventListener('click', resetTau);
+  g('bLoop').addEventListener('click', function () {
+    S.loop = !S.loop; this.classList.toggle('on', S.loop);
+  });
+  g('bLoop').classList.toggle('on', S.loop);
+  const sp = g('sSpeed');
+  function syncSpeed() {
+    const val = Math.max(0.1, Math.min(4, parseFloat(sp.value) || 1));
+    S.speed = val;
+    g('vSpeed').textContent = val.toFixed(1) + '×';
+  }
+  sp.addEventListener('input', syncSpeed);
+  sp.value = '1'; syncSpeed();
+
+  const bar = g('bar');
+  function seek(ev) {
+    const r = bar.getBoundingClientRect();
+    S.tau = Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width));
+    applyTau(); invalidate();
+  }
+  let dragging = false;
+  bar.addEventListener('mousedown', function (e) { dragging = true; seek(e); });
+  window.addEventListener('mousemove', function (e) { if (dragging) seek(e); });
+  window.addEventListener('mouseup', function () { dragging = false; });
+
+  g('bPng').addEventListener('click', saveAllPng);
+  g('bOrig').addEventListener('click', function () {
+    const fresh = JSON.parse(JSON.stringify(ORIG));
+    /* ★ 必须「原地改字段」：REF 里的滑条闭包持有 S.uni / S.v1 / S.v2 / S.v3 / S.v4 这些对象，
+       整体替换对象会让滑条去写一个废弃对象（点按钮没反应）。 */
+    ['uni', 'v1', 'v2', 'v3', 'v4'].forEach(function (k) {
+      const dst = S[k];
+      for (const kk in fresh[k]) dst[kk] = fresh[k][kk];
+    });
+    for (const k in fresh) {
+      if (k === 'tau' || k === 'playing' || k === 'uni' || k === 'v1' || k === 'v2' || k === 'v3' || k === 'v4') continue;
+      S[k] = fresh[k];
+    }
+    syncAll(); applyThMode(); syncSkinBtns(); buildWheelUI(true); invalidate();
+  });
+
+  /* 面板折叠 */
+  document.querySelectorAll('.panel .card h2').forEach(function (h) {
+    h.addEventListener('click', function () { h.parentNode.classList.toggle('fold'); });
+  });
+  g('ptoggle').addEventListener('click', function () {
+    document.body.classList.toggle('off');
+    this.textContent = document.body.classList.contains('off') ? '\u25c2' : '\u25b8';
+  });
+
+  /* 坐标轴总开关 */
+  const axHost = g('cpNote') && g('cpNote').parentNode;
+  const ax = document.createElement('label');
+  ax.className = 'nm'; ax.style.marginTop = '6px';
+  const axIn = document.createElement('input');
+  axIn.type = 'checkbox'; axIn.id = 'ckAxes'; axIn.checked = true;
+  const axTx = document.createElement('span');
+  axTx.textContent = '显示坐标轴 / 边框';
+  ax.appendChild(axIn); ax.appendChild(axTx);
+  if (axHost && axHost.insertBefore) axHost.insertBefore(ax, g('cpNote'));
+  axIn.addEventListener('change', function () { S.showAxes = axIn.checked; invalidate(); });
+  if (g('cpNote')) g('cpNote').innerHTML = '坐标轴/边框可整体开关。Mathematica 端 ' +
+    '<code>Axes-&gt;True</code>（① ② ④波形）与 <code>Frame-&gt;True</code>（③）照原样保留。';
+
+  syncSkinBtns();
+  applyThMode();
+}
+
+function bindToggles(segId, attr, getObj) {
+  const seg = document.getElementById(segId);
+  if (!seg) return;
+  if (!seg.getAttribute('data-bound')) {
+    seg.setAttribute('data-bound', '1');
+    seg.addEventListener('click', function (e) {
+      const b = e.target && e.target.closest ? e.target.closest('button') : null;
+      if (!b) return;
+      const k = b.getAttribute('data-' + attr);
+      const obj = typeof getObj === 'function' ? getObj() : getObj;
+      if (!obj || !(k in obj)) return;
+      obj[k] = obj[k] ? 0 : 1;
+      b.classList.toggle('on', !!obj[k]);
+      invalidate();
+    });
+  }
+  syncToggles(segId, attr, getObj);
+}
+function syncToggles(segId, attr, getObj) {
+  const seg = document.getElementById(segId);
+  if (!seg) return;
+  const obj = typeof getObj === 'function' ? getObj() : getObj;
+  if (!obj) return;
+  seg.querySelectorAll('button').forEach(function (b) {
+    const k = b.getAttribute('data-' + attr);
+    if (k in obj) b.classList.toggle('on', !!obj[k]);
+  });
+}
+function syncSkinBtns() {
+  document.querySelectorAll('#cardV1 [data-skin]').forEach(function (b) {
+    b.classList.toggle('on', b.getAttribute('data-skin') === S.v1.skin);
+  });
+}
+/* θ 上限（三档）。
+   ★ 统一模型里 R/r = n 是整数 ⇒ ωB/ωA = (R+r)/r = n+1 也是整数 ⇒ 曲线周期恰好 2π，
+     所以「一圈」= 完整闭合。原版 nb#1 的 2(p+1)π 在 p = 1 时正好是 4π（两圈）。 */
+function thHi() {
+  const m = S.v1.thMode;
+  const hi = (m === 'one') ? TAU : (m === 'close' ? 3 * TAU : 2 * TAU);
+  return Math.max(0.02, Math.min(31.42, hi));
+}
+function setThMax(hi) {
+  const s = document.getElementById('sTh'), n = document.getElementById('vTh');
+  if (s) s.max = String(hi);
+  if (n) n.max = String(hi);
+}
+function applyThMode() {
+  const hi = thHi();
+  setThMax(hi);
+  if (S.v1.theta > hi) S.v1.theta = hi;
+  if (REF.cth) REF.cth.sync();
+}
+function buildWheelUI(force) {
+  const n = S.uni.n, v = S.v4;
+  const tb = document.querySelector('#t4 tbody');
+  if (!tb) return;
+  /* 行数随统一模型的 n 变 —— 只在 n 真的变了（或强制）时重建结构（重建会丢焦点） */
+  if (!force && tb.getAttribute('data-n') === String(n)) {
+    for (let i = 0; i < n; i++) {
+      const wc = document.getElementById('wr' + i);
+      if (wc) wc.textContent = S.uni.r.toFixed(2);
+      const oc = document.getElementById('wo' + i);
+      if (oc) oc.checked = !!v.on[i];
+      const dc = document.getElementById('wd' + i);
+      if (dc) dc.value = String(v.d[i] > 0 ? 1 : -1);
+      const sc = document.getElementById('ws' + i);
+      if (sc) sc.value = v.s[i].toFixed(1);
+    }
+    return;
+  }
+  tb.setAttribute('data-n', String(n));
+  let html = '';
+  for (let i = 0; i < n; i++) {
+    const c = rgba(wheelColor(i), 1);
+    html += '<tr><td style="color:' + c + '">' + wheelName(i) + '</td>' +
+      '<td><input type="checkbox" id="wo' + i + '" data-w="on" data-i="' + i + '"' + (v.on[i] ? ' checked' : '') + '></td>' +
+      '<td class="f" id="wr' + i + '" title="= 统一模型的 r（滚筒半径），与前 3 张图同步">' +
+      S.uni.r.toFixed(2) + '</td>' +
+      '<td><select id="wd' + i + '" data-w="d" data-i="' + i + '" style="background:#120f20;color:#e8e4f5;border:1px solid #332a52;border-radius:5px">' +
+      '<option value="1"' + (v.d[i] > 0 ? ' selected' : '') + '>正</option>' +
+      '<option value="-1"' + (v.d[i] < 0 ? ' selected' : '') + '>反</option></select></td>' +
+      '<td><input type="number" id="ws' + i + '" data-w="s" data-i="' + i + '" min="0" max="40" step="0.1" value="' +
+      v.s[i].toFixed(1) + '" style="width:56px"></td>' +
+      '<td class="f" id="wp' + i + '">—</td></tr>';
+  }
+  tb.innerHTML = html;
+  tb.querySelectorAll('[data-w]').forEach(function (el) {
+    el.addEventListener('change', function () {
+      const i = +el.getAttribute('data-i'), k = el.getAttribute('data-w');
+      if (k === 'on') S.v4.on[i] = el.checked ? 1 : 0;
+      else if (k === 'd') S.v4.d[i] = parseFloat(el.value);
+      else if (k === 's') S.v4.s[i] = Math.max(0, Math.min(40, parseFloat(el.value) || 0));
+      invalidate();
+    });
+  });
+}
+/* 把 n 个转子全部设回标准外摆线（k = n+1） */
+function resetWheelsStd() {
+  const k0 = Core.uniK(S.uni);
+  for (let i = 0; i < S.v4.s.length; i++) { S.v4.s[i] = k0; S.v4.d[i] = 1; }
+  S.v4.stdK = k0;
+}
+function syncV2() {
+  ['cA', 'cwA', 'cpA', 'cB', 'cwB', 'cpB', 'ct2'].forEach(function (k) { if (REF[k]) REF[k].sync(); });
+}
+function syncAll() {
+  ['cUn', 'cur', 'curho', 'cth', 'cgs', 'cn', 'cr3', 'cu', 'cm', 'cms', 'cth4'].forEach(function (k) {
+    if (REF[k]) REF[k].sync();
+  });
+  syncV2();
+  syncToggles('segL1', 'l1', function () { return S.v1.layers; });
+  syncToggles('segL2', 'l2', function () { return S.v2.layers; });
+  syncToggles('segL3', 'l3', function () { return S.v3.layers; });
+  syncSkinBtns();
+  buildWheelUI();
+  syncLock2UI();
+  syncUniLabels();
+}
+
+/* ① 的「R = n×r」「笔距方向」「ωB/ωA」等派生标签 */
+function syncUniLabels() {
+  const g = document.getElementById.bind(document), u = S.uni, R = Core.uniR(u);
+  const set = function (id, tx) { const e = g(id); if (e) e.textContent = tx; };
+  set('Rdisp', f(R, 2));
+  set('signHint', '本征角速 ωB/ωA = n+1 = ' + Core.uniK(u) + '　｜　r/R = 1/' + u.n);
+  const bs = g('bSign');
+  if (bs) bs.textContent = u.sign > 0 ? '在外（+ρ）' : '在内（−ρ）';
+  /* ④ 卡片顶部的三个派生量 */
+  set('Rdisp4', f(R, 2));
+  set('Ndisp4', String(u.n));
+  set('rdisp4', f(u.r, 2));
+}
+
+/* ② 卡片的锁定态：锁定时六个滑条禁用（值仍由统一模型回刷） */
+function syncLock2UI() {
+  const lock = !!S.uni.lock2;
+  ['sA', 'vA', 'swA', 'vwA', 'spA', 'vpA', 'sB', 'vB', 'swB', 'vwB', 'spB', 'vpB']
+    .forEach(function (id) {
+      const el = document.getElementById(id);
+      if (el) el.disabled = lock;
+    });
+  const d = document.getElementById('v2derived');
+  if (d) {
+    const u = S.uni, c = Core.uniCore(u);
+    d.innerHTML = lock
+      ? '🔒 <b>锁定中</b>：A = R+r = ' + f(c.A, 3) + '，ω<sub>A</sub> = 1，B = ρr = ' + f(c.B, 3) +
+        '，ω<sub>B</sub> = (R+r)/r = n+1 = ' + f(c.wB, 3) + '，φ<sub>A</sub> = φ<sub>B</sub> = 0' +
+        ' —— 与 ① 是<b>同一条曲线</b>，只是换个视角看。'
+      : '🔓 <b>已解锁</b>：六个量可自由调（这就是原版 nb#2 单元2/3 的「自由双圆本轮」）。' +
+        '点任一预设或「↔ 由①同步」会重新锁定。';
+  }
+}
+
+/* ---------------------------------------------------------------- 8. τ 播放 */
+
+function applyTau() {
+  const t = S.tau;
+  /* ① θ：上限与 applyThMode 同一个来源 */
+  const hi = thHi();
+  setThMax(hi);
+  S.v1.theta = Math.max(0.01, hi * t);
+  if (REF.cth) REF.cth.sync();
+  /* ② t：由 τ 与本视窗的 t 上限共同决定 */
+  S.v2.t = Math.max(1e-4, (S.v2.tMax || 6.2832) * t);
+  if (REF.ct2) REF.ct2.sync();
+  /* ③ u */
+  S.v3.u = TAU * t;
+  /* ④ θ */
+  S.v4.th = 0.0001 + (4 * Math.PI - 0.0001) * t;
+  if (REF.cu) REF.cu.sync();
+  if (REF.cth4) REF.cth4.sync();
+  const bar = document.getElementById('barfill');
+  if (bar) bar.style.width = (t * 100).toFixed(2) + '%';
+  const tn = document.getElementById('tnum');
+  if (tn) tn.textContent = 'τ ' + t.toFixed(3);
+}
+function resetTau() {
+  S.tau = 0; S.playing = false;
+  const b = document.getElementById('bPlay'), b2 = document.getElementById('bPlay2');
+  if (b) { b.textContent = '▶ 播放'; b.classList.remove('on'); }
+  if (b2) { b2.textContent = '▶ 播放'; b2.classList.remove('on'); }
+  applyTau(); invalidate();
+}
+function togglePlay() {
+  S.playing = !S.playing;
+  const b = document.getElementById('bPlay'), b2 = document.getElementById('bPlay2');
+  const lbl = S.playing ? '⏸ 暂停' : '▶ 播放';
+  if (b) { b.textContent = lbl; b.classList.toggle('on', S.playing); }
+  if (b2) { b2.textContent = lbl; b2.classList.toggle('on', S.playing); }
+  if (S.playing) tick0 = null;
+}
+let tick0 = null;
+function step(ts) {
+  if (tick0 === null) tick0 = ts;
+  const dt = Math.min(0.05, Math.max(0, (ts - tick0) / 1000));
+  tick0 = ts;
+  if (S.playing) {
+    S.tau += dt * S.speed / TAU_SEC;
+    if (S.tau >= 1) {
+      if (S.loop) S.tau -= Math.floor(S.tau);
+      else { S.tau = 1; togglePlay(); }
+    }
+    applyTau();
+    invalidate();
+  }
+}
+/* ---------------------------------------------------------------- 9. 渲染循环 */
+
+let dirty = true, raf = 0, lastO = null;
+/* GIF 抓帧时只重画目标那一块 —— 否则 30 帧 × 7 块 = 210 次全量重绘，白白慢 4 倍。
+   null = 正常全画；'v1' / 'v2' / 'v3' / 'v4' = 只画对应视窗。 */
+let ONLY = null;
+let ONLYP = null;   /* ③ 的三个面板再细分：'A' / 'B' / 'C'，null = 都画 */
+function invalidate() { dirty = true; }
+function render() {
+  const o = {
+    v1: (!ONLY || ONLY === 'v1') ? drawV1() : null,
+    v2: (!ONLY || ONLY === 'v2') ? drawV2() : null,
+    v3: (!ONLY || ONLY === 'v3') ? drawV3() : null,
+    v4: (!ONLY || ONLY === 'v4') ? drawV4() : null
+  };
+  if (o.v1 && o.v2 && o.v3 && o.v4) { lastO = o; refreshReadouts(o); }
+  dirty = false;
+}
+function loop(ts) {
+  step(ts);
+  if (dirty) render();
+  raf = requestAnimationFrame(loop);
+}
+
+/* ---------------------------------------------------------------- 10. PNG */
+
+function saveAllPng() {
+  const ids = ['cv1', 'cv2', 'cv3a', 'cv3b', 'cv3c', 'cv4a', 'cv4b'];
+  ids.forEach(function (id, i) {
+    const cv = document.getElementById(id);
+    if (!cv) return;
+    const a = document.createElement('a');
+    a.href = cv.toDataURL('image/png');
+    a.download = 'roller_' + (i + 1) + '_' + id + '.png';
+    a.click();
+  });
+}
+
+/* ================================================================ 10.5 GIF 导出
+   老师要求（2026-10-07）：播放键左边一键把网页的每一块动态画面存成 < 5 MB 的高清 GIF，
+   归档到本网页所在目录。
+
+   做法：不引任何外部库，自己实现 GIF89a。
+     · 抓帧：τ 从 0 扫到 1，逐帧 applyTau()+render()，把画布合成到白底离屏画布再取像素
+       （画布本身是 clearRect 出来的透明底，不合成白底会整片黑）
+     · 量化：对全部帧做 6 bit/通道直方图（262144 桶，保留 8 bit 真值累加），
+       中位切分（median cut）切到 ≤256 色，得到全局调色板；映射时按 6 bit 键缓存最近色
+     · 编码：LZW 变长码（ClearCode / EOI / 码长 9→12，时序对齐 gif.js）+ 255 字节子块
+     · 单张 5 MB 自适应：超限就依次减帧数、再减画幅，直到落进 5 MB
+
+   高清：导出期间把 PIX（超采样倍率）抬高，ctxOf 会把画布 backing store 放大 k 倍，
+   于是线条/文字是真·高分辨率渲染，不是放大插值。 */
+
+const GIF_LIMIT = 5 * 1024 * 1024;      /* 5 MiB —— 老师要的「小于 5 MB」 */
+const GIF_LONG = 900;                   /* 目标长边像素 */
+const GIF_FRAMES = 30;                  /* τ 一圈的采样帧数 */
+const GIF_CYCLE_CS = 200;               /* 一个 GIF 循环 200 个 1/100 秒 ≈ 2 秒 */
+
+const GIF_TARGETS = [
+  { id: 'cv1',  name: '①单滚筒_几何构造',   view: 'v1', panel: null },
+  { id: 'cv2',  name: '②本轮分解_向量合成', view: 'v2', panel: null },
+  { id: 'cv3a', name: '③面板A_真滚动圆',    view: 'v3', panel: 'A' },
+  { id: 'cv3b', name: '③面板B_双生成大圆',  view: 'v3', panel: 'B' },
+  { id: 'cv3c', name: '③面板C_线族包络',    view: 'v3', panel: 'C' },
+  { id: 'cv4a', name: '④多滚筒_俯视轨迹',   view: 'v4', panel: null },
+  { id: 'cv4b', name: '④多滚筒_高度波形',   view: 'v4', panel: null }
+];
+
+function mbStr(n) { return (n / 1048576).toFixed(2) + ' MB'; }
+function yield0() { return new Promise(function (r) { setTimeout(r, 0); }); }
+
+/* Blob → 纯 base64（不含 data: 前缀） */
+function blobToBase64(blob) {
+  return new Promise(function (res, rej) {
+    const fr = new FileReader();
+    fr.onload = function () { res(String(fr.result).split(',')[1]); };
+    fr.onerror = rej;
+    fr.readAsDataURL(blob);
+  });
+}
+
+/* ---------------- 中位切分量化 ---------------- */
+
+function buildPalette(frames, maxColors) {
+  const H = new Uint32Array(32768), SR = new Float64Array(32768),
+        SG = new Float64Array(32768), SB = new Float64Array(32768);
+  for (let fi = 0; fi < frames.length; fi++) {
+    const d = frames[fi];
+    for (let i = 0; i < d.length; i += 4) {
+      const r = d[i], g = d[i + 1], b = d[i + 2];
+      const k = ((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3);
+      H[k]++; SR[k] += r; SG[k] += g; SB[k] += b;
+    }
+  }
+  const items = [];
+  for (let k = 0; k < 32768; k++) {
+    if (!H[k]) continue;
+    const c = H[k];
+    items.push({ c: c, r: SR[k] / c, g: SG[k] / c, b: SB[k] / c });
+  }
+  if (!items.length) return [[0, 0, 0]];
+
+  function mkBox(from, to) {
+    let rmin = 255, rmax = 0, gmin = 255, gmax = 0, bmin = 255, bmax = 0, n = 0;
+    for (let i = from; i < to; i++) {
+      const it = items[i];
+      if (it.r < rmin) rmin = it.r; if (it.r > rmax) rmax = it.r;
+      if (it.g < gmin) gmin = it.g; if (it.g > gmax) gmax = it.g;
+      if (it.b < bmin) bmin = it.b; if (it.b > bmax) bmax = it.b;
+      n += it.c;
+    }
+    const dr = rmax - rmin, dg = gmax - gmin, db = bmax - bmin;
+    const axis = (dr >= dg && dr >= db) ? 'r' : (dg >= db ? 'g' : 'b');
+    return { from: from, to: to, n: n, axis: axis, range: Math.max(dr, dg, db) };
+  }
+
+  let boxes = [mkBox(0, items.length)];
+  while (boxes.length < maxColors) {
+    let bi = -1, bs = 0;
+    for (let i = 0; i < boxes.length; i++) {
+      const b = boxes[i];
+      if (b.to - b.from < 2 || b.range <= 0) continue;
+      const sc = b.range * Math.log(b.n + 1);
+      if (sc > bs) { bs = sc; bi = i; }
+    }
+    if (bi < 0) break;
+    const b = boxes[bi], ax = b.axis;
+    const sub = items.slice(b.from, b.to);
+    sub.sort(function (A, B) { return A[ax] - B[ax]; });
+    for (let i = 0; i < sub.length; i++) items[b.from + i] = sub[i];
+    const half = b.n / 2;
+    let acc = 0, cut = 0;
+    for (let i = b.from; i < b.to; i++) { acc += items[i].c; if (acc >= half) { cut = i + 1; break; } }
+    if (cut <= b.from) cut = b.from + 1;
+    if (cut >= b.to) cut = b.to - 1;
+    boxes.splice(bi, 1, mkBox(b.from, cut), mkBox(cut, b.to));
+  }
+
+  const pal = [];
+  for (let i = 0; i < boxes.length; i++) {
+    const b = boxes[i];
+    let sr = 0, sg = 0, sb = 0, n = 0;
+    for (let j = b.from; j < b.to; j++) {
+      const it = items[j];
+      sr += it.r * it.c; sg += it.g * it.c; sb += it.b * it.c; n += it.c;
+    }
+    pal.push([Math.round(sr / n), Math.round(sg / n), Math.round(sb / n)]);
+  }
+  return pal;
+}
+
+/* 6 bit/通道 键 → 调色板下标 的惰性缓存 */
+function makeQuant(pal) {
+  const cache = new Int16Array(262144).fill(-1);
+  const n = pal.length;
+  return function (r, g, b) {
+    const key = ((r >> 2) << 12) | ((g >> 2) << 6) | (b >> 2);
+    const hit = cache[key];
+    if (hit >= 0) return hit;
+    let best = 0, bd = 1e18;
+    for (let i = 0; i < n; i++) {
+      const p = pal[i];
+      const dr = r - p[0], dg = g - p[1], db = b - p[2];
+      /* 人眼对绿最敏感，加权平方距离 */
+      const d = dr * dr * 3 + dg * dg * 6 + db * db * 1;
+      if (d < bd) { bd = d; best = i; }
+    }
+    cache[key] = best;
+    return best;
+  };
+}
+
+/* ---------------- LZW（时序对齐 gif.js：先打包、后升码长） ---------------- */
+
+function lzwEncode(px, minCodeSize) {
+  const CLEAR = 1 << minCodeSize, EOI = CLEAR + 1;
+  const dict = new Int32Array(4096 * 256);
+  let out = new Uint8Array(1 << 16), olen = 0, cur = 0, bits = 0;
+  let codeSize = minCodeSize + 1, next = EOI + 1;
+
+  function putByte(b) {
+    if (olen === out.length) { const nb = new Uint8Array(out.length << 1); nb.set(out); out = nb; }
+    out[olen++] = b;
+  }
+  function emit(code) {
+    cur |= code << bits; bits += codeSize;
+    while (bits >= 8) { putByte(cur & 255); cur >>= 8; bits -= 8; }
+    if (next > (1 << codeSize) - 1 && codeSize < 12) codeSize++;
+  }
+
+  dict.fill(-1);
+  emit(CLEAR);
+  const n = px.length;
+  if (n <= 1) {
+    if (n === 1) emit(px[0]);
+    emit(EOI);
+  } else {
+    let prefix = px[0];
+    for (let i = 1; i < n; i++) {
+      const k = px[i], key = (prefix << 8) | k, v = dict[key];
+      if (v >= 0) { prefix = v; continue; }
+      emit(prefix);
+      if (next < 4096) { dict[key] = next++; }
+      else { emit(CLEAR); dict.fill(-1); codeSize = minCodeSize + 1; next = EOI + 1; }
+      prefix = k;
+    }
+    emit(prefix);
+    emit(EOI);
+  }
+  if (bits > 0) putByte(cur & 255);
+  return out.subarray(0, olen);
+}
+
+/* ---------------- GIF89a 组装 ---------------- */
+
+function encodeGif(frames, W, H, delayCs) {
+  const pal = buildPalette(frames, 256);
+  const quant = makeQuant(pal);
+  let bits = 2; while ((1 << bits) < pal.length) bits++;
+  const gctSize = 1 << bits;
+  const mcs = Math.max(2, bits);
+
+  const chunks = [], push = function (a) { chunks.push(a); };
+  function b1(v) { push(new Uint8Array([v & 255])); }
+  function u16(v) { push(new Uint8Array([v & 255, (v >> 8) & 255])); }
+  function asc(s) { const a = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); push(a); }
+
+  asc('GIF89a');
+  u16(W); u16(H);
+  b1(0x80 | 0x70 | (bits - 1));   /* 有全局色表 · 色深 8bit · GCT 尺寸 2^bits */
+  /* 背景色：找最接近白的一个下标 */
+  let bg = 0, bd = 1e18;
+  for (let i = 0; i < pal.length; i++) {
+    const dr = 255 - pal[i][0], dg = 255 - pal[i][1], db = 255 - pal[i][2];
+    const d = dr * dr + dg * dg + db * db;
+    if (d < bd) { bd = d; bg = i; }
+  }
+  b1(bg);
+  b1(0);
+  const gct = new Uint8Array(gctSize * 3);
+  for (let i = 0; i < gctSize; i++) {
+    const c = pal[i] || pal[pal.length - 1];
+    gct[i * 3] = c[0]; gct[i * 3 + 1] = c[1]; gct[i * 3 + 2] = c[2];
+  }
+  push(gct);
+  /* NETSCAPE2.0 无限循环 */
+  b1(0x21); b1(0xFF); b1(0x0B); asc('NETSCAPE2.0');
+  b1(0x03); b1(0x01); u16(0); b1(0x00);
+
+  const idx = new Uint8Array(W * H);
+  for (let f = 0; f < frames.length; f++) {
+    const d = frames[f];
+    for (let p = 0, i = 0; p < idx.length; p++, i += 4) {
+      idx[p] = quant(d[i], d[i + 1], d[i + 2]);
+    }
+    b1(0x21); b1(0xF9); b1(0x04); b1(0x04); u16(delayCs); b1(bg); b1(0x00);
+    b1(0x2C); u16(0); u16(0); u16(W); u16(H); b1(0x00);
+    b1(mcs);
+    const raw = lzwEncode(idx, mcs);
+    for (let i = 0; i < raw.length; i += 255) {
+      const len = Math.min(255, raw.length - i);
+      b1(len); push(raw.subarray(i, i + len));
+    }
+    b1(0x00);
+  }
+  b1(0x3B);
+  return new Blob(chunks, { type: 'image/gif' });
+}
+
+/* ---------------- 抓帧 + 自适应 5 MB ---------------- */
+
+async function gifForCanvas(cv, name, note, tgt) {
+  tgt = tgt || { view: null, panel: null };
+  const rect = cv.getBoundingClientRect();
+  const cw = Math.max(80, Math.round(rect.width)), ch = Math.max(60, Math.round(rect.height));
+  const baseLong = Math.max(cw, ch);
+  const N = GIF_FRAMES;
+  const tries = [
+    { long: GIF_LONG,        frames: N },
+    { long: GIF_LONG,        frames: Math.round(N * 0.72) },
+    { long: GIF_LONG,        frames: Math.round(N * 0.56) },
+    { long: GIF_LONG * 0.80, frames: Math.round(N * 0.56) },
+    { long: GIF_LONG * 0.62, frames: Math.round(N * 0.44) }
+  ];
+  let best = null;
+  /* 抓帧期间只重画这一块（render() 认 ONLY / ONLYP），别把 7 块全量重画 */
+  ONLY = tgt.view; ONLYP = tgt.panel;
+  for (let a = 0; a < tries.length; a++) {
+    const plan = tries[a];
+    let k = Math.min(4, Math.max(1, plan.long / baseLong));
+    while (k > 1.05 && cw * k * ch * k > 1.6e6) k -= 0.05;
+    PIX = k;
+    invalidate(); render();
+    const W = cv.width, H = cv.height, nF = Math.max(10, plan.frames);
+    const delayCs = Math.max(3, Math.round(GIF_CYCLE_CS / nF));
+    note('⟳ ' + name + '：' + W + '×' + H + ' · ' + nF + ' 帧（抓帧中…）');
+
+    const off = document.createElement('canvas');
+    off.width = W; off.height = H;
+    const og = off.getContext('2d', { willReadFrequently: true });
+    const frames = [];
+    for (let i = 0; i < nF; i++) {
+      S.tau = i / nF;
+      applyTau();
+      render();
+      og.fillStyle = '#fff'; og.fillRect(0, 0, W, H);
+      og.drawImage(cv, 0, 0, W, H);
+      frames.push(og.getImageData(0, 0, W, H).data);
+      if ((i & 3) === 3) {
+        note('⟳ ' + name + '：抓帧 ' + (i + 1) + '/' + nF + ' …');
+        await yield0();
+      }
+    }
+    note('⟳ ' + name + '：量化 + LZW 编码…');
+    await yield0();
+    const t1 = Date.now();
+    const blob = encodeGif(frames, W, H, delayCs);
+    best = { blob: blob, W: W, H: H, frames: nF, name: name };
+    if (blob.size <= GIF_LIMIT) break;
+    note('⟳ ' + name + '：' + mbStr(blob.size) + ' 超 5 MB（编码 ' +
+         ((Date.now() - t1) / 1000).toFixed(1) + 's），自动收敛重试…');
+    await yield0();
+  }
+  ONLY = null; ONLYP = null;
+  PIX = 1;
+  invalidate(); render();
+  return best;
+}
+
+/* 逐块跑完 → 得到全部 GIF Blob（不落盘），供下载 / 归档两个入口复用 */
+async function gifBlobsAll(note) {
+  note = note || function () {};
+  const wasPlaying = S.playing, wasTau = S.tau;
+  if (wasPlaying) togglePlay();
+  const out = [];
+  for (let i = 0; i < GIF_TARGETS.length; i++) {
+    const t = GIF_TARGETS[i];
+    const cv = document.getElementById(t.id);
+    if (!cv) continue;
+    note('(' + (i + 1) + '/' + GIF_TARGETS.length + ') ' + t.name);
+    await yield0();
+    const g = await gifForCanvas(cv, t.name, note, t);
+    if (g) out.push(g);
+  }
+  S.tau = wasTau; applyTau(); invalidate(); render();
+  if (wasPlaying) togglePlay();
+  return out;
+}
+
+/* ---------------- 落盘：优先写进用户指定目录，否则走浏览器下载 ---------------- */
+
+let gifDir = null, gifDirAsked = false;
+
+async function pickGifDir() {
+  if (gifDir) return gifDir;
+  if (gifDirAsked) return null;
+  gifDirAsked = true;
+  if (typeof window.showDirectoryPicker !== 'function') return null;
+  try {
+    gifDir = await window.showDirectoryPicker({ id: 'searl-roller-gif', mode: 'readwrite' });
+    return gifDir;
+  } catch (e) { gifDir = null; return null; }
+}
+
+async function saveGifBlob(blob, filename, dir) {
+  if (dir) {
+    try {
+      const fh = await dir.getFileHandle(filename, { create: true });
+      const w = await fh.createWritable();
+      await w.write(blob);
+      await w.close();
+      return 'dir';
+    } catch (e) { /* 落回下载 */ }
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.rel = 'noopener';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+  return 'download';
+}
+
+let gifBusy = false;
+
+async function exportAllGif() {
+  if (gifBusy) return;
+  gifBusy = true;
+  const btn = document.getElementById('bGif');
+  const noteEl = document.getElementById('gifNote');
+  const note = function (s) { if (noteEl) noteEl.textContent = s; };
+  if (btn) { btn.disabled = true; btn.classList.add('on'); }
+
+  try {
+    note('请选择 GIF 归档目录（取消则下载到浏览器默认下载目录）…');
+    await yield0();
+    const dir = await pickGifDir();
+
+    const list = await gifBlobsAll(note);
+    const sizes = [];
+    for (let i = 0; i < list.length; i++) {
+      const g = list[i];
+      note('(' + (i + 1) + '/' + list.length + ') 写入 ' + g.name + '.gif …');
+      await saveGifBlob(g.blob, g.name + '.gif', dir);
+      sizes.push(mbStr(g.blob.size).replace(' MB', ''));
+      await yield0();
+    }
+    const maxMb = Math.max.apply(null, list.map(function (g) { return g.blob.size; })) / 1048576;
+    note('✓ ' + list.length + ' 张 GIF 已导出（900×900 · 30 帧）：体积 ' + sizes.join(' / ') + ' MB' +
+         (maxMb <= 5 ? '，全部 < 5 MB' : '，⚠ 有超过 5 MB 的') +
+         (dir ? '　已归档到所选目录' : '　已存到浏览器下载目录（可整体移到本网页所在目录）'));
+  } catch (e) {
+    note('✗ 导出失败：' + ((e && e.message) ? e.message : e));
+  } finally {
+    if (btn) { btn.disabled = false; btn.classList.remove('on'); }
+    gifBusy = false;
+    PIX = 1; invalidate(); render();
+  }
+}
+
+/* ---------------------------------------------------------------- 11. boot */
+
+let booted = false;
+function boot() {
+  if (booted) return;
+  booted = true;
+  document.querySelectorAll('canvas').forEach(function (cv) {
+    cv.style.background = '#fff';
+  });
+  bindAll();
+  syncFromUniAll();          /* 让 ①②③④ 从统一模型出发，开屏四张图就是同一套参数 */
+  applyThMode();
+  /* 尺寸变化重绘 */
+  if (typeof ResizeObserver !== 'undefined') {
+    const ro = new ResizeObserver(function () { invalidate(); });
+    document.querySelectorAll('canvas').forEach(function (cv) { ro.observe(cv); });
+  } else if (typeof window.addEventListener === 'function') {
+    window.addEventListener('resize', function () { invalidate(); });
+  }
+  applyTau();
+  render();
+  raf = requestAnimationFrame(loop);
+}
+
+/* 导出给 Node 桩测 */
+if (typeof window !== 'undefined') {
+  window.__RS__ = {
+    Core: Core, S: S, ORIG: ORIG, RANGE: RANGE, COL: COL, MMA: MMA,
+    getREF: function () { return REF; },
+    syncUni: syncUni, syncFromUniAll: syncFromUniAll, buildWheelUI: buildWheelUI,
+    ensureWheels: ensureWheels, syncLock2UI: syncLock2UI, syncUniLabels: syncUniLabels,
+    wheelColor: wheelColor, wheelName: wheelName, allStd: allStd, hsv2rgb: hsv2rgb,
+    darker: darker, rgba: rgba, boot: boot, render: render, invalidate: invalidate,
+    applyTau: applyTau, resetTau: resetTau, togglePlay: togglePlay,
+    bindAll: bindAll, mkView: mkView, drawV1: drawV1, drawV2: drawV2,
+    drawV3: drawV3, drawV4: drawV4, v3uo: v3uo, niceStep: niceStep,
+    step: step, getLast: function () { return lastO; },
+    defState: defState,
+    /* GIF 导出（无头 Chrome 归档脚本用得到） */
+    GIF_TARGETS: GIF_TARGETS, GIF_LIMIT: GIF_LIMIT,
+    setPix: function (k) { PIX = k; invalidate(); render(); },
+    getPix: function () { return PIX; },
+    setOnly: function (v, p) { ONLY = v || null; ONLYP = p || null; invalidate(); render(); },
+    getOnly: function () { return { view: ONLY, panel: ONLYP }; },
+    buildPalette: buildPalette, makeQuant: makeQuant, lzwEncode: lzwEncode,
+    encodeGif: encodeGif, gifForCanvas: gifForCanvas, gifBlobsAll: gifBlobsAll,
+    exportAllGif: exportAllGif,
+    /* 无头归档：单块跑完 → 结果（含 base64）暂存在 window.__gifOut，由 Node 分片读走。
+       ★ 不能一次性回传：③面板C 的 GIF 有 4.4 MB、base64 5.9 MB，
+         超了 Node WebSocket 单条消息上限（Max decompressed message size exceeded）。 */
+    gifPrepOne: async function (i, note) {
+      const t = GIF_TARGETS[i];
+      if (!t) return null;
+      const cv = document.getElementById(t.id);
+      if (!cv) return null;
+      const wasPlaying = S.playing, wasTau = S.tau;
+      if (wasPlaying) togglePlay();
+      const g = await gifForCanvas(cv, t.name, note || function () {}, t);
+      S.tau = wasTau; applyTau(); invalidate(); render();
+      if (wasPlaying) togglePlay();
+      if (!g) { window.__gifOut = null; return null; }
+      const b64 = await blobToBase64(g.blob);
+      window.__gifOut = { name: g.name, w: g.W, h: g.H, frames: g.frames, bytes: g.blob.size, b64: b64 };
+      return { name: g.name, w: g.W, h: g.H, frames: g.frames, bytes: g.blob.size, b64len: b64.length };
+    },
+    gifChunk: function (off, len) {
+      const o = window.__gifOut;
+      if (!o) return null;
+      return o.b64.substring(off, off + len);
+    },
+    gifClear: function () { window.__gifOut = null; return true; },
+    gifOneBase64: async function (i, note) {
+      await window.__RS__.gifPrepOne(i, note);
+      const o = window.__gifOut;
+      window.__gifOut = null;
+      return o;
+    },
+    gifBase64All: async function (note) {
+      const list = await gifBlobsAll(note);
+      const out = [];
+      for (let i = 0; i < list.length; i++) {
+        const g = list[i];
+        out.push({ name: g.name, w: g.W, h: g.H, frames: g.frames, bytes: g.blob.size,
+                   b64: await blobToBase64(g.blob) });
+      }
+      return out;
+    }
+  };
+}
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+}
+})();
+
+</script>
+</body>
+</html>

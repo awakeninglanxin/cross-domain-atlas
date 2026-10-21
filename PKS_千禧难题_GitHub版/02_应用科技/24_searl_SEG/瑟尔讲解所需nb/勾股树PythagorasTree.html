@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>勾股树 · Pythagoras Tree</title>
+<style>
+:root{
+  --bg:#0e0c14; --panel:#171426; --panel2:#1d1930; --line:#2c2544;
+  --txt:#e8e4f5; --dim:#9a92b8; --acc:#a97bff; --acc2:#6ee7ff; --warn:#ffcf6b;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:radial-gradient(1200px 700px at 30% 0%,#1a1530 0%,var(--bg) 60%);
+  color:var(--txt);font:14px/1.5 "Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+  overflow:hidden;
+}
+header{padding:14px 18px 6px 18px}
+h1{margin:0;font-size:17px;font-weight:600;letter-spacing:.3px}
+h1 .en{color:var(--dim);font-size:12.5px;font-weight:400;margin-left:8px;letter-spacing:0}
+.sub{margin:3px 0 0;color:var(--dim);font-size:12px}
+
+main{position:relative;height:calc(100vh - 62px)}
+#stage{display:flex;align-items:center;justify-content:center;height:100%;
+  padding-right:392px;transition:padding .22s ease}
+body.off #stage{padding-right:24px}
+canvas#main{display:block;border-radius:8px;
+  box-shadow:0 10px 34px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.06) inset}
+
+/* ---------- 右侧浮窗 ---------- */
+.panel{
+  position:fixed;top:12px;right:12px;width:364px;max-height:calc(100vh - 24px);
+  overflow-y:auto;overflow-x:hidden;padding:11px;z-index:50;
+  background:linear-gradient(180deg,var(--panel),#141126);
+  border:1px solid var(--line);border-radius:13px;
+  box-shadow:0 16px 40px rgba(0,0,0,.55);
+  transition:transform .22s ease,opacity .22s ease;
+}
+body.off .panel{transform:translateX(calc(100% + 26px));opacity:0;pointer-events:none}
+.panel::-webkit-scrollbar{width:9px}
+.panel::-webkit-scrollbar-thumb{background:#372a58;border-radius:9px}
+.panel::-webkit-scrollbar-track{background:transparent}
+.panel h2{margin:0 0 8px;font-size:12.5px;cursor:pointer;user-select:none;
+  display:flex;align-items:center;gap:6px;color:#cfc6ea}
+.panel h2::after{content:"\25BE";color:var(--dim);font-size:10px;transition:transform .18s}
+.card{background:var(--panel2);border:1px solid #251f3c;border-radius:10px;
+  padding:9px 11px;margin-bottom:8px}
+.card.fold h2{margin-bottom:0}
+.card.fold h2::after{transform:rotate(-90deg)}
+.card.fold > *:not(h2){display:none}
+.card.hot{border-color:#3b2f5e;box-shadow:0 0 0 1px rgba(169,123,255,.13) inset}
+
+#ptoggle{
+  position:fixed;top:50%;right:386px;transform:translateY(-50%);z-index:60;
+  width:26px;height:52px;border-radius:9px 0 0 9px;cursor:pointer;
+  background:var(--panel);border:1px solid var(--line);border-right:none;
+  color:var(--acc);font-size:13px;line-height:1;transition:right .22s ease;
+}
+body.off #ptoggle{right:0}
+#ptoggle:hover{color:#fff;background:#221c3a}
+
+/* ---------- 控件 ---------- */
+.row{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.grow{display:grid;grid-template-columns:88px 1fr 66px;gap:7px;align-items:center;margin:7px 0}
+.grow .nm{color:var(--dim);font-size:12px;white-space:nowrap}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:3px;
+  background:#332a52;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;
+  background:var(--acc);border:2px solid #241c3d;cursor:pointer;
+  box-shadow:0 0 0 3px rgba(169,123,255,.18)}
+input[type=number]{width:100%;padding:3px 5px;font:12.5px/1.3 Consolas,Menlo,monospace;
+  color:var(--txt);background:#120f20;border:1px solid #332a52;border-radius:6px;text-align:right}
+input[type=number]:focus{border-color:var(--acc);background:#171331}
+input[type=color]{width:42px;height:24px;padding:0;border:1px solid #332a52;border-radius:6px;
+  background:#120f20;cursor:pointer}
+select{width:100%;padding:3px 5px;font:12.4px/1.35 "Microsoft YaHei","PingFang SC",sans-serif;
+  color:var(--txt);background:#120f20;border:1px solid #332a52;border-radius:6px;cursor:pointer}
+select:focus{border-color:var(--acc);background:#171331}
+#cmapBar{height:11px;border-radius:6px;margin:7px 0 2px;border:1px solid #2c2544;background:#120f20}
+button{padding:4px 9px;font-size:12.2px;color:var(--txt);cursor:pointer;
+  background:#241d3c;border:1px solid #332a52;border-radius:7px;transition:.14s}
+button:hover{background:#2f2650;border-color:#4a3d75}
+button.on{background:linear-gradient(180deg,#6d43c9,#5a34ab);border-color:#8b63e0;color:#fff}
+button:disabled{opacity:.4;cursor:not-allowed}
+label.nm{color:var(--dim);font-size:12.2px;display:inline-flex;align-items:center;gap:5px;cursor:pointer}
+input[type=checkbox]{accent-color:var(--acc);width:14px;height:14px;cursor:pointer}
+
+.read{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:12.3px;margin:0}
+.read dt{color:var(--dim);white-space:nowrap}
+.read dd{margin:0;font-family:Consolas,Menlo,monospace;color:var(--acc2)}
+.note{font-size:11.6px;line-height:1.6;color:#a49cc0;margin:7px 0 0}
+.note code{color:#cbb6ff;background:#221b3a;padding:0 4px;border-radius:4px;
+  font-family:Consolas,Menlo,monospace;font-size:11.3px}
+.tag{display:inline-block;padding:1px 6px;border-radius:5px;font-size:11px;
+  background:#2a2246;color:#c3b4ef;border:1px solid #3a2f5e}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+@media (max-width:1220px){
+  .panel{width:330px}
+  #ptoggle{right:352px}
+  #stage{padding-right:358px}
+}
+@media (max-width:900px){
+  body{overflow:auto}
+  #stage{padding-right:0;height:auto;padding:12px}
+  .panel{position:static;width:auto;max-height:none;margin:12px}
+  #ptoggle{display:none}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>勾股树<span class="en">Pythagoras Tree</span></h1>
+  <p class="sub">原版 Wolfram 代码（作者 Ed Pegg Jr. 风格的分形树）· 网页复刻，两个参数与原版一一对应</p>
+</header>
+
+<button id="ptoggle" title="收起 / 展开参数面板">▸</button>
+
+<main>
+  <div id="stage"><canvas id="main"></canvas></div>
+</main>
+
+<aside class="panel" id="panel">
+
+  <div class="card" id="cardRead">
+    <h2>实时读数</h2>
+    <dl class="read">
+      <dt>方块数 N</dt><dd id="rN">210</dd>
+      <dt>steps m</dt><dd id="rM">3</dd>
+      <dt>折角 f = π/bend</dt><dd id="rF">33.64° (0.5872 rad)</dd>
+      <dt>bend n</dt><dd id="rB">5.35</dd>
+      <dt>包围盒</dt><dd id="rBox">2.805 × 4.173</dd>
+      <dt>配色</dt><dd id="rCmap">Rainbow / 原版</dd>
+    </dl>
+  </div>
+
+  <div class="card hot" id="cardParam">
+    <h2>图形参数（原版 2 个控件）</h2>
+
+    <div class="grow"><span class="nm">steps</span>
+      <input type="range" id="sSteps" min="1" max="4" step="1" value="3"
+             title="steps：内部 p = 2^steps，递归步数（原版 1~4，步长 1）">
+      <input type="number" id="vSteps" min="1" max="4" step="1" value="3"
+             title="可直接敲整数 1 ~ 4"></div>
+
+    <div class="grow"><span class="nm">bend</span>
+      <input type="range" id="sBend" min="2" max="10" step="0.01" value="5.35"
+             title="bend：折角参数，f = π/bend 是每层子方块相对父边的转角（原版 2~10，连续）">
+      <input type="number" id="vBend" min="2" max="10" step="0.01" value="5.35"
+             title="可直接敲数值 2 ~ 10（可带小数）"></div>
+
+    <div class="seg" style="margin-top:8px">
+      <button id="btnOri" title="把 bend 设回原版默认 5.35">原版 5.35</button>
+      <button id="btn45" title="bend = 4 ⇒ f = 45°，左右对称的标准勾股树">45° 对称</button>
+      <button id="btnMax" title="steps = 4（上限）">steps 拉满</button>
+    </div>
+
+    <p class="note">原版的两个可调参数（<code>steps / bend</code>）全部保留，
+      滑条 + 可敲数字框双向同步，超范围自动夹到边界。
+      <code>bend = 4</code> 时 f = π/4，左右两个子方块等大 —— 就是课本上那棵标准勾股树。</p>
+  </div>
+
+  <div class="card" id="cardShow">
+    <h2>显示（原版 Thickness / Opacity / Background）</h2>
+    <div class="row" style="margin:6px 0 2px">
+      <label class="nm"><input type="checkbox" id="kFill" checked> 填充（原版 Opacity[.7]）</label>
+      <label class="nm"><input type="checkbox" id="kEdge" checked> 描边（原版 Thickness[.005]、色 = 反序 Rainbow）</label>
+    </div>
+    <div class="grow" style="margin-top:6px"><span class="nm">填充不透明度</span>
+      <input type="range" id="sFill" min="0" max="1" step="0.01" value="0.7">
+      <input type="number" id="vFill" min="0" max="1" step="0.01" value="0.7"></div>
+    <div class="grow"><span class="nm">描边粗细</span>
+      <input type="range" id="sLw" min="0.0005" max="0.02" step="0.0005" value="0.005"
+             title="Thickness 是相对「图宽」的比例，原版 .005 ⇒ 宽度 0.5%">
+      <input type="number" id="vLw" min="0.0005" max="0.02" step="0.0005" value="0.005"></div>
+    <div class="row" style="margin-top:6px">
+      <label class="nm"><input type="checkbox" id="kBgFollow" checked> 背景跟随配色（原版 <code>Append[Rainbow[0.5], .3]</code>）</label>
+    </div>
+    <div class="row" style="margin-top:6px">
+      <span class="nm" style="min-width:88px">背景色</span>
+      <input type="color" id="cBg" value="#ffffff" title="只在「背景跟随配色」关闭时生效">
+      <button data-bgc="#ffffff">白</button>
+      <button data-bgc="#000000">黑</button>
+      <button data-bgc="#808080">Gray</button>
+      <button data-bgc="#1b2a4a">深蓝</button>
+    </div>
+    <p class="note">原版背景是 <code>Rainbow[0.5]</code> 叠 30% 透明 —— 合成在白色页面上就是<b>淡薄荷绿</b>；
+      网页按同一语义算成实色。</p>
+  </div>
+
+  <div class="card" id="cardAnim">
+    <h2>动画</h2>
+    <div class="row">
+      <button id="btnScan" title="让 bend 在 2~10 之间来回扫动，直接看见树形连续变化">▶ 扫描 bend</button>
+      <span class="nm" style="margin-left:4px">速度</span>
+      <input type="range" id="sScan" min="0.1" max="3" step="0.05" value="0.6" style="flex:1">
+      <input type="number" id="vScan" min="0.1" max="3" step="0.05" value="0.6" style="width:60px">
+    </div>
+    <p class="note">原版靠拖动 <code>bend</code> 滑条看树形变化；这里是同一件事的自动版
+      —— 扫动时 bend 仍会写回滑条与数字框，随时停下继续手动调。</p>
+  </div>
+
+  <div class="card" id="cardPreset">
+    <h2>预设</h2>
+    <div class="seg">
+      <button data-preset="0">① 原版默认</button>
+      <button data-preset="1">② 只 1 步</button>
+      <button data-preset="2">③ 满 4 步</button>
+      <button data-preset="3">④ 45° 对称</button>
+      <button data-preset="4">⑤ 细长 bend=8</button>
+      <button data-preset="5">⑥ 宽扁 bend=10</button>
+    </div>
+  </div>
+
+  <div class="card" id="cardExtra">
+    <h2>附加（原版没有）</h2>
+
+    <div class="grow"><span class="nm">配色 cmap</span>
+      <select id="selCmap" title="默认就是原版用的 Rainbow；另外可换 18 种 matplotlib 配色"></select>
+      <span></span></div>
+    <div id="cmapBar" title="当前配色条"></div>
+
+    <div class="seg" style="margin-top:9px">
+      <button id="btnPng" title="把当前画布存成 PNG">保存 PNG</button>
+      <button id="btnCopy" title="把当前参数复制成一段可粘贴的文本">复制参数</button>
+      <button id="btnReset" title="恢复成原版默认值">重置为原版默认</button>
+    </div>
+    <p class="note">配色只影响上色，不改几何 —— 与原版 Rainbow 可随时互相切换。
+      首项 <code>Rainbow（Mathematica 风格·默认）</code> 是用控制点拟合出来的（见说明书 §5）。</p>
+    <p class="note" id="copyOut"></p>
+  </div>
+
+  <div class="card fold" id="cardAbout">
+    <h2>原理（与原版逐行对应）</h2>
+    <p class="note">
+      递归函数 <code>PythagorasTree[p1, bend]</code> 用 <b>显式栈</b>（不是递归调用）走一棵二叉分形树：
+      每次拿当前「父边」向量 <code>(x, y) = (u1 − x1, v1 − y1)</code>，由两个复乘子算出两个子边
+    </p>
+    <ul class="note" style="padding-left:18px;margin:6px 0 0">
+      <li><code>a = −cc·ss + i·cc²</code> —— 模长 <code>cc = cos(π/bend)</code></li>
+      <li><code>b = a·(1 − i)</code> —— 模长 <code>ss = sin(π/bend)</code></li>
+    </ul>
+    <p class="note">
+      两个子方块边长就是 <code>cc</code> 和 <code>ss</code>，而 <code>cc² + ss² = 1</code> 恰好等于父边长²
+      —— 这就是「勾股」二字的来源。<br>
+      每个多边形是 7 个顶点：<b>两个子方块的并集</b>（只在公共角点相碰），
+      按非零环绕规则填充即得并集，描边也只走真实的方边。<br>
+      绘制顺序 <code>MapIndexed</code>：第 <code>i</code> 块（共 N 块）用
+      <code>Rainbow[i/N]</code> 填、<code>Rainbow[1 − i/N]</code> 描边，
+      半透明叠加 → 就是那种「由内向外渐层」的观感。
+    </p>
+  </div>
+
+</aside>
+
+<script>
+/* =====================================================================
+   配色表（colormap）—— 由 _fcp_web_dev/gen_cmaps.py 自动生成，请勿手改
+
+   输入 u ∈ [0,1]（越界会自动夹到边缘），返回 [r, g, b]，各分量 0~255。
+   6 个 256 级精确表来自 matplotlib 官方数据（CC0 / BSD）：
+     viridis / plasma / magma / inferno / cividis / turbo
+   其余按 matplotlib 的公开定义直接计算（hsv / jet / rainbow / cool /
+   spring / summer / autumn / winter / hot / gray / copper / pink）。
+   ===================================================================== */
+
+const CMAP_LUT_HEX = {
+  viridis:
+      '44015444025645045745055946075a46085c460a5d460b5e470d60470e614710'
+      + '6347116447136548146748166848176948186a481a6c481b6d481c6e481d6f48'
+      + '1f70482071482173482374482475482576482677482878482979472a7a472c7a'
+      + '472d7b472e7c472f7d46307e46327e46337f4634804535814537814538824439'
+      + '83443a83443b84433d84433e85423f8542408642418641428741448740458840'
+      + '46883f47883f48893e49893e4a893e4c8a3d4d8a3d4e8a3c4f8a3c508b3b518b'
+      + '3b528b3a538b3a548c39558c39568c38588c38598c375a8c375b8d365c8d365d'
+      + '8d355e8d355f8d34608d34618d33628d33638d32648e32658e31668e31678e31'
+      + '688e30698e306a8e2f6b8e2f6c8e2e6d8e2e6e8e2e6f8e2d708e2d718e2c718e'
+      + '2c728e2c738e2b748e2b758e2a768e2a778e2a788e29798e297a8e297b8e287c'
+      + '8e287d8e277e8e277f8e27808e26818e26828e26828e25838e25848e25858e24'
+      + '868e24878e23888e23898e238a8d228b8d228c8d228d8d218e8d218f8d21908d'
+      + '21918c20928c20928c20938c1f948c1f958b1f968b1f978b1f988b1f998a1f9a'
+      + '8a1e9b8a1e9c891e9d891f9e891f9f881fa0881fa1881fa1871fa28720a38620'
+      + 'a48621a58521a68522a78522a88423a98324aa8325ab8225ac8226ad8127ad81'
+      + '28ae8029af7f2ab07f2cb17e2db27d2eb37c2fb47c31b57b32b67a34b67935b7'
+      + '7937b87838b9773aba763bbb753dbc743fbc7340bd7242be7144bf7046c06f48'
+      + 'c16e4ac16d4cc26c4ec36b50c46a52c56954c56856c66758c7655ac8645cc863'
+      + '5ec96260ca6063cb5f65cb5e67cc5c69cd5b6ccd5a6ece5870cf5773d05675d0'
+      + '5477d1537ad1517cd2507fd34e81d34d84d44b86d54989d5488bd6468ed64590'
+      + 'd74393d74195d84098d83e9bd93c9dd93ba0da39a2da37a5db36a8db34aadc32'
+      + 'addc30b0dd2fb2dd2db5de2bb8de29bade28bddf26c0df25c2df23c5e021c8e0'
+      + '20cae11fcde11dd0e11cd2e21bd5e21ad8e219dae319dde318dfe318e2e418e5'
+      + 'e419e7e419eae51aece51befe51cf1e51df4e61ef6e620f8e621fbe723fde725',
+  plasma:
+      '0d088710078813078916078a19068c1b068d1d068e20068f2206902406912605'
+      + '912805922a05932c05942e05952f059631059733059735049837049938049a3a'
+      + '049a3c049b3e049c3f049c41049d43039e44039e46039f48039f4903a04b03a1'
+      + '4c02a14e02a25002a25102a35302a35502a45601a45801a45901a55b01a55c01'
+      + 'a65e01a66001a66100a76300a76400a76600a76700a86900a86a00a86c00a86e'
+      + '00a86f00a87100a87201a87401a87501a87701a87801a87a02a87b02a87d03a8'
+      + '7e03a88004a88104a78305a78405a78606a68707a68808a68a09a58b0aa58d0b'
+      + 'a58e0ca48f0da4910ea3920fa39410a29511a19613a19814a099159f9a169f9c'
+      + '179e9d189d9e199da01a9ca11b9ba21d9aa31e9aa51f99a62098a72197a82296'
+      + 'aa2395ab2494ac2694ad2793ae2892b02991b12a90b22b8fb32c8eb42e8db52f'
+      + '8cb6308bb7318ab83289ba3388bb3488bc3587bd3786be3885bf3984c03a83c1'
+      + '3b82c23c81c33d80c43e7fc5407ec6417dc7427cc8437bc9447aca457acb4679'
+      + 'cc4778cc4977cd4a76ce4b75cf4c74d04d73d14e72d24f71d35171d45270d553'
+      + '6fd5546ed6556dd7566cd8576bd9586ada5a6ada5b69db5c68dc5d67dd5e66de'
+      + '5f65de6164df6263e06363e16462e26561e26660e3685fe4695ee56a5de56b5d'
+      + 'e66c5ce76e5be76f5ae87059e97158e97257ea7457eb7556eb7655ec7754ed79'
+      + '53ed7a52ee7b51ef7c51ef7e50f07f4ff0804ef1814df1834cf2844bf3854bf3'
+      + '874af48849f48948f58b47f58c46f68d45f68f44f79044f79143f79342f89441'
+      + 'f89540f9973ff9983ef99a3efa9b3dfa9c3cfa9e3bfb9f3afba139fba238fca3'
+      + '38fca537fca636fca835fca934fdab33fdac33fdae32fdaf31fdb130fdb22ffd'
+      + 'b42ffdb52efeb72dfeb82cfeba2cfebb2bfebd2afebe2afec029fdc229fdc328'
+      + 'fdc527fdc627fdc827fdca26fdcb26fccd25fcce25fcd025fcd225fbd324fbd5'
+      + '24fbd724fad824fada24f9dc24f9dd25f8df25f8e125f7e225f7e425f6e626f6'
+      + 'e826f5e926f5eb27f4ed27f3ee27f3f027f2f227f1f426f1f525f0f724f0f921',
+  magma:
+      '00000401000501010601010802010902020b02020d03030f0303120404140504'
+      + '1606051806051a07061c08071e0907200a08220b09240c09260d0a290e0b2b10'
+      + '0b2d110c2f120d31130d34140e36150e38160f3b180f3d19103f1a10421c1044'
+      + '1d11471e114920114b21114e22115024125325125527125829115a2a115c2c11'
+      + '5f2d11612f116331116533106734106936106b38106c390f6e3b0f703d0f713f'
+      + '0f72400f74420f75440f764510774710784910784a10794c117a4e117b4f127b'
+      + '51127c52137c54137d56147d57157e59157e5a167e5c167f5d177f5f187f6018'
+      + '80621980641a80651a80671b80681c816a1c816b1d816d1d816e1e81701f8172'
+      + '1f817320817521817621817822817922827b23827c23827e2482802582812581'
+      + '8326818426818627818827818928818b29818c29818e2a81902a81912b81932b'
+      + '80942c80962c80982d80992d809b2e7f9c2e7f9e2f7fa02f7fa1307ea3307ea5'
+      + '317ea6317da8327daa337dab337cad347cae347bb0357bb2357bb3367ab5367a'
+      + 'b73779b83779ba3878bc3978bd3977bf3a77c03a76c23b75c43c75c53c74c73d'
+      + '73c83e73ca3e72cc3f71cd4071cf4070d0416fd2426fd3436ed5446dd6456cd8'
+      + '456cd9466bdb476adc4869de4968df4a68e04c67e24d66e34e65e44f64e55064'
+      + 'e75263e85362e95462ea5661eb5760ec5860ed5a5fee5b5eef5d5ef05f5ef160'
+      + '5df2625df2645cf3655cf4675cf4695cf56b5cf66c5cf66e5cf7705cf7725cf8'
+      + '745cf8765cf9785df9795df97b5dfa7d5efa7f5efa815ffb835ffb8560fb8761'
+      + 'fc8961fc8a62fc8c63fc8e64fc9065fd9266fd9467fd9668fd9869fd9a6afd9b'
+      + '6bfe9d6cfe9f6dfea16efea36ffea571fea772fea973feaa74feac76feae77fe'
+      + 'b078feb27afeb47bfeb67cfeb77efeb97ffebb81febd82febf84fec185fec287'
+      + 'fec488fec68afec88cfeca8dfecc8ffecd90fecf92fed194fed395fed597fed7'
+      + '99fed89afdda9cfddc9efddea0fde0a1fde2a3fde3a5fde5a7fde7a9fde9aafd'
+      + 'ebacfcecaefceeb0fcf0b2fcf2b4fcf4b6fcf6b8fcf7b9fcf9bbfcfbbdfcfdbf',
+  inferno:
+      '00000401000501010601010802010a02020c02020e0302100403120403140504'
+      + '1706041907051b08051d09061f0a07220b07240c08260d08290e092b10092d11'
+      + '0a30120a32140b34150b37160b39180c3c190c3e1b0c411c0c431e0c451f0c48'
+      + '210c4a230c4c240c4f260c51280b53290b552b0b572d0b592f0a5b310a5c320a'
+      + '5e340a5f3609613809623909633b09643d09653e0966400a67420a68440a6845'
+      + '0a69470b6a490b6a4a0c6b4c0c6b4d0d6c4f0d6c510e6c520e6d540f6d550f6d'
+      + '57106e59106e5a116e5c126e5d126e5f136e61136e62146e64156e65156e6716'
+      + '6e69166e6a176e6c186e6d186e6f196e71196e721a6e741a6e751b6e771c6d78'
+      + '1c6d7a1d6d7c1d6d7d1e6d7f1e6c801f6c82206c84206b85216b87216b88226a'
+      + '8a226a8c23698d23698f24699025689225689326679526679727669827669a28'
+      + '659b29649d29649f2a63a02a63a22b62a32c61a52c60a62d60a82e5fa92e5eab'
+      + '2f5ead305dae305cb0315bb1325ab3325ab43359b63458b73557b93556ba3655'
+      + 'bc3754bd3853bf3952c03a51c13a50c33b4fc43c4ec63d4dc73e4cc83f4bca40'
+      + '4acb4149cc4248ce4347cf4446d04545d24644d34743d44842d54a41d74b3fd8'
+      + '4c3ed94d3dda4e3cdb503bdd513ade5238df5337e05536e15635e25734e35933'
+      + 'e45a31e55c30e65d2fe75e2ee8602de9612bea632aeb6429eb6628ec6726ed69'
+      + '25ee6a24ef6c23ef6e21f06f20f1711ff1731df2741cf3761bf37819f47918f5'
+      + '7b17f57d15f67e14f68013f78212f78410f8850ff8870ef8890cf98b0bf98c0a'
+      + 'f98e09fa9008fa9207fa9407fb9606fb9706fb9906fb9b06fb9d07fc9f07fca1'
+      + '08fca309fca50afca60cfca80dfcaa0ffcac11fcae12fcb014fcb216fcb418fb'
+      + 'b61afbb81dfbba1ffbbc21fbbe23fac026fac228fac42afac62df9c72ff9c932'
+      + 'f9cb35f8cd37f8cf3af7d13df7d340f6d543f6d746f5d949f5db4cf4dd4ff4df'
+      + '53f4e156f3e35af3e55df2e661f2e865f2ea69f1ec6df1ed71f1ef75f1f179f2'
+      + 'f27df2f482f3f586f3f68af4f88ef5f992f6fa96f8fb9af9fc9dfafda1fcffa4',
+  cividis:
+      '00224e00234f00245100255300255400265600275800285900285b00295d002a'
+      + '5f002a61002b62002c64002c66002d68002e6a002e6c002f6d00306f00307000'
+      + '31700031710132710533710833700c34700f357012357014367016377018376f'
+      + '1a386f1c396f1e3a6f203a6f213b6e233c6e243c6e263d6e273e6e293f6e2a3f'
+      + '6d2b406d2d416d2e416d2f426d31436d32436d33446d34456c35456c36466c38'
+      + '476c39486c3a486c3b496c3c4a6c3d4a6c3e4b6c3f4c6c404c6c414d6c424e6c'
+      + '434e6c444f6c45506c46516c47516c48526c49536c4a536c4b546c4c556c4d55'
+      + '6c4e566c4f576c50576c51586d52596d535a6d545a6d555b6d555c6d565c6d57'
+      + '5d6d585e6d595e6e5a5f6e5b606e5c616e5d616e5e626e5e636f5f636f60646f'
+      + '61656f62656f636670646770656870656870666970676a71686a71696b716a6c'
+      + '716b6d726c6d726c6e726d6f726e6f736f707370717371727472727472737473'
+      + '74757474757575757676767777767777777878777979777a7a787b7a787c7b78'
+      + '7d7c787e7c787e7d787f7e78807f78817f788280798381798482798582798683'
+      + '798784788885788985788a86788b87788c88788d88788e89788f8a78908b7891'
+      + '8b78928c78928d78938e78948e77958f779690779791779892779992779a9376'
+      + '9b94769c95769d95769e96769f9775a09875a19975a29975a39a74a49b74a59c'
+      + '74a69c74a79d73a89e73a99f73aaa073aba072aca172ada272aea371afa471b0'
+      + 'a571b1a570b3a670b4a76fb5a86fb6a96fb7a96eb8aa6eb9ab6dbaac6dbbad6d'
+      + 'bcae6cbdae6cbeaf6bbfb06bc0b16ac1b26ac2b369c3b369c4b468c5b568c6b6'
+      + '67c7b767c8b866c9b965cbb965ccba64cdbb63cebc63cfbd62d0be62d1bf61d2'
+      + 'c060d3c05fd4c15fd5c25ed6c35dd7c45cd9c55cdac65bdbc75adcc859ddc858'
+      + 'dec958dfca57e0cb56e1cc55e2cd54e4ce53e5cf52e6d051e7d150e8d24fe9d3'
+      + '4eead34cebd44bedd54aeed649efd748f0d846f1d945f2da44f3db42f5dc41f6'
+      + 'dd3ff7de3ef8df3cf9e03afbe138fce236fde334fee434fee535fee636fee838',
+  turbo:
+      '30123b32154333184a341b51351e5836215f37246638276d392a733a2d793b2f'
+      + '803c32863d358b3e38913f3b973f3e9c4040a24143a74146ac4249b1424bb543'
+      + '4eba4451bf4454c34456c74559cb455ccf455ed34661d64664da4666dd4669e0'
+      + '466be3476ee64771e94773eb4776ee4778f0477bf2467df44680f64682f84685'
+      + 'fa4687fb458afc458cfd448ffe4391fe4294ff4196ff4099ff3e9bfe3d9efe3b'
+      + 'a0fd3aa3fc38a5fb37a8fa35abf833adf731aff52fb2f42eb4f22cb7f02ab9ee'
+      + '28bceb27bee925c0e723c3e422c5e220c7df1fc9dd1ecbda1ccdd81bd0d51ad2'
+      + 'd21ad4d019d5cd18d7ca18d9c818dbc518ddc218dec018e0bd19e2bb19e3b91a'
+      + 'e4b61ce6b41de7b21fe9af20eaac22ebaa25eca727eea42aefa12cf09e2ff19b'
+      + '32f29835f39438f4913cf58e3ff68a43f78746f8844af8804ef97d52fa7a55fa'
+      + '7659fb735dfc6f61fc6c65fd6969fd666dfe6271fe5f75fe5c79fe597dff5680'
+      + 'ff5384ff5188ff4e8bff4b8fff4992ff4796fe4499fe429cfe409ffd3fa1fd3d'
+      + 'a4fc3ca7fc3aa9fb39acfb38affa37b1f936b4f836b7f735b9f635bcf534bef4'
+      + '34c1f334c3f134c6f034c8ef34cbed34cdec34d0ea34d2e935d4e735d7e535d9'
+      + 'e436dbe236dde037dfdf37e1dd37e3db38e5d938e7d739e9d539ebd339ecd13a'
+      + 'eecf3aefcd3af1cb3af2c93af4c73af5c53af6c33af7c13af8be39f9bc39faba'
+      + '39fbb838fbb637fcb336fcb136fdae35fdac34fea933fea732fea431fea130fe'
+      + '9e2ffe9b2dfe992cfe962bfe932afe9029fd8d27fd8a26fc8725fc8423fb8122'
+      + 'fb7e21fa7b1ff9781ef9751df8721cf76f1af66c19f56918f46617f36315f260'
+      + '14f15d13f05b12ef5811ed5510ec530feb500eea4e0de84b0ce7490ce5470be4'
+      + '450ae2430ae14109df3f08dd3d08dc3b07da3907d83706d63506d43305d23105'
+      + 'd02f05ce2d04cc2b04ca2a04c82803c52603c32503c12302be2102bc2002b91e'
+      + '02b71d02b41b01b21a01af1801ac1701a91601a71401a41301a112019e10019b'
+      + '0f01980e01950d01920b018e0a018b09028808028507028106027e05027a0403',
+};
+
+const hsv2rgb = function (h, s, v) {
+  h = ((h % 1) + 1) % 1;
+  const i = Math.floor(h * 6), f = h * 6 - i;
+  const p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s);
+  let r, g, b;
+  switch (i % 6) {
+    case 0: r = v; g = t; b = p; break;
+    case 1: r = q; g = v; b = p; break;
+    case 2: r = p; g = v; b = t; break;
+    case 3: r = p; g = q; b = v; break;
+    case 4: r = t; g = p; b = v; break;
+    default: r = v; g = p; b = q;
+  }
+  return [r * 255, g * 255, b * 255];
+};
+
+function cmCl(x) { return x < 0 ? 0 : (x > 1 ? 1 : x); }
+
+/* 256 级十六进制表 → 查表函数（线性插值） */
+function cmLUT(hex) {
+  const n = hex.length / 6;
+  const R = new Uint8Array(n), G = new Uint8Array(n), B = new Uint8Array(n);
+  for (let i = 0; i < n; i++) {
+    R[i] = parseInt(hex.substr(i * 6, 2), 16);
+    G[i] = parseInt(hex.substr(i * 6 + 2, 2), 16);
+    B[i] = parseInt(hex.substr(i * 6 + 4, 2), 16);
+  }
+  return function (u) {
+    const x = cmCl(u) * (n - 1);
+    const i = Math.floor(x), t = x - i, j = i + 1 < n ? i + 1 : n - 1;
+    return [R[i] + (R[j] - R[i]) * t, G[i] + (G[j] - G[i]) * t, B[i] + (B[j] - B[i]) * t];
+  };
+}
+
+/* 名字 → 求色函数。键顺序 = 下拉框顺序（首项 hsv 为默认） */
+const CMAPS = {
+  hsv:     function (u) { return hsv2rgb(u, 1, 1); },
+  turbo:   cmLUT(CMAP_LUT_HEX.turbo),
+  jet:     function (u) { u = cmCl(u); return [
+             cmCl(Math.min(4 * u - 1.5, -4 * u + 4.5)) * 255,
+             cmCl(Math.min(4 * u - 0.5, -4 * u + 3.5)) * 255,
+             cmCl(Math.min(4 * u + 0.5, -4 * u + 2.5)) * 255]; },
+  rainbow: function (u) { return hsv2rgb(0.75 * (1 - cmCl(u)), 1, 1); },
+  viridis: cmLUT(CMAP_LUT_HEX.viridis),
+  plasma: cmLUT(CMAP_LUT_HEX.plasma),
+  magma: cmLUT(CMAP_LUT_HEX.magma),
+  inferno: cmLUT(CMAP_LUT_HEX.inferno),
+  cividis: cmLUT(CMAP_LUT_HEX.cividis),
+  cool:    function (u) { u = cmCl(u); return [u * 255, (1 - u) * 255, 255]; },
+  spring:  function (u) { u = cmCl(u); return [255, u * 255, (1 - u) * 255]; },
+  summer:  function (u) { u = cmCl(u); return [u * 255, (0.5 + 0.5 * u) * 255, 102]; },
+  autumn:  function (u) { u = cmCl(u); return [255, u * 255, 0]; },
+  winter:  function (u) { u = cmCl(u); return [0, u * 255, (1 - 0.5 * u) * 255]; },
+  hot:     function (u) { u = cmCl(u); return [cmCl(3 * u) * 255,
+             cmCl(3 * u - 1) * 255, cmCl(3 * u - 2) * 255]; },
+  gray:    function (u) { u = cmCl(u); return [u * 255, u * 255, u * 255]; },
+  copper:  function (u) { u = cmCl(u); return [Math.min(1, 1.25 * u) * 255,
+             Math.min(1, 0.7812 * u) * 255, Math.min(1, 0.4975 * u) * 255]; },
+  pink:    function (u) { u = cmCl(u); const q = Math.sqrt((2 * u + 1) / 3);
+             return [q * 255, u * 255, q * 255]; }
+};
+
+/* 下拉框里的顺序（与 CMAPS 键一一对应） */
+const CMAP_ORDER = [
+  'hsv', 'turbo', 'jet', 'rainbow', 'viridis', 'plasma', 'magma',
+  'inferno', 'cividis', 'cool', 'spring', 'summer', 'autumn',
+  'winter', 'hot', 'gray', 'copper', 'pink'
+];
+
+/* 中文/括号标注，只用于下拉框显示 */
+const CMAP_NOTE = {
+  hsv: 'hsv', turbo: 'turbo', jet: 'jet', rainbow: 'rainbow',
+  viridis: 'viridis', plasma: 'plasma', magma: 'magma', inferno: 'inferno',
+  cividis: 'cividis', cool: 'cool', spring: 'spring', summer: 'summer',
+  autumn: 'autumn', winter: 'winter', hot: 'hot', gray: 'gray',
+  copper: 'copper', pink: 'pink'
+};
+
+
+/* =====================================================================
+   Mathematica 风格彩虹 —— 本页默认配色（勾股树原版用的是 ColorData["Rainbow"]）
+   注意：Mathematica 的 Rainbow 数据「内置在内核里」，本机只装了免费版
+   Wolfram Player（内核不对外求值），系统文件里也翻不到渐变的 RGB 数据
+   （只有名字表与 X11 色表），所以这里用一组控制点拟合：走向一致、逐位不同。
+   原始控制点见 _pt_web_dev/ref.py 的 RAINBOW_STOPS。
+   ===================================================================== */
+/* 控制点是归一化 0~1 的；插值式与 ref.py 的 rainbow() 同序，最后才 ×255，
+   这样 JS 与 Python 的浮点结果逐位一致（只差最后的量化取整）。 */
+const MMA_RAINBOW_STOPS = [
+  [0.0000, [0.471, 0, 0.522]],
+  [0.0800, [0.278, 0.086, 0.816]],
+  [0.1700, [0.043, 0.259, 0.976]],
+  [0.2500, [0, 0.51, 0.918]],
+  [0.3300, [0, 0.714, 0.784]],
+  [0.4200, [0, 0.851, 0.573]],
+  [0.5000, [0.137, 0.918, 0.31]],
+  [0.5800, [0.478, 0.878, 0.055]],
+  [0.6700, [0.788, 0.741, 0]],
+  [0.7500, [0.976, 0.541, 0]],
+  [0.8300, [1, 0.302, 0]],
+  [0.9200, [0.914, 0.078, 0]],
+  [1.0000, [0.706, 0.016, 0.149]]
+];
+
+CMAPS.mmaRainbow = function (u) {
+  u = cmCl(u);
+  const S = MMA_RAINBOW_STOPS;
+  for (let i = 1; i < S.length; i++) {
+    if (u <= S[i][0]) {
+      const a = S[i - 1], b = S[i];
+      const k = (b[0] === a[0]) ? 0 : (u - a[0]) / (b[0] - a[0]);
+      return [(a[1][0] + (b[1][0] - a[1][0]) * k) * 255,
+              (a[1][1] + (b[1][1] - a[1][1]) * k) * 255,
+              (a[1][2] + (b[1][2] - a[1][2]) * k) * 255];
+    }
+  }
+  return S[S.length - 1][1].map(function (v) { return v * 255; });
+};
+
+/* 放到第一位（默认项） */
+CMAP_ORDER.unshift('mmaRainbow');
+CMAP_NOTE.mmaRainbow = 'Rainbow（Mathematica 风格·默认）';
+
+/* =====================================================================
+   勾股树 Pythagoras Tree —— 网页复刻
+   对应原版：
+
+     PythagorasTree[p1_, bend_:12] := Module[{p = 2^p1, xx = 0, yy = 0, scale = -1,
+         f = N[Pi/bend], eps = .005, x1 = 0, y1 = 0, u1 = 1, v1 = 0, q = 0, j = 1,
+         done = False, tree = {}}, ...]      (* 显式栈走二叉分形树 *)
+
+     Manipulate[Graphics[{With[{pt = PythagorasTree[m, n]},
+        MapIndexed[{EdgeForm[{Thickness[.005], ColorData["Rainbow"][1 - First@#2/Length[pt]]}],
+                    Opacity[.7], ColorData["Rainbow"][First@#2/Length[pt]], #} &, pt]]},
+       ImageSize -> {400, 400}, Background -> Append[ColorData["Rainbow"][0.5], .3]],
+      {{m, 3, "steps"}, 1, 4, 1, Appearance -> "Labeled"}, {{n, 5.35, "bend"}, 2, 10},
+      SaveDefinitions -> True]
+   ===================================================================== */
+
+const TAU = 2 * Math.PI;
+
+/* 与原版同名同范围同默认值。
+   cont:true = Mathematica 里的连续量（无步长）⇒ 只夹范围、不按步长量化。 */
+const RANGE = {
+  steps: { lo: 1,      hi: 4,     step: 1,      def: 3     },
+  bend:  { lo: 2,      hi: 10,    step: 0.01,   def: 5.35, cont: true },
+  /* ---- 附加 ---- */
+  fill:  { lo: 0,      hi: 1,     step: 0.01,   def: 0.7   },
+  lw:    { lo: 0.0005, hi: 0.02,  step: 0.0005, def: 0.005 },
+  scan:  { lo: 0.1,    hi: 3,     step: 0.05,   def: 0.6   }
+};
+const S = {
+  steps: 3, bend: 5.35,          /* 原版两个参数 */
+  fill: 0.7, lw: 0.005,          /* 原版 Opacity[.7] 与 Thickness[.005] */
+  cmap: 'mmaRainbow',            /* 附加：配色（默认 = 原版 Rainbow 的拟合版） */
+  bgFollow: true, bg: '#ffffff', /* 附加：背景（原版 = Rainbow[0.5] 叠 30%） */
+  showFill: true, showEdge: true,
+  scan: 0.6, playing: false, raf: null, last: 0, dir: 1
+};
+
+/* ---------------- 几何：与 .nb 逐字对应 ---------------- */
+function pythagorasTree(p1, bend) {
+  const p = Math.pow(2, p1);
+  const eps = 0.005;
+  const f = Math.PI / bend;
+  const cc = Math.cos(f), ss = Math.sin(f);
+  const a1 = -cc * ss, a2 = cc * cc;
+  const b1 = a1 + a2, b2 = -a1 + a2;
+  const c1 = b2, c2 = 1 - b1;
+  const d1 = 1 - a1, d2 = 1 - a2;
+
+  let x1 = 0, y1 = 0, u1 = 1, v1 = 0;
+  let q = 0, j = 1;
+  const x2 = {}, y2 = {}, u2 = {}, v2 = {}, s = { 0: 1 };
+
+  const tree = [[[0, 0], [-1, 0], [-1, -1], [0, -1], [0, 0]]];
+  let done = false, guard = 0;
+  while (!done) {
+    if (++guard > 4000000) break;            /* 兜底：原版靠 m == p 收敛 */
+
+    const m = q + j;
+    const x = u1 - x1, y = v1 - y1;
+    const xa = x1 + a1 * x - a2 * y, ya = y1 + a2 * x + a1 * y;
+    const xb = x1 + b1 * x - b2 * y, yb = y1 + b2 * x + b1 * y;
+    x2[m] = x1 + c1 * x - c2 * y; y2[m] = y1 + c2 * x + c1 * y;
+    u2[m] = x1 + d1 * x - d2 * y; v2[m] = y1 + d2 * x + d1 * y;
+    const sxy = x * x + y * y;
+    s[m] = 1;
+
+    /* 七点折线：两个子方块的并集边界（公共角点落在 P3→P4 与 P6→P1 上） */
+    tree.push([
+      [-x1, y1], [-xa, ya], [-xb, yb], [-u1, v1], [-u2[m], v2[m]], [-x2[m], y2[m]], [-x1, y1]
+    ]);
+
+    x1 = xa; y1 = ya; u1 = xb; v1 = yb;
+
+    if (m === p || sxy < eps) {
+      let k = 1;
+      while ((s[m - k] === undefined ? 0 : s[m - k]) === 0) k++;
+      if (m === k) { done = true; }
+      else {
+        q = m - k;
+        x1 = x2[q]; y1 = y2[q]; u1 = u2[q]; v1 = v2[q];
+        s[q] -= 1;
+        j = 0;
+      }
+    }
+    j++;
+  }
+  return tree;
+}
+
+function treeBBox(tree) {
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (let i = 0; i < tree.length; i++) {
+    const poly = tree[i];
+    for (let k = 0; k < poly.length; k++) {
+      const p = poly[k];
+      if (p[0] < x0) x0 = p[0];
+      if (p[0] > x1) x1 = p[0];
+      if (p[1] < y0) y0 = p[1];
+      if (p[1] > y1) y1 = p[1];
+    }
+  }
+  return [x0, x1, y0, y1];
+}
+
+/* ---------------- 配色（附加） ---------------- */
+function u8(x) { return x < 0 ? 0 : (x > 255 ? 255 : Math.round(x)); }
+function cmapOf(name) { return (name && CMAPS[name]) ? CMAPS[name] : CMAPS.mmaRainbow; }
+function cssOf(c) { return 'rgb(' + u8(c[0]) + ',' + u8(c[1]) + ',' + u8(c[2]) + ')'; }
+
+/* 原版背景 = Append[ColorData["Rainbow"][0.5], .3] —— 30% 透明叠在白色页面上 */
+function bgFromCmap(f) {
+  const c = f(0.5);
+  return 'rgb(' + u8(0.3 * c[0] + 0.7 * 255) + ',' +
+                  u8(0.3 * c[1] + 0.7 * 255) + ',' +
+                  u8(0.3 * c[2] + 0.7 * 255) + ')';
+}
+
+function syncCmapBar() {
+  const bar = document.getElementById('cmapBar');
+  if (!bar || !bar.style) return;
+  const f = cmapOf(S.cmap);
+  const stops = [];
+  for (let i = 0; i <= 12; i++) {
+    const u = i / 12;
+    stops.push(cssOf(f(u)) + ' ' + (u * 100).toFixed(1) + '%');
+  }
+  bar.style.background = 'linear-gradient(90deg,' + stops.join(',') + ')';
+  bar.title = '当前配色：' + S.cmap;
+}
+
+function buildCmapUI() {
+  const sel = document.getElementById('selCmap');
+  if (sel) {
+    if (!sel._built && 'innerHTML' in sel) {
+      let h = '';
+      for (let i = 0; i < CMAP_ORDER.length; i++) {
+        const n = CMAP_ORDER[i];
+        h += '<option value="' + n + '">' + (CMAP_NOTE[n] || n) + '</option>';
+      }
+      sel.innerHTML = h;
+      sel._built = true;
+    }
+    sel.value = S.cmap;
+  }
+  syncCmapBar();
+}
+
+function setCmap(name) {
+  S.cmap = (name && CMAPS[name]) ? name : 'mmaRainbow';
+  const sel = document.getElementById('selCmap'); if (sel) sel.value = S.cmap;
+  syncCmapBar(); draw(); readout();
+}
+
+/* ---------------- 画布尺寸 ---------------- */
+function dpr() { return Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1); }
+
+function fitCanvas() {
+  const stage = document.getElementById('stage');
+  const cv = document.getElementById('main');
+  if (!stage || !cv) return 640;
+  const availW = (stage.clientWidth || 900) - 48;
+  const availH = (stage.clientHeight || 700) - 48;
+  const side = Math.max(180, Math.floor(Math.min(availW, availH)));
+  cv.style.width = side + 'px';
+  cv.style.height = side + 'px';
+  return side;
+}
+
+/* ---------------- 绘制 ---------------- */
+function draw() {
+  const cv = document.getElementById('main');
+  if (!cv || !cv.getContext) return;
+  const side = fitCanvas();
+  const d = dpr();
+  const W = Math.round(side * d), H = W;
+  if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+
+  const g = cv.getContext('2d');
+  g.setTransform(1, 0, 0, 1, 0, 0);
+
+  const f = cmapOf(S.cmap);
+  g.globalAlpha = 1;
+  g.fillStyle = S.bgFollow ? bgFromCmap(f) : S.bg;
+  g.fillRect(0, 0, W, H);
+
+  const tree = pythagorasTree(S.steps, S.bend);
+  const bb = treeBBox(tree);
+  const w = (bb[1] - bb[0]) || 1e-9;
+  const h = (bb[3] - bb[2]) || 1e-9;
+  const pad = 0.03;
+  const sc = Math.min(W * (1 - 2 * pad) / w, H * (1 - 2 * pad) / h);
+  const ox = (W - sc * w) / 2 - sc * bb[0];
+  const oy = (H - sc * h) / 2 + sc * bb[3];          /* y 轴翻转 */
+  const X = (x) => ox + sc * x;
+  const Y = (y) => oy - sc * y;
+
+  const lw = Math.max(0.35, S.lw * W);               /* Thickness 是相对图宽的比例 */
+  g.lineJoin = 'miter';
+  g.lineCap = 'butt';
+  g.lineWidth = lw;
+
+  const N = tree.length;
+  /* 与 MapIndexed 同序：第 i 块先填后描，后画的白然压住先画的 */
+  for (let i = 0; i < N; i++) {
+    const t = (i + 1) / N;
+    const poly = tree[i];
+    g.beginPath();
+    for (let k = 0; k < poly.length; k++) {
+      const p = poly[k];
+      if (k === 0) g.moveTo(X(p[0]), Y(p[1]));
+      else g.lineTo(X(p[0]), Y(p[1]));
+    }
+    g.closePath();
+    if (S.showFill) {
+      g.globalAlpha = S.fill;
+      g.fillStyle = cssOf(f(t));
+      g.fill();
+      g.globalAlpha = 1;
+    }
+    if (S.showEdge) {
+      g.strokeStyle = cssOf(f(1 - t));               /* 边色 = 反序 Rainbow */
+      g.stroke();
+    }
+  }
+
+  readout(N, w, h);
+}
+
+/* ---------------- 读数 ---------------- */
+function readout(N, w, h) {
+  const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  const tree = (N === undefined) ? pythagorasTree(S.steps, S.bend) : null;
+  const bb = tree ? treeBBox(tree) : null;
+  const fAng = Math.PI / S.bend;
+  set('rN', String(N === undefined ? (tree ? tree.length : 0) : N));
+  set('rM', String(S.steps));
+  set('rF', (fAng * 180 / Math.PI).toFixed(2) + '° (' + fAng.toFixed(4) + ' rad)');
+  set('rB', S.bend.toFixed(2));
+  const ww = (w === undefined) ? (bb ? bb[1] - bb[0] : 0) : w;
+  const hh = (h === undefined) ? (bb ? bb[3] - bb[2] : 0) : h;
+  set('rBox', ww.toFixed(3) + ' × ' + hh.toFixed(3));
+  set('rCmap', S.cmap === 'mmaRainbow' ? 'Rainbow / 原版' : S.cmap);
+}
+
+/* ---------------- 控件同步 ---------------- */
+function clampTo(key, v) {
+  const r = RANGE[key];
+  let x = Number(v);
+  if (!isFinite(x)) return r.def;
+  x = Math.max(r.lo, Math.min(r.hi, x));
+  if (r.step && !r.cont) {
+    x = Math.round(x / r.step) * r.step;
+    x = +x.toFixed((String(r.step).split('.')[1] || '').length);
+  }
+  return x;
+}
+function sameAsShown(key, val) {
+  const v = parseFloat(val);
+  if (!isFinite(v)) return false;
+  return Math.abs(v - Number(S[key])) < 0.5 * Math.pow(10, -NUMDEC[key]);
+}
+const CAP = { steps: 'Steps', bend: 'Bend', fill: 'Fill', lw: 'Lw', scan: 'Scan' };
+const NUMDEC = { steps: 0, bend: 2, fill: 2, lw: 4, scan: 2 };
+
+function syncCtrl(key, skipNum) {
+  const cap = CAP[key], r = RANGE[key];
+  const sl = document.getElementById('s' + cap);
+  const nb = document.getElementById('v' + cap);
+  if (sl) { sl.min = r.lo; sl.max = r.hi; sl.step = r.step; sl.value = S[key]; }
+  if (nb && !skipNum) {
+    const want = (+S[key]).toFixed(NUMDEC[key]);
+    if (String(nb.value) !== want) nb.value = want;
+  }
+  if (nb) { nb.min = r.lo; nb.max = r.hi; nb.step = r.step; }
+}
+function syncAll(skipNum) {
+  ['steps', 'bend', 'fill', 'lw', 'scan'].forEach(k => syncCtrl(k, skipNum));
+  const cb = document.getElementById('cBg'); if (cb) cb.value = S.bg;
+  const kf = document.getElementById('kFill'); if (kf) kf.checked = S.showFill;
+  const ke = document.getElementById('kEdge'); if (ke) ke.checked = S.showEdge;
+  const kb = document.getElementById('kBgFollow'); if (kb) kb.checked = S.bgFollow;
+  const sel = document.getElementById('selCmap'); if (sel) sel.value = S.cmap;
+}
+
+function setP(key, v, skipNum) {
+  S[key] = clampTo(key, v);
+  syncCtrl(key, skipNum);
+  draw();
+}
+function setBg(hex) {
+  S.bg = hex;
+  S.bgFollow = false;
+  const cb = document.getElementById('cBg'); if (cb) cb.value = hex;
+  const kb = document.getElementById('kBgFollow'); if (kb) kb.checked = false;
+  draw();
+}
+
+/* ---------------- 预设 ---------------- */
+const PRESETS = [
+  { name: '原版默认',   steps: 3, bend: 5.35, fill: 0.7, lw: 0.005, cmap: 'mmaRainbow' },
+  { name: '只 1 步',    steps: 1, bend: 5.35, fill: 0.7, lw: 0.005, cmap: 'mmaRainbow' },
+  { name: '满 4 步',    steps: 4, bend: 5.35, fill: 0.7, lw: 0.004, cmap: 'mmaRainbow' },
+  { name: '45° 对称',   steps: 4, bend: 4.0,  fill: 0.7, lw: 0.005, cmap: 'mmaRainbow' },
+  { name: '细长 bend=8', steps: 4, bend: 8.0,  fill: 0.75, lw: 0.004, cmap: 'mmaRainbow' },
+  { name: '宽扁 bend=10', steps: 3, bend: 10.0, fill: 0.7, lw: 0.005, cmap: 'mmaRainbow' }
+];
+function applyPreset(i) {
+  const p = PRESETS[i]; if (!p) return;
+  S.steps = p.steps; S.bend = p.bend; S.fill = p.fill; S.lw = p.lw;
+  S.cmap = (p.cmap && CMAPS[p.cmap]) ? p.cmap : 'mmaRainbow';
+  stopScan();
+  syncAll(); syncCmapBar(); draw();
+}
+function resetAll() { applyPreset(0); }
+
+/* ---------------- 扫描 bend ---------------- */
+function tick(ts) {
+  if (!S.playing) return;
+  const t = ts || 0;
+  if (S.last) {
+    const dt = Math.min(0.1, (t - S.last) / 1000);
+    let v = S.bend + S.dir * S.scan * dt * 2;
+    if (v > RANGE.bend.hi) { v = RANGE.bend.hi; S.dir = -1; }
+    if (v < RANGE.bend.lo) { v = RANGE.bend.lo; S.dir = 1; }
+    S.bend = v;
+    syncCtrl('bend');
+    draw();
+  }
+  S.last = t;
+  S.raf = (typeof requestAnimationFrame === 'function') ? requestAnimationFrame(tick) : null;
+}
+function startScan() {
+  if (S.playing) return;
+  S.playing = true; S.last = 0;
+  const b = document.getElementById('btnScan');
+  if (b) { b.textContent = '⏸ 暂停扫描'; b.classList.add('on'); }
+  if (typeof requestAnimationFrame === 'function') S.raf = requestAnimationFrame(tick);
+}
+function stopScan() {
+  S.playing = false;
+  if (S.raf && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(S.raf);
+  S.raf = null;
+  const b = document.getElementById('btnScan');
+  if (b) { b.textContent = '▶ 扫描 bend'; b.classList.remove('on'); }
+}
+function toggleScan() { S.playing ? stopScan() : startScan(); }
+
+/* ---------------- 导出 / 复制 ---------------- */
+function paramText() {
+  return 'steps m=' + S.steps + ' (p=' + Math.pow(2, S.steps) + '), bend n=' + S.bend.toFixed(2) +
+         ', f=π/bend=' + (Math.PI / S.bend * 180 / Math.PI).toFixed(2) + '°' +
+         ', 方块数 N=' + pythagorasTree(S.steps, S.bend).length +
+         ', 填充=' + S.fill + ', 描边=' + S.lw +
+         ', 配色=' + S.cmap + ', 背景=' + (S.bgFollow ? '跟随配色' : S.bg);
+}
+function exportPng() {
+  const cv = document.getElementById('main');
+  if (!cv || !cv.toDataURL) return null;
+  const url = cv.toDataURL('image/png');
+  try {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '勾股树_m' + S.steps + '_n' + S.bend.toFixed(2) + '_' + S.cmap + '.png';
+    if (a.click) a.click();
+  } catch (e) { /* 桩环境忽略 */ }
+  return url;
+}
+
+/* ---------------- 绑定 ---------------- */
+function bindAll() {
+  const q = (id) => document.getElementById(id);
+
+  [['sSteps', 'steps'], ['sBend', 'bend'], ['sFill', 'fill'], ['sLw', 'lw'], ['sScan', 'scan']]
+    .forEach(([id, key]) => {
+      const el = q(id);
+      if (el) el.addEventListener('input', (e) => setP(key, e.target.value));
+      if (el) el.addEventListener('change', (e) => setP(key, e.target.value));
+    });
+
+  [['vSteps', 'steps'], ['vBend', 'bend'], ['vFill', 'fill'], ['vLw', 'lw'], ['vScan', 'scan']]
+    .forEach(([id, key]) => {
+      const el = q(id);
+      if (!el) return;
+      const commit = (e) => {
+        if (!sameAsShown(key, e.target.value)) setP(key, e.target.value);
+        e.target.value = Number(S[key]).toFixed(NUMDEC[key]);
+      };
+      el.addEventListener('change', commit);
+      el.addEventListener('blur', commit);
+    });
+
+  /* bend / steps 快捷 */
+  const b1 = q('btnOri'); if (b1) b1.addEventListener('click', () => { stopScan(); setP('bend', 5.35); });
+  const b2 = q('btn45'); if (b2) b2.addEventListener('click', () => { stopScan(); setP('bend', 4); setP('steps', 4); });
+  const b3 = q('btnMax'); if (b3) b3.addEventListener('click', () => { stopScan(); setP('steps', 4); });
+
+  /* 显示开关 */
+  const kf = q('kFill'); if (kf) kf.addEventListener('change', (e) => { S.showFill = !!e.target.checked; draw(); });
+  const ke = q('kEdge'); if (ke) ke.addEventListener('change', (e) => { S.showEdge = !!e.target.checked; draw(); });
+  const kb = q('kBgFollow');
+  if (kb) kb.addEventListener('change', (e) => { S.bgFollow = !!e.target.checked; draw(); });
+
+  /* 背景色 */
+  const cb = q('cBg');
+  if (cb) { cb.addEventListener('input', (e) => setBg(e.target.value)); cb.addEventListener('change', (e) => setBg(e.target.value)); }
+  const bgBtns = (document.querySelectorAll ? document.querySelectorAll('[data-bgc]') : []);
+  for (let i = 0; i < bgBtns.length; i++) {
+    bgBtns[i].addEventListener('click', (e) => setBg(e.currentTarget ? e.currentTarget.dataset.bgc : e.target.dataset.bgc));
+  }
+
+  /* 配色 */
+  const selC = q('selCmap');
+  if (selC) selC.addEventListener('change', (e) => setCmap(e.target.value));
+
+  /* 动画 */
+  const bs = q('btnScan'); if (bs) bs.addEventListener('click', toggleScan);
+
+  /* 预设 */
+  const pBtns = (document.querySelectorAll ? document.querySelectorAll('[data-preset]') : []);
+  for (let i = 0; i < pBtns.length; i++) {
+    pBtns[i].addEventListener('click', (e) => {
+      const el = e.currentTarget || e.target;
+      applyPreset(+(el.dataset ? el.dataset.preset : el.getAttribute('data-preset')));
+    });
+  }
+
+  /* 附加按钮 */
+  const bp = q('btnPng'); if (bp) bp.addEventListener('click', exportPng);
+  const bc = q('btnCopy');
+  if (bc) bc.addEventListener('click', () => {
+    const txt = paramText();
+    const out = q('copyOut'); if (out) out.textContent = txt;
+    try { if (navigator.clipboard) navigator.clipboard.writeText(txt); } catch (e) {}
+  });
+  const bres = q('btnReset'); if (bres) bres.addEventListener('click', resetAll);
+
+  /* 卡片折叠 */
+  const cards = (document.querySelectorAll ? document.querySelectorAll('.card') : []);
+  for (let i = 0; i < cards.length; i++) {
+    const h = cards[i].querySelector ? cards[i].querySelector('h2') : null;
+    if (h) h.addEventListener('click', () => cards[i].classList.toggle('fold'));
+  }
+
+  /* 面板收起 */
+  const pt = q('ptoggle');
+  if (pt) pt.addEventListener('click', () => {
+    document.body.classList.toggle('off');
+    const off = document.body.classList.contains('off');
+    pt.textContent = off ? '◂' : '▸';
+    pt.title = off ? '展开参数面板' : '收起参数面板';
+    draw();
+  });
+
+  /* 尺寸变化 */
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    let tmr = null;
+    window.addEventListener('resize', () => {
+      if (tmr) clearTimeout(tmr);
+      tmr = setTimeout(draw, 120);
+    });
+  }
+}
+
+/* ---------------- 启动 ---------------- */
+function boot() {
+  bindAll();
+  buildCmapUI();
+  syncAll();
+  draw();
+  readout();
+}
+if (typeof document !== 'undefined' && document.getElementById) {
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => boot());
+  else boot();
+}
+</script>
+</body>
+</html>

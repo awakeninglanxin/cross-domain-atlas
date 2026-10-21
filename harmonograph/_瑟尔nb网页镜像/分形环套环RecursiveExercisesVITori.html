@@ -51,8 +51,34 @@ canvas{display:block;width:100%;border-radius:8px;background:#0b0912;
   box-shadow:0 4px 14px rgba(0,0,0,.4)}
 canvas.cnb{aspect-ratio:500/350}
 canvas.c43{aspect-ratio:4/3}
-#cvMain{cursor:grab;touch-action:none}
+#cvMain{cursor:grab;touch-action:none;margin:0 auto;max-width:100%}
 #cvMain.drag{cursor:grabbing}
+/* 主画布容器：宽度稳定，便于把画布尺寸钉在“一屏放得下”的大小 */
+.cvbox{width:100%;display:block}
+/* 全屏看图：卡片铺满视口，隐藏说明，只留图 */
+body.cvfull{overflow:hidden}
+body.cvfull #cardMain{position:fixed;inset:0;z-index:200;margin:0;border-radius:0;
+  display:flex;flex-direction:column;justify-content:center;background:#0b0912;
+  padding:0;box-shadow:none}
+/* 全屏时标题行浮到右上角，把整屏高度都让给画布 */
+body.cvfull #cardMain h3{position:absolute;top:8px;right:10px;left:auto;z-index:6;margin:0;
+  background:rgba(18,15,32,.82);border:1px solid #2a2342;border-radius:9px;
+  padding:3px 8px;font-size:12px;gap:6px;backdrop-filter:blur(4px);
+  opacity:.55;transition:opacity .18s}
+body.cvfull #cardMain h3:hover,body.cvfull #cardMain h3:focus-within{opacity:1}
+body.cvfull #cardMain h3 .src{display:none}
+body.cvfull #cardMain .cap,body.cvfull #cardMain .legend,body.cvfull #cardMain .mini{display:none}
+body.cvfull #cardMain h3{margin:0 0 8px}
+body.cvfull .panel,body.cvfull #ptoggle{display:none!important}
+.hbtn{font-size:11.4px;padding:2px 8px;margin-left:auto}
+/* ρ 标签上的 α 小徽记（下限 = 1/137） */
+.alab{display:inline-block;font-size:9.6px;line-height:1;padding:1px 4px;border-radius:5px;
+  color:#8fe3c4;background:rgba(63,196,150,.14);border:1px solid rgba(63,196,150,.35);
+  vertical-align:1.5px;margin-left:2px;font-weight:600}
+.fkey{display:none}
+body.cvfull .fkey{display:inline;color:#8f87ab;font-size:10.8px;font-weight:400;white-space:nowrap}
+.hbtn+.hbtn{margin-left:6px}
+#bFull.on{background:linear-gradient(180deg,#6d43c9,#5a34ab);border-color:#8b63e0;color:#fff}
 .eq{margin:9px 0 0;font-size:11.4px;font-family:Consolas,Menlo,monospace;color:#c9c1e6;
   background:#120f20;border:1px solid #2a2342;border-radius:8px;padding:8px 10px;
   white-space:pre-wrap;line-height:1.75;overflow-x:auto}
@@ -76,6 +102,12 @@ canvas.c43{aspect-ratio:4/3}
 .sptab td.n{color:var(--acc2);text-align:right}
 .sptab td.b{color:#ffd98a;text-align:right}
 .sptab td.tag{color:#c9b8ff}
+.sptab td.ok{color:#54dda0;text-align:right}
+.sptab td.bad{color:#ff6b7f;text-align:right;font-weight:600}
+.okc{color:#54dda0}
+.badc{color:#ff6b7f}
+input[type=range]:disabled{opacity:.35;cursor:not-allowed}
+input[type=number]:disabled{opacity:.45}
 
 .panel{position:fixed;top:12px;right:12px;width:352px;max-height:calc(100vh - 24px);
   overflow-y:auto;overflow-x:hidden;padding:11px;z-index:50;
@@ -131,25 +163,60 @@ input[type=checkbox]{accent-color:var(--acc);width:14px;height:14px;cursor:point
 .note{font-size:11.6px;line-height:1.65;color:#a49cc0;margin:7px 0 0}
 .tag{display:inline-block;padding:0 6px;border-radius:20px;font-size:11px;
   border:1px solid #3a3159;color:#c9b8ff;background:#1e1836;font-family:Consolas,Menlo,monospace}
+
+/* 窄屏兜底：本页是按 1540px 桌面画的（右侧 352px 固定面板），
+   这里只保证「不出现横向滚动条」并让卡片单列，不做完整的移动端适配 */
+@media (max-width:1100px){
+  .grid{grid-template-columns:1fr}
+  .vc.full{grid-column:auto}
+}
+@media (max-width:760px){
+  main{padding:12px 12px 44px}
+  body.off main{padding-right:12px}
+  .panel{width:min(352px,calc(100vw - 16px));right:8px;top:8px;
+    max-height:calc(100vh - 16px)}
+  #ptoggle{right:calc(min(352px,100vw - 16px) + 8px)}
+  body.off #ptoggle{right:0}
+  header{padding:11px 12px 8px}
+  h1{font-size:15.5px}
+  h1 .en{display:block;margin:2px 0 0}
+  .seq{grid-template-columns:repeat(2,1fr)}
+  .grow{grid-template-columns:96px 1fr 56px}
+  .mini{grid-template-columns:auto 1fr;gap:2px 8px}
+}
+@media (max-width:430px){
+  .row > select,.row > input[type=number]{flex:1 1 100%;min-width:0}
+  .grow{grid-template-columns:1fr 52px;gap:4px 6px}
+  .grow > label,.grow > .nm{grid-column:1/-1}
+  #transport{gap:7px}
+  #bar{flex:1 1 100%;min-width:0}
+}
 </style>
 </head>
 <body>
 
 <header>
   <h1>分形环套环<span class="en">Recursive Exercises VI: Tori</span></h1>
-  <p class="sub">把 <b>n 个圆环</b>摆成一圈，再在<b>每个环的主圆上</b>摆 n 个更小的环，如此递归 <b>g</b> 层 ——<br>
-     <code>generate</code> 只有 6 行，却长出一个「环里套环、环上生环」的分形。默认 a=5, p=3, g=1。</p>
+  <p class="sub">把 <b>n 个圆环</b>摆成一圈，再在<b>每个环的主圆上</b>摆 n 个更小的环，如此递归 <b>g 层</b> ——
+     <code>generate</code> 只有 6 行，却长出一个「环里套环、环上生环」的分形。<br>
+     <b>「多级」就是 g</b>：默认 <b>g = 6</b>（<b>L0…L6 共 7 级</b>，1+p+…+p<sup>6</sup> 只环），一键可切到「最优参数」
+     <b>p=2 · q=0.62 · ρ=0.140</b>：每级等比、梯度一致，且两两体积不相交。<br>
+     <b>逐级换成绕行曲线</b>：每一级环身上都画一条 <code>φ=n·τ、θ=k·τ</code> 的闭合曲线 ——
+     <b>L0 用 (5, 1680)</b>，<b>L1…L6 每级用 (1, 7)</b>，匝数与 <b>r/R</b> 均可调。<br>
+     <b>子环挂在曲线上</b>：每一级环的中心都落在<b>父环那条曲线</b>上（不再是父环主圆的中心线），可一键切回原式；
+     <b>一键公转</b>：L0 不动，<b>每一级都绕自己父环的中轴转</b>（L1 绕 L0、L2 绕 L1…），逐级减速的齿轮组，默认摆幅 ±15°。</p>
   <div id="transport">
     <button id="bGif" title="绕相机轴扫一圈，把主视窗存成一张 GIF（单张 &lt; 5 MB）">🎞 导出 GIF</button>
     <button id="bPng" class="gg" title="主视窗存一张 PNG">🖼 存 PNG</button>
     <button id="bPlay">▶ 播放旋转</button>
+    <button id="bRev" title="L0 不动，每一级绕自己父环的中轴转（逐级齿轮组，快捷键 G）">↻ 一键公转</button>
     <button id="bReset">⟲ 复位</button>
     <button id="bLoop" class="on">🔁 循环</button>
     <span class="sp">速度</span>
     <input type="range" id="sSpd" min="0.2" max="3" step="0.1" value="1" style="width:88px">
     <div id="bar"><div id="barfill"></div></div>
     <span id="tnum">0°</span>
-    <span id="rvTag">a=5 · p=3 · g=1</span>
+    <span id="rvTag">g=7 · p=3 · 自相似</span>
     <span id="gifNote"></span>
   </div>
 </header>
@@ -159,42 +226,57 @@ input[type=checkbox]{accent-color:var(--acc);width:14px;height:14px;cursor:point
 
     <div class="vc full" id="cardMain">
       <h3>主视窗 · 递归环套环<span class="src">nb: Show[ParametricPlot3D[Apply[torus, h, 1], {φ,0,2π}, {θ,0,2π}]]</span>
-        <span class="tag" id="rvTag2">…</span></h3>
+        <span class="tag" id="rvTag2">…</span>
+        <button class="gg hbtn" id="bFit" title="把缩放复位到 1，并让整棵树刚好占满画布">⌖ 适配</button>
+        <button class="gg hbtn" id="bFull" title="主视图铺满整个窗口（Esc 退出）">⛶ 全屏</button><span class="fkey" id="fKey">空格 播放 · G 公转</span></h3>
       <p class="cap">每个环都是同一张曲面片：<b>φ 绕主圆一圈、θ 绕管一圈</b>。整个场景按<b>离视点远近</b>排序后绘制（远的先画），
         所以近处的环会正确遮住远处的环。<br>
-        <b>鼠标拖动旋转 · 滚轮缩放 · 双击回到 nb 原版视角。</b></p>
-      <canvas id="cvMain" class="cnb"></canvas>
+        <b>L0 那条彩虹线</b>是环面上的 <b>(n,k)</b> 闭合曲线（n 绕洞、k 穿洞）——
+        <b>第 1 级环的中心就落在这条线上</b>；L1 及以下每级也一样，只是各用自己的 (1,7) 曲线（可在右栏切回「主圆中心线」）。
+        <b>屏幕上小于十几像素的环自动降级成圆环 / 圆点</b>（放大后自己会还原成实体）。<br>
+        <b>左键拖动旋转 · 双击回到 nb 原版视角 · 滚轮=滚动页面（按住 Ctrl 再滚=缩放）·
+        中键按住移动=浏览器自动滚动</b>；<b>窗口一矮、图放不下时页面会自动铺满整屏</b>（右上角 <b>✕ 退出全屏</b> /
+        Esc 退回），也可以随时点 <b>⛶ 全屏</b>。取景按<b>真实投影包围盒</b>算，图形会贴着画布边缘，不留大片空边。</p>
+      <div class="cvbox"><canvas id="cvMain" class="cnb"></canvas></div>
       <div class="legend">
-        <span><i style="background:#739ff5"></i>L0 主环（主半径 a）</span>
-        <span><i style="background:#54dda0"></i>L1（a/2）</span>
-        <span><i style="background:#ffc14d"></i>L2（a/4）</span>
-        <span><i style="background:#ff738f"></i>L3（a/8）</span>
-        <span>管半径恒为 <b>0.5</b></span>
+        <span><i style="background:#739ff5"></i>L0 · 绕行曲线</span>
+        <span><i style="background:#54dda0"></i>L1</span>
+        <span><i style="background:#ffc14d"></i>L2</span>
+        <span><i style="background:#ff738f"></i>L3</span>
+        <span><i style="background:#b78cff"></i>L4</span>
+        <span><i style="background:#59d9f2"></i>L5</span>
+        <span><i style="background:#f2d973"></i>L6</span>
+        <span><i style="background:#f299f2"></i>L7</span>
+        <span style="color:#8f87ab">（每级 <b>r = ρ·sU</b>，ρ 恒定 ⇒ 比例匀称）</span>
       </div>
       <div class="mini" id="mMain"></div>
     </div>
 
     <div class="vc full" id="cardSeq">
-      <h3>四个层次定格<span class="src">同一个 p，g 从 1 长到 4</span></h3>
-      <p class="cap">环数 = <code>1 + p + p² + … + p^g</code>。g=1 是 nb 的默认（4 个环）；一路到 g=4，就是 121 个环堆成的一颗球。
-        <b>注意最深那层的环有多「胖」</b>：主半径只有 a/2^g，管半径却还是 0.5。</p>
+      <h3>四个层次定格<span class="src">同一个 p / q / ρ，只改 g</span></h3>
+      <p class="cap">环数 = <code>1 + p + p² + … + p^g</code>。默认 <b>g=7</b>，四格取 <code>g−3 … g</code> 这四级；
+        每格都是同一套参数只砍层数，所以能一眼看出「多一级」到底多出什么。</p>
       <div class="seq">
-        <figure><canvas id="cvQ0" class="c43"></canvas><figcaption><b>g=1</b> · <span id="sq0">4</span> 环</figcaption></figure>
-        <figure><canvas id="cvQ1" class="c43"></canvas><figcaption><b>g=2</b> · <span id="sq1">13</span> 环</figcaption></figure>
-        <figure><canvas id="cvQ2" class="c43"></canvas><figcaption><b>g=3</b> · <span id="sq2">40</span> 环</figcaption></figure>
-        <figure><canvas id="cvQ3" class="c43"></canvas><figcaption><b>g=4</b> · <span id="sq3">121</span> 环</figcaption></figure>
+        <figure><canvas id="cvQ0" class="c43"></canvas><figcaption><b id="sg0">g=4</b> · <span id="sq0">…</span> 环</figcaption></figure>
+        <figure><canvas id="cvQ1" class="c43"></canvas><figcaption><b id="sg1">g=5</b> · <span id="sq1">…</span> 环</figcaption></figure>
+        <figure><canvas id="cvQ2" class="c43"></canvas><figcaption><b id="sg2">g=6</b> · <span id="sq2">…</span> 环</figcaption></figure>
+        <figure><canvas id="cvQ3" class="c43"></canvas><figcaption><b id="sg3">g=7</b> · <span id="sq3">…</span> 环</figcaption></figure>
       </div>
     </div>
 
     <div class="vc" id="cardSpec">
-      <h3>层级账本<span class="src">每层的环数 / 主半径 / 细分数</span></h3>
-      <p class="cap">主半径严格 <b>逐层减半</b>（<code>sU(L) = a / 2^L</code>），是因为 <code>u1 = (sU/(2 sV))·v</code> 把新切向量的长度恰好压成一半。</p>
+      <h3>层级账本 · 间隙校验<span class="src">每级的环数 / 主半径 / 管半径 / 与下一级的间隙</span></h3>
+      <p class="cap"><b>自相似模式</b>下 <code>sU(L)=a·q^L</code>、<code>r(L)=ρ·sU(L)</code>：每级严格等比 ⇒
+        比例匀称、梯度一致。<b>父子间隙</b> <code>Δ</code> 是<b>拿真实的两只环量出来的</b>（取第一只 L 环与它的第一只子环，
+        量两条管轴圆的最小距离再减两个管半径）—— 挂到曲线上以后，解析式
+        <code>sU(L+1) − r(L) − r(L+1)</code> 就不再成立了。<br>
+        <code>Δ ≥ 0</code> 只说明<b>相邻两级</b>不穿；隔了两三层的环会绕回来撞外层，那要下面那条<b>全对复核</b>才能定。</p>
       <table class="sptab" id="stTab"></table>
       <p class="note" id="stNote"></p>
     </div>
 
     <div class="vc" id="cardInfo">
-      <h3>nb 原文<span class="src">这一页的全部内容就是下面这两条式子</span></h3>
+      <h3>式子<span class="src">上：nb 原文；下：本页新增的两个旋钮</span></h3>
       <div class="eq" id="eqBox"></div>
       <p class="note" id="eqNote"></p>
     </div>
@@ -203,10 +285,30 @@ input[type=checkbox]{accent-color:var(--acc);width:14px;height:14px;cursor:point
 </main>
 
 <aside class="panel" id="panel">
-  <h2>⚙ 参数<span class="badge" id="pbadge">nb 三个控件</span></h2>
+  <h2>⚙ 参数<span class="badge" id="pbadge">七级 · 自相似</span></h2>
+
+  <div class="card" id="cardBest">
+    <h2>⭐ 一键最优<span class="badge">匀称 · 梯度一致 · 不重叠</span></h2>
+    <div class="row">
+      <button id="bBest" style="flex:1 1 100%">⭐ 最优七级（p=2 · q=0.62 · ρ=0.140 · 127 环）</button>
+    </div>
+    <p class="note" id="bestNote">按下面四条约束解出来的：<br>
+      ① 每级主半径 <code>sU(L)=a·q^L</code>、管半径 <code>r(L)=ρ·sU(L)</code> ⇒ 比例匀称、梯度一致；<br>
+      ② 父子 <code>ρ ≤ q/(1+q)</code>；③ 兄弟 <code>ρ ≤ sin(π/p)/q−1</code>；<br>
+      ④ 全对（含跨层）<code>ρ ≤ 0.1495</code> ← 真正绑定的一条（逐级挂曲线后的实测值）。</p>
+    <div class="row" style="margin-top:6px">
+      <button class="gg" data-preset="best3">三分叉 7 级（p=3 · ρ=0.115）</button>
+      <button class="gg" data-preset="tight">紧凑 4 级 ρ=0.146（31 环）</button>
+      <button class="gg" data-preset="alpha" title="ρ = 1/137（精细结构常数 α）· 127 环 · 全对 Δmin +0.163341">α 细丝 ρ=1/137</button>
+      <button class="gg" data-preset="alphaSpin" title="ρ=1/137 · 摆幅 ±180°（真整圈）· 级间倍率 0.4 ⇒ 实测 +0.163168 不穿">α 细丝 · 整圈公转</button>
+      <button class="gg" data-preset="nb">nb 原版 5,3,1</button>
+      <button class="gg" data-preset="nb2">nb 5,3,2</button>
+      <button class="gg" data-preset="nb4">nb 5,4,4（341 环）</button>
+    </div>
+  </div>
 
   <div class="card" id="cardParam">
-    <h2>① a / p / g<span class="badge">nb 的全部输入</span></h2>
+    <h2>① a / p / g<span class="badge">nb 的三个输入</span></h2>
     <div class="grow">
       <span class="nm">a 厚度</span>
       <input type="range" id="sA" min="1" max="10" step="1" value="5">
@@ -214,28 +316,143 @@ input[type=checkbox]{accent-color:var(--acc);width:14px;height:14px;cursor:point
     </div>
     <div class="grow">
       <span class="nm">p 每环数</span>
-      <input type="range" id="sP" min="2" max="4" step="1" value="3">
-      <input type="number" id="vP" min="2" max="4" step="1" value="3">
+      <input type="range" id="sP" min="2" max="5" step="1" value="3">
+      <input type="number" id="vP" min="2" max="5" step="1" value="3">
     </div>
     <div class="grow">
       <span class="nm">g 层数</span>
-      <input type="range" id="sG" min="1" max="4" step="1" value="1">
-      <input type="number" id="vG" min="1" max="4" step="1" value="1">
+      <input type="range" id="sG" min="1" max="7" step="1" value="7">
+      <input type="number" id="vG" min="1" max="7" step="1" value="7">
     </div>
-    <p class="note">原版：<code>{{a,5,"thickness"},10,1,-1}</code>、<code>{{p,3,"number of tori"},Range[2,4]}</code>、<code>{{g,1,"level"},Range[4]}</code>。<br>
-      <code>a</code> 同时决定顶层主环半径与初始切线长（<code>u={a,0,0}, v={0,a,0}</code>）；<code>p</code> 是每环里的子环数；<code>g</code> 是递归深度。</p>
-    <div class="row" style="margin-top:6px">
-      <button class="gg" data-preset="5,3,1">nb 默认 5,3,1</button>
-      <button class="gg" data-preset="5,3,2">5,3,2</button>
-      <button class="gg" data-preset="5,3,3">5,3,3</button>
-      <button class="gg" data-preset="5,4,4">5,4,4（341 环·重）</button>
-      <button class="gg" data-preset="10,2,4">10,2,4（细长）</button>
-      <button class="gg" data-preset="3,4,3">3,4,3（胖环）</button>
+    <p class="note">原版：<code>{{a,5,"thickness"},10,1,-1}</code>、<code>{{p,3,"number of tori"},Range[2,4]}</code>、
+      <code>{{g,1,"level"},Range[4]}</code>。<b>「多级」就是这个 g</b>——本页把它从 4 扩到 7（默认 7）。<br>
+      环总数 <code>1+p+…+p^g</code>；超过 6000 环会自动把 g 降一档并提示（免得浏览器卡死）。</p>
+  </div>
+
+  <div class="card" id="cardGrad">
+    <h2>② 梯度 q / 比例 ρ<span class="badge" id="bGrad">自相似</span></h2>
+    <div class="row" style="margin:2px 0 4px">
+      <select id="selMode" style="flex:1">
+        <option value="self">自相似（每级 ×q，r=ρ·sU）</option>
+        <option value="nb">nb 原版（每级 ÷2，r≡0.5）</option>
+      </select>
     </div>
+    <div class="grow">
+      <span class="nm">q 每级比</span>
+      <input type="range" id="sQ" min="0.30" max="0.75" step="0.01" value="0.50">
+      <input type="number" id="vQ" min="0.30" max="0.75" step="0.01" value="0.50">
+    </div>
+    <div class="grow">
+      <span class="nm" title="ρ = r/R：管半径 ÷ 本级主半径。下限 1/137 = 0.0072993（精细结构常数 α）">ρ = r/R <span class="alab">α</span></span>
+      <input type="range" id="sRho" min="0.007299" max="0.42" step="0.001" value="0.140">
+      <input type="number" id="vRho" min="0.007299" max="0.42" step="0.0001" value="0.140">
+    </div>
+    <div class="row" style="margin:2px 0 4px">
+      <button class="gg" id="bRhoMax" style="flex:1">ρ 取全对上限 ×0.92（钉到最粗又不撞）</button>
+    </div>
+    <p class="note" id="gradNote">…</p>
+  </div>
+
+  <div class="card" id="cardCurve">
+    <h2>③ 绕行曲线（逐级）<span class="badge" id="bCur">L0 (5,1680) · L1+ (1,7)</span></h2>
+    <div class="row" style="margin:2px 0 4px">
+      <label class="nm"><input type="checkbox" id="ckCurve" checked> 子环挂曲线（关掉则退回 nb 原式）</label>
+    </div>
+    <div class="row" style="margin:2px 0 3px">
+      <span class="nm" style="font-size:12px;min-width:64px">L0 曲线</span>
+      <span class="nm">n</span><input type="number" id="vN" min="0" max="64" step="1" value="5" style="width:62px">
+      <span class="nm">k</span><input type="number" id="vK" min="0" max="4000" step="1" value="1680" style="width:74px">
+    </div>
+    <div class="row" style="margin:2px 0 6px">
+      <span class="nm" style="font-size:12px;min-width:64px">L1–L6 曲线</span>
+      <span class="nm">n</span><input type="number" id="vND" min="0" max="64" step="1" value="1" style="width:62px">
+      <span class="nm">k</span><input type="number" id="vKD" min="0" max="4000" step="1" value="7" style="width:74px">
+    </div>
+    <div class="row" style="margin:6px 0 2px">
+      <span class="nm" style="font-size:12px">子环挂在哪</span>
+      <select id="selAttach" style="flex:1 1 120px">
+        <option value="curve">套在管上 · 环心在曲线上（环轴 = 径向 N）</option>
+        <option value="thread">穿在曲线上（环轴 ∥ 切线 · 实测必切穿 Δ=−1.02）</option>
+        <option value="ring">主圆中心线（nb 原式）</option>
+      </select>
+    </div>
+    <p class="note" id="attNote">「环轴 ∥ 切线」在几何上与「不切穿父环」<b>互斥</b>，不是参数问题：
+      切线 <code>T</code> 恒在管面切平面内，与管面法向 <code>N</code> 严格正交
+      （实测 2000 点 <code>max|N·T| = 2.2e-16</code>）；而环不切穿父环要求环轴靠近 <code>N</code>
+      —— 两者正好差 <b>90°</b>。取环轴 = <code>T</code> 时环面必然扫过父管轴线，
+      解析间隙 <code>Δ = sU·|ρ−q| − ρ·sU(1+q)</code> 恒为负（q=0.08 时公式 −0.4560、实测 −0.4560），
+      实测 g=6 时为 <b>−1.02</b>。所以默认取 <b>贴管壁</b>（环轴 = <code>N×B</code>）：
+      它是唯一能做到 <code>Δmin > 0</code> 的朝向（ρ=0.140 时 +0.0078）。</p>
+    <div class="row" style="margin:6px 0 2px">
+      <span class="nm" style="font-size:12px">画到第几级</span>
+      <select id="selCurveLv" style="flex:1 1 120px">
+        <option value="0">只画 L0（默认）</option>
+        <option value="1">L0 + L1</option>
+        <option value="2">L0 ~ L2</option>
+      </select>
+    </div>
+    <div class="row" style="margin:6px 0 2px">
+      <span class="nm" style="font-size:12px">L0 表面</span>
+      <select id="selSurf" style="flex:1 1 120px">
+        <option value="ghost">幽灵 13%（推荐）</option>
+        <option value="mesh">网格线</option>
+        <option value="half">半透明 42%</option>
+        <option value="solid">实体</option>
+        <option value="none">隐藏（只剩曲线）</option>
+      </select>
+    </div>
+    <p class="note">曲线 <code>φ=n·τ、θ=k·τ</code>（τ∈[0,2π]），和
+      <code>圆环表面绕行模拟TorusPaths.html</code> 同一个口径：<b>n 绕洞、k 穿洞</b>，只要 n,k 是整数就一定闭合。<br>
+      <b>逐级各用各的曲线参数</b>：L0 上那条是 (5, 1680)，L1…L6 每一级自己身上是 (1, 7) —— 子环挂的是<b>父环</b>的曲线，
+      所以挂 L1 用 L0 的 (5,1680)，挂 L2 用 L1 的 (1,7)，依此类推。<br>
+      环面的 <b>r/R 就是上面的 ρ</b>（<code>r/R = ρ = 管半径/主半径</code>），调它同时改变曲线所在的环面胖瘦。<br>
+      <b>「子环挂在哪」这一项</b>：选「曲线」时子环中心落在上面那条彩虹线上（每只环被曲线穿过孔心）；
+      选「主圆中心线」则退回 nb 原式（子环铺在管轴那个大圆上）。两种都保留，随时可切。<br>
+      ⚠ k=1680 时每绕管一圈在屏幕上不到 1 px，单圈已经分辨不出 —— 曲线只会读成一层<b>细密彩虹织纹</b>，
+      这是分辨率的极限，不是画错。</p>
+  </div>
+
+  <div class="card" id="cardRev">
+    <h2>↻ 一键公转<span class="badge" id="bRevBadge">第 1 级绕曲线</span></h2>
+    <div class="row" style="margin:2px 0 4px">
+      <button class="gg" id="bRev2" style="flex:1 1 100%">↻ 开始 / 暂停公转（快捷键 G）</button>
+    </div>
+    <div class="row" style="margin:2px 0 4px">
+      <button class="gg" id="bRevSpin" style="flex:1 1 100%"
+        title="把 ρ 放到 0.06（给运动留余量），L1 摆 ±45°、L2 ±22.5°…，25 相位实测 Δmin +0.0907">🎬 逐级公转演示（自动配 ρ=0.06）</button>
+    </div>
+    <div class="row" style="margin:2px 0 4px">
+      <button class="gg" id="bAlphaSpin" style="flex:1 1 100%"
+        title="ρ = 1/137、每级摆幅 ±180°（真整圈）、级间倍率 0.4 ⇒ 25 相位实测 Δmin +0.1632，全程不穿">⚛ α 细丝 · 整圈公转（mix=0.4）</button>
+    </div>
+    <div class="row" style="margin:2px 0 4px">
+      <span class="nm" style="font-size:12px">范围</span>
+      <select id="selRevMode" style="flex:1 1 120px">
+        <option value="nest">逐级绕父环中轴（L1↺L0、L2↺L1…）· 推荐</option>
+        <option value="axis">整棵子树绕 L0 环中轴刚性公转</option>
+        <option value="one">沿曲线滑动（k 小才顺；k=1680 会互穿）</option>
+        <option value="all">逐级沿曲线滑动（会互穿）</option>
+      </select>
+    </div>
+    <div class="grow">
+      <span class="nm">级间倍率</span>
+      <input type="range" id="sRevMix" min="0" max="1" step="0.05" value="1">
+      <input type="number" id="vRevMix" min="0" max="1" step="0.05" value="1">
+    </div>
+    <div class="grow">
+      <span class="nm">每级摆幅</span>
+      <input type="range" id="sRevAmp" min="0" max="180" step="1" value="15">
+      <input type="number" id="vRevAmp" min="0" max="180" step="1" value="15">
+    </div>
+    <div class="grow">
+      <span class="nm">速度</span>
+      <input type="range" id="sRevSpd" min="0.2" max="3" step="0.1" value="1">
+    </div>
+    <p class="note" id="revNote">…</p>
   </div>
 
   <div class="card" id="cardCam">
-    <h2>② 视角<span class="badge" id="bCam">3/4 正交</span></h2>
+    <h2>④ 视角<span class="badge" id="bCam">3/4 正交</span></h2>
     <div class="grow">
       <span class="nm">方位 yaw</span>
       <input type="range" id="sYaw" min="-180" max="180" step="1" value="-58">
@@ -264,7 +481,7 @@ input[type=checkbox]{accent-color:var(--acc);width:14px;height:14px;cursor:point
   </div>
 
   <div class="card" id="cardShow">
-    <h2>③ 显示</h2>
+    <h2>⑤ 显示</h2>
     <div class="row" style="margin:6px 0">
       <span class="nm" style="font-size:12px">配色</span>
       <select id="selScheme" style="flex:1 1 120px">
@@ -282,43 +499,48 @@ input[type=checkbox]{accent-color:var(--acc);width:14px;height:14px;cursor:point
   </div>
 
   <div class="card" id="cardQual">
-    <h2>④ 曲面精细度</h2>
+    <h2>⑥ 曲面精细度<span class="badge" id="bLod">LOD 开</span></h2>
     <div class="grow">
       <span class="nm">倍率</span>
-      <input type="range" id="sQual" min="0.6" max="1.6" step="0.1" value="1" style="grid-column:2/4">
+      <input type="range" id="sQual" min="0.5" max="1.6" step="0.05" value="0.8" style="grid-column:2/4">
     </div>
-    <p class="note">每只环的细分数按它在<b>屏幕上的周长</b>自适应：环越小、段数越少。
-      原版 <code>PlotPoints→20</code> 是固定 20×20；本页改成自适应，所以 g=4（341 环）也还能转得动。
-      播放旋转时会自动再降一档。</p>
+    <p class="note">细分数按每只环在<b>屏幕上的周长</b>自适应（原版固定 <code>PlotPoints→20</code>）。
+      七级时深层的环只有几像素，铺网格是浪费：<b>&lt; 15 px 画成一个描边圆环、&lt; 3 px 画成一个点</b>，
+      所以 3000+ 只环也还能拖得动；放大后它们会自动还原成实体。</p>
   </div>
 
   <div class="card" id="cardHow">
-    <h2>⑤ 怎么读这张图</h2>
+    <h2>⑦ 怎么读这张图</h2>
     <p class="note">
-      ① <b>先停在 nb 默认（a=5, p=3, g=1）</b>：一个大环上挂着 3 个竖环，3 个竖环的主圆正好落在大环的主圆上。<br>
-      ② <b>把 g 推到 2</b>：每个竖环的主圆上又挂 3 个环 —— 递归就是这么长出来的。<br>
-      ③ <b>看「层级账本」</b>：L0 有 1 环、L1 有 p 环、L2 有 p² 环……主半径每层减半。<br>
-      ④ <b>把 a 拉小</b>（比如 1）：主环半径只剩 1，而管半径还是 0.5 —— 环被"管"塞满，变成一串胖珠。<br>
-      ⑤ <b>把 a 拉大</b>（比如 10）：管细、环大，g=3 时像一盘精致的金属线圈。<br>
-      ⑥ <b>p=4, g=4</b> 是极限（341 环）：会很重，可以先把精细度调低。<br>
-      ⑦ <b>相机是绕 z 轴（屏幕竖直方向）公转的</b>。p 为偶数时，子环所在方位角恰好左右对称，
-      整圈里的后半圈与前半圈一模一样 —— 所以 GIF 导出在这种情况下<b>只扫半圈</b>，同样的帧数换成更细的角度。
+      ① <b>先看默认（g=6）</b>：一个大环绕着环面转 (5,1680) 圈，它上面挂 p 个环、每个再挂 p 个……一共七级（L0…L6）。<br>
+      ② <b>把 g 从 6 往回调</b>：每减一级就砍掉一整层，配合「四个层次定格」能看清第 g 级从哪冒出来。<br>
+      ③ <b>看「层级账本」的间隙列</b>：绿色 Δ&gt;0 = 两只管不相交（子环的孔套着父管）；红色 = 两管互相穿插了。<br>
+      ④ <b>把 ρ 往上拉</b>：环变胖好看，但超过 <code>q/(1+q)</code> 之后父子环就开始重叠 —— 账本立刻变红，这就是那条上限的来历。<br>
+      ⑤ <b>切到「nb 原版」</b>：管半径恒为 0.5 而主半径逐级减半，深层环会被"管"塞满 —— 账本里 ρ 一路涨到 &gt;1，这正是 nb 的样子。<br>
+      ⑥ <b>n、k 逐级给</b>：L0 一条、L1 及以下共用另一条。(n,0) 是绕洞的整圈，(0,k) 是穿洞的整圈，(n,k) 是环面上的 (n,k) 环面结。<br>
+      ⑦ <b>相机绕 z 轴（屏幕竖直方向）公转</b>；p 为偶数且不开曲线时场景有半圈对称，GIF 会只扫 180° 换取角分辨率。<br>
+      ⑧ <b>「子环挂在哪」切一下看差别</b>：<b>曲线</b> = 每一级环的中心落在父环的彩虹线上，环被曲线穿过孔心（像穿在绳上的环）；
+        <b>主圆中心线</b> = nb 原式，子环铺在父环管轴那个大圆上。前者是「沿曲线的项链」，后者是「沿管道的刻度」。<br>
+      ⑨ <b>点「↻ 一键公转」（或按 G）</b>：L0 完全不动，<b>L1 绕 L0 的中轴、L2 绕 L1 的中轴、L3 绕 L2 的中轴……</b>
+        每一级只认自己父环，子环连同整棵子树被刚体带走，转完再进下一层 —— 一台逐级减速的齿轮组。
+        父子之间只做刚体相对转动，所以<b>父子永不互穿</b>；但子环沿父环面滑行会扫到「父环面与祖父管面相切」那一圈，
+        所以摆幅有硬上限（实测 L2 只到 ±16°，默认就取 ±15°）。把摆幅拉到 180 就能亲眼看它穿。
     </p>
   </div>
 
   <div class="card" id="cardNb">
-    <h2>⑥ 与 nb 的对照</h2>
+    <h2>⑧ 与 nb 的对照</h2>
     <p class="note">
-      <b>一字未改</b>：<code>torus</code> 的参数式（同一套 <code>û, v̂, ŵ</code> 三正交方向 + <code>sU</code> 主半径 + <code>r</code> 管半径）；
-      <code>generate</code> 的两个定义（基例 <code>{{u,v,t,0.5}}</code>、递归里 <code>u1=(sU/(2 sV))v</code>、<code>v1=(t1−t)×v</code>、<code>α=2π/n</code>、<code>i=1..n</code> 与 <code>Flatten[Append[p, generate[…,0]], 1]</code> 的拼接顺序）；
+      <b>一字未改（nb 模式下）</b>：<code>torus</code> 的参数式（同一套 <code>û, v̂, ŵ</code> 三正交方向 + <code>sU</code> 主半径 + <code>r</code> 管半径）；
+      <code>generate</code> 的两个定义（基例 <code>{{u,v,t,0.5}}</code>、递归里 <code>u1=(sU/(2 sV))v</code>、<code>v1=(t1−t)×v</code>、<code>α=2π/n</code>、
+      <code>i=1..n</code> 与 <code>Flatten[Append[p, generate[…,0]], 1]</code> 的拼接顺序）；
       <code>1.{{a,0,0},{0,a,0},{0,0,0},p}</code> 的初值；<code>φ,θ ∈ [0,2π]</code>；<code>Boxed→False, Axes→False</code>；
-      <code>ImageSize→{500,350}</code>（画布保持 500:350）；<code>ViewPoint→{0,0,100}</code> + <code>ViewAngle→0.01</code> 的正交投影；三个控件与默认值。<br>
-      <b>网页版另加</b>：拖动旋转、缩放、层级配色、线框 / 半透明、层级账本、四个层次定格、GIF/PNG 导出、自适应精细度。<br>
-      <b>要说明的三点</b>：① 原版 <code>ParametricPlot3D</code> 的默认表面配色（依参数渐变的彩虹）本页只能近似，默认用的是<b>层级配色</b>；
-      ② 曲面细分数原版固定 <code>PlotPoints→20</code>，本页改成随屏幕尺寸自适应，逐像素质感不完全相同；
-      ③ 原版用的是 Mathematica 自己的 3D 合成，本页是画家算法逐面排序，遮挡关系一致但抗锯齿细节不同。<br>
-      <b>GIF 的扫描范围</b>：原版没有这个功能。本页默认绕相机轴扫一圈；当场景本身有「半圈对称」时（p 为偶数）
-      只扫半圈，否则后半圈只是前半圈的复本。
+      <code>ImageSize→{500,350}</code>；<code>ViewPoint→{0,0,100}</code> + <code>ViewAngle→0.01</code> 的正交投影。<br>
+      <b>本页新增</b>：g 上限 4→7；「自相似」模式（把 <code>u1=(sU/(2 sV))v</code> 里的 <code>1/2</code> 换成 <code>q</code>、把基例的常量 <code>0.5</code> 换成 <code>ρ·sU</code>）；
+      L0 环面绕行曲线 (n,k)；间隙校验；LOD；拖动旋转 / 缩放 / 层级配色 / 线框 / 半透明 / 四个层次定格 / GIF·PNG 导出。<br>
+      <b>要说明的三点</b>：① 原版默认表面配色是依参数渐变的彩虹，本页只能近似，默认用<b>层级配色</b>；
+      ② 曲面细分数原版固定 20×20，本页随屏幕尺寸自适应 + LOD，逐像素质感不完全相同；
+      ③ 原版用 Mathematica 自己的 3D 合成，本页是画家算法逐面排序，遮挡关系一致但抗锯齿细节不同。
     </p>
   </div>
 </aside>
@@ -442,7 +664,8 @@ var M3 = (function () {
 
   P.quad = function (pts, rgb, opt) {
     opt = opt || {};
-    var n = cross(sub(pts[1], pts[0]), sub(pts[2], pts[0]));
+    /* opt.nrm = 解析法向（环面这类参数曲面给上，着色才平滑；不给就退回几何法向） */
+    var n = opt.nrm || cross(sub(pts[1], pts[0]), sub(pts[2], pts[0]));
     this.items.push({
       t: 'q', p: pts, n: n, rgb: rgb, alpha: opt.alpha === undefined ? 1 : opt.alpha,
       stroke: opt.stroke || null, lw: opt.lw || 0.6, seal: !!opt.seal, depth: opt.depth || 0
@@ -483,6 +706,26 @@ var M3 = (function () {
     });
     return this;
   };
+
+  /* 屏幕空间的 LOD 图元：屏幕上只有几像素的环不必铺四边形网格。
+     dot = 实心圆（scr < 3 px），ann = 圆环描边（3 ~ 15 px）。
+     两者都只占 1 个绘制项，深度取圆心 —— 排序照旧走画家算法。 */
+  P.dot = function (c, r, opt) {
+    opt = opt || {};
+    this.items.push({
+      t: 'dt', c: c, r: r, rgb: opt.rgb || [1, 1, 1],
+      alpha: opt.alpha === undefined ? 1 : opt.alpha, depth: opt.depth || 0
+    });
+    return this;
+  };
+  P.ann = function (c, R, w, opt) {
+    opt = opt || {};
+    this.items.push({
+      t: 'an', c: c, R: R, w: w, rgb: opt.rgb || [1, 1, 1],
+      alpha: opt.alpha === undefined ? 1 : opt.alpha, depth: opt.depth || 0
+    });
+    return this;
+  };
   P.count = function () { return this.items.length; };
 
   /* 每个图元的代表深度（视图 zv） */
@@ -507,6 +750,8 @@ var M3 = (function () {
       else if (it.t === 'pl') drawPoly(ctx, c, it);
       else if (it.t === 's') drawSphere(ctx, c, it);
       else if (it.t === 'tx') drawText(ctx, c, it);
+      else if (it.t === 'dt') drawDotLOD(ctx, c, it);
+      else if (it.t === 'an') drawAnnLOD(ctx, c, it);
     }
     return arr.length;
   };
@@ -602,6 +847,32 @@ var M3 = (function () {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(it.txt, p[0] + it.dx, p[1] + it.dy);
+  }
+
+  /* ------------------------------------------------- LOD：圆点 / 圆环 */
+  function drawDotLOD(ctx, c, it) {
+    var p = proj(c, it.c);
+    if (!isFinite(p[0])) return;
+    var R = Math.max(0.8, it.r * c.scale);
+    ctx.beginPath();
+    ctx.arc(p[0], p[1], R, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(' + (it.rgb[0] * 255 | 0) + ',' + (it.rgb[1] * 255 | 0) +
+      ',' + (it.rgb[2] * 255 | 0) + ',' + it.alpha + ')';
+    ctx.fill();
+  }
+
+  /* 圆环：屏幕上主半径 sU、管直径 2r，用一次 arc 描边近似（十几像素时与实体无异） */
+  function drawAnnLOD(ctx, c, it) {
+    var p = proj(c, it.c);
+    if (!isFinite(p[0])) return;
+    var R = it.R * c.scale, w = Math.max(0.9, it.w * c.scale);
+    if (!(R > 0.4)) return;
+    ctx.beginPath();
+    ctx.arc(p[0], p[1], R, 0, Math.PI * 2);
+    ctx.lineWidth = w;
+    ctx.strokeStyle = 'rgba(' + (it.rgb[0] * 255 | 0) + ',' + (it.rgb[1] * 255 | 0) +
+      ',' + (it.rgb[2] * 255 | 0) + ',' + it.alpha + ')';
+    ctx.stroke();
   }
 
   /* ------------------------------------------------------------ 包围球 / 适配 */
@@ -851,71 +1122,291 @@ function encodeGif(frames, W, H, delayCs) {
 /* =====================================================================
    app.js —— 分形环套环 RecursiveExercisesVITori 网页版
    ---------------------------------------------------------------------
-   复刻 nb 的两条 Input：
-     ① torus[u_,v_,t_,r_] + 递归 generate[{u,v,t,n}, depth]
-     ② Manipulate[a(厚度 1..10), p(环数 2..4), g(层数 1..4)]
-   渲染：纯 Canvas2D + 自写正交投影 + 画家算法（_shared/mini3d.js）
+   复刻 nb 的两条 Input，并在其上做三件事（2026-10-21 升级）：
+
+   ① 「多级」= g：递归层数上限从 4 扩到 7，默认 g=7。
+   ② 新增「自相似」模式：
+        nb   : 子环主半径 = sU/2（u1=(sU/(2 sV))v），管半径恒 0.5
+        自相似: 子环主半径 = q·sU（u1=(q sU/sV)v），管半径 = ρ·sU
+      ⇒ 每级严格等比 ⇒ 比例匀称、梯度一致，且可解出「父子不重叠」的上限 ρ ≤ q/(1+q)。
+   ③ L0 可以换成环面上的 (n,k) 绕行闭合曲线：
+        φ = n·τ, θ = k·τ, τ∈[0,2π]  —— 与 圆环表面绕行模拟TorusPaths.html 同一口径。
+   渲染：纯 Canvas2D + 自写正交投影 + 画家算法（_shared/mini3d.js）+ 屏幕空间 LOD
    ===================================================================== */
 (function () {
   'use strict';
 
   /* ======================================================== 0. 常量 */
-  var PAD = 0.07;                 /* 正交视角画布边距 */
+  var PAD = 0.050;                /* 正交视角画布边距（已按投影包围盒取景，5% 足够） */
   var NBW = 500, NBH = 350;       /* nb 的 ImageSize->{500,350} */
-  var TUBE_R = 0.5;               /* nb 里管半径恒为 0.5（generate 的基例写死） */
+  var NB_TUBE = 0.5;              /* nb 里管半径恒为 0.5（generate 的基例写死） */
+  var MAXR = 6000;                /* 环总数上限（超了自动降 g） */
+  var RHO_MIN = 1 / 137;          /* ρ 的下限 = 1/137 = 0.00729927…（精细结构常数 α） */
+  var RHO_MAX = 0.42;
+
   var DEF = {
-    a: 5, p: 3, g: 1,
+    a: 5, p: 2, g: 6,               /* g=6 ⇒ L0…L6 共 7 级 */
+    mode: 'self', q: 0.62, rho: 0.140,   /* 逐级挂曲线后全对上限 0.1495（cap_curve.py rho）→ 取 93.6% */
+    /* 逐级绕行曲线：L0 = (5,1680)；L1…L6 每级 = (1,7) */
+    curve: true, nW: 5, kW: 1680, nD: 1, kD: 7, curveLv: 0, surf: 'half',
+    /* 子环挂在哪：curve = 贴管壁（环轴 = N×B，不切穿，**默认**）
+                    thread = 穿在曲线上（环轴 ∥ 切线，几何上必切穿，仅作对照）
+                    ring   = 主圆中心线（nb 原式） */
+    attach: 'curve',
+    rev: false, revMode: 'nest', revSpd: 1, revPh: 0, revMix: 0.5, revAmp: 10,
+    /* 一键公转：nest = 逐级绕自己父环的中轴（默认）/ axis = 整棵子树绕 L0 中轴
+                   all = 逐级沿曲线滑动（会互穿）/ one = 只有第一级滑动
+       revMix = 级间倍率（L1 转 φ、L2 转 mix·φ、L3 转 mix²·φ…）
+       revAmp = 每级摆幅（度）；≥179.5 表示整圈 */
     yaw: -58, pit: 26, zom: 1,
     camMode: 'free',
     scheme: 'level',
     wire: false,
     alpha: 1,
-    qual: 1.0,                    /* 精细度倍率 */
+    qual: 0.80,                   /* 精细度倍率 */
     spin: false, loop: true, spd: 1, phase: 0
   };
   var S = {};
   var CV = {};                    /* 画布引用 */
+  var _clamped = false;           /* 上一次结构改动是否被环数上限降档 */
 
-  /* 层级配色（4 层，最深 4 层） */
+  /* 一键预设 */
+  var PRES = {
+    best:  { a: 5, p: 2, g: 6, mode: 'self', q: 0.62, rho: 0.140, curve: true, nW: 5, kW: 1680, nD: 1, kD: 7, surf: 'half' },
+    best3: { a: 5, p: 3, g: 6, mode: 'self', q: 0.50, rho: 0.115, curve: true, nW: 5, kW: 1680, nD: 1, kD: 7, surf: 'half' },
+    tight: { a: 5, p: 2, g: 4, mode: 'self', q: 0.50, rho: 0.146, curve: true, nW: 5, kW: 1680, nD: 1, kD: 7, surf: 'half' },
+    /* 逐级公转专用：管径放细到 ρ=0.06（余量从 0.008 涨到 0.09 以上），
+       这时 L1 可以摆 ±45°、L2 ±22.5°… 全对 Δmin 实测 +0.0907（25 相位）。 */
+    spin:  { a: 5, p: 2, g: 6, mode: 'self', q: 0.62, rho: 0.060, curve: true, nW: 5, kW: 1680, nD: 1, kD: 7, surf: 'half',
+             revMode: 'nest', revMix: 0.5, revAmp: 45 },
+    /* α 细丝：ρ = 1/137（精细结构常数）。管子细到屏幕上只剩一根丝，
+       静止全对 Δmin = +0.163341（是 L0 管半径 0.0365 的 4.5 倍）。
+       整圈 ±180° 逐级公转要 mix ≤ 0.45 才不穿；mix=0.4 实测 +0.163168（25 相位）。 */
+    alpha: { a: 5, p: 2, g: 6, mode: 'self', q: 0.62, rho: 1 / 137, curve: true, nW: 5, kW: 1680, nD: 1, kD: 7, surf: 'half' },
+    alphaSpin: { a: 5, p: 2, g: 6, mode: 'self', q: 0.62, rho: 1 / 137, curve: true, nW: 5, kW: 1680, nD: 1, kD: 7, surf: 'half',
+                 revMode: 'nest', revMix: 0.4, revAmp: 180 },
+    nb:    { a: 5, p: 3, g: 1, mode: 'nb', curve: false, surf: 'solid' },
+    nb2:   { a: 5, p: 3, g: 2, mode: 'nb', curve: false, surf: 'solid' },
+    nb4:   { a: 5, p: 4, g: 4, mode: 'nb', curve: false, surf: 'solid' }
+  };
+
+  /* 层级配色（8 层，最深 7 层） */
   var LVCOL = [
     [0.45, 0.63, 1.00],           /* L0 主环 —— 蓝 */
     [0.33, 0.87, 0.62],           /* L1 —— 青绿 */
     [1.00, 0.76, 0.30],           /* L2 —— 琥珀 */
-    [1.00, 0.45, 0.58]            /* L3 —— 玫红 */
+    [1.00, 0.45, 0.58],           /* L3 —— 玫红 */
+    [0.72, 0.55, 1.00],           /* L4 —— 紫 */
+    [0.35, 0.85, 0.95],           /* L5 —— 天蓝 */
+    [0.95, 0.85, 0.45],           /* L6 —— 浅金 */
+    [0.95, 0.60, 0.95]            /* L7 —— 粉紫 */
   ];
   var MONO = [0.84, 0.87, 0.96];
 
-  /* ================================================ 1. 几何（忠实复刻） */
-  /* nb: generate[{u,v,t,n}, depth] —— 子环在前、自身在后，与 Flatten[Append[...]] 同序 */
-  function sceneOf(a, p, g) {
+  /* ================================================ 1. 几何（nb + 自相似） */
+  function ringCount(p, g) { var n = 0, k; for (k = 0; k <= g; k++) n += Math.pow(p, k); return n; }
+
+  /* ρ 显示格式：极小值多给位数，正好落在 1/137 时直接标出来 */
+  function rhoTxt(v) {
+    if (!(v > 0)) return '0';
+    if (Math.abs(v - RHO_MIN) < 2e-6) return '1/137';
+    if (v < 0.01) return v.toFixed(6);
+    return (v < 0.02) ? v.toFixed(5) : v.toFixed(3);
+  }
+
+  /* 曲线上的局部标架（挂子环用）：
+       P = 曲线上的点（正好落在管面上，距管轴 r）
+       N = 外法向 = cosθ·rad + sinθ·v̂
+       B = 管的**周向** = −sinθ·rad + cosθ·v̂（与 N 垂直，仍在管的横截面内）
+       T = 切线 = dP/dτ = n·A·(−sinφ û + cosφ ŵ) + r·k·(cosθ v̂ − sinθ rad)
+     两种挂法（S.attach）：
+       'curve'  贴壁：û = B、v̂ = N×B ⇒ 主平面 = span{B,N} = 管的横截面，**环轴 = N×B**
+       'thread' 穿线：环轴 = 切线（老师 2026-10-21 指定）⇒ v̂ = T̂、û = N 在 ⊥T 上的投影
+     ⚠ 这里 'curve' 的 û 必须指向周向 B、不能指向法向 N：p 个子环是沿 ±û 铺开的，
+       若 û = N，就会有一个子环直接落进父管里（实测 p=2 时 Δ = −0.62）。
+     取 û = B 后，子环中心到管轴的距离恒为 √(r² + sC²)，与 θ 无关。 */
+  function curveFrame(tor, n, k, tau) {
+    var phi = n * tau, th = k * tau;
+    var cph = Math.cos(phi), sph = Math.sin(phi), cth = Math.cos(th), sth = Math.sin(th);
+    var r0 = tor.r, A = tor.sU + r0 * cth;
+    var ux = tor.uh[0], uy = tor.uh[1], uz = tor.uh[2];
+    var wx = tor.wh[0], wy = tor.wh[1], wz = tor.wh[2];
+    var vx = tor.vh[0], vy = tor.vh[1], vz = tor.vh[2];
+    var rx = cph * ux + sph * wx, ry = cph * uy + sph * wy, rz = cph * uz + sph * wz;
+    /* 切线：drad/dφ = −sinφ û + cosφ ŵ */
+    var dx = -sph * ux + cph * wx, dy = -sph * uy + cph * wy, dz = -sph * uz + cph * wz;
+    var nx = n * A * dx + r0 * k * (cth * vx - sth * rx);
+    var ny = n * A * dy + r0 * k * (cth * vy - sth * ry);
+    var nz = n * A * dz + r0 * k * (cth * vz - sth * rz);
+    var tl = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
+    return {
+      P: [tor.t[0] + A * rx + r0 * sth * vx,
+          tor.t[1] + A * ry + r0 * sth * vy,
+          tor.t[2] + A * rz + r0 * sth * vz],
+      N: [cth * rx + sth * vx, cth * ry + sth * vy, cth * rz + sth * vz],
+      B: [-sth * rx + cth * vx, -sth * ry + cth * vy, -sth * rz + cth * vz],
+      T: [nx / tl, ny / tl, nz / tl]        /* 单位切线 */
+    };
+  }
+
+  /* a 在「⊥t」平面上的分量，并归一化（退化时返回 null） */
+  function perpUnit(a, t) {
+    var d = a[0] * t[0] + a[1] * t[1] + a[2] * t[2];
+    var p = [a[0] - d * t[0], a[1] - d * t[1], a[2] - d * t[2]];
+    var L = M3.len(p);
+    if (L < 1e-9) return null;
+    return [p[0] / L, p[1] / L, p[2] / L];
+  }
+
+  /* 绕 z 轴旋转一个方向向量 / 点 */
+  /* 绕任意单位轴 ax 转 a（Rodrigues） */
+  function rotAxis(p, ax, a) {
+    var c = Math.cos(a), s = Math.sin(a), k = 1 - c;
+    var d = M3.dot(p, ax);
+    var cr = M3.cross(ax, p);
+    return [p[0] * c + cr[0] * s + ax[0] * d * k,
+            p[1] * c + cr[1] * s + ax[1] * d * k,
+            p[2] * c + cr[2] * s + ax[2] * d * k];
+  }
+  /* 把 lv>=1 的所有环整体绕「L0 环的中轴」转 a（刚体）：中心 + 三个基向量一起转。
+     环面 = span{uh, wh}（φ 在主圆上扫），所以环的中轴 = vh，**不是 z**。
+     绕 vh 转：L0 恰好映射到自己（环面绕自身中轴旋转不变），
+     子树被刚体带走 ⇒ 全部环对距离逐字不变，公转全程不可能互穿。 */
+  function revLevels(sc, a) {
+    if (!sc || !sc.length) return sc;
+    var ax = sc[0].vh;                       /* L0 的中轴 = 垂直于 L0 环面 */
+    for (var i = 0; i < sc.length; i++) {
+      var t = sc[i];
+      if (t.lv === 0) continue;
+      t.t = rotAxis(t.t, ax, a); t.u = rotAxis(t.u, ax, a); t.v = rotAxis(t.v, ax, a);
+      t.uh = rotAxis(t.uh, ax, a); t.vh = rotAxis(t.vh, ax, a); t.wh = rotAxis(t.wh, ax, a);
+    }
+    return sc;
+  }
+
+  /* 绕「过 c 点、方向 ax」的轴转 a */
+  function rotAbout(p, c, ax, a) {
+    var d = rotAxis([p[0] - c[0], p[1] - c[1], p[2] - c[2]], ax, a);
+    return [c[0] + d[0], c[1] + d[1], c[2] + d[2]];
+  }
+
+  /* ── 逐级嵌套公转：L(k) 绕**它自己的父环**的中轴 vh 转 φ，整棵子树当刚体带走，
+        再递归下去让 L(k+1) 绕 L(k) 的**新**中轴继续转。 ──────────────────────
+     于是：L1 绝对转角 φ、L2 绝对 2φ、L3 绝对 3φ …… 父子之间只做刚体相对转动 ⇒
+           环面绕自身中轴旋转不变 ⇒ 子环永远贴着父环的环面走；
+     每级同相 ⇒ 每级各转满 2π 都回到原位 ⇒ 周期仍是 2π，能无缝回环。
+     注意旋转中心是**父环的中心**（L1 绕 L0 时 L0.t 恰在原点，所以旧版绕原点等价）。 */
+  function revNest(sc, ph, mix) {
+    if (!sc || sc.length < 2 || !ph) return sc;
+    var n = sc.length, kids = new Array(n), sub = new Array(n), i;
+    for (i = 0; i < n; i++) kids[i] = null;
+    for (i = 0; i < n; i++) {
+      var pi = sc[i].pi;
+      if (pi >= 0 && pi < n) (kids[pi] || (kids[pi] = [])).push(i);
+    }
+    /* pre-order ⇒ 子树是连续区间 [i, sub[i])；最后一个子节点的末尾就是父的末尾 */
+    for (i = n - 1; i >= 0; i--) {
+      var K = kids[i];
+      sub[i] = (K && K.length) ? sub[K[K.length - 1]] : i + 1;
+    }
+    var r = (mix === undefined || mix === null) ? 1 : mix;
+    function walk(i, k) {                     /* k = 到当前层的累计倍率 */
+      var C = kids[i];
+      if (!C) return;
+      var a = ph * k;                         /* 本级相对父环的转角 */
+      for (var j = 0; j < C.length; j++) {     /* ⚠ j 必须局部：递归会把外层 j 顶掉 */
+        var c = C[j], pc = sc[i], cen = pc.t, ax = pc.vh, e = sub[c], m, t;
+        if (a) {
+          for (m = c; m < e; m++) {
+            t = sc[m];
+            t.t = rotAbout(t.t, cen, ax, a);
+            t.u = rotAxis(t.u, ax, a); t.v = rotAxis(t.v, ax, a);
+            t.uh = rotAxis(t.uh, ax, a); t.vh = rotAxis(t.vh, ax, a); t.wh = rotAxis(t.wh, ax, a);
+          }
+        }
+        walk(c, k * r);                        /* 下一层：绕 c 的新中轴，倍率再乘 r */
+      }
+    }
+    walk(0, 1);
+    return sc;
+  }
+
+  /* 逐级绕行曲线参数：L0 = (nW,kW) 默认 (5,1680)；L1 及以下每级 = (nD,kD) 默认 (1,7) */
+  function curveNK(lv) {
+    return (lv === 0) ? [S.nW | 0, S.kW | 0] : [S.nD | 0, S.kD | 0];
+  }
+
+  /* buildScene(a,p,g,mode,q,rho,ph,rvm)
+     nb    : qq=1/2, r=0.5（与 nb 的 u1=(sU/(2 sV))v、基例 {u,v,t,0.5} 完全一致）
+     自相似: qq=q,   r=ρ·sU
+     子环位置：
+       attach='ring'   t1 = t + sU(cos α û + sin α ŵ) —— nb 原式，落在父环主圆（管轴线）上
+       attach='curve'  t1 = 父环绕行曲线上的点，**环贴管壁**（环轴 = N×B，主平面 = 管横截面）
+       attach='thread' t1 = 父环绕行曲线上的点，**环穿在曲线上**（环轴 = 切线 T）
+       逐级都挂（L0 用 (nW,kW)，L1+ 用 (nD,kD)）。
+     ph/rvm：公转相位。rvm='one' 只有第 1 级绕，'all' 每级都绕，'axis' 整体绕 z 刚体转。 */
+  function buildScene(a, p, g, mode, q, rho, ph, rvm) {
     var out = [];
-    function rec(u, v, t, depth, lv) {
+    var self = (mode === 'self');
+    var qq = self ? q : 0.5;
+    var r0 = self ? rho * a : NB_TUBE;
+    var onCur = self && S.curve && (S.attach === 'curve' || S.attach === 'thread');
+    var thr = (S.attach === 'thread');
+    var ph0 = ph || 0, all = (rvm === 'all'), ax = (rvm === 'axis');
+    var nest = (rvm === 'nest');
+    var hold = ax || nest;            /* 这两种都是「构建时相位定格、之后整体旋转」 */
+
+    function rec(u, v, t, depth, lv, sU, r, delta, pi) {
+      var me = out.length;
+      out.push(null);                 /* 先占位：要记父下标（pre-order），父子对才量得准 */
       if (depth > 0) {
         var w = M3.cross(u, v);
-        var sU = M3.len(u), sV = M3.len(v), sW = M3.len(w);
-        var uh = M3.mul(u, 1 / sU), wh = M3.mul(w, 1 / sW);
+        var sV = M3.len(v), sW = M3.len(w);
+        var uh = M3.mul(u, 1 / sU), wh = M3.mul(w, 1 / sW), vh = M3.mul(v, 1 / sV);
+        var sC = qq * sU;
+        var rC = self ? rho * sC : NB_TUBE;
+        var nd = hold ? 0 : ((all || lv === 0) ? ph0 : 0);
         var al = 2 * Math.PI / p, i;
+        var tor0 = onCur ? { t: t, uh: uh, vh: vh, wh: wh, sU: sU, r: r } : null;
+        var nk = curveNK(lv);
         for (i = 1; i <= p; i++) {
-          var c = Math.cos(al * i), s = Math.sin(al * i);
-          /* t1 = t + sU (cos[α i] û + sin[α i] ŵ) */
-          var t1 = M3.add(t, M3.mul(M3.add(M3.mul(uh, c), M3.mul(wh, s)), sU));
-          /* u1 = (sU/(2 sV)) v ;  v1 = (t1-t) × v */
-          var u1 = M3.mul(v, sU / (2 * sV));
-          var v1 = M3.cross(M3.sub(t1, t), v);
-          rec(u1, v1, t1, depth - 1, lv + 1);
+          var tau = al * i + delta, t1, u1, v1, fr;
+          if (tor0) {
+            fr = curveFrame(tor0, nk[0], nk[1], tau);
+            t1 = fr.P;
+            if (thr) {
+              /* 穿线：环轴 = v̂1 必须 ∥ 切线 ⇒ v1 = sC·T̂；u1 是环面内 ⊥T 的方向 */
+              var uu = perpUnit(fr.N, fr.T) || perpUnit(fr.B, fr.T) || [1, 0, 0];
+              u1 = M3.mul(uu, sC);
+              v1 = M3.mul(fr.T, sC);
+            } else {
+              u1 = M3.mul(fr.B, sC);                  /* û1 = 周向 */
+              v1 = M3.mul(M3.cross(fr.N, fr.B), sC);  /* v̂1 = N×B ⇒ 环轴 = N×B ⇒ 主平面 = 管截面 */
+            }
+          } else {
+            t1 = M3.add(t, M3.mul(M3.add(M3.mul(uh, Math.cos(tau)), M3.mul(wh, Math.sin(tau))), sU));
+            u1 = M3.mul(v, sC / sV);                /* nb: u1 = (q sU / sV) v */
+            v1 = M3.cross(M3.sub(t1, t), v);        /* nb: v1 = (t1-t) × v */
+          }
+          rec(u1, v1, t1, depth - 1, lv + 1, sC, rC, nd, me);
         }
       }
-      out.push(makeTor(u, v, t, TUBE_R, lv));
+      out[me] = makeTor(u, v, t, r, lv, sU, pi);
     }
-    rec([a, 0, 0], [0, a, 0], [0, 0, 0], g, 0);
+    rec([a, 0, 0], [0, a, 0], [0, 0, 0], g, 0, a, r0, hold ? 0 : ph0, -1);
+    /* axis 模式：绕 L0 环的中轴（vh = 垂直于 L0 环面）整体旋转 L1 及以下。
+       L0 绕自身中轴不变 ⇒ 整个场景映射成自己的刚体版本 ⇒ 所有环对距离逐字不变。 */
+    if (ax && ph0) revLevels(out, ph0);
+    /* nest 模式：逐级绕「自己父环的中轴」转，父环已定、子树刚体带走，再往下一层递归。 */
+    if (nest && ph0) revNest(out, ph0, (S.revMix === undefined ? 1 : S.revMix));
     return out;
   }
 
-  function makeTor(u, v, t, r, lv) {
+  function makeTor(u, v, t, r, lv, sU, pi) {
     var w = M3.cross(u, v);
-    var sU = M3.len(u), sV = M3.len(v), sW = M3.len(w);
+    var sV = M3.len(v), sW = M3.len(w);
     return {
-      u: u, v: v, t: t, r: r, lv: lv, sU: sU,
+      u: u, v: v, t: t, r: r, lv: lv, sU: sU, pi: (pi === undefined ? -1 : pi),
       uh: M3.mul(u, 1 / sU), vh: M3.mul(v, 1 / sV), wh: M3.mul(w, 1 / sW)
     };
   }
@@ -931,25 +1422,54 @@ function encodeGif(frames, W, H, delayCs) {
     ];
   }
 
-  function countOf(p, g) { var n = 0, k; for (k = 0; k <= g; k++) n += Math.pow(p, k); return n; }
+  /* 场景缓存：两个槽 —— 渲染用「当前相位」、校验用「相位 0（定格）」
+     ⚠ 挂曲线后场景本身依赖 ρ 与 (n,k) ⇒ key 必须带上它们。 */
+  var _ck = '', _cv = null, _ck0 = '', _cv0 = null;
+  /* 挂在曲线上（贴壁 curve / 穿线 thread 都算） */
+  function attachOn() { return (S.mode === 'self') && S.curve &&
+                                  (S.attach === 'curve' || S.attach === 'thread'); }
+  function threadOn() { return attachOn() && S.attach === 'thread'; }
+  function attKey() { return S.attach === 'thread' ? 't' : (S.attach === 'curve' ? 'c' : 'r'); }
+  function sceneDrop() { _ck = ''; _ck0 = ''; }
+  function sceneKeyAt(ph) {
+    return [S.a, S.p, S.g, S.mode, S.q, S.rho, S.nW, S.kW, S.nD, S.kD,
+            attKey(), S.revMode, (S.revMix === undefined ? 1 : S.revMix),
+            ph ? ph.toFixed(5) : '0'].join('|');
+  }
+  function sceneAt(ph) {
+    var k = sceneKeyAt(ph), v;
+    if (ph) {
+      if (_cv && _ck === k) return _cv;
+      _cv = buildScene(S.a, S.p, S.g, S.mode, S.q, S.rho, ph, S.revMode); _ck = k;
+      return _cv;
+    }
+    if (_cv0 && _ck0 === k) return _cv0;
+    _cv0 = buildScene(S.a, S.p, S.g, S.mode, S.q, S.rho, 0, S.revMode); _ck0 = k;
+    return _cv0;
+  }
+  /* 公转的**实际转角**：整圈档直接等于相位；限幅档把它压成 ±A° 的往复摆动。
+     ⚠ 逐级嵌套时，L(k) 相对父环转的就是这个角，所以 A 是「每级相对父环的幅度」。 */
+  function revAngle() {
+    var A = (S.revAmp === undefined ? 180 : S.revAmp);
+    if (A >= 179.5) return S.revPh || 0;
+    return (A * Math.PI / 180) * Math.sin(S.revPh || 0);
+  }
+  function sceneOf() { return sceneAt(revAngle()); }
+  /* 校验永远按相位 0 算：公转时每级相对位置在变，账本要有一个确定的答案 */
+  function sceneStill() { return sceneAt(0); }
+  function sceneG(g, ph) { return buildScene(S.a, S.p, g, S.mode, S.q, S.rho, ph || 0, S.revMode); }
+
   function levelCount(p, lv) { return Math.pow(p, lv); }
 
   /* 场景是否在「绕 z 转 180°」下与自身重合 —— 决定 GIF 扫半圈还是整圈。
      ---------------------------------------------------------------------
-     相机 eye = c + [cy·cosYaw, cy·sinYaw, dz]·1e4（c 是包围盒中心，也是 target）。
-     正交投影的屏幕坐标只取决于 (right, up, target, scale)，位置沿视线无关。
-     而 yaw→yaw+180 时 d→R_z(180)·d、right→R·right、up 不变，
-     于是「screen₂(p) = screen₁(R(p−c)+c)」—— 即等价于把场景绕「过 c 的 z 轴」转 180°。
-     （注意不是绕过原点的 z 轴：c 一般不在 z 轴上。）
-
-     一只环的面只由 (中心 t, 主半径 sU, 管半径 r, 轴向 ŵ 可取±) 决定 ——
-     因为 u→−u 且/或 v→−v 时 ŵ=û×v̂ 对应地变号或不变，代入 φ→π−φ / θ→−θ 即为同一张面。
-     所以逐只比这四样即可。
-
+     一只环的面只由 (中心 t, 主半径 sU, 管半径 r, 轴向 ŵ 可取±) 决定。
      实测：p=2 的子环方位角 {0°,180°}、p=4 的 {0,90,180,270} 在 α ↦ 180°−α 下封闭 ⇒ 自重合；
-     p=3 的 {0,120,240} ↦ {180,60,300} 不封闭 ⇒ 不自重合。 */
+     p=3 的 {0,120,240} ↦ {180,60,300} 不封闭 ⇒ 不自重合。
+     ⚠ 开了 L0 绕行曲线时，(n,k) 曲线一般不具备这个对称性 ⇒ 一律按整圈算。 */
   function hasHalfTurnZ(sc) {
-    var c = sceneInfo(sc).c, EPS = 1e-7, i, j, k, ok, ti, wi, tj, wj, s;
+    if (S.curve) return false;
+    var c = sceneInfo(sc).c, EPS = 1e-7, i, j, ok, ti, wi, tj, wj, s;
     function near(a, b) { return Math.abs(a - b) < EPS; }
     function nearV(a, b) { return near(a[0], b[0]) && near(a[1], b[1]) && near(a[2], b[2]); }
     for (i = 0; i < sc.length; i++) {
@@ -962,22 +1482,21 @@ function encodeGif(frames, W, H, delayCs) {
         if (!near(A.r, B.r) || !near(A.sU, B.sU)) continue;
         tj = B.t; wj = B.wh;
         if (!nearV(ti, tj)) continue;
-        s = (wi[0] * wj[0] + wi[1] * wj[1] + wi[2] * wj[2]) > 0 ? 1 : -1;   /* ŵ 取 ± */
+        s = (wi[0] * wj[0] + wi[1] * wj[1] + wi[2] * wj[2]) > 0 ? 1 : -1;
         if (nearV(wi, [wj[0] * s, wj[1] * s, wj[2] * s])) ok = true;
       }
       if (!ok) return false;
     }
     return true;
   }
-  /* GIF 的扫描范围：自重合 ⇒ 半圈（180°）就够，360° 的后半圈是复本 */
   function gifSpan(sc) { return hasHalfTurnZ(sc) ? 180 : 360; }
 
-  /* 场景包围球（旋转不变）：中心取所有环中心的包围盒中心，半径取 max|t−c|+sU+r */
+  /* 场景包围球：中心取所有环中心的包围盒中心，半径取 max|t−c|+sU+r */
   function sceneInfo(sc) {
-    var i, mn = [1e300, 1e300, 1e300], mx = [-1e300, -1e300, -1e300], t;
+    var i, mn = [1e300, 1e300, 1e300], mx = [-1e300, -1e300, -1e300], t, k;
     for (i = 0; i < sc.length; i++) {
       t = sc[i].t;
-      for (var k = 0; k < 3; k++) { if (t[k] < mn[k]) mn[k] = t[k]; if (t[k] > mx[k]) mx[k] = t[k]; }
+      for (k = 0; k < 3; k++) { if (t[k] < mn[k]) mn[k] = t[k]; if (t[k] > mx[k]) mx[k] = t[k]; }
     }
     var c = [(mn[0] + mx[0]) / 2, (mn[1] + mx[1]) / 2, (mn[2] + mx[2]) / 2];
     var R = 0;
@@ -988,13 +1507,13 @@ function encodeGif(frames, W, H, delayCs) {
 
   /* 自适应细分：屏幕上主圆 / 管的周长决定 φ、θ 段数
      ⚠ S.qual 是「精细度倍率」—— 越大段数越多（所以乘、不是除） */
-  function segsFor(tor, scale) {
-    var q = S.qual * (S.spin ? 0.62 : 1);
+  function segsFor(tor, scale, qmul) {
+    var q = S.qual * (qmul === undefined ? 1 : qmul) * ((S.spin || S.rev) ? 0.62 : 1);
     var circ = 2 * Math.PI * tor.sU * scale;      /* 主圆周长（像素） */
     var tub = 2 * Math.PI * tor.r * scale;        /* 管截面周长（像素） */
     var M = Math.round(circ * q / 9);
     var K = Math.round(tub * q / 9);
-    M = Math.max(6, Math.min(128, M)); M -= M % 2;
+    M = Math.max(6, Math.min(160, M)); M -= M % 2;
     K = Math.max(4, Math.min(28, K)); K -= K % 2;
     if (M < 6) M = 6; if (K < 4) K = 4;
     return [M, K];
@@ -1010,59 +1529,139 @@ function encodeGif(frames, W, H, delayCs) {
       case 3: return [p, q, v]; case 4: return [t, p, v]; default: return [v, p, q];
     }
   }
-  function rgbOfHex(h) {
-    return [parseInt(h.substr(1, 2), 16) / 255,
-            parseInt(h.substr(3, 2), 16) / 255,
-            parseInt(h.substr(5, 2), 16) / 255];
-  }
   /* 取某只环的基色；fu/fv ∈ [0,1) 为该面片在 (φ,θ) 上的参数位置 */
   function baseColor(tor, fu, fv) {
     if (S.scheme === 'mono') return MONO;
     if (S.scheme === 'param') return hsv2rgb(0.68 * fu + 0.30 * fv, 0.62, 0.98);
-    var c = LVCOL[Math.min(tor.lv, LVCOL.length - 1)];
-    return c;
+    return LVCOL[Math.min(tor.lv, LVCOL.length - 1)];
   }
 
-  /* ======================================================== 3. 相机 */
+  /* ============================================ 3. L0 环面绕行曲线 (n,k) */
+  /* φ = n·τ, θ = k·τ —— 与 TorusPaths 的 TorusPath[a,R,n,k]=Torus[n a, k a, R] 同构。
+     返回 {p: 世界点, n: 单位外法向}，法向用于把曲线沿表面微微抬起（防 z-fighting）。 */
+  function curveRaw(tor, n, k, N) {
+    var pts = [], nrm = [], i, tau, phi, th, A, cph, sph, cth, sth;
+    for (i = 0; i <= N; i++) {
+      tau = i / N * 2 * Math.PI;
+      phi = n * tau; th = k * tau;
+      cph = Math.cos(phi); sph = Math.sin(phi); cth = Math.cos(th); sth = Math.sin(th);
+      A = tor.sU + tor.r * cth;
+      pts.push([
+        tor.t[0] + cph * A * tor.uh[0] + tor.r * sth * tor.vh[0] + sph * A * tor.wh[0],
+        tor.t[1] + cph * A * tor.uh[1] + tor.r * sth * tor.vh[1] + sph * A * tor.wh[1],
+        tor.t[2] + cph * A * tor.uh[2] + tor.r * sth * tor.vh[2] + sph * A * tor.wh[2]
+      ]);
+      nrm.push([
+        cth * (cph * tor.uh[0] + sph * tor.wh[0]) + sth * tor.vh[0],
+        cth * (cph * tor.uh[1] + sph * tor.wh[1]) + sth * tor.vh[1],
+        cth * (cph * tor.uh[2] + sph * tor.wh[2]) + sth * tor.vh[2]
+      ]);
+    }
+    return { p: pts, n: nrm };
+  }
+
+  /* 逐小段入绘制列表：每段一个绘制项 ⇒ 深度按段排序 ⇒ 前侧可见、后侧被环面挡住
+     n,k 由调用方按「这一级自己的曲线参数」传进来（L0=(5,1680)，L1+=(1,7)） */
+  function drawWinding(L, tor, cam, n, k, lw) {
+    n = n | 0; k = k | 0;
+    if (!n && !k) n = 1;
+    /* 采样数：每绕管一圈至少 ~4 点才不出摩尔纹；但每段都是一个独立的深度排序项，
+       必须封顶 —— 密绕（k 上千）时像素级已经分辨不出单圈，再多也只是噪声。 */
+    var cap = S.capN || ((S.spin || S.rev) ? 2600 : 6000);
+    var N = Math.round(Math.max(240, Math.min(cap, 4 * Math.abs(k) + 80 * Math.abs(n))));
+    var cr = curveRaw(tor, n, k, N);
+    var eps = 2.2 / (cam.scale || 1);          /* 沿外法向抬起约 2 px：压住曲面片的排序误差，又不脱离表面 */
+    var th = (lw === undefined ? 3.0 : lw);
+    /* 深度偏置：曲面片是按「四边形质心」排序的，一段曲线可能被质心更近的大片面盖住而断成虚线。
+       这里给曲线一点向前的偏置（0.13·管半径 ≈ 3~5 px），只压住同表面的片，不会穿到前面别的环上。 */
+    var bias = 0.04 * tor.r;
+    var a = cr.p[0], an = cr.n[0], i, b, bn, col;
+    for (i = 0; i < N; i++) {
+      b = cr.p[i + 1]; bn = cr.n[i + 1];
+      col = hsv2rgb(0.02 + 0.90 * (i / N), 0.82, 1.0);
+      L.line(
+        [a[0] + an[0] * eps, a[1] + an[1] * eps, a[2] + an[2] * eps],
+        [b[0] + bn[0] * eps, b[1] + bn[1] * eps, b[2] + bn[2] * eps],
+        { rgb: col, lw: th, alpha: 0.98, depth: bias });
+      a = b; an = bn;
+    }
+    return N;
+  }
+
+  /* ======================================================== 4. 相机 */
+  /* camFor(W, H, sc)
+     ⚠ 取景必须按「真实几何的投影包围盒」算，不能按外接球：外接球在正交投影下
+     永远给出一个正方形包围框，画布一宽就全是空边（实测只用到 60% 的画布）。
+     这里把每只环的外沿圆（t + (sU+r)(cos·uh + sin·wh)）采样投影，量出屏幕上的
+     真实 x/y 跨度，再分别按宽、高定缩放取小者，并把包围盒中心挪到画布正中。 */
   function camFor(W, H, sc) {
-    var info = sceneInfo(sc);
-    var scale = Math.min(W, H) * (1 - 2 * PAD) / (2 * info.R) * S.zom;
-    var eye, up, dz;
+    var info = sceneInfo(sc), eye, up, dz, d;
     if (S.camMode === 'nb') {
-      eye = M3.add(info.c, [0, 0, 1e4]); up = [0, 1, 0];       /* ViewPoint->{0,0,100}：沿 -z */
+      d = [0, 0, 1]; up = [0, 1, 0];                           /* ViewPoint->{0,0,100}：沿 -z */
     } else {
       var cy = Math.cos(S.pit * Math.PI / 180);
       dz = Math.sin(S.pit * Math.PI / 180);
-      var d = [cy * Math.cos(S.yaw * Math.PI / 180), cy * Math.sin(S.yaw * Math.PI / 180), dz];
-      eye = M3.add(info.c, M3.mul(d, 1e4));
+      d = [cy * Math.cos(S.yaw * Math.PI / 180), cy * Math.sin(S.yaw * Math.PI / 180), dz];
       up = Math.abs(dz) > 0.999 ? [0, 1, 0] : [0, 0, 1];
     }
-    var cam = M3.camOrtho(W, H, eye, info.c, up, scale);
-    cam.center = info.c;
+    var eye0 = M3.add(info.c, M3.mul(d, 1e4));
+    var c0 = M3.camOrtho(W, H, eye0, info.c, up, 1);           /* 先用 scale=1 量跨度 */
+    var mnx = 1e300, mxx = -1e300, mny = 1e300, mxy = -1e300, i, a, N = 24;
+    for (i = 0; i < sc.length; i++) {
+      var t = sc[i], R = t.sU + t.r, uh = t.uh, wh = t.wh, tp = t.t;
+      for (a = 0; a < N; a++) {
+        var an = a * 2 * Math.PI / N, ca = Math.cos(an) * R, sa = Math.sin(an) * R;
+        var v = M3.view(c0, [tp[0] + uh[0] * ca + wh[0] * sa,
+                             tp[1] + uh[1] * ca + wh[1] * sa,
+                             tp[2] + uh[2] * ca + wh[2] * sa]);
+        if (v[0] < mnx) mnx = v[0]; if (v[0] > mxx) mxx = v[0];
+        if (v[1] < mny) mny = v[1]; if (v[1] > mxy) mxy = v[1];
+      }
+    }
+    var bw = mxx - mnx, bh = mxy - mny;
+    if (!(bw > 1e-9)) bw = info.R * 2;                          /* 单点退化 */
+    if (!(bh > 1e-9)) bh = info.R * 2;
+    var fill = 1 - 2 * PAD;
+    var scale = Math.min(W * fill / bw, H * fill / bh) * S.zom;
+    /* 包围盒中心挪到画布中心：正交下沿 s/u 平移 eye 与 target 不改变视线方向 */
+    var tgt = M3.add(info.c, M3.add(M3.mul(c0.s, (mnx + mxx) / 2), M3.mul(c0.u, (mny + mxy) / 2)));
+    var cam = M3.camOrtho(W, H, M3.add(tgt, M3.mul(d, 1e4)), tgt, up, scale);
+    cam.center = tgt;
     return cam;
   }
 
-  /* ======================================================== 4. 绘制 */
+  /* ======================================================== 5. 绘制 */
+  var lastStat = { quads: 0, lod: 0, curve: 0, ms: 0 };
+  var lastWH = [600, 420];
+
   function paintInto(ctx, W, H, sc, cam, opt) {
     opt = opt || {};
     var L = new M3.List(), i, j, a, b;
     var alpha = opt.alpha === undefined ? S.alpha : opt.alpha;
     var wire = opt.wire === undefined ? S.wire : opt.wire;
-    var total = 0;
+    var qmul = opt.qmul;
+    var quads = 0, lod = 0, l0 = null;
 
     for (i = 0; i < sc.length; i++) {
       var tor = sc[i];
-      var mk = segsFor(tor, cam.scale);
-      var M = mk[0], K = mk[1];
-      /* 参数网格 (M+1)×(K+1) */
-      var gp = [], gph = [], gth = [];
-      for (a = 0; a <= M; a++) gph.push(a / M * 2 * Math.PI);
-      for (b = 0; b <= K; b++) gth.push(b / K * 2 * Math.PI);
-      for (a = 0; a <= M; a++) {
-        gp[a] = [];
-        for (b = 0; b <= K; b++) gp[a][b] = torusPt(tor, gph[a], gth[b]);
-      }
+      var isL0 = (tor.lv === 0);
+      if (isL0) l0 = tor;
+      var cur = isL0 && S.curve;
+      var sm = cur ? S.surf : 'solid';           /* none | mesh | ghost | half | solid */
+      var scr = (tor.sU + tor.r) * cam.scale;    /* 屏幕上的外接半径（px） */
+      var mk, M, K, gp, gph, gth, a0, col, stroke;
+
+      if (sm === 'none') continue;
+
       if (wire) {
+        mk = segsFor(tor, cam.scale, qmul); M = mk[0]; K = mk[1];
+        gp = []; gph = []; gth = [];
+        for (a = 0; a <= M; a++) gph.push(a / M * 2 * Math.PI);
+        for (b = 0; b <= K; b++) gth.push(b / K * 2 * Math.PI);
+        for (a = 0; a <= M; a++) {
+          gp[a] = [];
+          for (b = 0; b <= K; b++) gp[a][b] = torusPt(tor, gph[a], gth[b]);
+        }
         for (a = 0; a < M; a++) {
           var pl = [];
           for (b = 0; b <= K; b++) pl.push(gp[a][b]);
@@ -1073,27 +1672,133 @@ function encodeGif(frames, W, H, delayCs) {
           for (a = 0; a <= M; a++) pl2.push(gp[a][b]);
           L.polyline(pl2, { rgb: baseColor(tor, 0, b / K), lw: 0.9, alpha: 0.95 });
         }
-        total += M + K;
-      } else {
-        for (a = 0; a < M; a++) {
-          for (b = 0; b < K; b++) {
-            L.quad([gp[a][b], gp[a + 1][b], gp[a + 1][b + 1], gp[a][b + 1]],
-                   baseColor(tor, (a + 0.5) / M, (b + 0.5) / K),
-                   { alpha: alpha });
-            total++;
-          }
+        quads += M + K;
+        continue;
+      }
+
+      /* —— LOD：屏幕上太小的环改成一次描边 / 一个点 —— */
+      col = baseColor(tor, 0.5, 0.5);
+      var dim = Math.max(0.42, 1 - 0.085 * tor.lv);   /* 越深越暗：几像素的点不该抢戏 */
+      var colD = [col[0] * dim, col[1] * dim, col[2] * dim];
+      if (!isL0 && scr < 3.0) { L.dot(tor.t, tor.sU + tor.r, { rgb: colD, alpha: 0.92 }); lod++; continue; }
+      if (!isL0 && scr < 15) { L.ann(tor.t, tor.sU, 2 * tor.r, { rgb: colD, alpha: 0.92 }); lod++; continue; }
+
+      mk = segsFor(tor, cam.scale, qmul); M = mk[0]; K = mk[1];
+      if (cur) { M = Math.max(M, 96); K = Math.max(K, 28); }   /* L0 是主角：细分给足，曲线才不会被子片排序切断 */
+      gp = []; gph = []; gth = [];
+      for (a = 0; a <= M; a++) gph.push(a / M * 2 * Math.PI);
+      for (b = 0; b <= K; b++) gth.push(b / K * 2 * Math.PI);
+      for (a = 0; a <= M; a++) {
+        gp[a] = [];
+        for (b = 0; b <= K; b++) gp[a][b] = torusPt(tor, gph[a], gth[b]);
+      }
+      a0 = (sm === 'mesh') ? 0 : (sm === 'ghost' ? 0.13 : (sm === 'half' ? 0.42 : alpha));
+      stroke = null;
+      if (sm === 'mesh') {
+        var bc = baseColor(tor, 0.5, 0.5);
+        stroke = 'rgba(' + (bc[0] * 255 | 0) + ',' + (bc[1] * 255 | 0) + ',' + (bc[2] * 255 | 0) + ',0.42)';
+      }
+      /* 解析法向网格：n(φ,θ) = cosθ·(cosφ û + sinφ ŵ) + sinθ v̂
+         —— 用几何叉积做法向会让每片亮度台阶化（一圈圈"棱"），参数曲面必须用解析法向才平滑。 */
+      var rad = [], cth = [], sth = [];
+      for (a = 0; a <= M; a++) {
+        var cp = Math.cos(gph[a]), sp = Math.sin(gph[a]);
+        rad.push([cp * tor.uh[0] + sp * tor.wh[0], cp * tor.uh[1] + sp * tor.wh[1], cp * tor.uh[2] + sp * tor.wh[2]]);
+      }
+      for (b = 0; b <= K; b++) { cth.push(Math.cos(gth[b])); sth.push(Math.sin(gth[b])); }
+      for (a = 0; a < M; a++) {
+        for (b = 0; b < K; b++) {
+          var ct = Math.cos(gth[b] + 0.5 * Math.PI / K), st = Math.sin(gth[b] + 0.5 * Math.PI / K);
+          var ax = (rad[a][0] + rad[a + 1][0]) * 0.5, ay = (rad[a][1] + rad[a + 1][1]) * 0.5, az = (rad[a][2] + rad[a + 1][2]) * 0.5;
+          L.quad([gp[a][b], gp[a + 1][b], gp[a + 1][b + 1], gp[a][b + 1]],
+            baseColor(tor, (a + 0.5) / M, (b + 0.5) / K),
+            {
+              alpha: a0, stroke: stroke, lw: 0.7,
+              nrm: [ct * ax + st * tor.vh[0], ct * ay + st * tor.vh[1], ct * az + st * tor.vh[2]]
+            });
+          quads++;
         }
       }
     }
+
+    var nc = 0;
+    if (S.curve) {
+      var lvMax = (S.curveLv | 0);
+      for (i = 0; i < sc.length; i++) {
+        var tw2 = sc[i];
+        if (tw2.lv > lvMax) continue;
+        var nk2 = curveNK(tw2.lv);
+        nc += drawWinding(L, tw2, cam, nk2[0], nk2[1], tw2.lv === 0 ? 3.0 : 1.7);
+      }
+    }
+
     L.flush(ctx, cam);
-    return total;
+    lastStat = { quads: quads, lod: lod, curve: nc, ms: lastStat.ms };
+    return quads;
   }
 
-  function fitCanvas(cv, ratio) {
+  /* 主画布一屏能放下的高度上限（px） */
+  function mainMaxH() {
+    var cv = CV.main, card = document.getElementById('cardMain');
+    var hd = document.querySelector('header');
+    var hh = hd ? hd.offsetHeight : 120;
+    if (!cv || !card || !cv.parentNode) return Math.max(240, window.innerHeight - hh - 260);
+    var host = cv.parentNode, n, before = 0, after = 0;
+    for (n = card.firstElementChild; n && n !== host; n = n.nextElementSibling) {
+      before += n.offsetHeight + 6;
+    }
+    /* 全屏：卡片 fixed 盖住整个视口（顶栏被压在下面），高度只减标题行与内边距 */
+    if (document.body.classList.contains('cvfull')) {
+      return Math.max(240, Math.round(window.innerHeight - 8));
+    }
+    for (n = host.nextElementSibling; n; n = n.nextElementSibling) after += n.offsetHeight + 8;
+    /* 视口高 − 顶栏 − 画布上方元素 − 画布下方元素 − 卡片上下内边距与间隙 */
+    var pad = 10 + 12 + 14;
+    return Math.max(220, Math.round(window.innerHeight - hh - before - after - pad));
+  }
+
+  /* 自然布局（非全屏）下主画布能有多高：用来判断「要不要自动铺满」 */
+  function naturalMaxH() {
+    var was = document.body.classList.contains('cvfull');
+    if (was) document.body.classList.remove('cvfull');
+    var h = mainMaxH();
+    if (was) document.body.classList.add('cvfull');
+    return h;
+  }
+
+  /* 自动铺满：内联布局给不出够看的高度时，直接把主视窗铺满整个窗口。
+     AUTO.veto = 用户亲手点过「退出全屏」，就不再自动进。 */
+  var AUTO = { veto: false };
+  function autoFill() {
+    if (!AUTO.veto) {
+      var vh = window.innerHeight;
+      var need = Math.max(420, Math.round(vh * 0.45));   /* 内联至少要有这么高，否则铺满 */
+      var want = (vh >= 320) && (naturalMaxH() < need);
+      if (want !== document.body.classList.contains('cvfull')) {
+        AUTO.prog = true; toggleFull(want); AUTO.prog = false;
+        return;
+      }
+    }
+    drawMain();
+  }
+
+  /* fitCanvas(cv, ratio, maxH)
+     maxH 只给主画布用：宽度取父容器 .cvbox 的宽，若按比例算出的高度超过 maxH，
+     就反过来按高度定宽并水平居中 —— 这样主视图永远整屏可见，不用滚动。 */
+  function fitCanvas(cv, ratio, maxH) {
     if (!cv) return [0, 0];
     var dpr = Math.min(window.devicePixelRatio || 1, 2);
-    var w = cv.clientWidth || 600;
-    var h = Math.max(1, Math.round(w / ratio));
+    var w, h;
+    if (maxH) {
+      var box = cv.parentNode;
+      w = Math.max(240, (box && box.clientWidth) || cv.clientWidth || 600);
+      h = Math.round(w / ratio);
+      if (h > maxH) { h = Math.round(maxH); w = Math.round(h * ratio); }
+      cv.style.width = w + 'px';
+    } else {
+      w = cv.clientWidth || 600;
+      h = Math.max(1, Math.round(w / ratio));
+    }
     cv.width = Math.round(w * dpr);
     cv.height = Math.round(h * dpr);
     cv.style.height = h + 'px';
@@ -1102,81 +1807,105 @@ function encodeGif(frames, W, H, delayCs) {
     return [w, h];
   }
 
-  var lastQuads = 0, lastMs = 0, lastWH = [600, 420];
   function drawMain() {
     var cv = CV.main; if (!cv) return;
-    var wh = fitCanvas(cv, NBW / NBH);
+    /* 全屏时画布不再守 500×350：改用窗口比例，宽屏里高度才能用满
+       （取景本身按投影包围盒算，改比例不会拉伸图形） */
+    var full = document.body.classList.contains('cvfull');
+    var ratio = full ? Math.max(0.5, window.innerWidth / Math.max(1, window.innerHeight - 6)) : NBW / NBH;
+    var wh = fitCanvas(cv, ratio, mainMaxH());
     lastWH = wh;
     var ctx = cv.getContext('2d');
     ctx.clearRect(0, 0, wh[0], wh[1]);
-    var sc = sceneOf(S.a, S.p, S.g);
+    var sc = sceneOf();
     var cam = camFor(wh[0], wh[1], sc);
     var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
-    lastQuads = paintInto(ctx, wh[0], wh[1], sc, cam);
-    lastMs = ((window.performance && performance.now) ? performance.now() : Date.now()) - t0;
-    var q = $('mQuad'); if (q) q.textContent = lastQuads;
+    paintInto(ctx, wh[0], wh[1], sc, cam);
+    lastStat.ms = ((window.performance && performance.now) ? performance.now() : Date.now()) - t0;
   }
 
-  /* 定格：固定 p、g 从 1 到 4 */
-  var SEQQ = [1, 2, 3, 4];
+  /* 定格：拿最大那四级 g（g<4 时退回 1..4） */
+  function seqLevels() {
+    var g = S.g, out = [], i, v;
+    if (g >= 4) { for (i = 0; i < 4; i++) out.push(g - 3 + i); }
+    else { for (i = 0; i < 4; i++) { v = Math.min(g, i + 1); out.push(v); } }
+    return out;
+  }
   function drawSeq() {
-    var i;
+    var lv = seqLevels(), i;
     for (i = 0; i < 4; i++) {
       var cv = CV.q[i]; if (!cv) continue;
       var wh = fitCanvas(cv, 4 / 3);
       var ctx = cv.getContext('2d');
       ctx.clearRect(0, 0, wh[0], wh[1]);
-      var sc = sceneOf(S.a, S.p, SEQQ[i]);
+      var sc = sceneG(lv[i], 0);
       var cam = camFor(wh[0], wh[1], sc);
-      paintInto(ctx, wh[0], wh[1], sc, cam, { alpha: 1, wire: false });
+      paintInto(ctx, wh[0], wh[1], sc, cam, { alpha: 1, wire: false, qmul: 0.7 });
     }
+    /* 恢复主画布统计（paintInto 会覆盖 lastStat） */
+    drawMain();
   }
 
-  function renderAt(phase, W, H, a, p, g, camMode, yaw, pit, zom, scheme, qual) {
+  /* 离屏渲染（GIF 用）；over 里的键临时覆盖 S */
+  function renderAt(W, H, over) {
+    over = over || {};
+    var sv = {}, k;
+    for (k in S) sv[k] = S[k];
+    for (k in over) S[k] = over[k];
+    S.spin = false;                 /* ⚠ 离屏要按满精细度来（segsFor 会读 S.spin 降档） */
+    S.rev = false; S.revPh = 0;      /* 导出用定格相位，结果可复现 */
     var cv = document.createElement('canvas');
     cv.width = W; cv.height = H;
     var ctx = cv.getContext('2d');
     ctx.fillStyle = '#0b0912'; ctx.fillRect(0, 0, W, H);
-    var sv = { a: S.a, p: S.p, g: S.g, camMode: S.camMode, yaw: S.yaw, pit: S.pit,
-               zom: S.zom, scheme: S.scheme, qual: S.qual, spin: S.spin, alpha: S.alpha };
-    S.a = a === undefined ? S.a : a; S.p = p === undefined ? S.p : p; S.g = g === undefined ? S.g : g;
-    if (camMode !== undefined) S.camMode = camMode;
-    if (yaw !== undefined) S.yaw = yaw;
-    if (pit !== undefined) S.pit = pit;
-    if (zom !== undefined) S.zom = zom;
-    if (scheme !== undefined) S.scheme = scheme;
-    if (qual !== undefined) S.qual = qual;
-    S.spin = false;                 /* ⚠ 离屏渲染要按满精细度来（segsFor 会读 S.spin 降档） */
-    var sc = sceneOf(S.a, S.p, S.g);
+    var sc = sceneG(S.g);
     var cam = camFor(W, H, sc);
     paintInto(ctx, W, H, sc, cam, { alpha: 1, wire: false });
-    for (var k in sv) S[k] = sv[k];
+    for (k in sv) S[k] = sv[k];
     return cv;
   }
 
-  /* ======================================================== 5. UI 工具 */
+  /* ======================================================== 6. UI 工具 */
   function $(id) { return document.getElementById(id); }
   var REF = {};
   /* ⚠ REF 里存的必须是「无参调用即把 S[key] 推回控件」的函数：
      syncAll() 直接 for(k in REF) REF[k]()，传值会变成 undefined/NaN。 */
+  /* dec 可以是数字，也可以是 (v)=>位数 的函数（ρ 降到 0.007 时要多给几位） */
+  function fmtDec(v, d) {
+    if (typeof d === 'function') d = d(v);
+    return (d === 0) ? String(Math.round(v)) : Number(v).toFixed(d);
+  }
   function bindPair(sid, vid, lo, hi, key, set, dec) {
     var s = $(sid), v = vid ? $(vid) : null;
     if (!s) return;
     REF[sid] = function () {
       var val = S[key];
       s.value = val;
-      if (v) v.value = (dec === 0 ? Math.round(val) : Number(val).toFixed(dec));
+      if (v) v.value = fmtDec(val, dec);
     };
     function push(val) {
       val = Number(val);
       if (!(val >= lo && val <= hi)) val = Math.min(hi, Math.max(lo, val));
       set(val);
-      if (v) v.value = (dec === 0 ? Math.round(val) : val.toFixed(dec));
+      if (v) v.value = fmtDec(val, dec);
       s.value = val;
       afterParam();
     }
     s.addEventListener('input', function () { push(this.value); });
     if (v) v.addEventListener('input', function () { push(this.value); });
+  }
+  /* 纯数字输入（不解整数、不联动滑块）—— 给 (n,k) 这种可能上千的值用 */
+  function bindNum(id, lo, hi, key) {
+    var el = $(id); if (!el) return;
+    REF[id] = function () { el.value = S[key]; };
+    el.addEventListener('input', function () {
+      var val = Number(this.value);
+      if (!isFinite(val)) return;
+      val = Math.min(hi, Math.max(lo, Math.round(val)));
+      S[key] = val;
+      afterParam();
+    });
+    el.addEventListener('change', function () { el.value = S[key]; });
   }
   function bindCheck(id, key, onSet) {
     var el = $(id); if (!el) return;
@@ -1187,60 +1916,469 @@ function encodeGif(frames, W, H, delayCs) {
       afterParam();
     });
   }
-  function afterParam() { syncAll(); drawMain(); drawSeq(); refreshReadouts(); }
-  function syncAll() {
-    var k;
-    for (k in REF) REF[k]();
-    if (S.camMode === 'nb') { var b = $('bCamNb'); if (b) b.classList.add('on'); }
-    else { var b2 = $('bCamNb'); if (b2) b2.classList.remove('on'); }
+
+  /* ======================================================== 7. 间隙校验 */
+  /* 主圆（管轴线）采样 —— 用于兄弟环之间的最小距离 */
+  function ringCircle(tor, N) {
+    var out = [], i, ph, c, s;
+    for (i = 0; i < N; i++) {
+      ph = i / N * 2 * Math.PI;
+      c = Math.cos(ph); s = Math.sin(ph);
+      out.push([
+        tor.t[0] + c * tor.sU * tor.uh[0] + s * tor.sU * tor.wh[0],
+        tor.t[1] + c * tor.sU * tor.uh[1] + s * tor.sU * tor.wh[1],
+        tor.t[2] + c * tor.sU * tor.uh[2] + s * tor.sU * tor.wh[2]
+      ]);
+    }
+    return out;
+  }
+  /* 两只环之间的间隙 = min|主圆点对距离| − rA − rB
+     · 相扣的父子环：这个值恰好等于 sU_child − r_p − r_c（精确）
+     · 并排的兄弟环：它是真实曲面距离的**下界**（保守） */
+  function sibGap(A, B) {
+    var ca = ringCircle(A, 96), cb = ringCircle(B, 96);
+    var i, j, dx, dy, dz, d2, best = 1e18;
+    for (i = 0; i < ca.length; i++) {
+      for (j = 0; j < cb.length; j++) {
+        dx = ca[i][0] - cb[j][0]; dy = ca[i][1] - cb[j][1]; dz = ca[i][2] - cb[j][2];
+        d2 = dx * dx + dy * dy + dz * dz;
+        if (d2 < best) best = d2;
+      }
+    }
+    return Math.sqrt(best) - A.r - B.r;
   }
 
-  /* ======================================================== 6. 读数 */
+  /* ---------- 精确一点的「点 → 圆」闭式，供父子间隙用 ---------- */
+  function dPtCircle(p, T) {
+    var ax = p[0] - T.t[0], ay = p[1] - T.t[1], az = p[2] - T.t[2];
+    var a = ax * T.uh[0] + ay * T.uh[1] + az * T.uh[2];
+    var b = ax * T.wh[0] + ay * T.wh[1] + az * T.wh[2];
+    var h2 = ax * ax + ay * ay + az * az - a * a - b * b;
+    if (h2 < 0) h2 = 0;
+    var rr = Math.sqrt(a * a + b * b) - T.sU;
+    return Math.sqrt(h2 + rr * rr);
+  }
+  function ptOnC(T, t) {
+    var c = Math.cos(t), s = Math.sin(t);
+    return [T.t[0] + c * T.sU * T.uh[0] + s * T.sU * T.wh[0],
+            T.t[1] + c * T.sU * T.uh[1] + s * T.sU * T.wh[1],
+            T.t[2] + c * T.sU * T.uh[2] + s * T.sU * T.wh[2]];
+  }
+  /* 两条管轴圆的最小距离：小环采样 96 点 + 三分细化 ⇒ 误差 < 1e-5（不扣弓高，要的是真值） */
+  function axisDist(A, B) {
+    var sm = (A.sU <= B.sU) ? A : B, bg = (A.sU <= B.sU) ? B : A;
+    var N = 96, i, t, best = 1e18, bp = 0, d, ta, tb, m1, m2, d1, d2;
+    for (i = 0; i < N; i++) {
+      t = i / N * 2 * Math.PI;
+      d = dPtCircle(ptOnC(sm, t), bg);
+      if (d < best) { best = d; bp = t; }
+    }
+    ta = bp - 2 * Math.PI / N; tb = bp + 2 * Math.PI / N;
+    for (i = 0; i < 42; i++) {
+      m1 = ta + (tb - ta) / 3; m2 = tb - (tb - ta) / 3;
+      d1 = dPtCircle(ptOnC(sm, m1), bg); d2 = dPtCircle(ptOnC(sm, m2), bg);
+      if (d1 < d2) tb = m2; else ta = m1;
+    }
+    return Math.min(best, dPtCircle(ptOnC(sm, (ta + tb) / 2), bg));
+  }
+  function pairGap(A, B) { return axisDist(A, B) - A.r - B.r; }
+
+  var _gk = '', _gv = null;
+  /* 父子间隙现在是**实算**的（取第一只 L 环与它的第一只子环，量两条管轴圆）
+     —— 挂到曲线上以后 sU(L+1) − r(L) − r(L+1) 这个解析式不再成立。 */
+  function gapInfo() {
+    var key = [S.a, S.p, S.g, S.mode, S.q, S.rho, S.nW, S.kW, attKey()].join('|');
+    if (_gv && _gk === key) return _gv;
+    var self = (S.mode === 'self'), q = self ? S.q : 0.5, lv, sU, r;
+    var rows = [], sc = sceneStill(), i, kk;
+    for (lv = 0; lv <= S.g; lv++) {
+      sU = S.a * Math.pow(q, lv);
+      r = self ? S.rho * sU : NB_TUBE;
+      rows.push({ lv: lv, cnt: Math.pow(S.p, lv), sU: sU, r: r, rho: r / sU, gap: null, sib: null,
+                  gapAn: null });
+    }
+    var first = [];
+    for (lv = 0; lv <= S.g; lv++) {
+      first[lv] = -1;
+      for (i = 0; i < sc.length; i++) if (sc[i].lv === lv) { first[lv] = i; break; }
+    }
+    for (lv = 0; lv + 1 < rows.length; lv++) {
+      rows[lv].gapAn = rows[lv + 1].sU - rows[lv].r - rows[lv + 1].r;   /* nb 原式的解析值 */
+      var pa = first[lv], ch = -1;
+      for (i = 0; i < sc.length; i++) if (sc[i].lv === lv + 1 && sc[i].pi === pa) { ch = i; break; }
+      if (pa >= 0 && ch >= 0) rows[lv].gap = pairGap(sc[pa], sc[ch]);
+      else rows[lv].gap = rows[lv].gapAn;
+    }
+    for (lv = 0; lv < rows.length; lv++) {
+      kk = [];
+      for (i = 0; i < sc.length && kk.length < 2; i++) if (sc[i].lv === lv) kk.push(sc[i]);
+      if (kk.length === 2) rows[lv].sib = pairGap(kk[0], kk[1]);
+    }
+    var minGap = Infinity, minSib = Infinity;
+    for (lv = 0; lv < rows.length; lv++) {
+      if (rows[lv].gap !== null && rows[lv].gap < minGap) minGap = rows[lv].gap;
+      if (rows[lv].sib !== null && rows[lv].sib < minSib) minSib = rows[lv].sib;
+    }
+    var res = {
+      rows: rows, minGap: minGap, minSib: minSib, q: q, self: self, curved: attachOn(),
+      ok: (minGap >= 0 && minSib >= 0)
+    };
+    _gk = key; _gv = res;
+    return res;
+  }
+
+  /* 自相似模式下的解析上限 */
+  function gradLimits() {
+    var self = (S.mode === 'self');
+    var q = self ? S.q : 0.5;
+    var rho = self ? S.rho : NB_TUBE / S.a;
+    return {
+      q: q, rho: rho,
+      rhoMax: q / (1 + q),                        /* 父子不重叠上限 */
+      sibMaxRho: Math.sin(Math.PI / S.p) / q - 1, /* 兄弟不重叠上限 */
+      clearRel: (q - rho * (1 + q)) / q,          /* Δ / sU(L+1) */
+      self: self
+    };
+  }
+
+  /* =============================================== 7b. 全环对复核（跨层）
+     为什么必须做这一层：父子不重叠（ρ≤q/(1+q)）与兄弟不重叠（ρ≤sin(π/p)/q−1）
+     都只是**必要**条件 —— 深层的孙环会绕回来撞上外层（甚至 L0）的管。
+     真正的充要条件可以写死成一个数：
+       自相似下 r(L)=ρ·sU(L) ⇒ 任意两环间隙 = (sU_i+sU_j)·( d_ij/(sU_i+sU_j) − ρ )
+       ⇒ 全部两两不相交  ⟺  ρ ≤ R*，  R* = min_{i<j} d_ij/(sU_i+sU_j)
+     d_ij 是两条**管轴圆**之间的最小距离，只跟 (a,p,q,g) 有关、跟 ρ 无关
+     ⇒ 结构一改就算一次，之后拖 ρ 滑块不用重算，上限是个常量。
+
+     算 d_ij 用「点到圆的闭式」而不是 48×48 双向采样：
+       点 p 到圆 (c, ê₁, ê₂, R) 的距离 = √( h² + (√(a²+b²) − R)² )，
+       其中 (a,b,h) 是 p−c 在 (ê₁, ê₂, n̂) 上的三个分量。   O(N) 而不是 O(N²)。
+     采样那圈取**较小的**那只：采样弓高误差 = R_small(1−cos(π/N))，
+     相对 (sU_i+sU_j) 不超过 0.11%，且已从结果里减掉（保守）。 */
+  var CAPN = 48;
+  var CAPC = [], CAPS = [];
+  (function () { for (var t = 0; t < CAPN; t++) { CAPC.push(Math.cos(t / CAPN * 2 * Math.PI)); CAPS.push(Math.sin(t / CAPN * 2 * Math.PI)); } })();
+
+  function capKey() {
+    /* ⚠ 挂曲线时子环中心随 ρ 外移（曲线在管面上）⇒ d_ij 也随 ρ 变，key 必须带上 ρ */
+    return [S.a, S.p, S.g, S.q, S.mode, S.rho, S.nW, S.kW, S.nD, S.kD, attKey()].join('|');
+  }
+
+  function CapScan() {
+    var sc = sceneStill(), n = sc.length, i, o;
+    this.sc = sc; this.n = n; this.key = capKey();
+    this.C = new Float64Array(n * 3); this.U = new Float64Array(n * 3); this.W = new Float64Array(n * 3);
+    this.R = new Float64Array(n); this.LV = new Int32Array(n);
+    for (i = 0; i < n; i++) {
+      o = sc[i];
+      this.C[3 * i] = o.t[0]; this.C[3 * i + 1] = o.t[1]; this.C[3 * i + 2] = o.t[2];
+      this.U[3 * i] = o.uh[0]; this.U[3 * i + 1] = o.uh[1]; this.U[3 * i + 2] = o.uh[2];
+      this.W[3 * i] = o.wh[0]; this.W[3 * i + 1] = o.wh[1]; this.W[3 * i + 2] = o.wh[2];
+      this.R[i] = o.sU; this.LV[i] = o.lv;
+    }
+    this.i = 0; this.j = 1;
+    /* 父子对的比值恰好是 q/(1+q)，是场景里真实存在的一对 ⇒ 拿它当初始上界，剪枝立刻见效 */
+    this.best = (n > 1) ? ((S.mode === 'self') ? S.q / (1 + S.q) : 1) : Infinity;
+    this.bi = -1; this.bj = -1; this.bd = 0;
+    this.pairs = 0; this.done = (n < 2);
+  }
+  CapScan.prototype.step = function (budget) {
+    var C = this.C, U = this.U, W = this.W, R = this.R, n = this.n;
+    var i = this.i, j = this.j, best = this.best, cnt = 0, done = this.done;
+    var si, sj, sS, dx, dy, dz, lb, sm, bg, cx, cy, cz, ux, uy, uz, wx, wy, wz, Rb, Rs;
+    var mx, my, mz, tt, ca, sa, px, py, pz, ax, ay, az, aa, bb, h2, rr, dd, b2, rt;
+    while (cnt < budget && !done) {
+      si = R[i]; sj = R[j]; sS = si + sj;
+      dx = C[3 * i] - C[3 * j]; dy = C[3 * i + 1] - C[3 * j + 1]; dz = C[3 * i + 2] - C[3 * j + 2];
+      /* 下界：球包 → 管轴距离 ≥ 中心距 − sU_i − sU_j */
+      lb = (Math.sqrt(dx * dx + dy * dy + dz * dz) - sS) / sS;
+      cnt++;
+      if (lb < best) {
+        sm = (si <= sj) ? i : j; bg = (si <= sj) ? j : i;
+        cx = C[3 * bg]; cy = C[3 * bg + 1]; cz = C[3 * bg + 2];
+        ux = U[3 * bg]; uy = U[3 * bg + 1]; uz = U[3 * bg + 2];
+        wx = W[3 * bg]; wy = W[3 * bg + 1]; wz = W[3 * bg + 2];
+        Rb = R[bg];
+        mx = C[3 * sm]; my = C[3 * sm + 1]; mz = C[3 * sm + 2];
+        Rs = R[sm];
+        b2 = Infinity;
+        for (tt = 0; tt < CAPN; tt++) {
+          ca = CAPC[tt] * Rs; sa = CAPS[tt] * Rs;
+          px = mx + ca * U[3 * sm] + sa * W[3 * sm];
+          py = my + ca * U[3 * sm + 1] + sa * W[3 * sm + 1];
+          pz = mz + ca * U[3 * sm + 2] + sa * W[3 * sm + 2];
+          ax = px - cx; ay = py - cy; az = pz - cz;
+          aa = ax * ux + ay * uy + az * uz;
+          bb = ax * wx + ay * wy + az * wz;
+          h2 = ax * ax + ay * ay + az * az - aa * aa - bb * bb;
+          if (h2 < 0) h2 = 0;
+          rr = Math.sqrt(aa * aa + bb * bb) - Rb;
+          dd = h2 + rr * rr;
+          if (dd < b2) b2 = dd;
+        }
+        dd = Math.sqrt(b2) - Rs * (1 - Math.cos(Math.PI / CAPN));   /* 采样弓高，减掉才保守 */
+        if (dd < 0) dd = 0;
+        rt = dd / sS;
+        if (rt < best) { best = rt; this.bi = i; this.bj = j; this.bd = dd; }
+      }
+      j++;
+      if (j >= n) { i++; j = i + 1; if (i >= n - 1) done = true; }
+    }
+    this.i = i; this.j = j; this.best = best; this.pairs += cnt; this.done = done;
+    return done;
+  };
+
+  var _capVal = null, _capScan = null, _capTimer = 0, _capPct = 0;
+
+  /* 已算好的结果（结构没变才有）；null = 还在算 */
+  function capOf() {
+    if (_capScan || _capTimer) return null;
+    if (_capVal && _capVal.key === capKey()) return _capVal;
+    return null;
+  }
+  function lvGapWord(cap) {
+    var d = Math.abs(cap.lvA - cap.lvB);
+    return (d === 1) ? '，相邻两级' : ('，隔 ' + d + ' 级');
+  }
+  /* 绑定对统一写成「高/低」：扫描是按球包剪枝的，i/j 谁大谁小不固定 */
+  function lvPair(cap) {
+    var a = Math.max(cap.lvA, cap.lvB), b = Math.min(cap.lvA, cap.lvB);
+    return 'L' + a + '/L' + b;
+  }
+  /* "超出多少" 的措辞：小幅超出用百分比，极端（如 p=3 深层）用倍数，免得出现「超出 2733%」这种读不下去的数 */
+  function overW(rho, ratio) {
+    if (!(ratio > 0)) return '超出（上限≈0，几何上塞不进）';
+    var over = rho / ratio;
+    if (over >= 2.5) return '超上限 ' + over.toFixed(1) + ' 倍';
+    return '超出 ' + ((rho / ratio - 1) * 100).toFixed(1) + '%';
+  }
+  /* 结构变了才排一轮；分片跑，不卡滑块 */
+  function capKick() {
+    if (S.mode !== 'self') return;                  /* nb 模式管半径恒定，另有判据 */
+    var k = capKey();
+    if (_capVal && _capVal.key === k) return;
+    if (_capScan || _capTimer) return;
+    _capTimer = window.setTimeout(function () {
+      _capTimer = 0;
+      _capScan = new CapScan(); _capPct = 0;
+      capPump();
+    }, 110);
+  }
+  function capPump() {
+    if (!_capScan) return;
+    var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
+    var done = false, guard = 0;
+    while (!done && guard++ < 400) {
+      done = _capScan.step(3000);
+      var now = (window.performance && performance.now) ? performance.now() : Date.now();
+      if (now - t0 > 9) break;
+    }
+    if (!done) { window.setTimeout(capPump, 0); return; }
+    var s = _capScan; _capScan = null;
+    _capVal = (s.bi < 0) ? null : {
+      key: s.key, ratio: s.best, d: s.bd, pairs: s.pairs, n: s.n,
+      lvA: s.LV[s.bi], lvB: s.LV[s.bj], sA: s.R[s.bi], sB: s.R[s.bj]
+    };
+    refreshReadouts();
+    capKick();
+  }
+
+  /* ======================================================== 8. 读数 */
   function refreshReadouts() {
     var p = S.p, g = S.g, a = S.a, i, lv;
+    var n0 = ringCount(p, g);
+    var q = (S.mode === 'self') ? S.q : 0.5;
+    var r0 = (S.mode === 'self') ? S.rho * a : NB_TUBE;
+
     var m = $('mMain');
     if (m) {
-      var n0 = countOf(p, g);
       m.innerHTML =
         '<span class="k">环总数</span><span class="v big">' + n0 + '</span>' +
-        '<span class="k">层次 g</span><span class="v">' + g + '</span>' +
+        '<span class="k">g 层数</span><span class="v">' + g + '</span>' +
         '<span class="k">每环数 p</span><span class="v">' + p + '</span>' +
-        '<span class="k">厚度 a</span><span class="v">' + a + '</span>' +
-        '<span class="k">主环半径</span><span class="v">' + a + '</span>' +
-        '<span class="k">管半径</span><span class="v">0.5</span>' +
-        '<span class="k">最深环半径</span><span class="v">' + (a / Math.pow(2, g)).toFixed(4) + '</span>' +
-        '<span class="k">面片数</span><span class="v" id="mQuad">' + lastQuads + '</span>';
+        '<span class="k">模式</span><span class="v">' + (S.mode === 'self' ? '自相似' : 'nb 原版') + '</span>' +
+        '<span class="k">梯度 q</span><span class="v">' + q.toFixed(2) + '</span>' +
+        '<span class="k">ρ = r/R</span><span class="v">' + rhoTxt((S.mode === 'self') ? S.rho : r0 / a) + '</span>' +
+        '<span class="k">1/ρ</span><span class="v">' + ((S.mode === 'self') && S.rho > 0 ? (1 / S.rho).toFixed(1) : '—') + '</span>' +
+        '<span class="k">L0 管半径</span><span class="v">' + r0.toFixed(3) + '</span>' +
+        '<span class="k">最深环 sU</span><span class="v">' + (a * Math.pow(q, g)).toFixed(4) + '</span>' +
+        '<span class="k">L0 曲线</span><span class="v">' + (S.curve ? '(' + S.nW + ',' + S.kW + ')' : '关') + '</span>' +
+        '<span class="k">L1+ 曲线</span><span class="v">' + (S.curve ? '(' + S.nD + ',' + S.kD + ')' : '关') + '</span>' +
+        '<span class="k">曲线段 / 面片</span><span class="v">' + lastStat.curve + ' / ' + lastStat.quads + '</span>' +
+        '<span class="k">LOD 简化</span><span class="v">' + lastStat.lod + ' 只</span>' +
+        '<span class="k">单帧</span><span class="v">' + Math.round(lastStat.ms) + ' ms</span>';
     }
+
     var tag = $('rvTag');
-    var txt = 'a=' + a + ' · p=' + p + ' · g=' + g;
+    var txt = 'g=' + g + ' · p=' + p + ' · ' + (S.mode === 'self' ? ('q=' + q.toFixed(2) + ' · ρ=' + rhoTxt(S.rho)) : 'nb');
     if (tag) tag.textContent = txt;
     var tag2 = $('rvTag2'); if (tag2) tag2.textContent = txt;
+
+    var pb = $('pbadge');
+    if (pb) pb.textContent = 'g=' + g + ' 级 · ' + (S.mode === 'self' ? '自相似' : 'nb 原版') + (_clamped ? '（已降档）' : '');
+
     var bc = $('bCam');
     if (bc) bc.textContent = (S.camMode === 'nb' ? 'nb 原版（沿 z）' : '自由 · ' + Math.round(S.yaw) + '° / ' + Math.round(S.pit) + '°');
-    var sq;
-    for (lv = 0; lv < 4; lv++) { sq = $('sq' + lv); if (sq) sq.textContent = String(countOf(p, lv + 1)); }
+    var bcur = $('bCur');
+    if (bcur) bcur.textContent = S.curve
+      ? ('L0 (' + S.nW + ',' + S.kW + ') · L1+ (' + S.nD + ',' + S.kD + ')')
+      : '关';
+    var blod = $('bLod');
+    if (blod) blod.textContent = 'LOD ' + lastStat.lod + ' 只';
 
-    var tb = $('stTab');
+    /* 定格标题 */
+    var lvs = seqLevels(), sq;
+    for (lv = 0; lv < 4; lv++) {
+      var sg = $('sg' + lv); if (sg) sg.textContent = 'g=' + lvs[lv];
+      sq = $('sq' + lv); if (sq) sq.textContent = String(ringCount(p, lvs[lv]));
+    }
+
+    /* 层级账本 */
+    var tb = $('stTab'), gi = gapInfo();
     if (tb) {
-      var sc0 = sceneOf(a, p, g);
-      /* ⚠ 必须用「主画布的真实尺寸」算 scale，否则账本里的细分数与真正画出来的不一致 */
-      var scale0 = camFor(lastWH[0], lastWH[1], sc0).scale;
-      var h = '<tr><td class="tag">层</td><td class="tag">环数</td><td class="tag">主半径 sU</td>' +
-              '<td class="tag">管半径 r</td><td class="tag">每环细分数</td></tr>';
-      for (lv = 0; lv <= g; lv++) {
-        var sU = a / Math.pow(2, lv);
-        var mk = segsFor({ sU: sU, r: 0.5 }, scale0);
-        h += '<tr><td class="tag">L' + lv + '</td><td class="n">' + levelCount(p, lv) +
-             '</td><td class="n">' + sU.toFixed(4) + '</td><td class="n">0.5</td><td class="b">' +
-             mk[0] + '×' + mk[1] + '</td></tr>';
+      var h = '<tr><td class="tag">层</td><td class="tag">环数</td><td class="tag">sU</td>' +
+        '<td class="tag">r</td><td class="tag">r/sU</td><td class="tag">Δ 父→子</td></tr>';
+      for (lv = 0; lv < gi.rows.length; lv++) {
+        var R = gi.rows[lv];
+        var cl = (R.gap === null) ? 'n' : (R.gap >= -1e-9 ? 'ok' : 'bad');
+        h += '<tr><td class="tag">L' + R.lv + '</td><td class="n">' + R.cnt +
+          '</td><td class="n">' + R.sU.toFixed(3) + '</td><td class="n">' + R.r.toFixed(3) +
+          '</td><td class="n">' + (R.rho < 0.02 ? R.rho.toFixed(4) : R.rho.toFixed(2)) + '</td><td class="' + cl + '">' +
+          (R.gap === null ? '—' : ((R.gap >= 0 ? '+' : '') + R.gap.toFixed(3))) + '</td></tr>';
       }
-      h += '<tr><td class="tag">合计</td><td class="n">' + countOf(p, g) +
-           '</td><td class="n">—</td><td class="n">—</td><td class="b">' + lastQuads + ' 面</td></tr>';
       tb.innerHTML = h;
     }
     var sn = $('stNote');
-    if (sn) sn.innerHTML = '每层主半径严格减半（<code>sU(L)=a/2^L</code>），管半径<b>恒为 0.5</b> —— ' +
-      '所以层数一深，环就"胖"到管比主圆还粗。这正是 nb 的样子。';
+    if (sn) {
+      var gl = gradLimits(), cap = capOf(), hh = [], minRelPct = null, rp;
+      for (lv = 0; lv + 1 < gi.rows.length; lv++) {
+        if (gi.rows[lv].gap === null) continue;
+        rp = gi.rows[lv].gap / gi.rows[lv + 1].sU * 100;
+        if (minRelPct === null || rp < minRelPct) minRelPct = rp;
+      }
+      var sibTxt = (gi.minSib === Infinity) ? '—' : ((gi.minSib >= 0 ? '+' : '') + gi.minSib.toFixed(4));
+      var adjTxt = (gi.minGap === Infinity) ? '—' : ((gi.minGap >= 0 ? '+' : '') + gi.minGap.toFixed(4));
+      if (S.mode === 'self') {
+        var margin = cap ? (1 - S.rho / cap.ratio) * 100 : null;
+        var bad = (gi.minGap < -1e-9) || (gi.minSib < -1e-9) || (cap !== null && S.rho > cap.ratio + 1e-12);
+        hh.push(bad ? '<b class="badc">⚠ 有环相交</b>'
+                    : (cap ? '<b class="okc">✅ 全部不重叠</b>' : '<b>相邻两级已过</b>'));
+        hh.push('（L0–L' + g + ' 共 ' + (g + 1) + ' 层 · ' + n0 + ' 只环）<br>');
+        hh.push('· <b>相邻两级</b>（父子）最小间隙 <b>' + adjTxt + '</b>，占该级子环主半径 <b>' +
+                (minRelPct === null ? '—' : minRelPct.toFixed(1) + '%') + '</b>；同层兄弟 <b>' + sibTxt + '</b>。<br>');
+        if (attachOn()) {
+          var r0v = S.rho * S.a, sCv = S.q * S.a, holeR = sCv * (1 - S.rho);
+          var capA = S.q / (2 + S.q);
+          hh.push('· <b>挂曲线</b>：子环的孔要套得住父管（<code>sC(1−ρ) ≥ 2·r₀</code>）⇒ <code>ρ ≤ q/(2+q) = ' +
+                  capA.toFixed(3) + '</code>，现在 ρ=' + rhoTxt(S.rho) +
+                  (S.rho <= capA ? ' <b class="okc">✓</b>' : ' <b class="badc">✗</b>') +
+                  '（孔半径 ' + holeR.toFixed(2) + ' vs 父管直径 ' + (2 * r0v).toFixed(2) + '）。<br>');
+        }
+        if (cap) {
+          hh.push('· <b>全对（含跨层）</b>：ρ 上限 <b>' + cap.ratio.toFixed(4) + '</b>，绑定对 <b>' +
+                  lvPair(cap) + lvGapWord(cap) + '</b>（两轴圆最近 ' + cap.d.toFixed(4) + '，' +
+                  cap.pairs.toLocaleString() + ' 对全扫完），现在 ρ=<b>' + rhoTxt(S.rho) + '</b> ⇒ ' +
+                  (margin >= 0 ? '<b class="okc">余 ' + margin.toFixed(1) + '%</b>'
+                               : '<b class="badc">' + overW(S.rho, cap.ratio) + '</b>') + '。');
+        } else {
+          hh.push('· <b>全对（含跨层）</b>：' + n0 + ' 只环两两复算中…（下面的父子/兄弟两条只是必要条件，通过它们不等于不重叠）');
+        }
+      } else {
+        hh.push('<b class="badc">⚠ 有重叠</b>（原版本来就如此）：最小父子间隙 <b>' +
+                (gi.minGap === Infinity ? '—' : gi.minGap.toFixed(4)) + '</b>，最小兄弟间隙 <b>' + sibTxt + '</b>。<br>' +
+                'nb 模式<b>管半径恒 0.5、主半径逐级减半</b> ⇒ 深层 <code>ρ=r/sU</code> 必然 &gt;1，' +
+                '管把环心都塞满了 —— 这不是"比例匀称"，是"同一个管半径重复"。');
+      }
+      sn.innerHTML = hh.join('');
+    }
+
+    /* 梯度说明：三条约束，越靠下越紧 */
+    var gn = $('gradNote');
+    if (gn) {
+      var gm = gradLimits(), cp = capOf();
+      if (S.mode === 'self') {
+        var mg = cp ? (1 - S.rho / cp.ratio) * 100 : null;
+        gn.innerHTML = '当前 <code>q=' + S.q.toFixed(2) + '</code>、<code>ρ=' + rhoTxt(S.rho) + '</code>。三条约束，越靠下越紧：<br>' +
+          '① 父子 <code>ρ ≤ q/(1+q) = ' + gm.rhoMax.toFixed(3) + '</code>' +
+          (S.rho <= gm.rhoMax + 1e-9 ? ' <b class="okc">✓</b>' : ' <b class="badc">✗</b>') + '<br>' +
+          '② 同层兄弟 <code>ρ ≤ sin(π/p)/q − 1 = ' + gm.sibMaxRho.toFixed(3) + '</code>' +
+          (S.rho <= gm.sibMaxRho + 1e-9 ? ' <b class="okc">✓</b>' : ' <b class="badc">✗</b>') + '<br>' +
+          '<b>③ 跨层（全对实算）</b> <code>ρ ≤ ' +
+          (cp ? cp.ratio.toFixed(4) + '</code> ← <b>真正绑定的就是这条</b>（' + lvPair(cp) + lvGapWord(cp) + '）' +
+                (mg >= 0 ? ' <b class="okc">✓ 余 ' + mg.toFixed(1) + '%</b>' : ' <b class="badc">✗ ' + overW(S.rho, cp.ratio) + '</b>')
+              : '…</code> 复算中') + '<br>' +
+          '①② 只保证"父亲"和"兄弟"不撞；孙环绕一圈回来会撞到更外层（甚至 L0）的管，' +
+          '这条只有把 ' + (cp ? cp.pairs.toLocaleString() : '全部') + ' 对都量一遍才知道 —— 点下面的按钮直接把 ρ 钉到上限的 92%。';
+      } else {
+        gn.innerHTML = 'nb 模式：<b>主半径逐级减半、管半径恒 0.5</b>。于是 <code>ρ(L)=0.5/(a/2^L)</code> 逐级翻倍，' +
+          '深层环一定被"管"塞满 —— 账本里 <code>r/sU</code> 那一列会一路涨到 &gt;1。<br>' +
+          '这正是原版的样子：它不是"比例匀称"的结构，是"同一个管半径重复"的结构。';
+      }
+
+      var bGrad = $('bGrad');
+      if (bGrad) bGrad.textContent = (S.mode === 'self') ? ('q=' + S.q.toFixed(2)) : '固定 1/2';
+    }
+
+    /* 公转说明 */
+    var rn = $('revNote');
+    if (rn) {
+      if (S.mode === 'self' && S.revMode === 'nest') {
+        var amp = (S.revAmp === undefined ? 180 : S.revAmp);
+        var whole = amp >= 179.5;
+        rn.innerHTML = '<b>每一级都绕「自己父环的中轴」转</b>（vh = ⊥ 父环环面）：' +
+          'L1 绕 L0 的中轴、L2 绕 L1 的中轴、L3 绕 L2 的中轴……父环转到哪就定在哪，' +
+          '子环连同它下面整棵子树当<b>刚体</b>被带走，转完再进下一层继续递归。<br>' +
+          '绝对转角逐级累加：L1 = φ、L2 = φ·(1+mix)、L3 = φ·(1+mix+mix²)… —— 一台<b>逐级减速的齿轮组</b>；' +
+          '每级都转满 2π 就各自回原位 ⇒ 周期仍是 2π，能无缝循环。<br>' +
+          '<b>父子之间永不互穿</b>：环面绕自身中轴旋转不变，所以子环相当于<b>贴着父环的环面滑行</b>，' +
+          '父子只做刚体相对转动 ⇒ 父子间隙逐字不变。<br>' +
+          '<b class="badc">但「转多少」有硬上限</b>：L1 的环面与 L0 的管面是<b>相切</b>的（贴壁挂法的必然结果），' +
+          '子环沿父环面滑行时一定会经过那个切点，于是撞上祖父。实测（q=0.62、ρ=0.14、g=6）：' +
+          'L2/L3/L4 相对父环只安全到 <b>±16°</b>；整圈 360° 时全对最小间隙 <b>−0.925</b>（L0/L2）。' +
+          '这不是分辨率问题，是几何：余量只有 0.0325，走 16° 就吃光。<br>' +
+          '把管径放细就能换回行程：ρ=0.06 时 ±60°，ρ≤0.03 时整圈都行。' +
+          '<b>ρ 的下限 1/137（α）不是临界值</b>，只是「细到只剩一根丝」的刻度：' +
+          '实测 1/33、1/137、1/200 三档的可行域图案<b>逐格相同</b>。' +
+          '真正的边界是 <b>mix ≈ 0.47</b>（中心线相切，<b>与 ρ 无关</b>）：mix=0.4 时整圈 ' +
+          'Δmin <b>+0.163168</b>（25 相位全扫）；<b>mix ≥ 0.48 必撞</b>（两只同级 L2），ρ 再小也没用。<br>' +
+          '所以本档默认 <b>±15°</b>（保守）；想看整圈就按「⚛ α 细丝 · 整圈公转」。<br>' +
+          '当前：摆幅 <b>' + (whole
+            ? ('整圈 360°' + ((S.rho <= 0.02 && (S.revMix === undefined ? 1 : S.revMix) <= 0.45)
+                ? '（α 细丝 + 倍率 ≤ 0.45，实测不穿）' : '（会切穿）'))
+            : '±' + amp + '°') + '</b>，' +
+          '级间倍率 <b>' + (S.revMix === undefined ? 1 : S.revMix).toFixed(2) + '</b>' +
+          '（0 = 只有 L1 转，1 = 每级同幅）。<br>' +
+          '⚠ 右栏「间隙账本」永远按<b>静止相位</b>算，公转中的真实间隙不在那一栏里。';
+      } else if (S.mode === 'self' && S.revMode === 'axis') {
+        rn.innerHTML = '<b>L0 一动不动</b>；L1 及以下整棵子树<b>绕 L0 环的中轴（⊥ 环面，即 vh）刚体旋转</b>' +
+          ' —— 中心与三个基向量一起转，内部一点没变形。<br>' +
+          '为什么<b>不可能互穿</b>：L0 环面是绕自身中轴旋转不变的，所以「整体绕 vh 转 δ」把整个场景' +
+          '映射成自己的一个刚体版本 ⇒ <b>所有环对的距离逐字不变</b>。<br>' +
+          '实测（g=6、127 环、8001 对 × 11 个相位）：全对最小间隙恒为 <b>+0.007751</b>（L4/L6），' +
+          '一个数字都没动；L1 环心到 L0 管面的残差恒为 <b>0.000000</b>。<br>' +
+          '对比：之前误用的轴是 <b>z</b>，而 z 落在 L0 环面内 —— 绕它转等于让子环从环体里穿过去。' +
+          '实测 g=2 时 δ=30° 全对最小间隙 <b>−0.8847</b>（L0/L1 相切变相穿），δ=135° 为 −0.0885，' +
+          'δ=90° 时 L1 已经离开管面 <b>6.88</b>（管半径只有 0.70）。<br>' +
+          '顺带一个可核对的细节：(5,1680) 绕管 1680 匝、绕过中轴 5 匝，所以沿中轴每转 <b>360°/336 = 1.0714°</b>' +
+          '子环正好落回曲线上（336 步一圈）；其余角度离曲线最多 0.011（环半径 3.1，肉眼无差）。';
+      } else if (S.mode === 'self' && S.revMode === 'one') {
+        rn.innerHTML = '<b>L0 完全不动</b>，第 1 级环沿 L0 的' + (attachOn() ? '绕行曲线' : '主圆中心线') +
+          '滑动（角参数 <code>τ += δ</code>），它下面那棵子树跟着一起走。<br>' +
+          '<b class="badc">⚠ 挂曲线时这条不保安全</b>：子环的姿态由曲线在这点的<b>活动标架</b>定，' +
+          '而 τ 每转一圈标架自转 k 圈 —— k=1680 时 δ 挪 0.1 rad，子环姿态已经甩了 27 圈。' +
+          '实测 12 个相位最坏 <b>Δmin = −0.794</b>（δ=120°，L3/L0 扎进 L0 的管里）。<br>' +
+          'k 小的时候（比如 (1,7) 那一档）这条就顺了，可以当「沿曲线滑一圈」的演示用。' +
+          '数据见 <code>_rv_web_dev/cap_curve.py phase</code>。';
+      } else if (S.mode === 'self') {
+        rn.innerHTML = '<b class="badc">⚠ 逐级都绕会互穿。</b>每级都绕自己的父环转，深层的环会绕回来扎进 L0 的管里 —— ' +
+          '默认参数下 12 个相位实测最坏 <b>Δmin = −0.518</b>（L2/L0）。原因很直接：L0 的管半径只有 0.70，' +
+          '而第 2 级环半径 1.92，转到内侧时离 L0 管轴只剩 0.36。<br>' +
+          '这一档留着是为了看「差一点就穿」的样子；<b>要交图请用「绕 L0 轴刚性公转」</b>。';
+      } else {
+        rn.innerHTML = 'nb 模式的管半径恒定、子环也不挂曲线，公转沿用原式的 α 参数。';
+      }
+    }
+    capKick();
   }
 
   function fillInfo() {
@@ -1255,14 +2393,40 @@ function encodeGif(frames, W, H, delayCs) {
       '  p = Table[t1 = t + sU {Cos[α i], 0, Sin[α i]} . {u/sU, v/sV, w/sW};\n' +
       '            u1 = (sU/(2 sV)) v;  v1 = (t1 - t)×v;\n' +
       '            generate[{u1, v1, t1, n}, depth - 1], {i, n}];\n' +
-      '  Flatten[Append[p, generate[{u, v, t, n}, 0]], 1]]';
+      '  Flatten[Append[p, generate[{u, v, t, n}, 0]], 1]]\n\n' +
+      '── 本页新增（不改变上面两条，只把两个常量变成旋钮）──\n' +
+      '<b>自相似</b> u1 = (q sU / sV) v      (nb: q = 1/2)\n' +
+      '<b>自相似</b> 管半径 r = ρ sU          (nb: r = 0.5 恒定)\n' +
+      '<b>绕行曲线</b> (φ, θ) = (n τ, k τ),  τ ∈ [0, 2π]   ⇒  环面上的 (n,k) 环面结\n' +
+      '<b>不重叠 ①</b> 父子  sU(L+1) ≥ r(L) + r(L+1)   ⇒   ρ ≤ q/(1+q)\n' +
+      '<b>不重叠 ②</b> 兄弟  sin(π/p) ≥ q(1+ρ)\n' +
+      '<b>不重叠 ③</b> 全对  ρ ≤ min d_ij / (sU_i + sU_j)   ← 真正绑定的就是这条';
     var n = $('eqNote');
-    if (n) n.innerHTML = '两条 Input 就是这一页的全部。<code>Manipulate</code> 的参数：' +
+    if (n) n.innerHTML = '上两行是 nb 一字未改的原文（<code>Manipulate</code>：' +
       '<code>{{a,5,"thickness"},10,1,-1}</code>、<code>{{p,3,"number of tori"},Range[2,4]}</code>、' +
-      '<code>{{g,1,"level"},Range[4]}</code>。';
+      '<code>{{g,1,"level"},Range[4]}</code>）。下面几行是本页新增：' +
+      '把 <code>1/2</code> 换成 <code>q</code>、把基例的 <code>0.5</code> 换成 <code>ρ·sU</code>，' +
+      '再把 L0 画成环面上的 (n,k) 曲线。<b>不重叠 ③ 是解出来的，不是调出来的</b>：' +
+      '自相似下两环间隙 = <code>(sU_i+sU_j)·(d_ij/(sU_i+sU_j) − ρ)</code>，' +
+      '所以「全部不相交」等价于 <code>ρ ≤ min d_ij/(sU_i+sU_j)</code>。' +
+      '①② 只覆盖父亲和兄弟两种关系；③ 把<b>所有</b>环对（含隔了两三层的"叔侄"）都量一遍 —— ' +
+      '本页右栏那个上限就是这个 min 的实测值。';
+
+    var bn = $('bestNote');
+    if (bn) bn.innerHTML = '按四条约束解出来的（前三条只是必要条件，第四条才真正绑定）：<br>' +
+      '① 每级主半径 <code>sU(L)=a·q^L</code>、管半径 <code>r(L)=ρ·sU(L)</code> ⇒ 比例匀称、梯度一致；<br>' +
+      '② 父子 <code>ρ ≤ q/(1+q) = 0.383</code>；③ 同层兄弟 <code>ρ ≤ sin(π/p)/q−1 = 0.613</code>；<br>' +
+      '④ <b>全对（含跨层）<code>ρ ≤ 0.1702</code></b> —— 把 255 只环两两量一遍得到的。' +
+      '绑定的居然是<b>所有「隔两级」的对</b> L(k+2)/Lk：它们的比值<b>完全相同</b>（L2/L0 = L3/L1 = … = L7/L5 = 0.1702），' +
+      '所以 g 从 2 加到 7，这个上限一点不变；再往下一档「隔三级」是 0.3726。<br>' +
+      '取 <b>q=0.62</b>（黄金比 0.618 附近；<code>q⁷a ≈ 0.176</code>，七级还都看得见）、' +
+      '<b>ρ=0.155</b>（④ 的 91%，余 9%）。<br>' +
+      '为什么不选 p=3：三叉的跨层上限随 q 塌得极快 —— q=0.50 只剩 <b>0.127</b>、q=0.56 只剩 <b>0.062</b>。' +
+      '七级 3280 只环若要互不相交，管只能做到 0.06，细到看不见。<br>' +
+      '所以「匀称 + 梯度一致 + 七级 + 体积不重叠」四条同时要，只有 <b>p=2</b> 这一档。';
   }
 
-  /* ======================================================== 7. 视角 */
+  /* ======================================================== 9. 视角 */
   function applyCam(mode) {
     if (mode === 'nb') { S.camMode = 'nb'; }
     else {
@@ -1276,8 +2440,54 @@ function encodeGif(frames, W, H, delayCs) {
     syncAll(); afterParam();
   }
 
-  /* ======================================================== 8. 循环 / GIF */
+  /* ====================================================== 10. 参数联动 */
+  function clampBudget() {
+    var before = S.g;
+    while (S.g > 1 && ringCount(S.p, S.g) > MAXR) S.g--;
+    _clamped = (S.g !== before);
+    return _clamped;
+  }
+  function afterParam() { syncAll(); drawMain(); refreshReadouts(); scheduleSeq(); }
+  function afterStruct() { clampBudget(); sceneDrop(); afterParam(); }
+
+  var seqTimer = 0;
+  function scheduleSeq() {
+    if (seqTimer) window.clearTimeout(seqTimer);
+    seqTimer = window.setTimeout(function () { seqTimer = 0; drawSeq(); }, 200);
+  }
+
+  function syncAll() {
+    var k;
+    for (k in REF) REF[k]();
+    var nb = (S.mode === 'nb');
+    ['sQ', 'vQ', 'sRho', 'vRho'].forEach(function (id) {
+      var el = $(id); if (el) el.disabled = nb;
+    });
+    var b = $('bCamNb');
+    if (b) { if (S.camMode === 'nb') b.classList.add('on'); else b.classList.remove('on'); }
+    if (S.mode !== 'self') { /* nb 模式没有「曲线」这回事，选择器置灰但不改值 */ }
+    var s = $('selAttach'); if (s) { s.value = S.attach; s.disabled = (S.mode !== 'self'); }
+    var sc2 = $('selCurveLv'); if (sc2) sc2.value = String(S.curveLv | 0);
+    syncRev();
+  }
+
+  function applyPreset(name) {
+    var P = PRES[name]; if (!P) return;
+    var k;
+    for (k in P) S[k] = P[k];
+    if (P.revPh === undefined) S.revPh = 0;      /* 换档从 φ=0 开始，不残留上一档的相位 */
+    if (P.revAmp === undefined) S.revAmp = 10;
+    clampBudget();
+    sceneDrop(); _gk = '';
+    syncAll(); afterParam();
+  }
+
+  /* ======================================================== 11. 循环 / 公转 / GIF */
   var raf = 0, last = 0;
+  function showBar(f, deg) {
+    var barf = $('barfill'); if (barf) barf.style.width = (f * 100).toFixed(1) + '%';
+    var tn = $('tnum'); if (tn) tn.textContent = Math.round(deg) + '°';
+  }
   function tick(ts) {
     raf = 0;
     var dt = last ? Math.min(0.06, (ts - last) / 1000) : 0.016;
@@ -1290,16 +2500,42 @@ function encodeGif(frames, W, H, delayCs) {
       S.pit = Math.max(12, Math.abs(S.pit) < 5 ? 22 : S.pit);
       if (REF.sYaw) REF.sYaw(S.yaw);
       if (REF.sPit) REF.sPit(S.pit);
-      var barf = $('barfill'); if (barf) barf.style.width = (S.phase * 100).toFixed(1) + '%';
-      var tn = $('tnum'); if (tn) tn.textContent = Math.round(S.phase * 360) + '°';
+      showBar(S.phase, S.phase * 360);
       drawMain();
     }
-    if (S.spin) startLoop();
+    if (S.rev) {
+      S.revPh += dt * S.revSpd * 0.55;
+      var TW = 2 * Math.PI;
+      if (S.revPh >= TW) {
+        S.revPh -= TW;
+        if (!S.loop) { S.revPh = 0; S.rev = false; syncRev(); }
+      }
+      showBar(S.revPh / TW, S.revPh * 180 / Math.PI);
+      drawMain();
+    }
+    if (S.spin || S.rev) startLoop();
   }
   function startLoop() { if (!raf) raf = window.requestAnimationFrame(tick); }
   function syncSpin() {
     var b = $('bPlay');
     if (b) { b.textContent = S.spin ? '⏸ 暂停' : '▶ 播放旋转'; b.classList.toggle('on', S.spin); }
+    var l = $('bLoop'); if (l) l.classList.toggle('on', S.loop);
+  }
+  function syncRev() {
+    var b = $('bRev');
+    if (b) { b.textContent = S.rev ? '⏸ 暂停公转' : '↻ 一键公转'; b.classList.toggle('on', S.rev); }
+    var b2 = $('bRev2');
+    if (b2) { b2.textContent = S.rev ? '⏸ 暂停公转' : '↻ 开始公转（快捷键 G）'; b2.classList.toggle('on', S.rev); }
+    var bd = $('bRevBadge');
+    var ampv = (S.revAmp === undefined ? 180 : S.revAmp);
+    if (bd) bd.textContent = (S.revMode === 'nest')
+                              ? ('逐级绕父环中轴 · ' + (ampv >= 179.5 ? '整圈' : '±' + Math.round(ampv) + '°'))
+                            : (S.revMode === 'all') ? '逐级沿曲线滑动（会互穿）'
+                            : (S.revMode === 'axis') ? (threadOn() ? '绕 L0 环中轴（环轴会离开切线！）' : '整树绕 L0 中轴刚性公转')
+                            : ('沿' + (attachOn() ? '曲线' : '主圆') + '滑动' + (threadOn() ? '（环轴始终＝切线）' : ''));
+    if (REF.sRevMix) REF.sRevMix();
+    if (REF.sRevAmp) REF.sRevAmp();
+    var s = $('selRevMode'); if (s) s.value = S.revMode;
     var l = $('bLoop'); if (l) l.classList.toggle('on', S.loop);
   }
 
@@ -1318,14 +2554,14 @@ function encodeGif(frames, W, H, delayCs) {
   var GIFCH = '', GIFOUT = null;
   var GIFW = 880, GIGH = 720, GIFF = 30;
   function gifFramesOf(W, H, nF) {
-    /* ⚠ 扫描范围按场景对称性定：场景在「绕 c 的 z 轴转 180°」下自重合时（p 为偶数），
-       360° 扫一遍后半圈与前半圈逐像素相同 ⇒ 只用 180°，
-       帧数不变但每帧都是新画面（角分辨率反而翻倍）。 */
-    var span = gifSpan(sceneOf(S.a, S.p, S.g));
+    /* 场景在「绕 c 的 z 轴转 180°」下自重合时（p 为偶数且没开 L0 曲线），
+       360° 扫一遍后半圈与前半圈逐像素相同 ⇒ 只用 180°。 */
+    var span = gifSpan(sceneOf());
     var frames = [], i;
     for (i = 0; i < nF; i++) {
-      var cv = renderAt(i / nF, W, H, undefined, undefined, undefined, 'free',
-        -180 + span * (i / nF), 22, 1, undefined, 1.0);
+      var cv = renderAt(W, H, {
+        camMode: 'free', yaw: -180 + span * (i / nF), pit: 22, zom: 1, qual: 1.0, spin: false
+      });
       frames.push(cv.getContext('2d').getImageData(0, 0, W, H).data);
     }
     return frames;
@@ -1337,8 +2573,10 @@ function encodeGif(frames, W, H, delayCs) {
     var blob = encodeGif(frames, W, H, 8);
     var b64 = await blobToBase64(blob);
     GIFOUT = blob; GIFCH = b64;
-    return { name: '分形环套环_a' + S.a + '_p' + S.p + '_g' + S.g, w: W, h: H, frames: nF,
-             bytes: blob.size, b64len: b64.length };
+    return {
+      name: '分形环套环_a' + S.a + '_p' + S.p + '_g' + S.g, w: W, h: H, frames: nF,
+      bytes: blob.size, b64len: b64.length
+    };
   }
   function gifChunk(off, len) { return GIFCH.substr(off, len); }
   function gifClear() { GIFOUT = null; GIFCH = ''; }
@@ -1356,19 +2594,41 @@ function encodeGif(frames, W, H, delayCs) {
   }
   async function doPng() {
     var blob = await pngOf(CV.main);
-    if (blob) download(blob, '分形环套环_a' + S.a + '_p' + S.p + '_g' + S.g + '.png');
+    if (blob) download(blob, '分形环套环_p' + S.p + '_g' + S.g + '.png');
+  }
+
+  /* 主视图全屏：铺满视口，只留图（Esc / 再点按钮退出） */
+  function toggleFull(force) {
+    var want = (force === undefined) ? !document.body.classList.contains('cvfull') : !!force;
+    document.body.classList.toggle('cvfull', want);
+    var b = $('bFull');
+    if (b) { b.classList.toggle('on', want); b.textContent = want ? '✕ 退出全屏' : '⛶ 全屏'; }
+    if (want) window.scrollTo(0, 0);
+    AUTO.veto = AUTO.prog ? AUTO.veto : !want;   /* 用户亲手关掉 ⇒ 不再自动铺满；手动打开则恢复自动 */
+    drawMain();
+    return want;
+  }
+  /* 适配：把缩放复位到 1，整棵树刚好落在画布内 */
+  function fitView() {
+    S.zom = 1;
+    if (REF.sZom) REF.sZom(1);
+    afterParam();
   }
 
   function resetAll() {
     for (var k in DEF) S[k] = DEF[k];
-    syncAll(); syncSpin(); afterParam();
+    _clamped = false; sceneDrop(); _gk = '';
+    syncAll(); syncSpin(); syncRev(); afterParam();
   }
 
-  /* ======================================================== 9. 鼠标 */
+  /* ======================================================== 12. 鼠标 */
   function bindMouse() {
     var cv = CV.main; if (!cv) return;
     var drag = false, lx = 0, ly = 0;
     cv.addEventListener('mousedown', function (e) {
+      /* 只接管左键。中键/右键放行 ⇒ 浏览器原生的“按住中键自动滚动”照常工作，
+         这样鼠标停在图上也能把页面往下滚。 */
+      if (e.button !== 0) return;
       drag = true; lx = e.clientX; ly = e.clientY; cv.classList.add('drag'); e.preventDefault();
     });
     window.addEventListener('mousemove', function (e) {
@@ -1381,15 +2641,20 @@ function encodeGif(frames, W, H, delayCs) {
       afterParam();
     });
     window.addEventListener('mouseup', function () { drag = false; cv.classList.remove('drag'); });
+    /* 滚轮：默认**不拦**，让页面正常滚动；只有按住 Ctrl/⌘ 才缩放视图。
+       （以前无条件 preventDefault，鼠标一放到图上就再也滚不动页面。） */
     cv.addEventListener('wheel', function (e) {
-      S.zom = Math.max(0.4, Math.min(3.2, S.zom * (e.deltaY > 0 ? 0.92 : 1.08)));
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      var dy = e.deltaMode === 1 ? e.deltaY * 16 : (e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY);
+      S.zom = Math.max(0.4, Math.min(3.2, S.zom * (dy > 0 ? 0.92 : 1.08)));
       if (REF.sZom) REF.sZom(S.zom);
-      afterParam(); e.preventDefault();
+      afterParam();
     }, { passive: false });
     cv.addEventListener('dblclick', function () { applyCam('nb'); });
   }
 
-  /* ======================================================== 10. boot */
+  /* ======================================================== 13. boot */
   function boot() {
     /* ⚠ 必须先把 DEF 灌进 S：否则 S.a/p/g 全是 undefined，场景长为 1 只环、cam.scale = NaN */
     for (var k0 in DEF) S[k0] = DEF[k0];
@@ -1397,20 +2662,62 @@ function encodeGif(frames, W, H, delayCs) {
     CV.q = [$('cvQ0'), $('cvQ1'), $('cvQ2'), $('cvQ3')];
     fillInfo();
 
-    bindPair('sA', 'vA', 1, 10, 'a', function (x) { S.a = Math.round(x); }, 0);
-    bindPair('sP', 'vP', 2, 4, 'p', function (x) { S.p = Math.round(x); }, 0);
-    bindPair('sG', 'vG', 1, 4, 'g', function (x) { S.g = Math.round(x); }, 0);
+    bindPair('sA', 'vA', 1, 10, 'a', function (x) { S.a = Math.round(x); _gk = ''; }, 0);
+    bindPair('sP', 'vP', 2, 5, 'p', function (x) { S.p = Math.round(x); clampBudget(); _gk = ''; }, 0);
+    bindPair('sG', 'vG', 1, 7, 'g', function (x) { S.g = Math.round(x); clampBudget(); _gk = ''; }, 0);
+    bindPair('sQ', 'vQ', 0.30, 0.75, 'q', function (x) { S.q = x; _gk = ''; }, 2);
+    bindPair('sRho', 'vRho', RHO_MIN, RHO_MAX, 'rho', function (x) { S.rho = x; _gk = ''; },
+             function (v) { return v < 0.01 ? 6 : (v < 0.02 ? 5 : 3); });
+    /* 逐级绕行曲线：L0 (nW,kW) / L1+ (nD,kD) —— 只留数字框，因为 k 可能上千 */
+    bindNum('vN', 0, 64, 'nW');
+    bindNum('vK', 0, 4000, 'kW');
+    bindNum('vND', 0, 64, 'nD');
+    bindNum('vKD', 0, 4000, 'kD');
     bindPair('sYaw', 'vYaw', -180, 180, 'yaw', function (x) { S.yaw = x; S.camMode = 'free'; }, 0);
     bindPair('sPit', 'vPit', -89, 89, 'pit', function (x) { S.pit = x; S.camMode = 'free'; }, 0);
     bindPair('sZom', 'vZom', 0.4, 3.2, 'zom', function (x) { S.zom = x; }, 2);
     bindPair('sSpd', null, 0.2, 3, 'spd', function (x) { S.spd = x; }, 1);
-    bindPair('sQual', null, 0.6, 1.6, 'qual', function (x) { S.qual = x; }, 1);
+    bindPair('sQual', null, 0.5, 1.6, 'qual', function (x) { S.qual = x; }, 2);
 
     var sel = $('selScheme');
-    if (sel) { sel.value = S.scheme;
+    if (sel) {
+      sel.value = S.scheme;
       sel.addEventListener('change', function () { S.scheme = this.value; afterParam(); });
-      REF.selScheme = function () { sel.value = S.scheme; }; }
+      REF.selScheme = function () { sel.value = S.scheme; };
+    }
+    var sm = $('selMode');
+    if (sm) {
+      sm.value = S.mode;
+      sm.addEventListener('change', function () { S.mode = this.value; _gk = ''; sceneDrop(); afterParam(); });
+      REF.selMode = function () { sm.value = S.mode; };
+    }
+    var ss = $('selSurf');
+    if (ss) {
+      ss.value = S.surf;
+      ss.addEventListener('change', function () { S.surf = this.value; afterParam(); });
+      REF.selSurf = function () { ss.value = S.surf; };
+    }
+    /* 子环挂在哪：曲线 / 主圆中心线 —— 两种都保留，可随时切 */
+    var sa = $('selAttach');
+    if (sa) {
+      sa.value = S.attach;
+      sa.addEventListener('change', function () {
+        S.attach = this.value; _gk = ''; sceneDrop(); afterParam();
+      });
+      REF.selAttach = function () { sa.value = S.attach; };
+    }
+
+    var sl = $('selCurveLv');
+    if (sl) {
+      sl.value = String(S.curveLv | 0);
+      sl.addEventListener('change', function () {
+        S.curveLv = Math.round(Number(this.value)) || 0; afterParam();
+      });
+      REF.selCurveLv = function () { sl.value = String(S.curveLv | 0); };
+    }
+
     bindCheck('ckWire', 'wire');
+    bindCheck('ckCurve', 'curve', function (on) { _gk = ''; });
     var ckHalf = $('ckHalf');
     if (ckHalf) {
       REF.ckHalf = function () { ckHalf.checked = S.alpha < 0.999; };
@@ -1418,39 +2725,80 @@ function encodeGif(frames, W, H, delayCs) {
     }
 
     $('bReset').addEventListener('click', resetAll);
+    $('bBest').addEventListener('click', function () { applyPreset('best'); });
+    /* 把 ρ 钉到实测上限的 92%：这是"最粗又不相交"的那一档 */
+    $('bRhoMax').addEventListener('click', function () {
+      var cap = capOf();
+      if (!cap) { capKick(); return; }
+      var r = Math.round(cap.ratio * 0.92 / 0.005) * 0.005;
+      S.rho = Math.max(RHO_MIN, Math.min(RHO_MAX, r));
+      _gk = '';
+      syncAll(); afterParam();
+    });
     $('bPlay').addEventListener('click', function () {
       S.spin = !S.spin;
       if (S.spin) { S.phase = ((S.yaw + 180) % 360 + 360) % 360 / 360; }
       syncSpin(); afterParam();
     });
+    function toggleRev() {
+      S.rev = !S.rev;
+      if (S.rev && S.camMode === 'nb') S.camMode = 'free';
+      syncRev(); syncSpin();
+      if (S.rev) startLoop(); else afterParam();
+    }
+    $('bRev').addEventListener('click', toggleRev);
+    if ($('bRev2')) $('bRev2').addEventListener('click', toggleRev);
+    if ($('bRevSpin')) $('bRevSpin').addEventListener('click', function () {
+      applyPreset('spin');
+      S.rev = true; S.revPh = 0;
+      if (S.camMode === 'nb') S.camMode = 'free';
+      sceneDrop(); syncRev(); afterParam(); startLoop();
+    });
+    if ($('bAlphaSpin')) $('bAlphaSpin').addEventListener('click', function () {
+      applyPreset('alphaSpin');
+      S.rev = true; S.revPh = 0;
+      if (S.camMode === 'nb') S.camMode = 'free';
+      sceneDrop(); syncRev(); afterParam(); startLoop();
+    });
+    var srm = $('selRevMode');
+    if (srm) {
+      srm.value = S.revMode;
+      srm.addEventListener('change', function () {
+        S.revMode = this.value; sceneDrop(); afterParam();
+      });
+      REF.selRevMode = function () { srm.value = S.revMode; };
+    }
+    bindPair('sRevSpd', null, 0.2, 3, 'revSpd', function (x) { S.revSpd = x; }, 1);
+    bindPair('sRevMix', 'vRevMix', 0, 1, 'revMix', function (x) { S.revMix = x; }, 2);
+    bindPair('sRevAmp', 'vRevAmp', 0, 180, 'revAmp', function (x) { S.revAmp = x; }, 0);
     $('bLoop').addEventListener('click', function () { S.loop = !S.loop; syncSpin(); });
     $('bGif').addEventListener('click', doGif);
     $('bPng').addEventListener('click', doPng);
     $('bar').addEventListener('click', function (e) {
       var r = this.getBoundingClientRect();
-      S.phase = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+      var fr = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+      if (S.rev) { S.revPh = fr * 2 * Math.PI; drawMain(); showBar(fr, fr * 360); return; }
+      S.phase = fr;
       S.camMode = 'free'; S.yaw = -180 + 360 * S.phase;
       if (Math.abs(S.pit) < 5) S.pit = 22;
       if (REF.sYaw) REF.sYaw(S.yaw); if (REF.sPit) REF.sPit(S.pit);
       afterParam();
     });
     $('bCamNb').addEventListener('click', function () { applyCam('nb'); });
+    if ($('bFull')) $('bFull').addEventListener('click', function () { toggleFull(); });
+    if ($('bFit')) $('bFit').addEventListener('click', fitView);
     var cb = document.querySelectorAll('[data-cam]'), i;
     for (i = 0; i < cb.length; i++) {
       cb[i].addEventListener('click', function () { applyCam(this.getAttribute('data-cam')); });
     }
     var pb = document.querySelectorAll('[data-preset]');
     for (i = 0; i < pb.length; i++) {
-      pb[i].addEventListener('click', function () {
-        var t = this.getAttribute('data-preset').split(',');
-        S.a = +t[0]; S.p = +t[1]; S.g = +t[2];
-        syncAll(); afterParam();
-      });
+      pb[i].addEventListener('click', function () { applyPreset(this.getAttribute('data-preset')); });
     }
     $('ptoggle').addEventListener('click', function () {
       document.body.classList.toggle('off');
       this.textContent = document.body.classList.contains('off') ? '◂' : '▸';
-      window.setTimeout(function () { drawMain(); drawSeq(); }, 240);
+      window.setTimeout(function () { drawMain(); drawSeq(); refreshReadouts(); }, 240);
     });
     bindMouse();
     var cards = document.querySelectorAll('.card h2');
@@ -1458,34 +2806,78 @@ function encodeGif(frames, W, H, delayCs) {
       cards[i].addEventListener('click', function () { this.parentNode.classList.toggle('fold'); });
     }
     /* ⚠ resize 后主画布尺寸变了 ⇒ 账本里的细分数也必须跟着重算（refreshReadouts 依赖 lastWH） */
-    window.addEventListener('resize', function () { drawMain(); drawSeq(); refreshReadouts(); });
+    window.addEventListener('resize', function () {
+      autoFill(); drawSeq(); refreshReadouts();
+    });
     window.addEventListener('keydown', function (e) {
       if (e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
+      if (e.key === 'Escape' && document.body.classList.contains('cvfull')) {
+        toggleFull(false); e.preventDefault(); return;
+      }
       if (e.key === ' ') { $('bPlay').click(); e.preventDefault(); }
+      else if (e.key === 'g' || e.key === 'G') { $('bRev').click(); }
       else if (e.key === 'r' || e.key === 'R') { $('bReset').click(); }
     });
 
-    syncAll(); syncSpin(); afterParam(); startLoop();
+    syncAll(); syncSpin(); afterParam(); autoFill(); startLoop();
   }
 
-  /* ======================================================== 11. 导出 */
+  /* ======================================================== 14. 导出 */
   window.__RV__ = {
-    S: S, DEF: DEF, LVCOL: LVCOL, PAD: PAD, NBW: NBW, NBH: NBH, TUBE_R: TUBE_R,
-    GIFW: GIFW, GIGH: GIGH, GIFF: GIFF, SEQQ: SEQQ, M3: M3,
+    S: S, DEF: DEF, PRES: PRES, LVCOL: LVCOL, PAD: PAD, NBW: NBW, NBH: NBH, TUBE_R: NB_TUBE,
+    GIFW: GIFW, GIGH: GIGH, GIFF: GIFF, M3: M3,
     /* 几何核 */
-    sceneOf: sceneOf, torusPt: torusPt, countOf: countOf, levelCount: levelCount,
-    sceneInfo: sceneInfo, segsFor: segsFor, baseColor: baseColor, hsv2rgb: hsv2rgb, rgbOfHex: rgbOfHex,
-    hasHalfTurnZ: hasHalfTurnZ, gifSpan: gifSpan,
-    camFor: camFor,
+    sceneOf: sceneOf, sceneStill: sceneStill, sceneAt: sceneAt, sceneG: sceneG,
+    buildScene: buildScene, torusPt: torusPt, curveFrame: curveFrame,
+    revAngle: revAngle, revNest: revNest,
+    attachOn: attachOn, sceneDrop: sceneDrop, pairGap: pairGap, axisDist: axisDist,
+    revState: function () {
+      return { on: S.rev, mode: S.revMode, spd: S.revSpd, ph: S.revPh,
+               attach: S.attach, curved: attachOn() };
+    },
+    toggleRev: function () { var b = $('bRev'); if (b) b.click(); },
+    drawMain: function () { drawMain(); }, drawSeq: function () { drawSeq(); },
+    toggleFull: toggleFull, fitView: fitView, mainMaxH: mainMaxH,
+    autoFill: autoFill, naturalMaxH: naturalMaxH, AUTO: AUTO,
+    cvBox: function () {
+      var cv = CV.main;
+      return { w: cv.width, h: cv.height,
+               cw: cv.clientWidth, ch: cv.clientHeight,
+               maxH: mainMaxH(), full: document.body.classList.contains('cvfull'),
+               hostW: cv.parentNode ? cv.parentNode.clientWidth : 0 };
+    },
+    ringCount: ringCount, levelCount: levelCount, seqLevels: seqLevels,
+    sceneInfo: sceneInfo, segsFor: segsFor, baseColor: baseColor, hsv2rgb: hsv2rgb,
+    hasHalfTurnZ: hasHalfTurnZ, gifSpan: gifSpan, camFor: camFor,
+    /* 新增：绕行曲线 + 校验 */
+    curveRaw: curveRaw, gapInfo: gapInfo, gradLimits: gradLimits, sibGap: sibGap, ringCircle: ringCircle,
+    capOf: capOf, capKey: capKey, CapScan: CapScan,
+    curveState: function () {
+      return { on: S.curve, n: S.nW, k: S.kW, nD: S.nD, kD: S.kD,
+               lv: S.curveLv | 0, surf: S.surf, rho: S.rho };
+    },
+    check: function () {
+      var g = gapInfo();
+      return {
+        ok: g.ok, g: S.g, p: S.p, mode: S.mode, q: g.q, rho: S.rho,
+        minGap: g.minGap, minSib: g.minSib, curved: g.curved,
+        rows: g.rows.map(function (r) {
+          return { lv: r.lv, cnt: r.cnt, sU: +r.sU.toFixed(6), r: +r.r.toFixed(6),
+                   rho: +r.rho.toFixed(6), gap: r.gap === null ? null : +r.gap.toFixed(6),
+                   sib: r.sib === null ? null : +r.sib.toFixed(6) };
+        })
+      };
+    },
     /* 投影直通（对拍用） */
     projOf: function (cam, p) { return M3.proj(cam, p); },
     viewOf: function (cam, p) { return M3.view(cam, p); },
     shadeOf: function (cam, n, c, a, at) { return M3.shade(cam, n, c, a, at); },
     /* 绘制 */
     drawMain: drawMain, drawSeq: drawSeq, renderAt: renderAt, paintInto: paintInto,
-    lastStat: function () { return { quads: lastQuads, ms: lastMs }; },
+    lastStat: function () { return { quads: lastStat.quads, lod: lastStat.lod, curve: lastStat.curve, ms: lastStat.ms }; },
     /* UI */
-    applyCam: applyCam, resetAll: resetAll, syncAll: syncAll, refreshReadouts: refreshReadouts,
+    applyCam: applyCam, applyPreset: applyPreset, resetAll: resetAll, syncAll: syncAll,
+    refreshReadouts: refreshReadouts, setParam: function (k, v) { S[k] = v; _gk = ''; sceneDrop(); afterParam(); },
     /* GIF */
     gifFramesOf: gifFramesOf, gifPrepOne: gifPrepOne, gifChunk: gifChunk, gifClear: gifClear,
     buildPalette: buildPalette, makeQuant: makeQuant, lzwEncode: lzwEncode, encodeGif: encodeGif,
@@ -1496,7 +2888,6 @@ function encodeGif(frames, W, H, delayCs) {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 })();
-
 
 </script>
 </body>
