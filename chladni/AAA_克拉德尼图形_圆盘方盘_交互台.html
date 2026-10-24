@@ -80,6 +80,10 @@ table.t td.c,table.t th.c{text-align:center}
   padding:5px 12px;border-radius:20px;cursor:pointer;font-family:inherit;transition:.15s}
 .tab:hover{border-color:#9fb6d4;color:var(--navy)}
 .tab.on{background:var(--navy);border-color:var(--navy);color:#fff;font-weight:600}
+.sHint{padding:7px 16px;font-size:12.6px;line-height:1.62;color:#5d6779;
+  background:#fbfcfe;border-bottom:1px solid var(--line2)}
+.sHint code{background:#eef2f8;border:1px solid var(--line2);border-radius:4px;
+  padding:0 4px;font-size:12px}
 .stage-body{display:grid;grid-template-columns:1fr 292px;gap:0}
 #plateBox{position:relative;background:#fbfaf7;min-height:420px}
 #plate{display:block;width:100%;height:100%;touch-action:none}
@@ -352,6 +356,12 @@ details.math[open] summary{margin-bottom:8px;border-bottom:1px dashed var(--line
   border:1px dashed #d7dee8; border-radius:6px;
 }
 .fxp-note::before{ content:"⇱ "; color:#1b4f9c }
+/* 可点版本：开箱即折叠的浮窗让「滑块全都不见了」，这句就是唯一的路标 */
+.fxp-note-go{cursor:pointer; transition:.15s}
+.fxp-note-go:hover{background:#eef4ff; border-color:#9fb6d4; color:#1b4f9c}
+.fxp-note-go u{text-decoration-style:dotted; text-underline-offset:2px}
+/* 收起的胶囊也要说清「里面有几个滑块」，否则只剩「调参」两个字，看不出是什么 */
+#fxp.fxp-min .fxp-c{display:inline; font-size:10.5px; margin-left:4px}
 
 /* 窄屏：底部抽屉式，不再遮挡图 */
 @media (max-width:880px){
@@ -578,6 +588,9 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
       <button class="btn pri" id="btnPng">导出 PNG</button>
     </div>
   </div>
+  <div class="sHint">「<b>s 径向阶</b>」就是<b>同心节圆</b>的档位 —— 路径：点「<b>圆膜 · Bessel</b>」页签 →
+    右下「<b>调参</b>」浮窗里的「圆 · 辐条 / 节圆」组。s=1 / 2 / 3 / 4 → <b>0 / 1 / 2 / 3 个同心节圆</b>。
+    直达：<code>?m=ci&amp;s=4</code></div>
   <div class="stage-body">
     <div id="plateBox">
       <canvas id="plate"></canvas>
@@ -1098,11 +1111,16 @@ for(let n = 0; n <= 6; n++) JZ[n] = jZeros(n, 6);
 
 /* J_n 在 (0,k] 内的零点个数 = 内部节圆数 */
 function countCircles(n, kmax){
+  /* 内部节圆数 = J_n 在 (0, kR) 里**严格内部**的零点个数 = s−1。
+     🔴 2026-10-22 修：原来扫到 kmax 为止（含端点），端点本身就是 r=R 那个零点，
+        采样恰好落在零点上时 `cur===0` 与下一帧的 `prev===0` 会**各记一次** ⇒ 多算两个。
+        实测 n=2/s=2 报「2 个节圆」（图里只有 1 个），n=2/s=4 又报对 3 个 —— 时对时错，
+        正是端点采样碰运气的样子。现在把上界收到 0.9995·kmax，端点强制排除。 */
   let c = 0, prev = besselJ(n, 1e-4);
-  const M = 900;
+  const M = 1200, hi = kmax*0.9995;
   for(let i = 1; i <= M; i++){
-    const cur = besselJ(n, kmax * i / M);
-    if(prev === 0 || prev * cur < 0) c++;
+    const cur = besselJ(n, hi*i/M);
+    if(prev * cur < 0) c++;
     prev = cur;
   }
   return c;
@@ -1945,7 +1963,26 @@ function renderLawTable(){
 /* =========================================================================
    11. 启动
    ========================================================================= */
+/* 深链接：?m=ci|sq-sum|sq-diff、?s=1..4（径向阶 = 同心节圆数 + 1）、?cn=0..6（辐条数）。
+   为什么加这个：s 滑块藏在「圆膜 · Bessel」页签里，默认页签是方盘 ⇒ 打开页面根本看不到它，
+   很容易以为「同心节圆这个功能没了」。有了 s 参数就能把某一档直接发给别人。
+   ⚠️ 方盘的 n/m 用 ?qn= / ?qm=，别跟 ?m=（mode）撞名。 */
+function applyUrl(){
+  var q = location.search || '';
+  var md = (q.match(/[?&]m=(sq-sum|sq-diff|ci)\b/) || [])[1];
+  if (md) S.mode = md;
+  function num(k){
+    var r = q.match(new RegExp('[?&]' + k + '=(\\d+)'));
+    return r ? parseInt(r[1], 10) : null;
+  }
+  var s = num('s');   if (s !== null && s >= 1 && s <= 4) S.cs = s;
+  var c = num('cn');  if (c !== null && c >= 0 && c <= 6) S.cn = c;
+  var qn = num('qn'); if (qn !== null && qn >= 1 && qn <= 8) S.n = qn;
+  var qm = num('qm'); if (qm !== null && qm >= 1 && qm <= 8) S.m = qm;
+}
+
 function boot(){
+  applyUrl();
   resize();
   buildGrid();
   renderField();
@@ -2139,8 +2176,17 @@ if(document.readyState === 'loading'){
 
       if (!noteDone && el.parentNode) {
         var note = document.createElement('p');
-        note.className = 'fxp-note';
-        note.textContent = '参数已收进右侧浮窗「调参」（拖标题栏可挪走 · 双击回位）';
+        note.className = 'fxp-note fxp-note-go';
+        /* 🔴 2026-10-22：这句原来只是说明文字。老师反馈「同心节圆那个功能怎么没了」——
+           实际是**所有滑块都被收进了默认折叠的「调参」浮窗**，页面上一个滑块都看不见，
+           于是任何「某个参数没了」的直觉都会发生。改成可点：点一下就展开浮窗。 */
+        note.innerHTML = '参数已收进右下浮窗「<b>调参</b>」 —— <u>点这里展开</u>' +
+          '（拖标题栏可挪走 · 双击回位）';
+        note.title = '点一下展开调参浮窗';
+        note.addEventListener('click', function () {
+          p.classList.remove('fxp-min');
+          save(p);
+        });
         el.parentNode.insertBefore(note, el);
         noteDone = true;
       }

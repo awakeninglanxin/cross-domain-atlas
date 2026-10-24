@@ -551,15 +551,16 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
     <div id="panelBody">
     <div class="grp">
       <div class="gt">动画导出</div>
-      <button class="gh" id="gifbtn" style="width:100%;margin:2px 0 6px">🎞 导出 GIF（一个 Anu 周期）</button>
+      <button class="gh" id="gifbtn" style="width:100%;margin:2px 0 6px">🎞 导出 GIF（当前设置 · 一个呼吸周期）</button>
       <div class="hint" style="margin-top:0">
-        一键生成整段呼吸动画（≈16 s / 480×360 / ≤5 MB）：<br>
-        <b>前 8 s = 网页打开后的默认状态</b>（d=5 · 十丝 · 无粒子 · 正视 90°）录一个完整呼吸周期；<br>
-        后 8 s：视角 <b>正视 → 俯视 → 等角</b>，回标准谱 d=3.5，粒子层（<b>0.05×</b>）淡入，<br>
-        再叠 Anu 十丝；末段把<b>呼吸峰值 Rmax 从 2.5 推到 4.9</b>
-        （R/d 0.71 → 1.40，越过崩解线），展示 <b>R 过大 ⇒ 结构逐根断裂 ⇒ 湮灭</b>，
-        画面左下角实时标出 R/d 与"失衡/湮灭"状态。<br>
-        导出期间画面会短暂接管，结束后参数与视角原样恢复。
+        <b>按屏幕现在的样子录一个完整呼吸周期</b>（R：1 → R<sub>max</sub> → 1），
+        相机固定不转，不切视角、不改你的任何参数：<br>
+        · 视角 / 孔径 / 每圈环数 / 每级摆幅 / 十丝 / 粒子 / 蛋壳 / <b>镜像并排</b> —— 全部沿用当前值；<br>
+        · 画幅按屏幕比例取 <b>600 宽</b>，实际按 <b>1200 宽渲染再降采样</b>（细丝才有抗锯齿，否则 1 px 线在成片里变成实心金条）；<br>
+        · 线宽按 <b>导出宽 ÷ 屏幕宽 × 0.40</b> 缩 —— 成片常被播放器放大 2 倍看，0.40 才和屏幕上的细丝一个观感；<br>
+        · 调色板从本次画面<b>自适应</b>生成 256 色（旧版固定 6×6×6 网格，金黄会被切成土黄）；<br>
+        · 片长对齐<b>轨道整数圈</b>，所以首尾能接上；体积超 5 MB 会自动抽帧兜底。<br>
+        导出期间画面会被短暂接管，结束后参数 / 视角 / 蛋壳原样恢复。
       </div>
       <div class="hint" id="gifmsg" style="color:#7fd8ff"></div>
     </div>
@@ -1563,6 +1564,11 @@ function partResize(){
  *  "全局撒入"整个盒子都是入口，画框没意义。 */
 var srcBoxDraws=0;               /* 注入区框实际绘制的次数（探针用它证明"每帧都在画"，不是只画了一次） */
 function drawSrcBox(tp,K,cx,cy,fx,fy,count){
+  /* GIF 导出：注入环口标记是**屏幕上的说明性叠加**（虚线环 + 淡绿填充），
+     它按世界坐标画、不跟画幅缩，在小画幅里会变成一条横贯画面的亮青绿带
+     （2026-10-22 实测像素 rgb(66,252,186)，屏幕上同位置是背景色）。
+     导出成图不需要它 ⇒ 直接跳过。 */
+  if(GIFEXP) return;
   var b=SRCBOX[PART.src];
   var zel=document.getElementById('zsrc');
   if(!b){
@@ -2075,6 +2081,9 @@ var VIEW={z:1, ox:0, oy:0, min:0.25, max:16};
 /* 镜像并排开关（老师 2026-10-20）。**必须在这里就声明**：drawAnu 每帧读它，
    而按钮的绑定代码在后面（同一段脚本里更靠后），声明晚了首帧会读到 undefined。 */
 var MIR={on:false};
+/* GIF 导出进行中（2026-10-22）：mirArea() 要据此改用整幅可用区。
+   放在 MIR 旁边是因为 mirArea 在 drawAnu 里每 15 帧读一次，必须早于它存在。 */
+var GIFEXP=false;
 var bufX=new Float32Array(MAXN),bufY=new Float32Array(MAXN),bufC=new Int32Array(MAXN);
 
 function smooth(u){return u*u*(3-2*u);}
@@ -2813,6 +2822,11 @@ var wX=new Float32Array(MAXN), wY=new Float32Array(MAXN), wBk=new Uint8Array(MAX
 /* 镜像并排模式下画布的**可用区**（右侧参数浮窗占位，见 mirArea）。W 是画布 CSS 宽。 */
 var _mirArea={l:0, r:0, n:0};
 function mirArea(){
+  /* GIF 导出：导出期把画幅临时改成小尺寸，而 panel/wres 的 rect 仍是**屏幕上**的绝对像素，
+     两套坐标系一混，_aR 会算出比 W 还大的数 ⇒ 正片画到画幅外、中缝跑到右缘、
+     右边只剩一条被 drawImage 切出来的镜像窄条（2026-10-22 实测 f000/f040 全黑左半）。
+     导出成图里本来就没有浮窗，所以直接把可用区当整幅：两幅各占一半，中缝 = W/2。 */
+  if(GIFEXP){ _mirArea.l=0; _mirArea.r=W; _mirArea.n++; return _mirArea; }
   if((_mirArea.n++ % 15)===0 || !_mirArea.r){
     var r=W, l=0, pn=document.getElementById('panel'), wr=document.getElementById('wres');
     var cb=cv.getBoundingClientRect();
@@ -3466,7 +3480,7 @@ function eggCover(){
      每条描两遍：先粗一圈的低 alpha 光晕（"场"的感觉），再细线本体。
      颜色刻意用**偏白的浅金** rgb(255,232,140) —— 十丝的 3 粗是 rgb(255,215,0)，
      太接近会糊成一片分不出"壳"和"丝"。 */
-  var lwM=Math.max(0.5, EGG.lw*P.LW);
+  var lwM=Math.max(0.35, EGG.lw*P.LW);   /* 下限 0.35：导出小画幅时别被截断成"最细也有 0.5px" */
   for(k=0;k<NM;k++){
     psi=2*Math.PI*k/NM; cs=Math.cos(psi); sn=Math.sin(psi);
     var back=Math.sin(psi+azr);                    /* >0 = 后半圈（远） */
@@ -3481,15 +3495,16 @@ function eggCover(){
       var sx=cx+(_egT[0]-fx)*K, sy=cy+(_egT[1]-fy)*K;
       if(i===0) ctx.moveTo(sx,sy); else ctx.lineTo(sx,sy);
     }
-    ctx.lineWidth=lwM*3.6;
-    ctx.strokeStyle='rgba(255,206,60,'+(al*0.20).toFixed(3)+')';
+    ctx.lineWidth=lwM*(GIFEXP?1.8:3.6);
+    ctx.strokeStyle='rgba(255,206,60,'+(al*(GIFEXP?0.08:0.20)).toFixed(3)+')';
     ctx.stroke();
     ctx.lineWidth=lwM;
-    ctx.strokeStyle='rgba(255,232,140,'+al.toFixed(3)+')';
+    /* 导出期金线按屏幕的透明度衰减：屏幕上半透明细丝在成片里会被 AA + 量化抬成实心金条 */
+    ctx.strokeStyle='rgba(255,232,140,'+(al*(GIFEXP?0.74:1)).toFixed(3)+')';
     ctx.stroke();
   }
   /* ② 纬线：每圈按方位角分 8 段，逐段算明暗（同一圈前亮后暗） */
-  var lwP=Math.max(0.4, EGG.lw*0.75*P.LW);
+  var lwP=Math.max(0.28, EGG.lw*0.75*P.LW);   /* 同上（纬线） */
   for(k=0;k<NP;k++){
     zeta=eggZetaS(eggSpacedS((k+0.5)/NP));         /* 等弧长 + Chebyshev 混合 ⇒ 尖部自动加密 */
     rr=eggRhoCS(zeta,sA,cA,B); if(rr<=0) continue;
@@ -3507,11 +3522,11 @@ function eggCover(){
         var s2=cx+(_egT[0]-fx)*K, s3=cy+(_egT[1]-fy)*K;
         if(i===0) ctx.moveTo(s2,s3); else ctx.lineTo(s2,s3);
       }
-      ctx.lineWidth=lwP*3.0;
-      ctx.strokeStyle='rgba(255,198,60,'+(al2*0.18).toFixed(3)+')';
+      ctx.lineWidth=lwP*(GIFEXP?1.6:3.0);
+      ctx.strokeStyle='rgba(255,198,60,'+(al2*(GIFEXP?0.08:0.18)).toFixed(3)+')';
       ctx.stroke();
       ctx.lineWidth=lwP;
-      ctx.strokeStyle='rgba(255,214,80,'+al2.toFixed(3)+')';
+      ctx.strokeStyle='rgba(255,214,80,'+(al2*(GIFEXP?0.78:1)).toFixed(3)+')';
       ctx.stroke();
     }
   }
@@ -4781,6 +4796,32 @@ window.__az={
   refit:function(){ FITK=null; AFITK=null; },
   buf:function(){ return {bx:bufX,by:bufY,n:anuDrawN}; },
   nScan:function(){ return Math.min(count,trailLen); },
+  /* ---------- 视角探针（2026-10-22）----------
+     出「等角斜视 / 俯视图」这类固定视角的图时，必须能**确定性地**设方位角与俯仰角。
+     az 在闭包里、拖拽是唯一入口（0.005 rad/px 且有 2px 死区），合成指针事件既脆又不可复现，
+     所以直接开两个 setter。EL 走与拖拽**同一条**写回路径（写 P.EL + 同步滑块与标签）。 */
+  setAz:function(v){ if(isFinite(v)) az=+v; return az; },
+  setAzDeg:function(d){ if(isFinite(d)) az=d*Math.PI/180; return az; },
+  setEL:function(v){
+    if(!isFinite(v)) return P.EL;
+    var e=Math.max(0,Math.min(90,+v));
+    var sl=document.getElementById('sEL'); if(sl)sl.value=String(e);
+    var vl=document.getElementById('vEL'); if(vl)vl.textContent=Math.round(e)+'°';
+    P.EL=e; AFITK=null; FITK=null;             /* 俯仰一变，包围盒就变 ⇒ 重取景 */
+    return P.EL;
+  },
+  /* 自转速度（RS>0 时 az 每帧漂，出固定视角图必须先归零） */
+  spin:function(v){
+    var e=document.getElementById('sRS');
+    if(e&&v!==undefined){ e.value=String(v); e.dispatchEvent(new Event('input',{bubbles:true})); }
+    return e?parseFloat(e.value):0;
+  },
+  setView:function(azDeg,ELdeg){
+    this.spin(0);
+    var r={az:this.setAzDeg(azDeg), EL:this.setEL(ELdeg)};
+    r.spin=this.spin(0);
+    return r;
+  },
   view:function(){ return {az:az,EL:P.EL,zlo:zlo,zhi:zhi,R:P.R,Rmax:P.Rmax,d:P.d,LAM:P.LAM,GAM:P.GAM,
     TAU:P.TAU,S:P.S,CAL:CAL,nMaj:ANU.nMaj,nWire:ANU.nWire,
     aBo:P.aBo,aBi:P.aBi,rigid:ANU.rigid,on:ANU.on,AL:P.AL,LW:P.LW,
@@ -4949,31 +4990,141 @@ function decayA(){ return 1-0.96*DECAY; }      /* 亮度 */
 function decayS(){ return 1+0.55*DECAY; }   /* 只轻推，别把线段甩出画幅 */       /* 径向膨胀倍率 */
 
 /* ---------- GIF89a 编码器（纯前端，无依赖） ----------
- * 调色板：6×6×6 RGB(216) + 40 级灰 = 256。
- *   Aizawa 画面是"黑底 + 高饱和发光线条"，灰阶单独留一条链是为了
- *   不让白芯/淡出的中间调被 RGB 网格切成色带。
+ * 调色板：**自适应**（2026-10-22 改）。
+ *   旧版是固定 6×6×6 RGB 网格(216) + 40 级灰，235 个色槽平均撒在整个立方体上，
+ *   结果高饱和发光色全被钉到最近网格点：金黄 rgb(255,215,0) 变土黄、
+ *   品红/青变灰蓝，整片看起来"脏"。老师原话是"黄色线条太重"。
+ *   现在换成中位切分（median cut）：先统计本次画面真实颜色分布，再分配 255 槽；
+ *   背景（r+g+b<24）统一进索引 0，一个槽都不浪费。
  * 压缩：标准 GIF-LZW（变长码，clear/eoi，字典满 4096 复位）。
  * ------------------------------------------------------------------ */
 var GPAL=new Uint8Array(768);
-(function(){
-  var r,g,b,k,i;
-  for(r=0;r<6;r++)for(g=0;g<6;g++)for(b=0;b<6;b++){
-    i=(r*36+g*6+b)*3;
-    GPAL[i]=r*51; GPAL[i+1]=g*51; GPAL[i+2]=b*51;
+var GLUT=new Uint8Array(32768);          /* 5-5-5 RGB → 调色板索引 */
+var GHIST=new Uint32Array(32768);
+var GBG=24;                              /* 低于这个亮度和 ⇒ 当成背景（索引 0） */
+
+/* ---------- 导出超采样（2026-10-22 二改） ----------
+ * 600 宽直接画，1 px 的细线（蛋壳经线、十丝细丝）落在小数像素上会被硬截断成
+ * 一像素热点，再按相对比例缩下来，整圈金笼就糊成一片亮黄 ——
+ * 老师说的"黄色线条太重"，一半是调色板、另一半就是这个。
+ * 现在按 SS 倍画幅渲染，再高质降采样到交付尺寸：线宽的**相对比例**不变，
+ * 但有了真正的抗锯齿，细丝回到屏幕上的观感。 */
+var SS=2;
+/* 导出专用线宽系数（2026-10-22 二改）：屏幕上金线是 1:1 看的，
+   成片只有 600 宽、播放器常常再放大 2 倍 → 同一条 1.14 px 的线在观众眼里
+   变成 2~3 px 的实心金条，就是老师说的"黄色线条太重"。
+   0.62 是实测手感值：成片里金笼回到细丝，十丝主干仍看得出粗细。 */
+var GIFLWW=0.40;
+var DSC=(typeof document!=='undefined')?document.createElement('canvas'):null;
+var DCTX=DSC?DSC.getContext('2d'):null;
+var EXP_W=0, EXP_H=0;                 /* 交付尺寸（降采样后）；0 = 不降采样 */
+function expGetData(){
+  if(DSC && EXP_W && EXP_H && (EXP_W!==W || EXP_H!==H)){
+    if(DSC.width!==EXP_W || DSC.height!==EXP_H){ DSC.width=EXP_W; DSC.height=EXP_H; }
+    DCTX.imageSmoothingEnabled=true;
+    if('imageSmoothingQuality' in DCTX) DCTX.imageSmoothingQuality='high';
+    DCTX.clearRect(0,0,EXP_W,EXP_H);
+    DCTX.drawImage(cv, 0,0, W,H, 0,0, EXP_W,EXP_H);
+    return DCTX.getImageData(0,0,EXP_W,EXP_H);
   }
-  for(k=0;k<40;k++){
-    var v=Math.round(k*255/39), i2=(216+k)*3;
-    GPAL[i2]=v; GPAL[i2+1]=v; GPAL[i2+2]=v;
+  return ctx.getImageData(0,0,W,H);
+}
+function histReset(){ GHIST.fill(0); }
+/* 采样：每 4 个像素取 1，133 帧约 2000 万→500 万次，够准且快 */
+function histAccum(){
+  var d=expGetData().data, i, r, g, b, s;
+  for(i=0;i<d.length;i+=16){
+    r=d[i]; g=d[i+1]; b=d[i+2];
+    if(r+g+b<GBG) continue;
+    GHIST[((r>>3)<<10)|((g>>3)<<5)|(b>>3)]++;
   }
-})();
+}
+/* 中位切分：把非空桶按"权重×最长轴"反复切成 255 组，每组建加权平均色 */
+function palBuild(){
+  var keys=[], i, k;
+  for(i=0;i<32768;i++) if(GHIST[i]) keys.push({v:i, c:GHIST[i]});
+  GPAL.fill(0);
+  /* 索引 0 = 纯黑（背景）；索引 1..255 给内容色 */
+  var slots=255;
+  if(!keys.length){                      /* 兜底：全黑画面也给一条灰阶，别炸 */
+    for(k=0;k<256;k++){ GPAL[k*3]=k; GPAL[k*3+1]=k; GPAL[k*3+2]=k; }
+    return;
+  }
+  var boxes=[{arr:keys}];
+  function chan(v,ax){ return ax===0?((v>>10)&31):(ax===1?((v>>5)&31):(v&31)); }
+  while(boxes.length<slots){
+    /* 选"权重 × 最长轴跨度"最大的盒子来切 */
+    var bi=-1, bs=-1;
+    for(i=0;i<boxes.length;i++){
+      var a=boxes[i].arr; if(a.length<2) continue;
+      var mn=[31,31,31], mx=[0,0,0], wsum=0;
+      for(k=0;k<a.length;k++){
+        var v=a[k].v; wsum+=a[k].c;
+        for(var ax=0;ax<3;ax++){ var cv=chan(v,ax); if(cv<mn[ax])mn[ax]=cv; if(cv>mx[ax])mx[ax]=cv; }
+      }
+      var sp=Math.max(mx[0]-mn[0],mx[1]-mn[1],mx[2]-mn[2]);
+      var sc=sp*Math.log(1+wsum);
+      if(sc>bs){ bs=sc; bi=i; }
+    }
+    if(bi<0) break;
+    var arr=boxes[bi].arr;
+    var mn2=[31,31,31], mx2=[0,0,0];
+    for(k=0;k<arr.length;k++){
+      var v2=arr[k].v;
+      for(var ax2=0;ax2<3;ax2++){ var c2=chan(v2,ax2); if(c2<mn2[ax2])mn2[ax2]=c2; if(c2>mx2[ax2])mx2[ax2]=c2; }
+    }
+    var ax3=0, best=mx2[0]-mn2[0];
+    for(var a3=1;a3<3;a3++){ var sp3=mx2[a3]-mn2[a3]; if(sp3>best){ best=sp3; ax3=a3; } }
+    arr.sort(function(p,q){ return chan(p.v,ax3)-chan(q.v,ax3); });
+    var tot=0; for(k=0;k<arr.length;k++) tot+=arr[k].c;
+    var acc=0, cut=1;
+    for(k=0;k<arr.length-1;k++){ acc+=arr[k].c; if(acc>=tot/2){ cut=k+1; break; } }
+    if(cut<1) cut=1; if(cut>arr.length-1) cut=arr.length-1;
+    boxes.splice(bi,1,{arr:arr.slice(0,cut)},{arr:arr.slice(cut)});
+  }
+  /* 每盒取加权平均色（桶中心 ×8+4 还原到 0..255） */
+  var idx=1;
+  for(i=0;i<boxes.length && idx<256;i++){
+    var ar=boxes[i].arr, sr=0,sg=0,sb=0,sw=0;
+    for(k=0;k<ar.length;k++){
+      var vv=ar[k].v, w=ar[k].c;
+      sr+=(((vv>>10)&31)*8+4)*w; sg+=(((vv>>5)&31)*8+4)*w; sb+=((vv&31)*8+4)*w; sw+=w;
+    }
+    if(!sw) continue;
+    GPAL[idx*3]=Math.max(0,Math.min(255,Math.round(sr/sw)));
+    GPAL[idx*3+1]=Math.max(0,Math.min(255,Math.round(sg/sw)));
+    GPAL[idx*3+2]=Math.max(0,Math.min(255,Math.round(sb/sw)));
+    idx++;
+  }
+  /* 色槽没用满就补灰阶，避免索引越界成黑 */
+  for(;idx<256;idx++){
+    var gv=Math.round((idx-boxes.length)*255/Math.max(1,256-boxes.length));
+    GPAL[idx*3]=gv; GPAL[idx*3+1]=gv; GPAL[idx*3+2]=gv;
+  }
+}
+/* 32³ 查找表：每个 5bit 桶找最近的调色板色（838 万次比较，约 60 ms） */
+function lutBuild(){
+  var i, r, g, b, bi, bd, k, dr, dg, db, d;
+  for(i=0;i<32768;i++){
+    r=((i>>10)&31)*8+4; g=((i>>5)&31)*8+4; b=(i&31)*8+4;
+    if(r+g+b<GBG){ GLUT[i]=0; continue; }
+    bi=1; bd=1e9;
+    for(k=1;k<256;k++){
+      dr=r-GPAL[k*3]; dg=g-GPAL[k*3+1]; db=b-GPAL[k*3+2];
+      d=dr*dr+dg*dg+db*db;
+      if(d<bd){ bd=d; bi=k; if(!d) break; }
+    }
+    GLUT[i]=bi;
+  }
+}
 function qIdx(r,g,b){
-  var mx=r>g?(r>b?r:b):(g>b?g:b), mn=r<g?(r<b?r:b):(g<b?g:b);
-  if(mx-mn<14) return 216+(((mx*39/255)+0.5)|0);
-  return ((((r*5/255)+0.5)|0)*36)+((((g*5/255)+0.5)|0)*6)+(((b*5/255)+0.5)|0);
+  if(r+g+b<GBG) return 0;
+  return GLUT[((r>>3)<<10)|((g>>3)<<5)|(b>>3)];
 }
 function quantizeFrame(){
-  var d=ctx.getImageData(0,0,W,H).data, px=new Uint8Array(W*H), i, j;
-  for(i=0,j=0;i<px.length;i++,j+=4) px[i]=qIdx(d[j],d[j+1],d[j+2]);
+  var im=expGetData(), d=im.data, n=im.width*im.height;
+  var px=new Uint8Array(n), i, j;
+  for(i=0,j=0;i<n;i++,j+=4) px[i]=qIdx(d[j],d[j+1],d[j+2]);
   return px;
 }
 function lzwEncode(px,minCode){
@@ -5033,163 +5184,197 @@ function gifPack(w,h,frames,delayCs){
   return new Uint8Array(b);
 }
 
-/* ---------- 一键导出：一个完整呼吸周期 ---------- */
+/* ---------- 一键导出：**当前设置**的一个完整呼吸周期（2026-10-22 重写） ----------
+ * 旧版三处硬伤（老师 2026-10-22 逐条指出）：
+ *   ① 一进来就把参数"归位到标准谱"（Rmax=2.5 / d=3.5 / EL=90 / LW=3 / TR=8000），
+ *      再按两段剧本推进（段 A 默认正视一个周期 + 段 B 切标准谱、视角 90°→0°→40°、末尾湮灭）
+ *      ⇒ 导出的根本不是屏幕上那一眼。现在：**原样读当前 P / ANU / PART / EGG / MIR**，
+ *      只让 R 按当前呼吸周期走一个余弦圈（1 → Rmax → 1）。
+ *   ② 镜像模式的可用区是按**屏幕浮窗 rect** 量的绝对像素，导出改小画幅后坐标系不匹配
+ *      （见 mirArea 里的 GIFEXP 旁路）。
+ *   ③ 线宽 2.2·LW 是 CSS px 常量，不随画幅缩；在小画幅里粗丝占宽 1.4% 再叠 lighter
+ *      ⇒ 整片发黄发光。现在按 导出宽/屏幕宽 等比缩，等效粗细与屏幕上一致。
+ * 体积：>5 MB 就抽帧 + 放慢（沿用旧 guard，抽到 ≤5 MB 为止）。
+ */
 var EXPORTING=false;
 
-/** 时间线（t = 0..1，一个呼吸周期 ≈ 8.0 s @12fps）
- *  0.00–0.36  纯轨道（Anu 关、粒子关）· 视角 正视90° → 俯视0°
- *  0.36–0.82  Anu 十丝 + 粒子(0.05×) · 视角 俯视 → 等角40°
- *  0.82–1.00  参数失衡 ⇒ DECAY 0→1，结构径向炸开并淡出（湮灭）
- */
 function gifStepMain(n){
   for(var i=0;i<n;i++){ step(); push(st[0],st[1],st[2]); }
 }
+/* 重置轨迹/十丝，但**不动粒子**（2026-10-22 实测结论）。
+ * 泡泡膜的半径逐层取自粒子稳健上界（memProfile 的"第 k 大"）；
+ * 导出若走 partReset 重撒，粒子回到出生盒、某些层只剩一两颗，
+ * 那层的稳健上界就被一颗外抛点撑大 ⇒ 膜鼓成一条横贯画幅的亮青带
+ * （屏幕上粒子早已跑到稳态，膜是收紧的一圈）。
+ * 做法：临时把 PART.on 置 false，借 reset() 里的分支跳过 partReset，再还原。 */
+function gifResetKeepParts(){
+  var po=PART.on;
+  PART.on=false;
+  reset();
+  PART.on=po;
+  if(!aCnt[0]) aWarm();
+  PART.acc=0;
+}
+
 function exportCycleGif(){
   var btn=document.getElementById('gifbtn');
   var msg=document.getElementById('gifmsg');
   if(!btn||EXPORTING) return;
-  EXPORTING=true;
+  EXPORTING=true; GIFEXP=true;
   var oldTxt=btn.textContent;
   btn.textContent='导出中…'; btn.disabled=true;
-  if(msg) msg.textContent='正在渲染 100 帧…';
 
-  /* --- 保存一切会被改动的状态 --- */
-  var svKeys=['R','Rmax','d','b','e','c','EL','S','AL','LAM','GAM','TAU','LW','TR'];
-  var sv={}, q;
+  /* --- 存全部会被改动的状态 --- */
+  var svKeys=['R','Rmax','BT','d','S','b','e','c','a','f','LAM','GAM','TAU','RS','EL','TR','LW','AL'];
+  var sv={}, q, k;
   for(q=0;q<svKeys.length;q++) sv[svKeys[q]]=P[svKeys[q]];
-  var svDecay=DECAY, svAnu=ANU.on, svPart=PART.on, svSpd=PART.spd;
-  var svW=W, svH=H, svDPR=DPR, svAz=az, svFitK=FITK, svAFit=AFITK, svLerp=FITLERP;
+  var svDecay=DECAY, svPA=pAlpha, svTrail=trailLen;
+  var svAnu={on:ANU.on,rigid:ANU.rigid,nWire:ANU.nWire,nMaj:ANU.nMaj};
+  var svPart={on:PART.on,spd:PART.spd,n:PART.n};
+  var svEgg=EGG.on, svEggAuto=EGG.auto, svEggA=EGG.aDeg, svEggB=EGG.b;
+  var svW=W, svH=H, svDPR=DPR, svAz=az, svFitK=FITK, svAFit=AFITK, svAX=AFITX, svAY=AFITY, svLerp=FITLERP;
   var svViewZ=VIEW.z, svViewOX=VIEW.ox, svViewOY=VIEW.oy;
   var svPlaying=playing, svBreath=breathing;
 
   try{
-    /* --- 固定导出画幅 --- */
-    W=480; H=360; DPR=1;
+    /* --- 画幅：保持屏幕长宽比（不改构图），宽度 720 --- */
+    var scrW=Math.max(1,W), scrH=Math.max(1,H);
+    /* 600 宽是实测出来的：640 宽在十丝/蛋壳/粒子全开时 67 帧约 5.1 MB，
+       会触发体积兜底抽帧（8 fps 掉到 4 fps）；600 宽同一个周期约 4.5 MB，稳过。 */
+    var EW=600, EH=Math.max(2,Math.round(EW*scrH/scrW/2)*2);
+    /* 交付 600×EH，但**按 SS 倍画**：细线才有抗锯齿余量。
+       线宽系数用 W/scrW（不是 EW/scrW）—— 必须在放大后的画幅里算，
+       否则相当于把 1 px 的线当 0.5 px 画、再放大回来，粗细照旧。
+       旧版这里还有 Math.max(0.8, …) 的下限：屏幕 LW=1 时 lwK=0.38 被抬回 0.8，
+       相对粗细就变成 2.1 倍 —— 这才是"黄色线条太重"的主因。 */
+    var lwK=EW*SS/scrW;
+    EXP_W=EW; EXP_H=EH;
+    W=EW*SS; H=EH*SS; DPR=1;
     cv.width=W; cv.height=H; ctx.setTransform(1,0,0,1,0,0);
+    _mirArea.r=0; _mirArea.n=0;             /* 作废旧缓存（GIFEXP 下会返回 [0,W]） */
     if(typeof partResize==='function') partResize();
 
-    /* --- 参数归位到"标准谱"，再做时间线 --- */
-    P.Rmax=2.5; P.d=3.5; P.b=0.7; P.e=0.25; P.c=0.6; P.S=1;
-    P.LAM=1; P.GAM=0; P.TAU=0; P.AL=0.55; P.LW=3; P.TR=8000;
-    trailLen=8000;
-    PART.spd=0.05; PART.n=Math.min(PART.n,520);
-    FITK=null; AFITK=null; FITLERP=0.35;
-    VIEW.z=1; VIEW.ox=0; VIEW.oy=0;
-    DECAY=0;
-    reset();
-    if(!aCnt[0]) aWarm();
-    PART.on=true; partReset(false);   /* 预热：开场就是流动中的粒子云，不是入口一堆亮点 */
+    /* --- 线宽：粗丝 2.2·LW / 细丝 0.9·LW 都是 CSS px 常量，必须按画幅缩 --- */
+    P.LW=Math.max(0.15, +(P.LW*lwK*GIFLWW).toFixed(3));
 
-    var FPS=12, TOTAL=200, DELAY=8;      /* 200×80ms = 16.0 s：前 8 s 是默认正视一圈 */
+    /* --- 一个完整呼吸周期：帧率 16，帧数由**当前 BT** 决定 --- */
+    var FPS=8, T=Math.max(2,+(P.BT||8.34));
+    var TOTAL=Math.max(24,Math.round(T*FPS));
+    /* 延时按"TOTAL×DELAY/100 ≈ T"反算，保证总时长正好一个呼吸周期；
+       8 fps 是 5 MB 预算下 640 宽 + 十丝/蛋壳/粒子的实测上限（每帧约 66 KB）。 */
+    var DELAY=Math.max(2,Math.round(100*T/TOTAL));
     var NST=Math.max(1,Math.round((1/FPS)*SIMRATE/DT));
-    var frames=[], f, i, t, sg, u;
-    PART.acc=0;
+    /* 片长对齐**轨道的整数圈**：首尾帧差 213（几乎完全不同）就是因为
+       8.34 s 里轨道只走了 10.66 个 z 循环，循环播放时会跳一下。
+       T_sim = TOTAL·NST·DT 取成 2π 的整数倍 ⇒ 首尾只差 1 帧呼吸相位 ≈ 5°。 */
+    var cycles=Math.max(1,Math.round(TOTAL*NST*DT/(2*Math.PI)));
+    TOTAL=Math.max(24,Math.round(cycles*2*Math.PI/(NST*DT)));
 
-    for(f=0;f<TOTAL;f++){
-      t=f/TOTAL;
+    /* 取景从零开始算（不做渐变），视角保持当前 az / EL，不自转 */
+    /* FITLERP=1：取景**跟手**。屏幕上用 0.35 的平滑（呼吸时画面轻微缩放），
+       但导出只有 60~70 帧，平滑滞后会让"R=1 最大那一帧"超出画幅被裁掉顶盖。 */
+    FITK=null; AFITK=null; AFITX=0; AFITY=0; FITLERP=1;
+    VIEW.z=1; VIEW.ox=0; VIEW.oy=0;
 
-      if(t<0.50){
-        /* ── 段 A（0–50% · 8 s）：**网页打开后的默认状态**，正视图录一个完整呼吸周期
-           d=5 / Anu 十丝开 / 粒子关 / Rmax=2.5 / 仰角 90°（正视） */
-        sg=t/0.50;
-        P.d=5; P.Rmax=2.5; P.EL=90;
-        ANU.on=true; PART.on=false; pAlpha=0; DECAY=0;
-        P.R = 1+(P.Rmax-1)*(0.5-0.5*Math.cos(2*Math.PI*sg));
-      }else{
-        /* ── 段 B/C/D（50–100%）：切到标准谱 d=3.5 演示粒子/十丝/湮灭 ── */
-        sg=(t-0.50)/0.50;
-        P.d=3.5; P.Rmax=2.5; ANU.on=true;
+    az=svAz;
+    gifResetKeepParts();                     /* 轨迹/十丝重播，粒子保持屏幕稳态 */
+    /* 蛋壳（auto）随十丝半径实时改倾角/松紧 —— 导出把它**冻结**在当前值：
+       否则一趟 GIF 里蛋形持续变形（实测首帧 aLive≈7°，末帧已经 33.7°，
+       首尾差 223/255，循环播放像换了个物体）。 */
+    EGG.auto=false;
+    if(typeof EGG.aLive==='number' && EGG.aLive>0) EGG.aDeg=EGG.aLive;
+    if(typeof EGG.bLive==='number' && EGG.bLive>0) EGG.b=EGG.bLive;
+    EGG.ok=false;
+    pAlpha=1;
+    DECAY=decayTarget();
+    for(var wf=0;wf<8;wf++){ gifStepMain(NST); draw(); }   /* 预热：取景/膜/蛋一步到位 */
 
-        /* 视角：正视 90° → 俯视 0° → 等角 40°（末段停在等角） */
-        P.EL = sg<0.26 ? 90*(1-sg/0.26)
-             : (sg<0.58 ? 40*((sg-0.26)/0.32) : 40);
-
-        /* 呼吸：完整一圈 */
-        P.R = 1+(P.Rmax-1)*(0.5-0.5*Math.cos(2*Math.PI*sg));
-
-        /* 粒子：前 6% 空场（与段 A 的无粒子无缝衔接），随后 6 帧淡入 0.05× */
-        if(sg<0.06){ PART.on=false; pAlpha=0; }
-        else{ PART.on=true; pAlpha=Math.min(1,(sg-0.06)/0.06); }
-
-        /* 失衡湮灭：把呼吸峰值本身推过崩解线（Rmax 2.5→4.9，R/d 0.71→1.40） */
-        if(sg>0.72){
-          u=(sg-0.72)/0.28;
-          P.Rmax = 2.5 + 2.4*Math.pow(u,1.4);
-          P.R = 1+(P.Rmax-1)*(0.5-0.5*Math.cos(2*Math.PI*sg));
-          DECAY = decayTarget();
-        }else{ DECAY=0; }
+    /* ---- 第一遍：只统计颜色直方图（每 3 帧采一次），不存帧 ---- */
+    histReset();
+    var f, i;
+    for(f=0;f<TOTAL;f+=3){
+      P.R=1+(P.Rmax-1)*(0.5-0.5*Math.cos(2*Math.PI*f/TOTAL));
+      DECAY=decayTarget();
+      gifStepMain(NST*3);
+      if(PART.on){
+        PART.acc+=NST*3*PART.spd;
+        var pn0=Math.floor(PART.acc); PART.acc-=pn0;
+        if(pn0>0) partStepAll(pn0);
       }
+      draw();
+      histAccum();
+    }
+    palBuild(); lutBuild();
+
+    /* ---- 第二遍：正式渲染 + 量化（调色板已按本次画面定好） ---- */
+    az=svAz;
+    gifResetKeepParts();
+    EGG.ok=false;
+    pAlpha=1; DECAY=decayTarget();
+    for(var wf2=0;wf2<8;wf2++){ gifStepMain(NST); draw(); }
+    if(msg) msg.textContent='调色板已按画面自适应（255 色）· 开始渲染 '+TOTAL+' 帧…';
+
+    var frames=[];
+    for(f=0;f<TOTAL;f++){
+      var ph=2*Math.PI*f/TOTAL;                        /* 0→2π：R 1→Rmax→1 正好一圈 */
+      P.R=1+(P.Rmax-1)*(0.5-0.5*Math.cos(ph));
+      DECAY=decayTarget();                             /* 当前 Rmax/d 过线才灭，不额外加戏 */
 
       gifStepMain(NST);
-
       if(PART.on){
         PART.acc+=NST*PART.spd;
         var pn=Math.floor(PART.acc); PART.acc-=pn;
         if(pn>0) partStepAll(pn);
       }
-
       draw();
-
-      /* 状态标签（只在段 B 的后半出现）：R/d 越线 → 失衡 → 湮灭 */
-      if(t>0.50 && sg>0.55){
-        var rd=P.Rmax/P.d;
-        var tip='R/d = '+rd.toFixed(2);
-        if(rd>0.95) tip+='  失衡';
-        if(rd>1.20) tip+=' → 湮灭';
-        ctx.save();
-        ctx.globalCompositeOperation='source-over';
-        ctx.font='600 11px -apple-system,"Microsoft YaHei",sans-serif';
-        ctx.textAlign='left'; ctx.textBaseline='bottom';
-        var tw=ctx.measureText(tip).width;
-        ctx.fillStyle='rgba(0,0,0,0.58)';
-        ctx.fillRect(8,H-24,tw+12,17);
-        ctx.fillStyle = rd>1.20 ? '#ff6b8a' : (rd>0.95 ? '#ffd84a' : '#7fd8ff');
-        ctx.fillText(tip,14,H-10);
-        ctx.restore();
-      }
       frames.push(quantizeFrame());
 
       if(f%4===0){
         btn.textContent='导出中 '+Math.round((f+1)/TOTAL*100)+'%';
-        if(msg) msg.textContent='渲染 '+(f+1)+'/'+TOTAL+' 帧（含 Anu 十丝 + 粒子）';
+        if(msg) msg.textContent='渲染 '+(f+1)+'/'+TOTAL+' 帧 · '+EXP_W+'×'+EXP_H+
+                                ' · '+(TOTAL/FPS).toFixed(1)+' s';
       }
     }
 
     /* --- 编码 + 体积兜底（>5 MB 就抽帧、放慢） --- */
-    var bytes=gifPack(480,360,frames,DELAY);
+    var bytes=gifPack(EXP_W,EXP_H,frames,DELAY);
     var guard=0;
-    while(bytes.length>5*1024*1024 && guard<3){
+    while(bytes.length>5*1024*1024 && guard<4 && frames.length>8){
       var sub=[];
       for(i=0;i<frames.length;i+=2) sub.push(frames[i]);
       frames=sub; DELAY*=2;
-      bytes=gifPack(480,360,frames,DELAY);
+      bytes=gifPack(EXP_W,EXP_H,frames,DELAY);
       guard++;
     }
     window.__lastGif=bytes;
 
     var mb=(bytes.length/1048576).toFixed(2);
     if(msg) msg.innerHTML='<b style="color:#3cffbe">已生成 '+mb+' MB · '+frames.length+
-      ' 帧 · 480×360 · '+(DELAY/100).toFixed(2)+' s/帧</b>';
+      ' 帧 · '+EXP_W+'×'+EXP_H+' · '+(DELAY/100).toFixed(2)+' s/帧 · 一个呼吸周期</b>';
 
     var blob=new Blob([bytes],{type:'image/gif'});
     var url=URL.createObjectURL(blob);
     var a=document.createElement('a');
-    a.href=url; a.download='Aizawa_Anu_一个周期.gif';
+    a.href=url; a.download='Aizawa_当前设置_一个周期.gif';
     document.body.appendChild(a); a.click();
     setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); },1500);
   }catch(err){
     if(msg) msg.innerHTML='<b style="color:#ff5b7f">导出失败：'+err.message+'</b>';
     if(window.console) console.error(err);
   }finally{
-    /* --- 完整恢复 --- */
     for(q=0;q<svKeys.length;q++) P[svKeys[q]]=sv[svKeys[q]];
-    DECAY=svDecay; pAlpha=1; ANU.on=svAnu; PART.on=svPart; PART.spd=svSpd;
-    az=svAz; FITK=svFitK; AFITK=svAFit; FITLERP=svLerp;
+    DECAY=svDecay; pAlpha=svPA; trailLen=svTrail;
+    ANU.on=svAnu.on; ANU.rigid=svAnu.rigid; ANU.nWire=svAnu.nWire; ANU.nMaj=svAnu.nMaj;
+    PART.on=svPart.on; PART.spd=svPart.spd; PART.n=svPart.n;
+    EGG.on=svEgg; EGG.auto=svEggAuto; EGG.aDeg=svEggA; EGG.b=svEggB; EGG.ok=false;
+    az=svAz; FITK=svFitK; AFITK=svAFit; AFITX=svAX; AFITY=svAY; FITLERP=svLerp;
     VIEW.z=svViewZ; VIEW.ox=svViewOX; VIEW.oy=svViewOY;
     playing=svPlaying; breathing=svBreath;
-    W=svW; H=svH; DPR=svDPR;
+    W=svW; H=svH; DPR=svDPR; EXP_W=0; EXP_H=0;
     cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR);
     ctx.setTransform(DPR,0,0,DPR,0,0);
+    _mirArea.r=0; _mirArea.n=0;              /* 回屏后重新按浮窗量一次 */
+    GIFEXP=false;
     if(typeof partResize==='function') partResize();
     if(typeof resize==='function') resize();
     EXPORTING=false;
