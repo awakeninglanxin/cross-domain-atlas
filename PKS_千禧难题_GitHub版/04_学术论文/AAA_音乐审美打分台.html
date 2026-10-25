@@ -1,0 +1,906 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>音乐审美打分台 · 八维形态分（娱乐初级版）</title>
+<style>
+  :root{
+    --ink:#111; --ink2:#3a4250; --ink3:#6b7686; --line:#e3e7ee; --bg:#f7f8fa;
+    --card:#fff; --accent:#b04a1f; --blue:#1d4ed8; --good:#0f7a4d; --warn:#a8541c;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    font-size:14px; line-height:1.7; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:26px 20px 80px}
+  header h1{font-size:25px;margin:0 0 6px;letter-spacing:.3px}
+  header h1 em{font-style:normal;color:var(--accent)}
+  header .tag{display:inline-block;font-size:11px;border:1px solid #e6cdb8;background:#fff4ea;color:#8a4416;border-radius:4px;padding:1px 6px;margin-left:8px;vertical-align:3px;font-weight:500}
+  header .sub{margin:0;color:var(--ink2);font-size:13.5px}
+  header .sub b{color:var(--ink)}
+  .warn{
+    margin:14px 0 0;padding:11px 14px;background:#fff8f2;border:1px solid #f0d9c8;
+    border-left:3px solid var(--accent);border-radius:6px;font-size:13px;color:#6b3a20;
+  }
+  .warn ol{margin:6px 0 0;padding-left:20px}
+  .warn li{margin:2px 0}
+  .warn b{color:#5c2d12}
+
+  #drop{
+    margin:18px 0 0;border:1.5px dashed #c9d1de;border-radius:10px;background:#fff;
+    padding:26px 20px;text-align:center;cursor:pointer;transition:.15s;
+  }
+  #drop:hover,#drop.over{border-color:var(--blue);background:#f6f9ff}
+  #drop .big{font-size:15px;font-weight:600}
+  #drop .small{color:var(--ink3);font-size:12.5px;margin-top:4px}
+  #drop kbd{background:#eef1f6;border:1px solid #d7dde7;border-bottom-width:2px;border-radius:4px;padding:1px 5px;font-size:11.5px}
+  #file{display:none}
+
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0 0}
+  .btn{
+    appearance:none;border:1px solid #cfd6e2;background:#fff;color:var(--ink);border-radius:7px;
+    padding:6px 12px;font-size:12.5px;cursor:pointer;font-family:inherit;
+  }
+  .btn:hover{border-color:#9fb0c9;background:#f9fbff}
+  .btn.primary{background:#111;color:#fff;border-color:#111}
+  .btn.primary:hover{background:#000}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .hintline{margin-left:auto;color:var(--ink3);font-size:12px}
+
+  #rank{margin:18px 0 0;display:none}
+  #rank .row{display:flex;align-items:center;gap:10px;margin:6px 0;font-size:12.5px}
+  #rank .nm{width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink2)}
+  #rank .track{display:block;flex:1;height:9px;background:#e8ecf3;border-radius:5px;overflow:hidden}
+  #rank .fill{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,#c7d2e3,#7d8ea8)}
+  #rank .vl{width:44px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+
+  #grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:16px;margin:16px 0 0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:11px;overflow:hidden;display:flex;flex-direction:column}
+  .wave{display:block;width:100%;height:66px;background:#fbfcfd;border-bottom:1px solid #eef1f5}
+  .chead{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;padding:12px 14px 4px}
+  .chead h3{margin:0;font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .chead .meta{font-size:11px;color:var(--ink3);font-weight:400}
+  .score{text-align:right;line-height:1;flex:none}
+  .score b{font-size:29px;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+  .score span{display:block;font-size:10.5px;color:var(--ink3);margin-top:3px}
+  .cbody{display:grid;grid-template-columns:200px 1fr;gap:4px;padding:4px 10px 6px;align-items:center}
+  @media(max-width:560px){.cbody{grid-template-columns:1fr}}
+  .radar{width:200px;height:200px;display:block}
+  .bars{display:flex;flex-direction:column;gap:5px;padding:4px 0}
+  .brow{display:grid;grid-template-columns:60px 1fr 30px;gap:7px;align-items:center;font-size:11.5px}
+  .brow .lb{color:var(--ink2);white-space:nowrap;display:flex;align-items:center;gap:3px}
+  .brow .tk{display:block;height:7px;background:#eef1f6;border-radius:4px;overflow:hidden}
+  .brow .fl{display:block;height:100%;border-radius:4px;background:#8fa3bf}
+  .brow .vv{text-align:right;font-variant-numeric:tabular-nums;color:var(--ink3)}
+  .gr{font-size:8.5px;color:#fff;background:#b9c3d1;border-radius:3px;padding:0 3px;line-height:12px;transform:translateY(-.5px)}
+  .gr.a{background:#2f7a55}.gr.b{background:#6d7d94}.gr.c{background:#b06a2a}
+  .note{margin:0 14px;padding:9px 11px;background:#f7f9fc;border:1px solid #e6ebf3;border-radius:7px;font-size:12.3px;color:var(--ink2)}
+  .note p{margin:0 0 4px}
+  .note p:last-child{margin:0}
+  .note b{color:var(--ink)}
+  .player{width:100%;height:32px;margin:9px 14px 0;width:calc(100% - 28px)}
+  details{margin:9px 14px 0;font-size:12px}
+  details summary{cursor:pointer;color:var(--blue);outline:none}
+  details table{width:100%;border-collapse:collapse;margin-top:6px;font-size:11.5px}
+  details td{padding:2px 4px;border-bottom:1px solid #f0f2f6;vertical-align:top}
+  details td:first-child{color:var(--ink3);white-space:nowrap;width:46%}
+  details td:last-child{font-variant-numeric:tabular-nums;text-align:right}
+  .sign{display:flex;gap:6px;align-items:center;margin:10px 14px 14px}
+  .sign input{flex:1;border:1px solid #d9dfe8;border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit;color:var(--ink)}
+  .sign input:focus{outline:none;border-color:#9fb0c9}
+  .sign .sv{font-size:11px;color:var(--good);flex:none}
+
+  #method{margin:34px 0 0;background:#fff;border:1px solid var(--line);border-radius:11px;padding:18px 20px}
+  #method h2{font-size:16px;margin:0 0 4px}
+  #method h3{font-size:13.5px;margin:22px 0 6px}
+  #method p{margin:6px 0;color:var(--ink2);font-size:12.8px}
+  #method table{width:100%;border-collapse:collapse;font-size:12px;margin:8px 0}
+  #method th,#method td{border:1px solid #e8ecf3;padding:5px 8px;text-align:left;vertical-align:top}
+  #method th{background:#f5f7fa;font-weight:600;color:var(--ink)}
+  #method code{background:#f2f4f8;border-radius:4px;padding:1px 4px;font-size:11.5px;font-family:ui-monospace,Menlo,Consolas,monospace}
+  .kbox{margin:10px 0;padding:9px 12px;border-radius:7px;font-size:12.5px}
+  .kbox.blue{background:#f4f8ff;border:1px solid #d8e4f7;color:#1c3b66}
+  .kbox.gray{background:#f7f8fa;border:1px solid #e5e8ee;color:#3a4250}
+  .kbox.orange{background:#fff8f3;border:1px solid #f1dcc9;color:#6b3a20}
+  .blank{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin:10px 0}
+  .blank div{background:#fbfbfc;border:1px solid #e8ecf3;border-radius:8px;padding:9px 11px;font-size:12px;color:var(--ink2)}
+  .blank b{display:block;color:var(--ink);margin-bottom:2px;font-size:12.5px}
+  footer{margin:26px 0 0;color:var(--ink3);font-size:11.8px;line-height:1.8}
+  .empty{color:var(--ink3);font-size:13px;padding:26px 0;text-align:center}
+  .busy{color:var(--warn);font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>音乐审美打分台 · <em>八维形态分</em><span class="tag">娱乐初级版</span></h1>
+  <p class="sub">
+    把《音乐审美算法的文献索引》里<b>能复算的量</b>接到一段音频上：音色、律动、和声、动态、期待、空间、织体、纯度。
+    综合分只由这八项加权得出，<b>它叫形态分，不叫美分</b>。
+  </p>
+  <div class="warn">
+    <b>三个前置条件，请先看：</b>
+    <ol>
+      <li><b>只上传纯音乐</b>——没有歌词、没有以人声为主的演唱。本页不读歌词、不测语义，人声会把「和声」和「音色」两轴算歪。</li>
+      <li><b>只支持 mp3 / wav，单个文件 ≤ 5 MB。</b>全部在你的浏览器里解码，不上传、不落盘。</li>
+      <li><b>这是娱乐初级版。</b>它给的是「这八个数是多少」，不是「这首好不好」。要真结论，得做第 11 节那个两两比较实验。</li>
+    </ol>
+  </div>
+</header>
+
+<div id="drop" tabindex="0">
+  <div class="big">把纯音乐拖进来，或点击选择</div>
+  <div class="small"><b>只收纯音乐（无人声、无歌词）</b> · mp3 / wav · 单文件 ≤ 5 MB · 可多首对比 · 不上传，全部在浏览器里算</div>
+</div>
+<input id="file" type="file" accept=".mp3,.wav,audio/mpeg,audio/wav,audio/x-wav" multiple>
+
+<div class="toolbar">
+  <button class="btn" id="clear">清空</button>
+  <span class="hintline" id="status">还没有音频</span>
+</div>
+
+<div id="rank"></div>
+<main id="grid"><div class="empty">拖入第一首纯音乐（mp3 / wav，≤ 5 MB）。</div></main>
+
+<section id="method">
+  <h2>它怎么算的：八个量，各自的出处与等级</h2>
+  <p>等级沿用姊妹文档《审美算法_外网文献索引》的口径：<b>A</b> = 同行评议 + 独立复现；<b>B</b> = 同行评议但单一实验室 / 或工程事实标准；<b>C</b> = 自定义量或未经跨人群验证。D 级不收录。</p>
+
+  <table>
+    <tr><th style="width:12%">轴</th><th style="width:32%">怎么算</th><th style="width:38%">依据</th><th style="width:6%">等级</th><th style="width:12%">权重</th></tr>
+    <tr><td><b>音色</b></td><td>谱平坦度（乐音 / 噪声比，权重最大）、2–8 kHz 能量占比（空气感）、log₂ 质心（亮度，取很宽的钟形，只排除极端）</td><td>McAdams 等关于音色的多维标度；Grey 1977 得出音色主要维度含「亮度」。<b>但「多亮算好」没有文献支持</b>——这里的带是我按常见编曲给的，故降为 C</td><td>C</td><td>0.12</td></tr>
+    <tr><td><b>律动</b></td><td>谱通量做 onset 包络 → 自相关找主周期（BPM）与峰值（拍点清晰度）；再算「拍点外的 onset 能量占比」作切分近似，对切分取<b>倒 U</b></td><td>Witek et al. 2014（PLoS ONE 9:e94446）：<b>中等切分最想动、最愉悦</b>，熵是差预测子；Large &amp; Jones 1999 的动态注意理论</td><td>A−</td><td>0.18</td></tr>
+    <tr><td><b>和声</b></td><td>12 维 chroma → 与 Krumhansl 大/小调轮廓做 24 次旋转相关，取最大值为调性清晰度；另用 Sethares 不协和度函数对谱峰逐对求粗糙度</td><td>Krumhansl &amp; Kessler 1982 的调性轮廓；Plomp–Levelt 1965 临界带粗糙度；Sethares 1993 把音色写进不协和度</td><td>A</td><td>0.18</td></tr>
+    <tr><td><b>动态</b></td><td>峰值因数（peak/RMS，dB）+ 短时响度的 P95−P10（近似 DR）</td><td>Vickers 2010 响度战争；ITU-R BS.1770 的「响度可标准化」这一前提。本页<b>没有</b>实现 K 加权，只给 dBFS 相对值</td><td>B</td><td>0.12</td></tr>
+    <tr><td><b>期待</b></td><td>相邻帧 chroma 的余弦新颖度均值（和声变化速率）+ 归一化音级熵；对新颖度取倒 U</td><td>Huron 2006 ITPRA（预期—紧张—预测—反应—评价）；Pearce &amp; Wiggins 的 IDyOM 用 IC / entropy 预测旋律预期评分；Berlyne 倒 U（后续元分析里效应不稳，故记 B−）</td><td>B</td><td>0.12</td></tr>
+    <tr><td><b>空间</b></td><td>左右声道相关系数（宽度）+ onset 后能量衰减斜率（混响尾巴长度）</td><td>Ando 的四正交因子：声压级、初始时延间隔 Δt₁、后期混响 T_sub、双耳互相关 IACC，主观优选 Sᵢ = −αᵢ|xᵢ|^1.5。<b>那是「厅堂」的因子，搬到录音作品上要重新标定</b></td><td>A（厅堂）/ C（录音）</td><td>0.08</td></tr>
+    <tr><td><b>织体</b></td><td>onset 密度（每秒起音数）+ 每帧 chroma 显著峰个数（复音度近似），对密度取倒 U</td><td>Spehar 那类「中等复杂度最受欢迎」在听觉侧的对应物只有间接证据（Berlyne 传统），<b>没有音乐侧的独立复现</b>，故 C</td><td>C</td><td>0.10</td></tr>
+    <tr><td><b>纯度</b></td><td>削波采样占比、直流偏移、静音帧占比、高频截止（识别 128 kbps 级转码）</td><td>工程量，无审美含义。存在理由：转码与削波会让其它七项失真，必须单独暴露</td><td>B</td><td>0.10</td></tr>
+  </table>
+
+  <div class="kbox blue">
+    <b>为什么权重是我给的：</b>文献里每一轴都有独立研究，但<b>没有一篇</b>把和声、律动、期待、空间写进同一个可优化目标函数。
+    所以「0.18 / 0.18 / 0.12 …」这组权重<b>没有任何实验依据</b>，它是本页最薄弱的一环，也是文献索引第 10 节列的空白 №2。
+    你可以直接改源码里的权重，跑一次，看排名会不会翻——如果排名对权重极敏感，那这个分数就不该被当真。
+  </div>
+
+  <h3>三个必须写在明处的边界</h3>
+  <div class="blank">
+    <div><b>① 协和偏好不是普适的</b>McDermott et al. 2016（Nature 535）：Tsimane' 把协和与不协和和弦评成同等愉悦，美国音乐家的偏好最强。所以「协和 = 高分」只在西方听众内部成立。</div>
+    <div><b>② 连八度都未必普适</b>Jacoby et al. 2019（Current Biology）：Tsimane' 唱回高音时不给八度关系。而本页的 chroma 默认十二平均律——<b>这本身就是一个文化假设</b>。</div>
+    <div><b>③ 节奏的「好听区」随文化漂移</b>Jacoby et al. 2024（Nat Hum Behav，39 群 / 15 国）：都有小整数比先验，但哪个比值重要，各地不同。</div>
+  </div>
+
+  <h3>它还差什么（真空白，不是谦虚）</h3>
+  <p>音乐侧比图像侧薄一层，差在两处：<b>(1) 没有「美」的数据集</b>——图像有 AVA 这类百万级人打分集，音乐只有情绪标签和流行度，<b>没有逐首的美学评分</b>，所以音乐界的 NIMA 迟迟没出现；
+    <b>(2) 没有四层联合的目标函数</b>——Ando 做到了「四因子正交 + 显式解析式」，但那四个因子是<b>厅堂</b>的，不是<b>作品</b>的。
+    因此本页的分数应当被读成一个<b>可复算的起点</b>，不是一个终点。</p>
+  <p class="kbox gray">技术上还要交代清楚：本页<b>没有</b>做 ITU-R BS.1770 的 K 加权，响度是 dBFS-RMS；<b>没有</b>做真正的和弦识别，只有 chroma 与调性轮廓；<b>没有</b>分离人声与伴奏——所以前面才要求你只传纯音乐。把这三件事当成「已知缺陷」写在这里，比藏起来强。</p>
+</section>
+
+<footer>
+  本页全部计算在你的浏览器里完成，音频不上传、不落盘；关掉页面即消失。<br>
+  参数与阈值写死在源码里，可自行改动复算；改动后请重跑一遍同一批音频，看排名是否稳定。<br>
+  数据分级：本页把「已同行评议」「工程惯例」「本项目自算」三类分开标注，不混用。自定义量（音色带、织体带、切分近似）已标 C 级。<br>
+  姊妹文档：<code>AAA_审美算法_外网文献索引.md</code>（图像侧）　·　<code>AAA_音乐审美算法_外网文献索引.md</code>（音乐侧）
+</footer>
+
+</div>
+<script>
+"use strict";
+/* ============ 0. 工具 ============ */
+const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
+const gauss = (x, mu, sd) => Math.exp(-((x - mu) / sd) * ((x - mu) / sd));
+const fmt = (v, d) => (typeof v === "number" && isFinite(v)) ? v.toFixed(d) : "—";
+const pearson = (a, b) => {
+  const n = a.length; let ma = 0, mb = 0;
+  for (let i = 0; i < n; i++) { ma += a[i]; mb += b[i]; }
+  ma /= n; mb /= n;
+  let sxy = 0, sxx = 0, syy = 0;
+  for (let i = 0; i < n; i++) { const x = a[i] - ma, y = b[i] - mb; sxy += x * y; sxx += x * x; syy += y * y; }
+  return (sxx > 0 && syy > 0) ? sxy / Math.sqrt(sxx * syy) : 0;
+};
+
+/* ============ 1. FFT（2048 点，radix-2） ============ */
+const N = 2048, HALF = N / 2, HOP = 1024, SR = 22050;
+const HANN = new Float64Array(N);
+for (let i = 0; i < N; i++) HANN[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (N - 1));
+const TWC = new Float64Array(HALF), TWS = new Float64Array(HALF);
+for (let i = 0; i < HALF; i++) { TWC[i] = Math.cos(2 * Math.PI * i / N); TWS[i] = Math.sin(2 * Math.PI * i / N); }
+const REV = new Uint16Array(N);
+{
+  const bits = Math.round(Math.log2(N));
+  for (let i = 0; i < N; i++) { let r = 0; for (let b = 0; b < bits; b++) if (i & (1 << b)) r |= 1 << (bits - 1 - b); REV[i] = r; }
+}
+function fft(re, im) {
+  for (let i = 0; i < N; i++) { const j = REV[i]; if (j > i) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; } }
+  for (let len = 2; len <= N; len <<= 1) {
+    const half = len >> 1, step = N / len;
+    for (let i = 0; i < N; i += len) {
+      for (let k = 0; k < half; k++) {
+        const wr = TWC[k * step], wi = -TWS[k * step];
+        const ur = re[i + k], ui = im[i + k];
+        const vr = re[i + k + half] * wr - im[i + k + half] * wi;
+        const vi = re[i + k + half] * wi + im[i + k + half] * wr;
+        re[i + k] = ur + vr; im[i + k] = ui + vi;
+        re[i + k + half] = ur - vr; im[i + k + half] = ui - vi;
+      }
+    }
+  }
+}
+
+/* ============ 2. 解码 / 重采样 ============ */
+const AC = new (window.AudioContext || window.webkitAudioContext)();
+
+function toMono(ab) {
+  const ch = ab.numberOfChannels, n = ab.length, sr = ab.sampleRate;
+  const chans = [];
+  for (let c = 0; c < ch; c++) chans.push(ab.getChannelData(c));
+  const outLen = Math.max(1, Math.floor(n * SR / sr));
+  const out = new Float32Array(outLen);
+  const ratio = sr / SR;
+  for (let i = 0; i < outLen; i++) {
+    const p = i * ratio, i0 = Math.floor(p), f = p - i0, i1 = Math.min(n - 1, i0 + 1);
+    let s = 0;
+    for (let c = 0; c < ch; c++) s += chans[c][i0] * (1 - f) + chans[c][i1] * f;
+    out[i] = s / ch;
+  }
+  return { mono: out, chans, sr, n, ch };
+}
+
+/* 用原始采样率估计高频截止：128 kbps 级转码通常在 16 kHz 处被切掉 */
+function hfCutoffOf(chans, sr) {
+  const d = chans[0], n = d.length;
+  const win = 2048, f0 = sr / win;
+  const re = new Float64Array(win), im = new Float64Array(win);
+  const acc = new Float64Array(win / 2);
+  const hop = Math.max(win, Math.floor(n / 24));
+  let cnt = 0;
+  for (let s = 0; s + win <= n && cnt < 24; s += hop) {
+    for (let i = 0; i < win; i++) { re[i] = d[s + i] * HANN[i]; im[i] = 0; }
+    fft(re, im);
+    for (let b = 0; b < win / 2; b++) acc[b] += Math.sqrt(re[b] * re[b] + im[b] * im[b]);
+    cnt++;
+  }
+  if (!cnt) return { cut: 0, cliff: 0 };
+  let mx = 0;
+  for (let b = 3; b < win / 2; b++) if (acc[b] > mx) mx = acc[b];
+  let cut = 0;
+  for (let b = win / 2 - 1; b >= 3; b--) if (mx > 0 && acc[b] > mx * 0.0007) { cut = b * f0; break; }
+  /* 「截止」有两种：① 转码被切掉（陡崖）；② 素材本身就暗（平滑滚降）。用陡度区分。 */
+  let cliff = 0;
+  if (cut > 400) {
+    const band = (f) => {
+      const b0 = Math.max(1, Math.floor(f / f0)), b1 = Math.min(win / 2 - 1, Math.ceil((f + 300) / f0));
+      let s = 0, n = 0;
+      for (let b = b0; b <= b1; b++) { s += acc[b]; n++; }
+      return n ? s / n : 0;
+    };
+    const lo = band(cut * 0.82), hi = band(cut * 1.10);
+    cliff = hi > 1e-9 ? lo / hi : (lo > 0 ? 99 : 0);
+  }
+  return { cut, cliff };
+}
+
+
+/* 从文件头读真实采样率与声道数（解码后 AudioBuffer 会被重采样到声卡速率，不能直接用） */
+function sniffRate(buf) {
+  const u = new Uint8Array(buf);
+  const dv = new DataView(buf);
+  const tag = (o) => String.fromCharCode(u[o], u[o + 1], u[o + 2], u[o + 3]);
+  if (u.length > 44 && tag(0) === "RIFF" && tag(8) === "WAVE") {
+    for (let p = 12; p + 24 < u.length;) {
+      const id = tag(p), sz = dv.getUint32(p + 4, true);
+      if (id === "fmt ") {
+        return { rate: dv.getUint32(p + 12, true), ch: dv.getUint16(p + 10, true), fmt: "wav" };
+      }
+      p += 8 + sz + (sz & 1);
+    }
+    return null;
+  }
+  let off = 0;
+  if (u.length > 10 && tag(0) === "ID3") {
+    off = 10 + ((u[6] & 0x7f) << 21 | (u[7] & 0x7f) << 14 | (u[8] & 0x7f) << 7 | (u[9] & 0x7f));
+  }
+  for (let p = off; p + 4 < u.length && p < off + 200000; p++) {
+    if (u[p] !== 0xff || (u[p + 1] & 0xe0) !== 0xe0) continue;
+    const ver = (u[p + 1] >> 3) & 3, lay = (u[p + 1] >> 1) & 3;
+    if (ver === 1 || lay === 0) continue;
+    const sri = (u[p + 2] >> 2) & 3;
+    const base = ver === 3 ? [44100, 48000, 32000] : ver === 2 ? [22050, 24000, 16000] : [11025, 12000, 8000];
+    if (sri === 3) continue;
+    const mono = ((u[p + 3] >> 6) & 3) === 3;
+    return { rate: base[sri], ch: mono ? 1 : 2, fmt: "mp3" };
+  }
+  return null;
+}
+
+/* ============ 3. 逐帧分析 ============ */
+const KRU_MAJ = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
+const KRU_MIN = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
+
+/* Sethares 的不协和度近似：d = e^(-3.5x) - e^(-5.75x)，x = s·Δf，s = 0.24/(0.0207·fmin+18.96) */
+function dissPair(f1, f2) {
+  const fmin = Math.min(f1, f2), fmax = Math.max(f1, f2);
+  const s = 0.24 / (0.0207 * fmin + 18.96);
+  const x = s * (fmax - fmin);
+  return Math.exp(-3.5 * x) - Math.exp(-5.75 * x);
+}
+
+function analyzeMono(mono, capSec, hfCut) {
+  const maxSamples = Math.min(mono.length, Math.floor(capSec * SR));
+  const frames = Math.max(1, Math.floor((maxSamples - N) / HOP) + 1);
+  const re = new Float64Array(N), im = new Float64Array(N);
+  const prev = new Float32Array(HALF);
+  const cur = new Float32Array(HALF);
+  const flux = new Float32Array(frames);
+  const cen = new Float32Array(frames);
+  const flat = new Float32Array(frames);
+  const hf = new Float32Array(frames);
+  const chromaF = new Float32Array(frames * 12);
+  const noisy = new Uint8Array(frames);
+  let roughSum = 0, roughN = 0;
+  const avgSpec = new Float64Array(HALF);
+  const f0 = SR / N;
+  let maxAbs = 0, sumSq = 0;
+
+  for (let fi = 0; fi < frames; fi++) {
+    const off = fi * HOP;
+    let s2 = 0;
+    for (let i = 0; i < N; i++) {
+      const v = mono[off + i] * HANN[i];
+      re[i] = v; im[i] = 0;
+    }
+    fft(re, im);
+    let sumM = 0, sumFM = 0, logM = 0, energy = 0, hfE = 0, peak = 0;
+    for (let b = 0; b < HALF; b++) {
+      const m = Math.sqrt(re[b] * re[b] + im[b] * im[b]);
+      cur[b] = m;
+      const f = b * f0;
+      sumM += m; sumFM += m * f; energy += m * m;
+      logM += Math.log(m + 1e-9);
+      if (f >= 2000 && f <= 8000) hfE += m * m;
+      if (m > peak) peak = m;
+      avgSpec[b] += m;
+    }
+    for (let i = 0; i < N; i++) { const v = mono[off + i]; s2 += v * v; if (Math.abs(v) > maxAbs) maxAbs = Math.abs(v); }
+    sumSq += s2;
+    const rmsF = Math.sqrt(s2 / N);
+    noisy[fi] = rmsF < 1.2e-4 ? 1 : 0;
+    flux[fi] = 0;
+    if (fi > 0) { let s = 0; for (let b = 0; b < HALF; b++) { const d = cur[b] - prev[b]; if (d > 0) s += d; } flux[fi] = s; }
+    for (let b = 0; b < HALF; b++) prev[b] = cur[b];
+
+    cen[fi] = sumM > 0 ? sumFM / sumM : 0;
+    flat[fi] = sumM > 0 ? Math.exp(logM / HALF) / (sumM / HALF) : 0;
+    hf[fi] = energy > 0 ? hfE / energy : 0;
+
+    /* chroma：只取谱峰（局部极大），否则谐波裙边会把 12 个音级全部填满，调性就测不出来了 */
+    const base = fi * 12;
+    for (let b = 2; b < HALF - 1; b++) {
+      const f = b * f0;
+      if (f < 55 || f > 2000) continue;
+      if (!(cur[b] > cur[b - 1] && cur[b] >= cur[b + 1])) continue;
+      let pc = Math.round(12 * Math.log2(f / 261.6256)) % 12;   // 以 C 为 0 号音级
+      if (pc < 0) pc += 12;
+      chromaF[base + pc] += cur[b] / Math.sqrt(1 + f / 400);    // 高次谐波降权
+    }
+
+    /* 粗糙度：每 4 帧取一次，取 100–4000 Hz 的谱峰 */
+    if ((fi & 3) === 0) {
+      const lo = Math.ceil(100 / f0), hi = Math.floor(4000 / f0);
+      let bandMax = 0;
+      for (let b = lo; b <= hi; b++) if (cur[b] > bandMax) bandMax = cur[b];
+      if (bandMax > 0) {
+        const fs = [], as = [];
+        for (let b = lo + 1; b < hi; b++) {
+          if (cur[b] > cur[b - 1] && cur[b] >= cur[b + 1] && cur[b] > bandMax * 0.12) {
+            const den = 2 * cur[b] - cur[b - 1] - cur[b + 1];
+            const off = Math.abs(den) > 1e-12 ? (cur[b + 1] - cur[b - 1]) / (2 * den) : 0;
+            fs.push((b + Math.max(-0.5, Math.min(0.5, off))) * f0);
+            as.push(cur[b] / bandMax);
+            if (fs.length >= 12) break;
+          }
+        }
+        let r = 0, cnt = 0;
+        for (let i = 0; i < fs.length; i++) for (let j = i + 1; j < fs.length; j++) { r += as[i] * as[j] * dissPair(fs[i], fs[j]); cnt++; }
+        if (cnt) { roughSum += r / cnt; roughN++; }
+      }
+    }
+  }
+
+  /* ---- 全局量 ---- */
+  let fmax = 0;
+  for (let i = 1; i < frames; i++) if (flux[i] > fmax) fmax = flux[i];
+  const env = new Float32Array(frames);
+  for (let i = 0; i < frames; i++) env[i] = fmax > 0 ? flux[i] / fmax : 0;
+
+  /* 节拍：onset 包络自相关 */
+  const hopSec = HOP / SR;
+  const minLag = Math.max(4, Math.round(0.26 / hopSec)), maxLag = Math.min(frames - 4, Math.round(1.55 / hopSec));
+  let a0 = 0;
+  for (let i = 0; i < frames; i++) a0 += env[i] * env[i];
+  let bestLag = 0, bestAcf = 0, bestPhase = 0;
+  for (let lag = minLag; lag <= maxLag; lag++) {
+    let s = 0, cnt = 0;
+    for (let i = 0; i + lag < frames; i++) { s += env[i] * env[i + lag]; cnt++; }
+    const v = cnt > 0 ? (s / cnt) : 0;
+    const norm = frames > 0 ? (a0 / frames) : 0;
+    const acf = norm > 0 ? v / norm : 0;
+    if (acf > bestAcf) { bestAcf = acf; bestLag = lag; }
+  }
+  if (bestLag > 0) {
+    let bp = 0, bv = -1;
+    for (let ph = 0; ph < bestLag; ph++) {
+      let s = 0, cnt = 0;
+      for (let i = ph; i < frames; i += bestLag) { s += env[i]; cnt++; }
+      const v = cnt ? s / cnt : 0;
+      if (v > bv) { bv = v; bp = ph; }
+    }
+    bestPhase = bp;
+  }
+  /* 包络本身太平（噪声/持续音）时，自相关会假性地接近 1 —— 用变异系数压掉 */
+  let envMu = 0, envVar = 0;
+  for (let i = 0; i < frames; i++) envMu += env[i];
+  envMu /= Math.max(1, frames);
+  for (let i = 0; i < frames; i++) envVar += (env[i] - envMu) * (env[i] - envMu);
+  envVar /= Math.max(1, frames);
+  const envCV = envMu > 1e-9 ? Math.sqrt(envVar) / envMu : 0;
+  const beatRaw = bestAcf;
+  bestAcf = bestAcf * clamp01(envCV / 0.45);
+  let bpm = bestLag > 0 ? 60 / (bestLag * hopSec) : 0;
+  while (bpm > 0 && bpm < 70) bpm *= 2;
+  while (bpm > 170) bpm /= 2;
+
+  let meanEnv = 0; for (let i = 0; i < frames; i++) meanEnv += env[i];
+  meanEnv /= Math.max(1, frames);
+  let gridEnv = 0, gc = 0;
+  if (bestLag > 0) for (let i = bestPhase; i < frames; i += bestLag) { gridEnv += env[i]; gc++; }
+  gridEnv = gc ? gridEnv / gc : 0;
+  const sync = clamp01(1 - (meanEnv > 1e-6 ? gridEnv / meanEnv : 1) / 2.2);
+
+  /* onset 密度 */
+  let onsets = 0;
+  const wait = 3;
+  for (let i = 1; i < frames - 1; i++) {
+    if (env[i] < 0.12) continue;
+    if (env[i] < env[i - 1] || env[i] < env[i + 1]) continue;
+    let local = 0; const a = Math.max(0, i - 12), b = Math.min(frames, i + 12);
+    for (let k = a; k < b; k++) local += env[k];
+    local /= (b - a);
+    if (env[i] > local * 1.35) { onsets++; i += wait; }
+  }
+  const dur = frames * hopSec;
+  const onsetDensity = dur > 0 ? onsets / dur : 0;
+
+  /* chroma 汇总 / 调性 */
+  const chroma = new Float64Array(12);
+  for (let fi = 0; fi < frames; fi++) {
+    const base = fi * 12;
+    for (let p = 0; p < 12; p++) chroma[p] += chromaF[base + p];
+  }
+  let cmax = 0; for (let p = 0; p < 12; p++) if (chroma[p] > cmax) cmax = chroma[p];
+  const chromaN = new Float64Array(12);
+  for (let p = 0; p < 12; p++) chromaN[p] = cmax > 0 ? chroma[p] / cmax : 0;
+
+  let keyCorr = 0, keyName = "—", keyMode = "";
+  const NAMES = ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"];
+  for (let mode = 0; mode < 2; mode++) {
+    const prof = mode ? KRU_MIN : KRU_MAJ;
+    for (let rot = 0; rot < 12; rot++) {
+      const p = new Array(12);
+      for (let i = 0; i < 12; i++) p[i] = prof[(i - rot + 12) % 12];
+      const c = pearson(Array.from(chromaN), p);
+      if (c > keyCorr) { keyCorr = c; keyName = NAMES[rot]; keyMode = mode ? "小调" : "大调"; }
+    }
+  }
+
+  /* 和声新颖度：先在 ~0.5 s 的块上平均 chroma 再比，避免谱峰闪烁把新颖度抬高 */
+  const CH = 11;
+  let nov = 0, novN2 = 0;
+  let pv = new Float64Array(12);
+  for (let c0 = 0; c0 + CH <= frames; c0 += CH) {
+    const cv = new Float64Array(12);
+    for (let fi = c0; fi < c0 + CH; fi++) { const b = fi * 12; for (let p = 0; p < 12; p++) cv[p] += chromaF[b + p]; }
+    let dot = 0, na = 0, nb = 0;
+    for (let p = 0; p < 12; p++) { dot += cv[p] * pv[p]; na += cv[p] * cv[p]; nb += pv[p] * pv[p]; }
+    if (na > 0 && nb > 0) { nov += 1 - dot / Math.sqrt(na * nb); novN2++; }
+    pv = cv;
+  }
+  nov = novN2 ? nov / novN2 : 0;
+
+  /* 音级熵（集中度） */
+  let tot = 0; for (let p = 0; p < 12; p++) tot += chroma[p];
+  let H = 0;
+  if (tot > 0) for (let p = 0; p < 12; p++) { const q = chroma[p] / tot; if (q > 0) H -= q * Math.log2(q); }
+  const tonality = clamp01(1 - H / Math.log2(12));
+
+  /* 复音度近似：每帧 chroma 显著峰个数 */
+  let polySum = 0, polyN = 0;
+  for (let fi = 0; fi < frames; fi += 4) {
+    const base = fi * 12;
+    let mx = 0; for (let p = 0; p < 12; p++) if (chromaF[base + p] > mx) mx = chromaF[base + p];
+    if (mx <= 0) continue;
+    let c = 0;
+    for (let p = 0; p < 12; p++) if (chromaF[base + p] > mx * 0.45) c++;
+    polySum += c; polyN++;
+  }
+  const poly = polyN ? polySum / polyN : 0;
+
+  /* 响度 / 动态 / 静音 / 削波 */
+  const rms = Math.sqrt(sumSq / Math.max(1, Math.min(maxSamples, mono.length)));
+  const peak = Math.max(1e-9, maxAbs);
+  const crest = 20 * Math.log10(peak / Math.max(1e-9, rms));
+  const block = Math.floor(0.4 * SR);
+  const lv = [];
+  for (let i = 0; i + block <= maxSamples; i += block) {
+    let s = 0;
+    for (let k = 0; k < block; k++) { const v = mono[i + k]; s += v * v; }
+    const r = Math.sqrt(s / block);
+    if (r > 1e-5) lv.push(20 * Math.log10(r));
+  }
+  lv.sort((a, b) => a - b);
+  const pct = (arr, q) => arr.length ? arr[Math.min(arr.length - 1, Math.max(0, Math.floor(arr.length * q)))] : 0;
+  const dr = lv.length ? (pct(lv, 0.95) - pct(lv, 0.10)) : 0;
+
+  let sil = 0; for (let i = 0; i < frames; i++) sil += noisy[i];
+  const silRatio = frames ? sil / frames : 0;
+
+  /* 高频截止由原始采样率的音频另外算（重采样到 22050 会把奈奎斯特压到 11 kHz） */
+  const cutoff = hfCut;
+
+  let meanCen = 0, meanFlat = 0, meanHf = 0;
+  for (let i = 0; i < frames; i++) { meanCen += cen[i]; meanFlat += flat[i]; meanHf += hf[i]; }
+
+  const rough = roughN ? roughSum / roughN : 0;
+
+  return {
+    frames, dur, bpm, beatConf: bestAcf, sync, onsetDensity, onsets,
+    keyCorr, keyName, keyMode, tonality, nov, poly, rough,
+    crest, dr, rms, peak, silRatio, cutoff,
+    meanCen: meanCen / Math.max(1, frames),
+    meanFlat: meanFlat / Math.max(1, frames),
+    meanHf: meanHf / Math.max(1, frames),
+    lat: lv.length ? (pct(lv, 0.95)) : 0,
+    env, bestLag, bestPhase
+  };
+}
+
+/* ============ 4. 打分 ============ */
+const AXES = [
+  { k: "timbre", n: "音色", w: 0.12, g: "C" },
+  { k: "groove", n: "律动", w: 0.18, g: "A" },
+  { k: "harmony", n: "和声", w: 0.18, g: "A" },
+  { k: "dynamic", n: "动态", w: 0.12, g: "B" },
+  { k: "expect", n: "期待", w: 0.12, g: "B" },
+  { k: "space", n: "空间", w: 0.08, g: "C" },
+  { k: "texture", n: "织体", w: 0.10, g: "C" },
+  { k: "integ", n: "纯度", w: 0.10, g: "B" }
+];
+
+function score(f, extra) {
+  /* 亮度：按 log2(质心) 取一条很宽的钟形。文献只给了「亮度是音色的主要维度」，
+     没给「多亮算好听」——所以这一项故意做宽，只用来排除极端（全场只有低频轰鸣 / 全场只有嘶声）。 */
+  const bright = gauss(Math.log2(Math.max(40, f.meanCen)), 9.5, 1.6);
+  const tone = gauss(f.meanFlat, 0.085, 0.115);
+  const air = gauss(f.meanHf, 0.18, 0.15);
+  const timbre = clamp01(0.55 * tone + 0.25 * air + 0.20 * bright);
+
+  /* 切分要有拍点才成立：噪声/持续音的「切分」是伪值，按拍点清晰度打折 */
+  const su = gauss(f.sync, 0.45, 0.26) * (0.30 + 0.70 * clamp01(f.beatConf * 1.4));
+  const groove = clamp01(0.55 * su + 0.45 * clamp01(f.beatConf * 1.6));
+
+  const keyC = clamp01((f.keyCorr + 0.15) / 1.05);
+  const conson = clamp01(1 - f.rough / 0.18);
+  const harmony = clamp01(0.50 * keyC + 0.30 * conson + 0.20 * f.tonality);
+
+  const crestS = gauss(f.crest, 14, 7);
+  const drS = gauss(f.dr, 12, 7);
+  const dynamic = clamp01(0.50 * crestS + 0.50 * drS);
+
+  /* 预期要有「可学的调性语境」才成立：Huron / IDyOM 都假定先有风格，再谈意外。
+     中心 0.20 / 带宽 0.14 是我按测试集定的，没有实验依据（C 级）。 */
+  const expect = clamp01(gauss(f.nov, 0.20, 0.14) * (0.45 + 0.55 * keyC));
+
+  let space, spaceNote;
+  if (extra.stereoCorr === null) { space = 0.5; spaceNote = "mono"; }
+  else { space = clamp01(gauss(extra.stereoCorr, 0.35, 0.55)); spaceNote = "stereo"; }
+
+  const densS = gauss(f.onsetDensity, 3.0, 2.0);
+  const polyS = gauss(f.poly, 3.6, 2.2);
+  const texture = clamp01(0.55 * densS + 0.45 * polyS);
+
+  const clipP = extra.clipRatio > 0 ? clamp01(extra.clipRatio / 0.001) : 0;
+  /* 只在「14–18.5 kHz 且呈陡崖」时判为转码；素材本身暗（如长音、低频为主）不扣分 */
+  const lossy = (f.cutoff >= 12000 && f.cutoff <= 18500 && extra.cliff > 6);
+  const cutP = lossy ? clamp01((18500 - f.cutoff) / 5000) : 0;
+  const silP = clamp01(Math.max(0, f.silRatio - 0.35) / 0.6);
+  const integ = clamp01(1 - 0.55 * clipP - 0.25 * cutP - 0.20 * silP);
+
+  const m = { timbre, groove, harmony, dynamic, expect, space, texture, integ };
+  let total = 0;
+  for (const a of AXES) total += m[a.k] * a.w;
+
+  return { m, total, parts: { bright, tone, air, su, keyC, conson, crestS, drS, densS, polyS, clipP, cutP, silP }, spaceNote };
+}
+
+/* ============ 5. 渲染 ============ */
+const SVGNS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent) {
+  const e = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+
+function drawRadar(svg, m) {
+  const size = 200, cx = size / 2, cy = size / 2 + 2, R = 60;
+  svg.setAttribute("viewBox", "0 0 " + size + " " + size);
+  svg.innerHTML = "";
+  const n = AXES.length;
+  const ang = i => -Math.PI / 2 + i * 2 * Math.PI / n;
+  for (let ring = 1; ring <= 4; ring++) {
+    const pts = [];
+    for (let i = 0; i < n; i++) pts.push((cx + Math.cos(ang(i)) * R * ring / 4).toFixed(1) + "," + (cy + Math.sin(ang(i)) * R * ring / 4).toFixed(1));
+    el("polygon", { points: pts.join(" "), fill: "none", stroke: "#e6eaf1", "stroke-width": ring === 4 ? 1.1 : 0.7 }, svg);
+  }
+  for (let i = 0; i < n; i++) el("line", { x1: cx, y1: cy, x2: cx + Math.cos(ang(i)) * R, y2: cy + Math.sin(ang(i)) * R, stroke: "#eceff5", "stroke-width": 0.8 }, svg);
+  const pts = [];
+  for (let i = 0; i < n; i++) { const v = Math.max(0.06, m[AXES[i].k]); pts.push((cx + Math.cos(ang(i)) * R * v).toFixed(1) + "," + (cy + Math.sin(ang(i)) * R * v).toFixed(1)); }
+  el("polygon", { points: pts.join(" "), fill: "rgba(122,140,168,.22)", stroke: "#5d708c", "stroke-width": 1.3, "stroke-linejoin": "round" }, svg);
+  for (let i = 0; i < n; i++) {
+    const v = Math.max(0.06, m[AXES[i].k]);
+    el("circle", { cx: cx + Math.cos(ang(i)) * R * v, cy: cy + Math.sin(ang(i)) * R * v, r: 1.9, fill: "#41556f" }, svg);
+  }
+  for (let i = 0; i < n; i++) {
+    const lx = cx + Math.cos(ang(i)) * (R + 18), ly = cy + Math.sin(ang(i)) * (R + 18);
+    const t = el("text", {
+      x: lx.toFixed(1), y: (ly + 3).toFixed(1),
+      "text-anchor": Math.abs(Math.cos(ang(i))) < 0.2 ? "middle" : (Math.cos(ang(i)) > 0 ? "start" : "end"),
+      "font-size": "9.5", fill: "#5c6779"
+    }, svg);
+    t.textContent = AXES[i].n;
+  }
+}
+
+function drawWave(canvas, mono, f, wpx) {
+  const dpr = window.devicePixelRatio || 1;
+  const h = 66;
+  canvas.width = Math.round(wpx * dpr); canvas.height = Math.round(h * dpr);
+  canvas.style.height = h + "px";
+  const g = canvas.getContext("2d");
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, wpx, h);
+  const mid = h / 2, step = Math.max(1, Math.floor(mono.length / wpx));
+  g.strokeStyle = "#9fb0c6"; g.lineWidth = 1;
+  g.beginPath();
+  for (let x = 0; x < wpx; x++) {
+    let mx = 0;
+    const a = x * step, b = Math.min(mono.length, a + step);
+    for (let i = a; i < b; i += 2) { const v = Math.abs(mono[i]); if (v > mx) mx = v; }
+    const y = mx * (mid - 3);
+    g.moveTo(x + 0.5, mid - y); g.lineTo(x + 0.5, mid + y);
+  }
+  g.stroke();
+  g.strokeStyle = "#d68a5a"; g.lineWidth = 0.8;
+  const hopSec = HOP / SR;
+  if (f.bestLag > 0) {
+    const totalSec = mono.length / SR;
+    for (let i = f.bestPhase; i * hopSec < totalSec; i += f.bestLag) {
+      const x = (i * hopSec / totalSec) * wpx;
+      g.beginPath(); g.moveTo(x, 2); g.lineTo(x, h - 2); g.stroke();
+    }
+  }
+}
+
+function fmtTime(s) {
+  const m = Math.floor(s / 60), r = Math.round(s % 60);
+  return m + ":" + (r < 10 ? "0" + r : r);
+}
+
+function noteText(f, s, extra) {
+  const p = [];
+  p.push("律动：主周期 <b>" + (f.bpm ? Math.round(f.bpm) : "—") + " BPM</b>，拍点清晰度 <b>" + fmt(f.beatConf, 2) +
+    "</b>，切分近似 <b>" + fmt(f.sync, 2) + "</b>（Witek 2014 的结论是<b>中等切分最愉悦</b>，不是越复杂越好，所以这一项在中间给高分，两头都低）。");
+  p.push("和声：最匹配 <b>" + f.keyName + " " + f.keyMode + "</b>（轮廓相关 <b>" + fmt(f.keyCorr, 2) +
+    "</b>），音级集中度 <b>" + fmt(f.tonality, 2) + "</b>，平均粗糙度 <b>" + fmt(f.rough, 3) +
+    "</b>（Plomp–Levelt 的临界带模型 + Sethares 近似，纯音为 0，密集音簇最高）。");
+  p.push("频谱：质心 <b>" + Math.round(f.meanCen) + " Hz</b>，平坦度 <b>" + fmt(f.meanFlat, 3) +
+    "</b>（越接近 1 越像噪声，乐音通常 &lt; 0.15），2–8 kHz 占比 <b>" + fmt(f.meanHf * 100, 1) + "%</b>。" +
+    "动态：峰值因数 <b>" + fmt(f.crest, 1) + " dB</b>，近似 DR <b>" + fmt(f.dr, 1) + " dB</b>（削波会把这两个数一起压死）。");
+  return p;
+}
+
+function makeCard(item) {
+  const { name, mono, f, s, extra, url, dur } = item;
+  const card = document.createElement("article");
+  card.className = "card";
+
+  const wave = document.createElement("canvas");
+  wave.className = "wave";
+  card.appendChild(wave);
+
+  const head = document.createElement("div");
+  head.className = "chead";
+  head.innerHTML = '<div><h3>' + name + '</h3><div class="meta">' + fmtTime(dur) + " · " +
+    (extra.srApprox ? "≈" : "") + extra.sr + " Hz · " + (extra.ch === 2 ? "立体声" : "单声道") + " · " + fmt(extra.mb, 1) + " MB</div></div>" +
+    '<div class="score"><b>' + Math.round(s.total * 100) + '</b><span>形态分 / 100</span></div>';
+  card.appendChild(head);
+
+  const body = document.createElement("div");
+  body.className = "cbody";
+  const svg = document.createElementNS(SVGNS, "svg");
+  svg.setAttribute("class", "radar");
+  body.appendChild(svg);
+  const bars = document.createElement("div");
+  bars.className = "bars";
+  for (const a of AXES) {
+    const v = s.m[a.k];
+    const row = document.createElement("div");
+    row.className = "brow";
+    row.innerHTML = '<span class="lb">' + a.n + '<span class="gr ' + a.g.toLowerCase() + '">' + a.g + '</span></span>' +
+      '<span class="tk"><span class="fl" style="width:' + Math.round(v * 100) + '%"></span></span>' +
+      '<span class="vv">' + Math.round(v * 100) + '</span>';
+    bars.appendChild(row);
+  }
+  body.appendChild(bars);
+  card.appendChild(body);
+  drawRadar(svg, s.m);
+
+  const note = document.createElement("div");
+  note.className = "note";
+  note.innerHTML = noteText(f, s, extra).map(t => "<p>" + t + "</p>").join("");
+  card.appendChild(note);
+
+  const au = document.createElement("audio");
+  au.className = "player";
+  au.controls = true; au.preload = "none"; au.src = url;
+  card.appendChild(au);
+
+  const det = document.createElement("details");
+  det.innerHTML = "<summary>数值明细</summary><table>" +
+    "<tr><td>分析时长 / 帧数</td><td>" + fmt(f.dur, 1) + " s / " + f.frames + "</td></tr>" +
+    "<tr><td>BPM / 自相关峰</td><td>" + (f.bpm ? Math.round(f.bpm) : "—") + " / " + fmt(f.beatConf, 3) + "</td></tr>" +
+    "<tr><td>onset 数 / 每秒</td><td>" + f.onsets + " / " + fmt(f.onsetDensity, 2) + "</td></tr>" +
+    "<tr><td>切分近似</td><td>" + fmt(f.sync, 3) + "</td></tr>" +
+    "<tr><td>调性相关 / 集中度</td><td>" + fmt(f.keyCorr, 3) + " / " + fmt(f.tonality, 3) + "</td></tr>" +
+    "<tr><td>粗糙度（0–1）</td><td>" + fmt(f.rough, 3) + "</td></tr>" +
+    "<tr><td>质心 / 平坦度</td><td>" + Math.round(f.meanCen) + " Hz / " + fmt(f.meanFlat, 3) + "</td></tr>" +
+    "<tr><td>2–8 kHz 能量占比</td><td>" + fmt(f.meanHf * 100, 1) + "%</td></tr>" +
+    "<tr><td>峰值因数 / 近似 DR</td><td>" + fmt(f.crest, 1) + " / " + fmt(f.dr, 1) + " dB</td></tr>" +
+    "<tr><td>和声新颖度</td><td>" + fmt(f.nov, 3) + "</td></tr>" +
+    "<tr><td>复音度 / 静音帧</td><td>" + fmt(f.poly, 1) + " / " + fmt(f.silRatio * 100, 1) + "%</td></tr>" +
+    "<tr><td>高频截止 / 削波</td><td>" + (f.cutoff >= 19500 ? "≥19.5 kHz（无截断）" : Math.round(f.cutoff) + " Hz") + " / " + fmt(extra.clipRatio * 100, 3) + "%</td></tr>" +
+    "<tr><td>高频陡度（越陡越可能是转码）</td><td>" + fmt(extra.cliff, 1) + "</td></tr>" +
+    "<tr><td>声道相关</td><td>" + (extra.stereoCorr === null ? "单声道" : fmt(extra.stereoCorr, 3)) + "</td></tr>" +
+    "</table>";
+  card.appendChild(det);
+
+  const sign = document.createElement("div");
+  sign.className = "sign";
+  const key = "mus-sign:" + name + ":" + Math.round(dur);
+  const saved = localStorage.getItem(key) || "";
+  sign.innerHTML = '<input placeholder="我给它 ___ 分，理由是……（你的判断，不是算法的）" value="' + saved.replace(/"/g, "&quot;") + '">' +
+    '<span class="sv">' + (saved ? "已签字" : "") + "</span>";
+  const inp = sign.querySelector("input");
+  inp.addEventListener("change", () => {
+    localStorage.setItem(key, inp.value);
+    sign.querySelector(".sv").textContent = inp.value ? "已签字" : "";
+  });
+  card.appendChild(sign);
+
+  requestAnimationFrame(() => drawWave(wave, mono, f, wave.clientWidth || card.clientWidth || 420));
+  return card;
+}
+
+function renderRank(list) {
+  const box = document.getElementById("rank");
+  if (list.length < 2) { box.style.display = "none"; return; }
+  box.style.display = "block";
+  box.innerHTML = "";
+  list.slice().sort((a, b) => b.s.total - a.s.total).forEach((it, i) => {
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML = '<span class="nm">' + (i + 1) + ". " + it.name + '</span>' +
+      '<span class="track"><span class="fill" style="width:' + (it.s.total * 100).toFixed(1) + '%"></span></span>' +
+      '<span class="vl">' + Math.round(it.s.total * 100) + '</span>';
+    box.appendChild(row);
+  });
+}
+
+/* ============ 6. 交互 ============ */
+const state = [];
+const grid = document.getElementById("grid");
+const statusEl = document.getElementById("status");
+const MAXBYTES = 5 * 1024 * 1024;
+
+function setStatus(txt) { statusEl.textContent = txt; }
+
+function pickStereoCorr(chans, sr) {
+  if (chans.length < 2) return null;
+  const L = chans[0], R = chans[1];
+  const n = Math.min(L.length, Math.floor(sr * 30));
+  let sxy = 0, sxx = 0, syy = 0;
+  const st = Math.max(1, Math.floor(n / 200000));
+  for (let i = 0; i < n; i += st) { sxy += L[i] * R[i]; sxx += L[i] * L[i]; syy += R[i] * R[i]; }
+  return (sxx > 0 && syy > 0) ? sxy / Math.sqrt(sxx * syy) : 0;
+}
+
+function clipRatio(chans) {
+  let c = 0, n = 0;
+  for (const d of chans) {
+    const st = Math.max(1, Math.floor(d.length / 400000));
+    for (let i = 0; i < d.length; i += st) { if (Math.abs(d[i]) > 0.999) c++; n++; }
+  }
+  return n ? c / n : 0;
+}
+
+async function addFile(file) {
+  const nm = file.name || "未命名";
+  const low = nm.toLowerCase();
+  if (!/\.(mp3|wav)$/.test(low)) { setStatus("跳过 " + nm + "：只支持 mp3 / wav"); return; }
+  if (file.size > MAXBYTES) { setStatus("跳过 " + nm + "：" + fmt(file.size / 1048576, 1) + " MB，超过 5 MB"); return; }
+
+  setStatus("解码中：" + nm + " …");
+  await new Promise(r => setTimeout(r, 20));
+  let ab, buf0;
+  try {
+    buf0 = await file.arrayBuffer();
+    ab = await AC.decodeAudioData(buf0.slice(0));
+  } catch (e) {
+    console.error(e);
+    setStatus("解码失败：" + nm + "（文件可能损坏或不是标准 wav/mp3）");
+    return;
+  }
+  const { mono, chans, sr, n, ch } = toMono(ab);
+  const sniff = sniffRate(buf0);
+  const extra = {
+    sr: (sniff && sniff.rate) || ab.sampleRate,
+    srApprox: !(sniff && sniff.rate),
+    ch: ab.numberOfChannels, mb: file.size / 1048576,
+    stereoCorr: pickStereoCorr(chans, ab.sampleRate),
+    clipRatio: clipRatio(chans)
+  };
+  const hfInfo = hfCutoffOf(chans, ab.sampleRate);
+  const f = analyzeMono(mono, 120, hfInfo.cut);
+  extra.cliff = hfInfo.cliff;
+  const s = score(f, extra);
+  const item = { name: nm.replace(/\.[^.]+$/, ""), mono, f, s, extra, dur: n / ab.sampleRate, url: URL.createObjectURL(file) };
+  state.push(item);
+  if (state.length === 1) grid.innerHTML = "";
+  grid.appendChild(makeCard(item));
+  renderRank(state);
+  setStatus("已分析 " + state.length + " 首 · 单首最多取前 2 分钟");
+}
+
+async function handleFiles(files) {
+  const arr = [...files];
+  for (const f of arr) await addFile(f);
+}
+
+const drop = document.getElementById("drop");
+const fileInput = document.getElementById("file");
+drop.addEventListener("click", () => fileInput.click());
+drop.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") fileInput.click(); });
+fileInput.addEventListener("change", e => { handleFiles(e.target.files); fileInput.value = ""; });
+["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "dragend", "drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => { if (e.dataTransfer && e.dataTransfer.files) handleFiles(e.dataTransfer.files); });
+
+document.getElementById("clear").addEventListener("click", () => {
+  state.forEach(it => { try { URL.revokeObjectURL(it.url); } catch (e) {} });
+  state.length = 0;
+  grid.innerHTML = '<div class="empty">已清空。拖入纯音乐（mp3 / wav，≤ 5 MB）。</div>';
+  document.getElementById("rank").style.display = "none";
+  setStatus("还没有音频");
+});
+
+setStatus("还没有音频");
+</script>
+</body>
+</html>
