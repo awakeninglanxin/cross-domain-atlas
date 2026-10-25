@@ -161,6 +161,62 @@ body:not(.gold) #gifOpt{color:#3d4a60; border-color:#c6d1e0; background:rgba(255
   display:flex; flex-direction:column; align-items:flex-start; gap:8px;
 }
 #soundDock .dockRow{display:flex; align-items:center; gap:10px}
+/* ── 右下角「档位快切」条（2026-10-25 老师：「三组 chip 能否放网页右下角方便切换，
+   参数面板也保留，两者同步」）────────────────────────────────────────────────
+   为什么要它：球腔档的三组档位在参数面板最下面，面板能滚走、也能整块收起；
+   而「换点集看差别」是**边看边切**的动作，每次去面板里找位置太慢。
+   🔴 它和面板是**同一个状态**的两处视图，不是两份状态：
+      所有点击都只走 sphSetFlow / sphSetColor / sphSetFocus，
+      高亮由 syncChips 一处刷新（末尾镜像到 #sphFlowBar），
+      所以永远不可能出现「快切条说瓣图、面板说全部」。 */
+#sphFlowBar{
+  position:fixed; z-index:78; right:calc(var(--pw) + 16px); bottom:340px;
+  display:flex; flex-direction:column; gap:5px;
+  padding:8px 10px 10px; border-radius:10px;
+  background:rgba(8,11,17,.93); border:1px solid rgba(150,178,214,.26);
+  box-shadow:0 8px 26px rgba(0,0,0,.5);
+  font:11px/1.4 -apple-system,"PingFang SC",sans-serif;
+  min-width:196px;
+  max-width:calc(100vw - var(--pw) - 32px);
+}
+#sphFlowBar .hfHead{display:flex; align-items:center; justify-content:space-between; gap:12px}
+#sphFlowBar .hfHead b{font-size:10.5px; letter-spacing:.06em; color:#93a6bd; font-weight:600}
+#sphFlowBar .hfFold{
+  font:10px/1 -apple-system,"PingFang SC",sans-serif; color:#9fb2c8;
+  background:transparent; border:1px solid rgba(150,178,214,.28); border-radius:999px;
+  padding:3px 8px; cursor:pointer;
+}
+#sphFlowBar .hfFold:hover{color:#f2e3c4; border-color:rgba(244,224,182,.5)}
+#sphFlowBar .hfBody{display:flex; flex-direction:column; gap:4px}
+#sphFlowBar .hfRow{display:flex; align-items:center; gap:4px; flex-wrap:wrap}
+#sphFlowBar .hfLb{width:26px; flex:0 0 26px; color:#8c9fb6; font-size:10px}
+#sphFlowBar .chip{
+  font:10.5px/1 -apple-system,"PingFang SC",sans-serif;
+  padding:5px 8px; border-radius:999px; cursor:pointer;
+  background:rgba(14,19,27,.92); border:1px solid rgba(150,190,240,.22); color:#c3d2e4;
+}
+#sphFlowBar .chip:hover{border-color:rgba(150,190,240,.46); color:#e6eef8}
+#sphFlowBar .chip[aria-pressed="true"]{
+  background:linear-gradient(180deg,#f7e3b8,#e3bd7d); border-color:#f4e0b6;
+  color:#151a12; font-weight:650;
+}
+#sphFlowBar.folded{padding:6px 8px}
+#sphFlowBar.folded .hfBody{display:none}
+@media (max-width:1100px){ #sphFlowBar{right:calc(var(--pw) + 10px); bottom:300px} }
+/* 屏上口头说明（补点集 / 缺源等）：只在真发生了要说的事时出现，5.2 s 自动淡出 */
+#sphTip{
+  /* 2026-10-25 改位置：原来钉子 top:92px，结果正好和「导出 GIF」那一行同一水平、
+     还压在标题下缘。挪到画布底部上方（底部读数条 / 切换条之上），那里本来就是空的。 */
+  position:fixed; z-index:95; pointer-events:none;
+  left:16px; right:calc(var(--pw) + 16px); bottom:104px;
+  margin:0 auto; width:max-content;
+  max-width:min(620px, calc(100vw - var(--pw) - 40px));
+  padding:9px 14px; border-radius:10px; text-align:center;
+  background:rgba(10,14,20,.95); border:1px solid rgba(244,224,182,.42);
+  color:#f2e3c4; font:12.5px/1.65 -apple-system,"PingFang SC",sans-serif;
+  box-shadow:0 6px 24px rgba(0,0,0,.45);
+  opacity:0; transition:opacity .35s;
+}
 /* 挂挡口径两颗按钮：跟面板里的 .chip 同一套观感，但在深色浮层上要自己给底色 */
 #mountChips .chip{
   font-size:11.6px; padding:6px 11px; border-radius:999px;
@@ -900,6 +956,38 @@ s=2 时它会和内环的 s=2 腹点 0.726R 只差 2.9 mm ⇒ 两环顶住，装
   </div>
 </div>
 
+<!-- ★ 2026-10-25 老师：「瓣图档等三组按钮能否设计放在网页右下角方便我切换，参数面板也保留，两者同步」
+     和参数面板是同一个状态的两处视图（同一套 data-*、同一个 click 逻辑）。
+     🔴 这里**不许出现 id**：同 id 两颗会让 $() 只绑到第一颗，另一颗点了没反应。 -->
+<div id="sphFlowBar" role="group" aria-label="球腔档位快切（与右侧参数面板同步）">
+  <div class="hfHead"><b>档位快切 · 与面板同步</b><button class="hfFold" id="hfFold" aria-expanded="true"
+    title="收起 / 展开这条快切条（参数面板里那三组 chip 一直都在，收起不会丢功能）">收起</button></div>
+  <div class="hfBody">
+    <div class="hfRow"><span class="hfLb">驱动</span>
+      <button class="chip" data-sfm="0" aria-pressed="true"
+        title="改前行为：粒子跟随单模态 u = j_ℓ(kr)·P_ℓ^m(cosθ)·cos(mφ−ωt) 的梯度。**与点集完全无关**">单模态</button>
+      <button class="chip" data-sfm="1"
+        title="粒子跟随点集合成场 ∇p，p = Σ_ℓ A_ℓ·j_ℓ(k_ℓρ)·S_ℓ(u)。若当前点集是「按管位」，会自动补一个（见屏上提示）">点集场</button>
+    </div>
+    <div class="hfRow"><span class="hfLb">着色</span>
+      <button class="chip" data-spc="depth" aria-pressed="true" title="白点 + 靠近推力峰那层镀一点金。颜色只表深度，不表方向">深度</button>
+      <button class="chip" data-spc="dir6" title="球坐标三分量六色：±r 红青 / ±θ 绿品红 / ±φ 蓝黄（进出 / 上下 / 顺逆）">6 向</button>
+      <button class="chip" data-spc="ve12" title="12 色盘对截半立方体 VE 的 12 条原点→顶点向量">VE 12</button>
+      <button class="chip" data-spc="src" title="12 色盘对 12 个声源：粒子朝哪个源去，就取那个源的颜色（把「壳」这一维压掉）">主导源</button>
+    </div>
+    <div class="hfRow"><span class="hfLb">画面</span>
+      <button class="chip" data-sfc="0" aria-pressed="true" title="球腔全貌：四面体副振子 + 夸克球 + 经纬线 + 粒子 + 瓣图">全部</button>
+      <button class="chip" data-sfc="1" title="只留球壳 + 声源点 + 620 粒子：问「粒子往哪个方向动」">粒子</button>
+      <button class="chip" data-sfc="2" title="只留球面 S_ℓ 瓣图（暖金正 / 冷青负）：问「这一阶长什么样」，瓣数可以直接数">瓣图</button>
+    </div>
+    <div class="hfRow"><span class="hfLb">阶</span>
+      <button class="chip" data-slb="0" aria-pressed="true" title="只画最低活阶（= t+1）：偶极 → 四极 → 八极 → 十六极 → 密纹，六档一眼分得开">最低</button>
+      <button class="chip" data-slb="1" title="全部活阶等权叠加：同 t 的两个点集（cube8 / VE）差别在这里才显形（权重比不同）">全叠</button>
+    </div>
+  </div>
+</div>
+<div id="sphTip" role="status" aria-live="polite"></div>
+
 <button id="pwBtn" title="收起 / 展开参数面板（快捷键 P）" aria-label="收起或展开参数面板">⟨</button>
 
 <div id="panelMask" aria-hidden="true"></div>
@@ -1178,6 +1266,7 @@ s=2 时它会和内环的 s=2 腹点 0.726R 只差 2.9 mm ⇒ 两环顶住，装
       <div class="kv"><span>图样转速 Ω = ω/m</span><b id="vSphOm">—（m=0 不转）</b></div>
       <div class="kv"><span>外球面振子</span><b id="vSphCl">按管位 · 无点集</b></div>
       <div class="kv"><span>t-设计（该点集）</span><b id="vSphClN">—</b></div>
+      <div class="kv"><span>腔内最低活阶（= t+1）</span><b id="vSphFlowL">—</b></div>
     </div>
     <div class="row">
       <div class="lb"><span>球谐阶 ℓ</span><span class="v" id="vSphEll">0</span></div>
@@ -1240,6 +1329,7 @@ s=2 时它会和内环的 s=2 腹点 0.726R 只差 2.9 mm ⇒ 两环顶住，装
         <button class="chip" data-scl="cube8" title="正立方体（Oh）8 顶点。t=3 ⇒ 灭 ℓ≤3">立方体</button>
         <button class="chip" data-scl="ico12" title="正二十面体（I）12 顶点。t=5 ⇒ 灭 ℓ≤5，门限 2812 Hz —— 本页 t 最高的点集">二十面体</button>
         <button class="chip" data-scl="dodeca20" title="正十二面体（I）20 顶点。t=5 ⇒ 灭 ℓ≤5">十二面体</button>
+        <button class="chip" data-scl="ve12" title="截半立方体 / Vector Equilibrium（Fuller）：立方体 12 条棱的中点，(±1,±1,0) 全排列。24 条棱、8 三角面 + 6 正方形面；顶点两两夹角只有 60°/90°/120°/180° 四种。t=3 ⇒ 灭 ℓ≤3。🔴 单阶 ℓ=4 的形状与立方体/八面体**完全相同**（Oh 的不变谐波只 1 维，相关 +1.0000），但幅度最小（E₄=0.1456 vs 0.3883 vs 0.5824）⇒ 与 ℓ=6 的权重比不同 ⇒ 总场并不一样（ve12↔cube8 −0.497、ve12↔octa6 −0.695）。作为 12 色盘的参照系很合适">VE 12</button>
       </div>
     </div>
     <!-- ★ 2026-10-24 老师要求：「这些点集应该落在球面上比较好，或者多面体顶点距离球面可以调，
@@ -1267,6 +1357,51 @@ s=2 时它会和内环的 s=2 腹点 0.726R 只差 2.9 mm ⇒ 两环顶住，装
         <button class="chip" data-str="0" title="关掉尾迹，只剩当前帧的白点（改版前的样子）">关</button>
       </div>
     </div>
+    <!-- ★ 2026-10-25 老师：「我看不出这些点集怎么影响球腔里的粒子运动，有啥渲染办法让我看到不同？」
+         真因是**改前根本没有这条通道**：粒子只由 (ℓ,m,s) 单模态驱动，点集只进音频。
+         下面两组就是补上的这条通道 —— 驱动源换成点集合成场，颜色换成运动方向。 -->
+    <div class="row">
+      <div class="lb"><span>粒子驱动</span><span class="v" id="vSphFlow">单模态</span></div>
+      <div class="chips" id="sphFlowChips">
+        <button class="chip" data-sfm="0" aria-pressed="true"
+          title="改前行为（逐位不变）：粒子跟随 u = j_ℓ(kr)·P_ℓ^m(cosθ)·cos(mφ−ωt) 的梯度。此时**与点集完全无关** —— 点集只在音频里起作用，所以两档画面一模一样，这不是 bug">单模态 ℓ/m</button>
+        <button class="chip" data-sfm="1"
+          title="点集驱动：粒子跟随合成场 ∇p，p = Σ_ℓ A_ℓ·j_ℓ(k_ℓρ)·S_ℓ(u)，S_ℓ(u)=Σ_i P_ℓ(u·s_i)。点集只通过 S_ℓ 进场；t-设计给 S_ℓ≡0 (ℓ≤t) ⇒ 那些阶在腔内处处为零。于是「换点集」= 「换还剩哪几阶」= 「换图样的瓣数级」">点集合成场</button>
+      </div>
+    </div>
+    <div class="row">
+      <div class="lb"><span>粒子着色</span><span class="v" id="vSphPCol">深度</span></div>
+      <div class="chips" id="sphPColChips">
+        <button class="chip" data-spc="depth" aria-pressed="true"
+          title="改前行为：白点 + 靠近推力峰那层球壳镀一点金。颜色只表示深度和半径，不表示运动方向">深度</button>
+        <button class="chip" data-spc="dir6"
+          title="光的三原色 + 补色：+x 红 / −x 青 / +y 绿 / −y 品红 / +z 蓝 / −z 黄（RGB↔CMY 一一对应，反向即补色）。粒子往哪个方向晃，就点亮哪一色；节点附近速度→0 自动变暗 ⇒ 节线自己浮出来">三原色 6 向</button>
+        <button class="chip" data-spc="ve12"
+          title="12 色盘对截半立方体（VE）的 12 条「原点→顶点」向量：粒子的运动方向落在哪个顶点附近，就取那个色相。球面上会画出这 12 条向量 + 12 个色点做图例">VE 12 色</button>
+        <button class="chip" data-spc="src"
+          title="12 色盘对**12 个源点**：粒子往哪个源点的方向去，就取那个源的颜色。这是「点集 → 粒子」最直接的读数 —— t 设计的含义就是「没有哪个源能独占一片区域」，看颜色交织得多匀就知道 t 有多高">主导源</button>
+      </div>
+    </div>
+    <div class="row">
+      <div class="lb"><span>画面层</span><span class="v" id="vSphFocus">全部</span></div>
+      <div class="chips" id="sphFocusChips">
+        <button class="chip" data-sfc="0" aria-pressed="true"
+          title="四面体副振子 + 夸克球 + 经纬线 + 三条标记环全画。这是「球腔几何」的全貌，但在对比点集时它们全是噪声">全部</button>
+        <button class="chip" data-sfc="1"
+          title="只留球壳 + 声源云点 + 620 个示踪粒子 + 12 色图例：四面体、夸克球、经纬线、三条标记环全部跳过，球面瓣图也关掉。这一档问的是「**粒子往哪个方向动**」—— 颜色就是运动方向">只看粒子</button>
+        <button class="chip" data-sfc="2"
+          title="只留球面瓣图：Ssum(u) = Σ S_ℓ/ max|j_ℓ| 的正负染色（暖金=正，冷青=负），粒子与装饰全部隐藏。这一档问的是「**这一阶长什么样**」—— 瓣数可以直接数。两档分开看才不会互相干扰：粒子的颜色和球面的颜色是两套语义">只看瓣图</button>
+      </div>
+    </div>
+    <div class="row">
+      <div class="lb"><span>瓣图取阶</span><span class="v" id="vSphLobe">最低活阶</span></div>
+      <div class="chips" id="sphLobeChips">
+        <button class="chip" data-slb="0" aria-pressed="true"
+          title="只画最低活阶 = t+1。这是「点集决定瓣数级」这句话的直接可视化：pyr4 ⇒ ℓ=1 偶极、eq3 ⇒ ℓ=2 四极、tetra4 ⇒ ℓ=3 八极、cube8 / VE ⇒ ℓ=4、ico12 ⇒ ℓ=6。单阶图最干净，瓣数可以数">最低活阶</button>
+        <button class="chip" data-slb="1"
+          title="全部活阶等权叠加。这才是「同 t ≠ 同图样」的证据：cube8 与 ve12 在 ℓ=4 上形状完全相同（相关 +1.0000，只差幅度），差别全在**权重比**——而权重比只有在多阶叠加时才显形。图会变花，那是真的">全部叠加</button>
+      </div>
+    </div>
     <div class="row">
       <div class="lb"><span>四面体副振子</span><span class="v" id="vTetOn">面 · 12 枚</span></div>
       <div class="chips" id="sphTetChips">
@@ -1276,7 +1411,7 @@ s=2 时它会和内环的 s=2 腹点 0.726R 只差 2.9 mm ⇒ 两环顶住，装
         <button class="chip" data-stt="2"
           title="把 12 条股腿加亮加粗。几何上它就是三角形的那条边 —— 这一档不新增线段，加的是「哪条边是股腿」这个读法">＋股腿</button>
         <button class="chip" data-stt="3"
-          title="加 6 条球面接触弧（每个「棱 + 球心」平面截球的大圆，跨 109.4721°）与空腔本体（内倒正四面体，外接半径 k·R = 0.029437 R）">＋弧 · 空腔</button>
+          title="加三样：① 6 条球面接触弧（每个「棱 + 球心」平面截球的大圆，跨 109.4721°）；② 中心空腔 = 内倒正四面体（外接半径 k·R，ρ=4/3 时 = 0.029437 R），面/棱/外接圆都画；③ **12 条股腿的延长段 + 4 个交合点** —— 每 3 条股腿延长后交于同一点，4 个交合点就是内倒四面体的 4 个角。内四面体的角朝外四面体的**面心**方向（−V），所以它相对外四面体是 180° 翻转，不是缩小复制。">＋弧 · 空腔</button>
       </div>
     </div>
     <!-- ★ 2026-10-24 21:50 老师：「怎样调参或调音程比才能刚好让那个白色小球 = R/(1+√2)^4，
@@ -1287,9 +1422,30 @@ s=2 时它会和内环的 s=2 腹点 0.726R 只差 2.9 mm ⇒ 两环顶住，装
       <input type="range" id="sTetRho" min="0.6" max="1.414214" step="0.000001" value="1.333333" alt="勾股比 ρ">
     </div>
     <div class="chips" id="sphTetRhoChips">
-      <button class="chip" data-rho="1" title="ρ = 1（等腰直角 45°）⇒ k = (1+√2)⁻² = 0.171573 ⇒ 空腔 0.171573 R，音程 0 ¢（同度），t = 2">1:1 · 0¢</button>
-      <button class="chip" data-rho="1.3333333333333333" aria-pressed="true" title="ρ = 4/3（3-4-5）⇒ k = (1+√2)⁻⁴ = 1/33.970563 ⇒ 空腔 R/33.970563，音程 498.045 ¢（纯四度），t = 4。这是 (1+√2)^n 偶数解里**唯一来自整数勾股数组**的一档">3:4 · 498¢ ★</button>
-      <button class="chip" data-rho="1.4142135623730951" title="ρ = √2 ⇒ k = 0 ⇒ 空腔塌成一点、12 条股腿全过球心，音程 600 ¢（三全音）。这是结构奇点：越过它 k 变负，空腔翻面（不存在）">√2 · 600¢ 临界</button>
+      <!-- ★ 2026-10-25 老师：「3:4:5 只是一种勾股弦组合，应该还有比如 20:21:29，至少再加 3 个」
+           加 4 档（合计 7 档），全部是**本原**勾股数组（(勾,股,弦) 三数互素）。
+           🔴 但要说清一件事，否则这几颗按钮会骗人：
+              能画 ⟺ 股/勾 ≤ √2（否则直角顶点跑出四面体，参考页 VALID 判据）。
+              能不能写成「空腔 = R/(1+√2)^t 的整数次幂」是**另一件事**——
+              那要求 1/k = A+B√2 落在 Pell 线上，而 4 个新档里 t 都不是整数
+              （≈2.17 / 2.39 / 2.56 / 2.80）。所以它们的空腔半径是「一个数」，
+              不是「R/整数」。3:4:5 之所以是★，因为它是整数勾股数组里唯一落在偶数 t 的。
+           data-rn / data-rd = 股 / 勾（分子分母分开存，ρ 由运行时算，标签也由运行时写）。
+           标签里的 ¢ 一律**现算**：写死之后换档时屏上就是假话。 -->
+      <button class="chip" data-rn="1" data-rd="1" data-nm="1:1:√2"
+        title="ρ = 1（等腰直角 45°）⇒ k = (1+√2)⁻² ⇒ 空腔 0.171573 R，音程 0 ¢（同度），t = 2。这是 Pell 线上最小的一档">1:1:√2 · 0¢</button>
+      <button class="chip" data-rn="21" data-rd="20" data-nm="20:21:29"
+        title="ρ = 21/20（20-21-29）⇒ 极扁的三角形，空腔约 0.1478 R。音程 +84.5 ¢。🔴 t ≈ 2.17 不是整数 ⇒ 空腔半径写不成 R/(1+√2)^整数，只能报一个数">20:21:29</button>
+      <button class="chip" data-rn="72" data-rd="65" data-nm="65:72:97"
+        title="ρ = 72/65（65-72-97）⇒ 空腔约 0.1215 R，音程 +177.0 ¢。t ≈ 2.39，非整数">65:72:97</button>
+      <button class="chip" data-rn="55" data-rd="48" data-nm="48:55:73"
+        title="ρ = 55/48（48-55-73）⇒ 空腔约 0.1048 R，音程 +235.7 ¢。t ≈ 2.56，非整数">48:55:73</button>
+      <button class="chip" data-rn="105" data-rd="88" data-nm="88:105:137"
+        title="ρ = 105/88（88-105-137）⇒ 空腔约 0.0848 R，音程 +305.8 ¢。t ≈ 2.80，非整数。这 4 个新档里最接近 3:4 的一档">88:105:137</button>
+      <button class="chip" data-rn="4" data-rd="3" data-nm="3:4:5" data-suf=" ★" aria-pressed="true"
+        title="ρ = 4/3（3-4-5）⇒ k = (1+√2)⁻⁴ = 1/33.970563 ⇒ 空腔 R/33.970563，音程 498.045 ¢（纯四度），t = 4。这是 (1+√2)^n 偶数解里**唯一来自整数勾股数组**的一档">3:4:5 · 498¢ ★</button>
+      <button class="chip" data-rn="1.4142135623730951" data-rd="1" data-nm="√2" data-suf=" 临界"
+        title="ρ = √2 ⇒ k = 0 ⇒ 空腔塌成一点、12 条股腿全过球心，音程 600 ¢（三全音）。这是结构奇点：越过它 k 变负，空腔翻面，而且直角顶点跑出四面体（不再内接）">√2 · 600¢ 临界</button>
     </div>
     <!-- 🔴 这 6 行必须包在 .card 里：flex + 右对齐挂在 `.card .kv` 上，
          放在外面（旧版）⇒ 标签和值内联粘连成「棱长 a = 弦 = √(勾²+股²)1.632993 R」，
@@ -4897,6 +5053,14 @@ var SPA_CLOUD = [
   { id:'octa6',    nm:'正八面体',        grp:'Oh',  t:3  },
   { id:'pyr5',     nm:'五棱锥·等棱',     grp:'C5v', t:0  },
   { id:'cube8',    nm:'正立方体',        grp:'Oh',  t:3  },
+  /* ★ 2026-10-25 老师要求（贝聿铭式「向量均衡几何体」）：截半立方体 / Vector Equilibrium。
+     12 个顶点 = 立方体的 12 条棱中点 = (±1,±1,0) 的全排列；24 条棱、8 三角面 + 6 正方形面。
+     🔴 它是 **t=3**（与正八面体、正立方体同阶，实测 E₁=E₂=E₃=0，E₄=0.1456）。
+        cuboctahedron 的对称群就是 Oh，ℓ=4 的不变子空间只有 1 维 ⇒ **单阶 ℓ=4 的形状
+        与立方体/八面体完全相同**（相关 +1.0000），只有幅度更小（0.1456 / 0.3883 / 0.5824）。
+        但**总场是各活阶叠加**，权重比不同 ⇒ ∇p 并不相同（实测 ve12↔cube8 −0.497、
+        ve12↔octa6 −0.695）。所以它既不是「白给一阶」，也不是「和立方体一模一样」。 */
+  { id:'ve12',     nm:'截半立方体 VE',   grp:'Oh',  t:3  },
   { id:'ico12',    nm:'正二十面体',      grp:'I',   t:5  },
   { id:'dodeca20', nm:'正十二面体',      grp:'I',   t:5  }
 ];
@@ -4956,6 +5120,18 @@ function spaCloudPts(id, tilt){
       break;
     case 'octa6':
       V3([1,0,0]); V3([-1,0,0]); V3([0,1,0]); V3([0,-1,0]); V3([0,0,1]); V3([0,0,-1]);
+      break;
+    /* 截半立方体 / Vector Equilibrium（Fuller）：立方体 12 条棱的中点。
+       生成方式用「全排列」而不是抄 12 行常数：先放 (1,1,0) 族 —— 3 个位置放两个 ±1、
+       剩下一个是 0 ⇒ 3 种落位 × 4 种符号 = 12 个。这样写漏一个都难（少一个点 E₃ 立刻不为 0）。 */
+    case 've12':
+      for (s1 = 0; s1 < 3; s1++)
+        for (s2 = -1; s2 <= 1; s2 += 2)
+          for (sz = -1; sz <= 1; sz += 2){
+            var vv = [0, 0, 0];
+            vv[s1] = s2; vv[(s1 + 1) % 3] = sz;
+            V3(vv);
+          }
       break;
     case 'ico12':
       V3([0,1,PHI]);   V3([0,1,-PHI]);  V3([0,-1,PHI]);  V3([0,-1,-PHI]);
@@ -7122,6 +7298,12 @@ var LAST3D_C = null;
    ══════════════════════════════════════════════════════════════════════════ */
 var SPH = { ell: 0, s: 1, cfg: 'peak', yaw: -0.62, pitch: 0.40, zoom: 1,
             trail: 1,          /* 示踪尾迹开关（面板 chip 控制） */
+            /* ★ 2026-10-25「只看粒子」：跳过四面体 / 夸克球 / 经纬线 / 三条标记环。
+               为什么需要它而不是「让老师自己一个个关」：那四层加起来在球里画了
+               上百条线，粒子一旦按方向着色，屏上就是「彩色点 + 一堆白线」——
+               老师要看的恰恰是「点的颜色和位置在不同点集之间怎么变」，线全是噪声。
+               注意**声源云点（②b）在聚焦时仍然画**：那些点就是点集本身，是主角之一。 */
+            focus: 0,
             /* ── 角向阶 m（2026-10-24 老师问「为何球腔 3D 的粒子没有旋转 / 摆线」）──
                m = 0 ⇒ u = j_ℓ(kr)·P_ℓ(cosθ) **与 φ 无关**（轴对称）⇒ ∂u/∂φ ≡ 0
                      ⇒ v_φ ≡ 0 ⇒ 每个粒子只在自己那个子午面里来回。
@@ -7346,6 +7528,8 @@ function sphViewSync(){
   $('svcWrap').style.display = (TUBE.view === 2) ? 'inline-flex' : 'none';
   /* 外接球 R 与视角预设同生同灭：点集只在球腔档存在，别的档给它调 R 是在调一个看不见的东西 */
   if ($('clrWrap')) $('clrWrap').style.display = (TUBE.view === 2) ? 'inline-flex' : 'none';
+  /* 右下角档位快切条同理：三组档位只在球腔档有意义（盘面/Keely 3D 没有 S_ℓ、没有球腔粒子） */
+  if ($('sphFlowBar')) $('sphFlowBar').style.display = (TUBE.view === 2) ? 'flex' : 'none';
   SVC_CUR = sphViewKey();
   var els = $('svcWrap').querySelectorAll('.chip[data-svc]');
   for (var i = 0; i < els.length; i++)
@@ -7533,8 +7717,18 @@ function buildTet(RHO){
     })(n);
     if (!seen[key]){ seen[key] = 1; PLANES.push({ n:n, i:i, j:j, th:th }); }
   });
-  /* 空腔：内倒正四面体的 4 个顶点 = O + k(O − V_k) = −k·V_k（O 在原点） */
+  /* 空腔：内倒正四面体的 4 个顶点 = O + k(O − V_k) = −k·V_k（O 在原点）
+     ★★ 2026-10-25 老师：「+由 12 个勾股三角形形成中心内嵌的倒的小四面体」
+     这条因果原来**画不出来**：STRANDS 只到直角顶点 apex（|apex| ≈ 0.308 R），
+     而内倒四面体在 0.029 R —— 屏上只有「12 个三角形」和「中心一个小团」，
+     中间那步「12 条股腿延长 ⇒ 每 3 条交于 1 点 ⇒ 4 点成倒四面体」完全缺失。
+     补法：给每条股腿记下它的**延长线过哪一点**（参考页 LEG4.meet 的同一个量）：
+         从 i 出发的股腿延长后过 P_j = −k·V_j = CAV[j]
+     「顶点在 −V 方向」正是「倒」字的几何含义：内四面体的角朝外四面体的**面心**，
+     朝的是外顶点 V 的反方向，所以与外四面体成 180° 反转而不是缩小复制。 */
   var CAV = V.map(function(v){ return mul(v, -K); });
+  for (var si2 = 0; si2 < STRANDS.length; si2++)
+    STRANDS[si2].meet = CAV[STRANDS[si2].to];
   /* ── 12 个直角顶点在球面上的分布（这是这层最值得看的一条数）──
      ① 12 枚三角形的直角顶点**共球**：|apex| 全部相等（3-4-5 实测 0.308063825 R）；
      ② 点集具**四面体对称** ⇒ E_ℓ(u) = (1/12)Σ P_ℓ(u·ŝ_i) 在 ℓ = 1, 2, 5 上恒等于 0
@@ -7726,6 +7920,401 @@ function sphReset(n){
    不是被声辐射力推（那是干砂的事）。再乘一个整体振荡 cos(ωt)：
    半周期向外、半周期向内 —— 球腔的呼吸。粒子分布才是「力场在动」的样子。 */
 var SPH_T = 0;
+
+/* ══ 点集 → 腔内流场（2026-10-25，老师：「看不出点集怎么影响球腔里的粒子运动」）══════
+   🔴 先说事实：**改之前，点集与粒子毫无关系。**
+      sphStep 的目标速度只由 (ℓ, m, s) 一个模态给，粒子颜色只由深度与 r 给；
+      点集 SPA.cloud 只进音频路径（spaCloudFieldAt）。所以「看不出差别」不是眼睛的
+      问题 —— 屏上确实没有这一条通道。这一块补的就是它。
+
+   物理（刚性球壁、N 个等幅同相点源在 r=R）：
+     格林函数模态展开 + 加法定理 Σ_m Y_ℓm(u)·Y*_ℓm(s) = (2ℓ+1)/4π·P_ℓ(u·s)
+     ⇒ p(x) = Σ_ℓ A_ℓ(k)·j_ℓ(k_{ℓs}·ρ)·S_ℓ(u),      S_ℓ(u) ≡ Σ_i P_ℓ(u·s_i)
+     ⇒ **点集只通过 S_ℓ(u) 进入腔内场，没有第二条通道**；
+       t-设计给 S_ℓ ≡ 0（ℓ ≤ t）⇒ 那些阶在腔内**处处为零**，粒子只能感受 ℓ > t。
+     于是「不同点集 ⇒ 不同粒子运动」的全部机制只有一句话：
+       **点集决定腔内还剩哪几阶；最低活着的阶决定图样的主力瓣数级。**
+
+   权重口径（必须写清，不许冒充物理）：
+     每阶取自己的**第一共振峰** k_ℓ = j′_{ℓ,1}，按 max|j_ℓ| 归一、各阶**等权**。
+     这是「多阶等权」教学模型，**不是某一个单频 f 的真实响应** —— 真实单频下
+     各阶权重是 (k² − k_{ℓs}²)⁻¹·j_ℓ(k_{ℓs}R)，会强烈偏向离 f 最近的那一阶。
+     页面上按这个口径说话，读数里写明「多阶等权」。
+
+   🔴 三条被实测纠正过的说法，别再写回去：
+      ① 「同 t ⇒ 同图样」，**只在单阶上成立**。ℓ=4 上 八面体/立方体/VE 的相关是
+         **+1.0000**（Oh 群的 ℓ=4 不变谐波只有 1 维 ⇒ 形状必然相同，只差幅度
+         0.5824 / 0.3883 / 0.1456）。但**总场是各活阶的叠加**，各阶权重 E_ℓ 不同 ⇒
+         叠加出来的 ∇p 完全不是一回事（实测 72 点相关：octa6↔cube8 −0.278、
+         octa6↔ve12 −0.695、cube8↔ve12 −0.497；eq3↔eq4 +0.308、eq3↔eq5 +0.444）。
+         ⇒ 「换点集 ⇒ 换图样」**成立**，但机制不是「主阶变了」，而是
+            「**主阶相同、各阶权重比不同**」—— 这一条差点被我写成反的。
+      ② 「VE 有 12 条向量 ⇒ 12 个声源分区」—— 错。它 t=3，ℓ≤3 全灭；
+         它作为「12 色盘的参照系」很好，作为「多一阶声源」不多给任何东西。
+      ③ 「粒子会净流」—— 错。一阶场时间平均严格为 0，粒子只**来回晃**；
+         想看见「流」仍得开二阶声流（SPH.drift，示意档）。这里只给空间图样。
+
+   方向着色（老师：「对顺/逆、上/下 运动方向的粒子加不同颜色，三原色或 12 色盘」）：
+     'depth' 改前（深度白/金）｜'dir6' 光的三原色+补色（±x±y±z）｜
+     've12' 12 色盘对 VE 的 12 条「原点→顶点」向量｜'src' 12 色盘对 12 个源点。
+   色相只表示**方向**；亮度表示**速度大小**（节点附近自动变暗 ⇒ 节线自己浮出来）。 */
+var SPH_FLOW = {
+  on: 0,              /* 0 = 单模态（改前行为，逐位不变）；1 = 点集驱动 */
+  color: 'depth',     /* 'depth' | 'dir6' | 've12' | 'src' */
+  /* 瓣图画哪几阶（2026-10-25 老师要「看得出不同」）：
+     0 = 只画最低活阶 = t+1。**这是默认**，因为「最低活阶决定瓣数级」这句话
+         只有在单阶图上才一眼可数：pyr4 ⇒ ℓ=1 偶极、eq3 ⇒ ℓ=2 四极、
+         tetra4 ⇒ ℓ=3 八极、cube8 ⇒ ℓ=4 十六极、ico12 ⇒ ℓ=6 密纹。
+     1 = 全部活阶等权叠加。那才是「同 t ≠ 同图样」的证据：
+         cube8 与 ve12 在 ℓ=4 上形状完全相同（+1.0000），差别全在权重比，
+         而权重比只有在**多阶叠加**时才显形。两档问的是两个不同的问题。 */
+  lobeAll: 0,
+  Lmax: 6,
+  key: '', ready: 0,
+  pts: [],            /* 当前点集方向（单位向量，含 tilt） */
+  live: [], kk: [], jm: [],   /* 活阶 / k_ℓ=j′_{ℓ,1} / max|j_ℓ| 归一 */
+  first: 0,           /* 首个活阶（= t+1） */
+  NT: 32, NP: 64,
+  grid: null,         /* { S:[F32], dT:[F32], dP:[F32] } 每阶一个，长度 NT*NP */
+  gnrm: 1,            /* 场强 RMS 归一（换点集后量级可比） */
+  amp: 0              /* 上一帧 max|v|（读数用） */
+};
+/* HSL→RGB。12 色相环全部现算 —— 想调亮度/饱和只改这一处，不要写 12 个常量字符串。 */
+function sphHsl(h, s, l){
+  h = ((h % 360) + 360) % 360;
+  var c = (1 - Math.abs(2*l - 1))*s, m = l - c/2;
+  var x = c*(1 - Math.abs((h/60) % 2 - 1)), seg = Math.floor(h/60), r, g, b;
+  if (seg === 0){ r = c; g = x; b = 0; }
+  else if (seg === 1){ r = x; g = c; b = 0; }
+  else if (seg === 2){ r = 0; g = c; b = x; }
+  else if (seg === 3){ r = 0; g = x; b = c; }
+  else if (seg === 4){ r = x; g = 0; b = c; }
+  else { r = c; g = 0; b = x; }
+  return [Math.round((r + m)*255), Math.round((g + m)*255), Math.round((b + m)*255)];
+}
+var SPH_HUE12 = (function(){
+  var a = [], i;
+  for (i = 0; i < 12; i++) a.push(sphHsl(i*30 + 0, 0.80, 0.60));
+  return a;
+})();
+/* 光的三原色 + 补色，按**球坐标**三对分（不是 x/y/z 三轴）：
+     +r 红 = 向外（膨胀）／ −r 青 = 向内（收缩）
+     +θ 绿 = 向赤道（向下）／ −θ 品红 = 向极点（向上）
+     +φ 蓝 = 逆时针        ／ −φ 黄 = 顺时针
+   🔴 为什么按球坐标而不是 x/y/z：球腔里的场本来就是 (r,θ,φ) 分解的，
+      按 x/y/z 分会让**同一个瓣**里的颜色随位置跳变（同一股外流的点，在 +x 侧是红、
+      在 −x 侧是青），看上去就是「花花绿绿没有结构」。按球坐标分，一股外流整片同色，
+      ℓ 阶的瓣结构才浮得出来。老师原话要的也正是「上下 / 顺逆时针 / 进出」这三种对。 */
+var SPH_C6 = [[255, 92, 92], [92, 226, 226], [110, 232, 128],
+              [232, 116, 232], [110, 162, 255], [255, 214, 92]];
+/* 勒让德 P_ℓ 与 P′_ℓ 一次递推到 Lmax（预分配缓冲，避免每粒子建数组） */
+var FL_P = new Float64Array(17), FL_D = new Float64Array(17);
+function legFill(lmax, c){
+  FL_P[0] = 1; FL_D[0] = 0;
+  if (c > 1) c = 1; else if (c < -1) c = -1;
+  if (lmax >= 1){ FL_P[1] = c; FL_D[1] = 1; }
+  if (lmax < 2) return;
+  var s2 = Math.max(1e-14, 1 - c*c), n;
+  for (n = 1; n < lmax; n++){
+    FL_P[n + 1] = ((2*n + 1)*c*FL_P[n] - n*FL_P[n - 1])/(n + 1);
+    FL_D[n + 1] = (n + 1)*(FL_P[n] - c*FL_P[n + 1])/s2;
+  }
+}
+/* j′_{ℓ,1} —— 第 ℓ 阶第一个 Neumann 零点（就是球腔第 ℓ 阶最低共振的 k_ℓ）。
+   🔴 不复用 nthZeroS：它为了通解从 1e-3 以 0.004 的步长扫到 140（约 3.5 万次 jlS），
+      6 阶连算会在首帧卡住半秒。这里只要**第一个**正零点，粗扫 0.05 步长 + 二分足够
+      （粗扫最多 ~220 次，实测 6 阶合计 < 3 ms），且结果与 nthZeroS 在 1e-9 内一致。 */
+var SPH_JP1 = {};
+function sphJpZero1(l){
+  if (SPH_JP1[l] !== undefined) return SPH_JP1[l];
+  var x, prev = jlpS(l, 0.05), cur, hi = Math.max(4.2, l + 5), a, b, m, it;
+  for (x = 0.10; x <= hi; x += 0.05){
+    cur = jlpS(l, x);
+    if (prev*cur < 0){
+      a = x - 0.05; b = x;
+      for (it = 0; it < 60; it++){
+        m = (a + b)/2;
+        if (jlpS(l, a)*jlpS(l, m) <= 0) b = m; else a = m;
+      }
+      SPH_JP1[l] = (a + b)/2;
+      return SPH_JP1[l];
+    }
+    prev = cur;
+  }
+  SPH_JP1[l] = hi;
+  return hi;
+}
+var SPH_VE12 = null;
+function sphVe12(){
+  if (SPH_VE12) return SPH_VE12;
+  var a = [], s1, s2, sz, vv, k;
+  for (s1 = 0; s1 < 3; s1++)
+    for (s2 = -1; s2 <= 1; s2 += 2)
+      for (sz = -1; sz <= 1; sz += 2){
+        vv = [0, 0, 0]; vv[s1] = s2; vv[(s1 + 1) % 3] = sz;
+        a.push({ x:vv[0]/Math.SQRT2, y:vv[1]/Math.SQRT2, z:vv[2]/Math.SQRT2 });
+      }
+  SPH_VE12 = a;
+  return a;
+}
+/* 建表：活阶 + 方向网格 S_ℓ / ∂S_ℓ∂θ / ∂S_ℓ∂φ + RMS 归一。
+   网格 32×64 够分辨 ℓ=6（P₆ 在 θ 上有 6 个零点 ⇒ 每段 ~4.5 格；cos6φ 每周期 10 格）。 */
+function sphFlowBuild(){
+  var id = SPA.cloud || 'tube';
+  var key = id + '|' + (SPA.cloudTilt || 0) + '|' + SPH_FLOW.Lmax + '|' + SPH_FLOW.on;
+  if (SPH_FLOW.key === key && SPH_FLOW.grid) return SPH_FLOW;
+  SPH_FLOW.key = key;
+  SPH_FLOW.ready = 0;
+  var pts = null;
+  if (id !== 'tube'){
+    try { var CL = spaCloudGet(); if (CL && CL.pts && CL.pts.length) pts = CL.pts; } catch (e){ pts = null; }
+  }
+  if (!pts){ SPH_FLOW.pts = []; SPH_FLOW.grid = null; SPH_FLOW.live = []; SPH_FLOW.first = 0; return SPH_FLOW; }
+  SPH_FLOW.pts = pts;
+  var L = SPH_FLOW.Lmax, NT = SPH_FLOW.NT, NP = SPH_FLOW.NP;
+  var l, i, a, b, S = [], dT = [], dP = [], th, ph, st, ct, cp, sp,
+      ux, uy, uz, etx, ety, etz, epx, epy, c, idx, n = pts.length, s;
+  for (l = 0; l <= L; l++){
+    /* 🔴 必须 Float64：S_ℓ 里 t-设计那几阶的真值是 **1e-16 级**，
+       Float32 的累加舍入就有 3e-8（实测：用 Float32 时 12 个点集全被判成「ℓ=1 就活着」，
+       活阶列表清一色 [1,2,3,4,5,6] —— 一个点集的 t 都看不出来）。
+       内存代价 648×7×3×8B ≈ 109 KB，值。 */
+    S.push(new Float64Array(NT*NP)); dT.push(new Float64Array(NT*NP)); dP.push(new Float64Array(NT*NP));
+  }
+  for (a = 0; a < NT; a++){
+    th = Math.PI*(a + 0.5)/NT; st = Math.sin(th); ct = Math.cos(th);
+    etx = ct; ety = 0; etz = -st;               /* 占位，随 φ 变，见内层 */
+    for (b = 0; b < NP; b++){
+      ph = 2*Math.PI*b/NP; cp = Math.cos(ph); sp = Math.sin(ph);
+      ux = st*cp; uy = st*sp; uz = ct;
+      etx = ct*cp; ety = ct*sp; etz = -st;      /* êθ */
+      epx = -sp;   epy = cp;                    /* êφ（z 分量 0） */
+      for (l = 0; l <= L; l++){ S[l][a*NP + b] = 0; dT[l][a*NP + b] = 0; dP[l][a*NP + b] = 0; }
+      for (i = 0; i < n; i++){
+        s = pts[i];
+        c = ux*s.x + uy*s.y + uz*s.z;
+        legFill(L, c);
+        var pT = s.x*etx + s.y*ety + s.z*etz, pP = s.x*epx + s.y*epy;
+        for (l = 0; l <= L; l++){
+          idx = a*NP + b;
+          S[l][idx]  += FL_P[l];
+          dT[l][idx] += FL_D[l]*pT;
+          dP[l][idx] += FL_D[l]*pP;
+        }
+      }
+      for (l = 0; l <= L; l++){ idx = a*NP + b; S[l][idx] /= n; dT[l][idx] /= n; dP[l][idx] /= n; }
+    }
+  }
+  /* 活阶：max_u |S_ℓ| > 1e-9（与 _probe_platonic 的 E_ℓ 同一个量，只是网格更粗） */
+  var live = [], kk = [], jm = [], mx, l2, first = 0;
+  for (l = 1; l <= L; l++){
+    mx = 0;
+    for (i = 0; i < NT*NP; i++){ var av = Math.abs(S[l][i]); if (av > mx) mx = av; }
+    if (mx > 1e-9){
+      live.push(l); kk.push(sphJpZero1(l));
+      if (!first) first = l;
+      /* max|j_ℓ| 在 [0, k_ℓ] 上采样；k_ℓ = j′_{ℓ,1} ⇒ 峰值在区间内部 */
+      var km = 0;
+      for (i = 1; i < 200; i++){
+        var xx = kk[kk.length - 1]*i/200, jv = Math.abs(jlS(l, xx)); if (jv > km) km = jv;
+      }
+      jm.push(km > 1e-12 ? km : 1);
+    }
+  }
+  SPH_FLOW.grid = { S:S, dT:dT, dP:dP, NT:NT, NP:NP };
+  SPH_FLOW.live = live; SPH_FLOW.kk = kk; SPH_FLOW.jm = jm;
+  SPH_FLOW.first = first;
+  /* RMS 归一：在 3 个半径 × 网格上算 |∇p| 的均方根，让不同点集的粒子速度量级可比 */
+  var acc = 0, cnt = 0;
+  for (var ri = 0; ri < 3; ri++){
+    var rho = 0.35 + 0.25*ri;
+    for (a = 2; a < NT - 1; a += 3) for (b = 0; b < NP; b += 4){
+      th = Math.PI*(a + 0.5)/NT; st = Math.max(0.05, Math.sin(th));
+      var g = sphFlowGradRaw(a*NP + b, rho, st);
+      acc += g.gr*g.gr + g.gth*g.gth + g.gph*g.gph; cnt++;
+    }
+  }
+  SPH_FLOW.gnrm = cnt ? Math.sqrt(acc/cnt) : 1;
+  if (!(SPH_FLOW.gnrm > 1e-9)) SPH_FLOW.gnrm = 1;
+  SPH_FLOW.ready = 1;
+  return SPH_FLOW;
+}
+/* ══ 点集缺失时的兜底（2026-10-25 老师：「点了点集合成场，画面毫无变化」）════════════
+   🔴 根因**不是** chip 没生效，是「要了场但没有源」：
+      sphFlowBuild 在 SPA.cloud === 'tube'（按管位）时把 grid 置 null，
+      而 sphStep 里 useCloud = (SPH_FLOW.on && SPH_FLOW.grid) ⇒ 0
+      ⇒ 粒子仍走单模态旧路径。于是 chip 亮着、行为一点没变，
+      屏上却没有任何一行字说明「你缺的是点集」。这就是「没成功显化」的全部真相。
+   与此同源的第二处：画面层切「只看瓣图」时，唯一内容就是 S_ℓ 染色，
+      没有 grid 就等于整块画布空白（老师那两张截图就是这一态）。
+   修法：凡「要场」的动作（点集场 / 瓣图档）先保证「有源」，缺了就补一个默认点集，
+      并当场在屏上说明补了什么 —— 不偷偷改、也不留空态。 */
+var SPH_FLOW_SRC = 'cube8';   /* 兜底点集：立方体 8 点（t=3，瓣图八极，一眼能数） */
+var SPH_TIP_TIMER = null;
+function sphHasSrc(){ return !!(SPA.cloud && SPA.cloud !== 'tube'); }
+function sphTip(msg){
+  var d = $('sphTip'); if (!d) return;
+  d.textContent = msg; d.style.opacity = '1';
+  if (SPH_TIP_TIMER) clearTimeout(SPH_TIP_TIMER);
+  SPH_TIP_TIMER = setTimeout(function(){ d.style.opacity = '0'; }, 5200);
+}
+function sphEnsureSrc(){
+  if (sphHasSrc()) return SPA.cloud;
+  try { spaCloudSet(SPH_FLOW_SRC); } catch (e){ return null; }
+  var nm = null;
+  try { nm = spaCloudById(SPH_FLOW_SRC).nm; } catch (e2){ nm = null; }
+  sphTip('这一档要算球面 S_ℓ，而当前点集是「按管位」（没有 S_ℓ 可算）⇒ 已自动切到「'
+         + (nm || SPH_FLOW_SRC) + '」。要换几何体，点参数面板里的「点集」那一排。');
+  return SPA.cloud;
+}
+/* 三个档位的**唯一**入口（参数面板与右下角快切条共用，不许各写一份） */
+function sphSetFlow(on){
+  var nd = on ? 1 : 0;
+  if (nd) sphEnsureSrc();                 /* 先补源，再建场：顺序反了就白建一次 */
+  SPH_FLOW.on = nd;
+  sphFlowBuild(); sphReset(); syncSphRead();
+  if (typeof draw === 'function') draw();
+}
+function sphSetColor(c){
+  SPH_FLOW.color = c || 'depth';
+  syncSphRead();
+  if (typeof draw === 'function') draw();
+}
+function sphSetFocus(n){
+  n = Math.max(0, Math.min(2, parseInt(n, 10) || 0));
+  var was = SPH_FLOW.on;
+  SPH.focus = n;
+  /* 瓣图档的全部内容就是 S_ℓ ⇒ 没有场就没有任何东西可画。这里直接补齐，不留空态。 */
+  if (n === 2){
+    SPH_FLOW.on = 1;
+    sphEnsureSrc();
+    sphFlowBuild();
+    if (!was) sphReset();
+  }
+  syncSphRead();
+  if (typeof draw === 'function') draw();
+}
+/* 瓣图取阶：0 = 只最低活阶（= t+1，瓣数可直接数）；1 = 全部活阶等权叠加
+   （同 t 的两个点集差别在这时才显形）。只改画法，不改力场 ⇒ 不重新播种。 */
+function sphSetLobeAll(on){
+  SPH_FLOW.lobeAll = on ? 1 : 0;
+  syncSphRead();
+  if (typeof draw === 'function') draw();
+}
+/* 从网格取 (θ,φ) 处的 S_ℓ 与两个切向导数（双线性，φ 周期回绕） */
+var FL_G = { S:0, dT:0, dP:0 };
+function sphFlowAt(l, ia, ib, wa, wb){
+  /* 一次只返回一阶，调用方按活阶循环 —— 少建对象 */
+  var g = SPH_FLOW.grid; if (!g) return 0;
+  var NT = g.NT, NP = g.NP;
+  var a0 = ia % NT, a1 = (ia + 1) % NT, b0 = (ib + NP) % NP, b1 = (b0 + 1) % NP;
+  var w00 = (1 - wa)*(1 - wb), w01 = (1 - wa)*wb, w10 = wa*(1 - wb), w11 = wa*wb;
+  return g.S[l][a0*NP + b0]*w00 + g.S[l][a0*NP + b1]*w01 +
+         g.S[l][a1*NP + b0]*w10 + g.S[l][a1*NP + b1]*w11;
+}
+function sphFlowAtD(l, ia, ib, wa, wb, which){
+  var g = SPH_FLOW.grid; if (!g) return 0;
+  var NT = g.NT, NP = g.NP;
+  var a0 = ia % NT, a1 = (ia + 1) % NT, b0 = (ib + NP) % NP, b1 = (b0 + 1) % NP;
+  var w00 = (1 - wa)*(1 - wb), w01 = (1 - wa)*wb, w10 = wa*(1 - wb), w11 = wa*wb;
+  var G = which ? g.dP[l] : g.dT[l];
+  return G[a0*NP + b0]*w00 + G[a0*NP + b1]*w01 + G[a1*NP + b0]*w10 + G[a1*NP + b1]*w11;
+}
+/* 网格索引 (a,b) 上、半径 ρ 处的 ∇p（球坐标分量）。供 RMS 归一与逐粒子求值共用。 */
+var FL_OUT = { gr:0, gth:0, gph:0 };
+function sphFlowGradRaw(flat, rho, st){
+  var g = SPH_FLOW.grid; if (!g) return FL_OUT;
+  var live = SPH_FLOW.live, L2 = live.length, i, l, jl, jlp, A;
+  var gr = 0, gth = 0, gph = 0;
+  var rr = Math.max(0.06, rho);
+  for (i = 0; i < L2; i++){
+    l = live[i];
+    jl = jlS(l, SPH_FLOW.kk[i]*rho)/SPH_FLOW.jm[i];
+    jlp = jlpS(l, SPH_FLOW.kk[i]*rho)/SPH_FLOW.jm[i];
+    gr  += SPH_FLOW.kk[i]*jlp*g.S[l][flat];
+    gth += (jl/rr)*g.dT[l][flat];
+    gph += (jl/rr)/st*g.dP[l][flat];
+  }
+  FL_OUT.gr = gr; FL_OUT.gth = gth; FL_OUT.gph = gph;
+  return FL_OUT;
+}
+/* 逐粒子：给定 (r, θ, φ)，返回 ∇p 的球坐标分量（γ 与时间因子由调用方乘） */
+function sphFlowGradP(p){
+  var g = SPH_FLOW.grid;
+  if (!g) return null;
+  var NT = g.NT, NP = g.NP;
+  var fa = (p.th/Math.PI)*NT - 0.5, fb = (p.ph/(2*Math.PI))*NP;
+  var ia = Math.floor(fa), ib = Math.floor(fb);
+  var wa = fa - ia, wb = fb - ib;
+  if (wa < 0){ wa += 1; ia -= 1; }
+  if (ia < 0) ia += NT; if (ia >= NT) ia -= NT;
+  var ia1 = (ia + 1) % NT, ib0 = ((ib % NP) + NP) % NP, ib1 = (ib0 + 1) % NP;
+  var w00 = (1 - wa)*(1 - wb), w01 = (1 - wa)*wb, w10 = wa*(1 - wb), w11 = wa*wb;
+  var live = SPH_FLOW.live, L2 = live.length, i, l, kk, jl, jlp, A,
+      gr = 0, gth = 0, gph = 0, rr = Math.max(0.06, p.r),
+      st = Math.max(0.05, Math.sin(p.th));
+  for (i = 0; i < L2; i++){
+    l = live[i]; kk = SPH_FLOW.kk[i];
+    jl = jlS(l, kk*p.r)/SPH_FLOW.jm[i];
+    jlp = jlpS(l, kk*p.r)/SPH_FLOW.jm[i];
+    A = gr; /* 占位，保持变量声明顺序可读 */
+    var Sv = g.S[l][ia*NP + ib0]*w00 + g.S[l][ia*NP + ib1]*w01 +
+             g.S[l][ia1*NP + ib0]*w10 + g.S[l][ia1*NP + ib1]*w11;
+    var Tv = (g.dT[l][ia*NP + ib0]*w00 + g.dT[l][ia*NP + ib1]*w01 +
+              g.dT[l][ia1*NP + ib0]*w10 + g.dT[l][ia1*NP + ib1]*w11);
+    var Pv = (g.dP[l][ia*NP + ib0]*w00 + g.dP[l][ia*NP + ib1]*w01 +
+              g.dP[l][ia1*NP + ib0]*w10 + g.dP[l][ia1*NP + ib1]*w11);
+    gr  += kk*jlp*Sv;
+    gth += (jl/rr)*Tv;
+    gph += (jl/rr)/st*Pv;
+  }
+  FL_OUT.gr = gr; FL_OUT.gth = gth; FL_OUT.gph = gph;
+  return FL_OUT;
+}
+/* 粒子颜色：方向定色相、速度定亮度。返回 [r,g,b] 或 null（'depth' 档沿用原逻辑）。 */
+function sphFlowColorOf(p){
+  var c = SPH_FLOW.color;
+  if (c === 'depth') return null;
+  /* 用**场方向** p.fd*（sphStep 里存的），不是瞬时速度 —— 见 sphStep 里那段长注释：
+     瞬时速度每半周期整体反向 ⇒ 按它着色就是按相位闪烁。
+     fallback：刚切到非 depth 档、还没跑过一帧 sphStep 时 p.fd* 尚未写入，退回速度方向
+     （只有一帧，但少了它屏上会闪一下全灰）。 */
+  var vx = p.fdx, vy = p.fdy, vz = p.fdz;
+  if (vx === undefined){
+    var st = Math.sin(p.th), ctf = Math.cos(p.th), cpf2 = Math.cos(p.ph), spf2 = Math.sin(p.ph);
+    vx = p.vr*st*cpf2 + p.vth*ctf*cpf2 - p.vph*spf2;
+    vy = p.vr*st*spf2 + p.vth*ctf*spf2 + p.vph*cpf2;
+    vz = p.vr*ctf - p.vth*st;
+  }
+  var vm = Math.sqrt(vx*vx + vy*vy + vz*vz);
+  if (vm < 1e-6) return [118, 122, 132];
+  vx /= vm; vy /= vm; vz /= vm;
+  var rgb = null, i, d, best = -9;
+  if (c === 'dir6'){
+    /* 球坐标三分量里取最大的一项定色（三对互补色，见 SPH_C6 注释） */
+    var ar = Math.abs(p.fdr || 0), at2 = Math.abs(p.fdt || 0), ap2 = Math.abs(p.fdp || 0);
+    if (ar >= at2 && ar >= ap2) rgb = (p.fdr > 0) ? SPH_C6[0] : SPH_C6[1];
+    else if (at2 >= ap2)        rgb = (p.fdt > 0) ? SPH_C6[2] : SPH_C6[3];
+    else                        rgb = (p.fdp > 0) ? SPH_C6[4] : SPH_C6[5];
+  } else if (c === 've12'){
+    var V = sphVe12();
+    for (i = 0; i < 12; i++){
+      d = vx*V[i].x + vy*V[i].y + vz*V[i].z;
+      if (d > best){ best = d; rgb = SPH_HUE12[i]; }
+    }
+  } else {
+    var S = SPH_FLOW.pts || [], N2 = Math.min(12, S.length);
+    if (!N2) return [118, 122, 132];
+    for (i = 0; i < N2; i++){
+      d = vx*S[i].x + vy*S[i].y + vz*S[i].z;
+      if (d > best){ best = d; rgb = SPH_HUE12[i % 12]; }
+    }
+  }
+  return rgb || [200, 200, 200];
+}
+/* 方向色点的亮度：节点附近自动暗 ⇒ 节线自己浮出来 */
+function sphFlowLum(vm){ var t = Math.min(1, vm/1.5); return 0.55 + 0.45*t; }
+
 function sphStep(dt){
   var l = SPH.ell, mm = SPH.m, k = sphK(), i, p, ct, st, plm, dplm, amax,
       gr, gth, gph, gn, Ph, cp2, sp2, tvr, tvth, tvph, wt;
@@ -7735,6 +8324,13 @@ function sphStep(dt){
   SPH_T += dt;                           /* 相位时间（慢放，不是真实物理时长） */
   gn = Math.max(1e-9, k*k*0.30);         /* 归一化：让速度 O(1) 量级 */
   wt = SPH_W*SPH_T;
+  /* ── 点集驱动（SPH_FLOW.on）时的两条前提 ──
+     ① 时间因子必须用 cos(ωt)：单频驻波 p(x,t) = P(x)·cos(ωt) ⇒ ∇p ∝ cos(ωt)。
+        少了它，驻波场是静态的，粒子几帧就收敛到目标速度然后**完全静止**（像死机）。
+     ② 幅度必须过 gnrm（同一批网格上算的 |∇p| RMS）：不同点集的 |S_ℓ| 差十几倍
+        （VE 的 E₄=0.1456 vs 八面体 0.5824），不归一会变成「换点集 = 调速度」。 */
+  var useCloud = (SPH_FLOW.on && SPH_FLOW.grid) ? 1 : 0;
+  var cph = Math.cos(wt), fsc = 2.6/SPH_FLOW.gnrm, ampMax = 0, GG, vmm;
   for (i = 0; i < SPH_P.length; i++){
     p = SPH_P[i];
     ct = Math.cos(p.th); st = Math.max(0.02, Math.sin(p.th));
@@ -7754,9 +8350,37 @@ function sphStep(dt){
     tvr  = 2.6*gr/gn;
     tvth = 2.6*gth/gn;
     tvph = 2.6*gph/gn;
+    /* 点集驱动：目标速度换成「合成场 ∇p」。上面那三行保留不删 —— 它们是
+       m=0 时**逐位退回旧公式**的判据基准（探针按 1e-12 对表），删了就没法证明兼容。 */
+    if (useCloud){
+      GG = sphFlowGradP(p);
+      if (GG){
+        tvr  = fsc*GG.gr *cph;
+        tvth = fsc*GG.gth*cph;
+        tvph = fsc*GG.gph*cph;
+      }
+    }
     /* 二阶声流（示意档，默认 0）：一阶场一个周期的平均严格为 0 ⇒ 只靠 m≠0 得到的是
        闭合花瓣、粒子不净绕圈。这一项是**人为的净环流**，剖面在壁面与极轴处取 0。 */
     if (SPH.drift) tvph += SPH.drift*0.85*Math.sin(Math.PI*Math.min(1, p.r))*st;
+    /* ── 存「场方向」（着色用，2026-10-25）──
+       🔴 为什么不能直接在着色时用 p.vr/vth/vph：驻波的目标速度 ∝ cos(ωt)，
+          **每半周期整体反向**，而且过零那一瞬 620 个点全部 ≈0 ⇒ 整球变灰。
+          着色就变成「按相位闪烁」而不是「按方向分色」，截图永远挑不到好相位。
+          这里存的是**场的空间方向**（去掉 cos(ωt)），颜色稳定、过零不灰；
+          亮度另按瞬时速度大小给，所以「哪里在动」仍然是实时信息。 */
+    if (SPH_FLOW.color !== 'depth'){
+      var fdN = Math.sqrt(tvr*tvr + tvth*tvth + tvph*tvph);
+      if (fdN > 1e-9){
+        var cpf = Math.cos(p.ph), spf = Math.sin(p.ph);
+        /* 球坐标三分量也存（dir6 档按 径向/极向/方位 分色，见 SPH_C6 注释） */
+        p.fdr = tvr/fdN; p.fdt = tvth/fdN; p.fdp = tvph/fdN;
+        p.fdx = (tvr*st*cpf + tvth*ct*cpf - tvph*spf)/fdN;
+        p.fdy = (tvr*st*spf + tvth*ct*spf + tvph*cpf)/fdN;
+        p.fdz = (tvr*ct - tvth*st)/fdN;
+        p.fdm = fdN;
+      } else { p.fdr = 0; p.fdt = 0; p.fdp = 0; p.fdx = 0; p.fdy = 0; p.fdz = 0; p.fdm = 0; }
+    }
     p.vr  += (tvr  - p.vr )*Math.min(1, dt*26);
     p.vth += (tvth - p.vth)*Math.min(1, dt*26);
     p.vph += (tvph - p.vph)*Math.min(1, dt*26);
@@ -7826,10 +8450,20 @@ function drawSphere3D(){
     if (v > imax) imax = v;
   }
   var grav = ctx.createRadialGradient(cx, cy, SC*0.012, cx, cy, SC);
-  for (i = 0; i <= NLAY; i++){
-    rr = i/NLAY;
-    var I0 = Math.abs(jlpS(l, kk*rr))/imax;   /* θ=0 处 |P_ℓ|=1 ⇒ 球壳上最大径向推力就是 |j′| */
-    grav.addColorStop(rr, 'rgba(' + GOLD + ',' + (0.012 + 0.26*Math.pow(I0, 2.0)).toFixed(3) + ')');
+  if (SPH.focus){
+    /* 分图层档（1 只看粒子 / 2 只看瓣图）：球壳换成**中性深底**。
+       原来那层金色渐变是按 |j_ℓ′(kρ)| 给的径向推力分布，它本身就是「金」的 ——
+       · 压在金/青瓣图下面 ⇒ 两种金叠在一起，谁是谁分不清；
+       · 压在六色方向粒子下面 ⇒ 外圈一片金黄，红/青/绿/品红全被冲淡（实测截图）。
+       球体靠外面那圈轮廓线 + 左上高光仍读得出是个球，不靠这层金色。 */
+    grav.addColorStop(0, 'rgba(16,20,27,.97)');
+    grav.addColorStop(1, 'rgba(9,12,17,.99)');
+  } else {
+    for (i = 0; i <= NLAY; i++){
+      rr = i/NLAY;
+      var I0 = Math.abs(jlpS(l, kk*rr))/imax;   /* θ=0 处 |P_ℓ|=1 ⇒ 球壳上最大径向推力就是 |j′| */
+      grav.addColorStop(rr, 'rgba(' + GOLD + ',' + (0.012 + 0.26*Math.pow(I0, 2.0)).toFixed(3) + ')');
+    }
   }
   ctx.beginPath(); ctx.arc(cx, cy, SC, 0, Math.PI*2);
   ctx.fillStyle = grav; ctx.fill();
@@ -7875,7 +8509,7 @@ function drawSphere3D(){
     /* ① 面：淡青填充。**先按面心深度从远到近排序**，否则近面先铺、远面后压，深度就反了。
        alpha 只给 0.04–0.09：它要说明「这是个有面的立体」，不能把腔里的示踪粒子
        和驻波压掉（这层本来就画在粒子之前，压在它们上面）。 */
-    if (TPO && TPO.faces && TPO.faces.length){
+    if (TPO && TPO.faces && TPO.faces.length && !SPH.focus){
       var fl = [], ff, fd;
       for (i2 = 0; i2 < TPO.faces.length; i2++){
         ff = TPO.faces[i2]; fd = 0;
@@ -7898,7 +8532,7 @@ function drawSphere3D(){
     /* ② 棱：**两道**（暗底 + 亮青）。单道 1.35 px 的青线压在金色球壳和白色经纬线上，
        等于没画 —— 与四面体副振子那 6 条弧是同一个坑。
        棱长阈值 1.35×最近点距（拓扑已按此算好，这里不再重算）。 */
-    if (TPO){
+    if (TPO && !SPH.focus){
       for (i2 = 0; i2 < TPO.ed.length; i2++){
         j2 = TPO.ed[i2][0]; j3 = TPO.ed[i2][1];
         d2 = (nod[j2].s.d + nod[j3].s.d)*0.5;
@@ -7913,15 +8547,18 @@ function drawSphere3D(){
     /* ③ 点：近侧三层（光晕 + 亮心 + 白边），远侧只留一个小淡点 */
     for (i2 = 0; i2 < CLD.n; i2++){
       pv = nod[i2].s; near2 = pv.d >= 0;
+      /* 🔴 瓣图档里「青色」已经有语义（S_ℓ < 0），源点再用青色就分不清
+         「这是声源」还是「这里是负瓣」⇒ 换纯白。 */
+      var srcCol = (SPH.focus === 2) ? '236,244,252' : CYAN;
       if (near2){
         ctx.beginPath(); ctx.arc(pv.x, pv.y, 9.6*(1 + 0.50*aA), 0, Math.PI*2);
-        ctx.fillStyle = 'rgba(' + CYAN + ',' + (0.18*(0.55 + 0.45*aA)).toFixed(3) + ')'; ctx.fill();
+        ctx.fillStyle = 'rgba(' + srcCol + ',' + (0.18*(0.55 + 0.45*aA)).toFixed(3) + ')'; ctx.fill();
         ctx.beginPath(); ctx.arc(pv.x, pv.y, 4.3*(1 + 0.28*aA), 0, Math.PI*2);
-        ctx.fillStyle = 'rgba(' + CYAN + ',.98)'; ctx.fill();
+        ctx.fillStyle = 'rgba(' + srcCol + ',.98)'; ctx.fill();
         ctx.strokeStyle = 'rgba(240,253,255,.95)'; ctx.lineWidth = 1.15; ctx.stroke();
       } else {
         ctx.beginPath(); ctx.arc(pv.x, pv.y, 2.8, 0, Math.PI*2);
-        ctx.fillStyle = 'rgba(' + CYAN + ',.40)'; ctx.fill();
+        ctx.fillStyle = 'rgba(' + srcCol + ',.40)'; ctx.fill();
       }
     }
   }
@@ -7930,7 +8567,7 @@ function drawSphere3D(){
      画在粒子之前：它在球**里面**，白点（示踪粒子）应当压在它上面。
      玫瑰红 = 这一层专用色（金 = 球体/ρ*，青 = 声源云，暖白 = 尾迹，紫 = 密堆积）；
      再借任何一个都会被读成别的东西。 */
-  if (SPH.tet > 0 && typeof TET !== 'undefined' && TET){
+  if (!SPH.focus && SPH.tet > 0 && typeof TET !== 'undefined' && TET){
     var TETC = '240,118,164', tfi, tfj, tk, tA, tB, tC, tp, tQ, tfar, tEnd, tSum,
         tlist = [], tcv, tV = [], tpts, tps, te, tnear;
     for (tfi = 0; tfi < 4; tfi++){
@@ -8051,6 +8688,24 @@ function drawSphere3D(){
         tp = TET.CAV[tfi];
         tcv.push(P3(sphProj(tp[0], tp[1], tp[2])));
       }
+      /* ① 12 条股腿的**延长段**：apex → 它那束的交合点（CAV[to]）
+         这是「12 个勾股三角形 ⇒ 中心倒小四面体」这句话中间被漏掉的一步。
+         用暖橙虚线，和股腿（饱和玫瑰实线）、空腔边（粉白实线）三色分开，
+         否则 24 条线叠在 24 px 的一块里，谁也数不清。
+         🔴 必须画在内倒四面体的面之前：面是半透明填充，后画会把线盖掉七成。 */
+      for (tfi = 0; tfi < TET.STRANDS.length; tfi++){
+        tp = TET.STRANDS[tfi].apex; tQ = TET.STRANDS[tfi].meet;
+        if (!tQ) continue;
+        tA = P3(sphProj(tp[0], tp[1], tp[2]));
+        tB = P3(sphProj(tQ[0], tQ[1], tQ[2]));
+        tfar = (tA.d + tB.d)*0.5 < 0;
+        ctx.save();
+        ctx.setLineDash([2.6, 2.8]);
+        ctx.beginPath(); ctx.moveTo(tA.x, tA.y); ctx.lineTo(tB.x, tB.y);
+        ctx.strokeStyle = 'rgba(255,176,116,' + (tfar ? 0.18 : 0.62) + ')';
+        ctx.lineWidth = tfar ? 0.7 : 1.0; ctx.stroke();
+        ctx.restore();
+      }
       /* 外接圆：给个「这是一整个小球腔」的边界，不然 4 个面会糊在经纬线里 */
       ctx.beginPath();
       ctx.arc(cx, cy, Math.max(4.5, SC*Math.abs(TET.k)), 0, Math.PI*2);
@@ -8068,23 +8723,138 @@ function drawSphere3D(){
         ctx.strokeStyle = 'rgba(255,226,238,' + ((tA.d + tB.d)*0.5 >= 0 ? 0.95 : 0.50) + ')';
         ctx.lineWidth = 1.4; ctx.stroke();
       }
-      /* 引线 + 一行字：24 px 的东西不给标注，屏上没人知道那是空腔（不是装饰，是读数）。
-         只写一行 —— 「内棱 0.0481R」参数面板 #vTetCav 已经在报，画布上再写一遍就是噪音。
+      /* ② 4 个交合点：一个点两个身份 ——「3 条股腿的交点」+「内倒四面体的顶点」。
+         画成「实心暖球 + 一圈淡环」：实心给出位置，环把那 24 px 的小团从金色球壳里拎出来。
+         不画环时实测只剩 4 个 3 px 的点，被 620 个白粒子完全淹没。 */
+      for (tfi = 0; tfi < 4; tfi++){
+        tA = tcv[tfi];
+        var tOn = tA.d >= 0;
+        ctx.beginPath(); ctx.arc(tA.x, tA.y, 3.5, 0, Math.PI*2);
+        ctx.fillStyle = 'rgba(255,192,112,' + (tOn ? 0.96 : 0.42) + ')'; ctx.fill();
+        ctx.beginPath(); ctx.arc(tA.x, tA.y, 7.0, 0, Math.PI*2);
+        ctx.strokeStyle = 'rgba(255,192,112,' + (tOn ? 0.36 : 0.15) + ')';
+        ctx.lineWidth = 1.0; ctx.stroke();
+      }
+      /* 引线 + 两行字：24 px 的东西不给标注，屏上没人知道那是空腔（不是装饰，是读数）。
+         第一行报尺寸，第二行报**因果**（2026-10-25 老师要的就是这一行：
+         「12 个勾股三角形是怎么围出中间那个倒的小四面体的」）。
          字压在金色球面上会被白粒子切断 ⇒ 先描一圈暗边（halo），再填字。 */
       ctx.save();
       ctx.strokeStyle = 'rgba(255,214,228,.42)'; ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(cx + 16, cy - 14);
-      ctx.lineTo(cx + 44, cy - 40);
-      ctx.lineTo(cx + 84, cy - 40);
+      ctx.lineTo(cx + 44, cy - 44);
+      ctx.lineTo(cx + 84, cy - 44);
       ctx.stroke();
-      ctx.font = '600 11.5px -apple-system,"PingFang SC",sans-serif';
       ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-      ctx.lineWidth = 3.2; ctx.strokeStyle = 'rgba(12,9,14,.78)';
-      ctx.strokeText(cavLab, cx + 88, cy - 40);
+      ctx.font = '600 11.5px -apple-system,"PingFang SC",sans-serif';
+      ctx.lineWidth = 3.2; ctx.strokeStyle = 'rgba(12,9,14,.80)';
+      ctx.strokeText(cavLab, cx + 88, cy - 44);
       ctx.fillStyle = 'rgba(255,220,232,.96)';
-      ctx.fillText(cavLab, cx + 88, cy - 40);
+      ctx.fillText(cavLab, cx + 88, cy - 44);
       ctx.restore();
+      /* ③ 放大画框（2026-10-25 老师：「不懂就去看参考页怎么内嵌那个倒立小四面体的」）
+         ── 参考页靠**分镜 + 标签 + 直径对比尺**讲这件事，但它也没解决最硬的一关：
+            空腔半径只有 0.029 R，主图上 ~12 px，**在这个尺度上它不可能被看清**。
+            硬把主图放大 8 倍，外四面体就出画了；硬把标注写大，字比空腔本身还宽。
+            所以这里分两个画面：主图给全貌，右上角插页给结构，各画各的。
+         插页里三样东西按「从外到内」的顺序画：
+            12 条汇聚线（从外面射进来，每 3 条落到同一个顶点）
+            → 6 条棱 + 4 个面（那个倒四面体本身）
+            → 4 个亮球（顶点 = 交合点，一个点两个身份）
+         投影复用主图的 yaw/pitch（sphProj），所以转视角时插页跟着转，不是死的示意图。 */
+      (function(){
+        if (H < 520) return;                       /* 太矮就别挤主图 */
+        /* 🔴 位置：不放「球右边」（那里根本放不下 —— 球半径 ≈ 0.4W，右边只剩 70 px），
+           而是**压在球右上角**。插页底是 0.93 不透明，能盖住；代价是挡掉球右上约 1/6。
+           这一档（stt=3）本来就是专门看中心的，右上被挡不影响判读；
+           反过来若为了不挡球而把插页缩到 120 px，里面那 4 个顶点又挤成一团 —— 两害取轻。 */
+        var pwi = 210, phi = 198, pxi = W - pwi - 12, pyi = topPad + 4;
+        var icx2 = pxi + pwi*0.5, icy2 = pyi + 92, ir2 = 54;
+        var kk2 = Math.abs(TET.k);
+        var mag = (SC*kk2 > 0.2) ? (ir2/(SC*kk2)) : 0;
+        ctx.save();
+        ctx.fillStyle = 'rgba(6,9,14,.93)';
+        ctx.strokeStyle = 'rgba(255,214,228,.30)';
+        ctx.lineWidth = 1;
+        if (ctx.roundRect){ ctx.beginPath(); ctx.roundRect(pxi, pyi, pwi, phi, 9); ctx.fill(); ctx.stroke(); }
+        else { ctx.fillRect(pxi, pyi, pwi, phi); ctx.strokeRect(pxi, pyi, pwi, phi); }
+        ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        ctx.font = '600 11.5px -apple-system,"PingFang SC",sans-serif';
+        ctx.fillStyle = 'rgba(255,220,232,.97)';
+        ctx.fillText('中心空腔 · 内倒正四面体', pxi + 10, pyi + 15);
+        /* 放大倍数右对齐：跟标题挤一行，省出来的高度留给图形。
+           副标原来写「R_in = … R · 内棱 … R  ×N 放大」= 30 多个字符，
+           210 px 的框**放不下**（实测右侧最后一个字被框线切掉半个）。 */
+        if (mag >= 1.5){
+          ctx.textAlign = 'right';
+          ctx.font = '600 10.5px -apple-system,"PingFang SC",sans-serif';
+          ctx.fillStyle = 'rgba(255,176,116,.96)';
+          ctx.fillText('×' + mag.toFixed(0), pxi + pwi - 10, pyi + 15);
+          ctx.textAlign = 'left';
+        }
+        ctx.font = '10px -apple-system,"PingFang SC",sans-serif';
+        ctx.fillStyle = 'rgba(176,196,220,.95)';
+        ctx.fillText('R_in ' + kk2.toFixed(6) + ' R · 内棱 ' + TET.innerEdge.toFixed(6) + ' R',
+          pxi + 10, pyi + 32);
+        /* 4 个顶点（投影复用主图角度） */
+        var iV = [], ii2, ip2, il2, iu2;
+        for (ii2 = 0; ii2 < 4; ii2++){
+          ip2 = TET.CAV[ii2];
+          il2 = Math.sqrt(ip2[0]*ip2[0] + ip2[1]*ip2[1] + ip2[2]*ip2[2]) || 1;
+          iu2 = sphProj(ip2[0]/il2, ip2[1]/il2, ip2[2]/il2);
+          /* 🔴 sphProj 返回的是**归一化**坐标（单位球上），不是画布坐标 ——
+             画布坐标是 P3() 里才乘 SC 加上 cx/cy 的。第一版在这里写了
+             `(iu2.x - cx)/SC`，等于再减一次中心，4 个顶点全被推出插页框（画面空的）。 */
+          iV.push({ x: icx2 + iu2.x*ir2, y: icy2 + iu2.y*ir2, d: iu2.d });
+        }
+        /* ① 12 条汇聚线：方向 = apex − meet（朝外），落点 = 该束的顶点 */
+        ctx.save();
+        ctx.beginPath(); ctx.arc(icx2, icy2, ir2 + 26, 0, Math.PI*2); ctx.clip();
+        for (ii2 = 0; ii2 < TET.STRANDS.length; ii2++){
+          var st2 = TET.STRANDS[ii2];
+          if (!st2.meet) continue;
+          var dx3 = st2.apex[0] - st2.meet[0], dy3 = st2.apex[1] - st2.meet[1],
+              dz3 = st2.apex[2] - st2.meet[2];
+          var l3n = Math.sqrt(dx3*dx3 + dy3*dy3 + dz3*dz3) || 1;
+          var pu2 = sphProj(dx3/l3n, dy3/l3n, dz3/l3n);
+          var ox2 = pu2.x, oy2 = pu2.y;   /* 同样是归一化坐标 */
+          var v2 = iV[st2.to];
+          ctx.beginPath();
+          ctx.moveTo(v2.x + ox2*ir2*1.75, v2.y + oy2*ir2*1.75);
+          ctx.lineTo(v2.x, v2.y);
+          ctx.strokeStyle = 'rgba(255,176,116,.50)';
+          ctx.lineWidth = 1.1; ctx.stroke();
+        }
+        ctx.restore();
+        /* ② 4 个面（半透明）+ 6 条棱 */
+        var IF4 = [[0,1,2],[0,1,3],[0,2,3],[1,2,3]];
+        for (ii2 = 0; ii2 < 4; ii2++){
+          ctx.beginPath();
+          ctx.moveTo(iV[IF4[ii2][0]].x, iV[IF4[ii2][0]].y);
+          ctx.lineTo(iV[IF4[ii2][1]].x, iV[IF4[ii2][1]].y);
+          ctx.lineTo(iV[IF4[ii2][2]].x, iV[IF4[ii2][2]].y);
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(255,190,212,.13)'; ctx.fill();
+        }
+        for (ii2 = 0; ii2 < 6; ii2++){
+          ctx.beginPath();
+          ctx.moveTo(iV[TET.EDGES[ii2][0]].x, iV[TET.EDGES[ii2][0]].y);
+          ctx.lineTo(iV[TET.EDGES[ii2][1]].x, iV[TET.EDGES[ii2][1]].y);
+          ctx.strokeStyle = 'rgba(255,226,238,.94)'; ctx.lineWidth = 1.5; ctx.stroke();
+        }
+        /* ③ 4 个交合点 */
+        for (ii2 = 0; ii2 < 4; ii2++){
+          ctx.beginPath(); ctx.arc(iV[ii2].x, iV[ii2].y, 3.0, 0, Math.PI*2);
+          ctx.fillStyle = 'rgba(255,192,112,' + (iV[ii2].d >= 0 ? 0.98 : 0.52) + ')'; ctx.fill();
+        }
+        ctx.font = '10.5px -apple-system,"PingFang SC",sans-serif';
+        ctx.fillStyle = 'rgba(255,176,116,.96)';
+        ctx.fillText('12 条股腿 · 每 3 条交于 1 点', pxi + 10, pyi + phi - 32);
+        ctx.fillStyle = 'rgba(176,196,220,.94)';
+        ctx.fillText('⇒ 那 4 点 = 内倒四面体的 4 个角', pxi + 10, pyi + phi - 16);
+        ctx.restore();
+      })();
     }
   }
 
@@ -8101,6 +8871,7 @@ function drawSphere3D(){
       ctx.stroke();
     }
   }
+  if (!SPH.focus){
   ctx.save();
   ctx.beginPath(); ctx.arc(cx, cy, SC*1.004, 0, Math.PI*2); ctx.clip();
   var M = 56;
@@ -8124,6 +8895,7 @@ function drawSphere3D(){
     strokeSegs(pts2, j === 3 ? 0.70 : 0.32, j === 3 ? 0.24 : 0.11);
   }
   ctx.restore();
+  }
 
   /* ④ 三个标记球（只画水平大圆，倾斜视角下是椭圆，一眼能对上）
         · ρ_tetra = 0.5505R  四球全相切（老师假设）—— 紫虚线
@@ -8143,15 +8915,17 @@ function drawSphere3D(){
     ctx.lineWidth = lw; ctx.stroke();
     ctx.restore();
   }
-  markRing(rhoTetra(), VIO, [5, 4], 1.4, 0.85);
-  markRing(2/3, GOLD, [1, 4], 1.2, 0.55);
-  markRing(pk, GOLD, [], 2.0, 0.95);
+  if (!SPH.focus){
+    markRing(rhoTetra(), VIO, [5, 4], 1.4, 0.85);
+    markRing(2/3, GOLD, [1, 4], 1.2, 0.55);
+    markRing(pk, GOLD, [], 2.0, 0.95);
+  }
 
   /* ④b 示踪尾迹（6 条样本的最近 1.51 s 历史）。
      量纲与口径：轨迹存世界坐标，这里每帧重新投影 ⇒ 拖动视角时轨迹跟着球转（不会留在屏幕上错位）。
      颜色用**暖白**而不用青色/金色：青是声源云点、金是 ρ* 与 2⁄3 的标记线，
      再借用哪个都会被读成同一个东西。 */
-  if (SPH_TR.on && SPH_TR.fill > 1 && SPH_TR.idx.length){
+  if (SPH_TR.on && SPH_TR.fill > 1 && SPH_TR.idx.length && SPH.focus !== 2){
     var TRW = '255,240,210', trk, trRow, trPs, trSum, trSegs = [], trG, trS, trA, trB;
     for (trk = 0; trk < SPH_TR.idx.length; trk++){
       trRow = sphTrailRow(trk);
@@ -8188,18 +8962,33 @@ function drawSphere3D(){
 
   /* ⑤ 粒子（白点 = 空间力场的示踪象征）。按深度排序，近的后画 */
   var draw3 = [];
-  for (i = 0; i < SPH_P.length; i++){
+  for (i = 0; i < (SPH.focus === 2 ? 0 : SPH_P.length); i++){
     p = SPH_P[i];
     var st = Math.sin(p.th), ct2 = Math.cos(p.th);
     x = p.r*st*Math.cos(p.ph); y = p.r*st*Math.sin(p.ph); z = p.r*ct2;
     q = P3(sphProj(x, y, z));
-    draw3.push({ x: q.x, y: q.y, d: q.d, r: p.r });
+    draw3.push({ x: q.x, y: q.y, d: q.d, r: p.r, i: i });
   }
   draw3.sort(function(a, b){ return a.d - b.d; });
+  var colMode = (SPH_FLOW.on && SPH_FLOW.color !== 'depth') ? SPH_FLOW.color : 'depth';
   for (i = 0; i < draw3.length; i++){
     var dp = draw3[i];
     var depth = (dp.d + 1)/2;                     /* 0 远 … 1 近 */
     var sz = (narrow ? 1.1 : 1.5) + 1.6*depth;
+    if (colMode !== 'depth'){
+      /* ★ 方向着色（2026-10-25）：色相 = 运动方向，亮度 = 速度大小。
+         节点附近速度→0 ⇒ 自动变暗 ⇒ 节线不是「画上去的」，是粒子自己暗出来的。
+         半径比 depth 档放大：620 个 1.5 px 的彩色点在 1959 px 的画布上等于噪点，
+         颜色再多也读不出「瓣」；实测 2.6 px 起才看得出片状分区。 */
+      var pp0 = SPH_P[dp.i];
+      var cRGB = sphFlowColorOf(pp0) || [220, 224, 232];
+      var spd = Math.sqrt(pp0.vr*pp0.vr + pp0.vth*pp0.vth + pp0.vph*pp0.vph);
+      var lum = sphFlowLum(spd);
+      ctx.fillStyle = 'rgba(' + cRGB[0] + ',' + cRGB[1] + ',' + cRGB[2] + ',' +
+        ((0.70 + 0.30*depth)*lum).toFixed(3) + ')';
+      ctx.beginPath(); ctx.arc(dp.x, dp.y, (narrow ? 1.9 : 2.5) + 1.7*depth + 0.9*lum, 0, Math.PI*2); ctx.fill();
+      continue;
+    }
     /* 越靠近推力峰那层球壳的粒子，给一点金色（不是硬贴标签，只是让「那层最活」看得出来） */
     var nearPk = Math.max(0, 1 - Math.abs(dp.r - pk)/0.11);
     var rr2 = Math.round(228 + 27*nearPk), gg2 = Math.round(232 - 30*nearPk), bb2 = Math.round(240 - 120*nearPk);
@@ -8210,6 +8999,178 @@ function drawSphere3D(){
     if (dp.d > 0.42){
       ctx.fillStyle = 'rgba(' + GOLD + ',' + (0.025 + 0.075*depth).toFixed(3) + ')';
       ctx.beginPath(); ctx.arc(dp.x, dp.y, sz*1.9, 0, Math.PI*2); ctx.fill();
+    }
+  }
+
+  /* ⑤c ── 球面 S_ℓ(u) 染色：把「这一阶长什么样」直接画在球壁上（2026-10-25）
+     为什么不用「球壁切向流场箭头」：试过，12×24 根 1.5 px 的箭头在深色球壳上
+     只是一层彩色毛刺 —— 每个格子的主导分量（径向/极向/方位）本来就在变，
+     三种颜色交替出现，读不出任何形状。信息量太大 = 没有信息。
+     换成**一个标量**：把活阶的角向形状加权相加
+         Ssum(u) = Σ_i S_{ℓ_i}(u) / max|j_{ℓ_i}|
+     它只依赖方向 u（不含径向），正好是「腔壁上看这个场」的角向图样。
+     正 → 暖金，负 → 冷青，透明度 ∝ |Ssum|。
+     于是：eq3（t=1）看出「两极 vs 赤道」两极冠；tetra4（t=2）八瓣；
+     cube8/VE（t=3）八瓣但轴向不同；ico12（t=5）密纹 —— **瓣数是可以数的**。
+     🔴 它画的是 S_ℓ（点集的量），不是粒子轨迹；别把它当成「流线」。 */
+  /* ⑤c-0 ── 瓣图档的**空态兜底**（2026-10-25）
+     老师说「选了瓣图，画布上什么都没有」。兜底要能自己说清缺哪一环，
+     否则再出一次同样的问题，屏上仍然只有一片黑。
+     sphSetFocus(2) 已经会自动补点集，走到这里说明补失败了（或点集为空）——
+     这一档不许静默空白。 */
+  if (SPH.focus === 2 && (!SPH_FLOW.on || !SPH_FLOW.grid)){
+    ctx.save();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    var em1 = '这一档只画球面 S_ℓ 瓣图',
+        em2 = !SPH_FLOW.on ? '当前驱动 = 单模态 ℓ/m（没有点集，就没有 S_ℓ）'
+                           : '当前点集 = 「按管位」（没有球面点集，就没有 S_ℓ）',
+        em3 = '先点上面的「点集合成场」，再在「点集」里选一个几何体';
+    ctx.font = '600 14px -apple-system,"PingFang SC",sans-serif';
+    ctx.fillStyle = 'rgba(255,214,160,.95)';
+    ctx.fillText(em1, cx, cy - 22);
+    ctx.font = '12.5px -apple-system,"PingFang SC",sans-serif';
+    ctx.fillStyle = 'rgba(255,168,168,.95)';
+    ctx.fillText(em2, cx, cy + 2);
+    ctx.fillStyle = 'rgba(170,200,232,.92)';
+    ctx.fillText(em3, cx, cy + 24);
+    ctx.restore();
+  }
+  /* 🔴 2026-10-25 修：这一档的打开条件原来含 `colMode !== 'depth'`，
+     于是「只看瓣图 + 着色=深度」⇒ **什么都不画**（老师截图里那片黑就是它）。
+     错在把两件无关的事绑在一起：着色档是**粒子**的属性，瓣图是**点集**的属性。
+     瓣图档只问「这一阶长什么样」，与粒子颜色无关 ⇒ 条件改成
+     `focus===2 || colMode!=='depth'`。 */
+  if (SPH_FLOW.on && SPH_FLOW.grid && (SPH.focus === 2 || colMode !== 'depth') && SPH.focus !== 1){
+    /* 网格 56×112（原 40×80）：球面投影在低纬处会横向拉扁，40 列的格子被拉成
+       三角形色带，看起来像马赛克、瓣形读不出来。加密一倍以后台阶基本消失，
+       代价是每帧多 3 千次双线性插值（活阶只有 1~2 个，实测无可感掉帧）。 */
+    var NQt = 56, NQp = 112, qi, qj, qth, qph, qst, qct, qsum = [], qmax = 1e-12,
+        qA, qB, qC, qD, qd, qv, qlv = SPH_FLOW.live, qk;
+    if (!qlv.length) qlv = [];
+    /* 取哪几阶：lobeAll=0 ⇒ 只取最低活阶（= t+1）；=1 ⇒ 全部活阶等权 */
+    var qPick = [], qn = 0;
+    if (qlv.length){
+      if (SPH_FLOW.lobeAll){ for (qk = 0; qk < qlv.length; qk++) qPick.push(qk); }
+      else qPick.push(0);
+      qn = qPick.length;
+    }
+    /* 🔴 无活阶时**不能 return** —— 这个函数后面还有图例、夸克球、标注，
+       return 会把它们一起吞掉（看起来像「切了个档整页崩了」）。
+       正确做法是把网格置空，让下面的循环空转。 */
+    if (!qn) NQt = 0;
+    for (qi = 0; qi < NQt; qi++){
+      qth = Math.PI*(qi + 0.5)/NQt; qst = Math.sin(qth); qct = Math.cos(qth);
+      for (qj = 0; qj < NQp; qj++){
+        qph = Math.PI*2*(qj + 0.5)/NQp;
+        qv = 0;
+        for (qk = 0; qk < qn; qk++)
+          qv += sphFlowAt(qlv[qPick[qk]], qi, qj, 0, 0)/SPH_FLOW.jm[qPick[qk]];
+        qsum.push(qv);
+        if (Math.abs(qv) > qmax) qmax = Math.abs(qv);
+      }
+    }
+    /* 格子按中心深度从远到近画：远的先铺，近的后压 */
+    var qOrder = [], qidx;
+    for (qi = 0; qi < NQt; qi++) for (qj = 0; qj < NQp; qj++){
+      qidx = qi*NQp + qj;
+      qth = Math.PI*(qi + 0.5)/NQt; qph = Math.PI*2*(qj + 0.5)/NQp;
+      qOrder.push({ i:qidx, d:sphProj(Math.sin(qth)*Math.cos(qph), Math.sin(qth)*Math.sin(qph), Math.cos(qth)).d });
+    }
+    qOrder.sort(function(X, Y){ return X.d - Y.d; });
+    var qR = 0.988;
+    for (var qo = 0; qo < qOrder.length; qo++){
+      qidx = qOrder[qo].i; qi = Math.floor(qidx/NQp); qj = qidx % NQp;
+      var th0 = Math.PI*qi/NQt, th1 = Math.PI*(qi + 1)/NQt,
+          ph0 = Math.PI*2*qj/NQp, ph1 = Math.PI*2*(qj + 1)/NQp;
+      qA = P3(sphProj(qR*Math.sin(th0)*Math.cos(ph0), qR*Math.sin(th0)*Math.sin(ph0), qR*Math.cos(th0)));
+      qB = P3(sphProj(qR*Math.sin(th0)*Math.cos(ph1), qR*Math.sin(th0)*Math.sin(ph1), qR*Math.cos(th0)));
+      qC = P3(sphProj(qR*Math.sin(th1)*Math.cos(ph1), qR*Math.sin(th1)*Math.sin(ph1), qR*Math.cos(th1)));
+      qD = P3(sphProj(qR*Math.sin(th1)*Math.cos(ph0), qR*Math.sin(th1)*Math.sin(ph0), qR*Math.cos(th1)));
+      var qv0 = qsum[qidx], qn0 = Math.abs(qv0)/qmax,
+          qal = 0.05 + 0.50*Math.pow(qn0, 0.58),
+          qcol = qv0 >= 0 ? '255,206,120' : '104,206,238';
+      ctx.beginPath();
+      ctx.moveTo(qA.x, qA.y); ctx.lineTo(qB.x, qB.y);
+      ctx.lineTo(qC.x, qC.y); ctx.lineTo(qD.x, qD.y); ctx.closePath();
+      /* 🔴 一律**显式**拼颜色字符串，不要写 `ctx.strokeStyle = ctx.fillStyle`：
+         实测那样赋值在这条路径上没生效，strokeStyle 留着上一次的值（白色），
+         40×80 个格子各描一圈 ⇒ 整个球被画成一层经纬网（截图当场露馅）。 */
+      var qcs = 'rgba(' + qcol + ',' + qal.toFixed(3) + ')';
+      ctx.fillStyle = qcs;
+      ctx.fill();
+    }
+  }
+
+  /* ⑤b ── 方向色盘的图例：把「颜色 → 方向」钉在球面上（2026-10-25）
+     没有这个图例，12 种颜色在画面里就是 12 种随机色 —— 必须让人一眼对上「往那边去 = 那个色」。
+     画在粒子之后、夸克球之前：压在粒子下面会被 620 个点打碎，浮太上面又会盖住球壁网格。 */
+  /* 图例档：瓣图档**强制**走 lobe 语义（与粒子着色档无关，理由同 ⑤c）。
+     原来这里也只看 colMode ⇒ 「只看瓣图 + 着色=深度」时连图例都不画，
+     一片黑里连「金是正、青是负」都没交代。 */
+  var lgMode = (SPH.focus === 2) ? 'lobe' : colMode;
+  if (lgMode !== 'depth' && typeof sphProj === 'function'){
+    var lgd = [], LGV, li, lq, lr, AX6;
+    if (lgMode === 've12'){
+      LGV = sphVe12();
+      for (li = 0; li < LGV.length; li++) lgd.push({ v:LGV[li], c:SPH_HUE12[li] });
+    } else if (lgMode === 'dir6' || lgMode === 'lobe'){
+      /* dir6 是按**球坐标三对分量**分的，没有「球面上的一个方向」可钉 ⇒ 画 2D 色块图例 */
+      lgd = [];
+    } else {
+      var SSl = SPH_FLOW.pts || [];
+      for (li = 0; li < Math.min(12, SSl.length); li++) lgd.push({ v:SSl[li], c:SPH_HUE12[li % 12] });
+    }
+    if (lgMode === 'dir6' || lgMode === 'lobe'){
+      /* 瓣图档的图例换成「金 = 正 / 青 = 负」，此时粒子的 6 色语义不在场（粒子被隐藏） */
+      var lg6 = (lgMode === 'lobe')
+        ? [['正瓣   S\u2097 > 0', [255, 206, 120]],
+           ['负瓣   S\u2097 < 0', [104, 206, 238]],
+           ['白点 = 声源位置', [236, 244, 252]]]
+        : [['外 · 膨胀  (+r)', SPH_C6[0]], ['内 · 收缩  (−r)', SPH_C6[1]],
+           ['向赤道  (+θ)', SPH_C6[2]], ['向极点  (−θ)', SPH_C6[3]],
+           ['逆时针  (+φ)', SPH_C6[4]], ['顺时针  (−φ)', SPH_C6[5]]];
+      /* 上移 12 px 给末尾那行「阶数」腾位置（原来 3 行贴着 H−18，加一行会压到底部读数条） */
+      var lx0 = 16, ly0 = H - 30 - lg6.length*17;
+      ctx.font = '600 11px "Segoe UI", "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      for (li = 0; li < lg6.length; li++){
+        var ly = ly0 + li*17;
+        ctx.fillStyle = 'rgba(' + lg6[li][1][0] + ',' + lg6[li][1][1] + ',' + lg6[li][1][2] + ',0.95)';
+        ctx.beginPath(); ctx.arc(lx0 + 5, ly, 4.2, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = 'rgba(226,234,244,.86)';
+        ctx.fillText(lg6[li][0], lx0 + 15, ly);
+      }
+      /* 瓣图档补一行「画的是哪几阶」—— 不写这一行，屏上就分不出
+         「ℓ=4 单阶」和「ℓ=[4,6] 叠加」是两件事（同一张图会被当成两种结论）。 */
+      if (lgMode === 'lobe' && SPH_FLOW.live.length){
+        var lgNote = SPH_FLOW.lobeAll
+          ? ('ℓ = [' + SPH_FLOW.live.join(',') + '] · 全部活阶等权叠加')
+          : ('ℓ = ' + SPH_FLOW.live[0] + ' · 最低活阶 = t+1（t = ' + (SPH_FLOW.first - 1) + '）');
+        ctx.font = '10.5px -apple-system,"PingFang SC",sans-serif';
+        ctx.fillStyle = 'rgba(160,182,206,.94)';
+        ctx.fillText(lgNote, lx0, ly0 + lg6.length*17 + 5);
+      }
+    }
+    /* ve12：把「原点→顶点」这 12 条向量画成细线 —— 老师原话「以原点到顶点的棱边为向量」
+       就是要看得见这 12 条。alpha 压到 0.16：它是刻度，不是主体。 */
+    if (lgMode === 've12'){
+      for (li = 0; li < lgd.length; li++){
+        var vv0 = lgd[li].v, o0 = P3(sphProj(0, 0, 0)), o1 = P3(sphProj(vv0.x, vv0.y, vv0.z));
+        ctx.beginPath(); ctx.moveTo(o0.x, o0.y); ctx.lineTo(o1.x, o1.y);
+        ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(' + lgd[li].c[0] + ',' + lgd[li].c[1] + ',' +
+          lgd[li].c[2] + ',0.16)'; ctx.stroke();
+      }
+    }
+    lgd.sort(function(a, b){
+      return sphProj(a.v.x, a.v.y, a.v.z).d - sphProj(b.v.x, b.v.y, b.v.z).d;
+    });
+    for (li = 0; li < lgd.length; li++){
+      lq = P3(sphProj(lgd[li].v.x, lgd[li].v.y, lgd[li].v.z));
+      lr = 3.2 + 1.3*((lq.d + 1)/2);
+      ctx.beginPath(); ctx.arc(lq.x, lq.y, lr, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(' + lgd[li].c[0] + ',' + lgd[li].c[1] + ',' + lgd[li].c[2] + ',0.88)';
+      ctx.fill();
+      ctx.lineWidth = 1.1; ctx.strokeStyle = 'rgba(255,255,255,.52)'; ctx.stroke();
     }
   }
 
@@ -8227,7 +9188,7 @@ function drawSphere3D(){
         浮到最上层 + 薄填充 + 粗描边 + 球心白点，才读得出「4 个球心构成四面体」。
      🔴 球心连线**必须画在球之后**：先画会被四个大球整个埋掉，而「撑开」这两个字的
         全部证据就是这几条线和四个球心（第一版埋在下面，截图里一条都看不见）。 */
-  if (SPH.qg > 0){
+  if (!SPH.focus && SPH.qg > 0){
     var QGQ = '126,178,255', QGG = '118,250,196';
     var qr4 = qgR4(), qrho4 = rhoTetra(), qrg = rGapTetra();
     var qr3 = qgR3(), qrho3 = qgRho3();
@@ -9500,6 +10461,12 @@ function syncChips(group, sel, attr){
     if (els[i].dataset[attr] === undefined) continue;
     els[i].setAttribute('aria-pressed', els[i].dataset[attr] === String(sel) ? 'true' : 'false');
   }
+  /* 镜像到右下角快切条（2026-10-25）：一个状态刷两处。
+     🔴 高亮**只能**在这里刷 —— 千万别在 click 里另外 setAttribute，
+        那样面板与快切条迟早各说一套（本页最怕的「假状态」）。 */
+  var mir = document.querySelectorAll('#sphFlowBar .chip[data-' + attr + ']');
+  for (var j = 0; j < mir.length; j++)
+    mir[j].setAttribute('aria-pressed', mir[j].dataset[attr] === String(sel) ? 'true' : 'false');
 }
 syncChips('nChips', S.N, 'n');
 syncChips('matChips', S.mat, 'mat');
@@ -12637,6 +13604,26 @@ function syncSphRead(){
     setTxt('vSphClA', '—');
     setTxt('vSphClB', '—');
   }
+  /* ── 点集 → 腔内流场（2026-10-25）──
+     这一行是「换点集为什么看得见」的全部读数：**最低活阶 = t+1**。
+     🔴 单模态档 / 按管位 时根本没有 S_ℓ ⇒ 写「—」+ 原因，不许写 0
+        （写 0 会让人以为「腔内真的是零阶」，那是另一件事）。 */
+  setTxt('vSphFlow', SPH_FLOW.on ? '点集合成场 ∇p' : '单模态 ℓ/m（不用点集）');
+  syncChips('sphFlowChips', SPH_FLOW.on, 'sfm');
+  setTxt('vSphPCol', ({ depth:'深度', dir6:'三原色 6 向', ve12:'VE 12 色', src:'主导源' })[SPH_FLOW.color] || '深度');
+  syncChips('sphPColChips', SPH_FLOW.color, 'spc');
+  setTxt('vSphFocus', ['全部', '只看粒子', '只看瓣图'][SPH.focus] || '全部');
+  syncChips('sphFocusChips', SPH.focus, 'sfc');
+  setTxt('vSphLobe', SPH_FLOW.lobeAll ? '全部叠加' : '最低活阶');
+  syncChips('sphLobeChips', SPH_FLOW.lobeAll, 'slb');
+  if (!SPH_FLOW.on){
+    setTxt('vSphFlowL', '—（单模态档不用点集）');
+  } else if (!SPH_FLOW.grid){
+    setTxt('vSphFlowL', '—（按管位：无球面点集，S_ℓ 不存在）');
+  } else {
+    setTxt('vSphFlowL', 'ℓ=' + SPH_FLOW.first + ' · 活阶 [' +
+      (SPH_FLOW.live.length ? SPH_FLOW.live.join(',') : '无') + '] · 多阶等权');
+  }
   setTxt('vSphClAn', SPH.clAnim
     ? ('开 · 3% R · ' + (SPH_W/(Math.PI*2)).toFixed(2) + ' Hz')
     : '关 · 静');
@@ -12731,6 +13718,10 @@ function sphClApply(id){
   if (typeof spaCloudSet === 'function') spaCloudSet(id);
   else SPA.cloud = id;
   if (typeof spaCloudSyncUI === 'function') spaCloudSyncUI();
+  /* ★ 换点集 ⇒ 重建 S_ℓ 方向网格（2026-10-25）。不重建的话「换点集」在粒子层面
+     还是旧点集的场，屏上会变成「面板说十二面体、粒子走八面体的图样」——最难查的一类假状态。 */
+  try { sphFlowBuild(); } catch (e0){}
+  if (SPH_FLOW.on) sphReset();
   syncSphRead();
   if (typeof draw === 'function') draw();
   return SPA.cloud || 'tube';
@@ -12749,6 +13740,45 @@ if ($('sphClAChips')) $('sphClAChips').addEventListener('click', function(e){
   SPH.clAnim = (b.dataset.sca === '1') ? 1 : 0;
   syncSphRead();
   if (typeof draw === 'function') draw();
+});
+/* ── 粒子驱动档（2026-10-25）──
+   换驱动 = 换力场 ⇒ 旧速度 / 位移 / 尾迹全是旧场的量，必须重新播种。
+   这条不是洁癖：留着的话画面上会同时存在「新场的位置」和「旧场的速度」，
+   前 1 秒看起来像「这个点集真的让它往那边走了」，其实那是上一档的残留。 */
+if ($('sphFlowChips')) $('sphFlowChips').addEventListener('click', function(e){
+  var b = e.target.closest ? e.target.closest('.chip[data-sfm]') : null;
+  if (!b) return;
+  sphSetFlow(b.dataset.sfm === '1');     /* 逻辑只有一份，右下角快切条调的是同一个函数 */
+});
+/* ── 粒子着色档 ── 只改颜色，不改力场 ⇒ **不重新播种**（不然每换一次色，粒子全体跳回原位） */
+if ($('sphPColChips')) $('sphPColChips').addEventListener('click', function(e){
+  var b = e.target.closest ? e.target.closest('.chip[data-spc]') : null;
+  if (!b) return;
+  sphSetColor(b.dataset.spc);
+});
+if ($('sphFocusChips')) $('sphFocusChips').addEventListener('click', function(e){
+  var b = e.target.closest ? e.target.closest('.chip[data-sfc]') : null;
+  if (!b) return;
+  sphSetFocus(b.dataset.sfc);
+});
+if ($('sphLobeChips')) $('sphLobeChips').addEventListener('click', function(e){
+  var b = e.target.closest ? e.target.closest('.chip[data-slb]') : null;
+  if (!b) return;
+  sphSetLobeAll(b.dataset.slb === '1');
+});
+/* 右下角快切条：与面板**同一套** data-*、**同一个**函数 ⇒ 不可能出现两套状态 */
+if ($('sphFlowBar')) $('sphFlowBar').addEventListener('click', function(e){
+  var b = e.target.closest ? e.target.closest('.chip') : null;
+  if (!b) return;
+  if (b.dataset.sfm !== undefined) sphSetFlow(b.dataset.sfm === '1');
+  else if (b.dataset.spc !== undefined) sphSetColor(b.dataset.spc);
+  else if (b.dataset.sfc !== undefined) sphSetFocus(b.dataset.sfc);
+  else if (b.dataset.slb !== undefined) sphSetLobeAll(b.dataset.slb === '1');
+});
+if ($('hfFold')) $('hfFold').addEventListener('click', function(){
+  var on = $('sphFlowBar').classList.toggle('folded');
+  this.textContent = on ? '展开' : '收起';
+  this.setAttribute('aria-expanded', on ? 'false' : 'true');
 });
 /* ── 四面体副振子（叮咚老师）：4 档 chip + 6 行读数 ──
    读数**全部现算**：棱长/k/音分都从 TET 取，勾:股 一改，屏上的数字自动跟着变
@@ -12807,6 +13837,30 @@ function setTetRho(v, fromChip){
   if (typeof draw === 'function') draw();
 }
 tetFillRead();
+/* 勾股比那排 chip：标签与 ρ 全部**现算**（2026-10-25 加了 4 个新勾股数组）。
+   🔴 不能把「84¢ / 177¢ / 236¢ / 306¢」写死在 HTML 里 —— 那是四个只能靠手算核对、
+      一旦 round 方式变了就成假话的数。这里一次算好写回，HTML 里的初值只当兜底。
+   🔴 也不能「只设 data-rho 不管高亮」：syncChips 读的是 dataset.rho，而那个属性是
+      运行时才挂上的 ⇒ 早于这一步的 syncSphRead 会把**所有**档都标成未选中（像「档位全灭」）。 */
+function paintTetRhoChips(){
+  var box = $('sphTetRhoChips'); if (!box) return 0;
+  var bs = box.querySelectorAll('button[data-rn]'), i, b, rn, rd, rr, cc, tag, n = 0;
+  for (i = 0; i < bs.length; i++){
+    b = bs[i];
+    rn = parseFloat(b.dataset.rn); rd = parseFloat(b.dataset.rd);
+    if (!(rn > 0) || !(rd > 0)) continue;
+    rr = rn/rd;
+    b.dataset.rho = String(rr);              /* 唯一状态仍是 ρ 这个数，分数只用来生成它 */
+    b.dataset.rf = (rn + '/' + rd);          /* 探针要读「精确分数」时用这个，别去解析标签文字 */
+    cc = 1200*Math.log(rr)/Math.LN2;
+    tag = (Math.abs(cc) < 0.5) ? '0¢' : ((cc > 0 ? '+' : '') + cc.toFixed(0) + '¢');
+    b.textContent = (b.dataset.nm || b.dataset.rf) + ' · ' + tag + (b.dataset.suf || '');
+    n++;
+  }
+  syncChips('sphTetRhoChips', TET.rho, 'rho');
+  return n;
+}
+paintTetRhoChips();
 if ($('sphTetChips')) $('sphTetChips').addEventListener('click', function(e){
   var b = e.target.closest ? e.target.closest('.chip[data-stt]') : null;
   if (!b) return;
@@ -15368,6 +16422,76 @@ window.__ch = {
      正确顺序：源相干相加 → 得到该抖动点的 H_tot → 再对 7 个抖动点做功率平均。
      返回每耳的 gs（能量平均幅值）/ph（相干相位）与 ild（正 ⇒ 右耳更响）。
      lOnly 传 ℓ 时只留那一阶（且不加均匀模）：t-设计下 ℓ≤t 的那条 gs 必须**塌到 0**。 */
+  /* ══ 点集 → 腔内流场（2026-10-25）。给探针用；视觉一律走 drawSphere3D ══ */
+  sphFlowSet: function(on, color){
+    if (on) sphEnsureSrc();              /* 与面板 chip 同一条路：要场先要源 */
+    SPH_FLOW.on = on ? 1 : 0;
+    if (color) SPH_FLOW.color = String(color);
+    sphFlowBuild();
+    sphReset();
+    syncSphRead();
+    return { on:SPH_FLOW.on, color:SPH_FLOW.color, ready:SPH_FLOW.ready, first:SPH_FLOW.first };
+  },
+  sphFlowState: function(){
+    return { on:SPH_FLOW.on, color:SPH_FLOW.color, id:SPA.cloud || 'tube',
+             lobeAll:SPH_FLOW.lobeAll, focus:SPH.focus,
+             key:SPH_FLOW.key, ready:SPH_FLOW.ready, first:SPH_FLOW.first,
+             live:SPH_FLOW.live.slice(), n:(SPH_FLOW.pts || []).length,
+             nlive:SPH_FLOW.live.length, gnrm:SPH_FLOW.gnrm,
+             NT:SPH_FLOW.NT, NP:SPH_FLOW.NP,
+             kk:SPH_FLOW.kk.slice(), grid:!!SPH_FLOW.grid };
+  },
+  /* 从已建好的方向网格取 max|S_ℓ| —— 与 _probe_platonic 的 E_ℓ 同一个量（网格更粗） */
+  sphFlowE: function(l){
+    var g = SPH_FLOW.grid; if (!g || !g.S[l]) return null;
+    var mx = 0, i, n = g.NT*g.NP, a;
+    for (i = 0; i < n; i++){ a = Math.abs(g.S[l][i]); if (a > mx) mx = a; }
+    return mx;
+  },
+  /* 逐点 ∇p（不含时间因子）。探针在**同一组** (r,θ,φ) 上对比不同点集就靠它 */
+  sphFlowGradAt: function(r, th, ph){
+    if (!SPH_FLOW.grid) return null;
+    sphFlowGradP({ r:+r, th:+th, ph:+ph });
+    return { gr:FL_OUT.gr, gth:FL_OUT.gth, gph:FL_OUT.gph };
+  },
+  /* 粒子速度方向的分布（探针判「着色真的按方向分开了」用）：
+     返回 6 个轴向桶的计数 + 平均速率 —— 用**粒子自己的 p.vr/vth/vph**，不是公式 */
+  sphFlowDirBuckets: function(){
+    var out = [0, 0, 0, 0, 0, 0], i, p, st, ct, cp, sp, vx, vy, vz, vm, ax, ay, az, spd = 0;
+    for (i = 0; i < SPH_P.length; i++){
+      p = SPH_P[i];
+      st = Math.sin(p.th); ct = Math.cos(p.th); cp = Math.cos(p.ph); sp = Math.sin(p.ph);
+      vx = p.vr*st*cp + p.vth*ct*cp - p.vph*sp;
+      vy = p.vr*st*sp + p.vth*ct*sp + p.vph*cp;
+      vz = p.vr*ct - p.vth*st;
+      vm = Math.sqrt(vx*vx + vy*vy + vz*vz); spd += vm;
+      if (vm < 1e-9) continue;
+      ax = Math.abs(vx); ay = Math.abs(vy); az = Math.abs(vz);
+      if (ax >= ay && ax >= az) out[vx > 0 ? 0 : 1]++;
+      else if (ay >= az)        out[vy > 0 ? 2 : 3]++;
+      else                      out[vz > 0 ? 4 : 5]++;
+    }
+    return { buckets:out, n:SPH_P.length, meanSpeed:SPH_P.length ? spd/SPH_P.length : 0 };
+  },
+  /* 粒子半径 / 位置统计（判「点集驱动后粒子是否仍在球内、有没有塌成壳」） */
+  sphPartStat: function(){
+    var mn = 9, mx = -9, sum = 0, out = 0, i, p;
+    for (i = 0; i < SPH_P.length; i++){
+      p = SPH_P[i];
+      if (p.r < mn) mn = p.r; if (p.r > mx) mx = p.r;
+      sum += p.r; if (p.r > 1.0001) out++;
+    }
+    return { n:SPH_P.length, rmin:mn, rmax:mx, rmean:SPH_P.length ? sum/SPH_P.length : 0, out:out };
+  },
+  /* VE 的 12 条向量（探针独立核对夹角用） */
+  sphVe12: function(){ return sphVe12().map(function(v){ return { x:v.x, y:v.y, z:v.z }; }); },
+  /* 「只看粒子」开关（视觉验证用） */
+  sphFocus: function(on){
+    SPH.focus = parseInt(on, 10) || 0;
+    syncSphRead();
+    if (typeof draw === 'function') draw();
+    return SPH.focus;
+  },
   cloudField: function(id, f, lOnly, tilt){
     id = String(id); f = +f;
     var S = spaCloudPts(id, +tilt || 0), R = spaR(), rho = SPA.cloudR, N = S.length;
