@@ -1,0 +1,1640 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>K10c · 三个夸克各转各的：为什么匀速画不出磁力线，非匀速能画到什么程度</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 16C10 8 2 10 2 16s8 8 14 0c6-8 14-6 14 0s-8 8-14 0z' fill='none' stroke='%23b4531f' stroke-width='2'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/site.css">
+<style>
+  /* ---- 本页专用 ---- */
+  .lead{font-size:15.8px;line-height:1.85}
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0 24px}
+  .card{border:1px solid var(--line-2);border-radius:11px;padding:13px 15px;background:var(--bg-soft);
+    border-top:3px solid var(--line-2)}
+  .card.c1{border-top-color:#177245}
+  .card.c2{border-top-color:#9a6700}
+  .card.c3{border-top-color:#b3261e}
+  .card .k{font-family:var(--mono);font-size:10.8px;letter-spacing:.06em;color:var(--ink-3);text-transform:uppercase}
+  .card .v{font-family:var(--serif);font-size:16px;font-weight:700;margin:3px 0 5px;line-height:1.45}
+  .card .d{font-size:12.6px;color:var(--ink-2);line-height:1.65}
+  .viz{background:#fff;border:1px solid var(--line-2);border-radius:12px;
+    box-shadow:var(--shadow);padding:14px 16px 12px;margin:18px 0}
+  .viz .vt{font-family:var(--serif);font-size:16px;font-weight:700;margin-bottom:3px}
+  .viz .vc{font-size:13.2px;color:var(--ink-3);margin-bottom:10px;line-height:1.65}
+  .stage{position:relative}
+  #cv3d{display:block;width:100%;height:clamp(450px,54vw,700px);border-radius:9px;
+    border:1px solid var(--line);cursor:grab;touch-action:none;background:#fff}
+  #cv3d.drag{cursor:grabbing}
+  .fpanel{position:absolute;top:12px;right:12px;width:278px;max-width:76%;z-index:6;
+    background:rgba(255,255,255,.97);border:1px solid var(--line-2);border-radius:11px;
+    box-shadow:0 8px 26px rgba(18,22,28,.15);overflow:hidden;
+    display:flex;flex-direction:column;max-height:calc(100% - 20px)}
+  .fph{display:flex;align-items:center;gap:7px;padding:6px 8px 6px 11px;cursor:move;
+    background:linear-gradient(180deg,#f8fafd,#edf1f7);border-bottom:1px solid var(--line);
+    font-family:var(--mono);font-size:11.8px;color:var(--ink-2);user-select:none;touch-action:none}
+  .fph .fpt{font-weight:700;color:var(--ink)}
+  .fph .fpd{color:var(--ink-3);font-size:10.6px}
+  .fph button{margin-left:auto;width:20px;height:20px;line-height:1;padding:0;border-radius:5px;
+    border:1px solid var(--line-2);background:#fff;color:var(--ink-2);cursor:pointer;font-size:13px}
+  .fpb{padding:7px 10px 8px;display:flex;flex-direction:column;gap:4px;
+    overflow-y:auto;min-height:0}
+  .fpb .sld{margin:0}
+  .fpb .sld .lb{font-size:10.7px;line-height:1.25}
+  .fpb .sld .lb b{font-size:10.9px}
+  .fpb .sld input[type=range]{height:12px;margin:0}
+  .fpgrp{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);margin-top:2px;
+    border-top:1px dashed var(--line);padding-top:6px}
+  .fpb .btns{margin:0;gap:5px;flex-wrap:wrap}
+  .fpb .btns button{padding:4px 8px;font-size:12px;border-radius:6px;border-color:var(--line-2)}
+  /* 预设按钮：两列，圆点表示诊断结论 */
+  .fpb .btns.pre{display:grid;grid-template-columns:1fr 1fr;gap:3px;flex-wrap:nowrap}
+  .fpb .btns.pre button{display:flex;align-items:center;gap:5px;justify-content:flex-start;
+    font-family:var(--mono);font-size:10.7px;padding:2px 5px;letter-spacing:-.25px;white-space:nowrap}
+  .fpb .btns.pre button i{width:6px;height:6px;border-radius:50%;flex:0 0 auto;background:#9aa5b4}
+  .fpb .btns.pre button.k-iso i{background:#3b6ea5}
+  .fpb .btns.pre button.k-solid{border-color:#dcb9a2;background:#fdf6f1;font-weight:700}
+  .fpb .btns.pre button.k-solid i{background:#b4531f}
+  .fpb .btns.pre button.k-neg{border-color:#cbb9de;background:#faf7fe}
+  .fpb .btns.pre button.k-neg i{background:#6b3fa0}
+  .fpb .btns.pre button.on,
+  .fpb .btns.pre button.k-solid.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .fpb .btns.pre button.on i{background:#fff}
+  .fpb .btns.pre button.w2{grid-column:1/-1;justify-content:center}
+  .preleg{font-family:var(--mono);font-size:9.9px;color:var(--ink-3);line-height:1.55}
+  .fpb .axgrp{display:inline-flex;border:1px solid var(--line-2);border-radius:6px;overflow:hidden}
+  /* 离轴 r：紧贴在「自转」左边，跟轴选择器同一组 */
+  .fpb .rgrp{display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;white-space:nowrap}
+  .fpb .rgrp .rl{font-family:var(--mono);font-size:10.2px;color:var(--ink-3)}
+  .fpb .rgrp input[type=range]{width:52px;height:12px;margin:0}
+  .fpb .rgrp b{font-family:var(--mono);font-size:10.4px;color:var(--accent);min-width:22px;text-align:right}
+  .fpb .axgrp button{border:0;border-radius:0;padding:3px 8px;font-family:var(--mono);
+    font-size:11.4px;background:#fff;color:var(--ink-2);cursor:pointer;transition:.14s}
+  .fpb .axgrp button+button{border-left:1px solid var(--line)}
+  .fpb .axgrp button:hover{color:var(--accent)}
+  .fpb .ecsld{margin-top:1px}
+  .ecleg{font-size:9.5px;line-height:1.4;color:var(--ink-3)}
+  .fpb .axgrp button.on{background:var(--accent);color:#fff}
+  .fpf{font-family:var(--mono);font-size:10.4px;color:var(--ink-2);line-height:1.6;
+    background:var(--bg-soft);border-radius:6px;padding:5px 7px;margin:0 11px 10px}
+  .fpanel.min .fpb{display:none}
+  .fpanel.min .fpf{display:none}
+  .rd{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:8px;margin-top:11px}
+  .rd .r{border:1px solid var(--line);border-radius:9px;padding:7px 9px;background:var(--bg-soft)}
+  .rd .n{font-family:var(--mono);font-size:16.5px;font-weight:700;line-height:1.2}
+  .rd .l{font-size:10.8px;color:var(--ink-3);line-height:1.4;margin-top:1px}
+  .ok{color:var(--good)} .warnc{color:var(--warn)} .bad{color:var(--bad)}
+  /* ---- 轨迹画廊（按紫线形状分类） ---- */
+  .galbtn{border:1px solid #c9d6e8;background:#f4f8fe;color:var(--accent);cursor:pointer;
+    font-family:var(--mono);font-size:9.8px;line-height:1.5;padding:1px 6px;border-radius:5px;
+    letter-spacing:0;margin-left:6px;vertical-align:baseline}
+  .galbtn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .gal{position:fixed;inset:0;z-index:90;background:rgba(18,22,30,.44);display:none;
+    padding:2.4vh 2vw;overflow:auto}
+  .gal.on{display:block}
+  .galbox{background:#fff;border-radius:14px;width:min(1200px,100%);margin:0 auto;
+    box-shadow:0 24px 64px rgba(10,14,20,.34);display:flex;flex-direction:column;max-height:95vh}
+  .galhd{display:flex;align-items:flex-start;gap:14px;padding:13px 18px 11px;
+    border-bottom:1px solid var(--line)}
+  .galhd .tt{font-family:var(--serif);font-size:16.5px;font-weight:700;line-height:1.4}
+  .galhd .sb{font-size:12.3px;color:var(--ink-3);line-height:1.62;margin-top:3px;max-width:78ch}
+  .galhd .x{margin-left:auto;flex:0 0 auto;border:1px solid var(--line-2);background:#fff;
+    border-radius:7px;padding:4px 11px;font-size:12.4px;cursor:pointer;color:var(--ink-2)}
+  .galhd .x:hover{background:var(--bg-soft);color:var(--ink)}
+  .galbody{overflow:auto;padding:4px 18px 20px}
+  .gfam{margin-top:16px}
+  .gfam .gh{font-family:var(--serif);font-size:14.8px;font-weight:700;display:flex;
+    align-items:baseline;gap:9px;flex-wrap:wrap}
+  .gfam .gh em{font-family:var(--mono);font-size:11px;font-style:normal;font-weight:400;color:var(--ink-3)}
+  .gfam .gd{font-size:12.2px;color:var(--ink-3);line-height:1.62;margin:2px 0 8px}
+  .gwrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(142px,1fr));gap:8px}
+  .gc{border:1px solid var(--line-2);border-radius:9px;background:#fff;padding:5px 6px 6px;
+    cursor:pointer;transition:.13s;text-align:left;font:inherit;color:inherit;display:block}
+  .gc:hover{border-color:var(--accent);box-shadow:0 3px 12px rgba(18,22,28,.10)}
+  .gc.on{border-color:var(--accent);background:#f5f9ff;box-shadow:0 0 0 2px rgba(24,86,168,.16)}
+  .gc canvas{display:block;width:100%;height:86px;border-radius:6px;background:#fbfbfe}
+  .gc .t{font-family:var(--mono);font-size:11.2px;font-weight:700;margin-top:3px;
+    letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .gc .s{font-family:var(--mono);font-size:9.5px;color:var(--ink-3);line-height:1.45;margin-top:1px}
+  .gc .bb{display:inline-block;font-family:var(--mono);font-size:8.5px;padding:0 4px;
+    border-radius:4px;background:#eef2f8;color:var(--ink-2);line-height:1.5}
+  .gc .brow{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px}
+  .gc .bb.w{background:#fdf0e6;color:#b4531f}
+  .gc .bb.o{background:#eaf5ee;color:#177245}
+  .gc .bb.p{background:#f1ebfa;color:#6b3fa0}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:820px){ .grid2{grid-template-columns:1fr} .cards{grid-template-columns:1fr} }
+  #cvDip,#cvRev{display:block;width:100%;height:clamp(300px,36vw,420px);border:1px solid var(--line);
+    border-radius:9px;background:#fff}
+  .refrow{display:grid;grid-template-columns:minmax(0,0.92fr) minmax(0,1.08fr);gap:14px;
+    align-items:stretch;margin-top:12px}
+  @media(max-width:820px){ .refrow{grid-template-columns:1fr} }
+  .refshot{margin:0;border:1px solid var(--line);border-radius:9px;overflow:hidden;
+    display:flex;flex-direction:column;background:var(--bg-soft)}
+  .refshot img{display:block;width:100%;height:auto;flex:1 1 auto;object-fit:cover}
+  .refshot figcaption{flex:0 0 auto;font-size:11.6px;color:var(--ink-3);line-height:1.62;
+    padding:7px 10px;border-top:1px solid var(--line);background:#fff}
+  .refnote{border:1px solid var(--line);border-radius:9px;padding:10px 13px;background:var(--bg-soft);
+    font-size:12.8px;line-height:1.78;color:var(--ink-2)}
+  .refnote b{color:var(--ink)}
+  .refnote .h{font-family:var(--mono);font-size:11px;color:var(--ink-3);letter-spacing:.04em;
+    display:block;margin-bottom:5px}
+  .callout{border-left:3px solid var(--accent);background:var(--bg-soft);
+    border-radius:0 8px 8px 0;padding:10px 14px;margin:13px 0;font-size:13.6px;line-height:1.85}
+  .callout.warn{border-left-color:var(--warn);background:#fdf7ea}
+  .callout b{color:var(--ink)}
+  #cvPh{display:block;width:100%;height:clamp(210px,26vw,270px);border:1px solid var(--line);
+    border-radius:9px;background:#fff}
+  .fml{font-family:var(--mono);font-size:12.6px;line-height:1.95;background:var(--bg-soft);
+    border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:11px 14px;margin:12px 0;
+    overflow-x:auto;white-space:pre}
+  .tbl{width:100%;border-collapse:collapse;font-size:13.2px;margin:12px 0}
+  .tbl th,.tbl td{border-bottom:1px solid var(--line);padding:6px 9px;text-align:left}
+  .tbl th{font-family:var(--mono);font-size:11.4px;color:var(--ink-3);font-weight:600;
+    text-transform:uppercase;letter-spacing:.04em}
+  .tbl td.m{font-family:var(--mono);font-size:12.6px}
+  .quote{border-left:3px solid var(--line-2);padding:2px 0 2px 14px;color:var(--ink-2);font-size:14.4px;margin:14px 0}
+  .tag{display:inline-block;font-family:var(--mono);font-size:10.6px;padding:1px 6px;border-radius:4px;
+    background:var(--bg-soft2);color:var(--ink-2);margin-right:5px}
+  .tag.g{background:#e8f3ec;color:#177245} .tag.r{background:#fbeceb;color:#b3261e}
+  .tag.w{background:#fbf3e2;color:#7a5200}
+  /* 站点未内置的基础组件（本页补齐） */
+  .crumb{font-family:var(--mono);font-size:11.6px;color:var(--ink-3);padding:24px 0 4px}
+  .crumb a{color:var(--ink-3);text-decoration:none;border-bottom:1px dotted var(--line-2)}
+  .crumb a:hover{color:var(--accent);border-bottom-color:var(--accent)}
+  .btns{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:10px 0 0}
+  .btns button{padding:5px 10px;font-size:12.6px;border:1px solid var(--line-2);background:#fff;
+    border-radius:7px;color:var(--ink-2);cursor:pointer;font-family:var(--sans);transition:.14s}
+  .btns button:hover{border-color:var(--accent);color:var(--accent)}
+  .btns button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btns button.primary{background:var(--bg-soft2);font-weight:600}
+  .sld{margin:0}
+  .sld .lb{display:flex;justify-content:space-between;align-items:baseline;
+    font-size:11.5px;color:var(--ink-2);line-height:1.4}
+  .sld .lb b{font-family:var(--mono);color:var(--accent-2);font-size:11.5px}
+  .sld input[type=range]{width:100%;margin:1px 0 0;accent-color:var(--accent);height:15px}
+</style>
+</head>
+<body>
+
+<main class="wrap">
+
+  <div class="crumb"><a href="keely核心技术与现代声子物理技术对比.html">K 系列</a> · <a href="K10_八度与12进制_模9倍频环与群的错配.html">K10</a> · <a href="K10b_三夸克三轴振动_120度恒模正圆.html">K10b</a> · K10c</div>
+
+  <h1>三个夸克各转各的</h1>
+  <div class="lead">
+    K10b 里三个夸克被锁在同一角速度 ω 上，于是合成轨迹只能是一条过原点的<b>椭圆</b>——一条平躺在某个平面里的曲线，永远变不出立体结构。那么把三个 ω 拆开呢？能不能调出一组参数，让紫线变成类似<b>磁场磁力线</b>那种「上下两个叶、中间收腰、绕轴一转就是 N 极和 S 极」的形状？
+    <br><br>
+    先把答案按自由度的层级摆出来，再一层一层验算。下面每一个数字都是本机复算的，公式都写出来了，可以自己代。
+  </div>
+
+  <div class="cards">
+    <div class="card c1">
+      <div class="k">Level 0 · 等速</div>
+      <div class="v">绝对不可能，而且是定理</div>
+      <div class="d">三个 ω 相等时，合成轨迹<b>恒为过原点的椭圆</b>（或退化成线段）。椭圆不自交 ⇒ 没有腰、没有 8 字、没有两个叶。这跟参数怎么调无关。</div>
+    </div>
+    <div class="card c2">
+      <div class="k">Level 1 · 三速独立</div>
+      <div class="v">能出「双叶 + 腰」，但命中之后大多又塌了</div>
+      <div class="d">轨迹变成真三维、会自交。可要让腰<b>正好落在原点</b>，是 3 个方程 3 个未知数的<b>孤立解</b>——只有少数 (ω, φ) 命中。更要命的是：<b>命中之后有一半会退化成平面</b>，真正既立体又收腰的只剩一组。</div>
+    </div>
+    <div class="card c3">
+      <div class="k">Level 2 · 每相独立方程</div>
+      <div class="v">能精确复刻，但「公转」这个前提要放弃</div>
+      <div class="d">三个相位各自任意变化时，反解逐点有 6–8 组解，误差 4×10⁻¹⁶。代价：解不唯一、会在折点处分叉、而且<b>不再是匀速单向转</b>。</div>
+    </div>
+  </div>
+
+  <h2>一、等 |ω| ⇒ 必然共面（这条是硬的）</h2>
+
+  <p>把三个夸克写成相位形式。A 绕 x 轴在 yz 平面转，B 绕 y 轴在 zx 平面转，C 绕 z 轴在 xy 平面转，半径都是 r：</p>
+
+  <div class="fml">A(t) = r·( 0 , cos α , sin α )      α = ω₁t
+B(t) = r·( sin β , 0 , cos β )      β = ω₂t + φ
+C(t) = r·( cos γ , sin γ , 0 )      γ = ω₃t + 2φ
+
+S(t) = A + B + C</div>
+
+  <p>若三个角速度相等（<b>符号可以任意不同</b>），每个坐标都只是 cos ωt、sin ωt 的线性组合，于是</p>
+
+  <div class="fml">S(t) = P·cos ωt + Q·sin ωt        ⇒  轨迹恒在 span{P,Q} 里
+
+⇒ 过原点的有心圆锥曲线（椭圆／圆／退化线段）</div>
+
+  <p>这就是 K10b 那条「±120° 恒模 ⇒ 正圆」的机制在更大范围的成立方式：<b>正圆只是这个椭圆族的特例</b>。而椭圆没有自交点，所以「中间收腰、两个叶」的结构<b>在等速时不可能出现</b>，不是参数没调对。</p>
+
+  <p>数值验证（对点云协方差做特征分解，看最小奇异值与最大之比）：</p>
+
+  <table class="tbl">
+    <tr><th>ω = (ω₁, ω₂, ω₃)</th><th>σ₃ / σ₁</th><th>判定</th></tr>
+    <tr><td class="m">(1, 1, 1)</td><td class="m">0.000e+00</td><td><span class="tag g">精确共面</span></td></tr>
+    <tr><td class="m">(1, −1, 1)</td><td class="m">0.000e+00</td><td><span class="tag g">精确共面（反向也一样）</span></td></tr>
+    <tr><td class="m">(−1, 1, 1)</td><td class="m">3.1e−08</td><td><span class="tag g">精确共面</span></td></tr>
+    <tr><td class="m">(2, 2, −2)</td><td class="m">9.9e−09</td><td><span class="tag g">精确共面</span></td></tr>
+    <tr><td class="m">(1, 1, 2)</td><td class="m">0.1699</td><td><span class="tag w">真三维</span></td></tr>
+    <tr><td class="m">(2, −1, 1)</td><td class="m">0.4142</td><td><span class="tag w">真三维</span></td></tr>
+    <tr><td class="m">(1, 2, 3)</td><td class="m">1.0000</td><td><span class="tag r">各向同性填满</span></td></tr>
+    <tr><td class="m">(1, 3, 5)</td><td class="m">1.0000</td><td><span class="tag r">各向同性填满</span></td></tr>
+    <tr><td class="m">(1, 2, 4)</td><td class="m">1.0000</td><td><span class="tag r">各向同性填满</span></td></tr>
+    <tr><td class="m">(1, 2, 5)</td><td class="m">1.0000</td><td><span class="tag r">各向同性填满</span></td></tr>
+  </table>
+
+  <p><b>(1, 3, 5) 试过了，而且它牵出一条定理。</b>它落在「各向同性」那一档，σ₃/σ₁ = <b>1.000000</b>，跟 φ 取多少完全无关。但原因不是「等差」——我原先以为等差就该如此，对照一算就破了：<b>(1, 2, 4)、(1, 2, 5) 既不等差也不等比，照样是 1.000000</b>。真正成立的是下面这条：</p>
+
+  <div class="fml">若 |ω₁|、|ω₂|、|ω₃| 两两不相等且都不为 0，则
+     ∫₀²π SᵢSⱼ dt = 0  (i ≠ j)，  ∫₀²π Sᵢ² dt = 2π
+  ⇒ 协方差矩阵 = 2π·I  ⇒  σ₃/σ₁ = 1  （精确，且与 φ 无关）</div>
+
+  <p>证明只有两行。展开交叉项，例如</p>
+
+  <div class="fml">SₓS_y = (sin β + cos γ)(cos α + sin γ)
+      = sinβcosα + sinβsinγ + cosγcosα + cosγsinγ</div>
+
+  <p>这四项在 0–2π 上积分，<b>只在「两个频率相等或互为相反数」时才不为零</b>；频率两两互异 ⇒ 四项全为 0。对角项则各是 sin² + cos² 之和，恒为 2π。</p>
+
+  <p>抽了 60 组随机整数三元组（正负号随机）× 6 个相位 = <b>360 例，偏离 1 的有 0 例</b>；而只要出现重复或相反，立刻塌下来：(1,1,2) / (3,1,1) / (1,3,3) 都是 <b>0.3139</b>，(2,−1,1) 是 <b>0.5000</b>，(1,1,1) 是 <b>0</b>。</p>
+
+  <div class="callout warn">
+    <b>这条定理把整件事翻过来了。</b>要「有结构、有叶、有腰」，就必须让频率<b>出问题</b>——重复、互为相反、或成比例。<b>频率越"互异"，形状越像一团雾。</b><br>
+    (1, 3, 5) 恰恰是「最互异」的那一类：三个频率彼此不相等、不相反、不成简单比。所以它画出来不是双叶，是一团均匀铺开的毛球。<br>
+    这和 K10b 那条「对称 ⇒ 退化 ⇒ 圆」是同一枚硬币的两面：<b>对称太强 → 塌成平面；对称太弱 → 散成球；只有中间那一小撮才有结构。</b>
+  </div>
+
+  <p>顺带一个自检：等速 φ=120° 那条「正圆」的有向面积数值算得 1.26268，而 πr² = π(0.63403)² = <b>1.26278</b>，差 0.008%（采样误差），法向落在 −(1,1,1)/√3 上。<b>面积公式是对的</b>，后面的面积量都基于它。</p>
+
+  <h2>二、拆开以后：从「椭圆」变成「结」</h2>
+
+  <p><b>立体性</b>立刻有了（上表 0.17–1.0）。但「腰」——也就是轨迹穿过原点——是另一件事，而且苛刻得多。令 S = 0，得到三个方程：</p>
+
+  <div class="fml">sin β + cos γ = 0
+cos α + sin γ = 0
+sin α + cos β = 0</div>
+
+  <p>三个方程、三个未知相位，解是<b>孤立的有限点集</b>（例如 (α, β, γ) ≡ (π/4, −3π/4, −π/4)，代进去三项都精确为 0）。而我们的三个相位是 t 的线性函数，所以「轨迹扫过这些点」是一个<b>丢番图条件</b>：频率比与相位差必须刚好对上某个有理关系。</p>
+
+  <p>实测：对 27 组整数三元组 × 720 个相位（0°–360°，步长 0.5°）全扫，只有下面这些组合能<b>精确</b>穿过原点：</p>
+
+  <table class="tbl">
+    <tr><th>ω = (ω₁, ω₂, ω₃)</th><th>所需 φ</th><th>min|S|</th><th>σ₃/σ₁</th><th>形状与判定</th></tr>
+    <tr><td class="m">(1, 2, 1)</td><td class="m">135°</td><td class="m">0.000000</td><td class="m">8.6e−09</td><td>领结，但<b class="bad">塌成平面</b></td></tr>
+    <tr><td class="m">(1, 3, 3)</td><td class="m">90°</td><td class="m">0.000000</td><td class="m">8.6e−09</td><td>细长交叉叶，<b class="bad">塌成平面</b></td></tr>
+    <tr><td class="m">(3, 2, 3)</td><td class="m">135°</td><td class="m">0.000000</td><td class="m">8.6e−09</td><td>双叶带外圈，<b class="bad">塌成平面</b></td></tr>
+    <tr><td class="m">(1, 2, 3)</td><td class="m">45°</td><td class="m">0.000000</td><td class="m">1.0000</td><td>大环套小 8，<b class="warnc">各向同性填满</b></td></tr>
+    <tr><td class="m">(3, 2, 1)</td><td class="m">45°</td><td class="m">0.000000</td><td class="m">1.0000</td><td>偏心双叶，<b class="warnc">各向同性填满</b></td></tr>
+    <tr><td class="m">(3, 1, 1)</td><td class="m">180°</td><td class="m">0.000000</td><td class="m">0.4142</td><td>左右对称双叶，<b class="ok">唯一真正三维 + 收腰</b></td></tr>
+    <tr><td class="m">(1, 3, 5)</td><td class="m">0° / 90°</td><td class="m">0.000000</td><td class="m">1.0000</td><td>过原点的球状填充，<b class="warnc">有腰、没叶</b></td></tr>
+  </table>
+
+  <p>补一行 (1, 3, 5)：它在 φ = 0° 与 90° 时<b>精确穿过原点</b>（实测 min|S| = 1.9×10⁻¹⁶，位置 t = π/4，该处速度 |v| = 4.69 ≠ 0，是<b>穿过</b>不是擦到）。原因是 t = π/4 时三个相位恰好落在 π/4、3π/4、5π/4，而这三点的 (sin, cos) 组合逐项相消。但它同时是各向同性的——<b>所以它有腰，却看不出叶</b>：线在球面上铺匀了，腰只是其中一条穿过原点的细线。这一类（连同 (1,2,3)/45°）是「命中但没用」。</p>
+
+  <p>这一列 <b>σ₃/σ₁</b> 是这次扫描里最意外的发现。它量的是点云在「最扁的那个方向」上的厚度与最长方向之比：<b>0 = 精确共面</b>，<b>1 = 各向同性（填满一个球）</b>，中间值才是「有厚度、有结构」的立体形状。</p>
+
+  <p>于是 6 个命中分成三类：</p>
+
+  <ul>
+    <li><b>3 个在命中的瞬间退化回平面</b>（σ₃/σ₁ ≈ 8.6×10⁻⁹）。注意它跟 K10b 那种椭圆不是一类：椭圆关于自己的<b>中心</b>对称，绕一圈不落地；这里轨迹是非中心对称的闭合结，能穿过自己的重心（实测重心确在原点，|c| &lt; 1e−6）。但厚度归零，等于又变成一张纸上的曲线。</li>
+    <li><b>2 个在命中的瞬间变成各向同性</b>（σ₃/σ₁ = 1.0000）。厚度有了，但连结构也没了——点云在各方向一样厚，等于把球填满，看上去是团雾，不是双叶。</li>
+    <li><b>只有 1 个两者兼得</b>：ω = (3, 1, 1)、φ = 180°，σ₃/σ₁ = 0.4142。而这个数正好是 <b>√2 − 1</b>，不是我凑的，是 `1.5, 0.5, 0.043…` 那类特征值算出来的。图 1 的默认参数就设在这一组。</li>
+  </ul>
+
+  <p>换句话说：<b>「三个匀速公转的圆」要同时给出「立体」和「腰落在原点」，在扫过的 19440 个组合里只找到一个。</b>这不是「调参麻烦」，是「解集稀疏」。</p>
+
+  <p>注意「形状」那列：里面已经有了双叶、腰、中心小 8。<b>所以形状不是障碍</b>——障碍是「形状 + 立体 + 腰」三件事同时成立。下面是可拖的三维证据：把滑块拖到 (3,1,1)/180°，紫线会收成一个左右对称的双叶；拖到 (1,2,1)/135°，它也会收成一个腰——但你会看到它变成一张纸片。</p>
+
+  <div class="viz">
+    <div class="vt">图 1｜三个夸克各自调速：什么时候紫线会收出「腰」</div>
+    <div class="vc">拖动滑块改三个角速度与相位差。读数里的 <b>min|S|</b> 是整条轨迹离原点最近的距离——它趋近 0 才叫「有腰」；<b>最近夸克间距</b>是三个夸克彼此最近的时刻有多近，0 就是撞上了。面板里 <b>12 个预设</b>覆盖下文两张表的每一行（含 3 个负角速度的），点一下即切换，圆点颜色＝那组参数的诊断结论：灰＝塌平面、蓝＝各向同性、橙＝唯一真三维、紫＝负角速度。嫌可选项少，就点预设右边的 <b>「按轨迹分类画廊 ▸」</b>——那里把 ±1…±5 的 460 组按紫线形状分成 7 族、给了 41 张带缩略轨迹的卡片。<b>拖动画布可转视角</b>；「自转」让整组绕选定轴（x / y / z，右侧小方块切换）慢慢翻，<b>选定的那根轴在屏幕上固定不动</b>；「自转」左边那个 <b>离轴 r</b>（0 → 3.00）把包络中心搬离自转轴 r 再让它绕轴公转——<b>r = 0 就是现在这个样子</b>（三个夸克合成的中心正好落在轴上），调大以后整条轨迹沿一条虚线圆公转，残影会扫出一个管；那个红点始终是真正的原点，不跟着走——上面五个读数也不受影响，r 只管显示；「残影」把扫过的整圈拆成 <b>24 片</b>留在空间里——每片 15°，合计 360°，正好一整圈。残影用 <b>HSV 上色</b>：色相就是这一片绕轴转过的角度（紫→红→黄→绿→蓝→紫），明度和浓度由「残影浓度」滑块调，默认调到和紫线一样显眼。</div>
+
+    <div class="stage" id="stage">
+      <canvas id="cv3d"></canvas>
+
+      <div class="fpanel" id="fpanel">
+        <div class="fph" id="fpHead">
+          <span class="fpt">参数</span><span class="fpd">拖动可移</span>
+          <button id="fpMin" type="button" title="折叠 / 展开">−</button>
+        </div>
+        <div class="fpb" id="fpb">
+          <div class="sld">
+            <div class="lb"><span>ω₁（A 绕 x）</span><b id="vW1">3.00</b></div>
+            <input type="range" id="rW1" min="-4" max="4" step="0.25" value="3">
+          </div>
+          <div class="sld">
+            <div class="lb"><span>ω₂（B 绕 y）</span><b id="vW2">1.00</b></div>
+            <input type="range" id="rW2" min="-4" max="4" step="0.25" value="1">
+          </div>
+          <div class="sld">
+            <div class="lb"><span>ω₃（C 绕 z）</span><b id="vW3">1.00</b></div>
+            <input type="range" id="rW3" min="-4" max="4" step="0.25" value="1">
+          </div>
+          <div class="sld">
+            <div class="lb"><span>相位差 φ</span><b id="vPh">180°</b></div>
+            <input type="range" id="rPh" min="0" max="360" step="1" value="180">
+          </div>
+
+          <div class="fpgrp">预设 · 点一下即切换<button type="button" class="galbtn" id="bGal2" title="把 ±1…±5 全部整数组合按紫线轨迹分成 7 族，每族挑 1~10 张，带缩略轨迹">按轨迹分类画廊 ▸</button></div>
+          <div class="btns pre" id="preBox">
+            <button type="button" class="k-solid w2" data-w="3,1,1" data-p="180"
+              data-note="左右对称双叶 · 唯一真三维 + 收腰 · 最近间距 0.49r 不撞"
+              title="σ₃/σ₁ = 0.4142 = √2−1；三个夸克最近 0.4897r，全程不重叠"><i></i>3,1,1 / 180°　★ 唯一真三维</button>
+            <button type="button" data-w="1,2,1" data-p="135"
+              data-note="领结 · 塌成平面 · 最近间距 0.35r 不撞"
+              title="σ₃/σ₁ ≈ 8.6e−09（退化回平面）；最近间距 0.3483r"><i></i>1,2,1 / 135°</button>
+            <button type="button" data-w="1,1,1" data-p="120"
+              data-note="等速共面 · 退化为正圆 · 间距恒 1.37r"
+              title="等 |ω| ⇒ 共面定理；|S| 恒定 0.6340r，轨迹是正圆"><i></i>等速 1,1,1</button>
+            <button type="button" data-w="1,3,3" data-p="90"
+              data-note="细长交叉叶 · 塌成平面 · A、B 会在 (0,0,±1) 重合"
+              title="σ₃/σ₁ ≈ 8.6e−09；A 与 B 每个周期在 z 轴 ±1 处相撞 2 次"><i></i>1,3,3 / 90°</button>
+            <button type="button" data-w="3,2,3" data-p="135"
+              data-note="双叶带外圈 · 塌成平面 · 最近间距 0.22r 不撞"
+              title="σ₃/σ₁ ≈ 8.6e−09；最近间距 0.2170r，不重叠"><i></i>3,2,3 / 135°</button>
+            <button type="button" class="k-iso" data-w="1,2,3" data-p="45"
+              data-note="大环套小 8 · 各向同性 · A、C 会在 (0,±1,0) 重合"
+              title="σ₃/σ₁ = 1.0000；C 与 A 每个周期在 y 轴 ±1 处相撞 3 次"><i></i>1,2,3 / 45°</button>
+            <button type="button" class="k-iso" data-w="3,2,1" data-p="45"
+              data-note="偏心双叶 · 各向同性 · A、C 会在 (0,±1,0) 重合"
+              title="σ₃/σ₁ = 1.0000；同样每周期相撞 3 次"><i></i>3,2,1 / 45°</button>
+            <button type="button" class="k-iso" data-w="1,3,5" data-p="0"
+              data-note="球状填充 · 有腰没叶 · 最近间距 0.27r 不撞"
+              title="min|S| = 1.9e−16 精确过原点；σ₃/σ₁ = 1；最近间距 0.2679r"><i></i>1,3,5 / 0°</button>
+            <button type="button" class="k-iso" data-w="1,3,5" data-p="90"
+              data-note="球状填充 · 有腰没叶 · A、B 会在 (0,0,±1) 重合"
+              title="同样精确过原点；但 φ=90° 时 A 与 B 每周期相撞 2 次"><i></i>1,3,5 / 90°</button>
+            <button type="button" class="k-neg" data-w="3,1,-1" data-p="0"
+              data-note="负号版 (3,1,1) · 与 3,1,1/180° 完全同形 · 间距 0.49r"
+              title="ω₃ 取负 ⇔ 把 φ 挪 180°；σ=0.4142、min|S|=0、最近间距 0.4897r"><i></i>3,1,−1 / 0°</button>
+            <button type="button" class="k-neg" data-w="-3,1,1" data-p="165"
+              data-note="负号把腰拆了 · min|S|=0.173 · 间距 0.0008 几乎撞上"
+              title="σ 掉到 0.3649；三个相位再也凑不出 120°，S 不经过原点，两夸克贴到 0.0008r"><i></i>−3,1,1 / 165°</button>
+            <button type="button" class="k-neg w2" data-w="-3,1,3" data-p="0"
+              data-note="同 σ=0.4142 却不同形的新曲线 · 有腰、不撞 0.49r"
+              title="σ=0.4142、max|S|=√6、min|S|=0、间距 0.4897r，但 |S| 分布与 (3,1,1) 差 0.577 ⇒ 另一条曲线"><i></i>−3,1,3 / 0°　★ 新曲线</button>
+          </div>
+          <div class="preleg">灰＝塌成平面　蓝＝各向同性　橙＝唯一真三维　紫＝负角速度</div>
+
+          <div class="fpgrp">显示</div>
+          <div class="btns">
+            <button id="bPlay" class="primary" type="button">⏸ 暂停</button>
+            <button id="tRing" class="on" type="button">轨道环</button>
+            <button id="tFam" type="button">轨迹族</button>
+            <button id="tEcho" class="on" type="button" title="自转扫过的整圈留在空间里：24 片、每片 15°，合计 360°；HSV 上色，色相 = 绕轴角度">残影</button>
+            <span class="rgrp" title="包络中心离自转轴的距离 r：0＝中心正好在轴上（现在的样子）；调大＝整条轨迹先搬离轴 r，再绕这根轴公转，残影扫出一个管">
+              <span class="rl">离轴 r</span>
+              <input type="range" id="rR" min="0" max="3" step="0.05" value="0">
+              <b id="vR">0.00</b>
+            </span>
+            <button id="tRot" type="button" title="沿选定的轴自转：该轴在屏幕上保持不动，另两轴绕着它翻">自转</button>
+            <span class="axgrp" id="axBox" title="自转轴：残影就绕这根轴扫一整圈">
+              <button type="button" data-ax="x" class="on">x</button>
+              <button type="button" data-ax="y">y</button>
+              <button type="button" data-ax="z">z</button>
+            </span>
+          </div>
+
+          <div class="sld ecsld">
+            <div class="lb"><span>残影浓度 / 亮度</span><b id="vEcho">70%</b></div>
+            <input type="range" id="rEcho" min="5" max="100" step="1" value="70"
+              title="HSV 明度 + 不透明度：往右更亮更实，往左更淡更薄">
+          </div>
+        </div>
+
+        <div class="fpf" id="fpRead">—</div>
+      </div>
+    </div>
+
+    <div class="rd">
+      <div class="r"><div class="n" id="oMin">—</div><div class="l">min|S| / r（离原点最近）</div></div>
+      <div class="r"><div class="n" id="oMax">—</div><div class="l">max|S| / r（最远）</div></div>
+      <div class="r"><div class="n" id="oFlat">—</div><div class="l">σ₃/σ₁（0 = 共面）</div></div>
+      <div class="r"><div class="n" id="oWaist">—</div><div class="l">是否收腰</div></div>
+      <div class="r"><div class="n" id="oGap">—</div><div class="l">最近夸克间距 / r</div></div>
+    </div>
+  </div>
+
+  <h2>二·补、那三个夸克自己会不会撞在一起</h2>
+
+  <p>先把几何说清。这个模型里三个夸克不是「沿着 x、y、z 三根轴来回振荡」，而是<b>各在一个坐标面上绕圈</b>，谁的相位就归谁：</p>
+
+  <div class="fml">A = ( 0 ,  cos α ,  sin α )      α = ω₁t        在 yz 面，绕 x 轴
+B = ( sin β , 0 ,  cos β )      β = ω₂t + φ    在 zx 面，绕 y 轴
+C = ( cos γ , sin γ , 0 )      γ = ω₃t + 2φ   在 xy 面，绕 z 轴
+
+|A| = |B| = |C| = 1  （恒成立，与 t 无关）</div>
+
+  <p>所以第一个结论很硬：<b>三个夸克始终待在同一个单位球面上，离原点的距离恒等于 1</b>。它们谁也走不到中心去，那个「把所有线吸到一起的尖端」是<b>轨迹的和 S 经过原点</b>，不是某个夸克跑到原点。</p>
+
+  <p>第二个结论更有意思：<b>「有腰」（min|S| = 0）恰恰不是碰撞，而是三者摊得最开的时刻。</b>因为 |A| = |B| = |C| = 1，要让 A + B + C = 0 只能靠三个向量两两成 120°——那是一个正三角形。我把每个「命中」预设在 min|S| 那一刻的三条夹角都量了，全是 <b>120.00° / 120.00° / 120.00°</b>，误差在 1e−12 量级。这也是文件名里那个 120° 的来历。</p>
+
+  <p>那什么时候真会撞？三个圆两两相交，交点的位置是确定的：yz 面与 zx 面只共用 z 轴，单位球上就是 (0,0,±1)；yz 面与 xy 面共用 y 轴 → (0,±1,0)；zx 面与 xy 面共用 x 轴 → (±1,0,0)。<b>只有这 6 个点能撞</b>，撞的时候第三个夸克离它们恰好 √2 = 1.4142r（两两成 90°），所以也不会三个挤在一起。实测（2π 一个周期）：</p>
+
+  <table class="tbl">
+    <tr><th>预设</th><th>最近两夸克间距 / r</th><th>2π 内会重合</th><th>重合位置 · 次数</th></tr>
+    <tr><td class="m">(3, 1, 1) / 180°</td><td class="m">0.4897</td><td><b class="ok">不撞</b></td><td>— 最安全</td></tr>
+    <tr><td class="m">(1, 2, 1) / 135°</td><td class="m">0.3483</td><td><b class="ok">不撞</b></td><td>—</td></tr>
+    <tr><td class="m">(1, 3, 5) / 0°</td><td class="m">0.2679</td><td><b class="ok">不撞</b></td><td>—</td></tr>
+    <tr><td class="m">(3, 2, 3) / 135°</td><td class="m">0.2170</td><td><b class="ok">不撞</b></td><td>— 贴得最近但仍不接触</td></tr>
+    <tr><td class="m">等速 (1, 1, 1) / 120°</td><td class="m">1.3660</td><td><b class="ok">不撞</b></td><td>— 间距恒定，永远正三角形</td></tr>
+    <tr><td class="m">(1, 3, 3) / 90°</td><td class="m">0.0000</td><td><b class="bad">撞 2 次</b></td><td>A、B 在 (0,0,±1)</td></tr>
+    <tr><td class="m">(1, 3, 5) / 90°</td><td class="m">0.0000</td><td><b class="bad">撞 2 次</b></td><td>A、B 在 (0,0,±1)</td></tr>
+    <tr><td class="m">(1, 2, 3) / 45°</td><td class="m">0.0000</td><td><b class="bad">撞 3 次</b></td><td>A、C 在 (0,±1,0)</td></tr>
+    <tr><td class="m">(3, 2, 1) / 45°</td><td class="m">0.0000</td><td><b class="bad">撞 3 次</b></td><td>A、C 在 (0,±1,0)</td></tr>
+  </table>
+
+  <div class="callout">
+    直接回答你的问题：<b>默认那组 (3,1,1)/180° 全程不重叠</b>，最近两次距离 0.4897r，差不多还有半个半径的余量。但那张「命中表」里有一半是会撞的——(1,3,3)/90°、(1,2,3)/45°、(3,2,1)/45°、(1,3,5)/90° 每圈撞 2～3 次，撞点都在坐标轴上的 ±1 处。<b>如果要求「过程中绝不重叠」，可用的只有 (3,1,1)/180°、(1,2,1)/135°、(3,2,3)/135°、(1,3,5)/0° 这四组（外加等速共面那一组参照）。</b>面板里每个预设的 <code>title</code> 和下方灰字都标了实测间距，滑到哪一组读数卡「最近夸克间距」会实时给数。
+  </div>
+
+  <h2>二·补二、把角速度改成负数（反向公转）会怎样</h2>
+
+  <p>上面那张表全是正号。把 ω 允许取负——也就是让某个夸克<b>反向绕圈</b>——我刚把 <b>|ω| ≤ 5 的全部有符号三元组</b>（去重后 220 个）× φ 每 2° 扫了一遍，能精确命中原点的有 50 组。结论分三层：</p>
+
+  <table class="tbl">
+    <tr><th>ω = (ω₁, ω₂, ω₃)</th><th>φ</th><th>min\|S\|</th><th>σ₃/σ₁</th><th>最近间距 / r</th><th>结论</th></tr>
+    <tr><td class="m">(1, 2, 1)</td><td class="m">135°</td><td class="m">0</td><td class="m">0</td><td class="m">0.3483</td><td>正号原版：领结，塌成平面</td></tr>
+    <tr><td class="m">(1, −2, 1)</td><td class="m">135°</td><td class="m">0</td><td class="m">0</td><td class="m">0.3483</td><td><b class="ok">与上一行完全同形</b>（\|S\| 分布差 3.6e−15）</td></tr>
+    <tr><td class="m">(3, 1, 1)</td><td class="m">180°</td><td class="m">0</td><td class="m">0.4142</td><td class="m">0.4897</td><td>正号原版：唯一真三维 + 收腰</td></tr>
+    <tr><td class="m">(3, 1, −1)</td><td class="m">0°</td><td class="m">0</td><td class="m">0.4142</td><td class="m">0.4897</td><td><b class="ok">同形</b>：负号只是把 φ 挪了 180°</td></tr>
+    <tr><td class="m">(−3, 1, 1)</td><td class="m">165°</td><td class="m">0.173</td><td class="m">0.3649</td><td class="m">0.0008</td><td><b class="bad">腰没了</b>，而且两个夸克几乎撞上</td></tr>
+    <tr><td class="m">(−1, 2, 1)</td><td class="m">93°</td><td class="m">0.331</td><td class="m">0.3979</td><td class="m">0.0702</td><td><b class="bad">腰没了</b>，间距只剩 0.07r</td></tr>
+    <tr><td class="m">(−3, 1, 3)</td><td class="m">0°</td><td class="m">0</td><td class="m">0.4142</td><td class="m">0.4897</td><td><b class="ok">有腰、不撞，却和 (3,1,1) 不同形</b>（\|S\| 分布差 0.577）</td></tr>
+    <tr><td class="m">(−1, 3, 5)</td><td class="m">154°</td><td class="m">0.364</td><td class="m">1.0000</td><td class="m">—</td><td><b class="bad">连 (1,3,5) 的腰都拆了</b>（|ω|=5 超出滑块，只记录）</td></tr>
+  </table>
+
+  <p><b>第一层：σ 的三分类没有变。</b>50 个「过原点」的组合扫下来，σ₃/σ₁ 仍然只落在 <b>0 / 0.4142 / 1.0000</b> 三个值上，一个不多。所以负号不会给你「第四类形状」，前面「塌平面 / 各向同性 / 唯一真三维」的结论是稳的。</p>
+
+  <p><b>第二层：负号也不全是换说法，它会真的拆掉腰。</b>关键在于这个模型把三个相位锁成了等差 <code>(0, φ, 2φ)</code>。把某个 ω 取负，等于让那个夸克倒着跑；能不能等价于「把 φ 换个值」，要看能不能整体做一次时间反演再补齐相位。实测两种命运都有：<b>(3,1,−1)/0° 与 (3,1,1)/180° 完全同形</b>、(1,−2,1)/135° 与 (1,2,1)/135° 完全同形——这是「免费」的一类；但 <b>(−3,1,1)</b> 和 <b>(−1,2,1)</b> 就不行：min\|S\| 从 0 抬到 0.173 / 0.331，σ 也从 0.4142 掉到 0.3649 / 0.3979。原因还是那句：|A|=|B|=|C|=1，要让 S=0 只能两两成 120°，改符号后三者的相位凑不出那个正三角形了。</p>
+
+  <p><b>第三层：确实多出新的曲线，只是不在新的 σ 上。</b>(−3,1,3)/0° 和 (3,1,1)/180° 同 σ（0.4142）、同 max\|S\|（√6 = 2.4495）、同样过原点、同样最近间距 0.4897，但两条曲线的 <b>\|S\| 分布整整差 0.577</b>——它们不是同一条线换视角，是真的两条。所以「同一个 σ 类里形状唯一」这个印象要改：σ 只是二阶统计量，认不出形状。</p>
+
+  <div class="callout">
+    一句话回答：<b>负角速度值得试，但它改的是「能不能凑出 120°」这件事，不是「属于哪一类」。</b>你举的两个例子正好各落一边——(1,−2,1)/135° 与正号版一模一样（除非你想要镜像后的手性）；(−1,3,5) 则连腰都没有了，min\|S\| = 0.364，画不出穿过原点的 8。想找「有腰 + 不撞 + 又没见过」的，用新加的 <b>(−3,1,3)/0°</b>。面板里已加三个负号预设，下面三行就是。
+  </div>
+
+  <h2>二·补三、把 ±1…±5 全排一遍：460 组其实只有 7 族</h2>
+
+  <p>「可选项太少」这句是对的。上面两张表都是挑着列的，真要问「一共能画出多少种紫线」，得把 <b>ω₁、ω₂、ω₃ 各取 ±1…±5 的全部整数组合</b>排干净：共 1000 个三元组，去掉公因子（(2,4,2) 就是 (1,2,1)）和整体取反（(−1,−2,−1) 与 (1,2,1) 同一条），剩 <b>460 组</b>；每组再自动搜出让轨迹最靠近原点的那支相位差 φ。然后<b>按紫线自己的形状</b>分族——先看它住在几维空间，再看腰有没有落在原点：</p>
+
+  <table class="tbl">
+    <tr><th>族</th><th>判据（只看轨迹）</th><th>组数</th><th>占 460</th><th>轨迹长什么样</th><th>代表</th></tr>
+    <tr><td><b>① 线段</b></td><td class="m">协方差秩 = 1</td><td class="m">2</td><td class="m">0.4%</td><td>三个圆塌到同一条直径上来回跑，连纸片都不是</td><td class="m">(1,1,1) @90°</td></tr>
+    <tr><td><b>② 平面 · 腰在原点</b></td><td class="m">秩 2，min\|S\|=0</td><td class="m">21</td><td class="m">4.6%</td><td>蝴蝶结 / 花瓣：有尖端，但薄成一张纸</td><td class="m">(1,2,1) @135°</td></tr>
+    <tr><td><b>③ 平面 · 不过原点</b></td><td class="m">秩 2，min\|S\|&gt;0</td><td class="m">2</td><td class="m">0.4%</td><td>偏在一侧的环，没有尖端</td><td class="m">(1,−1,−1) @122°</td></tr>
+    <tr><td class="ok"><b>④ 立体 · 腰在原点 ★</b></td><td class="m">0&lt;σ&lt;0.95，min\|S\|=0</td><td class="m">27</td><td class="m">5.9%</td><td>有厚度又收腰——K10c 要找的那一类</td><td class="m">(3,1,1) @180°</td></tr>
+    <tr><td><b>⑤ 立体 · 不过原点</b></td><td class="m">0&lt;σ&lt;0.95，min\|S\|&gt;0</td><td class="m">168</td><td class="m">36.5%</td><td>拧过的螺旋、袋状、乱麻</td><td class="m">(2,−2,−1) @11°</td></tr>
+    <tr><td><b>⑥ 各向同性 · 腰在原点</b></td><td class="m">σ=1，min\|S\|=0</td><td class="m">45</td><td class="m">9.8%</td><td>三向一样开，缠成一团结，没有瓣</td><td class="m">(1,3,5) @0°</td></tr>
+    <tr><td><b>⑦ 各向同性 · 不过原点</b></td><td class="m">σ=1，min\|S\|&gt;0</td><td class="m">195</td><td class="m">42.4%</td><td>同样一团结，且绕开原点</td><td class="m">(1,2,−3) @254°</td></tr>
+  </table>
+
+  <p>这张表里最值得看的不是「有 7 族」，而是三条几乎不像巧合的数：</p>
+
+  <ul>
+    <li><b>「腰」是稀缺品：460 组里只有 95 组（20.7%）能让 S 精确穿过原点</b>，剩下 365 组无论怎么调 φ 都画不出那个穿过零点的 8。而这 95 组里，能同时做到「立体」的只有 <b>27 组</b>——正是 ⑤ 反过来看的那 5.9%。</li>
+    <li><b>只要腰落在原点，σ 就被锁死在三个值上。</b>95 个「有腰」的组，σ₃/σ₁ 只取 <b>0.0000（23 组）、0.4142（27 组）、1.0000（45 组）</b>，一个不多；而 365 个「不过原点」的组，σ 铺开成 <b>82 个不同取值</b>，从 0.000 到 1.000 连续不断。换句话说：<b>√2−1 不是巧合，它是「三向量两两 120° + 立体」这条约束的解</b>；不要求过原点时，σ 想取什么就取什么。</li>
+    <li><b>同一个 σ = 0.4142 底下不止一种形状。</b>把那 27 组命中按 |S| 分布逐点比对（阈值从 0.005 一直放到 0.05，结果都一样），它们其实是 <b>10 种互不相同的曲线</b>，叶数从 2 片排到 10 片。所以前面那句「只找到一个」得改口径：<b>「左右对称、且三个夸克不打架的双叶」确实只有 (3,1,1)/180° 一个</b>（间距 0.49r 是 2 叶里最宽的），但「立体的、有腰的曲线」有 10 条，(5,−3,3)/180° 就是它歪一点的表亲——同样 2 片叶、同样过原点，间距只有 0.27r。</li>
+  </ul>
+
+  <div class="callout">
+    <b>怎么自己翻这 460 组？</b>图 1 面板上「预设」那一行右边有个 <b>「按轨迹分类画廊 ▸」</b>按钮。点开是 7 个族、每族 1~10 张（共 41 张缩略轨迹卡片，视线和图 1 完全一样，比例固定所以能直接横向比大小）。卡片上标了 σ / max|S| / min|S|、叶数、腰在不在原点、会不会撞上。点一张就载入图 1，可以接着拖滑块微调。
+  </div>
+
+  <h2>三、但「一条轨迹」本来就画不出那张图</h2>
+
+
+  <p>参考图里是一<b>束</b>线，不是一根线。这不是渲染风格问题，是对象类型问题：磁力线是场的积分曲线，是一个<b>族</b>；一条轨迹再长也只是一条。</p>
+
+  <p>那模型能不能给出一族？能——把相位差 φ 连续微调，得到的曲线都从原点附近穿过，尺寸层层嵌套。<b>这就是「束」</b>。图 1 里勾上「轨迹族」就能看到：单条是领结，21 条叠在一起是一束嵌套的腰结。</p>
+
+  <div class="quote">
+    这一步很关键：你需要的不是「更复杂的一条曲线」，而是<b>「同一条方程，不同初相位」的一族曲线</b>。磁力线束、流线束、分界线束，全都是这么来的。
+  </div>
+
+  <h2>四、那张图到底是什么：偶极子磁力线的子午截面</h2>
+
+  <p>点偶极子的磁力线在球坐标里是 <code>r = a·sin²θ</code>。把它放到子午面（xz 平面）看：</p>
+
+  <div class="fml">P(θ) = a·sin²θ · ( sinθ , 0 , cosθ )      θ ∈ [0, π]
+
+θ = 0    → 原点        θ = π/2  → (a, 0, 0)（赤道面，最远）
+θ = π    → 原点</div>
+
+  <p>一条线从轴上出发，向右展开，到赤道面达到最远，再收回轴上——<b>两片叶子、一个腰，腰就在原点上</b>。叶子的有向面积我算了：</p>
+
+  <table class="tbl">
+    <tr><th>量</th><th>数值</th><th>说明</th></tr>
+    <tr><td>单叶有向面积 / a²</td><td class="m">−0.294524</td><td>上叶、下叶<b>完全相同</b>，与 a 无关</td></tr>
+    <tr><td>整条 ∞ 的面积 / a²</td><td class="m">−0.589048</td><td>= 2 × 上面那行</td></tr>
+    <tr><td>a = 0.5 / 1.0 / 2.0 / 1.25</td><td class="m">−0.294524（四者一致）</td><td>相似律：面积 ∝ a²</td></tr>
+    <tr><td>|z| 最大处</td><td class="m">θ = 125.26°，点 (0.5443, −0.3849)a</td><td>cos θ = −1/√3 处取到，不在 θ=90°</td></tr>
+  </table>
+
+  <p><b>先把形状说准，这里我上一版写错了。</b>单条偶极线在子午面里不是「∞」，而是<b>一个泪滴</b>：尖端恒在原点上（那就是磁极所在），最鼓的地方在赤道面。<code>r = a·sin²θ</code> 在 θ=90° 取到最大值 <b>a</b>——也就是说<b>赤道面恰恰是最宽处，不是最细处</b>。上一版我跟着照片的观感写成「上下鼓、中间掐」，那是把照片里<b>铁磁流体的分布</b>错当成了<b>磁力线的几何</b>。两件事必须分开。</p>
+
+  <div class="viz">
+    <div class="vt">图 2｜偶极子磁力线族：一层层嵌套的泪滴，共用同一个尖端</div>
+    <div class="vc">每条线是 r = a·sin²θ 走完 θ: 0→π 的一个闭合泪滴。左：子午面，看得清尖端在原点上、赤道最宽。右：同一族绕 z 轴复制成一圈圈经线，构成旋转面壳层——<b>所有壳层共用同一个尖端</b>，这就是「线都收在一处」的真正来源。</div>
+    <div class="grid2">
+      <canvas id="cvDip"></canvas>
+      <canvas id="cvRev"></canvas>
+    </div>
+    <div class="btns" style="margin-top:9px">
+      <button id="bDipAnim" class="primary" type="button">⏸ 暂停转动</button>
+      <span class="tag" style="margin-left:6px">同一族 · 同一个尖端 · 尺寸按 a 相似嵌套</span>
+    </div>
+  </div>
+
+  <h3 style="font-size:15px;margin:22px 0 8px">照片 vs 方程：看起来像，但不是一回事</h3>
+
+  <div class="refrow">
+    <figure class="refshot">
+      <img src="assets/img/ref_ferrofluid_dipole.jpg" alt="铁磁流体在磁铁上的实拍：上下各一团尖刺，赤道面一道绿光">
+      <figcaption>老师给的参考图（原图右下角标着 <b>Ferrofluid Magnet</b>）：一块磁铁浸在铁磁流体里，上下各长出一团尖刺，赤道面一道绿线，中心一个亮核。</figcaption>
+    </figure>
+    <div class="refnote">
+      <span class="h">这张照片里到底是什么</span>
+      <b>1. 上下两团不是磁力线</b>，是铁磁流体被磁场梯度拉到两个磁极上、在 Rosensweig 不稳定性下竖起的一根根尖刺。流体只肯待在磁场强的地方，所以它<b>堆在两极、赤道处几乎没有</b>——「中间细」是<b>流体的分布</b>，不是场的形状。<br>
+      <b>2. 那道绿线</b>不是磁力线，是<b>激光片光</b>切出的赤道平面（片光照明），用来把三维结构切出一刀给你看。<br>
+      <b>3. 中心那个亮核</b>就是磁铁本体露出来的顶，也是所有磁力线共同的源点——这一点和方程<b>完全一致</b>：r = a·sin²θ 的所有 a 都在原点交汇。<br>
+      <b>结论：</b>拓扑骨架相同（所有结构从同一点发散、上下镜像），但<b>粗细的走向相反</b>——磁力线在赤道最宽，流体的尖刺在两极最厚。<b>形似 ≠ 同源</b>，这条差别正是本页要守住的。
+    </div>
+  </div>
+
+  <h2>五、让每个相位各有方程：反解能到多准</h2>
+
+  <p>你说「允许每一个夸克空间相位有独特的变化方程」。这一放开，问题就从「找参数」变成「解方程」：给定想要的曲线 S(t)，能不能反解出三条相位曲线 α(t)、β(t)、γ(t)？</p>
+
+  <p>三式三未知，能。以偶极线为目标，取 <code>A = a·sin³θ</code>、<code>B = a·sin²θ·cosθ</code>，由 <code>cos α = −sin γ</code> 取 <code>α = γ + π/2</code>，剩下两式化成一个关于 <code>u = cos γ</code> 的二次式：</p>
+
+  <div class="fml">u = cos γ = [ (A + B) ± √( 2 − (A − B)² ) ] / 2
+
+γ = arccos u
+α = γ + π/2
+β = atan2( A − u , B − u )</div>
+
+  <p>代回原式误差 4.3×10⁻¹⁶——这是机器精度，不是拟合。也就是说：<b>形状上能精确复刻，一个像素都不差。</b></p>
+
+  <p>但代价立刻显形。三条相位曲线是这样走的（a = 1.25，横轴 θ）：</p>
+
+  <div class="viz">
+    <div class="vt">图 3｜反解出来的三条相位曲线：它们不是直线</div>
+    <div class="vc">横轴 θ（0°–180°，走完整个 ∞ 一次）。三条曲线的斜率一直在变，<b>而且中途会断</b>——断的地方就是方程组的折点，那里两个解分支撞在一起消失。a = 1.25 时中段无解；只有 a ≲ 0.5 才能用同一条分支走完全程。</div>
+    <canvas id="cvPh"></canvas>
+    <div class="rd">
+      <div class="r"><div class="n" id="oPhiN">24</div><div class="l">无解区间的采样点数（a=1.25）</div></div>
+      <div class="r"><div class="n" id="oRange">—</div><div class="l">α 的总转角</div></div>
+      <div class="r"><div class="n" id="oMono">—</div><div class="l">是否单调（单向公转）</div></div>
+    </div>
+  </div>
+
+  <p>结论很硬：<b>想复刻那张图，三个夸克不能「老老实实朝一个方向匀速公转」。</b>要么允许它们变速，要么允许它们倒转，要么接受在折点处换分支（相当于突然跳相位）。三样都跟「三个夸克绕轴公转」这个直觉不符。</p>
+
+  <h2>六、所以到底能不能</h2>
+
+  <table class="tbl">
+    <tr><th>问法</th><th>答案</th><th>依据</th></tr>
+    <tr><td>只调一个 ω（K10b 现状）</td><td><b class="bad">不能</b></td><td>共面定理：轨迹恒为过原点椭圆，永不自交</td></tr>
+    <tr><td>三个 ω 独立、匀速</td><td><b class="warnc">能，但要碰</b></td><td>过原点是孤立解 ⇒ 丢番图条件；27×720 全扫只命中 6 组</td></tr>
+    <tr><td>三个 ω 独立 + 一族 φ</td><td><b class="ok">能，而且这才像</b></td><td>一族嵌套的腰结 = 磁力线束；单条只是其中一根</td></tr>
+    <tr><td>每相各自任意方程</td><td><b class="ok">能精确复刻</b></td><td>逐点 6–8 解，误差 4×10⁻¹⁶；但非匀速、会分叉</td></tr>
+    <tr><td>「因为夸克这么转，所以有磁力线」</td><td><b class="bad">不成立</b></td><td>见下</td></tr>
+  </table>
+
+  <p>最后一行要单独说清楚，因为它是这一整轮里最容易滑过去的地方。</p>
+
+  <p><b>形似不等于机制。</b>三圆模型能拟合偶极磁力线的形状，是因为反解方程给足了自由度（三个相位函数 = 三个自由函数），几乎任何曲线都能被「解释」成某个三夸克的合成轨迹。这是<b>插值</b>，不是<b>生成</b>。真正的磁力线是<b>向量场的积分曲线</b>，它满足 ∇·B = 0、∇×B = μ₀J，曲线族之所以长成那样，是被场方程锁住的，不是被某个粒子的运动轨迹决定的。</p>
+
+  <p>如果只记住一句话：<b>要得到那张图，该换的是「对象类型」（从轨迹换成场线），不是「参数」。</b>三个圆周运动相加得到的永远是「一个点绕着原点跑出来的线」；而场线是「空间每一点都有一条线穿过」。前者天生是一条，后者天生是一束。</p>
+
+  <div class="quote">
+    这个区分对下一步很关键：如果目标是让某个东西「看起来像磁力线」，加自由参数拟合就行；如果要它「在物理上真的是磁力线」，就必须把驱动改成场，而不是轨迹。
+  </div>
+
+  <div class="callout warn">
+    <b>下一步的答案在 K11。</b>那页正面处理"用混沌吸引子能不能生成正确的磁力线"：<b>不能</b>——Lorenz 的 ∇·f = −13.6667 是常数，
+    相体积加速收缩，与 ∇·B ≡ 0（磁通守恒、线不相交）不能共存；而且吸引子会把轨道吸到不动点上停住，磁力线却"不能停在墙上"。
+    正解是把骨架换成流函数 ψ：<b>∇·B 恒等为零，场线 = ψ 的等值线</b>，于是"穿过中间那道壁、方向翻过来"变成一道纯拓扑题——
+    <b>门只有一个，就是零点</b>。→ <a href="K11_混沌吸引子能不能画成磁力线_布洛赫壁翻转.html">K11｜布洛赫壁上的翻转</a>
+  </div>
+
+  <hr>
+  <p style="font-size:12.6px;color:var(--ink-3)">
+    复算脚本：本页所有数字由纯 Python 计算（无 numpy 依赖），公式已逐条列在正文里。
+    K10b 里的「±120° 恒模 ⇒ 正圆」是本页 Level 0 的特例。<br>
+    <span class="tag">K10b</span><a href="K10b_三夸克三轴振动_120度恒模正圆.html">三夸克三轴振动 · 120° 为何给出正圆</a>
+    　<span class="tag">K10</span><a href="K10_八度与12进制_模9倍频环与群的错配.html">八度与 12 进制 · 模 9 倍频环</a>
+  </p>
+
+</main>
+
+<!-- ============ 轨迹画廊（浮层） ============ -->
+<div class="gal" id="gal">
+  <div class="galbox">
+    <div class="galhd">
+      <div>
+        <div class="tt">按紫线轨迹分类 · 41 个代表（从 460 组里挑出）</div>
+        <div class="sb">ω 取 <b>±1…±5</b> 的全部整数三元组，去掉公因子与整体取反后剩 <b>460</b> 组；每组再自动搜出「最靠近原点」的相位差 φ。按轨迹本身分成 <b>7 族</b>：先看它住在几维空间（线段 / 平面 / 立体 / 各向同性），再看腰有没有落在原点，最后看有几片叶。族内用贪心最大最小距离挑样本，保证同族里的卡片互不相似。点任意一张即可载入图 1。</div>
+      </div>
+      <button class="x" id="galX" type="button">✕ 关闭</button>
+    </div>
+    <div class="galbody" id="galBody"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   公共：三分量合成
+   ============================================================ */
+function Svec(t, w, ph, out){
+  var al = w[0]*t, be = w[1]*t + ph, ga = w[2]*t + 2*ph;
+  out[0] = Math.sin(be) + Math.cos(ga);
+  out[1] = Math.cos(al) + Math.sin(ga);
+  out[2] = Math.sin(al) + Math.cos(be);
+  return out;
+}
+
+/* 3×3 对称矩阵特征值（闭式），返回降序 */
+function eig3(m){
+  var a=m[0][0], b=m[1][1], c=m[2][2], d=m[0][1], e=m[0][2], f=m[1][2];
+  var p1=d*d+e*e+f*f, q=(a+b+c)/3;
+  var p2=(a-q)*(a-q)+(b-q)*(b-q)+(c-q)*(c-q)+2*p1;
+  var p=Math.sqrt(p2/6);
+  if(p<1e-15) return [q,q,q];
+  var b00=(a-q)/p, b11=(b-q)/p, b22=(c-q)/p, b01=d/p, b02=e/p, b12=f/p;
+  var det=b00*(b11*b22-b12*b12)-b01*(b01*b22-b12*b02)+b02*(b01*b12-b11*b02);
+  var rr=Math.max(-1,Math.min(1,det/2));
+  var phi=Math.acos(rr)/3;
+  var e1=q+2*p*Math.cos(phi);
+  var e3=q+2*p*Math.cos(phi+2*Math.PI/3);
+  var e2=3*q-e1-e3;
+  return [e1,e2,e3].sort(function(u,v){return v-u;});
+}
+
+/* 对一组点做统计：min|S|, max|S|, σ3/σ1 */
+function stats(w, ph, N){
+  N = N || 1600;
+  var mn=1e9, mx=-1e9, i, k;
+  var mean=[0,0,0], P=[], s=[0,0,0];
+  for(i=0;i<N;i++){
+    Svec(2*Math.PI*i/N, w, ph, s);
+    var L=Math.sqrt(s[0]*s[0]+s[1]*s[1]+s[2]*s[2]);
+    if(L<mn) mn=L;
+    if(L>mx) mx=L;
+    for(k=0;k<3;k++) mean[k]+=s[k];
+    P.push([s[0],s[1],s[2]]);
+  }
+  for(k=0;k<3;k++) mean[k]/=N;
+  var M=[[0,0,0],[0,0,0],[0,0,0]];
+  for(i=0;i<N;i++){
+    var d=[P[i][0]-mean[0],P[i][1]-mean[1],P[i][2]-mean[2]];
+    for(var r=0;r<3;r++) for(var c2=0;c2<3;c2++) M[r][c2]+=d[r]*d[c2]/N;
+  }
+  var ev=eig3(M);
+  var flat = ev[0]>1e-12 ? Math.sqrt(Math.max(ev[2],0)/ev[0]) : 0;
+  return {mn:mn, mx:mx, flat:flat};
+}
+
+/* ============================================================
+   图 1：三维三夸克
+   ============================================================ */
+var cv = document.getElementById('cv3d'), ctx = cv.getContext('2d');
+var W=1,H=1,DPR=Math.min(window.devicePixelRatio||1,2);
+var cam = {yaw:-0.55, pitch:0.32};
+var VSC = 70;   /* 取景比例：随 max|S| 自动适配 */
+var st = {w:[3,1,1], ph:180*Math.PI/180, t:0, playing:true,
+          rings:true, fam:false, autoRot:false, rotT:0, spin:0,
+          axis:'x', echo:true, ecDep:0.70, offR:0, note:''};
+
+var K = {
+  A:'#b3261e', B:'#1b4f9c', C:'#177245', S:'#6b3fa0', ax:'#d8dee8'
+};
+
+function resize(){
+  var r = cv.getBoundingClientRect();
+  W = Math.max(320, r.width); H = Math.max(260, r.height);
+  cv.width = Math.round(W*DPR); cv.height = Math.round(H*DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+/* 自转：绕选定的世界轴（x / y / z），角度缓存在 SPC/SPS，避免每点都算三角函数 */
+var SPC=1, SPS=0, _rot=[0,0,0];
+function syncSpin(){ SPC=Math.cos(st.spin); SPS=Math.sin(st.spin); }
+/* 把 p 绕 st.axis 转 (cs, sn)，结果写进 out */
+function rotAx(p, cs, sn, out){
+  var x=p[0], y=p[1], z=p[2], a=st.axis;
+  if(a==='y'){ out[0]=x*cs+z*sn; out[1]=y; out[2]=-x*sn+z*cs; }
+  else if(a==='z'){ out[0]=x*cs-y*sn; out[1]=x*sn+y*cs; out[2]=z; }
+  else { out[0]=x; out[1]=y*cs-z*sn; out[2]=y*sn+z*cs; }
+  return out;
+}
+/* 离轴偏移：形状先沿「垂直于自转轴」的方向搬出 offR，再整体绕轴转。
+   先搬后转 ⇒ 包络中心以 offR 为半径绕着自转轴公转；offR = 0 时中心就在轴上。 */
+var _pre=[0,0,0], _off=[0,0,0];
+function setOff(){
+  var r=st.offR, a=st.axis;
+  _off[0]=0; _off[1]=0; _off[2]=0;
+  if(r<1e-9) return;
+  if(a==='x'){ _off[2]=r; }
+  else if(a==='y'){ _off[0]=r; }
+  else { _off[0]=r; }
+}
+function proj(p, raw){
+  if(raw){ _pre[0]=p[0]; _pre[1]=p[1]; _pre[2]=p[2]; }
+  else { _pre[0]=p[0]+_off[0]; _pre[1]=p[1]+_off[1]; _pre[2]=p[2]+_off[2]; }
+  rotAx(_pre, SPC, SPS, _rot);
+  var x=_rot[0], yy=_rot[1], zz=_rot[2];
+  var cy=Math.cos(cam.yaw), sy=Math.sin(cam.yaw);
+  var cp=Math.cos(cam.pitch), sp=Math.sin(cam.pitch);
+  var X=x*cy+zz*sy, Z=-x*sy+zz*cy, Y=yy;
+  var Y2=Y*cp-Z*sp, Z2=Y*sp+Z*cp;
+  var d=6.2, f=d/(d-Z2*0.9);
+  return [W/2+X*f*VSC, H/2-Y2*f*VSC, Z2];
+}
+function line3(a,b,col,lw,dash,raw){
+  var p=proj(a,raw), q=proj(b,raw);
+  ctx.save();
+  if(dash) ctx.setLineDash(dash);
+  ctx.strokeStyle=col; ctx.lineWidth=lw;
+  ctx.beginPath(); ctx.moveTo(p[0],p[1]); ctx.lineTo(q[0],q[1]); ctx.stroke();
+  ctx.restore();
+}
+
+function drawRing(axis, col){
+  var N=96, i, prev=null;
+  ctx.beginPath();
+  for(i=0;i<=N;i++){
+    var th=2*Math.PI*i/N, p;
+    if(axis===0) p=[0,Math.cos(th),Math.sin(th)];
+    else if(axis===1) p=[Math.sin(th),0,Math.cos(th)];
+    else p=[Math.cos(th),Math.sin(th),0];
+    var q=proj(p);
+    if(i===0) ctx.moveTo(q[0],q[1]); else ctx.lineTo(q[0],q[1]);
+  }
+  ctx.strokeStyle=col; ctx.globalAlpha=0.30; ctx.lineWidth=1.1; ctx.stroke();
+  ctx.globalAlpha=1;
+}
+
+function drawQuarks(){
+  var t=st.t, w=st.w, ph=st.ph;
+  var al=w[0]*t, be=w[1]*t+ph, ga=w[2]*t+2*ph;
+  var ps=[
+    [[0,Math.cos(al),Math.sin(al)], K.A, 'A'],
+    [[Math.sin(be),0,Math.cos(be)], K.B, 'B'],
+    [[Math.cos(ga),Math.sin(ga),0],  K.C, 'C']
+  ];
+  for(var i=0;i<3;i++){
+    var q=proj(ps[i][0]), p0=proj([0,0,0]);
+    ctx.strokeStyle=ps[i][1]; ctx.globalAlpha=0.26; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(p0[0],p0[1]); ctx.lineTo(q[0],q[1]); ctx.stroke();
+    ctx.globalAlpha=1;
+    ctx.fillStyle=ps[i][1];
+    ctx.beginPath(); ctx.arc(q[0],q[1],5.2,0,6.2832); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(q[0]-1.4,q[1]-1.6,1.7,0,6.2832); ctx.fill();
+  }
+}
+
+function drawPath(ph, alpha, lw, halo){
+  var N=1200, i, s=[0,0,0], first=true;
+  ctx.beginPath();
+  for(i=0;i<=N;i++){
+    Svec(2*Math.PI*i/N, st.w, ph, s);
+    var q=proj(s);
+    if(first){ ctx.moveTo(q[0],q[1]); first=false; }
+    else ctx.lineTo(q[0],q[1]);
+  }
+  /* 底下垫一层白色描边：紫线穿过彩色残影时才不会糊成一片 */
+  if(halo){
+    ctx.strokeStyle='rgba(255,255,255,0.90)';
+    ctx.lineWidth=lw+4.2; ctx.lineJoin='round'; ctx.stroke();
+  }
+  ctx.strokeStyle='rgba(62,30,110,'+alpha+')';   /* 比 HSV 残影都深，才压得住 */
+  ctx.lineWidth=lw; ctx.lineJoin='round'; ctx.stroke();
+}
+
+/* ===== HSV → CSS =====  h∈[0,360)  s,v∈[0,1]  a=不透明度 */
+function hsvCss(h, s, v, a){
+  h = ((h % 360) + 360) % 360;
+  var c = v*s, x = c*(1-Math.abs((h/60)%2-1)), m = v-c, r, g, b;
+  if(h<60){ r=c; g=x; b=0; }
+  else if(h<120){ r=x; g=c; b=0; }
+  else if(h<180){ r=0; g=c; b=x; }
+  else if(h<240){ r=0; g=x; b=c; }
+  else if(h<300){ r=x; g=0; b=c; }
+  else { r=c; g=0; b=x; }
+  return 'rgba('+Math.round((r+m)*255)+','+Math.round((g+m)*255)+','+Math.round((b+m)*255)+','+a.toFixed(3)+')';
+}
+
+/* 残影：把自转扫过的整圈按 24 片（每片 15°）留在空间里。
+   3D 点只跟 ω/φ 有关，缓存起来，自转时不用重算。
+   颜色走 HSV：色相 = 这一片绕轴转过的角度，明度/不透明度由「残影浓度」滑块控制。 */
+var ECHO_M=24, ECHO_N=300, ECHO_HUE0=276, echoBuf=null, echoKey='';
+function echoPoints(){
+  var key = st.w.join(',')+'|'+st.ph;
+  if(echoBuf && key===echoKey) return echoBuf;
+  var arr=new Float32Array((ECHO_N+1)*3), i, s=[0,0,0];
+  for(i=0;i<=ECHO_N;i++){
+    Svec(2*Math.PI*i/ECHO_N, st.w, st.ph, s);
+    arr[i*3]=s[0]; arr[i*3+1]=s[1]; arr[i*3+2]=s[2];
+  }
+  echoBuf=arr; echoKey=key; return arr;
+}
+function drawEchoFan(){
+  var P=echoPoints(), i, k, ang, cs, sn, x, y, z, X, Z, Y2, Z2, f, sx, sy2, d, r=_rot;
+  var cy=Math.cos(cam.yaw), sy=Math.sin(cam.yaw);
+  var cp=Math.cos(cam.pitch), sp=Math.sin(cam.pitch);
+  var dep  = Math.max(0.05, Math.min(1, st.ecDep));
+  var sat  = 0.72 + 0.24*dep;                 /* 越浓越饱和 */
+  var val  = 0.86 + 0.14*dep;                 /* 明度：默认已接近满值 */
+  var aMax = 0.10 + 0.72*dep;                 /* 单根线的不透明度上限 */
+  var lwC  = 1.05 + 0.85*dep;                 /* 主线宽 1.05 → 1.90 */
+  ctx.lineJoin='round'; ctx.lineCap='round';
+  for(k=0;k<ECHO_M;k++){
+    ang = k*2*Math.PI/ECHO_M;
+    /* 与当前自转位置重合的那一片跳过，免得和亮线重影 */
+    d = Math.atan2(Math.sin(ang-st.spin), Math.cos(ang-st.spin));
+    if(Math.abs(d)<0.12) continue;
+    cs=Math.cos(ang); sn=Math.sin(ang);
+    ctx.beginPath();
+    for(i=0;i<=ECHO_N;i++){
+      /* 先加上离轴偏移（_off 由 render() 里的 setOff() 算好），再绕轴转 */
+      x=P[i*3]+_off[0]; y=P[i*3+1]+_off[1]; z=P[i*3+2]+_off[2];
+      var a=st.axis;
+      if(a==='y'){ r[0]=x*cs+z*sn; r[1]=y; r[2]=-x*sn+z*cs; }
+      else if(a==='z'){ r[0]=x*cs-y*sn; r[1]=x*sn+y*cs; r[2]=z; }
+      else { r[0]=x; r[1]=y*cs-z*sn; r[2]=y*sn+z*cs; }
+      X=r[0]*cy+r[2]*sy; Z=-r[0]*sy+r[2]*cy;
+      Y2=r[1]*cp - Z*sp; Z2=r[1]*sp + Z*cp;
+      f=6.2/(6.2-Z2*0.9);
+      sx=W/2+X*f*VSC; sy2=H/2-Y2*f*VSC;
+      if(i===0) ctx.moveTo(sx,sy2); else ctx.lineTo(sx,sy2);
+    }
+    /* 离当前自转位越远越虚（0.55x ~ 1.0x），叠出「一层层推开」的纵深感 */
+    var near = 1 - Math.min(1, Math.abs(d)/Math.PI);
+    var aLine = Math.min(0.96, aMax*(0.55+0.45*near));
+    var hue = ECHO_HUE0 + k*360/ECHO_M;
+    /* 先描一层宽而淡的辉光，再描一根实线，亮度才够 */
+    ctx.strokeStyle = hsvCss(hue, sat, val, aLine*0.30);
+    ctx.lineWidth = lwC + 2.6; ctx.stroke();
+    ctx.strokeStyle = hsvCss(hue, sat, val, aLine);
+    ctx.lineWidth = lwC; ctx.stroke();
+  }
+}
+
+function render(){
+  syncSpin();
+  setOff();
+  ctx.clearRect(0,0,W,H);
+
+  // 轴（永远画在真正的原点，不跟着离轴偏移走）
+  var ax=1.55;
+  line3([-ax,0,0],[ax,0,0], K.ax, 1, null, true);
+  line3([0,-ax,0],[0,ax,0], K.ax, 1, null, true);
+  line3([0,0,-ax],[0,0,ax], K.ax, 1, null, true);
+  var lx=proj([ax+0.1,0,0],true), ly=proj([0,ax+0.1,0],true), lz=proj([0,0,ax+0.1],true);
+  ctx.fillStyle='#9aa5b4'; ctx.font='11px Consolas, monospace';
+  ctx.fillText('X', lx[0], lx[1]); ctx.fillText('Y', ly[0], ly[1]); ctx.fillText('Z', lz[0], lz[1]);
+
+  /* 离轴 r>0 时：把「包络中心绕轴公转的那条圆」和自转轴一起画出来，r 才有参照 */
+  if(st.offR>0.02){
+    drawOrbit(st.offR);
+    var LA=st.offR+3.0, aa=st.axis;
+    var p1 = aa==='x' ? [-2.2,0,0] : (aa==='y' ? [0,-2.2,0] : [0,0,-2.2]);
+    var p2 = aa==='x' ? [LA,0,0]   : (aa==='y' ? [0,LA,0]   : [0,0,LA]);
+    line3(p1, p2, 'rgba(180,83,31,0.55)', 1.3, [6,5], true);
+  }
+
+  if(st.rings){ drawRing(0, K.A); drawRing(1, K.B); drawRing(2, K.C); }
+
+  if(st.echo){ drawEchoFan(); }
+
+  if(st.fam){
+    var M=19, j;
+    for(j=0;j<M;j++){
+      var off=(j/(M-1)-0.5)*2*(12*Math.PI/180);
+      drawPath(st.ph+off, 0.16, 0.9);
+    }
+  }
+  drawPath(st.ph, 1.0, 2.1, true);
+
+  drawQuarks();
+
+  // 原点
+  var o=proj([0,0,0], true);
+  ctx.fillStyle='#b4531f'; ctx.beginPath(); ctx.arc(o[0],o[1],2.6,0,6.2832); ctx.fill();
+  if(st.offR>0.02){
+    ctx.fillStyle='rgba(180,83,31,.8)'; ctx.font='10.5px Consolas, monospace';
+    ctx.fillText('原点', o[0]+5, o[1]-4);
+  }
+}
+
+/* 半径为 r、垂直于自转轴的圆：包络中心公转的轨道 */
+function drawOrbit(r){
+  var N=140, i, th, p=[0,0,0], q, first=true, a=st.axis;
+  ctx.beginPath();
+  for(i=0;i<=N;i++){
+    th=2*Math.PI*i/N;
+    if(a==='x'){ p[0]=0; p[1]=r*Math.cos(th); p[2]=r*Math.sin(th); }
+    else if(a==='y'){ p[0]=r*Math.cos(th); p[1]=0; p[2]=r*Math.sin(th); }
+    else { p[0]=r*Math.cos(th); p[1]=r*Math.sin(th); p[2]=0; }
+    q=proj(p, true);          /* 圆绕自身轴旋转不变，用不带偏移的投影即可 */
+    if(first){ ctx.moveTo(q[0],q[1]); first=false; } else ctx.lineTo(q[0],q[1]);
+  }
+  ctx.save();
+  ctx.setLineDash([4,4]);
+  ctx.strokeStyle='rgba(180,83,31,0.58)'; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.restore();
+}
+
+/* 三个夸克彼此的最近距离：A=(0,cosα,sinα)  B=(sinβ,0,cosβ)  C=(cosγ,sinγ,0) */
+function minPair(w, ph, N){
+  N = N || 1200;
+  var mn=1e9, i, t, al, be, ga, ay, az, bx, bz, cx, cy, m;
+  for(i=0;i<N;i++){
+    t=2*Math.PI*i/N;
+    al=w[0]*t; be=w[1]*t+ph; ga=w[2]*t+2*ph;
+    ay=Math.cos(al); az=Math.sin(al);
+    bx=Math.sin(be); bz=Math.cos(be);
+    cx=Math.cos(ga); cy=Math.sin(ga);
+    m=Math.sqrt(bx*bx + ay*ay + (az-bz)*(az-bz));
+    if(m<mn) mn=m;
+    m=Math.sqrt((bx-cx)*(bx-cx) + cy*cy + bz*bz);
+    if(m<mn) mn=m;
+    m=Math.sqrt(cx*cx + (cy-ay)*(cy-ay) + az*az);
+    if(m<mn) mn=m;
+  }
+  return mn;
+}
+
+function updateReadout(){
+  var s=stats(st.w, st.ph, 1400);
+  /* 取景：让 max|S| 落在画布的 78% 里；离轴 r>0 时把公转半径也算进去，免得转出画面 */
+  VSC = Math.min(W*0.31, H*0.34) / Math.max(1.5, s.mx*1.02 + st.offR);
+  document.getElementById('oMin').textContent = s.mn.toFixed(4);
+  document.getElementById('oMax').textContent = s.mx.toFixed(4);
+  var gp=minPair(st.w, st.ph, 1200);
+  var gpEl=document.getElementById('oGap');
+  gpEl.textContent = gp.toFixed(4);
+  gpEl.className='n '+(gp<0.05?'bad':(gp<0.2?'warnc':'ok'));
+  var flEl=document.getElementById('oFlat');
+  flEl.textContent = s.flat.toFixed(4);
+  flEl.className='n '+(s.flat<0.01||s.flat>0.95 ? 'bad' : 'ok');
+  var el=document.getElementById('oMin');
+  el.className='n '+(s.mn<0.06?'ok':(s.mn<0.25?'warnc':''));
+  var wEl=document.getElementById('oWaist');
+  if(s.mn>=0.25){ wEl.textContent='否'; wEl.className='n bad'; }
+  else if(s.flat>0.95){ wEl.textContent='球'; wEl.className='n warnc'; }
+  else if(s.flat<0.01){ wEl.textContent='扁'; wEl.className='n warnc'; }
+  else if(s.mn<0.06){ wEl.textContent='是'; wEl.className='n ok'; }
+  else { wEl.textContent='近'; wEl.className='n warnc'; }
+
+  var f=document.getElementById('fpRead');
+  var w1=st.w[0].toFixed(2), w2=st.w[1].toFixed(2), w3=st.w[2].toFixed(2);
+  var judge;
+  if(gp<0.05) judge = '⚠ 两个夸克会重合（撞在一起）';
+  else if(s.flat<0.01) judge = '共面：轨迹被压回一张平面';
+  else if(s.flat>0.95) judge = '各向同性：填成一个球，没有叶';
+  else if(s.mn<0.06) judge = '立体 + 腰在原点：这才是要的形状';
+  else judge = '立体，但腰没落在原点';
+  f.innerHTML = 'ω=('+w1+', '+w2+', '+w3+')　φ='+Math.round(st.ph*180/Math.PI)+'°'
+    + (st.offR>0.005 ? '　离轴 r='+st.offR.toFixed(2) : '')
+    + '<br>'+judge
+    + (st.note ? '<br><span style="opacity:.72">'+st.note+'</span>' : '');
+}
+
+/* 交互 */
+var drag=null;
+cv.addEventListener('pointerdown', function(e){
+  drag={x:e.clientX, y:e.clientY, yaw:cam.yaw, pitch:cam.pitch};
+  cv.classList.add('drag');
+  try{cv.setPointerCapture(e.pointerId);}catch(err){}
+});
+cv.addEventListener('pointermove', function(e){
+  if(!drag) return;
+  cam.yaw = drag.yaw + (e.clientX-drag.x)*0.008;
+  cam.pitch = Math.max(-1.45, Math.min(1.45, drag.pitch + (e.clientY-drag.y)*0.006));
+  render();
+});
+cv.addEventListener('pointerup', function(e){
+  drag=null; cv.classList.remove('drag');
+  try{cv.releasePointerCapture(e.pointerId);}catch(err){}
+});
+cv.addEventListener('pointercancel', function(){ drag=null; cv.classList.remove('drag'); });
+
+function bindSlider(id, vid, fmt, apply){
+  var r=document.getElementById(id), v=document.getElementById(vid);
+  r.addEventListener('input', function(){
+    apply(parseFloat(r.value));
+    v.textContent = fmt(parseFloat(r.value));
+    clearPre();
+    updateReadout(); render();
+  });
+}
+bindSlider('rW1','vW1', function(x){return x.toFixed(2);}, function(x){ st.w[0]=x; });
+bindSlider('rW2','vW2', function(x){return x.toFixed(2);}, function(x){ st.w[1]=x; });
+bindSlider('rW3','vW3', function(x){return x.toFixed(2);}, function(x){ st.w[2]=x; });
+bindSlider('rPh','vPh', function(x){return Math.round(x)+'°';}, function(x){ st.ph=x*Math.PI/180; });
+
+/* 残影浓度：只改画法，不改 ω/φ，所以不能走 bindSlider（那会清掉预设高亮） */
+(function(){
+  var r=document.getElementById('rEcho'), v=document.getElementById('vEcho');
+  r.addEventListener('input', function(){
+    st.ecDep = parseFloat(r.value)/100;
+    v.textContent = Math.round(r.value)+'%';
+    render();
+  });
+})();
+
+/* 离轴 r：把包络中心搬离自转轴的距离。0 = 中心就在轴上（原来那样）。
+   只挪显示、不动 ω/φ，所以也不清预设高亮；但取景比例要跟着改，得重算 VSC。 */
+(function(){
+  var r=document.getElementById('rR'), v=document.getElementById('vR');
+  r.addEventListener('input', function(){
+    st.offR = parseFloat(r.value);
+    v.textContent = st.offR.toFixed(2);
+    updateReadout(); render();
+  });
+})();
+
+function setAll(w, deg){
+  st.w=[w[0],w[1],w[2]]; st.ph=deg*Math.PI/180;
+  document.getElementById('rW1').value=w[0]; document.getElementById('vW1').textContent=w[0].toFixed(2);
+  document.getElementById('rW2').value=w[1]; document.getElementById('vW2').textContent=w[1].toFixed(2);
+  document.getElementById('rW3').value=w[2]; document.getElementById('vW3').textContent=w[2].toFixed(2);
+  document.getElementById('rPh').value=deg;   document.getElementById('vPh').textContent=Math.round(deg)+'°';
+  updateReadout(); render();
+}
+/* 预设：9 个按钮，覆盖正文表里每一行 */
+var preBtns = [].slice.call(document.querySelectorAll('#preBox button'));
+function clearPre(){
+  var i;
+  for(i=0;i<preBtns.length;i++) preBtns[i].classList.remove('on');
+  st.note='';
+}
+preBtns.forEach(function(b){
+  b.addEventListener('click', function(){
+    var ws=b.getAttribute('data-w').split(',');
+    var w=[parseFloat(ws[0]), parseFloat(ws[1]), parseFloat(ws[2])];
+    var p=parseFloat(b.getAttribute('data-p'));
+    clearPre();
+    b.classList.add('on');
+    st.note = b.getAttribute('data-note') || '';
+    setAll(w, p);
+  });
+});
+/* 默认停在 3,1,1 / 180°（与 st 初值一致） */
+clearPre(); preBtns[0].classList.add('on');
+st.note = preBtns[0].getAttribute('data-note') || '';
+
+document.getElementById('bPlay').onclick=function(){
+  st.playing=!st.playing;
+  this.textContent = st.playing ? '⏸ 暂停' : '▶ 播放';
+};
+document.getElementById('tRing').onclick=function(){
+  st.rings=!st.rings; this.classList.toggle('on', st.rings); render();
+};
+document.getElementById('tFam').onclick=function(){
+  st.fam=!st.fam; this.classList.toggle('on', st.fam); render();
+};
+document.getElementById('tRot').onclick=function(){
+  st.autoRot=!st.autoRot; this.classList.toggle('on', st.autoRot);
+};
+document.getElementById('tEcho').onclick=function(){
+  st.echo=!st.echo; this.classList.toggle('on', st.echo); render();
+};
+/* 自转轴：x / y / z 单选 */
+var axBtns=[].slice.call(document.querySelectorAll('#axBox button'));
+axBtns.forEach(function(b){
+  b.addEventListener('click', function(){
+    st.axis=b.getAttribute('data-ax');
+    axBtns.forEach(function(o){ o.classList.remove('on'); });
+    b.classList.add('on');
+    render();
+  });
+});
+
+/* 浮动面板 */
+var fp=document.getElementById('fpanel'), fpHead=document.getElementById('fpHead'),
+    stageEl=document.getElementById('stage'), fpDrag=null;
+function clampPanel(){
+  var maxL=stageEl.clientWidth-fp.offsetWidth-4;
+  var maxT=stageEl.clientHeight-fp.offsetHeight-4;
+  var l=Math.max(4,Math.min(maxL, fp.offsetLeft));
+  var t=Math.max(4,Math.min(Math.max(4,maxT), fp.offsetTop));
+  fp.style.left=l+'px'; fp.style.top=t+'px'; fp.style.right='auto';
+}
+fpHead.addEventListener('pointerdown', function(e){
+  if(e.target.tagName==='BUTTON') return;
+  fpDrag={x:e.clientX,y:e.clientY,l:fp.offsetLeft,t:fp.offsetTop};
+  fp.style.right='auto'; fp.style.left=fp.offsetLeft+'px'; fp.style.top=fp.offsetTop+'px';
+  try{fpHead.setPointerCapture(e.pointerId);}catch(err){}
+  e.preventDefault();
+});
+fpHead.addEventListener('pointermove', function(e){
+  if(!fpDrag) return;
+  var dx=e.clientX-fpDrag.x, dy=e.clientY-fpDrag.y;
+  var maxL=stageEl.clientWidth-fp.offsetWidth-4;
+  var maxT=stageEl.clientHeight-fp.offsetHeight-4;
+  fp.style.left=Math.max(4,Math.min(maxL, fpDrag.l+dx))+'px';
+  fp.style.top =Math.max(4,Math.min(maxT, fpDrag.t+dy))+'px';
+});
+fpHead.addEventListener('pointerup', function(e){
+  fpDrag=null;
+  try{fpHead.releasePointerCapture(e.pointerId);}catch(err){}
+});
+document.getElementById('fpMin').onclick=function(){
+  fp.classList.toggle('min');
+  this.textContent = fp.classList.contains('min') ? '+' : '−';
+  setTimeout(clampPanel,0);
+};
+
+/* ============================================================
+   图 2：偶极磁力线族
+   ============================================================ */
+var cvd=document.getElementById('cvDip'), xd=cvd.getContext('2d');
+var cvr=document.getElementById('cvRev'), xr=cvr.getContext('2d');
+var dipSpin=0, dipRun=true;
+
+function fitCv(cv2, x2){
+  var r=cv2.getBoundingClientRect();
+  var w=Math.max(200,r.width), h=Math.max(180,r.height);
+  cv2.width=Math.round(w*DPR); cv2.height=Math.round(h*DPR);
+  x2.setTransform(DPR,0,0,DPR,0,0);
+  return [w,h];
+}
+
+var DIP_A=[0.14,0.24,0.36,0.50,0.66,0.84,1.02,1.20,1.38];
+var DIP_MAX=1.38;              // 最外层 a
+var DIP_ZK=0.3849;             // |z| 极值 = 0.3849 a  （cosθ = -1/√3）
+
+function dipPt(th,a){ var r=a*Math.sin(th)*Math.sin(th);
+  return [r*Math.sin(th), r*Math.cos(th)]; }   // [x, z]：尖端在原点，赤道最远
+
+function drawDip(){
+  var d=fitCv(cvd,xd), w=d[0], h=d[1];
+  xd.clearRect(0,0,w,h);
+
+  // 取景：x 跨度 [0, amax]，z 跨度 ±0.3849·amax；两者都留 10% 余量
+  var zmax=DIP_ZK*DIP_MAX;
+  var sc=Math.min(w*0.74/(DIP_MAX*1.06), h*0.78/(2*zmax*1.12));
+  var ox=w*0.5-(DIP_MAX*0.50)*sc, oy=h*0.5;
+
+  // 赤道面参考线
+  xd.strokeStyle='#e2e8f0'; xd.lineWidth=1;
+  xd.beginPath(); xd.moveTo(w*0.04,oy); xd.lineTo(w*0.96,oy); xd.stroke();
+  // 赤道端点小标记
+  xd.fillStyle='#cfd8e4';
+  xd.beginPath(); xd.arc(ox+DIP_MAX*sc, oy, 2.4, 0, 6.2832); xd.fill();
+
+  var i,j;
+  for(j=0;j<DIP_A.length;j++){
+    var a=DIP_A[j];
+    xd.beginPath();
+    for(i=0;i<=260;i++){
+      var th=Math.PI*i/260, p=dipPt(th,a);
+      var px=ox+p[0]*sc, py=oy-p[1]*sc;
+      if(i===0) xd.moveTo(px,py); else xd.lineTo(px,py);
+    }
+    xd.closePath();
+    xd.strokeStyle='rgba(176,104,26,'+(0.30+0.055*j).toFixed(3)+')';
+    xd.lineWidth=1.2; xd.stroke();
+  }
+
+  // 尖端（所有 a 的公共点）
+  xd.fillStyle='#b4531f';
+  xd.beginPath(); xd.arc(ox,oy,3.4,0,6.2832); xd.fill();
+
+  // 说明：全部贴在无曲线的顶部 / 底部，避免压线
+  xd.font='10.4px Consolas, monospace';
+  xd.fillStyle='#7d8794';
+  xd.fillText('9 层 a 嵌套，尖端全在原点（= 磁极）', 10, 18);
+  xd.fillStyle='#a7b1bf';
+  xd.fillText('水平线 = z = 0 赤道面；此处最远，r = a', 10, 33);
+  xd.fillStyle='#b0b9c6';
+  xd.fillText('a = 1.38（最外层）', ox+DIP_MAX*sc*0.52, h-10);
+}
+
+/* ---- 右图：绕 z 轴复制成旋转面壳层 ---- */
+function drawRev(){
+  var d=fitCv(cvr,xr), w=d[0], h=d[1];
+  xr.clearRect(0,0,w,h);
+
+  var yaw=dipSpin, pit=0.40;
+  var cy=Math.cos(yaw), sy=Math.sin(yaw);
+  var cp=Math.cos(pit), sp=Math.sin(pit);
+
+  // 纵向投影半径 = (0.3849·cp + sp)·R；横向 = R
+  var Rv=DIP_MAX;
+  var sc=Math.min(w*0.47/Rv, h*0.48/((DIP_ZK*cp+sp)*Rv));
+
+  function pr(x,y,z){
+    var X=x*cy+y*sy, Z=-x*sy+y*cy, Y=z;
+    var Y2=Y*cp-Z*sp, Z2=Y*sp+Z*cp;
+    return [w/2+X*sc, h/2-Y2*sc, Z2];
+  }
+
+  var i,j,k;
+
+  /* 赤道平面（片光）——半透明绿盘 */
+  var o0=pr(0,0,0);
+  xr.save();
+  xr.beginPath();
+  for(i=0;i<=120;i++){
+    var az0=2*Math.PI*i/120, R0=Rv*1.04;
+    var q0=pr(R0*Math.cos(az0), R0*Math.sin(az0), 0);
+    if(i===0) xr.moveTo(q0[0],q0[1]); else xr.lineTo(q0[0],q0[1]);
+  }
+  xr.closePath();
+  xr.fillStyle='rgba(23,114,69,0.075)'; xr.fill();
+  xr.strokeStyle='rgba(23,114,69,0.42)'; xr.lineWidth=1.1; xr.stroke();
+  xr.restore();
+
+  /* 纬线：同 a、同 θ 绕 z 一圈 */
+  xr.lineWidth=0.7;
+  for(j=0;j<DIP_A.length;j++){
+    var a=DIP_A[j];
+    for(k=1;k<=7;k++){
+      var th=Math.PI*k/8, pp=dipPt(th,a), rr=pp[0];
+      xr.strokeStyle='rgba(176,104,26,'+(0.085+0.018*j).toFixed(3)+')';
+      xr.beginPath();
+      for(i=0;i<=72;i++){
+        var az=2*Math.PI*i/72;
+        var q=pr(rr*Math.cos(az), rr*Math.sin(az), pp[1]);
+        if(i===0) xr.moveTo(q[0],q[1]); else xr.lineTo(q[0],q[1]);
+      }
+      xr.stroke();
+    }
+  }
+
+  /* 经线：每个方位一条子午曲线 */
+  for(j=0;j<DIP_A.length;j++){
+    var a2=DIP_A[j];
+    xr.strokeStyle='rgba(176,104,26,'+(0.11+0.020*j).toFixed(3)+')';
+    xr.lineWidth=0.75;
+    for(k=0;k<24;k++){
+      var az2=2*Math.PI*k/24, ca=Math.cos(az2), sa=Math.sin(az2);
+      xr.beginPath();
+      for(i=0;i<=80;i++){
+        var t2=Math.PI*i/80, rr2=a2*Math.sin(t2)*Math.sin(t2);
+        var q2=pr(rr2*Math.sin(t2)*ca, rr2*Math.sin(t2)*sa, rr2*Math.cos(t2));
+        if(i===0) xr.moveTo(q2[0],q2[1]); else xr.lineTo(q2[0],q2[1]);
+      }
+      xr.stroke();
+    }
+  }
+
+  /* 中心亮核（与照片里那颗亮点的同构物） */
+  var o=pr(0,0,0);
+  var g=xr.createRadialGradient(o[0],o[1],0,o[0],o[1],26);
+  g.addColorStop(0,'rgba(255,205,130,0.95)');
+  g.addColorStop(0.30,'rgba(245,158,60,0.42)');
+  g.addColorStop(1,'rgba(245,158,60,0)');
+  xr.fillStyle=g; xr.beginPath(); xr.arc(o[0],o[1],26,0,6.2832); xr.fill();
+  xr.fillStyle='#b4531f'; xr.beginPath(); xr.arc(o[0],o[1],3.2,0,6.2832); xr.fill();
+
+  xr.font='10.4px Consolas, monospace';
+  xr.fillStyle='rgba(255,255,255,.86)'; xr.fillRect(6, 5, 178, 16); xr.fillRect(6, h-19, 128, 16);
+  xr.fillStyle='#7d8794';
+  xr.fillText('24 个方位 × 9 层 a 经线', 10, 17);
+  xr.fillStyle='#4f8a6b';
+  xr.fillText('绿盘 = z = 0 赤道面', 10, h-8);
+}
+
+document.getElementById('bDipAnim').onclick=function(){
+  dipRun=!dipRun;
+  this.textContent = dipRun ? '⏸ 暂停转动' : '▶ 继续转动';
+};
+
+/* ============================================================
+   图 3：反解出的相位曲线
+   ============================================================ */
+var cvp=document.getElementById('cvPh'), xp=cvp.getContext('2d');
+
+function invDip(th, a){
+  var sA=a*Math.sin(th)*Math.sin(th)*Math.sin(th);
+  var sB=a*Math.sin(th)*Math.sin(th)*Math.cos(th);
+  var d=2-(sA-sB)*(sA-sB);
+  if(d<0) return null;
+  var u=((sA+sB)+Math.sqrt(d))/2;
+  if(Math.abs(u)>1) return null;
+  var g=Math.acos(u);
+  return [g+Math.PI/2, Math.atan2(sA-u, sB-u), g];
+}
+
+function drawPhase(){
+  var d=fitCv(cvp,xp), w=d[0], h=d[1];
+  xp.clearRect(0,0,w,h);
+  var L=52, R=14, T=18, B=46;
+  var PW=w-L-R, PH=h-T-B;
+
+  // 网格
+  xp.strokeStyle='#eef2f7'; xp.lineWidth=1;
+  for(var k=0;k<=6;k++){
+    var y=T+PH*k/6;
+    xp.beginPath(); xp.moveTo(L,y); xp.lineTo(L+PW,y); xp.stroke();
+  }
+  var labels=['0°','30°','60°','90°','120°','150°','180°'];
+  xp.fillStyle='#9aa5b4'; xp.font='10.5px Consolas, monospace';
+  for(k=0;k<=6;k++){
+    var x=L+PW*k/6;
+    xp.fillText(labels[k], x-10, h-26);
+  }
+  xp.fillStyle='#8a939f';
+  xp.fillText('θ（沿 ∞ 走一圈）', L+PW/2-46, h-7);
+
+  var a=1.25, N=360, i;
+  var series=[[],[],[]], dead=0;
+  var prev=[null,null,null];
+  for(i=0;i<=N;i++){
+    var th=Math.PI*i/N, r=invDip(th,a);
+    if(!r){ dead++; series[0].push(null); series[1].push(null); series[2].push(null); continue; }
+    for(var q=0;q<3;q++){
+      var v=r[q]*180/Math.PI;
+      while(v<0) v+=360;
+      while(v>=360) v-=360;
+      var pv=prev[q];
+      if(pv!==null){
+        while(v-pv>180) v-=360;
+        while(v-pv<-180) v+=360;
+      }
+      prev[q]=v;
+      series[q].push(v);
+    }
+  }
+  // 找全局范围
+  var lo=1e9, hi=-1e9;
+  for(q=0;q<3;q++) for(i=0;i<=N;i++){
+    var vv=series[q][i];
+    if(vv===null) continue;
+    if(vv<lo) lo=vv; if(vv>hi) hi=vv;
+  }
+  var pad=(hi-lo)*0.10 || 10; lo-=pad; hi+=pad;
+
+  var cols=['#b3261e','#1b4f9c','#177245'];
+  var names=['α（A 绕 x）','β（B 绕 y）','γ（C 绕 z）'];
+  for(q=0;q<3;q++){
+    xp.strokeStyle=cols[q]; xp.lineWidth=1.6; xp.beginPath();
+    var started=false;
+    for(i=0;i<=N;i++){
+      var v2=series[q][i];
+      if(v2===null){ started=false; continue; }
+      var px=L+PW*i/N, py=T+PH*(1-(v2-lo)/(hi-lo));
+      if(!started){ xp.moveTo(px,py); started=true; } else xp.lineTo(px,py);
+    }
+    xp.stroke();
+    // 图例（先铺白底，避免压住曲线）
+    xp.fillStyle='rgba(255,255,255,.90)'; xp.fillRect(L+2, T+2+q*15, 104, 14);
+    xp.fillStyle=cols[q]; xp.fillRect(L+6, T+8+q*15, 9, 3);
+    xp.fillStyle='#3b4552'; xp.font='10.8px Consolas, monospace';
+    xp.fillText(names[q], L+20, T+12+q*15);
+  }
+
+  // 断点标记
+  var brk=[];
+  for(i=1;i<=N;i++){
+    if(series[0][i]===null || series[0][i-1]===null){
+      if(!brk.length || i-brk[brk.length-1]>4) brk.push(i);
+    }
+  }
+  xp.strokeStyle='rgba(179,38,30,.28)'; xp.setLineDash([3,3]); xp.lineWidth=1;
+  for(k=0;k<brk.length;k++){
+    var xx=L+PW*brk[k]/N;
+    xp.beginPath(); xp.moveTo(xx,T); xp.lineTo(xx,T+PH); xp.stroke();
+  }
+  xp.setLineDash([]);
+
+  xp.fillStyle='#6b7683'; xp.font='10.5px Consolas, monospace';
+  xp.save(); xp.translate(13, T+PH/2); xp.rotate(-Math.PI/2);
+  xp.fillText('相位（度）', -28, 0); xp.restore();
+
+  document.getElementById('oPhiN').textContent = dead;
+  document.getElementById('oRange').textContent = (hi-lo).toFixed(0)+'°';
+  var mono = (Math.abs(series[0][N]-series[0][0])>300) ? '是' : '否';
+  var mEl=document.getElementById('oMono');
+  mEl.textContent = mono;
+  mEl.className = 'n ' + (mono==='是'?'ok':'warnc');
+}
+
+/* ============================================================
+   主循环
+   ============================================================ */
+var last=0;
+function tick(ts){
+  var dt = last ? Math.min(0.05,(ts-last)/1000) : 0.016;
+  last=ts;
+  if(st.playing){ st.t += dt*1.1; }
+  if(st.autoRot){ st.spin += dt*0.55; }   /* 以 x 轴为自转轴 */
+  render();
+  if(dipRun){ dipSpin += dt*0.45; drawRev(); }
+  requestAnimationFrame(tick);
+}
+
+function boot(){
+  resize();
+  updateReadout();
+  render();
+  clampPanel();
+  drawDip();
+  drawRev();
+  drawPhase();
+  requestAnimationFrame(tick);
+}
+
+window.addEventListener('resize', function(){
+  clearTimeout(window.__rz);
+  window.__rz=setTimeout(function(){
+    resize(); clampPanel(); render(); drawDip(); drawRev(); drawPhase();
+  },140);
+});
+
+
+/* ============================================================
+   轨迹画廊：把 ±1…±5 的全部整数组合按「紫线本身的形状」分类
+   ============================================================ */
+var GAL=[
+  {w:[1,1,1],p:90,k:1,s:0,m:1.41,n:0,g:1,e:2,f:"L"},
+  {w:[1,2,1],p:315,k:2,s:0,m:2.15,n:0,g:0.35,e:3,f:"Pw"},
+  {w:[1,3,3],p:90,k:2,s:0,m:2.24,n:0,g:0,e:4,f:"Pw"},
+  {w:[1,4,-1],p:315,k:2,s:0,m:2.41,n:0,g:0.19,e:5,f:"Pw"},
+  {w:[5,-1,-1],p:90,k:2,s:0,m:2.4,n:0,g:0,e:6,f:"Pw"},
+  {w:[3,2,3],p:135,k:2,s:0,m:2.35,n:0,g:0.22,e:6,f:"Pw"},
+  {w:[5,-2,5],p:135,k:2,s:0,m:2.39,n:0,g:0.15,e:8,f:"Pw"},
+  {w:[5,-5,-1],p:270,k:2,s:0,m:2.35,n:0,g:0,e:8,f:"Pw"},
+  {w:[1,-1,-1],p:121.6,k:2,s:0,m:2.02,n:0.363,g:0.39,e:2,f:"Pn"},
+  {w:[1,-1,1],p:328,k:2,s:0,m:1.02,n:0.331,g:1.24,e:2,f:"Pn"},
+  {w:[3,1,1],p:180,k:3,s:0.414,m:2.45,n:0,g:0.49,e:2,f:"Dw"},
+  {w:[3,-3,1],p:0,k:3,s:0.414,m:2.45,n:0,g:0.49,e:2,f:"Dw"},
+  {w:[3,-1,3],p:270,k:3,s:0.414,m:2.33,n:0,g:0,e:4,f:"Dw"},
+  {w:[1,-3,1],p:270,k:3,s:0.414,m:2.25,n:0,g:0,e:4,f:"Dw"},
+  {w:[5,1,-5],p:0,k:3,s:0.414,m:2.45,n:0,g:0.31,e:6,f:"Dw"},
+  {w:[1,-1,5],p:180,k:3,s:0.414,m:2.45,n:0,g:0.31,e:6,f:"Dw"},
+  {w:[5,1,5],p:270,k:3,s:0.414,m:2.39,n:0,g:0,e:6,f:"Dw"},
+  {w:[5,-3,5],p:90,k:3,s:0.414,m:2.41,n:0,g:0.53,e:8,f:"Dw"},
+  {w:[3,-5,-3],p:90,k:3,s:0.414,m:2.4,n:0,g:0.53,e:8,f:"Dw"},
+  {w:[5,5,3],p:180,k:3,s:0.414,m:2.45,n:0,g:0.27,e:10,f:"Dw"},
+  {w:[2,-2,-1],p:11.4,k:3,s:0.44,m:2.41,n:0.101,g:0.35,e:3,f:"Dn"},
+  {w:[1,-3,-3],p:217.6,k:3,s:0.478,m:2.41,n:0.331,g:0.08,e:4,f:"Dn"},
+  {w:[1,3,1],p:140.8,k:3,s:0.067,m:2.41,n:0.191,g:0.28,e:4,f:"Dn"},
+  {w:[1,1,-3],p:203.8,k:3,s:0.462,m:2.35,n:0.191,g:0.16,e:4,f:"Dn"},
+  {w:[1,1,-5],p:17.2,k:3,s:0.362,m:2.24,n:0.173,g:0.1,e:4,f:"Dn"},
+  {w:[3,-1,1],p:330.4,k:3,s:0.007,m:2.09,n:0.363,g:0.48,e:4,f:"Dn"},
+  {w:[5,5,-2],p:3.8,k:3,s:0.404,m:2.43,n:0.035,g:0.15,e:6,f:"Dn"},
+  {w:[5,1,-1],p:330.6,k:3,s:0.011,m:2.41,n:0.094,g:0.08,e:6,f:"Dn"},
+  {w:[3,1,3],p:309.8,k:3,s:0.06,m:2.14,n:0.169,g:0.22,e:6,f:"Dn"},
+  {w:[1,3,5],p:0,k:3,s:1,m:2.45,n:0,g:0.27,e:4,f:"Iw"},
+  {w:[1,2,3],p:45,k:3,s:1,m:2.41,n:0,g:0,e:4,f:"Iw"},
+  {w:[2,3,4],p:157.6,k:3,s:1,m:2.45,n:0.003,g:0.16,e:5,f:"Iw"},
+  {w:[1,-4,5],p:45,k:3,s:1,m:2.4,n:0,g:0,e:6,f:"Iw"},
+  {w:[1,-5,3],p:90,k:3,s:1,m:2.4,n:0,g:0,e:6,f:"Iw"},
+  {w:[1,2,-3],p:253.8,k:3,s:1,m:2.41,n:0.173,g:0.32,e:3,f:"In"},
+  {w:[3,2,-1],p:332,k:3,s:1,m:2.38,n:0.128,g:0.39,e:4,f:"In"},
+  {w:[2,1,4],p:6.4,k:3,s:1,m:2.41,n:0.363,g:0.05,e:5,f:"In"},
+  {w:[5,-3,1],p:154.8,k:3,s:1,m:2.4,n:0.085,g:0.06,e:6,f:"In"},
+  {w:[5,1,-4],p:128.6,k:3,s:1,m:2.4,n:0.051,g:0.05,e:6,f:"In"},
+  {w:[1,-2,5],p:202.6,k:3,s:1,m:2.39,n:0.123,g:0.15,e:6,f:"In"},
+  {w:[4,5,-3],p:173.4,k:3,s:1,m:2.43,n:0.038,g:0.17,e:7,f:"In"}
+];
+
+/* 每族的组数（460 组全枚举的结果） */
+var FAMN={L:2,Pw:21,Pn:2,Dw:27,Dn:168,Iw:45,In:195};
+var GORDER=['L','Pw','Pn','Dw','Dn','Iw','In'];
+var FAM={
+  L:{t:'① 压成一条线段',
+     d:'三个圆退化到同一条直径上来回跑——协方差只有 1 个非零特征值，连一张平面都撑不起来。460 组里只有 2 组，但它们把「等速 + 相位刚好错开多少」这件事的极限讲得很清楚：再退一步，蝴蝶结就只剩一根线。'},
+  Pw:{t:'② 平面 · 腰在原点（纸片上有叶）',
+     d:'轨迹被压回一张纸，但 S 仍精确穿过原点：像蝴蝶结、像花瓣。K10b 里那条「120° 正圆」的邻居们住在这里。σ₃/σ₁ 严格等于 0。'},
+  Pn:{t:'③ 平面 · 不过原点 · 偏心的环',
+     d:'同样是纸片，可是 S 绕开了原点，整条轨迹偏在一侧，收不出那个尖端。460 组里也只有 2 组。'},
+  Dw:{t:'④ 立体 · 腰在原点 ★',
+     d:'这就是 K10c 要找的那一类：σ₃/σ₁ = 0.4142 = √2−1，既有厚度又有腰。27 组命中；但把 |S| 分布逐点比对后，它们其实是 10 种互不相同的曲线——叶数从 2 叶一直排到 10 叶，下面这几张就是各叶数的代表。'},
+  Dn:{t:'⑤ 立体 · 不过原点',
+     d:'有厚度，可尖端没落在原点：看上去像拧过的螺旋、袋状或乱麻，缺了「穿过零点」的那一瞬间。数量很多（168 组）。'},
+  Iw:{t:'⑥ 各向同性 · 腰在原点',
+     d:'σ₃/σ₁ = 1.0000：点云在三个方向铺得一模一样开。单看一条曲线，它是一团缠起来的结，不是有瓣的叶；叠上残影的 24 片才像一颗毛球。仍然能精确过原点。'},
+  In:{t:'⑦ 各向同性 · 不过原点',
+     d:'同样是三向一样开的一团结，而且绕开原点。数量最大的一族（195 组）——随手乱给三个角速度，最可能落在这里。'}
+};
+
+/* 缩略图：与主图同一条视线（yaw −0.55 / pitch 0.32），比例固定 ⇒ 大小可直接横比 */
+function galThumb(c2, o){
+  var dpr=Math.min(window.devicePixelRatio||1,2);
+  var w=c2.clientWidth||140, h=c2.clientHeight||86;
+  c2.width=Math.round(w*dpr); c2.height=Math.round(h*dpr);
+  var g=c2.getContext('2d');
+  g.setTransform(dpr,0,0,dpr,0,0);
+  g.clearRect(0,0,w,h);
+  var cy=Math.cos(-0.55), sy=Math.sin(-0.55), cp=Math.cos(0.32), sp=Math.sin(0.32);
+  var sc=Math.min(w*0.46, h*0.50)/2.45;
+  var s=[0,0,0], i, N=520, X, Y, Z, first=true;
+  g.beginPath();
+  for(i=0;i<=N;i++){
+    Svec(2*Math.PI*i/N, o.w, o.p*Math.PI/180, s);
+    X=s[0]*cy+s[2]*sy; Z=-s[0]*sy+s[2]*cy; Y=s[1];
+    var px=w/2+X*sc, py=h/2-(Y*cp-Z*sp)*sc;
+    if(first){ g.moveTo(px,py); first=false; } else g.lineTo(px,py);
+  }
+  g.strokeStyle='rgba(62,30,110,0.11)'; g.lineWidth=3.6; g.lineJoin='round'; g.stroke();
+  g.strokeStyle='rgba(62,30,110,0.88)'; g.lineWidth=1.15; g.stroke();
+  g.beginPath(); g.arc(w/2,h/2,1.7,0,6.2832);
+  g.fillStyle = (o.n<0.02) ? '#b4531f' : '#a8b2c0';
+  g.fill();
+}
+
+var galEl=document.getElementById('gal'), galBody=document.getElementById('galBody');
+var galBuilt=false, galCards=[];
+
+/* 面板里已经列了的那些 ω，在画廊里标一下（φ 可能不同：面板是手挑的，画廊是按最靠近原点自动搜的） */
+function inPanel(o){
+  var bs=[].slice.call(document.querySelectorAll('#preBox button'));
+  for(var i=0;i<bs.length;i++){
+    var ws=bs[i].getAttribute('data-w').split(',');
+    if(+ws[0]===o.w[0] && +ws[1]===o.w[1] && +ws[2]===o.w[2]) return true;
+  }
+  return false;
+}
+
+function galBuild(){
+  if(galBuilt) return;
+  galBuilt=true;
+  var html='';
+  GORDER.forEach(function(f){
+    var items=GAL.filter(function(o){ return o.f===f; });
+    if(!items.length) return;
+    html+='<div class="gfam"><div class="gh">'+FAM[f].t
+        + '<em>本族 '+FAMN[f]+' 组 · 挑了 '+items.length+' 张</em></div>'
+        + '<div class="gd">'+FAM[f].d+'</div><div class="gwrap">';
+    items.forEach(function(o){
+      var idx=GAL.indexOf(o);
+      var b = (o.n<0.02) ? '<span class="bb o">腰在原点</span>'
+                         : '<span class="bb w">不过原点</span>';
+      if(o.g<0.02) b+='<span class="bb w">会撞</span>';
+      if(inPanel(o)) b+='<span class="bb">★ 面板同 ω</span>';
+      html+='<button class="gc" type="button" data-i="'+idx+'">'
+          + '<canvas></canvas>'
+          + '<div class="t">('+o.w.join(',')+') @ '+o.p+'°</div>'
+          + '<div class="s">σ '+o.s.toFixed(3)+'　max '+o.m.toFixed(2)+'</div>'
+          + '<div class="s">min '+o.n.toFixed(3)+'　'+o.e+' 叶</div>'
+          + '<div class="brow">'+b+'</div></button>';
+    });
+    html+='</div></div>';
+  });
+  galBody.innerHTML=html;
+  galCards=[].slice.call(galBody.querySelectorAll('.gc'));
+  galDrawAll();
+}
+function galDrawAll(){
+  galCards.forEach(function(c,i){
+    var o=GAL[parseInt(c.getAttribute('data-i'),10)];
+    galThumb(c.querySelector('canvas'), o);
+  });
+}
+function galMark(){
+  var k=-1, i;
+  for(i=0;i<GAL.length;i++){
+    var o=GAL[i];
+    if(o.w[0]===st.w[0] && o.w[1]===st.w[1] && o.w[2]===st.w[2]
+       && Math.abs(o.p - st.ph*180/Math.PI)<2.5){ k=i; break; }
+  }
+  galCards.forEach(function(c){
+    c.classList.toggle('on', parseInt(c.getAttribute('data-i'),10)===k);
+  });
+}
+function galOpen(){
+  galEl.classList.add('on');
+  galBuild();
+  galDrawAll();
+  galMark();
+  galBody.scrollTop=0;
+  galEl.scrollTop=0;
+}
+function galClose(){ galEl.classList.remove('on'); }
+
+document.getElementById('bGal2').onclick=galOpen;
+document.getElementById('galX').onclick=galClose;
+galEl.addEventListener('click', function(e){ if(e.target===galEl) galClose(); });
+document.addEventListener('keydown', function(e){
+  if(e.key==='Escape' && galEl.classList.contains('on')) galClose();
+});
+galBody.addEventListener('click', function(e){
+  var c=e.target.closest ? e.target.closest('.gc') : null;
+  if(!c) return;
+  var o=GAL[parseInt(c.getAttribute('data-i'),10)];
+  clearPre();
+  galCards.forEach(function(x){ x.classList.remove('on'); });
+  c.classList.add('on');
+  st.note='画廊 · ('+o.w.join(',')+') @ '+o.p+'°　σ='+o.s.toFixed(3)
+        + '　'+o.e+' 叶　最近间距 '+o.g.toFixed(2)+'r';
+  setAll(o.w.slice(), o.p);
+  galClose();
+});
+window.addEventListener('resize', function(){
+  if(galBuilt && galEl.classList.contains('on')) setTimeout(galDrawAll, 60);
+});
+
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot);
+else boot();
+
+})();
+</script>
+</body>
+</html>

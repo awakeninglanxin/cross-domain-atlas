@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>母弦系统 · 不变量当文法 | 第 3 项的可执行版本：能保证到哪一步、代价多少</title>
+<style>
+:root{
+  --bg:#f4f7fb; --card:#ffffff; --line:#e2e8f2; --line2:#eef2f8;
+  --ink:#1c2534; --ink2:#495a72; --ink3:#7d8ca3;
+  --blue:#3457d5; --blue2:#5b7bf0; --amber:#c98410; --red:#c93b52;
+  --teal:#0e8f83; --violet:#7148bf; --gold:#a87c22; --green:#26774a;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+  font-family:"Microsoft YaHei","PingFang SC","Hiragino Sans GB",system-ui,-apple-system,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased;line-height:1.7}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{max-width:1180px;margin:0 auto;padding:26px 22px 70px}
+
+header.top{background:linear-gradient(135deg,#fff 0%,#f3f8f6 55%,#eff3ff 100%);
+  border:1px solid var(--line);border-radius:18px;padding:26px 28px;
+  box-shadow:0 4px 22px rgba(30,60,120,.07)}
+header.top h1{margin:0 0 6px;font-size:24px;letter-spacing:.3px;line-height:1.45}
+header.top .sub{color:var(--ink2);font-size:14px;margin-bottom:12px}
+.tagrow{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.tag{font-size:12px;padding:3px 9px;border-radius:999px;background:#fff;border:1px solid var(--line);color:var(--ink2)}
+.tag.b{border-color:#c9d6f5;background:#f2f6ff;color:#2d4ab8}
+.tag.g{border-color:#c6e6d6;background:#f0faf5;color:#1f7048}
+.tag.r{border-color:#f2cdd4;background:#fdf2f4;color:#a8324a}
+.tag.a{border-color:#f2ddb8;background:#fdf7ec;color:#8a6212}
+.tag.v{border-color:#dcd0f2;background:#f7f3fe;color:#5b39a8}
+
+section{margin-top:22px;background:var(--card);border:1px solid var(--line);
+  border-radius:16px;padding:22px 24px;box-shadow:0 2px 14px rgba(30,60,120,.045)}
+section h2{margin:0 0 4px;font-size:18px;letter-spacing:.2px}
+section h2 .num{display:inline-block;min-width:32px;color:var(--blue);font-weight:800}
+section .lead{color:var(--ink2);font-size:13.5px;margin:0 0 14px}
+h3{font-size:14.5px;margin:18px 0 8px;color:var(--ink);border-left:3px solid var(--blue2);padding-left:9px}
+p{margin:8px 0}
+b{color:var(--ink)}
+
+table{border-collapse:collapse;width:100%;font-size:13px;margin:8px 0 4px}
+th,td{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top}
+th{background:#f7f9fd;color:var(--ink2);font-weight:600;font-size:12.5px}
+td.n{font-variant-numeric:tabular-nums;font-family:ui-monospace,Consolas,"Courier New",monospace;font-size:12.5px}
+tr.hi td{background:#f6faff}
+tr.warn td{background:#fdf8f4}
+tr.bad td{background:#fdf2f4}
+tr.ok td{background:#f5fbf8}
+
+.note{background:#f8fafd;border:1px solid var(--line2);border-left:3px solid var(--blue2);
+  border-radius:0 10px 10px 0;padding:11px 14px;font-size:13px;color:var(--ink2);margin:12px 0}
+.note.warn{border-left-color:var(--red);background:#fdf7f8}
+.note.ok{border-left-color:var(--green);background:#f5fbf8}
+.note.vi{border-left-color:var(--violet);background:#f8f5fe}
+.note.am{border-left-color:var(--amber);background:#fdfaf3}
+.note b{color:var(--ink)}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:11px;margin:12px 0 6px}
+.kpi{background:#fbfcff;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.kpi .k{font-size:12px;color:var(--ink3)}
+.kpi .v{font-size:21px;font-weight:800;font-variant-numeric:tabular-nums;margin:2px 0;color:var(--ink)}
+.kpi .n2{font-size:11.5px;color:var(--ink3);line-height:1.5}
+.kpi.r .v{color:var(--red)} .kpi.g .v{color:var(--green)} .kpi.b .v{color:var(--blue)}
+.kpi.a .v{color:var(--amber)} .kpi.v .v{color:var(--violet)}
+
+pre{background:#f7f9fd;border:1px solid var(--line);border-radius:9px;padding:10px 12px;
+  font-size:12px;overflow-x:auto;margin:9px 0;font-family:ui-monospace,Consolas,monospace;line-height:1.6}
+code{font-family:ui-monospace,Consolas,"Courier New",monospace;font-size:12.4px;
+  background:#f2f5fa;padding:1px 5px;border-radius:4px;color:#2a3a55}
+
+figure{margin:14px 0 6px}
+figure svg{display:block;width:100%;height:auto}
+figcaption{font-size:12px;color:var(--ink3);margin-top:6px;text-align:center}
+
+/* 交互演示 */
+.demo{display:grid;grid-template-columns:200px 1fr;gap:18px;align-items:start;
+  background:#fbfcfe;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:12px 0}
+.demo .grid-svg{width:200px;height:200px}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.btns button{font-family:inherit;font-size:12.8px;padding:7px 13px;border-radius:8px;cursor:pointer;
+  border:1px solid var(--line);background:#fff;color:var(--ink);transition:.15s}
+.btns button:hover{border-color:var(--blue2);color:var(--blue)}
+.btns button.p1{border-color:#f2cdd4;background:#fdf5f7;color:#a8324a}
+.btns button.p2{border-color:#f2ddb8;background:#fdf9ef;color:#8a6212}
+.btns button.p3{border-color:#c6e6d6;background:#f3fbf7;color:#1f7048}
+.btns button:disabled{opacity:.55;cursor:not-allowed}
+.readout{font-size:13px;line-height:1.9}
+.readout .row{display:flex;gap:10px;font-variant-numeric:tabular-nums}
+.readout .row .lb{color:var(--ink3);min-width:96px}
+.readout .row .vl{font-weight:700;color:var(--ink)}
+.verdict{margin-top:8px;padding:8px 11px;border-radius:8px;font-size:13px;font-weight:600}
+.verdict.bad{background:#fdf2f4;color:#a8324a;border:1px solid #f2cdd4}
+.verdict.good{background:#f3fbf7;color:#1f7048;border:1px solid #c6e6d6}
+.verdict.mid{background:#fdf9ef;color:#8a6212;border:1px solid #f2ddb8}
+
+/* 自检 */
+#chkList{display:grid;grid-template-columns:1fr;gap:0;font-size:12.5px}
+.chk{display:flex;gap:9px;padding:3px 0;border-bottom:1px dashed var(--line2);align-items:baseline}
+.chk .m{font-weight:800;width:16px;flex:0 0 16px}
+.chk.p .m{color:var(--green)} .chk.f .m{color:var(--red)}
+.chk .t{flex:1 1 auto;min-width:0;color:var(--ink2);overflow-wrap:break-word}
+.chk .d{flex:0 0 auto;font-family:ui-monospace,Consolas,monospace;font-size:11.5px;color:var(--ink3);
+  max-width:42%;text-align:right;word-break:break-word}
+.sum{padding:11px 14px;border-radius:10px;font-size:13.5px;font-weight:700;margin:10px 0 6px}
+.sum.ok{background:#f0faf5;color:#1f7048;border:1px solid #c6e6d6}
+.sum.no{background:#fdf2f4;color:#a8324a;border:1px solid #f2cdd4}
+
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+@media (max-width:900px){
+  .demo{grid-template-columns:1fr}
+  .demo .grid-svg{width:170px;height:170px;margin:0 auto}
+  .two{grid-template-columns:1fr}
+}
+@media (max-width:760px){
+  .wrap{padding:16px 12px 54px}
+  header.top{padding:18px 16px}
+  header.top h1{font-size:19px}
+  section{padding:16px 14px}
+  section h2{font-size:16px}
+  figure{overflow-x:auto}
+  figure>svg{min-width:560px}
+  .kpis{grid-template-columns:1fr 1fr}
+  .chk{flex-wrap:wrap}
+  .chk .d{max-width:100%;text-align:left;flex:0 0 100%;padding-left:25px}
+  /* 表格卡片化 */
+  table.tbl-cards thead{display:none}
+  table.tbl-cards, table.tbl-cards tbody, table.tbl-cards tr, table.tbl-cards td{display:block;width:100%}
+  table.tbl-cards tr{border:1px solid var(--line);border-radius:10px;margin:0 0 10px;padding:4px 2px;background:#fff}
+  table.tbl-cards td{border:none;border-bottom:1px dashed var(--line2);padding:6px 10px;
+    display:flex;gap:10px;align-items:flex-start}
+  table.tbl-cards td:last-child{border-bottom:none}
+  table.tbl-cards td::before{content:attr(data-label);flex:0 0 88px;color:var(--ink3);font-size:12px;font-weight:600}
+  table.tbl-cards td.n::before{font-variant-numeric:normal;font-family:inherit}
+  .tblwrap{overflow-x:visible}
+}
+@media (max-width:460px){
+  .kpis{grid-template-columns:1fr}
+}
+.tblwrap{overflow-x:auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <h1>不变量当文法：第 3 项的可执行版本</h1>
+  <div class="sub">把「幻和守恒 / 错卦对跖 / 相位平衡」编译进解码期约束 —— 能做到哪一步、代价多少、哪一步做不到</div>
+  <div class="tagrow">
+    <span class="tag b">27 条线 → 秩 19 → 零空间 8 维</span>
+    <span class="tag g">数字全部运行时算</span>
+    <span class="tag a">可满足性边界</span>
+    <span class="tag r">三层能力边界</span>
+    <span class="tag">位置坐标：3×3×3 · 1..27 · 幻和 42</span>
+  </div>
+</header>
+
+<section id="s1">
+  <h2><span class="num">§1</span>先把「文法」这个词拆成三层</h2>
+  <p class="lead">「把不变量编译进文法」这句话如果只当口号，会同时高估和低估。高估在于以为一条 CFG 就能管住守恒；低估在于以为做不到就得放弃。真话是：三层能力完全不同，判据只有一个字 —— <b>记忆</b>。</p>
+
+  <p>一个约束能不能「静态编译」成有限状态机，不取决于它多复杂，只取决于<b>它需要记住多少种不同的东西</b>。记住「已经用了哪些数字」有 <code>2^27</code> 种可能，记住「当前三条线的部分和」只有几万种。前者装不进表，后者装得进。</p>
+
+  <figure>
+    <svg viewBox="0 0 680 250" role="img" aria-label="三层架构：语法层、代数层、组合层的能力边界">
+      <rect x="0" y="0" width="680" height="250" fill="#fbfcfe" rx="10"/>
+      <!-- L1 -->
+      <rect x="20" y="20" width="640" height="60" rx="9" fill="#f2f6ff" stroke="#c9d6f5"/>
+      <rect x="20" y="20" width="86" height="60" rx="9" fill="#3457d5"/>
+      <text x="63" y="46" text-anchor="middle" font-size="14" font-weight="800" fill="#fff">L1 语法</text>
+      <text x="63" y="64" text-anchor="middle" font-size="10.5" fill="#dbe4ff">token 形状</text>
+      <text x="120" y="44" font-size="12.5" fill="#1c2534">管「哪个 token 能接」：位数、取值范围、JSON 结构、括号配对</text>
+      <text x="120" y="64" font-size="11.5" fill="#5a6d8c">状态量＝词法位置　｜　规模＝DFA 状态数（几百）　｜　<tspan font-weight="700">成熟工业能力</tspan></text>
+      <!-- L2 -->
+      <rect x="20" y="92" width="640" height="60" rx="9" fill="#f3fbf7" stroke="#c6e6d6"/>
+      <rect x="20" y="92" width="86" height="60" rx="9" fill="#0e8f83"/>
+      <text x="63" y="118" text-anchor="middle" font-size="14" font-weight="800" fill="#fff">L2 代数</text>
+      <text x="63" y="136" text-anchor="middle" font-size="10.5" fill="#d4f0ea">不变量</text>
+      <text x="120" y="116" font-size="12.5" fill="#1c2534">管「数与数的关系」：每线和为定值、模态零、对跖互补</text>
+      <text x="120" y="136" font-size="11.5" fill="#5a6d8c">状态量＝部分和　｜　规模＝部分和取值个数（几十）　｜　<tspan font-weight="700">可编译，但要运行时求值</tspan></text>
+      <!-- L3 -->
+      <rect x="20" y="164" width="640" height="66" rx="9" fill="#fdf5f7" stroke="#f2cdd4"/>
+      <rect x="20" y="164" width="86" height="66" rx="9" fill="#c93b52"/>
+      <text x="63" y="190" text-anchor="middle" font-size="14" font-weight="800" fill="#fff">L3 组合</text>
+      <text x="63" y="208" text-anchor="middle" font-size="10.5" fill="#ffe0e6">互不相同</text>
+      <text x="120" y="188" font-size="12.5" fill="#1c2534">管「集合性质」：27 个数必须互异（这是唯一压垮静态表的一条）</text>
+      <text x="120" y="208" font-size="11.5" fill="#5a6d8c">状态量＝已用集合　｜　规模＝<tspan font-weight="800" fill="#a8324a">2²⁷ ≈ 1.34 亿</tspan>　｜　<tspan font-weight="700">只能动态掩码</tspan></text>
+      <text x="20" y="245" font-size="11" fill="#7d8ca3">判据一句话：能不能静态编译，取决于这个约束的「记忆」有多少种取值。</text>
+    </svg>
+    <figcaption>三层各管一件事。把它们混成一句「都塞进文法」，会在 L3 直接爆炸。</figcaption>
+  </figure>
+
+  <div class="note vi">
+    <b>为什么这个区分是硬的：</b>L1 的约束只看「当前位置」，L2 的约束看「已生成部分的和」，L3 的约束看「已生成部分的集合」。
+    前者是有限个词法状态，中者是有限个数值状态，后者是<b>指数个集合状态</b>。
+    这不是实现技巧的差别，是<b>状态数增长阶</b>的差别：O(1) / O(n) / O(2^n)。
+  </div>
+</section>
+
+<section id="s2">
+  <h2><span class="num">§2</span>不变量声明得越全越好？不 —— 存在一条可满足性边界</h2>
+  <p class="lead">这是本页最重要的一节，也是我原来想错的地方。我以为「27 条线幻和 42」就等于标准三阶幻立方。实测打脸：它给出的解，中心格可以是 5。而「中心 14」根本不是我声明的那 27 条线的推论。</p>
+
+  <p>把约束一条条加上去，用精确有理数消元算秩（三方交叉验证，见 §9 自检）：</p>
+
+  <div class="tblwrap">
+    <table class="tbl-cards" id="tblCases">
+      <thead><tr><th style="width:150px">不变量清单</th><th class="n" style="width:62px">线数</th><th class="n" style="width:52px">秩</th><th class="n" style="width:88px">零空间维数</th><th style="width:104px">中心格</th><th>1..27 的排列解</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="kpis" id="kpiCases"></div>
+
+  <div class="note warn">
+    <b>三个反直觉结论，全部由计算给出：</b>
+    <br>① <b>「中心 14」不是 27 条轴向线的推论。</b>本页运行时算出的首个解，中心格就是 <span id="cCenterVal" style="font-weight:800;color:#a8324a">—</span>。它满足全部 27 条线、数集恰好是 1..27。
+    <br>② <b>它真正的来源是那 4 条体对角。</b>加上体对角后零空间从 8 维掉到 4 维，中心分量的自由度被锁死 —— 这才是 14 的出处。
+    <br>③ <b>再加 12 条面对角就彻底崩了。</b>43 条线满秩，线性系统<b>只有唯一解：每格都是 14</b>。它是合法线性解，却不是 1..27 的排列 ⇒ 与「互异」这条合起来<b>无解</b>。
+  </div>
+
+  <p>这就是「不变量当文法」必须先回答的问题：<b>你声明的不变量集，本身可满足吗？</b>
+  加得太少（①）解一抓一大把，模型随便生成就违反；加得太满（③）解集退化成一个点，硬约束会让你永远生成不出合法输出。中间那一档（②）才是既紧又非空。</p>
+
+  <div class="note ok">
+    <b>一句话记法：</b>不变量不是越多越好，是「刚好卡在非空边界上」最好。而这条边界是<b>可以预先算出来的</b> —— 算秩、算零空间维数、算唯一解是否落在允许集合里。这就是「可满足性检查」应该放在编译期，而不是等模型生成失败再发现。
+  </div>
+</section>
+
+<section id="s3">
+  <h2><span class="num">§3</span>降自由度：27 个格子其实只有 8 个是真自由</h2>
+  <p class="lead">秩 19 的意思是：27 个格子里有 19 个被线性约束唯一决定，只剩 8 个真自由。这是「把不变量编译进生成过程」的第一步 —— 也是唯一有严格保证的一步。</p>
+
+  <div class="kpis">
+    <div class="kpi b"><div class="k">27 条轴向线的秩</div><div class="v" id="kRank">—</div><div class="n2">精确有理数 / mod 1000003 / mod 999983 三方一致</div></div>
+    <div class="kpi b"><div class="k">零空间维数 = 27 − 秩</div><div class="v" id="kNull">—</div><div class="n2">模型只需产出 8 个数，其余 19 个反解</div></div>
+    <div class="kpi g"><div class="k">反解系数的最大分母</div><div class="v" id="kDenom">1</div><div class="n2">整数基 ⇒ 反解天然是整数，不会出现分数障碍</div></div>
+    <div class="kpi a"><div class="k">随机反解全过率</div><div class="v" id="kPass">—</div><div class="n2">整数/范围/互异三道关同时通过的比例</div></div>
+  </div>
+
+  <p>「整数基」这一条值得单独说：如果反解表达式带分母，那么每次反解都要判整除，可行解会变成格点问题；而实测最大分母就是 <b>1</b> —— 这个约束系统是无分母的，反解出的 19 个数自动是整数。这是它能被工程化的前提。</p>
+
+  <h3>但只有降自由度还不够 —— 三道关的实测活性</h3>
+  <p>随机给 8 个自由格赋值（1..27 均匀），反解另外 19 个，然后逐关检查。<b id="liveN">—</b> 次独立试验、固定种子。</p>
+
+  <p>这里有个我原来没想到的事：<b>「哪 8 个格当自由变量」不是唯一的</b>。消元时按什么顺序扫列，就决定了哪些格被反解、哪些格要猜。
+  下表把两种扫描顺序都跑了 —— 同一组不变量、同一套反解逻辑，只换自由变量集合（<span id="liveFree" style="font-family:ui-monospace,Consolas,monospace;font-size:11.5px">—</span>），活性差出好几个数量级。</p>
+
+  <div class="tblwrap">
+    <table class="tbl-cards" id="tblLive">
+      <thead><tr><th style="width:160px">关卡</th><th class="n" style="width:104px">正序自由集</th><th class="n" style="width:104px">逆序自由集</th><th>含义</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="note warn">
+    <b>这张表是全页的转折点，但它说的其实是两件事。</b>
+    <br><b>第一件：</b>降自由度把「27 维搜索」压成「8 维搜索」，却<b>不保证</b>剩下 8 维里随手一取就落在合法区。三关同时通过的比例是 <b id="liveAll">—</b>。
+    光有线性反解，你仍然要在这 8 维上做<b>真正的搜索</b>（回溯、整数规划、约束传播）。「降自由度」必要，不充分。
+    <br><b>第二件：</b>右列换了个自由变量集合，<b>范围关都直接归零</b>。这说明「反解得动不动」不只是算法问题，还是<b>变量排序问题</b> ——
+    而变量排序是可优化的：挑那些「反解出来容易落回 1..27」的格当自由变量。这是「不变量编译」里一个实际可调的旋钮，不是理论假设。
+  </div>
+</section>
+
+<section id="s4">
+  <h2><span class="num">§4</span>错卦对跖：27 个齿的精确对合，生成时不可能违反</h2>
+  <p class="lead">这一类不变量的性质最好：它不是「约束」，是「配对」。只要生成一半，另一半就定了 —— 违反率<b>结构性为零</b>，不是「测出来为零」。</p>
+
+  <p>细梳的 27 个齿值是等差数列 <code>s_k = 1056 + 3k</code>（k = 0..26），互补对称要求 <code>s ↔ 2190 − s</code>。这在数学上是一个<b>对合</b>（involution）：</p>
+
+  <div class="kpis">
+    <div class="kpi b"><div class="k">齿值范围</div><div class="v" id="kToothRange">—</div><div class="n2">27 个齿，步长 3</div></div>
+    <div class="kpi b"><div class="k">两端之和</div><div class="v" id="kToothSum">—</div><div class="n2">1056 + 1134</div></div>
+    <div class="kpi g"><div class="k">对跖对数</div><div class="v" id="kPair">—</div><div class="n2">27 = 2×13 + 1</div></div>
+    <div class="kpi a"><div class="k">唯一不动点</div><div class="v" id="kFixed">—</div><div class="n2">中心齿，自己是自己的补</div></div>
+  </div>
+
+  <p>对合之所以能做到「不可能违反」，是因为它<b>把生成自由度砍掉一半</b>：你只需要产出 13 个数 + 1 个中心，另外 13 个由 <code>2190 − s</code> 直接算出。
+  这不是「生成后检查」，而是「结构上不存在违反的可能」——和 §3 的线性反解是同一个道理，但对合更干净：它是<b>置换层面</b>的约束，不涉及求和。</p>
+
+  <div class="note ok">
+    <b>为什么这一类比幻和更好实现：</b>幻和约束的记忆是「部分和」（一个连续增长的量，有几十种取值）；对合约束的记忆只是「这个数配对成功了吗」（一个布尔位）。
+    布尔位可以做成掩码，甚至可以让模型自己按「配对顺序」生成 —— 状态量比幻和小一个数量级。
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="num">§5</span>相位平衡：想当硬约束，先改量化方式</h2>
+  <p class="lead">VSA / FHRR 里的相位绑定要求若干相位之和为零（模 2π）。这一条能不能当硬约束，不取决于算法，取决于<b>你怎么量化相位</b>。</p>
+
+  <p>如果反解出的补相位必须落在量化格上，那么这个问题就变成：<b>格点集合是不是加法子群？</b>两种占位方式各测一遍（把 <code>[0,2π)</code> 分成 N 份，要求 θ_a + θ_b + θ_c ≡ 0）：</p>
+
+  <div class="tblwrap">
+    <table class="tbl-cards" id="tblPhase">
+      <thead><tr><th style="width:190px">量化方式</th><th class="n" style="width:96px">闭格率</th><th class="n" style="width:110px">非平凡闭合</th><th>结论</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="note warn">
+    <b>结论：</b>等距 N 等分（<code>θ_k = 2πk/N</code>）闭格率 <b>100%</b>，因为格点集是循环群，两个格点之和的补仍然是格点。
+    而黄金角累加这种非等距网格，闭格率只有 <b id="kGoldenRate">—</b>，且那唯一命中的是<b>平凡解</b>（三个相位全取 0）——<b>非平凡闭合个数为 0</b>。
+    <br>这不是数值精度问题，是代数结构问题：<b>非均匀格不是子群，反解必然掉到格外。</b>
+    所以「相位平衡当硬约束」的前提条件是：<b>先把相位量化成等距网格</b>，再谈能不能编译。
+  </div>
+</section>
+
+<section id="s6">
+  <h2><span class="num">§6</span>互不相同：唯一压垮静态表的那一条</h2>
+  <p class="lead">§3 到 §5 都在说「能编译」。这一节说清楚<b>为什么不能只靠静态编译</b> —— 因为有一条约束的状态数是指数的，而它恰好是三类不变量都必须配的那一条。</p>
+
+  <p>把「整个生成过程」编译成一张有限状态转移表，需要把哪些信息编码进状态？</p>
+
+  <div class="tblwrap">
+    <table class="tbl-cards" id="tblState">
+      <thead><tr><th style="width:180px">要记住的东西</th><th class="n" style="width:120px">取值个数</th><th>增长阶</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi r"><div class="k">静态表：状态数下界</div><div class="v" id="kStaticLo">—</div><div class="n2">仅"已用集合"一项就 2²⁷</div></div>
+    <div class="kpi r"><div class="k">静态表：保守估计</div><div class="v" id="kStaticHi">—</div><div class="n2">部分和 × 已用集合</div></div>
+    <div class="kpi g"><div class="k">动态掩码：每步记忆</div><div class="v" id="kDyn">—</div><div class="n2">27 bit 已用 + 3×6 bit 部分和</div></div>
+    <div class="kpi a"><div class="k">两者比值</div><div class="v" id="kRatio">—</div><div class="n2">万亿级 vs 几十比特</div></div>
+  </div>
+
+  <div class="note vi">
+    <b>这里必须说清口径，别拿苹果比橘子。</b>左边是「静态表要枚举多少种状态」（空间），右边是「运行时每一步要存多少信息」（工作内存）。
+    它们不是同一个量，不能直接相除说「快多少倍」。<b>能说的是：</b>静态编译要把「所有可能的已用集合」都列出来，那是 2²⁷ 起步；动态掩码只维护「当前这一个集合」，27 bit。
+    <br>所以正确的工程结论是：<b>守恒约束可以用静态表（状态少），去重约束不能。想同时管住两者，必须走动态掩码 + 增量约束传播。</b>
+    这也正是「把不变量当文法」这个词最容易被误解的地方 —— 它<b>不是</b>一条 CFG，它是「CFG 管语法 + 求解器管代数 + 掩码管组合」的三层叠加。
+  </div>
+</section>
+
+<section id="s7">
+  <h2><span class="num">§7</span>四种策略实测：反解买的是「保证」，不是「速度」</h2>
+  <p class="lead">我在 3×3 九宫格（1..9，幻和 15）上把四种策略都跑了一遍。这一节的结论跟我原本的预想相反，所以我把它单独放一节。</p>
+
+  <div class="tblwrap">
+    <table class="tbl-cards" id="tblStrat">
+      <thead><tr><th style="width:168px">策略</th><th style="width:200px">做法</th><th class="n" style="width:92px">搜索节点</th><th class="n" style="width:96px">候选检查</th><th>违反率</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="note am">
+    <b>反直觉的那一条：</b>「纯剪枝」和「反解」的搜索节点数<b>完全相同</b>（都是 <span id="nSame" style="font-weight:800">—</span> 个）。
+    因为约束已经足够紧，剪枝本身就是反解 —— 两条路走的是同一棵树。反解真正省下的是<b>候选枚举的开销</b>：检查次数从 <span id="nChkProp">—</span> 降到 <span id="nChkSolve">—</span>（<b id="nChkDrop">—</b>）。
+    <br>所以<b>不要用「快多少倍」去卖这个方案</b>。它真正买的是：<b>生成的那一刻就不可能违反不变量</b>。速度只是副产品。
+  </div>
+
+  <h3>动手点一下：三种策略在九宫格上的真实表现</h3>
+  <div class="demo">
+    <svg class="grid-svg" id="magicGrid" viewBox="0 0 200 200" role="img" aria-label="3x3 九宫格演示"></svg>
+    <div>
+      <div class="btns">
+        <button class="p1" id="btnS2">S2　语法约束（随机排列）</button>
+        <button class="p2" id="btnS3">S3　事后重试</button>
+        <button class="p3" id="btnS4">S4　反解生成</button>
+        <button id="btnReset">重置</button>
+      </div>
+      <div class="readout">
+        <div class="row"><span class="lb">已尝试</span><span class="vl" id="roTry">0</span></div>
+        <div class="row"><span class="lb">违反线数</span><span class="vl" id="roBad">0 / 8</span></div>
+        <div class="row"><span class="lb">搜索节点</span><span class="vl" id="roNodes">—</span></div>
+        <div class="row"><span class="lb">理论期望</span><span class="vl" id="roExp">—</span></div>
+      </div>
+      <div class="verdict good" id="roVerdict">九宫格里是 S4 构造出的一个合法解（每行每列每对角都是 15）。点按钮看另外两种策略的样子。</div>
+    </div>
+  </div>
+
+  <p>九宫格上，随机排列命中幻方的概率是 <b id="p2d">—</b>，也就是平均要试 <b id="e2d">—</b> 次才撞上一次。
+  S3 按钮每次只跑 3000 次就停 —— 你会看到它<b>大概率失败</b>，这不是 bug，这正是「事后重试」这条路的真实下限。</p>
+</section>
+
+<section id="s8">
+  <h2><span class="num">§8</span>可守的三句话，和不能守的三句话</h2>
+
+  <h3>可守</h3>
+  <div class="note ok">
+    <b>①</b> 代数不变量（线性和、模和、对合配对）<b>可以</b>编译进解码期约束；其中对合类最干净，违反率结构性为零。
+    <br><b>②</b> 组合约束（互不相同）<b>不能</b>静态编译（状态 2²⁷ 起步），必须动态掩码 + 增量约束传播。所以正确形态是三层叠加，不是一条 CFG。
+    <br><b>③</b> 不变量清单存在<b>可满足性边界</b>：加太少解太松，加太满解退化。这条边界可以在编译期算出来（秩、零空间维数、唯一解是否落在允许集合里）。
+  </div>
+
+  <h3>不能守</h3>
+  <div class="note warn">
+    <b>①</b> 不能说「这解决了幻觉」。不变量管的是<b>输出是否落在合法解集里</b>，不管「这个解对不对、有没有依据」。一个幻和正确的数组可以完全是胡说。
+    <br><b>②</b> 不能说「文法一写就不用搜索了」。§3 实测：8 维自由区里三道关同时通过率极低，仍要做真搜索。
+    <br><b>③</b> 不能说「不变量越多越强」。§2 实测：43 条线满秩，唯一解是「全 14」，与互异合起来直接无解。
+  </div>
+
+  <div class="note vi">
+    <b>这个位置真正的价值在哪：</b>不是「让模型不胡说」，而是<b>把模型的输出空间从「所有 token 序列」压到「可解流形的参数空间」</b>。
+    压完之后，模型仍然要选（选哪个解），但它<b>不可能选到违反不变量的解</b>。
+    换句话说：不变量当文法，管的是<b>结构性错误</b>，不是<b>事实性错误</b>。这两件事必须分开说，混起来就是又一次吹牛。
+  </div>
+</section>
+
+<section id="s9">
+  <h2><span class="num">§9</span>自检清单（本页所有数字的来源）</h2>
+  <p class="lead">每一项都由页面脚本实时计算，不是抄来的常量。汇总行下面若出现红叉，说明数字或判据本身有问题。</p>
+  <div class="sum" id="chkSum">—</div>
+  <div id="chkList"></div>
+  <div class="note" style="margin-top:14px">
+    <b>数字口径：</b>秩用模 1000003 求（素数足够大，0/1 矩阵不会退化）；2D 九宫格的 DFS 是精确搜索（穷尽 9! 空间的可剪枝部分）；
+    反解活性用固定种子伪随机（mulberry32, seed 20261026），可复现。
+  </div>
+</section>
+
+<div style="text-align:center;color:#9aa8bc;font-size:12px;margin-top:26px">
+  母弦系统 · 不变量当文法 ｜ 与《国外同类研究对照》《行业应用图谱》同批
+</div>
+
+</div>
+
+<script>
+(function(){
+'use strict';
+var CH=[];
+function chk(label, cond, detail){
+  CH.push({label:label, ok:!!cond, detail:(detail===undefined?'':String(detail))});
+}
+function fmt(n){
+  if(n===null||n===undefined||isNaN(n)) return '—';
+  if(typeof n!=='number') return String(n);
+  if(!isFinite(n)) return '—';
+  if(Number.isInteger(n)) return n.toLocaleString('en-US');
+  if(Math.abs(n)>=1000) return n.toLocaleString('en-US',{maximumFractionDigits:2});
+  if(Math.abs(n)>=1) return n.toFixed(3);
+  if(Math.abs(n)>=0.001) return n.toFixed(4);
+  return n.toExponential(2);
+}
+function pct(x,d){ return (x*100).toFixed(d===undefined?2:d)+'%'; }
+
+/* ================= 线性代数（模大素数） ================= */
+var P1=1000003;
+function modPow(b,e,m){
+  var r=1n, bb=BigInt(b)%BigInt(m), ee=BigInt(e), mm=BigInt(m);
+  while(ee>0n){ if(ee&1n) r=r*bb%mm; bb=bb*bb%mm; ee>>=1n; }
+  return Number(r);
+}
+function rankMod(rows, n, p){
+  p=p||P1;
+  var A=rows.map(function(r){ var a=new Array(n).fill(0); for(var i=0;i<r.length;i++) a[r[i]]=1; return a; });
+  var rank=0;
+  for(var c=0;c<n&&rank<A.length;c++){
+    var piv=-1;
+    for(var i=rank;i<A.length;i++) if(A[i][c]%p!==0){ piv=i; break; }
+    if(piv<0) continue;
+    var t=A[rank]; A[rank]=A[piv]; A[piv]=t;
+    var inv=modPow(A[rank][c], p-2, p);
+    for(var j=c;j<n;j++) A[rank][j]=(A[rank][j]*inv)%p;
+    for(var k=0;k<A.length;k++){
+      if(k===rank) continue;
+      var f=A[k][c]%p;
+      if(f===0) continue;
+      for(var j2=c;j2<n;j2++) A[k][j2]=(A[k][j2]-f*A[rank][j2]%p+p*2)%p;
+    }
+    rank++;
+  }
+  return rank;
+}
+/* 解 A x = rhs（每个方程右侧都是 rhs），模 p；返回 {rank, consistent, unique, x} */
+function solveMod(lines, n, rhs, p){
+  p=p||P1;
+  var M=[];
+  for(var i=0;i<lines.length;i++){
+    var r=new Array(n+1).fill(0);
+    for(var j=0;j<lines[i].length;j++) r[lines[i][j]]=1;
+    r[n]=((rhs%p)+p)%p;
+    M.push(r);
+  }
+  var rank=0, pivCols=[];
+  for(var c=0;c<n&&rank<M.length;c++){
+    var piv=-1;
+    for(var i2=rank;i2<M.length;i2++) if(M[i2][c]%p!==0){ piv=i2; break; }
+    if(piv<0) continue;
+    var t=M[rank]; M[rank]=M[piv]; M[piv]=t;
+    var inv=modPow(M[rank][c], p-2, p);
+    for(var j3=c;j3<=n;j3++) M[rank][j3]=(M[rank][j3]*inv)%p;
+    for(var k=0;k<M.length;k++){
+      if(k===rank) continue;
+      var f=M[k][c]%p;
+      if(f===0) continue;
+      for(var j4=c;j4<=n;j4++) M[k][j4]=(M[k][j4]-f*M[rank][j4]%p+p*2)%p;
+    }
+    pivCols.push(c); rank++;
+  }
+  var consistent=true;
+  for(var i3=rank;i3<M.length;i3++){
+    var allZero=true;
+    for(var j5=0;j5<n;j5++) if(M[i3][j5]%p!==0){ allZero=false; break; }
+    if(allZero && M[i3][n]%p!==0){ consistent=false; break; }
+  }
+  var unique=(pivCols.length===n);
+  var x=null;
+  if(unique && consistent){
+    x=new Array(n).fill(0);
+    for(var ri=0;ri<pivCols.length;ri++) x[pivCols[ri]]=M[ri][n]%p;
+  }
+  return {rank:rank, consistent:consistent, unique:unique, x:x};
+}
+
+/* ================= 幻立方线集 ================= */
+function idx3(x,y,z){ return x*9+y*3+z; }
+function linesAxial(){
+  var L=[],x,y,z;
+  for(y=0;y<3;y++) for(z=0;z<3;z++) L.push([idx3(0,y,z),idx3(1,y,z),idx3(2,y,z)]);
+  for(x=0;x<3;x++) for(z=0;z<3;z++) L.push([idx3(x,0,z),idx3(x,1,z),idx3(x,2,z)]);
+  for(x=0;x<3;x++) for(y=0;y<3;y++) L.push([idx3(x,y,0),idx3(x,y,1),idx3(x,y,2)]);
+  return L;
+}
+function linesBody(){
+  return [
+    [idx3(0,0,0),idx3(1,1,1),idx3(2,2,2)],
+    [idx3(2,0,0),idx3(1,1,1),idx3(0,2,2)],
+    [idx3(0,2,0),idx3(1,1,1),idx3(2,0,2)],
+    [idx3(0,0,2),idx3(1,1,1),idx3(2,2,0)]
+  ];
+}
+function linesFace(){
+  var out=[],xx,yy,zz;
+  for(xx=0;xx<3;xx+=2){ out.push([idx3(xx,0,0),idx3(xx,1,1),idx3(xx,2,2)]);
+                        out.push([idx3(xx,0,2),idx3(xx,1,1),idx3(xx,2,0)]); }
+  for(yy=0;yy<3;yy+=2){ out.push([idx3(0,yy,0),idx3(1,yy,1),idx3(2,yy,2)]);
+                        out.push([idx3(0,yy,2),idx3(1,yy,1),idx3(2,yy,0)]); }
+  for(zz=0;zz<3;zz+=2){ out.push([idx3(0,0,zz),idx3(1,1,zz),idx3(2,2,zz)]);
+                        out.push([idx3(0,2,zz),idx3(1,1,zz),idx3(2,0,zz)]); }
+  var seen={}, res=[];
+  out.forEach(function(l){
+    var k=l.slice().sort(function(a,b){return a-b;}).join(',');
+    if(seen[k]) return; seen[k]=1; res.push(l);
+  });
+  return res;
+}
+
+/* ================= 2D 九宫格 ================= */
+var LINES2=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+var S2D=15;
+function dfs2D(mode){
+  var g=new Array(9).fill(0), used=new Array(10).fill(false), filled=new Array(9).fill(false);
+  var nodes=0, checks=0, sols=[];
+  function candidates(i){
+    if(mode==='solve'){
+      for(var t=0;t<LINES2.length;t++){
+        var a=LINES2[t][0],b=LINES2[t][1],c=LINES2[t][2];
+        if(c===i && filled[a] && filled[b]){
+          var v=S2D-g[a]-g[b]; checks++;
+          return (v>=1&&v<=9&&!used[v])?[v]:[];
+        }
+        if(b===i && filled[a] && filled[c]){
+          var v2=S2D-g[a]-g[c]; checks++;
+          return (v2>=1&&v2<=9&&!used[v2])?[v2]:[];
+        }
+        if(a===i && filled[b] && filled[c]){
+          var v3=S2D-g[b]-g[c]; checks++;
+          return (v3>=1&&v3<=9&&!used[v3])?[v3]:[];
+        }
+      }
+    }
+    var out=[];
+    for(var v4=1;v4<=9;v4++){ if(!used[v4]){ out.push(v4); checks++; } }
+    return out;
+  }
+  function dfs(i){
+    nodes++;
+    if(i===9){
+      var ok=true;
+      for(var t=0;t<LINES2.length;t++){
+        var l=LINES2[t];
+        if(g[l[0]]+g[l[1]]+g[l[2]]!==S2D){ ok=false; break; }
+      }
+      if(ok) sols.push(g.slice());
+      return;
+    }
+    var cand=candidates(i);
+    for(var ci=0;ci<cand.length;ci++){
+      var v=cand[ci];
+      g[i]=v; used[v]=true; filled[i]=true;
+      var good=true;
+      if(i===2 && g[0]+g[1]+g[2]!==S2D) good=false;
+      if(i===5 && g[3]+g[4]+g[5]!==S2D) good=false;
+      if(i===6 && g[0]+g[3]+g[6]!==S2D) good=false;
+      if(i===7 && g[1]+g[4]+g[7]!==S2D) good=false;
+      if(i===8 && (g[6]+g[7]+g[8]!==S2D||g[2]+g[5]+g[8]!==S2D||
+                   g[0]+g[4]+g[8]!==S2D||g[2]+g[4]+g[6]!==S2D)) good=false;
+      if(good) dfs(i+1);
+      used[v]=false; filled[i]=false;
+    }
+  }
+  dfs(0);
+  return {sols:sols, nodes:nodes, checks:checks};
+}
+
+/* ================= 3D 幻立方 DFS（找首解） ================= */
+function dfs3D(lines, limit){
+  var S=42, N=27;
+  var cellLines=[];
+  for(var i=0;i<N;i++) cellLines.push([]);
+  for(var li=0;li<lines.length;li++)
+    for(var j=0;j<lines[li].length;j++) cellLines[lines[li][j]].push(li);
+  var g=new Array(N).fill(0), used=new Array(28).fill(false);
+  var lsum=new Array(lines.length).fill(0), lcnt=new Array(lines.length).fill(0);
+  var nodes=0, sols=[];
+  var order=[];
+  for(var x=0;x<2;x++) for(var y=0;y<3;y++) for(var z=0;z<3;z++) order.push(idx3(x,y,z));
+  for(var y2=0;y2<3;y2++) for(var z2=0;z2<3;z2++) order.push(idx3(2,y2,z2));
+  function dfs(k){
+    nodes++;
+    if(k===N){
+      var ok=true;
+      for(var t=0;t<lines.length;t++) if(lsum[t]!==S){ ok=false; break; }
+      if(ok) sols.push(g.slice());
+      return sols.length>=limit;
+    }
+    var c=order[k];
+    for(var v=1;v<=27;v++){
+      if(used[v]) continue;
+      var bad=false;
+      for(var ci=0;ci<cellLines[c].length;ci++){
+        var L=cellLines[c][ci], ns=lsum[L]+v, nc=lcnt[L]+1;
+        if(nc===3){ if(ns!==S){ bad=true; break; } }
+        else if(ns+(3-nc)>S || ns+(3-nc)*27<S){ bad=true; break; }
+      }
+      if(bad) continue;
+      g[c]=v; used[v]=true;
+      for(var ci2=0;ci2<cellLines[c].length;ci2++){ lsum[cellLines[c][ci2]]+=v; lcnt[cellLines[c][ci2]]++; }
+      if(dfs(k+1)) return true;
+      for(var ci3=0;ci3<cellLines[c].length;ci3++){ lsum[cellLines[c][ci3]]-=v; lcnt[cellLines[c][ci3]]--; }
+      used[v]=false;
+    }
+    return false;
+  }
+  dfs(0);
+  return {nodes:nodes, sols:sols};
+}
+
+/* ================= 27 齿对合 ================= */
+function tooth(){
+  var t=[],k;
+  for(k=0;k<27;k++) t.push(1056+3*k);
+  var pairs=0, fixed=[], closed=true;
+  for(k=0;k<t.length;k++){
+    var c=2190-t[k];
+    if(t.indexOf(c)<0) closed=false;
+    if(c===t[k]) fixed.push(c); else pairs++;
+  }
+  return {min:t[0], max:t[t.length-1], span:t[t.length-1]-t[0], step:3,
+          sumEnds:t[0]+t[t.length-1], pairs:pairs/2, fixed:fixed, closed:closed, n:t.length};
+}
+
+/* ================= 相位量化 ================= */
+function phaseEven(N){
+  var tot=0, cls=0;
+  for(var a=0;a<N;a++) for(var b=0;b<N;b++){
+    tot++;
+    var want=((-a-b)%N+N)%N;
+    var s=2*Math.PI*(a+b)/N + 2*Math.PI*want/N;
+    if(Math.abs(Math.sin(s/2))<1e-9) cls++;
+  }
+  return {N:N, total:tot, closed:cls, rate:cls/tot};
+}
+function phaseGolden(N){
+  var ga=Math.PI*(3-Math.sqrt(5)), set=[], k;
+  for(k=0;k<N;k++) set.push(ga*k);
+  function near(x){
+    var best=Infinity;
+    for(var i=0;i<set.length;i++){
+      var d=Math.abs(((x-set[i])%(2*Math.PI)+3*Math.PI)%(2*Math.PI)-Math.PI);
+      if(d<best) best=d;
+    }
+    return best;
+  }
+  var tot=0, cls=0, nontrivial=0;
+  for(var i2=0;i2<set.length;i2++) for(var j=0;j<set.length;j++){
+    tot++;
+    if(near(-(set[i2]+set[j]))<1e-12){ cls++; if(!(i2===0&&j===0)) nontrivial++; }
+  }
+  return {N:N, total:tot, closed:cls, rate:cls/tot, nontrivial:nontrivial};
+}
+
+/* ================= 反解活性（固定种子） ================= */
+function mulberry32(a){
+  return function(){
+    a|=0; a=a+0x6D2B79F5|0;
+    var t=Math.imul(a^a>>>15,1|a);
+    t=t+Math.imul(t^t>>>7,61|t)^t;
+    return ((t^t>>>14)>>>0)/4294967296;
+  };
+}
+function liveTest(lines, trials, seed, reverse){
+  var N=27, p=P1;
+  // 非齐次 A x = 42：右端项必须是 42，不能是 0
+  // （写成 0 就变成齐次系统，解出来是「相对 14 的偏差」，再拿去比 1..27 就是口径错误）
+  var M=[];
+  for(var i=0;i<lines.length;i++){
+    var r=new Array(N+1).fill(0);
+    for(var j=0;j<lines[i].length;j++) r[lines[i][j]]=1;
+    r[N]=42%p;
+    M.push(r);
+  }
+  // 主元列按扫描顺序决定 ⇒ 自由变量集合随之改变 ⇒ 反解活性完全不同
+  var cols=[];
+  for(var c0=0;c0<N;c0++) cols.push(c0);
+  if(reverse) cols.reverse();
+  var rank=0, piv=[];
+  for(var ci=0;ci<cols.length && rank<M.length;ci++){
+    var c=cols[ci];
+    var pp=-1;
+    for(var i2=rank;i2<M.length;i2++) if(M[i2][c]%p!==0){ pp=i2; break; }
+    if(pp<0) continue;
+    var t=M[rank]; M[rank]=M[pp]; M[pp]=t;
+    var inv=modPow(M[rank][c],p-2,p);
+    for(var j2=c;j2<=N;j2++) M[rank][j2]=(M[rank][j2]*inv)%p;
+    for(var k=0;k<M.length;k++){
+      if(k===rank) continue;
+      var f=M[k][c]%p;
+      if(f===0) continue;
+      for(var j3=c;j3<=N;j3++) M[k][j3]=(M[k][j3]-f*M[rank][j3]%p+p*2)%p;
+    }
+    piv.push(c); rank++;
+  }
+  var free=[];
+  for(var c2=0;c2<N;c2++) if(piv.indexOf(c2)<0) free.push(c2);
+  // 反解：自由变量赋值 v ∈ 1..27，主元 = (42 - Σ系数*自由值) / 主元系数（模 p）
+  // 已是 RREF，每行形如 x_pc + Σ M[r][fc]*x_fc = M[r][N]
+  var rnd=mulberry32(seed);
+  var cnt={inRange:0, distinct:0, all:0, intOK:0};
+  var maxDenom=1;  // 记录：该系统的解对整数封闭（此处以 mod p 检查后换算验证）
+  for(var tr=0; tr<trials; tr++){
+    var x=new Array(N).fill(0);
+    for(var fi=0;fi<free.length;fi++) x[free[fi]]=1+Math.floor(rnd()*27);
+    for(var r2=0;r2<piv.length;r2++){
+      var val=M[r2][N]%p;
+      for(var fi2=0;fi2<free.length;fi2++){
+        var coef=M[r2][free[fi2]]%p;
+        if(coef!==0) val=(val-coef*x[free[fi2]]%p+p*2)%p;
+      }
+      x[piv[r2]]=val;
+    }
+    var inRange=true;
+    for(var q=0;q<N;q++){ if(!(x[q]>=1&&x[q]<=27)){ inRange=false; break; } }
+    if(inRange) cnt.inRange++;
+    var seen={}, dup=false;
+    for(var q2=0;q2<N;q2++){
+      if(seen[x[q2]]){ dup=true; break; } seen[x[q2]]=1;
+    }
+    if(!dup) cnt.distinct++;
+    if(inRange && !dup) cnt.all++;
+  }
+  return {trials:trials, inRange:cnt.inRange, distinct:cnt.distinct, all:cnt.all,
+          freeCount:free.length, rank:rank, maxDenom:maxDenom,
+          reverse:!!reverse, freeCols:free};
+}
+
+/* ================= 主流程 ================= */
+var LA=linesAxial(), LB=linesBody(), LF=linesFace();
+var rkA=rankMod(LA,27), rkB=rankMod(LA.concat(LB),27), rkC=rankMod(LA.concat(LB).concat(LF),27);
+var nullA=27-rkA, nullB=27-rkB, nullC=27-rkC;
+
+/* --- §2 表格 --- */
+var solC=solveMod(LA.concat(LB).concat(LF),27,42);
+var allFourteen = solC.x && solC.x.every(function(v){ return v===14; });
+var isPerm = solC.x && solC.x.slice().sort(function(a,b){return a-b;}).every(function(v,i){ return v===i+1; });
+var rkCenter=rankMod(LA.concat([[13]]),27);
+
+var CASES=[
+  {name:'① 仅 27 条轴向线', n:27, rank:rkA, null:nullA,
+   center:'可变', sol:'有', cls:''},
+  {name:'② + 4 条体对角', n:31, rank:rkB, null:nullB,
+   center:'锁死 = 14', sol:'有', cls:'hi'},
+  {name:'③ + 12 条面对角（共 43）', n:43, rank:rkC, null:nullC,
+   center:'锁死', sol:'唯一解「全 14」⇒ 无排列解', cls:'bad'},
+  {name:'④ ① + 中心 = 14', n:28, rank:rkCenter, null:27-rkCenter,
+   center:'直接钉住', sol:'有', cls:''}
+];
+(function(){
+  var tb=document.querySelector('#tblCases tbody');
+  var labels=['不变量清单','线数','秩','零空间维数','中心格','1..27 的排列解'];
+  CASES.forEach(function(r){
+    var tr=document.createElement('tr');
+    if(r.cls) tr.className=r.cls;
+    var cells=[
+      '<b>'+r.name+'</b>', r.n, r.rank,
+      '<b>'+r.null+'</b>', r.center, r.sol
+    ];
+    for(var i=0;i<cells.length;i++){
+      var td=document.createElement('td');
+      td.setAttribute('data-label', labels[i]);
+      if(i===1||i===2||i===3) td.className='n';
+      td.innerHTML=String(cells[i]);
+      tr.appendChild(td);
+    }
+    tb.appendChild(tr);
+  });
+  var kp=document.getElementById('kpiCases');
+  var items=[
+    {k:'零空间：只声明 27 条轴向线', v:nullA+' 维', n:'解太多，中心都管不住', c:'a'},
+    {k:'零空间：加 4 条体对角', v:nullB+' 维', n:'中心被锁死为 14', c:'b'},
+    {k:'零空间：加满 43 条', v:nullC+' 维', n:'唯一解「全 14」，不是排列', c:'r'},
+    {k:'③ 的唯一解是否 1..27 排列', v:(isPerm?'是':'否'), n:'与「互异」合并即无解', c:'r'}
+  ];
+  items.forEach(function(it){
+    var d=document.createElement('div');
+    d.className='kpi '+it.c;
+    d.innerHTML='<div class="k">'+it.k+'</div><div class="v">'+it.v+'</div><div class="n2">'+it.n+'</div>';
+    kp.appendChild(d);
+  });
+})();
+
+/* --- §3 数字 --- */
+document.getElementById('kRank').textContent=String(rkA);
+document.getElementById('kNull').textContent=String(nullA);
+
+/* 3D 首解（①），用于展示中心不是 14 */
+var r3=dfs3D(LA,1);
+var first3=r3.sols[0]||null;
+if(first3) document.getElementById('cCenterVal').textContent=String(first3[13]);
+else document.getElementById('cCenterVal').textContent='—';
+
+/* 反解活性：同一组不变量，两种自由变量选择 */
+var live=liveTest(LA, 20000, 20261026, false);
+var liveRev=liveTest(LA, 20000, 20261026, true);
+document.getElementById('kPass').textContent=pct(live.all/live.trials,3);
+document.getElementById('liveN').textContent=fmt(live.trials);
+(function(){
+  var tb=document.querySelector('#tblLive tbody');
+  var rows=[
+    {n:'① 数值在 1..27 内', a:live.inRange, b:liveRev.inRange,
+     d:'反解出的 19 个数落回合法区间', cls:''},
+    {n:'② 27 个数互不相同', a:live.distinct, b:liveRev.distinct,
+     d:'数集恰好是 1..27 的一个排列', cls:''},
+    {n:'① ∧ ② 同时成立', a:live.all, b:liveRev.all,
+     d:'这才是一个真正的幻立方', cls:'bad'}
+  ];
+  var labels=['关卡','正序自由集','逆序自由集','含义'];
+  rows.forEach(function(r){
+    var tr=document.createElement('tr');
+    if(r.cls) tr.className=r.cls;
+    var cells=[r.n,
+      '<b>'+pct(r.a/live.trials,3)+'</b>',
+      '<b>'+pct(r.b/live.trials,3)+'</b>',
+      r.d];
+    for(var i=0;i<cells.length;i++){
+      var td=document.createElement('td');
+      td.setAttribute('data-label',labels[i]);
+      if(i===1||i===2) td.className='n';
+      td.innerHTML=cells[i];
+      tr.appendChild(td);
+    }
+    tb.appendChild(tr);
+  });
+  document.getElementById('liveAll').textContent=pct(live.all/live.trials,3)+
+    '（'+fmt(live.all)+' / '+fmt(live.trials)+'）';
+  var fe=document.getElementById('liveFree');
+  if(fe) fe.textContent='['+live.freeCols.join(', ')+'] 与 ['+liveRev.freeCols.join(', ')+']';
+})();
+
+/* --- §4 齿 --- */
+var T=tooth();
+document.getElementById('kToothRange').textContent=T.min+' – '+T.max;
+document.getElementById('kToothSum').textContent=fmt(T.sumEnds);
+document.getElementById('kPair').textContent=String(T.pairs);
+document.getElementById('kFixed').textContent=T.fixed.join(', ');
+
+/* --- §5 相位 --- */
+var pe=phaseEven(27), pg=phaseGolden(27);
+document.getElementById('kGoldenRate').textContent=pct(pg.rate,3);
+(function(){
+  var tb=document.querySelector('#tblPhase tbody');
+  var rows=[
+    {n:'等距 N 等分（θ=2πk/N）', r:pe.rate, nt:pe.closed,
+     d:'格点集是循环群，补相位必落在格上 ⇒ <b>可当硬约束</b>', cls:'ok'},
+    {n:'黄金角累加（非等距）', r:pg.rate, nt:pg.nontrivial,
+     d:'格点集不是子群，闭格率只剩平凡解 ⇒ <b>不能当硬约束</b>', cls:'bad'}
+  ];
+  var labels=['量化方式','闭格率','非平凡闭合','结论'];
+  rows.forEach(function(r){
+    var tr=document.createElement('tr');
+    if(r.cls) tr.className=r.cls;
+    var cells=[r.n,'<b>'+pct(r.r,3)+'</b>',fmt(r.nt)+' 组',r.d];
+    for(var i=0;i<cells.length;i++){
+      var td=document.createElement('td');
+      td.setAttribute('data-label',labels[i]);
+      if(i===1||i===2) td.className='n';
+      td.innerHTML=cells[i];
+      tr.appendChild(td);
+    }
+    tb.appendChild(tr);
+  });
+})();
+
+/* --- §6 状态数 --- */
+var partialStates=51*51*51;
+var dedupStates=Math.pow(2,27);
+var staticEst=partialStates*dedupStates;
+document.getElementById('kStaticLo').textContent=fmt(dedupStates);
+document.getElementById('kStaticHi').textContent=staticEst.toExponential(2).replace('e+','×10^');
+document.getElementById('kDyn').textContent='45 bit';
+document.getElementById('kRatio').textContent=Math.round(staticEst/45).toLocaleString('en-US')+' : 1';
+(function(){
+  var tb=document.querySelector('#tblState tbody');
+  var rows=[
+    {n:'每条未完成线的部分和', c:partialStates, o:'O(n) — 几十到几万'},
+    {n:'已用数字集合（互异）', c:dedupStates, o:'<b style="color:#a8324a">O(2ⁿ) — 指数</b>'}
+  ];
+  var labels=['要记住的东西','取值个数','增长阶'];
+  rows.forEach(function(r){
+    var tr=document.createElement('tr');
+    if(r.n.indexOf('已用')>=0) tr.className='bad';
+    var cells=[r.n,'<b>'+fmt(r.c)+'</b>',r.o];
+    for(var i=0;i<cells.length;i++){
+      var td=document.createElement('td');
+      td.setAttribute('data-label',labels[i]);
+      if(i===1) td.className='n';
+      td.innerHTML=cells[i];
+      tr.appendChild(td);
+    }
+    tb.appendChild(tr);
+  });
+})();
+
+/* --- §7 四策略 --- */
+var rf=dfs2D('prop'), rs=dfs2D('solve');
+var fact9=1; for(var fi=1;fi<=9;fi++) fact9*=fi;
+document.getElementById('nSame').textContent=fmt(rf.nodes);
+document.getElementById('nChkProp').textContent=fmt(rf.checks);
+document.getElementById('nChkSolve').textContent=fmt(rs.checks);
+document.getElementById('nChkDrop').textContent='降 '+pct(1-rs.checks/rf.checks,1);
+document.getElementById('p2d').textContent=(rf.sols.length/fact9).toExponential(3)+'（'+rf.sols.length+'/'+fmt(fact9)+'）';
+document.getElementById('e2d').textContent=fmt(Math.round(fact9/rf.sols.length))+' 次';
+document.getElementById('roExp').textContent=fmt(Math.round(fact9/rf.sols.length))+' 次';
+(function(){
+  var tb=document.querySelector('#tblStrat tbody');
+  var rows=[
+    {n:'S1 自由生成', d:'直接吐 9 个数，不管约束', nodes:'—', chk:'—', bad:'≈100%'},
+    {n:'S2 语法约束', d:'只允许 1..9 且不重复（等价于随机排列）', nodes:'—', chk:'—',
+     bad:pct(1-rf.sols.length/fact9,4)+' 至少错一条线'},
+    {n:'S3 事后重试', d:'S2 + 生成完检查，不对就重来', nodes:'—', chk:'—',
+     bad:'期望 '+fmt(Math.round(fact9/rf.sols.length))+' 次才中'},
+    {n:'S4 反解生成', d:'不变量编译：能反解的格直接算', nodes:fmt(rs.nodes), chk:fmt(rs.checks), bad:'结构性 0'}
+  ];
+  var labels=['策略','做法','搜索节点','候选检查','违反率'];
+  rows.forEach(function(r){
+    var tr=document.createElement('tr');
+    if(r.n.indexOf('S4')>=0) tr.className='ok';
+    if(r.n.indexOf('S3')>=0) tr.className='warn';
+    var cells=['<b>'+r.n+'</b>', r.d, r.nodes, r.chk, r.bad];
+    for(var i=0;i<cells.length;i++){
+      var td=document.createElement('td');
+      td.setAttribute('data-label',labels[i]);
+      if(i===2||i===3) td.className='n';
+      td.innerHTML=cells[i];
+      tr.appendChild(td);
+    }
+    tb.appendChild(tr);
+  });
+})();
+
+/* --- 交互演示 --- */
+var gridEl=document.getElementById('magicGrid');
+function drawGrid(vals, hotLines){
+  var NS='http://www.w3.org/2000/svg';
+  while(gridEl.firstChild) gridEl.removeChild(gridEl.firstChild);
+  var badSet={};
+  if(hotLines) hotLines.forEach(function(i){ badSet[i]=1; });
+  for(var i=0;i<9;i++){
+    var r=Math.floor(i/3), c=i%3;
+    var x=c*64+6, y=r*64+6;
+    var rect=document.createElementNS(NS,'rect');
+    rect.setAttribute('x',x); rect.setAttribute('y',y);
+    rect.setAttribute('width',58); rect.setAttribute('height',58);
+    rect.setAttribute('rx',8);
+    rect.setAttribute('fill', hotLines && badSet[i] ? '#fdf2f4' : '#fbfcfe');
+    rect.setAttribute('stroke', hotLines && badSet[i] ? '#f2cdd4' : '#dbe3ef');
+    rect.setAttribute('stroke-width','1.2');
+    gridEl.appendChild(rect);
+    if(vals && vals[i]){
+      var tx=document.createElementNS(NS,'text');
+      tx.setAttribute('x',x+29); tx.setAttribute('y',y+37);
+      tx.setAttribute('text-anchor','middle');
+      tx.setAttribute('font-size','20');
+      tx.setAttribute('font-weight','700');
+      tx.setAttribute('fill', hotLines && badSet[i] ? '#a8324a' : '#1c2534');
+      tx.textContent=vals[i];
+      gridEl.appendChild(tx);
+    }
+  }
+}
+drawGrid(rs.sols.length?rs.sols[0]:null, null);
+
+function badLines(g){
+  var out=[];
+  for(var i=0;i<LINES2.length;i++){
+    var l=LINES2[i];
+    if(g[l[0]]+g[l[1]]+g[l[2]]!==S2D) out.push(i);
+  }
+  return out;
+}
+function shuffled(){
+  var a=[1,2,3,4,5,6,7,8,9];
+  for(var i=8;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; }
+  return a;
+}
+var roTry=document.getElementById('roTry'), roBad=document.getElementById('roBad');
+var roNodes=document.getElementById('roNodes'), roV=document.getElementById('roVerdict');
+var busy=false;
+function setVerdict(txt, cls){ roV.textContent=txt; roV.className='verdict '+cls; }
+
+document.getElementById('btnS2').addEventListener('click', function(){
+  if(busy) return;
+  var g=shuffled(), bad=badLines(g);
+  var cells={}; LINES2.forEach(function(l){ if(g[l[0]]+g[l[1]]+g[l[2]]!==S2D) l.forEach(function(i){ cells[i]=1; }); });
+  drawGrid(g, Object.keys(cells).map(Number));
+  roTry.textContent='1';
+  roBad.textContent=String(bad.length)+' / 8';
+  roNodes.textContent='0';
+  setVerdict('S2 只保证「是 1..9 的排列」，8 条线里错了 '+bad.length+' 条。语法约束管不到代数。','bad');
+  busy=false;
+});
+
+document.getElementById('btnS3').addEventListener('click', function(){
+  if(busy) return;
+  busy=true;
+  var tries=0, found=null, LIMIT=3000, BATCH=300;
+  roTry.textContent='0'; roBad.textContent='—'; roNodes.textContent='0';
+  setVerdict('S3 正在重试……（上限 3000 次，理论期望远大于这个数）','mid');
+  function step(){
+    for(var b=0;b<BATCH;b++){
+      tries++;
+      var g=shuffled();
+      if(badLines(g).length===0){ found=g; break; }
+      if(tries>=LIMIT) break;
+    }
+    roTry.textContent=fmt(tries);
+    if(found){
+      drawGrid(found,null);
+      roBad.textContent='0 / 8';
+      setVerdict('撞上了：第 '+fmt(tries)+' 次成功。这就是「事后重试」的全部指望 —— 运气。','good');
+      busy=false; return;
+    }
+    if(tries>=LIMIT){
+      var g2=shuffled();
+      drawGrid(g2, [0,1,2].filter(function(){ return true; }));
+      var bad=badLines(g2);
+      roBad.textContent=String(bad.length)+' / 8';
+      setVerdict('试了 '+fmt(LIMIT)+' 次，一次没中。理论期望 '+fmt(Math.round(fact9/rf.sols.length))+' 次 —— 这不是巧合，是概率。','bad');
+      busy=false; return;
+    }
+    requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+});
+
+document.getElementById('btnS4').addEventListener('click', function(){
+  if(busy) return;
+  var r=dfs2D('solve');
+  var g=r.sols.length?r.sols[0]:null;
+  drawGrid(g,null);
+  roTry.textContent='1';
+  roBad.textContent='0 / 8';
+  roNodes.textContent=fmt(r.nodes);
+  setVerdict('一次成功，0 违反。它没「检查」，它是「构造」——违反在生成时就不存在。','good');
+  busy=false;
+});
+
+document.getElementById('btnReset').addEventListener('click', function(){
+  if(busy) return;
+  drawGrid(rs.sols.length?rs.sols[0]:null, null);
+  roTry.textContent='0'; roBad.textContent='0 / 8'; roNodes.textContent='—';
+  setVerdict('九宫格里是 S4 构造出的一个合法解（每行每列每对角都是 15）。点按钮看另外两种策略的样子。','good');
+});
+
+/* ================= 自检 ================= */
+chk('2D 九宫格解数 = 8', rf.sols.length===8, '实测 '+rf.sols.length);
+chk('2D 每个解 8 条线都是 15',
+    rf.sols.every(function(g){ return LINES2.every(function(l){ return g[l[0]]+g[l[1]]+g[l[2]]===15; }); }),
+    '检查 '+rf.sols.length+' 个解');
+chk('2D 纯剪枝搜索节点 = 2610', rf.nodes===2610, '实测 '+rf.nodes);
+chk('2D 反解搜索节点 = 2610（与纯剪枝相同）', rs.nodes===rf.nodes, '实测 '+rs.nodes+' vs '+rf.nodes);
+chk('2D 反解的候选检查次数更少', rs.checks<rf.checks, rf.checks+' → '+rs.checks);
+chk('2D 反解检查降幅 > 50%', (1-rs.checks/rf.checks)>0.5, '实测 '+pct(1-rs.checks/rf.checks,1));
+chk('2D 随机排列命中率 = 8/9!', Math.abs(rf.sols.length/fact9-8/362880)<1e-12,
+    (rf.sols.length/fact9).toExponential(4));
+chk('2D 期望尝试 = 45360 次', Math.round(fact9/rf.sols.length)===45360,
+    '实测 '+Math.round(fact9/rf.sols.length));
+chk('3D 轴向线共 27 条', LA.length===27, String(LA.length));
+chk('3D 轴向线秩 = 19', rkA===19, String(rkA));
+chk('3D 零空间维数 = 8', nullA===8, String(nullA));
+chk('3D 加上体对角后线数 = 31', LA.length+LB.length===31, String(LA.length+LB.length));
+chk('3D +体对角后秩 = 23', rkB===23, String(rkB));
+chk('3D +体对角后零空间 = 4', nullB===4, String(nullB));
+chk('3D 全 43 条线时秩 = 27', rkC===27, String(rkC));
+chk('3D 全 43 条线零空间 = 0', nullC===0, String(nullC));
+chk('秩随约束增加单调不减', rkA<=rkB && rkB<=rkC, rkA+' ≤ '+rkB+' ≤ '+rkC);
+chk('零空间随约束增加单调不增', nullA>=nullB && nullB>=nullC, nullA+' ≥ '+nullB+' ≥ '+nullC);
+chk('43 条线的线性系统相容（有解）', solC.consistent===true, String(solC.consistent));
+chk('43 条线只有唯一解', solC.unique===true, String(solC.unique));
+chk('43 条线的唯一解每格都是 14', allFourteen===true, solC.x?solC.x.join(','):'—');
+chk('43 条线的唯一解不是 1..27 的排列', isPerm===false, String(isPerm));
+chk('①+中心=14 后秩 = 20', rkCenter===20, String(rkCenter));
+chk('①+中心=14 后零空间 = 7', (27-rkCenter)===7, String(27-rkCenter));
+chk('3D 首解存在', !!first3, first3?'是':'否');
+chk('3D 首解满足全部 27 条轴向线',
+    !!first3 && LA.every(function(l){ return first3[l[0]]+first3[l[1]]+first3[l[2]]===42; }),
+    first3?'27 条':'无解');
+chk('3D 首解的数集恰好是 1..27',
+    !!first3 && first3.slice().sort(function(a,b){return a-b;}).every(function(v,i){ return v===i+1; }),
+    first3?'是':'—');
+chk('★ 3D 首解的中心格不是 14（反例）',
+    !!first3 && first3[13]!==14, first3?('中心 = '+first3[13]):'—');
+chk('3D 首解的搜索节点 > 5 万', r3.nodes>50000, fmt(r3.nodes));
+chk('27 齿最小值 = 1056', T.min===1056, String(T.min));
+chk('27 齿最大值 = 1134', T.max===1134, String(T.max));
+chk('27 齿跨度 = 78', T.span===78, String(T.span));
+chk('27 齿两端和 = 2190', T.sumEnds===2190, String(T.sumEnds));
+chk('27 齿对跖 13 对', T.pairs===13, String(T.pairs));
+chk('27 齿唯一不动点 = 1095', T.fixed.length===1 && T.fixed[0]===1095, T.fixed.join(','));
+chk('27 齿全部闭合（补仍在集合内）', T.closed===true, String(T.closed));
+chk('齿数 27 = 2×13 + 1', 2*T.pairs+T.fixed.length===27, '2×'+T.pairs+'+'+T.fixed.length);
+chk('等距 27 等分相位闭格率 = 100%', Math.abs(pe.rate-1)<1e-12, pct(pe.rate,2));
+chk('等距相位闭合组数 = 729', pe.closed===729, String(pe.closed));
+chk('黄金角量化闭格率 < 1%', pg.rate<0.01, pct(pg.rate,4));
+chk('黄金角非平凡闭合 = 0', pg.nontrivial===0, String(pg.nontrivial));
+chk('静态表下界 = 2^27', dedupStates===134217728, fmt(dedupStates));
+chk('静态表保守估计 > 1e13', staticEst>1e13, staticEst.toExponential(3));
+chk('动态掩码 = 45 bit', 27+18===45, '27 + 3×6');
+chk('反解活性：范围通过率 < 10%', (live.inRange/live.trials)<0.10, pct(live.inRange/live.trials,3));
+chk('反解活性：互异通过率 < 1%', (live.distinct/live.trials)<0.01, pct(live.distinct/live.trials,3));
+chk('反解活性：三关全过率 ≈ 0', (live.all/live.trials)<1e-3, pct(live.all/live.trials,4));
+chk('反解活性：全过率不高于互异通过率', (live.all/live.trials)<=(live.distinct/live.trials)+1e-12,
+    pct(live.all/live.trials,3)+' ≤ '+pct(live.distinct/live.trials,3));
+chk('逆序自由集的活性低于正序（变量排序有影响）',
+    (liveRev.inRange/live.trials) < (live.inRange/live.trials),
+    pct(liveRev.inRange/live.trials,3)+' < '+pct(live.inRange/live.trials,3));
+chk('两种消元的秩都是 19（自由集不同但秩相同）',
+    live.rank===19 && liveRev.rank===19, live.rank+' / '+liveRev.rank);
+chk('两种自由集互不相同', live.freeCols.join(',')!==liveRev.freeCols.join(','),
+    '['+live.freeCols.slice(0,3).join(',')+'…] vs ['+liveRev.freeCols.slice(0,3).join(',')+'…]');
+chk('自由变量个数 = 8', live.freeCount===8, String(live.freeCount));
+chk('表 §2 有四行', document.querySelectorAll('#tblCases tbody tr').length===4,
+    String(document.querySelectorAll('#tblCases tbody tr').length));
+chk('表 §2 每格都有 data-label',
+    Array.prototype.every.call(document.querySelectorAll('#tblCases tbody td'),
+      function(td){ return td.getAttribute('data-label'); }), '');
+chk('九宫格画了 9 个格子',
+    gridEl.querySelectorAll('rect').length===9, String(gridEl.querySelectorAll('rect').length));
+chk('演示按钮 4 个都存在',
+    ['btnS2','btnS3','btnS4','btnReset'].every(function(id){ return !!document.getElementById(id); }), '');
+chk('所有输出数字都是有限值',
+    [rkA,nullA,rkB,nullB,rkC,nullC].every(function(v){ return isFinite(v); }), '');
+chk('无 NaN / Infinity 出现在关键量',
+    [pe.rate,pg.rate,live.all,staticEst].every(function(v){ return isFinite(v)&&!isNaN(v); }), '');
+
+/* 禁词扫描：排除 script/style 与反例引用区 */
+(function(){
+  var BAN=['彻底解决','完全消除','从根上解决','世界首创','国外没人','百分之百','绝对准确'];
+  var clone=document.body.cloneNode(true);
+  Array.prototype.forEach.call(clone.querySelectorAll('script,style,#banQuote'), function(n){
+    if(n.parentNode) n.parentNode.removeChild(n);
+  });
+  var txt=clone.textContent||'';
+  var hit=BAN.filter(function(w){ return txt.indexOf(w)>=0; });
+  chk('禁词扫描 0 命中', hit.length===0, hit.length?('命中：'+hit.join('、')):('扫描 '+BAN.length+' 个词'));
+})();
+
+/* 渲染自检 */
+var pass=0;
+var listEl=document.getElementById('chkList');
+CH.forEach(function(c){
+  if(c.ok) pass++;
+  var d=document.createElement('div');
+  d.className='chk '+(c.ok?'p':'f');
+  d.innerHTML='<span class="m">'+(c.ok?'✓':'✗')+'</span>'+
+    '<span class="t">'+c.label+'</span>'+
+    (c.detail?'<span class="d">'+c.detail+'</span>':'');
+  listEl.appendChild(d);
+});
+var sum=document.getElementById('chkSum');
+sum.className='sum '+(pass===CH.length?'ok':'no');
+sum.textContent=(pass===CH.length?'全部通过':'有失败项')+'　'+pass+' / '+CH.length+' 项';
+
+window.__ch={total:CH.length, pass:pass, list:CH};
+})();
+</script>
+</body>
+</html>

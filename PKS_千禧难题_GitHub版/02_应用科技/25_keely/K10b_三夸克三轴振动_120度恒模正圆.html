@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>K10b · 三夸克三轴振动：120° 相位错位为何给出正圆</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%236b3fa0' stroke-width='2'/%3E%3Ccircle cx='16' cy='3' r='3' fill='%23b3261e'/%3E%3Ccircle cx='4' cy='23' r='3' fill='%231b4f9c'/%3E%3Ccircle cx='28' cy='23' r='3' fill='%23177245'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/site.css">
+<style>
+  /* ---- 本页专用 ---- */
+  .viz{background:#fff;border:1px solid var(--line-2);border-radius:12px;
+    box-shadow:var(--shadow);padding:14px 16px 12px;margin:18px 0}
+  .viz .vt{font-family:var(--serif);font-size:16px;font-weight:700;margin-bottom:3px}
+  .viz .vc{font-size:13.2px;color:var(--ink-3);margin-bottom:10px;line-height:1.65}
+  #cv3d{display:block;width:100%;height:clamp(330px,44vw,470px);border-radius:9px;
+    border:1px solid var(--line);cursor:grab;touch-action:none}
+  #cv3d.drag{cursor:grabbing}
+  .stage{position:relative}
+  .fpanel{position:absolute;top:14px;right:14px;width:272px;max-width:74%;z-index:6;
+    background:rgba(255,255,255,.965);border:1px solid var(--line-2);border-radius:11px;
+    box-shadow:0 8px 26px rgba(18,22,28,.15);overflow:hidden;
+    backdrop-filter:saturate(1.15) blur(6px)}
+  .fph{display:flex;align-items:center;gap:7px;padding:6px 8px 6px 11px;cursor:move;
+    background:linear-gradient(180deg,#f8fafd,#edf1f7);border-bottom:1px solid var(--line);
+    font-family:var(--mono);font-size:11.8px;color:var(--ink-2);user-select:none;touch-action:none}
+  .fph .fpt{font-weight:700;color:var(--ink);letter-spacing:.02em}
+  .fph .fpd{color:var(--ink-3);font-size:10.6px}
+  .fph button{margin-left:auto;width:20px;height:20px;line-height:1;padding:0;border-radius:5px;
+    border:1px solid var(--line-2);background:#fff;color:var(--ink-2);cursor:pointer;font-size:13px}
+  .fph button:hover{background:var(--bg-soft2);color:var(--accent-2)}
+  .fpb{padding:9px 11px 10px;display:flex;flex-direction:column;gap:7px}
+  .fpb .sld .lb{font-size:11px}
+  .fpb input[type=range]{height:15px}
+  .fpgrp{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);margin-top:3px;
+    border-top:1px dashed var(--line);padding-top:6px}
+  .fpb .btns{margin:0;gap:5px;flex-wrap:wrap}
+  .fpb .btns button{padding:4px 8px;font-size:12px;border-radius:6px;border-color:var(--line-2)}
+  .fpf{font-family:var(--mono);font-size:10.2px;color:var(--ink-3);margin-top:2px;line-height:1.5}
+  .fpanel.min .fpb{display:none}
+  @media(max-width:640px){ .fpanel{width:230px;top:8px;right:8px} }
+  .ctrls{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px 18px;margin:13px 0 4px}
+  .sld{display:flex;flex-direction:column;gap:3px}
+  .sld .lb{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11.5px;color:var(--ink-3)}
+  .sld .lb b{color:var(--ink);font-weight:700}
+  .sld input[type=range]{width:100%;accent-color:var(--accent);height:18px}
+  .btns{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0 2px}
+  .btns button{font-family:var(--sans);font-size:13.2px;padding:6px 13px;border-radius:7px;
+    border:1px solid var(--line-2);background:#fff;color:var(--ink-2);cursor:pointer}
+  .btns button:hover{background:var(--bg-soft2);color:var(--ink)}
+  .btns button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btns button.primary:hover{background:var(--accent-2)}
+  .btns button.on{background:#eef2f8;border-color:var(--accent);color:var(--accent-2);font-weight:600}
+  .btns .sp{font-family:var(--mono);font-size:12px;color:var(--ink-3);margin-left:auto}
+  .rd{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:9px;margin-top:11px}
+  .rd .r{background:var(--bg-soft);border:1px solid var(--line);border-radius:9px;padding:8px 10px}
+  .rd .r .n{font-family:var(--mono);font-size:16.5px;color:var(--accent-2);line-height:1.25;font-weight:700}
+  .rd .r .n.v{color:var(--violet)}
+  .rd .r .n.g{color:var(--good)}
+  .rd .r .n.r{color:var(--bad)}
+  .rd .r .l{font-size:11.5px;color:var(--ink-3);margin-top:2px;line-height:1.4}
+  .flag{border-radius:8px;padding:9px 13px;margin-top:11px;font-size:13.4px;line-height:1.6}
+  .flag.ok{background:#f4faf6;border:1px solid rgba(23,114,69,.3);border-left:3px solid var(--good)}
+  .flag.no{background:#fdf1f0;border:1px solid rgba(179,38,30,.3);border-left:3px solid var(--bad)}
+  .flag.mid{background:#fdfaf2;border:1px solid rgba(154,103,0,.3);border-left:3px solid var(--warn)}
+  .lgd{display:flex;flex-wrap:wrap;gap:12px;margin-top:9px;font-size:12px;color:var(--ink-3);font-family:var(--mono)}
+  .lgd span{display:inline-flex;align-items:center;gap:5px}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+  .eq{margin:14px 0;background:var(--bg-soft);border:1px solid var(--line);border-radius:8px;
+    padding:12px 15px;font-family:var(--mono);font-size:12.8px;line-height:1.9;color:var(--ink-2);overflow-x:auto}
+  .eq b{color:var(--accent-2)}
+  .eq .cm{color:var(--ink-3)}
+  .pv{border-left:3px solid var(--line-2);padding:2px 0 2px 14px;margin:13px 0;
+    color:var(--ink-2);font-size:14.4px}
+  .pv .src{display:block;font-family:var(--mono);font-size:11.5px;color:var(--ink-3);margin-top:5px}
+  .goodbox{background:#f4faf6;border:1px solid rgba(23,114,69,.26);border-left:3px solid var(--good);
+    border-radius:8px;padding:12px 15px;margin:16px 0;font-size:14px;line-height:1.7}
+  .warnbox{background:#fdfaf2;border:1px solid rgba(154,103,0,.26);border-left:3px solid var(--warn);
+    border-radius:8px;padding:12px 15px;margin:16px 0;font-size:14px;line-height:1.7}
+  .badbox{background:#fdf6f6;border:1px solid rgba(179,38,30,.26);border-left:3px solid var(--bad);
+    border-radius:8px;padding:12px 15px;margin:16px 0;font-size:14px;line-height:1.7}
+  table.small{font-size:13.5px}
+  table.small th,table.small td{padding:7px 9px}
+  .mono{font-family:var(--mono);font-size:12.7px}
+  .proof{background:#fff;border:1px solid var(--line);border-radius:10px;padding:13px 17px;margin:14px 0;
+    border-left:3px solid var(--accent)}
+  .proof .ph{font-family:var(--serif);font-size:15.5px;font-weight:700;margin-bottom:6px}
+  .proof .ph em{font-style:normal;font-family:var(--mono);font-size:11.5px;color:var(--accent);
+    letter-spacing:.08em;margin-right:7px}
+  .proof p{margin:6px 0;font-size:14.1px;color:var(--ink-2);line-height:1.75}
+  .tabs{display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap}
+  .tabs button{font-family:var(--mono);font-size:12.5px;padding:5px 13px;border-radius:6px;
+    border:1px solid var(--line-2);background:#fff;color:var(--ink-2);cursor:pointer}
+  .tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .wgrid{display:grid;grid-template-columns:minmax(300px,1fr) minmax(260px,.95fr);gap:16px;align-items:start}
+  @media(max-width:820px){.wgrid{grid-template-columns:1fr}}
+  #cvW{display:block;width:100%;max-width:440px;height:400px;margin:0 auto;border:1px solid var(--line);border-radius:9px;background:#fff}
+  #cvR{display:block;width:100%;height:200px;border:1px solid var(--line);border-radius:9px;background:#fff}
+  .seq{font-family:var(--mono);font-size:12.6px;line-height:1.85;color:var(--ink-2);
+    background:var(--bg-soft);border:1px solid var(--line);border-radius:8px;padding:10px 13px;margin-top:10px;
+    word-break:break-all;min-height:64px}
+  .seq b{color:var(--accent);background:#e8effa;border-radius:3px;padding:0 3px}
+  .seq i{font-style:normal;color:var(--bad);font-weight:700}
+  .seq u{text-decoration:none;color:var(--good);font-weight:700}
+  .fml{font-family:var(--mono);font-size:12.5px;color:var(--ink-2);line-height:1.9}
+  .fml em{font-style:normal;color:var(--violet);font-weight:700}
+</style>
+</head>
+<body>
+
+<nav class="topnav"><div class="inner">
+  <a class="brand" href="keely核心技术与现代声子物理技术对比.html">Keely × 现代声子物理 <span>/</span> K10b</a>
+  <a class="nv" href="keely核心技术与现代声子物理技术对比.html" title="总入口：四条改写 · 术语对照 · 全部页面">← 总入口</a>
+  <a class="nv" href="#s1">① 模型</a>
+  <a class="nv" href="#s2">② 无碰撞</a>
+  <a class="nv" href="#s3">③ 恒模成圆</a>
+  <a class="nv" href="#s4">④ 圆度曲线</a>
+  <a class="nv" href="#s5">⑤ 倍频轮</a>
+  <a class="nv" href="#s6">⑥ 边界</a>
+  <a class="nv" href="K10_八度与12进制_模9倍频环与群的错配.html" title="K10：八度与 12 进制 / 群的错配">← K10</a>
+</div></nav>
+
+<div class="hero"><div class="wrap">
+  <div class="kicker">K10b · Three quarks on three axes — why 120° gives a circle</div>
+  <h1>三夸克三轴振动：<br class="brk">120° 相位错位为什么会得到一条正圆</h1>
+  <p class="sub">老师说「以太侧的振动就是原子核内的振动：质子里三个夸克绕 x、y、z 轴转，空间错位不重叠」。
+  这个几何模型可以<b>严格算</b>，不必停在示意图层面。本页把它做成可拖拽、可调速、相位连续可调的三维动图，
+  并给出两条能自行验算的命题：<b>① 120° 是唯一让三颗粒子永不相撞、且两两间距取到全局最大的相位</b>；
+  <b>② 只有 ±120° 能让三者的合成矢端模长恒定 —— 轨迹由平面椭圆退化为正圆</b>，
+  且该圆所在平面的法向恰好是立方体体对角线 (1,1,1)。</p>
+  <div class="rd">
+    <div class="r"><div class="n g">0.6340 r</div><div class="l">φ=120° 时合成矢量恒模（不随角度变）</div><div class="x">√(3(2−√3)/2)</div></div>
+    <div class="r"><div class="n g">1.3660 r</div><div class="l">同一相位下三夸克最小间距，取全局最大</div><div class="x">(1+√3)/2</div></div>
+    <div class="r"><div class="n v">(1,1,1)/√3</div><div class="l">合成圆所在平面的法向 = 体对角线</div><div class="x">C₃ 对称性锁定</div></div>
+    <div class="r"><div class="n r">45°+90k</div><div class="l">唯一的碰撞相位集合（120° 不在其中）</div><div class="x">d_min = 0</div></div>
+  </div>
+</div></div>
+
+<div class="wrap">
+
+<!-- ============ ① ============ -->
+<h2 id="s1">① 模型：三条正交环 + 一个相位差，只有 3 个参数</h2>
+
+<p>把三个夸克放在三条互相垂直的圆环上，同一个角频率、同一个半径，只在<b>相位</b>上错开。
+坐标系取右手系，三个夸克分别绕 X / Y / Z 轴运行（即各自的轨道平面垂直于对应的轴）：</p>
+
+<div class="eq">
+A(θ) = r·( <b>0</b>, cos θ, sin θ )        <span class="cm">// 在 yz 平面内 → 绕 X 轴</span><br>
+B(θ) = r·( sin(θ+φ), <b>0</b>, cos(θ+φ) )  <span class="cm">// 在 zx 平面内 → 绕 Y 轴</span><br>
+C(θ) = r·( cos(θ+2φ), sin(θ+2φ), <b>0</b> ) <span class="cm">// 在 xy 平面内 → 绕 Z 轴</span><br>
+<span class="cm">合成 =</span> <b>S(θ) = A + B + C</b>　　<span class="cm">自由参数只有三个：r、ω、φ</span>
+</div>
+
+<p>三颗都在半径为 r 的球面上，各自<b>匀速圆周</b>。φ 是三者的相位差（A→B→C 逐级递增 φ，一周共 3φ）。
+下面这张图就是它的全部动力学——拖动可转视角，滚轮旁没有陷阱，所有读数都是当场现算的，页面里没有一个预先写死的结论数字。</p>
+
+<div class="viz">
+  <div class="vt">图 10b-1　三轴正交 + 相位错位：实时三维模拟</div>
+  <div class="vc">三颗小球各自锁在一条圆环上（半透明环＝轨道），紫线＝合成矢端轨迹 S(θ)，拖尾是最近 90 个采样。
+    <b>默认 φ = 120°</b>：此时紫线是一个<em>正圆</em>，且你会看到小球之间始终保持距离，从不靠拢。
+    <br><b>视角说明</b>：默认沿立方体体对角线 (1,1,1) 俯视——正因为 φ=120° 的合成圆恰好垂直于这条轴，
+    屏幕上看到的才是标准的圆。一旦拖动转视角，它会显示成椭圆，<b>那只是投影效应，不是形状变了</b>；
+    想看"形状本身"，按「视角复原」回到等轴测视角，或直接看下面的轴比读数。</div>
+
+  <div class="stage" id="stage">
+    <canvas id="cv3d"></canvas>
+
+    <div class="fpanel" id="fpanel">
+      <div class="fph" id="fpHead">
+        <span class="fpt">参数面板</span>
+        <span class="fpd">拖动可移</span>
+        <button id="fpMin" type="button" title="折叠 / 展开">−</button>
+      </div>
+      <div class="fpb" id="fpb">
+        <div class="sld">
+          <div class="lb"><span>相位差 φ</span><b id="vPhi">120°</b></div>
+          <input type="range" id="rPhi" min="0" max="360" step="1" value="120">
+        </div>
+        <div class="sld">
+          <div class="lb"><span>角速度 ω</span><b id="vOmg">1.00×</b></div>
+          <input type="range" id="rOmg" min="0.1" max="3" step="0.05" value="1">
+        </div>
+        <div class="sld">
+          <div class="lb"><span>半径 r</span><b id="vRad">1.00</b></div>
+          <input type="range" id="rRad" min="0.55" max="1.30" step="0.01" value="1">
+        </div>
+
+        <div class="fpgrp">相位预设</div>
+        <div class="btns">
+          <button id="b120" type="button">120° 恒模</button>
+          <button id="b90" type="button">90° 碰撞</button>
+          <button id="b0" type="button">0° 退化</button>
+        </div>
+
+        <div class="fpgrp">显示 / 视角</div>
+        <div class="btns">
+          <button id="bPlay" class="primary" type="button">⏸ 暂停</button>
+          <button id="tRing" class="on" type="button">轨道环</button>
+          <button id="tEnv" class="on" type="button">轨迹</button>
+          <button id="tTri" type="button">连线</button>
+          <button id="tDiag" type="button">对角线</button>
+          <button id="tRot" type="button">自转</button>
+          <button id="bIso" type="button">视角复原</button>
+        </div>
+
+        <div class="fpf" id="spInfo">拖动画布转视角 · 面板可拖动</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lgd">
+    <span><i class="dot" style="background:#b3261e"></i>夸克 A（绕 X）</span>
+    <span><i class="dot" style="background:#1b4f9c"></i>夸克 B（绕 Y）</span>
+    <span><i class="dot" style="background:#177245"></i>夸克 C（绕 Z）</span>
+    <span><i class="dot" style="background:#6b3fa0"></i>合成 S = A+B+C</span>
+    <span><i class="dot" style="background:#c9d1dc"></i>坐标轴</span>
+  </div>
+
+  <div class="rd">
+    <div class="r"><div class="n" id="oMax">—</div><div class="l">\|S\|<sub>max</sub> / r　合成矢端最大模长</div></div>
+    <div class="r"><div class="n" id="oMin">—</div><div class="l">\|S\|<sub>min</sub> / r</div></div>
+    <div class="r"><div class="n" id="oRatio">—</div><div class="l">短轴 / 长轴（1.0000 = 正圆）</div></div>
+    <div class="r"><div class="n" id="oDmin">—</div><div class="l">三夸克最小间距 / r</div></div>
+    <div class="r"><div class="n" id="oNorm">—</div><div class="l">合成平面法向 n</div></div>
+    <div class="r"><div class="n" id="oNow">—</div><div class="l">当前 \|S\| / r（动）</div></div>
+  </div>
+
+  <div class="flag mid" id="verdict">—</div>
+</div>
+
+<p>读图要点：<b>紫线不是随便画的装饰</b>。它是把 θ 从 0 扫到 2π 得到的 S(θ) 全体取值的集合——
+它在空间中的形状只由 φ 决定，与 ω、r 无关（r 只缩放，ω 只决定走多快）。
+换句话说，<b>轨迹的"长相"是一个只依赖单个角度参数 φ 的函数</b>，这使得它可以被完全分析干净。</p>
+
+<!-- ============ ② ============ -->
+<h2 id="s2">② 命题一：永不重叠的唯一相位区，而且它同时给出最大间距</h2>
+
+<p>老师原话里最要紧的四个字是「<b>空间错位不重叠</b>」。这不是修辞，它在模型里是一个可判定的条件：
+只要任意两颗的坐标在某一时刻相等，就是一次碰撞。下面把碰撞条件解出来。</p>
+
+<div class="proof">
+  <div class="ph"><em>PROOF 1</em>碰撞相位集</div>
+  <p>设 α=θ、β=θ+φ、γ=θ+2φ。以 A 与 B 相撞为例，令 A(θ)=B(θ)：</p>
+  <p class="fml">( 0, r cos α, r sin α ) = ( r sin β, 0, r cos β )</p>
+  <p>逐分量比较，立刻得到三个必要条件：cos α = 0、sin β = 0、sin α = cos β。<br>
+  由 sin β = 0 得 β ≡ 0 (mod π)；代入 cos β = ±1，再由 sin α = cos β 得 α ≡ ±π/2 (mod π)。
+  两式相减：<b>φ = β − α ≡ ±90° (mod 180°)</b>。</p>
+  <p>同法作用于 B=C 与 C=A，条件分别是 γ−β = φ ≡ ±90°、α−γ = −2φ ≡ ±90°，即 2φ ≡ 90° (mod 180°)。</p>
+  <p>合并：<b>任一碰撞 ⟺ φ ≡ 45° (mod 90°)</b>，即 φ ∈ {45°, 135°, 225°, 315°} 及其平移。
+  120° 不在这个集合里，所以 <b>φ=120° 时三颗粒子在任何时刻都互不重合</b>。∎</p>
+  <div class="src">注：这是纯代数结论，不依赖 r 与 ω，也不依赖时间取值 —— 是"整体不发生"，不是"暂时不发生"。</div>
+</div>
+
+<p>更进一步：不只是"不相撞"，120° 还让三者<b>尽可能互相远离</b>。把一周期内两两间距的最小值 d<sub>min</sub>(φ)
+扫一遍 0°–360°，全局最大值恰好落在 120°，值为 (1+√3)/2 · r ≈ 1.3660 r；而另一个恒模相位 −120°(=240°)
+落在相反的一端，d<sub>min</sub> 只有 (√3−1)/2 · r ≈ 0.3660 r。</p>
+
+<table class="small">
+  <thead><tr><th>相位差 φ</th><th>d<sub>min</sub>/r</th><th>合成轨迹</th><th>判定</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">45° / 135° / 225° / 315°</td><td class="mono">0.0000</td><td>椭圆（退化过原点）</td><td><span class="tag no">两两碰撞</span></td></tr>
+    <tr><td class="mono">0°</td><td class="mono">1.0000</td><td><b>直线段</b>（沿体对角线来回抖动）</td><td><span class="tag mid">轨迹退化</span></td></tr>
+    <tr><td class="mono">90°</td><td class="mono">1.0000</td><td>椭圆，且过原点</td><td><span class="tag no">碰撞 + 合成归零</span></td></tr>
+    <tr style="background:rgba(23,114,69,.06)"><td class="mono"><b>120°</b></td><td class="mono"><b>1.3660</b></td><td><b>正圆</b>，半径 0.6340 r</td><td><span class="tag ok">恒模 · 间距全局最大</span></td></tr>
+    <tr><td class="mono">240°（=−120°）</td><td class="mono">0.3660</td><td><b>正圆</b>，半径 2.3660 r</td><td><span class="tag ok">恒模 · 但三颗挤在一起</span></td></tr>
+    <tr><td class="mono">180°</td><td class="mono">1.0000</td><td>椭圆，轴比 0.7071</td><td><span class="tag mid">非圆</span></td></tr>
+  </tbody>
+</table>
+
+<div class="goodbox"><b>这条是老师直觉的严格版本。</b>「三个夸克空间错位不重叠」在"三轴正交 + 等幅同频"的模型里，
+等价于要求 φ ∉ {45°+90k}；而在所有安全相位中，<b>120° 是唯一同时满足"恒模"的那个</b>（见命题二），
+也是两两间距最大、构型最舒展的那个。两个最优判据在这个点上重合，不是巧合——下面会看到它们来自同一个对称性。</div>
+
+<!-- ============ ③ ============ -->
+<h2 id="s3">③ 命题二：只有 ±120° 能让合成矢端模长恒定，轨迹变正圆</h2>
+
+<p>元宝那份回答把合成包络说成「闭合的李萨如型曲线」。这句话<b>不算错，但偏保守</b>——
+李萨如曲线的模长一般是起伏的，而这里在 φ=120° 时模长<b>一点起伏都没有</b>，结果是正圆而不是椭圆。</p>
+
+<div class="proof">
+  <div class="ph"><em>PROOF 2</em>恒模条件</div>
+  <p>先看一个更强的结构事实：把 S 按 cosθ 与 sinθ 拆开，记成两个常量向量 P、Q 的组合</p>
+  <p class="fml">S(θ) = <b>P</b> cosθ + <b>Q</b> sinθ　<span class="cm">（P、Q 只依赖 φ）</span></p>
+  <p>由于 cosθ、sinθ 只张成一个二维平面，<b>S(θ) 永远落在 span{P,Q} 里</b> —— 也就是说，
+  不管 φ 取什么值，合成轨迹<b>恒为一条过原点的平面曲线</b>（一般是椭圆，特殊时退化成直线或圆）。</p>
+  <p>再算 |S|²。用 A·B = sin α cos β 之类的点积，配合积化和差：</p>
+  <p class="fml">|S|²/r² = 3 + 2(A·B + B·C + C·A)<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= 3 + <b>(1 + 2cos φ)</b>·sin(2θ+2φ) + 2 sin φ (cos φ − 1)</p>
+  <p>最后一项与 θ 无关，是常数；<b>与 θ 相关的只有系数 (1+2cos φ)</b>。要让 |S| 不随 θ 变，唯一条件就是</p>
+  <p class="fml">1 + 2cos φ = 0　⟺　cos φ = −1/2　⟺　<b>φ = ±120°</b></p>
+  <p>此时 |S|²/r² = 3 − 3√3/2 = (3/2)(2−√3) ≈ 0.4019，即 <b>|S| = 0.6340 r</b>，恒定。∎</p>
+  <div class="src">同理，P·Q = 0 且 |P|=|Q| 也是 φ=±120° 才成立 —— 椭圆的长短轴相等，正是"变圆"的同一个条件。</div>
+</div>
+
+<p>而"圆"这件事还有一个意外附赠：<b>这个圆所在的平面，法向正好是立方体体对角线 (1,1,1)/√3</b>。
+理由不用算，用对称性一句话就到：三条坐标轴绕体对角线互为 120° 轮换，
+而三个相位也正好错开 120°，于是整个构型在"轴轮换 + 相位推进 120°"这个操作下<b>不变</b>——
+这个操作是绕 (1,1,1) 的三次旋转。轨迹若有固定的法向，它只能沿着旋转轴，所以法向被锁死在体对角线上。</p>
+
+<div class="goodbox"><b>为什么"恒模"值得专门说一句。</b>S 是三者之和，可以看作"重心 ×3"。模长恒定意味着
+<b>这个重心沿一条正圆做匀速圆周运动</b>：速率不变、离原点距离不变、没有呼吸式的胀缩。
+一旦 φ 偏离 120°，重心就会在椭圆上忽远忽近地"喘"，同时三颗粒子的间距也跟着周期性逼近与拉开。
+换句话说，120° 是让这套三轴机构<b>唯一不发抖</b>的配相。</div>
+
+<p>还有一个量值得记下来：φ=120° 时合成圆半径 0.6340 r <b>小于</b>环半径 r。
+这不是算错——三颗在空间上彼此拉得很开（互成 120° 的三轴方向），矢量相加自然不会全长叠加。
+反过来 φ=240° 时三颗挤在一条"浅螺旋"上，合成就长到 2.3660 r。
+<b>半径大小与"散得开"程度是这个模型里的同一枚硬币。</b></p>
+
+<!-- ============ ④ ============ -->
+<h2 id="s4">④ 圆度曲线：一个单参数函数就说完了全部形态</h2>
+
+<p>把上面两条合起来，整个模型的可视形态被压缩进一条曲线。定义<b>圆度</b> R(φ) = 短轴/长轴 = |S|<sub>min</sub>/|S|<sub>max</sub>，
+它取值 1 就是正圆，取值 0 就是退化。既然 |S|² 的两个极值已知，R 就有闭式：</p>
+
+<div class="eq">
+R(φ) = √[ ( 3 + C − |1+2cos φ| ) / ( 3 + C + |1+2cos φ| ) ]　　<span class="cm">其中 C = 2 sin φ (cos φ − 1)</span>
+</div>
+
+<div class="viz">
+  <div class="vt">图 10b-2　圆度 R(φ) —— 全域只有两个峰，峰高恰好 1.0000</div>
+  <div class="vc">横轴 φ ∈ [0°, 360°]，纵轴 R。蓝竖线为当前 φ（跟随上图滑块）。
+    <b style="color:#b3261e">红三角</b>标在横轴上的 45°/135°/225°/315°＝碰撞相位；
+    <b style="color:#9a6700">黄点</b>是 |S| 归零的相位（0°/90°/270°，轨迹过原点）。</div>
+  <canvas id="cvR"></canvas>
+  <div class="lgd">
+    <span><i class="dot" style="background:#6b3fa0"></i>R(φ)</span>
+    <span><i class="dot" style="background:#177245"></i>R=1.0000（正圆）</span>
+    <span><i class="dot" style="background:#1b4f9c"></i>当前 φ</span>
+  </div>
+</div>
+
+<table class="small">
+  <thead><tr><th>φ</th><th>R(φ)</th><th>形态</th><th>为什么是这个值</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">0°</td><td class="mono">0.0000</td><td>直线段</td><td>P = Q = (1,1,1)，span 塌成一条线</td></tr>
+    <tr><td class="mono">30°</td><td class="mono">0.1547</td><td>极扁椭圆</td><td>—</td></tr>
+    <tr><td class="mono">60°</td><td class="mono">0.1800</td><td>很扁</td><td>—</td></tr>
+    <tr><td class="mono">90°</td><td class="mono">0.0000</td><td>过原点的线段化椭圆</td><td>|S| 归零，轨迹被原点切成两瓣</td></tr>
+    <tr style="background:rgba(23,114,69,.06)"><td class="mono"><b>120°</b></td><td class="mono"><b>1.0000</b></td><td><b>正圆</b></td><td>1+2cos φ = 0</td></tr>
+    <tr><td class="mono">180°</td><td class="mono">0.7071</td><td>轴比 1:√2 的椭圆</td><td>|P|=|Q| 但不正交（P·Q=−1）</td></tr>
+    <tr style="background:rgba(23,114,69,.06)"><td class="mono"><b>240°</b></td><td class="mono"><b>1.0000</b></td><td><b>正圆</b>（大半径 2.366r）</td><td>1+2cos φ = 0</td></tr>
+    <tr><td class="mono">300°</td><td class="mono">0.5640</td><td>中等椭圆</td><td>—</td></tr>
+  </tbody>
+</table>
+
+<div class="warnbox"><b>对照"越高阶越复杂"那个旧结论：</b>这套三轴模型的形态复杂度<b>根本不随任何"阶"增长</b>，
+它被一个参量的一个零点锁死。这跟 <a href="K10_八度与12进制_模9倍频环与群的错配.html">K10</a> 里点的那个
+「圆判据」是同一个数学机制：<b>相位对称性一旦成立，参数就被整体消掉，图形只剩圆弧</b>。
+差别只在于 K10 那边消掉的是两轴频率差之比（|Δ₁|=|Δ₂|），这边消掉的是三分相位（1+2cos φ=0）。
+两者都是"对称 ⇒ 退化 ⇒ 圆"。</div>
+
+<!-- ============ ⑤ ============ -->
+<h2 id="s5">⑤ 从夸克跳到原子核外：八度用 ×2，124875 属 mod 9</h2>
+
+<p>模型之外那一层才是老师真正关心的联系：<b>原子核外的分子振动按"八度谐振"组织，所以是 2 的幂</b>。
+这一步是干净的——简正模的泛音列正是整数倍频，×2 就是升一个八度。问题出在"取模"这一步。</p>
+
+<div class="bullets" style="margin:12px 0">
+  <div class="card soft" style="margin:10px 0">
+    <div class="ch">×2 取模 9（数字根）→ 6 环 1·2·4·8·7·5</div>
+    <p style="margin:6px 0;font-size:14px;color:var(--ink-2)">gcd(2,9)=1，×2 在九个点上可逆，是置换，因此裂成干净轨道。这就是常说的 <b>124875</b>。</p>
+  </div>
+  <div class="card soft" style="margin:10px 0">
+    <div class="ch">×2 取模 12（十二平均律的点位）→ 塌成 {4,8} 与 {12}</div>
+    <p style="margin:6px 0;font-size:14px;color:var(--ink-2)">gcd(2,12)=2≠1，×2 不可逆，每步都在压掉一个因子，所有点只能落进少数吸引子。
+    <b>1→2→4→8→4→8…</b>，三次之后就卡住。</p>
+  </div>
+  <div class="card soft" style="margin:10px 0">
+    <div class="ch">×2 取模 13 → 走遍 12 个位置</div>
+    <p style="margin:6px 0;font-size:14px;color:var(--ink-2)">2 是 mod 13 的原根，2¹²≡1，单环 12 步闭合：
+    <b>1·2·4·8 → 3·6·12 → 11 → 9 → 5 → 10 → 7 → 1</b>。想在 12 个等分点上跑出不塌缩的倍频环，这是唯一干净的走法。</p>
+  </div>
+</div>
+
+<p>下面这个轮盘可以单步走，亲眼看着三者在哪儿闭合、在哪儿卡死。点的颜色按<b>数字根</b>上色：
+数字根属 {1,2,4,5,7,8} 涂蓝（物质侧）、属 {3,6} 涂橙（以太侧）、为 9 涂紫 —— 所以 12 在 mod 12 和 mod 13 两个轮上都是橙色。</p>
+
+<div class="viz">
+  <div class="vt">图 10b-3　×2 在三个模数上的行进路径</div>
+  <div class="vc">从 1 出发，每步 n ← 2n mod m。轨迹颜色：<b style="color:#2f6fb5">蓝＝行进中</b>、
+    <b style="color:#177245">绿＝正常闭合（回到 1）</b>、<b style="color:#b3261e">红＝塌缩（回不到 1）</b>。</div>
+
+  <div class="wgrid">
+    <div>
+      <div class="tabs" id="wTabs">
+        <button data-m="9" class="on" type="button">mod 9</button>
+        <button data-m="12" type="button">mod 12</button>
+        <button data-m="13" type="button">mod 13</button>
+      </div>
+      <canvas id="cvW"></canvas>
+    </div>
+    <div>
+      <div class="btns" style="margin-top:0">
+        <button id="wPlay" class="primary" type="button">▶ 播放</button>
+        <button id="wStep" type="button">单步</button>
+        <button id="wReset" type="button">重置</button>
+      </div>
+      <div class="seq" id="wSeq">待开始</div>
+      <table class="small" style="margin-top:8px">
+        <tbody>
+          <tr><td class="mono">mod 9</td><td>1·2·4·8·7·5（长 6）｜3↔6（长 2）｜9 不动</td></tr>
+          <tr><td class="mono">mod 12</td><td>1·2 为暂态，{4,8} 吸引子；3·6·12 全被吞进 12</td></tr>
+          <tr><td class="mono">mod 13</td><td>单环 12 步，覆盖 1–12 全部</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="pv">127 年前的 Keely 说「以太侧的振动就是原子内部的振动，空间错位不重叠」——
+他把振动、谐波、共振整理成一套分类学，这一步是有效的；但他没有、也不可能给出夸克模型。
+本页的价值不在"印证 Keely 对了"，而在于：<b>他那句几何直觉一旦写成方程，就是可以判定的命题，而且真的成立</b>。
+<span class="src">　——本页立场</span></div>
+
+<!-- ============ ⑥ ============ -->
+<h2 id="s6">⑥ 边界：这是几何模型，不是质子内部图像</h2>
+
+<p>必须把话说清楚，否则这张动图会误导人。</p>
+
+<div class="badbox"><b>现代核物理里的质子不是这个样子的。</b>
+<ul style="margin:8px 0 0;padding-left:20px;line-height:1.85">
+  <li>质子是 <b>uud 价夸克 + 胶子场 + 夸克–反夸克海</b> 的相对论性束缚态，不是三个小球在轨道上跑。</li>
+  <li>夸克<b>没有可指认的确定轨道</b>，只有波函数与概率分布；"绕轴旋转"在量子力学里没有对应物。</li>
+  <li>夸克自旋对质子总自旋的贡献只有约 <b>30%</b>（EMC/COMPASS，ΔΣ≈0.3），其余来自胶子与轨道角动量——
+  所以即便退一步做经典图像，"三个夸克在转"也解释不了质子自旋。</li>
+  <li>夸克不能被单独分离（色禁闭），"三颗粒子"这个提法本身就只在束缚态内部有效。</li>
+</ul></div>
+
+<div class="goodbox"><b>但这不影响本页两个命题的有效性。</b>
+本页算的是一个<b>明确定义的几何系统</b>：三条正交圆环、等幅、同频、相位差 φ。
+在这个系统里，"120° ⇒ 无碰撞"和"±120° ⇒ 恒模成圆"都是真的，可以逐项验算，不依赖任何物理诠释。
+它成立的理由是<b>对称性</b>（绕体对角线的 C₃），而对称性论证从来不需要"它是什么"作为前提。</div>
+
+<div class="warnbox"><b>还要挡住一个诱惑：</b>把"三个夸克"对应到"3·6·9"是数字命理学，不是物理。
+3 是夸克数目、6 是夸克种类（u/d/c/s/t/b）、9 什么都不是——这三个数字之间没有任何模型会用到它们的结构关系。
+同理，把"绕三轴"对应"三进制"也是文字游戏。<b>能用的是 ×2 与八度那一条（频率的乘法），不是数字的象征义。</b></div>
+
+<!-- ============ ⑦ ============ -->
+<h2 id="s7">⑦ 与既有页面的关系</h2>
+
+<table class="small">
+  <thead><tr><th>页面</th><th>管什么</th><th>本页接在哪儿</th></tr></thead>
+  <tbody>
+    <tr><td><a href="K10_八度与12进制_模9倍频环与群的错配.html">K10 · 八度与 12 进制</a></td>
+        <td>×2 的模数效应、吸引子定理、群错配</td>
+        <td>本页 §⑤ 是它的简版重述；K10 有完整的三轮盘与奇部定理</td></tr>
+    <tr><td><a href="K9_Dynasphere24管与Anu十丝_赤道环与七内管对照.html">K9 · Dynasphere 24 管 × Anu 十丝</a></td>
+        <td>立方体 8 个三面角、24 管几何、管长锁频</td>
+        <td>本页的"体对角线 (1,1,1)"与 K9 的立方体对称是同一套几何</td></tr>
+    <tr><td><a href="01_Keely技术全景_SVP同情振动物理学.html">01 · Keely 技术全景</a></td>
+        <td>以太力、同情振动、SVP 体系全貌</td>
+        <td>本页 §⑤ 引的那句"振动即以太侧运动"出自此线</td></tr>
+  </tbody>
+</table>
+
+<p style="margin-top:22px;font-size:13px;color:var(--ink-3);font-family:var(--mono)">
+K10b · 三夸克三轴振动 · 全部数值在浏览器内实时计算 · 生成于 2026-10-27</p>
+
+</div><!-- /wrap -->
+
+<footer style="border-top:1px solid var(--line);margin-top:44px;padding:20px 0 40px">
+  <div class="wrap" style="font-size:12.6px;color:var(--ink-3);font-family:var(--mono)">
+    源起：元宝对话（2026-10-27）· 三夸克 models 运动模拟 + 12 等分倍频轮　|　
+    <a href="keely核心技术与现代声子物理技术对比.html">← 回 K 系列总入口</a>
+  </div>
+</footer>
+
+<script>
+'use strict';
+(function(){
+  var D2R = Math.PI/180;
+
+  /* ================= 公共 ================= */
+  function fit(cv, ctx){
+    var dpr = window.devicePixelRatio || 1;
+    var w = cv.clientWidth || 600;
+    var h = cv.clientHeight || 400;
+    cv.width  = Math.round(w*dpr);
+    cv.height = Math.round(h*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    return {W:w, H:h};
+  }
+
+  /* ================= 模型 ================= */
+  // 三颗夸克：分别绕 X / Y / Z 轴，等幅 r、同频，相位差 phi
+  function quarks(th, phi, r){
+    var a = th, b = th + phi*D2R, c = th + 2*phi*D2R;
+    return [
+      [0, r*Math.cos(a), r*Math.sin(a)],
+      [r*Math.sin(b), 0, r*Math.cos(b)],
+      [r*Math.cos(c), r*Math.sin(c), 0]
+    ];
+  }
+  function sum3(p){
+    return [p[0][0]+p[1][0]+p[2][0],
+            p[0][1]+p[1][1]+p[2][1],
+            p[0][2]+p[1][2]+p[2][2]];
+  }
+  function Svec(th, phi, r){ return sum3(quarks(th, phi, r)); }
+  function len(v){ return Math.sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]); }
+  function dist(a,b){
+    var dx=a[0]-b[0], dy=a[1]-b[1], dz=a[2]-b[2];
+    return Math.sqrt(dx*dx+dy*dy+dz*dz);
+  }
+  function cross(a,b){
+    return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+  }
+
+  // S(θ) = P cosθ + Q sinθ
+  function PQ(phi, r){
+    return {P: Svec(0, phi, r), Q: Svec(Math.PI/2, phi, r)};
+  }
+  // 2×2 Gram 矩阵的特征值 → 长短轴
+  function axesOf(phi, r){
+    var pq = PQ(phi, r), P = pq.P, Q = pq.Q;
+    var p2 = P[0]*P[0]+P[1]*P[1]+P[2]*P[2];
+    var q2 = Q[0]*Q[0]+Q[1]*Q[1]+Q[2]*Q[2];
+    var pv = P[0]*Q[0]+P[1]*Q[1]+P[2]*Q[2];
+    var tr = p2+q2, det = p2*q2-pv*pv;
+    var disc = Math.sqrt(Math.max(0, tr*tr/4 - det));
+    var l1 = tr/2 + disc, l2 = Math.max(0, tr/2 - disc);
+    var a = Math.sqrt(Math.max(0,l1)), b = Math.sqrt(Math.max(0,l2));
+    var n = cross(P,Q), nl = len(n);
+    return {a:a, b:b, ratio: a>1e-9 ? b/a : 0, n: nl>1e-9 ? [n[0]/nl,n[1]/nl,n[2]/nl] : null, degenerate: nl<=1e-9};
+  }
+  function collidePhi(phi){
+    var m = ((phi % 90) + 90) % 90;
+    return Math.abs(m-45) < 1e-6;
+  }
+  function dmin(phi, r, N){
+    N = N || 720;
+    var m = 9;
+    for (var i=0;i<N;i++){
+      var p = quarks(i/N*2*Math.PI, phi, r);
+      m = Math.min(m, dist(p[0],p[1]), dist(p[1],p[2]), dist(p[2],p[0]));
+    }
+    return m;
+  }
+
+  /* ================= 三维视图 ================= */
+  var cv3 = document.getElementById('cv3d'), ctx3 = cv3.getContext('2d');
+  var W3 = 600, H3 = 400;
+  // 默认视角：沿立方体体对角线 (1,1,1) 俯视 —— 此时 φ=120° 的合成圆在屏幕上就是正圆
+  var ISO = {yaw: -Math.PI/4, pitch: Math.asin(1/Math.sqrt(3))};
+  var cam = {yaw: ISO.yaw, pitch: ISO.pitch};
+  var st = {phi:120, omega:1, r:1, t:0, playing:true,
+            rings:true, env:true, tri:false, diag:false, autoRot:false};
+
+  var CLR = {A:'#b3261e', B:'#1b4f9c', C:'#177245', env:'#6b3fa0', axis:'#cfd6e0', diag:'#b4531f'};
+
+  function projector(W,H){
+    var sc = Math.min(W*0.40, H*0.315);
+    var cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
+    var cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+    var d = 5.2;
+    return function(p){
+      var x =  p[0]*cy + p[2]*sy;
+      var z = -p[0]*sy + p[2]*cy;
+      var y =  p[1];
+      var y2 = y*cp - z*sp;
+      var z2 = y*sp + z*cp;
+      var f = d/(d - z2*0.9);
+      return {x: W/2 + x*f*sc, y: H/2 - y2*f*sc, z: z2, f: f};
+    };
+  }
+
+  function line3(prj, a, b, color, w, dash){
+    var A = prj(a), B = prj(b);
+    ctx3.save();
+    if (dash) ctx3.setLineDash(dash);
+    ctx3.strokeStyle = color; ctx3.lineWidth = w || 1;
+    ctx3.beginPath(); ctx3.moveTo(A.x,A.y); ctx3.lineTo(B.x,B.y); ctx3.stroke();
+    ctx3.restore();
+  }
+
+  function draw3(){
+    var prj = projector(W3,H3), i, k;
+
+    var g = ctx3.createRadialGradient(W3/2,H3*0.46,20,W3/2,H3*0.46,Math.max(W3,H3)*0.66);
+    g.addColorStop(0,'#ffffff'); g.addColorStop(1,'#f3f6fb');
+    ctx3.fillStyle = g; ctx3.fillRect(0,0,W3,H3);
+
+    // 坐标轴
+    var ax = 1.42;
+    line3(prj,[-ax,0,0],[ax,0,0],CLR.axis,1);
+    line3(prj,[0,-ax,0],[0,ax,0],CLR.axis,1);
+    line3(prj,[0,0,-ax],[0,0,ax],CLR.axis,1);
+    ctx3.font = '11px Consolas, monospace';
+    ctx3.fillStyle = '#9aa5b4';
+    var lp;
+    lp = prj([ax+0.10,0,0]); ctx3.fillText('X', lp.x, lp.y);
+    lp = prj([0,ax+0.10,0]); ctx3.fillText('Y', lp.x, lp.y);
+    lp = prj([0,0,ax+0.10]); ctx3.fillText('Z', lp.x, lp.y);
+
+    // 体对角线
+    if (st.diag){
+      var u = 1/Math.sqrt(3);
+      line3(prj,[-1.34*u,-1.34*u,-1.34*u],[1.34*u,1.34*u,1.34*u],CLR.diag+'',1.4,[5,4]);
+      lp = prj([1.22*u,1.22*u,1.22*u]);
+      ctx3.fillStyle = CLR.diag;
+      ctx3.font = '10.5px Consolas, monospace';
+      ctx3.fillText('(1,1,1)', lp.x+4, lp.y-4);
+    }
+
+    // 轨道环
+    if (st.rings){
+      var rings = [
+        {u:[0,1,0], v:[0,0,1], c:'rgba(179,38,30,.30)'},   // A: yz
+        {u:[1,0,0], v:[0,0,1], c:'rgba(27,79,156,.30)'},   // B: zx
+        {u:[1,0,0], v:[0,1,0], c:'rgba(23,114,69,.30)'}    // C: xy
+      ];
+      for (k=0;k<3;k++){
+        var R = rings[k];
+        ctx3.strokeStyle = R.c; ctx3.lineWidth = 1.2;
+        ctx3.beginPath();
+        for (i=0;i<=120;i++){
+          var t = i/120*2*Math.PI;
+          var p = [ (R.u[0]*Math.cos(t)+R.v[0]*Math.sin(t))*st.r,
+                    (R.u[1]*Math.cos(t)+R.v[1]*Math.sin(t))*st.r,
+                    (R.u[2]*Math.cos(t)+R.v[2]*Math.sin(t))*st.r ];
+          var q = prj(p);
+          if (i===0) ctx3.moveTo(q.x,q.y); else ctx3.lineTo(q.x,q.y);
+        }
+        ctx3.stroke();
+      }
+    }
+
+    // 合成轨迹（整条，φ 决定形状）
+    if (st.env){
+      ctx3.strokeStyle = 'rgba(107,63,160,.50)';
+      ctx3.lineWidth = 1.4;
+      ctx3.beginPath();
+      for (i=0;i<=720;i++){
+        var th = i/720*2*Math.PI;
+        var s = Svec(th, st.phi, st.r);
+        var ps = prj(s);
+        if (i===0) ctx3.moveTo(ps.x,ps.y); else ctx3.lineTo(ps.x,ps.y);
+      }
+      ctx3.stroke();
+    }
+
+    // 当前三颗
+    var qs = quarks(st.t, st.phi, st.r);
+
+    if (st.tri){
+      for (k=0;k<3;k++){
+        var A = prj(qs[k]), B = prj(qs[(k+1)%3]);
+        ctx3.strokeStyle = 'rgba(107,118,131,.55)';
+        ctx3.lineWidth = 1; ctx3.setLineDash([3,3]);
+        ctx3.beginPath(); ctx3.moveTo(A.x,A.y); ctx3.lineTo(B.x,B.y); ctx3.stroke();
+        ctx3.setLineDash([]);
+      }
+    }
+
+    // 合成矢端拖尾
+    var tailN = 90, dth = 0.011;
+    for (k=tailN;k>=1;k--){
+      var t1 = st.t - (k-1)*dth, t2 = st.t - k*dth;
+      var p1 = prj(Svec(t1, st.phi, st.r));
+      var p2 = prj(Svec(t2, st.phi, st.r));
+      ctx3.strokeStyle = 'rgba(107,63,160,'+(0.85*(1-k/tailN)).toFixed(3)+')';
+      ctx3.lineWidth = 2.4*(1-k/tailN*0.6);
+      ctx3.beginPath(); ctx3.moveTo(p1.x,p1.y); ctx3.lineTo(p2.x,p2.y); ctx3.stroke();
+    }
+
+    // 原点 → S 的矢量
+    var so = prj([0,0,0]), sq = prj(Svec(st.t, st.phi, st.r));
+    ctx3.strokeStyle = 'rgba(107,63,160,.75)';
+    ctx3.lineWidth = 1.6;
+    ctx3.beginPath(); ctx3.moveTo(so.x,so.y); ctx3.lineTo(sq.x,sq.y); ctx3.stroke();
+
+    // 三颗粒子（按深度排序，远的先画）
+    var order = [0,1,2].sort(function(a,b){
+      return prj(qs[a]).z - prj(qs[b]).z;
+    });
+    var cols = [CLR.A, CLR.B, CLR.C];
+    for (k=0;k<3;k++){
+      var idx = order[k], pp = prj(qs[idx]);
+      var rad = 7.2*pp.f;
+      var gr = ctx3.createRadialGradient(pp.x,pp.y,0,pp.x,pp.y,rad*2.6);
+      gr.addColorStop(0, cols[idx]+'');
+      gr.addColorStop(0.28, cols[idx]);
+      gr.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx3.globalAlpha = 0.30;
+      ctx3.fillStyle = gr;
+      ctx3.beginPath(); ctx3.arc(pp.x,pp.y,rad*2.6,0,6.2832); ctx3.fill();
+      ctx3.globalAlpha = 1;
+      ctx3.fillStyle = cols[idx];
+      ctx3.beginPath(); ctx3.arc(pp.x,pp.y,rad,0,6.2832); ctx3.fill();
+      ctx3.fillStyle = 'rgba(255,255,255,.92)';
+      ctx3.beginPath(); ctx3.arc(pp.x-rad*0.28,pp.y-rad*0.30,rad*0.30,0,6.2832); ctx3.fill();
+    }
+
+    // 合成点
+    ctx3.fillStyle = '#4a2a7a';
+    ctx3.beginPath(); ctx3.arc(sq.x,sq.y,4.6*sq.f,0,6.2832); ctx3.fill();
+    ctx3.strokeStyle = '#fff'; ctx3.lineWidth = 1.4;
+    ctx3.beginPath(); ctx3.arc(sq.x,sq.y,4.6*sq.f,0,6.2832); ctx3.stroke();
+  }
+
+  /* ================= 读数 ================= */
+  var el = {
+    vPhi: document.getElementById('vPhi'),
+    vOmg: document.getElementById('vOmg'),
+    vRad: document.getElementById('vRad'),
+    oMax: document.getElementById('oMax'),
+    oMin: document.getElementById('oMin'),
+    oRatio: document.getElementById('oRatio'),
+    oDmin: document.getElementById('oDmin'),
+    oNorm: document.getElementById('oNorm'),
+    oNow: document.getElementById('oNow'),
+    verdict: document.getElementById('verdict'),
+    spInfo: document.getElementById('spInfo')
+  };
+
+  function fmt(v, n){ return v.toFixed(n===undefined?4:n); }
+
+  function updateReadout(){
+    var ax = axesOf(st.phi, st.r);
+    el.oMax.textContent = fmt(ax.a/st.r);
+    el.oMin.textContent = fmt(ax.b/st.r);
+    el.oRatio.textContent = fmt(ax.ratio);
+    el.oRatio.className = 'n' + (ax.ratio > 0.9999 ? ' g' : (ax.ratio < 0.3 ? ' r' : ''));
+
+    var dm = dmin(st.phi, st.r, 600);
+    el.oDmin.textContent = fmt(dm/st.r);
+
+    if (ax.degenerate){
+      el.oNorm.textContent = '—';
+      el.oNorm.title = 'P = Q，轨迹退化为直线';
+    } else {
+      el.oNorm.textContent = '(' + ax.n.map(function(v){return v.toFixed(2);}).join(', ') + ')';
+      el.oNorm.title = 'P×Q 归一化';
+    }
+
+    var hit = collidePhi(st.phi);
+    var dEl = el.oDmin;
+    dEl.className = 'n' + (hit ? ' r' : (dm > 1.3*st.r ? ' g' : ''));
+
+    if (hit){
+      el.verdict.className = 'flag no';
+      el.verdict.innerHTML = '<b>φ = ' + st.phi.toFixed(0) + '° 是碰撞相位。</b>' +
+        '两颗夸克会在某一时刻坐标完全重合（d<sub>min</sub> = 0）。这是 §② 解出的四分之一相位点之一：φ ≡ 45° (mod 90°)。';
+    } else if (ax.ratio > 0.9999){
+      el.verdict.className = 'flag ok';
+      el.verdict.innerHTML = '<b>φ = ' + st.phi.toFixed(0) + '°：恒模。</b>' +
+        '合成矢端模长 ' + fmt(ax.a/st.r) + ' r 全程不变 ⇒ 轨迹是<b>正圆</b>；' +
+        '法向在 ' + (ax.n ? '(<b>'+ax.n.map(function(v){return v.toFixed(3);}).join(', ')+'</b>)' : '—') +
+        (Math.abs(Math.abs(st.phi%360)-120) < 0.51 || Math.abs(Math.abs(st.phi%360)-240) < 0.51 ? '，即体对角线 (1,1,1)/√3' : '') + '。' +
+        ' 三夸克最小间距 ' + fmt(dm/st.r) + ' r。';
+    } else if (ax.degenerate){
+      el.verdict.className = 'flag mid';
+      el.verdict.innerHTML = '<b>φ = 0°：轨迹退化。</b>P = Q = (1,1,1)，cosθ 与 sinθ 张成的平面塌成一条直线——' +
+        '合成点沿体对角线来回抽动，画不出任何闭合轮廓。';
+    } else {
+      el.verdict.className = 'flag mid';
+      el.verdict.innerHTML = '<b>φ = ' + st.phi.toFixed(0) + '°：非圆。</b>' +
+        '轨迹是过原点的平面椭圆，轴比 ' + fmt(ax.ratio) + '（1 才是圆）。' +
+        '要把椭圆压成圆，唯一办法是把 φ 调到 120° 或 240°。';
+    }
+  }
+
+  /* ================= 圆度曲线 ================= */
+  var cvR = document.getElementById('cvR'), ctxR = cvR.getContext('2d');
+  var WR = 600, HR = 200;
+
+  function RofPhi(phiDeg){
+    var p = phiDeg*D2R;
+    var C = 2*Math.sin(p)*(Math.cos(p)-1);
+    var A = Math.abs(1+2*Math.cos(p));
+    var smax = 3 + C + A;
+    var smin = Math.max(0, 3 + C - A);
+    return smax > 1e-9 ? Math.sqrt(smin/smax) : 0;
+  }
+
+  function drawR(){
+    var L=46, Rt=14, T=26, B=28;
+    var w = WR-L-Rt, h = HR-T-B;
+    ctxR.clearRect(0,0,WR,HR);
+    ctxR.fillStyle = '#fff'; ctxR.fillRect(0,0,WR,HR);
+
+    function X(phi){ return L + phi/360*w; }
+    function Y(v){ return T + (1-v/1.05)*h; }
+
+    // 网格
+    ctxR.strokeStyle = '#eef1f6'; ctxR.lineWidth = 1;
+    for (var gv=0; gv<=1.0001; gv+=0.25){
+      ctxR.beginPath(); ctxR.moveTo(L, Y(gv)); ctxR.lineTo(L+w, Y(gv)); ctxR.stroke();
+    }
+    // 轴
+    ctxR.strokeStyle = '#cfd6e0'; ctxR.lineWidth = 1;
+    ctxR.beginPath(); ctxR.moveTo(L,T); ctxR.lineTo(L,T+h); ctxR.stroke();
+    ctxR.beginPath(); ctxR.moveTo(L,T+h); ctxR.lineTo(L+w,T+h); ctxR.stroke();
+    ctxR.fillStyle = '#9aa5b4'; ctxR.font = '10.5px Consolas, monospace';
+    ctxR.fillText('R', 8, 13);
+    ctxR.fillText('1.0', 10, Y(1)+4);
+    ctxR.fillText('0.5', 10, Y(0.5)+4);
+    ctxR.fillText('0', 22, Y(0)+4);
+    [0,90,180,270,360].forEach(function(v){
+      ctxR.fillText(v+'°', X(v)-9, T+h+15);
+      ctxR.strokeStyle='#e6eaf1';
+      ctxR.beginPath(); ctxR.moveTo(X(v),T); ctxR.lineTo(X(v),T+h); ctxR.stroke();
+    });
+
+    // 碰撞相位与归零相位
+    [45,135,225,315].forEach(function(v){
+      ctxR.fillStyle = '#b3261e';
+      ctxR.beginPath();
+      ctxR.moveTo(X(v), T+h); ctxR.lineTo(X(v)-4, T+h+7); ctxR.lineTo(X(v)+4, T+h+7);
+      ctxR.closePath(); ctxR.fill();
+    });
+    [0,90,270].forEach(function(v){
+      ctxR.fillStyle = '#9a6700';
+      ctxR.beginPath(); ctxR.arc(X(v), Y(0), 3.2, 0, 6.2832); ctxR.fill();
+    });
+
+    // 曲线
+    ctxR.strokeStyle = '#6b3fa0'; ctxR.lineWidth = 2;
+    ctxR.beginPath();
+    for (var i=0;i<=720;i++){
+      var phi = i/720*360, v = RofPhi(phi);
+      if (i===0) ctxR.moveTo(X(phi),Y(v)); else ctxR.lineTo(X(phi),Y(v));
+    }
+    ctxR.stroke();
+
+    // 峰值
+    [120,240].forEach(function(v){
+      var y = Y(1);
+      ctxR.fillStyle = '#177245';
+      ctxR.beginPath(); ctxR.arc(X(v), y, 4.2, 0, 6.2832); ctxR.fill();
+      ctxR.strokeStyle = 'rgba(23,114,69,.45)'; ctxR.lineWidth = 1; ctxR.setLineDash([3,3]);
+      ctxR.beginPath(); ctxR.moveTo(X(v), y); ctxR.lineTo(X(v), T+h); ctxR.stroke();
+      ctxR.setLineDash([]);
+      ctxR.fillStyle = '#177245'; ctxR.font = 'bold 10.5px Consolas, monospace';
+      ctxR.fillText('1.0000', X(v)+6, y-7);
+    });
+
+    // 当前 φ
+    var cx = X(st.phi), cy = Y(RofPhi(st.phi));
+    ctxR.strokeStyle = 'rgba(27,79,156,.55)'; ctxR.lineWidth = 1;
+    ctxR.beginPath(); ctxR.moveTo(cx,T); ctxR.lineTo(cx,T+h); ctxR.stroke();
+    ctxR.fillStyle = '#1b4f9c';
+    ctxR.beginPath(); ctxR.arc(cx, cy, 4.4, 0, 6.2832); ctxR.fill();
+    ctxR.strokeStyle='#fff'; ctxR.lineWidth=1.4;
+    ctxR.beginPath(); ctxR.arc(cx, cy, 4.4, 0, 6.2832); ctxR.stroke();
+  }
+
+  /* ================= 倍频轮 ================= */
+  var cvW = document.getElementById('cvW'), ctxW = cvW.getContext('2d');
+  var WW = 420, HW = 400;
+  var wState = {m:9, slots:9, seq:[], idx:0, closed:false, timer:null};
+  var wSeqEl = document.getElementById('wSeq');
+
+  function dr(v){ return ((v-1)%9)+1; }
+  function ptColor(v){
+    var d = dr(v);
+    if (d === 9) return '#6b3fa0';
+    if (d === 3 || d === 6) return '#c2691a';
+    return '#1b4f9c';
+  }
+
+  function buildSeq(m){
+    var seen = {}, out = [], n = 1, closed = false, i;
+    for (i=0;i<64;i++){
+      if (seen[n] !== undefined){ closed = (n === 1); break; }
+      seen[n] = out.length;
+      out.push(n);
+      n = (2*n) % m;
+      if (n === 0) n = m;   // 把 0 类写成 m
+    }
+    if (!closed){            // 塌缩的情况：再多走三步，把循环段显示出来
+      for (i=0;i<3;i++){
+        out.push(n);
+        n = (2*n) % m; if (n === 0) n = m;
+      }
+    }
+    return {seq: out, closed: closed, m: m};
+  }
+
+  function setWheel(m){
+    wState.m = m;
+    wState.slots = (m === 13) ? 12 : m;
+    var b = buildSeq(m);
+    wState.seq = b.seq;
+    wState.closed = b.closed;
+    wState.idx = 0;
+    if (wState.timer){ clearInterval(wState.timer); wState.timer = null; }
+    document.getElementById('wPlay').textContent = '▶ 播放';
+    drawW();
+    renderSeq();
+  }
+
+  function renderSeq(){
+    var s = wState.seq, i, html = '';
+    for (i=0;i<s.length;i++){
+      var cur = (i === wState.idx);
+      var v = s[i];
+      html += cur ? '<b>'+v+'</b>' : v;
+      if (i < s.length-1) html += ' → ';
+    }
+    if (wState.idx >= s.length-1){
+      html += wState.closed
+        ? ' → <u>回到 1，闭合</u>'
+        : ' → <i>回不到 1，卡死</i>';
+    }
+    var extra = wState.m === 12
+      ? '<br><span style="color:#6b7683">长度 ' + s.length + '（含重复点），只有 {4,8} 与 {12} 能长期停留；10、11 只是过路点。</span>'
+      : (wState.m === 13
+        ? '<br><span style="color:#6b7683">12 步走遍 1–12，是真正的一次置换。</span>'
+        : '<br><span style="color:#6b7683">6 环无暂态，9 个点每个都在环上。</span>');
+    wSeqEl.innerHTML = html + extra;
+  }
+
+  function drawW(){
+    var m = wState.m, slots = wState.slots;
+    var cx = WW/2, cy = HW/2 - 6;
+    var R = Math.min(WW*0.40, HW*0.40);
+    var i, k;
+
+    ctxW.clearRect(0,0,WW,HW);
+    ctxW.fillStyle = '#fff'; ctxW.fillRect(0,0,WW,HW);
+
+    function P(v){
+      var idx = (v-1) % slots;
+      if (idx < 0) idx += slots;
+      var ang = -Math.PI/2 + idx/slots*2*Math.PI;
+      return {x: cx + R*Math.cos(ang), y: cy + R*Math.sin(ang), ang: ang};
+    }
+
+    // 外圈
+    ctxW.strokeStyle = '#e6eaf1'; ctxW.lineWidth = 1.5;
+    ctxW.beginPath(); ctxW.arc(cx,cy,R,0,6.2832); ctxW.stroke();
+
+    // 刻度与编号
+    for (k=1;k<=slots;k++){
+      var p = P(k);
+      ctxW.strokeStyle = '#d8dee8';
+      ctxW.beginPath();
+      ctxW.moveTo(cx+(R-4)*Math.cos(p.ang), cy+(R-4)*Math.sin(p.ang));
+      ctxW.lineTo(cx+(R+3)*Math.cos(p.ang), cy+(R+3)*Math.sin(p.ang));
+      ctxW.stroke();
+      ctxW.fillStyle = ptColor(k);
+      ctxW.font = 'bold 12.5px Consolas, monospace';
+      var tx = cx + (R+19)*Math.cos(p.ang), ty = cy + (R+19)*Math.sin(p.ang);
+      ctxW.textAlign = 'center'; ctxW.textBaseline = 'middle';
+      ctxW.fillText(String(k), tx, ty);
+      ctxW.textAlign = 'start'; ctxW.textBaseline = 'alphabetic';
+    }
+
+    // 行进边
+    var col = wState.closed ? '#177245' : '#b3261e';
+    var s = wState.seq;
+
+    // 整条轨道的淡影（未走部分也先画出来）
+    for (i=0;i<s.length-1;i++){
+      var a0 = P(s[i]), b0 = P(s[i+1]);
+      ctxW.strokeStyle = col; ctxW.globalAlpha = 0.30; ctxW.lineWidth = 1.6;
+      ctxW.beginPath(); ctxW.moveTo(a0.x,a0.y);
+      ctxW.quadraticCurveTo(cx + ((a0.x+b0.x)/2-cx)*0.62, cy + ((a0.y+b0.y)/2-cy)*0.62, b0.x, b0.y);
+      ctxW.stroke(); ctxW.globalAlpha = 1;
+    }
+    for (i=0;i<Math.min(wState.idx, s.length-1);i++){
+      var a = P(s[i]), b = P(s[i+1]);
+      var alpha = 0.30 + 0.70*((i+1)/Math.max(1,Math.min(wState.idx, s.length-1)));
+      ctxW.strokeStyle = col;
+      ctxW.globalAlpha = alpha;
+      ctxW.lineWidth = 2.2;
+      ctxW.beginPath(); ctxW.moveTo(a.x,a.y);
+      var mx = (a.x+b.x)/2, my = (a.y+b.y)/2;
+      // 轻微向圆心弯，避免弦穿过中心区
+      ctxW.quadraticCurveTo(cx + (mx-cx)*0.62, cy + (my-cy)*0.62, b.x, b.y);
+      ctxW.stroke();
+      ctxW.globalAlpha = 1;
+    }
+
+    // 当前点
+    if (s.length){
+      var cur = P(s[Math.min(wState.idx, s.length-1)]);
+      ctxW.fillStyle = col;
+      ctxW.beginPath(); ctxW.arc(cur.x, cur.y, 8, 0, 6.2832); ctxW.fill();
+      ctxW.strokeStyle = '#fff'; ctxW.lineWidth = 2;
+      ctxW.beginPath(); ctxW.arc(cur.x, cur.y, 8, 0, 6.2832); ctxW.stroke();
+      ctxW.fillStyle = '#fff'; ctxW.font = 'bold 10px Consolas, monospace';
+      ctxW.textAlign='center'; ctxW.textBaseline='middle';
+      ctxW.fillText(String(s[Math.min(wState.idx, s.length-1)]), cur.x, cur.y);
+      ctxW.textAlign='start'; ctxW.textBaseline='alphabetic';
+    }
+
+    // 中心字
+    ctxW.fillStyle = '#6b7683'; ctxW.font = '11px Consolas, monospace';
+    ctxW.textAlign='center';
+    ctxW.fillText('mod ' + m, cx, cy - 6);
+    ctxW.fillStyle = wState.closed ? '#177245' : '#b3261e';
+    ctxW.font = 'bold 12px Consolas, monospace';
+    ctxW.fillText(wState.closed ? '闭合' : '塌缩', cx, cy + 14);
+    ctxW.textAlign='start';
+  }
+
+  /* ================= 交互 ================= */
+  // 滑块
+  document.getElementById('rPhi').addEventListener('input', function(e){
+    st.phi = +e.target.value;
+    el.vPhi.textContent = st.phi.toFixed(0) + '°';
+    updateReadout(); drawR();
+  });
+  document.getElementById('rOmg').addEventListener('input', function(e){
+    st.omega = +e.target.value;
+    el.vOmg.textContent = st.omega.toFixed(2) + '×';
+  });
+  document.getElementById('rRad').addEventListener('input', function(e){
+    st.r = +e.target.value;
+    el.vRad.textContent = st.r.toFixed(2);
+    updateReadout();
+  });
+
+  function setPhi(v){
+    st.phi = ((v%360)+360)%360;
+    document.getElementById('rPhi').value = st.phi;
+    el.vPhi.textContent = st.phi.toFixed(0) + '°';
+    updateReadout(); drawR();
+  }
+
+  document.getElementById('b120').onclick = function(){ setPhi(120); };
+  document.getElementById('b90').onclick  = function(){ setPhi(90); };
+  document.getElementById('b0').onclick   = function(){ setPhi(0); };
+
+  var bPlay = document.getElementById('bPlay');
+  bPlay.onclick = function(){
+    st.playing = !st.playing;
+    bPlay.textContent = st.playing ? '⏸ 暂停' : '▶ 播放';
+  };
+
+  document.getElementById('bIso').onclick = function(){
+    cam.yaw = ISO.yaw; cam.pitch = ISO.pitch;
+  };
+
+  function toggle(btnId, key, label){
+    var b = document.getElementById(btnId);
+    b.onclick = function(){
+      st[key] = !st[key];
+      b.classList.toggle('on', st[key]);
+    };
+  }
+  toggle('tRing','rings');
+  toggle('tEnv','env');
+  toggle('tTri','tri');
+  toggle('tDiag','diag');
+  toggle('tRot','autoRot');
+
+  // 拖拽
+  var drag = null;
+  cv3.addEventListener('pointerdown', function(e){
+    drag = {x:e.clientX, y:e.clientY};
+    cv3.classList.add('drag');
+    cv3.setPointerCapture(e.pointerId);
+  });
+  cv3.addEventListener('pointermove', function(e){
+    if (!drag) return;
+    cam.yaw   += (e.clientX - drag.x)*0.009;
+    cam.pitch += (e.clientY - drag.y)*0.007;
+    cam.pitch = Math.max(-1.35, Math.min(1.35, cam.pitch));
+    drag.x = e.clientX; drag.y = e.clientY;
+  });
+  cv3.addEventListener('pointerup', function(e){
+    drag = null; cv3.classList.remove('drag');
+    try { cv3.releasePointerCapture(e.pointerId); } catch(err){}
+  });
+  cv3.addEventListener('pointercancel', function(){ drag = null; cv3.classList.remove('drag'); });
+
+  // ---- 参数面板：可拖动、可折叠 ----
+  var fp = document.getElementById('fpanel');
+  var fpHead = document.getElementById('fpHead');
+  var stageEl = document.getElementById('stage');
+  var fpDrag = null;
+
+  function clampPanel(){
+    var maxL = stageEl.clientWidth  - fp.offsetWidth  - 4;
+    var maxT = stageEl.clientHeight - 40;           // 折叠后也留出标题栏
+    if (maxT > stageEl.clientHeight - fp.offsetHeight - 4) maxT = stageEl.clientHeight - fp.offsetHeight - 4;
+    var l = fp.offsetLeft, t = fp.offsetTop;
+    var nl = Math.max(4, Math.min(maxL, l));
+    var nt = Math.max(4, Math.min(Math.max(4, maxT), t));
+    fp.style.left = nl + 'px'; fp.style.top = nt + 'px'; fp.style.right = 'auto';
+  }
+
+  fpHead.addEventListener('pointerdown', function(e){
+    if (e.target.tagName === 'BUTTON') return;
+    fpDrag = {x:e.clientX, y:e.clientY, l:fp.offsetLeft, t:fp.offsetTop};
+    fp.style.right = 'auto';
+    fp.style.left = fp.offsetLeft + 'px';
+    fp.style.top  = fp.offsetTop  + 'px';
+    try { fpHead.setPointerCapture(e.pointerId); } catch(err){}
+    e.preventDefault();
+  });
+  fpHead.addEventListener('pointermove', function(e){
+    if (!fpDrag) return;
+    var dx = e.clientX - fpDrag.x, dy = e.clientY - fpDrag.y;
+    var maxL = stageEl.clientWidth  - fp.offsetWidth  - 4;
+    var maxT = stageEl.clientHeight - fp.offsetHeight - 4;
+    fp.style.left = Math.max(4, Math.min(maxL, fpDrag.l + dx)) + 'px';
+    fp.style.top  = Math.max(4, Math.min(maxT, fpDrag.t + dy)) + 'px';
+  });
+  fpHead.addEventListener('pointerup', function(e){
+    fpDrag = null;
+    try { fpHead.releasePointerCapture(e.pointerId); } catch(err){}
+  });
+  fpHead.addEventListener('pointercancel', function(){ fpDrag = null; });
+
+  var fpMin = document.getElementById('fpMin');
+  fpMin.onclick = function(){
+    fp.classList.toggle('min');
+    this.textContent = fp.classList.contains('min') ? '+' : '−';
+    this.title = fp.classList.contains('min') ? '展开参数面板' : '折叠参数面板';
+    setTimeout(clampPanel, 0);
+  };
+
+  // 轮盘按钮
+  document.getElementById('wTabs').addEventListener('click', function(e){
+    var b = e.target.closest('button');
+    if (!b) return;
+    Array.prototype.forEach.call(this.querySelectorAll('button'), function(x){ x.classList.remove('on'); });
+    b.classList.add('on');
+    setWheel(+b.dataset.m);
+  });
+  document.getElementById('wStep').onclick = function(){
+    if (wState.idx < wState.seq.length){
+      wState.idx = Math.min(wState.idx+1, wState.seq.length-1);
+      drawW(); renderSeq();
+    }
+  };
+  document.getElementById('wReset').onclick = function(){
+    wState.idx = 0;
+    if (wState.timer){ clearInterval(wState.timer); wState.timer = null; }
+    document.getElementById('wPlay').textContent = '▶ 播放';
+    drawW(); renderSeq();
+  };
+  document.getElementById('wPlay').onclick = function(){
+    var b = this;
+    if (wState.timer){
+      clearInterval(wState.timer); wState.timer = null; b.textContent = '▶ 播放';
+      return;
+    }
+    if (wState.idx >= wState.seq.length-1){ wState.idx = 0; drawW(); renderSeq(); }
+    b.textContent = '⏸ 暂停';
+    wState.timer = setInterval(function(){
+      if (wState.idx < wState.seq.length-1){
+        wState.idx++;
+        drawW(); renderSeq();
+      } else {
+        clearInterval(wState.timer); wState.timer = null;
+        document.getElementById('wPlay').textContent = '▶ 播放';
+      }
+    }, 620);
+  };
+
+  /* ================= 生命周期 ================= */
+  function resizeAll(){
+    var r3 = fit(cv3, ctx3); W3 = r3.W; H3 = r3.H;
+    var rR = fit(cvR, ctxR); WR = rR.W; HR = rR.H;
+    var rW = fit(cvW, ctxW); WW = rW.W; HW = rW.H;
+    drawR(); drawW();
+  }
+
+  var last = performance.now();
+  function loop(ts){
+    var dt = Math.min(0.06, (ts-last)/1000); last = ts;
+    if (st.playing) st.t += dt*st.omega*2*Math.PI*0.20;
+    if (st.autoRot && !drag) cam.yaw += dt*0.16;
+    draw3();
+    el.oNow.textContent = (len(Svec(st.t, st.phi, st.r))/st.r).toFixed(4);
+    requestAnimationFrame(loop);
+  }
+
+  window.addEventListener('resize', function(){
+    clearTimeout(window.__rz);
+    window.__rz = setTimeout(function(){ resizeAll(); clampPanel(); }, 120);
+  });
+
+  // 启动
+  resizeAll();
+  updateReadout();
+  clampPanel();
+  setWheel(9);
+  el.spInfo.textContent = '拖动画布可转视角 · 全部数值实时计算';
+  requestAnimationFrame(function(t){ last = t; loop(t); });
+})();
+</script>
+</body>
+</html>

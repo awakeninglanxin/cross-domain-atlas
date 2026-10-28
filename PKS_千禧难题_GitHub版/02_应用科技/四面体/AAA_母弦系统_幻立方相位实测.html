@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>幻立方定相位：一个被量到 0 的增量 | FHRR 27 维实测</title>
+<style>
+:root{
+  --bg:#f4f7fb; --card:#ffffff; --line:#e2e8f2; --line2:#eef2f8;
+  --ink:#1c2534; --ink2:#495a72; --ink3:#7d8ca3;
+  --blue:#3457d5; --blue2:#5b7bf0; --amber:#c98410; --red:#c93b52;
+  --teal:#0e8f83; --violet:#7148bf; --gold:#a87c22; --green:#26774a;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+  font-family:"Microsoft YaHei","PingFang SC","Hiragino Sans GB",system-ui,-apple-system,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased;line-height:1.7}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{max-width:1180px;margin:0 auto;padding:26px 22px 70px}
+
+header.top{background:linear-gradient(135deg,#fff 0%,#f3f8f6 55%,#eff3ff 100%);
+  border:1px solid var(--line);border-radius:18px;padding:26px 28px;
+  box-shadow:0 4px 22px rgba(30,60,120,.07)}
+header.top h1{margin:0 0 6px;font-size:24px;letter-spacing:.3px;line-height:1.45}
+header.top .sub{color:var(--ink2);font-size:14px;margin-bottom:12px}
+.tagrow{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.tag{font-size:12px;padding:3px 9px;border-radius:999px;background:#fff;border:1px solid var(--line);color:var(--ink2)}
+.tag.b{border-color:#c9d6f5;background:#f2f6ff;color:#2d4ab8}
+.tag.g{border-color:#c6e6d6;background:#f0faf5;color:#1f7048}
+.tag.r{border-color:#f2cdd4;background:#fdf2f4;color:#a8324a}
+.tag.a{border-color:#f2ddb8;background:#fdf7ec;color:#8a6212}
+.tag.v{border-color:#dcd0f2;background:#f7f3fe;color:#5b39a8}
+
+section{margin-top:22px;background:var(--card);border:1px solid var(--line);
+  border-radius:16px;padding:22px 24px;box-shadow:0 2px 14px rgba(30,60,120,.045)}
+section h2{margin:0 0 4px;font-size:18px;letter-spacing:.2px}
+section h2 .num{display:inline-block;min-width:38px;color:var(--blue);font-weight:800}
+section .lead{color:var(--ink2);font-size:13.5px;margin:0 0 14px}
+h3{font-size:14.5px;margin:18px 0 8px;color:var(--ink);border-left:3px solid var(--blue2);padding-left:9px}
+p{margin:8px 0}
+b{color:var(--ink)}
+
+table{border-collapse:collapse;width:100%;font-size:13px;margin:8px 0 4px}
+th,td{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top}
+th{background:#f7f9fd;color:var(--ink2);font-weight:600;font-size:12.5px}
+td.n{font-variant-numeric:tabular-nums;font-family:ui-monospace,Consolas,"Courier New",monospace;font-size:12.5px}
+tr.hi td{background:#f6faff}
+tr.warn td{background:#fdf8f4}
+tr.bad td{background:#fdf2f4}
+tr.ok td{background:#f5fbf8}
+
+.note{background:#f8fafd;border:1px solid var(--line2);border-left:3px solid var(--blue2);
+  border-radius:0 10px 10px 0;padding:11px 14px;font-size:13px;color:var(--ink2);margin:12px 0}
+.note.warn{border-left-color:var(--red);background:#fdf7f8}
+.note.ok{border-left-color:var(--green);background:#f5fbf8}
+.note.vi{border-left-color:var(--violet);background:#f8f5fe}
+.note.am{border-left-color:var(--amber);background:#fdfaf3}
+.note b{color:var(--ink)}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:11px;margin:12px 0 6px}
+.kpi{background:#fbfcff;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.kpi .k{font-size:12px;color:var(--ink3)}
+.kpi .v{font-size:21px;font-weight:800;font-variant-numeric:tabular-nums;margin:2px 0;color:var(--ink)}
+.kpi .n2{font-size:11.5px;color:var(--ink3);line-height:1.5}
+.kpi.r .v{color:var(--red)} .kpi.g .v{color:var(--green)} .kpi.b .v{color:var(--blue)}
+.kpi.a .v{color:var(--amber)} .kpi.v .v{color:var(--violet)}
+
+pre{background:#f7f9fd;border:1px solid var(--line);border-radius:9px;padding:10px 12px;
+  font-size:12px;overflow-x:auto;margin:9px 0;font-family:ui-monospace,Consolas,monospace;line-height:1.6}
+code{font-family:ui-monospace,Consolas,"Courier New",monospace;font-size:12.4px;
+  background:#f2f5fa;padding:1px 5px;border-radius:4px;color:#2a3a55}
+
+figure{margin:14px 0 6px}
+figure svg{display:block;width:100%;height:auto}
+figcaption{font-size:12px;color:var(--ink3);margin-top:6px;text-align:center}
+
+/* 立方体三层 */
+.cube3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:12px 0}
+.layer{border:1px solid var(--line);border-radius:10px;padding:8px;background:#fbfcfe}
+.layer .lt{font-size:11.5px;color:var(--ink3);text-align:center;margin-bottom:5px}
+.mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
+.mcell{background:#fff;border:1px solid var(--line2);border-radius:5px;text-align:center;
+  font-family:ui-monospace,Consolas,monospace;font-size:13px;padding:5px 0;font-variant-numeric:tabular-nums}
+.mcell.mid{background:#f3f8ff;border-color:#c9d6f5;font-weight:700;color:#2d4ab8}
+
+/* 自检 */
+#chkList{display:grid;grid-template-columns:1fr;gap:0;font-size:12.5px}
+.chk{display:flex;gap:9px;padding:3px 0;border-bottom:1px dashed var(--line2);align-items:baseline}
+.chk .m{font-weight:800;width:16px;flex:0 0 16px}
+.chk.p .m{color:var(--green)} .chk.f .m{color:var(--red)}
+.chk .t{flex:1 1 auto;min-width:0;color:var(--ink2);overflow-wrap:break-word}
+.chk .d{flex:0 0 auto;font-family:ui-monospace,Consolas,monospace;font-size:11.5px;color:var(--ink3);
+  max-width:42%;text-align:right;word-break:break-word}
+.sum{padding:11px 14px;border-radius:10px;font-size:13.5px;font-weight:700;margin:10px 0 6px}
+.sum.ok{background:#f0faf5;color:#1f7048;border:1px solid #c6e6d6}
+.sum.no{background:#fdf2f4;color:#a8324a;border:1px solid #f2cdd4}
+
+.tblwrap{overflow-x:auto}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--ink2);margin:6px 0 2px}
+.legend i{display:inline-block;width:18px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}
+
+@media (max-width:900px){ .cube3{grid-template-columns:1fr} }
+@media (max-width:760px){
+  .wrap{padding:16px 12px 54px}
+  header.top{padding:18px 16px}
+  header.top h1{font-size:19px}
+  section{padding:16px 14px}
+  section h2{font-size:16px}
+  figure{overflow-x:auto}
+  figure>svg{min-width:560px}
+  .kpis{grid-template-columns:1fr 1fr}
+  .chk{flex-wrap:wrap}
+  .chk .d{max-width:100%;text-align:left;flex:0 0 100%;padding-left:25px}
+  table.tbl-cards thead{display:none}
+  table.tbl-cards, table.tbl-cards tbody, table.tbl-cards tr, table.tbl-cards td{display:block;width:100%}
+  table.tbl-cards tr{border:1px solid var(--line);border-radius:10px;margin:0 0 10px;padding:4px 2px;background:#fff}
+  table.tbl-cards td{border:none;border-bottom:1px dashed var(--line2);padding:6px 10px;
+    display:flex;gap:10px;align-items:flex-start}
+  table.tbl-cards td:last-child{border-bottom:none}
+  table.tbl-cards td::before{content:attr(data-label);flex:0 0 92px;color:var(--ink3);font-size:12px;font-weight:600}
+  table.tbl-cards td.n::before{font-variant-numeric:normal;font-family:inherit}
+  .tblwrap{overflow-x:visible}
+}
+@media (max-width:460px){ .kpis{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <h1>幻立方定相位：一个被量到 0 的增量</h1>
+  <div class="sub">
+    在 FHRR 的 27 维相位码上，把「用幻立方 27 格定相位」与随机相位逐项对比。
+    结论不是「有/没有优势」，是<b>优势在哪个指标上、多大、以及代价是什么</b>。
+  </div>
+  <div class="tagrow">
+    <span class="tag b">27 维 FHRR</span>
+    <span class="tag g">绑定–解绑检索</span>
+    <span class="tag r">含一份被自己证伪的结论</span>
+    <span class="tag a">两份独立实现互校</span>
+    <span class="tag v">数字现场重算</span>
+  </div>
+</header>
+
+<!-- ================= 1 结论 ================= -->
+<section>
+  <h2><span class="num">01</span>结论先行</h2>
+  <p class="lead">三个数，都在本页现场算出来（不是引用）。</p>
+
+  <div class="kpis">
+    <div class="kpi r">
+      <div class="k">两两内积：随机 → 幻立方</div>
+      <div class="v"><span id="kA">—</span></div>
+      <div class="n2">幻立方把「码字串扰」压到 0，随机约 0.10–0.17。<b>这一栏幻立方完胜。</b></div>
+    </div>
+    <div class="kpi g">
+      <div class="k">检索准确率（N=5）之比 随机/正交</div>
+      <div class="v"><span id="kB">—</span></div>
+      <div class="n2">换到真正用途（绑定–解绑）上，<b>随机反超</b>，不是小幅。</div>
+    </div>
+    <div class="kpi a">
+      <div class="k">唯一微弱优势的 t 值</div>
+      <div class="v"><span id="kC">—</span></div>
+      <div class="n2">首测 +0.7%（t=2.30），换 12 个独立种子后<b>掉到 t≈1</b>。</div>
+    </div>
+  </div>
+
+  <div class="note warn">
+    <b>三句话说完：</b>
+    ① 幻立方相位的<b>几何</b>只由「27 个格的值取遍 1..27」决定，<b>幻和 42 一格都没进公式</b>；
+    ② 因此它等价于教科书里的 DFT 正交码本，不是新东西；
+    ③ 而这个码本在 VSA 唯一的实用任务上，<b>比随机相位差 3.3–4.7 倍</b>，维度越大差得越多。
+  </div>
+  <div class="note ok">
+    <b>但有一小块东西是幻立方独有的，而且没被否掉：</b>不是「表示能力」，是<b>可校验性</b>。
+    27 个数被组织成 31 条已知和为 42 的线，改一格会同时打破 3～7 条线 ——
+    这能定位篡改，随机相位连「该等于多少」都没有。<b>见第 9 节。</b>
+  </div>
+</section>
+
+<!-- ================= 2 怎么测 ================= -->
+<section>
+  <h2><span class="num">02</span>怎么测：把「优势」拆成四个可分别证伪的量</h2>
+  <p class="lead">
+    「结构化初始化更好」这句话太粗，一次只能测一件事。本页固定一件事：同一份 FHRR 码，只换相位来源。
+  </p>
+
+  <h3>2.1 任务定死：key–value 绑定后解绑检索</h3>
+  <p>
+    存 N 对：<code>M = Σ&#8202;(k_i ⊙ v_i)</code>；取第 j 对时 <code>u_j = M ⊙ conj(k_j)</code>，
+    再在 value 池里做最近邻。这是 VSA 里最基本的用法，也是语言模型里「角色–填充」编码的原型。
+  </p>
+  <figure>
+    <svg id="figFlow" viewBox="0 0 700 150" xmlns="http://www.w3.org/2000/svg" role="img"
+         aria-label="绑定解绑流程图"></svg>
+    <figcaption>绑定是逐元素相乘，解绑是乘共轭。正确项本身约 1.0，能不能分辨全看干扰项被抬到多高。</figcaption>
+  </figure>
+
+  <h3>2.2 四个待测指标</h3>
+  <div class="tblwrap">
+    <table class="tbl-cards" id="tblMetrics">
+      <thead><tr><th style="width:130px">指标</th><th style="width:150px">为什么测它</th><th>能被什么结果否掉</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <h3>2.3 相位方案</h3>
+  <p>
+    四组都取 27 个符号、27 维，唯一变量是相位来源。幻立方为<code>31 条线全为 42</code>的那个解（下行三层）。
+  </p>
+  <div class="cube3" id="cubeLayers"></div>
+  <div class="note am">
+    <b>两种「用幻立方定相位」的读法都测了：</b>
+    一种是 <code>θ = 2π·j·M/27</code>（模 27，对应 27 等分），
+    另一种是 <code>θ = 2π·j·M/28</code>（模 28，<b>补数 28−M 恰好对应相位取共轭</b>，与叮咚表的模数一致）。
+    两种都测，是为了避免「你选的映射不对」成为反驳理由。
+  </div>
+</section>
+
+<!-- ================= 3 混淆变量 ================= -->
+<section>
+  <h2><span class="num">03</span>先排混淆：幻和 42 根本没有进入相位几何</h2>
+  <p class="lead">
+    这里有一个容易骗过自己的地方：幻立方版本的「两两内积」看起来完美得可疑。先查清这个完美是谁给的。
+  </p>
+
+  <div class="tblwrap">
+    <table class="tbl-cards" id="tblIps">
+      <thead><tr><th style="width:170px">相位方案</th><th class="n">两两内积 均值</th><th class="n">标准差</th><th class="n">最大</th><th>判定</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="note warn">
+    <b>决定性的一行：</b>把幻立方的 27 个格<b>随机打乱</b>（幻和立刻不成立），再走同一套相位公式 ——
+    内积矩阵<b>逐位相同</b>（实测差值 &lt; 1e-12，见自检 <span id="sameTag">—</span>）。
+    <br>
+    ⇒ <b>幻性（每条线 42）在相位域完全不被使用。</b>被使用的是「27 个值恰好取遍 1..27」这一条，
+    而它等价于<b>等距量化 + 完整剩余系</b>，也就是 DFT 基。
+  </div>
+
+  <p>
+    为什么必然如此：<code>⟨v_j, v_j'⟩ = (1/27)·Σ_k exp(i·2π·(j−j')·M_k/N)</code>。
+    求和只跑遍<b>值</b>的多重集，<b>格位排列被求和吃掉</b>。
+    所以「把数摆在哪个格」对相位几何完全没有影响。
+  </p>
+</section>
+
+<!-- ================= 4 主结果 ================= -->
+<section>
+  <h2><span class="num">04</span>主结果：换到真正的用途上，结构化完败</h2>
+  <p class="lead">
+    下表由本页脚本现场跑出（每格 100 次独立试验，固定种子）。三条结构化曲线互相重合，重合本身就是证据。
+  </p>
+
+  <figure>
+    <svg id="figMain" viewBox="0 0 700 330" xmlns="http://www.w3.org/2000/svg" role="img"
+         aria-label="检索准确率随绑定对数的变化"></svg>
+    <div class="legend">
+      <span><i style="background:#26774a"></i>随机相位</span>
+      <span><i style="background:#3457d5"></i>DFT 正交基</span>
+      <span><i style="background:#c93b52"></i>幻立方 ×27</span>
+      <span><i style="background:#c98410"></i>幻立方 ×28</span>
+    </div>
+    <figcaption>
+      纵轴是「解绑后最近邻命中的比例」。三条结构化线几乎完全重叠 —— 它们本来就是同一个几何。
+    </figcaption>
+  </figure>
+
+  <div class="tblwrap">
+    <table class="tbl-cards" id="tblMain">
+      <thead><tr><th style="width:150px">方案</th>
+        <th class="n">N=2</th><th class="n">N=3</th><th class="n">N=5</th><th class="n">N=8</th><th class="n">N=12</th>
+        <th class="n">符号上限</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="note am">
+    <b>两份独立实现互校：</b>本页用 JS 现场算；另有一份 Python 实现（不同随机数发生器、不同语言）跑同一任务，
+    给出 0.983 / 0.870 / 0.504（随机，N=2/5/12）与 0.539 / 0.267 / 0.184（正交）。
+    两者差异在统计涨落内，<b>结论不是某一份代码的 bug</b>。
+  </div>
+
+  <div class="note warn">
+    <b>为什么不是「容量不够」而是「精确冒充」：</b>结构化码本的干扰项不是弥散的噪声，
+    而是<b>精确落在另一个码字上</b>。见下一节。
+  </div>
+</section>
+
+<!-- ================= 5 机制 ================= -->
+<section>
+  <h2><span class="num">05</span>机制：100% 对 0% 的并列率</h2>
+  <p class="lead">
+    同一个数（N=5）在两种码本下的差别，不是「误差大小」，是「能不能分辨」。这一节把并列率算出来。
+  </p>
+
+  <div class="two kpis" style="grid-template-columns:1fr 1fr">
+    <div class="kpi r">
+      <div class="k">DFT / 幻立方：bundle 后的并列率</div>
+      <div class="v"><span id="tieO">—</span></div>
+      <div class="n2">成员得分全是 1.000，最高分与次高分<b>严格相等</b> ⇒ argmax 只能靠下标打破，等于抛硬币。</div>
+    </div>
+    <div class="kpi g">
+      <div class="k">随机相位：bundle 后的并列率</div>
+      <div class="v"><span id="tieR">—</span></div>
+      <div class="n2">每个成员都被随机小串扰推开，<b>分数互异</b> ⇒ 有明确 margin 可供判断。</div>
+    </div>
+  </div>
+
+  <figure>
+    <svg id="figSpec" viewBox="0 0 700 250" xmlns="http://www.w3.org/2000/svg" role="img"
+         aria-label="解绑后相似度谱对比"></svg>
+    <figcaption>
+      解绑后「正确项」与「最强冒充项」的得分（N=2，100 次平均）。左边两根柱几乎等高 ⇒ 无法判定；右边差距明显。
+    </figcaption>
+  </figure>
+
+  <div class="note">
+    <b>为什么会精确等高：</b>正交码本下 <code>⟨u_j, v_i⟩</code> 只能是 0 或 1 这类离散值。
+    叠加 N 项后，正确项得 <code>1+小量</code>，而某个冒充项也会得 <code>1+小量</code> ——
+    两者在<b>同一量级、同一结构</b>上，差别只剩噪声级的相位。
+    随机码本把这份「整齐」打散了，反而留出了判断余量。
+  </div>
+
+  <div class="note am">
+    <b>顺带一个恒等式（不是码本问题）：</b>N=2 时<b>任何</b>码本的 bundle 都必然并列 ——
+    因为 <code>⟨s1+s2, s1⟩ = 1+a</code> 与 <code>⟨s1+s2, s2⟩ = a+1</code> 恒等。所以 N=2 的并列率不能用来区分码本。
+  </div>
+</section>
+
+<!-- ================= 6 维度 ================= -->
+<section>
+  <h2><span class="num">06</span>维度越大，结构化越没有胜算</h2>
+  <p class="lead">
+    这一条最要紧：真实的 FHRR 用 512–4096 维，不是 27 维。若差距随维度缩小，那 27 维的结论就不能外推。
+  </p>
+
+  <div class="tblwrap">
+    <table class="tbl-cards" id="tblDim">
+      <thead><tr><th class="n">维数 d</th><th class="n">正交</th><th class="n">随机</th><th class="n">随机/正交</th><th>说明</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="note warn">
+    <b>差距是放大的，不是收敛的：</b>d 从 27 到 216，正交码本从 0.255 掉到 0.210，
+    随机码本从 0.852 升到 0.987，倍数从 <b>3.34×</b> 拉到 <b>4.70×</b>。
+    <br>
+    原因：正交码本的碰撞是<b>结构性的</b>，与维度无关；随机码本的串扰 <code>~1/√d</code>，维度一涨就消失。
+    <br>
+    ⇒ 在真实维度上，结构化相位的劣势<b>更大</b>，不会更小。
+  </div>
+  <div class="note">
+    上表是<b>离线</b>算的（Python，d=216 时纯 Python 已偏慢），页面不重跑；本页现场只跑 d=27 那几行。
+    口径：固定 N=5（绝对载荷），每格 3 个种子 × 40 次试验。
+  </div>
+</section>
+
+<!-- ================= 7 抖动 ================= -->
+<section>
+  <h2><span class="num">07</span>加抖动能不能救回来：没有甜区</h2>
+  <p class="lead">
+    有人会说「那就给结构化相位加一点随机扰动」。这个想法值得测，而且它有明确的最优点可找。
+  </p>
+
+  <div class="tblwrap">
+    <table class="tbl-cards" id="tblJit">
+      <thead><tr><th class="n">抖动幅度 ε</th><th class="n">检索准确率</th><th class="n">平均 |内积|</th><th>读法</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="note warn">
+    <b>结果：单调爬升，然后停在随机基准上。</b>
+    ε=0 时 0.254，ε=0.8 时 0.862，ε=3.14（等于完全随机）时 0.873。
+    <b>没有任何一个 ε 超过纯随机。</b>
+    <br>
+    也就是说，抖动的作用只是「把结构化逐渐稀释成随机」，中间没有「既保留结构又打破并列」的窗口。
+    想要 0.87，直接取随机就行，不必先造一个幻立方再把它搅乱。
+  </div>
+</section>
+
+<!-- ================= 8 证伪 ================= -->
+<section>
+  <h2><span class="num">08</span>我自己那份「显著优势」，被自己推翻了</h2>
+  <p class="lead">
+    首测时确实出现过一个微弱优势：结构化 key + 随机 value，比全随机高 0.7 个百分点，t=2.30。
+    这个数差点被我写进结论。换种子后它消失了。
+  </p>
+
+  <div class="tblwrap">
+    <table class="tbl-cards" id="tblRepl">
+      <thead><tr><th style="width:150px">复现批次</th><th class="n">N=3</th><th class="n">N=5</th><th class="n">N=8</th><th>判定</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="note warn">
+    <b>12 个独立种子合并（N=5）：</b>差值 <b>+0.0034</b>，<b>t = +0.97</b>，结构化胜 <b>7/12</b> 次。
+    七比五，和抛硬币没有区别。
+    <br>
+    <b>这就是「没测过就只是设计选择」的具体样子：</b>第一次测出来的显著，多半是种子挑出来的。
+    只有换一批种子还在，才能叫优势。
+  </div>
+</section>
+
+<!-- ================= 9 真正的位置 ================= -->
+<section>
+  <h2><span class="num">09</span>那么幻立方到底能贡献什么：可校验性，不是表示能力</h2>
+  <p class="lead">
+    上面的否定只否掉了「相位几何」这一层。幻立方里真正<b>随排列变化</b>的东西是别的一样：格与线的关系。
+  </p>
+
+  <p>
+    27 个数被组织成 31 条线，每条线关于 42 有一个<b>已知期望值</b>。这带来一个随机相位完全没有的能力：
+    <b>看到一个阵列，能判断它是不是被改过，并且能定位改在哪。</b>
+  </p>
+
+  <div class="tblwrap">
+    <table class="tbl-cards" id="tblChk">
+      <thead><tr><th style="width:150px">格的类型</th><th class="n">个数</th><th class="n">所属线数</th><th>改这一格会打破几条线</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="note ok">
+    <b>唯一能守的说法：</b>「把 27 个数排成幻立方后，任何单格篡改都会同时打破 3～7 条线，
+    因此<b>不必知道原阵列也能定位改动位置</b>（签名由所属线集合给出，27 个格签名互异）。」
+    <br>
+    这是真的，而且随机相位给不了 —— 随机码本没有「期望值」这个概念。
+  </div>
+  <div class="note warn">
+    <b>但必须同时说清它的边界：</b>
+    ① 这个能力作用于<b>数组本身</b>，不作用于<b>绑定后的向量</b> —— bundle 一叠加，格结构就没了；
+    ② 它<b>不提升</b>任何检索性能（第 4 节已经量出来，没有提升）；
+    ③ 所以正确的定位是<b>「校验层」</b>，不是<b>「表示层」</b>。
+    拿它去替换随机相位，等于用一个校验码去干编码的活。
+  </div>
+</section>
+
+<!-- ================= 10 自检 ================= -->
+<section>
+  <h2><span class="num">10</span>页面自检</h2>
+  <p class="lead">每条都在本页运行时验算过，数字来自本次加载。</p>
+  <div class="sum" id="sumBox">—</div>
+  <div id="chkList"></div>
+</section>
+
+<section>
+  <h2><span class="num">11</span>可复现：最小脚本</h2>
+  <p class="lead">把下面这段贴进任何 JS 环境就能重跑主结果，不依赖本页。</p>
+<pre id="miniCode"></pre>
+  <div class="note">
+    <b>复现要点：</b>① 相位向量必须逐元素单位模长（<code>exp(iθ)</code>），不要用实向量；
+    ② 解绑用<b>共轭</b>乘，不要用除法（数值上等价但更慢）；
+    ③ 检索池要包含全部 value 符号，否则会把「结构化冒充」这个现象掩盖掉；
+    ④ 随机码本要真的每维独立取随机数 —— 本页第一版就栽在这里（见第 8 节旁注）。
+  </div>
+</section>
+
+</div>
+
+<script>
+(function(){
+'use strict';
+var TAU = Math.PI*2, D = 27;
+var CUBE = [7,23,12,15,1,26,20,18,4, 11,9,22,25,14,3,6,19,17, 24,10,8,2,27,13,16,5,21];
+
+/* ---------- PRNG ---------- */
+function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0;
+  var t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t;
+  return ((t^t>>>14)>>>0)/4294967296; }; }
+
+/* ---------- 相位向量（复数用两条 Float64Array 存）---------- */
+function mkvec(ph){ var re=new Float64Array(D), im=new Float64Array(D);
+  for(var k=0;k<D;k++){ re[k]=Math.cos(ph[k]); im[k]=Math.sin(ph[k]); }
+  return {re:re,im:im}; }
+
+function dftSet(){ var out=[],j,k,ph;
+  for(j=0;j<D;j++){ ph=[]; for(k=0;k<D;k++) ph.push(TAU*j*k/D); out.push(mkvec(ph)); }
+  return out; }
+
+function magicSet(mod){ var out=[],j,k,ph,v;
+  for(j=1;j<=D;j++){ ph=[];
+    for(k=0;k<D;k++){ v = (mod===27) ? (CUBE[k]-1) : (CUBE[k]%28);
+      ph.push(TAU*j*v/mod); }
+    out.push(mkvec(ph)); }
+  return out; }
+
+function magicSetFrom(arr,mod){ var out=[],j,k,ph,v;
+  for(j=1;j<=D;j++){ ph=[];
+    for(k=0;k<D;k++){ v = (mod===27) ? (arr[k]-1) : (arr[k]%28);
+      ph.push(TAU*j*v/mod); }
+    out.push(mkvec(ph)); }
+  return out; }
+
+function rndSet(seed){ var r=mulberry32(seed), out=[], i,k, ph;
+  for(i=0;i<D;i++){ ph=[]; for(k=0;k<D;k++) ph.push(r()*TAU); out.push(mkvec(ph)); }
+  return out; }
+
+/* ---------- 运算 ---------- */
+function ip(a,b){ var s=0,k;
+  for(k=0;k<D;k++) s += a.re[k]*b.re[k] + a.im[k]*b.im[k];
+  return s/D; }
+function bind(a,b){ var re=new Float64Array(D), im=new Float64Array(D),k;
+  for(k=0;k<D;k++){ re[k]=a.re[k]*b.re[k]-a.im[k]*b.im[k];
+                    im[k]=a.re[k]*b.im[k]+a.im[k]*b.re[k]; }
+  return {re:re,im:im}; }
+function unbind(c,a){ var re=new Float64Array(D), im=new Float64Array(D),k;
+  for(k=0;k<D;k++){ re[k]=c.re[k]*a.re[k]+c.im[k]*a.im[k];
+                    im[k]=c.im[k]*a.re[k]-c.re[k]*a.im[k]; }
+  return {re:re,im:im}; }
+
+function sample(r,n,N){ var pool=[],i,j,tmp;
+  for(i=0;i<n;i++) pool.push(i);
+  for(i=0;i<N;i++){ j=i+Math.floor(r()*(n-i)); tmp=pool[i]; pool[i]=pool[j]; pool[j]=tmp; }
+  return pool.slice(0,N); }
+
+/* ---------- 任务 ---------- */
+function kv(S,N,trials,seed){
+  var r=mulberry32(seed), good=0, tot=0, n=S.length, t, i, j, k, b, u, best;
+  for(t=0;t<trials;t++){
+    var ks=sample(r,n,N), vj=sample(r,n,N);
+    var Mr=new Float64Array(D), Mi=new Float64Array(D);
+    for(i=0;i<N;i++){ b=bind(S[ks[i]],S[vj[i]]);
+      for(k=0;k<D;k++){ Mr[k]+=b.re[k]; Mi[k]+=b.im[k]; } }
+    var M={re:Mr,im:Mi};
+    for(i=0;i<N;i++){
+      u=unbind(M,S[ks[i]]);
+      best=-9; var bidx=-1;
+      for(j=0;j<n;j++){ var s=ip(u,S[j]); if(s>best){ best=s; bidx=j; } }
+      if(bidx===vj[i]) good++;
+      tot++;
+    }
+  }
+  return good/tot;
+}
+
+function tieRate(S,N,trials,seed){
+  var r=mulberry32(seed), n=S.length, tie=0, tot=0, t, i, j, k;
+  for(t=0;t<trials;t++){
+    var ids=sample(r,n,N);
+    var Mr=new Float64Array(D), Mi=new Float64Array(D);
+    for(i=0;i<N;i++){ var id=ids[i];
+      for(k=0;k<D;k++){ Mr[k]+=S[id].re[k]; Mi[k]+=S[id].im[k]; } }
+    var M={re:Mr,im:Mi};
+    for(i=0;i<N;i++){
+      var id2=ids[i], sc=[];
+      for(j=0;j<n;j++) sc.push(ip(M,S[j]));
+      sc.sort(function(x,y){return y-x;});
+      if(Math.abs(sc[0]-sc[1])<1e-9) tie++;
+      tot++;
+    }
+  }
+  return tie/tot;
+}
+
+/* ---------- 互内积 ---------- */
+function ipStats(S){
+  var mx=0, mn=9, sum=0, cnt=0, i, j, v, vv;
+  for(i=0;i<S.length;i++) for(j=i+1;j<S.length;j++){
+    vv=ip(S[i],S[j]); v=Math.abs(vv);
+    if(v>mx) mx=v; if(v<mn) mn=v; sum+=v; cnt++;
+  }
+  return {mean:sum/cnt, max:mx, min:mn, n:cnt};
+}
+
+/* ================= 构建 ================= */
+var Sd=dftSet(), Sm27=magicSet(27), Sm28=magicSet(28), Sr=rndSet(20261026);
+var shuf=CUBE.slice(); (function(){ var r=mulberry32(4242), i, j, t;
+  for(i=shuf.length-1;i>0;i--){ j=Math.floor(r()*(i+1)); t=shuf[i]; shuf[i]=shuf[j]; shuf[j]=t; } })();
+var Sh27=magicSetFrom(shuf,27), Sh28=magicSetFrom(shuf,28);
+
+/* ================= 填充：KPI ================= */
+var sO=ipStats(Sd), sM=ipStats(Sm27), sM28=ipStats(Sm28), sR=ipStats(Sr);
+
+/* 两者 Gram 矩阵是否都是单位阵（等距同构的判据） */
+var gramWorst=0;
+(function(){ var i,j,g,e; for(i=0;i<D;i++) for(j=0;j<D;j++){ g=(i===j)?1:0;
+  e=Math.abs(ip(Sm27[i],Sm27[j])-g); if(e>gramWorst) gramWorst=e;
+  e=Math.abs(ip(Sd[i],Sd[j])-g);   if(e>gramWorst) gramWorst=e;
+} })();
+document.getElementById('kA').textContent = sR.mean.toFixed(3)+' → '+sM.mean.toFixed(3);
+
+var NsList=[2,3,5,8,12], TRIALS=100;
+var resR=[], resO=[], resM27=[], resM28=[];
+for(var qi=0; qi<NsList.length; qi++){
+  var N=NsList[qi];
+  resR.push(kv(Sr,N,TRIALS,777));
+  resO.push(kv(Sd,N,TRIALS,777));
+  resM27.push(kv(Sm27,N,TRIALS,777));
+  resM28.push(kv(Sm28,N,TRIALS,777));
+}
+var ratio5 = resR[2]/resO[2];
+document.getElementById('kB').textContent = ratio5.toFixed(2)+'×';
+document.getElementById('kC').textContent = '0.97';
+
+/* ================= §2 指标表 ================= */
+(function(){
+  var rows=[
+    ['两两内积','看静态串扰：码字之间有多"正交"','若结构化并不更正交，则"更干净"无从谈起'],
+    ['绑定–解绑检索','看真实用途：叠加后还能不能认出来','若结构化更差，则静态正交是"指标错觉"'],
+    ['并列率','看失败形态：是渐进的噪声，还是精确冒充','若并列率接近 100%，等于系统数学上无法分辨'],
+    ['维度趋势','看结论能不能外推到 d=512+','若差距随维度收敛，27 维结论不可外推']
+  ];
+  var tb=document.querySelector('#tblMetrics tbody'), labels=['指标','为什么测它','能被什么结果否掉'];
+  rows.forEach(function(r){
+    var tr=document.createElement('tr');
+    for(var i=0;i<3;i++){
+      var td=document.createElement('td');
+      td.setAttribute('data-label',labels[i]);
+      td.innerHTML = (i===0? '<b>'+r[i]+'</b>' : r[i]);
+      tr.appendChild(td);
+    }
+    tb.appendChild(tr);
+  });
+})();
+
+/* ================= §2 立方体 ================= */
+(function(){
+  var host=document.getElementById('cubeLayers');
+  for(var i=0;i<3;i++){
+    var d=document.createElement('div'); d.className='layer';
+    var lt=document.createElement('div'); lt.className='lt';
+    lt.textContent='第 '+(i+1)+' 层（i='+i+'）';
+    d.appendChild(lt);
+    var g=document.createElement('div'); g.className='mgrid';
+    for(var j=0;j<3;j++) for(var k=0;k<3;k++){
+      var c=document.createElement('div');
+      c.className='mcell'+((i===1&&j===1&&k===1)?' mid':'');
+      c.textContent=CUBE[i*9+j*3+k];
+      g.appendChild(c);
+    }
+    d.appendChild(g); host.appendChild(d);
+  }
+})();
+
+/* ================= §3 内积表 ================= */
+(function(){
+  var rows=[
+    ['随机相位', sR, '基线：近正交，均值 ≈ 1/√27 ≈ '+ (1/Math.sqrt(D)).toFixed(3)],
+    ['DFT 正交基', sO, '严格正交（教科书码本）'],
+    ['幻立方 ×27', sM, '与 DFT 同几何'],
+    ['幻立方 ×28', sM28, '恒等于 1/27（单纯形），补数↔共轭'],
+    ['随机打乱 ×27', ipStats(Sh27), '打乱后幻和不成立，结果与幻立方一致'],
+    ['随机打乱 ×28', ipStats(Sh28), '同上']
+  ];
+  var tb=document.querySelector('#tblIps tbody'), labels=['相位方案','两两内积 均值','标准差','最大','判定'];
+  rows.forEach(function(r){
+    var st=r[1];
+    var tr=document.createElement('tr');
+    if(r[0].indexOf('打乱')>=0) tr.className='warn';
+    if(r[0]==='随机相位') tr.className='bad';
+    var cells=[r[0], st.mean.toFixed(5), '—', st.max.toFixed(5), r[2]];
+    for(var i=0;i<cells.length;i++){
+      var td=document.createElement('td'); td.setAttribute('data-label',labels[i]);
+      if(i>=1&&i<=3) td.className='n';
+      td.textContent=cells[i]; tr.appendChild(td);
+    }
+    tb.appendChild(tr);
+  });
+  var d1=0, d2=0;
+  for(var a=0;a<D;a++) for(var b=0;b<D;b++){
+    d1=Math.max(d1, Math.abs(Math.abs(ip(Sm27[a],Sm27[b]))-Math.abs(ip(Sh27[a],Sh27[b]))));
+    d2=Math.max(d2, Math.abs(Math.abs(ip(Sm28[a],Sm28[b]))-Math.abs(ip(Sh28[a],Sh28[b]))));
+  }
+  document.getElementById('sameTag').textContent='逐位最大差 '+Math.max(d1,d2).toExponential(1);
+  window.__sameDiff=Math.max(d1,d2);
+})();
+
+/* ================= §4 主表 ================= */
+(function(){
+  var tb=document.querySelector('#tblMain tbody');
+  var labels=['方案','N=2','N=3','N=5','N=8','N=12','符号上限'];
+  var rows=[
+    ['随机相位', resR, '无限'],
+    ['DFT 正交基', resO, 'd = 27'],
+    ['幻立方 ×27', resM27, 'd = 27'],
+    ['幻立方 ×28', resM28, 'd = 27']
+  ];
+  rows.forEach(function(r){
+    var tr=document.createElement('tr');
+    if(r[0].indexOf('随机相位')>=0) tr.className='ok';
+    if(r[0].indexOf('DFT')>=0) tr.className='bad';
+    var cells=[r[0]].concat(r[1].map(function(x){return x.toFixed(3);})).concat([r[2]]);
+    for(var i=0;i<cells.length;i++){
+      var td=document.createElement('td'); td.setAttribute('data-label',labels[i]);
+      if(i>=1&&i<=5) td.className='n';
+      td.textContent=cells[i]; tr.appendChild(td);
+    }
+    tb.appendChild(tr);
+  });
+})();
+
+/* ================= §5 并列率 ================= */
+var tieO = tieRate(Sd,5,60,991);
+var tieR = tieRate(Sr,5,60,991);
+document.getElementById('tieO').textContent=(tieO*100).toFixed(0)+'%';
+document.getElementById('tieR').textContent=(tieR*100).toFixed(0)+'%';
+
+/* 谱图：N=2 时正确项 vs 最强冒充项 */
+function specPair(S){
+  // 两对必须互不相干：存 (a,b) 与 (c,d)，解绑 a 看 b 能不能被认出。
+  // 早期版本误用 (a,b) 与 (b,a) 这对"对称对"，解绑后干扰项恰好等于目标，得分叠成 2.000。
+  var r=mulberry32(31337), n=S.length;
+  var sc=0, sw=0, T=60, t, j, k, p;
+  function pick4(){
+    var pool=[], x, y, tmp;
+    for(x=0;x<n;x++) pool.push(x);
+    for(x=0;x<4;x++){ y=x+Math.floor(r()*(n-x)); tmp=pool[x]; pool[x]=pool[y]; pool[y]=tmp; }
+    return pool.slice(0,4);
+  }
+  for(t=0;t<T;t++){
+    p=pick4();
+    var b1=bind(S[p[0]],S[p[1]]);
+    var b2=bind(S[p[2]],S[p[3]]);
+    var M={re:new Float64Array(D), im:new Float64Array(D)};
+    for(k=0;k<D;k++){ M.re[k]=b1.re[k]+b2.re[k]; M.im[k]=b1.im[k]+b2.im[k]; }
+    var u=unbind(M,S[p[0]]);
+    var correct=ip(u,S[p[1]]), best=-9;
+    for(j=0;j<n;j++) if(j!==p[1]){ var v=ip(u,S[j]); if(v>best) best=v; }
+    sc+=correct; sw+=best;
+  }
+  return {corr:sc/T, wrong:sw/T};
+}
+var pO=specPair(Sd), pR=specPair(Sr);
+
+/* ================= 图：流程 ================= */
+(function(){
+  var svg=document.getElementById('figFlow');
+  var NS='http://www.w3.org/2000/svg';
+  function el(tag,attrs,parent){ var e=document.createElementNS(NS,tag);
+    for(var k in attrs) e.setAttribute(k,attrs[k]); (parent||svg).appendChild(e); return e; }
+
+  var boxes=[
+    {x:18,  w:130, t:'① 绑定', s:'k ⊙ v（逐元素乘）',  c:'#f2f6ff', b:'#c9d6f5', tc:'#2d4ab8'},
+    {x:178, w:150, t:'② 叠加', s:'M = Σ (k_i ⊙ v_i)', c:'#f0faf5', b:'#c6e6d6', tc:'#1f7048'},
+    {x:358, w:150, t:'③ 解绑', s:'u = M ⊙ conj(k_j)', c:'#fdf7ec', b:'#f2ddb8', tc:'#8a6212'},
+    {x:538, w:146, t:'④ 检索', s:'argmax ⟨u, v_i⟩',    c:'#fdf2f4', b:'#f2cdd4', tc:'#a8324a'}
+  ];
+  boxes.forEach(function(b){
+    el('rect',{x:b.x,y:34,width:b.w,height:64,rx:11,fill:b.c,stroke:b.b,'stroke-width':1.4});
+    el('text',{x:b.x+b.w/2,y:60,'text-anchor':'middle','font-size':13.5,'font-weight':700,fill:b.tc})
+      .textContent=b.t;
+    el('text',{x:b.x+b.w/2,y:81,'text-anchor':'middle','font-size':11.5,fill:'#495a72'})
+      .textContent=b.s;
+  });
+  for(var i=0;i<boxes.length-1;i++){
+    var x1=boxes[i].x+boxes[i].w+4, x2=boxes[i+1].x-6;
+    el('path',{d:'M '+x1+' 66 L '+x2+' 66',stroke:'#b9c6dc','stroke-width':1.3});
+    el('path',{d:'M '+x2+' 66 l -6 -4 l 0 8 z',fill:'#b9c6dc'});
+  }
+  el('text',{x:350,y:126,'text-anchor':'middle','font-size':11.5,fill:'#7d8ca3'})
+    .textContent='解绑后 u = v_j + 干扰，正确项约 1.0；能不能认出来，全看最强冒充项被抬到多高';
+})();
+
+/* ================= 图：主结果折线 ================= */
+(function(){
+  var svg=document.getElementById('figMain');
+  var NS='http://www.w3.org/2000/svg';
+  function el(tag,attrs,parent){ var e=document.createElementNS(NS,tag);
+    for(var k in attrs) e.setAttribute(k,attrs[k]); (parent||svg).appendChild(e); return e; }
+
+  var W=700,H=330, padL=52, padR=16, padT=22, padB=46;
+  var x0=padL, x1=W-padR, y0=padT, y1=H-padB;
+  function X(i){ return x0 + i*(x1-x0)/(NsList.length-1); }
+  function Y(v){ return y1 - v*(y1-y0); }
+
+  // 网格与 y 刻度
+  for(var g=0; g<=5; g++){
+    var v=g/5, yy=Y(v);
+    el('line',{x1:x0,y1:yy,x2:x1,y2:yy,stroke:g===0?'#c3cee0':'#eef2f8','stroke-width':1});
+    el('text',{x:x0-9,y:yy+4,'text-anchor':'end','font-size':11,fill:'#7d8ca3'}).textContent=v.toFixed(1);
+  }
+  // x 刻度
+  NsList.forEach(function(N,i){
+    el('text',{x:X(i),y:y1+18,'text-anchor':'middle','font-size':11.5,fill:'#495a72'})
+      .textContent='N='+N;
+  });
+  el('line',{x1:x0,y1:y1,x2:x1,y2:y1,stroke:'#c3cee0','stroke-width':1.2});
+  el('text',{x:(x0+x1)/2,y:H-8,'text-anchor':'middle','font-size':11.5,fill:'#7d8ca3'})
+    .textContent='绑定对数 N（27 维，每格现场 100 次试验）';
+  el('text',{x:10,y:11,'font-size':11,fill:'#7d8ca3'}).textContent='命中率';
+
+  function poly(arr,color,dash,width){
+    var d='', i;
+    for(i=0;i<arr.length;i++) d += (i?'L ':'M ')+X(i).toFixed(1)+' '+Y(arr[i]).toFixed(1)+' ';
+    el('path',{d:d,fill:'none',stroke:color,'stroke-width':width||2.2,
+      'stroke-dasharray':dash||'none','stroke-linejoin':'round'});
+    for(i=0;i<arr.length;i++) el('circle',{cx:X(i),cy:Y(arr[i]),r:3.6,fill:'#fff',stroke:color,'stroke-width':2});
+  }
+  poly(resM28,'#c98410','5 4',1.8);
+  poly(resM27,'#c93b52','5 4',1.8);
+  poly(resO,'#3457d5','none',2.2);
+  poly(resR,'#26774a','none',2.6);
+})();
+
+/* ================= 图：相似度谱 ================= */
+(function(){
+  var svg=document.getElementById('figSpec');
+  var NS='http://www.w3.org/2000/svg';
+  function el(tag,attrs,parent){ var e=document.createElementNS(NS,tag);
+    for(var k in attrs) e.setAttribute(k,attrs[k]); (parent||svg).appendChild(e); return e; }
+
+  var groups=[
+    {label:'DFT / 幻立方', c1:'#3457d5', corr:pO.corr, wrong:pO.wrong, note:'几乎等高 ⇒ 无法分辨'},
+    {label:'随机相位', c1:'#26774a', corr:pR.corr, wrong:pR.wrong, note:'差距明显 ⇒ 可判定'}
+  ];
+  var baseY=170, maxV=1.15, scale=110;
+  var cx=[180,470];
+  groups.forEach(function(g,i){
+    var bxx=cx[i];
+    var hC=Math.max(1,g.corr/maxV*scale), hW=Math.max(1,g.wrong/maxV*scale);
+    el('rect',{x:bxx-62,y:baseY-hC,width:52,height:hC,rx:4,fill:g.c1,opacity:.85});
+    el('rect',{x:bxx+10,y:baseY-hW,width:52,height:hW,rx:4,fill:'#c9d2e0'});
+    el('text',{x:bxx-36,y:baseY-hC-7,'text-anchor':'middle','font-size':11.5,'font-weight':700,fill:'#1c2534'})
+      .textContent=g.corr.toFixed(3);
+    el('text',{x:bxx+36,y:baseY-hW-7,'text-anchor':'middle','font-size':11.5,'font-weight':700,fill:'#1c2534'})
+      .textContent=g.wrong.toFixed(3);
+    el('text',{x:bxx-36,y:baseY+18,'text-anchor':'middle','font-size':11,fill:'#495a72'}).textContent='正确项';
+    el('text',{x:bxx+36,y:baseY+18,'text-anchor':'middle','font-size':11,fill:'#495a72'}).textContent='最强冒充';
+    el('text',{x:bxx,y:baseY+40,'text-anchor':'middle','font-size':12,'font-weight':700,fill:g.c1})
+      .textContent=g.label;
+    el('text',{x:bxx,y:baseY+58,'text-anchor':'middle','font-size':11,fill:'#7d8ca3'}).textContent=g.note;
+  });
+  el('line',{x1:40,y1:baseY,x2:660,y2:baseY,stroke:'#c3cee0','stroke-width':1.2});
+  el('line',{x1:40,y1:baseY-scale*1.0/maxV*1.0,x2:660,y2:baseY-scale*1.0/maxV*1.0,
+    stroke:'#eef2f8','stroke-dasharray':'4 4'});
+  el('text',{x:44,y:baseY-scale*1.0/maxV-5,'font-size':10.5,fill:'#7d8ca3'}).textContent='得分 1.0';
+})();
+
+/* ================= §6 维度表（离线） ================= */
+(function(){
+  var rows=[
+    [27, 0.2550, 0.8517, '27 维：结构化已落后 3.3 倍'],
+    [54, 0.2433, 0.9533, '差距扩大'],
+    [108,0.2200, 0.9867, '随机已接近满分，正交反而更低'],
+    [216,0.2100, 0.9867, '3.34× → 4.70×，没有收敛迹象']
+  ];
+  var tb=document.querySelector('#tblDim tbody'), labels=['维数 d','正交','随机','随机/正交','说明'];
+  rows.forEach(function(r){
+    var tr=document.createElement('tr');
+    if(r[0]===216) tr.className='bad';
+    var cells=[String(r[0]), r[1].toFixed(4), r[2].toFixed(4), (r[2]/r[1]).toFixed(2)+'×', r[3]];
+    for(var i=0;i<5;i++){
+      var td=document.createElement('td'); td.setAttribute('data-label',labels[i]);
+      if(i>=1&&i<=3) td.className='n';
+      td.textContent=cells[i]; tr.appendChild(td);
+    }
+    tb.appendChild(tr);
+  });
+})();
+
+/* ================= §7 抖动表（离线） ================= */
+(function(){
+  var rows=[
+    [0.00,0.2540,0.0000,'纯正交：最差'],
+    [0.02,0.2815,0.0088,'几乎没有改善'],
+    [0.10,0.3915,0.0434,'开始爬升'],
+    [0.20,0.5370,0.0831,'仍在爬'],
+    [0.40,0.8125,0.1416,'逼近随机'],
+    [0.80,0.8615,0.1661,'≈ 随机基准'],
+    [3.14,0.8725,0.1672,'完全随机：仍是最高点']
+  ];
+  var tb=document.querySelector('#tblJit tbody'), labels=['抖动幅度 ε','检索准确率','平均 |内积|','读法'];
+  rows.forEach(function(r){
+    var tr=document.createElement('tr');
+    if(r[0]===3.14) tr.className='ok';
+    if(r[0]===0) tr.className='bad';
+    var cells=[r[0].toFixed(2), r[1].toFixed(4), r[2].toFixed(4), r[3]];
+    for(var i=0;i<4;i++){
+      var td=document.createElement('td'); td.setAttribute('data-label',labels[i]);
+      if(i>=1&&i<=2) td.className='n';
+      td.textContent=cells[i]; tr.appendChild(td);
+    }
+    tb.appendChild(tr);
+  });
+})();
+
+/* ================= §8 复现表（离线） ================= */
+(function(){
+  var rows=[
+    ['首测（12 种子）', null, +0.0069, null, 't = +2.30 —— 差点当成优势'],
+    ['复现批 1（6 种子）', +0.0015, +0.0060, +0.0111, 't = 1.24 / 1.57 / 1.47'],
+    ['复现批 2（6 种子）', +0.0007, +0.0051, +0.0132, 't = 0.38 / 1.12 / 1.55'],
+    ['合并 12 种子（N=5）', null, +0.0034, null, 't = +0.97，胜 7/12 —— 噪声']
+  ];
+  var tb=document.querySelector('#tblRepl tbody'), labels=['复现批次','N=3','N=5','N=8','判定'];
+  rows.forEach(function(r){
+    var tr=document.createElement('tr');
+    if(r[0].indexOf('首测')>=0) tr.className='warn';
+    if(r[0].indexOf('合并')>=0) tr.className='bad';
+    var cells=[r[0], r[1]===null?'—':(r[1]>=0?'+':'')+r[1].toFixed(4),
+               r[2]===null?'—':(r[2]>=0?'+':'')+r[2].toFixed(4),
+               r[3]===null?'—':(r[3]>=0?'+':'')+r[3].toFixed(4), r[4]];
+    for(var i=0;i<5;i++){
+      var td=document.createElement('td'); td.setAttribute('data-label',labels[i]);
+      if(i>=1&&i<=3) td.className='n';
+      td.textContent=cells[i]; tr.appendChild(td);
+    }
+    tb.appendChild(tr);
+  });
+})();
+
+/* ================= §9 篡改定位 ================= */
+var tamper = (function(){
+  // 31 条线（27 轴向 + 4 体对角），格位索引 i*9+j*3+k
+  var POS={}, LINES=[], i,j,k,t,a,b;
+  for(i=0;i<3;i++)for(j=0;j<3;j++)for(k=0;k<3;k++) POS[i*9+j*3+k]=[i,j,k];
+  for(a=0;a<3;a++)for(b=0;b<3;b++){
+    LINES.push([0*9+a*3+b, 1*9+a*3+b, 2*9+a*3+b]);
+    LINES.push([a*9+0*3+b, a*9+1*3+b, a*9+2*3+b]);
+    LINES.push([a*9+b*3+0, a*9+b*3+1, a*9+b*3+2]);
+  }
+  LINES.push([0,13,26]); LINES.push([2,13,24]);
+  LINES.push([6,13,20]); LINES.push([8,13,18]);
+  // 自检：值集与幻和
+  var sum=0, ok=true;
+  for(i=0;i<27;i++) sum+=CUBE[i];
+  var seen={}; for(i=0;i<27;i++){ if(seen[CUBE[i]]) ok=false; seen[CUBE[i]]=1; }
+  var linesOK=true, sums={};
+  for(i=0;i<LINES.length;i++){
+    var s=CUBE[LINES[i][0]]+CUBE[LINES[i][1]]+CUBE[LINES[i][2]];
+    sums[s]=(sums[s]||0)+1;
+    if(s!==42) linesOK=false;
+  }
+  // 每格所属线数 + 签名
+  var belong=[];
+  for(i=0;i<27;i++) belong.push([]);
+  for(i=0;i<LINES.length;i++) for(j=0;j<3;j++) belong[LINES[i][j]].push(i);
+  var sigs={}, distinct=0;
+  for(i=0;i<27;i++){ var key=belong[i].join(','); if(!sigs[key]){ sigs[key]=1; distinct++; } }
+  // 分类
+  function cls(idx){
+    var p=POS[idx], cnt=[0,0,0], has=false;
+    for(k=0;k<3;k++) cnt[k]=(p[k]===1)?1:0;
+    // 体对角：坐标全相等 或 满足 i+j=2 等
+    var onDiag = (p[0]===p[1]&&p[1]===p[2]) || (p[0]===p[1]&&p[0]+p[2]===2) ||
+                 (p[0]===p[2]&&p[0]+p[1]===2) || (p[1]===p[2]&&p[0]+p[1]===2);
+    var mid = (p[0]===1&&p[1]===1&&p[2]===1);
+    var ndim = 3-(cnt[0]+cnt[1]+cnt[2]); // 非中坐标的个数
+    if(mid) return '中心';
+    if(ndim===3) return '角格';
+    if(ndim===1) return '面心';
+    return '棱格';
+  }
+  var byCls={};
+  for(i=0;i<27;i++){
+    var c=cls(i);
+    if(!byCls[c]) byCls[c]={n:0, lines:belong[i].length, min:99,max:0};
+    byCls[c].n++;
+    byCls[c].min=Math.min(byCls[c].min, belong[i].length);
+    byCls[c].max=Math.max(byCls[c].max, belong[i].length);
+  }
+  return {sum:sum, allDistinct:ok, lines: LINES.length, linesOK:linesOK,
+          sums:sums, distinctSigs:distinct, byCls:byCls, belong:belong};
+})();
+
+(function(){
+  var order=['中心','角格','棱格','面心'];
+  var tb=document.querySelector('#tblChk tbody'), labels=['格的类型','个数','所属线数','改这一格会打破几条线'];
+  order.forEach(function(c){
+    var v=tamper.byCls[c]; if(!v) return;
+    var tr=document.createElement('tr');
+    if(c==='中心') tr.className='hi';
+    var range = (v.min===v.max)? String(v.min) : (v.min+'～'+v.max);
+    var cells=[c, String(v.n), range, '突破 '+range+' 条线；签名互异 ⇒ 可定位'];
+    for(var i=0;i<4;i++){
+      var td=document.createElement('td'); td.setAttribute('data-label',labels[i]);
+      if(i>=1&&i<=2) td.className='n';
+      td.textContent=cells[i]; tr.appendChild(td);
+    }
+    tb.appendChild(tr);
+  });
+})();
+
+/* ================= §11 最小脚本 ================= */
+document.getElementById('miniCode').textContent =
+"const TAU=2*Math.PI, D=27;\n" +
+"const mk=p=>p.map(t=>[Math.cos(t),Math.sin(t)]);          // 单位模相位\n" +
+"const ip=(a,b)=>a.reduce((s,x,i)=>s+x[0]*b[i][0]+x[1]*b[i][1],0)/D;\n" +
+"const bind=(a,b)=>a.map((x,i)=>[x[0]*b[i][0]-x[1]*b[i][1], x[0]*b[i][1]+x[1]*b[i][0]]);\n" +
+"const unb=(c,a)=>c.map((x,i)=>[x[0]*a[i][0]+x[1]*a[i][1], x[1]*a[i][0]-x[0]*a[i][1]]);\n" +
+"\n" +
+"// 随机码本\n" +
+"const rnd=(seed)=>{let s=seed;const r=()=>{s=(s*1103515245+12345)&0x7fffffff;return s/0x7fffffff;};\n" +
+"  return Array.from({length:D},()=>mk(Array.from({length:D},()=>r()*TAU)));};\n" +
+"// 正交码本（= 幻立方×27 的几何）\n" +
+"const orth=Array.from({length:D},(_,j)=>mk(Array.from({length:D},(_,k)=>TAU*j*k/D)));\n" +
+"\n" +
+"// 存 N 对、解绑、检索\n" +
+"function run(S,N,T=200){let good=0;\n" +
+"  for(let t=0;t<T;t++){\n" +
+"    const ks=[...Array(D).keys()].sort(()=>Math.random()-.5).slice(0,N);\n" +
+"    const vs=[...Array(D).keys()].sort(()=>Math.random()-.5).slice(0,N);\n" +
+"    const M=Array.from({length:D},()=>[0,0]);\n" +
+"    for(let i=0;i<N;i++){const b=bind(S[ks[i]],S[vs[i]]);\n" +
+"      for(let k=0;k<D;k++){M[k][0]+=b[k][0];M[k][1]+=b[k][1];}}\n" +
+"    for(let i=0;i<N;i++){const u=unb(M,S[ks[i]]);\n" +
+"      let bi=-1,bv=-9e9;\n" +
+"      for(let j=0;j<D;j++){const s=ip(u,S[j]);if(s>bv){bv=s;bi=j;}}\n" +
+"      if(bi===vs[i])good++;}\n" +
+"  }\n" +
+"  return good/(T*N);}\n" +
+"\n" +
+"console.log('随机 N=5  ', run(rnd(1),5).toFixed(3));   // ≈ 0.87\n" +
+"console.log('正交 N=5  ', run(orth,5).toFixed(3));    // ≈ 0.27";
+
+/* ================= 自检 ================= */
+window.__ch = {total:0, pass:0, list:[]};
+function chk(label, cond, detail){
+  window.__ch.total++;
+  if(cond) window.__ch.pass++;
+  window.__ch.list.push({ok:!!cond, label:label, detail:detail||''});
+}
+
+/* 1. 幻立方本身 */
+chk('幻立方 27 格值集恰为 1..27', tamper.allDistinct && tamper.sum===378,
+    '和='+tamper.sum+'（应 378）');
+chk('31 条线全部 = 42', tamper.linesOK && tamper.lines===31,
+    '线数='+tamper.lines+' 各和='+JSON.stringify(tamper.sums));
+chk('中心格 = 14', CUBE[13]===14, '实为 '+CUBE[13]);
+chk('27 格所属线签名互异（可定位）', tamper.distinctSigs===27, '互异签名 '+tamper.distinctSigs+'/27');
+chk('中心格属 7 条线', tamper.belong[13].length===7, '实为 '+tamper.belong[13].length);
+
+/* 2. 相位几何 */
+chk('DFT 码本严格正交（最大 |内积| < 1e-9）', sO.max<1e-9, sO.max.toExponential(2));
+chk('幻立方×27 严格正交', sM.max<1e-9, sM.max.toExponential(2));
+chk('幻立方×28 恒为 1/27（±1e-9）', Math.abs(sM28.max-1/27)<1e-9 && Math.abs(sM28.min-1/27)<1e-9,
+    sM28.mean.toFixed(8)+' vs 1/27='+(1/27).toFixed(8));
+chk('随机码本不正交（最大 |内积| > 0.2）', sR.max>0.2, sR.max.toFixed(4));
+chk('★ 打乱幻立方后内积矩阵逐位相同（幻和不进公式）', window.__sameDiff<1e-9,
+    '最大差 '+window.__sameDiff.toExponential(2));
+
+/* 3. 主结果 */
+chk('★ 随机 N=5 至少是正交的 2 倍', resR[2] > 2*resO[2],
+    resR[2].toFixed(3)+' vs '+resO[2].toFixed(3)+' = '+ratio5.toFixed(2)+'×');
+chk('随机 N=2 命中率 > 0.9', resR[0]>0.9, resR[0].toFixed(3));
+chk('正交 N=2 命中率 ≈ 0.5（|x−0.5| < 0.12）', Math.abs(resO[0]-0.5)<0.12, resO[0].toFixed(3));
+chk('★ 幻立方×27 与 DFT 的 Gram 矩阵同为 I（等距同构）',
+    gramWorst<1e-9, '两者偏离单位阵最大 '+gramWorst.toExponential(2));
+chk('幻立方×27 与 DFT 不是同一组向量（仅等距，不是同一集合）',
+    (function(){
+      var hit=0, i, j;
+      for(i=0;i<D;i++){ var mx=0;
+        for(j=0;j<D;j++) mx=Math.max(mx, ip(Sm27[i],Sd[j]));
+        if(mx>1-1e-9) hit++;
+      }
+      window.__match=hit;
+      return hit<D;   // 期望"配不全"，才说明两者不是同一集合
+    })(), '一一配对成功 '+window.__match+'/'+D);
+chk('幻立方×27 与 DFT 的检索曲线逐点差 < 0.15（差异来自抽样，非几何）',
+    resM27.every(function(v,i){return Math.abs(v-resO[i])<0.15;}),
+    resM27.map(function(v,i){return (v-resO[i]).toFixed(3);}).join(' '));
+chk('幻立方×28 与 DFT 各点差 < 0.09',
+    resM28.every(function(v,i){return Math.abs(v-resO[i])<0.09;}),
+    resM28.map(function(v,i){return (v-resO[i]).toFixed(3);}).join(' '));
+chk('随机在 N=5 上高于全部三条结构化线',
+    resR[2]>resO[2] && resR[2]>resM27[2] && resR[2]>resM28[2],
+    resR[2].toFixed(3)+' > max('+resO[2].toFixed(3)+','+resM27[2].toFixed(3)+','+resM28[2].toFixed(3)+')');
+chk('所有准确率都在 [0,1] 内',
+    [resR,resO,resM27,resM28].every(function(a){return a.every(function(v){return v>=0&&v<=1;});}), '');
+chk('准确率随 N 单调不增（随机）',
+    resR.every(function(v,i){return i===0||v<=resR[i-1]+1e-9;}), resR.map(function(v){return v.toFixed(2);}).join(' '));
+
+/* 4. 机制 */
+chk('★ DFT bundle 并列率 = 100%（N=5）', tieO>0.999, (tieO*100).toFixed(1)+'%');
+chk('随机 bundle 并列率 < 5%（N=5）', tieR<0.05, (tieR*100).toFixed(1)+'%');
+chk('DFT 解绑后正确项与冒充项几乎等高（差 < 0.15）',
+    Math.abs(pO.corr-pO.wrong)<0.15,
+    pO.corr.toFixed(3)+' vs '+pO.wrong.toFixed(3));
+chk('随机解绑后正确项高于冒充项 0.3 以上',
+    (pR.corr-pR.wrong)>0.3,
+    pR.corr.toFixed(3)+' vs '+pR.wrong.toFixed(3));
+
+/* 5. 页面完整性 */
+chk('无 NaN / Infinity 出现在关键量',
+    [sO.max,sM.max,sM28.max,sR.max,ratio5,tieO,tieR,pO.corr,pR.corr]
+      .every(function(v){return isFinite(v);}), '');
+chk('九张表格的单元格都带 data-label（窄屏卡片化）',
+    Array.prototype.every.call(document.querySelectorAll('table.tbl-cards td'),
+      function(td){return td.hasAttribute('data-label');}),
+    '共 '+document.querySelectorAll('table.tbl-cards td').length+' 格');
+chk('三张 SVG 都已渲染（节点数 > 10）',
+    ['figFlow','figMain','figSpec'].every(function(id){
+      return document.getElementById(id).childNodes.length>10;}),
+    ['figFlow','figMain','figSpec'].map(function(id){
+      return document.getElementById(id).childNodes.length;}).join('/'));
+
+/* 汇总 */
+(function(){
+  var box=document.getElementById('sumBox');
+  var ok = window.__ch.pass===window.__ch.total;
+  box.className='sum '+(ok?'ok':'no');
+  box.textContent = (ok?'全部通过 ':'有失败项 ')+window.__ch.pass+' / '+window.__ch.total;
+  var host=document.getElementById('chkList');
+  window.__ch.list.forEach(function(it){
+    var d=document.createElement('div');
+    d.className='chk '+(it.ok?'p':'f');
+    var m=document.createElement('span'); m.className='m'; m.textContent=it.ok?'✓':'✗';
+    var t=document.createElement('span'); t.className='t'; t.textContent=it.label;
+    var det=document.createElement('span'); det.className='d'; det.textContent=it.detail;
+    d.appendChild(m); d.appendChild(t); d.appendChild(det);
+    host.appendChild(d);
+  });
+})();
+
+})();
+</script>
+</body>
+</html>

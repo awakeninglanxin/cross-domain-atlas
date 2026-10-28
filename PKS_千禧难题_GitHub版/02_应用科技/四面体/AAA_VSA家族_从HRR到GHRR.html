@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VSA 家族：从 HRR 到 GHRR —— 高维向量做符号运算，实测到哪儿了</title>
+<style>
+  :root{
+    --ink:#16181d; --ink2:#3a3f4a; --ink3:#6b7280;
+    --line:#e3e6ec; --line2:#cfd4dd;
+    --bg:#ffffff; --soft:#f7f8fa; --soft2:#eef1f6;
+    --violet:#6b4ea8; --violet-bg:#f3effa;
+    --green:#1a7f5a;  --green-bg:#eef7f2;
+    --red:#b3261e;    --red-bg:#fbf0ef;
+    --amber:#a86800;  --amber-bg:#fdf5e6;
+    --teal:#0f6f7a;   --teal-bg:#eaf5f6;
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink)}
+  body{
+    font:16px/1.72 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:0 28px 96px}
+  header.top{border-bottom:1px solid var(--line);background:var(--soft)}
+  .head-in{max-width:1080px;margin:0 auto;padding:34px 28px 26px}
+  .kicker{font:600 12px/1 var(--mono);letter-spacing:.14em;color:var(--violet);text-transform:uppercase}
+  h1{font-size:30px;line-height:1.28;margin:12px 0 10px;letter-spacing:-.01em}
+  .sub{color:var(--ink2);font-size:15.5px;max-width:840px;margin:0}
+  .meta{margin-top:16px;font:12.5px/1.6 var(--mono);color:var(--ink3)}
+  .meta b{color:var(--ink2);font-weight:600}
+
+  section{padding:40px 0 6px;border-top:1px solid var(--line)}
+  section:first-of-type{border-top:0}
+  h2{font-size:21px;margin:0 0 6px;letter-spacing:-.005em}
+  h2 .n{font:600 12px/1 var(--mono);color:var(--violet);margin-right:10px;letter-spacing:.06em}
+  h3{font-size:16px;margin:26px 0 8px;color:var(--ink)}
+  p{margin:10px 0;color:var(--ink2)}
+  p.lead{font-size:17px;color:var(--ink)}
+  ul,ol{margin:10px 0;padding-left:22px;color:var(--ink2)}
+  li{margin:6px 0}
+  code{font:13.5px/1.5 var(--mono);background:var(--soft2);padding:1px 5px;border-radius:4px;color:var(--ink)}
+  b,strong{color:var(--ink);font-weight:650}
+  em{font-style:normal;background:linear-gradient(transparent 62%,#f6e7b8 62%);padding:0 1px}
+
+  .eq{font-family:var(--mono);font-size:14px;background:var(--soft);border-left:3px solid var(--line2);
+      padding:10px 14px;margin:12px 0;color:var(--ink);overflow-x:auto;white-space:pre}
+
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14.5px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  thead th{font-size:12.5px;letter-spacing:.04em;color:var(--ink3);font-weight:600;
+           background:var(--soft);border-bottom:1px solid var(--line2);white-space:nowrap}
+  tbody tr:hover{background:#fcfcfd}
+  td.num,th.num{text-align:right;font-family:var(--mono);font-size:13.5px;white-space:nowrap}
+  tr.hi td{background:var(--violet-bg)}
+  tr.bad td{background:var(--red-bg)}
+  tr.ok td{background:var(--green-bg)}
+
+  .note{border:1px solid var(--line);border-left:3px solid var(--line2);border-radius:0 6px 6px 0;
+        padding:12px 16px;margin:18px 0;font-size:14.5px;color:var(--ink2);background:var(--soft)}
+  /* 只把「开头的那个 b」当标题块。写成 .note b 会波及正文里的强调词，
+     2026-10-26 踩过：<b>不是 VSA</b> 被撑成块级，后面的逗号掉到下一行行首。 */
+  .note > b:first-child{display:block;margin-bottom:4px;font-size:14.5px}
+  .note.ok{border-left-color:var(--green);background:var(--green-bg)}
+  .note.ok > b:first-child{color:var(--green)}
+  .note.warn{border-left-color:var(--amber);background:var(--amber-bg)}
+  .note.warn > b:first-child{color:var(--amber)}
+  .note.bad{border-left-color:var(--red);background:var(--red-bg)}
+  .note.bad > b:first-child{color:var(--red)}
+  .note.vio{border-left-color:var(--violet);background:var(--violet-bg)}
+  .note.vio > b:first-child{color:var(--violet)}
+  .note pre{margin:8px 0 0;font:12.5px/1.65 var(--mono);white-space:pre-wrap;word-break:break-all;color:var(--ink)}
+  .note.ok pre{background:#e7f2ec}
+  .note.warn pre{background:#f8eed9}
+
+  figure{margin:22px 0 8px;padding:0}
+  figure svg{display:block;width:100%;height:auto;overflow:visible}
+  figcaption{margin-top:10px;font-size:13px;color:var(--ink3);line-height:1.6}
+  figcaption b{color:var(--ink2)}
+
+  .lab{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+  .chip{font:12px/1 var(--mono);padding:5px 9px;border-radius:5px;border:1px solid var(--line2);
+        color:var(--ink2);background:#fff;white-space:nowrap}
+  .chip.v{color:var(--violet);border-color:#d9cef0;background:var(--violet-bg)}
+  .chip.g{color:var(--green);border-color:#c3e2d4;background:var(--green-bg)}
+  .chip.r{color:var(--red);border-color:#f0cbc8;background:var(--red-bg)}
+  .chip.a{color:var(--amber);border-color:#efdbb8;background:var(--amber-bg)}
+  .chip.t{color:var(--teal);border-color:#c2e0e3;background:var(--teal-bg)}
+
+  /* 交互面板 */
+  .panel{border:1px solid var(--line);border-radius:10px;background:var(--soft);padding:16px 18px;margin:20px 0}
+  .panel-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;margin-bottom:6px}
+  .panel-head .t{font-weight:650;font-size:15px}
+  .panel-head .d{font-size:13px;color:var(--ink3)}
+  .ctrls{display:flex;flex-wrap:wrap;gap:18px;align-items:center;margin:12px 0 6px}
+  .ctrl{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--ink2)}
+  .ctrl input[type=range]{width:180px;accent-color:var(--violet)}
+  .ctrl .val{font:13px var(--mono);color:var(--ink);min-width:62px;text-align:right}
+  .btnrow{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 2px}
+  button{font:13px/1 inherit;padding:8px 13px;border-radius:6px;border:1px solid var(--line2);
+         background:#fff;color:var(--ink2);cursor:pointer}
+  button:hover{border-color:var(--violet);color:var(--violet)}
+  button.on{background:var(--violet);border-color:var(--violet);color:#fff}
+  .cvwrap{background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:10px}
+  canvas{display:block;width:100%;height:auto}
+  .readout{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:10px;font-size:13px;color:var(--ink2)}
+  .readout div b{font-family:var(--mono);color:var(--ink)}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .card{border:1px solid var(--line);border-radius:8px;padding:14px 16px;background:#fff}
+  .card .h{font-weight:650;font-size:14.5px;margin-bottom:6px}
+  .card p{margin:6px 0;font-size:13.5px}
+
+  .lv{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px dashed var(--line)}
+  .lv .badge{flex:0 0 auto;font:600 11.5px/1 var(--mono);padding:6px 8px;border-radius:4px;margin-top:2px}
+  .lv .bd{flex:1}
+  .lv .bd .h{font-weight:650;font-size:14.5px}
+  .lv .bd p{margin:4px 0;font-size:13.5px}
+  .b1{background:var(--green-bg);color:var(--green)}
+  .b2{background:var(--teal-bg);color:var(--teal)}
+  .b3{background:var(--amber-bg);color:var(--amber)}
+  .b4{background:var(--red-bg);color:var(--red)}
+
+  footer{border-top:1px solid var(--line);margin-top:40px;padding:22px 0 0;font-size:12.5px;color:var(--ink3)}
+  footer code{font-size:12px}
+
+  #checks{font:12.5px/1.7 var(--mono)}
+  #checks .row{display:flex;gap:10px;padding:2px 0;border-bottom:1px dotted #eceef2}
+  #checks .st{flex:0 0 42px;font-weight:700}
+  #checks .st.ok{color:var(--green)}
+  #checks .st.no{color:var(--red)}
+  #checks .nm{flex:1;color:var(--ink2)}
+  #checks .dt{flex:0 0 auto;color:var(--ink3);max-width:44%}
+  #sum{margin-top:12px;padding:10px 14px;border-radius:6px;font:13px var(--mono)}
+
+  @media (max-width:820px){
+    .wrap{padding:0 16px 64px}
+    .head-in{padding:26px 16px 20px}
+    h1{font-size:23px}
+    h2{font-size:18.5px}
+    .grid2,.grid3{grid-template-columns:1fr}
+    table{font-size:13px}
+    thead{display:none}
+    tbody tr{display:block;border-bottom:1px solid var(--line2);padding:8px 0}
+    tbody td{display:flex;padding:4px 0;border:0}
+    tbody td::before{content:attr(data-label);flex:0 0 96px;color:var(--ink3);font-size:12px}
+    td.num{text-align:left}
+    .ctrl input[type=range]{width:120px}
+    /* .chip 默认 nowrap，长说明在 390px 下会撑破视口（实测宽 441px） */
+    .chip{white-space:normal;max-width:100%}
+    figure{overflow-x:auto}
+    figure>svg{min-width:600px}
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="head-in">
+    <div class="kicker">Vector Symbolic Architectures · State of the Art</div>
+    <h1>VSA 家族：从 HRR 到 GHRR</h1>
+    <p class="sub">用一万维随机向量做符号运算——四代绑定算子，三十年的账。这一页把我自己实测的数字和论文里报的数字分开摆，并标清楚哪些是「能做」、哪些只是「做过一次」。</p>
+    <div class="meta">
+      实测环境 <b>本机 Python 3.12 / numpy 2.4.3</b> ·
+      样本 <b>每档 60–400 次</b> ·
+      日期 <b>2026-10-26</b> ·
+      全部曲线可由 <code>_vsa_exp2.py</code> 复算
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ============================================ 01 -->
+<section id="s1">
+  <h2><span class="n">01</span>一句话：它想用「向量」当「符号」用</h2>
+  <p class="lead">
+    符号 AI 的痛点是离散、脆弱、不能泛化；神经网络的痛点是连续、鲁棒、但组合性差。
+    VSA 想在中间找一块地：**把符号表示成高维随机向量，把「组合」表示成向量运算**。
+  </p>
+  <p>
+    三个运算就够用了。名字各派叫法不同，实质一样：
+  </p>
+  <table>
+    <thead><tr><th>运算</th><th>作用</th><th>FHRR 里的实现</th><th>类比</th></tr></thead>
+    <tbody>
+      <tr><td><b>binding</b> ⊙</td><td>把两个符号绑成一个新符号，结果与两者都近似正交</td><td>逐分量相位相加</td><td>「主—宾」「键—值」「位置—词」</td></tr>
+      <tr><td><b>bundling</b> ⊕</td><td>把多个东西叠成一个，结果与每一项都相似</td><td>复数相加（然后可归一化）</td><td>「集合」「一堆事实」</td></tr>
+      <tr><td><b>permutation</b> ρ</td><td>不打乱相似度，只标出顺序</td><td>按固定置换重排分量</td><td>「第 1 个 / 第 2 个」</td></tr>
+    </tbody>
+  </table>
+  <div class="eq">表示「狗 咬 人」：  S = ρ⁰(dog) ⊙ bite  ⊕  ρ¹(man) ⊙ bitten
+问「谁咬的」：      man ⊙ S  ≈  bitten     （近似解绑，带噪）</div>
+  <p>
+    这套东西的好处一句话能说完：<b>一条公式同时给出存储、检索和泛化</b>，而且每个操作都是 O(D) 的加减乘。
+    代价也一句话：<b>每次叠加都在往里面掺噪声，能力随规模线性衰减，不是指数</b>。这一页后面所有的数字，都是在量这个「线性」到底有多紧。
+  </p>
+</section>
+
+<!-- ============================================ 02 -->
+<section id="s2">
+  <h2><span class="n">02</span>四代家族：变的是「绑定」这一个算子</h2>
+  <p>
+    三十年里 VSA 的变体有十几种，但真正的分水岭只有一条：<b>绑定算子交换不交换</b>。
+    交换意味着 <code>A⊙B = B⊙A</code>，也就是「狗咬人」和「人咬狗」在表示层完全无法区分。
+  </p>
+  <table>
+    <thead>
+      <tr><th>家族</th><th>出处</th><th>每个分量是什么</th><th>绑定</th><th>交换</th><th>精确逆</th><th>容量（D 需求）</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><b>HRR</b></td><td>Plate 1995</td><td>实数</td><td>循环卷积</td><td class="num">是</td><td class="num">否（近似）</td><td class="num">中</td></tr>
+      <tr><td><b>MAP</b></td><td>Gayler 1998</td><td>±1</td><td>逐元素乘</td><td class="num">是</td><td class="num">是</td><td class="num">较低</td></tr>
+      <tr><td><b>BSC</b></td><td>Kanerva 1993</td><td>二进制</td><td>XOR</td><td class="num">是</td><td class="num">是</td><td class="num">较低</td></tr>
+      <tr class="hi"><td><b>FHRR</b></td><td>Plate 2003</td><td>单位复数 e<sup>iφ</sup></td><td>相位相加</td><td class="num">是</td><td class="num">是</td><td class="num">最好</td></tr>
+      <tr class="hi"><td><b>GHRR</b></td><td>Yeung 等 2024</td><td>m×m 酉矩阵</td><td>矩阵乘</td><td class="num"><b>否</b></td><td class="num">是（转置共轭）</td><td class="num">高（O(Dm²)）</td></tr>
+    </tbody>
+  </table>
+  <p>
+    看这一列「交换」：前四代<b>全是交换的</b>。所有「VSA 能做序列、能做语法」的说法，前四代都得靠外挂 <code>permutation</code> 来补顺序信息——这不是免费的，置换相当于把 D 维空间切成「位置桶」，桶数一多，每桶的有效维度就掉下来。
+  </p>
+  <p>
+    GHRR 的做法很直接：<b>把每个分量从「一个数」升级成「一个小矩阵」</b>。一个数只能表示旋转（交换），一个矩阵可以表示旋转 + 拉伸方向（一般不交换）。m=1 时它退化回 FHRR，m 增大时它连续地插值到「完全不压缩的外积」。
+  </p>
+
+  <figure>
+    <svg viewBox="0 0 700 250" role="img" aria-label="四种绑定算子的几何含义">
+      <defs>
+        <marker id="ar1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 z" fill="#6b4ea8"/>
+        </marker>
+        <marker id="ar2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 z" fill="#0f6f7a"/>
+        </marker>
+      </defs>
+      <!-- 面板 1: FHRR 相位 -->
+      <g>
+        <text x="86" y="18" font-size="12.5" font-weight="650" fill="#16181d" text-anchor="middle">FHRR：一个分量 = 一个相位</text>
+        <circle cx="86" cy="96" r="58" fill="none" stroke="#cfd4dd" stroke-width="1"/>
+        <line x1="28" y1="96" x2="144" y2="96" stroke="#e3e6ec"/>
+        <line x1="86" y1="38" x2="86" y2="154" stroke="#e3e6ec"/>
+        <line x1="86" y1="96" x2="132" y2="64" stroke="#6b4ea8" stroke-width="2" marker-end="url(#ar1)"/>
+        <path d="M110,96 A24,24 0 0,0 104,82" fill="none" stroke="#6b4ea8" stroke-width="1.2"/>
+        <text x="120" y="92" font-size="11" fill="#3a3f4a" font-family="monospace">φ</text>
+        <text x="86" y="176" font-size="11.5" fill="#6b7280" text-anchor="middle">绑定 = 两个角相加</text>
+        <text x="86" y="194" font-size="11.5" fill="#6b7280" text-anchor="middle">相乘后长度恒为 1</text>
+      </g>
+      <!-- 面板 2: bundle -->
+      <g>
+        <text x="270" y="18" font-size="12.5" font-weight="650" fill="#16181d" text-anchor="middle">bundle：矢量相加</text>
+        <circle cx="270" cy="96" r="58" fill="none" stroke="#cfd4dd" stroke-width="1"/>
+        <line x1="212" y1="96" x2="328" y2="96" stroke="#e3e6ec"/>
+        <line x1="270" y1="38" x2="270" y2="154" stroke="#e3e6ec"/>
+        <line x1="270" y1="96" x2="318" y2="72" stroke="#0f6f7a" stroke-width="1.6"/>
+        <line x1="318" y1="72" x2="326" y2="112" stroke="#0f6f7a" stroke-width="1.6"/>
+        <line x1="270" y1="96" x2="326" y2="112" stroke="#b3261e" stroke-width="2.2" marker-end="url(#ar1)"/>
+        <text x="270" y="176" font-size="11.5" fill="#6b7280" text-anchor="middle">和向量的角 ≠ 两个角的和</text>
+        <text x="270" y="194" font-size="11.5" fill="#6b7280" text-anchor="middle">长度会掉（被加权平均）</text>
+      </g>
+      <!-- 面板 3: 交换 -->
+      <g>
+        <text x="460" y="18" font-size="12.5" font-weight="650" fill="#16181d" text-anchor="middle">交换 = 分不出方向</text>
+        <rect x="392" y="52" width="136" height="34" rx="5" fill="#f3effa" stroke="#d9cef0"/>
+        <text x="460" y="74" font-size="12" fill="#6b4ea8" text-anchor="middle" font-family="monospace">A⊙B</text>
+        <rect x="392" y="108" width="136" height="34" rx="5" fill="#f3effa" stroke="#d9cef0"/>
+        <text x="460" y="130" font-size="12" fill="#6b4ea8" text-anchor="middle" font-family="monospace">B⊙A</text>
+        <text x="460" y="158" font-size="12.5" fill="#b3261e" text-anchor="middle">两者完全相同</text>
+        <text x="460" y="176" font-size="11.5" fill="#6b7280" text-anchor="middle">实测相似度 1.0000</text>
+      </g>
+      <!-- 面板 4: 非交换 -->
+      <g>
+        <text x="630" y="18" font-size="12.5" font-weight="650" fill="#16181d" text-anchor="middle">GHRR：矩阵不交换</text>
+        <rect x="562" y="52" width="136" height="34" rx="5" fill="#eaf5f6" stroke="#c2e0e3"/>
+        <text x="630" y="74" font-size="12" fill="#0f6f7a" text-anchor="middle" font-family="monospace">A·B</text>
+        <rect x="562" y="108" width="136" height="34" rx="5" fill="#eaf5f6" stroke="#c2e0e3"/>
+        <text x="630" y="130" font-size="12" fill="#0f6f7a" text-anchor="middle" font-family="monospace">B·A</text>
+        <text x="630" y="158" font-size="12.5" fill="#1a7f5a" text-anchor="middle">两者正交</text>
+        <text x="630" y="176" font-size="11.5" fill="#6b7280" text-anchor="middle">相对差 1.09（≈√2）</text>
+      </g>
+      <text x="350" y="224" font-size="11.5" fill="#6b7280" text-anchor="middle">m=1 的 GHRR 退化为 FHRR；m 越大，绑定越「不压缩」，但也越贵（O(Dm³)）</text>
+    </svg>
+    <figcaption><b>四种算子的几何差别。</b>左边两个是「一个分量」的微观视图：FHRR 的绑定就是角度相加（长度不变），bundle 是矢量相加（长度会掉、角度被拉扯）。右边两个是宏观后果：交换的绑定让 <code>A⊙B</code> 与 <code>B⊙A</code> 是同一个向量。</figcaption>
+  </figure>
+</section>
+
+<!-- ============================================ 03 -->
+<section id="s3">
+  <h2><span class="n">03</span>动手一格：为什么「叠加」会把约束冲掉</h2>
+  <p>
+    这一节是我上一轮那个「约束层」实验的几何解释。设定很简单：<b>码本里嵌一条守恒约束</b>——每个分量上，三个码字的相位和恒等于 0。
+    然后问：这条约束能不能活过叠加？
+  </p>
+  <p>
+    下面画 24 个分量。每个小圆里，细箭头是<b>解绑后</b>各项的相位，粗箭头是它们的<b>相位和</b>——约束活着，粗箭头就指向 0°（正右）。
+    拖滑块改变组内码字数 m（2～9）：m 越大，叠加时混进来的噪声项越多。<b>如果约束真的能活过叠加，粗箭头应该一直指右。</b>
+    （这里只画 24 个分量是为了看得清，所以读数比下方 D=512 的表更"糟"——m=3 时 17% vs 表里 0%。
+     两者同向，绝对值不同是因为分量数不同：<b>D 越小，噪声相对越大</b>。）
+  </p>
+
+  <div class="panel" id="pPhase">
+    <div class="panel-head">
+      <span class="t">相位圆盘 · 每个小圆一个分量</span>
+      <span class="d">拖动看矢量和怎么偏离</span>
+    </div>
+    <div class="ctrls">
+      <div class="ctrl"><label for="sg">组内码字数 m</label>
+        <input type="range" id="sg" min="2" max="9" value="3" step="1">
+        <span class="val" id="sgv">m = 3</span></div>
+      <div class="ctrl"><label for="mode">路径</label>
+        <span class="btnrow" style="margin:0">
+          <button id="mBind">bind（各自绑定）</button>
+          <button id="mBund" class="on">bind 后 bundle</button>
+        </span>
+      </div>
+    </div>
+    <div class="cvwrap"><canvas id="cvPhase" width="960" height="360"></canvas></div>
+    <div class="lab" style="margin:10px 0 0">
+      <span class="chip">细灰线 = 解绑后各项的相位</span>
+      <span class="chip r">红箭头 = 相位和（方向与大小）</span>
+      <span class="chip g">绿圈 = 相位和 ≈ 0，约束活着</span>
+    </div>
+    <div class="readout">
+      <div>码字数 m = <b>3</b></div>
+      <div>画出来的分量数 = <b id="roD">24</b></div>
+      <div>解绑后「组内相位和」中位数：<b id="ro1">0.000</b> rad</div>
+      <div>约束命中率（容差 0.05）：<b id="ro3">100%</b></div>
+      <div>失效分量：<b id="ro2">0</b> / <b id="roT">24</b></div>
+    </div>
+  </div>
+
+  <p>
+    结论是两句话，而且第二句是这一页最贵的一句：
+  </p>
+  <div class="note warn">
+    <b>bind 是「相位相加」，所以约束活着；bundle 是「复矢量相加」，所以约束必死。</b>
+    因为相位是<b>幅度加权</b>的结果——三项长度不同（绑定后还带着别的项），合矢量的角就不是三个角的平均，更不是它们的和。
+    所以「把不变量编译进码本」这件事，在需要叠加检索的任何真实用途里，一条都留不下。
+  </div>
+  <p>
+    我用 200 次随机试验量了这件事（D=512，容差 0.05 rad）：
+  </p>
+  <table>
+    <thead><tr><th>组大小 m</th><th class="num">bind 路径存活</th><th class="num">bundle 路径存活</th><th class="num">bundle 后相位偏离中位数</th></tr></thead>
+    <tbody id="tbSurv"></tbody>
+  </table>
+  <div class="note">
+    <b>m=2 那个 100% 要打个折。</b>两项时噪声只有 1/√512 ≈ 0.044 rad，恰好压在 0.05 的容差线上，所以判据放过了它。
+    从 m=3 起立刻归零——不是因为容差选得严，是因为偏离中位数已经到 0.415 rad（约 24°），m=9 时是 1.49 rad（85°）。
+    <b>这也说明「容差」这种判据在临界点上不可信，得同时报偏离量。</b>
+  </div>
+</section>
+
+<!-- ============================================ 04 -->
+<section id="s4">
+  <h2><span class="n">04</span>容量：一条干净的 1/√k，和一条不太好看的崩溃线</h2>
+  <p>
+    存 k 条「key→value」记录（每条是一个绑定），全部叠进一个向量，然后拿 key 解绑取回。
+    理论上其余 k−1 项都变成噪声，所以相似度应该按 <b>1/√k</b> 掉。实测（D=1024，每档 120 次）：
+  </p>
+
+  <figure>
+    <svg viewBox="0 0 700 300" role="img" aria-label="解绑相似度随 k 衰减，与 1/sqrt(k) 理论线重合">
+      <g id="gDecay"></g>
+    </svg>
+    <figcaption><b>实测点与 1/√k 理论线（虚线）严丝合缝</b>：k=5 时 0.4484 vs 0.4472，k=40 时 0.1536 vs 0.1581。
+      噪声底（与无关随机向量比）恒在 ±0.004 以内。这条线重要，因为它告诉你<b>容量是 O(D) 的、不是玄学</b>：想让 k 翻倍，D 得跟着翻倍。</figcaption>
+  </figure>
+
+  <table>
+    <thead><tr><th class="num">k</th><th class="num">实测相似度</th><th class="num">5% 分位</th><th class="num">1/√k 理论</th><th class="num">偏差</th></tr></thead>
+    <tbody id="tbDecay"></tbody>
+  </table>
+
+  <h3>那什么时候会真的取错？</h3>
+  <p>
+    相似度掉不等于取错，因为判别只要求「比其他候选高」。我把候选扩到 200 个（含 k 个真值），看 argmax 命中率：
+  </p>
+
+  <figure>
+    <svg viewBox="0 0 700 280" role="img" aria-label="检索命中率随 k 的变化">
+      <g id="gRecall"></g>
+    </svg>
+    <figcaption><b>D=1024、200 选 1。</b>k≤60 时 100%；k=80 开始掉；k=260 只剩 56.7%。
+      粗略判据：<code>1/√k</code> 要明显高于候选间涨落 <code>1/√D</code>，即 <b>k ≲ D/10</b> 才安全。D=1024 时约 100 条——和我实测的拐点对得上。</figcaption>
+  </figure>
+
+  <div class="note bad">
+    <b>「一万维能存几百万条」这个说法，按这个测法是错的。</b>
+    容量随 D 线性增长，D=10⁴ 也就是万级记录，不是百万级。要百万级得靠「不止一个 bundle」——分桶、分层、或干脆用回数据库。
+    这条数字决定了 VSA 的定位：<b>它是「小规模、强结构、可解释」的表示，不是「替代向量库」的存储。</b>
+  </div>
+</section>
+
+<!-- ============================================ 05 -->
+<section id="s5">
+  <h2><span class="n">05</span>GHRR 改的那一刀：从「旋转」升级到「矩阵」</h2>
+  <p>
+    FHRR 的一个分量是 e<sup>iφ</sup>，只能表示旋转，所以 <code>A⊙B = B⊙A</code> 是天生的。
+    2024 年 Yeung 等人的 GHRR 把分量换成 m×m 酉矩阵 U(m)：m=1 时就是 FHRR，m 增大时绑定变成矩阵乘，<b>不再交换</b>。
+  </p>
+  <div class="eq">FHRR :  z[i] = e^{iφᵢ}        →  绑定 z₁[i]·z₂[i]      （交换）
+GHRR :  Z[i] ∈ U(m)          →  绑定 Z₁[i]·Z₂[i]      （一般不交换，m≥2）
+解绑 :  Z⁻¹ = Z†（酉矩阵的逆就是转置共轭，精确）</div>
+  <p>
+    我实测了「不交换」到底有多不交换。量的是相对差 <code>‖AB−BA‖/‖AB‖</code>（D=32，每档 60 次）：
+  </p>
+  <table>
+    <thead><tr><th class="num">m</th><th class="num">相对差 均值</th><th class="num">最小</th><th>含义</th></tr></thead>
+    <tbody id="tbComm"></tbody>
+  </table>
+  <p>
+    m=1 时严格 0（数值上就是 0，不是「很小」）。m=2 时 1.09，已经接近两个随机矩阵的相对距离 √2 ≈ 1.414 的一大半；m=4 时 1.28。
+    <b>也就是 m=2 就足够让「先 A 后 B」和「先 B 后 A」变成两个近似正交的向量。</b>
+  </p>
+
+  <div class="panel" id="pDir">
+    <div class="panel-head">
+      <span class="t">方向可分性 · 同一个绑定，两个顺序</span>
+      <span class="d">切换看 FHRR 与 GHRR 的差别</span>
+    </div>
+    <div class="btnrow">
+      <button id="dF" class="on">FHRR（m=1，标量相位）</button>
+      <button id="dG">GHRR（m=2，酉矩阵）</button>
+    </div>
+    <div class="cvwrap"><canvas id="cvDir" width="960" height="230"></canvas></div>
+    <div class="lab" style="margin:10px 0 0">
+      <span class="chip">每根柱子 = 一个分量上「甲→乙」与「乙→甲」的差</span>
+      <span class="chip r">红色虚线 = 48 个分量的平均</span>
+      <span class="chip v" id="dirNote">FHRR：48 个分量全是 0，所以只看得到贴基线的细条——这就是「分不出方向」</span>
+    </div>
+    <div class="readout">
+      <div>编码 <b>甲→乙</b> 与 <b>乙→甲</b> 的相似度：<b id="roDir">1.0000</b></div>
+      <div>能不能分方向：<b id="roDirV">不能</b></div>
+      <div>D = <b>48</b> 个分量（画出来的；相似度读数取自 D=256 的 120 次实测）</div>
+    </div>
+  </div>
+
+  <p>
+    注意这里我刻意<b>没有</b>把 GHRR 说得比实测好：m=2 时两者相似度是 <b>0.42</b>，不是 0。
+    也就是「能分」但「分得不算干净」——因为两个随机酉矩阵的内积本身就不为 0，维度越低越明显。
+    论文里 GHRR 在嵌套字典检索上比 FHRR 好，靠的是这个差距；但它不是「一换就灵」。
+  </p>
+
+  <div class="note vio">
+    <b>GHRR 论文自己报的数字（不是我测的，标注来源）。</b>
+    把 Transformer 的注意力换成 GHRR 等价的绑定后：WikiText-2 困惑度 <b>29.16 → 27.54</b>（−5.5%），
+    Penn Treebank <b>94.78 → 91.51</b>（−3.4%）。作者还证明 GHRR 的绑定可以<b>实现</b> token 级缩放点积注意力，
+    并给了一个「对角性」旋钮 Q：Q 越对角越接近 FHRR（交换），越一般越不交换。
+    出处：Yeung, Zou, Jeong, Huang, Bastian, Imani，<i>Generalized Holographic Reduced Representations</i>，arXiv:2405.09689，2024-05。
+  </div>
+</section>
+
+<!-- ============================================ 06 -->
+<section id="s6">
+  <h2><span class="n">06</span>国外到底走到哪一步了：分四层看，别混着说</h2>
+  <p>
+    这一行最容易吹的地方，是把「论文里跑通了」说成「技术上实现了」。按证据强度分四层，每层我只写有据可查的：
+  </p>
+
+  <div class="lv">
+    <span class="badge b1">L1 数学</span>
+    <div class="bd">
+      <div class="h">成熟 · 有定理、有综述、有统一框架</div>
+      <p>Plate 1995 的 HRR、Gayler 1998 的 MAP、Kanerva 2009 的 HDC 综述、Frady 等人的 VSA 理论分析，
+        到 Kleyko / Osipov / Gayler 2023 在 <i>ACM Computing Surveys</i> 上的两部分综述，已经把「哪些绑定算子满足哪些代数性质」整理成表。
+        这一层没有争议，也不需要新结果。</p>
+    </div>
+  </div>
+
+  <div class="lv">
+    <span class="badge b2">L2 小任务</span>
+    <div class="bd">
+      <div class="h">可用 · 类比推理、序列、图检索、生物信号</div>
+      <p>最经典的「美元的墨西哥版是什么」→「比索」，靠的就是解绑 + 清理记忆。
+        Schlegel / Neubert / Protzel 2022 那篇比较了 <b>11 种实现</b>，量了 bundle 容量、非精确解绑的近似质量、绑定+叠加混合后的问答性能，
+        还开源了实现——这是目前选型最实用的一篇。生物医学方向 2025 年也有「十条建议 + 常见坑」的实践综述在审。</p>
+    </div>
+  </div>
+
+  <div class="lv">
+    <span class="badge b3">L3 大模型</span>
+    <div class="bd">
+      <div class="h">实验阶段 · 换掉一层，不是换掉模型</div>
+      <p>GHRR 那条线是最实的：把注意力换成矩阵绑定，PPL 掉 3–5 个点。另外有工作把自注意力整体改写成 HRR 形式（Alam 等，ICML 2023）。
+        共同点：<b>都是在一个已经训好的架构里换零件，规模最多到 1 亿参数级</b>，没有一篇报告「用 VSA 从头训出可用的语言模型」。</p>
+    </div>
+  </div>
+
+  <div class="lv">
+    <span class="badge b4">L4 产品</span>
+    <div class="bd">
+      <div class="h">几乎没有 · 有的是 ASIC 原型与边缘演示</div>
+      <p>HDC 的卖点是「加法 + 比较，能效极高」，所以硬件界一直有兴趣，也出过几代原型芯片。
+        但要说清楚一件事：<b>IBM NorthPole 不是 VSA 芯片</b>——它是神经推理加速器（存内计算、片上 SRAM、4-bit 量化），跑的是 Transformer，和 VSA 只是共享「类脑、低功耗」这个叙事。
+        把两者混为一谈，是这一行最常见的错。</p>
+    </div>
+  </div>
+
+  <div class="note bad">
+    <b>三个必须收掉的主张。</b>
+    ① 「VSA 替代 Transformer」——没有任何可比规模的证据；
+    ② 「VSA 解决幻觉」——搜索里那些「约束解码把非法输出变成不可能」的工作，用的是语法 / 知识图谱前缀树，<b>不是 VSA</b>，别把两条线缝在一起；
+    ③ 「一万维存百万条」——实测容量是 O(D)，见 §04。
+  </div>
+
+  <p>
+    反过来，它有一件别人替代不了的事：<b>表示和校验是同构的</b>。
+    神经网络里「它说了什么」和「它为什么这么说」是两套东西；VSA 里绑定/解绑就是代数运算，
+    所以「这个结论能不能由这些前提推出来」可以被写成一次内积。这正是我这条线（校验层 / 约束层）想接的地方。
+  </p>
+</section>
+
+<!-- ============================================ 07 -->
+<section id="s7">
+  <h2><span class="n">07</span>和我这条线怎么接：校验层在前，约束层在后</h2>
+  <p>
+    上一页（母弦系统·校验层与约束层）得出的是：<b>31 条线能检测、能定位、有 8 格盲区；把不变量嵌进码本在 bundle 后归零</b>。
+    这一页把它翻译成 VSA 的语言：
+  </p>
+  <table>
+    <thead><tr><th>我上一页的说法</th><th>VSA 里的对应物</th><th>结论</th></tr></thead>
+    <tbody>
+      <tr><td>31 条线做校验</td><td>一组线性约束（超定方程组）</td><td class="ok">成立：31 个方程解 k 个未知数，k≤9 时实测<b>唯一解</b></td></tr>
+      <tr><td>8 格盲区</td><td>约束矩阵的零空间（维数 4）</td><td class="ok">成立：盲区就是零空间的支撑，可枚举</td></tr>
+      <tr><td>把守恒嵌进码本</td><td>码本向量上加线性约束，再 bundle</td><td class="bad">不成立：bundle 是加权平均，m≥3 全崩（§03）</td></tr>
+      <tr><td>正确落点：写入时刻的连接处</td><td>constrained decoding / 生成时遮罩</td><td class="ok">成立：只要求写下来那一刻成立</td></tr>
+    </tbody>
+  </table>
+  <p>
+    换句话说，VSA 给我的不是一个更好的存储层，而是一句<b>否定式的规格</b>：
+    <em>别指望不变量在叠加后存活</em>。所有想靠「往向量里编码规则」来解决可靠性的方案，都得先回答 §03 那张表。
+  </p>
+  <p>
+    这也解释了为什么国外那批「约束解码」的工作有效而「VSA 约束表示」的工作停在论文：
+    前者在<b>生成的那一刻</b>拒绝非法 token（约束在解码器的 mask 上），后者要求约束在<b>叠加之后</b>还能被检出来。
+    前者是 O(1) 的查表，后者是 §03 里的 0%。
+  </p>
+</section>
+
+<!-- ============================================ 08 -->
+<section id="s8">
+  <h2><span class="n">08</span>本页自检</h2>
+  <p style="font-size:14px">
+    下面这些检查在页面加载时<b>重新计算</b>，不是把结论抄一遍。数字来自本机实测（<code>_vsa_exp2.py</code>），
+    表格与曲线都从同一份常量渲染，改一处会同时红。
+  </p>
+  <div id="checks"></div>
+  <div id="sum"></div>
+</section>
+
+<footer>
+  <p>
+    数据文件：<code>_vsa_exp2.py</code>（本页所有曲线）· <code>_maxk_exp.py</code>（§07 的 fix 曲线）·
+    <code>magic31.py</code>（31 条线校验器）。
+    文献：Plate 1995/2003 · Gayler 1998 · Kanerva 2009 · Schlegel 等 2022 · Kleyko 等 2023 · Yeung 等 2024（arXiv:2405.09689）。
+  </p>
+  <p>页面在本地打开即可，不依赖任何外部资源。</p>
+</footer>
+
+</main>
+
+<script>
+"use strict";
+/* =====================================================================
+   常量：全部来自本机实测（2026-10-26）。改这里，表格和曲线同时变。
+   ===================================================================== */
+var DECAY = [
+  {k:1,   m:1.0000, p:1.0000, t:1.0000},
+  {k:2,   m:0.7067, p:0.6938, t:0.7071},
+  {k:3,   m:0.5759, p:0.5561, t:0.5774},
+  {k:5,   m:0.4484, p:0.4182, t:0.4472},
+  {k:8,   m:0.3533, p:0.3244, t:0.3536},
+  {k:12,  m:0.2879, p:0.2578, t:0.2887},
+  {k:16,  m:0.2488, p:0.2110, t:0.2500},
+  {k:25,  m:0.1993, p:0.1565, t:0.2000},
+  {k:40,  m:0.1536, p:0.1243, t:0.1581},
+  {k:60,  m:0.1284, p:0.0898, t:0.1291},
+  {k:80,  m:0.1119, p:0.0799, t:0.1118},
+  {k:120, m:0.0913, p:0.0599, t:0.0913}
+];
+var RECALL = [
+  {k:10, h:1.000}, {k:20, h:1.000}, {k:40, h:1.000}, {k:60, h:1.000},
+  {k:80, h:0.983}, {k:100, h:0.900}, {k:120, h:0.917},
+  {k:160, h:0.767}, {k:200, h:0.667}, {k:260, h:0.567}
+];
+var COMM = [
+  {m:1, r:0.0000, lo:0.0000},
+  {m:2, r:1.0886, lo:0.8976},
+  {m:3, r:1.2204, lo:1.1373},
+  {m:4, r:1.2849, lo:1.2275}
+];
+var DIR = {fhrr:1.0000, ghrr:0.4213, m:2, D:256};
+var SURV = [
+  {m:2, bind:1.0, bundle:1.0, dev:0.0000},
+  {m:3, bind:1.0, bundle:0.0, dev:0.4150},
+  {m:5, bind:1.0, bundle:0.0, dev:1.0663},
+  {m:9, bind:1.0, bundle:0.0, dev:1.4882}
+];
+var MAXK = [
+  {k:2, solved:1.00, uniq:1.00}, {k:4, solved:1.00, uniq:1.00},
+  {k:6, solved:1.00, uniq:1.00}, {k:8, solved:1.00, uniq:1.00},
+  {k:9, solved:1.00, uniq:1.00}
+];
+
+/* =====================================================================
+   自检框架
+   ===================================================================== */
+window.__ch = {total:0, pass:0, list:[]};
+function chk(name, cond, detail){
+  window.__ch.total++;
+  var ok = !!cond;
+  if(ok) window.__ch.pass++;
+  window.__ch.list.push({n:name, ok:ok, d:(detail === undefined ? "" : String(detail))});
+}
+
+/* =====================================================================
+   小工具
+   ===================================================================== */
+function el(id){ return document.getElementById(id); }
+function fmt(x, n){ return (Math.abs(x) < 0.005 && x !== 0 ? 0 : x).toFixed(n === undefined ? 4 : n); }
+
+/* 确定性伪随机（LCG），保证每次刷新图一样 */
+function lcg(seed){
+  var s = seed >>> 0;
+  return function(){
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+
+/* =====================================================================
+   §04 衰减曲线（SVG）
+   ===================================================================== */
+(function drawDecay(){
+  var g = el("gDecay");
+  if(!g) return;
+  var W = 700, H = 300;
+  var ml = 62, mr = 24, mt = 26, mb = 52;
+  var pw = W - ml - mr, ph = H - mt - mb;
+  var kmin = 0, kmax = 124;
+  var ymin = 0, ymax = 1.05;
+  function X(k){ return ml + (k - kmin) / (kmax - kmin) * pw; }
+  function Y(v){ return mt + (1 - (v - ymin) / (ymax - ymin)) * ph; }
+
+  var s = "";
+  // 网格 + y 刻度
+  var ys = [0, 0.2, 0.4, 0.6, 0.8, 1.0];
+  for(var i = 0; i < ys.length; i++){
+    var v = ys[i];
+    s += '<line x1="' + ml + '" y1="' + Y(v).toFixed(1) + '" x2="' + (W - mr) + '" y2="' + Y(v).toFixed(1) +
+         '" stroke="#eef0f4"/>';
+    s += '<text x="' + (ml - 9) + '" y="' + (Y(v) + 4).toFixed(1) + '" font-size="11" fill="#6b7280" text-anchor="end" font-family="monospace">' +
+         v.toFixed(1) + '</text>';
+  }
+  // x 刻度（对数感更合适，但用线性 + 取点）
+  var xs = [1, 5, 20, 60, 120];
+  for(var j = 0; j < xs.length; j++){
+    var k = xs[j];
+    s += '<line x1="' + X(k).toFixed(1) + '" y1="' + mt + '" x2="' + X(k).toFixed(1) + '" y2="' + (mt + ph) +
+         '" stroke="#f6f7f9"/>';
+    s += '<text x="' + X(k).toFixed(1) + '" y="' + (mt + ph + 18) + '" font-size="11" fill="#6b7280" text-anchor="middle" font-family="monospace">' + k + '</text>';
+  }
+  s += '<text x="' + (ml + pw / 2) + '" y="' + (mt + ph + 38) + '" font-size="11.5" fill="#6b7280" text-anchor="middle">叠加条数 k</text>';
+  s += '<text x="14" y="' + (mt + ph / 2) + '" font-size="11.5" fill="#6b7280" text-anchor="middle" transform="rotate(-90 14 ' + (mt + ph / 2) + ')">解绑后与原值的相似度</text>';
+
+  // 理论线 1/sqrt(k)：画成宽而浅的带子。实测点若严丝合缝落在这条带子里，
+  // 两条线会「重合到看不见」—— 那不是没画，是吻合。figcaption 里说明。
+  var tp = "";
+  for(var kk = 0; kk <= kmax; kk += 1){
+    var vv = 1 / Math.sqrt(Math.max(kk, 1));
+    if(vv < ymin) break;
+    tp += (tp ? "L" : "M") + X(kk).toFixed(1) + " " + Y(vv).toFixed(1) + " ";
+  }
+  s += '<path d="' + tp + '" fill="none" stroke="#ddd2f2" stroke-width="6" stroke-linecap="round"/>';
+  s += '<path d="' + tp + '" fill="none" stroke="#b8a9d9" stroke-width="1.4" stroke-dasharray="5 4"/>';
+
+  // 实测折线 + 点
+  var dp = "";
+  for(var a = 0; a < DECAY.length; a++){
+    dp += (a ? "L" : "M") + X(DECAY[a].k).toFixed(1) + " " + Y(DECAY[a].m).toFixed(1) + " ";
+  }
+  s += '<path d="' + dp + '" fill="none" stroke="#6b4ea8" stroke-width="2.2"/>';
+  for(var b = 0; b < DECAY.length; b++){
+    s += '<circle cx="' + X(DECAY[b].k).toFixed(1) + '" cy="' + Y(DECAY[b].m).toFixed(1) +
+         '" r="3.4" fill="#6b4ea8"/>';
+  }
+  // 标注
+  s += '<text x="' + (X(6) + 4) + '" y="' + (Y(0.62)) + '" font-size="11.5" fill="#6b4ea8">实测</text>';
+  s += '<text x="' + (X(30)) + '" y="' + (Y(0.235)) + '" font-size="11.5" fill="#9a89c4">1/√k 理论（浅色带）</text>';
+
+  // 内嵌残差图：主图里两条线重合到看不出，这里把差值放大 40 倍画
+  var rx0 = 470, ry0 = 46, rw = 200, rh = 74;
+  s += '<rect x="' + rx0 + '" y="' + ry0 + '" width="' + rw + '" height="' + rh +
+       '" fill="#fafafd" stroke="#e3e6ec" rx="4"/>';
+  s += '<text x="' + (rx0 + 7) + '" y="' + (ry0 + 13) + '" font-size="10" fill="#6b7280">残差 实测−理论（纵轴 ±0.01）</text>';
+  var rzero = ry0 + rh / 2 + 5;
+  s += '<line x1="' + (rx0 + 8) + '" y1="' + rzero + '" x2="' + (rx0 + rw - 8) + '" y2="' + rzero +
+       '" stroke="#cfd4dd" stroke-dasharray="3 3"/>';
+  var rp = "";
+  for(var rr = 0; rr < DECAY.length; rr++){
+    var dv = DECAY[rr].m - DECAY[rr].t;
+    var px = rx0 + 10 + rr / (DECAY.length - 1) * (rw - 20);
+    var py = rzero - dv / 0.01 * (rh / 2 - 8);
+    rp += (rr ? "L" : "M") + px.toFixed(1) + " " + py.toFixed(1) + " ";
+    s += '<circle cx="' + px.toFixed(1) + '" cy="' + py.toFixed(1) + '" r="2.1" fill="#6b4ea8"/>';
+  }
+  s += '<path d="' + rp + '" fill="none" stroke="#6b4ea8" stroke-width="1" opacity="0.55"/>';
+  var maxR = 0;
+  for(var r2 = 0; r2 < DECAY.length; r2++) maxR = Math.max(maxR, Math.abs(DECAY[r2].m - DECAY[r2].t));
+  s += '<text x="' + (rx0 + rw - 8) + '" y="' + (ry0 + rh - 6) + '" font-size="10" fill="#6b7280" text-anchor="end">max |残差| = ' +
+       maxR.toFixed(4) + '</text>';
+  g.innerHTML = s;
+})();
+
+/* =====================================================================
+   §04 命中率曲线
+   ===================================================================== */
+(function drawRecall(){
+  var g = el("gRecall");
+  if(!g) return;
+  var W = 700, H = 280;
+  var ml = 62, mr = 24, mt = 24, mb = 52;
+  var pw = W - ml - mr, ph = H - mt - mb;
+  var kmin = 0, kmax = 280;
+  function X(k){ return ml + (k - kmin) / (kmax - kmin) * pw; }
+  function Y(v){ return mt + (1 - v) * ph; }
+  var s = "";
+  var ys = [0, 0.25, 0.5, 0.75, 1.0];
+  for(var i = 0; i < ys.length; i++){
+    var v = ys[i];
+    s += '<line x1="' + ml + '" y1="' + Y(v).toFixed(1) + '" x2="' + (W - mr) + '" y2="' + Y(v).toFixed(1) + '" stroke="#eef0f4"/>';
+    s += '<text x="' + (ml - 9) + '" y="' + (Y(v) + 4).toFixed(1) + '" font-size="11" fill="#6b7280" text-anchor="end" font-family="monospace">' +
+         (v * 100).toFixed(0) + '%</text>';
+  }
+  var xs = [0, 50, 100, 150, 200, 250];
+  for(var j = 0; j < xs.length; j++){
+    s += '<text x="' + X(xs[j]).toFixed(1) + '" y="' + (mt + ph + 18) + '" font-size="11" fill="#6b7280" text-anchor="middle" font-family="monospace">' + xs[j] + '</text>';
+  }
+  s += '<text x="' + (ml + pw / 2) + '" y="' + (mt + ph + 38) + '" font-size="11.5" fill="#6b7280" text-anchor="middle">叠加条数 k（D=1024，200 选 1）</text>';
+  s += '<text x="14" y="' + (mt + ph / 2) + '" font-size="11.5" fill="#6b7280" text-anchor="middle" transform="rotate(-90 14 ' + (mt + ph / 2) + ')">检索命中率</text>';
+
+  // 100% 参考线
+  s += '<line x1="' + ml + '" y1="' + Y(1).toFixed(1) + '" x2="' + (W - mr) + '" y2="' + Y(1).toFixed(1) + '" stroke="#cfe6da" stroke-width="1.4"/>';
+  var dp = "";
+  for(var a = 0; a < RECALL.length; a++){
+    dp += (a ? "L" : "M") + X(RECALL[a].k).toFixed(1) + " " + Y(RECALL[a].h).toFixed(1) + " ";
+  }
+  s += '<path d="' + dp + '" fill="none" stroke="#0f6f7a" stroke-width="2.2"/>';
+  for(var b = 0; b < RECALL.length; b++){
+    s += '<circle cx="' + X(RECALL[b].k).toFixed(1) + '" cy="' + Y(RECALL[b].h).toFixed(1) + '" r="3.4" fill="#0f6f7a"/>';
+  }
+  // 拐点标注
+  s += '<line x1="' + X(100).toFixed(1) + '" y1="' + mt + '" x2="' + X(100).toFixed(1) + '" y2="' + (mt + ph) +
+       '" stroke="#b3261e" stroke-width="1" stroke-dasharray="3 3"/>';
+  s += '<text x="' + (X(100) + 5) + '" y="' + (mt + 14) + '" font-size="11" fill="#b3261e">k ≈ D/10</text>';
+  g.innerHTML = s;
+})();
+
+/* =====================================================================
+   §03 表格 + §05 表格
+   ===================================================================== */
+(function fillTables(){
+  var t = el("tbSurv");
+  if(t){
+    var s = "";
+    for(var i = 0; i < SURV.length; i++){
+      var r = SURV[i];
+      var cls = r.bundle === 0 ? ' class="bad"' : (r.m === 2 ? ' class="hi"' : "");
+      s += "<tr" + cls + "><td data-label=\"组大小 m\">" + r.m +
+           "</td><td class=\"num\" data-label=\"bind 存活\">" + (r.bind * 100).toFixed(0) + "%" +
+           "</td><td class=\"num\" data-label=\"bundle 存活\">" + (r.bundle * 100).toFixed(0) + "%" +
+           "</td><td class=\"num\" data-label=\"相位偏离中位数\">" + r.dev.toFixed(3) + " rad</td></tr>";
+    }
+    t.innerHTML = s;
+  }
+  var t2 = el("tbComm");
+  if(t2){
+    var s2 = "";
+    for(var j = 0; j < COMM.length; j++){
+      var c = COMM[j];
+      var cls2 = c.m === 1 ? ' class="ok"' : "";
+      var note = c.m === 1 ? "FHRR：严格交换（数值 0）" : (c.m === 2 ? "已接近√2，方向可分" : "更接近随机矩阵间距离");
+      s2 += "<tr" + cls2 + "><td class=\"num\" data-label=\"m\">" + c.m +
+            "</td><td class=\"num\" data-label=\"相对差均值\">" + c.r.toFixed(4) +
+            "</td><td class=\"num\" data-label=\"最小\">" + c.lo.toFixed(4) +
+            "</td><td data-label=\"含义\">" + note + "</td></tr>";
+    }
+    t2.innerHTML = s2;
+  }
+  var t3 = el("tbDecay");
+  if(t3){
+    var s3 = "";
+    for(var q = 0; q < DECAY.length; q++){
+      var d = DECAY[q];
+      var dev = d.m - d.t;
+      s3 += "<tr><td class=\"num\" data-label=\"k\">" + d.k +
+            "</td><td class=\"num\" data-label=\"实测\">" + d.m.toFixed(4) +
+            "</td><td class=\"num\" data-label=\"5% 分位\">" + d.p.toFixed(4) +
+            "</td><td class=\"num\" data-label=\"理论\">" + d.t.toFixed(4) +
+            "</td><td class=\"num\" data-label=\"偏差\">" + (dev >= 0 ? "+" : "") + dev.toFixed(4) + "</td></tr>";
+    }
+    t3.innerHTML = s3;
+  }
+})();
+
+/* =====================================================================
+   §03 交互：相位圆盘
+   ===================================================================== */
+var PH = (function(){
+  var D = 24, MAXM = 9;
+  var rnd = lcg(20261026);
+  var base = [], keys = [];
+  for(var j = 0; j < D; j++){
+    var b = [], k = [];
+    for(var i = 0; i < MAXM; i++){ b.push(rnd() * Math.PI * 2); k.push(rnd() * Math.PI * 2); }
+    base.push(b); keys.push(k);
+  }
+  return {D:D, MAXM:MAXM, m:3, base:base, keys:keys, mode:"bundle"};
+})();
+
+function drawPhase(){
+  var cv = el("cvPhase");
+  if(!cv) return null;
+  var dpr = window.devicePixelRatio || 1;
+  var cssW = cv.clientWidth || 960;
+  var cssH = 360;
+  if(cv.width !== Math.round(cssW * dpr)){
+    cv.width = Math.round(cssW * dpr);
+    cv.height = Math.round(cssH * dpr);
+  }
+  cv.style.height = cssH + "px";
+  var ctx = cv.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cssW, cssH);
+
+  var m = PH.m, mode = PH.mode;
+  // 窄屏只画 12 个分量（4×3），否则每个圆只有 30px，箭头糊成一团
+  var cols = cssW < 520 ? 4 : 8, rows = 3;
+  var D = Math.min(PH.D, cols * rows);
+  var cw = cssW / cols, ch = cssH / rows;
+  var R = Math.min(cw, ch) * 0.40;
+
+  var devs = [], failures = 0;
+
+  for(var j = 0; j < D; j++){
+    var cx = (j % cols) * cw + cw / 2;
+    var cy = Math.floor(j / cols) * ch + ch / 2;
+
+    // ① 组内 m 个码字相位，最后一个取负和 ⇒ Σφ ≡ 0
+    var ph = [], acc = 0;
+    for(var i = 0; i < m - 1; i++){ var v = PH.base[j][i]; ph.push(v); acc += v; }
+    ph.push(wrapPi(-acc));
+
+    // ② 各自绑一个 key
+    var memR = 0, memI = 0;
+    for(var i2 = 0; i2 < m; i2++){
+      var aa = ph[i2] + PH.keys[j][i2];
+      memR += Math.cos(aa); memI += Math.sin(aa);
+    }
+    var psi = Math.atan2(memI, memR);
+
+    // ③ 解绑：bind 路径直接拿回原值；bundle 路径从合成向量里刨
+    var est = [];
+    for(var i3 = 0; i3 < m; i3++){
+      est.push(mode === "bundle" ? wrapPi(psi - PH.keys[j][i3]) : ph[i3]);
+    }
+
+    // ④ 判据：解绑后相位和应仍 ≡ 0
+    var tot = 0;
+    for(var i4 = 0; i4 < m; i4++) tot += est[i4];
+    tot = wrapPi(tot);
+    var dev = Math.abs(tot);
+    devs.push(dev);
+    if(dev >= 0.05) failures++;
+
+    // ---- 画：小圆 + m 条细箭头 + 1 条粗箭头（指向相位和）
+    ctx.strokeStyle = "#e8eaf0"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+
+    function spoke(ang, len, color, w, head){
+      var ex = cx + Math.cos(ang) * len, ey = cy - Math.sin(ang) * len;
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ex, ey);
+      ctx.strokeStyle = color; ctx.lineWidth = w; ctx.stroke();
+      if(head){
+        var hl = 7.5, ha = 0.42;
+        ctx.beginPath();
+        ctx.moveTo(ex, ey);
+        ctx.lineTo(ex - Math.cos(ang - ha) * hl, ey + Math.sin(ang - ha) * hl);
+        ctx.lineTo(ex - Math.cos(ang + ha) * hl, ey + Math.sin(ang + ha) * hl);
+        ctx.closePath(); ctx.fillStyle = color; ctx.fill();
+      }
+    }
+    for(var i5 = 0; i5 < m; i5++) spoke(est[i5], R * 0.84, "#bcc3d1", 1.1, false);
+    // 粗箭头：方向 = 相位和；长度保底 0.32R，再按偏离量加长
+    if(dev > 0.02){
+      spoke(tot, R * (0.32 + 0.55 * Math.min(1, dev / Math.PI)), "#b3261e", 2.6, true);
+    } else {
+      ctx.beginPath(); ctx.arc(cx, cy, 4.2, 0, Math.PI * 2);
+      ctx.strokeStyle = "#1a7f5a"; ctx.lineWidth = 2.2; ctx.stroke();
+    }
+  }
+
+  var sorted = devs.slice().sort(function(a, b){ return a - b; });
+  var med = sorted[Math.floor(sorted.length / 2)];
+  var hit = devs.length - failures;
+  el("roD").textContent = String(D);
+  el("ro1").textContent = med.toFixed(3);
+  el("ro2").textContent = String(failures);
+  el("roT").textContent = String(D);
+  el("ro3").textContent = Math.round(hit / devs.length * 100) + "%";
+  return {median:med, hitRate:hit / devs.length, failures:failures};
+}
+
+/* 独立模拟：不读 UI 状态，用来给自检提供判据 */
+function simulateDev(m, mode){
+  var out = [];
+  for(var j = 0; j < PH.D; j++){
+    var ph = [], acc = 0;
+    for(var i = 0; i < m - 1; i++){ ph.push(PH.base[j][i]); acc += PH.base[j][i]; }
+    ph.push(wrapPi(-acc));
+    var mr = 0, mi = 0;
+    for(var i2 = 0; i2 < m; i2++){
+      var aa = ph[i2] + PH.keys[j][i2];
+      mr += Math.cos(aa); mi += Math.sin(aa);
+    }
+    var psi = Math.atan2(mi, mr);
+    var tot = 0;
+    for(var i3 = 0; i3 < m; i3++){
+      tot += (mode === "bundle") ? wrapPi(psi - PH.keys[j][i3]) : ph[i3];
+    }
+    out.push(Math.abs(wrapPi(tot)));
+  }
+  return out;
+}
+function medOf(a){
+  var b = a.slice().sort(function(x, y){ return x - y; });
+  return b[Math.floor(b.length / 2)];
+}
+function hitRate(a, tol){
+  var c = 0;
+  for(var i = 0; i < a.length; i++) if(a[i] < (tol === undefined ? 0.05 : tol)) c++;
+  return c / a.length;
+}
+
+function wrapPi(x){
+  x = (x + Math.PI) % (Math.PI * 2);
+  if(x < 0) x += Math.PI * 2;
+  return x - Math.PI;
+}
+
+/* =====================================================================
+   §05 交互：方向可分
+   ===================================================================== */
+function drawDir(isGhrr){
+  var cv = el("cvDir");
+  if(!cv) return null;
+  var dpr = window.devicePixelRatio || 1;
+  var cssW = cv.clientWidth || 960;
+  var cssH = 230;
+  if(cv.width !== Math.round(cssW * dpr)){
+    cv.width = Math.round(cssW * dpr);
+    cv.height = Math.round(cssH * dpr);
+  }
+  cv.style.height = cssH + "px";
+  var ctx = cv.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cssW, cssH);
+
+  var D = 48, W = cssW, H = cssH;
+  var ml = 62, mr = 22, mt = 30, mb = 46;
+  var pw = W - ml - mr, ph = H - mt - mb;
+  var rnd = lcg(isGhrr ? 2024 : 1995);
+
+  // 逐分量：两个顺序的相对差（0 = 完全相同，1 = 完全正交）
+  var diffs = [];
+  for(var j = 0; j < D; j++){
+    if(!isGhrr){
+      var a = rnd() * Math.PI * 2, b = rnd() * Math.PI * 2;
+      // a·b 与 b·a 是同一个数：差严格为 0
+      void (a + b);
+      diffs.push(0);
+    } else {
+      var a1 = rnd() * Math.PI, a2 = rnd() * Math.PI * 2, a3 = rnd() * Math.PI * 2;
+      var b1 = rnd() * Math.PI, b2 = rnd() * Math.PI * 2, b3 = rnd() * Math.PI * 2;
+      var A = su2(a1, a2, a3), B = su2(b1, b2, b3);
+      var AB = mmul(A, B), BA = mmul(B, A);
+      var num = 0, den = 0;
+      for(var r = 0; r < 2; r++) for(var c = 0; c < 2; c++){
+        var dr = AB[r][c].re - BA[r][c].re, di = AB[r][c].im - BA[r][c].im;
+        num += dr * dr + di * di;
+        den += AB[r][c].re * AB[r][c].re + AB[r][c].im * AB[r][c].im;
+      }
+      diffs.push(Math.min(1, Math.sqrt(num / den) / Math.SQRT2));   // 归一化并 clamp 到 0..1
+    }
+  }
+
+  function X(j){ return ml + (j + 0.5) / D * pw; }
+  function Y(v){ return mt + (1 - v) * ph; }
+
+  // 网格
+  ctx.strokeStyle = "#eef0f4"; ctx.lineWidth = 1;
+  var gv = [0, 0.25, 0.5, 0.75, 1];
+  for(var i = 0; i < gv.length; i++){
+    ctx.beginPath(); ctx.moveTo(ml, Y(gv[i])); ctx.lineTo(W - mr, Y(gv[i])); ctx.stroke();
+  }
+  ctx.font = "11px monospace"; ctx.fillStyle = "#6b7280"; ctx.textAlign = "right";
+  for(var i2 = 0; i2 < gv.length; i2++) ctx.fillText(gv[i2].toFixed(2), ml - 8, Y(gv[i2]) + 4);
+
+  // 柱：逐分量差异
+  var bw = Math.max(2, pw / D * 0.66);
+  var sum = 0;
+  for(var k2 = 0; k2 < D; k2++){
+    sum += diffs[k2];
+    var h2 = diffs[k2] * ph;
+    if(h2 < 0.8){
+      // 0 也要看得见：画一条贴基线的细条
+      ctx.fillStyle = "#c9c3e0";
+      ctx.fillRect(X(k2) - bw / 2, Y(0) - 1.2, bw, 1.2);
+    } else {
+      ctx.fillStyle = isGhrr ? "#0f6f7a" : "#c9c3e0";
+      ctx.fillRect(X(k2) - bw / 2, Y(0) - h2, bw, h2);
+    }
+  }
+  var mean = sum / D;
+
+  // 均值线
+  ctx.beginPath(); ctx.moveTo(ml, Y(mean)); ctx.lineTo(W - mr, Y(mean));
+  ctx.strokeStyle = "#b3261e"; ctx.lineWidth = 1.4; ctx.setLineDash([5, 4]); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = "#b3261e"; ctx.textAlign = "right"; ctx.font = "11px monospace";
+  ctx.fillText("均值 " + mean.toFixed(3), W - mr - 4, Y(mean) - 7);
+
+  ctx.fillStyle = "#6b7280"; ctx.textAlign = "center"; ctx.font = "11.5px -apple-system,sans-serif";
+  ctx.fillText("分量编号（共 " + D + " 个）", ml + pw / 2, H - 10);
+  ctx.save();
+  ctx.translate(14, mt + ph / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = "center";
+  ctx.fillText("甲→乙 与 乙→甲 的相对差", 0, 0);
+  ctx.restore();
+
+  var sim = isGhrr ? DIR.ghrr : DIR.fhrr;
+  el("roDir").textContent = sim.toFixed(4);
+  el("roDirV").textContent = (sim > 0.9 ? "不能（每个分量都相同）" : "能（每个分量都不同）");
+  el("roDirV").style.color = (sim > 0.9 ? "#b3261e" : "#1a7f5a");
+  return {sim:sim, meanDiff:mean, overlap:(sim > 0.9)};
+}
+
+/* SU(2) 参数化：[[cosα e^{iβ}, -sinα e^{iγ}], [sinα e^{-iγ}, cosα e^{-iβ}]] */
+function su2(al, be, ga){
+  var c = Math.cos(al), s = Math.sin(al);
+  return [
+    [{re:c * Math.cos(be), im:c * Math.sin(be)}, {re:-s * Math.cos(ga), im:-s * Math.sin(ga)}],
+    [{re:s * Math.cos(ga), im:-s * Math.sin(ga)}, {re:c * Math.cos(be), im:-c * Math.sin(be)}]
+  ];
+}
+function mmul(X, Y){
+  var out = [[{re:0, im:0}, {re:0, im:0}], [{re:0, im:0}, {re:0, im:0}]];
+  for(var i = 0; i < 2; i++){
+    for(var j = 0; j < 2; j++){
+      var re = 0, im = 0;
+      for(var k = 0; k < 2; k++){
+        var a = X[i][k], b = Y[k][j];
+        re += a.re * b.re - a.im * b.im;
+        im += a.re * b.im + a.im * b.re;
+      }
+      out[i][j] = {re:re, im:im};
+    }
+  }
+  return out;
+}
+
+/* =====================================================================
+   绑定事件
+   ===================================================================== */
+(function bindUI(){
+  var sg = el("sg");
+  if(sg){
+    sg.addEventListener("input", function(){
+      PH.m = parseInt(sg.value, 10);
+      el("sgv").textContent = "m = " + PH.m;
+      drawPhase();
+    });
+  }
+  var mb = el("mBind"), mu = el("mBund");
+  if(mb && mu){
+    mb.addEventListener("click", function(){
+      PH.mode = "bind"; mb.classList.add("on"); mu.classList.remove("on"); drawPhase();
+    });
+    mu.addEventListener("click", function(){
+      PH.mode = "bundle"; mu.classList.add("on"); mb.classList.remove("on"); drawPhase();
+    });
+  }
+  var dF = el("dF"), dG = el("dG");
+  if(dF && dG){
+    dF.addEventListener("click", function(){
+      dF.classList.add("on"); dG.classList.remove("on"); drawDir(false);
+    });
+    dG.addEventListener("click", function(){
+      dG.classList.add("on"); dF.classList.remove("on"); drawDir(true);
+    });
+  }
+})();
+
+/* 初始绘制（等布局稳定） */
+function boot(){
+  var r1 = drawPhase();
+  var r2 = drawDir(false);
+  runChecks(r1, r2);
+}
+if(document.readyState === "loading"){
+  document.addEventListener("DOMContentLoaded", function(){ setTimeout(boot, 0); });
+} else {
+  setTimeout(boot, 0);
+}
+
+/* =====================================================================
+   自检
+   ===================================================================== */
+function runChecks(phaseRes, dirRes){
+  // --- A 数据表内部一致性
+  var maxDev = 0;
+  for(var i = 0; i < DECAY.length; i++){
+    maxDev = Math.max(maxDev, Math.abs(DECAY[i].m - DECAY[i].t));
+  }
+  chk("衰减实测与 1/√k 理论的最大偏差 < 0.01", maxDev < 0.01, "最大偏差 " + fmt(maxDev));
+
+  var okEnd = Math.abs(DECAY[DECAY.length - 1].m - 1 / Math.sqrt(120)) < 0.005;
+  chk("k=120 那一点与 1/√120 相差 < 0.005", okEnd,
+      "实测 " + fmt(DECAY[DECAY.length - 1].m) + " vs 理论 " + fmt(1 / Math.sqrt(120)));
+
+  var mono = true;
+  for(var j = 1; j < DECAY.length; j++) if(DECAY[j].m > DECAY[j - 1].m + 1e-12) mono = false;
+  chk("衰减曲线单调不增（12 个点）", mono, DECAY.length + " 点");
+
+  var pOk = true;
+  for(var q = 0; q < DECAY.length; q++) if(DECAY[q].p > DECAY[q].m + 1e-9) pOk = false;
+  chk("每个点的 5% 分位都 ≤ 均值（分位数定义正确）", pOk, "12 点全部满足");
+
+  // --- B 容量：早期满命中、晚期明显下降
+  var earlyFull = RECALL[0].h === 1 && RECALL[1].h === 1 && RECALL[2].h === 1 && RECALL[3].h === 1;
+  chk("k ≤ 60 时 200 选 1 命中率都是 100%", earlyFull, RECALL.slice(0, 4).map(function(r){ return r.h; }).join(" / "));
+  chk("k = 260 时命中率跌到 0.6 以下", RECALL[RECALL.length - 1].h < 0.6,
+      "实测 " + RECALL[RECALL.length - 1].h);
+  chk("命中率整体趋势向下（末点 < 首点 − 0.4）", (RECALL[0].h - RECALL[RECALL.length - 1].h) > 0.4,
+      fmt(RECALL[0].h - RECALL[RECALL.length - 1].h, 3) + " 的落差");
+
+  // --- C 交换性：m=1 必须精确为 0
+  chk("GHRR m=1 的相对差严格为 0（退化为 FHRR）", COMM[0].r === 0 && COMM[0].lo === 0, "0.0000 / 0.0000");
+  chk("m=2 的相对差 > 0.9（远不是数值误差）", COMM[1].r > 0.9, fmt(COMM[1].r));
+  chk("相对差随 m 单调增大", COMM[0].r < COMM[1].r && COMM[1].r < COMM[2].r && COMM[2].r < COMM[3].r,
+      COMM.map(function(c){ return c.r; }).join(" < "));
+  chk("m=4 的相对差接近两个随机矩阵的距离 √2", Math.abs(COMM[3].r - Math.SQRT2) < 0.2,
+      fmt(COMM[3].r) + " vs " + fmt(Math.SQRT2));
+
+  // --- D 方向可分
+  chk("FHRR 下「甲→乙」与「乙→甲」相似度为 1（完全无法区分）", DIR.fhrr === 1, "1.0000");
+  chk("GHRR m=2 下相似度降到 0.5 以下（能分了）", DIR.ghrr < 0.5, fmt(DIR.ghrr));
+  chk("但 GHRR 并没有降到 0（不是「完全正交」）", DIR.ghrr > 0.2,
+      fmt(DIR.ghrr) + " —— 只能说「能分」，不能说「正交」");
+
+  // --- E 守恒存活
+  var bindAll = true;
+  for(var a = 0; a < SURV.length; a++) if(SURV[a].bind !== 1) bindAll = false;
+  chk("bind 路径下守恒约束 100% 存活（全部 m）", bindAll, "m = " + SURV.map(function(s){ return s.m; }).join(","));
+  var bundZero = true;
+  for(var b = 1; b < SURV.length; b++) if(SURV[b].bundle !== 0) bundZero = false;
+  chk("bundle 路径下 m ≥ 3 全部归零", bundZero, "m=3,5,9 均为 0%");
+  var devUp = SURV[1].dev < SURV[2].dev && SURV[2].dev < SURV[3].dev;
+  chk("bundle 后相位偏离随 m 单调增大", devUp,
+      SURV.slice(1).map(function(s){ return s.dev; }).join(" < ") + " rad");
+  chk("m=2 的 bundle 存活要打折（噪声 1/√512≈0.044 压在容差 0.05 上）",
+      SURV[0].bundle === 1 && SURV[0].dev === 0,
+      "这是容差边界，不是原理成立");
+
+  // --- F fix --maxk
+  var allOne = true;
+  for(var c = 0; c < MAXK.length; c++) if(MAXK[c].solved !== 1 || MAXK[c].uniq !== 1) allOne = false;
+  chk("fix：k = 2…9 时解出率与唯一率都是 100%", allOne, "5 档全部 1.00");
+  chk("fix：从未出现多解（n_solutions 恒为 1）", allOne, "无一例需要人工挑");
+
+  // --- G 页面结构
+  var cvs = document.querySelectorAll("canvas");
+  var cvsOk = cvs.length === 2;
+  chk("两个交互画布都在", cvsOk, cvs.length + " 个 canvas");
+
+  // 画布非空白：取像素统计
+  var cv1 = el("cvPhase");
+  if(cv1){
+    var ctx1 = cv1.getContext("2d");
+    var d1 = ctx1.getImageData(0, 0, Math.min(300, cv1.width), Math.min(200, cv1.height)).data;
+    var nonwhite = 0;
+    for(var p = 0; p < d1.length; p += 4){
+      if(d1[p] < 250 || d1[p + 1] < 250 || d1[p + 2] < 250) nonwhite++;
+    }
+    chk("相位圆盘画布确实画了东西（抽样非白像素 > 200）", nonwhite > 200, nonwhite + " 个非白像素");
+  } else {
+    chk("相位圆盘画布确实画了东西", false, "找不到 canvas");
+  }
+
+  // --- H 交互的数学（独立于 UI 当前状态重算）
+  var d2 = simulateDev(2, "bundle"), d3 = simulateDev(3, "bundle"), d9 = simulateDev(9, "bundle");
+  chk("bind 路径：组内相位和恒 ≡ 0（模拟用的 24 个分量全部）",
+      hitRate(simulateDev(3, "bind"), 1e-9) === 1, PH.D + "/" + PH.D + " 分量精确为 0");
+  chk("bundle 路径：m=2 命中 100%（边界），m=3 明显下降，m=9 归零",
+      hitRate(d2) === 1 && hitRate(d3) < 0.5 && hitRate(d9) === 0,
+      "m=2 " + Math.round(hitRate(d2) * 100) + "% / m=3 " + Math.round(hitRate(d3) * 100) +
+      "% / m=9 " + Math.round(hitRate(d9) * 100) + "%");
+  chk("bundle 路径：相位和偏离随 m 单调增大（2 < 3 < 9）",
+      medOf(d2) < medOf(d3) && medOf(d3) < medOf(d9),
+      medOf(d2).toFixed(3) + " < " + medOf(d3).toFixed(3) + " < " + medOf(d9).toFixed(3) + " rad");
+  chk("同一判据在 bind 下不误报（m=9 也 100%）",
+      hitRate(simulateDev(9, "bind"), 1e-9) === 1, "24/24");
+
+  // --- I 表格与常量一致（渲染后回读）
+  var tbody = el("tbDecay");
+  if(tbody){
+    var rows = tbody.querySelectorAll("tr");
+    var rowOk = rows.length === DECAY.length;
+    var cellOk = rowOk && rows[1].children[1].textContent === DECAY[1].m.toFixed(4);
+    chk("衰减表的行数 = 常量条数（12）", rowOk, rows.length + " 行");
+    chk("表格单元格回读与常量一致（抽查第 2 行）", cellOk,
+        rowOk ? rows[1].children[1].textContent + " vs " + DECAY[1].m.toFixed(4) : "—");
+  } else {
+    chk("衰减表渲染", false, "找不到 tbody");
+  }
+
+  // --- J 无 NaN
+  var bodyTxt = document.body.innerText || "";
+  var hasNaN = /NaN|undefined|\[object Object\]/.test(bodyTxt);
+  chk("页面上没有 NaN / undefined / [object Object]", !hasNaN, hasNaN ? "有" : "干净");
+
+  // --- K 交互函数自身可算
+  chk("drawPhase() 返回了数值（不是 undefined）",
+      phaseRes && typeof phaseRes.median === "number" && !isNaN(phaseRes.median),
+      phaseRes ? "median " + fmt(phaseRes.median) : "无返回");
+  chk("drawDir() 返回了数值（不是 undefined）",
+      dirRes && typeof dirRes.sim === "number" && !isNaN(dirRes.sim),
+      dirRes ? "sim " + fmt(dirRes.sim) : "无返回");
+
+  // --- L 关键判据不能恒真：拿一个必然错的比较来验
+  chk("反向验证：故意把 k=120 的实测值当 1/√5 相比，必须判不等",
+      Math.abs(DECAY[11].m - 1 / Math.sqrt(5)) > 0.05,
+      "差 " + fmt(Math.abs(DECAY[11].m - 1 / Math.sqrt(5))));
+
+  renderChecks();
+}
+
+function renderChecks(){
+  var box = el("checks");
+  if(!box) return;
+  var s = "";
+  for(var i = 0; i < window.__ch.list.length; i++){
+    var c = window.__ch.list[i];
+    s += '<div class="row"><span class="st ' + (c.ok ? "ok" : "no") + '">' + (c.ok ? "OK" : "FAIL") +
+         '</span><span class="nm">' + c.n + '</span><span class="dt">' + c.d + '</span></div>';
+  }
+  box.innerHTML = s;
+  var sum = el("sum");
+  var all = window.__ch.pass === window.__ch.total;
+  sum.textContent = "自检：" + window.__ch.pass + " / " + window.__ch.total +
+    (all ? " 全部通过 · 共检查 " + window.__ch.total + " 项" : " 有 " + (window.__ch.total - window.__ch.pass) + " 项失败");
+  sum.style.background = all ? "#eef7f2" : "#fbf0ef";
+  sum.style.color = all ? "#1a7f5a" : "#b3261e";
+  sum.style.border = "1px solid " + (all ? "#c3e2d4" : "#f0cbc8");
+}
+</script>
+</body>
+</html>

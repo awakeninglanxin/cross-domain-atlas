@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>K10 · 八度与 12 进制：×2 在 9 个点上成环，在 12 个点上塌成 3 个吸引子</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%231b4f9c' stroke-width='2'/%3E%3Cpath d='M16 5 L27 22 L5 22 Z' fill='none' stroke='%23b4531f' stroke-width='1.6'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/site.css">
+<style>
+  /* ---- 本页专用 ---- */
+  .viz{background:#fff;border:1px solid var(--line-2);border-radius:12px;
+    box-shadow:var(--shadow);padding:14px 16px 12px;margin:18px 0}
+  .viz .vt{font-family:var(--serif);font-size:16px;font-weight:700;margin-bottom:3px}
+  .viz .vc{font-size:13.2px;color:var(--ink-3);margin-bottom:10px;line-height:1.6}
+  .wheels{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:4px}
+  .wh{background:var(--bg-soft);border:1px solid var(--line);border-radius:10px;padding:10px 10px 8px}
+  .wh .h{display:flex;align-items:baseline;justify-content:space-between;
+    font-family:var(--mono);font-size:12px;color:var(--ink-3);margin-bottom:4px}
+  .wh .h b{font-family:var(--serif);font-size:14.5px;color:var(--ink)}
+  .wh canvas{width:100%;display:block;border-radius:8px;background:#fff;border:1px solid var(--line)}
+  .wh .st{font-family:var(--mono);font-size:11.5px;color:var(--ink-2);margin-top:6px;
+    min-height:32px;line-height:1.45}
+  .wh .st em{font-style:normal;color:var(--bad);font-weight:700}
+  .wh .st i{font-style:normal;color:var(--good);font-weight:700}
+  .ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0 2px}
+  .ctrl button{font-family:var(--sans);font-size:13.2px;padding:6px 14px;border-radius:7px;
+    border:1px solid var(--line-2);background:#fff;color:var(--ink-2);cursor:pointer}
+  .ctrl button:hover{background:var(--bg-soft2);color:var(--ink)}
+  .ctrl button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .ctrl button.primary:hover{background:var(--accent-2)}
+  .ctrl .sp{font-family:var(--mono);font-size:12px;color:var(--ink-3);margin-left:auto}
+  .eq{margin:14px 0;background:var(--bg-soft);border:1px solid var(--line);border-radius:8px;
+    padding:12px 15px;font-family:var(--mono);font-size:13px;line-height:1.85;color:var(--ink-2);overflow-x:auto}
+  .eq b{color:var(--accent-2)}
+  .warnbox{background:#fdf6f6;border:1px solid rgba(179,38,30,.28);border-left:3px solid var(--bad);
+    border-radius:8px;padding:12px 15px;margin:16px 0;font-size:14px}
+  .goodbox{background:#f4faf6;border:1px solid rgba(23,114,69,.28);border-left:3px solid var(--good);
+    border-radius:8px;padding:12px 15px;margin:16px 0;font-size:14px}
+  .midbox{background:#fdfaf2;border:1px solid rgba(154,103,0,.28);border-left:3px solid var(--warn);
+    border-radius:8px;padding:12px 15px;margin:16px 0;font-size:14px}
+  .quote{border-left:3px solid var(--line-2);padding:2px 0 2px 14px;margin:13px 0;
+    color:var(--ink-2);font-size:14.4px}
+  .quote .src{display:block;font-family:var(--mono);font-size:11.5px;color:var(--ink-3);margin-top:5px}
+  .rd{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:10px;margin-top:12px}
+  .rd .r{background:var(--bg-soft);border:1px solid var(--line);border-radius:9px;padding:9px 11px}
+  .rd .r .n{font-family:var(--serif);font-size:19px;color:var(--accent-2);line-height:1.2}
+  .rd .r .l{font-size:11.8px;color:var(--ink-3);margin-top:2px}
+  .rd .r .x{font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-top:3px}
+  .lg{list-style:none;padding:0;margin:8px 0 12px}
+  .lg li{display:flex;gap:9px;align-items:flex-start;font-size:13.6px;line-height:1.65;margin:7px 0}
+  .lg .sw{flex:0 0 15px;height:11px;border-radius:2px;margin-top:6px}
+  tr.t-same td{background:rgba(23,114,69,.06)}
+  tr.t-homo td{background:rgba(154,103,0,.07)}
+  tr.t-diff td{background:rgba(179,38,30,.055)}
+  tr.t-same td:first-child{border-left:3px solid var(--good)}
+  tr.t-homo td:first-child{border-left:3px solid var(--warn)}
+  tr.t-diff td:first-child{border-left:3px solid var(--bad)}
+  .mono{font-family:var(--mono);font-size:12.8px}
+  .cnt{font-family:var(--mono);font-size:12.6px;color:var(--ink-3)}
+  .step{display:grid;grid-template-columns:52px 1fr;gap:12px;align-items:start;
+    border:1px solid var(--line);border-radius:10px;padding:12px 15px;margin:11px 0;background:#fff}
+  .step .id{font-family:var(--mono);font-size:12.4px;font-weight:700;color:var(--accent);padding-top:3px}
+  .step .bd b{font-family:var(--serif);font-size:15.2px}
+  .step .bd p{margin:5px 0 0;font-size:13.9px;color:var(--ink-2)}
+  .step.have{border-left:3px solid var(--good);background:#fcfefd}
+  .step.miss{border-left:3px solid var(--bad);background:#fffdfd}
+  table.small{font-size:13.6px}
+  table.small th,table.small td{padding:7px 9px}
+</style>
+</head>
+<body>
+
+<nav class="topnav"><div class="inner">
+  <a class="brand" href="keely核心技术与现代声子物理技术对比.html">Keely × 现代声子物理 <span>/</span> K10</a>
+  <a class="nv" href="keely核心技术与现代声子物理技术对比.html" title="总入口：四条改写 · 术语对照 · 全部页面">← 总入口</a>
+  <a class="nv on" href="#s1">① 三条轨道</a>
+  <a class="nv" href="#s2">② 奇部定理</a>
+  <a class="nv" href="#s3">③ CRT</a>
+  <a class="nv" href="#s4">④ 群错配</a>
+  <a class="nv" href="#s5">⑤ 单位 vs 理想</a>
+  <a class="nv" href="#s6">⑥ 五概念</a>
+  <a class="nv" href="#s7">⑦ 6 还是 9</a>
+  <a class="nv" href="#s8">⑧ 12=3×4</a>
+  <a class="nv" href="#s9">⑨ 三条路</a>
+  <a class="nv" href="#s10">⑩ 红线</a>
+  <a class="nv" href="K9_Dynasphere24管与Anu十丝_赤道环与七内管对照.html" title="K9：Dynasphere 24 管 × Anu 十丝">← K9</a>
+</div></nav>
+
+<div class="hero"><div class="wrap">
+  <div class="kicker">K10 · Octave × Duodecimal — the group mismatch</div>
+  <h1>八度与 12 进制：×2 在 9 个点上成环，<br class="brk">在 12 个点上塌成 3 个吸引子</h1>
+  <p class="sub">老师给的元宝对话里说「12 进制跑 ×2 会塌」——<b>结论对，归因错了两层</b>。
+  不是「12 不是 9」，而是 <b>12 含因子 2²</b>（×2 在 2-adic 部分幂零，必然吞信息）；
+  更根本的一层是<b>音阶的 12 等分属加法群、数字根的 9 属乘法半群</b>，
+  把乘法算子放进加法群，等于要求「升一个八度 = 升 2 个半音」——<b>塌的是算子，不是音阶</b>。
+  Keely 的八度是实数倍频，从不落在剩余类环里，所以他自身不矛盾；矛盾只出在混用两种群的时候。</p>
+  <div class="rd">
+    <div class="r"><div class="n">6 环</div><div class="l">×2 在 9 点上：1·2·4·8·7·5，无暂态</div><div class="x">≡ 124875</div></div>
+    <div class="r"><div class="n">3 个吸引子</div><div class="l">×2 在 12 点上只剩 {0, 4, 8} 长期停留</div><div class="x">9 个点是暂态</div></div>
+    <div class="r"><div class="n">12 环</div><div class="l">×2 在 13 点上走遍全部 12 个非零点</div><div class="x">2 是 mod 13 的原根</div></div>
+    <div class="r"><div class="n">m / 2^v₂(m)</div><div class="l">吸引子大小 = 模数的奇部（m = 2…31 全通过）</div><div class="x">一行判死：模数奇偶</div></div>
+  </div>
+</div></div>
+
+<div class="wrap">
+
+<!-- ============ ① ============ -->
+<h2 id="s1">① 先把三条轨道算干净：9 全可逆、12 塌、13 单环</h2>
+
+<p>三条轨道用的是同一个算子「乘 2」（八度），只是模数不同。下面三个轮盘可以单步走，
+亲眼看着它们在哪儿闭合、在哪儿卡死。</p>
+
+<div class="viz">
+  <div class="vt">图 10-1　×2 在 Z/9、Z/12、Z/13 上的行进路径</div>
+  <div class="vc">从 1 出发，每步乘 2 取模。蓝 = 长期停留点，橙 = 以太侧（3 的倍数），灰 = 两套体系都没归类的 10、11。
+    走过的边会留下轨迹，<b style="color:#2f6fb5">蓝＝行进中</b>、<b style="color:#177245">绿＝正常闭合</b>、<b style="color:#b3261e">红＝卡死</b>；颜色越深越晚。</div>
+
+  <div class="wheels">
+    <div class="wh">
+      <div class="h"><b>Z/9</b><span>9 点 · 全可逆</span></div>
+      <canvas id="cv9" height="260"></canvas>
+      <div class="st" id="st9">待开始</div>
+    </div>
+    <div class="wh">
+      <div class="h"><b>Z/12</b><span>12 点 · 非置换</span></div>
+      <canvas id="cv12" height="260"></canvas>
+      <div class="st" id="st12">待开始</div>
+    </div>
+    <div class="wh">
+      <div class="h"><b>Z/13</b><span>13 点 · 全可逆</span></div>
+      <canvas id="cv13" height="260"></canvas>
+      <div class="st" id="st13">待开始</div>
+    </div>
+  </div>
+
+  <div class="ctrl">
+    <button id="bPlay" class="primary" type="button">▶ 播放</button>
+    <button id="bStep" type="button">单步</button>
+    <button id="bReset" type="button">重置</button>
+    <span class="sp" id="spStep">第 0 步</span>
+  </div>
+</div>
+
+<p>把三条轨道并排写出来，差别一眼可见：</p>
+
+<table>
+<thead><tr><th>模数 m</th><th>轨道分解（×2）</th><th>长期停留</th><th>暂态</th><th>判定</th></tr></thead>
+<tbody>
+<tr class="t-same"><td class="mono">9</td>
+  <td class="mono">{0} 不动 ／ {1,2,4,8,7,5} 六环 ／ {3,6} 二环</td>
+  <td><b>9 / 9</b></td><td>无</td><td>完全可逆，零信息损失</td></tr>
+<tr class="t-diff"><td class="mono">12</td>
+  <td class="mono">{0} 不动（吸 3,6,9）／ {4,8} 二环（吸 1,2,5,7,10,11）</td>
+  <td><b>3 / 12</b></td><td>9 个点，最长 2 步</td><td>三步内被吞，<b>塌</b></td></tr>
+<tr class="t-same"><td class="mono">13</td>
+  <td class="mono">1→2→4→8→3→6→12→11→9→5→10→7→1</td>
+  <td><b>13 / 13</b></td><td>无</td><td>单环 12 步，闭合</td></tr>
+</tbody></table>
+
+<div class="midbox">
+<b>顺手纠一处细节。</b>元宝那篇写「3→6→12→12→12 钉死」，把 3 和 6 算进了吸引子。
+实测是 <span class="mono">3→6→0→0</span>：3 与 6 都是<b>暂态</b>（暂态长度 2 和 1），只有 0（显示成 12）是真正的不动点。
+它「三个点长期停留」这个总数对（{0,4,8}），但成员归属标错了一个。
+</div>
+
+<!-- ============ ② ============ -->
+<h2 id="s2">② 定理：×2 的吸引子大小，恰好是模数的奇部</h2>
+
+<p>这不是「12 碰巧不行」，是一条对任意模数都成立的定理，所以它能当判据用。</p>
+
+<div class="eq">
+设 m = 2<sup>a</sup> · q（q 为奇数，a = v<sub>2</sub>(m)）。则 ×2 在 Z/m 上的最终象恰为<br>
+　　<b>(2<sup>a</sup>)·Z/m</b>　，其元素个数 = m / 2<sup>a</sup> = <b>q</b>（m 的奇部）<br><br>
+证：×2 的象是 2Z/m；迭代 k 次的象是 2<sup>k</sup>·Z/m；当 2<sup>k</sup> ≡ 0 (mod 2<sup>a</sup>) 时象稳定，即 k ≥ a。<br>
+　　稳定后剩下的元素数 = m / 2<sup>a</sup> = q。∎
+</div>
+
+<table class="small">
+<thead><tr><th>m</th><th>2</th><th>4</th><th>6</th><th>8</th><th>9</th><th>10</th><th class="mono">12</th><th>13</th><th>16</th><th>18</th><th>24</th><th>30</th><th>31</th></tr></thead>
+<tbody>
+<tr><td>v₂(m)</td><td>1</td><td>2</td><td>1</td><td>3</td><td>0</td><td>1</td><td><b>2</b></td><td>0</td><td>4</td><td>1</td><td>3</td><td>1</td><td>0</td></tr>
+<tr><td>吸引子</td><td>1</td><td>1</td><td>3</td><td>1</td><td><b>9</b></td><td>5</td><td><b>3</b></td><td>13</td><td>1</td><td>9</td><td>3</td><td>15</td><td>31</td></tr>
+<tr><td>奇部</td><td>1</td><td>1</td><td>3</td><td>1</td><td>9</td><td>5</td><td>3</td><td>13</td><td>1</td><td>9</td><td>3</td><td>15</td><td>31</td></tr>
+</tbody></table>
+<p class="cnt">m = 2…31 逐条实测，全部一致（脚本 <code>E67_octave_mod.py</code> §②）。</p>
+
+<div class="goodbox">
+<b>判据（一行可判死）</b>：倍频环会不会塌，<b>只看模数是奇是偶</b>。
+奇数 ⇒ ×2 是置换，环必然闭合且无信息损失；偶数 ⇒ 必然塌，且塌到什么规模由 v₂(m) 精确给出。<br>
+所以：<b>9 进制与 13 进制都能跑倍频环；12 进制在数学上不可能跑通</b> —— 不是「不如 9」，是「结构上不行」。
+</div>
+
+<!-- ============ ③ ============ -->
+<h2 id="s3">③ CRT：12 的塌缩，可以提前精确预言</h2>
+
+<p>中国剩余定理把 12 拆成两个互不相干的因子：<span class="mono">Z/12 ≅ Z/4 × Z/3</span>。
+把 ×2 分别丢进去，各活各的：</p>
+
+<table>
+<thead><tr><th>因子</th><th>×2 在该因子上的行为</th><th>长期停留</th><th>存活点数</th></tr></thead>
+<tbody>
+<tr class="t-diff"><td class="mono">Z/4</td><td class="mono">幂零：1→2→0→0，3→2→0→0</td><td>只有 0</td><td>1</td></tr>
+<tr class="t-same"><td class="mono">Z/3</td><td class="mono">可逆：0 不动，1↔2 二环</td><td>全部</td><td>3</td></tr>
+</tbody></table>
+
+<p>长期停留点 =（0 mod 4，任意 mod 3）= <b>{0, 4, 8}</b>，其中 0 不动、4↔8 二环。
+直算 Z/12 得到 <span class="mono">[0, 4, 8]</span>，与预言逐点吻合。</p>
+
+<div class="midbox">
+<b>结论</b>：12 的「3」活下来了，「4」死了。
+塌掉的是 <b>12 = 3 × 4 里被 2-adic 吃掉的那一半</b>，而不是「12 比 9 多出来的那 3」。
+这也顺带说明：想把 12 进制救回来，改「3」那一半没用，必须动「4」那一半。
+</div>
+
+<!-- ============ ④ ============ -->
+<h2 id="s4">④ 根因：两个不同的群被混用了</h2>
+
+<p>这是本页最要紧的一条，也是那篇对话没说到的一层。</p>
+
+<table>
+<thead><tr><th>场景</th><th>载体与运算</th><th>倍频的正确算子</th><th>结果</th></tr></thead>
+<tbody>
+<tr class="t-same"><td>十进制取数字根</td><td>Z/9 的<b>乘法</b></td><td class="mono">×2</td><td>6 环 124875，自洽</td></tr>
+<tr class="t-same"><td>十二平均律</td><td>Z/12 的<b>加法</b>（半音可加）</td><td class="mono">+12 ≡ 0</td><td>每音自映射，音名只有 12 个</td></tr>
+<tr class="t-diff"><td>硬把 ×2 压在 12 个格点上</td><td>Z/12 的乘法</td><td class="mono">×2</td><td>3 个吸引子，<b>塌</b></td></tr>
+<tr class="t-same"><td>想用乘法走满 12 步</td><td>Z/13 的乘法</td><td class="mono">×2（2 是原根）</td><td>12 环，闭合</td></tr>
+</tbody></table>
+
+<h3>为什么十进制能跑乘法？</h3>
+<p>因为 <span class="mono">10 ≡ 1 (mod 9)</span>。十进制每一位的位值权重在模 9 下全塌成 1，
+于是「取数字根」是一个同态，而不只是一个习惯：</p>
+<div class="eq">dr(2n) ≡ 2 · dr(n)　(mod 9)　　⇒　倍频落到了 Z/9 的<b>乘法</b>上，才有 1→2→4→8→7→5 这个六环</div>
+
+<h3>为什么音阶不能跑乘法？</h3>
+<p>因为十二平均律的载体是<b>半音数的加法群</b>：升八度 = 加 12 个半音 ≡ 0。
+这是它「只有 12 个音名、升八度回到自己名字」的<b>全部原因</b>。
+在 12 个半音格点上，「一个八度」是「<b>绕一圈</b>」，不是「<b>乘 2</b>」。
+要写成乘法，正确的算子是 2<sup>1/12</sup>——那是实数，不是剩余类。</p>
+
+<div class="warnbox">
+<b>所以那篇对话的核心失误是一次类型错误</b>：把一个乘法算子（×2）放进了加法群（Z/12），
+然后把「这个群必然发生的事」当成了「12 进制不成立」的证据。<br>
+换成一句话：<b>它证明的不是「12 进制有问题」，而是「×2 不是 Z/12 上的置换」</b>——后者是定理，前者是误读。
+</div>
+
+<!-- ============ ⑤ ============ -->
+<h2 id="s5">⑤ Swaruu 的二分，就是单位群 U(9) 与理想 3Z/9</h2>
+
+<p>那篇对话说「3 的倍数翻倍后仍是 3 的倍数，所以进不去也出不来」。这话对，
+但它是一句<b>代数事实的通俗版</b>。严格版是：在 Z/9 中元素按「是否与 9 互素」分成两类，
+且两类都被乘法封闭。</p>
+
+<table>
+<thead><tr><th>类</th><th>集合</th><th>代数身份</th><th>个数</th><th>对应</th></tr></thead>
+<tbody>
+<tr class="t-same"><td>单位</td><td class="mono">{1, 2, 4, 5, 7, 8}</td><td>U(9)，乘法群 ≅ C₆</td><td>6</td><td><b>物质侧</b></td></tr>
+<tr class="t-homo"><td>非单位</td><td class="mono">{3, 6, 9}（9 ≡ 0）</td><td>理想 3Z/9</td><td>3</td><td><b>以太侧</b></td></tr>
+</tbody></table>
+
+<ul class="lg">
+  <li><span class="sw" style="background:rgba(23,114,69,.10);border:1px solid rgba(23,114,69,.38);border-left:3px solid var(--good)"></span>
+    <span><b style="color:var(--good)">物质侧 {1,2,4,5,7,8} 与 U(9) 逐元素相同</b>（脚本比对返回 True）。
+    ×2 在 U(9) 上是置换，正好一个六环。</span></li>
+  <li><span class="sw" style="background:rgba(154,103,0,.10);border:1px solid rgba(154,103,0,.38);border-left:3px solid var(--warn)"></span>
+    <span><b style="color:var(--warn)">以太侧 {3,6,9} 就是理想 3Z/9</b>。理想对任意乘法封闭，
+    所以「3 的倍数翻倍还是 3 的倍数」不是巧合，是理想的定义。</span></li>
+  <li><span class="sw" style="background:#e9edf3;border:1px solid var(--line-2)"></span>
+    <span><b>12 为什么被划进以太侧？</b>因为 12 ≡ 3 (mod 9)，落在 3Z/9 里。这条归类不是随手写的，在模 9 下有唯一解。</span></li>
+  <li><span class="sw" style="background:#e9edf3;border:1px solid var(--line-2)"></span>
+    <span><b>10 和 11 呢？</b>10 ≡ 1、11 ≡ 2，都被并进物质侧的两个类。12 个数映到 9 个类，
+    必有 2 对 1 的重叠（1/10、2/11、3/12），于是「位置不够分」——这是商映射的必然代价，不是分类缺陷。</span></li>
+</ul>
+
+<div class="goodbox">
+<b>这一节的价值</b>：Swaruu 那份「以太侧 3/6/9/12、物质侧 1/2/4/5/7/8」的划分，
+<b>在模 9 下有严格的代数身份</b>（单位 vs 理想），不是拼凑出来的神秘学。
+这是全页最硬的一条可核对结论。
+</div>
+
+<!-- ============ ⑥ ============ -->
+<h2 id="s6">⑥ Keely 的五个概念，各自落在哪个代数对象上</h2>
+
+<p>「Keely 与昴宿 12 进制有关系」这句判断，准确的说法不是「都是神秘数字」，
+而是<b>两边在指同一批代数对象</b>：八度指乘 2、三元力指理想、极性指二环、中性中心指不动点。</p>
+
+<table>
+<thead><tr><th>Keely 概念（本项目自有文档口径）</th><th>代数对象</th><th>×2 下的行为</th><th>判级</th></tr></thead>
+<tbody>
+<tr class="t-same"><td>八度 = 频率 ×2<br><span class="cnt">K2：N 每 +3 ⇒ 频率 ×2</span></td>
+  <td class="mono">实数乘法</td><td>生成整个频率链</td><td><b style="color:var(--good)">● 真</b>，K2 已算</td></tr>
+<tr class="t-same"><td>层级频率链 ×3<sup>(2ⁿ)</sup><br><span class="cnt">K2：20,000 → 1,620,000</span></td>
+  <td class="mono">实数乘法，<b>不进剩余类</b></td><td>与本文无冲突</td><td><b style="color:var(--good)">● 真</b>，K2 已算</td></tr>
+<tr class="t-homo"><td>3:6:9「三种标量力」<br><span class="cnt">01 §2.2：负／中性／正</span></td>
+  <td class="mono">理想 3Z/9</td><td>不变子群，被倍频锁死</td><td><b style="color:var(--warn)">◐</b> 结构对，物理无</td></tr>
+<tr class="t-homo"><td>中性中心「正负力在中性中心交互」<br><span class="cnt">01 §5.3</span></td>
+  <td class="mono">见 §⑦，<b>两义</b></td><td>6 或 9，取决于运算</td><td><b style="color:var(--warn)">◐</b> 需拆分</td></tr>
+<tr class="t-homo"><td>正 / 负极性</td>
+  <td class="mono">{3, 6} 二环</td><td>极性在倍频下互换</td><td><b style="color:var(--warn)">◐</b> 结构对</td></tr>
+</tbody></table>
+
+<p class="cnt">判级图例：<b style="color:var(--good)">● 真</b> = 项目已独立复算过，数值可查；
+<b style="color:var(--warn)">◐</b> = 结构能对上，但不含物理机制主张；全文不出现「以太力存在」这类断言。</p>
+
+<!-- ============ ⑦ ============ -->
+<h2 id="s7">⑦ 6 还是 9？「中性」有两个，不是一个</h2>
+
+<p>这是本轮最有意思的一处<b>表面冲突</b>。项目自有文档 <code>01_Keely技术全景 §2.2</code>
+记的是 Dale Pond 转述的三元分工：</p>
+
+<div class="quote">
+3 = 负极 = 离心力 = 发散 = 谐和<br>
+<b>6 = 中性 = 支点 = 平衡 = 等音</b><br>
+9 = 正极 = 向心力 = 汇聚 = 主导
+<span class="src">01_Keely技术全景_SVP同情振动物理学.md §2.2（转述 Dale Pond）</span>
+</div>
+
+<p>但 ×2 的代数不动点是 <b>9</b>（因为 9 ≡ 0，而 0 是乘性吸收元：0 × 任何数 = 0），<b>不是 6</b>。
+反过来 6 在 ×2 下是 3↔6 二环的一员，它在动，不可能是「不动点」。</p>
+
+<p>两句话都对，因为它们回答的是两个不同的问题：</p>
+
+<table>
+<thead><tr><th>「中性」的两种含义</th><th>定义</th><th>谁是中性</th><th>所属运算</th></tr></thead>
+<tbody>
+<tr class="t-homo"><td>加法中点</td><td class="mono">(3 + 9) / 2 = 6</td><td><b>6</b></td><td>加法（等差数列、音程排列）</td></tr>
+<tr class="t-same"><td>乘法定点</td><td class="mono">x·2 ≡ x (mod 9) ⇒ x ≡ 0 ⇒ 9</td><td><b>9</b></td><td>乘法（倍频、模乘）</td></tr>
+</tbody></table>
+
+<ul class="lg">
+  <li><span class="sw" style="background:rgba(154,103,0,.10);border:1px solid rgba(154,103,0,.38);border-left:3px solid var(--warn)"></span>
+    <span>Keely／Pond 的 <b>6</b> 是<b>音程与比例的中点</b>：3:6:9 这条等差数列的中项，
+    也是「三度—六度—八度」排列里的中间那档。在他的体系里完全成立。</span></li>
+  <li><span class="sw" style="background:rgba(23,114,69,.10);border:1px solid rgba(23,114,69,.38);border-left:3px solid var(--good)"></span>
+    <span>Rodin 的 <b>9</b> 是<b>模乘的不动点</b>：在「不断升八度」这个乘法过程里，唯一不动的那个位置。</span></li>
+</ul>
+
+<div class="goodbox">
+所以「宇宙中心是 6 还是 9」这个争论，本质上是在问「你说的是加法还是乘法」。
+<b>不必二选一，两者都对，但必须标明运算</b>——标明了，冲突立刻消失；不标，就会变成门派之争。
+</div>
+
+<!-- ============ ⑧ ============ -->
+<h2 id="s8">⑧ 12 = lcm(3,4)，以及三夸克 120° 的边界</h2>
+
+<ul class="lg">
+  <li><span class="sw" style="background:rgba(23,114,69,.10);border:1px solid rgba(23,114,69,.38);border-left:3px solid var(--good)"></span>
+    <span><b>三相位 120° = 三次单位根 {1, ω, ω²}</b>，且 1 + ω + ω² = 0。
+    「三颗粒子永不相撞」<b>是可证的</b>：任意两颗坐标相等会推出角度条件自相矛盾。那篇对话这条判断对。</span></li>
+  <li><span class="sw" style="background:#e9edf3;border:1px solid var(--line-2)"></span>
+    <span><b>12 = lcm(3, 4)</b>：三相对称 × 四象限。这是 12 在两套体系里反复出现的<b>结构</b>理由——
+    它能同时装下 3 循环与 4 循环。但结构理由不等于物理理由，这一步不能跳。</span></li>
+</ul>
+
+<div class="warnbox">
+<b>边界（必须写清）</b>：现代核物理里的质子<b>不是</b>三个夸克沿 X／Y／Z 轴做经典转动。
+它是三价夸克 + 胶子场 + 夸克海的相对论束缚态；夸克自旋只贡献质子总自旋约 <b>30%</b>，
+量子力学里没有可指认的确定轨道。<br>
+那类三轴正交动图是<b>按几何直觉构建的示意模型</b>，呈现的是「三轴正交 + 相位错位 + 合成包络」这套结构，
+<b>不是质子内部结构的物理模拟</b>。它作为结构隐喻好用，作为物理机制就跨了。
+</div>
+
+<!-- ============ ⑨ ============ -->
+<h2 id="s9">⑨ 三条路的代价</h2>
+
+<p>想把「12 步倍频环」救回来，只有三条路，各有各的代价：</p>
+
+<table>
+<thead><tr><th>走法</th><th>做法</th><th>得到什么</th><th>代价</th></tr></thead>
+<tbody>
+<tr class="t-homo"><td>① 数字根归约</td><td>用 dr(2ⁿ) 找落点，退回 9 类</td>
+  <td>六环回来了，结构与 Rodin 同构</td><td>12 → 9 有损：10、11 被并进 1、2，位置不够分</td></tr>
+<tr class="t-same"><td>② 模数换 13</td><td>在 13 个刻度上跑 ×2（2 是原根）</td>
+  <td><b>唯一能「乘法走满 12 步」的路</b></td><td>圆上要排 13 个刻度，只用前 12 个</td></tr>
+<tr class="t-diff"><td>③ 换算子 ×5／×7／×11</td><td>在 Z/12 上取与 12 互素的乘数</td>
+  <td>gcd = 1 ⇒ 可逆、不塌</td><td><b>那就不是八度了</b>（不是 ×2），失去 Keely 的意义</td></tr>
+</tbody></table>
+
+<h3>② 的额外收获（实测，值得单独看）</h3>
+<p>模 13 的行进序是：</p>
+<div class="eq">
+1 → 2 → 4 → 8 ‖ 3 → 6 → 12 ‖ 11 → 9 → 5 → 10 → 7 → 1<br><br>
+物质四连 {1,2,4,8} 占第 <b>1–4</b> 位；以太三连 {3,6,12} 紧接第 <b>5–7</b> 位<br>
+（脚本给出的位置索引 0–3 与 4–6）
+</div>
+<p>两侧在环上是<b>连续区块，不是交错分布</b>。想在 12 个等分点上跑出不塌缩的倍频环，
+这是唯一干净的走法。</p>
+
+<h3>③ 的一条事实（只列数字，不赋意义）</h3>
+<p>×5 mod 12 让 3、6、9 <b>全部成为不动点</b>（4 个不动点 + 4 个二环），
+是唯一「整个以太侧都不动」的算子；但它把物质侧的 2、7 与未归类的 10、11 配成二环，
+所以并不是一个干净的「八度」。<b>能算，但别当结构用。</b></p>
+
+<!-- ============ ⑩ ============ -->
+<h2 id="s10">⑩ 红线与可证伪</h2>
+
+<div class="step have"><div class="id">A</div><div class="bd">
+  <b>本文只主张三件可核对的事</b>
+  <p>① 12 点上的 ×2，长期停留集恰为 {0, 4, 8}（3 个点，其余 9 个是暂态）。<br>
+  ② ×2 的吸引子大小 = m 的奇部（m = 2…31 全部实测通过）。<br>
+  ③ Swaruu 的二分 = U(9) 与 3Z/9（逐元素比对相同）。</p>
+</div></div>
+
+<div class="step miss"><div class="id">B</div><div class="bd">
+  <b>本文不主张</b>
+  <p>以太存在、3／6／9 携带有物理力、换进制能让任何装置多出能量。
+  <b>进制是记数约定，不携带物理内容</b>：4 + 4 = 8 在任何进制下都成立，
+  换进制不会让反应堆多输出一瓦。</p>
+</div></div>
+
+<div class="step miss"><div class="id">C</div><div class="bd">
+  <b>一条未证实的巧合（备查，勿作论据）</b>
+  <p>1/7 = 0.142857 的位集 {1,4,2,8,5,7} 与 ×2 mod 9 六环的位集 {1,2,4,8,7,5} <b>完全相同</b>。
+  可核对，但我没有证明它必然。写在此处是因为它太整齐，怕日后有人拿它当证据。</p>
+</div></div>
+
+<div class="goodbox">
+<b>判死口径</b>：若有人拿「12 进制／12 等分」为某装置背书，用 §② 的定理一句话即可判：<br>
+<b>m 为偶数 ⇒ ×2 不是置换 ⇒ 必然塌，且塌缩规模 = m / 2<sup>v₂(m)</sup></b>。不需要争论，也不需要看装置。
+</div>
+
+<p class="cnt" style="margin-top:22px">本页所有数字由 <code>harmonograph/opt/E67_octave_mod.py</code> 独立跑出
+（六段分别对应 §①–§⑥），未抄录任何页面文字。
+素材：元宝对话 <span class="mono">yb.tencent.com/s/4BXTkCw59lAZ</span> ·
+本项目 <code>01_Keely技术全景 §2.2／§5.3</code>、<code>K2</code>、<code>K3</code>。</p>
+
+</div>
+
+<footer><div class="wrap">
+  <div>K10 · 八度 × 12 进制 · 模 9 倍频环与群的错配 —— 2026-10-27</div>
+  <div>
+    <a href="keely核心技术与现代声子物理技术对比.html">总入口</a> ·
+    <a href="K2_层级频率链_八度罗盘与3的幂.html">K2 八度罗盘与 3 的幂</a> ·
+    <a href="K3_Trexar几何_根号n等体积定案.html">K3 √n 与 3:6:9</a> ·
+    <a href="K9_Dynasphere24管与Anu十丝_赤道环与七内管对照.html">K9 24 管 × 十丝</a> ·
+    <a href="K10_八度与12进制_模9倍频环与群的错配.md">本页 md 底稿</a>
+  </div>
+</div></footer>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ---------- 配色：物质侧 / 以太侧 / 未归类 ---------- */
+  var C_MAT = '#1b4f9c', C_AET = '#b4531f', C_UNK = '#9aa4b2',
+      C_FIX = '#177245', C_TRAIL = '#b3261e';
+
+  /* 每套模数的点分类 */
+  var SPEC = {
+    9:  { pts: 9,  mat: [1,2,4,5,7,8], aet: [3,6,9],   unk: [] },
+    12: { pts: 12, mat: [1,2,4,5,7,8], aet: [3,6,9,12], unk: [10,11] },
+    13: { pts: 13, mat: [1,2,4,8],     aet: [3,6,12],   unk: [5,7,9,10,11] }
+  };
+
+  /* 每套模数的「闭合后补充说明」 */
+  var NOTE = {
+    9:  '这条环正是 U(9) 单位群；3／6／9 与 0 在另外两条轨道上，一秒都没丢',
+    12: '',
+    13: '未走过的 13 是固定点（≡ 0）；12 个非零点全在这一环里'
+  };
+
+  function cls(m, v){
+    var s = SPEC[m];
+    if (s.mat.indexOf(v) >= 0) return C_MAT;
+    if (s.aet.indexOf(v) >= 0) return C_AET;
+    return C_UNK;
+  }
+
+  /* ---------- 单个轮盘 ---------- */
+  function Wheel(id, m, stId){
+    var cv = document.getElementById(id);
+    if (!cv) return null;
+    var st = document.getElementById(stId);
+    var dpr = window.devicePixelRatio || 1;
+    var W = 0, H = 0, R = 0, CX = 0, CY = 0;
+    var path = [1], cycle = [];   // path：走过的值（1..m，m 代表 0）；cycle：真正的环
+    var closed = false;
+
+    function norm(x){ x = x % m; return x === 0 ? m : x; }
+
+    /* 轨迹配色：行进中＝蓝；闭合且模数为奇数＝绿（正常成环）；闭合但模数为偶数＝红（卡死） */
+    function edgeColor(){
+      if (!closed) return '#2f6fb5';
+      return (m % 2 === 1) ? '#177245' : '#b3261e';
+    }
+
+    function layout(){
+      var rect = cv.getBoundingClientRect();
+      W = Math.max(180, Math.round(rect.width));
+      H = 260;
+      cv.width = W * dpr; cv.height = H * dpr;
+      cv.style.height = H + 'px';
+      CX = W / 2; CY = H / 2;
+      R = Math.min(W, H) / 2 - 30;
+    }
+
+    function pos(v){
+      var i = v - 1, a = -Math.PI / 2 + i * 2 * Math.PI / m;
+      return [CX + R * Math.cos(a), CY + R * Math.sin(a)];
+    }
+
+    function draw(){
+      var ctx = cv.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+
+      // 底圈
+      ctx.beginPath();
+      ctx.arc(CX, CY, R, 0, Math.PI * 2);
+      ctx.strokeStyle = '#e2e6ec';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // 走过轨迹（越晚越深）
+      for (var k = 1; k < path.length; k++){
+        var p0 = pos(path[k - 1]), p1 = pos(path[k]);
+        var t = k / Math.max(1, path.length - 1);
+        ctx.beginPath();
+        ctx.moveTo(p0[0], p0[1]);
+        ctx.lineTo(p1[0], p1[1]);
+        ctx.strokeStyle = edgeColor();
+        ctx.globalAlpha = 0.25 + 0.6 * t;
+        ctx.lineWidth = 1.4 + 1.6 * t;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+
+      // 点与标号
+      for (var v = 1; v <= m; v++){
+        var p = pos(v), c = cls(m, v);
+        var cur = (path[path.length - 1] === v);
+        var visited = path.indexOf(v) >= 0;
+        ctx.beginPath();
+        ctx.arc(p[0], p[1], cur ? 5.2 : (visited ? 3.6 : 2.6), 0, Math.PI * 2);
+        ctx.fillStyle = c;
+        ctx.globalAlpha = visited || cur ? 1 : 0.45;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
+        if (cur){
+          ctx.beginPath();
+          ctx.arc(p[0], p[1], 9, 0, Math.PI * 2);
+          ctx.strokeStyle = edgeColor();
+          ctx.lineWidth = 1.6;
+          ctx.stroke();
+        }
+
+        // 标号
+        var lx = CX + (R + 15) * Math.cos(-Math.PI / 2 + (v - 1) * 2 * Math.PI / m);
+        var ly = CY + (R + 15) * Math.sin(-Math.PI / 2 + (v - 1) * 2 * Math.PI / m);
+        ctx.font = '600 11px ' + getComputedStyle(document.body).getPropertyValue('--mono');
+        ctx.fillStyle = cur ? edgeColor() : '#6b7683';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(v), lx, ly);
+      }
+    }
+
+    function step(){
+      if (closed) return false;
+      var cur = path[path.length - 1];
+      var nx = norm(cur * 2);
+      var at = path.indexOf(nx);
+      if (at >= 0){
+        path.push(nx);
+        closed = true;
+        cycle = path.slice(at);          // 真正的环（不含入口暂态）
+        draw(); info(); return false;
+      }
+      path.push(nx);
+      draw(); info(); return true;
+    }
+
+    function info(){
+      var last = path[path.length - 1];
+      var uniq = {};
+      path.forEach(function(v){ uniq[v] = 1; });
+      var n = Object.keys(uniq).length;
+      var steps = path.length - 1;
+
+      if (!closed){
+        st.innerHTML = '当前值 <b>' + last + '</b>　·　第 ' + steps + ' 步<br>' +
+          '已走 ' + n + ' / ' + m + ' 点';
+        return;
+      }
+
+      var cyc = cycle.join('→');
+      if (m % 2 === 1){
+        /* 奇数模数：×2 是置换，闭合 = 正常成环，没有点被吞 */
+        st.innerHTML = '<i>闭合</i>　' + steps + ' 步回到 ' + last + '，环长 ' +
+          (cycle.length - 1) + '<br>' +
+          '<span style="color:#6b7683">' + cyc + '　—　' + (NOTE[m] || '') + '</span>';
+      } else {
+        /* 偶数模数：必然塌，把环本身写出来 */
+        var loop = cycle.length > 1 ? (cycle[0] + '↔' + cycle[1]) : String(cycle[0]);
+        st.innerHTML = '<em>卡在 ' + loop + '</em>　' + steps +
+          ' 步就回到 ' + last + '，环长只有 ' + (cycle.length - 1) + '<br>' +
+          '<span style="color:#6b7683">只走过 ' + n + ' / ' + m +
+          ' 点，另外 ' + (m - n) + ' 点全被吸走</span>';
+      }
+    }
+
+    function reset(){ path = [1]; cycle = []; closed = false; draw(); info(); st.innerHTML = '待开始'; }
+    function play(){ if (!closed) step(); }
+
+    layout(); draw(); reset();
+    window.addEventListener('resize', function(){ layout(); draw(); });
+
+    return { step: step, reset: reset, play: play, get closed(){ return closed; } };
+  }
+
+  var ws = [Wheel('cv9', 9, 'st9'), Wheel('cv12', 12, 'st12'), Wheel('cv13', 13, 'st13')].filter(Boolean);
+
+  var timer = null;
+  var bPlay = document.getElementById('bPlay'),
+      bStep = document.getElementById('bStep'),
+      bReset = document.getElementById('bReset'),
+      spStep = document.getElementById('spStep');
+  var count = 0;
+
+  function tick(){
+    var any = false;
+    ws.forEach(function(w){ if (w.step()) any = true; });
+    count++;
+    spStep.textContent = '第 ' + count + ' 步';
+    if (!any) stop();
+  }
+  function start(){
+    if (timer) return;
+    bPlay.textContent = '⏸ 暂停';
+    timer = setInterval(tick, 620);
+    tick();
+  }
+  function stop(){
+    if (timer){ clearInterval(timer); timer = null; }
+    bPlay.textContent = '▶ 播放';
+  }
+  bPlay.addEventListener('click', function(){ timer ? stop() : start(); });
+  bStep.addEventListener('click', function(){ stop(); tick(); });
+  bReset.addEventListener('click', function(){
+    stop(); count = 0; spStep.textContent = '第 0 步';
+    ws.forEach(function(w){ w.reset(); });
+  });
+
+  // 视口内自动播放一次，方便直接看到结论
+  var box = document.getElementById('cv9');
+  if (box && 'IntersectionObserver' in window){
+    var io = new IntersectionObserver(function(es){
+      es.forEach(function(e){
+        if (e.isIntersecting){ io.disconnect(); setTimeout(start, 420); }
+      });
+    }, { threshold: 0.45 });
+    io.observe(box);
+  }
+})();
+</script>
+</body>
+</html>

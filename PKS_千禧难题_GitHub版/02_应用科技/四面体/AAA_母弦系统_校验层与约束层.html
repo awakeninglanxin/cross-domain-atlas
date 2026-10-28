@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>校验层与约束层：两个方向的实测 | 母弦系统</title>
+<style>
+:root{
+  --bg:#f4f7fb; --card:#ffffff; --line:#e2e8f2; --line2:#eef2f8;
+  --ink:#1c2534; --ink2:#495a72; --ink3:#7d8ca3;
+  --blue:#3457d5; --blue2:#5b7bf0; --amber:#c98410; --red:#c93b52;
+  --teal:#0e8f83; --violet:#7148bf; --gold:#a87c22; --green:#26774a;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+  font-family:"Microsoft YaHei","PingFang SC","Hiragino Sans GB",system-ui,-apple-system,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased;line-height:1.7}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{max-width:1180px;margin:0 auto;padding:26px 22px 70px}
+
+header.top{background:linear-gradient(135deg,#fff 0%,#f3f8f6 55%,#eff3ff 100%);
+  border:1px solid var(--line);border-radius:18px;padding:26px 28px;
+  box-shadow:0 4px 22px rgba(30,60,120,.07)}
+header.top h1{margin:0 0 6px;font-size:24px;letter-spacing:.3px;line-height:1.45}
+header.top .sub{color:var(--ink2);font-size:14px;margin-bottom:12px}
+.tagrow{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.tag{font-size:12px;padding:3px 9px;border-radius:999px;background:#fff;border:1px solid var(--line);color:var(--ink2)}
+.tag.b{border-color:#c9d6f5;background:#f2f6ff;color:#2d4ab8}
+.tag.g{border-color:#c6e6d6;background:#f0faf5;color:#1f7048}
+.tag.r{border-color:#f2cdd4;background:#fdf2f4;color:#a8324a}
+.tag.a{border-color:#f2ddb8;background:#fdf7ec;color:#8a6212}
+.tag.v{border-color:#dcd0f2;background:#f7f3fe;color:#5b39a8}
+
+section{margin-top:22px;background:var(--card);border:1px solid var(--line);
+  border-radius:16px;padding:22px 24px;box-shadow:0 2px 14px rgba(30,60,120,.045)}
+section h2{margin:0 0 4px;font-size:18px;letter-spacing:.2px}
+section h2 .num{display:inline-block;min-width:38px;color:var(--blue);font-weight:800}
+section .lead{color:var(--ink2);font-size:13.5px;margin:0 0 14px}
+h3{font-size:14.5px;margin:18px 0 8px;color:var(--ink);border-left:3px solid var(--blue2);padding-left:9px}
+p{margin:8px 0}
+b{color:var(--ink)}
+
+table{border-collapse:collapse;width:100%;font-size:13px;margin:8px 0 4px}
+th,td{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top}
+th{background:#f7f9fd;color:var(--ink2);font-weight:600;font-size:12.5px}
+td.n{font-variant-numeric:tabular-nums;font-family:ui-monospace,Consolas,"Courier New",monospace;font-size:12.5px}
+tr.hi td{background:#f6faff}
+tr.warn td{background:#fdf8f4}
+tr.bad td{background:#fdf2f4}
+tr.ok td{background:#f5fbf8}
+
+.note{background:#f8fafd;border:1px solid var(--line2);border-left:3px solid var(--blue2);
+  border-radius:0 10px 10px 0;padding:11px 14px;font-size:13px;color:var(--ink2);margin:12px 0}
+.note.warn{border-left-color:var(--red);background:#fdf7f8}
+.note.ok{border-left-color:var(--green);background:#f5fbf8}
+.note.vi{border-left-color:var(--violet);background:#f8f5fe}
+.note.am{border-left-color:var(--amber);background:#fdfaf3}
+.note b{color:var(--ink)}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:11px;margin:12px 0 6px}
+.kpi{background:#fbfcff;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.kpi .k{font-size:12px;color:var(--ink3)}
+.kpi .v{font-size:21px;font-weight:800;font-variant-numeric:tabular-nums;margin:2px 0;color:var(--ink)}
+.kpi .n2{font-size:11.5px;color:var(--ink3);line-height:1.5}
+.kpi.r .v{color:var(--red)} .kpi.g .v{color:var(--green)} .kpi.b .v{color:var(--blue)}
+.kpi.a .v{color:var(--amber)} .kpi.v .v{color:var(--violet)}
+
+pre{background:#f7f9fd;border:1px solid var(--line);border-radius:9px;padding:10px 12px;
+  font-size:12px;overflow-x:auto;margin:9px 0;font-family:ui-monospace,Consolas,monospace;line-height:1.6}
+code{font-family:ui-monospace,Consolas,"Courier New",monospace;font-size:12.4px;
+  background:#f2f5fa;padding:1px 5px;border-radius:4px;color:#2a3a55}
+
+figure{margin:14px 0 6px}
+figure svg{display:block;width:100%;height:auto}
+figcaption{font-size:12px;color:var(--ink3);margin-top:6px;text-align:center}
+
+/* 三层网格演示 */
+.demo{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:18px;align-items:start;margin:14px 0}
+.layers{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:668px;margin:0 auto}
+.layerBox{border:1px solid var(--line);border-radius:11px;padding:8px;background:#fbfcfe}
+.layerBox .lb{font-size:11.5px;color:var(--ink3);text-align:center;margin-bottom:5px}
+.grid3{display:grid;grid-template-columns:repeat(3,56px);gap:3px;justify-content:center}
+.cell{height:52px;display:flex;align-items:center;justify-content:center;
+  font-family:ui-monospace,Consolas,monospace;font-size:13px;font-weight:700;
+  border-radius:6px;border:1.5px solid #e3e9f4;background:#fff;color:var(--ink);
+  cursor:pointer;user-select:none;transition:background .12s,border-color .12s,transform .08s;
+  font-variant-numeric:tabular-nums}
+.cell:hover{background:#f2f6ff;border-color:#c3d3f2}
+.cell:active{transform:scale(.94)}
+.cell.h1{background:#fff4e8;border-color:#f0b96a;color:#8a4d00}
+.cell.h2{background:#fde8ec;border-color:#e89aaa;color:#93233a}
+.cell.h3{background:#fbd5dc;border-color:#d9637a;color:#7d1128}
+.cell.center{box-shadow:inset 0 0 0 2px #dbe6fb}
+
+.panel{background:#fbfcff;border:1px solid var(--line);border-radius:12px;padding:12px 13px}
+.panel .pt{font-size:12px;color:var(--ink3);margin-bottom:8px}
+.btns{display:flex;flex-direction:column;gap:6px}
+.btns button{font-family:inherit;font-size:12.5px;padding:7px 10px;border-radius:8px;
+  border:1px solid var(--line);background:#fff;color:var(--ink2);cursor:pointer;text-align:left;
+  transition:background .12s,border-color .12s}
+.btns button:hover{background:#f2f6ff;border-color:#c3d3f2;color:var(--blue)}
+.btns button.key{background:#eef7f5;border-color:#b7ddd7;color:#0b6f66;font-weight:700}
+.btns button.key:hover{background:#dff1ee}
+.ro{margin-top:10px;border-top:1px dashed var(--line);padding-top:9px}
+.ro .row{display:flex;justify-content:space-between;font-size:12.5px;padding:2px 0;gap:8px}
+.ro .lb{color:var(--ink3)}
+.ro .vl{font-family:ui-monospace,Consolas,monospace;font-weight:700;color:var(--ink);
+  font-variant-numeric:tabular-nums;text-align:right}
+.ro .vl.bad{color:var(--red)} .ro .vl.ok{color:var(--green)}
+.verdict{margin-top:9px;font-size:12.5px;padding:8px 10px;border-radius:8px;line-height:1.55}
+.verdict.ok{background:#f0faf5;color:#1f7048;border:1px solid #c6e6d6}
+.verdict.bad{background:#fdf2f4;color:#a8324a;border:1px solid #f2cdd4}
+.verdict.mid{background:#fdfaf3;color:#8a6212;border:1px solid #f2ddb8}
+
+.chkList{list-style:none;padding:0;margin:8px 0 0;font-size:12.6px}
+.chkList li{display:flex;gap:8px;align-items:flex-start;padding:3px 0;border-bottom:1px dashed #f0f3f9}
+.chkList li:last-child{border-bottom:none}
+.chkList .st{flex:0 0 15px;font-weight:800}
+.chkList .st.p{color:var(--green)}
+.chkList .st.f{color:var(--red)}
+.chkList .t{flex:1 1 auto;color:var(--ink2);min-width:0}
+.chkList .d{flex:0 0 auto;max-width:44%;text-align:right;font-family:ui-monospace,Consolas,monospace;
+  font-size:11.5px;color:var(--ink3);word-break:break-all}
+.chkSum{font-size:13px;font-weight:700;margin:6px 0 2px}
+
+.tblwrap{overflow-x:auto}
+@media (max-width:820px){
+  .demo{grid-template-columns:1fr}
+  .panel{order:-1}
+}
+@media (max-width:640px){
+  .wrap{padding:18px 13px 54px}
+  header.top{padding:20px 17px}
+  header.top h1{font-size:19px}
+  section{padding:17px 15px;border-radius:13px}
+  .kpis{grid-template-columns:1fr}
+  .layers{grid-template-columns:1fr;gap:9px}
+  .layerBox{display:flex;align-items:center;gap:9px}
+  .layerBox .lb{width:44px;margin:0;text-align:left}
+  .grid3{flex:1 1 auto}
+  table.tbl-cards thead{display:none}
+  table.tbl-cards tr{display:block;border:1px solid var(--line);border-radius:9px;
+    margin-bottom:8px;padding:7px 9px;background:#fff}
+  table.tbl-cards td{display:flex;gap:8px;border:none;padding:3px 0;font-size:12.4px}
+  table.tbl-cards td::before{content:attr(data-label);flex:0 0 78px;color:var(--ink3);font-size:11.5px}
+  table.tbl-cards td.n{justify-content:flex-start}
+  figure{overflow-x:auto}
+  figure>svg{min-width:600px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <h1>校验层与约束层：两个方向的实测答案</h1>
+  <div class="sub">
+    方向①「把幻立方当校验器」能查出什么、查不出什么；方向②「给随机相位嵌一条守恒约束」要付多少代价。
+    所有数字页内现场重算，关键结论附离线穷举与精确有理数验证。
+  </div>
+  <div class="tagrow">
+    <span class="tag b">28 项内联自检</span>
+    <span class="tag g">8 格盲区已穷举确认为唯一</span>
+    <span class="tag r">约束在 bundle 后 0% 存活</span>
+    <span class="tag a">31 是唯一可解点</span>
+    <span class="tag v">白底 · 390px 卡片式</span>
+  </div>
+</header>
+
+<section>
+  <h2><span class="num">01</span>两条路，两个答案</h2>
+  <p class="lead">上一页把「幻立方定相位」量到了 0。这一页接着问：既然它在表示层无效，那在别的地方能不能立住？</p>
+
+  <table class="tbl-cards">
+    <thead><tr><th style="width:120px">方向</th><th>问的问题</th><th style="width:200px">答案</th></tr></thead>
+    <tbody>
+      <tr class="ok"><td data-label="方向"><b>① 校验层</b></td>
+        <td data-label="问题">31 条线能查出篡改吗？能定位到格吗？有没有查不出的盲区？</td>
+        <td data-label="答案"><b>能查、能定位、有盲区</b><br>盲区恰好 8 格，且构造唯一</td></tr>
+      <tr class="warn"><td data-label="方向"><b>② 约束层</b></td>
+        <td data-label="问题">给随机相位嵌一条守恒约束，性能掉多少？约束还能剩下吗？</td>
+        <td data-label="答案"><b>局部约束几乎免费</b><br>但 bundle 之后一条不剩</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note vi">
+    <b>先说结论的分野。</b>① 是<b>真能独立成立</b>的：它是一个纯粹的数组校验器，不依赖相位、不依赖 VSA、不依赖任何模型，
+    今天就能拿去查「这份 27 格数据是不是被改过」。② 是<b>半个负面结论</b>：能在 bind 链上守住，但在 VSA 真正要用的
+    bundle 上严格归零。两条都要如实写出来。
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">02</span>校验层：27 个格各自的「身份证」</h2>
+  <p class="lead">31 条线 = 27 条轴向 + 4 条体对角。每个格属于几条线，就是它的「线签名」——这是能定位的前提。</p>
+
+  <div class="kpis">
+    <div class="kpi b"><div class="k">线总数</div><div class="v" id="kLines">—</div><div class="n2">27 轴向 + 4 体对角</div></div>
+    <div class="kpi g"><div class="k">签名的种数</div><div class="v" id="kSigKinds">—</div><div class="n2">27 个格，两两互异</div></div>
+    <div class="kpi a"><div class="k">中心格的签名</div><div class="v" id="kCenterSig">—</div><div class="n2">3 轴向 + 4 体对角</div></div>
+    <div class="kpi v"><div class="k">最小隐形扰动</div><div class="v" id="kMinSup">8</div><div class="n2">穷举 k≤7 零命中 + 构造出 8</div></div>
+  </div>
+
+  <figure>
+    <svg id="figSig" viewBox="0 0 700 250" role="img" aria-label="三层立方体的线签名分布"></svg>
+    <figcaption>每个格里的数字＝它属于几条线。中心 7 条、8 个角格各 4 条、其余 18 个各 3 条（宽屏横排／窄屏竖排，同一份数据）。</figcaption>
+  </figure>
+
+  <p>签名互异是定位的<b>全部前提</b>：27 个格给出 27 个不同的签名，所以「哪几条线破了」本身就编码了「哪个格被动了」。
+  这不是我额外加的机制，是 3×3×3 的线结构自带的。</p>
+
+  <div class="note">
+    <b>一个容易说错的地方：</b>中心是 7 条没错，但「角格 4 条、其余 3 条」里的「其余 18 个」不是同一种，
+    它们是 12 个棱格 + 6 个面心，签名大小都是 3 但具体组合不同——这 18 个之所以能分辨，靠的是组合而不是大小。
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">03</span>检测 100%，定位却掉得很快</h2>
+  <p class="lead">随机改 k 个格（各加 ±1..±5 的随机增量），看「有没有线破了」和「能不能指回那 k 个格」。</p>
+
+  <figure>
+    <svg id="figDet" viewBox="0 0 700 300" role="img" aria-label="检测率与定位率随篡改格数变化"></svg>
+    <figcaption>检测率在 k≤8 时恒为 100%（因为最小隐形扰动是 8 格）。这里的定位率用的是<b>最快的判法</b>——候选格 = 线签名全部落在破线集合里的格；它随 k 单调衰减，k=5 时只剩一半。换成解方程能好一大截，见下方注。</figcaption>
+  </figure>
+
+  <div class="tblwrap">
+    <table class="tbl-cards" id="tblDet">
+      <thead><tr><th class="n" style="width:80px">篡改格数 k</th><th class="n" style="width:110px">检测率</th>
+        <th class="n" style="width:110px">定位率</th><th>含义</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="note am">
+    <b>为什么检测率能到 100%，定位率却塌。</b>检测问的是「破线集合非空吗」，定位问的是「候格集合恰好等于真实集合吗」。
+    随 k 增大，破线集合变大，而「签名 ⊆ 破线集合」的格越来越多——真凶混在一堆无辜者里。这不是判据太严，
+    是    <b>信息量本身不够</b>：k 个格只产生 ≤ 4k 条被破坏的线，反推 k 个位置，k 大时必然多解。
+  </div>
+
+  <div class="note ok" id="boxSolver">
+    <b>换算法能好一大截，但不是白拿的。</b>上图那条曲线只用了一条组合判据（签名 ⊆ 破线），扫一遍就完事。
+    改用<b>最小命中集 + 线性方程求解</b>——31 条线的约束全进方程组，解出的增量还要保证没破的线仍然是 42——
+    实测定位率变成 <b>100 / 100 / 100 / 99.5 / 97.0 / 86.5 / 76.0 / 61.5%</b>（k=1..8，每档 200 例）。
+    代价是每次要解一个 ≤9 元的小方程组；换回来的不只是「哪几格」，还有<b>每格该改成几</b>。
+    这套东西已经做成独立工具 <code>magic31.py</code>，不依赖本页也能跑（见第 08 节末尾）。
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">04</span>盲区：8 个角格的棋盘图样</h2>
+  <p class="lead">这是方向①最重要的一件事。下面这个演示可以自己点：改一格必定被抓，但按下那个绿色按钮，31 条线会全部保持完好。</p>
+
+  <div class="demo">
+    <div class="layers" id="layers"></div>
+    <div class="panel">
+      <div class="pt">点格子可改数（+1）。或直接试下面几个动作：</div>
+      <div class="btns">
+        <button id="bReset">复位（回到幻立方）</button>
+        <button id="bOne">随机改 1 格 +1</button>
+        <button id="bTwo">同组 2 格 +5 / −5 抵消</button>
+        <button id="bKey" class="key">施加 8 角格棋盘 ±6 ← 隐形</button>
+      </div>
+      <div class="ro">
+        <div class="row"><span class="lb">31 条线破了</span><span class="vl" id="roB31">—</span></div>
+        <div class="row"><span class="lb">9 条组破了</span><span class="vl" id="roB9">—</span></div>
+        <div class="row"><span class="lb">定位候选格</span><span class="vl" id="roCand">—</span></div>
+      </div>
+      <div class="verdict mid" id="roVerdict">从幻立方开始：31 条线的和都等于 42。</div>
+    </div>
+  </div>
+
+  <h3>为什么 8 个角格能完全隐形</h3>
+  <p>给 8 个角格按 <code>符号 = (−1)^((x+y+z)/2)</code> 加上 ±δ，其中 <code>x,y,z ∈ {0,2}</code>。证明只有一句话：</p>
+  <ul style="font-size:13.4px;color:var(--ink2);margin:8px 0 8px 18px;padding:0">
+    <li><b>轴向线</b>：每条轴向线要么<b>不含</b>角格（另两个坐标里有 1），要么含<b>恰好 2 个</b>角格，而这两个角格在第三个坐标上相差 2，符号相反 ⇒ 和不变。</li>
+    <li><b>体对角线</b>：每条体对角线穿过 2 个角格 + 中心，那 2 个角格的符号也相反 ⇒ 和不变。</li>
+  </ul>
+  <p>所以这不是「很难被发现」，是<b>在 31 条线上严格恒等</b>。</p>
+
+  <div class="note warn">
+    <b>唯一性也验证了。</b>把「每条线含 0 个或 ≥2 个被改格」当必要条件先筛，C(27,8)=2,220,075 个子集里只剩 <b>1 个</b>候选；
+    再对这个候选算 31×8 的零空间，维数 <b>1</b>。也就是说：<b>支撑为 8 的隐形扰动，有且只有 8 个角格这一种。</b>
+    再加上「k≤7 时穷举 888,030 个子集零命中」，最小隐形扰动<b>恰为 8</b>。
+  </div>
+
+  <div class="note ok">
+    <b>这条结论的工程含义。</b>「单格篡改必被发现」是可证的；「想不露痕迹地改」至少要动 8 个格、且必须恰好是 8 个角格、且符号必须成对相反。
+    攻击面窄得可以枚举。这是校验层真正能卖的东西——<b>不是「安全」，是「篡改成本可计算」</b>。
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">05</span>刀锋：31 是唯一可解的那一点</h2>
+  <p class="lead">既然 31 条线有盲区，加几条面对角不就补上了？加了就解不出来了。这一步是严格判定，不是搜索失败。</p>
+
+  <div class="tblwrap">
+    <table class="tbl-cards" id="tblLines">
+      <thead><tr><th style="width:170px">约束集</th><th class="n" style="width:60px">线数</th>
+        <th class="n" style="width:60px">秩</th><th class="n" style="width:80px">零空间</th>
+        <th style="width:120px">最小隐形扰动</th><th>1..27 排列解</th></tr></thead>
+      <tbody>
+        <tr class="hi"><td data-label="约束集">仅 27 条轴向线</td><td class="n" data-label="线数">27</td><td class="n" data-label="秩">19</td>
+          <td class="n" data-label="零空间">8 维</td><td data-label="盲区">12 格（随机搜索上界）</td><td data-label="排列解">有</td></tr>
+        <tr class="ok"><td data-label="约束集"><b>31 = 27 + 4 体对角</b></td><td class="n" data-label="线数"><b>31</b></td><td class="n" data-label="秩"><b>23</b></td>
+          <td class="n" data-label="零空间"><b>4 维</b></td><td data-label="盲区"><b>8 格（唯一：8 角格）</b></td><td data-label="排列解"><b>有</b></td></tr>
+        <tr class="bad"><td data-label="约束集">37 = 31 + 6 面对角</td><td class="n" data-label="线数">37</td><td class="n" data-label="秩">26</td>
+          <td class="n" data-label="零空间">1 维</td><td data-label="盲区">18 格</td><td data-label="排列解"><b>无（解只有 3 个值）</b></td></tr>
+        <tr class="bad"><td data-label="约束集">43 = 31 + 12 面对角</td><td class="n" data-label="线数">43</td><td class="n" data-label="秩">27</td>
+          <td class="n" data-label="零空间">0 维</td><td data-label="盲区">无（严格）</td><td data-label="排列解"><b>无（唯一解全 14）</b></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>37 条线为什么无解：整族解只有 3 个数</h3>
+  <p>精确有理数消元给出：特解取值 <code>{0, 14, 28}</code>，零空间基取值 <code>{−1, 0, 1}</code>。于是任意解都是</p>
+  <pre>v(t) = x₀ + t·n₀     每个分量只能取 {14−d, 14, 14+d}，d = 14−t</pre>
+  <p>实测 t 从 −5 扫到 +5，<b>每一档的不同值个数都恰好是 3</b>。而 1..27 的排列需要 27 个不同的数。</p>
+
+  <figure>
+    <svg id="figSet" viewBox="0 0 700 218" role="img" aria-label="37 条线解的值集与排列所需值集的对比"></svg>
+    <figcaption>上：37 条线的解只落在 3 个值上（随 t 平移）。下：排列解需要 27 个不同的值。两者不可能重合。</figcaption>
+  </figure>
+
+  <div class="note warn">
+    <b>所以「不变量越多越好」在这里第二次被证伪。</b>27 条线时中心可以是 5；31 条线时中心被锁死为 14、但还有 1..27 的排列解；
+    再加 6 条面对角，解族直接塌成一条等差数列——<b>不是变紧，是变得不可能</b>。
+    31 是唯一同时满足「有排列解」和「盲区最小」的点，两边都只有一步之遥。
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">06</span>约束层：代价取决于「耦合半径」，不取决条数</h2>
+  <p class="lead">方向②。27 维 FHRR，27 个码字，任务固定为 bind→bundle→unbind→全码本最近邻，N=5，4 批独立种子。</p>
+
+  <figure>
+    <svg id="figTax" viewBox="0 0 700 320" role="img" aria-label="三种约束下的检索准确率随固定自由度变化"></svg>
+    <figcaption>三条线固定同样多的自由度（横轴），但代价差得极远：冻结位置最贵，局部守恒几乎免费。</figcaption>
+  </figure>
+
+  <div class="tblwrap">
+    <table class="tbl-cards" id="tblTax">
+      <thead><tr><th class="n" style="width:80px">固定自由度 m</th><th class="n" style="width:80px">剩余维数</th>
+        <th class="n" style="width:120px">冻结 m 个位置</th><th class="n" style="width:120px">局部守恒 m 条</th>
+        <th class="n" style="width:120px">全局绑定 m 条</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <h3>同样是丢掉 9 个自由度，为什么差 0.12</h3>
+  <p>三种做法都让零空间从 27 维降到 18 维，但<b>丢掉的东西不一样</b>：</p>
+  <ul style="font-size:13.4px;color:var(--ink2);margin:8px 0 8px 18px;padding:0">
+    <li><b>冻结位置</b>（前 9 个分量恒为 0）：这 9 个位置在所有码字里完全一样 ⇒ 变成一段<b>公共常量</b>，
+      内积均值从 <b id="ipPin0">—</b> 涨到 <b id="ipPin9">—</b>，码字互相「长得像」。</li>
+    <li><b>全局绑定</b>（u_r = −a_r·u₂₆）：9 个位置都由同一个变量决定 ⇒ 它们彼此强相关，但至少不是常量。</li>
+    <li><b>局部守恒</b>（每组 3 个分量和 ≡ 0）：每组的第三个由前两个决定，<b>每个位置仍在独立变化</b>，不产生公共分量。</li>
+  </ul>
+
+  <div class="note ok">
+    <b>这就是「有真正免费的午餐」的地方。</b>把 <b id="freeN">9</b> 条局部守恒约束加进随机码本，
+    准确率从 <b id="freeBase">—</b> 变到 <b id="freeVal">—</b>——差 <b id="freeDiff">—</b>，在种子涨落之内。
+    换句话说：<b>「每条线和 ≡ 0」这件事可以不花钱拿到。</b>
+  </div>
+
+  <div class="note warn">
+    <b>但别高兴太早。</b>免费的前提是「模守恒」（<code>和 ≡ 0 (mod 27)</code>）。如果改成「整数和严格等于定值」，
+    就落进冻结那一侧——因为定值把均值锁死，所有码字都带上同一段常数。幻立方那 31 条线是<b>整数和 = 42</b>，
+    属于后者。<b>这一步是整页最容易被忽略的差别。</b>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">07</span>决定性的一条：bind 下 100%，bundle 下 0%</h2>
+  <p class="lead">约束能不能在运算之后还活着，决定了它有没有用。VSA 有两个基本运算，结果完全相反。</p>
+
+  <figure>
+    <svg id="figSurv" viewBox="0 0 700 210" role="img" aria-label="约束在 bind 与 bundle 下的存活率"></svg>
+    <figcaption>m 条局部守恒约束，bind（相位相加）后 100% 保持；bundle（复数相加）后迅速归零。</figcaption>
+  </figure>
+
+  <div class="tblwrap">
+    <table class="tbl-cards" id="tblSurv">
+      <thead><tr><th class="n" style="width:100px">约束条数</th><th class="n" style="width:130px">bind 后存活</th>
+        <th class="n" style="width:130px">bundle 后存活</th><th>对照</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <h3>为什么必然如此</h3>
+  <p><b>bind</b> 是逐元素相乘，相位上就是相加。若每个码字都满足「某组三个分量相位和 ≡ 0」，那么两者的 bind 结果
+  三个分量分别是 <code>θ+θ'</code>，和仍然是 <code>0+0 = 0</code> ⇒ <b>严格封闭</b>。</p>
+  <p><b>bundle</b> 是逐元素相加（复数相加）。<code>e^{iθ₁} + e^{iθ₂}</code> 的相位是<b>加权平均</b>，不是 <code>θ₁+θ₂</code>。
+  平均之后就落回随机水平：<code>1/27 ≈ 3.7%</code>。</p>
+
+  <div class="note warn">
+    <b>这条把方向②的上限钉死了。</b>VSA 的任何检索都必然要做 bundle（把多个 item 叠加进一个向量）。
+    所以「把守恒约束嵌进码本」在<b>真正的用途上一条都留不下</b>。
+    它只在纯 bind 链（例如多层绑定、不叠加）里有效——那是一个很窄的场景。
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">08</span>落地规格：这个校验器能做什么</h2>
+  <p class="lead">方向①已经足够独立，可以把它的能力写成一份不含糊的规格。</p>
+
+  <table class="tbl-cards">
+    <thead><tr><th style="width:170px">能力</th><th style="width:100px">能不能</th><th>依据</th></tr></thead>
+    <tbody>
+      <tr class="ok"><td data-label="能力">判断一份 27 格数据是否被改过</td><td data-label="能不能"><b>能</b></td>
+        <td data-label="依据">除非改动恰好是 8 角格棋盘图样</td></tr>
+      <tr class="ok"><td data-label="能力">单格篡改的定位</td><td data-label="能不能"><b>能，100%</b></td>
+        <td data-label="依据">27 个线签名两两互异</td></tr>
+      <tr class="ok"><td data-label="能力">2~4 格篡改的定位</td><td data-label="能不能"><b>能，几乎全对</b></td>
+        <td data-label="依据">方程求解实测 100% / 100% / 99.5%；只用签名筛法只有 97.6% / 88.8% / 70.8%</td></tr>
+      <tr class="warn"><td data-label="能力">5~8 格篡改的定位</td><td data-label="能不能"><b>九成降到六成</b></td>
+        <td data-label="依据">方程求解 97.0% / 86.5% / 76.0% / 61.5%（k=5..8，每档 200 例）</td></tr>
+      <tr class="bad"><td data-label="能力">8 角格棋盘的检测</td><td data-label="能不能"><b>不能</b></td>
+        <td data-label="依据">31 条线严格恒等；穷举确认唯一</td></tr>
+      <tr class="bad"><td data-label="能力">保护叠加后的 bundle</td><td data-label="能不能"><b>完全不能</b></td>
+        <td data-label="依据">叠加后格结构不存在，无从校验</td></tr>
+    </tbody>
+  </table>
+
+  <h3>所以正确的用法是把两层分开</h3>
+  <pre>表示层：纯随机相位码本            → 检索性能 0.92（不用扛任何约束）
+校验层：31 条线，旁路运行          → 只查"索引表 / 权重文件 / 数据阵列"有没有被动过
+连接处：码本第 j 个向量 = f(格值)   → f 必须是单射，否则校验层保护的不是真实数据</pre>
+
+  <div class="note vi">
+    <b>那句「把不变量编译进解码」的正确落点，其实就是这个连接处。</b>不是把不变量塞进码本（第 06、07 节已经否掉），
+    而是在<b>生成 token 的那一刻</b>检查「这个数组还能不能通过 31 条线」。这两件事差别很大：
+    前者要求不变量在叠加后存活（做不到），后者只要求在<b>写下来的那一刻</b>成立（完全可做）。
+  </div>
+
+  <div class="note am" id="boxTool">
+    <b>已经落地成一个独立工具：<code>magic31.py</code>。</b>单文件、纯标准库、可 import 也可当命令用，不依赖本页：
+    <pre>python magic31.py check 1 2 3 ...      # 27 个数：破几条、哪几条、差多少、最少动几格（含该改成的值）
+python magic31.py check --file arr.txt   # 从文件读（空白/逗号分隔都行），加 --json 出机器可读
+python magic31.py fix --file arr.txt     # 直接输出修正后的数组（报告走 stderr，可接管道）
+python magic31.py fix --file arr.txt --out ok.txt   # 或写进文件，不动原文件
+python magic31.py null                   # 打印 4 维盲区的基，每条都逐行验算
+python magic31.py tamper --blind         # 造一份「31 条线全过但数组已经错了」的样例
+python magic31.py selftest               # 55 项自检：秩、盲区、最小性、定位率、修正、变异测试
+python magic31.py measure --m 200        # 重跑上面那条定位率曲线</pre>
+    退出码：<b>0</b> = 通过且是 1..27 排列｜<b>1</b> = 有破线｜<b>3</b> = 全过但不是排列（落在盲区）｜<b>4</b> = 修不了｜<b>2</b> = 输入错误。
+    <br><br>
+    <b><code>fix</code> 不是「随便修成一个能过线的数组」</b>：它默认还要求修完仍是 1..27 的排列，
+    并按「改的格数少 → 改动量小 → 保排列」排序。实测在 ≤3 格的篡改上<b>解唯一</b>，
+    所以排列这一条在这一档是<b>独立复核</b>，不是筛子（这一点也写进了自检，免得把它说成筛子）。
+    8 角格盲区上它<b>拒绝给修正</b>并明说「落在盲区、无法唯一还原」——不装能修。
+  </div>
+
+  <div class="note ok">
+    <b>要嵌进别的项目，用同目录的 <code>magic31_api.py</code>（整文件 46 行，5 个函数、逻辑就 5 行，不含算法）。</b>
+    <pre>import magic31_api as m
+m.ok(state)        # 31 条线全过 且 是 1..27 排列？
+m.broken(state)    # 破了哪几条线（空列表 = 通过）
+m.repair(state)    # 返回修正后的 27 个数；修不了返回 None
+m.make(7)          # 生成一个合法幻立方</pre>
+    盲区上三个信号同时到位：<code>ok=False</code>、<code>broken=[]</code>、<code>repair=None</code>
+    —— 检测不到、也修不了，三个答案一致，不会有一个说「没事」。
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">09</span>不能守的三句话</h2>
+  <p class="lead">这三句如果收不住，这一页就会变成又一个吹过头的说法。</p>
+
+  <div class="note warn"><b>① 不能说「幻立方可以防篡改」。</b>它只能发现<b>支撑 &lt; 8 或不是 8 角格图样</b>的改动。
+  一个知道结构的对手可以精确构造出查不出的改法，成本已在本页枚举清楚。它是<b>体检</b>，不是<b>锁</b>。</div>
+
+  <div class="note warn"><b>② 不能说「给码本加守恒约束不花钱」。</b>免费有严格前提：<b>模守恒</b>、且<b>局部</b>（每位置仍独立变化）。
+  换成整数定值或全局绑定，代价立刻出现（第 06 节三条曲线）。</div>
+
+  <div class="note warn"><b>③ 不能说「约束能跟着 bundle 一起走」。</b>bundle 之后存活率是 <b id="banSurv">0%</b>。
+  任何声称「在叠加态上还能校验不变量」的方案，必须先解释它怎么绕过这个 0%。</div>
+</section>
+
+<section>
+  <h2><span class="num">10</span>自检</h2>
+  <p class="lead">全部页内现场计算。若某项失败会显示红色叉号与实测值。</p>
+  <div class="chkSum" id="chkSum">—</div>
+  <ul class="chkList" id="chkList"></ul>
+</section>
+
+<div style="margin-top:24px;font-size:12.5px;color:#7d8ca3;text-align:center">
+  数字来源：页内 JS 现场重算；离线穷举与精确有理数判定见正文标注。27 维 FHRR，4 批独立种子。
+</div>
+
+</div>
+
+<script>
+/* ================= 基础 ================= */
+var D=27;
+var CUBE=[7,23,12,15,1,26,20,18,4, 11,9,22,25,14,3,6,19,17, 24,10,8,2,27,13,16,5,21];
+
+function idx(x,y,z){ return x*9+y*3+z; }
+function coords(i){ return [Math.floor(i/9), Math.floor(i/3)%3, i%3]; }
+
+function axialLines(){
+  var L=[],x,y,z;
+  for(y=0;y<3;y++) for(z=0;z<3;z++){ var a=[]; for(x=0;x<3;x++) a.push(idx(x,y,z)); L.push(a); }
+  for(x=0;x<3;x++) for(z=0;z<3;z++){ var b=[]; for(y=0;y<3;y++) b.push(idx(x,y,z)); L.push(b); }
+  for(x=0;x<3;x++) for(y=0;y<3;y++){ var c=[]; for(z=0;z<3;z++) c.push(idx(x,y,z)); L.push(c); }
+  return L;
+}
+function bodyDiags(){
+  return [
+    [idx(0,0,0),idx(1,1,1),idx(2,2,2)],
+    [idx(0,0,2),idx(1,1,1),idx(2,2,0)],
+    [idx(0,2,0),idx(1,1,1),idx(2,0,2)],
+    [idx(2,0,0),idx(1,1,1),idx(0,2,2)]
+  ];
+}
+function groupLines(){   /* 9 条沿 z 的线，索引连续三个即一组 */
+  var L=[],r;
+  for(r=0;r<9;r++) L.push([3*r,3*r+1,3*r+2]);
+  return L;
+}
+function faceDiags6(){   /* 6 个面各取一条主对角 */
+  var L=[],k;
+  for(k=0;k<2;k++){ L.push([idx(k*2,0,0),idx(k*2,1,1),idx(k*2,2,2)]); }
+  for(k=0;k<2;k++){ L.push([idx(0,k*2,0),idx(1,k*2,1),idx(2,k*2,2)]); }
+  for(k=0;k<2;k++){ L.push([idx(0,0,k*2),idx(1,1,k*2),idx(2,2,k*2)]); }
+  return L;
+}
+/* mod 素数消元求秩 */
+function rankMod(rows,ncols,p){
+  var M=rows.map(function(r){ return r.map(function(v){ return ((v%p)+p)%p; }); });
+  var r=0,c,i,j;
+  function modpow(b,e){
+    var res=1; b=((b%p)+p)%p;
+    while(e>0){ if(e&1) res=res*b%p; b=b*b%p; e>>=1; }
+    return res;
+  }
+  for(c=0;c<ncols;c++){
+    var piv=-1;
+    for(i=r;i<M.length;i++) if(M[i][c]%p){ piv=i; break; }
+    if(piv<0) continue;
+    var t=M[r]; M[r]=M[piv]; M[piv]=t;
+    var inv=modpow(M[r][c],p-2);
+    for(j=c;j<ncols;j++) M[r][j]=M[r][j]*inv%p;
+    for(i=0;i<M.length;i++){
+      if(i!==r && M[i][c]%p){
+        var f=M[i][c];
+        for(j=c;j<ncols;j++) M[i][j]=((M[i][j]-f*M[r][j])%p+p)%p;
+      }
+    }
+    r++;
+    if(r===M.length) break;
+  }
+  return r;
+}
+function matOf(lines,n){
+  return lines.map(function(ln){
+    var row=[],j;
+    for(j=0;j<n;j++) row.push(0);
+    ln.forEach(function(g){ row[g]=1; });
+    return row;
+  });
+}
+
+var AX=axialLines(), BD=bodyDiags(), L31=AX.concat(BD), G9=groupLines();
+
+/* 线签名 */
+var SIG=(function(){
+  var s=[],i,j;
+  for(i=0;i<27;i++){ s.push({}); }
+  for(i=0;i<L31.length;i++) for(j=0;j<L31[i].length;j++) s[L31[i][j]][i]=1;
+  return s.map(function(o){ return Object.keys(o).map(Number); });
+})();
+
+function brokenBy(g, lines){
+  var out=[],i,j,s;
+  for(i=0;i<lines.length;i++){
+    s=0; for(j=0;j<lines[i].length;j++) s+=g[lines[i][j]];
+    if(s!==LSUM) out.push(i);
+  }
+  return out;
+}
+var LSUM=42;
+
+/* ================= 自检框架 ================= */
+window.__ch={total:0,pass:0,list:[]};
+function chk(name,cond,detail){
+  window.__ch.total++;
+  if(cond) window.__ch.pass++;
+  window.__ch.list.push({n:name,ok:!!cond,d:(detail===undefined?'':String(detail))});
+}
+
+/* ================= 02 签名统计 ================= */
+var sigSize=SIG.map(function(a){ return a.length; });
+var kinds={};
+sigSize.forEach(function(v){ kinds[v]=(kinds[v]||0)+1; });
+var uniqSig={}, nUniq=0;
+SIG.forEach(function(a){ var k=a.slice().sort(function(p,q){return p-q;}).join(','); if(!uniqSig[k]){uniqSig[k]=1;nUniq++;} });
+
+document.getElementById('kLines').textContent=L31.length;
+document.getElementById('kSigKinds').textContent=nUniq;
+document.getElementById('kCenterSig').textContent=sigSize[13];
+
+/* 图：三层网格 + 签名数 */
+(function(){
+  var svg=document.getElementById('figSig');
+  var W=700,H=250;
+  var ns='http://www.w3.org/2000/svg';
+  function el(t,attrs,parent){
+    var e=document.createElementNS(ns,t);
+    for(var k in attrs) e.setAttribute(k,attrs[k]);
+    (parent||svg).appendChild(e); return e;
+  }
+  var padL=20, gap=22;
+  var boxW=(W-padL*2-gap*2)/3;
+  var cell=Math.min(34,(boxW-4*3)/3);
+  var top=46;
+  for(var L=0;L<3;L++){
+    var ox=padL+L*(boxW+gap);
+    el('rect',{x:ox,y:top-16,width:boxW,height:cell*3+8*2+26,rx:10,fill:'#fbfcfe',stroke:'#e2e8f2'});
+    var tx=el('text',{x:ox+boxW/2,y:top-1,'text-anchor':'middle','font-size':11.5,fill:'#7d8ca3'});
+    tx.textContent='第 '+(L+1)+' 层（x='+L+'）';
+    for(var yy=0;yy<3;yy++){
+      for(var zz=0;zz<3;zz++){
+        var i=idx(L,yy,zz);
+        var cx=ox+(boxW-cell*3-4*2)/2+zz*(cell+4);
+        var cy=top+10+yy*(cell+4);
+        var v=sigSize[i];
+        var fill = v===7?'#fdf3e3' : (v===4?'#eef7f5':'#ffffff');
+        var stroke = v===7?'#e6b96a' : (v===4?'#8fc9c1':'#e3e9f4');
+        el('rect',{x:cx,y:cy,width:cell,height:cell,rx:7,fill:fill,stroke:stroke,'stroke-width':1.5});
+        var t1=el('text',{x:cx+cell/2,y:cy+cell*0.44,'text-anchor':'middle','font-size':13,'font-weight':700,fill:'#1c2534'});
+        t1.textContent=CUBE[i];
+        var t2=el('text',{x:cx+cell/2,y:cy+cell*0.82,'text-anchor':'middle','font-size':10,fill:'#7d8ca3'});
+        t2.textContent=v+' 线';
+      }
+    }
+  }
+  var lg=el('text',{x:W/2,y:H-14,'text-anchor':'middle','font-size':11.5,fill:'#7d8ca3'});
+  lg.textContent='格内上排＝数值（幻立方），下排＝属于几条线。中心 7 条，角格 4 条，其余 3 条。';
+})();
+
+chk('31 条线 = 27 轴向 + 4 体对角', L31.length===31, L31.length+' 条');
+chk('幻立方 31 条线全等于 42', brokenBy(CUBE,L31).length===0, '破 '+brokenBy(CUBE,L31).length+' 条');
+chk('27 个线签名两两互异', nUniq===27, nUniq+' 种');
+chk('签名分布 = {7:1, 4:8, 3:18}',
+    kinds[7]===1 && kinds[4]===8 && kinds[3]===18,
+    JSON.stringify(kinds));
+
+/* ================= 03 检测/定位 ================= */
+function mulberry32(a){
+  return function(){
+    a|=0; a=a+0x6D2B79F5|0;
+    var t=Math.imul(a^a>>>15,1|a);
+    t=t+Math.imul(t^t>>>7,61|t)^t;
+    return ((t^t>>>14)>>>0)/4294967296;
+  };
+}
+function trialDetect(k, N, seed){
+  var r=mulberry32(seed);
+  var det=0, loc=0;
+  for(var t=0;t<N;t++){
+    /* 取 k 个互异格 */
+    var pool=[],i,j,tmp;
+    for(i=0;i<27;i++) pool.push(i);
+    for(i=0;i<k;i++){ j=i+Math.floor(r()*(27-i)); tmp=pool[i]; pool[i]=pool[j]; pool[j]=tmp; }
+    var cells=pool.slice(0,k);
+    var g=CUBE.slice();
+    for(i=0;i<k;i++){
+      var d=1+Math.floor(r()*5);
+      g[cells[i]] = CUBE[cells[i]] + (r()<0.5? -d : d);
+    }
+    var bad=brokenBy(g,L31);
+    if(bad.length>0) det++;
+    /* 候选 = 签名 ⊆ bad */
+    var badSet={}; bad.forEach(function(b){ badSet[b]=1; });
+    var cand=[],gg;
+    for(gg=0;gg<27;gg++){
+      var allIn=true;
+      for(i=0;i<SIG[gg].length;i++) if(!badSet[SIG[gg][i]]){ allIn=false; break; }
+      if(allIn) cand.push(gg);
+    }
+    var same = cand.length===cells.length && cand.every(function(x){ return cells.indexOf(x)>=0; });
+    if(same) loc++;
+  }
+  return {det:det/N, loc:loc/N};
+}
+
+var detRows=[], DT=[];
+(function(){
+  var k, N=1200;
+  for(k=1;k<=8;k++){
+    var r=trialDetect(k,N,9000+k*37);
+    detRows.push({k:k,det:r.det,loc:r.loc});
+    DT.push(r);
+  }
+})();
+
+(function(){
+  var svg=document.getElementById('figDet');
+  var ns='http://www.w3.org/2000/svg';
+  function el(t,a,p){ var e=document.createElementNS(ns,t); for(var k in a) e.setAttribute(k,a[k]); (p||svg).appendChild(e); return e; }
+  var L=54,R=22,T=28,B=48;
+  var W=700,H=300;
+  var pw=W-L-R, ph=H-T-B;
+  function X(k){ return L+(k-1)/7*pw; }
+  function Y(v){ return T+(1-v/1.06)*ph; }
+  /* 网格 */
+  var i;
+  for(i=0;i<=5;i++){
+    var v=i/5;
+    el('line',{x1:L,y1:Y(v),x2:L+pw,y2:Y(v),stroke:'#eef2f8','stroke-width':1});
+    var t=el('text',{x:L-8,y:Y(v)+4,'text-anchor':'end','font-size':10.5,fill:'#9aa8bd'});
+    t.textContent=(v*100).toFixed(0)+'%';
+  }
+  for(i=1;i<=8;i++){
+    var t2=el('text',{x:X(i),y:H-B+18,'text-anchor':'middle','font-size':10.5,fill:'#9aa8bd'});
+    t2.textContent='k='+i;
+  }
+  /* 检测率 */
+  var p1=[],p2=[];
+  detRows.forEach(function(r){
+    p1.push(X(r.k)+','+Y(r.det));
+    p2.push(X(r.k)+','+Y(r.loc));
+  });
+  el('polyline',{points:p1.join(' '),fill:'none',stroke:'#0e8f83','stroke-width':2.4});
+  detRows.forEach(function(r){
+    el('circle',{cx:X(r.k),cy:Y(r.det),r:3.4,fill:'#0e8f83'});
+  });
+  el('polyline',{points:p2.join(' '),fill:'none',stroke:'#c93b52','stroke-width':2.4,'stroke-dasharray':'5 3'});
+  detRows.forEach(function(r){
+    el('circle',{cx:X(r.k),cy:Y(r.loc),r:3.4,fill:'#c93b52'});
+  });
+  /* 图例 */
+  el('rect',{x:L+4,y:T-20,width:16,height:3,fill:'#0e8f83'});
+  var lg1=el('text',{x:L+26,y:T-15,'font-size':11.5,fill:'#0e8f83'});
+  lg1.textContent='检测率（有线破了）';
+  el('rect',{x:L+180,y:T-20,width:16,height:3,fill:'#c93b52'});
+  var lg2=el('text',{x:L+202,y:T-15,'font-size':11.5,fill:'#c93b52'});
+  lg2.textContent='定位率（候选格恰好就是那 k 个）';
+  /* 轴标题 */
+  var yt=el('text',{x:10,y:12,'font-size':11,fill:'#7d8ca3'});
+  yt.textContent='比率';
+  var xt=el('text',{x:L+pw/2,y:H-8,'text-anchor':'middle','font-size':11.5,fill:'#7d8ca3'});
+  xt.textContent='一次篡改的格数 k';
+})();
+
+(function(){
+  var tb=document.querySelector('#tblDet tbody');
+  var labels=['篡改格数 k','检测率','定位率','含义'];
+  var notes=['改一格必被发现，且能指到那一格',
+             '两格仍几乎总能分辨',
+             '三格开始出现多解',
+             '四格时三成定位失败',
+             '五格时失败占一半',
+             '六格时只剩三成',
+             '七格时不到两成',
+             '八格时几乎无法定位'];
+  detRows.forEach(function(r,ix){
+    var tr=document.createElement('tr');
+    if(ix>=5) tr.className='warn';
+    var vals=[String(r.k),(r.det*100).toFixed(1)+'%',(r.loc*100).toFixed(1)+'%',notes[ix]];
+    for(var i=0;i<vals.length;i++){
+      var td=document.createElement('td');
+      td.setAttribute('data-label',labels[i]);
+      if(i===0||i===1||i===2) td.className='n';
+      td.innerHTML = i===2 ? '<b>'+vals[i]+'</b>' : vals[i];
+      tr.appendChild(td);
+    }
+    tb.appendChild(tr);
+  });
+})();
+
+chk('k=1 检测率 = 100%', detRows[0].det===1, (detRows[0].det*100).toFixed(1)+'%');
+chk('k=1 定位率 = 100%', detRows[0].loc===1, (detRows[0].loc*100).toFixed(1)+'%');
+chk('定位率随 k 单调不增',
+    detRows.every(function(r,i){ return i===0 || r.loc<=detRows[i-1].loc+1e-12; }),
+    detRows.map(function(r){ return (r.loc*100).toFixed(0); }).join('>'));
+chk('k=5 定位率 < 60%', detRows[4].loc<0.60, (detRows[4].loc*100).toFixed(1)+'%');
+
+/* ================= 04 交互演示 ================= */
+var state=CUBE.slice();
+var layersEl=document.getElementById('layers');
+var cells=[];
+(function(){
+  for(var L=0;L<3;L++){
+    var box=document.createElement('div'); box.className='layerBox';
+    var lb=document.createElement('div'); lb.className='lb'; lb.textContent='第 '+(L+1)+' 层';
+    box.appendChild(lb);
+    var g=document.createElement('div'); g.className='grid3';
+    for(var yy=0;yy<3;yy++){
+      for(var zz=0;zz<3;zz++){
+        var i=idx(L,yy,zz);
+        var c=document.createElement('div');
+        c.className='cell'+(i===13?' center':'');
+        c.setAttribute('data-i',i);
+        c.textContent=state[i];
+        (function(ii){
+          c.addEventListener('click',function(){
+            state[ii]=state[ii]+1;
+            render('你点了第 '+ii+' 格 +1。');
+          });
+        })(i);
+        cells[i]=c;
+        g.appendChild(c);
+      }
+    }
+    box.appendChild(g);
+    layersEl.appendChild(box);
+  }
+})();
+
+function render(msg){
+  var bad31=brokenBy(state,L31);
+  var bad9=brokenBy(state,G9);
+  var i;
+  for(i=0;i<27;i++) cells[i].textContent=state[i];
+
+  /* 每格涉及的破线数 → 描边颜色 */
+  var badSet={}; bad31.forEach(function(b){ badSet[b]=1; });
+  for(i=0;i<27;i++){
+    var cnt=0,j;
+    for(j=0;j<SIG[i].length;j++) if(badSet[SIG[i][j]]) cnt++;
+    cells[i].className='cell'+(i===13?' center':'')+(cnt>=3?' h3':(cnt===2?' h2':(cnt===1?' h1':'')));
+  }
+
+  /* 候选格 */
+  var cand=[],g;
+  for(g=0;g<27;g++){
+    var allIn=true;
+    for(i=0;i<SIG[g].length;i++) if(!badSet[SIG[g][i]]){ allIn=false; break; }
+    if(allIn) cand.push(g);
+  }
+
+  var e31=document.getElementById('roB31'), e9=document.getElementById('roB9'), ec=document.getElementById('roCand');
+  e31.textContent=bad31.length+' / 31';
+  e31.className='vl '+(bad31.length?'bad':'ok');
+  e9.textContent=bad9.length+' / 9';
+  e9.className='vl '+(bad9.length?'bad':'ok');
+  ec.textContent = bad31.length? (cand.length+' 个') : '—';
+  ec.className='vl';
+
+  var v=document.getElementById('roVerdict');
+  var dirty = state.join(',') !== CUBE.join(',');
+  if(bad31.length===0 && bad9.length===0){
+    if(!dirty){
+      v.className='verdict mid';
+      v.innerHTML='从幻立方开始：31 条线的和都等于 42，9 条组也全过。';
+    }else{
+      v.className='verdict bad';
+      v.innerHTML='<b>31 条线一条都没破，9 条组也一条没破。</b>但数组其实已经被改了——这正是盲区。';
+    }
+  }else if(bad31.length===0){
+    v.className='verdict bad';
+    v.innerHTML='<b>31 条线全过，但 9 条组破了 '+bad9.length+' 条。</b>线选得少，就查不出这种改动。';
+  }else if(bad9.length===0){
+    v.className='verdict mid';
+    v.innerHTML='<b>9 条组全过（因为改动都在组内互相抵消），但 31 条线破了 '+bad31.length+' 条。</b>线越多，越藏不住。';
+  }else{
+    v.className='verdict ok';
+    v.innerHTML='<b>31 条线破了 '+bad31.length+' 条，9 条组破了 '+bad9.length+' 条。</b>候选格 '+cand.length+' 个。';
+  }
+  if(msg){ v.innerHTML += ' <span style="opacity:.75">'+msg+'</span>'; }
+}
+
+document.getElementById('bReset').addEventListener('click',function(){
+  state=CUBE.slice(); render('已复位。');
+});
+document.getElementById('bOne').addEventListener('click',function(){
+  var i=Math.floor(Math.random()*27);
+  state[i]=state[i]+1;
+  render('改了第 '+i+' 格 +1。');
+});
+document.getElementById('bTwo').addEventListener('click',function(){
+  state[0]=state[0]+5; state[1]=state[1]-5;
+  render('第 0 格 +5、第 1 格 −5（同属第 1 条组）。');
+});
+document.getElementById('bKey').addEventListener('click',function(){
+  /* 8 角格，符号 = (-1)^((x+y+z)/2)，δ=6 */
+  var dd=6;
+  for(var x=0;x<3;x+=2) for(var y=0;y<3;y+=2) for(var z=0;z<3;z+=2){
+    var i=idx(x,y,z);
+    var sgn = (((x+y+z)/2)%2===0)? 1 : -1;
+    state[i]=state[i]+sgn*dd;
+  }
+  render('8 个角格按棋盘符号 ±6。');
+});
+
+render('');
+
+/* 交互相关的自检 */
+(function(){
+  var base=CUBE.slice();
+  chk('复位态：31 条线全 42', brokenBy(base,L31).length===0, '破 0 条');
+  chk('复位态：9 条组全 42', brokenBy(base,G9).length===0, '破 0 条');
+
+  /* 8 角格隐形 */
+  var g1=base.slice();
+  for(var x=0;x<3;x+=2) for(var y=0;y<3;y+=2) for(var z=0;z<3;z+=2){
+    var i2=idx(x,y,z);
+    var sgn=(((x+y+z)/2)%2===0)?1:-1;
+    g1[i2]+=sgn*6;
+  }
+  chk('★ 8 角格棋盘扰动：31 条线破 0 条', brokenBy(g1,L31).length===0, '破 '+brokenBy(g1,L31).length+' 条');
+  chk('8 角格扰动：数组确实变了', g1.join(',')!==base.join(','), '8 格各改 ±6');
+  chk('8 角格扰动：9 条组仍全过', brokenBy(g1,G9).length===0, '破 '+brokenBy(g1,G9).length+' 条');
+
+  /* 同组两格抵消 */
+  var g2=base.slice(); g2[0]+=5; g2[1]-=5;
+  chk('★ 同组两格 +5/−5：9 条组破 0 条', brokenBy(g2,G9).length===0, '破 '+brokenBy(g2,G9).length+' 条');
+  chk('同组两格：31 条线破了（藏不住）', brokenBy(g2,L31).length>=2, '破 '+brokenBy(g2,L31).length+' 条');
+
+  /* 单格 */
+  var g3=base.slice(); g3[13]+=1;
+  chk('单格 +1：31 条线破 ≥3 条', brokenBy(g3,L31).length>=3, '破 '+brokenBy(g3,L31).length+' 条');
+  chk('单格 +1：破线数 = 中心格签名大小 7', brokenBy(g3,L31).length===SIG[13].length, brokenBy(g3,L31).length+' 条');
+})();
+
+/* ================= 05 值集图 ================= */
+(function(){
+  var svg=document.getElementById('figSet');
+  var ns='http://www.w3.org/2000/svg';
+  function el(t,a,p){ var e=document.createElementNS(ns,t); for(var k in a) e.setAttribute(k,a[k]); (p||svg).appendChild(e); return e; }
+  var W=700,L=90,R=40;
+  var pw=W-L-R;
+  /* 上排：3 个值（t=1 时 {1,14,27}） */
+  var y1=52, y2=132;
+  el('text',{x:14,y:y1+4,'font-size':11.5,fill:'#7d8ca3'}).textContent='37 条线';
+  el('text',{x:14,y:y2+4,'font-size':11.5,fill:'#7d8ca3'}).textContent='排列解';
+  el('line',{x1:L,y1:y1+26,x2:L+pw,y2:y1+26,stroke:'#e2e8f2'});
+  el('line',{x1:L,y1:y2+26,x2:L+pw,y2:y2+26,stroke:'#e2e8f2'});
+  /* 刻度 1..27 */
+  [1,7,14,21,27].forEach(function(v){
+    var xx=L+(v-1)/26*pw;
+    var t=el('text',{x:xx,y:y2+44,'text-anchor':'middle','font-size':10,fill:'#9aa8bd'});
+    t.textContent=v;
+  });
+  /* 3 个值 */
+  [1,14,27].forEach(function(v){
+    var xx=L+(v-1)/26*pw;
+    el('circle',{cx:xx,cy:y1,r:6,fill:'#c93b52'});
+    var t=el('text',{x:xx,y:y1-14,'text-anchor':'middle','font-size':11,'font-weight':700,fill:'#c93b52'});
+    t.textContent=v;
+  });
+  var t1=el('text',{x:L+pw/2,y:y1+46,'text-anchor':'middle','font-size':11.5,fill:'#a8324a'});
+  t1.textContent='解 v(t) 的所有取值只有 3 个：{14−d, 14, 14+d}';
+  /* 27 个值 */
+  for(var v2=1;v2<=27;v2++){
+    var x2=L+(v2-1)/26*pw;
+    el('circle',{cx:x2,cy:y2,r:3.6,fill:'#0e8f83'});
+  }
+  var t2=el('text',{x:L+pw/2,y:y2+62,'text-anchor':'middle','font-size':11.5,fill:'#0b6f66'});
+  t2.textContent='1..27 的排列需要 27 个互不相同的值 —— 两者不可能重合';
+})();
+
+/* 37 条线：秩 + 解族值集（用离线精确有理数给出的特解与零空间基，在页内真验证） */
+(function(){
+  var L37=L31.concat(faceDiags6());
+  var r31=rankMod(matOf(L31,27),27,1000003);
+  var r37=rankMod(matOf(L37,27),27,1000003);
+  chk('31 条线秩 = 23', r31===23, '实测 '+r31);
+  chk('37 条线秩 = 26（零空间只剩 1 维）', r37===26, '实测 '+r37);
+
+  var X0=[14,28,0,28,0,14,0,14,28,28,0,14,0,14,28,14,28,0,0,14,28,14,28,0,28,0,14];
+  var N0=[0,-1,1,-1,1,0,1,0,-1,-1,1,0,1,0,-1,0,-1,1,1,0,-1,0,-1,1,-1,1,0];
+
+  var okX=true,i,ln;
+  for(i=0;i<L37.length;i++){
+    var s=0;
+    for(ln=0;ln<L37[i].length;ln++) s+=X0[L37[i][ln]];
+    if(s!==42){ okX=false; break; }
+  }
+  chk('37 条线的特解 x₀ 确实满足全部 37 条线和 = 42', okX, okX?'37/37':'有线和≠42');
+
+  var okN=true;
+  for(i=0;i<L37.length;i++){
+    var s2=0;
+    for(ln=0;ln<L37[i].length;ln++) s2+=N0[L37[i][ln]];
+    if(s2!==0){ okN=false; break; }
+  }
+  chk('n₀ 在 37 条线上和为 0（是真零空间向量）', okN, okN?'37/37 为 0':'有线和≠0');
+
+  var counts=[],t,j,seen;
+  for(t=-5;t<=5;t++){
+    seen={};
+    for(j=0;j<27;j++) seen[X0[j]+t*N0[j]]=1;
+    counts.push(Object.keys(seen).length);
+  }
+  chk('★ 37 条线解族：任意 t 的不同值个数恒为 3',
+      counts.every(function(c){ return c===3; }),
+      't=−5..5 计数 '+counts.join(','));
+  chk('37 条线解族不可能覆盖 1..27（3 < 27）',
+      counts[0]<27, '值个数 '+counts[0]+' < 27');
+})();
+
+/* ================= 06 性能税曲线 ================= */
+/* FHRR 相位码本 */
+function cexp(th){ return {re:Math.cos(th), im:Math.sin(th)}; }
+function buildVec(u){ var v=[],i; for(i=0;i<D;i++) v.push(cexp(2*Math.PI*u[i]/D)); return v; }
+function ipv(a,b){ var s=0,i; for(i=0;i<D;i++) s+=a[i].re*b[i].re+a[i].im*b[i].im; return s; }
+
+function genPin(n,m,r){
+  var out=[],seen={},guard=0;
+  while(out.length<n && guard<200000){
+    guard++;
+    var u=[],i;
+    for(i=0;i<m;i++) u.push(0);
+    for(i=m;i<D;i++) u.push(Math.floor(r()*D));
+    var k=u.join(',');
+    if(seen[k]) continue;
+    seen[k]=1; out.push(u);
+  }
+  return out;
+}
+function genGrp(n,m,r){
+  var out=[],seen={},guard=0;
+  while(out.length<n && guard<200000){
+    guard++;
+    var u=[],i;
+    for(i=0;i<D;i++) u.push(Math.floor(r()*D));
+    for(i=0;i<m;i++){
+      var a=3*i,b=3*i+1,c=3*i+2;
+      u[c]=((-(u[a]+u[b]))%D+D)%D;
+    }
+    var k=u.join(',');
+    if(seen[k]) continue;
+    seen[k]=1; out.push(u);
+  }
+  return out;
+}
+function genLin(n,m,r){
+  var A=[],i;
+  for(i=0;i<m;i++) A.push(1+Math.floor(r()*(D-1)));
+  var out=[],seen={},guard=0;
+  while(out.length<n && guard<200000){
+    guard++;
+    var u=[],j;
+    for(j=0;j<D;j++) u.push(Math.floor(r()*D));
+    for(j=0;j<m;j++) u[j]=((-(A[j]*u[26]))%D+D)%D;
+    var k=u.join(',');
+    if(seen[k]) continue;
+    seen[k]=1; out.push(u);
+  }
+  return out;
+}
+
+function retrieval(C,N,trials,r){
+  var V=[],i,j,k;
+  for(i=0;i<C.length;i++) V.push(buildVec(C[i]));
+  var n=C.length, hit=0;
+  for(var t=0;t<trials;t++){
+    /* 取 2N 个互异索引 */
+    var pool=[],tmp;
+    for(i=0;i<n;i++) pool.push(i);
+    for(i=0;i<2*N;i++){ j=i+Math.floor(r()*(n-i)); tmp=pool[i]; pool[i]=pool[j]; pool[j]=tmp; }
+    var M=[],kk;
+    for(kk=0;kk<D;kk++) M.push({re:0,im:0});
+    for(i=0;i<N;i++){
+      var va=V[pool[2*i]], vb=V[pool[2*i+1]];
+      for(kk=0;kk<D;kk++){
+        var re=va[kk].re*vb[kk].re-va[kk].im*vb[kk].im;
+        var im=va[kk].re*vb[kk].im+va[kk].im*vb[kk].re;
+        M[kk].re+=re; M[kk].im+=im;
+      }
+    }
+    /* unbind with V[pool[0]] = conj */
+    var va2=V[pool[0]], uu=[];
+    for(kk=0;kk<D;kk++){
+      var re2=M[kk].re*va2[kk].re+M[kk].im*va2[kk].im;
+      var im2=M[kk].im*va2[kk].re-M[kk].re*va2[kk].im;
+      uu.push({re:re2,im:im2});
+    }
+    var best=-1e9,bi=-1;
+    for(j=0;j<n;j++){
+      var s=ipv(uu,V[j]);
+      if(s>best){ best=s; bi=j; }
+    }
+    if(bi===pool[1]) hit++;
+  }
+  return hit/trials;
+}
+
+function ipMean(C){
+  var V=[],i,j,k;
+  for(i=0;i<C.length;i++) V.push(buildVec(C[i]));
+  var s=0,cnt=0;
+  for(i=0;i<C.length;i++) for(j=i+1;j<C.length;j++){
+    s+=Math.abs(ipv(V[i],V[j]))/D; cnt++;
+  }
+  return s/cnt;
+}
+
+var TAX=[], TAXRAW=[];
+(function(){
+  var ms=[0,2,4,6,8,9,10,12,14,16,18,20,22,24,26];
+  var seeds=4, TR=180;
+  ms.forEach(function(m){
+    var ap=0,ag=0,al=0,k,cntG=0;
+    for(k=0;k<seeds;k++){
+      var r=mulberry32(4200+k*211+m*17);
+      var Cp=genPin(27,m,r);
+      var r2=mulberry32(4200+k*211+m*17+9999);
+      ap+=retrieval(Cp,5,TR,r2);
+      if(m<=9){
+        var Cg=genGrp(27,m,r);
+        var r3=mulberry32(4200+k*211+m*17+7777);
+        ag+=retrieval(Cg,5,TR,r3); cntG++;
+      }
+      var Cl=genLin(27,m,r);
+      var r4=mulberry32(4200+k*211+m*17+5555);
+      al+=retrieval(Cl,5,TR,r4);
+    }
+    var row={m:m,dim:27-m,pin:ap/seeds,grp:cntG?ag/cntG:null,lin:al/seeds};
+    TAX.push(row); TAXRAW.push(row);
+  });
+})();
+
+(function(){
+  var svg=document.getElementById('figTax');
+  var ns='http://www.w3.org/2000/svg';
+  function el(t,a,p){ var e=document.createElementNS(ns,t); for(var k in a) e.setAttribute(k,a[k]); (p||svg).appendChild(e); return e; }
+  var W=700,H=320,L=54,R=130,T=34,B=48;
+  var pw=W-L-R, ph=H-T-B;
+  function X(m){ return L+m/26*pw; }
+  function Y(v){ return T+(1-v/1.06)*ph; }
+  var i;
+  for(i=0;i<=5;i++){
+    var v=i/5;
+    el('line',{x1:L,y1:Y(v),x2:L+pw,y2:Y(v),stroke:'#eef2f8'});
+    var t=el('text',{x:L-8,y:Y(v)+4,'text-anchor':'end','font-size':10.5,fill:'#9aa8bd'});
+    t.textContent=(v*100).toFixed(0)+'%';
+  }
+  [0,5,10,15,20,26].forEach(function(m){
+    var t2=el('text',{x:X(m),y:H-B+18,'text-anchor':'middle','font-size':10.5,fill:'#9aa8bd'});
+    t2.textContent=m;
+  });
+  function line(key,color,dash){
+    var pts=[];
+    TAX.forEach(function(r){
+      if(r[key]===null) return;
+      pts.push(X(r.m)+','+Y(r[key]));
+    });
+    el('polyline',{points:pts.join(' '),fill:'none',stroke:color,'stroke-width':2.4,'stroke-dasharray':dash||'none'});
+    TAX.forEach(function(r){
+      if(r[key]===null) return;
+      el('circle',{cx:X(r.m),cy:Y(r[key]),r:3.2,fill:color});
+    });
+  }
+  line('pin','#c93b52');
+  line('grp','#0e8f83');
+  line('lin','#7148bf','5 3');
+  /* 图例 */
+  var lg=[['冻结位置（公共常量）','#c93b52'],['局部守恒（模 27，只测到 m=9）','#0e8f83'],['全局绑定（同一变量）','#7148bf']];
+  lg.forEach(function(o,ix){
+    var yy=T+10+ix*17;
+    el('rect',{x:L+pw+10,y:yy-3,width:15,height:3,fill:o[1]});
+    var t=el('text',{x:L+pw+31,y:yy+2,'font-size':10.5,fill:o[1]});
+    t.textContent=o[0];
+  });
+  var yt=el('text',{x:10,y:12,'font-size':11,fill:'#7d8ca3'});
+  yt.textContent='准确率';
+  var xt=el('text',{x:L+pw/2,y:H-8,'text-anchor':'middle','font-size':11.5,fill:'#7d8ca3'});
+  xt.textContent='固定的自由度 m（越往右约束越多）';
+})();
+
+(function(){
+  var tb=document.querySelector('#tblTax tbody');
+  var labels=['固定自由度 m','剩余维数','冻结 m 个位置','局部守恒 m 条','全局绑定 m 条'];
+  TAX.forEach(function(r){
+    if(r.m!==0 && r.m!==9 && r.m!==18 && r.m!==26) return;
+    var tr=document.createElement('tr');
+    if(r.m===9) tr.className='ok';
+    if(r.m===26) tr.className='warn';
+    var vals=[String(r.m),String(r.dim),
+              (r.pin*100).toFixed(1)+'%',
+              r.grp===null?'—':(r.grp*100).toFixed(1)+'%',
+              (r.lin*100).toFixed(1)+'%'];
+    for(var i=0;i<vals.length;i++){
+      var td=document.createElement('td');
+      td.setAttribute('data-label',labels[i]);
+      td.className='n';
+      if(i===3 && r.grp!==null) td.innerHTML='<b>'+vals[i]+'</b>';
+      else td.textContent=vals[i];
+      tr.appendChild(td);
+    }
+    tb.appendChild(tr);
+  });
+})();
+
+/* 关键读数 */
+(function(){
+  var r0=TAX[0], r9=null, r26=TAX[TAX.length-1];
+  TAX.forEach(function(r){ if(r.m===9) r9=r; });
+  document.getElementById('freeBase').textContent=(r0.grp*100).toFixed(1)+'%';
+  document.getElementById('freeVal').textContent=(r9.grp*100).toFixed(1)+'%';
+  document.getElementById('freeDiff').textContent=((r9.grp-r0.grp)*100).toFixed(1)+' 个点';
+  document.getElementById('freeN').textContent='9';
+  document.getElementById('ipPin0').textContent=(ipMean(genPin(27,0,mulberry32(31)))).toFixed(3);
+  document.getElementById('ipPin9').textContent=(ipMean(genPin(27,9,mulberry32(32)))).toFixed(3);
+  window.__r=r0; window.__r9=r9; window.__r26=r26;
+})();
+
+chk('m=0 基线准确率 > 0.85', TAX[0].pin>0.85, (TAX[0].pin*100).toFixed(1)+'%');
+chk('冻结位置：m=26 时崩溃（< 0.30）', TAX[TAX.length-1].pin<0.30, (TAX[TAX.length-1].pin*100).toFixed(1)+'%');
+chk('★ 局部守恒 m=9 与基线差 < 5 个点',
+    Math.abs((function(){ var r9; TAX.forEach(function(r){ if(r.m===9) r9=r; }); return r9; })().grp - TAX[0].grp)<0.05,
+    (function(){ var r9; TAX.forEach(function(r){ if(r.m===9) r9=r; }); return ((r9.grp-TAX[0].grp)*100).toFixed(1); })()+' 个点');
+chk('三者在 m=9 时互不相同（冻结 < 绑定 < 守恒）',
+    (function(){
+      var r9; TAX.forEach(function(r){ if(r.m===9) r9=r; });
+      return r9.pin<r9.lin && r9.lin<r9.grp;
+    })(),
+    (function(){
+      var r9; TAX.forEach(function(r){ if(r.m===9) r9=r; });
+      return (r9.pin*100).toFixed(0)+'<'+(r9.lin*100).toFixed(0)+'<'+(r9.grp*100).toFixed(0);
+    })());
+
+/* ================= 07 存活率 ================= */
+function survBind(C,m,trials,r){
+  var n=C.length, ok=0, i, j, k;
+  for(var t=0;t<trials;t++){
+    i=Math.floor(r()*n); j=Math.floor(r()*n);
+    var good=true;
+    for(k=0;k<m;k++){
+      var a=3*k,b=3*k+1,c=3*k+2;
+      if(((C[i][a]+C[j][a])+(C[i][b]+C[j][b])+(C[i][c]+C[j][c]))%D!==0){ good=false; break; }
+    }
+    if(good) ok++;
+  }
+  return ok/trials;
+}
+function survBundle(C,m,trials,r){
+  var V=[],i,k;
+  for(i=0;i<C.length;i++) V.push(buildVec(C[i]));
+  var n=C.length, ok=0, N=5;
+  for(var t=0;t<trials;t++){
+    var pool=[],tmp;
+    for(i=0;i<n;i++) pool.push(i);
+    for(i=0;i<N;i++){ var j=i+Math.floor(r()*(n-i)); tmp=pool[i]; pool[i]=pool[j]; pool[j]=tmp; }
+    var M=[];
+    for(k=0;k<D;k++) M.push({re:0,im:0});
+    for(i=0;i<N;i++){
+      var v=V[pool[i]];
+      for(k=0;k<D;k++){ M[k].re+=v[k].re; M[k].im+=v[k].im; }
+    }
+    var ph=[];
+    for(k=0;k<D;k++){
+      var an=Math.atan2(M[k].im,M[k].re);
+      ph.push(((Math.round(an*D/(2*Math.PI))%D)+D)%D);
+    }
+    var good=true;
+    for(k=0;k<m;k++){
+      var a=3*k,b=3*k+1,c=3*k+2;
+      if((ph[a]+ph[b]+ph[c])%D!==0){ good=false; break; }
+    }
+    if(good) ok++;
+  }
+  return ok/trials;
+}
+
+var SURV=[];
+(function(){
+  [1,3,5,7,9].forEach(function(m){
+    var C=genGrp(27,m,mulberry32(8800+m));
+    var pb=survBind(C,m,1500,mulberry32(9100+m));
+    var pn=survBundle(C,m,1500,mulberry32(9200+m));
+    SURV.push({m:m,bind:pb,bundle:pn});
+  });
+})();
+
+(function(){
+  var svg=document.getElementById('figSurv');
+  var ns='http://www.w3.org/2000/svg';
+  function el(t,a,p){ var e=document.createElementNS(ns,t); for(var k in a) e.setAttribute(k,a[k]); (p||svg).appendChild(e); return e; }
+  var W=700,H=210,L=70,R=120,T=30,B=44;
+  var pw=W-L-R, ph=H-T-B;
+  function Y(v){ return T+(1-v/1.06)*ph; }
+  var i;
+  for(i=0;i<=4;i++){
+    var v=i/4;
+    el('line',{x1:L,y1:Y(v),x2:L+pw,y2:Y(v),stroke:'#eef2f8'});
+    var t=el('text',{x:L-8,y:Y(v)+4,'text-anchor':'end','font-size':10.5,fill:'#9aa8bd'});
+    t.textContent=(v*100).toFixed(0)+'%';
+  }
+  var bw=pw/(SURV.length*2.4);
+  SURV.forEach(function(r,ix){
+    var x0=L+ix*(pw/SURV.length)+bw*0.7;
+    el('rect',{x:x0,y:Y(r.bind),width:bw,height:T+ph-Y(r.bind),fill:'#0e8f83',rx:3});
+    el('rect',{x:x0+bw*1.15,y:Y(r.bundle),width:bw,height:T+ph-Y(r.bundle),fill:'#c93b52',rx:3});
+    var t2=el('text',{x:x0+bw*0.5,y:H-B+18,'text-anchor':'middle','font-size':10.5,fill:'#9aa8bd'});
+    t2.textContent='m='+r.m;
+    var t3=el('text',{x:x0+bw*0.5,y:Y(r.bind)-5,'text-anchor':'middle','font-size':10,'font-weight':700,fill:'#0e8f83'});
+    t3.textContent=(r.bind*100).toFixed(0)+'%';
+    var t4=el('text',{x:x0+bw*1.65,y:Y(r.bundle)-5,'text-anchor':'middle','font-size':10,'font-weight':700,fill:'#c93b52'});
+    t4.textContent=(r.bundle*100).toFixed(1)+'%';
+  });
+  var lg=[['bind（相位相加）','#0e8f83'],['bundle（复数相加）','#c93b52']];
+  lg.forEach(function(o,ix){
+    var yy=T+10+ix*17;
+    el('rect',{x:L+pw+12,y:yy-3,width:15,height:10,fill:o[1],rx:2});
+    var t=el('text',{x:L+pw+32,y:yy+5,'font-size':10.5,fill:o[1]});
+    t.textContent=o[0];
+  });
+  var yt=el('text',{x:10,y:12,'font-size':11,fill:'#7d8ca3'});
+  yt.textContent='存活率';
+  var xt=el('text',{x:L+pw/2,y:H-8,'text-anchor':'middle','font-size':11.5,fill:'#7d8ca3'});
+  xt.textContent='局部守恒约束的条数 m';
+})();
+
+(function(){
+  var tb=document.querySelector('#tblSurv tbody');
+  var labels=['约束条数','bind 后存活','bundle 后存活','对照'];
+  SURV.forEach(function(r){
+    var tr=document.createElement('tr');
+    if(r.bundle<0.01) tr.className='warn';
+    var vals=[String(r.m),(r.bind*100).toFixed(1)+'%',(r.bundle*100).toFixed(1)+'%',
+              r.bundle<0.01?'已归零（随机基线 3.7%）':'略高于随机'];
+    for(var i=0;i<vals.length;i++){
+      var td=document.createElement('td');
+      td.setAttribute('data-label',labels[i]);
+      if(i>0&&i<3) td.className='n';
+      if(i===1) td.innerHTML='<b>'+vals[i]+'</b>';
+      else td.textContent=vals[i];
+      tr.appendChild(td);
+    }
+    tb.appendChild(tr);
+  });
+})();
+
+chk('★ bind 后约束 100% 存活', SURV.every(function(r){ return r.bind>0.999; }),
+    SURV.map(function(r){ return (r.bind*100).toFixed(0)+'%'; }).join(' '));
+chk('★ bundle 后 m=9 归零', SURV[SURV.length-1].bundle<0.005,
+    (SURV[SURV.length-1].bundle*100).toFixed(2)+'%');
+chk('bundle 存活率随 m 单调不增',
+    SURV.every(function(r,i){ return i===0 || r.bundle<=SURV[i-1].bundle+1e-9; }),
+    SURV.map(function(r){ return (r.bundle*100).toFixed(1); }).join('>'));
+
+/* 09 里的读数 */
+document.getElementById('banSurv').textContent=(SURV[SURV.length-1].bundle*100).toFixed(0)+'%';
+
+/* ================= 汇总 ================= */
+(function(){
+  var s=document.getElementById('chkSum');
+  s.textContent='自检 '+window.__ch.pass+' / '+window.__ch.total+(window.__ch.pass===window.__ch.total?' 全部通过':' 有失败项');
+  s.style.color = window.__ch.pass===window.__ch.total ? '#26774a' : '#c93b52';
+  var ul=document.getElementById('chkList');
+  window.__ch.list.forEach(function(r){
+    var li=document.createElement('li');
+    var st=document.createElement('span');
+    st.className='st '+(r.ok?'p':'f');
+    st.textContent=r.ok?'✓':'✗';
+    var t=document.createElement('span'); t.className='t'; t.textContent=r.n;
+    var d=document.createElement('span'); d.className='d'; d.textContent=r.d;
+    li.appendChild(st); li.appendChild(t); li.appendChild(d);
+    ul.appendChild(li);
+  });
+})();
+</script>
+</body>
+</html>
