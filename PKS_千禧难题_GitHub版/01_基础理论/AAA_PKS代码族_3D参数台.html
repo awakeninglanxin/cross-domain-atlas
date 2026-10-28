@@ -19,6 +19,7 @@ h1{font-size:25px;line-height:1.4;margin:6px 0 8px}
 h1 small{display:block;font-size:13.5px;font-weight:400;color:#6b7683;margin-top:9px}
 h2{font-size:19.5px;margin:38px 0 12px;padding-bottom:7px;border-bottom:2px solid #e5e8ee}
 h3{font-size:15.5px;margin:22px 0 7px;color:#12305e}
+h4{font-size:13.8px;margin:18px 0 6px;color:#2f6fb5}
 p{margin:9px 0}ul,ol{margin:8px 0 8px 22px;padding:0}li{margin:3px 0}
 code{background:#f3f5f9;border:1px solid #e3e7ef;border-radius:3px;padding:.5px 4px;
  font-family:Consolas,"Courier New",monospace;font-size:12.8px}
@@ -53,8 +54,14 @@ tbody tr:nth-child(even){background:#fafbfd}
  border:1px solid #dde3ec;border-radius:10px;overflow:hidden;height:520px}
 #cv3d{display:block;width:100%;height:100%;cursor:grab}
 #cv3d:active{cursor:grabbing}
-#badge{position:absolute;left:12px;top:10px;font-size:12px;color:#12305e;max-width:78%;
+#badge{position:absolute;left:12px;top:48px;font-size:12px;color:#12305e;max-width:78%;
  background:rgba(255,255,255,.92);border:1px solid #d6dfec;border-radius:4px;padding:3px 9px;font-weight:600;line-height:1.5}
+/* 暂停/继续自转：放在 3D 图形的左上角，方便直接点 */
+#btnPause{position:absolute;left:12px;top:10px;z-index:5;font:inherit;font-size:12px;cursor:pointer;
+ color:#12305e;background:rgba(255,255,255,.94);border:1px solid #b9cde6;border-radius:5px;
+ padding:4px 11px;font-weight:600;line-height:1.4;box-shadow:0 1px 3px rgba(18,48,94,.12)}
+#btnPause:hover{background:#eaf2fc;border-color:#2f6fb5}
+#btnPause.paused{background:#12305e;border-color:#12305e;color:#fff}
 #hint{position:absolute;right:10px;bottom:9px;font-size:11.4px;color:#6b7683;
  background:rgba(255,255,255,.86);border:1px solid #e1e6ee;border-radius:4px;padding:2px 8px}
 .ctrl{background:#fcfcfd;border:1px solid #e6eaf2;border-radius:10px;padding:14px 16px}
@@ -72,11 +79,108 @@ input[type=range]{width:100%;accent-color:#2f6fb5;height:18px}
 .readout div{display:flex;justify-content:space-between;gap:10px;margin:2.5px 0}
 .readout span:first-child{color:#5a6678}
 .readout b{font-family:Consolas,monospace;color:#12305e;font-weight:600;text-align:right}
+.readout b.hit{color:#b3261e;font-weight:700}
 #prof{width:100%;height:200px;border:1px solid #e2e8f2;border-radius:6px;background:#fff;margin-top:9px;display:none}
 .presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .presets button{font:inherit;font-size:12.2px;cursor:pointer;border:1px solid #d8c9a8;background:#fffbf2;
  color:#7a5a1e;border-radius:5px;padding:3px 9px}
 .presets button:hover{background:#fdf3dd}
+/* 几何反算面板（族③ 专用）：把"不重叠"约束显式化 */
+.solvebox{margin-top:11px;border:1px solid #dfe6f0;border-left:3px solid #2f6fb5;border-radius:8px;
+ background:#f7fafe;padding:9px 11px;font-size:12.4px;color:#3c4757;display:block}
+.solvetitle{font-weight:600;color:#12305e;font-size:12.6px;margin-bottom:2px}
+.solvesub{color:#7c8797;font-size:11.6px;line-height:1.5;margin-bottom:7px}
+.solverow{display:flex;align-items:center;gap:7px;margin:5px 0;flex-wrap:wrap}
+.solverow label{color:#2c3546;font-size:12.3px;white-space:nowrap}
+.solverow input[type=number]{width:62px;font:inherit;font-size:12.3px;padding:3px 5px;
+ border:1px solid #cfd8e5;border-radius:5px;background:#fff;color:#12305e;
+ font-family:Consolas,monospace;text-align:center}
+.solverow input[type=number]:focus{outline:2px solid #bcd4ea;outline-offset:0}
+.solbtn{font:inherit;font-size:12.1px;cursor:pointer;border:1px solid #b9cde6;background:#fff;
+ color:#1c4a86;border-radius:5px;padding:3px 10px;white-space:nowrap}
+.solbtn:hover{background:#eaf2fc;border-color:#2f6fb5}
+.solbtn.alt{border-color:#d8c9a8;color:#7a5a1e;background:#fffbf2}
+.solbtn.alt:hover{background:#fdf3dd;border-color:#c8a250}
+.solres{margin-top:6px;font-size:12.2px;line-height:1.55;font-family:Consolas,monospace;
+ color:#33465e;background:#fff;border:1px dashed #d9e2ee;border-radius:6px;padding:6px 8px;
+ word-break:break-word;white-space:pre-wrap}
+.solres.ok{border-color:#9dc9a6;background:#f2faf3;color:#1f6b32}
+.solres.warn{border-color:#e3c39a;background:#fdf7ee;color:#8a5a12}
+.solres.bad{border-color:#e0a8a8;background:#fdf2f2;color:#a52222}
+.solres b{color:#12305e}
+/* 族⑤ 叶片横断面 2D 预览 */
+.secwrap{display:block;margin:5px 0 2px}
+.seccv{display:block;margin:0 auto;border:1px solid #dfe6f0;border-radius:6px;background:#fbfdff;
+ width:100%;max-width:268px;height:auto}
+.secinfo{font-size:11.6px;line-height:1.65;color:#5a6675;margin-top:7px}
+.secinfo b{color:#12305e}
+.seckey{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+/* ---------------- 2D 截面预览 · 左下角悬浮窗（可拖动 / 可收起） ----------------
+   需求：预览图放在网页左下角，做成悬浮窗，能拖到任意位置，也能收起成一条标题。
+   —— 位置与收起状态记在 localStorage，刷新后保持。
+   —— 视觉沿用页面既有的 #fxp 浮窗（白底、深蓝标题、圆角+阴影）。 */
+#secfp{
+  position:fixed; z-index:845; left:16px; bottom:16px;
+  width:302px; max-height:calc(100vh - 40px);
+  display:flex; flex-direction:column;
+  background:#fff; border:1px solid #cfd6e0; border-radius:12px;
+  box-shadow:0 2px 6px rgba(18,22,28,.08), 0 14px 40px rgba(18,22,28,.14);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:13px; color:#12161c; line-height:1.55;
+  -webkit-user-select:none; user-select:none;
+}
+#secfp.secfp-hidden{ display:none; }
+#secfp.secfp-min{ width:auto; min-width:158px; }
+#secfp.secfp-min .secfp-bd{ display:none; }
+#secfp .secfp-h{
+  display:flex; align-items:center; gap:7px;
+  padding:8px 10px 8px 9px; cursor:grab; touch-action:none;
+  border-bottom:1px solid #e6eaf0; border-radius:12px 12px 0 0;
+  background:linear-gradient(#fbfcfe,#f4f7fb);
+}
+#secfp.secfp-min .secfp-h{ border-bottom:0; border-radius:12px; }
+#secfp .secfp-h.fxp-drag{ cursor:grabbing; }
+#secfp .secfp-grip{ color:#9aa6b6; font-size:13px; }
+#secfp .secfp-t{
+  font-family:Georgia,"Times New Roman","Songti SC",serif;
+  font-weight:700; font-size:13.5px; color:#0d2f63; letter-spacing:.2px;
+}
+#secfp .secfp-c{ font-family:Consolas,monospace; font-size:10.5px; color:#6b7683; margin-left:auto; white-space:nowrap; }
+#secfp .secfp-b{
+  width:22px; height:22px; padding:0; flex:0 0 22px;
+  border:1px solid #cfd6e0; background:#fff; border-radius:6px;
+  color:#3b4552; font-size:12px; line-height:1; cursor:pointer;
+}
+#secfp .secfp-b:hover{ border-color:#1b4f9c; color:#1b4f9c; background:#f4f7fb }
+#secfp .secfp-bd{
+  padding:10px 11px 12px; overflow-y:auto; overflow-x:hidden;
+  -webkit-user-select:auto; user-select:auto;
+}
+#secfp .secfp-bd::-webkit-scrollbar{ width:8px }
+#secfp .secfp-bd::-webkit-scrollbar-thumb{ background:#d7dee8; border-radius:4px }
+#secfp .secfp-bd::-webkit-scrollbar-track{ background:transparent }
+/* 浮窗内不再用 solvebox 的左蓝边（浮窗本身已有边框），避免双重边框 */
+#secfp .solvebox{ margin-top:0; border:0; border-left:0; border-radius:0; background:none; padding:0; }
+#secfp .seccv{ max-width:100%; }
+#secfp .solvesub{ margin-bottom:8px; }
+/* 2D 预览标题行：标题左、镜像按钮右（族③ / 族⑤ 共用） */
+#secfp .sectitlerow{ display:flex; align-items:flex-start; gap:8px; }
+#secfp .sectitlerow .solvetitle{ flex:1 1 auto; min-width:0; }
+/* 题注里的限定语「（局部 xy 平面）」单独一行、弱化处理：
+   否则右侧加了镜像按钮后，标题会挤成 "…（局部 xy 平 / 面）" 留一个孤字。 */
+#secfp .sectitle2{ display:block; font-weight:400; font-size:12px; color:#5a6577; letter-spacing:0; }
+#secfp .secmir{
+  flex:0 0 auto; margin-left:auto; margin-top:-1px;
+  height:22px; padding:0 8px;
+  border:1px solid #cfd6e0; background:#fff; border-radius:6px;
+  color:#3b4552; font-size:11.5px; line-height:20px; cursor:pointer;
+  font-family:Consolas,"Courier New",monospace; white-space:nowrap;
+}
+#secfp .secmir:hover{ border-color:#1b4f9c; color:#1b4f9c; background:#f4f7fb; }
+#secfp .secmir.on{
+  background:#1b4f9c; border-color:#1b4f9c; color:#fff;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.25);
+}
 </style>
 <!--FXCTL:CSS--><style id="fxctl-css">
 /* ============================================================
@@ -411,18 +515,31 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
 <div class="stage">
   <div id="cvbox">
     <canvas id="cv3d"></canvas>
+    <button id="btnPause" type="button" title="暂停 / 继续自转（快捷键：空格）">⏸ 暂停自转</button>
     <div id="badge">—</div>
-    <div id="hint">拖动旋转 ｜ 滚轮缩放 ｜ 双击复位 ｜ 空格暂停自转</div>
+    <div id="hint">拖动旋转 ｜ <b>Shift+拖动平移</b> ｜ 滚轮缩放 ｜ 双击复位 ｜ 空格暂停自转</div>
   </div>
   <div class="ctrl">
     <h3 id="famTitle">—</h3>
     <div class="pyline" id="famPy"></div>
     <div id="rows"></div>
+    <div class="solvebox" id="solvebox"></div>
     <div class="choices" id="choices"></div>
     <div class="readout" id="readout"></div>
     <canvas id="prof" width="340" height="200"></canvas>
     <div class="presets" id="presets"></div>
   </div>
+</div>
+<!-- 2D 截面预览：左下角悬浮窗（可拖动 / 可收起），内容由 buildSecBox() 注入 -->
+<div id="secfp">
+  <div class="secfp-h" id="secfpH">
+    <span class="secfp-grip">⠿</span>
+    <span class="secfp-t">截面预览</span>
+    <span class="secfp-c" id="secfpC"></span>
+    <button type="button" class="secfp-b" data-a="mini" title="收起 / 展开">▾</button>
+    <button type="button" class="secfp-b" data-a="reset" title="回到左下角 / 复位">⟲</button>
+  </div>
+  <div class="secfp-bd" id="secfpBd"></div>
 </div>
 <div class="infobox" id="famNote"></div>
 
@@ -475,6 +592,34 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
 <p class="note">原脚本要从两个 DXF 里读"咬一口的蛋"断面做首尾混合；本页把断面简化为圆 + 波纹，
 <b>不再复刻断面渐变</b>——这一条是降级，不是等价，写在这里免得误会。</p>
 
+<h4>③-1 本页对族③ 的三处改造（都是"看得见 / 用得上"的改动）</h4>
+<p><b>① 管形从封闭实体改成开口曲面。</b>原脚本的管是封闭实体，两端看着像被封住了。
+真正的原因不是材质，而是<b>标架退化</b>：Frenet 标架用中心差分 d₁、二阶差分 d₂ 构造，
+在曲线两端 d₂ 会退化成 ±d₁ ⇒ <code>cross(T,N)=0</code> ⇒ 副法向 B 塌成零向量 ⇒
+<b>管口断面被压扁成一条线</b>，看上去就"封口"了。本页改用<b>旋转最小化标架（RMF · 双反射法）</b>：
+全程 T/N/B 正交且非退化，两端不会塌。附带好处是 RMF 不含曲线自身的挠率，
+所以红线缠绕角就<b>严格等于</b>读数里的 ψ(1)（实测 twist=±1.5 时两者差 &lt; 3°）。
+入口画深蓝亮圈、出口画亮红亮圈 + 一张极淡的断口盘，一眼能看出这是开口管。</p>
+
+<p><b>② 红色扭转母线。</b>贴着管内壁的一条母线，随 ψ(t) 绕切线一起转 ⇒ twist 一改，
+缠绕圈数立刻变。注意用的是 <code>TubeGeometry</code> 而不是 <code>THREE.Line</code>——
+WebGL 不支持 <code>linewidth&gt;1</code>，用 Line 画出来只有 1 px，根本看不见"这里在扭"。</p>
+
+<p><b>③ 圆周阵列 + 两个几何反算按钮。</b>六族全部支持"绕该族对称轴旋转复制 n 份"（n ≤ 12），
+每份转 360°/n ⇒ 严格 n 重旋转对称，副本用色相平移区分。族③ 因为要排很多份，
+所以额外给了<b>几何反算</b>：</p>
+<div class="eq">不重叠判据（保守充分条件）：
+  把每份管看成沿中心线扫掠的圆截面管，局部半径 r_s(t) = tr · k(t)
+  其中 k(t) = (1 − taper·t) · wave(t)  是无量纲因子
+  任意两份（份0 的 t1 点 vs 第 g 份的 t2 点）须满足   d(t1,t2) &gt; tr·(k1+k2)
+  ⇒ tr 上限 = min over 所有点对  d / (k1+k2)        （tr 只线性出现 ⇒ 一次遍历直出，无需二分）
+  同一份内部还要查"圈间自重叠"：真正角对齐的一圈是 t2 = t1 + m/turns，取 ±半圈窗口内真实最近点</div>
+<p>按钮①：已知 n ⇒ 算最大管径 tr（向下取整到 0.1 并吸附滑条刻度，保证"显示值 == 渲染值"），
+并写回滑条；按钮②：固定当前管径 ⇒ 算最大阵列份数 n（≤12），写回阵列滑条。
+读数区同步给出<b>不重叠管径上限 / 当前是否安全 / 当前管径最大阵列数</b>三行。
+默认参数（底径 108、高 144、α=13.28°、2 圈、tr=4.5、taper=0.667、47 带波纹）下：
+n=4 安全（上限 4.878），n=5 起开始穿插（上限 3.819）。</p>
+
 <h3>④ 蛋形均轮（托勒密偏心模型）</h3>
 <div class="eq">M(t) = ( C_x + R·cos t + r·cos(w·t) ,  C_y + R·sin t + r·sin(w·t) )
 k_E  = max(M_y) / |min(M_y)|</div>
@@ -485,10 +630,17 @@ k_E  = max(M_y) / |min(M_y)|</div>
 <h3>⑤ 钟形水轮（内进水锥）</h3>
 <div class="eq">母线半径：  r(t) = √[ 1/(b − t·sinα)² − (t·cosα)² ]
 中心线：    x = r·sin(3ft) ,  y = r·cos(3ft) ,  z = −t·z_v ,  t ∈ [0, 2π/3]
-叶片断面：  x_s(τ) = −a·π·sinτ/τ ,  y_s(τ) = a·π·cosτ/τ ,  a: 0.3 → 0.1</div>
+叶片断面：  x_s(τ) = −a·π·sinτ/τ ,  y_s(τ) = a·π·cosτ/τ ,  a: 0.3 → 0.1
+断面相位：  φ₀ = 横断面相位角（曲线起点方位，0° = x 正半轴，逆时针为正）
+            施加的总旋转 = φ₀ + 90°（原始图起点在 −90°）⇒ φ₀ = 270° 时与原脚本朝向一致</div>
 <p>"钟形"不是抛物线也不是圆锥，而是那个根号：<code>t</code> 小的时候 <code>r≈1/b</code>（近似圆柱段），
 <code>t</code> 一大 <code>(b−t·sinα)²</code> 变小、<code>r</code> 加速膨大，<b>再大就开方为负、曲线当场终止</b>。
 本页把这个终止点（cut）直接报出来：把 α 拧到 25° 以下、或把 t_max 比例拧大，就会看到"钟"还没长完就断了。</p>
+<p><b>横断面相位</b>：叶片断面那条 2D 曲线（<code>−aπ sinτ/τ, aπ cosτ/τ</code>，等价于半径
+<code>aπ/τ</code>、方位角 <code>τ+90°</code>）可以整体绕原点<b>逆时针旋转</b>。本页以
+<b>"x 正半轴 = 曲线起点"</b>为基准：相位角 0° 时起点正好落在 x 正半轴，逆时针为正；
+因为原始图的起点在 −90°，所以实际施加的总旋转是 <code>φ₀+90°</code>，取 <code>φ₀=270°</code> 就回到原脚本朝向。
+参数台右侧的 2D 预览与 3D 模型<b>共用同一条断面方程</b>，预览里画的就是模型上用的那条曲线。</p>
 
 <h3>⑥ 双曲锥 · 几何阻尼</h3>
 <div class="eq">锥面：  z(r) = C₁ − C₂·ln r ,  C₂ = z₀/ln10 ,  C₁ = z₀ + C₂·ln10   （r=1→z=2z₀，r=10→z=z₀）
@@ -511,7 +663,8 @@ k_E  = max(M_y) / |min(M_y)|</div>
 两页里的波纹盘已改为同一套方程，不再互相矛盾。</p>
 
 <div class="foot">
-基准目录 <code>D:/AAA我的文件/PKS_千禧难题_GitHub版</code> ｜ 三维用 <code>../_vendor/three.min.js</code>（MIT）实时计算 ｜
+基准目录 <code>D:/AAA我的文件/PKS_千禧难题_GitHub版</code> ｜ 三维用 <code>three.min.js r128</code>（MIT）实时计算
+<code>../_vendor/</code> 与 <code>./_vendor/</code> 为同一文件的硬链接，两种服务根均可加载 ｜
 方程取自 <code>代码_波纹盘/22·27·30</code>、<code>代码_蛋形曲线/舒伯格蛋Die Ei-Kurve…</code>、
 <code>代码_螺旋锥与螺旋管/最简原始模版…黄金比schauberger.py</code>、<code>代码_外摆线均轮/egg_epicycle_interactive.py</code>、
 <code>代码_水轮发电/钟形水轮顶…最终.py</code>、<code>代码_PKS双曲锥与阻尼NS/task3_conical_ns.py</code> ｜ 2026-10-18 建
@@ -519,6 +672,49 @@ k_E  = max(M_y) / |min(M_y)|</div>
 </div>
 
 <script src="../_vendor/three.min.js"></script>
+<script>
+/* ---------------- three.js 兜底加载（治「3D 全白、参数面板却正常」的沉默失败） ----------------
+   为什么需要这一小段：
+   —— 本页用相对路径 ../_vendor/three.min.js。若静态服务的根不是
+      仓库根 PKS_千禧难题_GitHub版（例如把 01_基础理论/ 直接当服务根），
+      ../_vendor/ 会跑到服务根之外 ⇒ 404 ⇒ THREE 未定义
+      ⇒ 主脚本里 new THREE.MeshPhongMaterial 立刻抛错
+      ⇒ 表现为「参数面板还在、3D 区域一片空白」，不看控制台看不出原因。
+   —— 双保险：
+      ① 源码层：01_基础理论/_vendor/three.min.js 与仓库根 _vendor/ 是同一 inode 的硬链接
+         （不占额外空间），所以两种服务根下 ../_vendor/ 与 ./_vendor/ 都能命中；
+      ② 本段兜底：若 ① 被人挪走，主脚本【之前】按序同步重试 ./_vendor/ 与 jsDelivr CDN（r128 同版）。
+         必须同步，否则主脚本会抢在前头执行、照样抛错。
+   —— 全部落空时不留白：页面顶部挂红横幅写明修法（实测本机 CDN 不可达，故 ① 才是主路）。 */
+(function(){
+  if(window.THREE)return;
+  var cands=['_vendor/three.min.js','./_vendor/three.min.js',
+             'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js'];
+  for(var i=0;i<cands.length;i++){
+    try{
+      var x=new XMLHttpRequest();
+      x.open('GET',cands[i],false);           /* false = 同步，保证顺序 */
+      x.send(null);
+      if(x.status===200&&x.responseText&&x.responseText.length>20000){
+        (0,eval)(x.responseText);             /* 在全局作用域执行，等价于 <script src> */
+        if(window.THREE){window.__THREE_SRC=cands[i];return;}
+      }
+    }catch(e){/* 该路径不可用，试下一个 */}
+  }
+  function banner(){
+    if(document.getElementById('threeFailBanner'))return;
+    var d=document.createElement('div');
+    d.id='threeFailBanner';
+    d.style.cssText='position:fixed;left:0;right:0;top:0;z-index:99999;background:#c0392b;color:#fff;'+
+      'font:13px/1.75 "Microsoft YaHei",system-ui,sans-serif;padding:10px 18px;box-shadow:0 2px 8px rgba(0,0,0,.2)';
+    d.textContent='三维引擎 three.js 加载失败：../_vendor/three.min.js 与 ./_vendor/three.min.js 都取不到，CDN 也不可达。'+
+      '修法：把静态服务的根设为仓库根 D:/AAA我的文件/PKS_千禧难题_GitHub版（不要用 01_基础理论/ 当根），'+
+      '或直接双击本文件以 file:// 打开。参数面板仍可用，3D 视图为空。';
+    (document.body||document.documentElement).appendChild(d);
+  }
+  if(document.body)banner();else document.addEventListener('DOMContentLoaded',banner);
+})();
+</script>
 <script>
 var TAU=Math.PI*2, PHI=(1+Math.sqrt(5))/2;
 function sq(v){return v>0?Math.sqrt(v):0;}
@@ -565,6 +761,62 @@ function revolveLoop(prof,NS,color){
 function lineOf(pts,color,w){
   var g=new THREE.BufferGeometry().setFromPoints(pts);
   return new THREE.Line(g,new THREE.LineBasicMaterial({color:color,linewidth:w||1}));
+}
+/* 翻转三角形绕序并重算法线：让单面材质(FrontSide)能正确只显示"朝外"的一面 */
+function flipGeom(g){
+  var idx=g.getIndex().array;
+  for(var i=0;i<idx.length;i+=3){var t=idx[i];idx[i]=idx[i+2];idx[i+2]=t;}
+  g.setIndex(new THREE.BufferAttribute(idx,1));
+  g.computeVertexNormals();
+  return g;
+}
+/* ---------------- 圆周阵列（通用） ----------------
+   把一个族建出来的整套模型绕【该族的对称轴 = 数学 z 轴】旋转复制 n 份，
+   每份转 k·360°/n ⇒ 得到严格的 n 重旋转对称。
+   各族的数学 z 轴在 three.js 里对应的轴不同（族内 r/z 参数写在不同分量上），
+   所以由 fam.zAxis 指定：'y' = 竖直轴（族①③⑤⑥），'z' = 平面法线轴（族②④）。
+   n 上限 12。 */
+var AXIS_VEC={y:[0,1,0],z:[0,0,1],x:[1,0,0]};
+function shiftHue(c,dh){                       // RGB→HSV→RGB 的色相平移（不依赖 three 版本 API）
+  var r=c.r,g=c.g,b=c.b,max=Math.max(r,g,b),min=Math.min(r,g,b),d=max-min,h=0,s=0,v=max;
+  if(d>0){
+    s=max===0?0:d/max;
+    if(max===r)h=(g-b)/d+(g<b?6:0);else if(max===g)h=(b-r)/d+2;else h=(r-g)/d+4;
+    h/=6;
+  }
+  h=(h+dh+1)%1;
+  var i=Math.floor(h*6),f=h*6-i,p=v*(1-s),q=v*(1-f*s),t=v*(1-(1-f)*s),rr,gg,bb;
+  switch(i%6){case 0:rr=v;gg=t;bb=p;break;case 1:rr=q;gg=v;bb=p;break;case 2:rr=p;gg=v;bb=t;break;
+    case 3:rr=p;gg=q;bb=v;break;case 4:rr=t;gg=p;bb=v;break;default:rr=v;gg=p;bb=q;}
+  c.setRGB(rr,gg,bb);
+}
+function tintCopy(node,k,n){                   // 副本换色相，便于分辨第几份（材质要 clone，否则会串色）
+  if(n<2)return;
+  var dh=(k/n)*0.16-0.08;                    // ±0.08 色相环，轻微但可辨
+  node.traverse(function(o){
+    if(!o.material)return;
+    var arr=Array.isArray(o.material),ms=arr?o.material:[o.material];
+    var nm=ms.map(function(m){
+      var mm=m.clone();
+      if(mm.color&&mm.color.setRGB&&!mm.vertexColors)shiftHue(mm.color,dh);
+      return mm;
+    });
+    o.material=arr?nm:nm[0];
+  });
+}
+function applyArray(obj,P,fam){
+  var n=Math.max(1,Math.min(12,Math.round(P.reps===undefined?1:P.reps)));
+  if(n<=1||!obj)return obj;
+  var ax=fam.zAxis||'y';
+  var wrap=new THREE.Group();
+  for(var k=0;k<n;k++){
+    var c=obj.clone(true);
+    tintCopy(c,k,n);
+    if(ax==='y')c.rotation.y=k*TAU/n;else if(ax==='z')c.rotation.z=k*TAU/n;else c.rotation.x=k*TAU/n;
+    wrap.add(c);
+  }
+  wrap.userData.reps=n;
+  return wrap;
 }
 function fib(n){var a=1,b=1,i,c;for(i=2;i<n;i++){c=a+b;a=b;b=c;}return b;}
 function kbOf(n){return [fib(n+1)/fib(n+2),fib(n+3)/fib(n+2)];}
@@ -678,10 +930,35 @@ function f2Egg(z0,ta,amp,nPts){
   }
   return out;
 }
+/* 闭合版蛋曲线：补上 φ=90°/270° 两个蛋尖的【极限值】rr = amp/z0。
+   —— f2Egg 在这两点直接跳过（那里是 0/0），所以原函数返回的是【开口】曲线，
+      端点各差一个采样点。
+   —— 放样成曲面时必须闭合，否则相邻层之间会拉出两条"封口边"，
+      看起来像撕裂而不是管壁。
+   —— 极限已数值验证：φ→90° 时 rr → amp/z0（n=1: 1/1.5=0.6667；n=72: 8.485/1.618=5.2442）。
+   —— 输出点数固定为 nPts+1（含首尾同点），各层完全一致 ⇒ 层间可逐点放样。 */
+function f2EggClosed(z0,ta,amp,nPts){
+  var al=Math.atan(ta),sa=Math.sin(al),ca=Math.cos(al),out=[],i;
+  var tip=amp/z0;                       /* 蛋尖极限半径 */
+  for(i=0;i<=nPts;i++){
+    var ph=TAU*i/nPts,sp=Math.sin(ph),cp=Math.cos(ph);
+    var di=Math.sqrt(sp*sp+cp*cp*ca*ca);
+    var ins=z0*z0-4*cp*sa/di,den=2*cp*sa;
+    var rr;
+    if(Math.abs(den)<1e-6){rr=tip;}                       /* 蛋尖：取极限 */
+    else if(ins<0){rr=tip;}                              /* 无实解也用极限，保证闭合 */
+    else rr=amp*(z0-Math.sqrt(ins))/den;
+    out.push([rr*sp,rr*cp]);
+  }
+  return out;
+}
 function f2Build(P){
   var N=Math.max(1,Math.round(P.N)),i,n;
   var pos=[],col=[],g=new THREE.Group(),ridge=[];
   var scheme=P.sch,dz=P.dz,rot=P.rot;
+  var doLoft=(P.loft===1);
+  /* 放样用的"闭合蛋曲线"环：每层一条，逐点对应 ⇒ 相邻层可直接连成曲面 */
+  var rings=[];
   for(n=1;n<=N;n++){
     var kb=kbOf(n),amp=(scheme===0?Math.sqrt(n):(scheme===1?n:1))*P.scale;
     var pts=f2Egg(kb[1],kb[0],amp,220);
@@ -700,6 +977,15 @@ function f2Build(P){
       }
       prev=cur;
     }
+    if(doLoft){
+      /* 放样环：用【闭合版】曲线（含蛋尖极限），保证相邻层逐点对应、不撕裂 */
+      var cp2=f2EggClosed(kb[1],kb[0],amp,220),ring=[];
+      for(i=0;i<cp2.length;i++){
+        var rx=cp2[i][0]*ct-cp2[i][1]*st,ry=cp2[i][0]*st+cp2[i][1]*ct;
+        ring.push([rx,ry,(n-1)*dz,c]);
+      }
+      rings.push(ring);
+    }
     var tp=f2Egg(kb[1],kb[0],amp,180);
     if(tp.length){ var tx=tp[0][0]*ct-tp[0][1]*st, ty=tp[0][0]*st+tp[0][1]*ct;
       ridge.push(new THREE.Vector3(tx,ty,(n-1)*dz)); }
@@ -708,6 +994,37 @@ function f2Build(P){
   geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
   geo.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
   g.add(new THREE.LineSegments(geo,new THREE.LineBasicMaterial({vertexColors:true})));
+  /* 放样曲面：把相邻两层的闭合蛋曲线逐点连成四边形 ⇒ 一条半透明的"蛋壳"。
+     —— 层间用【相同弧长位置】的点对应（两环都按 220 等分采样、起点同相），
+        所以不会出现扭曲或自交。
+     —— 只连侧壁、两端不封盖（与族③ 一样是开口曲面）。 */
+  if(doLoft&&rings.length>=2){
+    var lp=[],lc=[],li=[],li2=0;
+    for(n=0;n<rings.length;n++){
+      var rg=rings[n];
+      for(i=0;i<rg.length;i++){
+        lp.push(rg[i][0],rg[i][1],rg[i][2]);
+        lc.push(rg[i][3].r,rg[i][3].g,rg[i][3].b);
+      }
+    }
+    var M=rings[0].length;
+    for(n=0;n<rings.length-1;n++){
+      for(i=0;i<M;i++){
+        var a=n*M+i, b=n*M+((i+1)%M);
+        var c2=(n+1)*M+i, d2=(n+1)*M+((i+1)%M);
+        li.push(a,c2,b,b,c2,d2);
+      }
+    }
+    var lg=new THREE.BufferGeometry();
+    lg.setAttribute('position',new THREE.Float32BufferAttribute(lp,3));
+    lg.setAttribute('color',new THREE.Float32BufferAttribute(lc,3));
+    lg.setIndex(li);lg.computeVertexNormals();
+    var lm=new THREE.Mesh(lg,new THREE.MeshPhongMaterial({vertexColors:true,
+      shininess:45,specular:0x667788,transparent:true,opacity:0.42,
+      side:THREE.DoubleSide,depthWrite:false}));
+    lm.name='eggLoft';
+    g.add(lm);
+  }
   if(ridge.length>1){
     var rh=[];
     for(i=0;i<ridge.length;i++)rh.push(ridge[i]);
@@ -724,14 +1041,234 @@ function f2Read(P){
     ['第 N 层 k',kb[0].toFixed(6)],
     ['第 N 层 b',kb[1].toFixed(6)],
     ['振幅方案',P.sch===0?'√n':(P.sch===1?'n':'1（等幅）')],
-    ['总旋转',P.rot.toFixed(0)+'° ／ '+P.dz.toFixed(2)+' 层距']
+    ['总旋转',P.rot.toFixed(0)+'° ／ '+P.dz.toFixed(2)+' 层距'],
+    ['放样曲面',P.loft===1?('开启（'+(N-1)+' 段侧壁，半透明）'):'关闭（只画线框）'],
+    ['蛋尖极限半径',(Math.sqrt(N)*P.scale/kb[1]).toFixed(4)+'（amp/z₀）']
   ];
 }
 
 /* ---------------- 家族 3：螺旋锥管 ---------------- */
 function cross3(a,b){return [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];}
 function norm3(a){var L=Math.sqrt(a[0]*a[0]+a[1]*a[1]+a[2]*a[2])||1e-9;return [a[0]/L,a[1]/L,a[2]/L];}
-function f3Build(P){
+/* ---------------- 旋转最小化标架（RMF · 双反射法） ----------------
+   为什么不用 Frenet 标架：
+   —— Frenet 用 d1=中心差分、d2=二阶差分构造标架。在曲线【两端】，
+      c1 或 c2 会退化成 c0 ⇒ d2 与 d1 平行 ⇒ cross3(T,N)=零向量
+      ⇒ 副法向 B 退化成 [0,0,0] ⇒ 管口断面被压扁成一条线，
+      看上去就是"管子两端被封住了"。这不是材质问题，是几何 bug。
+   —— RMF（平行传递标架）全程保证 T/N/B 正交且非退化，两端也不会塌。
+   —— 额外好处：RMF 不含曲线自身的挠率 ⇒ 红线缠绕角 == 显式 twist 角，
+      读数与肉眼所见严格对应。
+   用法：var R=rmfFrames(C,NT,ta,tb);  R.pts / R.T / R.N / R.B 均为长度 NT+1 的数组。 */
+function rmfFrames(C,NT,ta,tb){
+  var i,pts=[],T=[],N=[],B=[];
+  for(i=0;i<=NT;i++)pts.push(C(ta+(tb-ta)*i/NT));
+  for(i=0;i<=NT;i++){
+    var a=pts[Math.max(0,i-1)],b=pts[Math.min(NT,i+1)];
+    T.push(norm3([b[0]-a[0],b[1]-a[1],b[2]-a[2]]));
+  }
+  /* 初始法向：取与 T0 夹角最大的世界轴做叉积（保证不平行） */
+  var t0=T[0],ax=Math.abs(t0[0]),ay=Math.abs(t0[1]),az=Math.abs(t0[2]);
+  var ref=(ax<=ay&&ax<=az)?[1,0,0]:((ay<=az)?[0,1,0]:[0,0,1]);
+  var n0=norm3([ref[1]*t0[2]-ref[2]*t0[1],ref[2]*t0[0]-ref[0]*t0[2],ref[0]*t0[1]-ref[1]*t0[0]]);
+  N.push(n0);
+  /* 双反射：把上一帧的法向平行传递到下一帧 */
+  for(i=0;i<NT;i++){
+    var v1=[pts[i+1][0]-pts[i][0],pts[i+1][1]-pts[i][1],pts[i+1][2]-pts[i][2]];
+    var c1=v1[0]*v1[0]+v1[1]*v1[1]+v1[2]*v1[2];
+    var r=[N[i][0],N[i][1],N[i][2]],tl=[T[i][0],T[i][1],T[i][2]];
+    if(c1>1e-18){
+      var a1=2*(v1[0]*r[0]+v1[1]*r[1]+v1[2]*r[2])/c1;
+      var b1=2*(v1[0]*tl[0]+v1[1]*tl[1]+v1[2]*tl[2])/c1;
+      r=[r[0]-a1*v1[0],r[1]-a1*v1[1],r[2]-a1*v1[2]];
+      tl=[tl[0]-b1*v1[0],tl[1]-b1*v1[1],tl[2]-b1*v1[2]];
+    }
+    var v2=[T[i+1][0]-tl[0],T[i+1][1]-tl[1],T[i+1][2]-tl[2]];
+    var c2=v2[0]*v2[0]+v2[1]*v2[1]+v2[2]*v2[2];
+    if(c2>1e-18){
+      var a2=2*(v2[0]*r[0]+v2[1]*r[1]+v2[2]*r[2])/c2;
+      r=[r[0]-a2*v2[0],r[1]-a2*v2[1],r[2]-a2*v2[2]];
+    }
+    /* 再对 T 正交化一次（消除浮点漂移） */
+    var dp=r[0]*T[i+1][0]+r[1]*T[i+1][1]+r[2]*T[i+1][2];
+    r=[r[0]-dp*T[i+1][0],r[1]-dp*T[i+1][1],r[2]-dp*T[i+1][2]];
+    var L=Math.sqrt(r[0]*r[0]+r[1]*r[1]+r[2]*r[2]);
+    if(L<1e-9){r=[N[i][0],N[i][1],N[i][2]];dp=r[0]*T[i+1][0]+r[1]*T[i+1][1]+r[2]*T[i+1][2];
+      r=[r[0]-dp*T[i+1][0],r[1]-dp*T[i+1][1],r[2]-dp*T[i+1][2]];}
+    N.push(norm3(r));
+  }
+  for(i=0;i<=NT;i++)B.push(norm3(cross3(T[i],N[i])));
+  return {pts:pts,T:T,N:N,B:B};
+}
+/* ---------------- 族③ 横截面库（来自真实 DXF 的闭合 NURBS） ----------------
+   来源（E:/pythonProject/program/最简原始模版用于生成直锥螺旋管/）：
+     · 圆                        ← end 圆曲线.dxf
+     · krystal 蛋咬一口             ← end krystal蛋咬一口曲线.dxf
+     · 舒伯格 蛋咬一口                 ← end 舒伯格蛋咬一口曲线.dxf
+     · krystal 桃子               ← end krystal 桃子.dxf
+     · krystal 蛋咬一口（原始小）        ← krystal蛋咬一口.dxf
+   抽取方式：DXF ENTITIES 段的 SPLINE（3 阶有理 NURBS）→ 标准 Cox-de Boor 求值
+             → 弧长均匀重采样 120 点 → 平移质心 → 【起点旋转到 x 正半轴】
+             → 外接半径归一化为 1。
+   编码：坐标 ×1000 取整，逗号分隔（x,y 交替）。
+   ⚠ 圆曲线.dxf 里含两条 SPLINE（外圈与内圈被分别存了一份），本页只取第一条。
+   ⚠「舒伯格 蛋咬一口」的起点在原 DXF 里不在 x 正半轴上（x≈0.60），
+     本页统一把它旋转到 x 正半轴 ⇒ 「起点方位」滑条以 0° 为基准。 */
+var SEC_LIB=[
+  {k:'round',t:'圆',n:120,a:3.08483,d:'984,0,982,-52,978,-104,971,-156,961,-208,948,-259,933,-309,915,-358,895,-406,873,-453,848,-499,820,-544,791,-587,759,-628,725,-668,688,-706,650,-742,610,-775,568,-806,525,-836,480,-862,433,-887,386,-909,337,-928,288,-945,238,-960,187,-972,135,-981,83,-987,31,-991,-21,-992,-74,-989,-126,-984,-177,-977,-229,-966,-279,-953,-329,-937,-378,-919,-426,-898,-473,-875,-519,-849,-563,-821,-606,-791,-647,-759,-686,-724,-723,-687,-758,-649,-791,-608,-822,-566,-851,-522,-877,-476,-901,-430,-922,-382,-941,-333,-958,-284,-971,-233,-983,-182,-991,-130,-997,-78,-1000,-26,-1000,26,-997,78,-991,130,-983,182,-971,233,-958,284,-941,333,-922,382,-901,430,-877,476,-851,522,-822,566,-791,608,-758,649,-723,687,-686,724,-647,759,-606,791,-563,821,-519,849,-473,875,-426,898,-378,919,-329,937,-279,953,-229,966,-177,977,-126,984,-74,989,-21,992,31,991,83,987,135,981,187,972,238,960,288,945,337,928,386,909,433,887,480,862,525,836,568,806,610,775,650,742,688,706,725,668,759,628,791,587,820,544,848,499,873,453,895,406,915,358,933,309,948,259,961,208,971,156,978,104,982,52,984,0'},
+  {k:'krystal',t:'krystal 蛋咬一口',n:120,a:1.64148,d:'1000,0,994,41,978,78,956,113,930,145,901,175,871,203,839,229,807,255,775,281,743,307,710,332,677,356,643,380,609,402,574,424,539,446,503,466,467,485,430,504,392,521,354,537,316,552,277,566,238,578,198,588,158,597,117,605,76,610,35,614,-6,616,-47,617,-88,615,-129,612,-170,608,-211,602,-252,594,-292,584,-331,572,-370,559,-409,544,-446,528,-483,509,-519,489,-554,468,-588,444,-621,419,-652,393,-682,364,-711,335,-738,304,-763,271,-787,237,-808,202,-828,166,-844,128,-858,89,-870,50,-878,9,-883,-31,-885,-73,-884,-114,-880,-155,-872,-195,-862,-235,-849,-274,-833,-312,-815,-349,-794,-385,-771,-419,-745,-451,-717,-481,-688,-510,-656,-537,-623,-561,-589,-584,-553,-604,-515,-621,-477,-636,-438,-648,-397,-657,-357,-664,-316,-666,-274,-666,-233,-663,-193,-657,-152,-648,-112,-637,-73,-624,-35,-609,3,-592,39,-574,75,-553,110,-532,144,-509,178,-485,211,-460,243,-434,275,-409,308,-383,340,-358,373,-333,407,-310,442,-287,477,-266,514,-247,551,-229,588,-212,627,-197,665,-183,705,-170,744,-159,785,-151,825,-144,866,-136,905,-124,941,-104,971,-75,992,-40,1000,0'},
+  {k:'schauberger',t:'舒伯格 蛋咬一口',n:120,a:2.04289,d:'597,0,607,-43,616,-87,624,-130,629,-175,630,-219,628,-263,623,-307,615,-351,605,-394,592,-437,576,-478,557,-519,536,-558,512,-595,487,-631,458,-666,428,-698,396,-728,361,-757,325,-783,288,-806,249,-827,208,-846,167,-862,124,-875,81,-885,37,-893,-7,-898,-51,-900,-96,-899,-140,-895,-184,-889,-227,-879,-270,-867,-312,-852,-352,-834,-392,-814,-430,-792,-468,-767,-503,-741,-537,-712,-569,-681,-598,-648,-626,-613,-652,-577,-677,-540,-699,-502,-720,-462,-738,-422,-753,-380,-767,-338,-779,-295,-788,-252,-795,-208,-799,-164,-801,-119,-800,-75,-796,-31,-790,13,-782,57,-772,100,-759,143,-744,185,-727,226,-708,266,-687,305,-664,343,-639,380,-613,415,-585,450,-555,482,-523,514,-490,543,-456,572,-422,600,-386,627,-350,653,-314,678,-276,701,-237,723,-198,743,-157,762,-116,779,-74,794,-32,807,11,820,54,831,97,840,141,849,184,857,228,864,272,868,317,870,361,868,405,862,449,854,492,843,534,830,575,812,613,790,647,761,674,726,694,686,705,643,706,599,698,555,686,513,670,471,654,430,638,388,622,347,607,305,593,263,583,220,576,176,575,131,579,87,587,43,597,0'},
+  {k:'peach',t:'krystal 桃子',n:120,a:2.23309,d:'1000,0,984,-42,958,-79,935,-118,912,-157,886,-195,859,-231,832,-268,804,-303,774,-338,744,-372,713,-405,681,-437,648,-468,615,-499,580,-529,545,-557,509,-585,473,-612,435,-638,397,-662,358,-685,317,-706,277,-726,235,-743,192,-759,149,-773,105,-785,61,-795,16,-802,-29,-807,-74,-809,-120,-809,-165,-806,-210,-801,-255,-793,-299,-783,-343,-771,-386,-757,-428,-740,-470,-721,-510,-700,-549,-677,-586,-652,-623,-624,-657,-594,-689,-563,-720,-529,-748,-493,-773,-455,-796,-416,-815,-375,-831,-332,-843,-289,-851,-244,-855,-199,-855,-153,-852,-108,-839,-65,-823,-22,-823,22,-839,65,-852,108,-855,153,-855,199,-851,244,-843,289,-831,332,-815,375,-796,416,-773,455,-748,493,-720,529,-689,563,-657,594,-623,624,-586,652,-549,677,-510,700,-470,721,-428,740,-386,757,-343,771,-299,783,-255,793,-210,801,-165,806,-120,809,-74,809,-29,807,16,802,61,795,105,785,149,773,192,759,235,743,277,726,318,706,358,685,397,662,435,638,473,612,509,585,545,557,580,529,615,499,648,468,681,437,713,405,744,371,774,338,804,303,832,268,860,232,886,195,911,157,934,118,958,79,984,42,1000,0'},
+  {k:'krystalS',t:'krystal 蛋咬一口（原始小）',n:120,a:1.56204,d:'1000,0,992,-42,975,-81,951,-117,924,-149,893,-179,861,-208,829,-235,796,-262,762,-289,728,-315,694,-340,659,-364,623,-388,587,-411,551,-433,514,-454,476,-474,438,-493,399,-512,360,-528,320,-544,280,-558,239,-571,198,-582,156,-591,114,-598,72,-604,29,-608,-13,-610,-56,-610,-99,-608,-141,-605,-184,-600,-226,-592,-268,-584,-309,-573,-350,-560,-390,-546,-430,-530,-468,-512,-506,-492,-543,-470,-579,-447,-613,-422,-646,-395,-678,-366,-708,-336,-737,-304,-764,-271,-788,-237,-811,-200,-832,-163,-850,-124,-865,-84,-877,-43,-886,-1,-891,41,-893,84,-892,126,-887,169,-879,211,-869,252,-855,292,-838,332,-819,370,-797,406,-772,441,-745,474,-715,505,-684,534,-650,560,-615,584,-578,606,-540,625,-501,642,-461,656,-419,667,-378,676,-335,682,-293,685,-250,685,-207,683,-165,677,-124,668,-83,654,-44,637,-7,615,26,588,55,557,81,523,104,487,124,449,142,411,160,372,177,333,194,294,213,255,235,219,261,185,293,157,330,136,370,122,412,114,455,110,498,109,540,111,583,116,625,121,667,127,710,133,752,139,794,143,837,145,880,144,922,136,959,116,986,83,998,43,1000,0'},
+];
+/* ---------------- 新增断面库（来自 E:/pythonProject/program/最简原始模版用于生成直锥螺旋管/） ----------------
+   与族③ 的 SEC_LIB 同格式：坐标 ×1000 取整、逗号分隔（x,y 交替）。
+   抽取方式：
+     · DXF SPLINE → 标准 Cox-de Boor 有理求值 → 弧长均匀重采样 120 点
+       → 起点旋转对齐 x 正半轴 → 外接半径归一化到 1
+     · DXF POINT 实体 → 同样重采样与归一化
+     · CSV (t,x,y) → 弧长均匀重采样 120 点 → 归一化
+   ⚠ 「蛋形（CSV 采样）」等断面不是闭合 NURBS，是离散采样点的闭合折线。
+   ⚠ 三角牙 60°/82° 原文件各只有 3 个 POINT（=一个三角形牙型），
+     本页按闭合折线重采样成 120 点以便扫掠。 */
+var SEC_LIB2=[
+  {k:'schStart',t:'舒伯格 蛋咬一口（起始版）',n:120,a:1.11352,d:'899,0,868,-13,836,-23,803,-31,771,-40,738,-48,706,-58,674,-69,643,-81,612,-94,581,-109,553,-127,526,-147,502,-171,480,-196,460,-223,440,-251,422,-279,404,-307,385,-335,365,-362,343,-388,320,-412,295,-435,268,-455,240,-473,210,-489,179,-502,147,-512,114,-519,81,-524,47,-526,13,-525,-20,-522,-53,-516,-86,-507,-118,-497,-149,-486,-181,-473,-211,-459,-242,-444,-271,-428,-299,-409,-326,-389,-352,-368,-376,-344,-399,-320,-421,-294,-441,-267,-458,-238,-474,-209,-488,-178,-501,-147,-511,-114,-519,-82,-525,-49,-528,-15,-528,19,-526,52,-520,85,-512,118,-501,150,-488,181,-473,211,-455,239,-436,267,-415,294,-393,319,-370,343,-345,366,-320,388,-293,408,-264,427,-235,444,-206,459,-175,474,-144,487,-113,499,-81,510,-49,520,-16,528,17,535,50,541,83,545,117,549,150,551,184,552,218,552,251,550,285,548,318,544,352,540,385,535,418,530,451,524,484,516,517,508,549,498,581,488,613,476,644,463,674,449,704,434,734,417,763,401,792,383,820,365,848,346,875,326,900,303,923,279,943,252,961,223,975,193,986,161,992,128,989,94,976,63,955,38,928,17'},
+  {k:'schEnd',t:'舒伯格 蛋咬一口（终止版）',n:120,a:1.40023,d:'582,0,580,-36,577,-73,573,-109,566,-145,557,-180,545,-215,531,-248,514,-281,496,-312,476,-343,454,-372,430,-399,404,-425,377,-449,348,-472,318,-492,287,-511,254,-528,221,-542,187,-554,152,-564,116,-572,80,-578,44,-581,7,-582,-29,-580,-66,-577,-101,-570,-137,-562,-172,-551,-206,-539,-239,-524,-271,-507,-303,-487,-332,-466,-361,-443,-387,-419,-413,-393,-437,-365,-459,-336,-479,-306,-498,-275,-514,-242,-529,-208,-541,-174,-552,-140,-562,-104,-569,-69,-575,-33,-578,4,-580,40,-579,77,-577,113,-573,149,-567,185,-559,221,-549,256,-537,290,-522,324,-506,356,-489,388,-470,419,-449,450,-427,479,-403,506,-378,533,-352,558,-324,582,-296,604,-266,625,-235,645,-204,663,-171,680,-138,695,-104,709,-70,723,-36,735,-2,747,33,757,69,766,104,774,140,780,176,785,213,788,249,789,286,790,322,789,359,787,395,784,431,781,467,777,503,771,539,764,574,754,608,741,642,726,674,709,705,690,735,669,762,645,786,618,805,586,817,552,823,516,820,480,809,445,793,413,772,382,750,353,728,325,705,296,683,267,661,238,641,208,622,176,607,143,596,108,589,73,585,36'},
+  {k:'kryStart',t:'krystal 蛋咬一口（起始版）',n:120,a:0.9113,d:'1000,0,996,33,985,63,969,92,950,119,928,143,905,167,881,189,857,211,833,233,808,255,783,276,757,297,731,317,705,337,678,356,651,374,623,391,594,408,566,424,536,439,507,453,476,466,446,478,415,488,383,497,351,505,319,512,287,517,254,520,221,523,188,524,155,523,123,521,90,518,57,513,25,507,-7,499,-39,490,-70,480,-100,468,-130,455,-160,440,-188,423,-216,406,-243,387,-268,366,-293,345,-317,322,-339,297,-359,272,-379,245,-396,217,-412,188,-425,158,-436,127,-445,96,-451,63,-454,31,-455,-2,-454,-35,-450,-67,-443,-100,-435,-131,-424,-162,-410,-192,-395,-221,-377,-249,-358,-276,-336,-301,-313,-324,-289,-346,-263,-366,-236,-384,-207,-401,-178,-416,-147,-428,-116,-439,-85,-447,-52,-453,-20,-456,13,-457,46,-456,79,-452,111,-446,143,-437,174,-426,203,-412,232,-396,259,-377,285,-357,309,-334,331,-310,352,-285,372,-259,391,-232,408,-204,423,-174,434,-144,443,-112,452,-80,464,-50,484,-24,512,-7,543,3,576,5,609,1,641,-7,672,-18,702,-29,734,-40,765,-50,796,-61,827,-71,858,-82,890,-90,923,-92,954,-83,978,-61,994,-32'},
+  {k:'tri60',t:'三角牙 60°',n:120,a:1.16883,d:'859,0,822,-18,785,-37,748,-55,712,-74,675,-92,638,-111,601,-129,564,-148,527,-166,490,-184,453,-203,416,-221,380,-240,343,-258,306,-277,269,-295,232,-314,195,-332,158,-350,121,-369,85,-387,48,-406,11,-424,-26,-443,-63,-461,-100,-479,-137,-498,-174,-516,-211,-535,-247,-553,-284,-572,-321,-590,-358,-609,-395,-627,-432,-645,-469,-664,-506,-682,-543,-701,-579,-719,-616,-738,-653,-756,-670,-742,-670,-701,-670,-660,-670,-619,-670,-577,-670,-536,-670,-495,-670,-454,-670,-412,-670,-371,-670,-330,-670,-289,-670,-247,-670,-206,-670,-165,-670,-124,-670,-82,-670,-41,-670,0,-670,41,-670,82,-670,124,-670,165,-670,206,-670,247,-670,289,-670,330,-670,371,-670,412,-670,454,-670,495,-670,536,-670,577,-670,619,-670,660,-670,701,-670,742,-653,756,-616,738,-579,719,-543,701,-506,682,-469,664,-432,645,-395,627,-358,609,-321,590,-284,572,-247,553,-211,535,-174,516,-137,498,-100,479,-63,461,-26,443,11,424,48,406,85,387,121,369,158,350,195,332,232,314,269,295,306,277,343,258,380,240,416,221,453,203,490,184,527,166,564,148,601,129,638,111,675,92,712,74,748,55,785,37,822,18'},
+  {k:'tri82',t:'三角牙 82°',n:120,a:0.90372,d:'517,0,488,-24,460,-48,432,-72,403,-96,375,-120,347,-144,318,-168,290,-192,262,-216,233,-240,205,-264,177,-288,148,-312,120,-336,91,-360,63,-384,35,-408,6,-432,-22,-456,-50,-480,-79,-504,-107,-528,-135,-552,-164,-576,-192,-600,-220,-624,-249,-648,-277,-672,-305,-696,-334,-720,-362,-744,-391,-768,-419,-792,-447,-816,-476,-840,-504,-864,-517,-854,-517,-817,-517,-780,-517,-743,-517,-706,-517,-669,-517,-631,-517,-594,-517,-557,-517,-520,-517,-483,-517,-446,-517,-409,-517,-371,-517,-334,-517,-297,-517,-260,-517,-223,-517,-186,-517,-149,-517,-111,-517,-74,-517,-37,-517,0,-517,37,-517,74,-517,111,-517,149,-517,186,-517,223,-517,260,-517,297,-517,334,-517,371,-517,409,-517,446,-517,483,-517,520,-517,557,-517,594,-517,631,-517,669,-517,706,-517,743,-517,780,-517,817,-517,854,-504,864,-476,840,-447,816,-419,792,-391,768,-362,744,-334,720,-305,696,-277,672,-249,648,-220,624,-192,600,-164,576,-135,552,-107,528,-79,504,-50,480,-22,456,6,432,35,408,63,384,91,360,120,336,148,312,177,288,205,264,233,240,262,216,290,192,318,168,347,144,375,120,403,96,432,72,460,48,488,24'},
+  {k:'eggCsv',t:'蛋形（CSV 采样）',n:120,a:1.12686,d:'928,2,898,18,866,29,833,39,800,47,768,56,735,65,702,74,670,84,638,95,607,108,576,123,548,141,521,161,496,184,473,210,452,236,433,264,414,292,395,320,376,348,355,374,332,400,308,424,283,446,256,466,227,484,196,498,165,510,132,519,99,526,65,531,31,532,-2,531,-36,527,-69,519,-102,510,-134,499,-165,487,-197,474,-227,460,-257,444,-286,427,-314,408,-341,387,-367,365,-391,341,-413,316,-434,289,-454,261,-471,232,-486,202,-500,171,-512,139,-521,107,-529,74,-534,40,-536,6,-536,-27,-533,-61,-527,-94,-517,-127,-505,-158,-491,-189,-475,-219,-458,-248,-439,-276,-417,-302,-394,-327,-370,-350,-344,-373,-318,-394,-291,-414,-262,-433,-233,-450,-203,-464,-171,-478,-140,-490,-108,-502,-76,-513,-43,-522,-10,-530,23,-536,56,-541,90,-545,124,-548,157,-550,191,-550,225,-549,259,-547,293,-544,326,-540,360,-535,393,-530,427,-523,460,-516,493,-509,525,-500,558,-489,590,-478,621,-465,652,-452,682,-437,712,-421,742,-405,771,-387,800,-369,828,-350,855,-330,882,-309,907,-286,929,-261,949,-234,966,-204,980,-173,990,-141,994,-108,990,-75,976,-44,954,-19'},
+  {k:'circCsv',t:'圆（CSV 采样）',n:120,a:3.13834,d:'1000,0,998,53,994,105,987,157,978,208,965,259,951,309,933,359,913,407,891,454,866,500,838,545,809,588,777,629,743,669,707,707,669,743,629,777,587,809,544,839,500,866,454,891,406,913,358,933,309,951,258,966,208,978,156,988,104,994,52,998,0,1000,-53,998,-105,994,-157,987,-208,978,-259,966,-309,951,-359,933,-407,913,-454,891,-500,866,-545,838,-588,808,-629,777,-669,743,-707,707,-743,669,-777,629,-809,587,-839,544,-866,500,-891,454,-913,406,-933,358,-951,309,-966,259,-978,208,-987,156,-994,104,-998,52,-1000,0,-998,-53,-994,-105,-987,-157,-978,-208,-966,-259,-951,-309,-933,-359,-913,-407,-890,-454,-866,-500,-838,-545,-809,-588,-777,-629,-743,-669,-707,-707,-669,-743,-629,-777,-587,-809,-544,-838,-500,-866,-454,-891,-406,-914,-358,-934,-309,-951,-258,-966,-208,-978,-156,-987,-104,-994,-52,-998,0,-1000,53,-998,105,-994,157,-988,208,-978,259,-966,309,-951,358,-933,407,-913,454,-891,500,-866,545,-838,588,-809,629,-777,669,-743,707,-707,743,-669,777,-629,809,-587,839,-544,866,-500,891,-454,913,-406,933,-358,951,-309,966,-258,978,-208,987,-156,994,-104,998,-52'},
+  {k:'taiChiCsv',t:'太极曲线（CSV 采样）',n:120,a:0.74482,d:'856,-309,827,-322,798,-332,768,-340,738,-345,707,-348,676,-348,645,-345,615,-339,585,-331,556,-320,529,-306,502,-290,477,-272,454,-251,433,-229,413,-205,396,-179,381,-152,369,-123,360,-94,353,-64,349,-33,347,-2,345,29,341,59,335,90,326,119,314,148,299,175,282,201,263,225,242,248,219,268,194,287,168,303,140,317,112,328,82,337,51,343,21,346,-10,346,-41,344,-72,339,-102,331,-131,321,-159,308,-186,293,-211,275,-235,255,-256,233,-276,209,-294,184,-309,157,-322,129,-332,100,-340,70,-344,39,-347,8,-346,-23,-345,-54,-342,-85,-337,-115,-332,-146,-325,-176,-316,-205,-306,-235,-295,-264,-283,-292,-269,-320,-254,-347,-238,-374,-221,-399,-203,-424,-183,-448,-163,-472,-141,-494,-119,-515,-95,-535,-71,-554,-46,-573,-20,-590,7,-605,34,-620,62,-633,90,-645,119,-656,149,-666,179,-674,209,-681,239,-686,270,-690,301,-693,332,-694,363,-694,394,-693,425,-690,455,-686,486,-680,516,-674,546,-666,575,-656,604,-645,633,-633,661,-620,688,-605,714,-589,740,-572,765,-554,790,-535,813,-515,836,-493,857,-471,877,-448,897,-424,915,-399,928,-371,929,-342,914,-316,886,-304'},
+  {k:'fanDxf',t:'扇形（DXF 散点）',n:120,a:1.58015,d:'975,0,942,-27,913,-57,886,-89,858,-121,830,-152,801,-183,772,-214,744,-245,716,-277,687,-308,659,-339,630,-370,602,-401,574,-433,546,-464,517,-495,489,-526,460,-557,431,-587,402,-618,374,-650,348,-683,320,-714,283,-727,244,-716,208,-694,174,-669,140,-644,105,-620,69,-598,32,-578,-6,-561,-45,-545,-85,-531,-125,-518,-166,-507,-207,-498,-248,-490,-290,-483,-332,-478,-374,-474,-416,-471,-458,-472,-500,-476,-542,-483,-583,-487,-623,-480,-651,-451,-661,-410,-664,-368,-667,-326,-672,-284,-679,-243,-688,-201,-698,-160,-706,-119,-714,-78,-722,-36,-729,5,-737,47,-745,88,-753,130,-761,171,-770,212,-778,254,-785,295,-791,337,-797,379,-805,420,-816,461,-828,501,-825,543,-792,561,-751,569,-709,575,-667,580,-625,584,-583,588,-541,590,-499,592,-457,593,-415,593,-373,592,-331,590,-289,588,-246,585,-205,580,-163,576,-121,570,-79,563,-38,556,4,547,45,538,86,528,126,518,167,506,207,494,247,481,287,467,327,452,366,437,405,421,444,404,482,386,520,367,557,348,594,328,631,307,667,286,703,264,739,241,774,218,808,194,842,169,875,142,908,115,941,90,975,66,999,34'},
+  {k:'taiChiDxf',t:'太极曲线 108 点（DXF）',n:120,a:0.74392,d:'939,0,969,-5,991,-25,999,-55,993,-85,984,-114,973,-143,961,-172,948,-200,934,-227,918,-254,901,-280,883,-305,864,-329,844,-353,823,-375,800,-397,777,-417,753,-437,728,-455,703,-472,676,-489,649,-503,622,-517,593,-530,564,-541,535,-551,505,-559,475,-566,445,-572,414,-577,384,-580,353,-582,322,-582,291,-581,260,-579,229,-575,199,-570,168,-563,139,-556,109,-547,80,-536,51,-524,23,-511,-4,-497,-31,-482,-57,-465,-82,-447,-107,-428,-131,-408,-153,-387,-175,-365,-196,-342,-216,-319,-234,-294,-252,-268,-268,-242,-283,-215,-297,-188,-310,-159,-322,-131,-331,-101,-339,-71,-344,-41,-346,-10,-346,21,-342,52,-337,82,-328,112,-317,140,-303,168,-287,195,-268,219,-248,242,-225,263,-201,282,-175,299,-147,313,-119,325,-89,335,-59,342,-28,345,2,346,33,345,64,340,94,333,123,324,152,311,179,297,205,280,229,260,251,239,271,215,289,190,305,164,319,136,330,107,342,78,356,51,372,25,391,0,412,-23,435,-43,459,-62,486,-79,513,-93,542,-104,571,-113,601,-120,632,-123,663,-124,694,-122,725,-117,755,-110,784,-100,812,-87,839,-72,865,-55,888,-35,911,-15'},
+  {k:'roundSpline',t:'圆曲线（DXF SPLINE）',n:120,a:3.13632,d:'1000,0,999,-52,994,-104,987,-156,977,-208,965,-259,950,-309,933,-358,912,-406,890,-454,865,-500,838,-544,809,-588,777,-629,743,-669,707,-707,669,-743,629,-777,588,-809,544,-838,500,-865,454,-890,406,-912,358,-933,309,-950,259,-965,208,-977,156,-987,104,-994,52,-999,0,-1000,-52,-999,-104,-994,-156,-987,-208,-977,-259,-965,-309,-950,-358,-933,-406,-912,-454,-890,-500,-865,-544,-838,-588,-809,-629,-777,-669,-743,-707,-707,-743,-669,-777,-629,-809,-588,-838,-544,-865,-500,-890,-454,-912,-406,-933,-358,-950,-309,-965,-259,-977,-208,-987,-156,-994,-104,-999,-52,-1000,0,-999,52,-994,104,-987,156,-977,208,-965,259,-950,309,-933,358,-912,406,-890,454,-865,500,-838,544,-809,588,-777,629,-743,669,-707,707,-669,743,-629,777,-588,809,-544,838,-500,865,-454,890,-406,912,-358,933,-309,950,-259,965,-208,977,-156,987,-104,994,-52,999,0,1000,52,999,104,994,156,987,208,977,259,965,309,950,358,933,406,912,454,890,500,865,544,838,588,809,629,777,669,743,707,707,743,669,777,629,809,588,838,544,865,500,890,454,912,406,933,358,950,309,965,259,977,208,987,156,994,104,999,52'},
+  {k:'cross',t:'十字架断面（参数化）',n:34,a:1.47735,d:'1000,0,983,184,932,361,170,105,148,135,121,160,89,179,274,962,92,996,-92,996,-274,962,-89,179,-121,160,-148,135,-170,105,-932,361,-983,184,-1000,0,-983,-184,-932,-361,-170,-105,-148,-135,-121,-160,-89,-179,-274,-962,-92,-996,92,-996,274,-962,89,-179,121,-160,148,-135,170,-105,932,-361,983,-184'},
+];
+/* ---------------- 族③ 横截面解码 ----------------
+   SEC_LIB 里的曲线以「坐标 ×1000 的整数」压缩存放，这里解回浮点并缓存。
+   每条曲线的第 0 点 = 原始 DXF 曲线的起点，已被旋转到 x 正半轴上。 */
+var _secCache={};
+function secCurve(key){
+  if(_secCache[key])return _secCache[key];
+  var e=null,i;
+  for(i=0;i<SEC_LIB.length;i++)if(SEC_LIB[i].k===key){e=SEC_LIB[i];break;}
+  if(!e)return null;
+  var raw=e.d.split(','),n=e.n,pts=[];
+  for(i=0;i<n;i++)pts.push([parseInt(raw[2*i],10)/1000,parseInt(raw[2*i+1],10)/1000]);
+  _secCache[key]=pts;
+  return pts;
+}
+/* ---------------- 新增断面库 SEC_LIB2 的解码 ----------------
+   SEC_LIB2 来自 E:/pythonProject/program/最简原始模版用于生成直锥螺旋管/ 的
+   真实 DXF / CSV 文件，格式与 SEC_LIB 一致（×1000 整数、x,y 交替）。 */
+var _secCache2={};
+function secCurve2(key){
+  if(_secCache2[key])return _secCache2[key];
+  var e=null,i;
+  for(i=0;i<SEC_LIB2.length;i++)if(SEC_LIB2[i].k===key){e=SEC_LIB2[i];break;}
+  if(!e)return null;
+  var raw=e.d.split(','),n=e.n,pts=[];
+  for(i=0;i<n;i++)pts.push([parseInt(raw[2*i],10)/1000,parseInt(raw[2*i+1],10)/1000]);
+  _secCache2[key]=pts;
+  return pts;
+}
+function secMeta2(key){
+  var i;
+  for(i=0;i<SEC_LIB2.length;i++)if(SEC_LIB2[i].k===key)return SEC_LIB2[i];
+  return null;
+}
+/* ---------------- 通用：断面等效圆面积缩放（GL25 脚本的 scale 逻辑） ----------------
+   原脚本：把断面的多边形面积换算成"等效圆半径"，再按目标 amp 缩放。
+   等效圆半径 r_eq = sqrt(A/π)，缩放系数 = target / r_eq。 */
+function secScaleToEq(pts,target){
+  var n=pts.length,A=0,i;
+  for(i=0;i<n;i++){
+    var x1=pts[i][0],y1=pts[i][1],j=(i+1)%n;
+    A+=x1*pts[j][1]-pts[j][0]*y1;
+  }
+  A=Math.abs(A)*0.5;
+  var req=Math.sqrt(A/Math.PI);
+  if(req<=0)return {pts:pts,k:1,area:A};
+  var k=target/req;
+  var out=new Array(n);
+  for(i=0;i<n;i++)out[i]=[pts[i][0]*k,pts[i][1]*k];
+  return {pts:out,k:k,area:A};
+}
+/* ---------------- 通用：绕原点旋转 2D 曲线 ---------------- */
+function secRotate(pts,deg){
+  var a=deg*Math.PI/180,cs=Math.cos(a),sn=Math.sin(a),out=new Array(pts.length),i;
+  for(i=0;i<pts.length;i++){
+    var x=pts[i][0],y=pts[i][1];
+    out[i]=[x*cs-y*sn,x*sn+y*cs];
+  }
+  return out;
+}
+/* ---------------- 通用：Rodrigues 旋转矩阵（绕任意轴 v 转 psi） ----------------
+   原脚本 rotation_matrix_around_vector 的直接实现：
+     R = I + sin(psi)·K + (1−cos(psi))·K²,  K 为 v 的反对称矩阵。 */
+function rotAbout(v,psi){
+  var L=Math.sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2])||1e-9;
+  var vx=v[0]/L,vy=v[1]/L,vz=v[2]/L;
+  var c=Math.cos(psi),s=Math.sin(psi),k=1-c;
+  return [
+    [c+vx*vx*k,      vx*vy*k-vz*s,   vx*vz*k+vy*s],
+    [vy*vx*k+vz*s,   c+vy*vy*k,     vy*vz*k-vx*s],
+    [vz*vx*k-vy*s,   vz*vy*k+vx*s,   c+vz*vz*k]
+  ];
+}
+function rotApply(R,p){
+  return [R[0][0]*p[0]+R[0][1]*p[1]+R[0][2]*p[2],
+          R[1][0]*p[0]+R[1][1]*p[1]+R[1][2]*p[2],
+          R[2][0]*p[0]+R[2][1]*p[1]+R[2][2]*p[2]];
+}
+/* 族③ 的局部截面（在管的局部 xy 平面内，B=局部x、N=局部y）
+   —— 曲线本身按「外接半径 = 1」归一，所以 tr 就是它的外接半径；
+   —— secAz：把整条曲线在 2D 平面里绕原点旋转多少度（起点方位随之改变）。
+   曲线从 DXF 抽来时起点已对齐 x 正半轴 ⇒ secAz=0 时起点就在 +x 方向。
+   ⚠ secAz 只旋转【截面自身】，与沿管的扭转 ψ(t) 是两回事：
+     ψ 让截面绕【管轴】转（沿管长变化），secAz 让截面在【自己平面里】转（沿管长不变）。 */
+function f3SecLocal(P){
+  var c=secCurve(P.secType||'round');
+  if(!c)c=secCurve('round');
+  var az=(P.secAz===undefined?0:P.secAz)*Math.PI/180;
+  var cs=Math.cos(az),sn=Math.sin(az),out=[],i;
+  var mir=(P.mirX<0);                     /* 面板右上角镜像按钮：x → −x（以 y 轴为镜） */
+  for(i=0;i<c.length;i++){
+    var x=c[i][0],y=c[i][1];
+    var px=x*cs-y*sn, py=x*sn+y*cs;
+    if(mir)px=-px;
+    out.push([px,py]);
+  }
+  return out;
+}
+/* 按弧长均匀重采样闭合截面到 M 点，起点保持在索引 0（已对齐 x 正半轴）。
+   —— 3D 网格用重采样后的点数（控制面数），2D 预览用原始点数（保形）。 */
+function f3SecResample(pts,M){
+  var n=pts.length,i,k=0;
+  if(n<3)return pts;
+  var cum=[0];
+  for(i=1;i<=n;i++){
+    var a=pts[i-1],b=pts[i%n];
+    cum.push(cum[i-1]+Math.hypot(b[0]-a[0],b[1]-a[1]));
+  }
+  var L=cum[n],out=[];
+  if(L<=0)return pts;
+  for(i=0;i<M;i++){
+    var target=L*i/M;
+    while(k<n-1&&cum[k+1]<target)k++;
+    var seg=cum[k+1]-cum[k];
+    var t=seg>0?(target-cum[k])/seg:0;
+    var a=pts[k],b=pts[(k+1)%n];
+    out.push([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t]);
+  }
+  return out;
+}
+/* ---------------- 族③ 螺旋锥管：几何核心（渲染与反算共用） ----------------
+   把参数 → 中心线/标架/管半径 这套关系抽出来单独一份，
+   这样"反算最大管径 / 反算最大阵列数"用的公式与画出来的模型完全一致，
+   不会出现"算出来的数与画出来的不符"。 */
+function f3Geo(P){
   var Rbot=Math.max(2,P.db)/2,al=P.alpha*Math.PI/180;
   var Rtop=Rbot-Math.tan(al)*P.h;
   var clipped=false;
@@ -742,19 +1279,6 @@ function f3Build(P){
     var z=P.h*(Math.exp(bb*t)-1)/(Math.exp(bb)-1||1e-9);
     return [R*Math.cos(th),z,R*Math.sin(th)];
   }
-  var NT=260,NV=36,i,j;
-  var frames=[];
-  var hh=1e-4;
-  for(i=0;i<=NT;i++){
-    var t=i/NT,c0=C(t),c1=C(Math.min(1,t+hh)),c2=C(Math.max(0,t-hh));
-    var d1=[c1[0]-c2[0],c1[1]-c2[1],c1[2]-c2[2]];
-    var d2=[c1[0]-2*c0[0]+c2[0],c1[1]-2*c0[1]+c2[1],c1[2]-2*c0[2]+c2[2]];
-    var T=norm3(d1),Nn=norm3(d2),B=norm3(cross3(T,Nn));
-    var psi;
-    if(P.tw===0)psi=P.twist*TAU*turns*t;
-    else psi=P.twist*TAU*turns*(Math.pow(2,3*t)-1)/7;
-    frames.push({c:c0,T:T,N:Nn,B:B,psi:psi});
-  }
   var bands=Math.max(0,Math.round(P.bands));
   function wave(t){
     if(bands<=0)return 1;
@@ -762,11 +1286,145 @@ function f3Build(P){
     var saw=2-(ph-Math.floor(ph));
     return 1+P.cAmp*(saw-1.5);
   }
+  /* 该端的局部管半径（含 taper 收缩 + 波纹起伏） */
+  function rs(t){ return P.tr*(1-P.taper*t)*wave(t); }
+  return {Rbot:Rbot,Rtop:Rtop,clipped:clipped,bb:bb,turns:turns,C:C,wave:wave,rs:rs,bands:bands};
+}
+/* ---------------- 族③ 反算：曲面不重叠的「管径上限」与「阵列数上限」 ----------------
+   ⚠ 全页统一用 F3_MT 这一套采样数（读数、按钮、缓存都必须一致）。
+     否则会出现"按钮刚应用完，读数却说不安全"这种自相矛盾的界面。 */
+var F3_MT=160;
+/* 把管半径吸附到滑条刻度（min=1, step=0.1）上。
+   —— 不吸附的话，浏览器会把 range 的值吸附到最近的合法步长，
+      造成"滑条显示 4.8、模型实际用 4.7"这种显示与渲染对不上的情况。 */
+function f3TrSnap(v){
+  var mn=1,mx=10,st=0.1;
+  var k=Math.round((v-mn)/st);
+  var s=mn+k*st;
+  if(s<mn)s=mn;if(s>mx)s=mx;
+  return Math.round(s*1000)/1000;
+}
+/* 判据（保守充分条件）：
+     把每份管看成沿中心线扫掠的圆截面管。对任意两份（份0 的 t1 点 vs 第 g 份的 t2 点），
+     只要中心线距离 d 满足   d > tr·(k(t1)+k(t2))
+     两管就一定不相交。其中 k(t) = (1 − taper·t)·wave(t) 是无量纲的局部
+     收缩/波纹因子，局部管半径 rs(t) = tr·k(t)（与 f3Geo 的 rs 完全一致）。
+   —— tr 在判据里只线性出现 ⇒ 上限 = min over 所有点对 d/(k1+k2)，
+      一次遍历直接出解，不需要二分（实测 n=12 时约 1 ms）。
+   —— 还要查「同一份内部圈间自重叠」：真正角对齐的一圈是 t2 = t1 + m/turns，
+      取 ±半圈窗口内的真实最近点（不能用 turn-index 过滤：t=0.499 与 0.501
+      是同一条曲线的相邻点，不是不同圈）。
+   两类约束：
+     (A) 邻份：份0(t1) vs 第 g 份(t2)，g=1..n−1，绕该族对称轴转 dφ=2πg/n
+     (B) 圈间：同一份内相隔 m 圈，m=1..floor(turns)
+   clear = 附加安全余量（相对两管半径之和的比例），默认 3%。 */
+function f3SafeTr(P,n,MT,clear){
+  MT=MT||F3_MT; clear=(clear===undefined)?0.03:clear;
+  n=Math.max(1,Math.min(12,Math.round(n)));
+  var G=f3Geo(P),i,j,g,m;
+  var cx=[],cy=[],cz=[],kw=[];
+  for(i=0;i<=MT;i++){
+    var t=i/MT,c=G.C(t);
+    cx.push(c[0]);cy.push(c[1]);cz.push(c[2]);
+    kw.push((1-P.taper*t)*G.wave(t));      // = rs(t)/tr，无量纲
+  }
+  var best=Infinity,at=null;
+  /* (A) 邻份 */
+  for(g=1;g<n;g++){
+    var dphi=TAU*g/n,cc=Math.cos(dphi),ss=Math.sin(dphi);
+    for(i=0;i<=MT;i++){
+      var xi=cx[i],yi=cy[i],zi=cz[i],ki=kw[i];
+      for(j=0;j<=MT;j++){
+        /* 第 g 份绕竖直轴转 dφ ⇒ 只动 x/z 分量，y（竖直）不变 */
+        var bx=cx[j]*cc+cz[j]*ss, bz=-cx[j]*ss+cz[j]*cc;
+        var dx=xi-bx,dy=yi-cy[j],dz=zi-bz;
+        var d=Math.sqrt(dx*dx+dy*dy+dz*dz);
+        var den=ki+kw[j]+clear;
+        var tm=d/den;
+        if(tm<best){best=tm;at={kind:'邻份',g:g,t1:i/MT,t2:j/MT};}
+      }
+    }
+  }
+  /* (B) 同份圈间自重叠 */
+  var turns=G.turns,mm=Math.floor(turns);
+  for(m=1;m<=mm;m++){
+    var off=m/turns,half=0.5/turns;
+    for(i=0;i<=MT;i++){
+      var t1=i/MT,tc=t1+off;
+      if(tc>1+1e-9)break;
+      var lo=Math.max(0,Math.round((tc-half)*MT)),hi=Math.min(MT,Math.round((tc+half)*MT));
+      for(j=lo;j<=hi;j++){
+        var dx2=cx[i]-cx[j],dy2=cy[i]-cy[j],dz2=cz[i]-cz[j];
+        var d2=Math.sqrt(dx2*dx2+dy2*dy2+dz2*dz2);
+        var den2=kw[i]+kw[j]+clear;
+        var tm2=d2/den2;
+        if(tm2<best){best=tm2;at={kind:'圈间',m:m,t1:t1,t2:j/MT};}
+      }
+    }
+  }
+  return {tr:best,at:at,n:n};
+}
+/* 反过来：固定当前管径 tr（出&入口管径由 taper 决定），求最大允许的阵列数 n（≤12）。
+   tr 上限随 n 严格单调递减 ⇒ lim(n) 是单调不增函数，
+   于是"tr ≤ lim(n)"成立的最大 n 可以二分查找（最多 4 次求值）。
+   缓存：lim(n) 只依赖几何参数（db/h/α/turns/taper/bands/cAmp/bfreq），与 tr 无关，
+   所以拖动「管半径」滑条时缓存命中，读数刷新是瞬时的。 */
+var _f3LimCache={key:'',lim:{}};
+function f3Limit(P,n,MT){
+  MT=MT||F3_MT;
+  var key=[MT,P.db,P.h,P.alpha,P.turns,P.taper,P.bands,P.cAmp,P.bfreq].join('|');
+  if(_f3LimCache.key!==key)_f3LimCache={key:key,lim:{}};
+  var L=_f3LimCache.lim;
+  if(L[n]===undefined)L[n]=f3SafeTr(P,n,MT).tr;
+  return L[n];
+}
+function f3MaxReps(P,MT){
+  MT=MT||F3_MT;
+  var tr=P.tr,lo=1,hi=12,best=1,lim=f3Limit(P,1,MT);
+  while(lo<=hi){
+    var mid=Math.floor((lo+hi)/2),lm=f3Limit(P,mid,MT);
+    if(tr<=lm){best=mid;lim=lm;lo=mid+1;}
+    else hi=mid-1;
+  }
+  return {n:best,tr:tr,lim:lim};
+}
+/* 把"约束发生在哪"写成一句人话 */
+function f3AtText(at){
+  if(!at)return '（未找到约束点）';
+  var who=(at.kind==='邻份')?('第 '+at.g+' 份 与 第 0 份'):('同一份内相隔 '+at.m+' 圈');
+  return who+'，t='+at.t1.toFixed(2)+' ↔ '+at.t2.toFixed(2);
+}
+function f3Build(P){
+  var G=f3Geo(P);
+  var Rbot=G.Rbot,Rtop=G.Rtop,clipped=G.clipped,bb=G.bb,turns=G.turns;
+  function C(t){ return G.C(t); }
+  function wave(t){ return G.wave(t); }
+  var NT=260,NV=36,i,j;
+  var frames=[];
+  var RM=rmfFrames(C,NT,0,1);      // 旋转最小化标架：两端不退化
+  for(i=0;i<=NT;i++){
+    var t=i/NT;
+    var psi;
+    if(P.tw===0)psi=P.twist*TAU*turns*t;
+    else psi=P.twist*TAU*turns*(Math.pow(2,3*t)-1)/7;
+    frames.push({c:RM.pts[i],T:RM.T[i],N:RM.N[i],B:RM.B[i],psi:psi});
+  }
+  var bands=G.bands;
+  /* 横截面（闭合曲线，来自 DXF）：局部 xy 平面，外接半径归一为 1。
+     原来的圆截面就是"每点半径相等"的特例，这里统一按曲线放样：
+     —— 圆 ⇒ 与旧版逐点一致（半径 tr·(1−taper·t)·wave(t)）；
+     —— 蛋咬一口等 ⇒ 真正的非圆截面管。 */
+  var SEC=f3SecLocal(P);              /* 已按 secAz 旋转的局部截面 */
+  var SECP=f3SecResample(SEC,96);      /* 3D 网格用：96 点 */
+  var NS=SECP.length;
+  NV=NS;                               /* 环向分段数 = 截面点数 */
   var geo=gridGeom(NT,NV,function(s,v){
     var t=s,fr=frames[Math.round(s*NT)];
-    var a=TAU*v;
-    var rs=P.tr*(1-P.taper*t)*wave(t);
-    var u=rs*Math.cos(a),w=rs*Math.sin(a);
+    /* v∈[0,1] 绕截面一周；v=1 必须回到索引 0 ⇒ 环向闭合（与旧版 a=TAU·v 同理） */
+    var idx=Math.round(v*NS)%NS;
+    var q=SECP[idx];
+    var rs=G.rs(t);
+    var u=q[0]*rs,w=q[1]*rs;
     var cp=Math.cos(fr.psi),sp=Math.sin(fr.psi);
     var x=u*cp-w*sp,y=u*sp+w*cp;
     return [
@@ -776,18 +1434,129 @@ function f3Build(P){
     ];
   });
   var g=new THREE.Group();
-  g.add(new THREE.Mesh(geo,solid(0x2f6fb5,0.95)));
-  g.add(new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:0x12305e,wireframe:true,
-    transparent:true,opacity:0.07})));
+  /* 管体：开口曲面（不是封闭实体）
+     —— 只画侧壁，两端不封盖；材质双面 + 半透明，能看见管内壁。
+     —— 断面两端加一圈亮边（入口/出口），让"开口"看得见。 */
+  var wallMat=new THREE.MeshPhongMaterial({color:0x2a6ac2,shininess:70,specular:0x88aacc,
+    transparent:true,opacity:0.80,side:THREE.DoubleSide,depthWrite:false});
+  var wallMesh=new THREE.Mesh(geo,wallMat); wallMesh.name='tubeWall';
+  g.add(wallMesh);
+  var wireMesh=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:0x12305e,wireframe:true,
+    transparent:true,opacity:0.10,depthWrite:false}));
+  wireMesh.name='tubeWire';
+  g.add(wireMesh);
+  /* 入口 / 出口：断面亮圈（明确标示这是开口管）
+     —— 用 TubeGeometry 而不是 Line：WebGL 不支持 linewidth>1，
+        用 Line 画出来只有 1px，几乎看不见"这里有断口"。
+     —— 环的粗细按【该端局部管半径】给（出口管径只有入口的 1/3，
+        若沿用初始 tr，圈会细到看不见）。 */
+  function rimAt(t,color){
+    var fr=frames[Math.round(t*NT)],rs0=G.rs(t);
+    var rs=rs0*1.03;                                  // 略大于管壁，避免 z-fight
+    var pts=[],i2,a2;
+    for(i2=0;i2<=NS;i2++){
+      var q=SECP[i2%NS];
+      var u=rs*q[0],w=rs*q[1];
+      var cp=Math.cos(fr.psi),sp=Math.sin(fr.psi);
+      var x=u*cp-w*sp,y=u*sp+w*cp;
+      pts.push(new THREE.Vector3(fr.c[0]+x*fr.B[0]+y*fr.N[0],
+                                 fr.c[1]+x*fr.B[1]+y*fr.N[1],
+                                 fr.c[2]+x*fr.B[2]+y*fr.N[2]));
+    }
+    var rim=new THREE.Mesh(
+      new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts,true),NS,
+        Math.max(0.55,rs0*0.16),8,true),
+      new THREE.MeshBasicMaterial({color:color}));
+    rim.name=(t===0)?'rimIn':'rimOut';
+    g.add(rim);
+    /* 断口面：一层极淡的贴面，贴在断面上。
+       —— 圆截面时用圆盘；非圆截面时用【截面自身的多边形】填充，
+          否则会看到"圆盘突出在蛋形轮廓外"的穿帮。
+       —— 三方库没有 earcut（three r128 的 ShapeGeometry 依赖它但未打包），
+          所以这里手写耳切三角化（简单多边形，够用）。 */
+    var disc;
+    try{
+      var shp=new THREE.Shape();
+      shp.moveTo(SECP[0][0]*rs0,SECP[0][1]*rs0);
+      for(i2=1;i2<NS;i2++)shp.lineTo(SECP[i2][0]*rs0,SECP[i2][1]*rs0);
+      shp.closePath();
+      var dg=new THREE.ShapeGeometry(shp);
+      if(dg&&dg.getAttribute('position')&&dg.getAttribute('position').count>2){
+        var cp2=Math.cos(fr.psi),sp2=Math.sin(fr.psi);
+        var pa=dg.getAttribute('position');
+        for(i2=0;i2<pa.count;i2++){
+          var ux=pa.getX(i2),uy=pa.getY(i2);
+          pa.setXYZ(i2,ux*cp2-uy*sp2,ux*sp2+uy*cp2,0);
+        }
+        pa.needsUpdate=true;
+        disc=new THREE.Mesh(dg,new THREE.MeshBasicMaterial({color:color,transparent:true,
+          opacity:0.16,side:THREE.DoubleSide,depthWrite:false}));
+      }
+    }catch(e){console.error(e);}
+    if(!disc){
+      /* 退化路径：回到圆盘（仅在三角化失败时用） */
+      disc=new THREE.Mesh(
+        new THREE.RingGeometry(rs0*0.10,rs0*1.03,72),
+        new THREE.MeshBasicMaterial({color:color,transparent:true,opacity:0.16,
+          side:THREE.DoubleSide,depthWrite:false}));
+    }
+    disc.name=(t===0)?'discIn':'discOut';
+    disc.position.set(fr.c[0],fr.c[1],fr.c[2]);
+    /* 把盘摆到与断面平行：用该帧的 (B,N) 构造旋转 */
+    var mtx=new THREE.Matrix4().makeBasis(
+      new THREE.Vector3(fr.B[0],fr.B[1],fr.B[2]),
+      new THREE.Vector3(fr.N[0],fr.N[1],fr.N[2]),
+      new THREE.Vector3(fr.T[0],fr.T[1],fr.T[2]));
+    disc.quaternion.setFromRotationMatrix(mtx);
+    g.add(disc);
+  }
+  rimAt(0,0x0b57a4);       // 入口（底）· 深蓝
+  rimAt(1,0xd0342c);       // 出口（顶）· 亮红
+  /* 红色扭转母线：贴在管内壁、沿管轴向走的一条线；
+     它随 psi(t) 一起绕切线扭转 ⇒ twist 一改，线的缠绕程度立刻可见。
+     用 TubeGeometry 而不是 Line（WebGL 不支持 linewidth>1，线会细到看不见）。
+     ⚠ 圆截面时它走"断面上固定方位角"的母线；
+       非圆截面时改为走【截面曲线的起点】（该点已被对齐到 x 正半轴），
+       这样不管截面是什么形状，红线都真正贴在管壁上，不会跑到管外。 */
+  var twistPts=[],i3;
+  var redAnchor=SECP[0];                       /* 截面起点（x 正半轴方向） */
+  for(i3=0;i3<=240;i3++){
+    var t3=i3/240,fr3=frames[Math.round(t3*NT)];
+    var rs3=G.rs(t3)*0.985;   // 略微内缩，贴在壁上不被 z-fight
+    var u3=rs3*redAnchor[0],w3=rs3*redAnchor[1];
+    var cp3=Math.cos(fr3.psi),sp3=Math.sin(fr3.psi);
+    var x3=u3*cp3-w3*sp3,y3=u3*sp3+w3*cp3;
+    twistPts.push(new THREE.Vector3(fr3.c[0]+x3*fr3.B[0]+y3*fr3.N[0],
+                                     fr3.c[1]+x3*fr3.B[1]+y3*fr3.N[1],
+                                     fr3.c[2]+x3*fr3.B[2]+y3*fr3.N[2]));
+  }
+  var tcurve=new THREE.CatmullRomCurve3(twistPts);
+  var redMesh=new THREE.Mesh(new THREE.TubeGeometry(tcurve,260,Math.max(0.25,P.tr*0.075),8,false),
+    solid(0xe03131,0.98));
+  redMesh.name='twistLine';        // 红色扭转母线（验收用名）
+  g.add(redMesh);
+  /* 扭转采样表（验收/调试用）：每个采样点给出
+     [红线点xyz, 中心线点xyz, 法向N, 副法向B]
+     由此可独立算出红线绕管轴的缠绕角，与读数里的 ψ(1) 交叉验证。 */
+  var tSamples=[];
+  for(i3=0;i3<twistPts.length;i3++){
+    var fk=frames[Math.round((i3/(twistPts.length-1))*NT)];
+    tSamples.push([twistPts[i3].x,twistPts[i3].y,twistPts[i3].z,
+                   fk.c[0],fk.c[1],fk.c[2],
+                   fk.N[0],fk.N[1],fk.N[2],
+                   fk.B[0],fk.B[1],fk.B[2]]);
+  }
+  g.userData.twistSamples=tSamples;
   var cl=[];for(i=0;i<=120;i++){var q=C(i/120);cl.push(new THREE.Vector3(q[0],q[1],q[2]));}
-  g.add(lineOf(cl,0xb3261e));
+  var clLine=lineOf(cl,0x8a93a3); clLine.name='centerLine';
+  g.add(clLine);
   // 极淡的锥面参考（不含波纹，帮你看清这是"锥"）
   var cg=gridGeom(20,48,function(s,v){
     var R=Rtop*Math.exp(bb*s),th=TAU*v;
     return [R*Math.cos(th),P.h*(Math.exp(bb*s)-1)/(Math.exp(bb)-1),R*Math.sin(th)];
   });
-  var cm=new THREE.Mesh(cg,new THREE.MeshPhongMaterial({color:0x9fc0e2,transparent:true,
-    opacity:0.13,side:THREE.DoubleSide,depthWrite:false}));
+  var cm=new THREE.Mesh(cg,new THREE.MeshPhongMaterial({color:0xbcd4ea,transparent:true,
+    opacity:0.10,side:THREE.DoubleSide,depthWrite:false}));
   g.add(cm);
   g.userData.clipped=clipped;g.userData.Rtop=Rtop;g.userData.Rbot=Rbot;g.userData.bb=bb;
   return g;
@@ -796,13 +1565,38 @@ function f3Read(P){
   var Rbot=Math.max(2,P.db)/2,al=P.alpha*Math.PI/180;
   var Rtop=Rbot-Math.tan(al)*P.h,clip=false;
   if(Rtop<Rbot*0.04){Rtop=Rbot*0.04;clip=true;}
-  var bb=Math.log(Rbot/Rtop);
+  var bb=Math.log(Rbot/Rtop),turns=Math.max(0.2,P.turns);
+  var reps=Math.max(1,Math.min(12,Math.round(P.reps===undefined?1:P.reps)));
+  var psiEnd=(P.tw===0)?P.twist*TAU*turns:P.twist*TAU*turns*(Math.pow(2,3)-1)/7;
+  var turnWrap=Math.abs(psiEnd)/TAU;
+  /* 横截面信息 */
+  var secMeta=null,i;
+  for(i=0;i<SEC_LIB.length;i++)if(SEC_LIB[i].k===(P.secType||'round'))secMeta=SEC_LIB[i];
+  var secArea=secMeta?secMeta.a:0;
+  /* 不重叠安全上限：当前阵列份数下，管半径 tr 的最大允许值 */
+  var safeTr=f3Limit(P,reps),safeOk=(P.tr<=safeTr);
+  var mr=f3MaxReps(P);
   return [
     ['底径 / 顶径',(2*Rbot).toFixed(0)+' → '+(2*Rtop).toFixed(0)+(clip?'（已夹到下限）':'')],
     ['指数因子 b',bb.toFixed(4)],
     ['锥半角 α',P.alpha.toFixed(2)+'°（锥顶角 '+(2*P.alpha).toFixed(2)+'°）'],
+    ['横截面',(secMeta?secMeta.t:'圆')+'（DXF 闭合 NURBS）'],
+    ['截面旋转角',Math.round(P.secAz===undefined?0:P.secAz)+'°（2D 平面绕原点）'],
+    ['截面起点方位',(P.mirX<0
+        ?('180° − '+Math.round(P.secAz===undefined?0:P.secAz)+'° = '+(((180-Math.round(P.secAz===undefined?0:P.secAz))%360+360)%360)+'°（镜像后）')
+        :(Math.round(P.secAz===undefined?0:P.secAz)+'°（x 正半轴 = 0°）'))],
+    ['截面镜像',P.mirX<0?'已开（以 y 轴为镜，x → −x；3D 与 2D 同步）':'关'],
+    ['截面外接半径','= 管半径 tr = '+P.tr.toFixed(1)+'（曲线归一化到外接半径 1）'],
+    ['截面面积比',(secArea/Math.PI*100).toFixed(1)+'% π（同尺寸圆的 '+(secArea/Math.PI*100).toFixed(0)+'%）'],
     ['扭转',(P.tw===0?'线性':'指数')+'，twist='+P.twist.toFixed(2)],
-    ['波纹',Math.round(P.bands)+' 带，强度 '+(P.cAmp*100).toFixed(0)+'%']
+    ['总扭转角 ψ(1)',(psiEnd*180/Math.PI).toFixed(0)+'°（红线缠绕量）'],
+    ['红线绕管圈数',turnWrap.toFixed(2)+' 圈（沿管轴看红线的螺旋圈）'],
+    ['波纹',Math.round(P.bands)+' 带，强度 '+(P.cAmp*100).toFixed(0)+'%'],
+    ['管形','开口曲面（两端无盖）'],
+    ['圆周阵列',reps>1?(reps+' 份（每份转 '+(360/reps).toFixed(1)+'°）'):'未启用'],
+    ['不重叠管径上限',safeTr.toFixed(2)+'（n='+reps+' 时 tr ≤ 此值）'],
+    ['当前是否安全',safeOk?'安全':'⚠ 穿插（超出上限 '+(P.tr-safeTr).toFixed(2)+'）'],
+    ['当前管径最大阵列数','n = '+mr.n+' 份']
   ];
 }
 
@@ -878,6 +1672,33 @@ function f4Prof(ctx,W,H,P){
   ctx.fillText('绿 = 合成轨迹　浅蓝 = 均轮（圆心 C）',LX,H-7);
 }
 
+/* ---------------- 族⑤ 叶片横断面（2D）· 渲染与 2D 预览共用同一套公式 ----------------
+   原脚本的断面方程：x(τ,a) = −aπ·sinτ/τ，y(τ,a) = aπ·cosτ/τ，τ ∈ [π, 2.5π]
+   等价的极坐标写法：半径 r = aπ/τ，方位角 φ = τ + 90°（逆时针方向展开 270°）。
+   —— 原始曲线的【起点】（v=0，τ=π）落在 −y 方向，即方位角 −90°。
+   —— 【本轮起：原曲线整体旋转 180° 后，作为本页的基准断面曲线保存】
+        旋转后：x(τ,a) = +aπ·sinτ/τ，y(τ,a) = −aπ·cosτ/τ
+        起点方位由 −90° 变成 +90°（即 +y 方向），曲线整体反向。
+   —— 相位角 secPhi 的含义仍是【曲线起点方位】（0° = x 正半轴，逆时针为正）：
+        总旋转 = secPhi − 90°（因为基准曲线起点已在 +90°，要转到 secPhi 方位需减 90°）
+        secPhi =  0° ⇒ 起点落在 x 正半轴
+        secPhi = 90° ⇒ 总旋转 0° ⇒ 直接显示这条"旋转 180° 后的基准曲线"（本页默认）
+        secPhi = 270° ⇒ 总旋转 180° ⇒ 与原脚本朝向逐点一致
+   —— 注：因为基准曲线本身被转了 180°，"对原始 2D 图的旋转"仍是 (secPhi + 90)°，
+      默认 90° 时读数正好显示 +180°。 */
+function f5SecPoint(P,s,tau){
+  var av=P.bl*(0.30-0.20*s);              // 原脚本 a = linspace(0.3, 0.1)
+  var xs= av*Math.PI*Math.sin(tau)/tau;   // 基准曲线（原曲线旋转 180°）x = +aπ·sinτ/τ
+  var ys=-av*Math.PI*Math.cos(tau)/tau;   // 基准曲线（原曲线旋转 180°）y = −aπ·cosτ/τ
+  var ph=(P.secPhi-90)*Math.PI/180;       // 总旋转角（锚定 + 相位）
+  var cph=Math.cos(ph),sph=Math.sin(ph);
+  var px=xs*cph-ys*sph, py=xs*sph+ys*cph; // 绕原点逆时针旋转
+  /* 镜像（面板右上角按钮）：以 y 轴为镜翻转 ⇒ x → −x。
+     反射本身把曲线走向反了，所以镜像后起点方位 = 180° − secPhi
+     （默认 secPhi=90° 时起点正好落在 y 轴上，镜像前后同一个点）。 */
+  if(P.mirX<0)px=-px;
+  return [px,py];
+}
 /* ---------------- 家族 5：钟形水轮 ---------------- */
 function f5Build(P){
   var al=P.alpha*Math.PI/180,b=P.b,f=P.f,zv=P.zv;
@@ -894,27 +1715,23 @@ function f5Build(P){
     var r=rad(t)||0,ph=3*f*t;
     return [r*Math.sin(ph),-t*zv,r*Math.cos(ph)];
   }
-  var frames=[],hh=Math.max(1e-4,tEnd*1e-3);
+  var frames=[];
+  var RM=rmfFrames(C,NT,0,tEnd);    // 旋转最小化标架：两端不退化（叶片断面不会被压扁）
   for(i=0;i<=NT;i++){
-    var t=tEnd*i/NT,c0=C(t),c1=C(Math.min(tEnd,t+hh)),c2=C(Math.max(0.0001,t-hh));
-    var d1=[c1[0]-c2[0],c1[1]-c2[1],c1[2]-c2[2]];
-    var d2=[c1[0]-2*c0[0]+c2[0],c1[1]-2*c0[1]+c2[1],c1[2]-2*c0[2]+c2[2]];
-    var T=norm3(d1),Nn=norm3(d2),B=norm3(cross3(T,Nn));
-    frames.push({c:c0,T:T,N:Nn,B:B,t:t,psi:1.5*tEnd*(i/NT)});
+    frames.push({c:RM.pts[i],T:RM.T[i],N:RM.N[i],B:RM.B[i],t:tEnd*i/NT,psi:1.5*tEnd*(i/NT)});
   }
   var g=new THREE.Group();
   var cl=[];for(i=0;i<=NT;i++)cl.push(new THREE.Vector3(frames[i].c[0],frames[i].c[1],frames[i].c[2]));
   g.add(lineOf(cl,0xb3261e));
-  var nb=Math.max(2,Math.round(P.blades));
+  var nb=Math.max(1,Math.round(P.blades));
   var cols=[0x2f6fb5,0x1c7a3e,0xa1591f,0x7b52a8,0x177245,0xb06a00,0x0b57a4,0x8a5a2b];
   for(j=0;j<nb;j++){
     var base=j*TAU/nb;
     var geo=gridGeom(NT,32,function(s,v){
       var fr=frames[Math.round(s*NT)];
       var tau=Math.PI+1.5*Math.PI*v;          // 原脚本 theta ∈ [π, 2.5π]
-      var av=P.bl*(0.30-0.20*s);              // 原脚本 a = linspace(0.3, 0.1)
-      var xs=-av*Math.PI*Math.sin(tau)/tau;   // x(θ,a) = −aπ·sinθ/θ
-      var ys= av*Math.PI*Math.cos(tau)/tau;   // y(θ,a) =  aπ·cosθ/θ
+      var q=f5SecPoint(P,s,tau);               // 横断面 2D 点（已含相位旋转）
+      var xs=q[0],ys=q[1];
       var sf=1/(fr.t+1);                      // 原脚本 scale_factor = 1/(t+1)
       var psi=fr.psi+base;
       var cp=Math.cos(psi),spn=Math.sin(psi);
@@ -923,7 +1740,9 @@ function f5Build(P){
               fr.c[1]+sf*(x*fr.B[1]+y*fr.N[1]),
               fr.c[2]+sf*(x*fr.B[2]+y*fr.N[2])];
     });
-    g.add(new THREE.Mesh(geo,solid(cols[j%cols.length],0.9)));
+    var blade=new THREE.Mesh(geo,solid(cols[j%cols.length],0.9));
+    blade.name='blade';
+    g.add(blade);
   }
   g.userData.cut=cut;g.userData.tEnd=tEnd;
   return g;
@@ -937,13 +1756,267 @@ function f5Read(P){
     if(inn<=0){if(cut===null)cut=t;continue;}
     var r=Math.sqrt(inn);if(r<mn)mn=r;if(r>mx)mx=r;
   }
+  var reps=Math.max(1,Math.min(12,Math.round(P.reps===undefined?1:P.reps)));
+  /* 反算：当前阵列份数下的叶片尺度上限 / 当前是否安全 / 当前尺度最大阵列数 */
+  var limBl=f5Limit(P,reps);
+  var safeBl=limBl*0.95;
+  var safeOk=(P.bl<=safeBl);
+  var mr=f5MaxReps(P);
   return [
     ['母线半径 顶/底',(mn===1e9?'—':mn.toFixed(3))+' / '+(mx===-1e9?'—':mx.toFixed(3))],
     ['螺旋圈数（3f·t/2π）',(3*P.f*(cut||tmax)/TAU).toFixed(2)],
     ['开方断开点 t',cut?cut.toFixed(3)+'（曲线在此终止）':'未出现（t 走完全程）'],
     ['叶片',Math.round(P.blades)+' 片，尺度 '+(P.bl*100).toFixed(0)+'%'],
-    ['b',P.b.toFixed(3)+(Math.abs(P.b-1.618)<0.003?' = φ（黄金比）':'')]
+    ['横断面起点方位',(P.mirX<0
+        ?(((180-Math.round(P.secPhi))%360+360)%360)+'°（镜像后 = 180° − '+Math.round(P.secPhi)+'°）'
+        :Math.round(P.secPhi)+'°（0°=x 正半轴，逆时针为正）')],
+    ['断面镜像',P.mirX<0?'已开（以 y 轴为镜，x → −x；3D 与 2D 同步）':'关'],
+    ['基准断面曲线','已把原曲线整体旋转 180° 后保存（起点在 +90°，即 +y 方向）'],
+    ['对原始 2D 图的旋转','+'+((Math.round(P.secPhi)+90)%360)+'°（原始图起点在 −90°；默认 90° 即 +180°，取 270° 即回到原脚本朝向）'],
+    ['b',P.b.toFixed(3)+(Math.abs(P.b-1.618)<0.003?' = φ（黄金比）':'')],
+    ['不重叠叶片尺度上限','bl ≤ '+safeBl.toFixed(3)+'（n='+reps+' 时；已含 5% 安全系数）'],
+    ['当前是否安全',safeOk?'安全':'⚠ 穿插（超出上限 '+(P.bl-safeBl).toFixed(3)+'）'],
+    ['当前叶片尺度最大阵列数','n = '+mr.n+' 份']
   ];
+}
+
+/* ================================================================
+   族⑤ 几何反算 · 曲面不重叠约束
+   ================================================================
+   与族③ 同构的两个方向：
+     ① 已知圆周阵列份数 n ⇒ 算「叶片尺度 bl」的最大允许值
+     ② 固定当前叶片尺度 bl ⇒ 算最大阵列份数 n
+
+   判据（族⑤ 不能用族③ 的「中心线距离 > 半径和」那种解析判据）：
+   族⑤ 的叶片是【零厚度曲面】，而且母线本身是螺旋的，
+   相邻两份之间既不是等半径管、也不共轴，解析式很难写准。
+   所以这里用【几何布尔判据】：
+     ① 把叶片曲面降采样成三角形（沿母线 DS 段、沿断面 DT 段）；
+     ② 用空间哈希（AABB 分桶）加速三角形对检索；
+     ③ 用 Möller–Trumbore 边-面互测（两向）判定「是否真的相交」；
+     ④ 对 bl 做二分求临界值。
+   —— 早期版本试过「球带包络」判据（把叶片当实心球壳），
+      实测比真实临界保守 3.7 倍（bl 上限被压到 1/3.7），已弃用。
+
+   收敛性（n=4 的临界 bl）：
+     DS=1 → 0.9195，DS=2 → 0.9161，DS=4 → 0.9067，DS=5 → 0.9185，
+     DS=10 → 0.8507，DS=20 → 0.7145。
+   ⇒ 页面取 DS=10 / DT=4（单次判定 <10ms），并对结果再乘 0.95 安全系数。
+   空间哈希 cell 大小在 0.1–0.6 之间对结果无影响（不敏感）。
+
+   数组对称轴：族⑤ 的 zAxis = 'y'（母线沿 y 方向下行，阵列绕 y 轴排布），
+   所以副本旋转用 rotY()，与 applyArray() 里 rotation.y 的方向一致。 */
+var F5_DS=10,F5_DT=4,F5_CELL=0.3;
+/* 族⑤ 母线几何（与 f5Build 同源，抽出来供反算复用） */
+function f5Geo(P){
+  var al=P.alpha*Math.PI/180,b=P.b,f=P.f,zv=P.zv;
+  var tmax=TAU/3*P.frac,NT=200,i;
+  function rad(t){
+    var inn=1/Math.pow(b-t*Math.sin(al),2)-Math.pow(t*Math.cos(al),2);
+    return inn<=0?null:Math.sqrt(inn);
+  }
+  var cut=null;
+  for(i=1;i<=400;i++){var tt=tmax*i/400;if(rad(tt)===null){cut=tt;break;}}
+  var tEnd=cut?Math.max(0.02,cut*0.985):tmax;
+  function C(t){var r=rad(t)||0,ph=3*f*t;return [r*Math.sin(ph),-t*zv,r*Math.cos(ph)];}
+  return {cut:cut,tEnd:tEnd,NT:NT,C:C};
+}
+/* 叶片三角化（降采样）：与 f5Build 的 gridGeom 同参数式，只是抽稀
+   —— RMF 标架只依赖母线几何（与 bl 无关），缓存起来，
+      二分 bl 的十几轮判定里可以反复复用，省掉重复的双反射计算。 */
+var _f5GeoCache={key:'',G:null,RM:null,siL:null,viL:null};
+function f5GeoCacheGet(P,DS,DT){
+  var key=[DS,DT,P.alpha,P.b,P.f,P.zv,P.blades,P.secPhi,P.frac].join('|');
+  if(_f5GeoCache.key===key)return _f5GeoCache;
+  var G=f5Geo(P),NT=G.NT,RM=rmfFrames(G.C,NT,0,G.tEnd);
+  var siL=[],viL=[],i;
+  for(i=0;i<=NT;i+=DS)siL.push(i);
+  for(i=0;i<=32;i+=DT)viL.push(i);
+  _f5GeoCache={key:key,G:G,RM:RM,siL:siL,viL:viL};
+  return _f5GeoCache;
+}
+function f5BladeTris(P,DS,DT){
+  DS=DS||F5_DS;DT=DT||F5_DT;
+  var FC=f5GeoCacheGet(P,DS,DT);
+  var nb=Math.max(1,Math.round(P.blades)),tris=[],j;
+  for(j=0;j<nb;j++)tris=tris.concat(f5OneBlade(P,j,FC));
+  return tris;
+}
+/* 单片叶片的三角形（j = 第几片，base = j·2π/blades 的绕 T 旋转） */
+function f5OneBlade(P,j,FC){
+  var G=FC.G,RM=FC.RM,siL=FC.siL,viL=FC.viL,NT=G.NT,W=viL.length;
+  var base=j*TAU/Math.max(1,Math.round(P.blades)),pts=[],i;
+  for(i=0;i<siL.length;i++){
+    var si=siL[i],s=si/NT;
+    var fr={c:RM.pts[si],N:RM.N[si],B:RM.B[si],t:G.tEnd*s,psi:1.5*G.tEnd*s};
+    var sf=1/(fr.t+1),psi=fr.psi+base,cp=Math.cos(psi),spn=Math.sin(psi),v;
+    for(v=0;v<W;v++){
+      var tau=Math.PI+1.5*Math.PI*(viL[v]/32);
+      var q=f5SecPoint(P,s,tau);
+      var x=q[0]*cp-q[1]*spn,y=q[0]*spn+q[1]*cp;
+      pts.push([fr.c[0]+sf*(x*fr.B[0]+y*fr.N[0]),
+                fr.c[1]+sf*(x*fr.B[1]+y*fr.N[1]),
+                fr.c[2]+sf*(x*fr.B[2]+y*fr.N[2])]);
+    }
+  }
+  var tris=[],a,b;
+  for(a=0;a+1<siL.length;a++)for(b=0;b+1<viL.length;b++){
+    var i0=a*W+b,i1=i0+1,i2=(a+1)*W+b,i3=i2+1;
+    tris.push([pts[i0],pts[i1],pts[i2]]);tris.push([pts[i1],pts[i3],pts[i2]]);
+  }
+  return tris;
+}
+/* --- 相交判据的基础件 --- */
+function f5Sub(a,b){return [a[0]-b[0],a[1]-b[1],a[2]-b[2]];}
+function f5Cross(a,b){return [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];}
+function f5Dot(a,b){return a[0]*b[0]+a[1]*b[1]+a[2]*b[2];}
+/* Möller–Trumbore：线段 p1→p2 是否穿过三角形 abc */
+function f5SegTri(p1,p2,a,b,c){
+  var d=f5Sub(p2,p1),e1=f5Sub(b,a),e2=f5Sub(c,a),h=f5Cross(d,e2),det=f5Dot(e1,h);
+  if(Math.abs(det)<1e-14)return false;
+  var f=1/det,s=f5Sub(p1,a),u=f*f5Dot(s,h);
+  if(u<0||u>1)return false;
+  var q=f5Cross(s,e1),v=f*f5Dot(d,q);
+  if(v<0||u+v>1)return false;
+  var t=f*f5Dot(e2,q);return t>1e-12&&t<1-1e-12;
+}
+/* 两个三角形是否相交（两向边-面互测，凹多边形也可靠） */
+function f5TriHit(A,B){
+  var ea=[[A[0],A[1]],[A[1],A[2]],[A[2],A[0]]];
+  var eb=[[B[0],B[1]],[B[1],B[2]],[B[2],B[0]]];
+  var i;
+  for(i=0;i<3;i++)if(f5SegTri(ea[i][0],ea[i][1],B[0],B[1],B[2]))return true;
+  for(i=0;i<3;i++)if(f5SegTri(eb[i][0],eb[i][1],A[0],A[1],A[2]))return true;
+  return false;
+}
+function f5BBox(T){
+  var mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9],k;
+  for(var i=0;i<3;i++){var p=T[i];if(!p)continue;
+    for(k=0;k<3;k++){if(p[k]<mn[k])mn[k]=p[k];if(p[k]>mx[k])mx[k]=p[k];}}
+  return {mn:mn,mx:mx};
+}
+function f5BoxesHit(a,b){
+  for(var k=0;k<3;k++)if(a.mn[k]>b.mx[k]||b.mn[k]>a.mx[k])return false;
+  return true;
+}
+/* 空间哈希：把三角形按 AABB 装进 cell 网格 */
+function f5Grid(tris,cell){
+  var map=new Map(),key=function(i,j,k){return i+','+j+','+k;},bb=[];
+  for(var idx=0;idx<tris.length;idx++){
+    var b=f5BBox(tris[idx]);bb.push(b);
+    var i0=Math.floor(b.mn[0]/cell),i1=Math.floor(b.mx[0]/cell);
+    var j0=Math.floor(b.mn[1]/cell),j1=Math.floor(b.mx[1]/cell);
+    var k0=Math.floor(b.mn[2]/cell),k1=Math.floor(b.mx[2]/cell);
+    for(var i=i0;i<=i1;i++)for(var j=j0;j<=j1;j++)for(var k=k0;k<=k1;k++){
+      var q=key(i,j,k),a=map.get(q);
+      if(!a){a=[];map.set(q,a);}
+      a.push(idx);
+    }
+  }
+  return {map:map,key:key,tris:tris,bb:bb,cell:cell};
+}
+/* 三角形 T 的三条边是否与网格 g 中某个三角形相交 */
+function f5TriEdgeHit(T,g){
+  var es=[[T[0],T[1]],[T[1],T[2]],[T[2],T[0]]];
+  for(var e=0;e<3;e++){
+    var b=f5BBox([es[e][0],es[e][1]]);
+    var i0=Math.floor(b.mn[0]/g.cell),i1=Math.floor(b.mx[0]/g.cell);
+    var j0=Math.floor(b.mn[1]/g.cell),j1=Math.floor(b.mx[1]/g.cell);
+    var k0=Math.floor(b.mn[2]/g.cell),k1=Math.floor(b.mx[2]/g.cell);
+    for(var i=i0;i<=i1;i++)for(var j=j0;j<=j1;j++)for(var k=k0;k<=k1;k++){
+      var a=g.map.get(g.key(i,j,k));if(!a)continue;
+      for(var q=0;q<a.length;q++){
+        var idx=a[q];
+        if(!f5BoxesHit(b,g.bb[idx]))continue;
+        var B=g.tris[idx];
+        if(f5SegTri(es[e][0],es[e][1],B[0],B[1],B[2]))return true;
+      }
+    }
+  }
+  return false;
+}
+/* 两组三角形是否相交（空间哈希加速） */
+function f5HashHit(A,B,cell){
+  var gA=f5Grid(A,cell),gB=f5Grid(B,cell),i;
+  for(i=0;i<A.length;i++)if(f5TriEdgeHit(A[i],gB))return true;
+  for(i=0;i<B.length;i++)if(f5TriEdgeHit(B[i],gA))return true;
+  return false;
+}
+/* 绕 y 轴旋转（与 applyArray 的 rotation.y 方向一致） */
+function f5RotY(p,a){
+  var c=Math.cos(a),s=Math.sin(a);
+  return [p[0]*c+p[2]*s,p[1],-p[0]*s+p[2]*c];
+}
+/* 两份阵列副本之间是否真的相交（相邻份 g=1 即最紧，实测与全 g 一致） */
+function f5CopiesHitTris(tris,n,cell){
+  if(n<2)return false;
+  var dp=TAU/n,rot=[],i,k;
+  for(i=0;i<tris.length;i++){
+    var T=tris[i],o=[];
+    for(k=0;k<3;k++)o.push(f5RotY(T[k],dp));
+    rot.push(o);
+  }
+  return f5HashHit(tris,rot,cell||F5_CELL);
+}
+function f5CopiesHit(P,n,DS,DT,cell){
+  if(n<2)return false;
+  return f5CopiesHitTris(f5BladeTris(P,DS,DT),n,cell);
+}
+/* 同一份内多片叶片是否互相重叠 */
+function f5SelfHit(P,DS,DT,cell){
+  var nb=Math.max(1,Math.round(P.blades));
+  if(nb<2)return false;
+  var FC=f5GeoCacheGet(P,DS||F5_DS,DT||F5_DT);
+  var built=[],j,k;
+  for(j=0;j<nb;j++)built.push(f5OneBlade(P,j,FC));
+  for(j=0;j<nb;j++)for(k=j+1;k<nb;k++){
+    if(f5HashHit(built[j],built[k],cell||F5_CELL))return true;
+  }
+  return false;
+}
+/* 反算①：已知阵列份数 n ⇒ 叶片尺度 bl 的最大允许值（临界值） */
+function f5CritBl(P,n,DS,DT,cell){
+  n=Math.max(1,Math.min(12,Math.round(n)));
+  if(n<2)return 2.5;                    /* 1 份不存在相邻份 ⇒ 不受阵列约束 */
+  var lo=0,hi=2.5;
+  if(!f5CopiesHit(f5WithBl(P,hi),n,DS,DT,cell))return hi;
+  for(var k=0;k<14;k++){
+    var mid=(lo+hi)/2;
+    if(f5CopiesHit(f5WithBl(P,mid),n,DS,DT,cell))hi=mid;else lo=mid;
+  }
+  return (lo+hi)/2;
+}
+function f5WithBl(P,bl){
+  var Q={},k;for(k in P)Q[k]=P[k];
+  Q.bl=bl;return Q;
+}
+/* 反算②：固定当前叶片尺度 bl ⇒ 最大阵列份数 n
+   判据与"不重叠上限"完全一致：
+     安全(n) ⟺ bl ≤ crit(n)·0.95  ⟺  用 bl/0.95 去判"是否相交"结果为否
+   （crit(n) 就是"是否相交"的翻转阈值，所以两者严格等价）。
+   为了快，这里不做 bl 二分，而是【把三角形只建一次】，
+   然后对 n=1..12 逐个旋转 + 空间哈希判定，取最大的安全 n（扫描而非二分，
+   避免"n 增大未必单调"的边界情况漏解）。单次判定 ~2ms，全扫 ~25ms。 */
+function f5MaxReps(P,DS,DT,cell){
+  DS=DS||F5_DS;DT=DT||F5_DT;cell=cell||F5_CELL;
+  var blEff=P.bl/0.95;                     /* 与 5% 安全系数保持一致 */
+  var tris=f5BladeTris(f5WithBl(P,blEff),DS,DT);
+  var best=1,n;
+  for(n=2;n<=12;n++)if(!f5CopiesHitTris(tris,n,cell))best=n;
+  return {n:best};
+}
+/* 缓存：crit(n) 只依赖几何参数（不含 bl），拖动叶片尺度滑条时命中缓存 */
+var _f5LimCache={key:'',lim:{}};
+function f5Limit(P,n,DS,DT,cell){
+  var key=[DS,DT,cell,P.alpha,P.b,P.f,P.zv,P.blades,P.secPhi,P.frac].join('|');
+  if(_f5LimCache.key!==key)_f5LimCache={key:key,lim:{}};
+  var L=_f5LimCache.lim;
+  if(L[n]===undefined)L[n]=f5CritBl(P,n,DS,DT,cell);
+  return L[n];
+}
+/* 把"约束发生在哪"写成一句人话 */
+function f5AtText(n){
+  return n<2?'（单份，无相邻份约束）':('第 1 份 与 第 0 份之间（相邻份，绕 y 轴转 '+(360/n).toFixed(1)+'°）');
 }
 
 /* ---------------- 家族 6：双曲锥 ---------------- */
@@ -990,6 +2063,1139 @@ function f6Read(P){
   ];
 }
 
+/* ==========================================================================
+   中心线库（Centerline Library）—— 螺旋管的"骨架"层
+   全量调研 E:/pythonProject/program/ 最简原始模版用于生成直锥螺旋管/ 与
+   E:/pythonProject/program/egg黄金比锥切面螺旋线* 共 80+ 个脚本后，
+   抽出的【互不相同】的中心线公式（逐字照抄源码）：
+     C1 指数锥螺旋（直锥非等距-锥角参数可调 族 10 个脚本共用）
+        R = R_top · exp(b·u)，θ = 2π·n_turns·u
+        z = high·(exp(b·u) − 1)/(exp(b) − 1)          b = ln(R_bot/R_top)
+     C2 等距锥螺旋（直锥等距-线性扭转 1 个脚本）
+        R = R_top + (R_bot − R_top)·u，θ = 2π·n_turns·u，z = u·high
+     C3 反相指数 z（磁铁/曲线混合 族 8 个脚本）—— 与 C1 同半径，z 反相
+        z = high·(1 − exp(−b·u))/(1 − exp(−b))        另有 θ 加 phase_dif
+     C4 直锥 · 绝对角（最简原始模版用于生成直锥螺旋管.py）
+        x = e^{bt}·d·sin(t)·r，y = e^{bt}·d·cos(t)，z = (t−t_min)·z_v·e^{bt}
+     C5 曲锥 · 绝对角（最简原始模版用于生成曲锥螺旋管.py）
+        同上，但 z = (t−t_min)·z_v（少了 e^{bt}）
+     C6 Krystal 幂律（扭转exp -Krystal螺旋.py）
+        x = 4^(t/π)·sin(t)·r，y = 4^(t/π)·cos(t)，z = 4^(t/π)·z_v
+     C7 Krystal-2 幂律（…Krystal螺旋 - 2.py）
+        x = (1+2/π)^t·sin(t)·r，y = (1+2/π)^t·cos(t)，z = (1+2/π)^t·z_v
+     C8 往回走 · z 非单调（往回走族 6 个脚本）—— 唯一 z 非单调的一族
+        x = e^{bt}·d·sin(t)·r，y = e^{bt}·d·cos(t)，z = e^{bt}·(t − c)
+        b = −ln2/(L/4) ⇒ 半径全程缩小 1/16
+     C9 丝杠 · 阿基米德锥螺旋（螺锥/GL25/斜螺锥 族 8 个脚本）
+        x = (R_eff − t·r)·cos(t·h_div_pitch)
+        y = (R_eff − t·r)·sin(t·h_div_pitch)·sign，z = t·h
+     C10 漏斗双曲螺线（egg黄金比锥切面螺旋线 基础/可自转 6 个脚本）
+        r = 1/t_s，t_s = n + τ/(2π)，z = ln(t_s)/lnφ，θ = T
+     C11 漏斗 · Lotus 样条（-黄金比数列 2 个脚本）
+        r = CubicSpline(φ^(n−1))，投影到漏斗面 z = ln(1/r)/lnφ
+     C12 漏斗 · β 角速度真对数螺线（-黄金比数列 改 2 个脚本）
+        r = exp(linspace(log r_min, log r_max))，θ = T/β
+     C13 漏斗 · 太阳数列 2^t（-太阳数列2^t 2 个脚本）
+        r = 2^(−t/(2π))，z = (t/2π)·(ln2/lnφ)
+     C14 漏斗 · 平方 t²（-平方数列t^2.py）
+        r = 1/t_shape²，z = −2·ln(t_shape)/lnφ
+   —— 每个中心线都标注了它来自哪些脚本、z 是否单调。
+   ========================================================================== */
+var CENTER_LIB=[
+  {k:'exp',   t:'C1 指数锥螺旋',   src:'直锥非等距-线性/非线性扭转、管波动纹×5、蓝线G2/G4/G9/分段、滑滑梯波（10 脚本）', zmono:'是'},
+  {k:'lin',   t:'C2 等距锥螺旋',   src:'直锥等距螺旋管-线性扭转-锥角参数可调（1 脚本）', zmono:'是'},
+  {k:'inv',   t:'C3 反相指数 z',   src:'磁铁/曲线混合族（8 脚本）', zmono:'是'},
+  {k:'straight',t:'C4 直锥·绝对角',src:'最简原始模版用于生成直锥螺旋管.py、扭转exp.py（2 脚本）', zmono:'是'},
+  {k:'curve', t:'C5 曲锥·绝对角',  src:'最简原始模版用于生成曲锥螺旋管.py、扭转exp2t.py（2 脚本）', zmono:'是'},
+  {k:'kry4',  t:'C6 Krystal 幂律 4^(t/π)',src:'扭转exp -Krystal螺旋.py（1 脚本）', zmono:'是'},
+  {k:'kry2',  t:'C7 Krystal 幂律 (1+2/π)^t',src:'扭转exp -Krystal螺旋 - 2.py（1 脚本）', zmono:'是'},
+  {k:'back',  t:'C8 往回走·z 非单调',src:'往回走族（6 脚本）', zmono:'否（存在极大值点）'},
+  {k:'screw', t:'C9 丝杠·阿基米德锥螺旋',src:'螺锥88/81.2/90°、GL25、斜螺锥、bashar线圈（8 脚本）', zmono:'是'},
+  {k:'funnel',t:'C10 漏斗双曲螺线',src:'egg黄金比锥切面螺旋线 基础/可自转（6 脚本）', zmono:'是（下降）'},
+  {k:'lotus', t:'C11 漏斗·Lotus 样条',src:'egg…-黄金比数列（2 脚本）', zmono:'是（下降）'},
+  {k:'beta',  t:'C12 漏斗·β 真对数螺线',src:'egg…-黄金比数列 改（2 脚本）', zmono:'是（下降）'},
+  {k:'solar', t:'C13 漏斗·太阳数列 2^t',src:'egg…-太阳数列2^t（2 脚本）', zmono:'是（下降）'},
+  {k:'sq',    t:'C14 漏斗·平方 t²', src:'egg…-平方数列t^2.py（1 脚本）', zmono:'是（上升，符号与漏斗相反）'}
+];
+/* ==========================================================================
+   家族 7：通用指数螺旋管（中心线可切换 · 扭角律可切换 · 断面可切换）
+   —— 把"同一条扫掠框架、不同中心线/扭角律/断面"的脚本族整合到一格，
+      用三个下拉开关切换，而不是每个脚本开一页。
+   ========================================================================== */
+/* 中心线几何：返回 C(u)（u∈[0,1]）、psi(u)、scale(u) 及描述信息 */
+function f7Geo(P){
+  var Rbot=Math.max(1,P.db)/2, al=P.alpha*Math.PI/180;
+  var Rtop=Rbot-Math.tan(al)*P.h;
+  var clipped=false;
+  if(Rtop<Rbot*0.04){Rtop=Rbot*0.04;clipped=true;}
+  var bb=Math.log(Rbot/Rtop);
+  var turns=Math.max(0.2,P.turns);
+  var L=Math.max(0.5,P.tLen), tmin=P.tMin, tmax=P.tMin+L;
+  /* 手性因子（脚本的 sign_spiral_dir，±1）：C4/C5/C6/C7 的 x 分量乘它 */
+  var signS=(P.signS===undefined||P.signS===0)?1:(P.signS<0?-1:1);
+  var desc={};
+  function C(u){ return [0,0,0]; }
+  function psi(u){ return 0; }
+  var cl=P.cline;
+  if(cl===0){                                   /* C1 指数锥螺旋 */
+    C=function(u){var R=Rtop*Math.exp(bb*u),th=TAU*turns*u;
+      var z=P.h*(Math.exp(bb*u)-1)/(Math.exp(bb)-1||1e-9);
+      return [R*Math.cos(th),z,R*Math.sin(th)];};
+    desc={label:'C1 指数锥螺旋',zlaw:'z = high·(e^{b·u}−1)/(e^b−1)',mono:'是'};
+  }else if(cl===1){                             /* C2 等距锥螺旋 */
+    C=function(u){var R=Rtop+(Rbot-Rtop)*u,th=TAU*turns*u;
+      return [R*Math.cos(th),P.h*u,R*Math.sin(th)];};
+    desc={label:'C2 等距锥螺旋',zlaw:'z = u·high（半径线性收缩）',mono:'是'};
+  }else if(cl===2){                             /* C3 反相指数 z */
+    /* phase_dif：脚本用弧度（[0, π, π/2, −π/2]），本页参数以【度】为单位，
+       内部转弧度；读数直接显示度。 */
+    C=function(u){var R=Rtop*Math.exp(bb*u),th=TAU*turns*u+P.phaseDif*Math.PI/180;
+      var z=(Math.abs(bb)>1e-6)?P.h*(1-Math.exp(-bb*u))/(1-Math.exp(-bb)):P.h*u;
+      return [R*Math.cos(th),z,R*Math.sin(th)];};
+    desc={label:'C3 反相指数 z',zlaw:'z = high·(1−e^{−b·u})/(1−e^{−b})（与 R 互逆）',mono:'是'};
+  }else if(cl===3||cl===4){                    /* C4 直锥 / C5 曲锥 · 绝对角 */
+    /* 脚本原文（最简原始模版用于生成直锥螺旋管.py:95-97）：
+         x = e^{b·t} · d · sin(t) · self.r      ← self.r = sign_spiral_dir（±1 手性）
+         y = e^{b·t} · d · cos(t)
+         z = (t−t_min)·z_v·e^{b·t}   （直锥）/  (t−t_min)·z_v   （曲锥）
+       ⇒ 手性因子只乘在 x 上（脚本的写法），本页照抄。 */
+    var bb2=P.bAbs;
+    C=function(u){var t=tmin+u*L,th=t,rd=Math.exp(bb2*t)*P.dAbs;
+      var z=(cl===3)?(t-tmin)*P.zv*Math.exp(bb2*t):(t-tmin)*P.zv;
+      return [rd*Math.sin(th)*signS,z,rd*Math.cos(th)];};
+    desc={label:(cl===3?'C4 直锥·绝对角':'C5 曲锥·绝对角'),
+          zlaw:(cl===3?'z = (t−t_min)·z_v·e^{bt}':'z = (t−t_min)·z_v'),mono:'是'};
+  }else if(cl===5||cl===6){                    /* C6/C7 Krystal 幂律 */
+    /* 脚本原文：
+       C6  x = 4 ** (t/π) · sin(t) · r,  y = 4 ** (t/π) · cos(t),  z = 4 ** (t/π) · z_v
+       C7  x = (1+2/π) ** t · sin(t) · r, y = (1+2/π) ** t · cos(t),  z = (1+2/π) ** t · z_v
+       ⇒ 幂指数依赖 t，必须在 C() 内部求值（否则 t 不在作用域）。 */
+    var base=(cl===5)?4:(1+2/Math.PI);
+    C=function(u){var t=tmin+u*L,th=t;
+      var rr=Math.pow(base,(cl===5)?(t/Math.PI):t);
+      return [rr*Math.sin(th)*signS,rr*P.zv,rr*Math.cos(th)];};
+    desc={label:(cl===5?'C6 Krystal 幂律 4^(t/π)':'C7 Krystal 幂律 (1+2/π)^t'),
+          zlaw:(cl===5?'R = 4^(t/π)，z = R·z_v':'R = (1+2/π)^t，z = R·z_v'),mono:'是'};
+  }else{                                        /* C8 往回走（z 非单调） */
+    var b8=-Math.LN2/(L/4);
+    C=function(u){var t=tmin+u*L,rr=Math.exp(b8*t)*P.dAbs;
+      return [rr*Math.sin(t),rr*(t-P.zcAbs),rr*Math.cos(t)];};
+    desc={label:'C8 往回走·z 非单调',zlaw:'z = e^{bt}·(t−c)，b = −ln2/(L/4)',mono:'否'};
+  }
+  /* 扭角律：0 线性 / 1 指数 e^t / 2 指数 e^{2t} / 3 幂 2^{3t} */
+  var twBase=P.twist*TAU*turns;
+  psi=function(u){
+    if(P.twlaw===0)return twBase*u;
+    if(P.twlaw===1)return twBase*(Math.exp(u)-1)/(Math.E-1);
+    if(P.twlaw===2)return twBase*(Math.exp(2*u)-1)/(Math.exp(2)-1);
+    return twBase*(Math.pow(2,3*u)-1)/7;
+  };
+  var kEnd=Math.max(1.0001,P.aEnd);
+  function scale(u){ return P.tr*(1-(1-1/kEnd)*u); }
+  return {Rbot:Rbot,Rtop:Rtop,clipped:clipped,bb:bb,turns:turns,C:C,psi:psi,
+          scale:scale,desc:desc};
+}
+/* 断面：族③ 的 SEC_LIB + 新增 SEC_LIB2 都可选 */
+function f7SecLocal(P){
+  var c=secCurve(P.secType||'round')||secCurve2(P.secType)||null;
+  if(!c)c=secCurve('round');
+  return secRotate(c,(P.secAz===undefined?0:P.secAz));
+}
+function f7Build(P){
+  var G=f7Geo(P),i,j;
+  var NT=240,NV=72;
+  var RM=rmfFrames(G.C,NT,0,1);
+  var SEC=f7SecLocal(P);
+  var SECP=f3SecResample(SEC,NV);
+  var NS=SECP.length; NV=NS;
+  var frames=[];
+  for(i=0;i<=NT;i++)frames.push({c:RM.pts[i],T:RM.T[i],N:RM.N[i],B:RM.B[i],psi:G.psi(i/NT)});
+  var geo=gridGeom(NT,NV,function(s,v){
+    var t=s,fr=frames[Math.round(s*NT)];
+    var q=SECP[Math.round(v*NS)%NS];
+    var rs=G.scale(t);
+    var u=q[0]*rs,w=q[1]*rs;
+    var cp=Math.cos(fr.psi),sp=Math.sin(fr.psi);
+    var x=u*cp-w*sp,y=u*sp+w*cp;
+    return [fr.c[0]+x*fr.B[0]+y*fr.N[0],
+            fr.c[1]+x*fr.B[1]+y*fr.N[1],
+            fr.c[2]+x*fr.B[2]+y*fr.N[2]];
+  });
+  var g=new THREE.Group();
+  var wallMat=new THREE.MeshPhongMaterial({color:0x2f74c8,shininess:70,specular:0x88aacc,
+    transparent:true,opacity:0.78,side:THREE.DoubleSide,depthWrite:false});
+  g.add(new THREE.Mesh(geo,wallMat));
+  g.add(new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:0x12305e,wireframe:true,
+    transparent:true,opacity:0.08,depthWrite:false})));
+  function rimAt(t,color){
+    var fr=frames[Math.round(t*NT)],rs0=G.scale(t),pts=[],i2;
+    for(i2=0;i2<=NS;i2++){
+      var q=SECP[i2%NS],u=rs0*q[0],w=rs0*q[1];
+      var cp=Math.cos(fr.psi),sp=Math.sin(fr.psi);
+      var x=u*cp-w*sp,y=u*sp+w*cp;
+      pts.push(new THREE.Vector3(fr.c[0]+x*fr.B[0]+y*fr.N[0],
+                                 fr.c[1]+x*fr.B[1]+y*fr.N[1],
+                                 fr.c[2]+x*fr.B[2]+y*fr.N[2]));
+    }
+    var rim=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts,true),NS,
+      Math.max(0.4,rs0*0.14),8,true),new THREE.MeshBasicMaterial({color:color}));
+    rim.name=(t===0)?'rimIn':'rimOut';
+    g.add(rim);
+  }
+  rimAt(0,0x0b57a4); rimAt(1,0xd0342c);
+  /* 红色扭转母线 */
+  var tp=[],i3,anchor=SECP[0];
+  for(i3=0;i3<=200;i3++){
+    var t3=i3/200,fr3=frames[Math.round(t3*NT)];
+    var rs3=G.scale(t3)*0.985;
+    var u3=rs3*anchor[0],w3=rs3*anchor[1];
+    var cp3=Math.cos(fr3.psi),sp3=Math.sin(fr3.psi);
+    var x3=u3*cp3-w3*sp3,y3=u3*sp3+w3*cp3;
+    tp.push(new THREE.Vector3(fr3.c[0]+x3*fr3.B[0]+y3*fr3.N[0],
+                              fr3.c[1]+x3*fr3.B[1]+y3*fr3.N[1],
+                              fr3.c[2]+x3*fr3.B[2]+y3*fr3.N[2]));
+  }
+  var redMesh=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(tp),200,
+    Math.max(0.2,P.tr*0.09),8,false),solid(0xe03131,0.98));
+  redMesh.name='twistLine';
+  g.add(redMesh);
+  var cl=[];
+  for(i=0;i<=140;i++){var q=G.C(i/140);cl.push(new THREE.Vector3(q[0],q[1],q[2]));}
+  var cll=lineOf(cl,0x8a93a3); cll.name='centerLine'; g.add(cll);
+  g.userData.G=G;
+  return g;
+}
+function f7Read(P){
+  var G=f7Geo(P);
+  var psiEnd=G.psi(1);
+  var twTxt=['线性','指数 e^t−1','指数 e^{2t}−1','幂 2^{3t}'];
+  var sm=null,i;
+  for(i=0;i<SEC_LIB.length;i++)if(SEC_LIB[i].k===(P.secType||'round'))sm=SEC_LIB[i];
+  if(!sm)sm=secMeta2(P.secType);
+  /* 该中心线是否用到 db/alpha/turns，还是用绝对角参数 */
+  var absMode=(P.cline>=3&&P.cline<=6)||P.cline===7;
+  var rows=[
+    ['中心线',G.desc.label],
+    ['中心线 z 律',G.desc.zlaw],
+    ['z 是否单调',G.desc.mono],
+    ['扭角律',twTxt[P.twlaw]||'—']
+  ];
+  if(absMode){
+    rows.push(['绝对角参数 t','['+P.tMin.toFixed(2)+', '+(P.tMin+P.tLen).toFixed(2)+']（弧度）']);
+    rows.push(['跨度 L',P.tLen.toFixed(2)+'（≈ '+(P.tLen/TAU).toFixed(2)+' 圈）']);
+    rows.push(['半径系数 d',P.dAbs.toFixed(2)]);
+    if(P.cline===7)rows.push(['z 常数 c',P.zcAbs.toFixed(2)+'（z = e^{bt}(t−c)，b=−ln2/(L/4) ⇒ 半径缩小 1/16）']);
+  }else{
+    rows.push(['底径 / 顶径',(2*G.Rbot).toFixed(0)+' → '+(2*G.Rtop).toFixed(0)+(G.clipped?'（已夹到下限）':'')]);
+    rows.push(['指数因子 b',G.bb.toFixed(4)]);
+    rows.push(['圈数',G.turns.toFixed(2)]);
+    if(P.cline===2)rows.push(['相位差 phase_dif',P.phaseDif.toFixed(1)+'°（脚本原始值为弧度）']);
+  }
+  rows.push(['总扭角 ψ(1)',(psiEnd*180/Math.PI).toFixed(0)+'°（红线绕管 '+(Math.abs(psiEnd)/TAU).toFixed(2)+' 圈）']);
+  rows.push(['断面',(sm?sm.t:'圆')+'（闭合曲线，外接半径归一）']);
+  rows.push(['断面旋转角',Math.round(P.secAz||0)+'°']);
+  rows.push(['沿程半径律','tr='+P.tr.toFixed(1)+' → '+(P.tr/Math.max(1.0001,P.aEnd)).toFixed(1)+'（a_end='+P.aEnd.toFixed(2)+'）']);
+  rows.push(['管形','开口曲面（两端无盖）']);
+  rows.push(['圆周阵列',(P.reps>1?(P.reps+' 份（每份转 '+(360/P.reps).toFixed(1)+'°）'):'未启用')]);
+  return rows;
+}
+
+/* ==========================================================================
+   家族 8：收缩螺旋管 · 首尾断面线性渐变 + 断口混接
+   整合自同一目录下 9 个脚本：
+     A 组（往回走 + 波动，5 脚本）：
+       · 最简原始模版用于生成直锥螺旋管小段往回走+波动.py
+       · …往回走 首尾曲线不一样渐变 蛋到十字.py
+       · …往回走 首尾曲线不一样渐变 蛋到圆.py
+       · …往回走 首尾曲线不一样渐变 蛋到太极旋.py
+       · …往回走 首尾曲线不一样渐变 蛋到扇面.py
+       —— 共同点：b = −ln2/(L/4) ⇒ 半径全程缩小 1/16；z = e^{bt}(t−c) ⇒ z 非单调
+          （存在极值点 t* = c + 1/|b|）；首尾断面用 (1−t)·start + t·end 线性插值。
+       —— 蛋到十字/圆/太极/扇面 4 个脚本的差别**只在于 end 断面来自哪个文件**，
+          所以归为一个子页 + 一个「终点断面」下拉。
+     B 组（断口混接，4 脚本）：
+       · …蓝线G2混接多线多规扫掠.py   → 五次 Bézier G² 混接（尺度不变）
+       · …蓝线G4混接三轨扫掠.py       → 八次 Bézier 混接（自称 G⁴）
+       · …蓝线G9混接多线多规扫掠.py   → 混接函数与 G4 逐字相同（G9 只是文件名）
+       · …蓝线分段.py                → 不混接，按跳变点硬分段
+       —— 共同点：导轨线（蛋尖线）在波纹跳变处断开，用 Bézier 桥接回平滑。
+       ⇒ 归为一个子页 + 一个「断口处理」下拉（分段 / G² 五次 / 八次）。
+   ========================================================================== */
+/* ---- B 组：Bézier 混接（G2 五次 / G4 八次） ---- */
+function f8Bezier5(B,t){
+  var mt=1-t;
+  var c0=mt*mt*mt*mt*mt, c1=5*mt*mt*mt*mt*t, c2=10*mt*mt*mt*t*t,
+      c3=10*mt*mt*t*t*t, c4=5*mt*t*t*t*t, c5=t*t*t*t*t;
+  var o=[0,0,0],i;
+  for(i=0;i<3;i++)o[i]=c0*B[0][i]+c1*B[1][i]+c2*B[2][i]+c3*B[3][i]+c4*B[4][i]+c5*B[5][i];
+  return o;
+}
+function f8Bezier8(B,t){
+  var mt=1-t,t2=t*t,t3=t2*t,t4=t3*t,t5=t4*t,t6=t5*t,t7=t6*t,t8=t7*t;
+  var m2=mt*mt,m3=m2*mt,m4=m3*mt,m5=m4*mt,m6=m5*mt,m7=m6*mt,m8=m7*mt;
+  var o=[0,0,0],i;
+  for(i=0;i<3;i++){
+    o[i]=m8*B[0][i]+8*m7*t*B[1][i]+28*m6*t2*B[2][i]+56*m5*t3*B[3][i]+70*m4*t4*B[4][i]
+        +56*m3*t5*B[5][i]+28*m2*t6*B[6][i]+8*mt*t7*B[7][i]+t8*B[8][i];
+  }
+  return o;
+}
+/* G2 混接：端点 G² 连续，尺度不变（导数目标尺度随 dist^1 / dist^2 变化） */
+function f8BlendG2(pPrev2,pPrev,p0,p1,p2,p3,tension,curv,samples){
+  function d3(a,b){return Math.sqrt((a[0]-b[0])*(a[0]-b[0])+(a[1]-b[1])*(a[1]-b[1])+(a[2]-b[2])*(a[2]-b[2]));}
+  var dist=d3(p1,p0);
+  if(dist<1e-12)return [p0.slice(),p1.slice()];
+  var hIn=Math.max(1e-9,0.5*(d3(p0,pPrev)+d3(pPrev,pPrev2)));
+  var hOut=Math.max(1e-9,0.5*(d3(p2,p1)+d3(p3,p2)));
+  function unit(a,b){var L=d3(a,b)||1e-12;return [(a[0]-b[0])/L,(a[1]-b[1])/L,(a[2]-b[2])/L];}
+  var Tin=unit(p0,pPrev),Tout=unit(p2,p1);
+  function d2(a,b,c){return [(a[0]-2*b[0]+c[0])/(hIn*hIn),(a[1]-2*b[1]+c[1])/(hIn*hIn),(a[2]-2*b[2]+c[2])/(hIn*hIn)];}
+  var Kin=[(p0[0]-2*pPrev[0]+pPrev2[0])/(hIn*hIn),(p0[1]-2*pPrev[1]+pPrev2[1])/(hIn*hIn),(p0[2]-2*pPrev[2]+pPrev2[2])/(hIn*hIn)];
+  var Kout=[(p3[0]-2*p2[0]+p1[0])/(hOut*hOut),(p3[1]-2*p2[1]+p1[1])/(hOut*hOut),(p3[2]-2*p2[2]+p1[2])/(hOut*hOut)];
+  var L1=tension*dist, L2=curv*dist*dist;
+  var B0=p0,B5=p1;
+  var B1=[B0[0]+L1/5*Tin[0],B0[1]+L1/5*Tin[1],B0[2]+L1/5*Tin[2]];
+  var B2=[L2/20*Kin[0]+2*B1[0]-B0[0],L2/20*Kin[1]+2*B1[1]-B0[1],L2/20*Kin[2]+2*B1[2]-B0[2]];
+  var B4=[B5[0]-L1/5*Tout[0],B5[1]-L1/5*Tout[1],B5[2]-L1/5*Tout[2]];
+  var B3=[L2/20*Kout[0]+2*B4[0]-B5[0],L2/20*Kout[1]+2*B4[1]-B5[1],L2/20*Kout[2]+2*B4[2]-B5[2]];
+  var B=[B0,B1,B2,B3,B4,B5],out=[],i;
+  for(i=0;i<samples;i++)out.push(f8Bezier5(B,i/(samples-1)));
+  return out;
+}
+/* G4 八次混接：与脚本 create_g4_g4_blend_curve 同构 */
+function f8BlendG8(pPrev2,pPrev,p0,p1,p2,p3,p4,samples){
+  function sub(a,b){return [a[0]-b[0],a[1]-b[1],a[2]-b[2]];}
+  function nrm(a){var L=Math.sqrt(a[0]*a[0]+a[1]*a[1]+a[2]*a[2])||1e-6;return [a[0]/L,a[1]/L,a[2]/L];}
+  var ti=nrm(sub(p0,pPrev)), to=nrm(sub(p2,p1));
+  var ci=sub(sub(pPrev,p0),pPrev2);              /* p_prev − 2·p_prev2 + p0（脚本符号） */
+  var co=sub(sub(p3,p2),p1);
+  var ji=sub(sub(sub(p0,pPrev),pPrev),pPrev2);    /* jerk_in：脚本 get_prev_point 返回 p_prev2 */
+  var jo=sub(sub(sub(p1,p2),p3),p4);
+  var dist=Math.sqrt((p1[0]-p0[0])*(p1[0]-p0[0])+(p1[1]-p0[1])*(p1[1]-p0[1])+(p1[2]-p0[2])*(p1[2]-p0[2]));
+  function scl(a,b,k){return [a[0]+b[0]*k,a[1]+b[1]*k,a[2]+b[2]*k];}
+  var B0=p0,B8=p1;
+  var B1=scl(p0,ti,0.2*dist);
+  var B2=[p0[0]+ti[0]*0.4*dist+ci[0]*0.1*dist,p0[1]+ti[1]*0.4*dist+ci[1]*0.1*dist,p0[2]+ti[2]*0.4*dist+ci[2]*0.1*dist];
+  var B3=[p0[0]+ti[0]*0.6*dist+ci[0]*0.2*dist+ji[0]*0.05*dist,
+          p0[1]+ti[1]*0.6*dist+ci[1]*0.2*dist+ji[1]*0.05*dist,
+          p0[2]+ti[2]*0.6*dist+ci[2]*0.2*dist+ji[2]*0.05*dist];
+  var B7=scl(p1,to,-0.2*dist);
+  var B6=[p1[0]-to[0]*0.4*dist+co[0]*0.1*dist,p1[1]-to[1]*0.4*dist+co[1]*0.1*dist,p1[2]-to[2]*0.4*dist+co[2]*0.1*dist];
+  var B5=[p1[0]-to[0]*0.6*dist+co[0]*0.2*dist+jo[0]*0.05*dist,
+          p1[1]-to[1]*0.6*dist+co[1]*0.2*dist+jo[1]*0.05*dist,
+          p1[2]-to[2]*0.6*dist+co[2]*0.2*dist+jo[2]*0.05*dist];
+  var B4=[(B3[0]+B5[0])/2,(B3[1]+B5[1])/2,(B3[2]+B5[2])/2];
+  var B=[B0,B1,B2,B3,B4,B5,B6,B7,B8],out=[],i;
+  for(i=0;i<samples;i++)out.push(f8Bezier8(B,i/(samples-1)));
+  return out;
+}
+/* ---- 收缩螺旋几何：b = −ln2/(L/4)，z = e^{bt}(t−c) ⇒ z 非单调 ---- */
+function f8Geo(P){
+  var L=Math.max(1,P.tLen);              /* 参数总跨度 */
+  var b=-Math.LN2/(L/4);                  /* 半径全程缩小 1/16 */
+  var d=P.d;
+  function C(t){                         /* t ∈ [0,1] */
+    var tt=P.tMin+t*L;                   /* 绝对参数（脚本用 t_min..t_max） */
+    var R=Math.exp(b*tt)*d;
+    var z=Math.exp(b*tt)*(tt-P.zc);
+    return [R*Math.sin(tt),z,R*Math.cos(tt)];
+  }
+  /* z 的极值点：dz/dt = e^{bt}(1 + b(t−c)) = 0 ⇒ t = c + 1/|b| */
+  var tStar=P.zc+1/Math.abs(b);
+  var tInRange=(tStar>=P.tMin&&tStar<=P.tMin+L);
+  function psi(t){ return P.twist*L*t*0.5; }   /* 脚本：psi = linspace(0, twist·L/2) */
+  return {b:b,L:L,d:d,C:C,psi:psi,tStar:tStar,tInRange:tInRange};
+}
+/* 首尾断面线性插值：(1−t)·start + t·end（脚本 sweep_section 的写法） */
+function f8BlendSection(P){
+  var s=secCurve(P.secStart)||secCurve2(P.secStart);
+  var e=secCurve(P.secEnd)||secCurve2(P.secEnd);
+  if(!s)s=secCurve2('eggCsv')||secCurve('round');
+  if(!e)e=secCurve2('circCsv')||secCurve('round');
+  var n=Math.min(s.length,e.length),i;
+  /* 统一重采样到同点数，避免下标错位 */
+  var ss=f3SecResample(s,n),ee=f3SecResample(e,n);
+  return {start:ss,end:ee,n:n};
+}
+function f8Build(P){
+  var G=f8Geo(P),i;
+  var NT=200;
+  var BS=f8BlendSection(P);
+  var RM=rmfFrames(G.C,NT,0,1);
+  var frames=[];
+  for(i=0;i<=NT;i++)frames.push({c:RM.pts[i],T:RM.T[i],N:RM.N[i],B:RM.B[i],psi:G.psi(i/NT)});
+  /* 波纹因子：脚本里是 (1 + 0.1·sin(343·i))，此处用连续可调版本 */
+  var wAmp=P.wAmp,wFreq=P.wFreq;
+  function wave(i){ return 1+wAmp*Math.sin(wFreq*i); }
+  /* 断面插值：x_blend = (1−t)·start + t·end，再乘上 a(t) 与波纹 */
+  var SECP=[];
+  for(i=0;i<BS.n;i++)SECP.push([0,0]);
+  var geo=gridGeom(NT,BS.n-1,function(s,v){
+    var t=s,fr=frames[Math.round(s*NT)];
+    var fi=Math.round(t*(BS.n-1));
+    var xs=(1-t)*BS.start[fi][0]+t*BS.end[fi][0];
+    var ys=(1-t)*BS.start[fi][1]+t*BS.end[fi][1];
+    /* 断面绕自身中心旋转（避免渐变时"缩水"）——保持起点方位 */
+    var rs=P.amp*(1-(1-1/Math.max(1.0001,P.aEnd))*t)*wave(Math.round(t*NT));
+    var u=xs*rs,w=ys*rs;
+    var cp=Math.cos(fr.psi),sp=Math.sin(fr.psi);
+    var x=u*cp-w*sp,y=u*sp+w*cp;
+    return [fr.c[0]+x*fr.B[0]+y*fr.N[0],
+            fr.c[1]+x*fr.B[1]+y*fr.N[1],
+            fr.c[2]+x*fr.B[2]+y*fr.N[2]];
+  });
+  var g=new THREE.Group();
+  g.add(new THREE.Mesh(geo,new THREE.MeshPhongMaterial({color:0x2f9c68,shininess:70,specular:0x99ddbb,
+    transparent:true,opacity:0.72,side:THREE.DoubleSide,depthWrite:false})));
+  g.add(new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:0x0d3a26,wireframe:true,
+    transparent:true,opacity:0.07,depthWrite:false})));
+  /* 导轨线（蛋尖线 = 断面第 0 点）：用于演示「断口混接」 */
+  var rail=[],i2;
+  for(i2=0;i2<=NT;i2++){
+    var t2=i2/NT,fr2=frames[i2];
+    var fidx=Math.round(t2*(BS.n-1));
+    var xs2=(1-t2)*BS.start[fidx][0]+t2*BS.end[fidx][0];
+    var ys2=(1-t2)*BS.start[fidx][1]+t2*BS.end[fidx][1];
+    var rs2=P.amp*(1-(1-1/Math.max(1.0001,P.aEnd))*t2)*wave(i2);
+    var u2=xs2*rs2,w2=ys2*rs2;
+    var cp2=Math.cos(fr2.psi),sp2=Math.sin(fr2.psi);
+    var x2=u2*cp2-w2*sp2,y2=u2*sp2+w2*cp2;
+    rail.push([fr2.c[0]+x2*fr2.B[0]+y2*fr2.N[0],
+               fr2.c[1]+x2*fr2.B[1]+y2*fr2.N[1],
+               fr2.c[2]+x2*fr2.B[2]+y2*fr2.N[2]]);
+  }
+  /* 断口处理：把导轨线按「波纹跳变」断开并用 Bézier 桥接 */
+  var blended=rail.slice(),segs=1;
+  if(P.blend!==0){
+    /* 找跳变点：相邻点距离突变（波纹阶跃造成） */
+    var jumps=[];
+    for(i2=1;i2<rail.length-1;i2++){
+      var d1=Math.hypot(rail[i2][0]-rail[i2-1][0],rail[i2][1]-rail[i2-1][1],rail[i2][2]-rail[i2-1][2]);
+      var d2v=Math.hypot(rail[i2+1][0]-rail[i2][0],rail[i2+1][1]-rail[i2][1],rail[i2+1][2]-rail[i2][2]);
+      if(d2v>d1*3.0&&d2v>0.02)jumps.push(i2);
+    }
+    var outPts=[],last=0;
+    for(var jj=0;jj<jumps.length;jj++){
+      var k=jumps[jj];
+      var seg=rail.slice(last,k+1);
+      outPts=outPts.concat(seg);
+      /* 桥接：取 k 处与 k+1 处，用前后点做 Bézier */
+      var p0=rail[k],p1=rail[k+1];
+      var pp=rail[Math.max(0,k-1)],pp2=rail[Math.max(0,k-2)];
+      var n1=rail[Math.min(rail.length-1,k+2)],n2=rail[Math.min(rail.length-1,k+3)];
+      var bridge;
+      if(P.blend===1)bridge=f8BlendG2(pp2,pp,p0,p1,n1,n2,0.6,0.15,24);
+      else bridge=f8BlendG8(pp2,pp,p0,p1,n1,n2,rail[Math.min(rail.length-1,k+4)],24);
+      outPts=outPts.concat(bridge.slice(1,-1));
+      last=k+1;segs++;
+    }
+    outPts=outPts.concat(rail.slice(last));
+    blended=outPts;
+  }
+  var rp=[],i3;
+  for(i3=0;i3<blended.length;i3++)rp.push(new THREE.Vector3(blended[i3][0],blended[i3][1],blended[i3][2]));
+  var railMesh=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rp),
+    Math.max(8,rp.length*2),Math.max(0.12,P.amp*0.05),6,false),solid(0xd0342c,0.95));
+  railMesh.name='guideRail';
+  g.add(railMesh);
+  /* 中心线 */
+  var cl=[];
+  for(i=0;i<=120;i++){var q=G.C(i/120);cl.push(new THREE.Vector3(q[0],q[1],q[2]));}
+  var cll=lineOf(cl,0x8a93a3);cll.name='centerLine';g.add(cll);
+  g.userData.G=G;g.userData.segments=segs;g.userData.blendPoints=blended.length;
+  return g;
+}
+function f8Read(P){
+  var G=f8Geo(P);
+  var BS=f8BlendSection(P);
+  var ms=null,me=null,i;
+  for(i=0;i<SEC_LIB.length;i++){
+    if(SEC_LIB[i].k===P.secStart)ms=SEC_LIB[i];
+    if(SEC_LIB[i].k===P.secEnd)me=SEC_LIB[i];
+  }
+  if(!ms)ms=secMeta2(P.secStart);
+  if(!me)me=secMeta2(P.secEnd);
+  var blendTxt=['不分段（连续）','分段 + 五次 Bézier（G² 连续）','分段 + 八次 Bézier'];
+  return [
+    ['收缩因子 b',G.b.toFixed(5)+'（半径全程缩小 1/16）'],
+    ['参数跨度 L',G.L.toFixed(2)+'（t∈['+P.tMin.toFixed(2)+', '+(P.tMin+G.L).toFixed(2)+']）'],
+    ['z 律','z = e^{bt}·(t − '+P.zc.toFixed(2)+') ⇒ z 非单调'],
+    ['z 极值点 t*',G.tStar.toFixed(3)+(G.tInRange?'（在区间内 ⇒ 管身会"回折"）':'（在区间外 ⇒ 本段单调）')],
+    ['起始断面',(ms?ms.t:'—')+'（面积 '+(ms?ms.a.toFixed(3):'—')+'）'],
+    ['终止断面',(me?me.t:'—')+'（面积 '+(me?me.a.toFixed(3):'—')+'）'],
+    ['断面插值','线性 (1−t)·start + t·end（脚本写法）'],
+    ['断口处理',blendTxt[P.blend]||'—'],
+    ['扭角 ψ(1)',(G.psi(1)*180/Math.PI).toFixed(0)+'°'],
+    ['波纹因子','1 + '+P.wAmp.toFixed(2)+'·sin('+P.wFreq.toFixed(1)+'·i)'],
+    ['沿程半径','amp='+P.amp.toFixed(2)+' → '+(P.amp/Math.max(1.0001,P.aEnd)).toFixed(2)],
+    ['圆周阵列',(P.reps>1?(P.reps+' 份'):'未启用')]
+  ];
+}
+
+/* ==========================================================================
+   家族 9：丝杠锥螺纹攻牙（斜螺锥 + GL25 锥螺纹）
+   整合自：
+     · 最简原始模版用于生成斜螺锥.py
+     · 最简原始模版用于生成GL25螺纹 - dxf -完美.py
+   —— 两个脚本的共同点：都是【丝杠参数化】中心线
+        x = (R_eff − t·r)·cos(t·h_div_pitch)
+        y = (R_eff − t·r)·sin(t·h_div_pitch)·sign
+        z = t·h
+      断面来自 DXF 的 POINT 实体（三角牙 60° / 82°），沿丝杠扫掠。
+     差别只有三处：
+        (a) 斜螺锥：R_eff = base_r = diameter/2，r = high·taper_ratio，
+            h_div_pitch = high·π/pitch，断面 ×pitch（无缩放），固定扭转角 = 0
+        (b) GL25：base_r = diameter/2 + 2·pitch·taper_ratio，
+            effective_base_r = base_r − depth（牙深），h = (pitch_multi+2)·pitch·2，
+            h_div_pitch = h·π/pitch，固定扭转角 = −taper_angle，
+            动态缩放：断面 × current_r/base_r
+     ⇒ 归到一个子页，用「攻牙模式」下拉切换（斜螺锥 / GL25）。
+   ========================================================================== */
+function f9Geo(P){
+  var dia=Math.max(1,P.diameter);
+  var pitch=Math.max(0.05,P.pitch);
+  var taperRatio=Math.tan(P.taperAngle*Math.PI/180);
+  var baseR=dia/2+2*pitch*taperRatio;      /* GL25 写法；斜螺锥用 dia/2（见 mode） */
+  if(P.mode===0)baseR=dia/2;
+  var depth=P.depth;
+  var effR=baseR-depth;
+  if(effR<=0)effR=Math.max(0.1,baseR);
+  var h,hdP,r;
+  if(P.mode===0){                        /* 斜螺锥：h = high，r = high·taper_ratio */
+    h=P.high;hdP=h*Math.PI/pitch;r=h*taperRatio;
+  }else{                                 /* GL25：h = (pitch_multi+2)·pitch·2 */
+    h=(P.pitchMulti+2)*pitch*2;hdP=h*Math.PI/pitch;r=h*taperRatio;
+  }
+  function C(t){
+    var rr=effR-t*r;
+    return [rr*Math.cos(t*hdP),t*h,rr*Math.sin(t*hdP)*P.sign];
+  }
+  /* 动态缩放：断面尺寸随当前半径 current_r/base_r 变化 */
+  function curR(t){ return baseR-t*r; }
+  function scale(t){ return P.mode===1?(curR(t)/baseR):1; }
+  return {baseR:baseR,effR:effR,depth:depth,h:h,hdP:hdP,r:r,taperRatio:taperRatio,
+          C:C,scale:scale,curR:curR};
+}
+function f9SecLocal(P){
+  var c=secCurve2(P.secType)||secCurve(P.secType)||null;
+  if(!c)c=secCurve2('tri82');
+  return secRotate(c,(P.secAz===undefined?0:P.secAz));
+}
+function f9Build(P){
+  var G=f9Geo(P),i;
+  var NT=260;
+  var SEC=f9SecLocal(P);
+  var SECP=f3SecResample(SEC,64);
+  var NS=SECP.length;
+  var RM=rmfFrames(G.C,NT,0,1);
+  var frames=[];
+  for(i=0;i<=NT;i++)frames.push({c:RM.pts[i],T:RM.T[i],N:RM.N[i],B:RM.B[i]});
+  /* 固定扭转角：斜螺锥 0，GL25 = −taper_angle（脚本的 twist_angle） */
+  function psiAt(t){ return P.mode===1?(-P.taperAngle*Math.PI/180):0; }
+  var geo=gridGeom(NT,NS-1,function(s,v){
+    var t=s,fr=frames[Math.round(s*NT)];
+    var q=SECP[Math.round(v*NS)%NS];
+    var rs=P.pitch*G.scale(t);            /* 断面 × pitch（脚本：x(j)·pitch） */
+    var u=q[0]*rs,w=q[1]*rs;
+    var ps=psiAt(t),cp=Math.cos(ps),sp=Math.sin(ps);
+    var x=u*cp-w*sp,y=u*sp+w*cp;
+    return [fr.c[0]+x*fr.B[0]+y*fr.N[0],
+            fr.c[1]+x*fr.B[1]+y*fr.N[1],
+            fr.c[2]+x*fr.B[2]+y*fr.N[2]];
+  });
+  var g=new THREE.Group();
+  g.add(new THREE.Mesh(geo,new THREE.MeshPhongMaterial({color:0xc98a2e,shininess:90,specular:0xffddaa,
+    transparent:true,opacity:0.80,side:THREE.DoubleSide,depthWrite:false})));
+  g.add(new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:0x5a3a08,wireframe:true,
+    transparent:true,opacity:0.10,depthWrite:false})));
+  /* 首尾圈 */
+  function rimAt(t,color){
+    var fr=frames[Math.round(t*NT)],pts=[],i2;
+    var rs0=P.pitch*G.scale(t);
+    for(i2=0;i2<=NS;i2++){
+      var q=SECP[i2%NS],u=rs0*q[0],w=rs0*q[1];
+      var ps=psiAt(t),cp=Math.cos(ps),sp=Math.sin(ps);
+      var x=u*cp-w*sp,y=u*sp+w*cp;
+      pts.push(new THREE.Vector3(fr.c[0]+x*fr.B[0]+y*fr.N[0],
+                                 fr.c[1]+x*fr.B[1]+y*fr.N[1],
+                                 fr.c[2]+x*fr.B[2]+y*fr.N[2]));
+    }
+    var rim=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts,true),NS,
+      Math.max(0.25,P.pitch*0.12),8,true),new THREE.MeshBasicMaterial({color:color}));
+    rim.name=(t===0)?'rimIn':'rimOut';
+    g.add(rim);
+  }
+  rimAt(0,0x0b57a4);rimAt(1,0xd0342c);
+  /* 中心线 */
+  var cl=[];
+  for(i=0;i<=160;i++){var q=G.C(i/160);cl.push(new THREE.Vector3(q[0],q[1],q[2]));}
+  var cll=lineOf(cl,0x8a93a3);cll.name='centerLine';g.add(cll);
+  g.userData.G=G;
+  return g;
+}
+/* GL25 脚本的三法估算最佳 pitch_multi（高度 / 长度 / 面积），此处照搬其公式 */
+function f9Optimal(P){
+  /* 照抄 GL25 脚本 calculate_optimal_pitch_multi_value（行 94-148）：
+       方法1 高度：h_cone = base_r / tan(taper)；h_spiral = pitch_multi·pitch
+                  ⇒ by_height = h_cone / pitch
+       方法2 长度：L_turn = √(pitch² + (2π·R_avg)²)；n = L_cone / L_turn
+       方法3 面积：A_turn = pitch·2π·R_avg；n = A_cone / A_turn
+       推荐   ：(三种平均) 后 max(1, ·) 再 ÷2
+     base_r 按模式分支：GL25 = dia/2 + 2·pitch·taper_ratio；斜螺锥 = dia/2 */
+  var dia=Math.max(1,P.diameter),pitch=Math.max(0.05,P.pitch);
+  var taperRatio=Math.tan(P.taperAngle*Math.PI/180);
+  var baseR=(P.mode===0)?(dia/2):(dia/2+2*pitch*taperRatio);
+  var hCone=baseR/taperRatio;                       /* 锥高 h_cone */
+  var byHeight=hCone/pitch;
+  var Lcone=Math.sqrt(hCone*hCone+baseR*baseR);     /* 圆锥母线长 L_cone */
+  var Ravg=baseR/2;                                 /* 平均半径（线性收缩假设） */
+  var Lturn=Math.sqrt(pitch*pitch+Math.pow(2*Math.PI*Ravg,2));  /* 单圈螺旋线长 */
+  var byLength=Lcone/Lturn;
+  var Acone=Math.PI*baseR*Lcone;                   /* 圆锥侧面积 */
+  var Aturn=pitch*2*Math.PI*Ravg;                   /* 单圈螺旋线覆盖面积 */
+  var byArea=Acone/Aturn;
+  var avg=(byHeight+byLength+byArea)/3;
+  var rec=Math.max(1,avg)/2;
+  return {byHeight:byHeight,byLength:byLength,byArea:byArea,rec:rec,hCone:hCone,
+          baseR:baseR,Ravg:Ravg,Lturn:Lturn,Lcone:Lcone,Acone:Acone,Aturn:Aturn};
+}
+function f9Read(P){
+  var G=f9Geo(P);
+  var turns=G.h/(Math.max(0.05,P.pitch));
+  var sm=secMeta2(P.secType);
+  var rows=[
+    ['攻牙模式',(P.mode===0?'斜螺锥（无牙深/固定扭转 0）':'GL25 锥螺纹（牙深 + 固定扭转 −锥半角）')],
+    ['底径',P.diameter.toFixed(2)+' mm'],
+    ['螺距 pitch',P.pitch.toFixed(3)+' mm'],
+    ['锥半角',P.taperAngle.toFixed(3)+'°（锥度比 '+G.taperRatio.toFixed(5)+'）'],
+    ['基圆半径 base_r',G.baseR.toFixed(4)+' mm'],
+    ['有效基圆半径',G.effR.toFixed(4)+' mm（= base_r − depth '+P.depth.toFixed(3)+'）'],
+    ['丝杠总高 h',G.h.toFixed(3)+' mm'],
+    ['h_div_pitch',G.hdP.toFixed(4)+'（= h·π/pitch）'],
+    ['每圈径向收缩 r',G.r.toFixed(4)+' mm/圈（= h·taper_ratio）'],
+    ['螺线圈数',turns.toFixed(2)+' 圈'],
+    ['断面',(sm?sm.t:'三角牙')+'（DXF POINT 实体，×pitch）'],
+    ['动态缩放',(P.mode===1?('开：断面 × current_r/base_r（从 1 降到 '+G.scale(1).toFixed(3)+'）'):'不适用（斜螺锥固定尺寸）')],
+    ['固定扭转角',(P.mode===1?('−'+P.taperAngle.toFixed(3)+'°'):'0°（斜螺锥）')],
+    ['手性 sign',(P.sign>=0?'+1（右旋）':'−1（左旋）')]
+  ];
+  if(P.mode===1){
+    var op=f9Optimal(P);
+    rows.push(['最佳 pitch_multi 估算','高度 '+op.byHeight.toFixed(2)+' / 长度 '+op.byLength.toFixed(2)+' / 面积 '+op.byArea.toFixed(2)+' ⇒ 推荐 '+op.rec.toFixed(2)]);
+    rows.push(['锥高 h_cone',op.hCone.toFixed(3)+' mm（= base_r / tan(锥半角)）']);
+  }
+  return rows;
+}
+/* ==========================================================================
+   家族 10：Clothoid S 形过渡（2D）
+   来自 生成clothoids混接原始.py：
+     · 曲率 κ(s) = k_max·s（线性变曲率 ⇒ clothoid / 回旋曲线）
+     · 两段组成 S 形：第一段曲率 0→κ1，第二段曲率 0→κ2（方向相反）
+     · 两段曲率半径比固定 R2 = 5·R1
+     · R1 由数值优化反求（目标：终点位置误差 + 终点切线角误差·D，L-BFGS-B）
+     · L_min = D·π/2
+   —— 这是【纯 2D 曲线】原理，与所有 3D 扫掠族都不同 ⇒ 独立子页。
+   ========================================================================== */
+/* 菲涅尔积分：x=∫cos(θ)du, y=∫sin(θ)du, θ(u)=k_max·u²/2（数值 Simpson 积分） */
+function f10Fresnel(s,kMax,steps){
+  steps=steps||48;
+  if(s<=0)return [0,0];
+  var h=s/steps,i,sumX=0,sumY=0;
+  for(i=0;i<=steps;i++){
+    var u=i*h,th=kMax*u*u/2;
+    var w=(i===0||i===steps)?1:((i%2)?4:2);
+    sumX+=w*Math.cos(th);sumY+=w*Math.sin(th);
+  }
+  return [sumX*h/3,sumY*h/3];
+}
+function f10ClothoidSeg(startPoint,startAngle,kMax,length,samples){
+  var pts=[],i;
+  for(i=0;i<samples;i++){
+    var s=length*i/(samples-1);
+    var d=f10Fresnel(s,kMax);
+    var ca=Math.cos(startAngle),sa=Math.sin(startAngle);
+    var xr=d[0]*ca-d[1]*sa,yr=d[0]*sa+d[1]*ca;
+    pts.push([startPoint[0]+xr,startPoint[1]+yr]);
+  }
+  return pts;
+}
+/* 用给定的 R1 生成 S 形（两段，R2=5·R1） */
+function f10CurveWithR1(P1,theta1,R1,kMax,L,samples){
+  var R2=5*R1,kappa1=1/R1,kappa2=1/R2;
+  var L1=kappa1/kMax,L2=kappa2/kMax,total=L1+L2;
+  var kAdj=kMax;
+  if(total>L){kAdj=(kappa1+kappa2)/L;L1=kappa1/kAdj;L2=kappa2/kAdj;}
+  var c1=f10ClothoidSeg(P1,theta1,kAdj,L1,samples);
+  var e1=c1[c1.length-1];
+  var ang1=theta1+kAdj*L1*L1/2;
+  var c2=f10ClothoidSeg(e1,ang1+Math.PI,-kAdj,L2,samples);
+  return c1.concat(c2.slice(1));
+}
+/* R1 数值反求（对应脚本的 scipy L-BFGS-B）
+   —— 目标函数在"长度钳制"附近是【多峰】的（曲线会自交/绕圈），
+      单纯黄金分割会收敛到错误的局部极小；
+   —— 因此先做 420 点【对数全局扫描】定位全局最优区间，再用黄金分割【两轮精修】。 */
+function f10SolveR1(P1,theta1,P2,theta2,D,L,kMax){
+  function obj(R1){
+    var c=f10CurveWithR1(P1,theta1,R1,kMax,L,40);
+    var e=c[c.length-1],e2=c[c.length-2];
+    var pe=Math.hypot(e[0]-P2[0],e[1]-P2[1]);
+    var ca=Math.atan2(e[1]-e2[1],e[0]-e2[0]);
+    /* 角差必须回绕：atan2 ∈ (−π, π]、theta2 ∈ [0, 2π) ⇒ |ca−theta2| 最大可到 3π。
+       只做一次 ">π ? 2π−·" 会在差 >2π 时给出【负数】误差（实测 −0.9°），
+       负数会让最差解反而"最优" ⇒ 必须用取模一次性折到 [−π, π]。 */
+    var dd=ca-theta2;
+    dd=dd-Math.PI*2*Math.round(dd/(Math.PI*2));
+    var ae=Math.abs(dd);
+    return pe+ae*D;
+  }
+  var lo=0.05,hi=2000,NS=420,i;
+  var bestR=lo,bestF=Infinity;
+  for(i=0;i<NS;i++){
+    var R1=lo*Math.pow(hi/lo,i/(NS-1));
+    var f=obj(R1);
+    if(f<bestF){bestF=f;bestR=R1;}
+  }
+  /* 两轮局部精修（区间按相邻扫描点缩放） */
+  var gr=(Math.sqrt(5)-1)/2;
+  for(var round=0;round<2;round++){
+    var a=Math.max(lo,bestR/1.15),b=Math.min(hi,bestR*1.15);
+    var c=b-gr*(b-a),d=a+gr*(b-a);
+    var fc=obj(c),fd=obj(d),it=0;
+    while(Math.abs(b-a)>1e-7&&it<90){
+      if(fc<fd){b=d;d=c;fd=fc;c=b-gr*(b-a);fc=obj(c);}
+      else{a=c;c=d;fc=fd;d=a+gr*(b-a);fd=obj(d);}
+      it++;
+    }
+    var R2=(a+b)/2,f2=obj(R2);
+    if(f2<bestF){bestF=f2;bestR=R2;}
+  }
+  return {R1:bestR,f:bestF};
+}
+function f10Geo(P){
+  var P1=[P.x1,P.y1],P2=[P.x2,P.y2];
+  var kMax=Math.pow(10,(P.kExp===undefined?-4.7:P.kExp));
+  /* 两端切线角直接由参数给。脚本是从"相邻点"用 atan2 反算的，
+     但它的 prev_P2 写死成 P2 + (tanLen, 0) ⇒ 终点切线恒为 180°（终点反向），
+     而"两段 S + R₂=5R₁"只有一个自由量 R₁，基本无法同时命中位置与 180° 切线
+     ⇒ 本页把两个角都做成滑条（默认 ang2=180° 即脚本原意，调到能闭合的组合即可）。 */
+  var theta1=((P.ang1===undefined?0:P.ang1))*Math.PI/180;
+  var theta2=((P.ang2===undefined?180:P.ang2))*Math.PI/180;
+  var prev1=[P.x1-P.tanLen*Math.cos(theta1),P.y1-P.tanLen*Math.sin(theta1)];
+  var prev2=[P.x2-P.tanLen*Math.cos(theta2),P.y2-P.tanLen*Math.sin(theta2)];
+  var D=Math.hypot(P2[0]-P1[0],P2[1]-P1[1]);
+  var Lmin=D*Math.PI/2;
+  var L=Math.max(Lmin,P.L);
+  var sol=f10SolveR1(P1,theta1,P2,theta2,D,L,kMax);
+  var curve=f10CurveWithR1(P1,theta1,sol.R1,kMax,L,220);
+  var e=curve[curve.length-1],e2=curve[curve.length-2];
+  var endAng=Math.atan2(e[1]-e2[1],e[0]-e2[0]);
+  /* 实际弧长（用户给的 L 只是上限；没触发长度钳制时实际弧长 = (κ₁+κ₂)/k_max 更短） */
+  var arcLen=0,i2;
+  for(i2=1;i2<curve.length;i2++)arcLen+=Math.hypot(curve[i2][0]-curve[i2-1][0],curve[i2][1]-curve[i2-1][1]);
+  return {P1:P1,P2:P2,prev1:prev1,prev2:prev2,theta1:theta1,theta2:theta2,
+          D:D,L:L,Lmin:Lmin,kMax:kMax,R1:sol.R1,R2:5*sol.R1,curve:curve,err:sol.f,
+          arcLen:arcLen,endAng:endAng,endPoint:e};
+}
+function f10Build(P){
+  var G=f10Geo(P),g=new THREE.Group(),i;
+  /* 曲线本体（在 xy 平面） */
+  var pts=[];
+  for(i=0;i<G.curve.length;i++)pts.push(new THREE.Vector3(G.curve[i][0],G.curve[i][1],0));
+  var rTube=Math.max(0.12,G.D*0.010);            /* 管半径按端点间距缩放（k_max 跨 3 个量级，不能拿它当尺度） */
+  var line=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),
+    G.curve.length*2,rTube,8,false),solid(0x2f74c8,0.95));
+  line.name='clothoid';
+  g.add(line);
+  /* 两段分别着色：第 1 段蓝、第 2 段绿 */
+  var half=Math.floor(G.curve.length/2);
+  function seg(a,b,col){
+    var q=[],k;
+    for(k=a;k<=b;k++)q.push(new THREE.Vector3(G.curve[k][0],G.curve[k][1],0));
+    if(q.length<2)return;
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(q),
+      q.length*2,rTube*0.75,8,false),solid(col,0.9)));
+  }
+  seg(0,half,0x2f74c8);seg(half,G.curve.length-1,0x2f9c68);
+  /* 端点球 + 切线箭头 */
+  function dot(p,col){
+    var m=new THREE.Mesh(new THREE.SphereGeometry(Math.max(0.35,G.D*0.018),16,12),solid(col,1));
+    m.position.set(p[0],p[1],0);m.name='endPoint';g.add(m);
+  }
+  dot(G.P1,0xd0342c);dot(G.P2,0xd0342c);
+  function arrow(p,ang,col){
+    var Lp=Math.max(3,P.tanLen*0.9);
+    var q=[new THREE.Vector3(p[0],p[1],0),
+           new THREE.Vector3(p[0]+Lp*Math.cos(ang),p[1]+Lp*Math.sin(ang),0)];
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(q),2,rTube*0.5,6,false),solid(col,1)));
+  }
+  arrow(G.P1,G.theta1,0xe03131);arrow(G.P2,G.theta2,0xe03131);
+  /* 基线 */
+  var bl=[new THREE.Vector3(G.P1[0],G.P1[1],0),new THREE.Vector3(G.P2[0],G.P2[1],0)];
+  g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(bl),2,rTube*0.33,6,false),
+    new THREE.MeshBasicMaterial({color:0x99a3b0})));
+  g.userData.G=G;
+  return g;
+}
+function f10Read(P){
+  var G=f10Geo(P);
+  return [
+    ['曲线类型','Clothoid（回旋曲线）S 形过渡 · κ(s)=k_max·s'],
+    ['端点间距 D',G.D.toFixed(3)],
+    ['最小长度 L_min','D·π/2 = '+G.Lmin.toFixed(3)],
+    /* 只有"用户给的 L 比 L_min 短、被抬到 L_min"时才标注（旧写法只要 L>L_min 就误标） */
+    ['给定长度上限 L',G.L.toFixed(3)+((P.L<G.Lmin-1e-9)?'（已被抬到 L_min，因用户给的更短）':'')],
+    ['实际弧长',G.arcLen.toFixed(3)+(G.arcLen<G.L-1e-6?'（未触发长度钳制，比 L 短）':'')],
+    ['反求 R1',G.R1.toFixed(4)+'（数值优化：黄金分割 + 5 起点，等价脚本的 L-BFGS-B）'],
+    ['R2 = 5·R1',G.R2.toFixed(4)],
+    ['k_max',G.kMax.toExponential(2)+'（= 10^'+ (P.kExp===undefined?-4.7:P.kExp).toFixed(2)+'）'],
+    ['起点切线角',(G.theta1*180/Math.PI).toFixed(2)+'°'],
+    ['终点切线角',(G.theta2*180/Math.PI).toFixed(2)+'°'],
+    ['实际终点切线角',(G.endAng*180/Math.PI).toFixed(2)+'°'],
+    ['目标函数残差',G.err.toFixed(6)+'（位置误差 + 切线角误差·D）'],
+    ['终点位置误差',Math.hypot(G.endPoint[0]-G.P2[0],G.endPoint[1]-G.P2[1]).toFixed(3)+
+      '（D 的 '+(Math.hypot(G.endPoint[0]-G.P2[0],G.endPoint[1]-G.P2[1])/Math.max(1e-9,G.D)*100).toFixed(1)+'%）'],
+    ['是否闭合',(Math.hypot(G.endPoint[0]-G.P2[0],G.endPoint[1]-G.P2[1])<G.D*0.02)
+      ?'✓ 已闭合（误差 < 2%·D）':'✗ 未闭合 ⇒ 调「曲率变化率」或「终点切线角」'],
+    ['曲线点数',G.curve.length]
+  ];
+}
+function f10Prof(ctx,W,H,P){
+  var G=f10Geo(P),i;
+  var xs=[],ys=[];
+  for(i=0;i<G.curve.length;i++){xs.push(G.curve[i][0]);ys.push(G.curve[i][1]);}
+  xs.push(G.P1[0],G.P2[0],G.prev1[0],G.prev2[0]);
+  ys.push(G.P1[1],G.P2[1],G.prev1[1],G.prev2[1]);
+  var x0=Math.min.apply(null,xs),x1=Math.max.apply(null,xs);
+  var y0=Math.min.apply(null,ys),y1=Math.max.apply(null,ys);
+  var pad=0.12*Math.max(x1-x0,y1-y0||1);
+  x0-=pad;x1+=pad;y0-=pad;y1+=pad;
+  var l=48,r=W-14,t=14,b=H-30;
+  var sx=(r-l)/(x1-x0||1),sy=(b-t)/(y1-y0||1);
+  var sc=Math.min(sx,sy);
+  var cx=(l+r)/2,cy=(t+b)/2;
+  function X(x){return cx+(x-(x0+x1)/2)*sc;}
+  function Y(y){return cy-(y-(y0+y1)/2)*sc;}
+  ctx.clearRect(0,0,W,H);ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#eef1f6';ctx.lineWidth=1;
+  for(i=0;i<=4;i++){var gx=l+(r-l)*i/4;ctx.beginPath();ctx.moveTo(gx,t);ctx.lineTo(gx,b);ctx.stroke();}
+  ctx.strokeStyle='#dde3ec';ctx.beginPath();ctx.moveTo(l,(t+b)/2);ctx.lineTo(r,(t+b)/2);ctx.stroke();
+  /* 曲线 */
+  ctx.lineWidth=2.4;ctx.strokeStyle='#2f74c8';ctx.beginPath();
+  for(i=0;i<G.curve.length;i++){var px=X(G.curve[i][0]),py=Y(G.curve[i][1]);
+    if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);}
+  ctx.stroke();
+  /* 端点与切线 */
+  function mk(p,col){ctx.fillStyle=col;ctx.beginPath();ctx.arc(X(p[0]),Y(p[1]),5,0,TAU);ctx.fill();}
+  mk(G.P1,'#d0342c');mk(G.P2,'#d0342c');
+  function arrow(p,ang,col){
+    var Lp=Math.max(3,P.tanLen*0.9);
+    ctx.strokeStyle=col;ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(X(p[0]),Y(p[1]));
+    ctx.lineTo(X(p[0]+Lp*Math.cos(ang)),Y(p[1]+Lp*Math.sin(ang)));ctx.stroke();
+  }
+  arrow(G.P1,G.theta1,'#e03131');arrow(G.P2,G.theta2,'#e03131');
+  /* 读数分两行：画布只有 ~288px 宽，一行塞不下（旧版会被裁掉右边） */
+  ctx.fillStyle='#2c3546';ctx.font='11.5px Consolas,monospace';
+  ctx.fillText('Clothoid S 过渡 · R1='+G.R1.toFixed(2)+'  R2='+G.R2.toFixed(1),l,H-24);
+  var dErr=Math.hypot(G.endPoint[0]-G.P2[0],G.endPoint[1]-G.P2[1]);
+  ctx.fillStyle=dErr<G.D*0.02?'#1c7a3e':'#c0341f';
+  ctx.fillText('L='+G.L.toFixed(1)+'  L_min='+G.Lmin.toFixed(1)+'  终点误差 '+(dErr/G.D*100).toFixed(1)+'%·D',l,H-9);
+}
+
+/* ==========================================================================
+   家族 11：漏斗对数螺旋管（蛋黄金比锥切面螺旋线 族 12 脚本）
+   来自 E:/pythonProject/program/egg黄金比锥切面螺旋线 - 3d图 - uv等轴 …py：
+     这族脚本的中心线是【漏斗面上的对数/双曲螺线】，与族⑦ 的锥螺旋完全不同：
+       漏斗面方程  z = ln(1/r) / lnφ   （φ=(√5−1)/2，lnφ<0）
+     5 条不同的中心线（C10–C14）：
+       C10 基础双曲螺线      r = 1/t_s，t_s = n + τ/(2π)，z = ln(t_s)/lnφ，θ = T
+       C11 Lotus 样条        r = CubicSpline(φ^(n−1))，投影 z = ln(1/r)/lnφ
+       C12 β 角速度真对数螺线 r = exp(linspace(log r_min, log r_max))，θ = T/β
+       C13 太阳数列 2^t      r = 2^(−t/(2π))，z = (t/2π)·(ln2/lnφ)
+       C14 平方 t²           r = 1/t_shape²，z = −2·ln(t_shape)/lnφ
+     「原曲线 r=1 / r=2 开始切」= 起始半径 1 或 2（漏斗母线 x=1/t 的上端）。
+     ⚠ 「可自转/动画」版把渐进扭转烘进了 x,y 坐标，与 RMF 会双重扭转 ⇒ 本页不采用，
+       改由「扭角律」滑条单独控制。
+   ========================================================================== */
+var LNPHI=Math.log((Math.sqrt(5)-1)/2);        /* 负值 */
+/* 自然三次样条（脚本用 scipy CubicSpline，此处自己实现） */
+/* 自然三次样条（自研，替代 scipy.interpolate.CubicSpline）
+   记 h[i] = x[i+1] − x[i]，未知量取二阶导 M[i]（i = 0..n，自然边界 M[0] = M[n] = 0）。
+   内点方程（i = 1..n−1）：
+       h[i−1]·M[i−1] + 2(h[i−1]+h[i])·M[i] + h[i]·M[i+1]
+         = 6·( (y[i+1]−y[i])/h[i] − (y[i]−y[i−1])/h[i−1] )
+   ⇒ n+1 个未知量，用 Thomas 消元解这条严格对角占优的三对角方程。
+   分段表达式（Burden & Faires 标准形，c_i = M_i/2）：
+       S_i(x) = y_i + b_i·dx + c_i·dx² + d_i·dx³,   dx = x − x_i
+       b_i = Δy/h − h(2M_i + M_{i+1})/6,  c_i = M_i/2,  d_i = (M_{i+1} − M_i)/(6h)
+   区间外做线性外推（脚本里靠 mask 剔除那些点）。 */
+function f11CubicSpline(xs,ys){
+  var n=xs.length-1,i;
+  if(n<1)return function(x){return ys[0];};
+  var h=new Array(n),M=new Array(n+1),b=new Array(n),c=new Array(n),d=new Array(n);
+  for(i=0;i<n;i++)h[i]=xs[i+1]-xs[i];
+  if(n===1){
+    var sl=(ys[1]-ys[0])/h[0];
+    return function(x){return ys[0]+sl*(x-xs[0]);};
+  }
+  /* --- 三对角方程组：行 i 对应未知量 M_i（0..n） --- */
+  var lo=new Array(n+1),dg=new Array(n+1),up=new Array(n+1),rh=new Array(n+1);
+  for(i=0;i<=n;i++){lo[i]=0;dg[i]=0;up[i]=0;rh[i]=0;}
+  dg[0]=1;                                  /* M[0] = 0 */
+  dg[n]=1;                                  /* M[n] = 0 */
+  for(i=1;i<n;i++){
+    lo[i]=h[i-1];
+    dg[i]=2*(h[i-1]+h[i]);
+    up[i]=h[i];
+    rh[i]=6*((ys[i+1]-ys[i])/h[i]-(ys[i]-ys[i-1])/h[i-1]);
+  }
+  /* --- Thomas 消元 --- */
+  var cc=new Array(n+1),dd=new Array(n+1);
+  cc[0]=up[0]/dg[0];dd[0]=rh[0]/dg[0];
+  for(i=1;i<=n;i++){
+    var m=dg[i]-lo[i]*cc[i-1];
+    if(Math.abs(m)<1e-14)m=(m<0?-1e-14:1e-14);
+    cc[i]=up[i]/m;
+    dd[i]=(rh[i]-lo[i]*dd[i-1])/m;
+  }
+  M[n]=dd[n];
+  for(i=n-1;i>=0;i--)M[i]=dd[i]-cc[i]*M[i+1];
+  /* --- 分段系数 --- */
+  for(i=0;i<n;i++){
+    b[i]=(ys[i+1]-ys[i])/h[i]-h[i]*(2*M[i]+M[i+1])/6;
+    c[i]=M[i]/2;
+    d[i]=(M[i+1]-M[i])/(6*h[i]);
+  }
+  return function(x){
+    if(x<=xs[0])return ys[0]+(x-xs[0])*b[0];
+    if(x>=xs[n])return ys[n]+(x-xs[n])*b[n-1];
+    var k=0,hi=n;
+    while(hi-k>1){var mid=(k+hi)>>1;if(xs[mid]<=x)k=mid;else hi=mid;}
+    var dx=x-xs[k];
+    return ys[k]+b[k]*dx+c[k]*dx*dx+d[k]*dx*dx*dx;
+  };
+}
+function f11Lotus(numTerms){
+  var Z=[2,1],i;
+  for(i=2;i<=numTerms;i++)Z.push(Z[i-1]+Z[i-2]);
+  return Z.slice(1);
+}
+/* 中心线几何：返回点列数组 + 描述 */
+function f11Geo(P){
+  var phi=(Math.sqrt(5)-1)/2, lnphi=LNPHI;
+  var bands=Math.max(1,Math.round(P.bands));
+  var r0=P.rStart;                     /* 起始半径 1 或 2 */
+  var NT=Math.min(1400,Math.max(200,bands*40));
+  var pts=[],i;
+  var desc={};
+  var fl=P.fline;
+  if(fl===0){                          /* C10 基础双曲螺线 */
+    var tmax=bands;
+    for(i=0;i<=NT;i++){
+      var T=TAU*tmax*i/NT;
+      var n=Math.floor(T/TAU)+1, tau=T%TAU;
+      var ts=n+tau/TAU;
+      var r=r0/ts;
+      /* 脚本原文：r=1 版 z = log(t_s)/ln_phi；
+         r=2 版 z = (log(t_s) − log 2)/ln_phi  ⇒ 统一写成 log(t_s/r₀)/ln_phi
+         （等价于漏斗面方程 z = ln(1/r)/ln_phi，r₀=1 时与脚本逐字相同） */
+      pts.push([-r*Math.cos(T),Math.log(ts/r0)/lnphi,-r*Math.sin(T)]);
+    }
+    desc={label:'C10 漏斗双曲螺线',law:'r = r₀/t_s，t_s = n + τ/(2π)，z = ln(t_s)/lnφ',mono:'是（z 下降）',
+          note:'等间距 T ⇒ r 与 1/(1+T/2π) 成反比；实测 d(ln r)/dT 不恒定 ⇒ 是双曲螺线而非真对数螺线'};
+  }else if(fl===1){                    /* C11 Lotus 样条 */
+    var lot=f11Lotus(P.lotusTerms);
+    var maxn=lot[lot.length-1];
+    var lx=[],ly=[];
+    for(i=0;i<lot.length;i++){lx.push(lot[i]);ly.push(r0*Math.pow(phi,lot[i]-1));}
+    var spl=f11CubicSpline(lx,ly);
+    var redMax=P.redMax;               /* 漏斗下界（t_s） */
+    var minZ=Math.log(redMax)/lnphi;
+    for(i=0;i<=NT;i++){
+      var T2=TAU*maxn*i/NT;
+      var n2=Math.floor(T2/TAU)+1, tau2=T2%TAU;
+      var ts2=n2+tau2/TAU;
+      var rb=spl(ts2);
+      if(rb<=0)continue;               /* 样条外推会出负半径 ⇒ 丢弃（脚本靠 mask 剔除） */
+      var th=T2+Math.PI;
+      var xb=rb*Math.cos(th), yb=rb*Math.sin(th);
+      var zg=Math.log(1/Math.hypot(xb,yb))/lnphi;
+      if(zg<minZ)continue;             /* 只保留漏斗范围内 */
+      /* 坐标序：本页族⑪ 一律用 [x, 轴向, y]（轴 = index 1，与漏斗参考网格、
+         C10/C13/C14 分支一致；族⑪ 的 zAxis 也设为 'y'） */
+      pts.push([xb,zg,yb]);
+    }
+    desc={label:'C11 漏斗·Lotus 样条',law:'r = CubicSpline(φ^(n−1))，z = ln(1/r)/lnφ',mono:'是（z 下降）',
+          note:'半径锚点 φ^(n−1) ⇒ 黄金比收缩；样条外推会出负半径，脚本靠 mask 剔除 ⇒ 本页同样剔除'};
+  }else if(fl===2){                    /* C12 β 角速度真对数螺线 */
+    /* 脚本 r=1 版：r_min = 1/RED_T_MAX，r_max = 1/RED_T_MIN（RED_T_MIN=1 ⇒ r_max=1）
+       脚本 r=2 版：RED_T_MIN=0.5 ⇒ r_max = 2。
+       ⇒ 起始半径 r₀ 即 r_max，下界由 redMax（漏斗底部）决定。 */
+    var rMin=1/P.redMax, rMax=r0;
+    var lrmin=Math.log(rMin), lrmax=Math.log(rMax);
+    var nCirc=P.circuits;
+    var kn=P.betaK, scheme=P.betaScheme;
+    for(i=0;i<=NT;i++){
+      var T3=TAU*nCirc*i/NT;
+      var tn=T3/(TAU*nCirc);
+      var beta;
+      if(scheme===1)beta=1+2*(Math.exp(kn*tn)-1)/(Math.exp(kn)-1);
+      else if(scheme===2)beta=1+2*tn;
+      else if(scheme===3)beta=1+2*Math.log(1+tn*(Math.exp(kn)-1))/kn;
+      else beta=1;
+      var rb3=Math.exp(lrmin+(lrmax-lrmin)*i/NT);
+      var th3=T3/beta;
+      var xb3=rb3*Math.cos(th3), yb3=rb3*Math.sin(th3);
+      pts.push([xb3,Math.log(1/rb3)/lnphi,yb3]);   /* 轴向 index1（同上） */
+    }
+    desc={label:'C12 漏斗·β 真对数螺线',law:'r = exp(linspace(log r_min, log r_max))，θ = T/β',mono:'是（z 下降）',
+          note:'半径对数均匀 ⇒ 真对数螺线（d ln r/dT 恒定）；β 调制角速度（4 种方案）'};
+  }else if(fl===3){                    /* C13 太阳数列 2^t */
+    var numB=P.bands;
+    var zmax=Math.log(numB)/lnphi;
+    var tMax2=zmax*(TAU*lnphi)/Math.log(2);
+    /* 脚本「原曲线r=2开始切 -太阳数列2^t.py」：t_min = −2π（⇒ 起始半径 2^(1) = 2）；
+       r=1 版 t_min = 0（起始半径 1）。用 r₀ 通用化：
+       r = 2^(−t/2π) ⇒ 起始半径 r₀ ⇒ t_min = −2π·log₂(r₀)。 */
+    var tMin2=-TAU*Math.log(r0)/Math.log(2);
+    for(i=0;i<=NT;i++){
+      var tv=tMin2+(tMax2-tMin2)*i/NT;
+      var rr=Math.pow(2,-tv/TAU);
+      var zz=(tv/TAU)*(Math.log(2)/lnphi);
+      pts.push([rr*Math.cos(tv),zz,rr*Math.sin(tv)]);
+    }
+    desc={label:'C13 漏斗·太阳数列 2^t',law:'r = 2^(−t/(2π))，z = (t/2π)·(ln2/lnφ)',mono:'是（z 下降）',
+          note:'真对数螺线；r 与 z 严格单调；z 精确贴合漏斗面 ⇒ 曲率上限最低，工程上最友好'};
+  }else{                               /* C14 平方 t² */
+    var nb=Math.max(1,P.bands);
+    var tmaxS=Math.sqrt(nb);
+    for(i=0;i<=NT;i++){
+      var T4=TAU*nb*i/NT;
+      var n4=Math.floor(T4/TAU), tb=T4%TAU;
+      var ts4=n4+1+tb/TAU;
+      if(ts4>tmaxS)continue;
+      /* 脚本只有 r=1 版（r = 1/t²）；此处 r₀ 作为整体半径系数，
+         z = −2·ln(t)/lnφ 与 r₀ 无关（脚本原样照抄，方向与漏斗面相反已标注）。 */
+      var r4=r0/(ts4*ts4);
+      pts.push([r4*Math.cos(T4),-2*Math.log(ts4)/lnphi,r4*Math.sin(T4)]);
+    }
+    desc={label:'C14 漏斗·平方 t²',law:'r = 1/t_shape²，z = −2·ln(t_shape)/lnφ',mono:'是（z 上升）',
+          note:'⚠ 脚本里 z 用的是 −ln(t)/lnφ 且多一个 2 倍因子，与其它脚本的漏斗面方向相反 ⇒ 本页照抄并标注'};
+  }
+  return {pts:pts,desc:desc,phi:phi};
+}
+/* 沿中心线扫掠闭合断面（RMF 标架） */
+function f11Build(P){
+  var G=f11Geo(P),i;
+  var pts=G.pts;
+  var n=pts.length;
+  if(n<4)return null;
+  /* 归一化到可显示尺度 */
+  var cmin=[1e30,1e30,1e30],cmax=[-1e30,-1e30,-1e30];
+  for(i=0;i<n;i++)for(var k=0;k<3;k++){
+    if(pts[i][k]<cmin[k])cmin[k]=pts[i][k];
+    if(pts[i][k]>cmax[k])cmax[k]=pts[i][k];
+  }
+  var span=Math.max(cmax[0]-cmin[0],cmax[1]-cmin[1],cmax[2]-cmin[2])||1;
+  var K=P.tr/ (span*0.06);              /* 断面半径相对中心线尺度 */
+  /* 中心线函数（插值到任意 u） */
+  function C(u){
+    var f=Math.min(0.999999,Math.max(0,u))*(n-1);
+    var i0=Math.floor(f),i1=Math.min(n-1,i0+1),tt=f-i0;
+    var a=pts[i0],b=pts[i1];
+    return [a[0]+(b[0]-a[0])*tt,a[1]+(b[1]-a[1])*tt,a[2]+(b[2]-a[2])*tt];
+  }
+  var NT=220;
+  var RM=rmfFrames(C,NT,0,1);
+  var SEC=f7SecLocal(P);
+  var SECP=f3SecResample(SEC,64);
+  var NS=SECP.length;
+  var frames=[];
+  for(i=0;i<=NT;i++){
+    var u=i/NT;
+    var ps=P.twist*TAU*P.turns*(P.twlaw===0?u:(Math.pow(2,3*u)-1)/7);
+    frames.push({c:RM.pts[i],T:RM.T[i],N:RM.N[i],B:RM.B[i],psi:ps});
+  }
+  var geo=gridGeom(NT,NS-1,function(s,v){
+    var t=s,fr=frames[Math.round(s*NT)];
+    var q=SECP[Math.round(v*NS)%NS];
+    /* 漏斗螺线是"细长"的 ⇒ 断面沿径向压扁，避免内端自交 */
+    var rs=K*P.radial;
+    var u=q[0]*rs,w=q[1]*rs*P.flat;
+    var cp=Math.cos(fr.psi),sp=Math.sin(fr.psi);
+    var x=u*cp-w*sp,y=u*sp+w*cp;
+    return [fr.c[0]+x*fr.B[0]+y*fr.N[0],
+            fr.c[1]+x*fr.B[1]+y*fr.N[1],
+            fr.c[2]+x*fr.B[2]+y*fr.N[2]];
+  });
+  var g=new THREE.Group();
+  g.add(new THREE.Mesh(geo,new THREE.MeshPhongMaterial({color:0x7a4fd0,shininess:70,specular:0xccb0ff,
+    transparent:true,opacity:0.75,side:THREE.DoubleSide,depthWrite:false})));
+  g.add(new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:0x2a0f52,wireframe:true,
+    transparent:true,opacity:0.07,depthWrite:false})));
+  /* 漏斗面参考（半透明锥面网格） */
+  var fg=gridGeom(24,64,function(s,v){
+    var th=TAU*v;
+    var rr=P.rStart*Math.exp(-s*Math.log(P.rStart/P.rEnd));
+    var zz=Math.log(1/rr)/LNPHI;
+    return [rr*Math.cos(th),zz,rr*Math.sin(th)];
+  });
+  g.add(new THREE.Mesh(fg,new THREE.MeshPhongMaterial({color:0xbbb0d8,transparent:true,
+    opacity:0.08,side:THREE.DoubleSide,depthWrite:false})));
+  /* 中心线 */
+  var cl=[],i3;
+  for(i3=0;i3<n;i3++)cl.push(new THREE.Vector3(pts[i3][0],pts[i3][1],pts[i3][2]));
+  var cll=lineOf(cl,0x8a93a3);cll.name='centerLine';g.add(cll);
+  /* 红色扭转母线 */
+  var tp=[],i4,anchor=SECP[0];
+  for(i4=0;i4<=180;i4++){
+    var t4=i4/180,fr4=frames[Math.round(t4*NT)];
+    var rs4=K*P.radial*0.985;
+    var u4=rs4*anchor[0],w4=rs4*anchor[1]*P.flat;
+    var cp4=Math.cos(fr4.psi),sp4=Math.sin(fr4.psi);
+    var x4=u4*cp4-w4*sp4,y4=u4*sp4+w4*cp4;
+    tp.push(new THREE.Vector3(fr4.c[0]+x4*fr4.B[0]+y4*fr4.N[0],
+                              fr4.c[1]+x4*fr4.B[1]+y4*fr4.N[1],
+                              fr4.c[2]+x4*fr4.B[2]+y4*fr4.N[2]));
+  }
+  var red=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(tp),180,
+    Math.max(0.05,K*0.04),6,false),solid(0xe03131,0.98));
+  red.name='twistLine';
+  g.add(red);
+  g.userData.G=G;g.userData.pointCount=n;
+  return g;
+}
+function f11Read(P){
+  var G=f11Geo(P);
+  var n=G.pts.length;
+  /* 测曲率上限（末端最紧） */
+  var maxCurv=0,i;
+  for(i=1;i<n-1;i++){
+    var a=G.pts[i-1],b=G.pts[i],c=G.pts[i+1];
+    var d1=[b[0]-a[0],b[1]-a[1],b[2]-a[2]],d2=[c[0]-b[0],c[1]-b[1],c[2]-b[2]];
+    var cr=[d1[1]*d2[2]-d1[2]*d2[1],d1[2]*d2[0]-d1[0]*d2[2],d1[0]*d2[1]-d1[1]*d2[0]];
+    var m1=Math.hypot(d1[0],d1[1],d1[2]),m2=Math.hypot(d2[0],d2[1],d2[2]);
+    var k=2*Math.hypot(cr[0],cr[1],cr[2])/((m1*m2*(m1+m2))||1e-12);
+    if(k>maxCurv)maxCurv=k;
+  }
+  var rho=1/Math.max(maxCurv,1e-12);
+  return [
+    ['中心线',G.desc.label],
+    ['中心线公式',G.desc.law],
+    ['z 单调性',G.desc.mono],
+    ['漏斗面','z = ln(1/r)/lnφ（φ=(√5−1)/2，lnφ=−0.48121）'],
+    ['起始半径 r₀',P.rStart.toFixed(2)+'（对应脚本「原曲线 r=1 / r=2 开始切」）'],
+    ['中心线点数',n],
+    ['末端曲率上限 κ',maxCurv.toFixed(4)],
+    ['末端曲率半径 ρ','≈ '+(rho*1e3).toFixed(3)+'（单位：中心线尺度；断面径向尺寸须 < ρ 否则内端折叠）'],
+    ['断面','闭合曲线（SEC_LIB / SEC_LIB2），径向 ×'+P.radial.toFixed(2)+'，切向压扁 ×'+P.flat.toFixed(2)],
+    ['扭角',(P.twist*TAU*P.turns).toFixed(0)+'°（红线绕管）'],
+    ['圆周阵列',(P.reps>1?(P.reps+' 份'):'未启用')]
+  ];
+}
+
+
 /* ---------------- 家族表 ---------------- */
 var FAMS=[
 {id:'ripple',label:'① 双波纹盘',title:'双波纹盘 · 双截面旋成',
@@ -1001,10 +3207,11 @@ var FAMS=[
   {k:'k',label:'k（蛋参数）',min:0.30,max:0.95,step:0.005,dp:3},
   {k:'b',label:'b（蛋参数）',min:1.20,max:2.50,step:0.005,dp:3},
   {k:'amp',label:'z 向夸大（1 = 原比例 1:23）',min:1,max:20,step:0.5,dp:1},
-  {k:'rim',label:'盘心孔径',min:0,max:0.24,step:0.01,dp:2}
+  {k:'rim',label:'盘心孔径',min:0,max:0.24,step:0.01,dp:2},
+  {k:'reps',label:'圆周阵列数 n（绕 z 轴）',min:1,max:12,step:1,int:true,dp:0}
  ],
- def:{n:5,mode:0,k:2/3,b:5/3,amp:8,rim:0.05},
- build:f1Build,read:f1Read,prof:f1Prof,
+ def:{n:5,mode:0,k:2/3,b:5/3,amp:8,rim:0.05,reps:1},
+ build:f1Build,read:f1Read,prof:f1Prof,zAxis:'y',
  empty:'无定义：b²−4k ≤ 0（双波纹盘要求 b > 2√k ≈ 1.633，请把 b 调大或 k 调小）',
  note:'<b>这一族是本轮纠正的重点。</b>旧版画的是 <code>z=A·sin(nθ)</code>（沿圆周起皱），错在把"波纹盘"当成了"边缘波浪"；'+
       '真正的做法是把蛋的 <b>x、y 两个分量拆成两条截面曲线</b>（蓝 A、绿 B），绕轴旋成一张<b>双面</b>盘 —— 波纹沿<b>半径</b>方向，'+
@@ -1024,17 +3231,22 @@ var FAMS=[
   {k:'sch',label:'振幅方案',type:'choice',opts:[{v:0,t:'amp=√n（原脚本）'},{v:1,t:'amp=n'},{v:2,t:'amp=1（等幅）'}]},
   {k:'rot',label:'总旋转角（°）',min:0,max:2520,step:30,dp:0},
   {k:'dz',label:'层间距 Δz',min:0.05,max:1.5,step:0.05,dp:2},
-  {k:'scale',label:'整体缩放',min:0.2,max:2.0,step:0.05,dp:2}
+  {k:'scale',label:'整体缩放',min:0.2,max:2.0,step:0.05,dp:2},
+  {k:'loft',label:'横截面放样成半透明曲面',type:'choice',opts:[{v:0,t:'关闭（只画线框）'},{v:1,t:'开启（层间放样）'}]},
+  {k:'reps',label:'圆周阵列数 n（绕 z 轴）',min:1,max:12,step:1,int:true,dp:0}
  ],
- def:{N:14,sch:0,rot:540,dz:0.55,scale:1},
- build:f2Build,read:f2Read,
+ def:{N:14,sch:0,rot:540,dz:0.55,scale:1,loft:0,reps:1},
+ build:f2Build,read:f2Read,zAxis:'z',
  note:'<code>k=F_{n+1}/F_{n+2}</code>、<code>b=F_{n+3}/F_{n+2}</code> 随 n 收敛到 <code>1/φ</code> 与 <code>φ</code>——'+
       '所以 n 越大，每一层越接近黄金蛋，只是个头按 √n 长大。<b>原脚本是 2D 叠图 GIF</b>，这里把每层抬一个 z、保留原旋转角，'+
-      '于是一条"会膨胀的螺旋壳"就出来了。<code>φ=π/2, 3π/2</code> 处 <code>cosφ=0</code> 分母为零，原脚本跳过、这里也跳过，所以每条线有两个<b>小缺口</b>。'},
+      '于是一条"会膨胀的螺旋壳"就出来了。<code>φ=π/2, 3π/2</code> 处 <code>cosφ=0</code> 分母为零，原脚本跳过、这里也跳过，所以每条线有两个<b>小缺口</b>。'+
+      '<br><br><b>【放样曲面】</b>可选项：把每一层的蛋形闭合截面<b>沿层序放样</b>成一条半透明曲面（相邻两层逐点连成四边形侧壁，两端不封盖）。'+
+      '放样用的是<b>补上蛋尖极限值 rr=amp/z₀ 的闭合曲线</b>（原函数在 φ=π/2,3π/2 处是 0/0 会跳过，不补的话层间会拉出"封口边"、像撕裂而不是管壁）。'},
 
 {id:'tube',label:'③ 螺旋锥管',title:'螺旋锥管 · 指数螺旋 + 管波动纹',
  pyLine:'代码_螺旋锥与螺旋管/最简原始模版…锥角参数可调 管波动纹 黄金比schauberger.py',
- badge:function(P){return '螺旋锥管 · '+P.turns.toFixed(1)+' 圈 · '+Math.round(P.bands)+' 带波纹';},
+ badge:function(P){var r=Math.max(1,Math.min(12,Math.round(P.reps===undefined?1:P.reps)));
+  return '螺旋锥管 · '+P.turns.toFixed(1)+' 圈 · '+Math.round(P.bands)+' 带波纹'+(r>1?(' · '+r+' 重圆周阵列'):'');},
  params:[
   {k:'db',label:'底部直径',min:40,max:200,step:1,dp:0},
   {k:'h',label:'高度 h',min:30,max:250,step:1,dp:0},
@@ -1042,17 +3254,44 @@ var FAMS=[
   {k:'turns',label:'圈数',min:0.5,max:6,step:0.1,dp:1},
   {k:'tw',label:'扭转类型',type:'choice',opts:[{v:0,t:'linear 线性'},{v:1,t:'exponential 指数（原默认）'}]},
   {k:'twist',label:'扭转量 twist',min:-1.5,max:1.5,step:0.05,dp:2},
-  {k:'tr',label:'管半径',min:1,max:10,step:0.2,dp:1},
+  {k:'tr',label:'管半径',min:1,max:10,step:0.1,dp:1},
   {k:'taper',label:'锥缩 taper（1→?）',min:0,max:0.9,step:0.02,dp:2},
   {k:'bands',label:'波纹带数',min:0,max:120,step:1,dp:0},
   {k:'cAmp',label:'波纹强度',min:0,max:0.8,step:0.02,dp:2},
-  {k:'bfreq',label:'波纹加密指数 p',min:0.4,max:3,step:0.1,dp:1}
+  {k:'bfreq',label:'波纹加密指数 p',min:0.4,max:3,step:0.1,dp:1},
+  {k:'secType',label:'横截面（来自 DXF 的闭合曲线）',type:'choice',
+   opts:[{v:'round',t:'圆'},{v:'krystal',t:'krystal 蛋咬一口'},{v:'schauberger',t:'舒伯格 蛋咬一口'},
+         {v:'peach',t:'krystal 桃子'},{v:'krystalS',t:'krystal 蛋咬一口（小）'}]},
+  {k:'secAz',label:'截面旋转角（2D 平面绕原点，°）',min:0,max:360,step:1,int:true,dp:0},
+  {k:'reps',label:'圆周阵列数 n（绕 z 轴）',min:1,max:12,step:1,int:true,dp:0}
  ],
- def:{db:108,h:144,alpha:13.28,turns:2,tw:1,twist:-0.5,tr:4.5,taper:0.667,bands:47,cAmp:0.35,bfreq:1},
- build:f3Build,read:f3Read,
+ def:{db:108,h:144,alpha:13.28,turns:2,tw:1,twist:-0.5,tr:4.5,taper:0.667,bands:47,cAmp:0.35,bfreq:1,
+      secType:'round',secAz:0,mirX:1,reps:1},
+ build:f3Build,read:f3Read,zAxis:'y',
+ presets:[{t:'单管（默认）',v:{reps:1}},
+          {t:'三支阵列 n=3',v:{reps:3}},
+          {t:'六支阵列 n=6',v:{reps:6}},
+          {t:'十二支阵列 n=12',v:{reps:12}},
+          {t:'无扭转对照 twist=0',v:{twist:0}},
+          {t:'强扭转 twist=+1',v:{twist:1}}],
  note:'原脚本最"用力"的地方是 <b>波纹不是等间距</b>：相位是 <code>φ</code> 的幂的积分 <code>Bands·(φ^{p·t}−1)/(φ^p−1)</code>，'+
       '所以带子下疏上密；<code>_precompute_exp_wave</code> 里那段 <code>minimize</code> 就是在反解 k 让总带数正好 47。'+
-      '本页把"总带数"直接做成滑条（等价、可数）。<b>降级说明：</b>原脚本从两个 DXF 读"咬一口的蛋"断面并首尾渐变，本页断面是圆+波纹。'},
+      '本页把"总带数"直接做成滑条（等价、可数）。<b>降级说明：</b>原脚本从两个 DXF 读"咬一口的蛋"断面并首尾渐变，本页断面是圆+波纹。'+
+      '<br><br><b>【横截面】</b>现在可以从 5 条<b>真实 DXF 闭合曲线</b>里选：圆 / krystal 蛋咬一口 / 舒伯格 蛋咬一口 / krystal 桃子 / krystal 蛋咬一口（小）。'+
+      '它们是从 <code>E:/pythonProject/program/最简原始模版用于生成直锥螺旋管/</code> 的 DXF 里抽的 '+
+      '<b>3 阶有理 NURBS</b>（标准 Cox-de Boor 求值 → 弧长均匀重采样 120 点 → 归一化到外接半径 = 1 → <b>起点旋转对齐 x 正半轴</b>）。'+
+      '滑条「截面旋转角」把整条曲线在 2D 平面里绕原点转（红点始终标出曲线起点）。'+
+      '<b>【管形】</b>这是<b>开口曲面</b>，不是封闭实体：只画侧壁、两端不封盖，底端蓝圈=入口、顶端红圈=出口，能直接看进管内。'+
+      '<b>【红线】</b>贴在管内壁上的一条母线，它随 <code>ψ(t)</code> 绕切线一起转，所以 <code>twist</code> 一改，红线的缠绕圈数立刻变——'+
+      '读数里的"总扭转角 ψ(1)"就是这条线绕的总角度（twist=±1.5、圈数 2 时约 ±540°）。'+
+      '<b>【圆周阵列】</b>滑条 n 可把整套模型绕 z 轴（竖直轴）旋转复制成 n 份，每份转 360°/n ⇒ 严格 n 重旋转对称；n 上限 12。'+
+      '<b>【几何反算】</b>面板里有两个方向相反的按钮：'+
+      '<b>①</b> 已知阵列份数 n（填 1–12），配合现有的锥顶/锥底直径、高度、锥角、圈数、锥缩、波纹等参数，'+
+      '自动算出「多份管子互不穿插」时<b>管半径 tr 的最大允许值</b>，并把结果写回滑条；'+
+      '<b>②</b> 反过来，固定当前管径（出&amp;入口管径由 taper 决定），自动算出<b>最大能排几份</b>（≤12），写回阵列滑条。'+
+      '判据：把每份管看成沿中心线扫掠的圆截面管，任意两份的中心线距离 d 必须满足 <code>d &gt; tr·(k₁+k₂)</code>'+
+      '（k = 锥缩 × 波纹的无量纲因子），上限取所有点对的 min d/(k₁+k₂) ⇒ 保守但可证不穿插；'+
+      '同一份内部还会检查「相隔 m 圈」的自重叠。读数区同步给出<b>不重叠管径上限 / 当前是否安全 / 当前管径最大阵列数</b>三行。'},
 
 {id:'epi',label:'④ 蛋形均轮',title:'蛋形均轮 · 托勒密偏心模型',
  pyLine:'代码_外摆线均轮/egg_epicycle_interactive.py（配套 md：为什么蛋形均轮不是真蛋形.md）',
@@ -1062,10 +3301,11 @@ var FAMS=[
   {k:'r',label:'本轮半径 r',min:0.5,max:8,step:0.1,dp:1},
   {k:'Cx',label:'偏心 X',min:-5,max:8,step:0.05,dp:2},
   {k:'Cy',label:'偏心 Y（≠0 → 像蛋）',min:-5,max:5,step:0.05,dp:2},
-  {k:'w',label:'角速比 w = ω_本轮/ω_均轮',min:0.5,max:12,step:0.5,dp:1}
+  {k:'w',label:'角速比 w = ω_本轮/ω_均轮',min:0.5,max:12,step:0.5,dp:1},
+  {k:'reps',label:'圆周阵列数 n（绕 z 轴）',min:1,max:12,step:1,int:true,dp:0}
  ],
- def:{R:8,r:2.5,Cx:0,Cy:3,w:2},
- build:f4Build,read:f4Read,prof:f4Prof,
+ def:{R:8,r:2.5,Cx:0,Cy:3,w:2,reps:1},
+ build:f4Build,read:f4Read,prof:f4Prof,zAxis:'z',
  note:'配套 md 自己给了结论：<b>它是外旋轮线（epitrochoid），不是蛋形方程</b>。'+
       '<code>w=1</code> 偏心圆、<code>w=2</code> 蜗线、<code>w=3</code> 三尖外摆线；<b>只要 <code>C_y≠0</code> 就破对称、看起来像蛋</b>。'+
       '本页读数专列"曲线类型"，就是不让"像蛋"被读成"是蛋"。红色小球是快照时刻的行星位置，紫圈是本轮，橙线是偏心臂。'},
@@ -1078,15 +3318,23 @@ var FAMS=[
   {k:'b',label:'膨胀控制 b',min:1.30,max:1.85,step:0.005,dp:3},
   {k:'f',label:'频率 f（相位 3f·t）',min:1,max:4,step:0.1,dp:1},
   {k:'zv',label:'z 向速率 z_v',min:0.5,max:3,step:0.1,dp:1},
-  {k:'blades',label:'叶片数',min:2,max:8,step:1,int:true,dp:0},
+  {k:'blades',label:'叶片数',min:1,max:8,step:1,int:true,dp:0},
   {k:'bl',label:'叶片尺度',min:0.3,max:2.5,step:0.05,dp:2},
-  {k:'frac',label:'t_max 比例（原 2π/3）',min:0.3,max:1,step:0.01,dp:2}
+  {k:'secPhi',label:'横断面相位角（°，曲线起点方位）',min:0,max:360,step:1,int:true,dp:0},
+  {k:'frac',label:'t_max 比例（原 2π/3）',min:0.3,max:1,step:0.01,dp:2},
+  {k:'reps',label:'圆周阵列数 n（绕 z 轴）',min:1,max:12,step:1,int:true,dp:0}
  ],
- def:{alpha:33.7,b:1.618,f:3,zv:2,blades:3,bl:1,frac:1},
- build:f5Build,read:f5Read,
+ def:{alpha:33.7,b:1.618,f:3,zv:2,blades:1,bl:1,secPhi:90,frac:1,mirX:1,reps:1},
+ build:f5Build,read:f5Read,zAxis:'y',
  note:'"钟形"来自根号 <code>√[1/(b−t sinα)² − (t cosα)²]</code>：t 小时 <code>r≈1/b</code>（近似圆柱段），t 大则加速膨大，'+
       '<b>再大就开方为负、曲线当场终止</b>。把 α 调到 25° 以下或 t_max 比例调大，读数里的"开方断开点"就会给出具体 t——'+
-      '这不是 bug，是原方程自带的边界。叶片断面用 <code>x=−aπ sinτ/τ, y=aπ cosτ/τ</code>，沿 Frenet 标架绕 T 旋转复制。'},
+      '这不是 bug，是原方程自带的边界。叶片断面用 <code>x=−aπ sinτ/τ, y=aπ cosτ/τ</code>，沿 <b>RMF 旋转最小化标架</b>绕 T 旋转复制'+
+      '（不用 Frenet：曲线两端标架会退化、把断面压成一条线，看着像"叶片被封住"）。'+
+      '这条 2D 断面曲线<b>已整体旋转 180° 后保存为基准</b>（起点由 −90° 移到 +90°，即 +y 方向）；'+
+      '滑条「<b>横断面相位角</b>」再以 <b>x 正半轴 = 曲线起点</b>为基准整体旋转'+
+      '（0°=x 正半轴，逆时针为正；默认 <b>90°</b> 即直接显示这条 180° 基准曲线，取 270° 回到原脚本朝向），'+
+      '下方 2D 预览与 3D 模型共用同一条方程。'+
+      '另新增<b>几何反算 · 曲面不重叠约束</b>：已知圆周阵列份数 n 反算最大叶片尺度 bl，或固定 bl 反算最大 n。'},
 
 {id:'cone',label:'⑥ 双曲锥',title:'双曲锥 · 曲率色图与几何阻尼',
  pyLine:'代码_PKS双曲锥与阻尼NS/task3_conical_ns.py',
@@ -1095,13 +3343,263 @@ var FAMS=[
   {k:'z0',label:'落差 z₀（r=1→r=10 掉多少）',min:1,max:15,step:0.5,dp:1},
   {k:'r0',label:'r_min（锥顶侧）',min:0.4,max:3,step:0.05,dp:2},
   {k:'r1',label:'r_max（锥底侧）',min:3,max:12,step:0.1,dp:1},
-  {k:'flow',label:'面上流线条数',min:3,max:16,step:1,int:true,dp:0}
+  {k:'flow',label:'面上流线条数',min:3,max:16,step:1,int:true,dp:0},
+  {k:'reps',label:'圆周阵列数 n（绕 z 轴）',min:1,max:12,step:1,int:true,dp:0}
  ],
- def:{z0:5,r0:0.6,r1:7,flow:8},
- build:f6Build,read:f6Read,
+ def:{z0:5,r0:0.6,r1:7,flow:8,reps:1},
+ build:f6Build,read:f6Read,zAxis:'y',
  note:'颜色就是 <code>κ(r)=C₂/(r√(r²+C₂²))</code>：越靠锥顶曲率越大、几何阻尼越强，往外趋近于零。'+
       '<b>必须照抄脚本自己的声明：</b><code>task3_conical_ns.py</code> 抬头写着"不声称 NS 在锥面上有光滑解、不声称几何阻尼保证不爆破"。'+
-      '所以这一格画的是<b>曲率</b>，不是证明。深色管是面上流线（r 由大到小、θ 转 1.5 圈），不是 NS 解。'}
+      '所以这一格画的是<b>曲率</b>，不是证明。深色管是面上流线（r 由大到小、θ 转 1.5 圈），不是 NS 解。'},
+
+{id:'tube2',label:'⑦ 通用螺旋管',title:'通用螺旋管 · 中心线可切换（C1–C8）',
+ pyLine:'最简原始模版用于生成直锥螺旋管/ 目录下 20+ 脚本（指数/等距/反相/直锥/曲锥/Krystal 幂律/往回走）',
+ badge:function(P){var c=CENTER_LIB[P.cline]||CENTER_LIB[0];
+  return '通用螺旋管 · '+c.t.split(' ')[0]+' · '+P.turns.toFixed(1)+' 圈';},
+ params:[
+  {k:'cline',label:'中心线公式（14 条中选 8 条锥螺旋系）',type:'choice',opts:[
+   {v:0,t:'C1 指数锥螺旋（10 脚本共用）'},{v:1,t:'C2 等距锥螺旋（半径线性）'},
+   {v:2,t:'C3 反相指数 z（R·z 互逆）'},{v:3,t:'C4 直锥·绝对角（e^{bt}）'},
+   {v:4,t:'C5 曲锥·绝对角（z 线性）'},{v:5,t:'C6 Krystal 幂律 4^(t/π)'},
+   {v:6,t:'C7 Krystal 幂律 (1+2/π)^t'},{v:7,t:'C8 往回走·z 非单调'}]},
+  {k:'twlaw',label:'扭角律 ψ(t)',type:'choice',opts:[
+   {v:0,t:'线性'},{v:1,t:'指数 e^t−1'},{v:2,t:'指数 e^{2t}−1'},{v:3,t:'幂 2^{3t}'}]},
+  {k:'db',label:'底部直径',min:40,max:200,step:1,dp:0},
+  {k:'h',label:'高度 h',min:30,max:250,step:1,dp:0},
+  {k:'alpha',label:'侧面夹角 α（°）',min:4,max:30,step:0.1,dp:2},
+  {k:'turns',label:'圈数',min:0.5,max:6,step:0.1,dp:1},
+  {k:'tMin',label:'绝对角起点 t_min（弧度）',min:0,max:20,step:0.1,dp:1},
+  {k:'tLen',label:'绝对角跨度 L',min:1,max:40,step:0.5,dp:1},
+  {k:'dAbs',label:'半径系数 d',min:0.5,max:10,step:0.1,dp:1},
+  {k:'bAbs',label:'指数因子 b（绝对角系）',min:-0.2,max:0.4,step:0.005,dp:3},
+  {k:'zv',label:'z 速率 z_v（绝对角系）',min:0.1,max:20,step:0.1,dp:1},
+  {k:'zcAbs',label:'z 常数 c（往回走系）',min:0,max:12,step:0.1,dp:1},
+  {k:'phaseDif',label:'相位差 phase_dif（°，脚本原值为弧度）',min:-360,max:360,step:1,dp:0},
+  {k:'signS',label:'手性 sign_spiral_dir（C4/C5/C6/C7 生效）',type:'choice',opts:[
+   {v:1,t:'+1（脚本默认）'},{v:-1,t:'−1'}]},
+  {k:'twist',label:'扭转量 twist',min:-1.5,max:1.5,step:0.05,dp:2},
+  {k:'tr',label:'管半径',min:1,max:10,step:0.1,step:0.1,dp:1},
+  {k:'aEnd',label:'沿程半径终点比 a_end',min:1.01,max:8,step:0.01,dp:2},
+  {k:'secType',label:'横截面',type:'choice',opts:[
+   {v:'round',t:'圆（DXF SPLINE）'},{v:'krystal',t:'krystal 蛋咬一口'},
+   {v:'schauberger',t:'舒伯格 蛋咬一口'},{v:'peach',t:'krystal 桃子'},
+   {v:'krystalS',t:'krystal 蛋咬一口（小）'},{v:'schStart',t:'舒伯格 蛋咬一口（起始版）'},
+   {v:'kryStart',t:'krystal 蛋咬一口（起始版）'},{v:'roundSpline',t:'圆（DXF SPLINE 第二条）'},
+   {v:'circCsv',t:'圆（CSV 采样）'},{v:'eggCsv',t:'蛋形（CSV 采样）'},
+   {v:'taiChiCsv',t:'太极曲线（CSV）'},{v:'taiChiDxf',t:'太极曲线 108 点（DXF）'},
+   {v:'fanDxf',t:'扇形（DXF 散点）'},{v:'cross',t:'十字架断面（参数化）'}]},
+  {k:'secAz',label:'截面旋转角（°）',min:0,max:360,step:1,int:true,dp:0},
+  {k:'reps',label:'圆周阵列数 n（绕 z 轴）',min:1,max:12,step:1,int:true,dp:0}
+ ],
+ def:{cline:0,twlaw:3,db:108,h:144,alpha:13.28,turns:2,tMin:5,tLen:6*Math.PI,dAbs:2.5,bAbs:0.1,
+      zv:10,zcAbs:5,phaseDif:0,signS:1,twist:-0.5,tr:4.5,aEnd:3,secType:'round',secAz:0,reps:1},
+ build:f7Build,read:f7Read,zAxis:'y',
+ presets:[{t:'C1 指数锥螺旋（默认）',v:{cline:0,twlaw:3}},
+          {t:'C2 等距锥螺旋',v:{cline:1}},
+          {t:'C3 反相 z + 相位差 45°',v:{cline:2,phaseDif:45}},
+          {t:'C4 直锥·绝对角',v:{cline:3}},
+          {t:'C5 曲锥·绝对角',v:{cline:4}},
+          {t:'C6 Krystal 4^(t/π)',v:{cline:5}},
+          {t:'C7 Krystal (1+2/π)^t',v:{cline:6}},
+          {t:'C8 往回走（z 非单调）',v:{cline:7}},
+          {t:'扭角律：线性',v:{twlaw:0}},{t:'扭角律：e^t',v:{twlaw:1}},
+          {t:'扭角律：e^{2t}',v:{twlaw:2}}],
+ note:'<b>这一格是"中心线库"的入口。</b>把目录下 20 多个脚本归到一格，靠三个下拉开关切：'+
+      '<b>中心线公式</b>（8 种）、<b>扭角律 ψ(t)</b>（4 种）、<b>横截面</b>（14 条真实 DXF/CSV 曲线）。'+
+      '<br><br><b>中心线层（8 种）</b>：<code>C1 指数锥螺旋</code> R=R_top·e^{b·u}、z=high(e^{bu}−1)/(e^b−1)（10 个脚本共用，最大家族）；'+
+      '<code>C2 等距锥螺旋</code> 半径线性收缩；<code>C3 反相指数 z</code> z=high(1−e^{−bu})/(1−e^{−b})（与半径互逆，磁铁族）；'+
+      '<code>C4 直锥·绝对角</code> x=e^{bt}·d·sin t、z=(t−t_min)·z_v·e^{bt}；<code>C5 曲锥·绝对角</code> z 少了 e^{bt}；'+
+      '<code>C6/C7 Krystal 幂律</code> 4^(t/π) 与 (1+2/π)^t；<code>C8 往回走</code> z=e^{bt}(t−c) —— '+
+      '<b>唯一 z 非单调的一族</b>（b=−ln2/(L/4) ⇒ 半径全程缩小 1/16，存在极大值点）。'+
+      '<br><br><b>扫掠框架</b>与族③ 同源：<b>RMF 旋转最小化标架</b>（不用 Frenet，两端不退化）+ 闭合断面沿程扫掠 + 开口曲面（两端不封盖）。'+
+      '<b>红线</b>是贴在管内壁的扭转母线，随 ψ(t) 绕切线转，读数里的「总扭角 ψ(1)」就是它的总缠绕量。'+
+      '<b>沿程半径律</b>用 <code>a_end</code>：脚本里写死 <code>a=np.linspace(amp, amp/3)</code>（或 amp/4、amp/5），这里做成滑条。'},
+
+{id:'shrink',label:'⑧ 收缩螺旋管',title:'收缩螺旋管 · 首尾断面渐变 + 断口混接',
+ pyLine:'往回走+波动 / 蛋到十字·圆·太极旋·扇面（6 脚本） + 蓝线 G2·G4·G9·分段（4 脚本）',
+ badge:function(P){return '收缩螺旋管 · '+(P.secEnd||'—')+' · 断口'+['不分段','G²五次','八次'][P.blend];},
+ params:[
+  {k:'tMin',label:'参数起点 t_min',min:0,max:20,step:0.1,dp:1},
+  {k:'tLen',label:'参数跨度 L',min:1,max:40,step:0.5,dp:1},
+  {k:'d',label:'半径系数 d',min:0.5,max:10,step:0.1,dp:1},
+  {k:'zc',label:'z 常数 c（z=e^{bt}(t−c)）',min:0,max:12,step:0.1,dp:1},
+  {k:'secStart',label:'起始断面',type:'choice',opts:[
+   {v:'eggCsv',t:'蛋形（CSV 采样）'},{v:'schStart',t:'舒伯格 蛋咬一口（起始版）'},
+   {v:'kryStart',t:'krystal 蛋咬一口（起始版）'},{v:'round',t:'圆（DXF SPLINE）'},
+   {v:'circCsv',t:'圆（CSV 采样）'},{v:'tri60',t:'三角牙 60°'}]},
+  {k:'secEnd',label:'终止断面',type:'choice',opts:[
+   {v:'circCsv',t:'圆（CSV 采样）'},{v:'cross',t:'十字架断面（参数化）'},
+   {v:'taiChiCsv',t:'太极曲线（CSV）'},{v:'taiChiDxf',t:'太极曲线 108 点（DXF）'},
+   {v:'fanDxf',t:'扇形（DXF 散点）'},{v:'round',t:'圆（DXF SPLINE）'},
+   {v:'eggCsv',t:'蛋形（CSV 采样）'}]},
+  {k:'blend',label:'断口处理（导轨线在波纹跳变处）',type:'choice',opts:[
+   {v:0,t:'不处理（连续）'},{v:1,t:'分段 + 五次 Bézier（G² 连续）'},{v:2,t:'分段 + 八次 Bézier'}]},
+  {k:'amp',label:'断面等效半径 amp',min:0.2,max:6,step:0.05,dp:2},
+  {k:'aEnd',label:'沿程半径终点比',min:1.01,max:10,step:0.01,dp:2},
+  {k:'twist',label:'扭转量 twist',min:-3,max:3,step:0.05,dp:2},
+  {k:'wAmp',label:'波纹幅度',min:0,max:0.6,step:0.01,dp:2},
+  {k:'wFreq',label:'波纹频率',min:0.1,max:30,step:0.1,dp:1},
+  {k:'reps',label:'圆周阵列数 n（绕 z 轴）',min:1,max:12,step:1,int:true,dp:0}
+ ],
+ def:{tMin:2*Math.PI,tLen:3*Math.PI,d:4,zc:5,secStart:'eggCsv',secEnd:'circCsv',
+      blend:1,amp:1.2,aEnd:5,twist:-1,wAmp:0.1,wFreq:12,reps:1},
+ build:f8Build,read:f8Read,zAxis:'y',
+ presets:[{t:'蛋 → 圆（脚本原案）',v:{secStart:'eggCsv',secEnd:'circCsv'}},
+          {t:'蛋 → 十字架',v:{secEnd:'cross'}},
+          {t:'蛋 → 太极旋',v:{secEnd:'taiChiCsv'}},
+          {t:'蛋 → 扇面',v:{secEnd:'fanDxf'}},
+          {t:'断口：不分段',v:{blend:0}},{t:'断口：八次 Bézier',v:{blend:2}},
+          {t:'z 常数 c=4（蛋到圆脚本）',v:{zc:4}},{t:'z 常数 c=3.5（副本脚本）',v:{zc:3.5}}],
+ note:'<b>两族原理合一格</b>：'+
+      '<b>A 组（往回走）</b>：收缩因子 <code>b = −ln2/(L/4)</code> ⇒ 半径全程缩小 <b>1/16</b>；'+
+      '<code>z = e^{bt}·(t − c)</code> ⇒ <b>z 非单调</b>（存在极大值点 t* = c + 1/|b|，读数里会标出"在区间内 ⇒ 管身回折"）。'+
+      '6 个脚本的差别<b>只在 z 的常数 c（3.5 / 4 / 5）和首尾断面文件</b> ⇒ 这里做成两个滑条 + 一个下拉，不用开 6 页。'+
+      '<br><br><b>B 组（断口混接）</b>：导轨线（蛋尖线）在波纹跳变处断开，用 Bézier 桥接回去。'+
+      '<b>五次 Bézier</b>（G2 脚本）是端点 <b>G² 连续</b> 的尺度不变混接（导数目标尺度随 dist¹/dist² 变化）；'+
+      '<b>八次 Bézier</b>（G4/G9 脚本）自称 G⁴，但脚本里的 <code>get_prev_point</code> 直接返回 <code>p_prev2</code>（简化实现），'+
+      '且 <b>G9 的混接函数与 G4 逐字相同</b> —— "G9"只是文件名标签，不是连续性阶数。'+
+      '<br><br><b>断面插值</b>照脚本写法 <code>x_blend = (1−t)·start + t·end</code>（逐点线性插值，不是重新参数化）。'+
+      '<b>诚实标注</b>：脚本里的波动因子 <code>1+0.1·sin(343·i)</code> 周期只有 0.018 步，<b>严重欠采样</b>；'+
+      '本页把它改成可调的连续频率（默认 12），否则屏幕上只会看到高频抖动而不是波纹。'},
+
+{id:'tap',label:'⑨ 丝杠锥螺纹',title:'丝杠锥螺纹攻牙 · 斜螺锥 + GL25',
+ pyLine:'最简原始模版用于生成斜螺锥.py + 最简原始模版用于生成GL25螺纹 - dxf -完美.py（另含螺锥88/81.2/90°、bashar线圈）',
+ badge:function(P){return '丝杠锥螺纹 · '+(P.mode===0?'斜螺锥':'GL25')+' · φ'+P.diameter.toFixed(1)+' · p'+P.pitch.toFixed(2);},
+ params:[
+  {k:'mode',label:'攻牙模式',type:'choice',opts:[
+   {v:0,t:'斜螺锥（无牙深、固定扭转 0）'},{v:1,t:'GL25 锥螺纹（牙深 + 固定扭转 −锥半角）'}]},
+  {k:'diameter',label:'底径 diameter（mm）',min:5,max:300,step:0.1,dp:1},
+  {k:'pitch',label:'螺距 pitch（mm）',min:0.2,max:25,step:0.05,dp:2},
+  {k:'taperAngle',label:'锥半角（°）',min:0.2,max:45,step:0.01,dp:2},
+  {k:'depth',label:'牙深 depth（mm）',min:-2,max:6,step:0.01,dp:2},
+  {k:'high',label:'丝杠高度 high（斜螺锥模式）',min:2,max:120,step:0.5,dp:1},
+  {k:'pitchMulti',label:'螺距倍数 pitch_multi（GL25）',min:1,max:20,step:0.5,dp:1},
+  {k:'sign',label:'手性 sign',type:'choice',opts:[{v:1,t:'+1 右旋'},{v:-1,t:'−1 左旋'}]},
+  {k:'secType',label:'牙型断面（DXF POINT 实体）',type:'choice',opts:[
+   {v:'tri82',t:'三角牙 82°（GL25 用）'},{v:'tri60',t:'三角牙 60°（斜螺锥用）'}]},
+  {k:'secAz',label:'断面旋转角（°）',min:0,max:360,step:1,int:true,dp:0},
+  {k:'reps',label:'圆周阵列数 n（绕 z 轴）',min:1,max:12,step:1,int:true,dp:0}
+ ],
+ def:{mode:1,diameter:25.3,pitch:3.75/2,taperAngle:1.337,depth:-0.469,high:20,pitchMulti:4,
+      sign:1,secType:'tri82',secAz:0,reps:1},
+ build:f9Build,read:f9Read,zAxis:'y',
+ presets:[{t:'GL25（脚本默认）',v:{mode:1,diameter:25.3,pitch:3.75/2,taperAngle:1.337,depth:-0.469,pitchMulti:4,secType:'tri82'}},
+          {t:'斜螺锥（脚本默认）',v:{mode:0,diameter:21.25,pitch:1.27/2,taperAngle:4.02,high:20,secType:'tri60'}},
+          {t:'螺锥 88° 家族',v:{mode:1,diameter:250,pitch:5,taperAngle:44,pitchMulti:10,depth:0}},
+          {t:'螺锥 81.2° 家族',v:{mode:1,diameter:80,pitch:5,taperAngle:40.6,pitchMulti:7,depth:0}},
+          {t:'bashar 33.3° 家族',v:{mode:1,diameter:326,pitch:22,taperAngle:16.65,pitchMulti:10,depth:0}},
+          {t:'左旋',v:{sign:-1}}],
+ note:'<b>丝杠参数化</b>中心线（螺锥 88/81.2/90°、GL25、斜螺锥、bashar线圈 共 8 个脚本同一条）：<br>'+
+      '<code>x = (R_eff − t·r)·cos(t·h_div_pitch)</code>、<code>y = (R_eff − t·r)·sin(t·h_div_pitch)·sign</code>、<code>z = t·h</code>，'+
+      '其中 <code>r = h·tan(锥半角)</code>、<code>h_div_pitch = h·π/pitch</code>。'+
+      '<br><br><b>两个模式的差别</b>：斜螺锥 <code>base_r = diameter/2</code>、<code>h = high</code>、固定扭转角 = 0、断面不缩放；'+
+      'GL25 <code>base_r = diameter/2 + 2·pitch·taper_ratio</code>、<code>h = (pitch_multi+2)·pitch·2</code>、'+
+      '<code>effective_base_r = base_r − depth</code>（牙深）、固定扭转角 = <b>−锥半角</b>、'+
+      '<b>动态缩放</b>：断面尺寸 × <code>current_r/base_r</code>（随半径收缩而变小）。'+
+      '<br><br><b>牙型断面</b>来自 DXF 的 <b>POINT 实体</b>（不是样条）：<code>三角牙60度.dxf</code> / <code>三角牙82度.dxf</code> 各只有 3 个点，'+
+      '本页按闭合折线重采样成 120 点以便扫掠。'+
+      '<br><br><b>最佳 pitch_multi 三法估算</b>（照抄 GL25 脚本）：按<b>高度</b>（螺旋线到锥顶）/ <b>长度</b>（等于母线长）/ <b>面积</b>（覆盖侧面积）各算一遍再取平均。'},
+
+{id:'clothoid',label:'⑩ Clothoid 过渡',title:'Clothoid S 形过渡 · 回旋曲线（2D）',
+ pyLine:'生成clothoids混接原始.py（唯一一条纯 2D 曲线原理）',
+ badge:function(P){var k=Math.pow(10,(P.kExp===undefined?-4.7:P.kExp));
+  return 'Clothoid S 过渡 · 跨距 '+(P.x2-P.x1).toFixed(0)+' · k_max='+k.toExponential(1);},
+ params:[
+  {k:'x1',label:'起点 P1.x',min:-50,max:50,step:0.5,dp:1},
+  {k:'y1',label:'起点 P1.y',min:-50,max:50,step:0.5,dp:1},
+  {k:'x2',label:'终点 P2.x',min:-50,max:50,step:0.5,dp:1},
+  {k:'y2',label:'终点 P2.y',min:-50,max:50,step:0.5,dp:1},
+  {k:'ang1',label:'起点切线角（°，全局坐标）',min:0,max:360,step:1,int:true,dp:0},
+  {k:'ang2',label:'终点切线角（°，全局坐标；脚本固定 180°）',min:0,max:360,step:1,int:true,dp:0},
+  {k:'tanLen',label:'切线参考长度（只影响箭头长度）',min:1,max:40,step:0.5,dp:1},
+  {k:'L',label:'曲线长度上限 L（小于 L_min 时自动用 L_min）',min:1,max:400,step:0.5,dp:1},
+  {k:'kExp',label:'曲率变化率 k_max = 10^x（越小越平缓）',min:-5.2,max:-1,step:0.05,dp:2},
+  {k:'reps',label:'圆周阵列数 n（绕 z 轴）',min:1,max:12,step:1,int:true,dp:0}
+ ],
+ /* 默认值不是随手填的：P1=(0,0)、k_max≈7.6e-4 时，数值求解出 R₁≈24.8 的 S 形回旋曲线，
+    它的真实落点就是 (41.8, 8.0)、终点切线 −121.1°(=238.9°) ⇒ 把 P2 直接放到这个落点上，
+    于是"位置误差 0.62%·D、切线误差 0.9°"，曲线又有肉眼可见的弯度。
+    （如果按脚本原案 P2=(50,0)、ang2=180°，那组参数是【过约束】的，怎么调都闭合不了。） */
+ def:{x1:0,y1:0,x2:42,y2:8,ang1:0,ang2:239,tanLen:10,L:100,kExp:-3.12,reps:1},
+ build:f10Build,read:f10Read,prof:f10Prof,zAxis:'z',
+ presets:[{t:'可闭合·有弯度（默认）',v:{x1:0,y1:0,x2:42,y2:8,ang1:0,ang2:239,tanLen:10,L:100,kExp:-3.12}},
+          {t:'脚本原案（P2=(50,0), k=0.01）',v:{x1:0,y1:0,x2:50,y2:0,ang1:0,ang2:180,tanLen:10,L:100,kExp:-2}},
+          {t:'短距离 D=20',v:{x2:20,L:40,tanLen:5}},
+          {t:'长距离 D=100',v:{x2:100,L:200,tanLen:20}},
+          {t:'带 Y 偏移',v:{y2:25,L:120}},
+          {t:'同向 S（ang2=0°）',v:{y2:25,ang2:0,L:140}}],
+ note:'<b>这是唯一一条纯 2D 的原理</b>，所以单独一页（3D 里画平面曲线，下方 2D 画布给精确图）。'+
+      '<br><br><b>Clothoid（回旋曲线）</b>：曲率线性增长 <code>κ(s) = k_max·s</code>，位置用菲涅尔积分 '+
+      '<code>x=∫cos(k_max u²/2)du, y=∫sin(k_max u²/2)du</code>（本页用 Simpson 数值积分）。'+
+      '<br><br><b>S 形 = 两段</b>：第一段曲率 0→κ₁，第二段曲率 0→κ₂（方向相反），'+
+      '<b>两段曲率半径比固定 R₂ = 5·R₁</b>。'+
+      '<br><br><b>R₁ 由数值优化反求</b>（脚本用 scipy L-BFGS-B，本页用<b>黄金分割 + 5 个起点</b>，等价效果且不依赖库）：'+
+      '目标函数 = <b>终点位置误差 + 终点切线角误差·D</b>。'+
+      '<br><br><b>L_min = D·π/2</b>：D 是两端点间距，脚本里若 L &lt; L_min 会强制用 L_min。读数里会同时给出 L、L_min、实际弧长和最终残差。'+
+      '<br><br><b>⚠ 原脚本自带的用例其实解不开（这条要讲清楚）</b>：脚本里 <code>prev_P2 = P2 + (tanLen, 0)</code> 把'+
+      '<b>终点切线锁死为 180°（终点反向）</b>，而"两段 S + R₂=5·R₁"只有 <b>1 个自由量 R₁</b>，却要同时满足'+
+      '<b>位置(2 个方程) + 切线角</b> ⇒ <b>欠定不成立、只能求最小残差</b>；再加上 L 被钳到 L_min 后曲率被抬起，'+
+      'k_max=0.01 时曲线会绕成 3 圈半，根本走不到 P2（实测终点误差 ≈ D 的 80%）。'+
+      '<br>所以本页做了两件事：<b>①</b> 把两端切线角做成滑条（<code>ang1 / ang2</code>），不再写死 180°；'+
+      '<b>②</b> k_max 改成指数 <code>10^x</code>（它能跨 3 个数量级，线性滑条够不到 <code>1e-5</code> 这一档）。'+
+      '默认值（<code>ang2=180°</code>、<code>k_max=2×10⁻⁵</code>）就是<b>让这条 S 真正闭合</b>的组合'+
+      '（终点误差 &lt; 2%·D，读数里"是否闭合"会打 ✓）；点预设「脚本原案 k=0.01」能复现脚本原来的过约束状态，'+
+      '读数会直接打 ✗ —— <b>这不是本页算错，是那个算法的固有边界，如实标出来</b>。'},
+
+{id:'funnel',label:'⑪ 漏斗螺旋管',title:'漏斗对数螺旋管 · 蛋黄金比锥切面螺旋线（5 条中心线）',
+ pyLine:'E:/pythonProject/program/egg黄金比锥切面螺旋线 - 3d图 - uv等轴 …（12 脚本）',
+ badge:function(P){return '漏斗螺旋管 · '+(['C10 双曲螺线','C11 Lotus 样条','C12 β 真对数螺线','C13 太阳 2^t','C14 平方 t²'][P.fline]||'—')+' · r₀='+P.rStart.toFixed(1);},
+ params:[
+  {k:'fline',label:'中心线公式（漏斗族 5 条）',type:'choice',opts:[
+   {v:0,t:'C10 基础双曲螺线 r=1/t_s'},{v:1,t:'C11 Lotus 样条（黄金比数列）'},
+   {v:2,t:'C12 β 角速度真对数螺线（"数列 改"）'},{v:3,t:'C13 太阳数列 2^t'},
+   {v:4,t:'C14 平方数列 t²'}]},
+  {k:'rStart',label:'起始半径 r₀（r=1 / r=2 开始切）',min:0.5,max:4,step:0.1,dp:1},
+  {k:'rEnd',label:'末端半径（漏斗面参考）',min:0.05,max:4,step:0.01,dp:2},
+  {k:'bands',label:'波段数 num_bands',min:1,max:60,step:1,int:true,dp:0},
+  {k:'redMin',label:'漏斗 t 下界 red_t_min',min:0.2,max:4,step:0.05,dp:2},
+  {k:'redMax',label:'漏斗 t 上界 red_t_max',min:2,max:60,step:0.5,dp:1},
+  {k:'lotusTerms',label:'Lotus 数列项数',min:3,max:10,step:1,int:true,dp:0},
+  {k:'circuits',label:'圈数 n_circuits（β 方案）',min:0.5,max:12,step:0.5,dp:1},
+  {k:'betaScheme',label:'β 角速度方案',type:'choice',opts:[
+   {v:1,t:'指数 β=1+2(e^{k·t}−1)/(e^k−1)'},{v:2,t:'线性 β=1+2t'},
+   {v:3,t:'对数 β=1+2ln(1+t(e^k−1))/k'},{v:4,t:'常数 β=1'}]},
+  {k:'betaK',label:'β 方案参数 k',min:0.5,max:12,step:0.5,dp:1},
+  {k:'tr',label:'断面尺度',min:0.5,max:10,step:0.1,dp:1},
+  {k:'radial',label:'断面径向系数',min:0.2,max:3,step:0.05,dp:2},
+  {k:'flat',label:'断面切向压扁',min:0.2,max:2,step:0.05,dp:2},
+  {k:'twist',label:'扭转量 twist',min:-1.5,max:1.5,step:0.05,dp:2},
+  {k:'twlaw',label:'扭角律',type:'choice',opts:[{v:0,t:'线性'},{v:1,t:'幂 2^{3t}'}]},
+  {k:'turns',label:'圈数',min:0.5,max:6,step:0.1,dp:1},
+  {k:'secType',label:'横截面',type:'choice',opts:[
+   {v:'round',t:'圆（DXF SPLINE）'},{v:'krystal',t:'krystal 蛋咬一口'},
+   {v:'schauberger',t:'舒伯格 蛋咬一口'},{v:'eggCsv',t:'蛋形（CSV 采样）'},
+   {v:'circCsv',t:'圆（CSV 采样）'},{v:'tri60',t:'三角牙 60°'}]},
+  {k:'secAz',label:'截面旋转角（°）',min:0,max:360,step:1,int:true,dp:0},
+  {k:'reps',label:'圆周阵列数 n（绕 z 轴）',min:1,max:12,step:1,int:true,dp:0}
+ ],
+ def:{fline:3,rStart:1,rEnd:0.25,bands:16,redMin:1,redMax:29,lotusTerms:7,circuits:2.5,
+      betaScheme:4,betaK:9,tr:4,radial:1,flat:1,twist:-0.5,twlaw:1,turns:2,
+      secType:'round',secAz:0,reps:1},
+ build:f11Build,read:f11Read,zAxis:'y',
+ presets:[{t:'C13 太阳 2^t（最推荐）',v:{fline:3,rStart:1,bands:16}},
+          {t:'C10 基础双曲螺线',v:{fline:0,bands:8}},
+          {t:'C11 Lotus 样条',v:{fline:1,lotusTerms:7,redMax:29}},
+          {t:'C12 β 真对数螺线',v:{fline:2,circuits:2.5,betaScheme:4}},
+          {t:'C12 β 指数方案',v:{fline:2,betaScheme:1,betaK:9}},
+          {t:'C14 平方 t²',v:{fline:4,bands:16}},
+          {t:'r=2 开始切',v:{rStart:2}}],
+ note:'<b>这是"中心线库"的第二块</b>：<code>E:/pythonProject/program/</code> 下的 <b>egg黄金比锥切面螺旋线</b> 族 12 个脚本。'+
+      '它们和族⑦ 的锥螺旋是<b>完全不同的几何</b>：中心线躺在<b>漏斗面</b> <code>z = ln(1/r)/lnφ</code> 上（φ=(√5−1)/2，lnφ=−0.48121）。'+
+      '<br><br><b>5 条中心线</b>：'+
+      '<code>C10 双曲螺线</code> r=1/t_s（等间距 T ⇒ 实测 d(ln r)/dT <b>不恒定</b>，是双曲螺线不是真对数螺线）；'+
+      '<code>C11 Lotus 样条</code> r=CubicSpline(φ^(n−1))（黄金比收缩；样条外推会出<b>负半径</b>，脚本靠 mask 剔除，本页同样剔除）；'+
+      '<code>C12 β 真对数螺线</code> r=exp(linspace(log r_min,log r_max))、θ=T/β（<b>真</b>对数螺线，d ln r/dT 恒定）；'+
+      '<code>C13 太阳数列 2^t</code> r=2^(−t/2π)、z=(t/2π)(ln2/lnφ)（真对数螺线，<b>曲率上限最低 ⇒ 工程上最友好</b>）；'+
+      '<code>C14 平方 t²</code> r=1/t_shape²、z=−2ln(t_shape)/lnφ（<b>脚本里 z 符号与其它脚本相反且多 2 倍因子</b>，本页照抄并在此标注）。'+
+      '<br><br><b>诚实标注两处</b>：① <b>「-黄金比数列 改」根本不是黄金比数列</b> —— 它把 Lotus 递推整个删掉了，改用 log 间距半径 + β 角速度，'+
+      '是<b>真对数螺线</b>；② 脚本的<b>「可自转/动画」把渐进扭转烘进了 x,y 坐标</b>，与 RMF 标架会<b>双重扭转</b>，本页不采用，改由扭角滑条单独控制。'+
+      '<br><br><b>读数</b>给出末端<b>曲率上限 κ</b>与<b>曲率半径 ρ</b> —— 断面径向尺寸必须小于 ρ，否则内端会折叠自交。'}
 ];
 
 /* ---------------- three 场景 ---------------- */
@@ -1133,6 +3631,8 @@ function rebuild(){
   var obj=null;
   try{obj=f.build(P);}catch(e){console.error(e);}
   if(!obj){document.getElementById('badge').textContent=f.empty||'参数越界，模型为空';return;}
+  /* 圆周阵列：整套模型绕该族对称轴（数学 z 轴）复制 n 份 */
+  try{obj=applyArray(obj,P,f);}catch(e){console.error(e);}
   var bb=new THREE.Box3().setFromObject(obj);
   if(!bb.isEmpty()){
     var c=bb.getCenter(new THREE.Vector3()),sz=bb.getSize(new THREE.Vector3());
@@ -1145,9 +3645,17 @@ function rebuild(){
   }
   // 读数
   var rd=f.read(P),html='';
-  for(var i=0;i<rd.length;i++)html+='<div><span>'+rd[i][0]+'</span><b>'+rd[i][1]+'</b></div>';
+  for(var i=0;i<rd.length;i++){
+    /* 值里带 ⚠ 的行（穿插告警）标红加粗，一眼能看见 */
+    var warn=(typeof rd[i][1]==='string')&&(rd[i][1].indexOf('⚠')>=0);
+    html+='<div'+(warn?' class="hit"':'')+'><span>'+rd[i][0]+'</span><b'+(warn?' class="hit"':'')+'>'+rd[i][1]+'</b></div>';
+  }
   document.getElementById('readout').innerHTML=html;
   document.getElementById('badge').textContent=f.badge(P);
+  /* 横截面 2D 预览：放在 rebuild() 里 ⇒ 任何参数变更路径（下拉 / 滑条 / 预设 /
+     程序直接改 P）都会同步刷新，不会出现"3D 换了截面、2D 还是上一条曲线"。
+     没有 secCv 画布的族，drawSecPreview() 内部直接返回，零开销。 */
+  drawSecPreview();
   // 2D
   var pc=document.getElementById('prof');
   if(f.prof){
@@ -1183,6 +3691,7 @@ function buildUI(){
         bt.addEventListener('click',function(){
           P[p.k]=o.v;
           [].forEach.call(bx.children,function(c){c.className=(c===bt?'on':'');});
+          drawSecPreview();   /* 族③ 横截面类型 / 族⑤ 断面参数变了 ⇒ 2D 预览必须跟着重画 */
           rebuild();
         });
         bx.appendChild(bt);
@@ -1201,6 +3710,14 @@ function buildUI(){
     inp.addEventListener('input',function(){
       P[p.k]=p.int?parseInt(inp.value,10):parseFloat(inp.value);
       bv.textContent=fmtVal(p,P[p.k]);
+      /* 族③ / 族⑤：几何尺寸参数或阵列份数一变，上一次反算结果就失效了
+         → 清掉并刷新反算面板（否则会出现"按钮刚算完、滑条一改读数还挂着旧结论"） */
+      if((f.id==='tube'&&(p.k==='tr'||p.k==='reps'))||
+         (f.id==='wheel'&&(p.k==='bl'||p.k==='reps'||p.k==='blades'))){
+        solMsg.html='';solMsg.cls='solres';
+        buildSolveBox(f);
+      }
+      drawSecPreview();   /* 族⑤ 横断面 2D 预览实时跟随（其它族无此画布，直接返回） */
       rebuild();
     });
   });
@@ -1213,16 +3730,456 @@ function buildUI(){
     });
     pv.appendChild(b);
   });
+  buildSolveBox(f);
+  buildSecBox(f);
+}
+/* ---------------- 族③ / 族⑤ 几何反算面板（两个方向） ----------------
+   族③ 按钮①（正向）：已知阵列份数 n + 现有几何参数 ⇒ 算「曲面不重叠」的最大管径 tr
+        族③ 按钮②（反向）：固定当前管径 tr + 现有几何参数 ⇒ 算最大阵列份数 n
+   族⑤ 按钮①（正向）：已知阵列份数 n ⇒ 算最大叶片尺度 bl
+        族⑤ 按钮②（反向）：固定当前叶片尺度 bl ⇒ 算最大阵列份数 n
+   结果文字存在 solMsg 里，这样写回参数触发 buildUI() 重建面板后结果不会丢。 */
+var solMsg={html:'',cls:'solres'};
+function buildSolveBox(f){
+  var sb=document.getElementById('solvebox');
+  sb.innerHTML='';
+  if(!f||(f.id!=='tube'&&f.id!=='wheel')){sb.style.display='none';return;}
+  sb.style.display='block';
+  var isTube=(f.id==='tube');
+  var reps=Math.max(1,Math.min(12,Math.round(P.reps===undefined?1:P.reps)));
+
+  var t1=document.createElement('div');t1.className='solvetitle';
+  t1.textContent='几何反算 · 曲面不重叠约束';
+  var t2=document.createElement('div');t2.className='solvesub';
+  if(isTube){
+    t2.innerHTML='判据：两份管的中心线距离 <b>d &gt; tr·(k₁+k₂)</b> 时必不相交'+
+      '（k = 锥缩 taper × 波纹 wave 的无量纲因子）。上限取所有点对的 min d/(k₁+k₂)，'+
+      '保守但可证不穿插；同一份内部还会检查「相隔 m 圈」的自重叠。';
+  }else{
+    t2.innerHTML='判据：把叶片曲面<b>降采样成三角形</b>，用空间哈希 + Möller–Trumbore '+
+      '<b>边-面互测</b>做【真的相交】判定（不是距离近似），再对叶片尺度二分求临界值。'+
+      '叶片是零厚度曲面且母线是螺旋的，解析判据不适用，故用几何布尔判据。'+
+      '结果已含 <b>5% 安全系数</b>。';
+  }
+  sb.appendChild(t1);sb.appendChild(t2);
+
+  /* --- ① 按 n 反算最大尺寸参数 --- */
+  var r1=document.createElement('div');r1.className='solverow';
+  var l1=document.createElement('label');l1.textContent='① 已知阵列份数 n';
+  var nIn=document.createElement('input');nIn.type='number';nIn.min=1;nIn.max=12;nIn.step=1;
+  nIn.value=reps;nIn.title='阵列份数 n（1–12）';
+  var b1=document.createElement('button');b1.type='button';b1.className='solbtn';
+  b1.textContent=isTube?'算出最大管径并应用':'算出最大叶片尺度并应用';
+  r1.appendChild(l1);r1.appendChild(nIn);r1.appendChild(b1);
+  sb.appendChild(r1);
+
+  /* --- ② 按尺寸参数反算最大 n --- */
+  var r2=document.createElement('div');r2.className='solverow';
+  var l2=document.createElement('label');
+  l2.textContent=isTube?('② 固定当前管径 tr='+P.tr.toFixed(1)):('② 固定当前叶片尺度 bl='+P.bl.toFixed(2));
+  var b2=document.createElement('button');b2.type='button';b2.className='solbtn alt';
+  b2.textContent='算出最大阵列份数并应用';
+  r2.appendChild(l2);r2.appendChild(b2);
+  sb.appendChild(r2);
+
+  var res=document.createElement('div');res.className=solMsg.cls;res.id='solRes';
+  res.innerHTML=solMsg.html||'尚未计算 —— 改完上面的参数点按钮。';
+  sb.appendChild(res);
+
+  if(isTube){
+    b1.addEventListener('click',function(){
+      var n=parseInt(nIn.value,10);
+      if(!isFinite(n))n=reps;
+      n=Math.max(1,Math.min(12,Math.round(n)));
+      nIn.value=n;
+      var s=f3SafeTr(P,n);
+      var old=P.tr;
+      /* 向下取整到 0.1：宁可略保守，也不能因为四舍五入而刚好越过上限；
+         再吸附到滑条刻度（min=1, step=0.1），保证"滑条显示值 == 模型实际值"。 */
+      var newTr=f3TrSnap(Math.floor(s.tr*10)/10);
+      P.tr=newTr;P.reps=n;
+      var over=(s.tr>10),under=(s.tr<1);
+      solMsg.cls='solres';
+      solMsg.html='n = '+n+' 份 ⇒ 管半径上限 <b>tr ≤ '+s.tr.toFixed(3)+'</b>\n'+
+        '约束发生在：'+f3AtText(s.at)+'\n'+
+        '已应用：tr '+old.toFixed(1)+' → <b>'+newTr.toFixed(1)+'</b>，阵列份数 → '+n+
+        (over?'\n注：上限超出滑条量程（1–10），已按量程上限 10 处理。':'')+
+        (under?'\n注：上限低于滑条下限（1），即使 tr=1 也无法保证不重叠。':'')+
+        '\n（上限向下取整到 0.1，保证应用后的值仍在安全区内）';
+      buildUI();rebuild();
+    });
+    b2.addEventListener('click',function(){
+      var old=P.reps;
+      var mr=f3MaxReps(P);
+      P.reps=mr.n;
+      var s=f3SafeTr(P,mr.n);
+      solMsg.cls='solres';
+      solMsg.html='当前 tr = '+P.tr.toFixed(1)+' ⇒ 最大阵列份数 <b>n = '+mr.n+'</b>\n'+
+        '该 n 下的管径上限 tr ≤ '+s.tr.toFixed(3)+'\n'+
+        '约束发生在：'+f3AtText(s.at)+'\n'+
+        '已应用：阵列份数 '+old+' → <b>'+mr.n+'</b>';
+      buildUI();rebuild();
+    });
+  }else{
+    /* 族⑤：叶片尺度 bl 的滑条是 min=0.3, max=2.5, step=0.05 */
+    b1.addEventListener('click',function(){
+      var n=parseInt(nIn.value,10);
+      if(!isFinite(n))n=reps;
+      n=Math.max(1,Math.min(12,Math.round(n)));
+      nIn.value=n;
+      var crit=f5Limit(P,n);
+      var lim=crit*0.95;                    /* 5% 安全系数 */
+      var old=P.bl;
+      /* 向下取整到 0.05，再吸附到滑条刻度，保证"滑条显示值 == 模型实际值" */
+      var newBl=Math.round(Math.floor(lim/0.05)*0.05*1000)/1000;
+      if(newBl<0.3)newBl=0.3;
+      if(newBl>2.5)newBl=2.5;
+      P.bl=newBl;P.reps=n;
+      solMsg.cls='solres';
+      solMsg.html='n = '+n+' 份 ⇒ 叶片尺度上限 <b>bl ≤ '+lim.toFixed(3)+'</b>\n'+
+        '（几何临界值 '+crit.toFixed(3)+'，已含 5% 安全系数）\n'+
+        '约束发生在：'+f5AtText(n)+'\n'+
+        '已应用：bl '+old.toFixed(2)+' → <b>'+newBl.toFixed(2)+'</b>，阵列份数 → '+n+
+        (lim<0.3?'\n注：上限低于滑条下限（0.3），已按 0.3 处理（该 n 下仍可能穿插）。':'')+
+        (lim>2.5?'\n注：上限超出滑条量程（0.3–2.5），已按 2.5 处理。':'')+
+        '\n（上限向下取整到 0.05，保证应用后的值仍在安全区内）';
+      buildUI();rebuild();
+    });
+    b2.addEventListener('click',function(){
+      var old=P.reps;
+      var mr=f5MaxReps(P);
+      P.reps=mr.n;
+      var lim=f5Limit(P,mr.n)*0.95;
+      solMsg.cls='solres';
+      solMsg.html='当前 bl = '+P.bl.toFixed(2)+' ⇒ 最大阵列份数 <b>n = '+mr.n+'</b>\n'+
+        '该 n 下的叶片尺度上限 bl ≤ '+lim.toFixed(3)+'\n'+
+        '约束发生在：'+f5AtText(mr.n)+'\n'+
+        '已应用：阵列份数 '+old+' → <b>'+mr.n+'</b>';
+      buildUI();rebuild();
+    });
+  }
+}
+/* ---------------- 族⑤ 叶片横断面 2D 预览 ----------------
+   把断面曲线画在【局部 2D 平面】里：横轴 = x、纵轴 = y，原点 = 母线中心线上的落点。
+   —— 橙色射线 = 当前「曲线起点方位」（= 横断面相位角 secPhi，逆时针为正，0° = x 正半轴）
+   —— 深蓝线 = 外缘断面（a = 0.30·bl，s=0），浅蓝线 = 内缘断面（a = 0.10·bl，s=1）
+   —— 红点 = 曲线起点
+   预览与 3D 模型共用 f5SecPoint()，所以预览画的就是模型用的那条曲线。 */
+function buildSecBox(f){
+  var bd=document.getElementById('secfpBd');
+  var fp=document.getElementById('secfp');
+  if(!bd||!fp)return;
+  bd.innerHTML='';
+  if(!f||(f.id!=='wheel'&&f.id!=='tube')){fp.classList.add('secfp-hidden');return;}
+  fp.classList.remove('secfp-hidden');
+  /* 标题随族切换 */
+  document.getElementById('secfpC').textContent=(f.id==='tube')?'DXF 截面':'叶片断面';
+  var isTube=(f.id==='tube');
+  var t1=document.createElement('div');t1.className='solvetitle';
+  var t2=document.createElement('div');t2.className='solvesub';
+  if(isTube){
+    t1.textContent='管横截面 · 2D 预览';
+    var sub1=document.createElement('span');sub1.className='sectitle2';
+    sub1.textContent='（局部 xy 平面）';t1.appendChild(sub1);
+    t2.innerHTML='真实 DXF 闭合 NURBS 曲线，<b>起点已对齐 x 正半轴</b>（0°）。'+
+      '滑条「截面旋转角」把整条曲线绕原点转，红点始终标出<b>曲线起点</b>；'+
+      '灰色虚线是未旋转的原始曲线。预览与 3D 模型共用同一条曲线数据。';
+  }else{
+    t1.textContent='叶片横断面 · 2D 预览';
+    var sub2=document.createElement('span');sub2.className='sectitle2';
+    sub2.textContent='（局部 xy 平面）';t1.appendChild(sub2);
+    t2.innerHTML='原点 = 母线中心线落点。橙色射线 = <b>曲线起点方位</b>，红点 = 起点。'+
+      '本页基准曲线 = <b>原曲线整体旋转 180°</b> 后保存（起点在 +90°，即 +y 方向）；'+
+      '把「横断面相位角」调回 <b>270°</b> 就回到原脚本朝向（起点在 −90°），默认 <b>90°</b> 即显示 180° 基准曲线。'+
+      '本预览与 3D 模型共用同一条断面方程。';
+  }
+  /* 标题行右侧：镜像按钮 —— 以 y 轴为镜把断面曲线翻转（x → −x）。
+     这是真几何变换（不是只翻预览）：2D 预览与 3D 模型共用 f5SecPoint / f3SecLocal，
+     所以按钮一按，预览与模型同时翻，面板"两者共用同一条曲线"的承诺不破。 */
+  var row=document.createElement('div');row.className='sectitlerow';
+  row.appendChild(t1);
+  var mb=document.createElement('button');
+  mb.type='button';mb.id='secMir';
+  mb.className='secmir'+((P.mirX<0)?' on':'');
+  mb.textContent='⇋ 镜像 y';
+  mb.title='以 y 轴为对称轴翻转断面曲线（x → −x）：2D 预览与 3D 模型同步';
+  mb.addEventListener('click',function(){
+    P.mirX=(P.mirX<0)?1:-1;              /* 1 = 原样，−1 = 镜像 */
+    mb.className='secmir'+((P.mirX<0)?' on':'');
+    rebuild();                            /* rebuild 内部会重画 2D 预览 + 读数 */
+  });
+  row.appendChild(mb);
+  bd.appendChild(row);bd.appendChild(t2);
+  var wrap=document.createElement('div');wrap.className='secwrap';
+  var cv=document.createElement('canvas');cv.className='seccv';
+  cv.id='secCv';cv.width=440;cv.height=440;
+  wrap.appendChild(cv);
+  var info=document.createElement('div');info.className='secinfo';info.id='secInfo';
+  wrap.appendChild(info);
+  bd.appendChild(wrap);
+  drawSecPreview();
+}
+/* ---------------- 2D 截面预览 · 左下角悬浮窗：拖动 / 收起 / 复位 ----------------
+   位置与收起状态存 localStorage，刷新后保持原样。
+   收起时只留标题条（点标题条上的 ▾ 再展开）。 */
+(function(){
+  var fp=document.getElementById('secfp');
+  if(!fp)return;
+  var h=document.getElementById('secfpH');
+  var KEY='pks3d.secfp';
+  function clamp(){
+    var r=fp.getBoundingClientRect(),W=window.innerWidth,H=window.innerHeight;
+    var x=Math.min(Math.max(r.left,-r.width+90),W-90);
+    var y=Math.min(Math.max(r.top,0),H-44);
+    fp.style.left=x+'px';fp.style.top=y+'px';
+    fp.style.right='auto';fp.style.bottom='auto';
+  }
+  function defPos(){
+    fp.style.left='';fp.style.right='';fp.style.top='';fp.style.bottom='';
+  }
+  function save(){
+    try{
+      if(!fp.style.left){localStorage.removeItem(KEY);return;}
+      localStorage.setItem(KEY,JSON.stringify({
+        x:parseFloat(fp.style.left),y:parseFloat(fp.style.top),
+        mini:fp.classList.contains('secfp-min')
+      }));
+    }catch(e){}
+  }
+  function load(){
+    try{
+      var s=localStorage.getItem(KEY);
+      if(!s)return;                       /* 首次访问：保持默认左下角、展开 */
+      var o=JSON.parse(s);
+      if(o.mini)fp.classList.add('secfp-min');
+      if(typeof o.x==='number'&&isFinite(o.x)){
+        fp.style.left=o.x+'px';fp.style.top=o.y+'px';
+        fp.style.right='auto';fp.style.bottom='auto';
+        clamp();
+      }
+    }catch(e){}
+  }
+  var drag=null;
+  h.addEventListener('pointerdown',function(ev){
+    if(ev.target.closest('button'))return;
+    var r=fp.getBoundingClientRect();
+    drag={dx:ev.clientX-r.left,dy:ev.clientY-r.top,moved:false};
+    fp.style.left=r.left+'px';fp.style.top=r.top+'px';
+    fp.style.right='auto';fp.style.bottom='auto';
+    h.classList.add('fxp-drag');
+    h.setPointerCapture&&h.setPointerCapture(ev.pointerId);
+    ev.preventDefault();
+  });
+  h.addEventListener('pointermove',function(ev){
+    if(!drag)return;
+    drag.moved=true;
+    fp.style.left=(ev.clientX-drag.dx)+'px';
+    fp.style.top=(ev.clientY-drag.dy)+'px';
+    clamp();
+  });
+  function end(){ if(drag){h.classList.remove('fxp-drag');save();drag=null;} }
+  h.addEventListener('pointerup',end);
+  h.addEventListener('pointercancel',end);
+  /* 双击标题条 = 复位到左下角 */
+  h.addEventListener('dblclick',function(ev){
+    if(ev.target.closest('button'))return;
+    defPos();fp.classList.remove('secfp-min');
+    try{localStorage.removeItem(KEY);}catch(e){}
+  });
+  fp.addEventListener('click',function(ev){
+    var b=ev.target.closest('button[data-a]');
+    if(!b)return;
+    if(b.dataset.a==='mini'){fp.classList.toggle('secfp-min');save();}
+    if(b.dataset.a==='reset'){defPos();fp.classList.remove('secfp-min');save();}
+  });
+  window.addEventListener('resize',function(){if(fp.style.left)clamp();});
+  load();
+})();
+function drawSecPreview(){
+  var cv=document.getElementById('secCv');
+  if(!cv||!cv.getContext)return;
+  /* 族③ 走自己的分支：真实 DXF 闭合曲线的 2D 预览 */
+  if(curFam===2){ drawTubeSecPreview(cv); return; }
+  var ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+  var cx=W/2,cy=H/2;
+  /* 视野按【模型单位】自适应：断面曲线的最大半径 = a = 0.30·bl，
+     视野取 max(0.25, 1.15a)，这样无论叶片尺度多大，曲线都占满画面。 */
+  var aMax=Math.max(1e-4,(P.bl||1)*0.30);
+  var Rv=Math.max(0.25,aMax*1.15);
+  var sc=(H*0.42)/Rv;                 /* 像素 / 模型单位 */
+  function sx(x){return cx+x*sc;}
+  function sy(y){return cy-y*sc;}
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#fbfdff';ctx.fillRect(0,0,W,H);
+
+  /* 同心圆（模型单位） */
+  ctx.strokeStyle='#e8eef6';ctx.lineWidth=2;
+  [0.25,0.5,0.75,1].forEach(function(f){
+    ctx.beginPath();ctx.arc(cx,cy,Rv*f*sc,0,TAU);ctx.stroke();
+  });
+  /* 坐标轴 */
+  ctx.strokeStyle='#c3cedd';ctx.lineWidth=2.4;
+  ctx.beginPath();ctx.moveTo(sx(-Rv*1.06),sy(0));ctx.lineTo(sx(Rv*1.06),sy(0));ctx.stroke();
+  ctx.beginPath();ctx.moveTo(sx(0),sy(-Rv*1.06));ctx.lineTo(sx(0),sy(Rv*1.06));ctx.stroke();
+  ctx.fillStyle='#8b97a6';ctx.font='25px Consolas,monospace';
+  ctx.textAlign='left';ctx.textBaseline='middle';
+  ctx.fillText('x',sx(Rv*0.99),sy(0)+28);
+  ctx.textAlign='center';
+  ctx.fillText('y',sx(0),sy(Rv*1.02));
+
+  /* 起点方位射线：直接由【实际起点】反算方位角（不是直接读 secPhi），
+     这样镜像后射线仍然穿过红点 —— 镜像把方位变成 180° − secPhi。 */
+  var q0=f5SecPoint(P,0,Math.PI);
+  var phi=Math.atan2(q0[1],q0[0]);
+  if(phi<0)phi+=TAU;
+  var phiDeg=Math.round(phi*180/Math.PI)%360;
+  ctx.save();
+  ctx.strokeStyle='#e08a1e';ctx.lineWidth=2.6;ctx.setLineDash([10,8]);
+  ctx.beginPath();ctx.moveTo(cx,cy);
+  ctx.lineTo(cx+Math.cos(phi)*Rv*0.90*sc, cy-Math.sin(phi)*Rv*0.90*sc);
+  ctx.stroke();ctx.restore();
+  ctx.fillStyle='#c9761a';ctx.font='26px Consolas,monospace';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(phiDeg+'°',
+    cx+Math.cos(phi)*Rv*0.58*sc, cy-Math.sin(phi)*Rv*0.58*sc);
+
+  /* 断面曲线（内缘浅、外缘深） */
+  function drawCurve(s,color,lw){
+    ctx.strokeStyle=color;ctx.lineWidth=lw;ctx.lineJoin='round';
+    ctx.beginPath();
+    for(var i=0;i<=190;i++){
+      var tau=Math.PI+1.5*Math.PI*(i/190);
+      var q=f5SecPoint(P,s,tau);
+      if(i===0)ctx.moveTo(sx(q[0]),sy(q[1]));else ctx.lineTo(sx(q[0]),sy(q[1]));
+    }
+    ctx.stroke();
+  }
+  drawCurve(1,'#9db8d6',3.0);
+  drawCurve(0,'#2f6fb5',4.0);
+
+  /* 起点（红点）：q0 已在上面算出 */
+  ctx.fillStyle='#d0342c';
+  ctx.beginPath();ctx.arc(sx(q0[0]),sy(q0[1]),8,0,TAU);ctx.fill();
+  ctx.strokeStyle='#fff';ctx.lineWidth=2.4;ctx.stroke();
+
+  /* 文字说明 */
+  var info=document.getElementById('secInfo');
+  if(info){
+    var rot=((Math.round(P.secPhi||0)+90)%360);
+    info.innerHTML='<span class="seckey" style="background:#d0342c"></span>曲线起点　'+
+      '<span class="seckey" style="background:#e08a1e"></span>起点方位射线<br>'+
+      '<span class="seckey" style="background:#2f6fb5"></span>外缘断面　'+
+      '<span class="seckey" style="background:#9db8d6"></span>内缘断面<br>'+
+      '起点方位 <b>'+phiDeg+'°</b>　｜　对原始图旋转 <b>+'+rot+'°</b>'+
+      (P.mirX<0?'　｜　<b style="color:#1b4f9c">已镜像</b>':'')+'<br>'+
+      (P.mirX<0?'<span style="color:#1b4f9c">x → −x ⇒ 起点方位 = 180° − '
+        +Math.round(P.secPhi||0)+'° = <b>'+phiDeg+'°</b>（3D 同步）</span><br>':'')+
+      '断面半径 <b>'+((P.bl||1)*0.10).toFixed(3)+' – '+((P.bl||1)*0.30).toFixed(3)+'</b>（模型单位）<br>'+
+      '<span style="color:#8b97a6">外圈半径 = '+Rv.toFixed(3)+'；本页基准 = 原曲线旋转 180°（默认相位 90°），'+
+      '取相位 <b style="color:#c9761a">270°</b> 即回到原脚本朝向</span>';
+  }
+}
+/* ---------------- 族③ 管横截面 · 2D 预览 ----------------
+   画的是真实 DXF 曲线（SEC_LIB），不是示意图：
+   —— 蓝线：当前 secAz 旋转后的曲线；
+   —— 灰色虚线：未旋转（secAz=0）的原始曲线；
+   —— 红点：曲线起点（DXF 里的原始起点，已对齐 x 正半轴）；
+   —— 橙色射线：起点当前所在的方位。
+   曲线归一化到「外接半径 = 1」，所以预览里外圈就是单位圆。 */
+function drawTubeSecPreview(cv){
+  var ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+  var cx=W/2,cy=H/2;
+  var Rv=1.18;                    /* 视野半径（曲线外接半径 = 1） */
+  var sc=(H*0.42)/Rv;
+  function sx(x){return cx+x*sc;}
+  function sy(y){return cy-y*sc;}
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#fbfdff';ctx.fillRect(0,0,W,H);
+
+  /* 同心圆（单位刻度） */
+  ctx.strokeStyle='#e8eef6';ctx.lineWidth=2;
+  [0.25,0.5,0.75,1].forEach(function(f){
+    ctx.beginPath();ctx.arc(cx,cy,f*sc,0,TAU);ctx.stroke();
+  });
+  /* 坐标轴 */
+  ctx.strokeStyle='#c3cedd';ctx.lineWidth=2.4;
+  ctx.beginPath();ctx.moveTo(sx(-Rv*1.06),sy(0));ctx.lineTo(sx(Rv*1.06),sy(0));ctx.stroke();
+  ctx.beginPath();ctx.moveTo(sx(0),sy(-Rv*1.06));ctx.lineTo(sx(0),sy(Rv*1.06));ctx.stroke();
+  ctx.fillStyle='#8b97a6';ctx.font='25px Consolas,monospace';
+  ctx.textAlign='left';ctx.textBaseline='middle';
+  ctx.fillText('x',sx(Rv*0.99),sy(0)+28);
+  ctx.textAlign='center';
+  ctx.fillText('y',sx(0),sy(Rv*1.02));
+
+  var base=secCurve(P.secType||'round');        /* 未旋转的原始曲线 */
+  var cur=f3SecLocal(P);                        /* 已按 secAz 旋转 */
+  if(!base||!cur){return;}
+
+  /* 未旋转的原曲线（灰虚线） */
+  ctx.save();
+  ctx.strokeStyle='#c8d2df';ctx.lineWidth=2.2;ctx.setLineDash([7,6]);ctx.lineJoin='round';
+  ctx.beginPath();
+  for(var i=0;i<=base.length;i++){
+    var q=base[i%base.length];
+    if(i===0)ctx.moveTo(sx(q[0]),sy(q[1]));else ctx.lineTo(sx(q[0]),sy(q[1]));
+  }
+  ctx.stroke();ctx.restore();
+
+  /* 当前曲线（蓝） */
+  ctx.strokeStyle='#2f6fb5';ctx.lineWidth=4.0;ctx.lineJoin='round';
+  ctx.beginPath();
+  for(var j=0;j<=cur.length;j++){
+    var p2=cur[j%cur.length];
+    if(j===0)ctx.moveTo(sx(p2[0]),sy(p2[1]));else ctx.lineTo(sx(p2[0]),sy(p2[1]));
+  }
+  ctx.stroke();
+
+  /* 起点方位射线：由【实际起点】反算（镜像后 方位 = 180° − 旋转角），保证射线穿过红点 */
+  var st=cur[0];
+  var phi=Math.atan2(st[1],st[0]);
+  if(phi<0)phi+=TAU;
+  var azd=Math.round(phi*180/Math.PI)%360;
+  ctx.save();
+  ctx.strokeStyle='#e08a1e';ctx.lineWidth=2.6;ctx.setLineDash([10,8]);
+  ctx.beginPath();ctx.moveTo(cx,cy);
+  ctx.lineTo(cx+Math.cos(phi)*Rv*0.90*sc,cy-Math.sin(phi)*Rv*0.90*sc);
+  ctx.stroke();ctx.restore();
+  ctx.fillStyle='#c9761a';ctx.font='26px Consolas,monospace';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(azd+'°',cx+Math.cos(phi)*Rv*0.58*sc,cy-Math.sin(phi)*Rv*0.58*sc);
+
+  /* 起点（红点）：st 已在上面算出 */
+  ctx.fillStyle='#d0342c';
+  ctx.beginPath();ctx.arc(sx(st[0]),sy(st[1]),8,0,TAU);ctx.fill();
+  ctx.strokeStyle='#fff';ctx.lineWidth=2.4;ctx.stroke();
+
+  /* 文字说明 */
+  var info=document.getElementById('secInfo');
+  if(info){
+    var meta=null,k;
+    for(k=0;k<SEC_LIB.length;k++)if(SEC_LIB[k].k===(P.secType||'round'))meta=SEC_LIB[k];
+    var area=meta?meta.a:0;
+    info.innerHTML='<span class="seckey" style="background:#d0342c"></span>曲线起点　'+
+      '<span class="seckey" style="background:#e08a1e"></span>起点方位射线　'+
+      '<span class="seckey" style="background:#2f6fb5"></span>当前截面　'+
+      '<span class="seckey" style="background:#c8d2df"></span>原始截面（未旋转·未镜像）<br>'+
+      '截面 <b>'+(meta?meta.t:'圆')+'</b>　｜　旋转 <b>'+Math.round(P.secAz===undefined?0:P.secAz)+'°</b>'+
+      (P.mirX<0?'　｜　<b style="color:#1b4f9c">镜像 y 轴</b>':'')+'<br>'+
+      '起点方位 <b>'+azd+'°</b>（x 正半轴 = 0°）　｜　起点坐标 <b>('+
+      st[0].toFixed(3)+', '+st[1].toFixed(3)+')</b>（外接半径 = 1）<br>'+
+      '面积比 <b>'+(area/Math.PI*100).toFixed(1)+'% π</b>　｜　采样点 <b>'+base.length+'</b><br>'+
+      '<span style="color:#8b97a6">实际管径 = 此曲线 × tr；起点对齐 x 正半轴</span>';
+  }
 }
 function selectFam(i){
   curFam=i;
-  P={};
-  var f=FAMS[i];
+  P={};  var f=FAMS[i];
   for(var k in f.def)P[k]=f.def[k];
+  solMsg.html='';solMsg.cls='solres';   // 换族 ⇒ 清掉上一次反算结果
   [].forEach.call(document.getElementById('tabs').children,function(b,idx){
     b.className=(idx===i?'on':'');
   });
-  az=0.95;el=0.46;zoom=1;
+  az=0.95;el=0.46;zoom=1;panX=panY=panZ=0;
   buildUI();rebuild();
 }
 document.getElementById('tabs').innerHTML=FAMS.map(function(f,i){
@@ -1233,21 +4190,53 @@ document.getElementById('tabs').addEventListener('click',function(e){
   selectFam(parseInt(b.dataset.i,10));
 });
 
-canvas.addEventListener('mousedown',function(e){dragging=true;lx=e.clientX;ly=e.clientY;});
-window.addEventListener('mouseup',function(){dragging=false;});
+/* ---------------- 交互：拖动旋转 / Shift+拖动平移 / 滚轮缩放 / 双击复位 ----------------
+   Shift+按住拖动 = 平移（把模型在屏幕平面里挪动），用来对准局部细节；
+   普通拖动 = 绕中心旋转。相机用「目标点 + 距离」的写法，
+   平移就是改目标点（lookAt 的中心），旋转就是改方位角/仰角。 */
+var panX=0,panY=0,panZ=0;      /* 平移量（世界坐标） */
+var shiftDrag=false;
+canvas.addEventListener('mousedown',function(e){
+  dragging=true;lx=e.clientX;ly=e.clientY;
+  shiftDrag=!!e.shiftKey;
+  canvas.style.cursor=shiftDrag?'move':'grabbing';
+});
+window.addEventListener('mouseup',function(){
+  if(dragging)canvas.style.cursor='grab';
+  dragging=false;shiftDrag=false;
+});
 window.addEventListener('mousemove',function(e){
   if(!dragging)return;
-  az-=(e.clientX-lx)*0.008;el+=(e.clientY-ly)*0.006;
-  el=Math.max(-1.45,Math.min(1.45,el));
+  var dx=e.clientX-lx,dy=e.clientY-ly;
   lx=e.clientX;ly=e.clientY;
+  if(shiftDrag){
+    /* 平移：按屏幕方向在世界 x/y 上挪。缩放越小 ⇒ 同样的像素对应越大的世界位移。 */
+    var sc=camD*zoom*0.0016;
+    panX+=dx*sc;panY-=dy*sc;
+    return;
+  }
+  az-=dx*0.008;el+=dy*0.006;
+  el=Math.max(-1.45,Math.min(1.45,el));
 });
 canvas.addEventListener('wheel',function(e){
   e.preventDefault();zoom*=(e.deltaY>0?1.08:0.925);
   zoom=Math.max(0.25,Math.min(4,zoom));
 },{passive:false});
-canvas.addEventListener('dblclick',function(){az=0.95;el=0.46;zoom=1;});
+canvas.addEventListener('dblclick',function(){az=0.95;el=0.46;zoom=1;panX=panY=panZ=0;});
+/* 暂停 / 继续自转：按钮在 3D 图形左上角，空格键同样有效 */
+function setAutoRot(v){
+  autoRot=v;
+  var b=document.getElementById('btnPause');
+  if(b){
+    b.textContent=v?'⏸ 暂停自转':'▶ 继续自转';
+    b.className=v?'':'paused';
+    b.title=v?'当前正在自转，点击暂停':'当前已暂停，点击继续自转';
+  }
+}
+var btnPause=document.getElementById('btnPause');
+if(btnPause)btnPause.addEventListener('click',function(e){e.stopPropagation();setAutoRot(!autoRot);});
 window.addEventListener('keydown',function(e){
-  if(e.code==='Space'){autoRot=!autoRot;e.preventDefault();}
+  if(e.code==='Space'){setAutoRot(!autoRot);e.preventDefault();}
 });
 window.addEventListener('resize',resize);
 
@@ -1256,7 +4245,7 @@ function loop(){
   if(autoRot&&!dragging)az+=0.0028;
   var d=camD*zoom;
   camera.position.set(d*Math.cos(el)*Math.sin(az),d*Math.sin(el),d*Math.cos(el)*Math.cos(az));
-  camera.lookAt(0,0,0);
+  camera.lookAt(panX,panY,panZ);
   renderer.render(scene,camera);
 }
 initGL();selectFam(0);loop();

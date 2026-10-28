@@ -108,6 +108,11 @@ body.light #wres{box-shadow:0 14px 44px rgba(60,80,120,.24)}
   justify-content:center;flex-direction:column;gap:10px;color:var(--ink3);font-size:12px;z-index:9}
 #warm .bw{width:220px;height:3px;border-radius:2px;background:var(--line);overflow:hidden}
 #warm .bi{height:100%;width:0%;background:linear-gradient(90deg,var(--acc2),var(--acc))}
+/* 红青立体（Anaglyph 3D）：必须暗底 —— 左眼纯红 / 右眼纯青两遍用 lighter 叠加，
+   白底会把两个通道同时顶满 ⇒ 全白啥也看不见。所以亮色主题下也强制把舞台压黑
+   （参数面板/HUD 仍是主题色，不影响读数）。 */
+body.ana #stage{background:#000}
+body.ana #lgd{opacity:.22}
 #bar{display:flex;gap:7px;padding:8px 12px;background:var(--bg3);
   border-top:1px solid var(--line);align-items:center;flex-wrap:wrap}
 button{font:inherit;font-size:12.5px;padding:6px 12px;border-radius:8px;
@@ -570,6 +575,7 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
     <button id="mEgg" class="gh">λ=1 黄金蛋</button>
     <button id="reset" class="gh">重置</button>
     <button id="togp" class="gh on">剖面</button>
+    <button id="anaBar" class="gh" title="红青立体：戴红青眼镜看（左红右青），可在参数面板调视差强度">🔴 红青 3D</button>
     <button id="themeb" class="gh">亮色</button>
     <div class="spacer"></div>
     <button id="tog" class="gh">⚙ 参数面板</button>
@@ -734,6 +740,20 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
         <button class="gh" id="sax">坐标轴 关</button>
       </div>
       <div class="hint">外鞘轮廓 = 由 ρ<sub>e</sub>(z) 直接画的解析蛋壳环线（目视核对「丝是否贴着壳」）</div>
+    </div>
+
+    <div class="grp" id="grpAna">
+      <div class="gt">红青立体 <span class="std">（Anaglyph 3D · 戴红青眼镜看）</span></div>
+      <div class="row">
+        <button class="gh" id="anaOn">红青 3D 关</button>
+        <button class="gh" id="anaSwap">左右对调 关</button>
+      </div>
+      <div class="row">
+        <div class="lab"><span>视差强度（瞳距倍率）</span><span class="v" id="vAIPD">1.00</span></div>
+        <input type="range" id="sAIPD" min="0" max="3" step="0.01" value="1">
+        <div class="hint" id="hAIPD"></div>
+      </div>
+      <div class="hint" id="hAna"></div>
     </div>
 
     <div class="grp">
@@ -1234,7 +1254,10 @@ var R={lmMax:1,tb:5,manualLam:0,manual:false,
        breathing:true,playing:true,
        /* 视角/位置：panX/panY = 平移像素（Shift+拖动改这两个），zoom = 缩放倍率 */
        /* orbFollow：闭合环是否随呼吸把不动点延拓到新 λ（旧行为是只淡出、曲线不动） */
-       panX:0,panY:0,zoom:1,cmap:'aurora',rigid:false,autoRot:true,orbFollow:true};
+       panX:0,panY:0,zoom:1,cmap:'aurora',rigid:false,autoRot:true,orbFollow:true,
+       /* 红青立体（Anaglyph 3D）：ana=开关；anaIpd=视差强度（瞳距倍率 0~3）；
+          anaSwap=左右对调（红片戴右眼时用）。几何/颜色见 §6a。 */
+       ana:false,anaIpd:1.0,anaSwap:false};
 var az=0,tB=0,lamNow=0,seed=20261014;
 var _tbSig=-1;                        /* 呼吸周期指纹：一变就重定相位（别让 λ 跳） */
 var env=null,GEO=null,gE0=null,gE1=null,gLam=-9,gR=-9;
@@ -1429,10 +1452,37 @@ var fps=0,lastT=performance.now(),fAcc=0,fN=0,msInteg=0,nRefresh=0,overEMA=-0.02
 var msDraw=0,msPerStep=0.00055;   /* msPerStep = 每积分步的预估耗时，逐帧用实测定标 */
 function totalPts(){var s=0;for(var i=0;i<R.np;i++)s+=CN[i];return s;}
 
-/* 画一条闭合环（上半/下半共用）。投影变量由 draw() 传进来，别依赖 draw 的局部作用域。
- * follow=真：曲线自己在追 λ ⇒ 不按旧 λ 淡出（否则一呼吸就整条变暗看不清）。 */
-function strokeOrbit(o,rgb,caz,saz,cel,sel,ox,oy,k,follow){
+/* ==================================================================
+ * 6a. 红青立体（Anaglyph 3D · 戴红青眼镜看）
+ *   本页是正交投影（没有透视收缩），立体感只能靠**视差**建：
+ *   给每只眼加一个「与朝向观察者的深度成正比」的水平位移 —— 这是正交立体
+ *   （orthographic stereo）的标准线性近似，等价于透视相机在小物体上的展开。
+ *
+ *       深度  d = (X·sinAz + Y·cosAz)·cosEl + Z·sinEl   ← 已算好的 y1 直接用
+ *       位移  sh= sgn · 瞳距 · SEP · k · d              （k = px / 单位长度）
+ *
+ *   sgn=−1 左眼 / +1 右眼；左眼图纯红、右眼图纯青，lighter 叠加 ⇒ 重合处
+ *   R+G+B 全满自动变白（这正是红青片的物理原理：红片只让红通道过、青片只让
+ *   青通道过，两眼各自只看见自己那张）。
+ *   ⚠️ 必须暗底：白底 + lighter = 全白，两个通道全冲掉 ⇒ body.ana 强制黑底。
+ *   ⚠️ 位移只动屏幕 x、不动 y —— 纵向视差会让人眼酸胀。
+ * ================================================================== */
+var ANAC={sep:0.035, red:'255,56,72', cyan:'40,236,255'};
+function anaSec(sgn,k){ return sgn ? sgn*R.anaIpd*ANAC.sep*k : 0; }
+/* 返回本帧要画几遍：[{sgn,rgb}]。单眼模式只画一遍、走原配色。 */
+function anaEyes(){
+  if(!R.ana)return [{sgn:0,rgb:null}];
+  /* 「左右对调」= 红片戴在右眼时用：换的是**眼**（几何），不是颜色 */
+  return [{sgn:R.anaSwap?1:-1,rgb:ANAC.red},
+          {sgn:R.anaSwap?-1:1,rgb:ANAC.cyan}];
+}
+
+/* 画一条闭合环（上半/下半共用）。投影变量由调用方传进来，别依赖 draw 的局部作用域。
+ * follow=真：曲线自己在追 λ ⇒ 不按旧 λ 淡出（否则一呼吸就整条变暗看不清）。
+ * sgn：红青立体的眼别（0 = 单眼），位移与稠密丝团同一式 anaSec。 */
+function strokeOrbit(o,rgb,caz,saz,cel,sel,ox,oy,k,follow,sgn){
   var pl=o.pts,n3=o.n,lamDev=Math.abs(o.lam-lamNow);
+  var sec=anaSec(sgn,k);
   var alpha=follow?Math.max(0.62,0.98-1.2*lamDev)
                   :(lamDev<0.02?0.95:Math.max(0.15,0.95-1.6*lamDev));
   ctx.globalCompositeOperation='lighter';
@@ -1441,7 +1491,7 @@ function strokeOrbit(o,rgb,caz,saz,cel,sel,ox,oy,k,follow){
   for(var oi=0;oi<n3;oi++){
     var OX=pl[oi*3],OY=pl[oi*3+1],OZ=pl[oi*3+2];
     var oax=OX*caz-OY*saz,oay=OX*saz+OY*caz;
-    var opx=ox+k*oax,opy=oy-k*(OZ*cel-oay*sel);
+    var opx=ox+k*oax+sec*(oay*cel+OZ*sel),opy=oy-k*(OZ*cel-oay*sel);
     if(oi===0)ctx.moveTo(opx,opy);else ctx.lineTo(opx,opy);
   }
   /* 两遍描边：粗而淡的一遍当外发光，细而亮的一遍当本体
@@ -1454,77 +1504,70 @@ function strokeOrbit(o,rgb,caz,saz,cel,sel,ox,oy,k,follow){
   /* 起点/闭合处打一个点（目视核对「首尾真接上了」） */
   var SX=pl[0]*caz-pl[1]*saz,SY=pl[0]*saz+pl[1]*caz;
   ctx.beginPath();
-  ctx.arc(ox+k*SX,oy-k*(pl[2]*cel-SY*sel),3.4,0,6.2831853);
+  ctx.arc(ox+k*SX+sec*(SY*cel+pl[2]*sel),oy-k*(pl[2]*cel-SY*sel),3.4,0,6.2831853);
   ctx.fillStyle='rgba('+rgb+',1)';ctx.fill();
 }
 
-function draw(){
-  ctx.setTransform(DPR,0,0,DPR,0,0);
-  ctx.clearRect(0,0,W,H);
-  var g=GEO;if(!g)return;
-  var light=document.body.classList.contains('light');
-
-  var el=R.el*Math.PI/180,cel=Math.cos(el),sel=Math.sin(el);
-  var caz=Math.cos(az),saz=Math.sin(az);
-  var rHalf=g.R;
-  /* zoom 缩放、panX/panY 平移（Shift+拖动改这两个）——所有投影都走 ox/oy，一处改全图跟着动。
-     ★ k 走 projK()：采样阈值 Δs=sampPx/k 用的是**同一个 k**，否则「画的」和「量的」会分家。 */
-  var upLo=env.zlo*cel-rHalf*Math.abs(sel), upHi=env.zhi*cel+rHalf*Math.abs(sel);
-  var k=projK(g);
-  var ox=W/2+R.panX, oy=H/2+R.panY+k*(upLo+upHi)/2;
-
-  /* 外鞘轮廓（解析 ρe(z)） */
-  if(R.showShell){
-    ctx.lineWidth=1;
-    ctx.strokeStyle=light?'rgba(30,90,150,0.30)':'rgba(120,190,255,0.20)';
-    var NR=34,NA=48,j,ii,th,re;
-    for(j=0;j<NR;j++){
-      var zz=g.ZLO+(j+0.5)/NR*(g.ZHI-g.ZLO); re=rhoeAt(g,zz);
-      ctx.beginPath();
-      for(ii=0;ii<=NA;ii++){
-        th=ii/NA*6.2831853;
-        var X=re*Math.cos(th),Y=re*Math.sin(th);
-        var x1=X*caz-Y*saz,y1=X*saz+Y*caz;
-        var px=ox+k*x1,py=oy-k*(zz*cel-y1*sel);
-        if(ii===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
-      }
-      ctx.stroke();
+/* 外鞘轮廓（解析 ρe(z)）：34 条纬圈 + 8 条经线。红青下按眼别重投一遍。 */
+function shellPass(A,sgn,rgb){
+  if(!R.showShell)return;
+  var g=A.g,caz=A.caz,saz=A.saz,cel=A.cel,sel=A.sel,ox=A.ox,oy=A.oy,k=A.k;
+  var sec=anaSec(sgn,k),j,ii,th,re;
+  ctx.lineWidth=1;
+  ctx.strokeStyle=rgb?('rgba('+rgb+',0.15)')
+    :(A.light?'rgba(30,90,150,0.30)':'rgba(120,190,255,0.20)');
+  var NR=34,NA=48;
+  for(j=0;j<NR;j++){
+    var zz=g.ZLO+(j+0.5)/NR*(g.ZHI-g.ZLO); re=rhoeAt(g,zz);
+    ctx.beginPath();
+    for(ii=0;ii<=NA;ii++){
+      th=ii/NA*6.2831853;
+      var X=re*Math.cos(th),Y=re*Math.sin(th);
+      var x1=X*caz-Y*saz,y1=X*saz+Y*caz;
+      var px=ox+k*x1+sec*(y1*cel+zz*sel),py=oy-k*(zz*cel-y1*sel);
+      if(ii===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
     }
-    for(ii=0;ii<8;ii++){
-      th=ii/8*6.2831853;ctx.beginPath();
-      for(j=0;j<=60;j++){
-        var z3=g.ZLO+j/60*(g.ZHI-g.ZLO);re=rhoeAt(g,z3);
-        var X2=re*Math.cos(th),Y2=re*Math.sin(th);
-        var x12=X2*caz-Y2*saz,y12=X2*saz+Y2*caz;
-        var px2=ox+k*x12,py2=oy-k*(z3*cel-y12*sel);
-        if(j===0)ctx.moveTo(px2,py2);else ctx.lineTo(px2,py2);
-      }
-      ctx.stroke();
-    }
+    ctx.stroke();
   }
-  /* 坐标轴 */
-  if(R.showAxes){
-    ctx.lineWidth=1;ctx.strokeStyle=light?'rgba(70,100,140,0.45)':'rgba(150,170,200,0.35)';
-    var AX=[[[0,0,g.ZLO],[0,0,g.ZHI]],[[-rHalf,0,0],[rHalf,0,0]],[[0,-rHalf,0],[0,rHalf,0]]];
-    for(var q=0;q<3;q++){
-      var p0=null,p1=null;
-      for(var e2=0;e2<2;e2++){
-        var X3=AX[q][e2][0],Y3=AX[q][e2][1],Z3=AX[q][e2][2];
-        var xq=X3*caz-Y3*saz,yq=X3*saz+Y3*caz;
-        var pt=[ox+k*xq,oy-k*(Z3*cel-yq*sel)];
-        if(e2===0)p0=pt;else p1=pt;
-      }
-      ctx.beginPath();ctx.moveTo(p0[0],p0[1]);ctx.lineTo(p1[0],p1[1]);ctx.stroke();
+  for(ii=0;ii<8;ii++){
+    th=ii/8*6.2831853;ctx.beginPath();
+    for(j=0;j<=60;j++){
+      var z3=g.ZLO+j/60*(g.ZHI-g.ZLO);re=rhoeAt(g,z3);
+      var X2=re*Math.cos(th),Y2=re*Math.sin(th);
+      var x12=X2*caz-Y2*saz,y12=X2*saz+Y2*caz;
+      var px2=ox+k*x12+sec*(y12*cel+z3*sel),py2=oy-k*(z3*cel-y12*sel);
+      if(j===0)ctx.moveTo(px2,py2);else ctx.lineTo(px2,py2);
     }
+    ctx.stroke();
   }
+}
 
-  /* 轨迹：投影 + 分桶 */
-  var tot=0;for(var i2=0;i2<R.np;i2++)tot+=CN[i2];
-  ensureBuf(tot);
-  if(tot<2){
-    /* 无曲线时也画黑洞 */
-    drawGlow(ox,oy,k,light); return;
+/* 坐标轴：z 轴 + 赤道面两条直径 */
+function axesPass(A,sgn,rgb){
+  if(!R.showAxes)return;
+  var caz=A.caz,saz=A.saz,cel=A.cel,sel=A.sel,ox=A.ox,oy=A.oy,k=A.k,rHalf=A.rHalf;
+  var sec=anaSec(sgn,k);
+  ctx.lineWidth=1;
+  ctx.strokeStyle=rgb?('rgba('+rgb+',0.22)')
+    :(A.light?'rgba(70,100,140,0.45)':'rgba(150,170,200,0.35)');
+  var AX=[[[0,0,A.g.ZLO],[0,0,A.g.ZHI]],[[-rHalf,0,0],[rHalf,0,0]],[[0,-rHalf,0],[0,rHalf,0]]];
+  for(var q=0;q<3;q++){
+    var p0=null,p1=null;
+    for(var e2=0;e2<2;e2++){
+      var X3=AX[q][e2][0],Y3=AX[q][e2][1],Z3=AX[q][e2][2];
+      var xq=X3*caz-Y3*saz,yq=X3*saz+Y3*caz;
+      var pt=[ox+k*xq+sec*(yq*cel+Z3*sel),oy-k*(Z3*cel-yq*sel)];
+      if(e2===0)p0=pt;else p1=pt;
+    }
+    ctx.beginPath();ctx.moveTo(p0[0],p0[1]);ctx.lineTo(p1[0],p1[1]);ctx.stroke();
   }
+}
+
+/* 稠密丝团：投影 + 按 z 分 24 个色桶（每桶只 stroke 一次，省掉十万次 style 切换）
+   红青模式下 rgb 非空 ⇒ 该遍整条丝都用这只眼的纯色，配色让位给立体。 */
+function tracksPass(A,sgn,rgb){
+  var g=A.g,caz=A.caz,saz=A.saz,cel=A.cel,sel=A.sel,ox=A.ox,oy=A.oy,k=A.k;
+  var sec=anaSec(sgn,k);
   var zlo=g.ZLO,zhi=g.ZHI,span=Math.max(1e-9,zhi-zlo);
   var np2=0, pStart=[], pLen=[];
   for(var i=0;i<R.np;i++){
@@ -1534,7 +1577,7 @@ function draw(){
     for(var j2=0;j2<n;j2++){
       var Xx=bx[j2],Yy=by[j2],Zz=bz[j2];
       var x1=Xx*caz-Yy*saz, y1=Xx*saz+Yy*caz;
-      pX[np2]=ox+k*x1; pY[np2]=oy-k*(Zz*cel-y1*sel);
+      pX[np2]=ox+k*x1+sec*(y1*cel+Zz*sel); pY[np2]=oy-k*(Zz*cel-y1*sel);
       var u=(Zz-zlo)/span; if(u<0)u=0; else if(u>1)u=1;
       var cc=(u*(NB-1))|0; if(cc<0)cc=0; else if(cc>NB-1)cc=NB-1;
       pB[np2]=cc; np2++;
@@ -1559,10 +1602,13 @@ function draw(){
   ctx.lineWidth=R.lw;ctx.lineCap='round';ctx.lineJoin='round';
   /* 聚焦模式：一旦有闭合轨道在显示，就把稠密丝团压暗，让那条解跳出来 */
   var al=R.al*((ORB&&orbShow)?0.26:1);
+  /* 红青下每只眼只出半张图（另半张被镜片滤掉）⇒ 提亮到 ~0.9 才不至于灰扑扑 */
+  if(rgb)al=Math.min(1,al*1.75);
   for(var b7=0;b7<NB;b7++){
     var m=cnt[b7];if(m===0)continue;
     var col=PAL[b7];
-    ctx.strokeStyle='rgba('+col[0]+','+col[1]+','+col[2]+','+al.toFixed(3)+')';
+    ctx.strokeStyle=rgb?('rgba('+rgb+','+al.toFixed(3)+')')
+                       :('rgba('+col[0]+','+col[1]+','+col[2]+','+al.toFixed(3)+')');
     ctx.beginPath();
     var o5=off[b7];
     for(var q2=0;q2<m;q2++){
@@ -1572,17 +1618,50 @@ function draw(){
     ctx.stroke();
   }
   ctx.globalCompositeOperation='source-over';
-  drawGlow(ox,oy,k,light);
+}
 
-  /* —— 闭合轨道（Newton 求出的真闭合解）：上半 z=+L 与下半 z=−L 各一条，分别高亮 ——
-         z=0 是不变平面 ⇒ 两条环各自独立，下环不是上环的镜像（λ>0 时 F 非偶函数）。 */
-  if(R.orbFollow){ /* 跟随开时曲线自己在追 λ，滞后很小 ⇒ 不该按旧 λ 淡出压暗 */
-    if(ORB&&orbShow&&ORB.n>2)strokeOrbit(ORB,light?'190,60,110':'255,214,120',caz,saz,cel,sel,ox,oy,k,true);
-    if(ORB_DN&&orbShow&&ORB_DN.n>2)strokeOrbit(ORB_DN,light?'0,130,180':'110,226,255',caz,saz,cel,sel,ox,oy,k,true);
-  }else{
-    if(ORB&&orbShow&&ORB.n>2)strokeOrbit(ORB,light?'190,60,110':'255,214,120',caz,saz,cel,sel,ox,oy,k,false);
-    if(ORB_DN&&orbShow&&ORB_DN.n>2)strokeOrbit(ORB_DN,light?'0,130,180':'110,226,255',caz,saz,cel,sel,ox,oy,k,false);
+/* 闭合轨道（Newton 求出的真闭合解）：上半 z=+L 与下半 z=−L 各一条，分别高亮
+   z=0 是不变平面 ⇒ 两条环各自独立，下环不是上环的镜像（λ>0 时 F 非偶函数）。 */
+function orbitsPass(A,sgn,rgb){
+  var upRgb=rgb||(A.light?'190,60,110':'255,214,120');
+  var dnRgb=rgb||(A.light?'0,130,180':'110,226,255');
+  if(ORB&&orbShow&&ORB.n>2)
+    strokeOrbit(ORB,upRgb,A.caz,A.saz,A.cel,A.sel,A.ox,A.oy,A.k,R.orbFollow,sgn);
+  if(ORB_DN&&orbShow&&ORB_DN.n>2)
+    strokeOrbit(ORB_DN,dnRgb,A.caz,A.saz,A.cel,A.sel,A.ox,A.oy,A.k,R.orbFollow,sgn);
+}
+
+function draw(){
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.clearRect(0,0,W,H);
+  var g=GEO;if(!g)return;
+  var light=document.body.classList.contains('light');
+
+  var el=R.el*Math.PI/180,cel=Math.cos(el),sel=Math.sin(el);
+  var caz=Math.cos(az),saz=Math.sin(az);
+  var rHalf=g.R;
+  /* zoom 缩放、panX/panY 平移（Shift+拖动改这两个）——所有投影都走 ox/oy，一处改全图跟着动。
+     ★ k 走 projK()：采样阈值 Δs=sampPx/k 用的是**同一个 k**，否则「画的」和「量的」会分家。 */
+  var upLo=env.zlo*cel-rHalf*Math.abs(sel), upHi=env.zhi*cel+rHalf*Math.abs(sel);
+  var k=projK(g);
+  var ox=W/2+R.panX, oy=H/2+R.panY+k*(upLo+upHi)/2;
+  var A={g:g,caz:caz,saz:saz,cel:cel,sel:sel,ox:ox,oy:oy,k:k,rHalf:rHalf,light:light};
+
+  var tot=0;for(var i2=0;i2<R.np;i2++)tot+=CN[i2];
+  ensureBuf(tot);
+
+  /* 红青：同一套几何按两只眼各投一遍（EY 只有一项 = 单眼，行为与原来完全一致）。
+     外鞘 / 坐标轴 / 丝团 先全部画完，辉光只画一次（它在屏幕平面上，没有视差），
+     再把两条闭合环按眼别叠上去 —— 顺序与改造前保持一致。 */
+  var EY=anaEyes();
+  for(var ei=0;ei<EY.length;ei++){
+    shellPass(A,EY[ei].sgn,EY[ei].rgb);
+    axesPass(A,EY[ei].sgn,EY[ei].rgb);
+    if(tot>=2)tracksPass(A,EY[ei].sgn,EY[ei].rgb);
   }
+  drawGlow(ox,oy,k,light);
+  if(tot<2)return;
+  for(var ej=0;ej<EY.length;ej++)orbitsPass(A,EY[ej].sgn,EY[ej].rgb);
 
   drawProfile(cel,sel);
 }
@@ -3282,6 +3361,44 @@ bGlow.onclick=function(){R.showGlow=!R.showGlow;
 var bAxes=document.getElementById('sax');
 bAxes.onclick=function(){R.showAxes=!R.showAxes;
   this.className='gh'+(R.showAxes?' on':'');this.textContent='坐标轴 '+(R.showAxes?'开':'关');};
+
+/* ==================================================================
+ * 11g. 红青立体（Anaglyph 3D）交互
+ *   渲染侧在 §6a：左右眼各投一遍（位移 ∝ 深度），红/青 lighter 叠加。
+ *   这里只管开关、瞳距、左右对调三件事；不碰任何积分/采样参数。
+ * ================================================================== */
+function anaSync(){
+  var on=!!R.ana;
+  document.body.classList.toggle('ana',on);
+  var b1=document.getElementById('anaBar'),b2=document.getElementById('anaOn'),
+      b3=document.getElementById('anaSwap'),bd=document.getElementById('badge');
+  if(b1){b1.className='gh'+(on?' on':'');b1.textContent=(on?'🔴 红青 3D 开':'🔴 红青 3D');}
+  if(b2){b2.className='gh'+(on?' on':'');b2.textContent='红青 3D '+(on?'开':'关');}
+  if(b3){b3.className='gh'+(R.anaSwap?' on':'');b3.textContent='左右对调 '+(R.anaSwap?'开':'关');}
+  if(bd)bd.textContent=on?'ANAGLYPH 3D · 左红右青':'GOLDEN EGG SHELL';
+  var h=document.getElementById('hAna');
+  if(h)h.innerHTML=on
+    ?('左眼纯红 <b>rgb('+ANAC.red+')</b> / 右眼纯青 <b>rgb('+ANAC.cyan+')</b>，'
+      +'按「朝观察者深度」给两眼各一个水平位移（位移 ∝ 深度 × 瞳距 × 0.035），'
+      +'lighter 叠加 ⇒ 重合处变白。舞台强制黑底（白底会把两个通道冲平）。'
+      +'<b>红片戴右眼</b>时点「左右对调」。闭合环、外鞘、坐标轴一并立体。')
+    :('戴上红青眼镜（<b>左红右青</b>）再开。正交投影没有透视 ⇒ 立体感全靠视差：'
+      +'每只眼按深度错开一点，红/青叠加后由镜片分眼。'
+      +'视差强度 1.0 适合满屏；<b>头晕就往下调</b>，0.5~0.8 更保守。');
+  var v=document.getElementById('vAIPD');
+  if(v)v.textContent=R.anaIpd.toFixed(2);
+  var hp=document.getElementById('hAIPD');
+  if(hp){var g0=GEO;   /* 绑定时 boot 还没跑，GEO 可能是 null ⇒ 这里必须兜底 */
+    var k0=g0?projK(g0):1, R0=g0?g0.R:4;
+    hp.innerHTML='当前每侧最大位移 <b>'+Math.round(R.anaIpd*ANAC.sep*k0*R0)+' px</b>'
+      +'（瞳孔 = 整幅宽度约 1/30 时最舒服；0 = 退化成平面，可用来对照）';}
+}
+function setAna(on){R.ana=!!on;anaSync();}
+document.getElementById('anaBar').onclick=function(){setAna(!R.ana);};
+document.getElementById('anaOn').onclick=function(){setAna(!R.ana);};
+document.getElementById('anaSwap').onclick=function(){R.anaSwap=!R.anaSwap;anaSync();};
+bind('sAIPD','vAIPD','anaIpd',function(v){return v.toFixed(2);},function(){anaSync();});
+
 var panel=document.getElementById('panel'),btnTog=document.getElementById('tog');
 /* ==================================================================
  * 11b. 闭合解搜索的交互
@@ -3709,6 +3826,10 @@ function boot(){
     setSimLock:function(on){R.simLock=!!on;var c=document.getElementById('ckSim');
       if(c)c.checked=R.simLock;applySim();
       var g=mkGeo(lamNow,P.R);seedStates(R.np,g,seed);overEMA=-0.02;fillGeoTable();markDirty();},
+    /* 红青立体（Anaglyph 3D）：开关 / 瞳距 / 对调 / 每侧最大位移（探针用） */
+    ana:function(){return {on:R.ana,ipd:R.anaIpd,swap:R.anaSwap,sep:ANAC.sep,red:ANAC.red,cyan:ANAC.cyan,
+      shPx:R.anaIpd*ANAC.sep*projK(GEO)*GEO.R};},
+    setAna:setAna,anaSync:anaSync,ANAC:ANAC,
     /* 时空弯曲 · 曲速引擎演算（探针对拍 + 折叠态断言用） */
     WC:WC,warpCalc:warpCalc,warpUpd:warpUpd,
     warpFc:function(){return wfc;},          /* rAF 链存活探针：两次采样必须在涨 */
