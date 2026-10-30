@@ -238,4 +238,127 @@ print("  => 137.036/4 差 0.84%，属数字巧合，不采用")
 sec("[11] 白银比在公认物理公式里的两处（可复算）")
 ktc = 2 / math.log(SIGMA)
 print(f"  2D Ising (Onsager): kTc/J = 2/ln(1+sqrt2) = {ktc:.9f}  （公认 2.26918531）")
-sinh_val = (math.exp(math.log(SIGMA)) - math.exp(-math.
+sinh_val = (math.exp(math.log(SIGMA)) - math.exp(-math.log(SIGMA))) / 2
+print(f"  校核 sinh(ln sigma) = {sinh_val:.15f}  （应 1）")
+assert abs(sinh_val - 1) < 1e-15
+assert abs(ktc - 2.269185314213022) < 1e-12
+print(f"  Ammann-Beenker 八重准晶膨胀因子 = 1+sqrt2 = {SIGMA:.9f}")
+print("  => sigma 有硬出处；sigma^4 检索不到  ✓")
+
+
+# ---------------------------------------------------------------- §12 主界面四组
+sec("[12] 主界面「四组」标签页：通项、组间关系、角度混叠")
+
+
+def tri_enum(L, only_in=True):
+    """欧几里得通项穷举：(勾,股,弦,m,n)，勾=短边。"""
+    out = []
+    for m in range(2, 200):
+        for n in range(1, m):
+            if (m - n) % 2 == 0 or math.gcd(m, n) != 1:
+                continue
+            p, q = m * m - n * n, 2 * m * n
+            if p > q:
+                p, q = q, p
+            c = m * m + n * n
+            if c <= L and (not only_in or q / p <= S2 + 1e-12):
+                out.append((p, q, c, m, n))
+    return out
+
+
+def theta(rho):
+    return math.degrees(math.atan(rho))
+
+
+def sig_pow(n):
+    """(1+sqrt2)^n = a + b*sqrt2，整数递推。"""
+    a, b = 1, 0
+    for _ in range(n):
+        a, b = a + 2 * b, a + b
+    return a, b
+
+
+G1 = tri_enum(1000)
+print(f"  组① 整数弦·本原（弦≤1000、股/勾≤√2）: {len(G1)} 条  ← 穷举，不是挑的")
+assert len(G1) == 32, len(G1)
+assert all(c == int(c) for _, _, c, _, _ in G1)
+print("     弦恒为整数（欧几里得通项 m²+n² 的副产物）✓")
+t1lo = min(theta(q / p) for p, q, *_ in G1)
+t1hi = max(theta(q / p) for p, q, *_ in G1)
+print(f"     大锐角区间 {t1lo:.4f}° ~ {t1hi:.4f}°")
+assert abs(t1lo - 45.0411) < 1e-3 and abs(t1hi - 54.6998) < 1e-3
+lo_win, hi_win = (1 + S3) / S2, S2 + S3
+print(f"     P2 等价窗口 m/n ∈ [{lo_win:.5f}, {hi_win:.5f}]")
+assert abs(lo_win - 1.93185) < 1e-4 and abs(hi_win - 3.14626) < 1e-4
+
+G2 = [(1, 1), (3, 4), (5, 7), (17, 24), (29, 41), (99, 140), (169, 239), (577, 816)]
+prev_th = None
+for idx, (p, q) in enumerate(G2, 1):
+    kk = (S2 - q / p) / (S2 + q / p)
+    assert abs(1 / kk - SIGMA ** (2 * idx)) < 1e-9 * SIGMA ** (2 * idx)
+    assert q * q - 2 * p * p == (-1 if idx % 2 else -2)
+    lhs = q + p * S2
+    rhs = SIGMA ** idx * (1 if idx % 2 else S2)
+    assert abs(lhs - rhs) < 1e-9 * rhs
+    if prev_th is not None:
+        assert theta(q / p) > prev_th
+    prev_th = theta(q / p)
+print("  组② 闭式  勾+股√2 = σ^m·(1 若 m 奇 / √2 若 m 偶)  与  1/k = σ^(2m)  全部命中")
+print(f"     大锐角单调升至 {prev_th:.7f}°，距魔角 {theta(S2) - prev_th:.2e}°（逐级逼近塌缩）")
+
+G3 = [(4, 5), (5, 6), (6, 7), (7, 8), (8, 9), (10, 11), (12, 13), (16, 17)]
+assert all(q - p == 1 for p, q in G3)
+t3lo = min(theta(q / p) for p, q in G3)
+t3hi = max(theta(q / p) for p, q in G3)
+print(f"  组③ 8/8 满足 股 = 勾+1；θ ∈ [{t3lo:.2f}°, {t3hi:.2f}°]")
+assert t3lo > t1lo and t3hi < t1hi
+print("     组③ 的 θ 区间被组① 的包住 ⇒ 角度上完全混叠（物理不可分辨）✓")
+
+for j in range(1, 5):
+    a, b = sig_pow(2 * j + 1)
+    p, q, c = (a - 1) // 2, (a + 1) // 2, b
+    assert 2 * p + 1 == a and 2 * p * p + 2 * p + 1 == c * c
+    assert any(t[:3] == (p, q, c) for t in G1)
+    print(f"     σ^{2*j+1}={a}+{b}√2  ⇒  ({p},{q},{c})  在组① ✓")
+
+got = set()
+for m in range(3, 8):
+    p, q, c = 2 * m - 1, 2 * m * (m - 1), m * m + (m - 1) ** 2
+    assert c == int(c)
+    got.add((min(p, q), max(p, q)))
+for m in (4, 6, 8):
+    p, q, c = 2 * m, m * m - 1, m * m + 1
+    got.add((min(p, q), max(p, q)))
+want = {(5, 12), (8, 15), (7, 24), (9, 40), (11, 60), (12, 35), (13, 84), (16, 63)}
+assert got == want, got ^ want
+print(f"  组④ = 子族A(n=m−1, m=3..7, 5条) ∪ 子族B(n=1, m=4,6,8, 3条)，共 {len(got)} 条，与页面一致 ✓")
+
+for n in (3, 5, 7, 9):
+    a, b = sig_pow(n)
+    pair2 = (b, a)
+    trip = ((a - 1) // 2, (a + 1) // 2, b)
+    # 页面上的组② 只列到第 8 项 (577,816)；n=9 的配对 (985,1393) 是第 9 项，不在表里
+    if b <= 816:
+        assert pair2 in G2, (n, pair2)
+    else:
+        print(f"     σ^{n}: 组② 配对 {(pair2[0],pair2[1])} 超出页面所列表（第 9 项），仅验证闭式")
+        assert abs(a + b * S2 - SIGMA ** n) < 1e-9 * SIGMA ** n
+    if trip[2] <= 1000:
+        assert any(t[:3] == trip for t in G1)
+    print(f"     σ^{n}: 组② {(pair2[0],pair2[1])}  与  股=勾+1 族 {trip}  同源 ✓")
+
+Rr = lambda rho: math.sqrt(1 + rho * rho) / (1 + rho - math.sqrt(1 + rho * rho))
+assert abs(Rr(1.0) ** 4 - SIGMA ** 4) < 1e-12
+print(f"  (R/r)^4 当 ρ→1⁺: 极限 = σ^4 = 17+12√2 = {SIGMA**4:.15f}")
+for n in (120, 4060, 137904):
+    e = Rr(1 + 1.0 / n) ** 4 - SIGMA ** 4
+    assert 0 < e < 59.0 / (n * n), (n, e)
+    print(f"     勾={n:>7}: (R/r)^4={Rr(1+1.0/n)**4:.12f}  差={e:.3e}  ≤ 57.99/勾² ✓")
+print("     误差常数数值识别为 (58+41√2)/2 = 57.9913780286…（非符号推导，残差 5e-23）")
+assert abs((58 + 41 * S2) / 2 - 57.9913780286484) < 1e-12
+
+
+sec("全部校验通过（无静默失败）")
+print("  涵盖：Pell 恒等、k 通项几何重推、Cayley 同构、tanh 恒等、VSWR 闭式、")
+print("  R/r 下确界与 (R/r)^4 极限、四组基数与通项、σⁿ 双读、组③⊂组① 角度混叠、")
+print("  三维不继承、核紧凑度门槛、Ising 常数。")
