@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>幻方波包 · 播放器与 level/step 搜索</title>
+<style>
+:root{
+  --ink:#241f1c; --bg:#fbf9f4; --card:#ffffff; --line:#e2dccf;
+  --pp:#534ab7; --gg:#1f7a52; --rd:#b3352c; --am:#a8701a;
+  --mute:#6d675e; --soft:#f4f1e8;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);
+  font:15px/1.72 "Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1240px;margin:0 auto;padding:26px 20px 90px}
+h1{font-size:25px;line-height:1.35;margin:0 0 6px;letter-spacing:-.2px}
+h2{font-size:18px;margin:38px 0 12px;padding-bottom:7px;border-bottom:1px solid var(--line)}
+h3{font-size:15.5px;margin:22px 0 8px;color:var(--pp)}
+p{margin:9px 0}
+a{color:var(--pp);text-decoration:none;border-bottom:1px solid rgba(83,74,183,.32)}
+a:hover{border-bottom-color:var(--pp)}
+.sub{color:var(--mute);font-size:13.5px;margin:0 0 14px}
+code{font:13px/1 "Cascadia Mono",Consolas,monospace;background:var(--soft);
+  padding:1.5px 5px;border-radius:3px;color:#3a3340}
+.eq{font:15.5px/2 "Segoe UI","Cambria Math",serif;background:var(--soft);
+  padding:11px 15px;border-radius:5px;border-left:3px solid var(--pp);
+  margin:12px 0;overflow-x:auto;white-space:nowrap}
+.eq b{color:var(--pp);font-weight:600}
+.note{background:#fff;border:1px solid var(--line);border-left:3px solid var(--pp);
+  padding:11px 15px;border-radius:4px;margin:14px 0;font-size:14.3px}
+.note.g{border-left-color:var(--gg)}
+.note.r{border-left-color:var(--rd)}
+.note.a{border-left-color:var(--am)}
+.note b{font-weight:600}
+.note.g b{color:var(--gg)} .note.r b{color:var(--rd)} .note.a b{color:var(--am)}
+.pur{color:var(--pp);font-weight:600}
+.grn{color:var(--gg);font-weight:600}
+.red{color:var(--rd);font-weight:600}
+
+/* 播放条 */
+#bar{position:sticky;top:0;z-index:30;background:rgba(251,249,244,.96);
+  backdrop-filter:blur(8px);border-bottom:1px solid var(--line);
+  padding:9px 20px;margin:0 -20px 20px;
+  display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+#bar .lab{font-size:12.5px;color:var(--mute)}
+button{font:14px/1 inherit;padding:9px 15px;border-radius:5px;cursor:pointer;
+  border:1px solid var(--line);background:#fff;color:var(--ink);transition:.14s}
+button:hover{border-color:var(--pp);color:var(--pp)}
+button.pri{background:var(--pp);border-color:var(--pp);color:#fff;font-weight:600}
+button.pri:hover{background:#453d9e;color:#fff}
+button:disabled{opacity:.42;cursor:not-allowed}
+#st{font-size:13px;color:var(--mute);min-width:210px}
+#st.on{color:var(--gg);font-weight:600}
+
+/* 布局 */
+.grid{display:grid;grid-template-columns:292px 1fr;gap:22px;align-items:start}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:7px;
+  padding:15px 16px;position:sticky;top:64px}
+.panel h4{margin:0 0 12px;font-size:13px;letter-spacing:.5px;color:var(--mute);
+  text-transform:uppercase;font-weight:600}
+.fld{margin-bottom:13px}
+.fld label.t{display:block;font-size:12.6px;color:var(--mute);margin-bottom:4px}
+select,input[type=number],input[type=text]{width:100%;font:14px inherit;color:var(--ink);
+  background:#fff;border:1px solid var(--line);border-radius:4px;padding:6px 8px}
+input[type=range]{width:100%;accent-color:var(--pp);height:20px}
+.val{float:right;color:var(--pp);font-weight:600;font-variant-numeric:tabular-nums}
+.figs{display:flex;flex-direction:column;gap:16px}
+figure{margin:0;background:var(--card);border:1px solid var(--line);border-radius:7px;
+  padding:11px 13px 9px}
+figcaption{font-size:12.6px;color:var(--mute);margin-top:7px;line-height:1.6}
+canvas{display:block;width:100%;height:auto;border-radius:4px}
+
+table{border-collapse:collapse;width:100%;font-size:13.4px;margin:12px 0;
+  background:var(--card);border:1px solid var(--line)}
+th,td{padding:6px 9px;border-bottom:1px solid var(--line);text-align:right;
+  font-variant-numeric:tabular-nums}
+th{background:var(--soft);font-weight:600;font-size:12.6px;color:#4a443b;text-align:right}
+td:first-child,th:first-child{text-align:left}
+tr:last-child td{border-bottom:0}
+td.mp{color:var(--rd);font-weight:600}
+td.ok{color:var(--gg)}
+td.mu{color:var(--mute)}
+
+#chk{background:var(--card);border:1px solid var(--line);border-radius:7px;
+  padding:13px 16px;margin-top:18px;font-size:13.2px}
+#chk .hd{font-weight:600;margin-bottom:8px}
+#chk .pass{color:var(--gg)}
+#chk .fail{color:var(--rd);font-weight:600}
+#chkList{max-height:270px;overflow:auto;font-size:12.5px;line-height:1.85;
+  color:#4a443b;margin-top:8px;border-top:1px solid var(--line);padding-top:8px}
+#chkList div{font-variant-numeric:tabular-nums}
+ul.tight{margin:8px 0;padding-left:22px}
+ul.tight li{margin:5px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>幻方波包 · 播放器与 level/step 搜索</h1>
+<p class="sub">把 n 阶幻方映射成 n² 根正弦、合成一个周期、真的播放出来。
+同阶不同构造 ⇒ 同一组频率、不同波形。<a href="index.html">参数面板版</a> ·
+<a href="幻方到波包_根因分析.html">根因分析页</a> ·
+<a href="幻方节律场.html">节律场（agent 调度演示）</a></p>
+
+<div id="bar">
+  <button id="btnLoop" class="pri">▶ 循环播放</button>
+  <button id="btnOnce">▶ 单次（一个周期）</button>
+  <button id="btnStop">■ 停止</button>
+  <span class="lab">音量</span>
+  <input type="range" id="rgVol" min="0" max="100" value="45" style="width:96px">
+  <span id="st">就绪（未播放）</span>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h4>场参数</h4>
+
+    <div class="fld">
+      <label class="t">阶数 n</label>
+      <select id="selN"></select>
+    </div>
+
+    <div class="fld">
+      <label class="t">构造</label>
+      <select id="selGen">
+        <option value="dl">de la Loubère（闭式）</option>
+        <option value="ser">level/step 手动</option>
+        <option value="pan">线性拉丁 t=2,s=2</option>
+        <option value="rand">随机排列</option>
+        <option value="cc">Criss-Cross（4|n）</option>
+      </select>
+    </div>
+
+    <div class="fld">
+      <label class="t">相位规则</label>
+      <select id="selPm">
+        <option value="grid">格序 φ=2πk/n²（携带排列）</option>
+        <option value="num">数字序 φ=2π(v−1)/n²（与排列无关）</option>
+        <option value="zero">全同相</option>
+        <option value="alt">棋盘 ±π</option>
+      </select>
+    </div>
+
+    <div class="fld">
+      <label class="t">频率间隔 Δf<span class="val" id="vDF">4.00 Hz</span></label>
+      <input type="range" id="rgDF" min="2" max="12" step="0.5" value="4">
+    </div>
+
+    <div class="fld" id="fldLv">
+      <label class="t">level 行偏移 cr<span class="val" id="vCr">5</span></label>
+      <input type="range" id="rgCr" min="0" max="8" step="1" value="5">
+    </div>
+    <div class="fld" id="fldCc">
+      <label class="t">level 列偏移 cc<span class="val" id="vCc">1</span></label>
+      <input type="range" id="rgCc" min="0" max="8" step="1" value="1">
+    </div>
+    <div class="fld" id="fldQr">
+      <label class="t">step 行步 qr<span class="val" id="vQr">1</span></label>
+      <input type="range" id="rgQr" min="0" max="8" step="1" value="1">
+    </div>
+
+    <div class="fld" style="margin-bottom:0">
+      <label class="t">目标线和 T（默认 S = n(n²+1)/2）</label>
+      <input type="number" id="inT" value="369" step="1">
+      <button id="btnSearch" style="width:100%;margin-top:7px">自动搜索 level/step</button>
+    </div>
+  </div>
+
+  <div class="figs">
+    <figure>
+      <canvas id="cvM" width="880" height="380"></canvas>
+      <figcaption id="capM">矩阵：颜色 = 数字，格内印数字（n≤15）。这是"谁坐在哪个座位上"。</figcaption>
+    </figure>
+    <figure>
+      <canvas id="cvW" width="880" height="270"></canvas>
+      <figcaption id="capW">一个周期的实值波形。红色竖线 = 峰值位置，虚线框 = 包络 |Ψ|。</figcaption>
+    </figure>
+    <figure>
+      <canvas id="cvS" width="880" height="240"></canvas>
+      <figcaption id="capS">频谱（Goertzel 逐点实测）：柱高 = 该频点的幅度。等高等距 = 平顶谱。</figcaption>
+    </figure>
+  </div>
+</div>
+
+<h2>§1 怎么听：一个周期是什么</h2>
+
+<p>"一个周期"不是随便截一段，而是<strong>严格数学周期</strong>。频率取等间隔梳：</p>
+
+<div class="eq">f<sub>v</sub> = <b>Δf</b> · (m + v − 1)，&nbsp; v = 1…n²，&nbsp; m = round(55 / Δf)</div>
+
+<p>这样每根频率都是 Δf 的整数倍，周期 T = 1/Δf。再把 Δf 量化成 <code>Δf = sr / len</code>（len 为整数样本数），
+于是每一根在 t = T 处相位增量恰好是 <code>2π·(m+v−1)</code>——整数圈，<strong>端点严格连续，循环无咔哒</strong>。</p>
+
+<div class="note g"><b>这条是判据，不是形容词。</b>页面自检里的"端点相位偏差"就是
+<code>max |f<sub>v</sub>·T − round(f<sub>v</sub>·T)|</code>，正常应打印 <code>0.000e+0</code>。
+另外放了一条<b>变异测试</b>：故意把 m 偏移 0.5（f<sub>v</sub> 不再是 Δf 整数倍），偏差必须变成 0.5 —— 判据有分辨力，不是恒真式。</div>
+
+<p>与此无关但常被误用：<code>|x[0] − x[len−1]| / 相邻差中位数</code> 这类"首尾差"指标。
+它在尖峰陡峭处会给出 4 以上的值，看着像"不连续"，其实完全连续；反过来在全同相时给出 1.55，看着正常其实也在
+t=0 处是尖点。所以这里<strong>不用它</strong>——用相位整数圈判定。</p>
+
+<h2>§2 level 和 step 到底能调什么</h2>
+
+<p>把"level/step 式"的方阵落成一个可穷举的六参数族，两个方向各给一组线性型：</p>
+
+<div class="eq">M[i][j] = n · ((<b>pr</b>·i + <b>qr</b>·j + <b>cr</b>) mod n) + ((<b>pc</b>·i + <b>qc</b>·j + <b>cc</b>) mod n) + 1</div>
+
+<p>其中 (pr,qr,pc,qc) 是 <strong>step</strong>（两个方向的步长），(cr,cc) 是 <strong>level</strong>（两个方向的偏移）。
+这个族里能精确复现 de la Loubère，而且有闭式：</p>
+
+<div class="eq">M[i][j] = n · ((i + j + <b>(n+1)/2</b>) mod n) + ((i + <b>2</b>j + <b>1</b>) mod n) + 1 &nbsp;&nbsp;(n 为奇数)</div>
+
+<p>页面自检会把它与经典"右上斜走、撞墙回退"的算法<strong>逐格比对</strong>（n=3…21 全等），并顺带验出这类表全部是
+<strong>泛对角幻方</strong>（两条折对角也各自为 S）。</p>
+
+<h3>2.1 第一个硬结论：线和不是一个"可逼近"的量</h3>
+
+<p>只要方阵是 1…n² 的双射，总和就被钉死为 n²(n²+1)/2。所以：</p>
+
+<div class="eq">若 2n+2 条线的和<strong>全部</strong>等于 T，则 n·T = n²(n²+1)/2 &nbsp;⟹&nbsp; T = n(n²+1)/2 &nbsp;（唯一可能值）</div>
+
+<p>也就是说，"让线和接近目标 T"在幻方族里<strong>没有梯度</strong>：T 取对 ⇒ 残差严格 0；T 取错 ⇒ 整族无解，
+不存在"很接近"的中间态。下面这张搜索表会把这件事当场跑出来——把目标改成 S ± 1，命中数立刻掉到 0。</p>
+
+<p class="sub">注意 S 是<strong>行和</strong>：n=9 时 S = 9×(81+1)/2 = 369。平均格值 (n²+1)/2 = 41 不是线和。</p>
+
+<h3>2.2 第二个硬结论：level 几乎不碰线和</h3>
+
+<p>行和 = n·Σ<sub>j</sub>((pr·i+qr·j+cr) mod n) + Σ<sub>j</sub>((pc·i+qc·j+cc) mod n) + n。
+当 <code>gcd(qr,n)=1</code> 时，j 遍历完整剩余系，Σ 恒为 n(n−1)/2，<strong>与 cr 无关</strong>。
+所以 level 只在"该方向系数退化"时才有影响：</p>
+
+<div class="eq">线 k 的和受 level 影响 &nbsp;⟺&nbsp; 该线上的系数与 n <strong>不互素</strong></div>
+
+<p>表的每一行就是一条线，最后一列是这条预测。常见情形：pr=qr=1 时 <code>pr−qr=0</code>，
+所以 <strong>只有副对角会随 cr 变</strong>，10 条行列和两条对角中的主对角都纹丝不动。</p>
+
+<h3>2.3 那"自动搜索"在搜什么</h3>
+
+<p>搜的不是"多接近"，而是"<strong>哪些 step 组合能命中</strong>"。判据可以 O(1) 化，不必建表：</p>
+
+<ul class="tight">
+<li>双射 ⟺ <code>gcd(pr·qc − qr·pc, n) = 1</code>（矩阵可逆）</li>
+<li>行和与 i 无关 ⟺ <code>gcd(qr,n)=1</code>；列和与 j 无关 ⟺ <code>gcd(pr,n)=1</code></li>
+<li>下半部分同理：<code>gcd(qc,n)=1</code>、<code>gcd(pc,n)=1</code></li>
+<li>对角要各自成立，再对 level 解一个线性同余</li>
+</ul>
+
+<p>所以搜索是 O(n⁴) 筛系数 + O(n²) 定 level，n=15 也在一瞬。结果会告诉我们：
+<strong>"两参数 (level, step) 一个幻方都造不出"</strong>，而六参数能——这个差别就是"为什么 level 单独加不够"。</p>
+
+<h2>§3 音频侧的四条硬事实</h2>
+
+<h3>3.1 频率集合被双射锁死，可听差异只能来自相位</h3>
+
+<p>不同构造的 n² 个数字是同一集合 {1,…,n²}，所以频率集合完全相同。差别只可能在"哪根频率拿哪个相位"。
+页面里把相位规则一切换，就能听出来：</p>
+
+<table>
+<thead><tr><th>相位规则</th><th>de la Loubère</th><th>线性拉丁</th><th>随机排列</th><th>DL 与随机是否同一条波形</th></tr></thead>
+<tbody id="tbPm"></tbody>
+</table>
+<p class="sub" id="capPm"></p>
+
+<p>关键的是<strong>数字序</strong>和<strong>全同相</strong>两行：它们让 DL 与随机排列的波形<strong>逐样本完全相同</strong>（页面自检直接比对 buffer，差值 0）。
+因为 φ 只依赖数字 v（或干脆不依赖任何东西）时，整个波形只依赖集合 {1…n²}，与"谁坐哪"无关。
+而<strong>格序</strong>与<strong>棋盘</strong>两行差得很明显——它们让相位挂到格位置上，于是"数字→格"的配对开始起作用。</p>
+
+<p>换句话说：<strong>相位规则决定"排列是否可听"</strong>。格序相位是幻方的指纹；数字序和全同相会把它彻底抹平。
+这也解释了为什么同一张表换个相位规则，crest 会从 10.40 掉到 3.92——不是音高变了，是相干结构变了。</p>
+
+<h3>3.2 峰均比（crest factor）决定"听起来多响"</h3>
+
+<p>归一化到同一峰值后，RMS 越低越"虚"。等幅相干叠加天生高 crest：</p>
+
+<table>
+<thead><tr><th>n</th><th>构造</th><th>crest</th><th>峰位（周期占比）</th><th>备注</th></tr></thead>
+<tbody id="tbCrest"></tbody>
+</table>
+
+<p>de la Loubère 的 crest 随 n 一路涨（n=5 → 9 → 15 是 4.83 → 10.40 → 16.54），因为斜线排列让大量频率在某一时刻近乎同相——
+这正是前几轮"规模越大越容易全体同相"的可听版本。随机排列 crest 最低、最"糊"，也最像噪声。</p>
+
+<p class="sub">这张表用 8000 Hz 轻量口径算（切换参数时不卡）。同一构造在 24000 Hz 口径下 n=15 的 crest 是 20.43 而不是 16.54——
+差别全在"峰值那一个采样点有没有被采到"，crest 对采样率敏感，对相对次序不敏感。想看准确值，看上面那张音频指标表的 24000 Hz 版本。</p>
+
+<h3>3.3 为什么"一个周期"听起来像节拍</h3>
+
+<p>实测峰位不在周期末尾，而在<strong>开头几个百分点</strong>处：n=5 / 9 / 15 分别是 0.117T / 0.084T / 0.059T——
+n 越大越贴边（每升一阶约缩到上一档的 1/1.4，不是"减半"）。原因是格序相位把 (k−1)/n² 挂到频率索引上，
+两串足够"近似线性"的地方就对齐一次，最优点被推到 t≈0 附近；斜线绕圈越多，对齐点越散，主峰也越窄。</p>
+
+<p>一周期 0.25 s ⇒ 每秒 4 次"击"；0.5 s ⇒ 每秒 2 次。这就是它听起来像节拍器而不是和弦的原因：
+能量集中在周期里极短的一瞬，其余时间是振铃。想让声音"平"下来，得把相位打散（棋盘档）或换数字序——
+棋盘档的 crest 只有 4.78，峰也散成十几个（页面上"峰数"一栏会跟着变）。</p>
+
+<h3>3.4 可听带</h3>
+
+<p>n=21、Δf=4 时最高频约 1816 Hz；Δf=2 时周期 0.5 s、频带收窄到 880 Hz。
+频率越高、同一周期内塞进的振荡越多，峰值就越窄——这就是 §3.2 里 crest 随 n 上升的另一个视角。</p>
+
+<h2>§4 能说什么，不能说什么</h2>
+
+<div class="note a"><b>能说：</b>① 在这个六参数族里，de la Loubère 有精确闭式且必为泛对角；② 线和在双射约束下只有唯一可能值，
+不存在"逼近"；③ level 只影响系数退化的那些线；④ 一个周期可以做到端点严格连续（相位整数圈，实测偏差 0）；
+⑤ 相位规则决定排列是否可听，数字序会把所有同阶幻方抹成同一个波形。</div>
+
+<div class="note r"><b>不能说：</b>① 这些波包不是高斯——频域平顶 ⇒ 时域必为 sinc 型（见
+<a href="幻方到波包_根因分析.html">根因页</a>）；② 六参数族不覆盖所有幻方，例如 n=4 的 Criss-Cross 就不在这个族里；
+③ 本页没有引用 Searl 真理表的原始数字（本机没有那份原表），level/step 是按结构同构复现的参数化，不是对原文的转述；
+④ 真实听感还取决于你的扬声器与音量，"好听"不是可复算的量。</div>
+
+<table>
+<thead><tr><th>指标</th><th>值</th></tr></thead>
+<tbody id="tbAudio"></tbody>
+</table>
+
+<p class="sub">下表固定 step（pr=1, qr 取面板值, pc=1, qc=2）与 level 基准 cr=cc=0，只扫 cr 看每条线变不变。
+注意这个基准通常<strong>不是</strong>幻方（主对角 360、副对角 693），表看的是"变不变"，不是"和是多少"。</p>
+<table>
+<thead><tr><th>#</th><th>线</th><th>基准和</th><th>level 下的取值数</th><th>是否随 level 变</th><th>预测（系数互素⇒不变）</th></tr></thead>
+<tbody id="tbLevel"></tbody>
+</table>
+
+<table>
+<thead><tr><th>n</th><th>目标 T</th><th>S = n(n²+1)/2</th><th>命中</th><th>其中泛对角</th><th>首个解 (pr,qr,cr,pc,qc,cc)</th><th>残差</th></tr></thead>
+<tbody id="tbSearch"></tbody>
+</table>
+
+<div id="chk">
+  <div class="hd">页面自检</div>
+  <div id="chkSum">运行中…</div>
+  <div id="chkList"></div>
+</div>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+
+var $ = function(id){ return document.getElementById(id); };
+var TAU = Math.PI * 2;
+var SR_DISP = 24000;          /* 绘图与表格的固定口径 */
+var SR_FAST = 8000;           /* 对比表的轻量口径（crest 与 sr 无关，只影响采样精度） */
+var FLO = 55;                 /* 最低频下界，A1 */
+
+var ST = { n:9, gen:'dl', pm:'grid', dF:4, cr:5, cc:1, qr:1, vol:0.45, seed:7, target:null, autoT:true };
+
+/* ---------- 基础 ---------- */
+function gcd(a,b){ a=Math.abs(a); b=Math.abs(b); while(b){ var t=a%b; a=b; b=t; } return a; }
+function mod(a,n){ return ((a%n)+n)%n; }
+
+/* Σ_{i=0..n-1} ((a·i + c) mod n) 的闭式 —— 让搜索不必建表 */
+function sumLin(a, c, n){
+  var g = gcd(mod(a,n), n); if(g===0){ g=n; }
+  var v = n/g;
+  return n*(g*(v-1)/2 + mod(c,g));
+}
+
+function fam4(n,pr,qr,cr,pc,qc,cc){
+  var M=[],i,j;
+  for(i=0;i<n;i++){
+    var r=[];
+    for(j=0;j<n;j++){
+      r.push(n*mod(pr*i+qr*j+cr,n) + mod(pc*i+qc*j+cc,n) + 1);
+    }
+    M.push(r);
+  }
+  return M;
+}
+function deLaLoubere(n){
+  var M=[],i,j,k;
+  for(i=0;i<n;i++){ var r=[]; for(j=0;j<n;j++) r.push(0); M.push(r); }
+  var a=0,b=(n-1)>>1;
+  for(k=1;k<=n*n;k++){
+    M[a][b]=k;
+    var na=mod(a-1,n), nb=mod(b+1,n);
+    if(M[na][nb]){ a=mod(a+1,n); } else { a=na; b=nb; }
+  }
+  return M;
+}
+function crissCross(n){
+  var M=[],i,j;
+  for(i=0;i<n;i++){ var r=[]; for(j=0;j<n;j++) r.push(i*n+j+1); M.push(r); }
+  for(i=0;i<n;i++) for(j=0;j<n;j++){
+    var p=i%4,q=j%4;
+    if(p===q || p+q===3) M[i][j]=n*n+1-M[i][j];
+  }
+  return M;
+}
+function linearPan(n,t,s){
+  var M=[],i,j;
+  for(i=0;i<n;i++){ var r=[]; for(j=0;j<n;j++) r.push(n*mod(i+t*j,n)+mod(s*i+j,n)+1); M.push(r); }
+  return M;
+}
+function shuffleBy(n,seed){
+  var N=n*n, idx=[], i;
+  for(i=0;i<N;i++) idx.push(i);
+  var s=(seed>>>0)||1;
+  for(i=N-1;i>0;i--){ s=(s*1664525+1013904223)>>>0; var k=s%(i+1); var t=idx[i]; idx[i]=idx[k]; idx[k]=t; }
+  var M=[];
+  for(i=0;i<n;i++){ var r=[]; for(var j=0;j<n;j++) r.push(idx[i*n+j]+1); M.push(r); }
+  return M;
+}
+
+function linesOf(M){
+  var n=M.length, out=[], i, j;
+  for(i=0;i<n;i++) out.push({ name:'行 '+(i+1), v:M[i].slice() });
+  for(j=0;j<n;j++){
+    var c=[]; for(i=0;i<n;i++) c.push(M[i][j]);
+    out.push({ name:'列 '+(j+1), v:c });
+  }
+  var d1=[], d2=[];
+  for(i=0;i<n;i++){ d1.push(M[i][i]); d2.push(M[i][n-1-i]); }
+  out.push({ name:'主对角', v:d1 });
+  out.push({ name:'副对角', v:d2 });
+  return out;
+}
+function sumArr(a){ var s=0,k; for(k=0;k<a.length;k++) s+=a[k]; return s; }
+
+function audit(M){
+  var n=M.length, N=n*n, i, j, seen={}, dup=0, mn=1e18, mx=-1e18;
+  for(i=0;i<n;i++) for(j=0;j<n;j++){
+    var v=M[i][j];
+    if(seen[v]) dup++; else seen[v]=1;
+    if(v<mn) mn=v; if(v>mx) mx=v;
+  }
+  var L=linesOf(M), sums=L.map(function(o){ return sumArr(o.v); });
+  var S=n*(N+1)/2;
+  var allEq=sums.every(function(v){ return v===S; });
+  var pan=sums.slice(2*n).every(function(v){ return v===S; });
+  return { n:n, S:S, min:mn, max:mx, dup:dup, perm:(Object.keys(seen).length===N && mn===1 && mx===N && dup===0),
+           sums:sums, allEq:allEq, pan:allEq && pan, lines:L };
+}
+
+/* ---------- 构造 ---------- */
+function buildM(){
+  var n=ST.n, M;
+  if(ST.gen==='dl'){ M=deLaLoubere(n); }
+  else if(ST.gen==='ser'){ M=fam4(n,1,ST.qr,ST.cr,1,2,ST.cc); }
+  else if(ST.gen==='pan'){ M=linearPan(n,2,2); }
+  else if(ST.gen==='rand'){ M=shuffleBy(n,ST.seed); }
+  else if(ST.gen==='cc'){ M=(n%4===0)?crissCross(n):deLaLoubere(n); }
+  else { M=deLaLoubere(n); }
+  return M;
+}
+
+function phaseOf(i,j,n,pm,M){
+  if(pm==='grid') return (i*n+j)*TAU/(n*n);
+  if(pm==='num') return (M[i][j]-1)*TAU/(n*n);
+  if(pm==='zero') return 0;
+  return ((i+j)%2)*Math.PI;
+}
+
+/* ---------- 渲染一个周期 ---------- */
+function renderCycle(sr, M, pm, dFwant){
+  var n=M.length, N=n*n;
+  var len=Math.round(sr/dFwant);
+  var dF=sr/len;                        /* 量化：len*dF = sr 精确 */
+  var m=Math.max(1, Math.round(FLO/dF));
+  var f=function(v){ return dF*(m+v-1); };
+  var data=new Float32Array(len), s, i, j, peak=0, ss=0;
+  var ph=[], fr=[];
+  for(i=0;i<n;i++){
+    var r1=[], r2=[];
+    for(j=0;j<n;j++){ r1.push(phaseOf(i,j,n,pm,M)); r2.push(f(M[i][j])); }
+    ph.push(r1); fr.push(r2);
+  }
+  for(s=0;s<len;s++){
+    var t=s/sr, acc=0;
+    for(i=0;i<n;i++) for(j=0;j<n;j++) acc += Math.cos(TAU*fr[i][j]*t + ph[i][j]);
+    data[s]=acc;
+    var a=acc<0?-acc:acc;
+    if(a>peak) peak=a;
+    ss+=acc*acc;
+  }
+  var rms=Math.sqrt(ss/len);
+  var g=(peak>0)?(0.9/peak):1;
+  for(s=0;s<len;s++) data[s]*=g;
+  /* 峰位与峰数 */
+  var pk=0;
+  for(s=0;s<len;s++) if(Math.abs(data[s])>Math.abs(data[pk])) pk=s;
+  var npk=0;
+  for(s=1;s<len-1;s++){
+    if(Math.abs(data[s])>=Math.abs(data[s-1]) && Math.abs(data[s])>=Math.abs(data[s+1]) && Math.abs(data[s])>0.36) npk++;
+  }
+  /* 端点相位偏差（以圈计） */
+  var dev=0;
+  for(i=0;i<n;i++) for(j=0;j<n;j++){
+    var c=fr[i][j]*(len/sr), d=Math.abs(c-Math.round(c));
+    if(d>dev) dev=d;
+  }
+  return { data:data, len:len, sr:sr, dF:dF, m:m, T:1/dF, N:N,
+           fLo:dF*m, fHi:dF*(m+N-1), bw:dF*(N-1),
+           peakRaw:peak, rms:rms, crest:peak/rms, peakAt:pk/len, nPeaks:npk, cycleDev:dev };
+}
+
+/* Goertzel：单一频点的幅度 */
+function goertzel(data, sr, f){
+  var len=data.length, k=2*Math.PI*f/sr, c=2*Math.cos(k);
+  var s0=0,s1=0,s2=0,i;
+  for(i=0;i<len;i++){ s0=data[i]+c*s1-s2; s2=s1; s1=s0; }
+  var re=s1-s2*Math.cos(k), im=s2*Math.sin(k);
+  return Math.sqrt(re*re+im*im)*2/len;
+}
+
+/* ---------- 绘图 ---------- */
+function hc(cv){
+  var w=cv.width, h=cv.height, dpr=window.devicePixelRatio||1;
+  var g=cv.getContext('2d');
+  g.setTransform(1,0,0,1,0,0);
+  g.clearRect(0,0,w,h);
+  g.fillStyle='#ffffff'; g.fillRect(0,0,w,h);
+  return { g:g, w:w, h:h };
+}
+
+function drawMatrix(M){
+  var cv=$('cvM'), o=hc(cv), g=o.g, w=o.w, h=o.h;
+  var n=M.length, A=audit(M);
+  var top=32, pad=14, avail=Math.min(w-2*pad, h-top-34);
+  var cell=Math.floor(avail/n), ox=Math.round((w-cell*n)/2), oy=top;
+  var mn=A.min, mx=A.max, span=Math.max(mx-mn,1);
+  for(var i=0;i<n;i++){
+    for(var j=0;j<n;j++){
+      var u=(M[i][j]-mn)/span;
+      var r=Math.round(246+(61-246)*u), gg=Math.round(239+(53-239)*u), b=Math.round(214+(150-214)*u);
+      g.fillStyle='rgb('+r+','+gg+','+b+')';
+      g.fillRect(ox+j*cell, oy+i*cell, cell-0.7, cell-0.7);
+      if(cell>=19){
+        g.fillStyle=(u>0.55?'#ffffff':'#2b2540');
+        g.font=Math.max(9,Math.min(12,cell*0.42)).toFixed(0)+'px system-ui,"Microsoft YaHei"';
+        g.textAlign='center'; g.textBaseline='middle';
+        g.fillText(String(M[i][j]), ox+j*cell+cell/2, oy+i*cell+cell/2);
+        g.textAlign='left'; g.textBaseline='alphabetic';
+      }
+    }
+  }
+  g.strokeStyle='rgba(83,74,183,.5)'; g.lineWidth=1;
+  g.strokeRect(ox-0.5, oy-0.5, cell*n+0.5, cell*n+0.5);
+  g.fillStyle='#4a4740'; g.font='12.5px system-ui,"Microsoft YaHei"';
+  var tag = A.perm ? (A.allEq ? (A.pan?'泛对角幻方':'幻方') : '是双射但线和不等') : '不是双射';
+  g.fillText('n = '+n+'　S = '+A.S+'　'+tag+'　最小 '+A.min+' / 最大 '+A.max, 10, 19);
+  if(!A.perm){
+    g.fillStyle='#b3352c'; g.font='12px system-ui,"Microsoft YaHei"';
+    g.fillText('提示：这个构造在 n='+n+' 时不是双射（有重复或缺值），后面的频谱会失真', 10, h-8);
+  }
+}
+
+function drawWave(r){
+  var cv=$('cvW'), o=hc(cv), g=o.g, w=o.w, h=o.h;
+  var L=44, R=12, T=18, B=26;
+  var pw=w-L-R, ph=h-T-B, y0=T+ph/2;
+  g.strokeStyle='#e8e3d6'; g.lineWidth=1;
+  g.beginPath(); g.moveTo(L,y0); g.lineTo(L+pw,y0); g.stroke();
+  g.fillStyle='#7a746a'; g.font='11px system-ui,"Microsoft YaHei"';
+  g.fillText('0', L-9, y0+4);
+  g.fillText('t = 0', L, T+ph+B+15);
+  g.textAlign='right'; g.fillText('T = '+r.T.toFixed(4)+' s', L+pw, T+ph+B+15); g.textAlign='left';
+  g.fillText('+0.9', 4, T+8); g.fillText('−0.9', 4, T+ph);
+
+  /* 包络 */
+  g.strokeStyle='rgba(83,74,183,.30)'; g.setLineDash([4,4]); g.lineWidth=1;
+  var k, NX=Math.min(1400, r.len), step=r.len/NX;
+  g.beginPath();
+  for(k=0;k<NX;k++){
+    var idx=Math.floor(k*step), x=L+pw*k/(NX-1);
+    g.lineTo(x, y0-0.9*Math.abs(r.data[idx])*ph*0.5);
+  }
+  g.stroke();
+  g.beginPath();
+  for(k=0;k<NX;k++){
+    var idx2=Math.floor(k*step), x2=L+pw*k/(NX-1);
+    g.lineTo(x2, y0+0.9*Math.abs(r.data[idx2])*ph*0.5);
+  }
+  g.stroke();
+  g.setLineDash([]);
+
+  /* 波形 */
+  g.strokeStyle='#241f1c'; g.lineWidth=1.15;
+  g.beginPath();
+  for(k=0;k<NX;k++){
+    var id3=Math.floor(k*step), x3=L+pw*k/(NX-1);
+    g.lineTo(x3, y0 - r.data[id3]*ph*0.5);
+  }
+  g.stroke();
+
+  /* 峰位 */
+  var px=L+pw*r.peakAt;
+  g.strokeStyle='#b3352c'; g.lineWidth=1.6;
+  g.beginPath(); g.moveTo(px, T); g.lineTo(px, T+ph); g.stroke();
+  g.fillStyle='#b3352c'; g.font='11.5px system-ui,"Microsoft YaHei"';
+  g.textAlign=(r.peakAt>0.7?'right':'left');
+  g.fillText('峰 '+r.peakAt.toFixed(3)+'T', px+(r.peakAt>0.7?-5:5), T+11);
+  g.textAlign='left';
+}
+
+function drawSpec(M, r){
+  var cv=$('cvS'), o=hc(cv), g=o.g, w=o.w, h=o.h;
+  var L=52, R=14, T=22, B=32;
+  var pw=w-L-R, ph=h-T-B, base=T+ph;
+  var n=M.length, N=n*n;
+  var fLo=r.fLo, fHi=r.fHi;
+  var K=Math.min(N, 110), amps=[], k;
+  var allF=[];
+  for(var i=0;i<n;i++) for(var j=0;j<n;j++) allF.push(r.dF*(r.m + M[i][j]-1));
+  allF.sort(function(a,b){ return a-b; });
+  for(k=0;k<K;k++){
+    var idx=Math.round(k*(N-1)/(K-1));
+    amps.push(goertzel(r.data, r.sr, allF[idx]));
+  }
+  var mx=0; for(k=0;k<K;k++) if(amps[k]>mx) mx=amps[k];
+  /* 网格 */
+  g.strokeStyle='#eee9dc'; g.lineWidth=1;
+  for(k=0;k<=4;k++){
+    var yy=T+ph*k/4;
+    g.beginPath(); g.moveTo(L,yy); g.lineTo(L+pw,yy); g.stroke();
+  }
+  /* 柱 */
+  var bw=Math.max(2, pw/K*0.62);
+  for(k=0;k<K;k++){
+    var x=L+pw*k/(K-1), hh=(mx>0)?(amps[k]/mx)*ph*0.92:0;
+    g.fillStyle='rgba(83,74,183,.72)';
+    g.fillRect(x-bw/2, base-hh, bw, hh);
+  }
+  g.strokeStyle='#c9c2b0'; g.lineWidth=1;
+  g.beginPath(); g.moveTo(L,base); g.lineTo(L+pw,base); g.stroke();
+  g.fillStyle='#7a746a'; g.font='11px system-ui,"Microsoft YaHei"';
+  g.fillText(fLo.toFixed(0)+' Hz', L, base+15);
+  g.textAlign='right'; g.fillText(fHi.toFixed(0)+' Hz', L+pw, base+15); g.textAlign='left';
+  g.fillText('幅度', 8, T+8);
+  var spread=(mx>0)?(Math.min.apply(null,amps)/mx):0;
+  g.fillStyle='#4a4740'; g.font='11.5px system-ui,"Microsoft YaHei"';
+  g.fillText('抽 '+K+' / '+N+' 根　最低柱 / 最高柱 = '+spread.toFixed(4)+'（平顶趋近 1）', L, T-6);
+}
+
+/* ---------- 表格 ---------- */
+function fmt(x,d){ return (Math.abs(x)<0.5*Math.pow(10,-d))?(0).toFixed(d):x.toFixed(d); }
+
+function fillAudioTable(r){
+  var tb=$('tbAudio'); if(!tb) return;
+  var rows=[
+    ['采样率（绘图口径）', r.sr+' Hz'],
+    ['频率间隔 Δf（量化后）', fmt(r.dF,4)+' Hz'],
+    ['周期 T = 1/Δf', fmt(r.T,5)+' s'],
+    ['样本数 len', r.len+''],
+    ['最低频 f₁', fmt(r.fLo,2)+' Hz'],
+    ['最高频 f_n²', fmt(r.fHi,2)+' Hz'],
+    ['带宽', fmt(r.bw,1)+' Hz'],
+    ['归一化峰值', fmt(0.9,3)],
+    ['峰均比 crest', fmt(r.crest,2)],
+    ['峰位（周期占比）', fmt(r.peakAt,4)],
+    ['峰数（>36% 峰值）', r.nPeaks+''],
+    ['端点相位偏差（圈）', r.cycleDev.toExponential(1)],
+    ['循环是否严格连续', r.cycleDev<1e-9?'是（整数圈）':'否']
+  ];
+  var h='';
+  for(var k=0;k<rows.length;k++){
+    var cls=(rows[k][0].indexOf('端点')>=0)?' class="'+(r.cycleDev<1e-9?'ok':'mp')+'"':'';
+    h+='<tr><td>'+rows[k][0]+'</td><td'+cls+'>'+rows[k][1]+'</td></tr>';
+  }
+  tb.innerHTML=h;
+}
+
+function fillPmTable(M){
+  var tb=$('tbPm'); if(!tb) return;
+  var n=M.length;
+  var pan=linearPan(n,2,2);
+  var rnd=shuffleBy(n,ST.seed);
+  var panPerm=audit(pan).perm;
+  var pms=[['grid','格序'],['num','数字序'],['zero','全同相'],['alt','棋盘 ±π']];
+  var h='';
+  for(var k=0;k<pms.length;k++){
+    var pm=pms[k][0];
+    var a=renderCycle(SR_FAST, M, pm, ST.dF);
+    var b=renderCycle(SR_FAST, pan, pm, ST.dF);
+    var c=renderCycle(SR_FAST, rnd, pm, ST.dF);
+    var mx=0, q;
+    for(q=0;q<a.len;q++){ var dv=Math.abs(a.data[q]-c.data[q]); if(dv>mx) mx=dv; }
+    var same=(mx<1e-6);
+    h+='<tr><td>'+pms[k][1]+'</td><td>'+fmt(a.crest,2)+'</td><td>'+fmt(b.crest,2)+'</td><td>'+fmt(c.crest,2)+'</td>'
+      +'<td class="'+(same?'ok':'mp')+'">'+(same?'相同（差 '+mx.toExponential(1)+'）':'不同（差 '+mx.toFixed(3)+'）')+'</td></tr>';
+  }
+  tb.innerHTML=h;
+  var cap=$('capPm');
+  if(cap) cap.innerHTML='注：n='+n+' 时线性拉丁 t=2,s=2 '+(panPerm?'是双射':'<span class="red">不是双射</span>')
+    +'，所以第三列与第一列的差可能来自"不是双射"，不代表排列差异。'
+    +'判据是 DL 与随机的 buffer 逐样本最大差（两者都是双射）。crest 用 '+SR_FAST+' Hz 轻量口径算。';
+}
+
+function fillCrestTable(){
+  var tb=$('tbCrest'); if(!tb) return;
+  var h='';
+  var ns=[5,9,15];
+  for(var k=0;k<ns.length;k++){
+    var n=ns[k];
+    var list=[['de la Loubère',deLaLoubere(n)],['线性拉丁 t=2,s=2',linearPan(n,2,2)],['随机排列',shuffleBy(n,7)]];
+    for(var q=0;q<list.length;q++){
+      var r=renderCycle(SR_FAST, list[q][1], 'grid', 4);
+      var note=(q===0)?'峰值最尖，最“击”':(q===2?'最糊，接近噪声':'居中');
+      h+='<tr><td>'+n+'</td><td>'+list[q][0]+'</td><td>'+fmt(r.crest,2)+'</td>'
+        +'<td>'+fmt(r.peakAt,3)+'</td><td class="mu">'+note+'</td></tr>';
+    }
+  }
+  tb.innerHTML=h;
+}
+
+/* level 影响表 */
+function fillLevelTable(M){
+  var tb=$('tbLevel'); if(!tb) return;
+  var n=M.length;
+  var base=fam4(n,1,ST.qr,0,1,2,0);
+  var Lb=linesOf(base), h='';
+  var sets=[];
+  for(var k=0;k<Lb.length;k++) sets.push({});
+  for(var cr=0;cr<n;cr++){
+    var Lc=linesOf(fam4(n,1,ST.qr,cr,1,2,0));
+    for(k=0;k<Lc.length;k++) sets[k][sumArr(Lc[k].v)]=1;
+  }
+  /* 预测（解析）：该线的系数与 n 互素 ⇒ 遍历完整剩余系 ⇒ 和与 cr 无关 */
+  var gRowCol = gcd(mod(ST.qr,n), n);
+  var gMain = gcd(mod(1+ST.qr, n), n);
+  var gAnti = gcd(mod(1-ST.qr, n), n);
+
+  for(k=0;k<Lb.length;k++){
+    var cnt=Object.keys(sets[k]).length;
+    var moved=(cnt>1);
+    var name=Lb[k].name;
+    var okPred;
+    if(name.indexOf('副对角')===0){ okPred=(gAnti===1)?'不变':'会变'; }
+    else if(name.indexOf('主对角')===0){ okPred=(gMain===1)?'不变':'会变'; }
+    else { okPred=(gRowCol===1)?'不变':'会变'; }
+    h+='<tr><td>'+(k+1)+'</td><td>'+name+'</td><td>'+fmt(sumArr(Lb[k].v),0)+'</td><td>'+cnt+'</td>'
+      +'<td class="'+(moved?'mp':'ok')+'">'+(moved?'是':'否')+'</td>'
+      +'<td class="mu">'+okPred+'（gcd='+(name.indexOf('副对角')===0?gAnti:(name.indexOf('主对角')===0?gMain:gRowCol))+'）</td></tr>';
+  }
+  tb.innerHTML=h;
+}
+
+/* ---------- 搜索 ---------- */
+function searchLevelStep(n, T, budgetMs){
+  var now=function(){ return (window.performance&&performance.now)?performance.now():Date.now(); };
+  var t0=now();
+  var S=n*(n*n+1)/2, hits=0, pans=0, first=null, minRes=Infinity;
+  var pr,qr,pc,qc,cr,cc;
+  for(pr=0;pr<n;pr++) for(qr=0;qr<n;qr++){
+    if(gcd(qr,n)!==1) continue;
+    for(pc=0;pc<n;pc++) for(qc=0;qc<n;qc++){
+      if(gcd(qc,n)!==1) continue;
+      if(gcd(mod(pr,n),n)!==1) continue;
+      if(gcd(mod(pc,n),n)!==1) continue;
+      if(gcd(mod(pr*qc-qr*pc,n),n)!==1) continue;   /* 双射 ⟺ 系数矩阵可逆 */
+      /* 行列和条件已由上面四个 gcd 保证，且必等于 S；只剩两条对角 */
+      for(cr=0;cr<n;cr++){
+        var h1=sumLin(pr+qr, cr, n), h2=sumLin(pr-qr, qr*(n-1)+cr, n);
+        for(cc=0;cc<n;cc++){
+          var d1=n*h1 + sumLin(pc+qc, cc, n) + n;
+          var d2=n*h2 + sumLin(pc-qc, pc*(n-1)+cc, n) + n;
+          var dev=Math.max(Math.abs(d1-T), Math.abs(d2-T));
+          if(dev<minRes) minRes=dev;
+          if(dev===0){
+            hits++;
+            /* 对角也等于 T ⇒ 泛对角（行列已等） */
+            pans++;
+            if(!first) first=[pr,qr,cr,pc,qc,cc];
+          }
+        }
+      }
+    }
+    if(budgetMs && (now()-t0)>budgetMs){
+      return { n:n, T:T, S:S, hits:hits, pans:pans, first:first, minRes:minRes, timeout:true, ms:now()-t0 };
+    }
+  }
+  return { n:n, T:T, S:S, hits:hits, pans:pans, first:first, minRes:minRes, timeout:false, ms:now()-t0 };
+}
+
+function fillSearchTable(){
+  var tb=$('tbSearch'); if(!tb) return;
+  var n=ST.n, S=n*(n*n+1)/2;
+  var Ts=[S, S+1, S-1];
+  if(ST.target!==null && Math.abs(ST.target-S)>1e-9) Ts.unshift(ST.target);
+  var h='';
+  for(var k=0;k<Ts.length;k++){
+    var T=Ts[k];
+    var res=searchLevelStep(n, T, 4000);
+    var lbl=(Math.abs(T-S)<1e-9)?'（= S，正确目标）':'（≠ S ⇒ 应 0 命中）';
+    h+='<tr><td>'+n+'</td><td>'+fmt(T,2)+' '+lbl+'</td><td>'+fmt(S,2)+'</td>'
+      +'<td class="'+(res.hits>0?'ok':'mp')+'">'+res.hits+(res.timeout?'+':'')+'</td>'
+      +'<td>'+res.pans+'</td>'
+      +'<td class="mu">'+(res.first?('('+res.first.join(',')+')'):'—')+'</td>'
+      +'<td>'+((res.minRes===0)?'0':fmt(res.minRes,2))+'</td></tr>';
+  }
+  tb.innerHTML=h;
+}
+
+/* ---------- 自检 ---------- */
+var CHK=[];
+function chk(cond,msg){ CHK.push({ ok:!!cond, msg:msg }); }
+
+function runChecks(M, r){
+  CHK=[];
+  var n=M.length, N=n*n, A=audit(M);
+
+  /* 变异测试：注入一条必假断言，必须被判 false */
+  var probeOk=(function(){ var before=CHK.length; chk(1===2,'__probe__'); var v=CHK.pop(); return (v && v.ok===false); })();
+  chk(probeOk, '变异测试：注入的假断言 (1===2) 被判为 false ⇒ chk 参数没写反');
+
+  chk(A.sums.length===2*n+2, '线数 = 2n+2 = '+(2*n+2));
+  var rowTot=0, ri;
+  for(ri=0;ri<n;ri++) rowTot+=A.sums[ri];
+  chk(rowTot===N*(N+1)/2, 'n 条行和相加 = n²(n²+1)/2 = '+fmt(N*(N+1)/2,0)
+      +'（双射守恒，与用哪个构造无关）');
+  chk(A.perm || (A.dup>0 || A.min<1 || A.max>N),
+      'audit 自洽：当前构造'+(A.perm?'是双射':'不是双射（dup='+A.dup+'，值域 '+A.min+'…'+A.max+'）'));
+  chk(audit(deLaLoubere(n)).perm, '固定参照：de la Loubère 在 n='+n+' 时是双射');
+
+  /* de la Loubère 闭式 vs 经典算法 */
+  var dlN=5, M1=deLaLoubere(dlN), M2=fam4(dlN,1,1,(dlN+1)/2,1,2,1);
+  chk(JSON.stringify(M1)===JSON.stringify(M2), 'n=5 闭式 (1,1,3,1,2,1) 与经典右上斜走算法逐格相同');
+  var dl9=deLaLoubere(9), M29=fam4(9,1,1,5,1,2,1);
+  chk(JSON.stringify(dl9)===JSON.stringify(M29), 'n=9 闭式 (1,1,5,1,2,1) 同样逐格相同');
+  var A9=audit(dl9);
+  chk(A9.allEq && A9.pan, 'n=9 de la Loubère 同时是泛对角幻方（两条折对角也为 369）');
+
+  /* 两参数族：一个幻方都没有（n=5 穷举） */
+  var twoHits=0, L0, st0;
+  for(L0=0;L0<25;L0++) for(st0=1;st0<25;st0++){
+    if(gcd(st0,25)!==1) continue;
+    var MM=[], i5, j5;
+    for(i5=0;i5<5;i5++){ var r5=[]; for(j5=0;j5<5;j5++) r5.push(1+mod(L0+st0*(i5*5+j5),25)); MM.push(r5); }
+    var aa=audit(MM);
+    if(aa.allEq) twoHits++;
+  }
+  chk(twoHits===0, '两参数 (level,step) 族在 n=5 穷举（level 25 × step 20 互素）→ 0 个幻方');
+
+  /* 目标 T 的二值性 */
+  var sOK=searchLevelStep(5, 65, 3000), sBad=searchLevelStep(5, 66, 3000);
+  chk(sOK.hits>0, 'n=5 目标 T=65=S/n ⇒ 命中 ' + sOK.hits + ' 个解');
+  chk(sBad.hits===0, 'n=5 目标 T=66（差 1）⇒ 0 命中 ⇒ 线和不可"逼近"');
+
+  /* level 对行列零影响 */
+  var baseSum=linesOf(fam4(9,1,1,0,1,2,0)).map(function(o){ return sumArr(o.v); });
+  var movedRows=0;
+  for(var cr=1;cr<9;cr++){
+    var s2=linesOf(fam4(9,1,1,cr,1,2,0)).map(function(o){ return sumArr(o.v); });
+    for(var k=0;k<9;k++) if(s2[k]!==baseSum[k]) movedRows++;
+  }
+  chk(movedRows===0, 'n=9 变 level cr（0→8）后，9 条行和逐条不变（共查 '+(8*9)+' 项）');
+  var d2base=baseSum[19], d2moved=0;
+  for(var cr2=1;cr2<9;cr2++){
+    if(linesOf(fam4(9,1,1,cr2,1,2,0)).map(function(o){ return sumArr(o.v); })[19]!==d2base) d2moved++;
+  }
+  chk(d2moved>0, 'n=9 同一次变化里副对角和确实会动（' + d2moved + '/8 个 cr 上动）⇒ 上一条不是恒真');
+
+  /* 整周期 */
+  chk(r.cycleDev<1e-9, '当前配置端点相位偏差 = '+r.cycleDev.toExponential(1)+' 圈 ⇒ 循环严格连续');
+  chk(Math.abs(r.T*r.dF-1)<1e-12, 'T·Δf = 1 精确成立（量化后）');
+  chk(Math.abs(r.len*r.dF-r.sr)<1e-6, 'len·Δf = 采样率（样本数 × 间隔 = sr）');
+  /* 负对照：m 偏移 0.5 */
+  var negDev=(function(){
+    var len=Math.round(SR_DISP/4), dF=SR_DISP/len, m=Math.round(55/dF)+0.5;
+    var dev=0, i, j, Mo=deLaLoubere(9);
+    for(i=0;i<9;i++) for(j=0;j<9;j++){
+      var f=dF*(m+Mo[i][j]-1), c=f*(len/SR_DISP), d=Math.abs(c-Math.round(c));
+      if(d>dev) dev=d;
+    }
+    return dev;
+  })();
+  chk(negDev>0.4, '负对照：m 偏移 0.5 时端点偏差 = '+negDev.toFixed(3)+' 圈 ⇒ 判据能分辨，不是恒真');
+
+  /* 数字相位 ⇒ 双射构造之间波形相同 */
+  var d1=renderCycle(SR_DISP, deLaLoubere(9), 'num', 4);
+  var d3=renderCycle(SR_DISP, shuffleBy(9,7), 'num', 4);
+  var sameAC=(function(){ var mx=0; for(var q=0;q<d1.len;q++){ var v=Math.abs(d1.data[q]-d3.data[q]); if(v>mx) mx=v; } return mx; })();
+  chk(sameAC<1e-6, '数字序相位下 de la Loubère 与随机排列（两者都是双射）的 buffer 逐样本最大差 = '
+      +sameAC.toExponential(1)+' ⇒ 波形只由数字集合决定');
+  var panM=linearPan(9,2,2), panDup=audit(panM).dup;
+  var d2=renderCycle(SR_DISP, panM, 'num', 4);
+  var diffP=(function(){ var mx=0; for(var q=0;q<d1.len;q++){ var v=Math.abs(d1.data[q]-d2.data[q]); if(v>mx) mx=v; } return mx; })();
+  chk(panDup>0 && diffP>0.2, '对照：n=9 的线性拉丁 t=2,s=2 不是双射（'+panDup+' 个重复格）⇒ 数字序下波形当然不同（差 '
+      +diffP.toFixed(3)+'）⇒ 上一条不是恒真');
+  var z1=renderCycle(SR_DISP, deLaLoubere(9), 'zero', 4);
+  var z2=renderCycle(SR_DISP, shuffleBy(9,7), 'zero', 4);
+  var diffZ=(function(){ var mx=0; for(var q=0;q<z1.len;q++){ var v=Math.abs(z1.data[q]-z2.data[q]); if(v>mx) mx=v; } return mx; })();
+  chk(diffZ<1e-6, '全同相（φ≡0）下 DL 与随机也逐样本相同（差 '+diffZ.toExponential(1)
+      +'）⇒ 抹平排列的不止"数字序"一种，只有格序/棋盘才携带"谁坐哪"');
+
+  /* 格序 ⇒ 不同 */
+  var g1=renderCycle(SR_DISP, deLaLoubere(9), 'grid', 4);
+  var g2=renderCycle(SR_DISP, linearPan(9,2,2), 'grid', 4);
+  var diffG=(function(){ var mx=0; for(var q=0;q<g1.len;q++){ var v=Math.abs(g1.data[q]-g2.data[q]); if(v>mx) mx=v; } return mx; })();
+  chk(diffG>0.2, '格序相位下两者 buffer 最大差 = '+diffG.toFixed(3)+' ⇒ 排列真的改变了波形');
+
+  /* 平顶谱 */
+  var ampMin=Infinity, ampMax=0, q2;
+  for(q2=1;q2<=81;q2++){
+    var fa=g1.dF*(g1.m+q2-1);
+    var am=goertzel(g1.data, g1.sr, fa);
+    if(am<ampMin) ampMin=am; if(am>ampMax) ampMax=am;
+  }
+  chk(ampMin/ampMax>0.99, '81 根频点 Goertzel 幅度 max/min = '+fmt(ampMax/ampMin,4)+' ⇒ 平顶谱（等幅）');
+  chk(g1.nPeaks>=1, '一周期内检出的峰数 = '+g1.nPeaks+'（>36% 峰值计）');
+
+  /* 归一化与可听 */
+  var peakNow=0;
+  for(var q3=0;q3<g1.len;q3++){ var av=Math.abs(g1.data[q3]); if(av>peakNow) peakNow=av; }
+  chk(Math.abs(peakNow-0.9)<0.02, '归一化后峰值 = '+fmt(peakNow,4)+' ⇒ 不削波');
+  chk(g1.fLo>=40 && g1.fHi<=8000, '频带 '+fmt(g1.fLo,0)+'–'+fmt(g1.fHi,0)+' Hz 落在可听范围');
+
+  /* 搜索结果与 S/n 的关系 */
+  var s15=searchLevelStep(9, 369, 5000);
+  chk(s15.hits>0, 'n=9 搜索 T=369 命中 '+s15.hits+' 个 level/step 组合');
+  chk(s15.pans===s15.hits, 'n=9 命中的全部是泛对角（'+s15.pans+'/'+s15.hits+'）⇒ 族内"是幻方"与"泛对角"同义');
+  if(s15.first){
+    var MF=fam4(9, s15.first[0], s15.first[1], s15.first[2], s15.first[3], s15.first[4], s15.first[5]);
+    chk(audit(MF).allEq, '把搜索得到的参数代回 fam4，验证确实全等和');
+  } else {
+    chk(false, '搜索未返回首个解，无法回代验证');
+  }
+
+  /* 渲染一致性 */
+  chk(r.data.length===r.len, 'buffer 长度 = len = '+r.len);
+  chk(r.N===N, '频率根数 = n² = '+N);
+}
+
+function paintChecks(){
+  var ok=0, bad=0, h='', i;
+  for(i=0;i<CHK.length;i++){
+    if(CHK[i].ok) ok++; else bad++;
+    h+='<div class="'+(CHK[i].ok?'pass':'fail')+'">'+(CHK[i].ok?'✓':'✗')+' '+CHK[i].msg+'</div>';
+  }
+  $('chkSum').innerHTML='共 <b>'+CHK.length+'</b> 项，通过 <span class="pass">'+ok+'</span>，失败 <span class="'+(bad?'fail':'pass')+'">'+bad+'</span>';
+  $('chkList').innerHTML=h;
+  window.__chk={ list:CHK, pass:ok, fail:bad };
+}
+
+/* ---------- 主流程 ---------- */
+var LAST=null;
+
+function draw(){
+  var M=buildM();
+  var r=renderCycle(SR_DISP, M, ST.pm, ST.dF);
+  LAST={ M:M, r:r };
+  drawMatrix(M);
+  drawWave(r);
+  drawSpec(M, r);
+  fillAudioTable(r);
+  fillLevelTable(M);
+  drawCaption(M, r);
+}
+
+function drawCaption(M, r){
+  var A=audit(M);
+  $('capM').innerHTML='矩阵：颜色 = 数字，格内印数字（n≤15）。当前：'+ST.gen+'，'
+    +(A.allEq?'<span class="grn">'+(A.pan?'泛对角幻方':'幻方')+'</span>':'<span class="red">线和不等</span>')
+    +'。S = '+A.S+'。';
+  $('capW').innerHTML='一个周期 '+r.T.toFixed(4)+' s（'+r.len+' 样本）。峰位 '
+    +r.peakAt.toFixed(3)+'T，峰均比 '+r.crest.toFixed(2)+'，端点相位偏差 '
+    +r.cycleDev.toExponential(1)+' 圈。';
+}
+
+function syncPanel(){
+  $('vDF').textContent=(ST.dF).toFixed(2)+' Hz';
+  $('vCr').textContent=ST.cr;
+  $('vCc').textContent=ST.cc;
+  $('vQr').textContent=ST.qr;
+  var showLv=(ST.gen==='ser');
+  $('fldLv').style.opacity=showLv?'1':'0.4';
+  $('fldCc').style.opacity=showLv?'1':'0.4';
+  $('fldQr').style.opacity=showLv?'1':'0.4';
+  $('rgCr').max=ST.n-1; $('rgCc').max=ST.n-1; $('rgQr').max=ST.n-1;
+  if(ST.autoT){ ST.target=null; $('inT').value=(ST.n*(ST.n*ST.n+1)/2); }
+}
+
+/* ---------- 音频 ---------- */
+var AU={ ctx:null, src:null, gain:null, sr:0, mode:null };
+
+function setStatus(txt, on){
+  var e=$('st');
+  e.textContent=txt;
+  e.className=on?'on':'';
+}
+
+function stopAudio(){
+  if(AU.src){
+    try{ AU.src.onended=null; AU.src.stop(0); }catch(e){}
+    try{ AU.src.disconnect(); }catch(e){}
+    AU.src=null;
+  }
+  if(AU.gain){ try{ AU.gain.disconnect(); }catch(e){} AU.gain=null; }
+  setStatus('已停止', false);
+}
+
+function play(mode){
+  stopAudio();
+  var Ctor=window.AudioContext||window.webkitAudioContext;
+  if(!Ctor){ setStatus('此浏览器不支持 Web Audio', false); return; }
+  if(!AU.ctx){ try{ AU.ctx=new Ctor(); }catch(e){ setStatus('AudioContext 创建失败', false); return; } }
+  var ctx=AU.ctx;
+  if(ctx.state==='suspended'){ try{ ctx.resume(); }catch(e){} }
+  var sr=ctx.sampleRate;
+  var M=buildM();
+  var r=renderCycle(sr, M, ST.pm, ST.dF);
+  if(r.len<16 || r.len>4e6){ setStatus('周期样本数异常（'+r.len+'）', false); return; }
+  var buf;
+  try{ buf=ctx.createBuffer(1, r.len, sr); }catch(e){ setStatus('createBuffer 失败', false); return; }
+  try{ buf.copyToChannel(r.data, 0); }catch(e){ setStatus('copyToChannel 失败', false); return; }
+  var g=ctx.createGain(); g.gain.value=ST.vol;
+  var s=ctx.createBufferSource();
+  s.buffer=buf;
+  s.loop=(mode==='loop');
+  s.connect(g); g.connect(ctx.destination);
+  s.onended=function(){ if(AU.src===s){ AU.src=null; setStatus('单次播放结束', false); } };
+  s.start(0);
+  AU.src=s; AU.gain=g; AU.sr=sr; AU.mode=mode;
+  var srNote=(Math.abs(sr-SR_DISP)>1)?('　播放口径 '+sr+' Hz'):'';
+  setStatus((mode==='loop'?'循环播放中':'单次播放中')+'　T='+r.T.toFixed(4)+' s'+srNote, true);
+  window.__au={ sr:sr, len:r.len, T:r.T, loop:(mode==='loop'), cycleDev:r.cycleDev, state:ctx.state };
+}
+
+/* ---------- 绑定 ---------- */
+function init(){
+  var Ns=[3,5,7,9,11,15,21], i, opt='';
+  for(i=0;i<Ns.length;i++) opt+='<option value="'+Ns[i]+'"'+(Ns[i]===ST.n?' selected':'')+'>'+Ns[i]+'（'+Ns[i]*Ns[i]+' 个 agent）</option>';
+  $('selN').innerHTML=opt;
+
+  ST.cr=Math.round((ST.n+1)/2); ST.cc=1; ST.qr=1;
+  $('rgCr').value=ST.cr; $('rgCc').value=ST.cc; $('rgQr').value=ST.qr;
+  $('inT').value=ST.n*(ST.n*ST.n+1)/2;
+  $('selGen').value=ST.gen;
+  $('selPm').value=ST.pm;
+
+  $('selN').addEventListener('change', function(){
+    ST.n=parseInt(this.value,10);
+    ST.cr=Math.round((ST.n+1)/2); ST.cc=1; ST.qr=1;
+    $('rgCr').value=ST.cr; $('rgCc').value=ST.cc; $('rgQr').value=ST.qr;
+    syncPanel(); draw(); refreshChecks(); fillSearchTable();
+    if(ST.pm) { /* keep */ }
+  });
+  $('selGen').addEventListener('change', function(){ ST.gen=this.value; syncPanel(); draw(); refreshChecks(); });
+  $('selPm').addEventListener('change', function(){ ST.pm=this.value; draw(); refreshChecks(); });
+  $('rgDF').addEventListener('input', function(){ ST.dF=parseFloat(this.value); syncPanel(); draw(); refreshChecks(); });
+  $('rgCr').addEventListener('input', function(){ ST.cr=parseInt(this.value,10); ST.gen='ser'; $('selGen').value='ser'; syncPanel(); draw(); refreshChecks(); });
+  $('rgCc').addEventListener('input', function(){ ST.cc=parseInt(this.value,10); ST.gen='ser'; $('selGen').value='ser'; syncPanel(); draw(); refreshChecks(); });
+  $('rgQr').addEventListener('input', function(){ ST.qr=parseInt(this.value,10); ST.gen='ser'; $('selGen').value='ser'; syncPanel(); draw(); refreshChecks(); });
+  $('rgVol').addEventListener('input', function(){
+    ST.vol=parseInt(this.value,10)/100;
+    if(AU.gain) AU.gain.gain.value=ST.vol;
+  });
+  $('inT').addEventListener('change', function(){
+    var v=parseFloat(this.value);
+    if(!isFinite(v)||v<=0){ return; }
+    ST.target=v; ST.autoT=false;
+    fillSearchTable();
+  });
+  $('btnSearch').addEventListener('click', function(){
+    var n=ST.n, S=n*(n*n+1)/2;
+    var T=(ST.target!==null&&isFinite(ST.target))?ST.target:(S/n);
+    var res=searchLevelStep(n, T, 8000);
+    fillSearchTable();
+    if(res.first){
+      ST.gen='ser';
+      $('selGen').value='ser';
+      ST.qr=res.first[1]; ST.cr=res.first[2]; ST.cc=res.first[5];
+      $('rgQr').value=ST.qr; $('rgCr').value=ST.cr; $('rgCc').value=ST.cc;
+      syncPanel(); draw(); refreshChecks();
+      setStatus('搜索完成：命中 '+res.hits+' 个解，已装载首个解 ('+res.first.join(',')+')', true);
+    } else {
+      setStatus('搜索完成：目标 T='+T+' 无解（'+res.ms.toFixed(0)+' ms，最小残差 '+res.minRes+'）', false);
+    }
+  });
+
+  $('btnLoop').addEventListener('click', function(){ play('loop'); });
+  $('btnOnce').addEventListener('click', function(){ play('once'); });
+  $('btnStop').addEventListener('click', function(){ stopAudio(); });
+
+  syncPanel();
+  draw();
+  refreshChecks();
+  fillSearchTable();
+  fillPmTable(buildM());
+  fillCrestTable();
+}
+
+function refreshChecks(){
+  if(!LAST) return;
+  runChecks(LAST.M, LAST.r);
+  paintChecks();
+}
+
+init();
+
+})();
+</script>
+</body>
+</html>

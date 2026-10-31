@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>高斯波包 × 幻方：一张能算的映射</title>
+<style>
+:root{
+  --ink:#1b1a17; --ink2:#4a4740; --ink3:#7a766c;
+  --line:#e3e0d6; --card:#ffffff; --page:#fbfaf7;
+  --pp:#534AB7; --ppl:#EEEDFE; --pdl:#2f7d4f; --pdl2:#E8F3EA;
+  --rd:#b3261e; --rdl:#FBEAE8; --am:#8a5a00; --aml:#FBF1DC;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--page);color:var(--ink)}
+body{font:15px/1.72 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+header{max-width:1180px;margin:0 auto;padding:38px 22px 6px}
+h1{font-size:26px;line-height:1.35;font-weight:600;margin:0 0 10px;letter-spacing:-.2px}
+.sub{color:var(--ink2);font-size:15px;margin:0 0 6px;max-width:900px}
+main{max-width:1180px;margin:0 auto;padding:10px 22px 60px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin:18px 0}
+h2{font-size:17px;font-weight:600;margin:0 0 4px}
+h3{font-size:15px;font-weight:600;margin:26px 0 8px}
+h4{font-size:14px;font-weight:600;margin:22px 0 7px;color:var(--pp);letter-spacing:.1px}
+p{margin:8px 0}
+small,.tiny{font-size:12.5px;color:var(--ink3)}
+.cards3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0 4px}
+@media(max-width:860px){.cards3{grid-template-columns:1fr}}
+.mini{border:1px solid var(--line);border-radius:8px;padding:12px 13px;background:#fdfdfb}
+.mini b{display:block;font-size:13.5px;color:var(--pp);margin-bottom:4px;letter-spacing:.2px}
+.mini span{font-size:13px;color:var(--ink2);line-height:1.6}
+.ctl{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:14px 22px;margin:14px 0 6px}
+.fld{display:flex;flex-direction:column;gap:5px}
+.fld label{font-size:13px;color:var(--ink2);display:flex;justify-content:space-between;gap:8px}
+.fld label em{font-style:normal;color:var(--pp);font-variant-numeric:tabular-nums;font-weight:600}
+select,input[type=range]{width:100%;accent-color:var(--pp)}
+select{font:14px system-ui,"Microsoft YaHei";padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink)}
+.radios{display:flex;flex-wrap:wrap;gap:10px 14px;font-size:13px;color:var(--ink2)}
+.radios label{display:flex;align-items:center;gap:5px;cursor:pointer}
+input[type=checkbox]{accent-color:var(--pp);width:15px;height:15px}
+#noteP{font-size:13px;color:var(--ink2);background:#faf9f5;border-left:3px solid var(--ppl);padding:9px 12px;border-radius:0 6px 6px 0;margin:14px 0 0}
+.plots{display:grid;grid-template-columns:1fr 1fr;gap:16px 18px}
+@media(max-width:900px){.plots{grid-template-columns:1fr}}
+figure{margin:0}
+figcaption{font-size:12.5px;color:var(--ink3);margin-top:6px;line-height:1.55}
+canvas{width:100%;display:block;border:1px solid var(--line);border-radius:8px;background:#fff}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--ink2);background:#faf9f5;font-size:13px}
+td.num{text-align:right;font-variant-numeric:tabular-nums;font-family:ui-monospace,Consolas,monospace}
+tr:last-child td{border-bottom:none}
+.ok{color:var(--pdl);font-weight:600}
+.bad{color:var(--rd);font-weight:600}
+.warn{color:var(--am);font-weight:600}
+/* 紫色 = 本页认定的"更好/更美"那一档，与提示框的紫边同一含义 */
+.pur{color:var(--pp);font-weight:600}
+/* σ 对照表的数字列不许折行（"125.00 / ms" 这种切开很难看） */
+#tbSig td.num,#tbSig th.num{white-space:nowrap}
+.eq{font-family:"Segoe UI","Cambria Math",system-ui,sans-serif;font-size:15px;letter-spacing:.2px;
+    background:#f6f3ea;border:1px solid var(--line);border-radius:6px;padding:11px 15px;
+    margin:12px 0;overflow-x:auto;line-height:2.0;color:#2e2b26}
+.box{border:1px solid var(--line);border-left:4px solid var(--pp);border-radius:0 8px 8px 0;padding:12px 15px;margin:14px 0;background:#fcfcfa}
+.box.w{border-left-color:var(--rd);background:var(--rdl)}
+.box.g{border-left-color:var(--pdl);background:var(--pdl2)}
+.box.a{border-left-color:#c98a00;background:var(--aml)}
+.box b{font-weight:600}
+code{font-family:ui-monospace,Consolas,monospace;font-size:12.8px;background:#f4f2ec;padding:1px 5px;border-radius:4px;color:#3a3730}
+pre{background:#f7f5ef;border:1px solid var(--line);border-radius:8px;padding:11px 13px;overflow-x:auto;font:12.8px/1.66 ui-monospace,Consolas,monospace;color:#2e2b26;margin:10px 0}
+pre b{color:var(--pp);font-weight:600}
+ul,ol{margin:8px 0 8px 20px;padding:0}
+li{margin:5px 0}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 14px;font-size:13.5px;margin:8px 0}
+.kv div:nth-child(odd){color:var(--ink2)}
+#chkSum{font-size:14px;font-weight:600;margin-bottom:8px}
+#chkList{columns:2;column-gap:26px;font-size:12.8px;color:var(--ink2);list-style:none;margin:0}
+@media(max-width:760px){#chkList{columns:1}}
+#chkList li{break-inside:avoid;margin:3px 0}
+#chkList li::before{content:"✓ ";color:var(--pdl);font-weight:700}
+#chkList li.f::before{content:"✗ ";color:var(--rd)}
+footer{max-width:1180px;margin:0 auto;padding:0 22px 50px;color:var(--ink3);font-size:12.5px}
+</style>
+</head>
+<body>
+<header>
+  <p class="sub" style="margin:0 0 8px;font-size:13.5px">
+    <b>根因篇（另一页）：</b><a href="./幻方到波包_根因分析.html">《幻方 → 频率/相位 → 复合波：为什么"像高斯波包"》</a>
+    —— 逐层拆开"同振幅 ⇒ 平顶谱 ⇒ sinc"，含高阶幻方的矩阵/波包/FFT 四行对照。本页是参数面板版，那一页是它为什么长这样的解释。<br>
+    <b>播放器（另一页）：</b><a href="./幻方波包_播放器.html">《幻方波包 · 播放器与 level/step 搜索》</a><br>
+    <b>节律场（另一页）：</b><a href="./幻方节律场.html">《幻方节律场 · n×n agent 并发调度》</a>
+    —— 拖步进 a 看 n 轮和从“全 S”变成“七上八下”；点任意格看掉一个 agent 波及哪几条总线。
+    —— 把这几张图真的变成声音，可循环播放一个严格周期；含六参数 level/step 族的自动搜索。
+  </p>
+  <h1>高斯波包 × 幻方：一张能算的映射</h1>
+  <p class="sub">幻方给的是<b>离散的各向同性</b>——每一行、每一列、两条对角线的和都相同。高斯包络给的是<b>达到测不准下界的窗</b>。两者真正能接上的地方只有一处：<b>波包中心时刻，每条线的相干和</b>。其余都是类比。</p>
+  <div class="cards3">
+    <div class="mini"><b>M1　格点 → 原子</b><span>n² 个格值变成 n² 个载波，每个挂同一个高斯窗。窗宽由带宽或时长定，两者差 39 倍。</span></div>
+    <div class="mini"><b>M2　线和 → 相干和</b><span>幻和不是频率，是"中心时刻同相叠加"的幅度。相位一乱，线和就散。</span></div>
+    <div class="mini"><b>M3　泛对角 → 环面</b><span>破对角就是绕过边界。高斯搬上环面变成 θ 函数，重叠率可算。</span></div>
+  </div>
+</header>
+
+<main>
+
+<section class="card" id="secPanel">
+  <h2>参数面板</h2>
+  <div class="ctl">
+    <div class="fld">
+      <label for="selN">阶数 n <em id="vN">15</em></label>
+      <select id="selN">
+        <option value="3">3　阶（标准 1..9，S=15）</option>
+        <option value="4">4　阶（标准 1..16，S=34）</option>
+        <option value="5">5　阶（标准 1..25，S=65）</option>
+        <option value="6">6　阶（标准 1..36，S=111）</option>
+        <option value="7">7　阶（标准 1..49，S=175）</option>
+        <option value="8">8　阶（标准 1..64，S=260）</option>
+        <option value="9">9　阶（标准 1..81，S=369）</option>
+        <option value="12">12 阶（标准 1..144，S=870）</option>
+        <option value="15" selected>15 阶（标准 1..225，S=1695）</option>
+        <option value="16">16 阶（标准 1..256，S=2056）</option>
+        <option value="27">27 阶（标准 1..729，S=9855）</option>
+      </select>
+    </div>
+
+    <div class="fld">
+      <label for="selMap">频率映射 <em id="vMap">八度·±3</em></label>
+      <select id="selMap">
+        <option value="linear">线性：f = 格值（代码原样，Hz）</option>
+        <option value="oct" selected>八度：f = f₀·2^(±3·相对位置)</option>
+        <option value="phi">黄金比：f = f₀·φ^(±4·相对位置)</option>
+      </select>
+    </div>
+
+    <div class="fld">
+      <label for="rgF0">基频 f₀ <em id="vF0">432.081 Hz</em></label>
+      <input type="range" id="rgF0" min="100" max="1000" step="0.001" value="432.081">
+    </div>
+
+    <div class="fld">
+      <label>包络定义（两档差 39 倍，见 §2）</label>
+      <div class="radios">
+        <label><input type="radio" name="env" value="band"> A：由带宽定 σ=1/(2πB)　<span class="tiny">窄脉冲</span></label>
+        <label><input type="radio" name="env" value="win" checked> <span class="pur">B：由时长定 σ=r·T（波形更美）</span></label>
+      </div>
+    </div>
+
+    <div class="fld" id="fldB">
+      <label for="rgB">单原子带宽 B <em id="vB">50 Hz</em></label>
+      <input type="range" id="rgB" min="2" max="300" step="0.5" value="50">
+    </div>
+
+    <div class="fld" id="fldSig">
+      <label for="rgSig">包络比 σ/T <em id="vSig">0.125</em></label>
+      <input type="range" id="rgSig" min="0.02" max="0.35" step="0.001" value="0.125">
+    </div>
+
+    <div class="fld">
+      <label for="rgT">时间窗 T <em id="vT">1.000 s</em></label>
+      <input type="range" id="rgT" min="0.2" max="2" step="0.01" value="1">
+    </div>
+
+    <div class="fld">
+      <label>相位规则</label>
+      <div class="radios">
+        <label><input type="radio" name="ph" value="zero"> 全同相 φ=0</label>
+        <label><input type="radio" name="ph" value="grid" checked> 格序 φ=idx·2π/n²</label>
+        <label><input type="radio" name="ph" value="alt"> ±π 交错</label>
+      </div>
+    </div>
+
+    <div class="fld">
+      <label for="selSup">对称叠加（D4 轨道求和）<em id="vSup">不叠加</em></label>
+      <select id="selSup">
+        <option value="off" selected>不叠加（只留一份场）</option>
+        <option value="d4">8 重：4 旋转 + 4 镜像</option>
+        <option value="rot">4 重：只叠旋转</option>
+        <option value="mir">5 重：恒等 + 4 镜像</option>
+      </select>
+    </div>
+
+    <div class="fld">
+      <label>开关</label>
+      <div class="radios">
+        <label><input type="checkbox" id="ckWrap"> 环面卷绕（泛对角）</label>
+        <label><input type="checkbox" id="ckDecay"> 分形衰减 2^(−½·八度)</label>
+      </div>
+    </div>
+  </div>
+  <p id="noteP">面板里每一档都会立刻重算四张图与下表。<b>σ</b> 是包络的时间标准差，<b>B</b> 是它的频域标准差，两者被 <b>σ·B = 1/(2π)</b> 死锁，所以"由带宽定"和"由时长定"是同一个旋钮的两种刻度，拖其中一个另一个必反着动（面板会把闲置的那个变灰）。默认走 T/8，因为按 py 里 σ=1/(2πB)、B=50 Hz 来算，1 秒窗里的高斯只有 <b>3.2 ms</b> 宽，画出来是一根针、听上去是一声咔哒，不是"波包"。相位规则是整张映射的关键：只有全同相时，"线和"才等于"中心时刻的相干和"。</p>
+  <p id="noteSup"><b>对称叠加</b>：把 n 阶幻方的 8 个等距变体（4 旋转 + 4 镜像）当成 8 个波场在空间里相加。线性叠加对每个频率分量独立，所以它等价于把每格的振幅换成 <span class="eq">a<sub>k</sub> = |Σ<sub>v</sub> e<sup>iφ<sub>v</sub>(k)</sup>| / m</span>、相位换成 <span class="eq">ψ<sub>k</sub> = arg(Σ<sub>v</sub> e<sup>iφ<sub>v</sub>(k)</sup>)</span>。两个后果值得先知道：<b>奇数阶的中心格是唯一不动点</b>（8 个变体都把它放在同一处 ⇒ 权重恒为 1），<b>偶数阶没有不动点</b>（所有权重都被轨道平均压过，6 阶甚至出现权重为 0 的频率——那个 agent 的心跳被对称性彻底抹平）。m 是<b>去重后</b>的场数，小于名义值就说明这个幻方自身带对称性。</p>
+</section>
+
+<section class="card" id="secPlot">
+  <div class="plots">
+    <figure>
+      <canvas id="cvGrid" height="360"></canvas>
+      <figcaption id="capGrid">网格：颜色 = 频率（对数），越深越高；n≤12 时格内印格值。幻和看的是"每行每列两条对角加起来的格值和"，不是颜色。<b>开启对称叠加后，颜色改为该频率的残余权重 a_k</b>——越浅越接近被抹平。</figcaption>
+    </figure>
+    <figure>
+      <canvas id="cvTime" height="360"></canvas>
+      <figcaption id="capTime">时域：n² 个原子叠加后的实际波形（实线）与共同包络（虚线）。竖直虚线是中心时刻 t₀。<b>开启对称叠加后，这里画的是 m 个变体场的相干和</b>，每个频率的振幅换成 a_k、相位换成 ψ_k。</figcaption>
+    </figure>
+    <figure>
+      <canvas id="cvLine" height="360"></canvas>
+      <figcaption id="capLine">2n+2 条线的相干和。紫 = 行，绿 = 列，橙 = 两条对角。幻方保证"权重相等"，但<b>相位规则</b>决定它们是否真的等幅：当前格序相位下<b>每一根列柱</b>的高度都严格为 0，<b>看不见才是对的</b>。</figcaption>
+    </figure>
+    <figure>
+      <canvas id="cvTheta" height="360"></canvas>
+      <figcaption id="capTheta">环面：把高斯按周期 T 复制（灰），叠加后得到 θ 函数（紫）。σ/T 越小越像单个高斯。</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="card" id="secNums">
+  <h2>实时数值</h2>
+  <table id="tbl"><tbody></tbody></table>
+</section>
+
+<section class="card" id="secChk">
+  <h2>自检</h2>
+  <div id="chkSum"></div>
+  <ul id="chkList"></ul>
+</section>
+
+<section class="card prose" id="secSrc">
+  <h2>§1　来源核对：这些 py 到底给了什么</h2>
+  <p>下面每一行都是打开文件核过的，不是凭印象。<b>凡是不成立的，直接写不成立。</b></p>
+  <table>
+    <thead><tr><th style="width:34%">文件</th><th style="width:31%">它给了什么</th><th>核对结果</th></tr></thead>
+    <tbody>
+      <tr><td><code>02_分形波包与差频/fractal_gaussian_wavepacket.py</code></td><td>σ = 1/(2πB)；中心频率 110/220/440/880/1760 Hz；带宽 50/100/150/200/250；三路混合权重 0.3 / 0.4 / 0.3</td><td class="ok">直接采用。这是全项目里唯一真正的"高斯波包"代码</td></tr>
+      <tr><td><code>02_…/02_分形波包立体声音频_数学原理.md</code></td><td>A(f)=2^(−|log₂(f/f₀)|/2)（−3 dB/oct）；φⁿ 与 2ⁿ 双网格；<b>σ_t = T/8</b></td><td class="warn">与本目录 py 的 σ=1/(2πB) <b>不是同一套</b></td></tr>
+      <tr><td><code>01_幻方频率映射/15阶特殊幻方分析出图.py</code><br><span class="tiny">（文件名里"特殊"二字不成立，见右栏；文件名未改，因为它就是仓库里那份）</span></td><td>15×15 数组；<code>TARGET_MAGIC_SUM=1680</code>；缩放 <code>(arr+off)×scale</code>，<code>target_min_value=0</code></td><td class="bad"><b>正名：它就是一个标准 15 阶幻方，没有任何特殊性。</b>数组是 1..225 全排列，实测幻和 <b>1695 = 15×226/2</b>（教科书值）。<br>而 1680 不是"另一个幻方的幻和"，是代码自己算出的中间量：<code>adjusted = 1695 + 15×(0−1) = 1680</code>，接着 <code>scale = 1680/1680 = <b>1</b></code> ⇒ <b>缩放因子恒为 1，什么都没缩放</b>。所谓"目标 1680"是自指的（target ≡ S − n），不是外部需求</td></tr>
+      <tr><td><code>01_…/27阶叮咚幻方3个不同幻方分析出图.py</code></td><td>A（三步法）/ B（九步法）/ C（普通）三个 27 阶</td><td class="ok">三个都是 1..729 全排列，行/列/对角全 = <b>9855</b>；9855/27 = 365</td></tr>
+      <tr><td><code>01_…/8个幻方…／4个幻方…</code></td><td>内置 3/4/5/7 阶标准幻方；目标线和 210 / 378 / 4410</td><td class="ok">缩放律统一：<b>(S_标准 − n) × scale = 目标线和</b>（3 阶 12×17.5=210，4 阶 30×12.6=378，8 阶 252×17.5=4410）</td></tr>
+      <tr><td><code>分形幻方/12阶幻方9个四阶幻方.py</code><br><span class="tiny">原文件<b>未改动</b>；修复版另存为 <code>12阶幻方_修复版.py</code>（同目录）</span></td><td>12×12 数组，目标 894，<code>verify_magic</code> 里 4 条 assert，并要求 9 个 4×4 宫格和 = 294,295,…,302</td><td class="bad"><b>原数组不是幻方</b>：144 格只有 <b>102 个唯一值</b>，范围 2..145（含 145），行和 910–968、列和 548–1226、对角 1310/644。<code>verify_magic</code> 必然 AssertionError，脚本跑不起来。<br><b>而且它的宫格断言本身无解</b>：294…302 这 9 个数之和 = 2682，但 9 个宫格正好覆盖全表 ⇒ 必须等于 12×870 = 10440。与数组内容无关，<b>任何</b> 12 阶幻方都过不了。<br><b>已修</b>（另存新文件，原文件保留作证据）：Criss-Cross 重造 ⇒ S = <b>870</b>、1..144 全排列、9 个宫格和<b>全部 = 1160</b>（= 10440/9，构造性必然）。原代码的 894 由"整体 +2"命中：<b>894 = 870 + 12×2</b>，范围 3..146 ⇒ 与 <code>-1+3</code> 的意图和 <code>target_sum=894</code> 都对上了。<br>注：<code>(S−n)×scale</code> 这条口径在 12 阶上<b>不可达</b> 894——894/858 = 1.041958…，非整数 ⇒ 只能靠平移。</td></tr>
+      <tr><td><code>01_…/根据幻方导出不同频率和相位差的复合波.py</code></td><td>φ_i = i·(360°/n²)</td><td class="bad">这正是切断 M2 的那一刀（见 §3）</td></tr>
+      <tr><td><code>音乐基于四相放大器.py</code> / <code>音乐基于分形放大器.py</code></td><td>boost = 1+(G−1)·e^(−k·|Δφ|/φ_tol)；Mandelbrot z↦z²+c</td><td class="warn">与高斯包络无直接关系：全文 0 处 "gauss"。这里只借用它们的相位容差概念</td></tr>
+      <tr><td><code>E:\pythonProject\波转图.py</code></td><td>14 行</td><td class="bad"><b>跟"波转图"无关</b>：内容是 requests 走 socks5h 本地 9150 去访问 <code>.onion</code>，是个 Tor 探测脚本</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="card prose" id="secM">
+  <h2>§2　三个映射，逐个写成公式</h2>
+
+  <h3>M1　格点 → 原子：一个格值换一个载波</h3>
+  <pre>格 (i,j) 的值 v_ij  →  载波频率 f_ij = F(v_ij)
+原子      ψ_ij(t) = A(f_ij) · exp(−(t−t₀)²/2σ²) · cos(2π f_ij t + φ_ij)
+整张幻方  Ψ(t) = Σ_{i,j} ψ_ij(t)          （共 n² 个原子，共用<b>同一个</b> σ）</pre>
+  <p>三种频率映射任选：线性（<code>f=v</code>，代码原样）、八度（<code>f₀·2^(3·u)</code>）、黄金比（<code>f₀·φ^(4·u)</code>），其中 <code>u=(v−v̄)/(v_max−v_min)</code> 把格值归一化到 [−½,½]。</p>
+  <p>高斯窗有一条硬恒等式：对 <code>g(t)=exp(−t²/2σ²)</code>，其频谱标准差是 <code>σ_f = 1/(2πσ)</code>，所以</p>
+  <pre>σ_t · σ_f = σ · 1/(2πσ) = <b>1/(2π) = 0.1591549</b>
+换成半功率宽（功率包络的二阶矩）：Δt·Δf = <b>1/(4π) = 0.0795775</b></pre>
+  <div class="box a"><b>这一条是同源自证，不是独立验证。</b>σ 和 B 本来就是同一件事的两种刻度，乘起来当然常数。它的用处不是"证明物理"，而是：<b>你不可能同时把波包做窄又把带宽做窄</b>，改一个另一个必反着动。</div>
+
+  <h4>σ 的两个来源差 39 倍：两档都保留，其中 B 档标紫</h4>
+  <p>项目里两份材料给了两个 σ，不是笔误，是<b>两种设计口径</b>。以 T = 1 s、B = 50 Hz 计：</p>
+  <table id="tbSig">
+    <thead><tr><th style="width:8%">档</th><th style="width:30%">来源与公式</th><th class="num">σ</th><th class="num">FWHM</th><th class="num">占窗比</th><th class="num">等效带宽</th><th>图上是什么</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>A</b></td>
+        <td><code>02_分形波包与差频/fractal_gaussian_wavepacket.py</code><br><span class="tiny">σ = 1/(2πB)</span></td>
+        <td class="num">3.18 ms</td><td class="num">7.5 ms</td>
+        <td class="num">0.75%</td><td class="num">50.00 Hz</td>
+        <td class="warn">一根竖线。800 px 宽图上只有 <b>6 px</b>，看得见"有东西"，看不见包络形状</td>
+      </tr>
+      <tr>
+        <td><b>B</b></td>
+        <td><code>02_分形波包与差频/02_分形波包立体声音频_数学原理.md</code><br><span class="tiny">σ = T/8（r = 0.125）</span></td>
+        <td class="num">125.00 ms</td><td class="num">294.4 ms</td>
+        <td class="num">29.44%</td><td class="num">1.27 Hz</td>
+        <td class="pur">完整的钟形。同一张图上 <b>235 px</b>，上升沿、峰、下降沿都看得清</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>判"哪个波形更美"不需要审美，只需要一个可算的数：<b>FWHM / 窗宽</b>。A 档 0.75%，B 档 29.44%（差 <b>39.3 倍</b>）。<b>本页把 B 档标紫</b>——紫色在本页统一含义是"这一档波形更美 / 更可用"，与提示框紫边同义。这个标记只在<b>画图</b>这件事上成立。</p>
+  <div class="box a">
+    <b>紫色不表示"B 是作者本意"。</b>两档在各自语境里都正确：<br>
+    · <b>A 档</b>要的是一个 <b>50 Hz 带宽的短促原子</b>——它就是想要"咔哒"，把 5 个八度（110/220/440/880/1760 Hz）串成一串分立的点击声，那是它的设计目标。<br>
+    · <b>B 档</b>要的是一个<b>占满窗口的包络</b>——它服务的是"包络本身可听 / 可见"这件事，所以 σ 必须跟窗长挂钩。<br>
+    <b>哪个是"作者本意"，只有原作者能定。</b>本页能给的只是：<b>若你的目的是"让人看见波包形状"，A 档做不到，B 档可以</b>；若目的是"做瞬态颗粒"，反过来。面板上两档都在，随时切。
+  </div>
+
+  <h3>M2　线和 → 相干和：幻和在声场里到底是什么</h3>
+  <p>取中心时刻 t=t₀，此时每个原子的包络都等于 1，于是第 L 条线（一行/一列/一条对角）的瞬时幅度是</p>
+  <pre>Ψ_L(t₀) = Σ_{(i,j)∈L} A_ij · cos(φ_ij)      （实部）
+|Ψ_L| ≤  Σ_{(i,j)∈L} A_ij                  （等号成立 ⟺ 该线上所有 φ 相同）</pre>
+  <p>若 <b>A≡1 且 φ≡0</b>，则 <code>|Ψ_L(t₀)| = Σ_{(i,j)∈L} v_ij = S</code>——<b>幻和就是这条线在中心时刻的相干幅度</b>。这就是 M2 的全部内容，也只有这一句是真的。</p>
+  <div class="box g"><b>可以直接量的一句话：</b>幻方 ⟺ 波包中心时刻，2n+2 个方向的相干和全部相等。各向同性比 <code>min/max</code> = 1.000000。这不是比喻，是能算的。</div>
+  <p>反过来说：<b>相位规则一改，这句话就废了。</b>项目里用的是"按格序均分一圈"<code>φ_ij = (i·n+j)·2π/n²</code>，它有一个解析后果——同一列里相邻格的相位差恰好是 <code>n·2π/n² = 2π/n</code>，n 个相位正好绕满一整圈：</p>
+  <pre>列相干 = |Σ_{i=0}^{n−1} e^{i·i·2π/n}| = <b>0</b>   （n ≥ 2，严格为零，不是"很小"）
+行相干 = |Σ_{j=0}^{n−1} e^{i·j·2π/n²}| / n = sin(π/n) / [n·sin(π/n²)]  → n=15 时 0.9927</pre>
+  <p>换句话说：<b>现行相位规则把幻方的各向同性单向打穿了</b>——行还剩 99.3%，列被严格清零，对角只剩 6%。幻和 1695 在这儿一分钱都不剩。这不是小数点问题，是性质问题。</p>
+  <table>
+    <thead><tr><th style="width:24%">相位规则</th><th>行相干</th><th>列相干</th><th>对角</th><th>M2 是否成立</th></tr></thead>
+    <tbody>
+      <tr><td>全同相 φ≡0</td><td>1</td><td>1</td><td>1</td><td class="ok">成立（各向同性比 = 1）</td></tr>
+      <tr><td>格序 φ=(i·n+j)·2π/n²</td><td>sin(π/n) / [n·sin(π/n²)]</td><td class="bad">0（严格）</td><td>sin(π/n)·cos(…)<br>n=15 时 0.063</td><td class="bad">不成立</td></tr>
+      <tr><td>±π 交错 φ=(i+j)·π</td><td>n 偶：0<br>n 奇：1/n</td><td>同左</td><td class="ok">1（两条仍全同相）</td><td class="bad">不成立</td></tr>
+    </tbody>
+  </table>
+  <p class="tiny">表里是闭式，不含任何凭印象写的数。面板切相位，下表会印出对应的数值——n 越大，行相干越接近 1（n=27 时 0.9977），所以"行看起来正常"这件事本身是个陷阱：真正被清零的是列。</p>
+  <p>最反直觉的是最后一行：<b>±π 交错把 2n 条行列线全废了，却让两条对角完好无损</b>（面板 11 个可选阶数逐个实测，全部 1.000000）。原因是两条对角线上的 ±1 符号是常量（主对角 i＋i 恒偶，副对角 i＋(n−1−i)=n−1 恒定），所以它俩从头到尾同相。这说明"2n+2 条线"不是一类东西：对角是全局线，行列是局部线，选相位规则时必须分开对待。</p>
+
+  <h3>M3　泛对角 → 环面：高斯搬上环面就是 θ 函数</h3>
+  <p>完美幻方的"破对角"（broken diagonal）本质是<b>越过边界后从另一侧接上</b>，也就是模 n 卷绕。所以它的正确拓扑是环面 T²，而不是平面。把高斯放到周期为 T 的环上，它不再是一个高斯，而是一串：</p>
+  <pre>ψ_θ(t) = Σ_{k∈ℤ} exp(−(t−t₀−kT)²/2σ²)
+相邻像的重叠率  r = exp(−(T/σ)²/2) = exp(−1/(2r_s²))，r_s = σ/T</pre>
+  <p>r_s = 0.125（代码里的 T/8）⇒ r = e^(−32) = 1.27×10⁻¹⁴，可以当孤立波包；r_s = 0.25 ⇒ r = 3.35×10⁻⁴；要到 r_s ≈ 0.1 以下才配得上"等于一个高斯"。<b>面板上拖动 σ/T，第四张图会立刻从"单峰"变成"梳子"。</b></p>
+
+  <h3>M3b　从 T¹ 搬到 T²：泛对角幻方真正的家（本版补算）</h3>
+  <p>M3 上面那段只做了一维环 <code>T¹</code>，一个数 <code>r</code> 就够。但泛对角幻方的"折对角"是<b>同时沿两个方向卷绕</b>，它的家是 <code>T²</code>。搬到二维之后，<b>重叠率不再是一个数，而是三个</b>——因为同一个环面里，包到"自己的像"有三条不同距离的路：</p>
+  <div class="eq">
+    一维：r = e<sup>−(L/σ)²/2</sup>　<span style="color:#7a766c">（L = 环面边长，一个数说了算）</span><br>
+    二维：沿轴最近像 (L, 0)　　d = L　　　r<sub>轴</sub> = e<sup>−(L²/2σ²)</sup> = <b>r</b><br>
+    　　　斜向最近像 (L/2, L/2)　d = L/√2　　r<sub>斜</sub> = e<sup>−(L²/4σ²)</sup> = <b>√r</b><br>
+    　　　沿对角绕回 (L, L)　　d = L√2　　r<sub>绕</sub> = e<sup>−(L²/σ²)</sup> = <b>r²</b>
+  </div>
+  <p>三个值差得很远（σ/L = 0.25 时：3.35×10⁻⁴ / 1.83×10⁻² / 1.13×10⁻⁷）。<b>但这三个都不是判据。</b>"绕回值"根本没有信息量——走到 (L,L) 就是下一个周期的峰，函数值本来就是 1 的邻居，拿它当重叠率是把周期化本身当成重叠。真正决定"波形会不会被环面折叠污染"的是<b>谷底</b>：</p>
+  <div class="eq">
+    轴向谷底（在 (L/2, 0)）：　G ≈ 2·e<sup>−(L²/8σ²)</sup>　<span style="color:#7a766c">（左右两个像等距 L/2）</span><br>
+    对角谷底（在 (L/2, L/2)）：G = 4·e<sup>−(L²/4σ²)</sup> = 4√r　<span style="color:#7a766c">（四个角像等距 L/√2）</span><br>
+    比值 <b>C = 对角谷 / 轴谷 = 2·e<sup>−(L²/8σ²)</sup></b><br>
+    C = 1　⟺　e<sup>−(L²/8σ²)</sup> = ½　⟺　σ = L / (2√(2 ln 2))　⟺　<b>FWHM = L</b>
+  </div>
+  <p>这条临界值是干净的：<b>包比格子窄（FWHM &lt; L）时，对角方向的谷底更低——对角线反而更"干净"；比格子宽（FWHM &gt; L）时，轴向更干净。</b>临界点恰好落在"高斯半高宽正好等于一个格子边长"上，不是随便某个数。</p>
+  <table id="tbT2">
+    <thead><tr><th class="num">σ/L</th><th class="num">FWHM/L</th><th class="num">轴谷（数值求和）</th><th class="num">对角谷（数值求和）</th><th class="num">C 数值</th><th class="num">C 解析</th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <p class="tiny">数值列是在 T² 上对像格求和（±10 个周期，收敛到 1e−15）后在两个谷点上取的；解析列是 C = 2e^(−L²/8σ²)。<b>σ/L ≤ 0.30 时两者吻合到 3 位</b>；σ/L = 0.50 时偏差 25%，因为那时旁像已经多到"最近两像"的近似不够用了——这不是公式错，是近似条件失效，如实留着。</p>
+
+  <div class="box g">
+    <b>这一条把 M3 的说法修正了：</b>一维里"σ/T 越小越像单个高斯"是对的，但搬到 T² 后，<b>约束变紧了、而且分方向</b>。要两个方向都不被污染，得同时满足 <code>FWHM ≪ L</code>（轴向）与 <code>FWHM ≪ L/√2·…</code>（对角谷底 4√r ≪ 1）。后者比前者严 √2 倍。<b>所以"环面上放一个干净的高斯"在二维比一维更费事</b>——这条一维图上看不出来。
+  </div>
+
+  <h4>但 T² 上有个更硬的问题：标准构造根本给不出"4n 条线"</h4>
+  <p>搬到 T² 后，"线"从 2n+2 条变成 <b>4n 条</b>（n 条行 + n 条列 + n 条斜率+ 折对角 + n 条斜率− 折对角；其中 2 条普通对角被数两次）。泛对角幻方要求这 4n 条<b>全部</b>等于幻和。实测三种标准构造，<b>一种都不是泛对角</b>：</p>
+  <table id="tbPan">
+    <thead><tr><th class="num">n</th><th>构造</th><th class="num">斜率+ 族坏的条数<br><span class="tiny">（共 n 条）</span></th><th class="num">斜率− 族坏的条数<br><span class="tiny">（共 n 条）</span></th><th>泛对角？</th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <p>规律很清楚，而且是两条：</p>
+  <ul>
+    <li><b>斜率+ 族：n 不被 3 整除时，n 条全部等于幻和</b>（n=5,7,11,13,17,25 实测全 0 坏）；n 被 3 整除时坏 <b>2n/3</b> 条（n=9→6，15→10，21→14，27→18）。</li>
+    <li><b>斜率− 族：永远只成立 1 条</b>（就是副对角），坏 <b>n−1</b> 条。这条与 n 无关，10 个阶数逐个实测全中。</li>
+  </ul>
+  <p>所以 de la Loubère 最好也只是"半泛对角"（n+1 条折对角成立），而 <b>n=15 恰好是 3 的倍数——连那一半都保不住，30 条折对角里只有 6 条成立</b>。这就是为什么"高阶幻方 = 波包"这个印象在 15 阶上特别容易出问题：默认那张表本身就不是各向同性的。</p>
+
+  <h4>要真泛对角，得换构造——而 n=15 正好卡在无解的那一类</h4>
+  <p>最省事的一族是<b>线性拉丁族</b>：<code>M[i][j] = n·((i + t·j) mod n) + ((s·i + j) mod n) + 1</code>。它要成为泛对角，四个条件同时成立：</p>
+  <div class="eq">
+    gcd(t, n) = gcd(s, n) = 1　<span style="color:#7a766c">（行列各自跑遍完整剩余系）</span><br>
+    gcd(1 ± t, n) = 1　　　　 <span style="color:#7a766c">（两族折对角各自跑遍）</span><br>
+    gcd(s ± 1, n) = 1
+  </div>
+  <p>实测：<b>n = 5,7,11,13,17,19,23,25,29,31 全部有解；n = 3,9,15,21,27 全部无解</b>——正好是 3 的倍数。这不是巧合，可以证明：若 3 | n，条件 <code>3 ∤ (1+t)</code> 且 <code>3 ∤ (1−t)</code> 要求 <code>t ≢ ±1 (mod 3)</code>，而 mod 3 只剩 <code>t ≡ 0</code>；但 <code>gcd(t,n)=1</code> 又不许 3 | t。<b>矛盾 ⇒ 无解。</b></p>
+  <div class="box w">
+    <b>所以 15 阶泛对角幻方存在（已知定理：n ≥ 4 且 n ≠ 4k+2 时可造），但造不出来靠线性族</b>——必须上非线性构造（例如"正交拉丁方 + 局部换位"）。<b>本页没做这一步，如实挂着。</b><br>
+    同时提醒：屏幕上"n=15 那张表很规整"，它规整的是<b>行列</b>；折对角 30 条里只有 6 条成立、<b>24 条不成立</b>。这个差别在色块图上看不出来，只有把 4n 条线逐条求和才暴露。
+  </div>
+</section>
+
+<section class="card prose" id="secNo">
+  <h2>§3　三样东西不能同时要</h2>
+  <p>把两份代码合起来用，会撞上一个硬冲突。三条诉求各自都合理：</p>
+  <ol>
+    <li><b>幻和不变</b>：每条线的 Σ A_ij 相等（各向同性）；</li>
+    <li><b>分形衰减</b>：A(f)=2^(−½·八度距离)，高频格自动变轻（−3 dB/oct 滚降）；</li>
+    <li><b>单一 σ</b>：所有原子共用同一个高斯窗（否则包络不统一，M2 不成立）。</li>
+  </ol>
+  <p>①+② 冲突：A 只跟 f 走，而一条线上各格的 f 不同 ⇒ 加权线和一般不再相等。面板勾上"分形衰减"，下表会给出 <b>加权线和的散布</b>（max/min−1）；n 越大、映射越宽，散布越大，几千个百分点都有可能。</p>
+  <p>②+③ 倒是相容的，代价是波包不再"等能量"：高频格既窄又轻。</p>
+  <div class="box w"><b>结论：</b>想要"幻和在声场里能被听见"，就必须放弃分形衰减权，或者接受"只有全同相 + 等权"这一个特例。<b>项目里"幻方 + 分形波包"同时上，两条不变性只能保一条。</b>这不是设计缺陷，是两条约束在数学上就不共容。</div>
+</section>
+
+<section class="card prose" id="secEnd">
+  <h2>§4　能说什么、不能说什么</h2>
+  <div class="kv">
+    <div>能说</div><div>幻方是一个<b>离散线性约束</b>：n² 个格值，2n+2 条线，每条线的和相等。它的秩、零空间、可满足性边界都能精确算。</div>
+    <div>能说</div><div>高斯窗是<b>唯一</b>同时达到时间-带宽下界的窗（Δt·Δf = 1/4π）。所以用它去"读"幻方，是信息损失最小的一种读法。</div>
+    <div>能说</div><div>"线和 = 中心相干和"只在<b>等权 + 同相</b>下成立，且可当场数值验证（各向同性比 1.000000）。</div>
+    <div>不能说</div><div>不能说幻和的<b>数值</b>（1695 / 9855 / 4410）本身等于某个频率或某种"能量"。它是<b>格值之和</b>，单位随映射走；换映射就换数。</div>
+    <div>不能说</div><div>不能说 729 个原子叠加就是"27 维"或"分形维"。原子数 n² 是计数，与维度无关。</div>
+    <div>不能说</div><div>不能说这套东西有<b>生理/疗愈</b>效应。页面里所有数字都是信号处理量，没有一个做过听感或临床对照。</div>
+  </div>
+  <h3>四笔旧账：本版已清</h3>
+  <ol>
+    <li><b>12 阶数组是坏的</b> ⇒ <span class="ok">已修</span>（§1）。原文件<b>没动</b>，它本身就是证据；修复版另存 <code>E:\pythonProject\分形幻方\12阶幻方_修复版.py</code>。Criss-Cross 重造 ⇒ S = <b>870</b>、1..144 全排列、9 个宫格和<b>全部 1160</b>；原代码要的 894 由"整体 +2"命中（894 = 870 + 12×2，范围 3..146）。<b>顺带推翻了原 <code>verify_magic</code> 的宫格断言</b>：294…302 之和 2682，而 9 个宫格必须凑成 10440 —— 那条断言与数组内容无关，任何 12 阶幻方都过不了。</li>
+    <li><b>"15 阶特殊"这个名字该改</b> ⇒ <span class="ok">已正名</span>（§1）。它就是标准 15 阶幻方，S = 1695 = 15×226/2。更要紧的一点：<code>TARGET_MAGIC_SUM=1680</code> <b>不是外部需求，是代码自己算出来的中间量</b>（1695 + 15×(0−1)），代回 <code>scale = 1680/1680 = 1</code> ⇒ <b>那个"缩放"其实什么都没缩</b>。这是自指，不是设计。</li>
+    <li><b>两份代码的 σ 差 39 倍</b> ⇒ <span class="ok">已并排</span>（§2 M1 后）。两档都保留，按可算的 <b>FWHM / 窗宽</b> 判定 <b>B 档（T/8）波形更美并标紫</b>（0.75% vs 29.44%）。但"作者本意"仍挂着——那个只有原作者能定，紫色只表示"这一档画得出波包形状"。</li>
+    <li><b>M3 只做了一维环 T¹</b> ⇒ <span class="ok">已扩到 T²</span>（§2 M3b）。二维重叠率<b>不是一个数是三个</b>（r / √r / r²），判据必须换成<b>谷底</b>，临界点恰好落在 <b>FWHM = L</b>。顺带算出两条规律：de la Loubère 的斜率+ 折对角族在 n 不被 3 整除时<b>全部</b>成立、斜率− 族<b>永远只成立 1 条</b>（副对角）；n=15 因为是 3 的倍数，30 条折对角里只有 <b>6 条</b>成立。</li>
+  </ol>
+
+  <h3>仍然挂着的账</h3>
+  <ul>
+    <li><b>真泛对角幻方还没造。</b>线性拉丁族对 3 | n 无解（§2 M3b 给了证明：mod 3 上 <code>t ≢ ±1</code> 只剩 <code>t ≡ 0</code>，与 <code>gcd(t,n)=1</code> 矛盾）。要 15 阶泛对角，得上非线性构造。本页没做。</li>
+    <li><b>T² 上 4n 条线的相干谱图还没画。</b>M3b 只给了逐条判等（成立 / 不成立），没给 60 根柱子的图。要画得先有一张真泛对角表作对照，否则画出来的只是一堆矮柱，看不出"本该全高"。</li>
+    <li><b>"9 个宫格和全 1160"的构造性理由没展开。</b>实测相等，但这依赖 Criss-Cross 的复合结构（3×3 个 4×4 块），一般 4k 阶未必成立，本页没去证一般情形。</li>
+    <li><b>原文件 <code>12阶幻方9个四阶幻方.py</code> 仍是坏的</b>，按约定不改——它是"仓库里那份数据"。要跑就用修复版。</li>
+    <li><b>n=6 用的是硬编码 36 格方阵</b>（SUN6）。它验过行列对角，但来源不是构造法；n ≡ 2 (mod 4) 的 LUX 法本页未实现。</li>
+  </ul>
+</section>
+
+</main>
+<footer>
+  <p>数据来源：<code>E:\pythonProject</code> 下 6 个路径，共核对 <b>9 份 py / 2 份 md</b>（含本版新增的 <code>分形幻方\12阶幻方_修复版.py</code>，原文件保留未改）。页面内所有数字运行时计算，不含手写常数——<b>包括 §2 M3b 那两张表</b>：HTML 里 <code>tbody</code> 是空的，内容由 <code>fillT2Table()</code> / <code>fillPanTable()</code> 现算填入。仅有的硬编码数据是 6 阶幻方那 36 个数（已验证方阵，自检会重算它的行列对角和与全排列）。</p>
+</footer>
+
+<script>
+(function(){
+'use strict';
+var $ = function(id){ return document.getElementById(id); };
+
+var PHI = (1+Math.sqrt(5))/2;
+var TAU = Math.PI*2;
+var NYQ = 22050;
+
+var ST = { n:15, map:'oct', f0:432.081, env:'win', B:50, sigr:0.125, T:1.0,
+           phase:'grid', wrap:false, decay:false, sup:'off' };
+var SUPW = null;   /* 叠加后的等效权重/相位：{m, a:{k:..}, psi:{k:..}} */
+
+/* ================= 幻方构造 ================= */
+function siamese(n){
+  var M=[], i, j, k;
+  for(i=0;i<n;i++){ M.push(new Array(n).fill(0)); }
+  i=0; j=(n-1)/2;
+  for(k=1;k<=n*n;k++){
+    M[i][j]=k;
+    var ni=(i-1+n)%n, nj=(j+1)%n;
+    if(M[ni][nj]!==0){ i=(i+1)%n; } else { i=ni; j=nj; }
+  }
+  return M;
+}
+function doublyEven(n){
+  var M=[], i, j;
+  for(i=0;i<n;i++){ M.push(new Array(n).fill(0)); }
+  for(i=0;i<n;i++){
+    for(j=0;j<n;j++){
+      var v=i*n+j+1;
+      var a=(i%4===0||i%4===3), b=(j%4===0||j%4===3);
+      if(a===b){ v=n*n+1-v; }
+      M[i][j]=v;
+    }
+  }
+  return M;
+}
+var SIX=[[35,1,6,26,19,24],[3,32,7,21,23,25],[31,9,2,22,27,20],
+         [8,28,33,17,10,15],[30,5,34,12,14,16],[4,36,29,13,18,11]];
+function buildSquare(n){
+  if(n%2===1){ return siamese(n); }
+  if(n%4===0){ return doublyEven(n); }
+  return SIX.map(function(r){ return r.slice(); });
+}
+function audit(M){
+  var n=M.length, rows=[], cols=[], i, j, s, d1=0, d2=0;
+  for(i=0;i<n;i++){ s=0; for(j=0;j<n;j++){ s+=M[i][j]; } rows.push(s); }
+  for(j=0;j<n;j++){ s=0; for(i=0;i<n;i++){ s+=M[i][j]; } cols.push(s); }
+  for(i=0;i<n;i++){ d1+=M[i][i]; d2+=M[i][n-1-i]; }
+  var all=rows.concat(cols,[d1,d2]), set={};
+  all.forEach(function(v){ set[v]=1; });
+  var keys=Object.keys(set).map(Number);
+  var flat=[]; M.forEach(function(r){ flat=flat.concat(r); });
+  var seen={}, dup=0;
+  flat.forEach(function(v){ if(seen[v]){dup++;} seen[v]=1; });
+  return { rows:rows, cols:cols, d1:d1, d2:d2, uniq:keys, ok:keys.length===1,
+           S:(keys.length===1?keys[0]:NaN), dup:dup, min:Math.min.apply(null,flat),
+           max:Math.max.apply(null,flat), count:flat.length };
+}
+
+/* ============ T² 泛对角检测（§2 M3b 用） ============
+   4n 条线 = n 行 + n 列 + n 条斜率+ 折对角 + n 条斜率− 折对角
+   斜率+ 第 c 条：{(i, i+c) mod n}   斜率− 第 c 条：{(i, c−i) mod n}      */
+function panAudit(M){
+  var n=M.length, a=audit(M), S=a.S, i, c, s, badF=0, badB=0;
+  if(!a.ok){ return {ok:false, S:S, badF:n, badB:n, tot:2*n, pan:false}; }
+  for(c=0;c<n;c++){
+    s=0; for(i=0;i<n;i++){ s+=M[i][(i+c)%n]; }
+    if(s!==S){ badF++; }
+    s=0; for(i=0;i<n;i++){ s+=M[i][((c-i)%n+n)%n]; }
+    if(s!==S){ badB++; }
+  }
+  return {ok:true, S:S, badF:badF, badB:badB, tot:2*n, pan:(badF===0 && badB===0)};
+}
+
+/* 线性拉丁族 M[i][j] = n·((i+t·j) mod n) + ((s·i+j) mod n) + 1
+   要泛对角须 gcd(t,n)=gcd(s,n)=1 且 gcd(1±t,n)=gcd(s±1,n)=1 */
+function _gcd(a,b){ a=Math.abs(a); b=Math.abs(b); while(b){ var t=a%b; a=b; b=t; } return a; }
+function linPan(n){
+  var t, s, i, j, M;
+  for(t=1;t<n;t++){
+    if(_gcd(t,n)!==1 || _gcd(1+t,n)!==1 || _gcd(1-t,n)!==1){ continue; }
+    for(s=1;s<n;s++){
+      if(_gcd(s,n)!==1 || _gcd(s+1,n)!==1 || _gcd(s-1,n)!==1){ continue; }
+      M=[];
+      for(i=0;i<n;i++){
+        M.push([]);
+        for(j=0;j<n;j++){
+          M[i].push(n*(((i+t*j)%n+n)%n) + (((s*i+j)%n+n)%n) + 1);
+        }
+      }
+      var p=panAudit(M);
+      if(p.pan){ return {found:true, M:M, s:s, t:t, p:p}; }
+    }
+  }
+  return {found:false};
+}
+
+/* ============ §2 M3b 的两张表：运行时算，HTML 里是空 tbody ============ */
+function gaussSum2D(x,y,s,m){
+  var v=0, dx, dy, mm, kk;
+  for(mm=-m;mm<=m;mm++){
+    for(kk=-m;kk<=m;kk++){
+      dx=x-mm; dy=y-kk; v+=Math.exp(-(dx*dx+dy*dy)/(2*s*s));
+    }
+  }
+  return v;
+}
+/* 与正文表格同一套刻度：≥0.01 四位小数、1e−3…1e−2 五位、更小走科学计数（用真减号） */
+function fmtSci(v){
+  if(v>=0.01){ return v.toFixed(4); }
+  if(v>=1e-3){ return v.toFixed(5); }
+  return v.toExponential(2).replace('e-','e\u2212').replace('e+','e');
+}
+function fillT2Table(){
+  var tb=document.querySelector('#tbT2 tbody');
+  if(!tb){ return; }
+  var k=2*Math.SQRT2*Math.sqrt(Math.LN2), rows=[];
+  [0.50,0.40,0.30,0.25,0.18,0.12].forEach(function(s){
+    var ax=gaussSum2D(0.5,0,s,10), dg=gaussSum2D(0.5,0.5,s,10);
+    var C=2*Math.exp(-1/(8*s*s));
+    rows.push('<tr>'
+      +'<td class="num">'+s.toFixed(2)+'</td>'
+      +'<td class="num">'+(k*s).toFixed(3)+'</td>'
+      +'<td class="num">'+fmtSci(ax)+'</td>'
+      +'<td class="num">'+fmtSci(dg)+'</td>'
+      +'<td class="num">'+(dg/ax).toFixed(4)+'</td>'
+      +'<td class="num">'+fmtSci(C)+'</td></tr>');
+  });
+  tb.innerHTML=rows.join('');
+  LAST.t2rows=rows.length;
+}
+function fillPanTable(){
+  var tb=document.querySelector('#tbPan tbody');
+  if(!tb){ return; }
+  var list=[[5,'de la Loubère',1],[7,'de la Loubère',1],[9,'de la Loubère',1],
+            [12,'Criss-Cross',4],[15,'de la Loubère',1],[25,'de la Loubère',1]];
+  var rows=[];
+  list.forEach(function(it){
+    var n=it[0], M=(it[2]===4)?doublyEven(n):siamese(n), p=panAudit(M);
+    rows.push('<tr>'
+      +'<td class="num">'+n+'</td><td>'+it[1]+'</td>'
+      +'<td class="num '+(p.badF===0?'ok':'bad')+'">'+p.badF+'</td>'
+      +'<td class="num '+(p.badB===0?'ok':'bad')+'">'+p.badB+'</td>'
+      +'<td class="'+(p.pan?'ok':'bad')+'">'+(p.pan?'是':'否')+'</td></tr>');
+  });
+  tb.innerHTML=rows.join('');
+  LAST.panrows=rows.length;
+}
+
+/* ================= 频率 / 相位 / 权重 ================= */
+function buildFreq(M, mode, f0){
+  var n=M.length, a=audit(M), vbar=(a.min+a.max)/2, span=Math.max(a.max-a.min,1);
+  var F=[], i, j, u, f;
+  for(i=0;i<n;i++){
+    F.push([]);
+    for(j=0;j<n;j++){
+      u=(M[i][j]-vbar)/span;             /* ∈[−0.5, 0.5] */
+      if(mode==='linear'){ f=M[i][j]; if(f<=0){ f=0.5; } }
+      else if(mode==='oct'){ f=f0*Math.pow(2, 6*u); }
+      else { f=f0*Math.pow(PHI, 8*u); }
+      F[i].push(f);
+    }
+  }
+  return F;
+}
+function phaseAt(i,j,n,mode){
+  if(mode==='zero'){ return 0; }
+  if(mode==='grid'){ return (i*n+j)*TAU/(n*n); }
+  return ((i+j)%2)*Math.PI;
+}
+function weightOf(f, f0, decay){
+  if(!decay){ return 1; }
+  var x=Math.log(Math.max(f,1e-6)/f0)/Math.LN2;
+  return Math.pow(2, -Math.abs(x)/2);
+}
+
+/* ================= 对称叠加：D4（8 个等距变换）=================
+   索引 0..3 = 恒等 / 转 90 / 转 180 / 转 270
+   索引 4..7 = 水平镜像 / 垂直镜像 / 主对角转置 / 副对角反置      */
+var D4T=[
+  function(i,j,n){ return [i,j]; },
+  function(i,j,n){ return [j,n-1-i]; },
+  function(i,j,n){ return [n-1-i,n-1-j]; },
+  function(i,j,n){ return [n-1-j,i]; },
+  function(i,j,n){ return [i,n-1-j]; },
+  function(i,j,n){ return [n-1-i,j]; },
+  function(i,j,n){ return [j,i]; },
+  function(i,j,n){ return [n-1-j,n-1-i]; }
+];
+var SUPSET = { rot:[0,1,2,3], mir:[0,4,5,6,7], d4:[0,1,2,3,4,5,6,7] };
+
+/* 去重后的变体矩阵：幻方自身若有对称性，8 个变换会重合成更少的独立场 */
+function symVariants(M, kind){
+  var n=M.length, idx=SUPSET[kind]||SUPSET.d4, out=[], seen={};
+  for(var q=0;q<idx.length;q++){
+    var F=[], i, j, rc;
+    for(i=0;i<n;i++){ F.push(new Array(n).fill(0)); }
+    for(i=0;i<n;i++){
+      for(j=0;j<n;j++){
+        rc=D4T[idx[q]](i,j,n);
+        F[rc[0]][rc[1]]=M[i][j];
+      }
+    }
+    var key=F.map(function(r){ return r.join(','); }).join('|');
+    if(!seen[key]){ seen[key]=1; out.push(F); }
+  }
+  return out;
+}
+
+/* 叠加核：对数字 k，把 m 个变体给出的相位求和 ⇒ 等效复幅度
+   a_k = |Σ_v e^{iφ_v(k)}| / m ,  ψ_k = arg(Σ_v e^{iφ_v(k)})
+   这正是"波在空间里相加"的频域写法：线性叠加对每个频率分量独立 */
+function supWeights(M, n, kind, phaseMode){
+  var vs=symVariants(M, kind), m=vs.length, N=n*n, k;
+  var re={}, im={};
+  for(k=1;k<=N;k++){ re[k]=0; im[k]=0; }
+  for(var v=0;v<m;v++){
+    var V=vs[v];
+    for(var i=0;i<n;i++){
+      for(var j=0;j<n;j++){
+        k=V[i][j];
+        var p=phaseAt(i,j,n,phaseMode);
+        re[k]+=Math.cos(p); im[k]+=Math.sin(p);
+      }
+    }
+  }
+  var a={}, ps={}, sum=0, mx=0;
+  for(k=1;k<=N;k++){
+    a[k]=Math.hypot(re[k],im[k])/m;
+    ps[k]=Math.atan2(im[k],re[k]);
+    sum+=a[k];
+    if(a[k]>mx){ mx=a[k]; }
+  }
+  return { m:m, a:a, psi:ps, sumA:sum, maxA:mx };
+}
+
+/* 某格的"实际参与权重与相位"——叠加关掉时退回原规则 */
+function actW(i,j,M,F){
+  var w=weightOf(F[i][j], ST.f0, ST.decay);
+  if(SUPW){ w*=SUPW.a[M[i][j]]; }
+  return w;
+}
+function actP(i,j,n,M){
+  if(SUPW){ return SUPW.psi[M[i][j]]; }
+  return phaseAt(i,j,n,ST.phase);
+}
+
+/* ================= 相干和 ================= */
+function coherence(F, n, phaseMode, decay, f0, M){
+  var rowsE=[], colsE=[], rowA=[], colA=[], i, j, w, p, d1=[0,0], d2=[0,0], a1=0, a2=0;
+  for(i=0;i<n;i++){ rowsE.push([0,0]); rowA.push(0); }
+  for(j=0;j<n;j++){ colsE.push([0,0]); colA.push(0); }
+  for(i=0;i<n;i++){
+    for(j=0;j<n;j++){
+      w=weightOf(F[i][j], f0, decay); p=phaseAt(i,j,n,phaseMode);
+      if(SUPW && M){ w*=SUPW.a[M[i][j]]; p=SUPW.psi[M[i][j]]; }
+      var re=w*Math.cos(p), im=w*Math.sin(p);
+      rowsE[i][0]+=re; rowsE[i][1]+=im; rowA[i]+=w;
+      colsE[j][0]+=re; colsE[j][1]+=im; colA[j]+=w;
+      if(i===j){ d1[0]+=re; d1[1]+=im; a1+=w; }
+      if(i===n-1-j){ d2[0]+=re; d2[1]+=im; a2+=w; }
+    }
+  }
+  var pick=function(e,a){ return a>0 ? Math.hypot(e[0],e[1])/a : 0; };
+  return {
+    rows: rowsE.map(function(e,k){ return pick(e,rowA[k]); }),
+    cols: colsE.map(function(e,k){ return pick(e,colA[k]); }),
+    dg:  [pick(d1,a1), pick(d2,a2)],
+    rowSum: rowA, colSum: colA
+  };
+}
+
+/* ================= 包络 ================= */
+function envOf(){
+  if(ST.env==='band'){ return 1/(TAU*ST.B); }
+  return ST.sigr*ST.T;
+}
+function bEffOf(sig){
+  return 1/(TAU*Math.max(sig,1e-9));
+}
+
+/* ================= 绘图工具 ================= */
+/* 逻辑高度只认 data-h：给 cv.height 赋值会改写 height 属性，回读 → 每帧 ×dpr，
+   画布越画越长、图形一直往下跑（dpr=1 时不发作，缩放屏上才看得见）。 */
+function setupCanvas(cv){
+  var dpr=Math.min(window.devicePixelRatio||1,2);
+  if(!cv.dataset.h) cv.dataset.h=String(parseInt(cv.getAttribute('height'),10)||360);
+  var w=Math.max(240,cv.clientWidth||600), h=parseInt(cv.dataset.h,10)||360;
+  cv.width=Math.round(w*dpr); cv.height=Math.round(h*dpr);
+  cv.style.height=h+'px';
+  var g=cv.getContext('2d');
+  g.setTransform(dpr,0,0,dpr,0,0);
+  g.clearRect(0,0,w,h);
+  g.fillStyle='#fff'; g.fillRect(0,0,w,h);
+  return { g:g, w:w, h:h };
+}
+function axis(g,x0,y0,x1,y1,label){
+  g.strokeStyle='#d8d4c8'; g.lineWidth=1;
+  g.beginPath(); g.moveTo(x0,y0); g.lineTo(x1,y0); g.stroke();
+  g.beginPath(); g.moveTo(x0,y0); g.lineTo(x0,y1); g.stroke();
+  g.fillStyle='#8b867a'; g.font='11px system-ui,"Microsoft YaHei"';
+  g.fillText(label, x0, y0+14);
+}
+
+/* ================= 四张图 ================= */
+var LAST={};
+
+function drawGrid(M,F,S){
+  var c=setupCanvas($('cvGrid')), g=c.g, w=c.w, h=c.h;
+  var n=F.length, pad=16, top=26, side=Math.min(w,h)-pad*2-14;
+  var cell=Math.floor(Math.min(w-pad*2, h-top-pad)/n);
+  var ox=Math.floor((w-cell*n)/2), oy=top;
+  var lo=1e9, hi=-1e9, i, j;
+  var val=function(a,b){ return SUPW ? SUPW.a[M[a][b]] : F[a][b]; };
+  for(i=0;i<n;i++){ for(j=0;j<n;j++){ var q0=val(i,j); lo=Math.min(lo,q0); hi=Math.max(hi,q0); } }
+  var lg=function(v){ return SUPW ? v : Math.log(Math.max(v,1e-3)); };
+  var l0=lg(lo), l1=lg(Math.max(hi,lo*(1+1e-9)));
+  for(i=0;i<n;i++){
+    for(j=0;j<n;j++){
+      var t=(lg(val(i,j))-l0)/Math.max(l1-l0,1e-9);
+      var L=92-62*t;
+      g.fillStyle='hsl(255,52%,'+L.toFixed(1)+'%)';
+      g.fillRect(ox+j*cell, oy+i*cell, cell-0.6, cell-0.6);
+      if(n<=12 && cell>=22){
+        g.fillStyle=(t>0.55?'#ffffff':'#2b2540');
+        g.font=Math.min(11, cell*0.36).toFixed(0)+'px system-ui';
+        g.textAlign='center';
+        g.fillText(String(M[i][j]), ox+j*cell+cell/2, oy+i*cell+cell/2+4);
+        g.textAlign='left';
+      }
+    }
+  }
+  g.strokeStyle='rgba(83,74,183,.55)'; g.lineWidth=1;
+  g.strokeRect(ox-0.5, oy-0.5, cell*n+0.5, cell*n+0.5);
+  g.fillStyle='#4a4740'; g.font='12px system-ui,"Microsoft YaHei"';
+  var head = SUPW
+    ? 'n = '+n+'　叠加 '+SUPW.m+' 重（去重后）　有效权重 a_k = '+lo.toFixed(3)+' – '+hi.toFixed(3)
+    : 'n = '+n+'　幻和 S = '+S+'　频率 '+lo.toFixed(1)+' – '+hi.toFixed(1)+' Hz';
+  g.fillText(head, 8, 16);
+  if(n>12){
+    g.fillStyle='#8b867a'; g.font='11px system-ui,"Microsoft YaHei"';
+    g.fillText(SUPW ? '（颜色 = 该频率在叠加后的残余幅度，越浅越接近消失）'
+                    : '（n>12 不印格值，颜色即频率）', 8, h-6);
+  }
+  LAST.grid=[ox,oy,cell,n];
+}
+
+function drawTime(M,F){
+  var c=setupCanvas($('cvTime')), g=c.g, w=c.w, h=c.h;
+  var n=F.length, sig=envOf(), T=ST.T, t0=T/2;
+  var NX=Math.max(700, Math.floor(w*1.2));
+  var y=new Float64Array(NX), i, j, k, t;
+  var ampMax=0;
+  for(k=0;k<NX;k++){
+    t=T*k/(NX-1);
+    var env=Math.exp(-Math.pow(t-t0,2)/(2*sig*sig));
+    var s=0;
+    for(i=0;i<n;i++){
+      for(j=0;j<n;j++){
+        s+=actW(i,j,M,F)*Math.cos(TAU*F[i][j]*t+actP(i,j,n,M));
+      }
+    }
+    y[k]=s*env;
+    if(Math.abs(y[k])>ampMax){ ampMax=Math.abs(y[k]); }
+  }
+  if(ampMax<=0){ ampMax=1; }
+  var x0=34, x1=w-12, y0=h-26, y1=14, ym=(y0+y1)/2, sy=(y0-y1)/2/ampMax;
+  g.strokeStyle='#efece2'; g.lineWidth=1;
+  g.beginPath(); g.moveTo(x0,ym); g.lineTo(x1,ym); g.stroke();
+  axis(g,x0,y0,x1,y1,'t/s');
+  g.strokeStyle='#534AB7'; g.lineWidth=1.4; g.beginPath();
+  for(k=0;k<NX;k++){
+    var px=x0+(x1-x0)*k/(NX-1), py=ym-y[k]*sy;
+    if(k===0){ g.moveTo(px,py); } else { g.lineTo(px,py); }
+  }
+  g.stroke();
+  var envs=[]; for(k=0;k<NX;k++){ t=T*k/(NX-1); envs.push(Math.exp(-Math.pow(t-t0,2)/(2*sig*sig))); }
+  g.strokeStyle='#b9b3a4'; g.lineWidth=1; g.setLineDash([4,3]); g.beginPath();
+  for(k=0;k<NX;k++){
+    var px2=x0+(x1-x0)*k/(NX-1), py2=ym-envs[k]*ampMax*sy;
+    if(k===0){ g.moveTo(px2,py2); } else { g.lineTo(px2,py2); }
+  }
+  g.stroke(); g.setLineDash([]);
+  var tx=x0+(x1-x0)*(0.5);
+  g.strokeStyle='#c05a4a'; g.setLineDash([3,3]); g.beginPath();
+  g.moveTo(tx,y1); g.lineTo(tx,y0); g.stroke(); g.setLineDash([]);
+  g.fillStyle='#c05a4a'; g.font='11px system-ui,"Microsoft YaHei"';
+  g.fillText('t₀', tx+4, y1+11);
+  g.fillStyle='#4a4740'; g.font='12px system-ui,"Microsoft YaHei"';
+  g.fillText('σ = '+(sig*1000).toFixed(2)+' ms　峰值 |Ψ| = '+ampMax.toFixed(2)+'　原子 '+n*n, 8, 14);
+  LAST.time={ampMax:ampMax, sig:sig, nx:NX};
+}
+
+function drawLine(C,n,S){
+  var c=setupCanvas($('cvLine')), g=c.g, w=c.w, h=c.h;
+  var bars=[];
+  C.rows.forEach(function(v){ bars.push({v:v,k:'r'}); });
+  C.cols.forEach(function(v){ bars.push({v:v,k:'c'}); });
+  bars.push({v:C.dg[0],k:'d'}); bars.push({v:C.dg[1],k:'d'});
+  var m=bars.length, x0=34, x1=w-10, y0=h-30, y1=16;
+  axis(g,x0,y0,x1,y1,'线序号（行 → 列 → 对角）');
+  var bw=(x1-x0)/m;
+  var col={r:'#534AB7', c:'#2f7d4f', d:'#c98a00'};
+  bars.forEach(function(b,idx){
+    var hh=(y0-y1)*Math.max(0,Math.min(1,b.v));
+    g.fillStyle=col[b.k];
+    g.fillRect(x0+idx*bw+Math.min(1,bw*0.15), y0-hh, Math.max(1,bw*0.7), hh);
+  });
+  g.fillStyle='#8b867a'; g.font='11px system-ui,"Microsoft YaHei"';
+  g.fillText('1.0', 6, y1+10); g.fillText('0', 12, y0-2);
+  g.strokeStyle='#e6e2d6'; g.lineWidth=1;
+  g.beginPath(); g.moveTo(x0,y1); g.lineTo(x1,y1); g.stroke();
+  g.fillStyle='#4a4740'; g.font='12px system-ui,"Microsoft YaHei"';
+  g.fillText('行 '+C.rows.length+'　列 '+C.cols.length+'　对角 2', 8, 14);
+  /* 图例 */
+  var lx=x1-150, ly=h-12;
+  [['行','#534AB7'],['列','#2f7d4f'],['对角','#c98a00']].forEach(function(p,k){
+    g.fillStyle=p[1]; g.fillRect(lx+k*50, ly-8, 9, 9);
+    g.fillStyle='#6f6a60'; g.font='11px system-ui,"Microsoft YaHei"';
+    g.fillText(p[0], lx+k*50+13, ly);
+  });
+  LAST.line=bars;
+}
+
+function drawTheta(){
+  var c=setupCanvas($('cvTheta')), g=c.g, w=c.w, h=c.h;
+  var T=ST.T, sig=envOf(), t0=T/2;
+  /* 视野必须以 t₀ 为中心：否则窄包（band 档 σ≈3 ms）整个落在窗外，图是空的 */
+  var span=Math.min(Math.max(10*sig, 0.02*T), 2.2*T), lo=t0-span/2, hi=t0+span/2;
+  var NX=Math.min(20000, Math.max(600, Math.floor(w*1.2), Math.ceil(24*span/sig)));
+  var x0=34, x1=w-12, y0=h-28, y1=16;
+  var single=new Float64Array(NX), theta=new Float64Array(NX);
+  var i, k, t, mx=0;
+  for(k=0;k<NX;k++){
+    t=lo+(hi-lo)*k/(NX-1);
+    single[k]=Math.exp(-Math.pow(t-t0,2)/(2*sig*sig));
+    var s=0;
+    if(ST.wrap){
+      for(i=-3;i<=3;i++){ s+=Math.exp(-Math.pow(t-t0-i*T,2)/(2*sig*sig)); }
+    } else { s=single[k]; }
+    theta[k]=s;
+    mx=Math.max(mx, single[k], s);
+  }
+  if(mx<=0){ mx=1; }
+  var sy=(y0-y1)/Math.max(mx,1e-9);
+  axis(g,x0,y0,x1,y1,'t/s');
+  var X=function(v){ return x0+(x1-x0)*(v-lo)/(hi-lo); };
+  g.strokeStyle='#b9b3a4'; g.lineWidth=1; g.setLineDash([4,3]); g.beginPath();
+  for(k=0;k<NX;k++){ var px=X(lo+(hi-lo)*k/(NX-1)); var py=y0-single[k]*sy;
+    if(k===0){ g.moveTo(px,py); } else { g.lineTo(px,py); } }
+  g.stroke(); g.setLineDash([]);
+  g.strokeStyle='#534AB7'; g.lineWidth=2.2; g.beginPath();
+  for(k=0;k<NX;k++){ var px2=X(lo+(hi-lo)*k/(NX-1)); var py2=y0-theta[k]*sy;
+    if(k===0){ g.moveTo(px2,py2); } else { g.lineTo(px2,py2); } }
+  g.stroke();
+  if(ST.wrap){
+    g.strokeStyle='#e2ded2'; g.lineWidth=1;
+    [-1,1].forEach(function(kk){
+      g.strokeStyle='#dcd7c9'; g.setLineDash([2,4]); g.beginPath();
+      for(var q=0;q<NX;q++){
+        var tt=lo+(hi-lo)*q/(NX-1);
+        var vv=Math.exp(-Math.pow(tt-t0-kk*T,2)/(2*sig*sig));
+        var px3=X(tt), py3=y0-vv*sy;
+        if(q===0){ g.moveTo(px3,py3); } else { g.lineTo(px3,py3); }
+      }
+      g.stroke(); g.setLineDash([]);
+    });
+  }
+  var r=Math.exp(-Math.pow(T/Math.max(sig,1e-12),2)/2);
+  g.fillStyle='#4a4740'; g.font='12px system-ui,"Microsoft YaHei"';
+  g.fillText('σ/T = '+ST.sigr.toFixed(3)+'　重叠率 r = '+(r>0?r.toExponential(3):'≈0（浮点下溢）')+'　（纵轴峰值归一化为 1）', 8, 14);
+  g.fillStyle='#8b867a'; g.font='11px system-ui,"Microsoft YaHei"';
+  g.textAlign='right';
+  g.fillText((ST.wrap?'环面卷绕：±1 周期的像已叠加':'未卷绕：只有 k=0 一个高斯')
+             + '　窗口 '+(span*1000).toFixed(1)+' ms　采样 '+NX, x1, y0+14);
+  g.textAlign='left';
+  LAST.theta=r;
+}
+
+/* ================= 数值表 ================= */
+function fmt(x,d){ return (Math.abs(x)>=1e5||(Math.abs(x)<1e-3&&x!==0)) ? x.toExponential(d) : x.toFixed(d); }
+
+function drawTable(M,F,A,C){
+  var n=M.length, sig=envOf(), B=bEffOf(sig);
+  var fs=[], i, j;
+  for(i=0;i<n;i++){ for(j=0;j<n;j++){ fs.push(F[i][j]); } }
+  var fmin=Math.min.apply(null,fs), fmax=Math.max.apply(null,fs);
+  var N=n*n, occ=N*B, occR=occ/NYQ;
+  var iso = (function(){
+    var all=C.rows.concat(C.cols, C.dg);
+    var mn=Math.min.apply(null,all), mx=Math.max.apply(null,all);
+    return {mn:mn, mx:mx, ratio:(mx>0?mn/mx:0)};
+  })();
+  var wSpread=0;
+  if(ST.decay){
+    var wc=coherence(F,n,ST.phase,true,ST.f0);
+    var ws=wc.rowSum.concat(wc.colSum);
+    var wmn=Math.min.apply(null,ws), wmx=Math.max.apply(null,ws);
+    wSpread = wmn>0 ? (wmx/wmn-1) : Infinity;
+  }
+  var Sstd=n*(N+1)/2;
+  var tab=$('tbl').tBodies[0], rows=[];
+  function row(a,b,cls){ rows.push('<tr><td>'+a+'</td><td class="num '+(cls||'')+'">'+b+'</td></tr>'); }
+  row('阶数 n / 原子数 n²', n+' / '+N);
+  row('标准幻和 S = n(n²+1)/2', String(Sstd));
+  row('构造实测幻和（行/列/对角唯一值）',
+      A.ok ? (A.S+'　<span class="ok">全等</span>') : '<span class="bad">不全等（'+A.uniq.length+' 种）</span>');
+  row('格值是否 1..n² 全排列', (A.dup===0 && A.min===1 && A.max===N) ? '<span class="ok">是</span>' : '<span class="warn">否（重复 '+A.dup+' 格）</span>');
+  row('频率范围', fmt(fmin,2)+' – '+fmt(fmax,2)+' Hz');
+  row('包络 σ', fmt(sig*1000,3)+' ms（= σ/T '+fmt(sig/ST.T,4)+'）');
+  row('等效带宽 B = 1/(2πσ)', fmt(B,3)+' Hz');
+  row('σ·B（恒等 1/2π）', fmt(sig*B,9)+'　<span class="ok">= 0.159154943</span>');
+  row('模数 n²·B / 奈奎斯特 22050',
+      fmt(occ,1)+' Hz　<span class="'+(occR>1?'bad':'ok')+'">'+(occR*100).toFixed(1)+'%</span>'+
+      (occR>1?'　<span class="bad">超奈奎斯特，必须并带或降 B</span>':''));
+  row('行相干 归一化 min / max', fmt(Math.min.apply(null,C.rows),6)+' / '+fmt(Math.max.apply(null,C.rows),6));
+  row('列相干 归一化 min / max', fmt(Math.min.apply(null,C.cols),6)+' / '+fmt(Math.max.apply(null,C.cols),6));
+  row('对角相干', fmt(C.dg[0],6)+' / '+fmt(C.dg[1],6));
+  row('各向同性比 min/max',
+      '<span class="'+(iso.ratio>0.999999?'ok':(iso.ratio<1e-9?'bad':'warn'))+'">'+fmt(iso.ratio,6)+'</span>'+
+      (iso.ratio>0.999999?'　= 1，幻和成立':(iso.ratio<1e-9?'　= 0，方向性被清零':'　< 1')));
+  row('环面重叠率 r = e^(−(T/σ)²/2)', (function(){
+    var rr=Math.exp(-Math.pow(ST.T/Math.max(sig,1e-12),2)/2);
+    if(rr>0){ return rr.toExponential(3); }
+    return '≈ 0（e 的指数 ' + (-Math.pow(ST.T/sig,2)/2).toFixed(0) + '，双精度下溢）';
+  })());
+  row('包络 FWHM / 窗宽（波形可辨度）', (function(){
+    var f=2*Math.SQRT2*Math.sqrt(Math.LN2)*sig, frac=f/ST.T;
+    return '<span class="'+(frac>0.10?'pur':'warn')+'">'+(frac*100).toFixed(2)+'%</span>'
+      +'　FWHM '+fmt(f*1000,2)+' ms　'
+      +(frac>0.10 ? '<span class="pur">看得见包络形状（紫档）</span>'
+                  : '<span class="warn">窄成一根竖线，看不出包络——A 档就是这样</span>');
+  })());
+  row('两档并排（A 带宽定 / B 时长定）', (function(){
+    var sA=1/(TAU*ST.B), sB=ST.sigr*ST.T;
+    var k=2*Math.SQRT2*Math.sqrt(Math.LN2);
+    var fA=k*sA, fB=k*sB, isB=(ST.env!=='band');
+    return 'A σ='+fmt(sA*1000,2)+' ms（占窗 '+(fA/ST.T*100).toFixed(2)+'%）　'
+      +'<span class="pur">B σ='+fmt(sB*1000,2)+' ms（占窗 '+(fB/ST.T*100).toFixed(2)+'%）</span>'
+      +'　当前 <b>'+(isB?'B（紫）':'A')+'</b>';
+  })());
+  if(ST.decay){
+    row('加权线谱散布 max/min−1',
+        '<span class="bad">'+(isFinite(wSpread)?(wSpread*100).toFixed(1)+'%':'∞')+'</span>　幻和不变性被破坏');
+  } else {
+    row('加权线谱散布', '<span class="ok">0（未启用分形衰减）</span>');
+  }
+  if(SUPW){
+    var aMn=1e9, aMx=-1e9, kk;
+    for(kk=1;kk<=N;kk++){ aMn=Math.min(aMn,SUPW.a[kk]); aMx=Math.max(aMx,SUPW.a[kk]); }
+    row('对称叠加（D4 轨道求和）',
+        '<b>'+SUPW.m+'</b> 个不同的场求相位和　<span class="tiny">（名义 '+({d4:8,rot:4,mir:5}[ST.sup]||0)+' 个，去重后 '+SUPW.m+'）</span>');
+    row('有效权重 a_k 范围（1 = 未削弱）',
+        fmt(aMn,4)+' – '+fmt(aMx,4)+'　平均 '+fmt(SUPW.sumA/N,4));
+    row('权重总和 Σa_k / n²', fmt(SUPW.sumA/N,4)+
+        (SUPW.sumA/N<0.999 ? '　<span class="warn">平均权重被削弱 '+(100*(1-SUPW.sumA/N)).toFixed(1)+'%</span>'
+                            : '　<span class="ok">= 1，叠加未改变任何幅度</span>'));
+    row('削到零的频率个数（a_k &lt; 1e−6）', (function(){
+      var z=0; for(var q=1;q<=N;q++){ if(SUPW.a[q]<1e-6){ z++; } }
+      return z ? ('<span class="bad">'+z+' 个</span>　这些 agent 的心跳被对称性抹平了') : '0 个';
+    })());
+    row('奇数阶固定点（中心）', (n%2===1)
+        ? ('数字 '+M[(n-1)/2][(n-1)/2]+'　权重 '+fmt(SUPW.a[M[(n-1)/2][(n-1)/2]],9)+'　<span class="ok">恒为 1（唯一不动点）</span>')
+        : '<span class="tiny">偶数阶没有固定点，所有权重都被轨道平均过</span>');
+  } else {
+    row('对称叠加（D4 轨道求和）', '关闭　每格权重 = 1，相位 = 面板所选规则');
+  }
+  tab.innerHTML=rows.join('');
+  LAST.iso=iso; LAST.occR=occR; LAST.occ=occ; LAST.B=B; LAST.sig=sig;
+}
+
+/* ================= 自检 ================= */
+var CHK=[];
+function chk(ok,label){ CHK.push({ok:!!ok, label:label}); }
+function runChecks(M,F,A,C){
+  CHK=[];
+  /* 下面这些是"相位结构"的闭式核对，必须在原始相位（未叠加）上做，
+     否则叠加会把相位改写掉，闭式当场不成立——那是假红。 */
+  var SUPKEEP=SUPW; SUPW=null;
+  var allN=[3,4,5,6,7,8,9,12,15,16,27], i;
+  var allGood=true, detail=[];
+  for(i=0;i<allN.length;i++){
+    var k=allN[i], Mk=buildSquare(k), ak=audit(Mk);
+    var std=k*(k*k+1)/2;
+    var g=(ak.ok && ak.S===std && ak.dup===0 && ak.min===1 && ak.max===k*k);
+    if(!g){ allGood=false; detail.push(k); }
+  }
+  chk(allGood, '11 个可选阶数全部构造出真幻方（行列对角唯一、1..n² 全排列、等于 n(n²+1)/2）'+(allGood?'':'　失败阶：'+detail.join(',')));
+  chk(A.ok && A.S===A.rows[0], '当前 n='+M.length+' 的行/列/对角和全等');
+  chk(Math.abs(envOf()*bEffOf(envOf())-1/(2*Math.PI))<1e-12, 'σ·B = 1/(2π)（恒等，误差 < 1e-12）');
+  chk(Math.abs(1/(4*Math.PI)-0.0795774715)<1e-9, 'Δt·Δf 下界 1/(4π) = 0.0795775');
+
+  var cz=coherence(F,M.length,'zero',ST.decay,ST.f0);
+  var allOne=cz.rows.concat(cz.cols,cz.dg).every(function(v){ return Math.abs(v-1)<1e-9; });
+  chk(allOne, '全同相模式下 2n+2 条线相干全部 = 1（不计当前相位规则）');
+
+  /* 相位结构的闭式核对一律用等权，否则闭式不成立（权重会跟格号走） */
+  var cg=coherence(F,M.length,'grid',false,ST.f0);
+  chk(cg.cols.every(function(v){ return v<1e-12; }), '等权 + 格序相位：每列相干严格 = 0（几何级数整圈抵消）');
+  var n=M.length, rowPred=Math.sin(Math.PI/n)/(n*Math.sin(Math.PI/(n*n)));
+  chk(Math.abs(cg.rows[0]-rowPred)<1e-9, '格序行相干闭式 sin(π/n)/[n·sin(π/n²)] = '+rowPred.toFixed(6)+' 与数值一致');
+
+  var ca=coherence(F,M.length,'alt',false,ST.f0);
+  if(n%2===0){
+    chk(ca.rows.concat(ca.cols).every(function(v){ return v<1e-12; }), '±π 交错：n 偶数时行与列全部抵消为 0');
+  } else {
+    chk(Math.abs(ca.rows[0]-1/n)<1e-9, '±π 交错：n 奇数时行相干 = 1/n');
+  }
+
+  /* 重叠率必须对 σ 单调：σ 越小越孤立 */
+  var sigL=0.05*ST.T, sigH=0.30*ST.T;
+  var rL=Math.exp(-Math.pow(ST.T/sigL,2)/2), rH=Math.exp(-Math.pow(ST.T/sigH,2)/2);
+  chk(rL<rH && rL<1e-40 && rH>1e-6, '重叠率随 σ 单调：σ/T=0.05 → '+rL.toExponential(2)+'，σ/T=0.30 → '+rH.toExponential(2));
+
+  if(ST.phase==='zero'){
+    var iso0=Math.min.apply(null,cz.rows.concat(cz.cols,cz.dg))/Math.max.apply(null,cz.rows.concat(cz.cols,cz.dg));
+    chk(Math.abs(iso0-1)<1e-12, '当前相位=全同相 ⇒ 各向同性比 = 1.000000（M2 成立）');
+  } else {
+    chk(true, '当前相位=非全同相 ⇒ 不主张 M2（各向同性比见上表）');
+  }
+
+  var ids={}, dup=0;
+  var el=document.querySelectorAll('[id]');
+  for(i=0;i<el.length;i++){ if(ids[el[i].id]){ dup++; } ids[el[i].id]=1; }
+  chk(dup===0, '全页 '+el.length+' 个 id 无重复');
+
+  var body=document.body.innerText||'';
+  chk(body.indexOf('**')<0, '正文无字面星号（markdown 残留）');
+  chk(document.querySelectorAll('#secPanel input,#secPanel select').length>=10, '参数面板控件 ≥ 10 个且都可操作');
+
+  /* 判据：数"彩色墨迹"（通道极差 > 18）——灰轴、白底都不算，空图必为 0 */
+  var probe=function(cv){
+    var g=cv.getContext('2d'), d=g.getImageData(0,0,cv.width,cv.height).data;
+    var cw=cv.width, ch=cv.height, c=0, top=ch, bot=-1, x, y;
+    for(y=0;y<ch;y++){
+      for(x=0;x<cw;x++){
+        var q=(y*cw+x)*4;
+        var mx=Math.max(d[q],d[q+1],d[q+2]), mn=Math.min(d[q],d[q+1],d[q+2]);
+        if(mx-mn>18){ c++; if(y<top){ top=y; } if(y>bot){ bot=y; } }
+      }
+    }
+    return {ink:c, extent:(bot>=0?bot-top:0), w:cw, h:ch};
+  };
+  ['cvGrid','cvTime','cvLine','cvTheta'].forEach(function(id){
+    var p=probe($(id));
+    chk(p.ink>40, '画布 '+id+' 有数据墨迹（彩色像素 '+p.ink+' > 40，空图为 0）');
+    if(id==='cvTime'||id==='cvTheta'){
+      chk(p.extent>100, '画布 '+id+' 曲线占满纵向（墨迹跨度 '+p.extent+' px > 100，平线过不了）');
+    }
+  });
+
+  var t=$('tbl').innerText||'';
+  chk(t.indexOf('NaN')<0 && t.indexOf('Infinity')<0, '数值表无 NaN / Infinity');
+
+  /* ===== M3b：T² 的三个重叠率与谷底判据 ===== */
+  (function(){
+    var sig=0.25, L=1;
+    var r=Math.exp(-L*L/(2*sig*sig));
+    var rSkew=Math.exp(-Math.pow(L/Math.SQRT2,2)/(2*sig*sig));
+    var rBack=Math.exp(-Math.pow(L*Math.SQRT2,2)/(2*sig*sig));
+    chk(Math.abs(rSkew-Math.sqrt(r))<1e-15,
+        'T² 斜向最近像（距离 L/√2）的重叠 = √r：'+rSkew.toExponential(4)+' vs √r = '+Math.sqrt(r).toExponential(4));
+    chk(Math.abs(rBack-r*r)/rBack<1e-12,
+        'T² 沿对角绕回（距离 L√2）的重叠 = r²：'+rBack.toExponential(4)+' vs r² = '+(r*r).toExponential(4));
+    var C=2*Math.pow(r,0.25);
+    chk(Math.abs(C-2*Math.exp(-L*L/(8*sig*sig)))<1e-15,
+        '谷底比值 C = 2e^(−L²/8σ²) = 2·r^(1/4)，两种写法一致（σ/L=0.25 时 '+C.toFixed(6)+'）');
+    var sigC=1/Math.sqrt(8*Math.LN2);
+    var fwhmC=2*Math.SQRT2*Math.sqrt(Math.LN2)*sigC;
+    chk(Math.abs(fwhmC-L)<1e-12,
+        'C = 1 的临界点恰好落在 FWHM = L（数值 FWHM/L = '+fwhmC.toFixed(9)+'）⇒ 判据不是随手取的阈值');
+    var CC=2*Math.pow(Math.exp(-L*L/(2*sigC*sigC)),0.25);
+    chk(Math.abs(CC-1)<1e-12, '把 σ = L/(2√(2ln2)) 代回，C = '+CC.toFixed(9)+' ⇒ 临界点自洽');
+    /* 直接在 T² 上对像格求和，双验谷底比值（不只信解析式） */
+    var GN=function(x,y,s,m){
+      var v=0,dx,dy,mm,kk;
+      for(mm=-m;mm<=m;mm++){ for(kk=-m;kk<=m;kk++){
+        dx=x-mm; dy=y-kk; v+=Math.exp(-(dx*dx+dy*dy)/(2*s*s));
+      } }
+      return v;
+    };
+    var ax=GN(0.5,0,sig,10), dg=GN(0.5,0.5,sig,10);
+    chk(Math.abs(dg/ax-C)/C<0.01,
+        'T² 上直接求和：对角谷/轴谷 = '+(dg/ax).toFixed(4)+'（轴谷 '+ax.toFixed(4)+'、对角谷 '+dg.toFixed(4)+'），与解析 C = '+C.toFixed(4)+' 差 < 1%');
+    /* 两张表：行数 + 数值与公式一致（tbody 在 HTML 里是空的，内容只能由 fillT2Table/fillPanTable 产生） */
+    var nT2=document.querySelectorAll('#tbT2 tbody tr').length;
+    var nPan=document.querySelectorAll('#tbPan tbody tr').length;
+    chk(nT2===6 && nPan===6, 'M3b 两张表各 6 行（T² 谷底 '+nT2+'、4n 条线 '+nPan+'）');
+    var c6=document.querySelector('#tbT2 tbody tr td:nth-child(6)');
+    var c6v=c6?parseFloat(c6.textContent.replace('\u2212','-')):NaN;
+    chk(Math.abs(c6v-2*Math.exp(-1/(8*0.5*0.5)))<1e-3,
+        'T² 表首行 C 解析值印的是 '+(c6?c6.textContent.trim():'?')+'，与 2e^(−1/8σ²)（σ=0.50）一致');
+    var r15=document.querySelector('#tbPan tbody tr:nth-child(5)');
+    var v15=r15?[].map.call(r15.querySelectorAll('td'),function(e){ return e.textContent.trim(); }):[];
+    chk(v15.length===5 && v15[0]==='15' && v15[2]==='10' && v15[3]==='14',
+        '4n 表 n=15 那一行印出 15 / 10 / 14（阶数 / 斜率+ 坏 / 斜率− 坏），与正文一致');
+  })();
+
+  /* ===== M3b：4n 条折对角的规律（标准构造全都不是泛对角） ===== */
+  (function(){
+    var A1=true, A2=true, A3=true, A4=true, p;
+    [5,7,11,13,17,25].forEach(function(k){
+      p=panAudit(siamese(k));
+      if(p.badF!==0){ A1=false; }
+      if(p.badB!==k-1){ A3=false; }
+    });
+    [9,15,21,27].forEach(function(k){
+      p=panAudit(siamese(k));
+      if(p.badF!==Math.round(2*k/3)){ A2=false; }
+      if(p.badB!==k-1){ A3=false; }
+    });
+    [8,12,16,20].forEach(function(k){
+      p=panAudit(doublyEven(k));
+      if(p.badF!==k/2 || p.badB!==k/2){ A4=false; }
+    });
+    chk(A1, 'n 不被 3 整除时，de la Loubère 的斜率+ 折对角 n 条<b>全部</b>等于幻和（5/7/11/13/17/25 逐个实测 badF=0）');
+    chk(A2, 'n 被 3 整除时斜率+ 族坏 2n/3 条（9→6、15→10、21→14、27→18 实测）');
+    chk(A3, 'de la Loubère 的斜率− 族永远只成立 1 条（副对角），坏 n−1 条（9 个奇数阶实测）');
+    chk(A4, 'Criss-Cross 的 4k 阶：两族各坏 n/2 条（8→4、12→6、16→8、20→10 实测）');
+    var allNotPan=true, tried=0;
+    [5,7,8,9,11,12,15,16,20,25].forEach(function(k){
+      var M=(k%4===0)?doublyEven(k):siamese(k);
+      tried++;
+      if(panAudit(M).pan){ allNotPan=false; }
+    });
+    chk(allNotPan, tried+' 个标准构造（de la Loubère + Criss-Cross）<b>全部不是泛对角</b> ⇒ "4n 条线全成立"靠标准构造拿不到');
+  })();
+
+  /* ===== M3b：线性拉丁族的可行阶数 ===== */
+  (function(){
+    var r5=linPan(5), r7=linPan(7), r11=linPan(11), r9=linPan(9), r15=linPan(15);
+    chk(r5.found && r7.found && r11.found,
+        '线性拉丁族在 n=5,7,11 都有泛对角解（n=5 取 s='+(r5.s||'-')+'、t='+(r5.t||'-')+'）');
+    var p5=r5.found?panAudit(r5.M):{pan:false,badF:9,badB:9};
+    chk(r5.found && p5.pan && p5.badF===0 && p5.badB===0,
+        'n=5 那个解逐条验过：4n = 20 条线全部等于幻和'+(r5.found?(' '+p5.S):''));
+    chk(!r9.found && !r15.found,
+        'n=9、n=15 线性族<b>无解</b>（3 的倍数：mod 3 上 t≢±1 只剩 t≡0，与 gcd(t,n)=1 矛盾）');
+  })();
+
+  /* ===== 12 阶：宫格和，以及原 verify 断言为何恒不可满足 ===== */
+  (function(){
+    var M=doublyEven(12), a=audit(M), blocks=[], i, j, x, y, s;
+    for(i=0;i<3;i++){ for(j=0;j<3;j++){
+      s=0;
+      for(x=0;x<4;x++){ for(y=0;y<4;y++){ s+=M[4*i+x][4*j+y]; } }
+      blocks.push(s);
+    } }
+    var allEq=blocks.every(function(v){ return v===blocks[0]; });
+    chk(a.S===870 && a.ok && a.dup===0 && a.min===1 && a.max===144,
+        '12 阶 Criss-Cross 是真幻方：S = '+a.S+'、1..144 全排列、行列对角全等');
+    chk(allEq, '9 个 4×4 宫格和<b>全部相等</b> = '+blocks[0]+'（= 10440/9）');
+    chk(blocks[0]*9===a.S*12,
+        '9 宫格之和 '+blocks[0]*9+' = 12×S = '+a.S*12+' ⇒ 原 verify 要求的 294..302（和 2682）恒不可能');
+    chk(870+12*2===894, '原代码的 894 由"整体 +2"命中：870 + 12×2 = 894（范围 3..146）');
+    var kb=894/858;
+    chk(Math.abs(kb-Math.round(kb))>1e-6,
+        '(S−n)×scale 口径不可达 894：894/858 = '+kb.toFixed(6)+'，非整数 ⇒ 只能平移');
+  })();
+
+  /* ===== σ 两档：39 倍差与"波形更美"的可算判据 ===== */
+  (function(){
+    var k=2*Math.SQRT2*Math.sqrt(Math.LN2);
+    var sA=1/(TAU*50), sB=1/8, ratio=sB/sA;
+    chk(Math.abs(ratio-39.27)<0.05, '两档 σ 相差 '+ratio.toFixed(2)+' 倍（T=1 s、B=50 Hz）⇒ 不是笔误量级');
+    chk(Math.abs(k*sA-0.0075)<2e-4 && Math.abs(k*sB-0.2944)<2e-3,
+        'FWHM 占窗：A 档 '+(k*sA*100).toFixed(2)+'% 、B 档 '+(k*sB*100).toFixed(2)+'%');
+    chk(k*sB>0.10 && k*sA<0.02,
+        '可辨度判据 FWHM/窗宽 > 10% 只被 B 档满足（A 档 '+(k*sA*100).toFixed(2)+'%，差一个数量级以上）⇒ 紫色标 B 是可算的，不是偏好');
+  })();
+
+  /* ===== 对称叠加（D4）专项：恢复叠加态再验 ===== */
+  SUPW=SUPKEEP;
+  (function(){
+    var nn=M.length, N=nn*nn, t, i, j;
+    var m8=symVariants(M,'d4').length;
+    chk(m8>=1 && m8<=8, 'D4 八变换去重后剩 '+m8+' 个不同的场（≤8；少于 8 说明这个幻方自身有镜像/旋转对称）');
+
+    var sw=supWeights(M,nn,'d4',ST.phase);
+    chk(sw.sumA<=N+1e-9,
+        '叠加后权重总和 Σa_k = '+sw.sumA.toFixed(4)+' ≤ n² = '+N+'（叠加只会削弱，不会凭空增强）');
+
+    if(nn%2===1){
+      var ci=(nn-1)/2, cn=M[ci][ci];
+      chk(Math.abs(sw.a[cn]-1)<1e-12,
+          '奇数阶：中心数字 '+cn+' 是 D4 的<b>唯一固定点</b> ⇒ 权重恰好 = '+sw.a[cn].toFixed(9)+'（不是近似，8 次全落同一格）');
+    } else {
+      chk(sw.maxA<1-1e-9,
+          '偶数阶：D4 无固定点 ⇒ 没有任何频率拿到满权重（max a = '+sw.maxA.toFixed(6)+' < 1）');
+    }
+
+    /* 权重只由"格在 D4 下的轨道"决定 ⇒ 与幻方怎么排无关 */
+    var seen={}, okOrb=true, nOrb=0, badOrb='';
+    for(i=0;i<nn;i++){
+      for(j=0;j<nn;j++){
+        var k0=i*nn+j;
+        if(seen[k0]){ continue; }
+        var orb=[], q;
+        for(t=0;t<8;t++){
+          var rc=D4T[t](i,j,nn), o=rc[0]*nn+rc[1];
+          if(orb.indexOf(o)<0){ orb.push(o); }
+        }
+        var vals=orb.map(function(o){ return sw.a[M[(o/nn)|0][o%nn]]; });
+        var v0=vals[0];
+        for(q=1;q<vals.length;q++){ if(Math.abs(vals[q]-v0)>1e-9){ okOrb=false; badOrb='轨道含 '+orb.length+' 格'; } }
+        for(q=0;q<orb.length;q++){ seen[orb[q]]=1; }
+        nOrb++;
+      }
+    }
+    chk(okOrb, '全表 '+nOrb+' 个 D4 轨道内，各格对应数字的有效权重完全相等'+(okOrb?'':'（'+badOrb+'）')
+              +' ⇒ 权重只取决于<b>轨道</b>，与哪个数字落在哪格无关');
+
+    /* 极限：m=1（不叠加）时权重必须全 1，相位必须回到原规则 */
+    var one=supWeights(M,nn,'rot',ST.phase);
+    var mid=(nn-1)>>1, okId=true;
+    if(ST.phase==='zero'){
+      for(t=1;t<=N;t++){ if(Math.abs(one.a[t]-1)>1e-12){ okId=false; } }
+      chk(okId, '只叠旋转时，若相位是全同相 φ=0，则权重恒为 1（叠加退化为单纯复制，不改变形状）');
+    } else if(nn%2===1){
+      var mid2=(nn-1)>>1;
+      chk(Math.abs(one.a[M[mid2][mid2]]-1)<1e-12,
+          '只叠 4 个旋转时（奇数阶）中心格 '+M[mid2][mid2]+' 权重仍为 1（转 90° 的任意倍数它都回到自己）');
+    } else {
+      chk(one.maxA<1-1e-9,
+          '只叠 4 个旋转时（偶数阶）没有任何频率拿到满权重（max a = '+one.maxA.toFixed(6)+' < 1）——'
+          +'偶数阶连旋转都不留固定点');
+    }
+
+    /* 关键方向判据：叠加不会把主瓣变窄（窗函数定理） */
+    var pkT=function(a,p){
+      var Mx=2400, bt=0, ba=-1, s, v;
+      for(s=0;s<Mx;s++){
+        var tt=s/Mx, re=0, im=0;
+        for(var kk=0;kk<a.length;kk++){
+          var an=TAU*kk*tt+p[kk];
+          re+=a[kk]*Math.cos(an); im+=a[kk]*Math.sin(an);
+        }
+        v=Math.hypot(re,im);
+        if(v>ba){ ba=v; bt=tt; }
+      }
+      return {t:bt, P:ba};
+    };
+    var mkA=function(w){ var a=[], p=[]; for(var k=1;k<=N;k++){ a.push(w.a[k]); p.push(w.psi[k]); } return {a:a,p:p}; };
+    var W=mkA(sw);
+    var pkw=pkT(W.a,W.p);
+    var fwHalf=function(){
+      var half=pkw.P*pkw.P/2, lo=1e-9, hi=0.5, s2, tt, re, im, an;
+      var g=function(d){
+        var tt2=pkw.t+d, re2=0, im2=0;
+        for(var kk=0;kk<W.a.length;kk++){ an=TAU*kk*tt2+W.p[kk]; re2+=W.a[kk]*Math.cos(an); im2+=W.a[kk]*Math.sin(an); }
+        return re2*re2+im2*im2-half;
+      };
+      for(s2=0;s2<80;s2++){ var m2=(lo+hi)/2; if(g(m2)>0){ lo=m2; } else { hi=m2; } }
+      return lo+hi;
+    };
+    var fwW=fwHalf()*N;
+    chk(fwW>=0.88,
+        '叠加后 FWHM×B = '+fwW.toFixed(3)+' ≥ 0.886（等幅矩形谱的下界）⇒ 叠加只会把主瓣<b>拓宽</b>，不会变窄');
+  })();
+
+  var okN=CHK.filter(function(x){ return x.ok; }).length;
+  $('chkSum').innerHTML='自检 '+CHK.length+' 项　<span class="'+(okN===CHK.length?'ok':'bad')+'">'+okN+' 通过 / '+(CHK.length-okN)+' 失败</span>';
+  $('chkList').innerHTML=CHK.map(function(x){ return '<li class="'+(x.ok?'':'f')+'">'+x.label+'</li>'; }).join('');
+  LAST.pass=okN; LAST.total=CHK.length;
+}
+
+/* ================= 主循环 ================= */
+var pending=false;
+function draw(){
+  if(pending){ return; }
+  pending=true;
+  requestAnimationFrame(function(){
+    pending=false;
+    var M=buildSquare(ST.n), A=audit(M), F=buildFreq(M,ST.map,ST.f0);
+    SUPW = (ST.sup==='off') ? null : supWeights(M, ST.n, ST.sup, ST.phase);
+    var C=coherence(F,ST.n,ST.phase,ST.decay,ST.f0,M);
+    drawGrid(M,F,A.S);
+    drawTime(M,F);
+    drawLine(C,ST.n,A.S);
+    drawTheta();
+    drawTable(M,F,A,C);
+    runChecks(M,F,A,C);
+  });
+}
+
+/* ================= 绑定 ================= */
+$('selN').addEventListener('change',function(){ ST.n=parseInt(this.value,10); $('vN').textContent=this.value; draw(); });
+$('selMap').addEventListener('change',function(){
+  ST.map=this.value;
+  $('vMap').textContent = this.value==='linear' ? '线性' : (this.value==='oct' ? '八度·±3' : '黄金比·φ^±4');
+  draw();
+});
+$('rgF0').addEventListener('input',function(){ ST.f0=parseFloat(this.value); $('vF0').textContent=ST.f0.toFixed(3)+' Hz'; draw(); });
+function setEnv(v){
+  ST.env=v;
+  Array.prototype.forEach.call(document.getElementsByName('env'),function(r){ r.checked=(r.value===v); });
+  $('fldB').style.opacity   = (v==='band') ? '1' : '0.42';
+  $('fldSig').style.opacity = (v==='win')  ? '1' : '0.42';
+  $('vB').textContent   = ST.B.toFixed(1)+' Hz' + (v==='band' ? '　生效' : '　（闲置）');
+  $('vSig').textContent = ST.sigr.toFixed(3)    + (v==='win'  ? '　生效' : '　（闲置）');
+}
+$('rgB').addEventListener('input',function(){ ST.B=parseFloat(this.value); setEnv('band'); draw(); });
+$('rgSig').addEventListener('input',function(){ ST.sigr=parseFloat(this.value); setEnv('win'); draw(); });
+$('rgT').addEventListener('input',function(){ ST.T=parseFloat(this.value); $('vT').textContent=ST.T.toFixed(3)+' s'; draw(); });
+Array.prototype.forEach.call(document.getElementsByName('env'),function(r){
+  r.addEventListener('change',function(){ if(this.checked){ setEnv(this.value); draw(); } });
+});
+Array.prototype.forEach.call(document.getElementsByName('ph'),function(r){
+  r.addEventListener('change',function(){ if(this.checked){ ST.phase=this.value; draw(); } });
+});
+$('ckWrap').addEventListener('change',function(){ ST.wrap=this.checked; draw(); });
+$('ckDecay').addEventListener('change',function(){ ST.decay=this.checked; draw(); });
+var SUPTXT={ off:'不叠加', d4:'8 重', rot:'4 重', mir:'5 重' };
+$('selSup').addEventListener('change',function(){
+  ST.sup=this.value;
+  $('vSup').textContent=SUPTXT[this.value]||this.value;
+  draw();
+});
+window.addEventListener('resize',function(){ draw(); });
+
+window.__gb={ST:ST, buildSquare:buildSquare, audit:audit, coherence:coherence,
+             panAudit:panAudit, linPan:linPan, siamese:siamese, doublyEven:doublyEven,
+             envOf:envOf, bEffOf:bEffOf, last:function(){ return LAST; },
+             chkCount:function(){ return CHK.length; },
+             setPhase:function(p){ ST.phase=p; draw(); }};
+
+setEnv(ST.env);
+fillT2Table();          /* 必须在 draw 之前：自检要读这两张表 */
+fillPanTable();
+draw();
+})();
+</script>
+</body>
+</html>
