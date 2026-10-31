@@ -1,0 +1,417 @@
+/* ============================================================================
+ * anu.css —— Anu 七级螺旋演示页样式（暗/亮双主题）
+ * ==========================================================================*/
+
+/* 主题变量 */
+body.theme-dark {
+  --bg:        #070a12;
+  --panel:     #0e1420;
+  --panel-2:   #141c2b;
+  --line:      #22304a;
+  --line-soft: #1a2436;
+  --text:      #e6edf8;
+  --text-dim:  #93a4bf;
+  --text-dim2: #6b7f9e;
+  --accent:    #4d7cff;
+  --accent-2:  #22d3ee;
+  --gold:      #ffc861;
+  /* 🪞 磁荷极性配色：positive 正磁荷 = 暖（金橙）、negative 负磁荷 = 冷（青蓝） */
+  --pol-pos:   #ff8a5c;
+  --pol-neg:   #56ccff;
+  --stage:     #0a0e17;
+  --shadow:    0 10px 30px rgba(0,0,0,.45);
+  --radius:    14px;
+}
+body.theme-light {
+  --bg:        #eef2f8;
+  --panel:     #ffffff;
+  --panel-2:   #f6f8fc;
+  --line:      #d7e0ee;
+  --line-soft: #e6ecf6;
+  --text:      #16202f;
+  --text-dim:  #5a6b85;
+  --text-dim2: #7f8ea8;
+  --accent:    #2f6fd0;
+  --accent-2:  #0e9bb8;
+  --gold:      #b7791f;
+  --pol-pos:   #c2410c;
+  --pol-neg:   #0369a1;
+  --stage:     #f2f5fa;
+  --shadow:    0 8px 24px rgba(30,50,90,.12);
+  --radius:    14px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0; height: 100%;
+  background: var(--bg); color: var(--text);
+  font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 13.5px; line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+body { display: flex; flex-direction: column; overflow: hidden; }
+
+/* --------------------------------------------------------------- 顶栏 */
+.topbar {
+  flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 14px; padding: 10px 18px;
+  background: var(--panel); border-bottom: 1px solid var(--line);
+}
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand .dot {
+  width: 11px; height: 11px; border-radius: 50%; flex: 0 0 auto;
+  background: radial-gradient(circle at 35% 35%, #fff, var(--accent) 55%, #16306b);
+  box-shadow: 0 0 12px var(--accent);
+}
+.brand h1 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: .3px; white-space: nowrap; }
+.brand .sub { color: var(--text-dim2); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topbar-right { display: flex; gap: 8px; flex: 0 0 auto; }
+
+.btn, .btn-ghost {
+  font: inherit; cursor: pointer; border-radius: 9px; padding: 6px 11px;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--text);
+  transition: background .15s, border-color .15s, transform .1s;
+}
+.btn:hover, .btn-ghost:hover { border-color: var(--accent); }
+.btn:active { transform: translateY(1px); }
+.btn.primary { background: linear-gradient(180deg, var(--accent), #3a63d8); border-color: transparent; color: #fff; font-weight: 600; }
+.btn.primary.on { background: linear-gradient(180deg, #d8564d, #b83c34); }
+/* 「已激活」的切换按钮（⭘ 外场球面 / 🍎 苹果切片 / 🪞 Anu 镜像）——旧版只加了 on 类却没有样式，
+   于是「哪个按钮是选中的」看不出来。这里补一条通用规则（.btn.primary.on 更具体，优先于它）。 */
+.btn.on {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 15%, var(--panel-2));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.btn-ghost { background: transparent; color: var(--text-dim); font-size: 12.5px; text-decoration: none; display: inline-flex; align-items: center; }
+
+/* --------------------------------------------------------------- 布局 */
+/* 🗕 2026-10-14 老师：「这里面的参数框和一打开在图前弹出的框都默认折叠，别挡住我看图」
+   ⇒ 左右两栏宽度改成**变量**：任一侧 `.panel` 进 `.is-min` 态，该侧列宽自动收成 46px 窄条。
+      列宽切换由 `:has()` 负责 ⇒ **JS 只管加一个类**，不用手动算 grid-template-columns。
+   ⚠️ `:has()` 需 Chrome 105+（2022 起）。老浏览器下**只是列宽不收窄**，
+      正文仍会被 `.panel.is-min > *` 藏掉 ⇒ 降级是「窄条没变窄」，不会白屏。 */
+.layout {
+  flex: 1 1 auto; min-height: 0;
+  display: grid;
+  grid-template-columns: var(--col-l, 296px) minmax(0, 1fr) var(--col-r, 322px);
+  gap: 12px; padding: 12px; overflow: hidden;
+}
+.layout:has(> #panel.is-min)  { --col-l: 46px; }
+.layout:has(> #panelR.is-min) { --col-r: 46px; }
+.panel {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 12px; overflow-y: auto; overflow-x: hidden;
+  box-shadow: var(--shadow);
+}
+.panel::-webkit-scrollbar { width: 8px; }
+.panel::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+
+/* 🗕 面板「默认折叠」（左侧参数框 / 右侧资料框）
+   折叠只做两件事：① 藏掉除 `.panel-toggle` 外的全部子元素；② 把面板收成窄条 + 竖排按钮。
+   🔴 `> *:not(.panel-toggle)` 是**零结构改动**的关键：不必包 `.panel-body`，
+      面板里原有几十个 `.grp` / `table` / `p` / `.hint` 一个都不用碰，
+      也不会撞上任何既有选择器。 */
+.panel-toggle {
+  display: block; width: 100%; margin: 0 0 8px; padding: 5px 8px;
+  font: inherit; font-size: 11.5px; font-weight: 600; letter-spacing: .5px;
+  color: var(--text-dim2); background: var(--panel-2); cursor: pointer;
+  border: 1px solid var(--line); border-radius: 8px;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.panel-toggle:hover { color: var(--accent-2); border-color: var(--accent-2); }
+.panel-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.panel.is-min { padding: 8px 6px; overflow: hidden; }
+.panel.is-min > *:not(.panel-toggle) { display: none; }
+/* 折叠态：整条窄条就是按钮 —— 竖排文字，点哪儿都能展开，不用去追那 30px 高的横条 */
+.panel.is-min .panel-toggle {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 100%; margin: 0; padding: 10px 4px;
+  writing-mode: vertical-rl; text-orientation: upright;
+  letter-spacing: 4px; font-size: 12px;
+}
+
+.grp { margin-bottom: 16px; }
+.grp:last-child { margin-bottom: 4px; }
+.grp h2 {
+  margin: 0 0 8px; font-size: 12px; font-weight: 700; letter-spacing: 1px;
+  color: var(--text-dim2); text-transform: uppercase;
+  padding-bottom: 5px; border-bottom: 1px solid var(--line-soft);
+}
+
+/* 预设 */
+.preset-box { display: flex; flex-direction: column; gap: 6px; }
+.preset-box button {
+  text-align: left; font: inherit; cursor: pointer;
+  padding: 7px 10px; border-radius: 9px;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--text);
+  transition: border-color .15s, background .15s;
+}
+.preset-box button:hover { border-color: var(--accent); }
+.preset-box button.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--panel-2)); }
+.preset-box .pnote { display: block; font-size: 11.5px; color: var(--text-dim2); margin-top: 2px; }
+
+/* 行 / 滑块 */
+.row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.row > span { font-size: 12.5px; color: var(--text-dim); display: flex; justify-content: space-between; align-items: baseline; }
+.row > span b { color: var(--accent-2); font-variant-numeric: tabular-nums; font-size: 13px; }
+input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 22px; background: transparent; cursor: pointer; }
+input[type=range]::-webkit-slider-runnable-track { height: 5px; border-radius: 3px; background: var(--line); }
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 15px; height: 15px; margin-top: -5px;
+  border-radius: 50%; background: var(--accent); border: 2px solid var(--panel);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+input[type=range]::-moz-range-track { height: 5px; border-radius: 3px; background: var(--line); }
+input[type=range]::-moz-range-thumb { width: 13px; height: 13px; border-radius: 50%; background: var(--accent); border: 2px solid var(--panel); }
+
+select {
+  font: inherit; width: 100%; padding: 6px 8px; border-radius: 9px;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--text);
+}
+.chk { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; font-size: 12.5px; color: var(--text-dim); cursor: pointer; }
+.chk input { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; }
+/* 「默认」小徽标（标出网页默认值，避免老师每次都要问「现在默认是哪个」） */
+.tag-default {
+  display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 6px;
+  font-size: 10.5px; font-weight: 600; letter-spacing: .4px;
+  color: var(--accent-2); background: color-mix(in srgb, var(--accent) 20%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+}
+/* 参数区说明段（`.hint` 此前被 HTML 使用但 CSS 里一直没有定义 ⇒ 顺带补上） */
+.hint {
+  font-size: 11.5px; line-height: 1.65; color: var(--text-dim2);
+  margin: -2px 0 10px; padding: 7px 9px; border-radius: 8px;
+  background: var(--panel-2); border-left: 3px solid var(--line);
+}
+.hint b { color: var(--accent-2); }
+.hint code { color: var(--gold); }
+/* 🪞 磁荷极性行内标注（结构参数里的说明文字用） */
+.pol-pos { color: var(--pol-pos); font-weight: 700; }
+.pol-neg { color: var(--pol-neg); font-weight: 700; }
+/* GIF 导出结果区（老师第 ⑦ 条：把呼吸周期存成 ≤5MB 的 GIF） */
+.gif-box:empty { display: none; }
+.gif-box { margin-top: 8px; font-size: 11.5px; color: var(--text-dim2); }
+.gif-box img { display: block; width: 100%; border-radius: 8px; border: 1px solid var(--line); margin-top: 6px; }
+.gif-box a { color: var(--accent-2); }
+.gif-meta { line-height: 1.65; }
+.gif-meta b { color: var(--gold); }
+.gif-dim { color: var(--text-dim); opacity: .75; }
+.gif-box a.btn {
+  display: block; text-align: center; margin-top: 6px; font-weight: 600;
+  color: var(--text); text-decoration: none;
+}
+.gif-box a.btn:hover { border-color: var(--accent); color: #fff; }
+
+.btn-row { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 10px; }
+.btn-row .btn { flex: 1 1 auto; text-align: center; }
+
+.foot-note { font-size: 11.5px; color: var(--text-dim2); margin: 10px 0 0; padding-top: 9px; border-top: 1px dashed var(--line-soft); }
+
+/* --------------------------------------------------------------- 舞台 */
+.stage {
+  position: relative; min-width: 0; min-height: 0;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  overflow: hidden; background: var(--stage); box-shadow: var(--shadow);
+}
+#cv { display: block; width: 100%; height: 100%; cursor: grab; }
+#cv:active { cursor: grabbing; }
+
+.hud {
+  position: absolute; top: 12px; left: 12px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  border: 1px solid var(--line); border-radius: 11px; padding: 9px 11px;
+  backdrop-filter: blur(7px); min-width: 214px; pointer-events: none;
+}
+.hud-title { font-size: 12px; font-weight: 700; color: var(--accent-2); margin-bottom: 5px; letter-spacing: .5px; }
+/* 🪞 磁荷极性标签（老师：「网页图片左上角栏标签里面 label 出来」）。
+   放在标题下方、表格上方，用一条虚线分隔 —— 它是**当前形态的身份**，不是测量值。 */
+.hud-polarity {
+  font-size: 11.5px; line-height: 1.45; color: var(--text-dim);
+  margin: 0 0 6px; padding-bottom: 6px; border-bottom: 1px dashed var(--line-soft);
+  white-space: nowrap;
+}
+.hud-polarity b { font-weight: 700; font-variant-numeric: tabular-nums; }
+.hud-polarity.is-pos b { color: var(--pol-pos); }
+.hud-polarity.is-neg b { color: var(--pol-neg); }
+.hud-polarity .pol-pill {
+  display: inline-block; margin-left: 4px; padding: 0 5px; border-radius: 5px;
+  border: 1px solid currentColor; font-size: 10.5px; opacity: .9;
+}
+.hud-polarity.is-pos .pol-pill { color: var(--pol-pos); }
+.hud-polarity.is-neg .pol-pill { color: var(--pol-neg); }
+.hud table { border-collapse: collapse; width: 100%; font-size: 12px; }
+.hud td { padding: 1.5px 0; }
+.hud td:first-child { color: var(--text-dim2); white-space: nowrap; padding-right: 10px; }
+.hud td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.hud td b { color: var(--text); font-weight: 600; }
+
+/* ------------------------------------------------- 浮窗右上角「—」收起（可逆）
+   老师 2026-10-08：「anu 图前置的浮窗 label 标签右上角允许点击『—』缩小」。
+   ⚠️ 两个浮窗整块都是 `pointer-events: none`（这样鼠标拖拽能**穿透**到下面的画布去旋转），
+      所以这枚按钮必须**自己**声明 `pointer-events: auto`，否则它永远点不到
+      —— 这是本功能唯一一个「看起来写了、其实点不动」的坑。
+   收起只是 `display: none` 掉 `.hud-body` / `.legend-body`：
+   **不重建几何、不冻数据**，`updateHUD()` 每帧该写什么还写什么（元素只是被隐藏）。 */
+.pane-min {
+  position: absolute; top: 4px; right: 4px; z-index: 2;
+  width: 18px; height: 18px; padding: 0; margin: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: inherit; font-size: 12px; font-weight: 700; line-height: 1;
+  color: var(--text-dim2); background: transparent;
+  border: 1px solid var(--line); border-radius: 6px;
+  cursor: pointer; pointer-events: auto; user-select: none; -webkit-user-select: none;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.pane-min:hover  { color: var(--accent-2); border-color: var(--accent-2); }
+.pane-min:active { background: var(--panel-2); }
+.pane-min:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.hud .hud-title { padding-right: 22px; }      /* 标题别钻到按钮底下 */
+.hud.is-min {
+  min-width: 0; padding: 9px 26px 9px 11px;
+  /* 收起后整枚胶囊都点得动（点击目标更大，不用去追那 18 px 的「＋」）⇒ 必须自己开 pointer-events */
+  pointer-events: auto; cursor: pointer;
+}
+/* 🔴 老师 2026-10-08：「就是这些内容和该栏目内容要能收起」
+   —— 「这些内容」点名了**标题那串**（「爱心双螺旋 · 10 丝 · 全环向（经典超螺旋）（逐级 环·环·…）」）
+   ⇒ 收起时标题也一起收掉，只留一枚带短名字的小胶囊（否则它会变成一条长横幅，等于没缩）。 */
+.hud.is-min .hud-title { display: none; }
+.hud.is-min .hud-body { display: none; }
+.hud.is-min::before { content: attr(data-min-label); color: var(--text-dim); white-space: nowrap; }
+.legend-body { display: flex; flex-direction: column; gap: 5px; }
+.legend.is-min {
+  padding: 8px 26px 8px 10px;                 /* 收起后只剩一枚「＋」 */
+  /* 🔴 2026-10-14：**必须自己开 pointer-events**（父级 `.legend` 是 none 用来让拖拽穿透到画布）。
+     原先只有 `.hud.is-min` 开了这一条，图例漏了 ⇒ 折叠后**整枚胶囊点不动**：
+     只有那 18 px 的「＋」能点。平时（图例默认展开）看不出来；
+     本轮把图例改成**默认折叠**后，症状立刻变成「一打开图例就是死的、必须去追那个小加号」
+     —— 真浏览器自检 `_z_online.js` 当场挂了 4 条（PASS 24 / FAIL 4）。与 `.hud.is-min` 对齐。 */
+  pointer-events: auto; cursor: pointer;
+}
+.legend.is-min .legend-body { display: none; }
+.legend.is-min::before { content: attr(data-min-label); color: var(--text-dim); }
+
+.legend {
+  position: absolute; top: 12px; right: 12px;
+  display: flex; flex-direction: column; gap: 5px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  /* 右内边距 26px：给右上角那枚「—」让位（否则第一行图例文字会钻到按钮底下） */
+  border: 1px solid var(--line); border-radius: 11px; padding: 8px 26px 8px 10px;
+  font-size: 11.5px; color: var(--text-dim); backdrop-filter: blur(7px); pointer-events: none;
+}
+.legend i { display: inline-block; width: 22px; height: 8px; border-radius: 4px; margin-right: 6px; vertical-align: middle; }
+.sw-spectrum { background: linear-gradient(90deg,#ff4d4d,#ff9f1a,#ffd60a,#3ddc84,#22d3ee,#4d7cff,#b06bff); }
+.sw-thick { background: linear-gradient(90deg,#ffd88a,#fff3d0); }
+.sw-shell { background: repeating-linear-gradient(90deg, var(--line) 0 3px, transparent 3px 6px); }
+.sw-inner { background: repeating-linear-gradient(90deg, #b06bff 0 3px, transparent 3px 6px); }
+.sw-tube { background: linear-gradient(90deg,#6fe0c8,#2f9f86); }
+
+/* --------------------------------------------------------------- 阶段字幕
+   🔴 2026-10-20 老师（截图红框）：「这个框会档视线，你做成右上角可收起，
+      并且放在图形最左下角」
+   ⇒ 两处改动，互不相干：
+     ① **位置**：原先是 `left:50% + translateX(-50%)` 的死居中、`max-width:760px`
+        ——宽到把整个舞台下半截全盖住（图里那枚 1680 匝线圈正好在中间）。
+        现在改成**贴舞台左下角** `left:12px; bottom:12px`（舞台 = `.stage`，字幕是它的
+        绝对定位子元素 ⇒ 就是「图形最左下角」，不随页面滚动飘走），
+        宽度收到 `min(460px, 100%-24px)`：最长那条第 1 阶字幕折成 7 行、
+        **纵向占不到舞台三分之一**，右侧留给线圈本体。
+     ② **可收起**：结构与 `.hud` / `.legend` 完全一致 —— 右上角一枚 `.pane-min`（「—」/「＋」），
+        收起只是 `display:none` 掉 `.cap-body`，正文照常写进 DOM（不冻字幕、不改任何几何）。
+        收起后留一枚写着 `data-min-label`（「阶段说明」）的小胶囊，点它即可展开。
+   ⚠️ 与 hud/legend 同一条坑：整块 `.caption` 必须保持 `pointer-events:none`（让拖拽穿透到
+      canvas 转视角），所以那枚「—」得**自己**声明 `pointer-events:auto`；
+      收起态（`.caption.is-min`）再整枚胶囊开 `pointer-events:auto`，否则折叠后点不动。 */
+.caption {
+  position: absolute; left: 14px; bottom: 14px; transform: translateY(14px);
+  max-width: min(460px, calc(100% - 24px)); max-height: calc(100% - 24px);
+  overflow: hidden;
+  /* 右内边距 34px：给右上角那枚「—」让位（否则第二行文字会钻到按钮底下） */
+  padding: 10px 34px 11px 15px;
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  border: 1px solid var(--line); border-left: 3px solid var(--accent-2);
+  border-radius: 11px; font-size: 12.5px; line-height: 1.62;
+  opacity: 0; transition: opacity .35s, transform .35s; pointer-events: none;
+  backdrop-filter: blur(8px); box-shadow: var(--shadow);
+}
+.caption.show { opacity: 1; transform: translateY(0); }
+.caption b { color: var(--accent-2); }
+.caption em { color: var(--gold); font-style: normal; }
+.caption .pane-min { top: 5px; right: 5px; }
+/* 收起态：只剩「阶段说明」+ 一枚「＋」的小胶囊（与 `.hud.is-min` 同一套观感） */
+.caption.is-min {
+  max-width: min(240px, calc(100% - 24px));
+  padding: 6px 28px 6px 11px;
+  pointer-events: auto; cursor: pointer;
+}
+.caption.is-min .cap-body { display: none; }
+.caption.is-min::before { content: attr(data-min-label); color: var(--text-dim); white-space: nowrap; }
+
+.toast {
+  position: absolute; left: 50%; top: 14px; transform: translateX(-50%) translateY(-10px);
+  padding: 7px 14px; border-radius: 999px; font-size: 12.5px;
+  background: color-mix(in srgb, var(--accent) 90%, #000);
+  color: #fff; opacity: 0; transition: opacity .3s, transform .3s; pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* --------------------------------------------------------------- 右栏 */
+.panel.right h2 { border-bottom-color: var(--line-soft); }
+table.theory { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+table.theory td, table.theory th { padding: 4px 6px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+table.theory td:first-child { color: var(--text-dim2); }
+table.theory th { color: var(--text-dim2); font-weight: 600; font-size: 11.5px; text-align: left; }
+table.theory b { color: var(--accent-2); font-variant-numeric: tabular-nums; }
+.cite { font-size: 11.5px; color: var(--text-dim2); margin: 9px 0 0; padding: 8px 10px; background: var(--panel-2); border-radius: 9px; border-left: 3px solid var(--line); }
+.cite b { color: var(--gold); }
+
+ol.mech { margin: 0; padding-left: 17px; font-size: 12.5px; color: var(--text-dim); }
+ol.mech li { margin-bottom: 6px; }
+ol.mech b { color: var(--text); }
+ol.mech code { font-size: 11.5px; background: var(--panel-2); padding: 1px 5px; border-radius: 5px; color: var(--accent-2); }
+
+.cursor-hint {
+  position: fixed; right: 16px; bottom: 12px; font-size: 11.5px; color: var(--text-dim2);
+  pointer-events: none; opacity: .8;
+}
+
+/* --------------------------------------------------------------- 响应式 */
+@media (max-width: 1280px) {
+  .layout { grid-template-columns: 268px minmax(0,1fr) 288px; }
+}
+@media (max-width: 1080px) {
+  body { overflow: auto; }
+  .layout { grid-template-columns: 1fr; overflow: visible; height: auto; }
+  .stage { height: 62vh; min-height: 420px; }
+  .panel { max-height: none; }
+  .brand .sub { display: none; }
+}
+
+/* 🔴 2026-10-19：顶栏跨页按钮增到 7 枚后实测合计宽 **1371 px**，而换行规则原本只在 ≤760 生效
+   ⇒ 820–1400 区间整页横向溢出（1371 vs 视口 820，滚动条 550 px）。
+   修法：把「允许两行」提前到 ≤1400。body 是 flex column + `.layout{flex:1;min-height:0}`，
+   顶栏长高只会压缩舞台，不会撑破布局（≤760 那条已验证同一机制）。 */
+@media (max-width: 1400px) {
+  .topbar { flex-wrap: wrap; row-gap: 8px; }
+  /* flex:1 1 100% 是关键：只加 wrap 不够 —— 原来 `flex:0 0 auto` 不收缩，
+     按钮组仍按 max-content 撑到 1357 px。给它整行 + 可收缩，才会真的换到第二行。 */
+  .topbar-right { flex: 1 1 100%; min-width: 0; flex-wrap: wrap; justify-content: flex-end; }
+  .topbar-right .btn-ghost { flex: 0 1 auto; }
+}
+
+/* 🔴 2026-10-17：窄屏（≤ 760px）顶栏那一排跨页按钮原本 `flex: 0 0 auto` 且不换行，
+   414px 下实测把整页顶出 **530 px** 横向滚动条（`.topbar-right` 实测宽 912 px）。
+   修法：允许两行 —— brand 一行、按钮组整行右对齐且可换行。 */
+@media (max-width: 760px) {
+  .topbar { flex-wrap: wrap; row-gap: 8px; padding: 10px 12px; }
+  .topbar-right { flex: 1 1 100%; flex-wrap: wrap; justify-content: flex-end; }
+  .topbar-right .btn-ghost { flex: 0 1 auto; }
+  .brand h1 { white-space: normal; }
+  /* 🗕 2026-10-20：窄屏舞台只有 ~62vh 高，字幕块要**收字号 + 收到贴边**，
+     否则最长那条第 1 阶字幕（≈300 字）会占掉半个画面（纵向被 `max-height` 截掉尾巴）。
+     ⚠️ 仍然保持 `pointer-events:none`（拖拽穿透），所以这里**不开滚动** —— 靠字号先让它装得下。 */
+  .caption { font-size: 11.5px; line-height: 1.55; padding: 9px 30px 9px 12px;
+             left: 10px; bottom: 10px; max-width: calc(100% - 20px); }
+}
