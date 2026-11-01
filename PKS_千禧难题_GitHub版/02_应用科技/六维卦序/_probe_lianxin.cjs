@@ -32,6 +32,11 @@ const PAGE_EXPR = '(' + function () {
     fig: q('figure.fig').length,
     figsvg: q('figure.fig svg').length,
     shot: q('figure.shot').length,
+    plate: q('figure.plate').length,
+    plateRep: q('figure.plate.rep').length,
+    plateImg: q('figure.plate img').map((i) => i.getAttribute('src')),
+    repImg: q('figure.plate.rep img').length,
+    top: q('.topbar a').map((a) => a.getAttribute('href')),
     pair: q('.pair').length,
     tbl: q('table').length,
     txt: txt,
@@ -151,24 +156,41 @@ const BOX = (re, extra) => '(' + function (reStr, extraH) {
   const errs = await c.evalJs('(window.__errs||[]).slice(0,5)');
 
   ck(errs.length === 0, 'JS 异常 0 条', errs.length ? errs.join(' | ') : 0);
-  ck(r.h2.length === 13, 'h2 共 13 个（§0–§12）', r.h2.length);
-  ck(/§0/.test(r.h2[0]) && /§12/.test(r.h2[12]), '首节 §0、末节 §12', r.h2[0].slice(0, 10) + ' | ' + r.h2[12].slice(0, 10));
+  ck(r.h2.length === 14, 'h2 共 14 个（§0–§13）', r.h2.length);
+  ck(/§0/.test(r.h2[0]) && /§13/.test(r.h2[13]), '首节 §0、末节 §13（源与算法）', r.h2[0].slice(0, 10) + ' | ' + r.h2[13].slice(0, 10));
 
-  /* 先测到「非零」：16 张图真的加载 */
+  /* 先测到「非零」：图真的加载 */
   const loaded = r.imgs.filter((i) => i.w > 0).length;
-  ck(r.imgs.length === 16, '页面上 16 张截图（16 帧全部用上）', r.imgs.length);
-  ck(loaded === 16, '16 张全部真的解码了（naturalWidth > 0，不是空框）', loaded + '/16');
+  ck(r.imgs.length === 35, '页面上 35 张图（16 帧 ＋ 19 张图集）', r.imgs.length);
+  ck(loaded === 35, '35 张全部真的解码了（naturalWidth > 0，不是空框）', loaded + '/35');
   const missing = r.imgs.filter((i) => !fs.existsSync(path.join(DIR, i.src)));
-  ck(missing.length === 0, '16 个 src 在磁盘上都存在（相对路径没写错）', missing.map((m) => m.src).join(','));
+  ck(missing.length === 0, '35 个 src 在磁盘上都存在（相对路径没写错）', missing.map((m) => m.src).join(','));
+
+  /* ---- §12 图集：去重必须可数，不能靠「我看着没重复」 ---- */
+  ck(r.plate === 22, '图集 22 张（与 zip 内 22 张一一对应，不多不少）', r.plate);
+  ck(r.plateRep === 3, '其中 3 张是「已用」位置卡（17／19／20）', r.plateRep);
+  ck(r.repImg === 0, '🔴 3 张已用的卡里没有 img —— 同内容不贴第二遍，这才是「去重」', r.repImg);
+  ck(r.plateImg.length === 19, '真正贴出来的图 19 张（22 − 3）', r.plateImg.length);
+  const dup = r.plateImg.filter((s, i) => r.plateImg.indexOf(s) !== i);
+  ck(dup.length === 0, '19 个图集 src 两两不同（去重不是嘴上说的）', dup.join(',') || '0 个重复');
+  const overlap = r.plateImg.filter((s) => r.imgs.slice(0, 16).some((i) => i.src === s));
+  ck(overlap.length === 0, '图集与 16 帧没有共用同一个文件（同图不同源，账在 §12）', overlap.join(',') || '0');
+  ck(r.top[0] && /weixin\.qq\.com\/sph\/A0TKC9xmW0/.test(r.top[0]),
+    '置顶第一条就是原微信视频链接（视频号 A0TKC9xmW0）', r.top[0]);
+  ck(r.top.length >= 3 && r.top.every((h) => /^https?:/.test(h)), '置顶 ' + r.top.length + ' 条来源卡，全是外链', r.top.length);
 
   ck(r.fig === 3 && r.figsvg === 3, '3 张现算图（figure.fig）且都真有 svg', r.fig + '/' + r.figsvg);
-  ck(r.shot === 16, '16 个 figure.shot（视频帧）', r.shot);
+  ck(r.shot === 16, '16 个 figure.shot（视频帧，与图集分开计数）', r.shot);
   ck(r.pair === 3, '3 组两两并排', r.pair);
-  ck(r.tbl >= 6, '表格 ≥ 6 张（逐条声明查了多少）', r.tbl);
+  ck(r.tbl >= 7, '表格 ≥ 7 张（逐条声明查了多少）', r.tbl);
 
   /* 屏上的数 */
   const has = (s) => r.txt.indexOf(s) > 0;
-  ck(has('121/121'), '核验总数从 _last-test.json 读出来（不是手写）', has('121/121'));
+  /* 🔴 不写死核验数：从 _last-test.json 现读。写死一次，每加一条断言就得改探针，
+     而且「页面读 json」这条纪律本身反而没人验（页面改成手写也一样过）。 */
+  const TEST = JSON.parse(fs.readFileSync(path.join(DIR, '_last-test.json'), 'utf8'));
+  const wantCnt = TEST.pass + '/' + TEST.total;
+  ck(has(wantCnt), '核验总数从 _last-test.json 读出来（不是手写）', wantCnt + '｜' + has(wantCnt));
   ck(has('1.5–3.5') || has('1.5-3.5'), '工作区间 1.5–3.5 在屏上');
   ck(has('+0.04') && has('−0.63') && has('+0.57'), '六个爻位分逐个在屏上（含 3 爻的 −0.63，不是 −0.29）');
   ck(has('001000'), '谦的位串 001000 在屏上');
@@ -198,6 +220,18 @@ const BOX = (re, extra) => '(' + function (reStr, extraH) {
   await shotTo(OUT + 'lx_s5.png', box);
   box = await c.evalJs(BOX('§9', 1700));
   await shotTo(OUT + 'lx_s9.png', box);
+  box = await c.evalJs(BOX('§12', 2100));
+  await shotTo(OUT + 'lx_s12.png', box);
+
+  /* 图集抽两张单独裁：一张正常图版、一张「已用」位置卡（后者必须没有图） */
+  const pv = await c.evalJs('(function(){var o={};'
+    + 'var a=document.querySelector("figure.plate:not(.rep)");'
+    + 'var b=document.querySelector("figure.plate.rep");'
+    + 'function R(f){var r=f.getBoundingClientRect();return {x:Math.max(0,r.left),y:r.top+window.scrollY,w:Math.min(r.width,980),h:Math.min(r.height,1800)};}'
+    + 'if(a)o.plate=R(a); if(b)o.rep=R(b); return o;})()');
+  if (pv.plate) await shotTo(OUT + 'lx_plate.png', pv.plate);
+  if (pv.rep) await shotTo(OUT + 'lx_rep.png', pv.rep);
+  ck(!!pv.plate && !!pv.rep, '图集两种卡片各裁一张（图版 / 已用位置卡）', (pv.plate ? 'plate ' : '') + (pv.rep ? 'rep' : ''));
 
   const figs = await c.evalJs('Array.prototype.slice.call(document.querySelectorAll("figure.fig")).map(function(f){'
     + 'var a=f.getBoundingClientRect();'

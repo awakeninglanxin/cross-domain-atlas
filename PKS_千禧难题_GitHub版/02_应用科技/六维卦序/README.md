@@ -12,12 +12,12 @@ node make-atlas.cjs    # 生成 AAA_四六通达_三源合观.html
 node make-lianxin.cjs  # 生成 AAA_良心与异化_六维价值梯度.html
 node make-docaudit.cjs # 生成 AAA_算法文档_合观校核.html（读 hexagram.cjs 的 docAudit()）
 node _split_frames.cjs _img/raw/X.jpg 前缀 列 行   # 切视频截图拼图（亮度探留白）
-node _panels.cjs       # 探 22 张图集各是几行几列面板（行内亮度标准差找黑缝）
-node _match4.cjs       # 按探出的面板逐块比对，判定 16 帧与图集的重叠关系
+node _tools/find_panels.cjs _img/zip _tmp/panels.json              # 探拼图各有几行几列（标准差找黑缝）
+node _tools/match_panels.cjs _tmp/panels.json _img/zip _img _tmp/m.json  # 单帧逐张匹配到面板
 ```
 
-零依赖，Node ≥ 14。除 `test-hex.cjs` / `make-*.cjs` / `_panels.cjs` / `_match4.cjs` 外不调用 Node API
-（后四个借 `../construct-cost/cdp.cjs` 驱动无头 Chrome，不装 puppeteer）。
+零依赖，Node ≥ 14。除 `test-hex.cjs` / `make-*.cjs` / `_tools/*.cjs` 外不调用 Node API
+（它们借 `../construct-cost/cdp.cjs` 驱动无头 Chrome，本机不装 puppeteer）。
 
 ## 文件
 
@@ -33,8 +33,9 @@ node _match4.cjs       # 按探出的面板逐块比对，判定 16 帧与图集
 | `make-docaudit.cjs` | 生成「算法文档合观校核」：50 项逐条对账 + 五张图 |
 | `AAA_算法文档_合观校核.html` | 校核页（59 KB、九节）：17 章文档里每个数的复算结果，40 项相等 / 4 项要改 / 2 项自相矛盾 / 4 项核不了 |
 | `_split_frames.cjs` | 把 1280×1280 的截图拼图切成单帧：算列/行平均亮度找留白，切点由数据给，不猜坐标 |
-| `_panels.cjs` | 探 22 张图集的行列面板数：行内亮度 **标准差** 趋零的连续行/列就是黑缝（不猜坐标） |
-| `_match4.cjs` | 按探出的面板逐块做相关性比对，判定「哪 16 块就是页面上那 16 帧」 |
+| `_tools/find_panels.cjs` | 探一叠拼图各有几行几列：行内亮度 **标准差** 趋零的连续行/列就是黑缝，边界由数据给，不猜坐标 |
+| `_tools/match_panels.cjs` | 把单帧逐张匹配到拼图面板上，报「最高分 + 中位基线 + 边距」三件套；一块都切不出就报错，不交空账 |
+| `_tools/README.md` | 为什么必须先切面板再比像素（三次尝试、两次结论是错的），以及 139 块 / 16-16 的回归基线 |
 | `_probe_atlas.cjs` / `_probe_lianxin.cjs` / `_probe_docaudit.cjs` | 三页探针（**33 / 37 / 27 项**）：DOM + 像素 + 窄屏 + 截图；核验数从 json 现读，不写死 |
 | `_img/raw/` | 三张原拼图（1.38 MB），**源材料，不入裁剪** |
 | `_img/s1..s3_*.jpg` | 16 帧单图（约 550 KB） |
@@ -176,7 +177,7 @@ z（天）= 2·(2·上 + 五) − 3
 |---|---|---|
 | ① 比 md5 | 0 命中 | 16 帧是拼图里被缩放过的小格，同一内容字节永不相等 |
 | ② 整图相关性 | 0 命中，最高仅 0.51 | 拿整图去比它的一个角，宽高比一拉伸就成了两张脸 |
-| ③ **先切面板再逐块比** | **16/16 全中，0.898–0.992** | 面板边界由黑缝给出（`_panels.cjs`），不再猜坐标 |
+| ③ **先切面板再逐块比** | **16/16 全中，0.898–0.992** | 面板边界由黑缝给出（`_tools/find_panels.cjs`），不再猜坐标 |
 
 第三版的判据必须同时报**中位基线**（0.37–0.51）：最高分 0.9 只有在基线远低于它时才算命中，
 否则「所有图都差不多黑」也能刷出高分 —— 前两版就是这么骗过自己的。
@@ -274,6 +275,6 @@ z（天）= 2·(2·上 + 五) − 3
   （哪几帧、哪几块面板、误差多少、原图直链），否则下一个人接手时无从判断「这里为什么少一张」。
 - 🔴 **探针里不许写死核验数**。上一版把 `156/156` 写进探针，加了 O 段 10 条断言后立刻假红。
   改成从 `_last-test.json` 现读 —— 写死一次，「页面读 json」这条纪律本身反而没人验了。
-- 🔴 **画图脚本与页面生成器要分家**：`_panels.cjs` / `_match4.cjs` 只回答「有几块、哪块对哪块」，
+- 🔴 **画图脚本与页面生成器要分家**：`_tools/find_panels.cjs` / `_tools/match_panels.cjs` 只回答「有几块、哪块对哪块」，
   结论写进 `sources.cjs`（`ZIP_ITEMS` 的 `used` 字段），页面只负责渲染。
   三者共用一个事实来源，改一个数不会三处打架。
