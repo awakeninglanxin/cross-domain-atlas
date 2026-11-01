@@ -78,6 +78,52 @@ const PAGE_EXPR = '(' + function () {
       return { sum: sum, total: total, n: n };
     })(),
     txt: txt,
+    /* 十二个字的雷达（最后一张图）：顶点半径是不是真的按分数画的，屏上的字和图的形对不对得上。
+     * 圆心不写死：用最内那圈六边形的顶点重心反推，外框半径取最外那圈 —— 换版式也不会假红。 */
+    radar: (function () {
+      const figs = q('figure.fig');
+      const f = figs[figs.length - 1];
+      if (!f) return null;
+      const svg = f.querySelector('svg');
+      const poly = Array.prototype.slice.call(svg.querySelectorAll('polygon'));
+      if (poly.length < 3) return { n: 0 };
+      const pts = poly.map(function (p) {
+        return (p.getAttribute('points') || '').trim().split(/\s+/).map(function (s) {
+          const xy = s.split(',').map(Number); return { x: xy[0], y: xy[1] };
+        }).filter(function (o) { return isFinite(o.x) && isFinite(o.y); });
+      });
+      const rings = pts.slice(0, pts.length - 2);        /* 前几圈是刻度环，最后两条才是数据 */
+      const data = pts.slice(pts.length - 2);
+      const cen = rings[0].reduce(function (a, p) { return { x: a.x + p.x / rings[0].length, y: a.y + p.y / rings[0].length }; }, { x: 0, y: 0 });
+      const out = rings[rings.length - 1].map(function (p) { return Math.hypot(p.x - cen.x, p.y - cen.y); });
+      const outR = Math.max.apply(null, out);
+      const dist = function (p) { return Math.hypot(p.x - cen.x, p.y - cen.y) / outR; };
+      const labels = Array.prototype.slice.call(svg.querySelectorAll('text')).map(t2)
+        .map(function (s) { const m = s.match(/^(\S+?)(\d+)\s*\/\s*10$/); return m ? { zh: m[1], score: Number(m[2]) } : null; })
+        .filter(Boolean);
+      return {
+        n: labels.length, labels: labels,
+        ratio: data.length ? data[0].map(dist) : [],
+        ratioOwn: data.length > 1 ? data[1].map(dist) : [],
+        tbl: (function () {
+          const t = q('table.t').filter(function (x) {
+            const th = x.querySelector('thead tr'); return th && /只算自改/.test(th.textContent);
+          })[0];
+          if (!t) return null;
+          const rows = Array.prototype.slice.call(t.querySelectorAll('tbody tr'));
+          const o = { rows: [], total: null, own: null };
+          rows.forEach(function (tr) {
+            const td = tr.querySelectorAll('td');
+            if (td.length < 3) return;
+          /* 🔴 别把 "20／60" 里的数字都抠出来拼成 2060 —— 只取第一个整数。 */
+          const num = function (el) { const m = String(el.textContent).match(/-?\d+/); return m ? Number(m[0]) : NaN; };
+            if (/合计/.test(t2(td[0]))) { o.total = num(td[1]); o.own = num(td[2]); }
+            else o.rows.push({ zh: t2(td[0]), score: num(td[1]), own: num(td[2]) });
+          });
+          return o;
+        })(),
+      };
+    })(),
     vw: document.documentElement.clientWidth,
     scrollW: document.documentElement.scrollWidth,
     links: q('.nav a').map((a) => a.getAttribute('href')),
@@ -232,6 +278,46 @@ const BOX = (re, extra) => '(' + function (reStr, extraH) {
   ck(r.scoreSum.n === 7 && r.scoreSum.total === r.scoreSum.sum && r.scoreSum.sum > 0,
     '§8 自评表的合计 = ' + r.scoreSum.n + ' 个分项之和（防手写合计）',
     r.scoreSum.sum + ' vs ' + r.scoreSum.total);
+
+  /* ---- 十二个字：雷达的形必须等于屏上的字 ----
+   * 这一组专门防「图是手画的、表是另算的」：分来自 score.cjs，但这里不读 score.cjs，
+   * 只读**屏上印出来的字**和**真实 polygon 坐标**，两边不一致就红。 */
+  const RD = r.radar || {};
+  const LAB = RD.labels || [];
+  const TBL = RD.tbl;
+  ck(RD.n === 6, '雷达 6 个轴都带分数（读屏上的字，不数路径）', RD.n + ' 轴');
+
+  const dev = LAB.map((L, i) => Math.abs((RD.ratio[i] || 0) * 10 - L.score));
+  ck(LAB.length === 6 && dev.length === 6 && dev.every((d) => d < 0.02),
+    '实线顶点半径 = 屏上写的分数 / 10（逐轴算，最大偏差 < 0.02）',
+    dev.map((d) => d.toFixed(3)).join(','));
+
+  const devO = (TBL ? TBL.rows : []).map((row, i) => Math.abs((RD.ratioOwn[i] || 0) * 10 - row.own));
+  ck(devO.length === 6 && devO.every((d) => d < 0.02),
+    '虚线顶点半径 = 表里「只算自改」那一列 / 10（逐轴算）',
+    devO.map((d) => d.toFixed(3)).join(','));
+
+  ck(!!TBL && TBL.rows.length === LAB.length &&
+    TBL.rows.every((row, i) => row.zh === LAB[i].zh && row.score === LAB[i].score),
+    '表里每行的分 = 雷达同一轴的分（逐行核，两处不许各说一套）',
+    TBL ? TBL.rows.map((x) => x.zh + x.score).join(' ') : 'null');
+
+  ck(!!TBL && TBL.total === TBL.rows.reduce((a, b) => a + b.score, 0) &&
+    TBL.own === TBL.rows.reduce((a, b) => a + b.own, 0),
+    '合计 = 分项之和（实有与「只算自改」两列都核）',
+    TBL ? TBL.total + ' / ' + TBL.own : 'null');
+
+  ck(!!TBL && TBL.rows.every((x) => x.own <= x.score) && TBL.total > TBL.own,
+    '「只算自改」逐行不超过实有，合计严格更少（不成立就等于说自己挣的分是白送的）',
+    TBL ? '差 ' + (TBL.total - TBL.own) : 'null');
+
+  const uniq = new Set(LAB.map((x) => x.score)).size;
+  ck(uniq >= 3, '六个轴的分不是同一个数（>1 档才有区分力，防死表）', uniq + ' 个不同值');
+
+  const zeros = LAB.filter((x) => x.score === 0).map((x) => x.zh);
+  const zeroTxt = zeros.length ? zeros.length + '处0：' + zeros.join('、') : '没有0分轴';
+  ck(r.txt.indexOf(zeroTxt) >= 0, '屏上标 0 分的轴，和实际 0 分轴逐个对上',
+    zeros.length + ' 处（' + zeros.join('、') + '）');
 
   /* 八个组键必须都出现在表里 */
   /* 🔴 原来这里写了 t.indexOf('>'+key+'<') —— textContent 里根本没有标签，

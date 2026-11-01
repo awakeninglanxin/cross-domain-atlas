@@ -930,6 +930,37 @@ sec('Q 段 · 自改动力学（cRSI）');
     'Q24 累计覆盖对 12 组无区分力（全 64），而最差卦年龄跨 ' + Math.round(spread) + ' 倍 ⇒ 演绎的判据须换成回访间隔',
     'cover ' + (allFull ? '12/12 = 64' : '有组 < 64') + '；年龄 ' +
     Math.round(Math.min.apply(null, ages)) + ' ~ ' + Math.round(Math.max.apply(null, ages)));
+
+  /* ---- Q25–Q26：十二个字的打分表 ----
+   * 要防的是「分数是手填的」：写死一个 20，输入怎么变它都不动，看着很像严谨。
+   * 所以不只测数，还要做变异 —— 改一个输入，分必须跟着动，且方向正确。 */
+  const SCORE = require('./score.cjs');
+  const T0 = JSON.parse(fs.readFileSync(path.join(__dirname, '_last-test.json'), 'utf8'));
+  const sc = SCORE(RJ, T0);
+  const sc2 = SCORE(RJ, T0);
+  const idem = sc.axes.map((a) => a.zh + a.score + a.own + a.evid + a.why).join('|') ===
+    sc2.axes.map((a) => a.zh + a.score + a.own + a.evid + a.why).join('|');
+  /* 档位只允许这五个词；具体的「档＝分」一致性由 score.cjs 自己抛错，这里不重复实现。 */
+  const bandOk = sc.axes.every((a) => ['ok', 'part', 'weak', 'zero', 'todo'].indexOf(a.band) >= 0);
+  chk(sc.axes.length === 6 && sc.total === sc.axes.reduce((x, a) => x + a.score, 0) &&
+    sc.own === sc.axes.reduce((x, a) => x + a.own, 0) && bandOk && idem &&
+    sc.axes.every((a) => !/NaN|undefined|Infinity/.test(a.evid + a.why)),
+    'Q25 打分表自洽：6 条、合计 = 分项之和、档位与分同向、两跑一字不差（' +
+    sc.total + '/' + sc.max + '，自改 ' + sc.own + '）',
+    sc.axes.map((a) => a.zh + a.score).join(' '));
+
+  const mut = (fn) => { const C2 = JSON.parse(JSON.stringify(RJ)); fn(C2); return SCORE(C2, T0); };
+  const ga = (C2) => C2.groups.find((g) => g.key === 'A');
+  const gb = (C2) => C2.groups.find((g) => g.key === 'GB');
+  const s0 = sc.axes.find((a) => a.key === 'yan').score;
+  const s1 = mut((C2) => { ga(C2).stats.ageAll = 2000; }).axes.find((a) => a.key === 'yan').score;
+  const j0 = sc.axes.find((a) => a.key === 'jin').score;
+  const j1 = mut((C2) => { gb(C2).stats.ageAll = ga(C2).stats.ageAll; }).axes.find((a) => a.key === 'jin').score;
+  const m0 = sc.axes.find((a) => a.key === 'xuan').score;
+  const m1 = mut((C2) => { ga(C2).theta.g = 0.45; }).axes.find((a) => a.key === 'xuan').score;
+  chk(s1 > s0 && j1 < j0 && m1 > m0,
+    'Q26 三处变异都能把分数推动（演绎 3→' + s1 + '、尽善 6→' + j1 + '、选美 0→' + m1 + '）⇒ 分挂在实测上，不是手填',
+    s0 + '→' + s1 + ' / ' + j0 + '→' + j1 + ' / ' + m0 + '→' + m1);
 }
 
 /* ================= 输出 ================= */

@@ -29,6 +29,8 @@ R.groups.forEach((g) => { S[g.key] = g.stats; });
 const P15 = R.pareto.find((p) => Math.abs(p.lam - 1.5) < 1e-9) || {};
 if (!Number.isFinite(P15.V) || !Number.isFinite(P15.age)) throw new Error('P15 取不到 λ=1.5 的 V/age，字段名又对不上了');
 const INV = R.invariance;
+/* 十二个字的打分表：唯一来源在 score.cjs（页面、雷达、合计、test-hex 都读它）。 */
+const SC = require('./score.cjs')(R, TOTAL);
 
 const C = {
   ink: '#1d2321', dim: '#5d6663', line: '#d8d2c4', bg: '#fbf8f1', card: '#ffffff',
@@ -338,6 +340,77 @@ function svgSix() {
 
   s += '<text x="0" y="' + (Hh - 32) + '" font-size="12" fill="' + C.ink + '"><tspan font-weight="700">判据是箭头：</tspan>有回程＝归纳，没回程＝塌缩。压缩率再高，回不去也不算学会了。</text>';
   s += '<text x="0" y="' + (Hh - 12) + '" font-size="12" fill="' + C.dim + '">「暖只能说明春天的一个特征」—— ' + f2(Math.exp(S.A.HpiAll)) + ' 个最暖的日子，仍然只是形容词，不是那个「春」字。</text>';
+  s += '</svg>';
+  return s;
+}
+
+/* ============ 图 6：十二个字的雷达（实有 vs 只算自改） ============
+ * 两条多边形的顶点半径都由 score.cjs 的分算出来，不手填坐标。
+ * 版式注意：轴标签放在外框之外（R+18），多边形最长只到 0.6R，
+ * 所以折线顶点砸不进文字里 —— 探针的 svgHit 会逐点核这件事。 */
+function svgRadar() {
+  const W = 660, Hh = 430, cx = 236, cy = 214, R = 142;
+  const AX = SC.axes, N = AX.length;
+  const ang = (i) => (-90 + (i * 360) / N) * Math.PI / 180;
+  const px = (i, r) => (cx + r * Math.cos(ang(i))).toFixed(1);
+  const py = (i, r) => (cy + r * Math.sin(ang(i))).toFixed(1);
+  const ring = (f) => {
+    const p = [];
+    for (let i = 0; i < N; i++) p.push(px(i, R * f) + ',' + py(i, R * f));
+    return p.join(' ');
+  };
+  const polyOf = (key) => AX.map((a, i) => px(i, R * a[key] / 10) + ',' + py(i, R * a[key] / 10)).join(' ');
+  const BANDC = { ok: C.good, part: C.doc, weak: C.bad, zero: C.bad, todo: C.bad };
+
+  let s = '<svg viewBox="0 0 ' + W + ' ' + Hh + '" width="100%" role="img" aria-label="十二个字六轴雷达图：实有与只算自改所得两条多边形">';
+  s += '<text x="0" y="16" font-size="12" fill="' + C.dim + '">六个轴各 10 分，外框＝10，每圈 2.5 分。实线是系统里测得到的，虚线是只算自改循环自己挣到的。</text>';
+
+  /* 图例 */
+  s += '<line x1="2" y1="38" x2="22" y2="38" stroke="' + C.deep + '" stroke-width="2.5"/>';
+  s += '<text x="28" y="42" font-size="11" fill="' + C.ink + '">实有（测得到的）</text>';
+  s += '<line x1="2" y1="58" x2="22" y2="58" stroke="' + C.doc + '" stroke-width="2.5" stroke-dasharray="5 3"/>';
+  s += '<text x="28" y="62" font-size="11" fill="' + C.ink + '">只算自改挣到的</text>';
+
+  /* 环 + 轴 */
+  [0.25, 0.5, 0.75, 1].forEach((f) => {
+    s += '<polygon points="' + ring(f) + '" fill="none" stroke="' + C.line + '" stroke-width="' + (f === 1 ? 1.2 : 0.8) + '"/>';
+  });
+  for (let i = 0; i < N; i++) {
+    s += '<line x1="' + cx + '" y1="' + cy + '" x2="' + px(i, R) + '" y2="' + py(i, R) + '" stroke="' + C.line + '" stroke-width="0.8"/>';
+  }
+
+  /* 轴标签：名字 + 分/自改分 */
+  AX.forEach((a, i) => {
+    const tn = Math.cos(ang(i));
+    const anchor = Math.abs(tn) < 0.25 ? 'middle' : tn > 0 ? 'start' : 'end';
+    const bx = cx + (R + 16) * Math.cos(ang(i));
+    const by = cy + (R + 16) * Math.sin(ang(i));
+    const yName = by + (Math.sin(ang(i)) >= 0 ? 12 : -2);
+    s += '<text x="' + bx.toFixed(1) + '" y="' + yName.toFixed(1) + '" font-size="12.5" font-weight="700" fill="' + BANDC[a.band] + '" text-anchor="' + anchor + '">' + a.zh +
+      '<tspan x="' + bx.toFixed(1) + '" dy="14" font-size="11" font-weight="400" fill="' + C.ink + '" font-family="ui-monospace,monospace">' + a.score + ' / 10</tspan></text>';
+  });
+
+  /* 两条多边形 */
+  s += '<polygon points="' + polyOf('score') + '" fill="' + C.deep + '" fill-opacity="0.12" stroke="' + C.deep + '" stroke-width="2"/>';
+  s += '<polygon points="' + polyOf('own') + '" fill="none" stroke="' + C.doc + '" stroke-width="2" stroke-dasharray="5 3"/>';
+  AX.forEach((a, i) => {
+    s += '<circle cx="' + px(i, R * a.score / 10) + '" cy="' + py(i, R * a.score / 10) + '" r="2.8" fill="' + C.deep + '"/>';
+    s += '<circle cx="' + px(i, R * a.own / 10) + '" cy="' + py(i, R * a.own / 10) + '" r="2.8" fill="' + C.doc + '"/>';
+  });
+
+  /* 右侧读数 */
+  const gap = SC.total - SC.own;
+  const parts = AX.filter((a) => a.score > a.own).map((a) => a.zh + ' ' + (a.score - a.own)).join(' + ');
+  s += '<text x="470" y="96" font-size="11" fill="' + C.dim + '">总分</text>';
+  s += '<text x="470" y="142" font-size="34" font-weight="700" fill="' + C.ink + '">' + SC.total + '/' + SC.max + '</text>';
+  s += '<text x="470" y="172" font-size="12" fill="' + C.doc + '" font-weight="700">只算自改 ' + SC.own + '/' + SC.max + '</text>';
+  s += '<text x="470" y="198" font-size="11.5" fill="' + C.ink + '">差的 ' + gap + ' 分全是继承的</text>';
+  s += '<text x="470" y="214" font-size="11" fill="' + C.dim + '">' + parts + '</text>';
+  const zeros = AX.filter((a) => a.score === 0);
+  s += '<text x="470" y="248" font-size="11.5" fill="' + C.bad + '">' + (zeros.length ? zeros.length + ' 处 0：' + zeros.map((a) => a.zh).join('、') : '没有 0 分轴') + '</text>';
+  s += '<text x="470" y="270" font-size="11" fill="' + C.dim + '">' + (zeros.length ? '＝ 十二个字里最靠前的空档' : '') + '</text>';
+
+  s += '<text x="0" y="' + (Hh - 10) + '" font-size="11" fill="' + C.dim + '">分是判断，但每个分都由一条阶梯（实测值 → 档位）算出，改一个输入分就会动；表、图、合计、断言读的是同一份 score.cjs。</text>';
   s += '</svg>';
   return s;
 }
@@ -702,6 +775,35 @@ ${svgGoodhart()}
 </tbody></table></div>
 <p>这六条的现状必须分清：<b>第 1 条已经成立</b>（它就在 Ω 里，只是没人这么叫）；<b>第 2、3、4 条改法明确但没做</b>；<b>第 5 条需要系统之外的东西</b>（这就是本页一直欠着的那条正向实验）；<b>第 6 条没做</b>。找不到数的，我一律写「未做」，不写「部分实现」。</p>
 <p class="note">这一节本身也得达真：上面每一格的「现状」都能在本页别处找到对应的数 —— 归纳看 9.2 第三张表，演绎看 9.2 第一张表，选美看 <code>_crisi_result.json</code> 里 A 组的 <code>theta.g</code>，尽善看 §7.2 的门账本，达真看 §5⑤ 的恒等式，通天看 §6 那张错表对照。</p>
+
+<h3>9.5 打分：${SC.total}／${SC.max}（自改自己挣到 ${SC.own}）</h3>
+<p>分数是判断，所以先把判断的规则说死：<b>每个字的分不是手填的</b>，由 <code>score.cjs</code> 里一条阶梯（实测值 → 档位 → 分）算出 —— 改一个输入，分数就会动；表、雷达、合计、测试断言读的都是这一份。这跟「我觉得它大概几分」是两件事。</p>
+<figure class="fig"><figcaption>图 6　十二个字：实有的形状（实线），和只算自改挣到的形状（虚线）</figcaption>${svgRadar()}</figure>
+<div class="tw"><table class="t">
+<thead><tr><th style="width:52px" class="c">字</th><th style="width:64px" class="c">分</th><th style="width:74px" class="c">只算自改</th><th style="width:24%">判据（可测的那个量）</th><th>实测</th><th style="width:30%">扣分在哪</th></tr></thead>
+<tbody>
+${SC.axes.map((a) => {
+  const col = { ok: C.good, part: C.doc, weak: C.bad, zero: C.bad, todo: C.bad }[a.band];
+  const bl = { ok: '成立', part: '半成立', weak: '弱', zero: '零', todo: '未做' }[a.band];
+  return '<tr><td class="c"><b>' + a.zh + '</b></td>' +
+    '<td class="c"><span style="color:' + col + ';font-weight:700;font-size:15px">' + a.score + '</span><br><span class="sd" style="color:' + col + '">' + bl + '</span></td>' +
+    '<td class="c">' + a.own + '</td>' +
+    '<td>' + a.crit + '</td>' +
+    '<td class="sd" style="color:' + C.ink + '">' + a.evid + '</td>' +
+    '<td class="sd">' + a.why + '</td></tr>';
+}).join('')}
+<tr style="background:#f6f3ea"><td class="c"><b>合计</b></td><td class="c"><b>${SC.total}／${SC.max}</b></td><td class="c"><b>${SC.own}／${SC.max}</b></td><td colspan="3">差 ${SC.total - SC.own} 分，全部来自继承：${SC.axes.filter((a) => a.score > a.own).map((a) => a.zh + ' ' + (a.score - a.own) + ' 分').join('、')}</td></tr>
+</tbody></table></div>
+
+<p>两个数要一起看：<b>${SC.total}／${SC.max}</b> 是这套东西现在的能力位置；<b>${SC.own}／${SC.max}</b> 是自改循环自己挣到的。差的 ${SC.total - SC.own} 分全是白送的 —— Ω 本来就能还原（归纳 ${SC.axes[0].score - SC.axes[0].own} 分），工程本来就能重跑（达真 ${SC.axes[4].score - SC.axes[4].own} 分）。自己挣到的 ${SC.own} 分里，${SC.axes[3].score} 分集中在尽善这一格。</p>
+
+<div class="warn"><b>这跟 §8 的 ${8 + 8 + 5 + 3 + 6 + 7 + 4}／70 不矛盾，两把尺量的不是一件事。</b>70 分量的是<b>交付质量</b>（形式化、可审计、实证、工程），六十字量的是<b>能力在链上的位置</b>。同一套东西，工程 ${Math.round((8 + 8 + 5 + 3 + 6 + 7 + 4) / 70 * 100)} 分、能力 ${Math.round(SC.total / SC.max * 100)} 分 —— 这个落差本身就是结论：<b>我把已经会的东西做得更可信了，没有让它学会下一步。</b></div>
+
+<p>形状是断的，而且是断在最前面：第 1 步半成立（还是继承的），第 2 步 ${SC.axes[1].score} 分，第 3 步 ${SC.axes[2].score} 分 —— 前三步都不合格，第 4 步却拿了 ${SC.axes[3].score} 分。这正是 §9.3 那 ${f2(SC.rejRate * 100)}% 否决率的来源：<b>门在替上游还债。</b></p>
+
+<p>所以要把雷达鼓起来，唯一有效的动作不在第 4 步：<b>选美 0 → 6</b>（把 γ 移出 θ，改成采样温度或硬下限）、<b>演绎 3 → 8</b>（把累计 cover 换成滑窗覆盖）。这两格一动，第 4 步的否决率应该跟着掉 —— 这是一条可证伪的预言，不是一句安慰：若两格都补完而否决率仍停在 ${f2(SC.rejRate * 100)}%，那就说明补的是假的。</p>
+
+<div class="bad"><b>通天 0 分是硬的：</b>它要的第二张 384 维真表还不存在（现在这张仍是 6 个位平均分）。在真表做出来之前，这一格没法用「部分实现」含糊过去。</div>
 
 <h2><span class="no">§10</span>这一页没做到的</h2>
 <ul>
