@@ -56,6 +56,27 @@ const PAGE_EXPR = '(' + function () {
       })[0];
       return t ? t.querySelectorAll('tbody tr').length : -1;
     })(),
+    /* §8 的自评表：合计必须等于各分项之和 —— 专门防「手写合计」这个坑 */
+    scoreSum: (function () {
+      const t = q('table.t').filter(function (x) {
+        const th = x.querySelector('thead tr'); return th && /原分/.test(th.textContent);
+      })[0];
+      if (!t) return { sum: null, total: null, n: 0 };
+      const rows = Array.prototype.slice.call(t.querySelectorAll('tbody tr'));
+      let sum = 0, total = null, n = 0;
+      rows.forEach(function (tr) {
+        const td = tr.querySelectorAll('td');
+        if (!td.length) return;
+        const num = function (el) { return parseFloat(el.textContent.replace(/[^0-9.\-]/g, '')); };
+        if (/合计/.test(td[0].textContent)) {
+          total = num(td[1]);
+        } else {
+          const v = num(td[3]);
+          if (isFinite(v)) { sum += v; n++; }
+        }
+      });
+      return { sum: sum, total: total, n: n };
+    })(),
     txt: txt,
     vw: document.documentElement.clientWidth,
     scrollW: document.documentElement.scrollWidth,
@@ -155,10 +176,10 @@ const BOX = (re, extra) => '(' + function (reStr, extraH) {
 
   console.log('=== 结构与渲染 ===');
   ck(errs.length === 0, 'JS 异常 0 条', errs.length ? errs.join(' | ') : 0);
-  ck(r.h2.length === 10, 'h2 共 10 个（§0–§9）', r.h2.length);
-  ck(/§0/.test(r.h2[0]) && /§9/.test(r.h2[9]), '首节 §0、末节 §9', r.h2[0].slice(0, 8) + ' | ' + r.h2[9].slice(0, 8));
-  ck(r.h2Nums.join(',') === ['§0', '§1', '§2', '§3', '§4', '§5', '§6', '§7', '§8', '§9'].join(','),
-    '节号序列从 §0 连续到 §9，中间没跳号', r.h2Nums.join(''));
+  /* 🔴 不许写死节数（加了 §10 就会假红）—— 改判「从 §0 连续排到末节，一个不跳」。 */
+  const seqOk = r.h2Nums.length >= 6 && r.h2Nums.every((x, i) => x === '§' + i);
+  ck(seqOk, '节号从 §0 连续排到末节，中间没跳号（个数不写死）', r.h2Nums.join('') + ' 共 ' + r.h2Nums.length + ' 节');
+  ck(/§0/.test(r.h2[0]), '第一节是 §0', r.h2[0].slice(0, 8));
 
   /* 先测到非零 */
   ck(r.fig === 4 && r.figsvg === 4, '4 张现算图（figure.fig）且都真有 svg', r.fig + '/' + r.figsvg);
@@ -186,15 +207,27 @@ const BOX = (re, extra) => '(' + function (reStr, extraH) {
   ck(t.indexOf(i0(G.C.stats.ageAll)) > 0, 'C 组最差卦年龄与 JSON 一致（' + i0(G.C.stats.ageAll) + '）', t.indexOf(i0(G.C.stats.ageAll)) > 0);
   ck(t.indexOf(f3(G.D.stats.meanVTall)) > 0, 'D 组（对抗表·自改）真表价值与 JSON 一致（' + f3(G.D.stats.meanVTall) + '）', t.indexOf(f3(G.D.stats.meanVTall)) > 0);
   ck(t.indexOf(f3(G.E.stats.meanVTall)) > 0, 'E 组（对抗表·不自改）真表价值与 JSON 一致（' + f3(G.E.stats.meanVTall) + '）', t.indexOf(f3(G.E.stats.meanVTall)) > 0);
+  /* §7 的门：这一轮的核心结论，三个门组的数都要在屏上 */
+  ck(t.indexOf(f3(G.GB.stats.meanVTall)) > 0, '双门组价值与 JSON 一致（' + f3(G.GB.stats.meanVTall) + '）', t.indexOf(f3(G.GB.stats.meanVTall)) > 0);
+  ck(t.indexOf(i0(G.GB.stats.ageAll)) > 0, '双门组最差卦年龄与 JSON 一致（' + i0(G.GB.stats.ageAll) + '）', t.indexOf(i0(G.GB.stats.ageAll)) > 0);
+  ck(t.indexOf(f3(G.XB.stats.meanVTall)) > 0, '对抗表·双门的真表价值与 JSON 一致（' + f3(G.XB.stats.meanVTall) + '）', t.indexOf(f3(G.XB.stats.meanVTall)) > 0);
+
+  /* 🔴 合计必须等于分项之和。上一版页面写「合计 62」，而表里七项只有 40 ——
+   *    没有任何断言管这件事，所以它一直错着。现在这条直接读屏上的表格算。 */
+  ck(r.scoreSum.n === 7 && r.scoreSum.total === r.scoreSum.sum && r.scoreSum.sum > 0,
+    '§8 自评表的合计 = ' + r.scoreSum.n + ' 个分项之和（防手写合计）',
+    r.scoreSum.sum + ' vs ' + r.scoreSum.total);
 
   /* 八个组键必须都出现在表里 */
-  const miss = J.groups.filter((g) => t.indexOf('>' + g.key + '<') < 0 && t.indexOf(g.key + g.name.replace(/\s/g, '')) < 0
-    && t.indexOf(g.name.replace(/\s/g, '')) < 0).map((g) => g.key);
-  ck(miss.length === 0, '八组全在页面上（按组名逐个找）', miss.length ? miss.join(',') : '8/8');
+  /* 🔴 原来这里写了 t.indexOf('>'+key+'<') —— textContent 里根本没有标签，
+   *    那一项恒为 -1，是死代码（靠后面两个 or 分支才没假绿）。现在只按组名找。 */
+  const miss = J.groups.filter((g) => t.indexOf(g.name.replace(/\s/g, '')) < 0).map((g) => g.key);
+  ck(miss.length === 0, '所有组都出现在页面上（按组名逐个找，' + J.groups.length + ' 组）',
+    miss.length ? miss.join(',') : J.groups.length + '/' + J.groups.length);
 
   /* λ 扫描 12 个点：数表行，不在纯文本里找 '>0<'（textContent 没有标签，那样必假红） */
   ck(r.lamRows === J.pareto.length, '帕累托表的行数 = λ 扫描点数（' + J.pareto.length + '）', r.lamRows);
-  ck(r.groupRows === J.groups.length, '八组总表的行数 = 组数（' + J.groups.length + '）', r.groupRows);
+  ck(r.groupRows === J.groups.length, '总表的行数 = 组数（' + J.groups.length + '）', r.groupRows);
   /* 两端的 λ 与 V 必须真在屏上 */
   const pFirst = J.pareto[0], pLast = J.pareto[J.pareto.length - 1];
   ck(t.indexOf(f3(pFirst.V)) > 0 && t.indexOf(f3(pLast.V)) > 0,
@@ -207,6 +240,9 @@ const BOX = (re, extra) => '(' + function (reStr, extraH) {
   ck(t.indexOf('κ') > 0 && t.indexOf('相变') >= 0 || t.indexOf('断崖') > 0, '相变/断崖那段在屏上', t.indexOf('断崖'));
   ck(t.indexOf('undefined') < 0 && t.indexOf('NaN') < 0, '无 undefined / NaN 占位符',
     t.indexOf('undefined') + '/' + t.indexOf('NaN'));
+  /* SVG 的 <text> 里写 **粗体** ⇒ 屏上就是星号（这坑踩过）。 */
+  ck((t.match(/\*\*/g) || []).length === 0, '没有漏出 Markdown 星号（SVG text 不解析 **）',
+    (t.match(/\*\*/g) || []).length);
   ck(!/\d\.\d{6,}e[+-]\d/.test(t), '没有漏出科学计数法', 'ok');
 
   /* 核验数：必须等于 _last-test.json，不许写死 */

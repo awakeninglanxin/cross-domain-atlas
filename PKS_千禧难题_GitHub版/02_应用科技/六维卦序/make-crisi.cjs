@@ -21,6 +21,13 @@ const R = JSON.parse(fs.readFileSync(path.join(__dirname, '_crisi_result.json'),
 const M = R.meta;
 const G = {};
 R.groups.forEach((g) => { G[g.key] = g; });
+const S = {};
+R.groups.forEach((g) => { S[g.key] = g.stats; });
+/* λ=1.5 这个点专门拿来跟「门」比：它是前沿上离双门最近的一格。
+ * 🔴 pareto 的条目是扁的 {lam, V, age, Hpi, a, g, k}，没有 .stats；
+ *    第一版写成 .stats 就拿到 undefined，页面直接印出 NaN（探针的 NaN 断言抓到）。 */
+const P15 = R.pareto.find((p) => Math.abs(p.lam - 1.5) < 1e-9) || {};
+if (!Number.isFinite(P15.V) || !Number.isFinite(P15.age)) throw new Error('P15 取不到 λ=1.5 的 V/age，字段名又对不上了');
 const INV = R.invariance;
 
 const C = {
@@ -58,7 +65,7 @@ function svgValue() {
   const X = (t) => L + pw * t / tMax;
   const Y = (v) => TOP + ph * (vMax - v) / (vMax - vMin);
 
-  let s = '<svg viewBox="0 0 ' + W + ' ' + Hh + '" width="100%" role="img" aria-label="六种配置下窗口平均价值随时间的演化">';
+  let s = '<svg viewBox="0 0 ' + W + ' ' + Hh + '" width="100%" role="img" aria-label="六种配置下窗口平均价值随时间的演化（只画六条，门那四组另见 §7）">';
   s += '<text x="0" y="13" font-size="12" fill="' + C.dim + '">纵轴＝窗口内平均价值 V（真表）。横轴＝步数。每条线是三个随机种子的第一种（seed ' + M.seeds[0] + '）。</text>';
   s += '<text x="0" y="31" font-size="12" fill="' + C.dim + '">曲线抬得越高，说明系统越会「挑好卦」；抬得快而平，说明它很早就锁定了。</text>';
 
@@ -228,7 +235,7 @@ function svgGoodhart() {
   const Y = (v) => TOP + ph * (vMax - v) / (vMax - vMin);
 
   let s = '<svg viewBox="0 0 ' + W + ' ' + Hh + '" width="100%" role="img" aria-label="对抗错表下，自改与不自改在真表上的表现">';
-  s += '<text x="0" y="13" font-size="12" fill="' + C.dim + '">纵轴＝**按真表**算的窗口平均价值。三组用的表：A 是真表；D、E 是同一张对抗表（Ω′ ＝ max − V）。</text>';
+  s += '<text x="0" y="13" font-size="12" fill="' + C.dim + '">纵轴＝按真表算的窗口平均价值。三组用的表：A 是真表；D、E 是同一张对抗表（Ω′ ＝ max − V）。</text>';
   s += '<text x="0" y="31" font-size="12" fill="' + C.dim + '">D 与 E 的唯一差别是「自不自改」。要看的正是这一格的差。</text>';
 
   [-1, 0, 1].forEach((v) => {
@@ -416,8 +423,8 @@ const html = `<!DOCTYPE html>
 <p>V 只出现在 <b>φ</b> 里（当特征用），从来不出现在被更新的那一侧。<b>要改 V，得先改参数化的形状</b>，而这不在任何一步的更新式里。这比「加一条不许改 V 的规则」硬 —— 规则可以绕，形状绕不过。</p>
 <div class="ok">这是本页唯一一个我认为<b>站得住</b>的设计结论：<b>把不可改的东西做成参数化上够不着，而不是写成看得见的禁令。</b>凡写进提示词、写进护栏函数、写进审查流程的「不许」，都还是可达的。</div>
 
-<h2><span class="no">§2</span>八组结果总表</h2>
-<p>同一张真表跑六种配置，再加两组用对抗表（Ω′ ＝ max − V）的对照。<b>「最差卦年龄」</b>是后半段里「最久没被访问的那一卦」等了多久 —— 它衡量的是：<b>系统还有没有能力回头</b>。</p>
+<h2><span class="no">§2</span>十二组结果总表</h2>
+<p>同一张真表跑 ${R.groups.filter((g) => g.ohm === '真').length} 种配置，再加 ${R.groups.filter((g) => g.ohm === '对抗').length} 组用对抗表（Ω′ ＝ max − V）的对照。<b>「最差卦年龄」</b>是后半段里「最久没被访问的那一卦」等了多久 —— 它衡量的是：<b>系统还有没有能力回头</b>。</p>
 ${tableGroups()}
 <p class="note">「家」＝后半段窗口的众数卦，括号里是它占了多少比例的窗口。「θ 收敛值」是 ${M.seeds.length} 个种子的平均。<br>
 对抗组的 <b>V（真表）</b> 一律按真表算 —— 否则「被带偏多远」这句话就没有尺子。<br>
@@ -446,7 +453,7 @@ ${svgTheta()}
 </figure>
 <div class="warn"><b>这条值得单独拎出来：</b>κ 是「不许立刻走回头路」，听起来像纪律。但数据说 —— 一旦系统开始认真探索，κ 就被压到 0。<b>因为它唯一的实际作用是挡住回到好卦的路。</b>这不是我预设的反直觉例子，是它自己学出来的。</div>
 
-<h2><span class="no">§5</span>四条硬发现</h2>
+<h2><span class="no">§5</span>五条硬发现</h2>
 
 <h3>① 自改确实有本事 —— 它把价值翻了 ${(gainA / 100).toFixed(1)} 倍</h3>
 <p>不自改（C）的 V ＝ <b>${f3(Cc.meanVTall)}</b>，裸 RSI（A）的 V ＝ <b>${f3(A.meanVTall)}</b>。三个种子的标准差是 0.000 和 0.002 —— 这不是运气。所以「F 工程可实现 4 分」里至少有半分该给回来：<b>自改是能写出来的，也能跑出效果。</b></p>
@@ -461,9 +468,9 @@ ${svgTheta()}
 <div class="warn"><b>为什么软护栏没用：</b>它奖励的是「局部新颖度」。可系统被 α≈10 锁在一个三四点的小圈里，圈内每一点都被频繁访问、新颖度长期归零；圈外的卦再久没人去，<b>这个信号也传不进梯度</b>。<br>
 局部探索奖励解决不了全局覆盖 —— 这是强化学习里 hard exploration 的老问题，<b>不是参数没调好</b>。所以「在系统外面挂一个监控 + 报警」的方案，在机制上就是不够的。</div>
 
-<h3>④ 唯一说得通的中道：把可修正写进目标，不是写在外围</h3>
+<h3>④ 中道有两档：写成一个权重，还是写成一道门</h3>
 <p>B2（λ=2）的 V ＝ <b>${f3(B2.meanVTall)}</b>（比 C 高 ${b2gain.toFixed(1)}%），最差卦年龄 ${i0(B2.ageAll)}（比 C 差 ${Math.abs(b2age).toFixed(1)}%）；B4（λ=4）反过来，年龄 ${i0(B4.ageAll)}（比 C 好 ${Math.abs((Cc.ageAll / B4.ageAll - 1) * 100).toFixed(0)}%），V 低 ${Math.abs((B4.meanVTall / Cc.meanVTall - 1) * 100).toFixed(0)}%。</p>
-<div class="ok">结论不是「λ=2 最优」，而是：<b>可修正性必须从一开始就在目标函数里，事后再补阀没用。</b>这恰好是「良心」这个词的正确工程含义 —— 不是外挂的审查，是内生的一项权重。</div>
+<div class="ok">结论不是「λ=2 最优」，而是：<b>可修正性必须从一开始就进目标，事后再补阀没用。</b><br>这一条在 §7.2 又被推进了一步。写进目标其实有两档：一档是<b>全局权重 λ</b>，一档是<b>逐次判定的门</b>。在同等价值处比（λ=1.5 的 V ＝ ${f3(P15.V)}，双门的 V ＝ ${f3(S.GB.meanVTall)}），门的年龄低 ${f2(P15.age / S.GB.ageAll)} 倍。所以「内生」比原来的说法更具体：<b>不是给可修正性配一个系数，是给每一步配一个判据。</b></div>
 
 <h3>⑤ 自改在数学上不可能发现「目标反了」</h3>
 <p>这是本轮最硬的一条，而且它是<b>算术</b>，不是观察。看 D 组和 A 组的 θ：</p>
@@ -495,24 +502,80 @@ ${svgGoodhart()}
 <p>三组之间只差一个开关。E 和 D 用同一张错表，唯一区别是「自不自改」：<b>不自改停在 ${f3(Ee.meanVTall)}，自改把自己推到 ${f3(Dd.meanVTall)}</b>。自改不但没有发现表是错的，还让执行变得更彻底。</p>
 <div class="warn"><b>这是「对抗性错表」，是我人为构造的最坏情况，不代表任何真实方案。</b>它给出的是 Goodhart 的<b>上界</b>而不是平均值。真实的错法更可能是「漏了一项」（比如只有位效应、没有卦效应 —— 本页的真表正是如此），伤害会小很多，但<b>方向是同一个方向</b>。</div>
 
-<h2><span class="no">§7</span>把分数重估一遍</h2>
-<p>上一轮的自评分是 64/100，其中 F 工程可实现只给 4 分（理由：自改协议 0%）。现在有了实跑数据：</p>
+<h2><span class="no">§7</span>拿开源侧的办法补 D 和 F</h2>
+<p>上一轮最低的两项是 <b>D 有界性</b>与 <b>F 工程可实现</b>，各 4 分。这一节把 2026 年开源侧真实存在的自改算法逐个压到本系统上<b>真跑</b>：能补的补上，补不上的说清楚为什么补不上。</p>
+
+<h3>7.1 开源侧现在到底有什么</h3>
+<p>目前最完整的一张图是 <code>awesome-rsi</code>（90 条条目：31 篇一手博客、45 篇论文、14 个在维护的项目）。它把「AI 改自己」分成三层 —— 改 <b>Harness</b>（模型外面那层：提示、工具、记忆、编排）、改 <b>权重</b>、改 <b>产物</b>（程序、技能）。翁荔那篇《Harness Engineering for Self-Improvement》再把 Harness 这一层压成五级递进：</p>
 <div class="tw"><table class="t">
-<thead><tr><th>维度</th><th>原分</th><th>实跑证据</th><th>重估</th><th>为什么</th></tr></thead>
+<thead><tr><th style="width:52px">层级</th><th style="width:130px">改什么</th><th>代表做法</th></tr></thead>
+<tbody>
+<tr><td class="c">1</td><td>上下文工程</td><td>ACE（生成器 / 反思器 / 策展人三件套维护结构化条目）、MCE（把「怎么管上下文」与「管什么」拆成双层优化）、Meta-Harness（优化对象是决定存什么取什么的那段代码）</td></tr>
+<tr><td class="c">2</td><td>工作流设计</td><td>ADAS（把 agent 的设计本身形式化成优化问题）、AFlow（工作流＝图，节点是 LLM 调用，边是代码）</td></tr>
+<tr><td class="c">3</td><td>自改 Harness</td><td><b>Self-Harness</b>：跑当前版本 → 收执行轨迹 → <b>聚类失败模式</b> → 提出有界修改 → <b>用保留集测「缺陷解决了没有」和「有没有引入新问题」，两边都不回归才接受</b></td></tr>
+<tr><td class="c">4</td><td>进化搜索</td><td>AlphaEvolve（可执行评估器 + 程序数据库）、<b>DGM</b>（档案 + 准入闸）、ShinkaEvolve（新颖性拒绝）</td></tr>
+<tr><td class="c">5</td><td>权重联合优化</td><td>SIA（把 harness 改动与参数更新放进同一个优化循环，作者自己说「还很早期」）</td></tr>
+</tbody></table></div>
+<p>对 D 和 F 有用的只有一条，而且正好是第 3 级的核心：<b>propose → evaluate → accept</b>。本页原来缺的就是那个 accept 判据 —— §5 里的自改是<b>无条件接受</b>的，所以它只能当放大器。</p>
+
+<h3>7.2 F 能补：把「无条件接受」换成「门」</h3>
+<p>最小实现：每个自改周期先算出候选 θ，让候选与当前 θ 在<b>影子轨迹</b>上各跑 ${i0(M.gateSpan)} 步（从当前状态出发、<b>两侧用同一颗随机种子</b>），比较（平均 V，覆盖卦数），胜过当前才接受。STOP 的 meta-utility、Self-Harness 的「两边都不回归」、Reef 的 evaluation-gate、DGM 的 admission gate —— 四家措辞不同，做的是同一件事。</p>
+<div class="tw"><table class="t">
+<thead><tr><th>设计</th><th>机制</th><th class="r">价值 V</th><th class="r">最差卦年龄</th><th class="r">相对基线 C</th></tr></thead>
+<tbody>
+<tr><td class="c"><b>A</b></td><td>无条件接受（原来的做法）</td><td class="r">${f3(S.A.meanVTall)}</td><td class="r">${i0(S.A.ageAll)}</td><td class="r">V ×${f2(S.A.meanVTall / S.C.meanVTall)}　年龄 ×${i0(S.A.ageAll / S.C.ageAll)}</td></tr>
+<tr><td class="c"><b>H</b></td><td>事后接管：逾期就停用策略，朝逾期卦走</td><td class="r">${f3(S.H.meanVTall)}</td><td class="r">${i0(S.H.ageAll)}</td><td class="r">V ×${f2(S.H.meanVTall / S.C.meanVTall)}　年龄 ×${i0(S.H.ageAll / S.C.ageAll)}</td></tr>
+<tr><td class="c"><b>λ=1.5</b></td><td>把可修正性加权写进目标（前沿上离双门最近的一格）</td><td class="r">${f3(P15.V)}</td><td class="r">${i0(P15.age)}</td><td class="r">V ×${f2(P15.V / S.C.meanVTall)}　年龄 ×${i0(P15.age / S.C.ageAll)}</td></tr>
+<tr><td class="c"><b>GV</b></td><td>门：影子段 V 不降才接受</td><td class="r">${f3(S.GV.meanVTall)}</td><td class="r">${i0(S.GV.ageAll)}</td><td class="r">V ×${f2(S.GV.meanVTall / S.C.meanVTall)}　年龄 ×${i0(S.GV.ageAll / S.C.ageAll)}</td></tr>
+<tr style="background:#f2f7f3"><td class="c"><b>GB</b></td><td>门：影子段 V 与覆盖都不降才接受</td><td class="r"><b>${f3(S.GB.meanVTall)}</b></td><td class="r"><b>${i0(S.GB.ageAll)}</b></td><td class="r">V ×${f2(S.GB.meanVTall / S.C.meanVTall)}　年龄 ×${i0(S.GB.ageAll / S.C.ageAll)}</td></tr>
+</tbody></table></div>
+<div class="ok"><b>双门严格支配另外两个设计。</b>比「事后接管」：价值高 ${f2(S.GB.meanVTall / S.H.meanVTall)} 倍，最差卦年龄还低 ${f2(S.H.ageAll / S.GB.ageAll)} 倍 —— 接管是「停药」，门是「换药」。比「加权写进目标」：价值 ${S.GB.meanVTall >= P15.V ? '高' : '低'} ${f2(Math.abs(S.GB.meanVTall / P15.V))} 倍（基本持平，${f3(S.GB.meanVTall)} 对 ${f3(P15.V)}），年龄低 ${f2(P15.age / S.GB.ageAll)} 倍。同一件事，逐点判定的约束比一个全局权重 λ 更省。</div>
+<p>但门的账本很难看：${R.meta.seeds.length} 个种子平均下来，${i0(S.GB.gateAcc)} 次接受、${i0(S.GB.gateRej)} 次否决 —— <b>${f2(S.GB.gateRej / (S.GB.gateAcc + S.GB.gateRej) * 100)}% 的候选被拦下</b>。真正起作用的不是门本身，是门在拦人。这也从反面说清楚一件事：<b>梯度给出的「改进」，在这个目标上大部分是假的</b>。</p>
+
+<h3>7.3 D 补不上：三条路都堵死</h3>
+<p>有界性要的是一个能引用的界。三条候选路径，全部实测失败：</p>
+<div class="tw"><table class="t">
+<thead><tr><th style="width:104px">路径</th><th style="width:24%">想法</th><th>实测</th><th style="width:86px" class="c">结论</th></tr></thead>
+<tbody>
+<tr><td><b>Lyapunov 单调收敛</b></td><td>V 逐窗单调不减 + 有上界 ⇒ 收敛，收敛步数有界</td><td>稳态段 V 的逐窗<b>负增量占 ${f2(R.mono.A * 100)}%</b>（A）／${f2(R.mono.GB * 100)}%（GB）—— 这是随机系统，不是确定性梯度流，单调性前提根本不存在</td><td class="c">前提不成立</td></tr>
+<tr><td><b>覆盖时间界</b></td><td>Aleliunas 1979：任意连通图上随机游走的期望覆盖时间 ≤ 2m(n−1)</td><td>Q₆ 代入得 ${i0(2 * 192 * 63)} 步；实测<b>全部组都在 ${i0(M.mwin)} 步的度量窗内就覆盖完 64 卦</b>，界松了十几倍，没有任何约束力</td><td class="c">界存在但无用</td></tr>
+<tr><td><b>参数域冻结</b></td><td>θ 有 clip 上下界 ⇒ 状态数有限 ⇒ 必然周期化</td><td>θ 三维各按 10⁻³ 精度离散，格点数约 (${M.limits.A}/10⁻³)×(${M.limits.G}/10⁻³)×(${M.limits.K}/10⁻³) ≈ ${i0(M.paramStates)}，远超任何实验尺度</td><td class="c">有界但平凡</td></tr>
+</tbody></table></div>
+<div class="warn"><b>关键区分：探索有界 ≠ 驻留有界。</b>${R.groups.length} 个组都在 ${i0(M.mwin)} 步的度量窗内把 64 卦全看过一遍（cover ＝ 64），但 A 组最差那一卦的<b>当前年龄</b>是 ${i0(S.A.ageAll)} 步 —— <br>这个数比 Aleliunas 的 ${i0(2 * 192 * 63)} 步还大，<b>但这不构成矛盾</b> —— 那个界管的是「多久能把所有卦见完一次」，管不到「见完之后还回不回来」。<br>所以：它<b>到过</b>，然后再也不<b>回去</b>。任何「访问过一次就算覆盖」的界，都管不住「之后还会不会来」。</div>
+<p>更硬的一条来自对照：开源侧 14 个项目的「bounded optimization」标签下，有界性<b>无一例外</b>来自「某样东西被冻住」—— 权重冻结、proposer 冻结、<b>评估门由操作者定义且跨轮固定</b>、评估器由研究者提供、优化目标由人指定、演化算子固定。没有一家给出通用的数值下界。所以 D 只能得低分，不是因为我没扫出来，而是<b>这一层在目前的公开工作里不存在</b>。</p>
+
+<h3>7.4 最狠的一条：门只减速，不转向</h3>
+<p>把 Ω 换成取负的错表，同一套门再跑一遍。<b>所有组仍然回到艮</b>，只是快慢不同：</p>
+<div class="tw"><table class="t">
+<thead><tr><th style="width:38%">组（都用错表 Ω′ = max − V）</th><th class="r">真表上的 V</th><th class="r">最差卦年龄</th><th class="r">相对「不自改」的伤害</th></tr></thead>
+<tbody>
+<tr><td class="c"><b>E</b>　不自改</td><td class="r">${f3(S.E.meanVTall)}</td><td class="r">${i0(S.E.ageAll)}</td><td class="r">基准（1.0×）</td></tr>
+<tr><td class="c"><b>D</b>　无条件自改</td><td class="r">${f3(S.D.meanVTall)}</td><td class="r">${i0(S.D.ageAll)}</td><td class="r">${f2(Math.abs(S.D.meanVTall / S.E.meanVTall))}×</td></tr>
+<tr><td class="c"><b>XV</b>　对抗 + 价值门</td><td class="r">${f3(S.XV.meanVTall)}</td><td class="r">${i0(S.XV.ageAll)}</td><td class="r">${f2(Math.abs(S.XV.meanVTall / S.E.meanVTall))}×</td></tr>
+<tr><td class="c"><b>XB</b>　对抗 + 双门</td><td class="r">${f3(S.XB.meanVTall)}</td><td class="r">${i0(S.XB.ageAll)}</td><td class="r">${f2(Math.abs(S.XB.meanVTall / S.E.meanVTall))}×</td></tr>
+</tbody></table></div>
+<p>门把伤害从 ${f2(Math.abs(S.D.meanVTall / S.E.meanVTall))} 倍压到 ${f2(Math.abs(S.XB.meanVTall / S.E.meanVTall))} 倍 —— <b>压掉了一半多，但仍然是 ${f2(Math.abs(S.XB.meanVTall / S.E.meanVTall))} 倍</b>。原因在 §5⑤ 那条恒等式：门判的 <code>meanV</code> 本身来自 Ω，Ω 取负，判据跟着取负，门照样「单调地」往错的方向收敛。</p>
+<div class="bad"><b>门是限速器，不是方向盘。</b>它能让系统慢点烂，不能让系统不掉头。要掉头，只能有一个 Ω 之外的参照 —— 而这正是本页没有、也无法在系统内部造出来的东西。</div>
+<h2><span class="no">§8</span>把分数重估一遍</h2>
+<div class="warn"><b>先纠一个自己的错：</b>上一版本节的合计写的是 62，但表里七项相加只有 40 —— 合计与分项对不上，是硬伤。这一版只对<b>可复算的七项</b>负责：原七项之和 ${8 + 8 + 6 + 4 + 5 + 4 + 4}／${7 * 10}，本版 ${8 + 8 + 5 + 3 + 6 + 7 + 4}／${7 * 10}。那个「64 分」出自另一张更细的表，不在这七项里，我不在这里替它凑数 —— 要么把那张表补上来，要么就只报这七项。</div>
+<p>七项里，F 原来只给 4 分（理由：自改协议 0%）。现在不但有了协议，还有了 §7 的门与四组对照：</p>
+<div class="tw"><table class="t">
+<thead><tr><th style="width:88px">维度</th><th style="width:52px">原分</th><th style="width:76px">实跑证据</th><th style="width:52px">重估</th><th>为什么</th></tr></thead>
 <tbody>
 <tr><td>A 形式化</td><td class="c">8</td><td class="c">未变</td><td class="c"><b>8</b></td><td>Q₆ 与 384 边仍是硬骨架，本页没有动它</td></tr>
 <tr><td>B 可审计</td><td class="c">8</td><td class="c">加强</td><td class="c"><b>8</b></td><td>每个数都能从 JSON 复现，含种子</td></tr>
 <tr><td>C 抗 Goodhart</td><td class="c">6</td><td class="c">降价</td><td class="c"><b>5</b></td><td>§5⑤ 是恒等式：自改看不见 Ω 的符号/零点/标度。Ω 错时它不是「没发现」，是「没有可发现的东西」</td></tr>
-<tr><td>D 有界性</td><td class="c">4</td><td class="c">降价</td><td class="c"><b>3</b></td><td>扫出的是单调权衡曲线，没有可引用的通用下界</td></tr>
-<tr><td>E 实证</td><td class="c">5</td><td class="c">涨价</td><td class="c"><b>6</b></td><td>从「零」变成「有 8 组 × ${M.seeds.length} 种子的可复现跑批」</td></tr>
-<tr><td>F 工程可实现</td><td class="c">4</td><td class="c">涨价</td><td class="c"><b>6</b></td><td>自改协议做出来了、跑通了、有曲线有断言；但可修正性与价值不可兼得（§4），扣 4 分</td></tr>
+<tr><td>D 有界性</td><td class="c">4</td><td class="c">降价</td><td class="c"><b>3</b></td><td>§7.3 三条路全试过：单调性不成立（负增量占 ${f2(R.mono.A * 100)}%）、Aleliunas 界松十几倍、参数域界平凡。而且开源侧 14 个项目的「bounded」<b>全部</b>来自「冻住某样东西」，没有一家给出通用数值界 —— 这一层在公开工作里就不存在</td></tr>
+<tr><td>E 实证</td><td class="c">5</td><td class="c">涨价</td><td class="c"><b>6</b></td><td>从「零」变成「${R.groups.length} 组 × ${M.seeds.length} 种子的可复现跑批」，含两档门与对抗表交叉</td></tr>
+<tr><td>F 工程可实现</td><td class="c">4</td><td class="c">涨价</td><td class="c"><b>7</b></td><td>不只做出了自改协议，还做出了<b>接受判据</b>（§7.2）：双门 (V ${f3(S.GB.meanVTall)} / 年龄 ${i0(S.GB.ageAll)}) 严格支配事后接管 (${f3(S.H.meanVTall)} / ${i0(S.H.ageAll)}) 与加权 λ=1.5 (${f3(P15.V)} / ${i0(P15.age)})。扣 3 分：门 ${f2(S.GB.gateRej / (S.GB.gateAcc + S.GB.gateRej) * 100)}% 时间在否决，说明候选本身质量差；且门在错表下只减害不改向</td></tr>
 <tr><td>G 规模</td><td class="c">4</td><td class="c">未变</td><td class="c"><b>4</b></td><td>玩具仍是玩具：64 态、单智能体、无真实语料</td></tr>
-<tr><td colspan="3" style="text-align:right"><b>合计</b></td><td class="c"><b>62</b></td><td>比原来自评低 2 分</td></tr>
+<tr><td colspan="3" style="text-align:right"><b>七项合计</b></td><td class="c"><b>${8 + 8 + 5 + 3 + 6 + 7 + 4}</b></td><td>满分 ${7 * 10}；原七项 ${8 + 8 + 6 + 4 + 5 + 4 + 4}，净 +${(8 + 8 + 5 + 3 + 6 + 7 + 4) - (8 + 8 + 6 + 4 + 5 + 4 + 4)}</td></tr>
 </tbody></table></div>
-<p><b>结论有点反直觉：跑完一遍之后总分反而降了。</b>因为原来扣分扣在「没做」，现在做出来了，却发现<b>做的方向本身有问题</b> —— 自改会让「Ω 是错的」这件事变得更严重。补上工程量，暴露了设计缺陷。</p>
-<div class="ok">真正被证成的，只有一条：<b>Ω 的只读性要靠参数化保证，不能靠纪律；而可修正性必须写进目标函数，不能靠事后补阀。</b>这两条是设计的硬约束，不是加分项。</div>
+<p><b>名次没怎么动，但性质变了：</b>涨的那 ${(8 + 8 + 5 + 3 + 6 + 7 + 4) - (8 + 8 + 6 + 4 + 5 + 4 + 4)} 分全在 <b>F</b> —— 是补上了一个本来空着的工程缺口；跌的 2 分在 <b>C 和 D</b> —— 是被证明<b>补不了</b>。所以这不是「越做越好」，是「把能做的做完，把做不了的说死」。</p>
+<div class="ok">真正被证成的，只有两条：<b>Ω 的只读性要靠参数化保证，不能靠纪律；自改的接受判据必须来自留出的影子评估，不能来自主轨迹。</b>这两条是设计的硬约束，不是加分项。</div>
+<div class="bad">而<b>最要紧的那条仍然是空的</b>：自改不可能自己发现 Ω 错了。门能把它变慢（§7.4：伤害 ${f2(Math.abs(S.D.meanVTall / S.E.meanVTall))}× → ${f2(Math.abs(S.XB.meanVTall / S.E.meanVTall))}×），不能把它变对。</div>
 
-<h2><span class="no">§8</span>这一页没做到的</h2>
+<h2><span class="no">§9</span>这一页没做到的</h2>
 <ul>
 <li><b>真表是假的。</b>V ＝ Σ sᵢxᵢ 是<b>线性</b>函数，没有卦效应。所以「谦排 61/64」这个已知错误原封不动地留在系统里 —— 它会忠实地按错表行事。384 维逐爻辞的表仍然没有。</li>
 <li><b>线性 ⇒ 没有局部最优陷阱。</b>本页的「困在小圈」不是被卡住，是<b>主动收窄</b>。换成有多个局部峰的势，结论可能变。</li>
@@ -521,7 +584,7 @@ ${svgGoodhart()}
 <li><b>跑的是 ${i0(M.steps)} 步，不是训练一个模型。</b>规模差着若干个数量级。</li>
 </ul>
 
-<h2><span class="no">§9</span>源与复现</h2>
+<h2><span class="no">§10</span>源与复现</h2>
 <div class="tw"><table class="t">
 <tbody>
 <tr><td style="width:150px"><b>模拟器</b></td><td><code>crisi.cjs</code>（零依赖，只 require <code>hexagram.cjs</code> 取卦名与价值表）</td></tr>

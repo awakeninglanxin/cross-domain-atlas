@@ -108,6 +108,44 @@ function vAdversarial() {
  *   cap      可修正性上限（步）
  *   seed     随机种子（可复现，不用 Math.random）
  */
+/* θ 的硬上下界。物理上一定要有（浮点参数不可能无限大），
+ * 但这也正是「有界性」最平凡的那条路的来源：有限格点 ⇒ 必然周期化。
+ * 提到模块级是为了让页面/断言引用它，而不是各处再写一遍 40/12/12。 */
+const LIMITS = { A: 40, G: 12, K: 12 };
+
+/* ===== 影子评估：STOP / Self-Harness 的「保留集」在玩具系统里的对应物 =====
+ * 开源侧（STOP meta-utility、Self-Harness 的 propose-evaluate-accept、Reef 的
+ * evaluation-gate、DGM 的 admission gate）全都做同一件事：**候选改动先在留出的
+ * 评估上跑一遍，胜过当前才接受**。这里把它压到最小 —— 从同一状态、用同一随机
+ * 种子跑 M 步，量 (平均 V, 覆盖卦数)。
+ * 🔴 种子必须两侧相同：不同种子比出来的差异是噪声，不是改动效果。 */
+function shadow(th, x0, M, V, seed) {
+  let s = seed >>> 0;
+  const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+  let x = x0, prev = -1;
+  const seen = new Array(N).fill(-1); seen[x] = 0;
+  const logits = new Array(6), probs = new Array(6);
+  let sumV = 0, cover = 1;
+  for (let t = 1; t <= M; t++) {
+    const nb = NB[x];
+    let mx = -Infinity;
+    for (let k = 0; k < 6; k++) {
+      const y = nb[k];
+      const nov = 1 - Math.exp(-(seen[y] < 0 ? t : t - seen[y]) / 64);
+      logits[k] = th.a * (V[y] - V[x]) + th.g * nov - th.k * (y === prev ? 1 : 0);
+      if (logits[k] > mx) mx = logits[k];
+    }
+    let Z = 0;
+    for (let k = 0; k < 6; k++) { probs[k] = Math.exp(logits[k] - mx); Z += probs[k]; }
+    let u = rnd(), acc = 0, pick = 5;
+    for (let k = 0; k < 6; k++) { acc += probs[k] / Z; if (u < acc) { pick = k; break; } }
+    prev = x; x = nb[pick];
+    if (seen[x] < 0) cover++;
+    seen[x] = t; sumV += V[x];
+  }
+  return { meanV: sumV / M, cover };
+}
+
 function simulate(cfg) {
   const V = cfg.V;
   /* 「真表」：用于事后给终点打分。D 组用错表导航，但要用真表评价它跑到了哪里
@@ -136,7 +174,7 @@ function simulate(cfg) {
   const t0v = cfg.theta0 || THETA0;
   let th = { a: t0v[0], g: t0v[1], k: t0v[2] };
   const th0 = { a: th.a, g: th.g, k: th.k };
-  const A_MAX = 40, G_MAX = 12, K_MAX = 12;
+  const A_MAX = LIMITS.A, G_MAX = LIMITS.G, K_MAX = LIMITS.K;
   /* 护栏的两个旋钮，故意做成可扫的：gFloor 是「宪法要求多强的探索」，
    * lockSpan 是「触发后锁定多久」。
    * 🔴 第一版只有 gFloor = 0.30 且没有锁定期，结果 485 次触发一次也没改变行为 ——
@@ -144,6 +182,14 @@ function simulate(cfg) {
    *    抬完下一轮自改又压回 0。**写进宪法的东西若没有执行力，等于没写。** */
   const gFloor = cfg.gFloor === undefined ? 0.30 : cfg.gFloor;
   const lockSpan = cfg.lockSpan === undefined ? 0 : cfg.lockSpan;
+  /* gate: null = 无条件接受（裸 RSI，A 组）；'val' = 只接受价值不降；
+   * 'cap' = 只接受覆盖不降；'both' = 两者都不降才接受。
+   * 这是「用逐次约束代替全局权重 λ」：λ 是拉格朗日乘子的一个固定取值，
+   * 门是对每个候选逐点判定，原则上能跑出凸包之外的前沿点。 */
+  const gate = cfg.gate || null;
+  const gSpan = cfg.gSpan === undefined ? 400 : cfg.gSpan;   /* 影子轨迹长度 */
+  const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+  let gAcc = 0, gRej = 0;
   let lockUntil = -1;
   let goal = -1;                              /* 接管期要去的逾期卦 */
 
@@ -241,13 +287,24 @@ function simulate(cfg) {
     /* ---- 6a. 自改周期（每 win 步）---- */
     if (t % win === 0) {
       if (learn) {
-        th.a += eta * g[0] / win;
-        th.g += eta * g[1] / win;
-        th.k += eta * g[2] / win;
-        /* 软上限：θ 有界（这一条两组都有 —— 「θ 能无限大」不是现实设定） */
-        if (th.a < 0) th.a = 0; if (th.a > A_MAX) th.a = A_MAX;
-        if (th.g < 0) th.g = 0; if (th.g > G_MAX) th.g = G_MAX;
-        if (th.k < 0) th.k = 0; if (th.k > K_MAX) th.k = K_MAX;
+        /* 先算候选，不直接落到 th 上 —— 有门的时候要能被否决。
+         * 无门时与原来逐字节等价（先加再 clip）。 */
+        const cand = {
+          a: clamp(th.a + eta * g[0] / win, 0, A_MAX),
+          g: clamp(th.g + eta * g[1] / win, 0, G_MAX),
+          k: clamp(th.k + eta * g[2] / win, 0, K_MAX),
+        };
+        if (gate) {
+          /* 两侧同一颗种子；判据只看影子段，不看主轨迹 —— 否则是拿训练集当验证集 */
+          const so = shadow(th, x, gSpan, V, 99991);
+          const sn = shadow(cand, x, gSpan, V, 99991);
+          const okVal = sn.meanV >= so.meanV - 1e-12;
+          const okCap = sn.cover >= so.cover;
+          const ok = gate === 'val' ? okVal : gate === 'cap' ? okCap : (okVal && okCap);
+          if (ok) { th = cand; gAcc++; } else { gRej++; }
+        } else {
+          th = cand;
+        }
       }
 
       /* 护栏：可修正性硬约束。判据不是「熵率够不够」，是「还有没有一卦轮不到」 */
@@ -351,6 +408,8 @@ function simulate(cfg) {
       agePk: Math.max.apply(null, curve.slice(Math.floor(curve.length / 2)).map((c) => c.minRev)),
       everWorst: Math.max.apply(null, gapMax),
       cover: cov, guardHits,
+      /* 门的账：接受多少次、否决多少次。0 次否决＝门是装饰（与「护栏没牙」同一个病）。 */
+      gateAcc: gAcc, gateRej: gRej, gate: gate,
       meanVall: meanOver(curve, 'meanV'),
       meanVTall: meanOver(curve, 'meanVT'),
       Hall: meanOver(curve, 'H'),
@@ -394,6 +453,18 @@ const GROUPS = [
     cfg: { learn: true, bonus: 0 } },
   { key: 'E', name: '对抗 Ω · 不自改', ohm: '对抗', desc: '同上错表，但不自改 —— 用来分离「错表」与「自改」。',
     cfg: { learn: false } },
+  /* ---- 以下四组是「用开源侧的算法补 D/F」的实验 ----
+   * 门＝STOP 的 meta-utility / Self-Harness 的 propose-evaluate-accept /
+   *     Reef 的 evaluation-gate / DGM 的 admission gate，压到最小实现：
+   *     候选 θ 先在影子轨迹（同一随机种子、400 步）上跑一遍，胜过当前才接受。 */
+  { key: 'GV', name: '价值门', ohm: '真', desc: '只接受使影子段平均 V 不降的改动（＝STOP 的 meta-utility 判据）。',
+    cfg: { learn: true, bonus: 0, gate: 'val' } },
+  { key: 'GB', name: '双门', ohm: '真', desc: '影子段的 V 与覆盖卦数都不降才接受（＝Self-Harness 的「两边都不回归」）。',
+    cfg: { learn: true, bonus: 0, gate: 'both' } },
+  { key: 'XV', name: '对抗 Ω · 价值门', ohm: '对抗', desc: '错表 + 价值门：门判的是 Ω 自己的价值，看它能否发现 Ω 错了。',
+    cfg: { learn: true, bonus: 0, gate: 'val' } },
+  { key: 'XB', name: '对抗 Ω · 双门', ohm: '对抗', desc: '错表 + 双门：同上，再加覆盖约束。',
+    cfg: { learn: true, bonus: 0, gate: 'both' } },
 ];
 
 function mean(a) { return a.reduce((x, y) => x + y, 0) / a.length; }
@@ -423,9 +494,25 @@ function runs(opts) {
     })));
     const pick = (f) => runsOf.map((r) => r.final[f]);
     const st = {};
-    ['meanVall', 'meanVTall', 'HpiAll', 'Hall', 'ageAll', 'agePk', 'cover', 'dwellAll', 'Vhome', 'homeFrac', 'guardHits'].forEach((f) => {
+    ['meanVall', 'meanVTall', 'HpiAll', 'Hall', 'ageAll', 'agePk', 'cover', 'dwellAll', 'Vhome', 'homeFrac', 'guardHits', 'gateAcc', 'gateRej'].forEach((f) => {
       st[f] = mean(pick(f)); st[f + '_sd'] = sd(pick(f));
     });
+    /* 单调性：稳态后半段里逐窗 meanV 的「负增量」占比。
+     * 这是「Lyapunov 单调 + 有上界 ⇒ 收敛」那条路的前提判据。
+     * 🔴 两个坑：① 必须用未取整的原始曲线（下面的 curve 被 toFixed(4) 过，
+     *   量化噪声会把占比从 ~0.47 抬到 ~0.58）；② 必须把三个种子的窗口合并统计，
+     *   只看种子 0 会得到 0.54，与合并后的 0.47 不一样 —— 口径要跟页面写的一致。 */
+    let mneg = 0, mtot = 0;
+    runsOf.forEach((r) => {
+      const hh = r.curve.slice(Math.floor(r.curve.length / 2));
+      for (let i = 1; i < hh.length; i++) {
+        mtot++;
+        const d = hh[i].meanV - hh[i - 1].meanV;
+        if (Number.isFinite(d) && d < -1e-9) mneg++;
+      }
+    });
+    st.monoNeg = mtot ? mneg / mtot : 0;
+
     /* 家：取种子间最常见的那个（不是第一个种子的，避免把运气当结论） */
     const tally = {};
     runsOf.forEach((r) => { tally[r.final.homeName] = (tally[r.final.homeName] || 0) + 1; });
@@ -472,7 +559,7 @@ function pareto(opts) {
   });
 }
 
-module.exports = { N, NB, ham, vWei, vYiqian, vAdversarial, simulate, runs, pareto, GROUPS, THETA0, SEEDS, meanOver };
+module.exports = { N, NB, ham, vWei, vYiqian, vAdversarial, simulate, runs, pareto, GROUPS, THETA0, SEEDS, meanOver, LIMITS };
 
 if (require.main === module) {
   const t0 = Date.now();

@@ -32,10 +32,24 @@ const inv = (function () {
   };
 })();
 
+/* 单调性由 crisi.cjs 在产生全精度曲线的地方算好（st.monoNeg），这里只收集。
+ * 🔴 不要在这里拿 runs() 的 curve 重算 —— 那份 curve 是 toFixed(4) 过的，
+ *    量化噪声会把「负增量占比」从 ~0.47 抬到 ~0.58，数字就假了。 */
+const mono = {};
+R.groups.forEach((g) => { mono[g.key] = g.stats.monoNeg; });
+if (!Object.values(mono).every((v) => Number.isFinite(v)) || Object.values(mono).every((v) => v === 0)) {
+  throw new Error('mono 缺失或全为 0：字段没接上，不许静默通过');
+}
+
 const out = {
   meta: {
     steps, window: R.meta.window, mwin: R.meta.mwin, cap: R.meta.cap,
     seeds: R.meta.seeds, theta0: R.meta.theta0,
+    /* 影子轨迹长度：门判据看到的样本量。写进 meta 是为了让页面引用它而不是手写 400 */
+    gateSpan: 400,
+    /* θ 在 10⁻³ 精度下的格点数：有界性最平凡那条路的量级（页面引用，不手写） */
+    paramStates: Math.pow(1e3, 3) * C.LIMITS.A * C.LIMITS.G * C.LIMITS.K,
+    limits: C.LIMITS,
     ln6: R.meta.ln6, lnHalf6: R.meta.ln6 / 2, ln64: Math.log(64),
     ranAt: new Date().toISOString(),
     ms: Date.now() - t0,
@@ -48,6 +62,7 @@ const out = {
     curve: g.curve,
   })),
   pareto: P,
+  mono,
   invariance: inv,
   V: R.Vw, Va: R.Va, names,
   codes: { 兑: 54, 艮: 9, 谦: 8, 泰: 56, 否: 7, 既济: 42, 未济: 21, 乾: 63, 坤: 0, 困: 22 },

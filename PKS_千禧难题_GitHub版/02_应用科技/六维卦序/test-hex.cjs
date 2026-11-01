@@ -816,6 +816,67 @@ sec('Q 段 · 自改动力学（cRSI）');
   chk(rB.final.meanVTall < r1.final.meanVTall * 0.8 && rB.final.ageAll < r1.final.ageAll * 0.5,
     'Q15 λ=4 同时压低价值与年龄（权重真在起作用，不是摆设）',
     rB.final.meanVTall.toFixed(3) + ' / ' + Math.round(rB.final.ageAll));
+
+  /* ---- Q16–Q21：把「用开源侧的门补 D/F」这件事钉死 ----
+   * 这一组要防的是「门看着有用、其实一次都没否决」这种假护栏
+   * （S 组软护栏就是这么废的：485 次触发、0 次改变行为）。 */
+  const rGB = CR.simulate(Object.assign({}, base, { V: Vw, gate: 'both' }));
+  const rGV = CR.simulate(Object.assign({}, base, { V: Vw, gate: 'val' }));
+
+  /* Q16 先测非零：门真的在否决，也在接受 */
+  chk(rGB.final.gateRej > 0 && rGB.final.gateAcc > 0,
+    'Q16 门有牙：既接受过也否决过（否决 > 0 才叫门）',
+    '接受 ' + rGB.final.gateAcc + ' / 否决 ' + rGB.final.gateRej);
+
+  /* Q17 门确实改变了轨迹，不是挂着好看的开关 */
+  chk(Math.abs(rGB.thetaEnd.a - r1.thetaEnd.a) > 0.5,
+    'Q17 装了门的 θ 轨迹与无门不同（门真在起作用）',
+    'α ' + rGB.thetaEnd.a.toFixed(2) + ' vs ' + r1.thetaEnd.a.toFixed(2));
+
+  /* Q18 双门严格支配硬接管：价值更高、年龄更低 —— 两项同时赢，不是换汤 */
+  /* 🔴 必须显式给 cap。base 里没有 cap ⇒ 默认 1e6 ⇒ 「逾期」门限 cap/2=5e5 永远达不到
+   *    ⇒ 硬接管一次都不触发，跑出来就是无护栏的 A（V=1.010）。runs() 里是传了 cap:5000 的，
+   *    所以页面数据没错，错的是这条测试的配置 —— 差一点就把「接管无效」当成结论。 */
+  const rH = CR.simulate(Object.assign({}, base, { V: Vw, guard: 'hard', lockSpan: 3000, cap: 5000 }));
+  chk(rGB.final.meanVTall > rH.final.meanVTall && rGB.final.ageAll < rH.final.ageAll,
+    'Q18 双门严格支配硬接管（V 更高且年龄更低）',
+    rGB.final.meanVTall.toFixed(3) + '/' + Math.round(rGB.final.ageAll) +
+    ' vs ' + rH.final.meanVTall.toFixed(3) + '/' + Math.round(rH.final.ageAll));
+
+  /* Q19 价值门与覆盖门不是同一个判据（否则「两档门」是话术） */
+  const dTh = Math.abs(rGB.thetaEnd.a - rGV.thetaEnd.a) + Math.abs(rGB.thetaEnd.g - rGV.thetaEnd.g);
+  chk(dTh > 1e-6, 'Q19 双门与价值门是两套判据（θ 终点不同）', dTh.toFixed(3));
+
+  /* Q20 🔴 最重要的一条：门在错表下只减害、不改向。
+   * 判据三件：① 仍然回艮；② 比不自改差；③ 比不加门好。
+   * 少了第②条，「门能救命」就成了假绿。 */
+  const Va2 = CR.vAdversarial();
+  const rD = CR.simulate(Object.assign({}, base, { V: Va2, Vtrue: Vw, learn: true, bonus: 0 }));
+  const rXB = CR.simulate(Object.assign({}, base, { V: Va2, Vtrue: Vw, gate: 'both' }));
+  const rE = CR.simulate(Object.assign({}, base, { V: Va2, Vtrue: Vw, learn: false }));
+  chk(rXB.final.homeName === rE.final.homeName &&
+      rXB.final.meanVTall < rE.final.meanVTall &&
+      rXB.final.meanVTall > rD.final.meanVTall,
+    'Q20 门在错表下只减害不改向（仍回同一卦，仍比不自改差，但比无门好）',
+    rXB.final.homeName + ' ' + rXB.final.meanVTall.toFixed(3) +
+    ' ∈ (' + rD.final.meanVTall.toFixed(3) + ',' + rE.final.meanVTall.toFixed(3) + ')');
+
+  /* Q21 V 不是单调的 ⇒ 「单调有上界故收敛」这条路的前提不成立。
+   * 先测「非零」（负增量占比 > 0），再测「确实接近一半」（> 0.3）。 */
+  const hh = rGB.curve.slice(Math.floor(rGB.curve.length / 2));
+  let mneg = 0, mtot = 0;
+  for (let i = 1; i < hh.length; i++) {
+    mtot++;
+    const d = hh[i].meanV - hh[i - 1].meanV;
+    if (Number.isFinite(d) && d < -1e-9) mneg++;
+  }
+  const frac = mtot ? mneg / mtot : 0;
+  /* 判据取「至少有一次下降」—— 这就是「非单调」的定义，别卡比例。
+   * 40k 步 ÷ 2k 度量窗只有 9 个点，卡 0.3~0.7 会因为抽样抖动假红。
+   * 但必须声明样本量：9 个窗里 3 个下降，只够证「非单调」，不够估比例。 */
+  chk(mtot >= 5 && mneg > 0,
+    'Q21 价值不是单调的（稳态段确实出现过下降）⇒ 不能借「单调有上界⇒收敛」给有界性',
+    mneg + '/' + mtot + ' 窗下降');
 }
 
 /* ================= 输出 ================= */

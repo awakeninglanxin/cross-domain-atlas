@@ -40,7 +40,12 @@ const CRV = CRR ? {
   ageGain: (CRG.A.ageAll / CRG.C.ageAll),
   hardDrop: (1 - CRG.H.meanVTall / CRG.A.meanVTall) * 100,
   thDiff: CRR.invariance.maxAbsDiff,
-} : { vGain: 0, ageGain: 0, hardDrop: 0, thDiff: 0 };
+  /* 第二跑：门。没有门的组（CRG.GB 为 undefined）就退化成 0，卡片里走另一句。 */
+  gateV: CRG.GB ? CRG.GB.meanVTall : 0,
+  gateAge: CRG.GB ? CRG.GB.ageAll : 0,
+  gateVsHard: (CRG.GB && CRG.H) ? CRG.GB.meanVTall / CRG.H.meanVTall : 0,
+  xbDmg: (CRG.XB && CRG.E) ? Math.abs(CRG.XB.meanVTall / CRG.E.meanVTall) : 0,
+} : { vGain: 0, ageGain: 0, hardDrop: 0, thDiff: 0, gateV: 0, gateAge: 0, gateVsHard: 0, xbDmg: 0 };
 
 const R = H.report();
 const P = H.coxProjection();
@@ -1002,7 +1007,7 @@ A 的斜率越来越小、渐近到 0.896（β=60 实测 0.8959，再大也不�
 <div class="links">
   <a href="AAA_cRSI_玩具版_实跑记录.html">
     <b>cRSI 玩具版 · 实跑记录 ★新</b>
-    <span>把「装良心」做成能跑的系统：64 态 + 384 边 + 冻结的价值表 Ω + 一个只会改自己策略的智能体，跑 ${(CRR ? (CRR.meta.steps / 1000) : 0)}k 步看它会不会烂掉。${CRR ? CRR.groups.length : 0} 组配置 × ${CRR ? CRR.meta.seeds.length : 0} 种子。五条硬发现：自改把价值抬到 ${CRV.vGain.toFixed(2)} 倍，但最差那一卦的等待时间也涨到 ${CRV.ageGain.toFixed(0)} 倍（不再回头）；软护栏形同装饰；硬接管压住了年龄却让价值掉 ${CRV.hardDrop.toFixed(0)}%；唯一的正解是把可修正写进目标函数；以及 —— <b>θ 对 Ω 取负几乎不变（最大差 ${CRV.thDiff.toExponential(1)}），却跑到完全相反的卦</b>，自改在数学上看不见目标的符号。<code>六维卦序/AAA_cRSI_玩具版_实跑记录.html</code></span>
+    <span>把「装良心」做成能跑的系统：64 态 + 384 边 + 冻结的价值表 Ω + 一个只会改自己策略的智能体，跑 ${(CRR ? (CRR.meta.steps / 1000) : 0)}k 步看它会不会烂掉。${CRR ? CRR.groups.length : 0} 组配置 × ${CRR ? CRR.meta.seeds.length : 0} 种子。五条硬发现：自改把价值抬到 ${CRV.vGain.toFixed(2)} 倍，但最差那一卦的等待时间也涨到 ${CRV.ageGain.toFixed(0)} 倍（不再回头）；软护栏形同装饰；硬接管压住了年龄却让价值掉 ${CRV.hardDrop.toFixed(0)}%；<b>用开源侧的 accept-gate 补上了工程缺口</b>（双门 ${CRV.gateV.toFixed(3)}／年龄 ${Math.round(CRV.gateAge).toLocaleString('en-US')}，严格优于事后接管）；但有界性补不上；以及 —— <b>θ 对 Ω 取负几乎不变（最大差 ${CRV.thDiff.toExponential(1)}），却跑到完全相反的卦</b>，自改在数学上看不见目标的符号。<b>门只是限速器：错表下伤害仍从 1.0× 到 ${CRV.xbDmg.toFixed(2)}×。</b><code>六维卦序/AAA_cRSI_玩具版_实跑记录.html</code></span>
   </a>
   <a href="AAA_算法文档_合观校核.html">
     <b>算法文档合观校核 · 五十项对账 ★新</b>
