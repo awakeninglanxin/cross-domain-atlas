@@ -787,6 +787,211 @@ function doobCurve() {
   };
 }
 
+/* ================= 价值梯度：爻位吉凶分 → 势函数 → 税（2026-11-01）=================
+ * 来源：源作者第一期「AI 的良心」。视频给出一张论文统计图：
+ *   六爻位平均「吉凶分」＝ 初 +0.04、二 +0.38、三 −0.63、四 +0.26、五 +0.57、上 −0.29
+ * 🔴 口径声明：我只有这一帧截图，没有论文正文，也没有 384 条爻辞的逐条打分。
+ *    所以这里只用这六个**位平均**，绝不假装能重建逐爻分。这一点在页面上必须写明。
+ *
+ * 为什么它值得算：上一版 §9 的「凶边 25.5% / 9.2%」缺的正是这张表。有了位平均，
+ * 势函数就可以从「我自编的 1..6 位阶」换成「论文统计出来的六个实数」。
+ */
+const YAO_SCORE = [0.04, 0.38, -0.63, 0.26, 0.57, -0.29]; /* 初 二 三 四 五 上 */
+const YAO_SCORE_SRC = '视频第 1 帧组·「爻位平均吉凶分」柱状图（论文统计，仅见此图，无正文）';
+
+function yaoScoreSum(v) {
+  const b = codeToBits(v);
+  let s = 0;
+  for (let i = 0; i < 6; i++) if (b[i]) s += YAO_SCORE[i];
+  return s;
+}
+
+/* 极值卦 + 与《系辞下》「二多誉，四多惧」「三多凶，五多功」对账 */
+function yaoScoreCheck() {
+  let hi = 0, lo = 0;
+  for (let v = 1; v < 64; v++) {
+    if (yaoScoreSum(v) > yaoScoreSum(hi)) hi = v;
+    if (yaoScoreSum(v) < yaoScoreSum(lo)) lo = v;
+  }
+  const rank = YAO_SCORE.map((s, i) => ({ i, s })).sort((a, b) => b.s - a.s).map((o) => o.i);
+  return {
+    score: YAO_SCORE.slice(),
+    sum: YAO_SCORE.reduce((a, b) => a + b, 0),
+    range: YAO_SCORE.reduce((a, b) => Math.max(a, b), -9) - YAO_SCORE.reduce((a, b) => Math.min(a, b), 9),
+    hi: { code: hi, name: BY_CODE[hi].name, s: yaoScoreSum(hi) },
+    lo: { code: lo, name: BY_CODE[lo].name, s: yaoScoreSum(lo) },
+    rankCurve: rank,
+    /* 系辞的三条，成立与否由数决定，不引用原文口气 */
+    xici: {
+      '二>四（二多誉、四多惧）': YAO_SCORE[1] > YAO_SCORE[3],
+      '三<0（三多凶）': YAO_SCORE[2] < 0,
+      '五为最大（五多功）': YAO_SCORE[4] === Math.max.apply(null, YAO_SCORE),
+    },
+  };
+}
+
+/*
+ * 势驱动的行走：P(x→y) ∝ exp(β·V(y))，V = Σ s_i·x_i。
+ * 每步的「税」＝ exp(β·(V(y)−V(x)))：上山（顺）<1，下山（拧）>1。
+ * 🔴 关键结构：乘法的税 ⇒ 路径总税 = exp(β·(V(终)−V(始)))，只与两端有关。
+ *    这就是视频那句「累的不是加法，是乘法」的数学含义，也说明这种税必然来自一个势函数。
+ *    视频只说了前半句，没点破后半句。
+ *
+ * 平稳分布闭式：π ∝ a(x)·S(x)，a = e^{βV}，S(x) = Σ_{y~x} a(y)。
+ *   验证：π(x)P(x,y) = a(x)S(x)·a(y)/S(x) = a(x)a(y)，对 x,y 对称 ⇒ 可逆。
+ *   下面用幂迭代独立复核，防止闭式写错（复核结果 dev 一起返回）。
+ */
+function scoreScan(beta) {
+  const N = 64;
+  const Vv = new Array(N);
+  for (let v = 0; v < N; v++) Vv[v] = yaoScoreSum(v);
+  const a = Vv.map((x) => Math.exp(beta * x));
+  const nb = (v) => { const o = []; for (let k = 0; k < 6; k++) o.push(v ^ (1 << k)); return o; };
+  const S = new Array(N).fill(0);
+  for (let v = 0; v < N; v++) { let s = 0; for (const y of nb(v)) s += a[y]; S[v] = s; }
+
+  const pi = new Array(N);
+  let tot = 0;
+  for (let v = 0; v < N; v++) { pi[v] = a[v] * S[v]; tot += pi[v]; }
+  for (let v = 0; v < N; v++) pi[v] /= tot;
+
+  let dev = -1;
+  if (beta <= 3) {
+    let q = new Array(N).fill(1 / N);
+    for (let it = 0; it < 800; it++) {
+      const nx = new Array(N).fill(0);
+      for (let v = 0; v < N; v++) {
+        if (q[v] === 0) continue;
+        const p = q[v] / S[v];
+        for (const y of nb(v)) nx[y] += p * a[y];
+      }
+      let s = 0; for (const x of nx) s += x;
+      for (let i = 0; i < N; i++) nx[i] /= s;
+      let d = 0; for (let i = 0; i < N; i++) d += Math.abs(nx[i] - q[i]);
+      q = nx;
+      dev = 0;
+      for (let i = 0; i < N; i++) dev = Math.max(dev, Math.abs(q[i] - pi[i]));
+      if (d < 1e-16) break;
+    }
+  }
+
+  let H = 0, downFlow = 0, upFlow = 0, vmin = 0, vmax = 0;
+  for (let v = 0; v < N; v++) {
+    if (Vv[v] < Vv[vmin]) vmin = v;
+    if (Vv[v] > Vv[vmax]) vmax = v;
+    if (pi[v] < 1e-300) continue;
+    let e = 0;
+    for (const y of nb(v)) {
+      const p = a[y] / S[v];
+      if (p > 1e-320) e -= p * Math.log(p);
+      if (Vv[y] < Vv[v]) downFlow += pi[v] * p; else if (Vv[y] > Vv[v]) upFlow += pi[v] * p;
+    }
+    H += pi[v] * e;
+  }
+  return {
+    beta, H, dev,
+    downFlow, upFlow,
+    piMin: pi[vmin], vmin, vmax,
+    /* 「多久才会经过一次最差的卦」—— 可修正性的直接度量 */
+    revisit: pi[vmin] > 0 ? 1 / pi[vmin] : Infinity,
+    pi: pi,
+  };
+}
+
+function scoreCurve() {
+  const pts = [];
+  for (let i = 0; i <= 160; i++) pts.push(scoreScan(i * 0.5));
+  const H0 = pts[0].H;
+  /* 两条门槛是我自己定的，写在这里，不藏在文案里。
+   * 🔴 原来想用「下山流量降到一半」当约束生效的判据 —— 算出来恒等于 0.5，与 β 无关。
+   *    原因是可逆性：每一条下山步的时间反演就是一条上山步，平稳流量必然对半。
+   *    所以「约束有多硬」不能看下山步的比例，只能看**熵率**（还剩多少选择）
+   *    和**可修正性**（最差的卦多久才会被再访问一次）。 */
+  const H_KEEP = 0.95;       /* 熵率还保有 β=0 的 95% ⇒ 良心还没开始咬人 */
+  const REVISIT_CAP = 1e6;   /* 一卦要一百万步才轮到一次 ⇒ 事实上被排除出可选集 */
+  let betaLo = null, betaHi = null, betaH02 = null;
+  for (const p of pts) {
+    if (betaLo === null && p.H <= H_KEEP * H0) betaLo = p.beta;
+    if (betaHi === null && p.revisit >= REVISIT_CAP) betaHi = p.beta;
+    if (betaH02 === null && p.H <= 0.02) betaH02 = p.beta;
+  }
+  return {
+    pts, H0, down0: pts[0].downFlow, ln6: Math.log(6),
+    betaLo, betaHi, betaH02,
+    cap: { hKeep: H_KEEP, revisit: REVISIT_CAP },
+    end: pts[pts.length - 1],
+    at: (b) => scoreScan(b),
+  };
+}
+
+/* 六步的税：从一卦出发，六个方向的「顺/拧」与税额（乘法，不是加法） */
+function taxDemo(v) {
+  const V0 = yaoScoreSum(v);
+  const rows = [];
+  for (let i = 0; i < 6; i++) {
+    const y = v ^ (1 << (5 - i));
+    const d = yaoScoreSum(y) - V0;
+    rows.push({ i, name: ['初', '二', '三', '四', '五', '上'][i], to: BY_CODE[y].name, dV: d, dir: d > 0 ? '顺' : '拧' });
+  }
+  /* 三步样例：总税 = 三步步税之积 = exp(β·(V终−V始))，与走法无关（只与两端有关） */
+  const walkCodes = [v];
+  let cur = v;
+  const steps = [];
+  for (let k = 0; k < 3; k++) {
+    /* 每步挑「最顺」的方向：升势最多 */
+    let best = -1, bd = -Infinity;
+    for (let i = 0; i < 6; i++) {
+      const y = cur ^ (1 << (5 - i));
+      const d = yaoScoreSum(y) - yaoScoreSum(cur);
+      if (d > bd) { bd = d; best = i; }
+    }
+    cur = cur ^ (1 << (5 - best));
+    walkCodes.push(cur);
+    steps.push({ i: best, dV: bd });
+  }
+  const beta = 1;
+  const prod = steps.reduce((acc, s) => acc * Math.exp(beta * s.dV), 1);
+  const endToEnd = Math.exp(beta * (yaoScoreSum(cur) - V0));
+  return {
+    from: { code: v, name: BY_CODE[v].name, V: V0 },
+    rows,
+    path: walkCodes.map((c) => ({ code: c, name: BY_CODE[c].name, V: yaoScoreSum(c) })),
+    steps, beta, prod, endToEnd,
+    sameEndpoints: Math.abs(prod - endToEnd) < 1e-12,
+  };
+}
+
+/* 「在某个方向刷一堵墙」：删掉若干维度的全部边，看 Q6 裂成几块 */
+function islands(dims) {
+  const cut = new Set(dims || []);
+  const par = new Array(64).fill(0).map((_, i) => i);
+  const find = (x) => { while (par[x] !== x) { par[x] = par[par[x]]; x = par[x]; } return x; };
+  const uni = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) par[ra] = rb; };
+  for (let v = 0; v < 64; v++) {
+    for (let d = 0; d < 6; d++) {
+      if (cut.has(d)) continue;
+      const bit = 1 << (5 - d);
+      if (v & bit) continue;
+      uni(v, v | bit);
+    }
+  }
+  const groups = {};
+  for (let v = 0; v < 64; v++) { const r = find(v); (groups[r] = groups[r] || []).push(v); }
+  const sizes = Object.keys(groups).map((k) => groups[k].length).sort((a, b) => b - a);
+  return { cut: (dims || []).slice(), components: sizes.length, sizes, expect: Math.pow(2, (dims || []).length) };
+}
+
+/* 384 的账：64 卦 × 6 爻 = 384 条有向边 = 384 条爻辞。
+ * 注意这不是「巧合」：它们是同一个「6」的两面（每卦 6 爻 ↔ 每顶点 6 度）。
+ * 真正的信息在**方向**：一条无向边对应两句爻辞（九/六），走法决定读哪一句。
+ * 严格对应是「有向边 ↔（卦, 爻）」双射：从 v 出发动第 i 爻的那条边，读 v 的第 i 条爻辞。 */
+function edgeLedger() {
+  const V = 64, und = (V * 6) / 2, dir = V * 6;
+  let pairs = 0;
+  for (let v = 0; v < V; v++) for (let i = 0; i < 6; i++) pairs++;
+  return { V, undirected: und, directed: dir, yaoPairs: pairs, texts: 384, extra: ['用九', '用六'], same: dir === pairs };
+}
+
 /* ---------- 汇总 ---------- */
 function report() {
   const q = q6();
@@ -827,6 +1032,7 @@ module.exports = {
   johnsonBall, toBase4, report,
   JF_GONG, JF_SEAT, BS_GONG, jingfang, shaoyong, boshu, orders, codeOfName, hist,
   genusQ, genus, WEI_PATTERN, weiCount, weiDist, doobScan, doobCurve, doobScanB, doobCurveB, ham3,
+  YAO_SCORE, YAO_SCORE_SRC, yaoScoreSum, yaoScoreCheck, scoreScan, scoreCurve, taxDemo, islands, edgeLedger,
 };
 
 if (require.main === module) {

@@ -412,6 +412,105 @@ chk(DW.extremes[6].join('') === '既济' && DW.extremes[0].join('') === '未济'
   chk(b4.H < inf.H / 10, 'K28 破对称是关键：同一 β 下 B 的熵率不到 A 的十分之一', (inf.H / b4.H).toFixed(1) + ' 倍');
 }
 
+/* ================= L 段：爻位吉凶分 → 势函数 → 税（2026-11-01） =================
+ * 数据来源：源作者视频第 1 帧组的柱状图。六个数是我从截图逐字读的，
+ * 论文正文没有拿到 ⇒ 只敢用「位平均」，不敢重建 384 条逐爻分。
+ */
+{
+  const YS = H.yaoScoreCheck();
+  const CL = H.scoreCurve();
+
+  chk(Math.abs(H.scoreScan(0).H - Math.log(6)) < 1e-12,
+    'L1 β=0 ⇒ 均匀游走，熵率精确等于 ln6 = 1.791759（与本库其它 β=0 处的口径一致）',
+    H.scoreScan(0).H.toFixed(12));
+  chk(Math.abs(YS.sum - 0.33) < 1e-9 && Math.abs(YS.range - 1.20) < 1e-9,
+    'L2 六个位平均分之和 0.33、极差 1.20 —— 极差只有 1.2，这决定了后面 β 要多大才够',
+    YS.sum.toFixed(2) + ' / ' + YS.range.toFixed(2));
+  chk(YS.hi.name === '兑' && Math.abs(YS.hi.s - 1.25) < 1e-9,
+    'L3 势最高的卦是兑（阳在二四五），V = 0.38+0.26+0.57 = 1.25',
+    YS.hi.name + ' ' + YS.hi.s.toFixed(3));
+  chk(YS.lo.name === '艮' && Math.abs(YS.lo.s + 0.92) < 1e-9,
+    'L4 势最低的卦是艮（阳只在三、上），V = −0.63−0.29 = −0.92',
+    YS.lo.name + ' ' + YS.lo.s.toFixed(3));
+  const xs = YS.xici;
+  chk(xs['二>四（二多誉、四多惧）'] === true && xs['三<0（三多凶）'] === true && xs['五为最大（五多功）'] === true,
+    'L5 三条古训全部被这六个数打中：二>四、三<0、五最大（《系辞下》「二多誉四多惧、三多凶五多功」）',
+    JSON.stringify(xs));
+
+  const s1 = H.scoreScan(1);
+  chk(s1.dev >= 0 && s1.dev < 1e-15,
+    'L6 平稳分布的闭式 π ∝ a·S 与幂迭代独立算出的结果一致（不是自己证明自己）',
+    s1.dev.toExponential(2));
+  const ds = [0, 0.5, 1, 2, 3].map((b) => H.scoreScan(b).downFlow);
+  chk(ds.every((x) => Math.abs(x - 0.5) < 1e-12),
+    'L7 🔴 下山流量恒等于 0.5，与 β 无关 —— 可逆性逼迫上山步与下山步平稳流量对半，' +
+    '所以「约束有多硬」不能用它当判据（我原先那条判据在数学上不成立）',
+    ds.map((x) => x.toFixed(3)).join(','));
+
+  chk(CL.betaLo !== null && CL.betaHi !== null && CL.betaLo < CL.betaHi,
+    'L8 良心的工作区间非空：β_lo（熵率掉到 95%）< β_hi（最差卦百万步才轮到一次）',
+    '[' + CL.betaLo + ', ' + CL.betaHi + ']');
+  chk(CL.betaHi < 4,
+    'L9 🔴 原文的 β=4 已经越过上界 —— 按「可修正性」这把尺子，它落在麻木区里',
+    'β_hi = ' + CL.betaHi);
+  const b4 = H.scoreScan(4);
+  chk(b4.H > 1.0,
+    'L10 🔴 但用这六个位平均分，β=4 的熵率是 1.25，不是 0.02 —— 位平均分不足以复现那个点',
+    b4.H.toFixed(4));
+  chk(CL.betaH02 !== null && CL.betaH02 / (1 / 0.04) > 0.8 && CL.betaH02 / (1 / 0.04) < 1.4,
+    'L11 要压到 0.02 需要 β≈26.5，而 1/最小的爻位分 = 1/0.04 = 25 —— ' +
+    '初爻那 0.04 几乎中性，是它决定了良心要硬到什么程度',
+    CL.betaH02 + ' vs ' + (1 / 0.04).toFixed(0));
+
+  const I1 = H.islands([2, 3]);
+  chk(I1.components === 4 && I1.sizes.every((x) => x === 16),
+    'L12 「在人道（三、四爻）方向刷一堵墙」⇒ Q₆ 裂成 4 块、每块 16 卦，与视频那帧的「4 块孤岛」对上',
+    I1.components + ' 块 / ' + I1.sizes.join(','));
+  const I2 = H.islands([2]), I3 = H.islands([0, 2, 5]);
+  chk(I2.components === 2 && I2.sizes.join(',') === '32,32' &&
+    I3.components === 8 && I3.sizes.every((x) => x === 8),
+    'L13 一般律：删 k 维 ⇒ 恰好 2^k 块、每块 2^(6−k) 卦（k=1→2 块、k=3→8 块）',
+    I2.sizes.join(',') + ' | ' + I3.sizes.join(','));
+
+  const L = H.edgeLedger();
+  chk(L.directed === 384 && L.undirected === 192 && L.same === true,
+    'L14 64 卦 × 6 爻 = 384 条有向边 = 384 条爻辞；这不是巧合，是同一个「6」的两面',
+    L.directed + ' / ' + L.undirected);
+
+  const T = H.taxDemo(63);
+  chk(T.sameEndpoints === true && Math.abs(T.prod - T.endToEnd) < 1e-12,
+    'L15 🔴 「累的是乘法不是加法」的数学含义：三步的税之积恒等于 exp(β(ΔV))，' +
+    '只与两端有关 ⇒ 这种税必然来自一个势函数（视频只说了前半句）',
+    T.prod.toFixed(6) + ' = ' + T.endToEnd.toFixed(6));
+
+  /* 🔴 反证：位平均势与「谦卦六爻皆吉、定为最高原则」不能同时成立 */
+  const QIAN = H.codeOf('艮', '坤');
+  const rank = [];
+  for (let v = 0; v < 64; v++) rank.push({ v, s: H.yaoScoreSum(v) });
+  rank.sort((a, b) => b.s - a.s);
+  const pos = rank.findIndex((x) => x.v === QIAN) + 1;
+  chk(pos > 55 && Math.abs(H.yaoScoreSum(QIAN) + 0.63) < 1e-9,
+    'L16 🔴 谦卦在位平均势下 V = −0.63、排 ' + pos + '/64（几乎垫底），' +
+    '而视频说「谦卦六爻皆吉 ⇒ 定为最高原则」——两个口径不能同时成立：' +
+    '吉凶 = 位效应 + 卦效应，位平均只给了前半截，卦效应（384 条逐爻分）我没有',
+    '谦 ' + H.yaoScoreSum(QIAN).toFixed(2) + ' @' + pos);
+  chk(rank[0].v !== QIAN && H.BY_CODE[rank[0].v].name === '兑',
+    'L17 位平均势的首位是兑，不是谦 —— 说明「位」这一维上兑占优，谦的吉来自「卦」那一维',
+    H.BY_CODE[rank[0].v].name);
+}
+
+/* M7 把五爻的分从 +0.57 改成 −0.57 ⇒ 「五多功」必须立刻不成立、极值卦也必须换掉 */
+try {
+  const M = loadMutated('hexagram.cjs', [
+    ["const YAO_SCORE = [0.04, 0.38, -0.63, 0.26, 0.57, -0.29];",
+      "const YAO_SCORE = [0.04, 0.38, -0.63, 0.26, -0.57, -0.29];"],
+  ]);
+  const m = M.yaoScoreCheck();
+  chk(m.xici['五为最大（五多功）'] === false && m.hi.name !== '兑',
+    'M7 五爻分翻号 ⇒ 「五多功」转红、势最高的卦不再是兑，L3/L5 能抓到',
+    'hi = ' + m.hi.name);
+} catch (e) { chk(false, 'M7 变异载入失败：' + e.message); }
+
 /* M5 把消息卦顺序挪一格（复↔临互换）⇒ 12 步闭环应断开，I3 必须转红 */
 try {
   const M = loadMutated('hexagram.cjs', [
