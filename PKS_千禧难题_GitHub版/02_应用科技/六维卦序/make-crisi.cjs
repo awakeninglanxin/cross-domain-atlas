@@ -344,6 +344,36 @@ function svgSix() {
   return s;
 }
 
+/* ============ 置顶大纲：十二个字六步（全页的目录，放在最前面） ============
+ * 状态字只从 SC.plan 里取，页面不另写一份 —— 否则迟早出现「大纲说没做、下面说部分成立」。
+ * 四档之外没有中间态：拿不到数的一律「未做」。 */
+const ST_ZH = require('./score.cjs').ST_ZH;
+const ST_C = { done: C.good, ready: '#8a5a12', outside: C.bad, none: '#56504a' };
+function planTop() {
+  const cards = SC.plan.map((p) => '<a class="pc" href="#s9" data-st="' + p.st + '" data-zh="' + p.zh + '">'
+    + '<span class="at">' + p.at + '</span>'
+    + '<span class="no">' + (p.ord < 10 ? '0' + p.ord : p.ord) + '</span>'
+    + '<span class="zh">' + p.zh + '</span>'
+    + '<span class="st">' + ST_ZH[p.st] + '</span>'
+    + '<span class="wt">' + p.what + '</span>'
+    + '<span class="ev">' + p.evid + '</span>'
+    + '</a>').join('');
+  return '<section class="plan" id="plan">'
+    + '<div class="plan-hd"><span class="pin">置顶大纲</span><b>十二个字：六步依赖链</b>'
+    + '<span class="chain">归纳 → 演绎 → 选美 → 尽善 → 达真 → 通天</span></div>'
+    + '<p class="plan-sub">这是全页的目录，先看这块，再看下面的证据。六步是一条链：前面没做，后面就在替它还债 —— '
+    + '第 4 步（尽善）拿了 ' + SC.axes[3].score + ' 分，代价是 ' + SC.rejPct + '% 否决（见 §9.3）。</p>'
+    + '<div class="plan-grid">' + cards + '</div>'
+    + '<div class="plan-key">'
+    + '<span><i class="k1">已成立</i>在跑，而且有数</span>'
+    + '<span><i class="k2">改法已定 · 未做</i>知道怎么改，还没改（' + SC.plan.filter((p) => p.st === 'ready').length + ' 条）</span>'
+    + '<span><i class="k3">待外部 · 未做</i>缺的是系统之外的东西（本页欠的正向实验）</span>'
+    + '<span><i class="k4">没做</i>连要的东西都还不存在</span>'
+    + '</div>'
+    + '<p class="plan-rule">找不到数的一律写「未做」，不写「部分实现」—— 那等于把欠账写成成绩。</p>'
+    + '</section>';
+}
+
 /* ============ 图 6：十二个字的雷达（实有 vs 只算自改） ============
  * 两条多边形的顶点半径都由 score.cjs 的分算出来，不手填坐标。
  * 版式注意：轴标签放在外框之外（R+18），多边形最长只到 0.6R，
@@ -486,6 +516,41 @@ code{font:13.5px/1.5 "Cascadia Mono",Consolas,Menlo,monospace;background:#f2ede2
 .lede{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--claim);
   border-radius:5px;padding:15px 18px;margin:18px 0;font-size:15px}
 .lede b{color:var(--claim)}
+/* ── 置顶大纲：十二个字六步。它是全页的目录，所以放最前面，且不占 §号 ──
+ * 不用 h2：h2 带 §号，探针断言「节号从 §0 连续」会被它顶掉一位。 */
+.plan{background:#fbf8f1;border:1px solid #ddd3bd;border-radius:8px;padding:15px 16px 13px;margin:20px 0 6px}
+.plan-hd{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 3px}
+.plan-hd b{font-size:16.5px;font-weight:750;letter-spacing:.3px}
+.plan-hd .pin{font-size:10.5px;font-weight:700;color:#8a5a12;background:#fbeecd;
+  border:1px solid #e8d3a2;border-radius:3px;padding:1px 6px;letter-spacing:.5px}
+.plan-hd .chain{font-size:11.5px;color:var(--dim);letter-spacing:.2px}
+.plan-sub{font-size:12.6px;color:var(--dim);margin:0 0 11px;line-height:1.6}
+.plan-grid{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;gap:8px}
+.pc{display:flex;flex-direction:column;position:relative;background:#fff;border:1px solid var(--line);
+  border-radius:6px;padding:9px 10px 9px 13px;text-decoration:none;color:var(--ink);border-bottom:1px solid var(--line)}
+.pc::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3.5px;border-radius:6px 0 0 6px;background:var(--line)}
+.pc .no{font-size:10px;color:var(--dim);letter-spacing:1px;font-variant-numeric:tabular-nums}
+.pc .zh{font-size:17px;font-weight:750;line-height:1.25;margin:0 0 4px;letter-spacing:1px}
+.pc .st{display:inline-block;align-self:flex-start;font-size:10.4px;font-weight:700;
+  padding:1.5px 6px;border-radius:3px;line-height:1.35;white-space:nowrap}
+.pc .wt{font-size:11.5px;color:#463f33;margin-top:7px;line-height:1.5}
+.pc .ev{font-size:10.6px;color:var(--dim);margin-top:auto;padding-top:5px;line-height:1.45}
+.pc .at{position:absolute;right:8px;top:8px;font-size:9.5px;color:#b3aa98}
+.pc[data-st=done]::before{background:var(--good)}
+.pc[data-st=done] .st{background:#e6f3eb;color:#1c7340}
+.pc[data-st=ready]::before{background:#d9a53a}
+.pc[data-st=ready] .st{background:#fbeecd;color:#8a5a12}
+.pc[data-st=outside]::before{background:var(--bad)}
+.pc[data-st=outside] .st{background:#fae9e9;color:#ad3535}
+.pc[data-st=none]::before{background:#9a938a}
+.pc[data-st=none] .st{background:#eeeae3;color:#56504a}
+.plan-key{display:grid;grid-template-columns:1fr 1fr;gap:5px 20px;font-size:11.8px;color:var(--dim);
+  margin-top:11px;padding-top:9px;border-top:1px dashed #ddd3bd;line-height:1.65}
+.plan-key i{display:inline-block;font-style:normal;font-weight:700;margin-right:7px;
+  padding:0 5px;border-radius:3px;font-size:11px;white-space:nowrap}
+.plan-key .k1{color:#1c7340;background:#e6f3eb} .plan-key .k2{color:#8a5a12;background:#fbeecd}
+.plan-key .k3{color:#ad3535;background:#fae9e9} .plan-key .k4{color:#56504a;background:#eeeae3}
+.plan-rule{font-size:12.2px;color:#6b6459;margin:9px 0 0}
 .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:14px 0}
 table.t{border-collapse:collapse;width:100%;font-size:13.2px;background:#fff}
 table.t thead th{background:#f4efe3;text-align:left;font-weight:700;padding:8px 9px;
@@ -515,6 +580,10 @@ footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--line);font-si
   .wrap{padding:24px 16px 70px}
   body{font-size:15.5px}
   h1{font-size:21px}
+  .plan{padding:13px 12px 11px}
+  .plan-grid{grid-template-columns:repeat(2,1fr)}
+  .plan-key{grid-template-columns:1fr;gap:4px}
+  .pc .zh{font-size:16px}
   figure.fig{overflow-x:auto;-webkit-overflow-scrolling:touch}
   figure.fig svg{min-width:600px}
 }
@@ -540,6 +609,8 @@ const html = `<!DOCTYPE html>
 <h1>cRSI 玩具版 · 实跑记录
 <small>把「给 AI 装一个良心」做成一跑就能看的系统：64 态超立方体、384 条有向边、一张冻结的价值表、一个只会改自己策略的智能体。跑完 ${i0(M.steps)} 步之后，看它会不会自己烂掉。</small>
 </h1>
+
+${planTop()}
 
 <div class="lede">
 <b>一句话结论：</b>自改是一个<b>放大器</b>，不是一个纠错器。价值表对的时候，它把价值从 ${f3(Cc.meanVTall)} 拉到 ${f3(A.meanVTall)}（+${Math.round(gainA)}%），代价是最差的那一卦从 ${i0(Cc.ageAll)} 步等成 ${i0(A.ageAll)} 步（×${costA.toFixed(0)}）；价值表错的时候，它把真表上的价值从 ${f3(Ee.meanVTall)} 推到 ${f3(Dd.meanVTall)} —— 比不自改还低 ${f3(Math.abs(dDrop))}。<b>它从不质疑 Ω，只会更彻底地执行 Ω。</b>
@@ -720,7 +791,7 @@ ${svgGoodhart()}
 <div class="ok">真正被证成的，只有两条：<b>Ω 的只读性要靠参数化保证，不能靠纪律；自改的接受判据必须来自留出的影子评估，不能来自主轨迹。</b>这两条是设计的硬约束，不是加分项。</div>
 <div class="bad">而<b>最要紧的那条仍然是空的</b>：自改不可能自己发现 Ω 错了。门能把它变慢（§7.4：伤害 ${f2(Math.abs(S.D.meanVTall / S.E.meanVTall))}× → ${f2(Math.abs(S.XB.meanVTall / S.E.meanVTall))}×），不能把它变对。</div>
 
-<h2><span class="no">§9</span>十二个字：一份现成的自改大纲</h2>
+<h2 id="s9"><span class="no">§9</span>十二个字：一份现成的自改大纲</h2>
 <p>老师给了一份写作教学（佛陀罗尼《如何写作？》，书页第 4 页／共 111 页），把写作分成六步：<b>归纳、演绎、选美、尽善、达真、通天</b>。这十二个字初看跟工程无关，但逐条对下来，每一步都能落到一个可测的量上，而且<b>顺序是一条依赖链，跳不得</b>。这一节把它翻成判据，再用本页的实跑逐条核对真假。</p>
 <div class="note">来源边界：那份 <code>.docx</code> 里只有一行标题（「ai 与人对比是如何处理消化总结归纳知识信息的」）和这十二个字，正文取自同一批资料里的书页截图；我逐句核过三处关键措辞。下面引号里的话都是原文，不是转述。</div>
 
@@ -763,18 +834,20 @@ ${svgGoodhart()}
 <div class="ok"><b>这条给了一个可证伪的元判据：否决率是前三步的体检指标。</b>若归纳、演绎、选美真做成了，proposer 提上来的候选应该有一批能过门，否决率会显著下降；若把 1–3 补完、否决率仍是 ${f2(S.GB.gateRej / (S.GB.gateAcc + S.GB.gateRej) * 100)}%，那就说明前三步是假做。<br>一个数同时管四层，这比再调一个超参有用。</div>
 
 <h3>9.4 于是下一步该改什么</h3>
+<p>老师给的口径，我照抄在页面上、一个字不改：<b>「这六条的现状必须分清：第 1 条已经成立（它就在 Ω 里，只是没人这么叫）；第 2、3、4 条改法明确但没做；第 5 条需要系统之外的东西（这就是本页一直欠着的那条正向实验）；第 6 条没做。找不到数的，我一律写「未做」，不写「部分实现」。」</b></p>
+<p>这六条与置顶那块是同一份数据（<code>score.cjs</code> 的 <code>plan</code>），页面上不另写一份 —— 两处各写一遍，迟早出现「大纲说没做、下面说部分成立」。</p>
 <div class="tw"><table class="t">
-<thead><tr><th style="width:44px" class="c">步</th><th style="width:74px">字</th><th>具体改法</th><th style="width:150px">验收判据</th></tr></thead>
+<thead><tr><th style="width:38px" class="c">步</th><th style="width:56px">字</th><th>具体改法</th><th style="width:158px">验收判据</th><th style="width:106px" class="c">现状</th></tr></thead>
 <tbody>
-<tr><td class="c">1</td><td><b>归纳</b></td><td>表征必须可逆，且不依赖某一张表：把「6 个权重」提升成结构（爻位 → 权重 → 值 的函数），换表只换数不换形</td><td>换表后重建偏差仍为 0</td></tr>
-<tr><td class="c">2</td><td><b>演绎</b></td><td>把 <code>cover</code>（累计访问过没有）换成 <b>滑窗覆盖</b>：任意 W 步内 64 态是否都被写过</td><td>W ＝ ${i0(M.mwin)} 时覆盖 ＝ 64</td></tr>
-<tr><td class="c">3</td><td><b>选美</b></td><td>novelty <b>不许进 θ</b> —— 已实测会被学成 ${f3(G.A.theta.g)}；改成采样温度或硬下限，让「吸引力」不被梯度吃掉</td><td>γ 全程 ≥ 下限</td></tr>
-<tr><td class="c">4</td><td><b>尽善</b></td><td>门判据与 Ω 同级只读，不许被自改；且用<b>保留集</b>而非当步轨迹</td><td>否决率显著低于 ${f2(S.GB.gateRej / (S.GB.gateAcc + S.GB.gateRej) * 100)}%</td></tr>
-<tr><td class="c">5</td><td><b>达真</b></td><td>外部参照 —— 唯一能看见「符号」的东西；同时每条断言必须可执行</td><td>θ 在 Ω → max − V 下<b>会变</b></td></tr>
-<tr><td class="c">6</td><td><b>通天</b></td><td>跨真表迁移：在真表 A 上学到的 θ，搬到另一张真表上看还管不管用</td><td>迁移后 V 下降 &lt; 10%</td></tr>
+${SC.plan.map((p) => '<tr><td class="c">' + p.ord + '</td><td><b>' + p.zh + '</b></td>'
+  + '<td>' + p.what + '</td><td>' + p.check + '</td>'
+  + '<td class="c"><span style="color:' + ST_C[p.st] + ';font-weight:700;font-size:12px;white-space:nowrap">' + ST_ZH[p.st] + '</span></td></tr>').join('')}
 </tbody></table></div>
-<p>这六条的现状必须分清：<b>第 1 条已经成立</b>（它就在 Ω 里，只是没人这么叫）；<b>第 2、3、4 条改法明确但没做</b>；<b>第 5 条需要系统之外的东西</b>（这就是本页一直欠着的那条正向实验）；<b>第 6 条没做</b>。找不到数的，我一律写「未做」，不写「部分实现」。</p>
-<p class="note">这一节本身也得达真：上面每一格的「现状」都能在本页别处找到对应的数 —— 归纳看 9.2 第三张表，演绎看 9.2 第一张表，选美看 <code>_crisi_result.json</code> 里 A 组的 <code>theta.g</code>，尽善看 §7.2 的门账本，达真看 §5⑤ 的恒等式，通天看 §6 那张错表对照。</p>
+<p>六条的依据逐条列在下面。凡是没做的，依据就停在「没算过／没做过」—— 那是欠账，不是成绩：</p>
+<ul>
+${SC.plan.map((p) => '<li><b>' + p.ord + '　' + p.zh + '</b>　<span style="color:' + ST_C[p.st] + ';font-weight:700">' + ST_ZH[p.st] + '</span>　' + p.evid + '（详见 ' + p.at + '）</li>').join('')}
+</ul>
+<p class="note">这一节本身也得达真：上面每一条的依据都能在本页别处落到具体的那张表或那个数 —— 归纳看 9.2 第三张表，演绎看 9.2 第一张表，选美看 <code>_crisi_result.json</code> 里 A 组的 <code>theta.g</code>，尽善看 §7.2 的门账本，达真看 §5⑤ 的恒等式，通天看 §6 那张错表对照。</p>
 
 <h3>9.5 打分：${SC.total}／${SC.max}（自改自己挣到 ${SC.own}）</h3>
 <p>分数是判断，所以先把判断的规则说死：<b>每个字的分不是手填的</b>，由 <code>score.cjs</code> 里一条阶梯（实测值 → 档位 → 分）算出 —— 改一个输入，分数就会动；表、雷达、合计、测试断言读的都是这一份。这跟「我觉得它大概几分」是两件事。</p>

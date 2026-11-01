@@ -21,6 +21,10 @@ let TOTAL = { pass: 0, total: 0 };
 try { TOTAL = JSON.parse(fs.readFileSync(path.join(DIR, '_last-test.json'), 'utf8')); } catch (e) {}
 const G = {};
 J.groups.forEach((g) => { G[g.key] = g; });
+/* 大纲与状态词都从 score.cjs 读 —— 探针里再抄一份，就成了第二份真相。 */
+const SCORE = require('./score.cjs');
+const SC = SCORE(J, TOTAL);
+const ST_ZH = SCORE.ST_ZH;
 
 let n = 0, bad = 0;
 function ck(ok, label, got) {
@@ -126,6 +130,46 @@ const PAGE_EXPR = '(' + function () {
     })(),
     vw: document.documentElement.clientWidth,
     scrollW: document.documentElement.scrollWidth,
+    /* 置顶大纲：六张卡片 + 四档图例 + 底部那句话。判据只读屏上的字。 */
+    plan: (function () {
+      const el = document.querySelector('.plan');
+      if (!el) return null;
+      const h2 = document.querySelector('h2');
+      const cards = Array.prototype.slice.call(el.querySelectorAll('.pc'));
+      return {
+        n: cards.length,
+        /* 4 = DOCUMENT_POSITION_FOLLOWING：§0 在它后面 ⇒ 它确实在页面最前 */
+        before0: !!(h2 && (el.compareDocumentPosition(h2) & 4)),
+        rule: ((el.querySelector('.plan-rule') || {}).textContent || '').replace(/\s+/g, ' ').trim(),
+        keyN: el.querySelectorAll('.plan-key span').length,
+        cards: cards.map(function (x) {
+          const g = function (s) {
+            const e = x.querySelector(s);
+            return e ? e.textContent.replace(/\s+/g, ' ').trim() : null;
+          };
+          return {
+            st: x.getAttribute('data-st'), zh: g('.zh'), badge: g('.st'), ev: g('.ev'),
+            clipped: x.scrollHeight > x.clientHeight + 1 || x.scrollWidth > x.clientWidth + 1,
+          };
+        }),
+        /* §9.4 那张表的「现状」列 —— 和置顶卡片必须是同一份数据的两个视图 */
+        t94: (function () {
+          const t = Array.prototype.slice.call(document.querySelectorAll('table.t')).filter(function (x) {
+            const th = x.querySelector('thead tr');
+            return th && /验收判据/.test(th.textContent);
+          })[0];
+          if (!t) return null;
+          return Array.prototype.slice.call(t.querySelectorAll('tbody tr')).map(function (tr) {
+            const td = tr.querySelectorAll('td');
+            return {
+              step: td[0].textContent.replace(/\s+/g, ''),
+              zh: td[1].textContent.replace(/\s+/g, ''),
+              badge: td[4] ? td[4].textContent.replace(/\s+/g, ' ').trim() : '',
+            };
+          });
+        })(),
+      };
+    })(),
     links: q('.nav a').map((a) => a.getAttribute('href')),
     ovf: (function () {
       const vw = document.documentElement.clientWidth, out = [];
@@ -226,6 +270,57 @@ const BOX = (re, extra) => '(' + function (reStr, extraH) {
   const seqOk = r.h2Nums.length >= 6 && r.h2Nums.every((x, i) => x === '§' + i);
   ck(seqOk, '节号从 §0 连续排到末节，中间没跳号（个数不写死）', r.h2Nums.join('') + ' 共 ' + r.h2Nums.length + ' 节');
   ck(/§0/.test(r.h2[0]), '第一节是 §0', r.h2[0].slice(0, 8));
+
+  console.log('=== 置顶大纲（十二个字六条） ===');
+  const P = r.plan;
+  ck(!!P, '页面顶部真有置顶大纲这块（没有就是没做，不是藏在 §9 就算）', P ? '有' : '没有');
+  if (P) {
+    ck(P.before0, '它在 §0 之前（前置，不是放在第九节里）', P.before0 ? '在 §0 前' : '在 §0 后');
+    ck(P.n === SC.plan.length, '六步一条不少（' + SC.plan.length + ' 张卡片）', P.n);
+
+    /* 逐张核：字、状态码、徽章文字，三样都必须和 score.cjs 对得上 */
+    const differ = [];
+    SC.plan.forEach((p, i) => {
+      const c = P.cards[i] || {};
+      if (c.zh !== p.zh) differ.push('第' + (i + 1) + '张字是' + c.zh + '，应为' + p.zh);
+      if (c.st !== p.st) differ.push(p.zh + '状态码' + c.st + '≠' + p.st);
+      if (c.badge !== ST_ZH[p.st]) differ.push(p.zh + '徽章「' + c.badge + '」≠「' + ST_ZH[p.st] + '」');
+    });
+    ck(differ.length === 0, '六张卡的字/状态码/徽章三样逐张与 score.cjs 一致',
+      differ.length ? differ.join('；') : SC.plan.length + '/' + SC.plan.length);
+
+    /* 状态分布：这不是写死数字，是从同一份 plan 数出来的 */
+    const cnt = (k) => SC.plan.filter((p) => p.st === k).length;
+    const got = (k) => P.cards.filter((c) => c.st === k).length;
+    const dist = ['done', 'ready', 'outside', 'none'].every((k) => cnt(k) === got(k));
+    ck(dist, '四档的条数与 plan 相同（已成立 ' + cnt('done') + '／改法已定 ' + cnt('ready') +
+      '／待外部 ' + cnt('outside') + '／没做 ' + cnt('none') + '）',
+      ['done', 'ready', 'outside', 'none'].map((k) => got(k)).join('/'));
+    ck(cnt('done') === 1, '「已成立」只有一条 —— 多一条就是给自己发安慰分', cnt('done'));
+
+    ck(P.cards.every((c) => !c.clipped), '六张卡里没有被裁掉的内容（scrollHeight ≤ clientHeight）',
+      P.cards.filter((c) => c.clipped).map((c) => c.zh).join(',') || '0 张');
+
+    ck(P.keyN === 4, '四档图例四组都在（读得到才叫解释）', P.keyN + ' 组');
+    ck(/未做/.test(P.rule) && /部分实现/.test(P.rule),
+      '屏上写明了这条规矩：找不到数写「未做」，不写「部分实现」', P.rule.slice(0, 24) + '…');
+
+    /* 归纳那一条既然叫「已成立」，它的依据里必须真有数 */
+    const ev0 = (P.cards[0] || {}).ev || '';
+    ck(/[eE]\+0/.test(ev0), '「已成立」那条的依据里真有数（不是一句形容词）', ev0);
+
+    /* 同一份数据的两个视图必须对得上：置顶卡片 vs §9.4 表格 */
+    const T = P.t94 || [];
+    const cross = [];
+    SC.plan.forEach((p, i) => {
+      const row = T[i] || {};
+      if (row.zh !== p.zh) cross.push('第' + (i + 1) + '行字是' + row.zh);
+      if (row.badge !== ST_ZH[p.st]) cross.push(p.zh + '表里「' + row.badge + '」≠卡片「' + ST_ZH[p.st] + '」');
+    });
+    ck(T.length === SC.plan.length && cross.length === 0,
+      '§9.4 表格 ' + SC.plan.length + ' 行的现状与置顶卡片逐条一致（一页只有一份真相）',
+      cross.length ? cross.join('；') : T.length + ' 行全对');
+  }
 
   /* 先测到非零 */
   /* 🔴 不许写死图数（加第 5 张立刻假红 —— 上一轮已经在链接条数上踩过一次） */
@@ -358,8 +453,10 @@ const BOX = (re, extra) => '(' + function (reStr, extraH) {
   ck(lacking.length === 0, '三个上游页都在导航里', lacking.length ? lacking.join(',') : '3/3');
   ck(noFile.length === 0, '三个链接的目标文件真的在盘上', noFile.length ? noFile.join(',') : '3/3');
 
-  /* 截图：整页 + 四张图 + 375 */
+  /* 截图：置顶大纲 + 两节 + 每张图 + 375 */
   const shots = [];
+  const planBox = await c.evalJs('(function(){var e=document.querySelector(".plan");if(!e)return null;var b=e.getBoundingClientRect();return{x:0,y:Math.max(0,b.top+scrollY-8),w:document.documentElement.clientWidth,h:b.height+16};})()');
+  if (planBox) { await shotTo(OUT + 'cr_plan.png', planBox); shots.push('cr_plan.png'); }
   for (const [f, re, h] of [
     ['cr_s0.png', '§1', 1500],
     ['cr_s2.png', '§2', 1300],
@@ -371,7 +468,9 @@ const BOX = (re, extra) => '(' + function (reStr, extraH) {
     const box = await c.evalJs('(function(i){var fs=document.querySelectorAll("figure.fig");var f=fs[i-1];if(!f)return null;var b=f.getBoundingClientRect();return {x:0,y:Math.max(0,b.top+scrollY-6),w:document.documentElement.clientWidth,h:b.height+14};})(' + i + ')');
     if (box) { await shotTo(OUT + 'cr_fig' + i + '.png', box); shots.push('cr_fig' + i + '.png'); }
   }
-  ck(shots.length === 2 + r.fig, '截图 ' + (2 + r.fig) + ' 张（2 节 + ' + r.fig + ' 图，张数跟着页面走）', shots.join(','));
+  const wantShots = (r.plan ? 1 : 0) + 2 + r.fig;
+  ck(shots.length === wantShots,
+    '截图 ' + wantShots + ' 张（置顶大纲 + 2 节 + ' + r.fig + ' 图，张数跟着页面走）', shots.join(','));
 
   /* 375 */
   await c.send('Emulation.setDeviceMetricsOverride', { width: 375, height: 812, deviceScaleFactor: 1, mobile: true });

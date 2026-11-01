@@ -961,6 +961,44 @@ sec('Q 段 · 自改动力学（cRSI）');
   chk(s1 > s0 && j1 < j0 && m1 > m0,
     'Q26 三处变异都能把分数推动（演绎 3→' + s1 + '、尽善 6→' + j1 + '、选美 0→' + m1 + '）⇒ 分挂在实测上，不是手填',
     s0 + '→' + s1 + ' / ' + j0 + '→' + j1 + ' / ' + m0 + '→' + m1);
+
+  /* ---- Q27–Q29：置顶大纲（十二个字六条方针）----
+   * 这一组的靶子是「含糊」：把欠账写成「部分实现」，或者给第二条也盖上「已成立」的章。
+   * 判据不是「有没有写」，而是「写了的状态站不站得住」。 */
+  const P = sc.plan;
+  const STW = SCORE.ST_ZH;
+  const four = ['done', 'ready', 'outside', 'none'];
+  chk(P.length === 6 && P.every((x, i) => x.ord === i + 1) &&
+    P.every((x) => four.indexOf(x.st) >= 0 && !!STW[x.st]) &&
+    P.filter((x) => x.st === 'done').length === 1 &&
+    P.filter((x) => x.st === 'outside').length === 1 &&
+    P.filter((x) => x.st !== 'done').length === 5 &&
+    P.map((x) => x.zh).join() === sc.axes.map((a) => a.zh).join() &&
+    /[eE]\+0/.test(P[0].evid),
+    'Q27 大纲自洽：六条按序、状态只在四档、已成立恰 1 条、未做恰 5 条、字与打分表同一套（' +
+    P.map((x) => x.zh + '=' + STW[x.st]).join('，') + '）',
+    P.map((x) => x.st).join(','));
+
+  const PC = () => JSON.parse(JSON.stringify(P));
+  const throwsIf = (fn) => {
+    const q = PC(); fn(q);
+    try { SCORE.assertPlan(q); return false; } catch (e) { return true; }
+  };
+  const t1 = throwsIf((q) => { q[3].st = 'done'; });                 // 第二条「已成立」
+  const t2 = throwsIf((q) => { q[4].evid = '外部参照实验 0 次'; });    // 没做却不说没做
+  const t3 = throwsIf((q) => { q.pop(); });                          // 少一条
+  const t4 = throwsIf((q) => { q[2].evid = '部分实现'; });            // 中间态的词
+  chk(t1 && t2 && t3 && t4,
+    'Q28 四处变异都被挡下（两条已成立／没做却不说没做／只有五条／写「部分实现」）⇒ 护栏有牙，不是摆设',
+    [t1, t2, t3, t4].map((x) => (x ? '抛' : '漏')).join('/'));
+
+  /* 屏上那几句话必须挂在数上：改 gateRej，否决率文字就得跟着变 */
+  const e0 = P[3].evid;
+  const e1 = mut((C2) => { gb(C2).stats.gateRej = 100; }).plan[3].evid;
+  const pct = (s) => (String(s).match(/\d+\.\d\d%/) || ['?'])[0];
+  chk(e0 !== e1 && /\d+\.\d\d%/.test(e1) && /没做过/.test(e1),
+    'Q29 大纲里的否决率是现算的（gateRej 488→100，屏上的话跟着变），且改完仍标「没做过」',
+    pct(e0) + ' → ' + pct(e1));
 }
 
 /* ================= 输出 ================= */

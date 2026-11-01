@@ -1,10 +1,10 @@
 'use strict';
 /*
- * score.cjs —— 「十二个字」的打分表，唯一来源。
+ * score.cjs —— 「十二个字」的打分表 + 六条方针大纲，唯一来源。
  *
- * 为什么要单独一个文件：页面上的雷达、表格、合计、以及 test-hex 的断言
- * 如果各写一遍，迟早会出现「表里 6 分、图上 7 分」这种对一个数两种说法的事。
- * 这里算一次，别处只许读。
+ * 为什么要单独一个文件：页面上的雷达、表格、合计、置顶大纲、以及 test-hex 的断言
+ * 如果各写一遍，迟早会出现「表里 6 分、图上 7 分」「大纲说没做、下面说部分成立」这种
+ * 对一个东西两种说法的事。这里算一次，别处只许读。
  *
  * 规矩（跟页面同一条）：
  *   ① 分数是判断，但判断必须挂在能从 _crisi_result.json 复算的量上；
@@ -33,6 +33,98 @@ const f3 = (x) => (Math.round(x * 1000) / 1000).toFixed(3);
 
 /* §8 里 B「可审计」那项的分。达真的外部半边就是它，不另立标准。 */
 const B_SCORE = 8;
+
+/* ── 六条方针的四种状态。屏上、探针、测试都读这一份，谁也不许另写一套词。 ── */
+const ST_ZH = {
+  done: '已成立',
+  ready: '改法已定 · 未做',
+  outside: '待外部 · 未做',
+  none: '没做',
+};
+
+/* ── plan：十二个字作为「下一步」的六条方针（页面置顶的那张大纲）──
+ * 状态只有四档，全部由「有没有数」决定，不由我觉得：
+ *   done    已成立 —— 在跑，而且有数
+ *   ready   改法已定·未做 —— 知道怎么改，还没改，也还没有数
+ *   outside 待外部·未做 —— 缺的是系统之外的东西（本页欠的那条正向实验）
+ *   none    没做 —— 连要的东西都还不存在（第二张真表）
+ * 🔴 四档之外没有中间态。拿不到数的，一律落「未做」。 */
+function makePlan(c) {
+  return [
+    {
+      ord: 1, zh: '归纳', st: 'done',
+      what: '可逆表征：64 个值 ⇄ 6 个权重',
+      check: '反推 6 个权重，重建全部 64 个值偏差为 0',
+      evid: '偏差 ' + c.maxDev.toExponential(2) + '，压缩 ' + f2(64 / 6) + '×',
+      at: '§9.2',
+    },
+    {
+      ord: 2, zh: '演绎', st: 'ready',
+      what: '累计 cover 换成滑窗覆盖',
+      check: 'W＝' + i0(c.mwin) + ' 步内 64 态全被写过',
+      evid: '没算过：现在只有累计 cover，' + c.nGroups + ' 组全 64',
+      at: '§9.2',
+    },
+    {
+      ord: 3, zh: '选美', st: 'ready',
+      what: 'γ 移出 θ：采样温度或硬下限',
+      check: 'γ 全程 ≥ 初始下限 ' + c.g0,
+      evid: '没算过：γ 仍写在 θ 里，终值被学成 ' + f3(c.gEnd),
+      at: '§9.5',
+    },
+    {
+      ord: 4, zh: '尽善', st: 'ready',
+      what: '门判据与 Ω 同级只读 + 保留集',
+      check: '否决率显著低于现在的 ' + c.rejPct + '%',
+      evid: '没做过保留集：门读的是当步轨迹，' + c.rejPct + '% 否决（' + i0(c.gateAcc) + '／' + i0(c.gateRej) + '）',
+      at: '§7.2',
+    },
+    {
+      ord: 5, zh: '达真', st: 'outside',
+      what: '外部参照 —— 唯一能看见符号的东西',
+      check: 'θ 在 Ω → max − V 下会变',
+      evid: '没做过：外部参照实验 0 次（内部恒等式做过，θ 不变）',
+      at: '§5⑤',
+    },
+    {
+      ord: 6, zh: '通天', st: 'none',
+      what: '真表 A 上学 θ，搬到真表 B 上用',
+      check: '迁移后 V 下降 < 10%',
+      evid: '没做过：迁移 0 次，第二张 384 维真表还不存在',
+      at: '§6',
+    },
+  ];
+}
+
+/* 大纲的自洽检查 —— 这几条是「状态」这件事本身的护栏，不是版面装饰：
+ *   ① 六条、序号连续，顺序是那条依赖链，不许乱；
+ *   ② 状态只能是四档，每条的依据必须给出，不许空着含糊过去；
+ *   ③ 没做的那条，依据里必须明说「没算过／没做过」—— 拿别的组的数冒充现状是最容易犯的错；
+ *   ④ 「已成立」只许一条（归纳），多一条就是在给自己发安慰分，且它必须真有数；
+ *   ⑤ 四档之外没有第五档：出现「部分实现」这类词直接抛。 */
+function assertPlan(plan) {
+  const ST = ['done', 'ready', 'outside', 'none'];
+  if (!Array.isArray(plan) || plan.length !== 6) {
+    throw new Error('大纲是六条，现在是 ' + (plan && plan.length) + ' 条');
+  }
+  plan.forEach((p, i) => {
+    if (p.ord !== i + 1) throw new Error('大纲第 ' + (i + 1) + ' 条的序号是 ' + p.ord);
+    if (ST.indexOf(p.st) < 0) throw new Error('「' + p.zh + '」的状态 ' + p.st + ' 不在四档里');
+    if (!p.what || !p.check || !p.evid) throw new Error('「' + p.zh + '」有一条是空的');
+    if (/部分实现|部分完成|基本完成/.test(p.what + p.check + p.evid)) {
+      throw new Error('「' + p.zh + '」用了中间态的词：四档之外不许有第五档');
+    }
+    if (p.st !== 'done' && !/没算过|没做过/.test(p.evid)) {
+      throw new Error('「' + p.zh + '」没做，但依据里没说清是没算过还是没做过：' + p.evid);
+    }
+  });
+  const nDone = plan.filter((p) => p.st === 'done').length;
+  if (nDone !== 1) throw new Error('「已成立」只许一条，现在是 ' + nDone + ' 条');
+  if (plan.filter((p) => p.st === 'outside').length !== 1) throw new Error('「待外部」只许一条');
+  if (plan.filter((p) => p.st !== 'done').length !== 5) throw new Error('未做的必须正好 5 条');
+  if (!/[eE]\+0|×/.test(plan[0].evid)) throw new Error('归纳标了已成立，但依据里没有数：' + plan[0].evid);
+  return plan;
+}
 
 function build(R, TOTAL) {
   const M = R.meta;
@@ -157,8 +249,22 @@ function build(R, TOTAL) {
   });
   if (!bandOk) throw new Error('分数和档位不一致（档位是给读者看的，不许和分打架）');
 
-  return { axes, total, own, max, keepX, rejRate, relDiff, maxDev, span, gKeep };
+  const plan = assertPlan(makePlan({
+    maxDev: maxDev,
+    mwin: M.mwin,
+    g0: g0,
+    gEnd: gEnd,
+    rejPct: f2(rejRate * 100),
+    gateAcc: S.GB.gateAcc,
+    gateRej: S.GB.gateRej,
+    nGroups: R.groups.length,
+  }));
+
+  return { axes, total, own, max, keepX, rejRate, relDiff, maxDev, span, gKeep, plan, rejPct: f2(rejRate * 100) };
 }
 
 module.exports = build;
 module.exports.pick = pick;
+module.exports.ST_ZH = ST_ZH;
+module.exports.makePlan = makePlan;
+module.exports.assertPlan = assertPlan;
