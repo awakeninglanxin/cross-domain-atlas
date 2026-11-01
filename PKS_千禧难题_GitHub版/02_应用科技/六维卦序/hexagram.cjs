@@ -41,7 +41,22 @@ function triBits(v) { return [(v >> 2) & 1, (v >> 1) & 1, v & 1]; }
 
 function bitsOf(lower, upper) { return triBits(TRI[lower]).concat(triBits(TRI[upper])); }
 
+/* 🔴 这个函数以前是 fail-silent 的：codeOf('乾') 少给一个参数，`TRI[undefined]` 是 undefined，
+   位运算把 undefined 当 0，于是「乾」安静地返回 56、「坤」返回 0，六个卦名全变成 0 ——
+   调用方看不出任何异常，只会得到一整套错的卦号（2026-11-01 真踩过，害我用 56 当乾算了半小时）。
+   宁可不响，不可错响。 */
+function needCha(name, argName) {
+  if (name === undefined || name === null) {
+    throw new Error('codeOf/bitsOf 少了参数 ' + argName + '（上卦或下卦没给）—— 不猜，直接抛');
+  }
+  if (TRI[name] === undefined) {
+    throw new Error(argName + ' 不是八卦名：' + JSON.stringify(name) + '（只认 乾兑离震巽坎艮坤）');
+  }
+  return name;
+}
+
 function codeOf(lower, upper) {
+  needCha(lower, 'lower'); needCha(upper, 'upper');
   const b = bitsOf(lower, upper);
   let v = 0;
   for (let i = 0; i < 6; i++) v = v * 2 + b[i];
