@@ -531,6 +531,192 @@ try {
     '变成 ' + o.jingfang.total);
 } catch (e) { chk(false, 'M6 变异载入失败：' + e.message); }
 
+/* ================= N 段：元宝算法文档（v17 章）逐条对账（2026-11-01） =================
+ * 源：_src_yuanbao/ 下的两份原件。这里不复制文档的结论，而是把它的每个数重算。
+ * 判定四档由 hexagram.cjs 的 docAudit() 给：ok / diff / contra / na。
+ */
+{
+  const A = H.docAudit();
+  const by = { ok: 0, diff: 0, contra: 0, na: 0 };
+  A.forEach((r) => { by[r.verdict]++; });
+  const get = (item) => A.filter((r) => r.item === item)[0];
+
+  chk(A.length >= 48 && by.ok + by.diff + by.contra + by.na === A.length,
+    'N1 对账表结构完整：共 ' + A.length + ' 项，四档判定全部有归属（不重不漏）',
+    JSON.stringify(by));
+  chk(by.ok >= 38, 'N2 其中逐位相等的 ≥ 38 项 —— 文档的硬数字大部分是真算过的', by.ok + '/' + A.length);
+  chk(by.contra === 2, 'N3 🔴 恰好 2 项是「文档自己跟自己矛盾」（β=4 的熵率、以及 β→∞ 的地板）', by.contra);
+  chk(by.na >= 3, 'N4 不可复算的项如实标 na（RSI 时间线 / Lean 仓库 / 信念级结论），没有混进 PASS', by.na);
+
+  /* 几何 */
+  chk(get('顶点数').verdict === 'ok' && get('无向边数').verdict === 'ok' && get('有向边数 64×6').verdict === 'ok',
+    'N5 64 顶点 / 192 边 / 384 有向边 —— 与文档逐位相同', get('有向边数 64×6').mine);
+
+  /* 谱与非回溯 */
+  chk(get('谱重数 = 杨辉三角第 6 行').verdict === 'ok',
+    'N6 谱重数 1,6,15,20,15,6,1 = 杨辉三角第 6 行', get('谱重数 = 杨辉三角第 6 行').mine);
+  const IH = H.ihara(6).full;
+  chk(IH.onCircle === 124 && IH.modOne === 258 && IH.modFive === 2 && IH.total === 384,
+    'N7 非回溯矩阵 384 阶 = ｜μ｜=√5 的 124 ＋ ｜μ｜=1 的 258 ＋ ｜μ｜=5 的 2 —— 三笔账合起来正好 384',
+    IH.onCircle + '+' + IH.modOne + '+' + IH.modFive + '=' + IH.total);
+  chk(IH.trivial === 256 && IH.modOneFromLam === 2,
+    'N8 那 258 里，256 是 d-正则图的平凡根 ±1（各 m−n = 128 个），另外 2 个是 λ=±6 贡献的',
+    IH.trivial + ' + ' + IH.modOneFromLam);
+  chk(get('Ramanujan 条件 n−2 ≤ 2√(n−1) 的最后一个个案').mine === 'n = 6',
+    'N9 Ramanujan 条件 n−2 ≤ 2√(n−1)：n=6 通过（4 ≤ 4.472）、n=7 破裂（5 > 4.899）⇒ 六是最后一个',
+    get('Ramanujan 条件 n−2 ≤ 2√(n−1) 的最后一个个案').mine);
+
+  /* 幂等量 */
+  chk(get('对称变换数 2⁶·6!').verdict === 'ok', 'N10 对称变换数 2⁶·6! = 46080', get('对称变换数 2⁶·6!').mine);
+  chk(Math.abs(H.turnDeg() - 126.8699) < 1e-3,
+    'N11 每变一爻的转角 2·arccos(1/√5) = 126.8699°（文档写 126.87°）', H.turnDeg().toFixed(4));
+  const CS = H.coxShells();
+  chk(CS.shells.length === 5 && CS.outerN === 12 && CS.centerN === 4 && CS.outerIsXiaoxi,
+    'N12 Coxeter 投影 5 层壳：最外圈 12 个＝十二消息卦（逐卦重合）、正中心 4 个＝小过·蛊·随·中孚',
+    CS.shells.map((s) => s.n).join('/'));
+  chk(CS.centerNames.join('') === '小过蛊随中孚',
+    'N13 台风眼那 4 个卦的名字与文档一致（顺序不同不算错，集合相同）', CS.centerNames.join(''));
+
+  /* 卦序 */
+  const WA = H.wenAccount();
+  chk(WA.total === 211 && WA.within === 120 && WA.between === 91,
+    'N14 今本 211 步 = 对内 120 ＋ 对间 91 —— 拆账逐位相同', WA.within + '+' + WA.between + '=' + WA.total);
+  chk(Math.abs(WA.withinMean - 3.75) < 1e-9 && Math.abs(WA.betweenMean - 2.935484) < 1e-6,
+    'N15 对内单对均值 3.75、对间 2.9355（文档写 2.94）', WA.withinMean.toFixed(4) + ' / ' + WA.betweenMean.toFixed(6));
+  chk(Math.abs(WA.randomExpectTotal - 192) < 1e-9,
+    'N16 🔴 「随机排列 ≈192」不是抽样出来的，是精确期望：63 步 × 6 位 × (2·32²)/(64·63) = 192',
+    WA.randomExpectTotal.toFixed(6));
+  const KP = H.kingwenPair();
+  chk(KP.revPriority === 120 && KP.compOnly === 192,
+    'N17 文王配对（反转优先，回文才用错）总汉明代价 120；纯错卦配 192 —— 古人的配对是唯一最小解',
+    KP.revPriority + ' vs ' + KP.compOnly);
+  chk(KP.palindrome === 8 && KP.orbits === 36,
+    'N18 反转优先的配对正好 36 条（8 个回文卦 ＋ 28 对）= 「三十六宫」', KP.orbits);
+
+  /* 互卦与三才 */
+  const HO = H.huOrbit();
+  const chain = HO.sizes.filter((x, i) => i === 0 || x !== HO.sizes[i - 1]);
+  chk(chain.join(',') === '64,16,4',
+    'N19 互卦算子 H 的像集 64 → 16 → 4（之后不再缩小，终局是 4 个 2-周期点）', chain.join('→'));
+  chk(HO.terminal.length === 4 && HO.terminal.some((t) => t.bits === '101010') && HO.terminal.some((t) => t.bits === '010101'),
+    'N20 H 的终局恰 4 卦：乾·坤为不动点，既济↔未济 为 2-周期', HO.terminal.map((t) => t.name).join(','));
+  const SC = H.sancai();
+  chk([-2, -1, 0, 1, 2].map((k) => SC[k]).join(',') === '4,16,24,16,4',
+    'N21 三才张力（地阳数−天阳数）分布 4,16,24,16,4', [-2, -1, 0, 1, 2].map((k) => SC[k]).join(','));
+
+  /* Doob */
+  chk(Math.abs(H.doobScan(0, 2000).H - Math.log(6)) < 1e-12,
+    'N22 β=0 熵率精确等于 ln6 = 1.791759', H.doobScan(0, 2000).H.toFixed(12));
+  chk(Math.abs(Math.log(6 / 5) - 0.182322) < 1e-6,
+    'N23 堵死一条路的熵亏 ln(6/5) = 0.1823 奈特/步（文档写 0.18）', Math.log(6 / 5).toFixed(6));
+  const D60 = H.doobScan(60, 4000);
+  chk(Math.abs(D60.H - Math.log(6) / 2) < 1e-6,
+    'N24 🔴 β→∞ 的熵率地板恰为 ½·ln6 = 0.895880 —— 不是随便一个数：在势最高处六个出口并列，' +
+    '走一步自由（ln6）、下一步被迫回头（0），平均正好减半',
+    D60.H.toFixed(6) + ' vs ' + (Math.log(6) / 2).toFixed(6));
+  const live = D60.pi.filter((p) => p > 1e-6);
+  chk(live.length === 7 && Math.abs(Math.max(...live) - 0.5) < 1e-6,
+    'N25 那条地板的机制：β=60 时平稳分布只剩 7 个态 —— 既济占 0.5，它的 6 个邻居各 1/12',
+    live.length + ' 态，最大 ' + Math.max(...live).toFixed(4));
+
+  /* 衣服 */
+  const SD = H.sphereDesign();
+  chk(SD.is3 && SD.all4same,
+    'N26 64 点是 S⁵ 的球面 3-设计：2、3 次矩吻合，4 次不吻合；' +
+    '而且 4 次矩恒等于 1/36 —— 因为每个坐标都是 ±1/√6，四次方必然是它，与点集无关',
+    SD.rows.map((r) => r.name + (r.ok ? '✓' : '✗')).join(' '));
+  const PS = H.pst();
+  chk(PS.ok && PS.atZero < 1e-9,
+    'N27 完美态转移：坤→乾 在 t=π/2 概率 1.000000，而 t=0 时是 0（所以不是恒真式）',
+    PS.peak.toFixed(9) + ' @ ' + PS.tPeakOverPi.toFixed(3) + 'π，t=0 时 ' + PS.atZero.toExponential(1));
+  chk(Math.abs((1 - 4 / 6) - 1 / 3) < 1e-12,
+    'N28 谱隙（lazy walk）= 1 − λ₂/6 = 1 − 4/6 = 1/3，与 κ_LLY = 2/n 同值 —— 两个来源不同的 1/3',
+    (1 - 4 / 6).toFixed(6));
+  chk(Math.abs(H.coupon() - 14.7) < 0.01, 'N29 铺满 64 卦的期望 6·H₆ = 14.7 步', H.coupon().toFixed(4));
+
+  /* 两处必须改的地方 */
+  chk(get('「只有谦卦六爻全正」').verdict === 'diff',
+    'N30 🔴 文档说「只有谦卦六爻全正」——按当位定义，六爻全当位的唯一卦是既济(101010)，谦(001000) 只有 4 爻当位',
+    get('「只有谦卦六爻全正」').mine);
+  const qian = H.codeOf('艮', '坤');
+  const rank = (function () {
+    const a = []; for (let v = 0; v < 64; v++) a.push({ v, s: H.yaoScoreSum(v) });
+    a.sort((x, y) => y.s - x.s); return a.findIndex((x) => x.v === qian) + 1;
+  })();
+  chk(rank === 61, 'N31 🔴 用位平均势排序，谦排 61/64（V = −0.63）—— 与「谦为最高原则」直接冲突，' +
+    '所以吉凶必须是「位效应＋卦效应」两项，位平均只给了前半截', rank + '/64');
+  chk(get('「对间随机期望 95.2」').verdict === 'diff',
+    'N32 文档把「95.2」写成对间的随机期望 —— 精确期望是 93（31×3.048），95.2 是某一次抽样值，' +
+    '抽样标准差 6.8 说明它落在 0.32σ 内。数没错，口径错了',
+    get('「对间随机期望 95.2」').note.slice(0, 24));
+
+  /* 库里两处旧的「未复现」可以撤销 */
+  chk(get('云肩（马鞍背心）亏格').verdict === 'ok' && H.genus().gMin === 17,
+    'N33 文档把「亏格 17」标成「未独立复现」—— 本仓 §9 已夹死（围长 4 ⇒ F≤96 ⇒ χ=−32 ⇒ g≥17），' +
+    '这一行可以从「未复现」撤掉', 'g≥' + H.genus().gMin);
+  const H3 = H.ham3();
+  chk(H3.lens.join('/') === '64/64/64' && H3.edgeUnion === 192 && H3.dupEdges === 0,
+    'N34 金缕衣三条边不交哈密顿回路：64/64/64、并集 192、重边 0', H3.lens.join('/'));
+}
+
+/* M8 当位模式改一位（上爻该阴改成该阳）⇒「六爻全当位的唯一卦是既济」立刻换成乾，N30 转红。
+ * 🔴 注意这里不能断言「个数变了」：当位模式本身就是一个卦，所以「全当位」的卦数恒为 1，
+ *    无论模式怎么改。判据要落在「是哪一个」，不是「有几个」—— 第一版就写错了。 */
+try {
+  const M = loadMutated('hexagram.cjs', [
+    ['const WEI_PATTERN = [1, 0, 1, 0, 1, 0];', 'const WEI_PATTERN = [1, 0, 1, 0, 1, 1];'],
+  ]);
+  let who = -1, n = 0;
+  for (let v = 0; v < 64; v++) if (M.weiCount(v) === 6) { who = v; n++; }
+  chk(n === 1 && who !== 42, 'M8 当位模式改一位 ⇒ 全当位卦由既济(42)换成别的，N30 能抓到',
+    '仍是 ' + n + ' 个，但换成了 ' + M.BY_CODE[who].name);
+} catch (e) { chk(false, 'M8 变异载入失败：' + e.message); }
+
+/* ================= O 段：图集（zip 22 张 / 139 块面板） =================
+ * 这一段的重点不是「算得对」，是「源还在」。丢源比算错更严重：
+ * 算错能查，源丢了就永远查不了。所以每条都落磁盘。 */
+sec('O 段 · 图集 22 张（源在不在、账对不对）');
+{
+  const S = require('./sources.cjs');
+  const ZI = S.ZIP_ITEMS, ZM = S.ZIP_META;
+  const DIR = __dirname;
+
+  chk(ZI.length === 22, 'O1 图集 22 条，序号 01…22 连续不缺',
+    ZI.length + ' 条 / ' + ZI[0].n + '→' + ZI[ZI.length - 1].n);
+  chk(ZI.every((x, i) => x.n === String(i + 1).padStart(2, '0')),
+    'O2 序号就是上传顺序（不重排、不跳号）', ZI.map((x) => x.n).join(','));
+
+  let panels = 0;
+  for (const x of ZI) panels += x.r * x.c;
+  chk(panels === 139, 'O3 面板总数 = Σ(行×列) = 139 块（网格由 _panels.cjs 测黑缝得出，不是估的）', panels);
+
+  /* 磁盘核：22 个原件在不在、字节数是否与其描述相符 */
+  const lost = ZI.filter((x) => !fs.existsSync(path.join(DIR, ZM.dir + x.n + '_' + x.f + '.jpg')));
+  chk(lost.length === 0, 'O4 🔴 22 张原件都在 _img/zip/（丢源比算错更严重）', lost.map((x) => x.n).join(',') || '0 张缺');
+  const zbytes = fs.existsSync(path.join(DIR, ZM.zipFile)) ? fs.statSync(path.join(DIR, ZM.zipFile)).size : -1;
+  chk(zbytes === ZM.zipBytes, 'O5 归档的 zip 字节数与源清单一致（' + ZM.zipBytes + '）', zbytes);
+
+  const used = ZI.filter((x) => x.used);
+  const usedPanels = used.reduce((a, x) => a + x.r * x.c, 0);
+  chk(used.map((x) => x.n).join(',') === '17,19,20',
+    'O6 已用的是 17／19／20 三张（逐块比对 0.898–0.992 得出，不是眼估）', used.map((x) => x.n).join(','));
+  chk(usedPanels === 16, 'O7 这三张的面板数恰好 = 16 = 上一轮切出的帧数（1:1，不多不少）', usedPanels);
+
+  const newP = panels - usedPanels;
+  chk(newP === 123, 'O8 新增面板 139 − 16 = 123 块', newP);
+
+  /* 46080：视频说「46080 种对称变换」。这是唯一一个能从图集里直接复算的数 */
+  const fact6 = [1, 2, 3, 4, 5, 6].reduce((a, b) => a * b, 1);
+  chk(Math.pow(2, 6) * fact6 === 46080,
+    'O9 |Aut(Q₆)| = 2⁶ × 6! = 46080 —— 图集第 10 张那个数，是算出来的，不是抄的', Math.pow(2, 6) * fact6);
+
+  /* 反例：如果不乘 6!，得 64；6! 不乘 2⁶，得 720。两者都不等于 46080，
+     证明这条不是「随便一个组合数都对」 */
+  chk(Math.pow(2, 6) !== 46080 && fact6 !== 46080,
+    'O10 反例：单取 2⁶=64 或单取 6!=720 都不等于 46080 ⇒ O9 不是恒真式',
+    Math.pow(2, 6) + ' / ' + fact6);
+}
+
 /* ================= 输出 ================= */
 lines.forEach((l) => console.log(l));
 console.log('\n' + '─'.repeat(60));

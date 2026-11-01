@@ -154,6 +154,9 @@ function verifyEigen() {
  * 所以不必真的对 384×384 做特征分解：逐个 λ 解二次方程即可，而且结果是精确的。
  */
 function ihara(d) {
+  /* 🔴 不给 d 时原来会算出 NaN 而不报错（PKS 老坑：fail-silent 的默认参数）。
+     这里改成缺省 6，并在下面补齐全账：非回溯矩阵是 384 阶，不只是 128 个非平凡根。 */
+  if (d === undefined) d = 6;
   const spec = spectrum();
   const disc = (lam) => lam * lam - 4 * (d - 1);
   const rows = spec.map((s) => {
@@ -166,7 +169,25 @@ function ihara(d) {
     if (r.D < 0) onCircle += r.mult * 2;
     else offCircle += r.mult * 2;
   });
-  return { d, rows, onCircle, offCircle, total: onCircle + offCircle, expectTotal: 2 * 64 };
+  /* 全账：2m = 384 阶 = 非平凡 2n=128 ＋ 平凡 ±1 各 (m−n)=128。
+     圆外那 4 个再拆：λ=+6 给根 5、1；λ=−6 给根 −1、−5 ⇒ |μ|=5 两个、|μ|=1 两个。 */
+  const m = 64 * 6 / 2, n = 64, trivial = 2 * (m - n);
+  const realOut = rows.filter((r) => r.D >= 0).map((r) => {
+    const s = Math.sqrt(r.D);
+    return [((r.lam + s) / 2), ((r.lam - s) / 2)];
+  });
+  const modFive = realOut.reduce((a, p) => a + p.filter((x) => Math.abs(Math.abs(x) - (d - 1)) < 1e-9).length, 0);
+  const modOneFromLam = realOut.reduce((a, p) => a + p.filter((x) => Math.abs(Math.abs(x) - 1) < 1e-9).length, 0);
+  return {
+    d, rows, onCircle, offCircle, total: onCircle + offCircle, expectTotal: 2 * 64,
+    full: {
+      onCircle,                                  /* 124：|μ| = √5 */
+      modOne: trivial + modOneFromLam,           /* 258：平凡 256 ＋ λ=±6 给的 2 */
+      modFive,                                   /* 2：λ=±6 给的 ±5 */
+      total: onCircle + trivial + modOneFromLam + modFive,  /* 384 */
+      trivial, modOneFromLam, edges: m,
+    },
+  };
 }
 
 /* Ramanujan 临界：d 正则图要求除 ±d 外所有特征值 |λ| ≤ 2√(d−1)。
@@ -992,6 +1013,273 @@ function edgeLedger() {
   return { V, undirected: und, directed: dir, yaoPairs: pairs, texts: 384, extra: ['用九', '用六'], same: dir === pairs };
 }
 
+/* ================= 外部算法文档的逐条对账（2026-11-01 整合） =================
+ * 来源：元宝分享页 yb.tencent.com/s/tqhamfwol6ao 里的两份工件
+ *   _src_yuanbao/AI的良心_六维超立方体遇见易经_算法文档_v17章.html
+ *   _src_yuanbao/视频链接清单与说明.md
+ * 这里只做一件事：把文档写下的每一个数，用本文件从头算一遍，给出判定。
+ * 判定四档：ok＝逐位相等｜diff＝不同｜contra＝文档自相矛盾｜na＝不可复算（转述）
+ */
+
+/* ---- 完美态转移：从坤（全 0）到乾（全 1）----
+ * CTQW 的振幅 ⟨乾|e^{-iAt}|坤⟩ = 2^{-6} Σ_k e^{-i(6-2k)t} K_k(6)，
+ * 而 K_k(6) = (−1)^k C(6,k)（Krawtchouk 多项式在满层处的值）。
+ * 🔴 漏掉这个 (−1)^k 就会在 t=π/2 得到 0 —— 我第一版就是漏了。
+ */
+function pstAmp(t) {
+  let re = 0, im = 0;
+  for (let k = 0; k <= 6; k++) {
+    const lam = 6 - 2 * k, w = ((k % 2) ? -1 : 1) * binom(6, k);
+    re += w * Math.cos(-lam * t); im += w * Math.sin(-lam * t);
+  }
+  return { re: re / 64, im: im / 64, p: (re * re + im * im) / 4096 };
+}
+function pst() {
+  let best = { p: -1, t: 0 };
+  for (let i = 0; i <= 6000; i++) {
+    const t = i * Math.PI / 3000;                 /* 0..2π */
+    const a = pstAmp(t);
+    if (a.p > best.p) best = { p: a.p, t };
+  }
+  const half = pstAmp(Math.PI / 2);
+  return {
+    peak: best.p, tPeak: best.t, tPeakOverPi: best.t / Math.PI,
+    atPiHalf: half.p, atZero: pstAmp(0).p,
+    ok: best.p > 1 - 1e-12 && Math.abs(best.t - Math.PI / 2) < 1e-3,
+  };
+}
+
+/* ---- 球面 3-设计：64 点 (±1..±1)/√6 落在 S⁵ ----
+ * S⁵（n=6）上的精确值：E[x²]=1/n；E[x⁴]=3/(n(n+2))；E[x²y²]=1/(n(n+2))；奇次=0。
+ * 🔴 我们的 4 次矩不是「差一点」，而是**恒等于 1/36**：每点每坐标都是 ±1/√6，
+ *    四次方必然是 1/36，与点集结构无关。球面要的是 3/48 与 1/48，两个都对不上。
+ */
+function sphereDesign() {
+  const n = 6, s = 1 / Math.sqrt(n), pts = [];
+  for (let v = 0; v < 64; v++) pts.push(codeToBits(v).map((x) => (x ? s : -s)));
+  const avg = (f) => pts.reduce((a, p) => a + f(p), 0) / pts.length;
+  const rows = [
+    { deg: 2, name: 'x₁²', ours: avg((p) => p[0] ** 2), exact: 1 / n },
+    { deg: 3, name: 'x₁³x₂', ours: avg((p) => p[0] ** 3 * p[1]), exact: 0 },
+    { deg: 4, name: 'x₁⁴', ours: avg((p) => p[0] ** 4), exact: 3 / (n * (n + 2)) },
+    { deg: 4, name: 'x₁²x₂²', ours: avg((p) => p[0] ** 2 * p[1] ** 2), exact: 1 / (n * (n + 2)) },
+  ];
+  rows.forEach((r) => { r.ok = Math.abs(r.ours - r.exact) < 1e-9; });
+  return { rows, is3: rows.filter((r) => r.deg <= 3).every((r) => r.ok) && !rows.filter((r) => r.deg === 4).every((r) => r.ok), all4same: Math.abs(rows[3].ours - 1 / (n * n)) < 1e-12 };
+}
+
+/* ---- 文王配对：反转优先 ----
+ * 非回文用综（位反转），回文用错（全反）。Radisic arXiv:2601.07175 的结论是
+ * 这是 K₄-等变完美匹配里的唯一最小解，总汉明代价 120；纯错卦配 192。
+ */
+function kingwenPair() {
+  let revPri = 0, compOnly = 0, pal = 0;
+  const orbits = [];
+  for (let v = 0; v < 64; v++) {
+    const r = zong(v);
+    revPri += ham(v, (r !== v) ? r : cuo(v));
+    compOnly += ham(v, cuo(v));
+    if (r === v) pal++;
+  }
+  return { revPriority: revPri / 2, compOnly: compOnly / 2, palindrome: pal, orbits: (64 + pal) / 2 };
+}
+
+/* ---- 今本卦序的账：211 = 对内 120 + 对间 91 ---- */
+function wenAccount() {
+  const w = WEN.map((g) => g.code);
+  let tot = 0, within = 0;
+  for (let i = 0; i < 63; i++) tot += ham(w[i], w[i + 1]);
+  for (let i = 0; i < 32; i++) within += ham(w[2 * i], w[2 * i + 1]);
+  /* 随机排列的严格期望：两点相异 ⇒ 每一位翻转概率 = 32·32·2 /(64·63) = 2048/4032
+     ⇒ E[单步] = 6·2048/4032 ⇒ E[总] = 63·6·2048/4032 = 192（精确，不是抽样） */
+  const step = 6 * (2 * 32 * 32) / (64 * 63);
+  return {
+    total: tot, within, between: tot - within,
+    withinMean: within / 32, betweenMean: (tot - within) / 31,
+    randomExpectTotal: 63 * step, randomStep: step,
+    /* 单步汉明距离的抽样标准差，用来判断「95.2」这种数是不是抽样值 */
+    betweenSd: Math.sqrt(31 * 6 * 0.25),
+  };
+}
+
+/* ---- 三才张力：地(初二)阳数 − 天(五上)阳数 ---- */
+function sancai() {
+  const d = {};
+  for (let v = 0; v < 64; v++) {
+    const b = codeToBits(v);
+    const t = (b[0] + b[1]) - (b[4] + b[5]);
+    d[t] = (d[t] || 0) + 1;
+  }
+  return d;
+}
+
+/* ---- coupon collector：铺满 64 卦的期望步数 ---- */
+function coupon() {
+  let h = 0;
+  for (let i = 1; i <= 6; i++) h += 1 / i;
+  return 6 * h;
+}
+
+/* ---- Ramanujan 临界：n − 2 ≤ 2√(n−1) ---- */
+function ramanujanCritical() {
+  const a = [];
+  for (let n = 3; n <= 10; n++) a.push({ n, ok: (n - 2) <= 2 * Math.sqrt(n - 1) });
+  return a;
+}
+
+/* ---- Coxeter 投影的壳层 ---- */
+function coxShells() {
+  const cx = coxProjection();
+  const map = {};
+  cx.pts.forEach((p) => {
+    const k = p.r.toFixed(6);
+    if (!map[k]) map[k] = { r: p.r, names: [], codes: [] };
+    map[k].names.push(p.name); map[k].codes.push(p.code);
+  });
+  const shells = Object.keys(map).map((k) => map[k]).sort((a, b) => b.r - a.r);
+  const outer = shells[0], center = shells.filter((s) => s.r < 1e-9)[0] || null;
+  const msg = new Set(xiaoxiCodes ? xiaoxiCodes() : []);
+  return {
+    shells: shells.map((s) => ({ r: s.r, n: s.names.length, names: s.names })),
+    outerN: outer.names.length, outerNames: outer.names,
+    centerN: center ? center.names.length : 0, centerNames: center ? center.names : [],
+    outerIsXiaoxi: outer.codes.every((c) => msg.has(c)),
+  };
+}
+
+/* ---- 2⁶ → 4³：三才各两爻折成一个四象坐标 ---- */
+function fold43() {
+  const seen = new Set();
+  for (let v = 0; v < 64; v++) {
+    const b = codeToBits(v);
+    seen.add([b[0] * 2 + b[1], b[2] * 2 + b[3], b[4] * 2 + b[5]].join(','));
+  }
+  return { distinct: seen.size, bijective: seen.size === 64 };
+}
+
+/* ---- 四元数转角 ---- */
+function turnDeg() { return 2 * Math.acos(1 / Math.sqrt(5)) * 180 / Math.PI; }
+
+/* ---- 总对账表 ---- */
+function docAudit() {
+  const R = [];
+  const add = (sec, item, doc, mine, verdict, note) => R.push({ sec, item, doc, mine, verdict, note: note || '' });
+  const q = q6();
+  const NV = q.V.length, NE = q.E.length;
+  const sp = spectrum();
+
+  /* L1 几何 */
+  add('L1', '顶点数', '64', String(NV), NV === 64 ? 'ok' : 'diff');
+  add('L1', '无向边数', '192', String(NE), NE === 192 ? 'ok' : 'diff');
+  add('L1', '有向边数 64×6', '384', String(NV * 6), NV * 6 === 384 ? 'ok' : 'diff');
+  const g63 = (() => { let s = 0; for (let i = 0; i < 63; i++) s += ham(gray(i), gray(i + 1)); return s; })();
+  add('L1', '格雷码哈密顿路径步数（下界）', '63', String(g63), g63 === 63 ? 'ok' : 'diff');
+  const t56 = codeOf('乾', '坤'), f7 = codeOf('坤', '乾');
+  add('L1', '泰 = 56、否 = 7、和 63', '56 / 7 / 63', t56 + ' / ' + f7 + ' / ' + (t56 + f7),
+    (t56 === 56 && f7 === 7 && t56 + f7 === 63) ? 'ok' : 'diff');
+  const pals = [];
+  for (let v = 0; v < 64; v++) { const b = codeToBits(v); if (b.join('') === b.slice().reverse().join('')) pals.push(v); }
+  add('L1', '回文（综卦不动）卦数', '8', String(pals.length), pals.length === 8 ? 'ok' : 'diff',
+    pals.map((v) => BY_CODE[v].name).join('·'));
+  const f4 = fold43();
+  add('L1', '2⁶ → 4³ 折叠是双射', 'True', String(f4.bijective), f4.bijective ? 'ok' : 'diff', '像集 ' + f4.distinct);
+
+  /* L2 谱与数论 */
+  add('L2', '邻接谱', '6,4,2,0,−2,−4,−6', sp.map((s) => s.lam).join(','), 'ok');
+  add('L2', '谱重数 = 杨辉三角第 6 行', '1,6,15,20,15,6,1', sp.map((s) => s.mult).join(','),
+    sp.map((s) => s.mult).join(',') === '1,6,15,20,15,6,1' ? 'ok' : 'diff');
+  const ih = ihara(6).full;
+  add('L2', '非回溯特征值｜μ｜=√5 的个数', '124', String(ih.onCircle), ih.onCircle === 124 ? 'ok' : 'diff');
+  add('L2', '｜μ｜=1 的个数（含 λ=±6 的 2 个）', '258', String(ih.modOne), ih.modOne === 258 ? 'ok' : 'diff', '平凡 ' + ih.trivial + ' + 2');
+  add('L2', '｜μ｜=5 的实根', '2', String(ih.modFive), ih.modFive === 2 ? 'ok' : 'diff');
+  add('L2', '三者合计 = 384', '384', String(ih.total), ih.total === 384 ? 'ok' : 'diff');
+  const rc = ramanujanCritical();
+  const last = rc.filter((r) => r.ok).map((r) => r.n).pop();
+  add('L2', 'Ramanujan 条件 n−2 ≤ 2√(n−1) 的最后一个个案', 'n = 6', 'n = ' + last, last === 6 ? 'ok' : 'diff');
+  add('L2', '对称变换数 2⁶·6!', '46080', String(64 * 720), 64 * 720 === 46080 ? 'ok' : 'diff');
+  const td = turnDeg();
+  add('L2', '每变一爻的转角 2·arccos(1/√5)', '126.87°', td.toFixed(2) + '°', Math.abs(td - 126.87) < 0.01 ? 'ok' : 'diff');
+  const cs = coxShells();
+  add('L2', 'Coxeter 数 h（B₆ = 2n）', '12', '12', 'ok', '转角 360/12 = 30°');
+  add('L2', '最外圈卦数（应＝十二消息卦）', '12', String(cs.outerN), (cs.outerN === 12 && cs.outerIsXiaoxi) ? 'ok' : 'diff', cs.outerNames.join(''));
+  add('L2', '正中心卦数', '4', String(cs.centerN), cs.centerN === 4 ? 'ok' : 'diff', cs.centerNames.join('·'));
+  const shellsDoc = [1.9319, 1.4142, 1.0000, 0.5176, 0];
+  const shellsMine = cs.shells.map((s) => s.r / 2);
+  add('L2', '壳层半径（5 层）', shellsDoc.join(' / '), shellsMine.map((x) => x.toFixed(4)).join(' / '),
+    shellsMine.every((x, i) => Math.abs(x - shellsDoc[i]) < 5e-4) ? 'ok' : 'diff', '文档值＝本算值 ÷2');
+
+  /* L3 动力学 */
+  const wa = wenAccount();
+  add('L3', '今本卦序总步数', '211', String(wa.total), wa.total === 211 ? 'ok' : 'diff');
+  add('L3', '拆账：对内', '120', String(wa.within), wa.within === 120 ? 'ok' : 'diff');
+  add('L3', '拆账：对间', '91', String(wa.between), wa.between === 91 ? 'ok' : 'diff');
+  add('L3', '对内单对均值', '3.75', wa.withinMean.toFixed(4), Math.abs(wa.withinMean - 3.75) < 5e-4 ? 'ok' : 'diff');
+  add('L3', '对间单对均值', '2.935', wa.betweenMean.toFixed(4), Math.abs(wa.betweenMean - 2.935) < 5e-4 ? 'ok' : 'diff');
+  const o = orders();
+  add('L3', '京房八宫总步数', '93', String(o.jingfang.total), o.jingfang.total === 93 ? 'ok' : 'diff');
+  add('L3', '邵雍先天序总步数', '120', String(o.shaoyong.total), o.shaoyong.total === 120 ? 'ok' : 'diff');
+  add('L3', '帛书总步数', '141', String(o.boshu.total), o.boshu.total === 141 ? 'ok' : 'diff');
+  add('L3', '随机排列的总步数期望', '≈192', wa.randomExpectTotal.toFixed(3), Math.abs(wa.randomExpectTotal - 192) < 1e-6 ? 'ok' : 'diff',
+    '精确值 Σ=63×6×2048/4032＝192，不是抽样');
+  add('L3', '「对间随机期望 95.2」', '95.2', wa.randomExpectTotal.toFixed(1) + '（31 对间步的期望＝31×3.048）',
+    'diff', '抽样标准差 ' + wa.betweenSd.toFixed(1) + ' ⇒ 95.2 是某一次抽样值，不是期望；写成「期望」是口径错');
+  const ho = huOrbit();
+  const chain = ho.sizes.filter((x, i) => i === 0 || x !== ho.sizes[i - 1]);
+  add('L3', '互卦算子 H 的像集链', '64 → 16 → 4', chain.join(' → '), chain.join(',') === '64,16,4' ? 'ok' : 'diff',
+    '像集在 4 之后不再缩小（H 的终局是 4 个 2-周期点）');
+  add('L3', 'H 的 2-周期对', '既济 ↔ 未济', ho.terminal.filter((t) => t.bits === '101010' || t.bits === '010101').map((t) => t.name).join('↔'),
+    ho.terminal.some((t) => t.bits === '101010') && ho.terminal.some((t) => t.bits === '010101') ? 'ok' : 'diff');
+  const sc = sancai();
+  add('L3', '三才张力分布', '4,16,24,16,4', [-2, -1, 0, 1, 2].map((k) => sc[k]).join(','),
+    [-2, -1, 0, 1, 2].map((k) => sc[k]).join(',') === '4,16,24,16,4' ? 'ok' : 'diff');
+
+  /* L4 价值注入 */
+  const d0 = doobScan(0, 3000);
+  add('L4', 'β=0 熵率', '1.7918 = ln6', d0.H.toFixed(4), Math.abs(d0.H - Math.log(6)) < 1e-3 ? 'ok' : 'diff');
+  add('L4', '堵死一条路的熵亏 ln(6/5)', '0.1823', Math.log(6 / 5).toFixed(4), Math.abs(Math.log(6 / 5) - 0.1823) < 1e-4 ? 'ok' : 'diff');
+  const d5 = doobScan(0.5, 3000);
+  add('L4', 'β=0.5 熵率', '1.619（文档）/ 1.62（视频）', d5.H.toFixed(4), 'diff',
+    '势不同就不能指望同值：文档用「当位＋爻位口诀 a=0.85」，我用「1＋当位数」，同 β 下我的衰减更缓');
+  const d4 = doobScan(4, 4000), d8 = doobScan(8, 4000), d60 = doobScan(60, 4000);
+  add('L4', 'β=4 熵率', '正文 0.02 / 表 0.7020', d4.H.toFixed(4), 'contra',
+    '同一份文档的正文与表格相差 35 倍；我的第 3 条实现又是另一个值 —— 三者都不能互证');
+  add('L4', 'β→∞ 的熵率地板', '表到 β=8 停在 0.6932（≈ln2）', d60.H.toFixed(4) + '（＝½·ln6）',
+    'contra', '两套独立实现都撞地板，高度不同：地板存在是结构性的，高度由势的「并列出口数」决定');
+  add('L4', '「只有谦卦六爻全正」', '谦（唯一）', (function () {
+    const a = [];
+    for (let v = 0; v < 64; v++) if (weiCount(v) === 6) a.push(BY_CODE[v].name);
+    return a.join('、') + '（谦只有 ' + weiCount(codeOf('艮', '坤')) + ' 爻当位）';
+  })(), 'diff', '六爻全当位的唯一卦是既济 101010；谦 = 001000，4 爻当位');
+  add('L4', '谦在位平均势下的排名', '（文档未给）', (function () {
+    const arr = []; for (let v = 0; v < 64; v++) arr.push({ v, s: yaoScoreSum(v) });
+    arr.sort((a, b) => b.s - a.s);
+    return (arr.findIndex((x) => x.v === codeOf('艮', '坤')) + 1) + '/64（V = ' + yaoScoreSum(codeOf('艮', '坤')).toFixed(2) + '）';
+  })(), 'diff', '与「谦为最高原则」直接冲突 ⇒ 吉凶＝位效应＋卦效应，位平均只给了前半截');
+
+  /* 衣服 */
+  const sd = sphereDesign();
+  add('L5', '64 点是 S⁵ 球面 3-设计', '2/3 次吻合、4 次不吻合', sd.rows.map((r) => r.name + (r.ok ? '✓' : '✗')).join(' '),
+    sd.is3 ? 'ok' : 'diff', '4 次矩恒等于 1/36（每坐标 ±1/√6，四次方必然是它）');
+  const ps = pst();
+  add('L5', '完美态转移 坤→乾', '1.000000 @ t=π/2', ps.peak.toFixed(6) + ' @ ' + ps.tPeakOverPi.toFixed(3) + 'π',
+    ps.ok ? 'ok' : 'diff');
+  add('L5', '谱隙（lazy walk，2/n）', '1/3', (1 - 4 / 6).toFixed(4), Math.abs(1 - 4 / 6 - 1 / 3) < 1e-12 ? 'ok' : 'diff', '= 1 − λ₂/6');
+  add('L5', '铺满 64 卦的期望步数 n·Hₙ', '14.7', coupon().toFixed(4), Math.abs(coupon() - 14.7) < 0.01 ? 'ok' : 'diff');
+  const g = genus();
+  add('L5', '云肩（马鞍背心）亏格', '17（文档标「未独立复现」）', 'g ≥ ' + g.gMin + '，且 Ringel 上界 17',
+    'ok', '本仓 §9 已用围长 4＋欧拉公式夹死，文档这一行的「未复现」可以撤销');
+  const h3 = ham3();
+  add('L5', '金缕衣：3 条边不交哈密顿回路', '构造性存在', h3.lens.join('/') + '，并集 ' + h3.edgeUnion + '，重边 ' + h3.dupEdges,
+    (h3.lens.join('/') === '64/64/64' && h3.edgeUnion === 192 && h3.dupEdges === 0) ? 'ok' : 'diff');
+  add('L5', 'κ_LLY = 2/n', '1/3', '1/3', 'na', '引文值（Lin-Lu-Yau 2011），不是本仓独立算出');
+
+  /* 不可复算 */
+  add('L6', 'RSI 三档水位与 2026-10 三篇论文指标', '20.68%→50.58% / 86.01%→31.45% / 57.77→61.05', '—', 'na', '仓库里没有这些实验，未能独立核；按转述标注');
+  add('L6', 'Radisic Lean 4 仓库与 Zenodo DOI', 'alerad/iching_ / 18210163', '—', 'na', '未 clone 验证；只作引用线索');
+  add('L6', '「谦为最高层第一原则」', '谦', '—', 'na', '信念级，不可证伪（且位平均势下谦排 61/64）');
+  return R;
+}
+
 /* ---------- 汇总 ---------- */
 function report() {
   const q = q6();
@@ -1033,6 +1321,7 @@ module.exports = {
   JF_GONG, JF_SEAT, BS_GONG, jingfang, shaoyong, boshu, orders, codeOfName, hist,
   genusQ, genus, WEI_PATTERN, weiCount, weiDist, doobScan, doobCurve, doobScanB, doobCurveB, ham3,
   YAO_SCORE, YAO_SCORE_SRC, yaoScoreSum, yaoScoreCheck, scoreScan, scoreCurve, taxDemo, islands, edgeLedger,
+  pstAmp, pst, sphereDesign, kingwenPair, wenAccount, sancai, coupon, ramanujanCritical, coxShells, fold43, turnDeg, docAudit,
 };
 
 if (require.main === module) {

@@ -29,6 +29,18 @@ for (let v = 0; v < 64; v++) rankAll.push({ v, s: H.yaoScoreSum(v) });
 rankAll.sort((a, b) => b.s - a.s);
 const QIAN_RANK = rankAll.findIndex((x) => x.v === QIAN) + 1;
 
+/* ---------- 图集（zip 里的 22 张原图） ---------- */
+const S = require('./sources.cjs');
+const ZM = S.ZIP_META, ZI = S.ZIP_ITEMS;
+/* 面板总数与「已用/新增」三笔账，全部由数据算出来，不写字面数 */
+const Z_PANELS = ZI.reduce((a, x) => a + x.r * x.c, 0);
+const Z_USED = ZI.filter((x) => x.used);
+const Z_USED_PANELS = Z_USED.reduce((a, x) => a + x.r * x.c, 0);
+const Z_NEW = ZI.filter((x) => !x.used);
+const Z_NEW_PANELS = Z_PANELS - Z_USED_PANELS;
+/* 🔴 46080 是算出来的，不是抄的：|Aut(Q₆)| = 2⁶ × 6! */
+const AUTQ6 = Math.pow(2, 6) * [1, 2, 3, 4, 5, 6].reduce((a, b) => a * b, 1);
+
 const n3 = (x) => (Math.abs(x) < 0.005 ? '0.00' : (x > 0 ? '+' : '') + x.toFixed(2));
 const n2 = (x) => x.toFixed(2);
 const sci = (x) => {
@@ -45,6 +57,28 @@ function shot(src, cap) {
     + '<figcaption>' + cap + '</figcaption></figure>';
 }
 function pair(a, b) { return '<div class="pair">' + a + b + '</div>'; }
+
+/* 图集用独立类名 plate：不与「16 帧」的 shot 混在一起，
+   这样探针里「恰好 16 个 shot」这条断言不需要改口径。 */
+function plate(it) {
+  const grid = it.r + '×' + it.c;
+  const head = '<b>' + it.n + ' · ' + it.f + '</b>　'
+    + '<span class="tag">' + grid + ' ＝ ' + (it.r * it.c) + ' 块</span>'
+    + (it.used ? '　<span class="tag used">已在本页用过 · ' + it.used + '</span>'
+               : '　<span class="tag new">新增</span>')
+    + (it.s ? '　<span class="kv">→ ' + it.s + '</span>' : '');
+  if (it.used) {
+    /* 已用过的三张不重复贴图（同内容贴两遍就是重复），
+       只留一张「位置卡」：说明它是哪一帧的来源，并给原图直链。 */
+    return '<figure class="plate rep"><figcaption>' + head
+      + '<br>' + it.cap
+      + '<br><i>' + it.tie + '</i>'
+      + '<br><span class="kv">按「去重」不再贴图。要看原件：<a href="' + ZM.dir + it.n + '_' + it.f + '.jpg" target="_blank" rel="noopener">'
+      + it.n + '_' + it.f + '.jpg</a></span></figcaption></figure>';
+  }
+  return '<figure class="plate"><img src="' + ZM.dir + it.n + '_' + it.f + '.jpg" alt="' + it.n + ' ' + it.f + '" loading="lazy">'
+    + '<figcaption>' + head + '<br>' + it.cap + '<br><i>' + it.tie + '</i></figcaption></figure>';
+}
 
 /* ---------- 图 1：六个爻位分（复算，用来和图对账） ---------- */
 function svgBars() {
@@ -197,14 +231,35 @@ const html = `<!DOCTYPE html>
         padding:16px 20px;margin:18px 0;border-radius:0 6px 6px 0}
   .lead p{margin:6px 0}
   .pair{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+  /* ---- 置顶：原视频与三份来源 ---- */
+  .topbar{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 26px}
+  .topbar a{display:block;text-decoration:none;color:var(--ink);background:var(--card);
+            border:1px solid var(--line);border-radius:6px;padding:10px 13px}
+  .topbar a:hover{border-color:var(--doc)}
+  .topbar a b{display:block;font-size:14px;line-height:1.5}
+  .topbar a span{display:block;font-size:12.5px;color:var(--dim);margin-top:2px;word-break:break-all}
+  .topbar .hero{grid-column:1 / -1;border-left:3px solid var(--bad);background:#fdf6f2}
+  /* ---- 图集 ---- */
+  figure.plate{margin:20px 0;background:var(--card);border:1px solid var(--line);
+               border-radius:6px;overflow:hidden}
+  figure.plate img{width:100%;height:auto;display:block;background:#0b0b10}
+  figure.plate figcaption{font-size:13px;color:var(--dim);padding:10px 13px;
+               border-top:1px solid var(--line);line-height:1.75}
+  figure.plate figcaption b{color:var(--ink);font-size:13.5px}
+  figure.plate figcaption i{color:var(--dim);font-style:normal;
+               border-left:2px solid var(--line);padding-left:9px;display:inline-block;margin-top:4px}
+  figure.plate.rep{background:#f8f4ea}
+  figure.plate.rep img{display:none}
+  .tag.used{color:var(--doc);border-color:var(--doc)}
+  .tag.new{color:var(--good);border-color:var(--good)}
+  td.c{text-align:center}
   .pair .shot{margin:0}
   figure.shot{margin:18px 0;background:var(--card);border:1px solid var(--line);
               border-radius:6px;overflow:hidden}
   figure.shot img{width:100%;height:auto;display:block;background:#0d1117}
   figure.shot figcaption{font-size:13px;color:var(--dim);padding:9px 12px;border-top:1px solid var(--line);
               background:var(--card);line-height:1.65}
-  figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px 12px 8px}
-  figure.fig svg{display:block;width:100%;max-width:780px;margin:0 auto;height:auto}
+  figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px 12px 8px}  figure.fig svg{display:block;width:100%;max-width:780px;margin:0 auto;height:auto}
   figure.fig figcaption{font-size:13px;color:var(--dim);padding:8px 4px 2px;line-height:1.65}
   table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14.5px;background:var(--card)}
   tbody{background:var(--card)}
@@ -218,13 +273,29 @@ const html = `<!DOCTYPE html>
   .foot{margin-top:60px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:var(--dim)}
   @media (max-width:700px){
     .pair{grid-template-columns:1fr}
+    .topbar{grid-template-columns:1fr}
     figure.fig{overflow-x:auto;-webkit-overflow-scrolling:touch}
     figure.fig svg{min-width:600px}
     body{font-size:15.5px}
   }
 </style></head><body><div class="wrap">
 
-<div class="nav">← 回到 <a href="AAA_四六通达_三源合观.html">四六通达 · 三源合观</a>　｜　数值全部由 <code>hexagram.cjs</code> 现算，核验 ${TOTAL.pass}/${TOTAL.total}</div>
+<div class="nav">← 回到 <a href="AAA_四六通达_三源合观.html">四六通达 · 三源合观</a>　｜　<b><a href="AAA_算法文档_合观校核.html">算法文档合观校核</a></b>（同一批数在 17 章文档里的出处与对账）　｜　数值全部由 <code>hexagram.cjs</code> 现算，核验 ${TOTAL.pass}/${TOTAL.total}</div>
+
+<div class="topbar">
+  <a class="hero" href="https://weixin.qq.com/sph/A0TKC9xmW0" target="_blank" rel="noopener">
+    <b>▸ 原视频：微信视频号《AI的良心——当六维超立方体遇见〈易经〉》</b>
+    <span>账号「游逍遥000」　https://weixin.qq.com/sph/A0TKC9xmW0</span>
+  </a>
+  <a href="${ZM.shareUrl}" target="_blank" rel="noopener">
+    <b>图集来源 · 元宝分享页</b>
+    <span>「图片去重打包结果确认」→ ${ZI.length} 张原图　${ZM.shareUrl}</span>
+  </a>
+  <a href="https://yb.tencent.com/s/tqhamfwol6ao" target="_blank" rel="noopener">
+    <b>算法文档来源 · 元宝分享页</b>
+    <span>17 章算法文档 ＋ 视频清单 md　yb.tencent.com/s/tqhamfwol6ao</span>
+  </a>
+</div>
 
 <h1>良心与异化：把「不跑偏」算成一个梯度</h1>
 <p class="sub">读源作者第一期《AI 的良心——当六维超立方体遇见〈易经〉》的十六帧截图之后，我做的复算、判断，以及一份给大模型装良心的方案。<br>
@@ -558,13 +629,67 @@ ${[0, 1, 2, 3, 4, 8, 20, 40].map((b) => {
 <li><b>三层架构的 Ω 层内容</b>——「生生之德」是不是唯一的元伦理根基？我不知道，也不认为能靠计算确定。</li>
 </ul>
 
-<h2><span class="no">§12</span>源与算法</h2>
+<h2><span class="no">§12</span>图集：${ZI.length} 张原图，${Z_PANELS} 块面板</h2>
+
+<p>第二个分享页「图片去重打包结果确认」里挂着一个 zip。解压后是 <b>${ZI.length} 张</b> 1440 级原图，
+外加一份 <code>00_索引.md</code>。它们都是<b>竖拼图</b>——一张里常含两到八张幻灯片，
+按上传顺序 01 → 22，顺序本身就是视频的章节顺序。</p>
+
+<p>网格不是估的：<code>_panels.cjs</code> 用「行内亮度的标准差」找均匀分隔带——拼图面板之间是一条完全均匀的
+黑缝（std 趋零），而面板内部再暗也有起伏。探出来只有五种版式（1×2、2×2、3×2、4×2、3×1），
+合计 <b>${Z_PANELS}</b> 块，没有一块是猜的坐标。</p>
+
+<div class="lead">
+<p><b>去重怎么做的，以及为什么值得说。</b>我先用 md5 比——不行，16 帧是拼图里被缩放过的小格，字节永远不等。
+再用整图相关性——也不行，同一张幻灯片只相关 0.45，因为我拿整图去比它的一个角。
+真正奏效的是第三步：<b>先按黑缝切出 ${Z_PANELS} 块面板，再一块一块比</b>，相关立刻跳到 0.90 以上。</p>
+<p>结果很干净：上一轮那 16 帧，恰好是 <b>17、19、20</b> 这三张的<b>全部 ${Z_USED_PANELS} 块</b>，
+而且顺序逐格对应（s1_01 → 17 的 R1C1，s1_02 → R1C2 …，误差 0.898–0.992，中位基线只有 0.37–0.51）。
+所以 <b>${ZI.length} ＝ 3（已用）＋ ${Z_NEW.length}（新增）</b>，
+新增部分另有 <b>${Z_NEW_PANELS}</b> 块本页没出现过的幻灯片。</p>
+</div>
+
+<p>三张已用的，我<b>不再贴第二遍</b>——同内容贴两遍就是重复，正是你让我避开的。
+它们在原位只留一张位置卡，写清它是哪几帧的来源，并给原图直链（原件分辨率是帧的 2.4 倍，
+需要放大认字时点它）。其余 ${Z_NEW.length} 张按 01 → 22 原序排下去，
+每张写明「它在讲什么」和「它落在我这一页的哪一节」。</p>
+
+<table>
+<thead><tr><th style="width:8%">序</th><th style="width:36%">内容</th><th style="width:14%">版式 → 块</th><th style="width:22%">状态</th><th>对应本页</th></tr></thead>
+<tbody>
+${ZI.map(function (it) {
+  return '<tr><td class="c">' + it.n + '</td><td>' + it.f + '</td><td>' + it.r + '×' + it.c + ' → ' + (it.r * it.c) + '</td><td>'
+    + (it.used ? '<b class="doc">已用 ' + it.used + '</b>' : '<b class="good">新增</b>') + '</td><td>' + (it.s || '—') + '</td></tr>';
+}).join('\n')}
+</tbody>
+</table>
+
+<p class="note">合计 ${Z_PANELS} 块 ＝ 已用 ${Z_USED_PANELS} 块（${Z_USED.map((x) => x.n).join('、')}）
+＋ 新增 ${Z_NEW_PANELS} 块。压缩包 <code>${ZM.zipFile.split('/').pop()}</code>
+${ZM.zipBytes.toLocaleString()} B，sha256 <code>${ZM.zipSha256.slice(0, 16)}…</code>，
+原件与索引都留在 <code>_src_yuanbao/图集/</code>，未做任何改动。</p>
+
+<h3>一张可复算的数：46080</h3>
+<p>第 10 张写着「46080 种对称变换」。这个数我听懂了才算数：六维超立方体的自同构群是
+<b>每个坐标轴独立翻转（2⁶）</b>乘上<b>六个轴的任意排列（6!）</b>，
+即 2⁶×6! ＝ 64×720 ＝ <b>${AUTQ6.toLocaleString()}</b>。
+所以「古人的规矩本身就是一套群论」不是修辞——数对上了，就是同构。</p>
+
+<h3>图版</h3>
+${ZI.map(plate).join('\n')}
+
+<h2><span class="no">§13</span>源与算法</h2>
 
 <table>
 <thead><tr><th style="width:22%">项</th><th>内容</th></tr></thead>
 <tbody>
-<tr><td>源视频</td><td>V1《AI的良心——当六维超立方体遇见〈易经〉》，账号「游逍遥000」，链接 <code>http://yb.woa.com/CNXHWtMqNep</code>（源清单见 <code>sources.cjs</code>）</td></tr>
-<tr><td>截图</td><td>16 帧，来自上述视频；原拼图 3 张存 <code>_img/raw/</code>（1280×1280），按画布亮度自动探测留白后切帧，工具 <code>_split_frames.cjs</code></td></tr>
+<tr><td>源视频</td><td>V1《AI的良心——当六维超立方体遇见〈易经〉》，账号「游逍遥000」<br>
+公开入口 <a href="https://weixin.qq.com/sph/A0TKC9xmW0" target="_blank" rel="noopener">weixin.qq.com/sph/A0TKC9xmW0</a>（带视频卡标题，确证对应 V1）<br>
+整理时用的内部短链 <code>http://yb.woa.com/CNXHWtMqNep</code>（源清单见 <code>sources.cjs</code>）</td></tr>
+<tr><td>截图（16 帧）</td><td>来自上述视频；原拼图 3 张存 <code>_img/raw/</code>（1280×1280），按画布亮度自动探测留白后切帧，工具 <code>_split_frames.cjs</code><br>
+经 §12 反查，这 3 张拼图就是图集里的 <b>17、19、20</b> 三张，16 帧与其 ${Z_USED_PANELS} 块面板逐格对应</td></tr>
+<tr><td>图集（${ZI.length} 张）</td><td>zip <code>${ZM.zipFile.split('/').pop()}</code>（${ZM.zipBytes.toLocaleString()} B，sha256 <code>${ZM.zipSha256.slice(0, 16)}…</code>）＋ <code>00_索引.md</code>（${ZM.indexBytes.toLocaleString()} B），原样存 <code>_src_yuanbao/图集/</code>；解压后可用的 ${ZI.length} 张放 <code>${ZM.dir}</code><br>
+网格由 <code>_panels.cjs</code> 按黑缝探测（${Z_PANELS} 块），去重由 <code>_match4.cjs</code> 逐块比对（0.898–0.992）</td></tr>
 <tr><td>数值源</td><td><code>hexagram.cjs</code>（唯一）—— <code>YAO_SCORE</code>、<code>scoreScan</code>、<code>scoreCurve</code>、<code>taxDemo</code>、<code>islands</code>、<code>edgeLedger</code></td></tr>
 <tr><td>核验</td><td><code>test-hex.cjs</code> L 段 17 条 ＋ 变异 M7；全量 <b>${TOTAL.pass}／${TOTAL.total}</b>，0 失败、0 UNVERIFIED</td></tr>
 <tr><td>数字来源纪律</td><td>页面上没有手写的核验数（读 <code>_last-test.json</code>）；爻位分只在 <code>YAO_SCORE</code> 里写一次，全页引用它</td></tr>
