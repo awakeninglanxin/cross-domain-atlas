@@ -877,6 +877,59 @@ sec('Q 段 · 自改动力学（cRSI）');
   chk(mtot >= 5 && mneg > 0,
     'Q21 价值不是单调的（稳态段确实出现过下降）⇒ 不能借「单调有上界⇒收敛」给有界性',
     mneg + '/' + mtot + ' 窗下降');
+
+  /* ---- Q22–Q24：把「变窄 ≠ 归纳」这件事变成断言 ----
+   * 判据来自那份写作教学的第一对：归纳＝压缩后可还原，演绎＝能反复生成。
+   * 这一组要防的是一句很好听的错话：「熵降了，说明它学会了抓要领」。 */
+  const Vw3 = CR.vWei ? CR.vWei() : null;
+  if (Vw3) {
+    /* Q22 Ω 的「归纳」：64 个数 ⇄ 6 个数，且可逆。
+     * 爻位 i 对应码的哪一位不靠猜 —— 用 codeToBits(1<<k) 实测反推。 */
+    const baseV = Vw3[0];
+    const bitOf = [];
+    for (let i = 0; i < 6; i++) {
+      let hit = -1;
+      for (let k = 0; k < 6; k++) if (H.codeToBits(1 << k)[i]) hit = k;
+      bitOf.push(hit);
+    }
+    const w = bitOf.map((k) => Vw3[1 << k] - baseV);
+    let maxDev = 0;
+    for (let v = 0; v < 64; v++) {
+      const b = H.codeToBits(v);
+      let r = baseV;
+      for (let i = 0; i < 6; i++) if (b[i]) r += w[i];
+      maxDev = Math.max(maxDev, Math.abs(r - Vw3[v]));
+    }
+    chk(maxDev < 1e-12 && w.every((x, i) => Math.abs(x - H.YAO_SCORE[i]) < 1e-12),
+      'Q22 Ω 是「可还原的归纳」：64 个值 ⇄ 6 个权重，重建偏差 0',
+      '偏差 ' + maxDev.toExponential(1) + '，6 个权重逐位等于 YAO_SCORE');
+  } else {
+    chk(false, 'Q22 取不到 vWei()', 'crisi.cjs 没导出 vWei');
+  }
+
+  /* Q23–Q24 读跑批结果：塌缩与「演绎」都要靠 10⁵ 步的实测，重复跑一遍没有意义。 */
+  const RJ = JSON.parse(fs.readFileSync(path.join(__dirname, '_crisi_result.json'), 'utf8'));
+  const gA = RJ.groups.find((g) => g.key === 'A'), gC = RJ.groups.find((g) => g.key === 'C');
+  const LN6b = Math.log(6);
+
+  /* Q23 塌缩不是归纳：驻留熵塌了，条件熵也塌了 —— 不是「小院里乱跳」，是「小院 + 固定路线」 */
+  const effA = Math.exp(gA.stats.HpiAll), effC = Math.exp(gC.stats.HpiAll);
+  const rateA = gA.stats.Hall, rateC = gC.stats.Hall;
+  chk(effA < 12 && effC > 40 && rateA < rateC * 0.75 && rateA > 0,
+    'Q23 A 组是塌缩不是归纳：有效态塌到 12 以下，熵率同时掉到不自改组的 75% 以下',
+    '有效态 ' + effA.toFixed(1) + ' vs ' + effC.toFixed(1) +
+    '；熵率 ' + rateA.toFixed(3) + ' vs ' + rateC.toFixed(3) + '（ln6=' + LN6b.toFixed(3) + '）');
+
+  /* Q24 「累计覆盖」这个判据没有区分力 —— 12 组全是 64，而回访间隔差 127 倍。
+   * 先测「非零」（确实全都是 64），再测「区分不出来」（age 差 > 50 倍）。 */
+  const covers = RJ.groups.map((g) => g.stats.cover);
+  const ages = RJ.groups.map((g) => g.stats.ageAll);
+  const allFull = covers.every((c) => c === 64);
+  const spread = Math.max.apply(null, ages) / Math.min.apply(null, ages);
+  chk(allFull && spread > 50,
+    'Q24 累计覆盖对 12 组无区分力（全 64），而最差卦年龄跨 ' + Math.round(spread) + ' 倍 ⇒ 演绎的判据须换成回访间隔',
+    'cover ' + (allFull ? '12/12 = 64' : '有组 < 64') + '；年龄 ' +
+    Math.round(Math.min.apply(null, ages)) + ' ~ ' + Math.round(Math.max.apply(null, ages)));
 }
 
 /* ================= 输出 ================= */

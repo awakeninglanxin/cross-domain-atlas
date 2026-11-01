@@ -271,6 +271,77 @@ function svgGoodhart() {
   return s;
 }
 
+/* ============ 图 5：归纳 vs 塌缩（十二个字里的第一对） ============ */
+function svgSix() {
+  const Hh = 424, cell = 11, gap = 2, gw = 8 * cell + 7 * gap;
+  const Vw = [];
+  for (let v = 0; v < 64; v++) Vw.push(H.yaoScoreSum(v));
+  const WY = ['初', '二', '三', '四', '五', '上'];
+  const head = (x, y, t) => '<text x="' + x + '" y="' + y + '" font-size="12" font-weight="700" fill="' + C.ink + '">' + t + '</text>';
+  const arrow = (x1, x2, y, col, both) => {
+    const dir = x2 > x1 ? 1 : -1;
+    let g = '<line x1="' + x1 + '" y1="' + y + '" x2="' + x2 + '" y2="' + y + '" stroke="' + col + '" stroke-width="2"/>';
+    g += '<polygon points="' + x2 + ',' + y + ' ' + (x2 - dir * 8) + ',' + (y - 5) + ' ' + (x2 - dir * 8) + ',' + (y + 5) + '" fill="' + col + '"/>';
+    if (both) g += '<polygon points="' + x1 + ',' + y + ' ' + (x1 + dir * 8) + ',' + (y - 5) + ' ' + (x1 + dir * 8) + ',' + (y + 5) + '" fill="' + col + '"/>';
+    return g;
+  };
+  const grid = (ox, oy, fill, op) => {
+    let g = '';
+    for (let v = 0; v < 64; v++) {
+      const cx = ox + (v % 8) * (cell + gap), cy = oy + Math.floor(v / 8) * (cell + gap);
+      g += '<rect x="' + cx + '" y="' + cy + '" width="' + cell + '" height="' + cell + '" rx="1.5" fill="' + fill + '" fill-opacity="' + op + '" stroke="' + C.line + '" stroke-width="0.7"/>';
+    }
+    return g;
+  };
+
+  let s = '<svg viewBox="0 0 660 ' + Hh + '" width="100%" role="img" aria-label="两种把 64 变少的方式：可逆的压缩，与不可逆的塌缩">';
+  s += '<text x="0" y="14" font-size="12" fill="' + C.dim + '">两种「把 64 变少」，外观一样，性质相反。上面那次的箭头是双向的；下面那次只有去路，没有回程。</text>';
+
+  /* ── 上：Ω 的归纳，双向 ── */
+  s += head(8, 40, 'Ω 价值层：64 个值 ⇄ 6 个权重');
+  s += grid(8, 50, C.deep, '0.55');
+  s += arrow(120, 196, 101, C.good, true);
+  s += '<text x="158" y="88" font-size="10" text-anchor="middle" fill="' + C.good + '">反推</text>';
+  s += '<text x="158" y="118" font-size="10" text-anchor="middle" fill="' + C.good + '">重建</text>';
+  WY.forEach((w, i) => {
+    const cx = 204 + (i % 2) * 52, cy = 56 + Math.floor(i / 2) * 30;
+    s += '<rect x="' + cx + '" y="' + cy + '" width="46" height="26" rx="4" fill="' + C.card + '" stroke="' + C.good + '" stroke-width="1"/>';
+    s += '<text x="' + (cx + 6) + '" y="' + (cy + 12) + '" font-size="10" fill="' + C.dim + '">' + w + '</text>';
+    s += '<text x="' + (cx + 6) + '" y="' + (cy + 22) + '" font-size="10" font-family="ui-monospace,monospace" fill="' + C.ink + '">' + (H.YAO_SCORE[i] >= 0 ? '+' : '') + H.YAO_SCORE[i].toFixed(2) + '</text>';
+  });
+  s += '<text x="316" y="72" font-size="12" font-weight="700" fill="' + C.good + '">归纳：能还原</text>';
+  s += '<text x="316" y="92" font-size="11" fill="' + C.ink + '">sᵢ ＝ V(只第 i 爻为阳) − V(全阴)</text>';
+  s += '<text x="316" y="110" font-size="11" fill="' + C.ink + '">用这 6 个数重建 64 个值</text>';
+  s += '<text x="316" y="128" font-size="11" fill="' + C.ink + '">最大偏差 <tspan font-weight="700">0.00e+0</tspan>　压缩 ' + (64 / 6).toFixed(2) + ' 倍</text>';
+  s += '<text x="316" y="146" font-size="11" fill="' + C.dim + '">64 个形容词，收成 6 个字，且字字可还</text>';
+
+  /* ── 下：A 组的塌缩，单向 ── */
+  s += head(8, 190, 'A 组策略：64 → ' + f2(Math.exp(S.A.HpiAll)) + ' 个');
+  s += grid(8, 200, C.deep, '0.55');
+  s += arrow(120, 196, 251, C.bad, false);
+  s += '<text x="158" y="241" font-size="10" text-anchor="middle" fill="' + C.bad + '">只留 ' + f2(Math.exp(S.A.HpiAll)) + '</text>';
+  /* 9 个有效态：与左边 64 格同款小格，避免读者以为这是「9 个空格子」 */
+  for (let i = 0; i < 9; i++) {
+    const cx = 210 + (i % 3) * 17, cy = 230 + Math.floor(i / 3) * 17;
+    s += '<rect x="' + cx + '" y="' + cy + '" width="14" height="14" rx="2" fill="' + C.bad + '" fill-opacity="0.7"/>';
+  }
+  s += '<text x="210" y="292" font-size="10" fill="' + C.dim + '">' + f2(Math.exp(S.A.HpiAll)) + ' 个有效态</text>';
+  /* 回程：虚线 + 左向箭头，与上面的双向箭头对照 */
+  s += '<line x1="268" y1="320" x2="132" y2="320" stroke="' + C.bad + '" stroke-width="2" stroke-dasharray="5 4"/>';
+  s += '<polygon points="120,320 132,314.5 132,325.5" fill="' + C.bad + '"/>';
+  s += '<text x="278" y="324" font-size="11" fill="' + C.bad + '">✗ 没有回程：不存在「' + f2(Math.exp(S.A.HpiAll)) + ' → 64」的生成规则</text>';
+  s += '<text x="352" y="212" font-size="12" font-weight="700" fill="' + C.bad + '">塌缩：不能还原</text>';
+  s += '<text x="352" y="232" font-size="11" fill="' + C.ink + '">不存在「' + f2(Math.exp(S.A.HpiAll)) + ' 个卦 → 64 个卦」的规则</text>';
+  s += '<text x="352" y="250" font-size="11" fill="' + C.ink + '">最差那一卦 <tspan font-weight="700">' + i0(S.A.ageAll) + '</tspan> 步没再回来</text>';
+  s += '<text x="352" y="268" font-size="11" fill="' + C.ink + '">每卦平均只被写 <tspan font-weight="700">' + f2(M.steps / (S.A.ageAll + 1)) + '</tspan> 次</text>';
+  s += '<text x="352" y="286" font-size="11" fill="' + C.dim + '">不自改组是 ' + f2(M.steps / (S.C.ageAll + 1)) + ' 次 —— 差 ' + i0((M.steps / (S.C.ageAll + 1)) / (M.steps / (S.A.ageAll + 1))) + ' 倍</text>';
+
+  s += '<text x="0" y="' + (Hh - 32) + '" font-size="12" fill="' + C.ink + '"><tspan font-weight="700">判据是箭头：</tspan>有回程＝归纳，没回程＝塌缩。压缩率再高，回不去也不算学会了。</text>';
+  s += '<text x="0" y="' + (Hh - 12) + '" font-size="12" fill="' + C.dim + '">「暖只能说明春天的一个特征」—— ' + f2(Math.exp(S.A.HpiAll)) + ' 个最暖的日子，仍然只是形容词，不是那个「春」字。</text>';
+  s += '</svg>';
+  return s;
+}
+
 /* ================= 数据表 ================= */
 function tableGroups() {
   const rows = R.groups.map((g) => {
@@ -576,7 +647,63 @@ ${svgGoodhart()}
 <div class="ok">真正被证成的，只有两条：<b>Ω 的只读性要靠参数化保证，不能靠纪律；自改的接受判据必须来自留出的影子评估，不能来自主轨迹。</b>这两条是设计的硬约束，不是加分项。</div>
 <div class="bad">而<b>最要紧的那条仍然是空的</b>：自改不可能自己发现 Ω 错了。门能把它变慢（§7.4：伤害 ${f2(Math.abs(S.D.meanVTall / S.E.meanVTall))}× → ${f2(Math.abs(S.XB.meanVTall / S.E.meanVTall))}×），不能把它变对。</div>
 
-<h2><span class="no">§9</span>这一页没做到的</h2>
+<h2><span class="no">§9</span>十二个字：一份现成的自改大纲</h2>
+<p>老师给了一份写作教学（佛陀罗尼《如何写作？》，书页第 4 页／共 111 页），把写作分成六步：<b>归纳、演绎、选美、尽善、达真、通天</b>。这十二个字初看跟工程无关，但逐条对下来，每一步都能落到一个可测的量上，而且<b>顺序是一条依赖链，跳不得</b>。这一节把它翻成判据，再用本页的实跑逐条核对真假。</p>
+<div class="note">来源边界：那份 <code>.docx</code> 里只有一行标题（「ai 与人对比是如何处理消化总结归纳知识信息的」）和这十二个字，正文取自同一批资料里的书页截图；我逐句核过三处关键措辞。下面引号里的话都是原文，不是转述。</div>
+
+<h3>9.1 六对判据</h3>
+<div class="tw"><table class="t">
+<thead><tr><th style="width:52px">字</th><th style="width:26%">原文怎么说</th><th style="width:23%">系统里对应什么</th><th>判据</th><th style="width:112px" class="c">现状</th></tr></thead>
+<tbody>
+<tr><td class="c"><b>归纳</b></td><td>「抽象概括不能够用形容词，暖只能说明春天的一个特征，不能够说明春天的普遍特征」</td><td><b>表示压缩</b>：64 个价值 ⇄ 6 个爻位权重</td><td>压缩率 × <b>可还原率</b></td><td class="c"><span style="color:${C.good};font-weight:700">成立</span><br><span class="sd">64⇄6，偏差 0</span></td></tr>
+<tr><td class="c"><b>演绎</b></td><td>「你掌握了春天的最基本的特征……无论你怎么写万物，他都是春天，所以你就写不完」</td><td>从压缩表征<b>反复</b>生成全体</td><td><b>回访间隔</b>（不是累计覆盖）</td><td class="c"><span style="color:${C.bad};font-weight:700">判据问错</span><br><span class="sd">cover 全 64</span></td></tr>
+<tr><td class="c"><b>选美</b></td><td>「选美是形成美文的前提」</td><td>探索项 γ ＝ <b>吸引力</b>（让人愿意继续看）</td><td>首次到达速度</td><td class="c"><span style="color:${C.bad};font-weight:700">被学成 0</span><br><span class="sd">γ 终点 ${f3(G.A.theta.g)}</span></td></tr>
+<tr><td class="c"><b>尽善</b></td><td>「美丽可以吸引人，善良可以留住人」</td><td><b>留存</b>：看完还回不回来</td><td>回访率</td><td class="c"><span style="color:${C.doc};font-weight:700">间接成立</span><br><span class="sd">门逼出 ${f2(S.A.ageAll / S.GB.ageAll)} 倍</span></td></tr>
+<tr><td class="c"><b>达真</b></td><td>「你写的东西一定要真实……人们看到这句话后，就遵照这句话去行动」</td><td><b>可复算</b>：别人能不能重跑出同一个数</td><td>第三方复现</td><td class="c"><span style="color:${C.doc};font-weight:700">靠工程</span><br><span class="sd">系统内部做不到</span></td></tr>
+<tr><td class="c"><b>通天</b></td><td>「经久不衰……去流露自性」</td><td><b>跨分布迁移</b>：换一张表还算不算数</td><td>换真表后仍有效</td><td class="c"><span style="color:${C.bad};font-weight:700">未做</span><br><span class="sd">只做了错表对照</span></td></tr>
+</tbody></table></div>
+<p>六条里只有第一条是干净的成立，而它成立的地方有点意外 —— <b>不是策略，是 Ω 本身</b>：六个爻位权重生成全部六十四个价值，而且能反推回去。这件事一直以「价值表」的名义待在系统里，没人把它当「归纳」。</p>
+
+<h3>9.2 「变窄」算不算学会了归纳 —— 不算，而且比不算更糟</h3>
+<p>A 组的驻留熵从 ${f2(S.C.HpiAll)} 掉到 ${f2(S.A.HpiAll)}，注意力从 64 个卦收到大约 ${f2(Math.exp(S.A.HpiAll))} 个。看上去很像「抓住要领、把话说短」。但同一批数据里还有另一半，必须一起看：</p>
+<div class="tw"><table class="t">
+<thead><tr><th style="width:120px">组</th><th class="r">驻留熵 Hπ</th><th class="r">有效态 e^Hπ</th><th class="r">熵率 H(Y|X)</th><th class="r">每态有效出口 e^H</th><th class="r">每卦被写次数</th></tr></thead>
+<tbody>
+<tr><td class="c"><b>C</b>　不自改</td><td class="r">${f2(S.C.HpiAll)}</td><td class="r">${f2(Math.exp(S.C.HpiAll))}</td><td class="r">${f3(S.C.Hall)}<span class="sd">${Math.round(S.C.Hall / LN6 * 100)}% of ln6</span></td><td class="r">${f2(Math.exp(S.C.Hall))}</td><td class="r">${f2(M.steps / (S.C.ageAll + 1))}</td></tr>
+<tr style="background:#fdf3f3"><td class="c"><b>A</b>　裸 RSI</td><td class="r">${f2(S.A.HpiAll)}</td><td class="r">${f2(Math.exp(S.A.HpiAll))}</td><td class="r">${f3(S.A.Hall)}<span class="sd">${Math.round(S.A.Hall / LN6 * 100)}% of ln6</span></td><td class="r">${f2(Math.exp(S.A.Hall))}</td><td class="r">${f2(M.steps / (S.A.ageAll + 1))}</td></tr>
+</tbody></table></div>
+<div class="bad"><b>它不只是变窄，还变僵。</b>驻留熵掉了 ${f2(S.C.HpiAll - S.A.HpiAll)} 奈特（有效态 ${f2(Math.exp(S.C.HpiAll))} → ${f2(Math.exp(S.A.HpiAll))}），<b>熵率也掉了</b> ${f3(S.C.Hall - S.A.Hall)}（每态的有效出口从 ${f2(Math.exp(S.C.Hall))} 个掉到 ${f2(Math.exp(S.A.Hall))} 个 —— 六条路只走三条）。原来担心的「住在一个小院里乱跳」还算轻的，实际是<b>小院加固定路线</b>。</div>
+<p>第二条证据更不利：<b>窄下来的那 ${f2(Math.exp(S.A.HpiAll))} 个，是价值最高的那几个，不是最有代表性的那几个。</b>原文说春天最基本的特征「古人早就给你总结完了，春生」—— 归纳要的是<b>能覆盖全体</b>的那一点；argmax 取的是<b>最值钱</b>的那一点。两者在超立方体上可以是同一处，但含义相反：一个是代表，一个是极点。</p>
+<figure class="fig"><figcaption>图 5　两种「把 64 变少」：上面有回程，下面没有回程</figcaption>${svgSix()}</figure>
+<p>第三条是判别式，也是最硬的一条：<b>压缩之后能不能还原回去。</b></p>
+<div class="tw"><table class="t">
+<thead><tr><th style="width:120px">谁在压缩</th><th style="width:110px" class="c">64 → 多少</th><th style="width:26%">有没有还原规则</th><th>实测</th><th style="width:82px" class="c">性质</th></tr></thead>
+<tbody>
+<tr><td><b>Ω（价值层）</b></td><td class="c">64 → 6</td><td>有：V(v) ＝ Σ sᵢ·xᵢ（线性）</td><td>反推 6 个权重，重建全部 64 个值，最大偏差 <b>0.00e+0</b></td><td class="c"><span style="color:${C.good};font-weight:700">归纳</span></td></tr>
+<tr><td><b>A 组的策略</b></td><td class="c">64 → ${f2(Math.exp(S.A.HpiAll))}</td><td>没有：不存在「${f2(Math.exp(S.A.HpiAll))} 个卦 → 64 个卦」的生成规则</td><td>最差那一卦 <b>${i0(S.A.ageAll)}</b> 步没回来；每卦平均只被写 ${f2(M.steps / (S.A.ageAll + 1))} 次</td><td class="c"><span style="color:${C.bad};font-weight:700">塌缩</span></td></tr>
+</tbody></table></div>
+<div class="warn"><b>所以答案是：不算。</b>它没有学会归纳，它学会了<b>偏食</b>（学名 mode collapse）。而且原文自己就给了反例：「暖只能说明春天的一个特征」—— ${f2(Math.exp(S.A.HpiAll))} 个最暖的日子，仍然只是 ${f2(Math.exp(S.A.HpiAll))} 个形容词，不是那个「春」字。<br>真正把「64 个形容词」变成「一个字」的，是 Ω 的 6 个权重；而自改优化的偏偏是那个只会挑形容词的策略。</div>
+
+<h3>9.3 顺序错位：97.67% 否决率的真相</h3>
+<p>上一轮我是<b>从第四步开始做的</b> —— 直接上门（尽善），跳过归纳、演绎、选美。结果是门一直在说不：${i0(S.GB.gateAcc)} 次接受、${i0(S.GB.gateRej)} 次否决。</p>
+<p>当时我把这读成「门很严，梯度给的改进大多是假的」。按原文的顺序读，还有一层更难受的解释：<b>「选美是形成美文的前提」—— 没有可选的素材，门只能一直否决。</b>门不是裁判太苛刻，是场上没人会踢球。</p>
+<div class="ok"><b>这条给了一个可证伪的元判据：否决率是前三步的体检指标。</b>若归纳、演绎、选美真做成了，proposer 提上来的候选应该有一批能过门，否决率会显著下降；若把 1–3 补完、否决率仍是 ${f2(S.GB.gateRej / (S.GB.gateAcc + S.GB.gateRej) * 100)}%，那就说明前三步是假做。<br>一个数同时管四层，这比再调一个超参有用。</div>
+
+<h3>9.4 于是下一步该改什么</h3>
+<div class="tw"><table class="t">
+<thead><tr><th style="width:44px" class="c">步</th><th style="width:74px">字</th><th>具体改法</th><th style="width:150px">验收判据</th></tr></thead>
+<tbody>
+<tr><td class="c">1</td><td><b>归纳</b></td><td>表征必须可逆，且不依赖某一张表：把「6 个权重」提升成结构（爻位 → 权重 → 值 的函数），换表只换数不换形</td><td>换表后重建偏差仍为 0</td></tr>
+<tr><td class="c">2</td><td><b>演绎</b></td><td>把 <code>cover</code>（累计访问过没有）换成 <b>滑窗覆盖</b>：任意 W 步内 64 态是否都被写过</td><td>W ＝ ${i0(M.mwin)} 时覆盖 ＝ 64</td></tr>
+<tr><td class="c">3</td><td><b>选美</b></td><td>novelty <b>不许进 θ</b> —— 已实测会被学成 ${f3(G.A.theta.g)}；改成采样温度或硬下限，让「吸引力」不被梯度吃掉</td><td>γ 全程 ≥ 下限</td></tr>
+<tr><td class="c">4</td><td><b>尽善</b></td><td>门判据与 Ω 同级只读，不许被自改；且用<b>保留集</b>而非当步轨迹</td><td>否决率显著低于 ${f2(S.GB.gateRej / (S.GB.gateAcc + S.GB.gateRej) * 100)}%</td></tr>
+<tr><td class="c">5</td><td><b>达真</b></td><td>外部参照 —— 唯一能看见「符号」的东西；同时每条断言必须可执行</td><td>θ 在 Ω → max − V 下<b>会变</b></td></tr>
+<tr><td class="c">6</td><td><b>通天</b></td><td>跨真表迁移：在真表 A 上学到的 θ，搬到另一张真表上看还管不管用</td><td>迁移后 V 下降 &lt; 10%</td></tr>
+</tbody></table></div>
+<p>这六条的现状必须分清：<b>第 1 条已经成立</b>（它就在 Ω 里，只是没人这么叫）；<b>第 2、3、4 条改法明确但没做</b>；<b>第 5 条需要系统之外的东西</b>（这就是本页一直欠着的那条正向实验）；<b>第 6 条没做</b>。找不到数的，我一律写「未做」，不写「部分实现」。</p>
+<p class="note">这一节本身也得达真：上面每一格的「现状」都能在本页别处找到对应的数 —— 归纳看 9.2 第三张表，演绎看 9.2 第一张表，选美看 <code>_crisi_result.json</code> 里 A 组的 <code>theta.g</code>，尽善看 §7.2 的门账本，达真看 §5⑤ 的恒等式，通天看 §6 那张错表对照。</p>
+
+<h2><span class="no">§10</span>这一页没做到的</h2>
 <ul>
 <li><b>真表是假的。</b>V ＝ Σ sᵢxᵢ 是<b>线性</b>函数，没有卦效应。所以「谦排 61/64」这个已知错误原封不动地留在系统里 —— 它会忠实地按错表行事。384 维逐爻辞的表仍然没有。</li>
 <li><b>线性 ⇒ 没有局部最优陷阱。</b>本页的「困在小圈」不是被卡住，是<b>主动收窄</b>。换成有多个局部峰的势，结论可能变。</li>
@@ -585,7 +712,7 @@ ${svgGoodhart()}
 <li><b>跑的是 ${i0(M.steps)} 步，不是训练一个模型。</b>规模差着若干个数量级。</li>
 </ul>
 
-<h2><span class="no">§10</span>源与复现</h2>
+<h2><span class="no">§11</span>源与复现</h2>
 <div class="tw"><table class="t">
 <tbody>
 <tr><td style="width:150px"><b>模拟器</b></td><td><code>crisi.cjs</code>（零依赖，只 require <code>hexagram.cjs</code> 取卦名与价值表）</td></tr>

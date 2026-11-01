@@ -182,7 +182,8 @@ const BOX = (re, extra) => '(' + function (reStr, extraH) {
   ck(/§0/.test(r.h2[0]), '第一节是 §0', r.h2[0].slice(0, 8));
 
   /* 先测到非零 */
-  ck(r.fig === 4 && r.figsvg === 4, '4 张现算图（figure.fig）且都真有 svg', r.fig + '/' + r.figsvg);
+  /* 🔴 不许写死图数（加第 5 张立刻假红 —— 上一轮已经在链接条数上踩过一次） */
+  ck(r.fig >= 4 && r.figsvg === r.fig, '每张现算图都真有 svg（张数不写死，' + r.fig + ' 张）', r.fig + '/' + r.figsvg);
   ck(r.figPath >= 8, '图里的折线确实画出来了（path ≥ 8 条）', r.figPath);
   ck(r.figCircle >= 10, '图里的散点/标记确实画出来了（circle ≥ 10 个）', r.figCircle);
   ck(r.svgText.n >= 45 && r.svgText.w > 600,
@@ -211,6 +212,20 @@ const BOX = (re, extra) => '(' + function (reStr, extraH) {
   ck(t.indexOf(f3(G.GB.stats.meanVTall)) > 0, '双门组价值与 JSON 一致（' + f3(G.GB.stats.meanVTall) + '）', t.indexOf(f3(G.GB.stats.meanVTall)) > 0);
   ck(t.indexOf(i0(G.GB.stats.ageAll)) > 0, '双门组最差卦年龄与 JSON 一致（' + i0(G.GB.stats.ageAll) + '）', t.indexOf(i0(G.GB.stats.ageAll)) > 0);
   ck(t.indexOf(f3(G.XB.stats.meanVTall)) > 0, '对抗表·双门的真表价值与 JSON 一致（' + f3(G.XB.stats.meanVTall) + '）', t.indexOf(f3(G.XB.stats.meanVTall)) > 0);
+
+  /* §9 十二个字：六个字必须都在屏上（少一个就说明表被裁了） */
+  const six = ['归纳', '演绎', '选美', '尽善', '达真', '通天'];
+  const miss6 = six.filter((k) => t.indexOf(k) < 0);
+  ck(miss6.length === 0, '§9 六个字都在屏上（归纳/演绎/选美/尽善/达真/通天）',
+    miss6.length ? '缺 ' + miss6.join(',') : '6/6');
+  /* 两个熵必须分开报：屏上同时出现 4.00（C）与 2.20（A），只报一个就说明又被合并了 */
+  /* 探针里只有 f3/i0，没有 f2 —— 页面那格是两位小数，用 toFixed(2) 对齐，别再造一个 format */
+  const p2 = (x) => x.toFixed(2);
+  ck(t.indexOf(p2(G.C.stats.HpiAll)) > 0 && t.indexOf(p2(G.A.stats.HpiAll)) > 0,
+    '驻留熵两个值都在屏上（不自改 ' + p2(G.C.stats.HpiAll) + ' / 自改 ' + p2(G.A.stats.HpiAll) + '）',
+    t.indexOf(p2(G.C.stats.HpiAll)) + '/' + t.indexOf(p2(G.A.stats.HpiAll)));
+  /* 「变窄 ≠ 归纳」那句结论必须在屏上，否则这一节的结论等于没写 */
+  ck(t.indexOf('它没有学会归纳') > 0, '「不算归纳，是偏食」的结论在屏上', t.indexOf('它没有学会归纳'));
 
   /* 🔴 合计必须等于分项之和。上一版页面写「合计 62」，而表里七项只有 40 ——
    *    没有任何断言管这件事，所以它一直错着。现在这条直接读屏上的表格算。 */
@@ -266,11 +281,11 @@ const BOX = (re, extra) => '(' + function (reStr, extraH) {
     const box = await c.evalJs(BOX(re, h));
     if (box) { await shotTo(OUT + f, box); shots.push(f); }
   }
-  for (let i = 1; i <= 4; i++) {
+  for (let i = 1; i <= r.fig; i++) {
     const box = await c.evalJs('(function(i){var fs=document.querySelectorAll("figure.fig");var f=fs[i-1];if(!f)return null;var b=f.getBoundingClientRect();return {x:0,y:Math.max(0,b.top+scrollY-6),w:document.documentElement.clientWidth,h:b.height+14};})(' + i + ')');
     if (box) { await shotTo(OUT + 'cr_fig' + i + '.png', box); shots.push('cr_fig' + i + '.png'); }
   }
-  ck(shots.length === 6, '截图 6 张（2 节 + 4 图）', shots.join(','));
+  ck(shots.length === 2 + r.fig, '截图 ' + (2 + r.fig) + ' 张（2 节 + ' + r.fig + ' 图，张数跟着页面走）', shots.join(','));
 
   /* 375 */
   await c.send('Emulation.setDeviceMetricsOverride', { width: 375, height: 812, deviceScaleFactor: 1, mobile: true });

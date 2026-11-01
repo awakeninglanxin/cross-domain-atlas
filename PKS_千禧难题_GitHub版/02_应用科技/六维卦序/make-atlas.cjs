@@ -45,7 +45,10 @@ const CRV = CRR ? {
   gateAge: CRG.GB ? CRG.GB.ageAll : 0,
   gateVsHard: (CRG.GB && CRG.H) ? CRG.GB.meanVTall / CRG.H.meanVTall : 0,
   xbDmg: (CRG.XB && CRG.E) ? Math.abs(CRG.XB.meanVTall / CRG.E.meanVTall) : 0,
-} : { vGain: 0, ageGain: 0, hardDrop: 0, thDiff: 0, gateV: 0, gateAge: 0, gateVsHard: 0, xbDmg: 0 };
+  /* 十二个字那一节：塌缩不是归纳。有效态数 = e^Hpi */
+  effA: CRG.A ? Math.exp(CRG.A.HpiAll) : 0,
+  effC: CRG.C ? Math.exp(CRG.C.HpiAll) : 0,
+} : { vGain: 0, ageGain: 0, hardDrop: 0, thDiff: 0, gateV: 0, gateAge: 0, gateVsHard: 0, xbDmg: 0, effA: 0, effC: 0 };
 
 const R = H.report();
 const P = H.coxProjection();
@@ -1007,7 +1010,7 @@ A 的斜率越来越小、渐近到 0.896（β=60 实测 0.8959，再大也不�
 <div class="links">
   <a href="AAA_cRSI_玩具版_实跑记录.html">
     <b>cRSI 玩具版 · 实跑记录 ★新</b>
-    <span>把「装良心」做成能跑的系统：64 态 + 384 边 + 冻结的价值表 Ω + 一个只会改自己策略的智能体，跑 ${(CRR ? (CRR.meta.steps / 1000) : 0)}k 步看它会不会烂掉。${CRR ? CRR.groups.length : 0} 组配置 × ${CRR ? CRR.meta.seeds.length : 0} 种子。五条硬发现：自改把价值抬到 ${CRV.vGain.toFixed(2)} 倍，但最差那一卦的等待时间也涨到 ${CRV.ageGain.toFixed(0)} 倍（不再回头）；软护栏形同装饰；硬接管压住了年龄却让价值掉 ${CRV.hardDrop.toFixed(0)}%；<b>用开源侧的 accept-gate 补上了工程缺口</b>（双门 ${CRV.gateV.toFixed(3)}／年龄 ${Math.round(CRV.gateAge).toLocaleString('en-US')}，严格优于事后接管）；但有界性补不上；以及 —— <b>θ 对 Ω 取负几乎不变（最大差 ${CRV.thDiff.toExponential(1)}），却跑到完全相反的卦</b>，自改在数学上看不见目标的符号。<b>门只是限速器：错表下伤害仍从 1.0× 到 ${CRV.xbDmg.toFixed(2)}×。</b><code>六维卦序/AAA_cRSI_玩具版_实跑记录.html</code></span>
+    <span>把「装良心」做成能跑的系统：64 态 + 384 边 + 冻结的价值表 Ω + 一个只会改自己策略的智能体，跑 ${(CRR ? (CRR.meta.steps / 1000) : 0)}k 步看它会不会烂掉。${CRR ? CRR.groups.length : 0} 组配置 × ${CRR ? CRR.meta.seeds.length : 0} 种子。五条硬发现：自改把价值抬到 ${CRV.vGain.toFixed(2)} 倍，但最差那一卦的等待时间也涨到 ${CRV.ageGain.toFixed(0)} 倍（不再回头）；软护栏形同装饰；硬接管压住了年龄却让价值掉 ${CRV.hardDrop.toFixed(0)}%；<b>用开源侧的 accept-gate 补上了工程缺口</b>（双门 ${CRV.gateV.toFixed(3)}／年龄 ${Math.round(CRV.gateAge).toLocaleString('en-US')}，严格优于事后接管）；但有界性补不上；以及 —— <b>θ 对 Ω 取负几乎不变（最大差 ${CRV.thDiff.toExponential(1)}），却跑到完全相反的卦</b>，自改在数学上看不见目标的符号。<b>门只是限速器：错表下伤害仍从 1.0× 到 ${CRV.xbDmg.toFixed(2)}×。</b>另一节把一份写作教学的十二个字（归纳/演绎/选美/尽善/达真/通天）逐条对成判据：<b>「变窄」不算归纳</b> —— 有效态从 ${CRV.effC.toFixed(1)} 塌到 ${CRV.effA.toFixed(1)}，而真正的归纳在 Ω 上（64 个值 ⇄ 6 个权重，重建偏差 0），策略干的是塌缩。<code>六维卦序/AAA_cRSI_玩具版_实跑记录.html</code></span>
   </a>
   <a href="AAA_算法文档_合观校核.html">
     <b>算法文档合观校核 · 五十项对账 ★新</b>
