@@ -733,6 +733,91 @@ sec('P 段 · 失败要响');
     [H.codeOf('乾', '乾'), H.codeOf('坤', '坤'), H.codeOf('乾', '坤')].join('/'));
 }
 
+/* ================= Q 段：自改动力学（cRSI 玩具版） =================
+ * 这一段保护的不是「算得对」，是「结论还成不成立」。
+ * 页面上那些话（自改把 V 拉高、但不再回头；θ 看不见 Ω 的符号）
+ * 全部落在这里。谁把 simulate 改坏了，这里会先红。
+ *
+ * 步数用 40000 而不是页面的 100000：够看出趋势，又让整套测试留在秒级。
+ * 🔴 判据一律用「方向 + 数量级」，不用绝对值 —— 绝对值会随步数变。 */
+sec('Q 段 · 自改动力学（cRSI）');
+{
+  const CR = require('./crisi.cjs');
+  const Vw = CR.vWei(), Va = CR.vAdversarial();
+  const S0 = 12345;
+  const base = { steps: 40000, window: 200, mwin: 2000, theta0: CR.THETA0, seed: S0 };
+
+  /* Q1 线性性：V[v] + V[~v] 恒为 Σsᵢ —— 这条一破，说明「只有位效应」这个前提没了 */
+  let linErr = 0;
+  for (let v = 0; v < 64; v++) linErr = Math.max(linErr, Math.abs((Vw[v] + Vw[63 - v]) - 0.33));
+  chk(linErr < 1e-12, 'Q1 价值表是线性的：V[v]+V[~v] 恒等于 Σsᵢ＝0.33（64 个全查）', linErr.toExponential(1));
+
+  /* Q2/Q3 已知的两个错与两个极值 —— 页面引用它们，必须钉住 */
+  const rank = Vw.map((x, v) => ({ x, v })).sort((a, b) => b.x - a.x);
+  const qian = rank.findIndex((o) => o.v === 8) + 1;
+  chk(qian === 61 && Math.abs(Vw[8] + 0.63) < 1e-9,
+    'Q2 谦排 61/64、V＝−0.63（源材料说「谦六爻皆吉」，这张表说它倒数第四）', qian + '/64');
+  chk(rank[rank.length - 1].v === 9 && rank[0].v === 54,
+    'Q3 最低是艮(9)＝−0.92、最高是兑(54)＝1.25（对抗表就靠这一对换位）',
+    H.BY_CODE[rank[rank.length - 1].v].name + '/' + H.BY_CODE[rank[0].v].name);
+
+  /* Q4 对抗表：最高与最低正好互换，且仍是同一组数（只是取了补） */
+  let aHi = 0, aLo = 0;
+  for (let v = 1; v < 64; v++) { if (Va[v] > Va[aHi]) aHi = v; if (Va[v] < Va[aLo]) aLo = v; }
+  chk(aHi === 9 && aLo === 54, 'Q4 对抗表 Ω′=max−V 的最高点＝真表最低点（艮），最低点＝兑', H.BY_CODE[aHi].name + '/' + H.BY_CODE[aLo].name);
+
+  /* Q5/Q6 可复现：同种子必须逐位相同，换种子必须不同 */
+  const r1 = CR.simulate(Object.assign({}, base, { V: Vw, learn: true, bonus: 0 }));
+  const r2 = CR.simulate(Object.assign({}, base, { V: Vw, learn: true, bonus: 0 }));
+  const r3 = CR.simulate(Object.assign({}, base, { V: Vw, learn: true, bonus: 0, seed: 777 }));
+  chk(r1.thetaEnd.a === r2.thetaEnd.a && r1.final.meanVTall === r2.final.meanVTall,
+    'Q5 同种子两次跑完全一致（可复现，不是「差不多」）', r1.thetaEnd.a.toFixed(6));
+  chk(r3.final.homeFrac !== r1.final.homeFrac || r3.thetaEnd.a !== r1.thetaEnd.a,
+    'Q6 换种子结果确实不同（否则就是写死了）', r3.thetaEnd.a.toFixed(4) + ' vs ' + r1.thetaEnd.a.toFixed(4));
+
+  /* Q7/Q8 口径校验：两个熵都不能超过各自的上限。
+     这一条专防「把驻留熵当熵率」那个错 —— 那次 H 跑到 2.156 > ln6 却没报错。 */
+  const LN6 = Math.log(6), LN64 = Math.log(64);
+  let hMax = 0, hpMax = 0;
+  r1.curve.forEach((c) => { hMax = Math.max(hMax, c.H); hpMax = Math.max(hpMax, c.Hpi); });
+  chk(hMax <= LN6 + 1e-9, 'Q7 🔴 熵率 H(Y|X) 从不越过 ln6＝' + LN6.toFixed(4) + '（口径校验）', hMax.toFixed(4));
+  chk(hpMax <= LN64 + 1e-9 && hpMax > 0, 'Q8 驻留熵 Hπ 在 (0, ln64] 内，且测到了非零', hpMax.toFixed(4));
+
+  /* Q9/Q10 核心结论：自改抬价值，但不再回头 */
+  const C0 = CR.simulate(Object.assign({}, base, { V: Vw, learn: false }));
+  chk(r1.final.meanVTall > C0.final.meanVTall * 1.3,
+    'Q9 自改确实抬高了价值（>1.3 倍不自改）',
+    r1.final.meanVTall.toFixed(3) + ' vs ' + C0.final.meanVTall.toFixed(3));
+  chk(r1.final.ageAll > C0.final.ageAll * 5,
+    'Q10 代价是「不再回头」：最差卦年龄 > 5 倍不自改',
+    Math.round(r1.final.ageAll) + ' vs ' + Math.round(C0.final.ageAll));
+
+  /* Q11 θ 对 Ω→max−Ω：差异在数值误差量级，但归宿相反 */
+  const rn = CR.simulate(Object.assign({}, base, { V: Va, Vtrue: Vw, learn: true, bonus: 0 }));
+  const dA = Math.abs(rn.thetaEnd.a - r1.thetaEnd.a);
+  const dK = Math.abs(rn.thetaEnd.k - r1.thetaEnd.k);
+  chk(Math.max(dA, dK) < 0.01,
+    'Q11 🔴 目标取负后 θ 几乎不变（差 < 0.01）—— 自改看不见 Ω 的符号',
+    'Δα=' + dA.toExponential(1) + ' Δκ=' + dK.toExponential(1));
+  chk(rn.final.homeName !== r1.final.homeName,
+    'Q12 可 θ 一样，归宿却相反（兑 ↔ 艮）—— 「参数对」不等于「方向对」',
+    r1.final.homeName + ' → ' + rn.final.homeName);
+
+  /* Q13/Q14 自改真的在改；关掉就该不动 */
+  chk(Math.abs(r1.thetaEnd.a - CR.THETA0[0]) > 1 || Math.abs(r1.thetaEnd.k - CR.THETA0[2]) > 0.5,
+    'Q13 自改确实动了参数（θ 终点 ≠ θ₀）',
+    [r1.thetaEnd.a, r1.thetaEnd.g, r1.thetaEnd.k].map((v) => v.toFixed(2)).join('/'));
+  chk(C0.thetaEnd.a === CR.THETA0[0] && C0.thetaEnd.g === CR.THETA0[1] && C0.thetaEnd.k === CR.THETA0[2],
+    'Q14 learn:false 时参数一步没动（对照组是真的对照）',
+    [C0.thetaEnd.a, C0.thetaEnd.g, C0.thetaEnd.k].join('/'));
+
+  /* Q15 非恒真：λ 真的起作用 —— 否则 §4 那条帕累托曲线就是画上去的 */
+  const rB = CR.simulate(Object.assign({}, base, { V: Vw, learn: true, bonus: 4 }));
+  chk(rB.final.meanVTall < r1.final.meanVTall * 0.8 && rB.final.ageAll < r1.final.ageAll * 0.5,
+    'Q15 λ=4 同时压低价值与年龄（权重真在起作用，不是摆设）',
+    rB.final.meanVTall.toFixed(3) + ' / ' + Math.round(rB.final.ageAll));
+}
+
 /* ================= 输出 ================= */
 lines.forEach((l) => console.log(l));
 console.log('\n' + '─'.repeat(60));

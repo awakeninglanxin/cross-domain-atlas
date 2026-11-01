@@ -280,7 +280,7 @@ const html = `<!DOCTYPE html>
   }
 </style></head><body><div class="wrap">
 
-<div class="nav">← 回到 <a href="AAA_四六通达_三源合观.html">四六通达 · 三源合观</a>　｜　<b><a href="AAA_算法文档_合观校核.html">算法文档合观校核</a></b>（同一批数在 17 章文档里的出处与对账）　｜　数值全部由 <code>hexagram.cjs</code> 现算，核验 ${TOTAL.pass}/${TOTAL.total}</div>
+<div class="nav">← 回到 <a href="AAA_四六通达_三源合观.html">四六通达 · 三源合观</a>　｜　<b><a href="AAA_算法文档_合观校核.html">算法文档合观校核</a></b>（同一批数在 17 章文档里的出处与对账）　｜　<b><a href="AAA_cRSI_玩具版_实跑记录.html">cRSI 玩具版</a></b>（把这一页的 384 表与围栏做成能跑的系统，10⁵ 步实跑）　｜　数值全部由 <code>hexagram.cjs</code> 现算，核验 ${TOTAL.pass}/${TOTAL.total}</div>
 
 <div class="topbar">
   <a class="hero" href="https://weixin.qq.com/sph/A0TKC9xmW0" target="_blank" rel="noopener">

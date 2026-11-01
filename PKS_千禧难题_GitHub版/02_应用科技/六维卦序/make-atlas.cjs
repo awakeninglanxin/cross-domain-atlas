@@ -27,6 +27,21 @@ const CNT = (() => {
   } catch (e) { return { pass: '?', total: '?', fail: '?', unv: '?' }; }
 })();
 
+/* 🔴 卡片里的每个数都从 _crisi_result.json 现读。
+ *    第一版这四个数是我手写进卡片文字的（2.4 倍 / ×128 / 69% / 3e-4），
+ *    跑批一改就假 —— 与本仓「页面数字不许手写」是同一条铁律。
+ *    注意别叫 R：本文件里 R 已经是 H.report()。 */
+let CRR = null;
+try { CRR = JSON.parse(fs.readFileSync(path.join(__dirname, '_crisi_result.json'), 'utf8')); } catch (e) {}
+const CRG = {};
+if (CRR) CRR.groups.forEach((g) => { CRG[g.key] = g.stats; });
+const CRV = CRR ? {
+  vGain: (CRG.A.meanVTall / CRG.C.meanVTall),
+  ageGain: (CRG.A.ageAll / CRG.C.ageAll),
+  hardDrop: (1 - CRG.H.meanVTall / CRG.A.meanVTall) * 100,
+  thDiff: CRR.invariance.maxAbsDiff,
+} : { vGain: 0, ageGain: 0, hardDrop: 0, thDiff: 0 };
+
 const R = H.report();
 const P = H.coxProjection();
 
@@ -677,7 +692,7 @@ Swaruu 那组「1,2,4,8,7,5」倒真有出处 —— 它就是 2 的幂模 9，
 </div>
 
 <div class="toc"><b>本页十二节</b>　§0 口径 ｜ §1 那二十个数 ｜ §2 原文核错 ｜ §3 四与六的三种所指 ｜ §4 Swaruu 那组数 ｜
-§5 离散与连续 ｜ §6 C₆₄ 就是六十四卦 ｜ <b>§7 从无极到十二地支（次第）</b> ｜ §8 未能验证 ｜ §9 四项复现 ｜ §10 五页互跳 ｜ <b>§11 附录 · 源视频清单</b></div>
+§5 离散与连续 ｜ §6 C₆₄ 就是六十四卦 ｜ <b>§7 从无极到十二地支（次第）</b> ｜ §8 未能验证 ｜ §9 四项复现 ｜ §10 六页互跳 ｜ <b>§11 附录 · 源视频清单</b></div>
 
 
 <h2><span class="no">§0</span>先立口径：一句话分四种成色</h2>
@@ -982,9 +997,13 @@ A 的斜率越来越小、渐近到 0.896（β=60 实测 0.8959，再大也不�
 </div>
 <p class="note">这四项的断言全部进了 <code>test-hex.cjs</code> 的 K 段（K1–K28）。检查器总数 ${CNT.pass}／${CNT.total}，详见 §1。</p>
 
-<h2><span class="no">§10</span>五页互跳</h2>
-<p>本页是四套卦序合观的索引。另外四页各自负责一段，互不重复：</p>
+<h2><span class="no">§10</span>六页互跳</h2>
+<p>本页是四套卦序合观的索引。另外五页各自负责一段，互不重复：</p>
 <div class="links">
+  <a href="AAA_cRSI_玩具版_实跑记录.html">
+    <b>cRSI 玩具版 · 实跑记录 ★新</b>
+    <span>把「装良心」做成能跑的系统：64 态 + 384 边 + 冻结的价值表 Ω + 一个只会改自己策略的智能体，跑 ${(CRR ? (CRR.meta.steps / 1000) : 0)}k 步看它会不会烂掉。${CRR ? CRR.groups.length : 0} 组配置 × ${CRR ? CRR.meta.seeds.length : 0} 种子。五条硬发现：自改把价值抬到 ${CRV.vGain.toFixed(2)} 倍，但最差那一卦的等待时间也涨到 ${CRV.ageGain.toFixed(0)} 倍（不再回头）；软护栏形同装饰；硬接管压住了年龄却让价值掉 ${CRV.hardDrop.toFixed(0)}%；唯一的正解是把可修正写进目标函数；以及 —— <b>θ 对 Ω 取负几乎不变（最大差 ${CRV.thDiff.toExponential(1)}），却跑到完全相反的卦</b>，自改在数学上看不见目标的符号。<code>六维卦序/AAA_cRSI_玩具版_实跑记录.html</code></span>
+  </a>
   <a href="AAA_算法文档_合观校核.html">
     <b>算法文档合观校核 · 五十项对账 ★新</b>
     <span>把元宝那份 17 章文档里的每个数用本仓数值源重算：卦序称重 211＝对内 120＋对间 91、非回溯 384＝124＋258＋2、Coxeter 五层壳、Doob 熵率地板恰为 ½·ln6、球面 3-设计的四组矩量。四项要改、一项可撤销。<code>六维卦序/AAA_算法文档_合观校核.html</code></span>

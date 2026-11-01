@@ -199,8 +199,11 @@ const BOX = (re, extra) => '(' + function (reStr, extraH) {
     '整页无 undefined / NaN / 未插值占位符');
   ck(r.ovf.length === 0 && r.scrollW <= r.vw + 1, '1440 下无横向溢出', r.scrollW + '/' + r.vw + ' 出框：' + (r.ovf.join(',') || '无'));
 
-  const linkOk = r.links.length === 2 && r.links.every((h) => h && fs.existsSync(path.join(DIR, h)));
-  ck(linkOk, '两处互跳链接都指向真实存在的文件', r.links.join(','));
+  /* 条数不写死（新增互跳页就会假红），改成「逐个落盘核 + 指定项必须在」 */
+  const linkOk = r.links.length >= 3
+    && r.links.every((h) => h && fs.existsSync(path.join(DIR, h)))
+    && r.links.some((h) => h.indexOf('cRSI') >= 0);
+  ck(linkOk, '每处互跳链接都指向真实存在的文件（条数不写死，逐个落盘核，cRSI 页在列）', r.links.join(','));
   ck(has('十四') && has('不是h2'), '「十四没有 h2」这个结构问题在屏上（§1 的表里）');
 
   /* 截图：三节 + 五图 */

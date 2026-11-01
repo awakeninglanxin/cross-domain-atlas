@@ -37,9 +37,10 @@ function walk(rel) {
 walk('');
 console.log('硬链完成：新建 ' + made + '，修复断链 ' + fixed + '，已是同一 inode ' + (ok - made - fixed) + '，新建目录 ' + dirs);
 
-/* 复核：随机抽 8 个（含新文件）看 inode 是否一致 */
+/* 复核：随机抽 9 个（含新文件）看 inode 是否一致 */
 const check = ['hexagram.cjs', 'sources.cjs', 'make-lianxin.cjs', 'AAA_良心与异化_六维价值梯度.html',
-  'AAA_算法文档_合观校核.html', '_img/zip/01_四仪表与六图形.jpg',
+  'AAA_算法文档_合观校核.html', 'crisi.cjs', 'run-crisi.cjs', '_crisi_result.json',
+  'AAA_cRSI_玩具版_实跑记录.html', '_img/zip/01_四仪表与六图形.jpg',
   '_src_yuanbao/图集/用户提供的图片集.zip', '_src_yuanbao/SOURCE.md'];
 let miss = 0;
 for (const f of check) {
@@ -50,4 +51,4 @@ for (const f of check) {
   if (!same) miss++;
   console.log('  ' + (same ? '✓' : '✗') + ' ' + sa.ino + ' nlink=' + sb.nlink + '  ' + f);
 }
-console.log(miss === 0 ? '复核通过：抽样 8 个全部同一 inode' : '🔴 有 ' + miss + ' 个不一致');
+console.log(miss === 0 ? '复核通过：抽样 ' + check.length + ' 个全部同一 inode' : '🔴 有 ' + miss + ' 个不一致');

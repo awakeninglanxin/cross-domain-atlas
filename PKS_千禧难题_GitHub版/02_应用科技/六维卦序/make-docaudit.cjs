@@ -517,6 +517,7 @@ ${S.REPOS.map((r) => '<tr><td><code>' + esc(r[0]) + '</code></td><td>' + esc(r[1
 <div class="links">
 <a href="AAA_四六通达_三源合观.html"><b>← 三源合观（主索引页）</b><span>四套卦序的步数、云肩亏格、金缕衣三回路、Doob 两模型 · 十二节 + 五张现算图</span></a>
 <a href="AAA_良心与异化_六维价值梯度.html"><b>↔ 良心与异化（子页）</b><span>16 帧视频截图的逐帧复算：六爻位吉凶分、逆行税率＝势之比、β 工作区间、人道墙裂 4 块</span></a>
+<a href="AAA_cRSI_玩具版_实跑记录.html"><b>▶ cRSI 玩具版（可执行版）</b><span>把文档里那套「装良心」真做成系统跑 10⁵ 步：八组配置、帕累托前沿、以及「自改看不见 Ω 符号」的恒等式证明</span></a>
 </div>
 
 <p class="small">本页核验：<code>test-hex.cjs</code> <b>${TOTAL.pass}／${TOTAL.total}</b>（其中 N 段专查这份文档）；页面探针见 <code>_probe_docaudit.cjs</code>。对账数据由 <code>hexagram.cjs</code> 的 <code>docAudit()</code> 单点提供，表、图、断言三处共用同一份结果 —— 不存第二份真相。</p>
