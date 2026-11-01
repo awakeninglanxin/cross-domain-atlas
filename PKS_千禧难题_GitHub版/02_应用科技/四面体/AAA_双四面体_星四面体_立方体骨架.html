@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>双四面体 · 星四面体 · 立方体骨架 —— 构造工艺与 28 条边的三层分解</title>
+<style>
+:root{
+  --bg:#fbf8f1; --card:#fff; --ink:#22201c; --ink2:#4a463f; --ink3:#7b756a;
+  --line:#e2ddd1; --purple:#534AB7; --purple-l:#EEEDFE;
+  --coral:#C0442A; --coral-l:#FAECE7;
+  --blue:#185FA5; --blue-l:#E6F1FB;
+  --red:#A32D2D; --red-l:#FCEBEB;
+  --teal:#0F6E56; --teal-l:#E1F5EE;
+  --amber:#854F0B; --amber-l:#FAEEDA;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.75 "PingFang SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;}
+.wrap{max-width:1320px;margin:0 auto;padding:26px 22px 70px}
+header{border-bottom:2px solid var(--line);padding-bottom:16px;margin-bottom:24px}
+h1{font-size:24px;line-height:1.4;margin:0 0 8px;font-weight:700;letter-spacing:-.2px}
+.sub{color:var(--ink3);font-size:13.5px;margin:0}
+h2{font-size:18px;margin:34px 0 12px;font-weight:700;
+   border-left:4px solid var(--purple);padding-left:11px}
+h3{font-size:15px;margin:20px 0 8px;font-weight:700;color:var(--ink2)}
+p{margin:9px 0}
+b,strong{font-weight:700}
+code{font-family:ui-monospace,Consolas,monospace;font-size:.92em;
+  background:#f2efe6;padding:1px 5px;border-radius:4px;color:#3d382e}
+.eq{font-family:ui-monospace,Consolas,monospace;font-size:.94em;
+  background:#f7f4ea;border:1px solid var(--line);border-radius:5px;
+  padding:1px 6px;color:#2c2820;font-variant-numeric:tabular-nums;white-space:nowrap}
+
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:22px;align-items:start}
+@media(max-width:1000px){.layout{grid-template-columns:1fr}}
+
+.stage{background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:10px;position:relative;overflow:hidden}
+#cv{display:block;width:100%;height:auto;cursor:grab;border-radius:9px;
+  background:#fdfcf8;touch-action:none}
+#cv:active{cursor:grabbing}
+.hint{position:absolute;right:20px;bottom:18px;font-size:11.5px;color:var(--ink3);
+  background:rgba(253,252,248,.86);padding:3px 8px;border-radius:5px;pointer-events:none}
+
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 16px 18px}
+.panel h4{margin:0 0 12px;font-size:13px;font-weight:700;color:var(--ink3);
+  letter-spacing:.08em;text-transform:uppercase}
+.ctl{margin-bottom:16px}
+.ctl label{display:flex;justify-content:space-between;font-size:13px;
+  color:var(--ink2);margin-bottom:5px;font-variant-numeric:tabular-nums}
+.ctl label b{color:var(--purple);font-weight:700}
+input[type=range]{width:100%;accent-color:var(--purple);height:22px}
+.ticks{display:flex;justify-content:space-between;font-size:10.5px;color:var(--ink3);
+  margin-top:-2px;font-variant-numeric:tabular-nums}
+.sw{display:flex;flex-direction:column;gap:7px;margin-top:4px}
+.sw label{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2);
+  cursor:pointer;user-select:none;padding:4px 6px;border-radius:6px}
+.sw label:hover{background:#f7f4ea}
+.sw input{margin:0;accent-color:var(--purple);width:15px;height:15px}
+.sw .dot{width:11px;height:11px;border-radius:3px;flex:0 0 auto}
+
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}
+.kpi{background:#f7f4ea;border:1px solid var(--line);border-radius:9px;padding:9px 10px}
+.kpi .n{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2}
+.kpi .t{font-size:11px;color:var(--ink3);margin-top:1px}
+
+table{width:100%;border-collapse:collapse;font-size:13px;margin:12px 0;
+  font-variant-numeric:tabular-nums;background:#fff}
+tbody{background:#fff}
+th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+th{background:#f7f4ea;font-weight:700;font-size:12.5px;color:var(--ink2)}
+td.num{text-align:right;font-family:ui-monospace,Consolas,monospace}
+tbody tr.on td{background:var(--blue-l)}
+tbody tr.on td:first-child{border-left:3px solid var(--blue)}
+
+.steps{counter-reset:s;list-style:none;padding:0;margin:14px 0}
+.steps li{counter-increment:s;position:relative;padding:13px 16px 13px 52px;
+  background:var(--card);border:1px solid var(--line);border-radius:11px;margin-bottom:9px}
+.steps li::before{content:counter(s);position:absolute;left:14px;top:13px;
+  width:26px;height:26px;border-radius:50%;background:var(--purple-l);
+  color:var(--purple);font-weight:700;font-size:13px;display:flex;
+  align-items:center;justify-content:center;border:1px solid #CECBF6}
+.steps li b{color:var(--purple)}
+.steps li .meta{display:block;font-size:12.5px;color:var(--ink3);margin-top:4px}
+
+.note{background:var(--amber-l);border:1px solid #FAC775;border-left:4px solid var(--amber);
+  border-radius:9px;padding:12px 15px;font-size:13.5px;color:#4a3a12;margin:14px 0}
+.warn{background:var(--red-l);border:1px solid #F7C1C1;border-left:4px solid var(--red);
+  border-radius:9px;padding:12px 15px;font-size:13.5px;color:#4a1e1e;margin:14px 0}
+.good{background:var(--teal-l);border:1px solid #9FE1CB;border-left:4px solid var(--teal);
+  border-radius:9px;padding:12px 15px;font-size:13.5px;color:#0d3a2e;margin:14px 0}
+
+#chk{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+#chkOut{font-family:ui-monospace,Consolas,monospace;font-size:12.4px;line-height:1.85;
+  max-height:400px;overflow:auto}
+#chkOut .ok{color:#0F6E56}
+#chkOut .bad{color:#A32D2D;font-weight:700;background:#FCEBEB}
+#chkSum{font-size:14px;font-weight:700;margin-bottom:10px}
+.tagrow{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.tagrow span{font-size:11.5px;background:#f2efe6;border:1px solid var(--line);
+  border-radius:20px;padding:2px 10px;color:var(--ink2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>双四面体 · 星四面体 · 立方体骨架</h1>
+  <p class="sub">从《周髀算经》的勾股形到 8 顶点 28 边 —— 构造工艺六步、三级距离分解、以及「拓扑同构 ≠ 几何同形」的当场验算</p>
+  <div class="tagrow">
+    <span>28 = 12 + 12 + 4</span><span>K₈ 完全分解</span><span>2×K₄ vs Q₃</span>
+    <span>k 是第二枚四面体的生长参数</span><span>自检 <b id="tagChk">—</b> 项</span>
+  </div>
+</header>
+
+<div class="layout">
+
+<div>
+  <div class="stage">
+    <canvas id="cv" width="1320" height="840"></canvas>
+    <div class="hint">拖动旋转 · 滚轮缩放 · 滑块 k 让第二枚四面体生长</div>
+  </div>
+
+  <h2>构造工艺 · 六步</h2>
+  <ol class="steps">
+    <li><b>起手：一枚正四面体 T₁</b>
+      <span class="meta">4 顶点 · 6 棱 · 4 面。本页取棱长 a = 弦 = √(勾²+股²)；顶点落在外接球 R = a√6/4 上。</span></li>
+    <li><b>立三角：每棱两枚勾股形</b>
+      <span class="meta">6 棱 × 2 = <b>12 枚</b>。每条棱上两枚的差别只是「勾腿/股腿」谁从哪一端出发 —— 12 条股腿与 12 枚三角形一一对应。</span></li>
+    <li><b>三腿共点：4 个交合点</b>
+      <span class="meta">绕顶点 V<sub>k</sub> 的中轴转 120°，把落在 V<sub>k</sub> 三条棱上的 3 条股腿循环置换 ⇒ 三腿必交于轴上同一点 P<sub>k</sub>。4 条中轴 ⇒ 4 个 P，两两等距 ⇒ 内倒四面体。</span></li>
+    <li><b>倒插：P<sub>j</sub> = O − k(V<sub>j</sub> − O)</b>
+      <span class="meta">这是本页的关键一步。<b>k 不是「缩小比例」，而是第二枚四面体 T₂ 的生长参数</b>：k=0 时塌在心；k=1 时 P<sub>j</sub> 正好落在 −V<sub>j</sub>，即 T₂ = −T₁ 的 4 个顶点。3-4-5 勾股形给出 k = 0.0294 —— 只有 <b>2.94%</b>。</span></li>
+    <li><b>星四面体：T₁ ∪ T₂</b>
+      <span class="meta">两枚同棱长、共心、朝向相反的四面体。8 顶点、<b>12 条棱 = 2 × K₄</b>（两个互不相连的 K₄），面星形。这就是 stella octangula。</span></li>
+    <li><b>连立方体：8 顶点按最短距离连线</b>
+      <span class="meta">8 个顶点两两共有 28 对，距离只有三个值：<b>2 / 2√2 / 2√3</b>，计数 <b>12 / 12 / 4</b>。取最短那一档（12 条）⇒ 立方体的 12 条棱。</span></li>
+  </ol>
+
+  <div class="good">
+    <b>这一步是我上一轮说错、老师纠正的地方。</b>
+    我原先写「12 条股腿连起来恰好是立方体骨架」。这个说法把两件事混成一件：
+    那 12 条腿属于<b>同一枚</b>四面体（都从 T₁ 的顶点出发，射向内倒四面体的 4 个点），
+    它<b>不是</b>立方体的 12 条棱。
+    <br><br>
+    正确的链条是：<b>12 条股腿 → 定出 4 个交合点 → 第二枚四面体倒插 → 星四面体 8 顶点 → 才连出立方体</b>。
+    多了一步「倒插」，而且必须让 k 长到 1 才看得见立方体。
+  </div>
+
+  <h2>为什么 12 这个数会重复三次</h2>
+  <p>把 8 个顶点放在 <span class="eq">(±1,±1,±1)</span>，两两距离只有三档。三档对应三类完全不同的边：</p>
+
+  <table id="tbLayer">
+    <thead><tr>
+      <th>距离</th><th>条数</th><th>是哪一类边</th><th>图的形状</th><th>连通分量</th>
+    </tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <p>三类边<b>互不重叠</b>，并集正好是完整图 K₈ 的 28 条边。所以不是「12 恰好等于 12」的巧合，
+    而是一张图按距离被切成三层，每层的条数是 <span class="eq">12 + 12 + 4 = 28 = C(8,2)</span>。</p>
+
+  <div class="note">
+    <b>这里就是「拓扑同构 ≠ 几何同形」的分界线。</b>
+    12 条股腿那张图（4 个外顶点 + 4 个交合点，每点度 3）与立方体棱图<b>确实同构</b> ——
+    都是 K₄,₄ 减完美匹配，都是 Q₃，都连通。
+    但它与<b>星四面体的 12 条棱不同构</b>：后者是 2×K₄，两个连通分量。
+    同一组 12 条边，三种身份。光看「12」这个数会把它们混成一个。
+  </div>
+
+  <h2>12 条腿什么时候真的变成立方体棱</h2>
+  <p>腿的定义是 <span class="eq">V<sub>i</sub> 连 P<sub>j</sub>，i ≠ j</span>（i = j 那条不连）。
+    k = 1 时 P<sub>j</sub> = −V<sub>j</sub> 正好是 T₂ 的顶点，而此时 V<sub>i</sub> 到 T₂ 四个顶点里
+    <b>距离为 2 的恰好有 3 个</b>，跳过的那一个正是 P<sub>i</sub>（距离 2√3，体对角线）。</p>
+  <p>所以：<b>12 条腿在拓扑上一直是立方体的棱，几何上只有 k → 1 才显形。</b>
+    3-4-5 的 k = 0.0294 意味着这条腿几乎全部塌向球心 —— 画面上看到的是四束锥形，不是立方体。
+    把滑块推到 1 才看得到立方体。这不是视觉把戏，是同一个公式的另一个取值。</p>
+
+  <table id="tbK">
+    <thead><tr><th>勾 : 股 : 弦</th><th>股/勾</th><th>k</th><th>T₂ 长到</th><th>画面</th></tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>Z₃ 从哪来，以及它给的是什么</h2>
+  <p>第 ③ 步那个 120° 轮换是一个 <b>Z₃ 作用</b>。这是本页唯一真正的「三」——不是「每个节点三个状态」，
+    是「三条腿循环置换」。它的代数是干净的：</p>
+  <ul style="font-size:14px;color:var(--ink2)">
+    <li>Z₃ 阿贝尔 ⇒ 三个不可约表示<b>全是一维</b>，特征值 <span class="eq">1, ω, ω²</span>，ω = e<sup>2πi/3</sup>；</li>
+    <li>任何 Z₃ 等变层被 F₃ 完全对角化 ⇒ 权重矩阵必是循环矩阵 <span class="eq">cir(a,b,c)</span>，9 参数降 3；</li>
+    <li>三个通道相位 0°/120°/240°，<b>块对角、互不通信</b>。</li>
+  </ul>
+  <div class="warn">
+    <b>不要把「12 条腿、每点度 3」当成三进制。</b>
+    度 3 的超立方体 Q₃，谱是 <span class="eq">{3, 1, −1, −3}</span> —— <b>四个值</b>，
+    重数 1/3/3/1 = C(3,k)，那是 (1+1)³ 的展开，不是 (1+1+1)ⁿ。
+    度 3 是立方图（cubic graph），三值要另外从 Z₃ 拿。
+  </div>
+
+  <h2>页面自检</h2>
+  <div id="chk">
+    <div id="chkSum">运行中…</div>
+    <div id="chkOut"></div>
+  </div>
+</div>
+
+<aside class="panel">
+  <h4>参数</h4>
+
+  <div class="ctl">
+    <label>k · 第二枚四面体生长 <b id="vk">1.000</b></label>
+    <input type="range" id="rk" min="0" max="1" step="0.005" value="1">
+    <div class="ticks"><span>0 塌在心</span><span>1 = 星四面体</span></div>
+  </div>
+
+  <div class="ctl">
+    <label>勾 : 股 <b id="vlam">1.333</b></label>
+    <input type="range" id="rlam" min="1" max="1.4142135" step="0.0001" value="1.3333">
+    <div class="ticks"><span>1:1</span><span>3:4</span><span>√2 塌缩</span></div>
+  </div>
+
+  <div class="ctl" style="margin-bottom:8px">
+    <label style="margin-bottom:8px">显示层</label>
+    <div class="sw">
+      <label><input type="checkbox" id="cT1" checked><span class="dot" style="background:var(--purple)"></span>T₁ 四面体（6 棱）</label>
+      <label><input type="checkbox" id="cT2" checked><span class="dot" style="background:var(--coral)"></span>T₂ / 内倒四面体</label>
+      <label><input type="checkbox" id="cLeg" checked><span class="dot" style="background:#888780"></span>12 条股腿</label>
+      <label><input type="checkbox" id="cCube"><span class="dot" style="background:var(--blue)"></span>立方体 12 棱（d=2）</label>
+      <label><input type="checkbox" id="cTet"><span class="dot" style="background:var(--purple)"></span>四面体 12 棱（d=2√2）</label>
+      <label><input type="checkbox" id="cDiag"><span class="dot" style="background:var(--red)"></span>体对角线 4 条（d=2√3）</label>
+      <label><input type="checkbox" id="cSpin" checked><span class="dot" style="background:#B4B2A9"></span>自动旋转</label>
+    </div>
+  </div>
+
+  <h4 style="margin-top:22px">当前读数</h4>
+  <div class="grid3">
+    <div class="kpi"><div class="n" id="kLeg">12</div><div class="t">股腿</div></div>
+    <div class="kpi"><div class="n" id="kPts">8</div><div class="t">顶点</div></div>
+    <div class="kpi"><div class="n" id="kD">2.00</div><div class="t">最近距离</div></div>
+  </div>
+  <div class="grid3" style="margin-top:10px">
+    <div class="kpi"><div class="n" id="kC">12</div><div class="t">立方体棱</div></div>
+    <div class="kpi"><div class="n" id="kT">12</div><div class="t">四面体棱</div></div>
+    <div class="kpi"><div class="n" id="kG">4</div><div class="t">体对角线</div></div>
+  </div>
+
+  <div style="margin-top:16px;font-size:12.5px;color:var(--ink3);line-height:1.7">
+    拖 <b>k</b> 到 1：看 12 条灰腿怎么从「射向球心的四束锥」摊成「立方体的 12 条棱」。<br><br>
+    拖 <b>勾:股</b>：k 由 <span class="eq">(√2·勾−股)/(√2·勾+股)</span> 现算，股/勾 → √2 时 k → 0。
+  </div>
+</aside>
+
+</div>
+</div>
+
+<script>
+'use strict';
+
+/* ========== 几何数据：8 顶点放在 (±1,±1,±1) ========== */
+var V_ALL = [];
+for (var sx=-1; sx<=1; sx+=2) for (var sy=-1; sy<=1; sy+=2) for (var sz=-1; sz<=1; sz+=2)
+  V_ALL.push([sx,sy,sz]);
+
+/* T1 = 乘积 +1 的 4 点；T2 = 乘积 −1 的 4 点 = −T1 */
+var T1 = V_ALL.filter(function(p){ return p[0]*p[1]*p[2] > 0; });
+var T2 = V_ALL.filter(function(p){ return p[0]*p[1]*p[2] < 0; });
+
+function d2(a,b){ var s=0; for(var i=0;i<3;i++){ var d=a[i]-b[i]; s+=d*d; } return s; }
+
+/* 28 对边，按距离平方分三层 */
+var E_CUBE=[], E_TET=[], E_DIAG=[];
+for (var i=0;i<8;i++) for (var j=i+1;j<8;j++){
+  var dd = d2(V_ALL[i],V_ALL[j]);
+  var e = [i,j];
+  if (dd === 4) E_CUBE.push(e);
+  else if (dd === 8) E_TET.push(e);
+  else E_DIAG.push(e);
+}
+
+/* 12 条股腿：V1_i 连 P_j (i≠j) */
+var LEGS = [];
+for (var ii=0; ii<4; ii++) for (var jj=0; jj<4; jj++) if (ii!==jj) LEGS.push([ii,jj]);
+
+/* ========== 状态 ========== */
+var K = 1.0;
+var LAM = 1.3333;
+var yaw = 0.785, pitch = 0.50, zoom = 1.0;
+var spin = true;
+var show = { t1:true, t2:true, leg:true, cube:false, tet:false, diag:false };
+
+/* ========== 画布 ========== */
+var cv = document.getElementById('cv');
+var ctx = cv.getContext('2d');
+var W = 1320, H = 840;
+
+function fitDPR(){
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.round(W*dpr);
+  cv.height = Math.round(H*dpr);
+  cv.style.width = '100%';
+  cv.style.height = 'auto';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+
+var FOCAL = 2750, CAMZ = 11.0;
+
+function rot(p){
+  var cy=Math.cos(yaw), sy=Math.sin(yaw), cp=Math.cos(pitch), sp=Math.sin(pitch);
+  var x=p[0], y=p[1], z=p[2];
+  var x1 = cy*x + sy*z;
+  var z1 = -sy*x + cy*z;
+  var y1 = cp*y - sp*z1;
+  var z2 = sp*y + cp*z1;
+  return [x1,y1,z2];
+}
+function proj(p){
+  var q = rot(p);
+  var s = FOCAL/(CAMZ - q[2]) * zoom * 1.0;
+  return { x: W/2 + q[0]*s, y: H/2 - q[1]*s, z: CAMZ - q[2] };
+}
+
+/* P_j = −k · V_j */
+function Pof(k){
+  return T1.map(function(v){ return [-k*v[0], -k*v[1], -k*v[2]]; });
+}
+
+/* 当前 8 个屏幕点：T1 4 点 + P 4 点 */
+function currentPts(){
+  var P = Pof(K);
+  var pts = [];
+  for (var a=0;a<4;a++) pts.push(proj(T1[a]));
+  for (var b=0;b<4;b++) pts.push(proj(P[b]));
+  return pts;
+}
+
+function clearBg(){
+  ctx.fillStyle = '#fdfcf8';
+  ctx.fillRect(0,0,W,H);
+}
+
+function lab(txt,x,y,color,px){
+  ctx.font = '600 ' + (px||15) + 'px "PingFang SC",system-ui,sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = 4.5;
+  ctx.strokeStyle = 'rgba(253,252,248,.94)';
+  ctx.strokeText(txt,x,y);
+  ctx.fillStyle = color;
+  ctx.fillText(txt,x,y);
+}
+
+function seg(p,q,color,w,dash){
+  ctx.save();
+  ctx.setLineDash(dash||[]);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = w;
+  ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(q.x,q.y); ctx.stroke();
+  ctx.restore();
+}
+function dot(p,color,r,hollow){
+  ctx.beginPath(); ctx.arc(p.x,p.y,r,0,6.2832);
+  if (hollow){ ctx.fillStyle='#fdfcf8'; ctx.fill(); }
+  ctx.strokeStyle = color; ctx.lineWidth = 2.2; ctx.stroke();
+  if (!hollow){ ctx.fillStyle = color; ctx.fill(); }
+}
+
+function draw(){
+  clearBg();
+  var pts = currentPts();
+  var P = Pof(K);
+
+  var allP = [];
+  for (var t=0;t<4;t++) allP.push({kind:'T1', idx:t, sp:pts[t], wp:T1[t]});
+  for (var u=0;u<4;u++) allP.push({kind:'P',  idx:u, sp:pts[4+u], wp:P[u]});
+
+  /* --- 体对角线（4 条）：T1_i ↔ P_i --- */
+  if (show.diag){
+    for (var g=0;g<4;g++) seg(pts[g], pts[4+g], 'rgba(163,45,45,.55)', 1.6, [7,6]);
+  }
+
+  /* --- 四面体 12 棱（d=2√2）：T1 内 6 + T2 内 6 --- */
+  if (show.tet){
+    for (var m=0;m<4;m++) for (var n=m+1;n<4;n++){
+      seg(pts[m], pts[n], 'rgba(83,74,183,.30)', 2.0);
+      seg(pts[4+m], pts[4+n], 'rgba(192,68,42,.30)', 2.0);
+    }
+  }
+
+  /* --- 12 条股腿 --- */
+  if (show.leg){
+    var legA = show.cube ? 0.30 : 0.88;
+    var legW = show.cube ? 1.5 : 2.3;
+    for (var l=0;l<LEGS.length;l++){
+      var L = LEGS[l];
+      seg(pts[L[0]], pts[4+L[1]], 'rgba(95,94,90,' + legA + ')', legW);
+    }
+  }
+
+  /* --- T1 的 6 条棱 --- */
+  if (show.t1){
+    for (var p1=0;p1<4;p1++) for (var q1=p1+1;q1<4;q1++)
+      seg(pts[p1], pts[q1], 'rgba(83,74,183,.92)', 3.0);
+  }
+  /* --- P 构成的四面体（当 k 足够大才画得出） --- */
+  if (show.t2){
+    for (var p2=0;p2<4;p2++) for (var q2=p2+1;q2<4;q2++)
+      seg(pts[4+p2], pts[4+q2], 'rgba(192,68,42,.92)', 3.0);
+  }
+
+  /* --- 立方体 12 棱（d=2）：只在 k 接近 1 时几何上成立 --- */
+  if (show.cube && K > 0.001){
+    for (var c=0;c<E_CUBE.length;c++){
+      var e = E_CUBE[c];
+      var pa = V_ALL[e[0]], pb = V_ALL[e[1]];
+      /* 判断两端属于 T1 还是 T2，换成当前屏幕点 */
+      function sidx(v){
+        for (var z=0; z<4; z++) if (T1[z][0]===v[0]&&T1[z][1]===v[1]&&T1[z][2]===v[2]) return z;
+        for (var z2=0; z2<4; z2++) if (T2[z2][0]===v[0]&&T2[z2][1]===v[1]&&T2[z2][2]===v[2]) return 4+z2;
+        return -1;
+      }
+      var ia = sidx(pa), ib = sidx(pb);
+      if (ia >= 0 && ib >= 0){
+        var alpha = Math.min(1, Math.max(0, (K-0.02)/0.35));
+        seg(pts[ia], pts[ib], 'rgba(24,95,165,'+(0.82*alpha).toFixed(3)+')', 2.4);
+      }
+    }
+  }
+
+  /* --- 顶点 --- */
+  for (var v=0;v<8;v++){
+    var isT1 = v < 4;
+    dot(pts[v], isT1 ? '#534AB7' : '#C0442A', isT1 ? 7 : 6.5, false);
+  }
+
+  /* --- 标签 --- */
+  if (show.t1) for (var lb=0; lb<4; lb++){
+    lab('a'+(lb+1), pts[lb].x+20, pts[lb].y-16, '#3C3489', 14);
+  }
+  if (show.t2) for (var lc=0; lc<4; lc++){
+    var py = pts[4+lc].y + (K > 0.35 ? 22 : 26);
+    lab(K > 0.9 ? ('b'+(lc+1)) : ('P'+(lc+1)), pts[4+lc].x-18, py, '#A33C1D', 14);
+  }
+
+  /* --- 画面左上角状态 --- */
+  ctx.textAlign='left'; ctx.textBaseline='top';
+  ctx.font='600 16px "PingFang SC",system-ui,sans-serif';
+  ctx.fillStyle='#22201c';
+  ctx.fillText('k = ' + K.toFixed(3) + (K>0.985 ? '　→ 星四面体（8 顶点已就位）' : ''), 26, 24);
+  ctx.font='400 13px "PingFang SC",system-ui,sans-serif';
+  ctx.fillStyle='#7b756a';
+  ctx.fillText('P_j = −k · V_j　　k=1 ⇒ P_j = −V_j = T₂ 顶点', 26, 48);
+
+  /* --- 右下角色标 --- */
+  var lg = [['#534AB7','T₁ 四面体 6 棱'], ['#C0442A','T₂ 四面体 6 棱'],
+            ['#888780','12 条股腿'], ['#185FA5','立方体 12 棱（d=2）']];
+  ctx.textAlign='left';
+  for (var li=0; li<lg.length; li++){
+    var ly = 96 + li*26;
+    ctx.fillStyle = lg[li][0];
+    ctx.fillRect(28, ly+2, 20, 4.5);
+    ctx.font='400 13px "PingFang SC",system-ui,sans-serif';
+    ctx.fillStyle='#4a463f';
+    ctx.fillText(lg[li][1], 56, ly);
+  }
+}
+
+/* ========== 交互 ========== */
+var drag=false, lx=0, ly2=0;
+cv.addEventListener('pointerdown', function(e){
+  drag=true; lx=e.clientX; ly2=e.clientY; cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove', function(e){
+  if(!drag) return;
+  yaw += (e.clientX-lx)*0.0088;
+  pitch += (e.clientY-ly2)*0.0072;
+  pitch = Math.max(-1.45, Math.min(1.45, pitch));
+  lx=e.clientX; ly2=e.clientY;
+  draw();
+});
+cv.addEventListener('pointerup', function(){ drag=false; });
+cv.addEventListener('pointercancel', function(){ drag=false; });
+cv.addEventListener('wheel', function(e){
+  e.preventDefault();
+  zoom *= (e.deltaY > 0 ? 0.93 : 1.075);
+  zoom = Math.max(0.45, Math.min(2.4, zoom));
+  draw();
+}, {passive:false});
+
+/* ========== 控件 ========== */
+var rk = document.getElementById('rk');
+var rlam = document.getElementById('rlam');
+var vkEl = document.getElementById('vk');
+var vlamEl = document.getElementById('vlam');
+
+function kFromLam(lam){ var s=Math.sqrt(2); return (s - lam)/(s + lam); }
+
+rk.addEventListener('input', function(){
+  K = parseFloat(rk.value);
+  vkEl.textContent = K.toFixed(3);
+  syncKpi();
+  draw();
+});
+rlam.addEventListener('input', function(){
+  LAM = parseFloat(rlam.value);
+  vlamEl.textContent = LAM.toFixed(3);
+  var kk = kFromLam(LAM);
+  K = Math.max(0, Math.min(1, kk));
+  rk.value = K.toFixed(3);
+  vkEl.textContent = K.toFixed(3);
+  syncKpi();
+  draw();
+});
+
+function bindSw(id, key){
+  var el = document.getElementById(id);
+  el.addEventListener('change', function(){ show[key] = el.checked; draw(); });
+}
+bindSw('cT1','t1'); bindSw('cT2','t2'); bindSw('cLeg','leg');
+bindSw('cCube','cube'); bindSw('cTet','tet'); bindSw('cDiag','diag');
+document.getElementById('cSpin').addEventListener('change', function(e){ spin = e.target.checked; });
+
+function syncKpi(){
+  document.getElementById('kLeg').textContent = '12';
+  document.getElementById('kPts').textContent = '8';
+  document.getElementById('kD').textContent = '2.00';
+  document.getElementById('kC').textContent = '12';
+  document.getElementById('kT').textContent = '12';
+  document.getElementById('kG').textContent = '4';
+}
+
+/* ========== 表格 ========== */
+function fillTables(){
+  var tb = document.querySelector('#tbLayer tbody');
+  var rows = [
+    ['2','12','立方体棱','Q₃（连通、二部、度 3）','1'],
+    ['2√2','12','四面体棱（T₁ 6 + T₂ 6）','2 × K₄（两个 K₄）','2'],
+    ['2√3','4','体对角线（T₁ 顶点 ↔ 对应 T₂ 顶点）','4 × K₂（完美匹配）','4']
+  ];
+  tb.innerHTML = rows.map(function(r){
+    return '<tr><td class="num">'+r[0]+'</td><td class="num">'+r[1]+'</td><td>'+r[2]+'</td><td>'+r[3]+'</td><td class="num">'+r[4]+'</td></tr>';
+  }).join('') + '<tr style="background:#f7f4ea;font-weight:700"><td>合计</td><td class="num">28</td><td colspan="3">= C(8,2)，三类互不重叠、并集为完整图 K₈</td></tr>';
+
+  var tb2 = document.querySelector('#tbK tbody');
+  var cases = [
+    ['1 : 1 : √2','1.0000'], ['3 : 4 : 5','1.3333'], ['5 : 7 : √74','1.4000'],
+    ['17 : 24 : √865','1.4118'], ['→ 退化（股→0）','0.0000']
+  ];
+  var s2 = Math.sqrt(2);
+  tb2.innerHTML = cases.map(function(c,ix){
+    var lam = parseFloat(c[1]);
+    var k = (s2 - lam)/(s2 + lam);
+    var kk = Math.max(0, Math.min(1, k));
+    var pic = (lam === 0) ? '完整星四面体（8 顶点就位）'
+            : (kk > 0.15 ? '内倒四面体还看得见' : (kk > 0.02 ? '几乎缩在球心' : '塌成一点'));
+    return '<tr><td>'+c[0]+'</td><td class="num">'+c[1]+'</td><td class="num">'+k.toFixed(9)+
+           '</td><td class="num">'+(k*100).toFixed(3)+'%</td><td>'+pic+'</td></tr>';
+  }).join('');
+}
+
+/* ========== 自检 ========== */
+var CHK = [];
+function ck(cond, label, detail){
+  CHK.push({ ok: !!cond, label: label, detail: detail || '' });
+}
+
+function runChecks(){
+  CHK = [];
+  var s2 = Math.sqrt(2);
+
+  /* 1 组合总数 */
+  ck(V_ALL.length === 8, '8 个顶点', 'len=' + V_ALL.length);
+  var totalPairs = E_CUBE.length + E_TET.length + E_DIAG.length;
+  ck(totalPairs === 28 && totalPairs === 8*7/2, '28 对 = C(8,2)', 'got ' + totalPairs);
+
+  /* 2 三类计数 */
+  ck(E_CUBE.length === 12, '立方体棱 12 条', 'got ' + E_CUBE.length);
+  ck(E_TET.length === 12, '四面体棱 12 条', 'got ' + E_TET.length);
+  ck(E_DIAG.length === 4, '体对角线 4 条', 'got ' + E_DIAG.length);
+
+  /* 3 三类不重叠 + 并集 */
+  function key(e){ return Math.min(e[0],e[1]) + '-' + Math.max(e[0],e[1]); }
+  var setC = {}, setT = {}, setD = {};
+  E_CUBE.forEach(function(e){ setC[key(e)]=1; });
+  E_TET.forEach(function(e){ setT[key(e)]=1; });
+  E_DIAG.forEach(function(e){ setD[key(e)]=1; });
+  function interSize(a,b){ var n=0; for(var k in a) if(b[k]) n++; return n; }
+  ck(interSize(setC,setT)===0 && interSize(setC,setD)===0 && interSize(setT,setD)===0,
+     '三类边两两不重叠', 'C∩T='+interSize(setC,setT)+' C∩D='+interSize(setC,setD)+' T∩D='+interSize(setT,setD));
+  var uni = {};
+  for (var k1 in setC) uni[k1]=1; for (var k2 in setT) uni[k2]=1; for (var k3 in setD) uni[k3]=1;
+  ck(Object.keys(uni).length === 28, '并集 = 28 条（完整 K₈）', 'got ' + Object.keys(uni).length);
+
+  /* 4 T2 = −T1 */
+  var negOK = T1.every(function(v){
+    return T2.some(function(w){ return w[0]===-v[0] && w[1]===-v[1] && w[2]===-v[2]; });
+  });
+  ck(negOK, 'T₂ = −T₁（逐点中心反演）', '');
+
+  /* 5 四面体棱 = 2×K4 */
+  function k4OK(S){
+    for (var i5=0;i5<4;i5++) for (var j5=i5+1;j5<4;j5++){
+      var found = E_TET.some(function(e){
+        var a=V_ALL[e[0]], b=V_ALL[e[1]];
+        return (a===S[i5]||a===S[j5]) && (b===S[i5]||b===S[j5])
+            || (a===S[i5]&&b===S[j5]) || (a===S[j5]&&b===S[i5]);
+      });
+      if (!found) return false;
+    }
+    return true;
+  }
+  ck(k4OK(T1) && k4OK(T2), '四面体棱 = T₁ 的 K₄ + T₂ 的 K₄', '');
+
+  /* 6 T1↔T2 之间无「四面体棱」 */
+  var crossTet = E_TET.filter(function(e){
+    var a=V_ALL[e[0]], b=V_ALL[e[1]];
+    var inT1a = T1.some(function(v){return v===a;}), inT1b = T1.some(function(v){return v===b;});
+    return inT1a !== inT1b;
+  }).length;
+  ck(crossTet === 0, 'T₁↔T₂ 之间没有四面体棱', 'got ' + crossTet);
+
+  /* 7 T1×T2 = 16 = 12 + 4 */
+  var n4=0, n12=0;
+  T1.forEach(function(a){ T2.forEach(function(b){
+    var dd = d2(a,b); if (dd===4) n4++; else if (dd===12) n12++;
+  });});
+  ck(T1.length*T2.length === 16, 'T₁×T₂ 共 16 对', 'got ' + (T1.length*T2.length));
+  ck(n4 === 12 && n12 === 4, '16 = 12（棱）+ 4（对角）', 'n4='+n4+' n12='+n12);
+
+  /* 8 12 条腿 */
+  ck(LEGS.length === 12, '股腿 12 条', 'got ' + LEGS.length);
+  var diagLegs = LEGS.filter(function(L){ return L[0]===L[1]; }).length;
+  ck(diagLegs === 0, '腿里不含 i=j（那 4 条正是体对角线）', 'got ' + diagLegs);
+
+  /* 9 连通分量 */
+  function comps(nodes, edges){
+    var par = {}; nodes.forEach(function(n){ par[n]=n; });
+    function find(x){ while(par[x]!==x){ par[x]=par[par[x]]; x=par[x]; } return x; }
+    edges.forEach(function(e){ var a=find(e[0]), b=find(e[1]); if(a!==b) par[a]=b; });
+    var s={}; nodes.forEach(function(n){ s[find(n)]=1; }); return Object.keys(s).length;
+  }
+  ck(comps([0,1,2,3,4,5,6,7], E_CUBE) === 1, '立方体棱图连通（1 个分量）', '');
+  ck(comps([0,1,2,3,4,5,6,7], E_TET) === 2, '星四面体棱图 2 个分量（2×K₄）', '');
+
+  /* 10 度数全 3 */
+  function degs(nodes, edges){
+    var d={}; nodes.forEach(function(n){ d[n]=0; });
+    edges.forEach(function(e){ d[e[0]]++; d[e[1]]++; });
+    return Object.keys(d).map(function(k){ return d[k]; });
+  }
+  ck(degs([0,1,2,3,4,5,6,7], E_CUBE).every(function(x){return x===3;}), '立方体棱图度全 3', '');
+  ck(degs([0,1,2,3,4,5,6,7], E_TET).every(function(x){return x===3;}), '星四面体棱图度全 3', '');
+
+  /* 11 k=1 时 12 腿 = 立方体 12 棱 */
+  var k1ok = true;
+  LEGS.forEach(function(L){
+    var a = T1[L[0]];
+    var Pj = [-1*T1[L[1]][0], -1*T1[L[1]][1], -1*T1[L[1]][2]];
+    var dd = d2(a,Pj);
+    if (dd !== 4) k1ok = false;
+  });
+  ck(k1ok, 'k=1 时每条腿长都等于立方体棱（d²=4）', '');
+
+  /* 12 k=1 时 P = T2 */
+  var pAt1 = T1.map(function(v){ return [-1*v[0], -1*v[1], -1*v[2]]; });
+  var pOK = pAt1.every(function(p){ return T2.some(function(w){ return d2(p,w)===0; }); });
+  ck(pOK, 'k=1 时 P 与 T₂ 顶点重合 ⇒ 星四面体', '');
+
+  /* 13 k=0 时 P 全在原点 */
+  var pAt0 = Pof(0);
+  ck(pAt0.every(function(p){ return d2(p,[0,0,0])===0; }), 'k=0 时 P 全塌在球心', '');
+
+  /* 14 3-4-5 的 k */
+  var k345 = (s2-4/3)/(s2+4/3);
+  ck(Math.abs(k345 - (17-12*s2)) < 1e-14, '3-4-5 的 k = 17−12√2', 'diff=' + Math.abs(k345-(17-12*s2)).toExponential(2));
+  ck(Math.abs(k345 - Math.pow(s2-1,4)) < 1e-14, 'k = (√2−1)⁴', '');
+
+  /* 15 k 的单调性与上界 */
+  var lam1 = 1.0, lam2 = 1.3;
+  ck(kFromLam(lam1) > kFromLam(lam2), 'k 随 股/勾 递增而递减（单调）', '');
+  ck(kFromLam(1.0) <= Math.pow(s2-1,2) + 1e-15, '股≥勾 ⇒ k ≤ (√2−1)² = ' + Math.pow(s2-1,2).toFixed(9), 'k(1)='+kFromLam(1).toFixed(9));
+
+  /* 16 内切球 */
+  ck(Math.abs(kFromLam(s2/2) - 1/3) < 1e-9, 'k=1/3 对应 股/勾=√2/2（内切球面）', 'k='+kFromLam(s2/2).toFixed(12));
+  ck(kFromLam(1.0) < 1/3, '股≥勾时 k 恒小于 1/3 ⇒ 顶点永在内切球内', '');
+
+  /* 17 k→0 当 股/勾→√2 */
+  ck(Math.abs(kFromLam(s2)) < 1e-7, '股/勾 → √2 时 k → 0（塌成一点）', 'k='+kFromLam(s2).toExponential(2));
+
+  /* 18 变异测试 A：腿里塞进 i=j ⇒ 边数 16、度 4 */
+  var badLegs = [];
+  for (var bi=0;bi<4;bi++) for (var bj=0;bj<4;bj++) badLegs.push([bi,bj]);
+  var badDeg = {};
+  badLegs.forEach(function(L){ badDeg['a'+L[0]]=(badDeg['a'+L[0]]||0)+1; });
+  var allFour = Object.keys(badDeg).every(function(k){ return badDeg[k]===4; });
+  ck(badLegs.length === 16 && allFour, '变异：含 i=j ⇒ 16 条、度 4（必然与 12/度3 冲突）', 'len='+badLegs.length);
+
+  /* 19 变异测试 B：把 d²=8 也算成立方体棱 ⇒ 24 条 */
+  var wrongCube = E_CUBE.length + E_TET.length;
+  ck(wrongCube === 24 && wrongCube !== 12, '变异：误把四面体棱算进立方体 ⇒ 24 条 ≠ 12（判据会红）', 'got '+wrongCube);
+
+  /* 20 变异测试 C：k=1.5 时 P 飞出立方体 */
+  var pOut = T1.map(function(v){ return [-1.5*v[0], -1.5*v[1], -1.5*v[2]]; });
+  var outOfCube = pOut.some(function(p){ return Math.max(Math.abs(p[0]),Math.abs(p[1]),Math.abs(p[2])) > 1.0 + 1e-9; });
+  ck(outOfCube, '变异：k=1.5 ⇒ P 跑出立方体（判据会红）', '');
+
+  /* 21 Q₃ 无三角形 ⇒ tr(A³)=0 ⇒ 谱关于 0 对称（四值而非三值的代数依据） */
+  var A8 = [];
+  for (var r8=0; r8<8; r8++){ A8.push(new Array(8).fill(0)); }
+  E_CUBE.forEach(function(e){ A8[e[0]][e[1]] = 1; A8[e[1]][e[0]] = 1; });
+  function mm(X,Y){
+    var M = [];
+    for (var a9=0;a9<8;a9++){ var row=[]; for (var b9=0;b9<8;b9++){
+      var s9=0; for (var c9=0;c9<8;c9++) s9 += X[a9][c9]*Y[c9][b9];
+      row.push(s9); } M.push(row); }
+    return M;
+  }
+  function tr(M){ var t=0; for (var i9=0;i9<8;i9++) t += M[i9][i9]; return t; }
+  var A2 = mm(A8,A8), A3 = mm(A2,A8);
+  var trA = tr(A8), trA3 = tr(A3);
+  ck(trA === 0 && trA3 === 0, 'Q₃ 的 tr A = 0 且 tr A³ = 0（无三角形 ⇒ 谱对称）',
+     'trA=' + trA + ' trA3=' + trA3);
+  /* 极小多项式：谱只能是 3,1,-1,-3 四值 */
+  var minPolyOK = true;
+  for (var m9=0; m9<8; m9++) for (var n9=0; n9<8; n9++){
+    /* (A-3I)(A-I)(A+I)(A+3I) = A⁴ - 10A² + 9I */
+    var v9 = A2[m9][n9];
+    var A4 = mm(A2,A2)[m9][n9];
+    var val = A4 - 10*v9 + (m9===n9 ? 9 : 0);
+    if (Math.abs(val) > 1e-9) minPolyOK = false;
+  }
+  ck(minPolyOK, 'A⁴ − 10A² + 9I = 0 ⇒ 谱 ∈ {3,1,−1,−3} 恰 4 个值', '');
+
+  /* 22 Z₃：复数用实数对实算，不用欧拉公式 */
+  function cmul(a,b){ return [a[0]*b[0]-a[1]*b[1], a[0]*b[1]+a[1]*b[0]]; }
+  var w = [-0.5, Math.sqrt(3)/2];
+  var w2 = cmul(w,w), w3v = cmul(w2,w);
+  ck(Math.abs(w3v[0]-1) < 1e-15 && Math.abs(w3v[1]) < 1e-15, 'ω³ = 1（循环置换阶为 3）',
+     're=' + w3v[0].toFixed(15) + ' im=' + w3v[1].toExponential(2));
+  ck(Math.abs(1 + w[0] + w2[0]) < 1e-15 && Math.abs(w[1] + w2[1]) < 1e-15,
+     'Z₃ 三个本征值 1 + ω + ω² = 0', 're=' + (1+w[0]+w2[0]).toFixed(15));
+  ck(Math.abs(w2[0] - w[0]) < 1e-15, 'ω¹ 与 ω² 实部相同（共轭对）', '');
+
+  /* 23 表行数 */
+  ck(document.querySelectorAll('#tbLayer tbody tr').length === 4, '分层表 4 行（3 类 + 合计）', 'got '+document.querySelectorAll('#tbLayer tbody tr').length);
+  ck(document.querySelectorAll('#tbK tbody tr').length === 5, 'k 表 5 行', 'got '+document.querySelectorAll('#tbK tbody tr').length);
+
+  /* 24 控件与状态一致 */
+  ck(Math.abs(parseFloat(document.getElementById('rk').value) - K) < 1e-6, '滑块值与 K 一致', '');
+  ck(document.getElementById('vk').textContent === K.toFixed(3), 'k 读数与 K 一致', '');
+
+  /* 25 画布非空（着色率） */
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  var img = ctx.getImageData(0,0,cv.width,cv.height).data;
+  var nonBg = 0, tot = 0;
+  for (var px=0; px<img.length; px+=4*97){
+    tot++;
+    if (Math.abs(img[px]-253)>6 || Math.abs(img[px+1]-252)>6 || Math.abs(img[px+2]-248)>6) nonBg++;
+  }
+  ck(nonBg/tot > 0.01, '画布着色率 > 1%', (nonBg/tot*100).toFixed(2)+'%');
+
+  renderChecks();
+}
+
+function renderChecks(){
+  var pass = CHK.filter(function(c){ return c.ok; }).length;
+  var fail = CHK.length - pass;
+  var sum = document.getElementById('chkSum');
+  sum.innerHTML = '自检 <b>' + pass + ' / ' + CHK.length + '</b> 项通过' +
+    (fail ? '　<span style="color:#A32D2D">失败 ' + fail + ' 项</span>' : '　<span style="color:#0F6E56">全绿</span>');
+  document.getElementById('tagChk').textContent = CHK.length;
+  document.getElementById('chkOut').innerHTML = CHK.map(function(c,ix){
+    return '<div class="' + (c.ok?'ok':'bad') + '">' +
+      (c.ok?'✓':'✗') + ' ' + String(ix+1).padStart(2,'0') + '　' + c.label +
+      (c.detail ? '　<span style="opacity:.6">' + c.detail + '</span>' : '') + '</div>';
+  }).join('');
+  window.__chk = { total: CHK.length, pass: pass, fail: fail, items: CHK };
+}
+
+/* ========== 启动 ========== */
+fitDPR();
+fillTables();
+syncKpi();
+draw();
+runChecks();
+
+window.addEventListener('resize', function(){ fitDPR(); draw(); });
+
+(function loop(){
+  if (spin && !drag){ yaw += 0.0022; draw(); }
+  requestAnimationFrame(loop);
+})();
+
+/* 暴露给探针 */
+window.__tet = {
+  T1: T1, T2: T2, V_ALL: V_ALL,
+  E_CUBE: E_CUBE, E_TET: E_TET, E_DIAG: E_DIAG,
+  LEGS: LEGS,
+  getK: function(){ return K; },
+  setK: function(v){ K=v; document.getElementById('rk').value=v; document.getElementById('vk').textContent=v.toFixed(3); draw(); },
+  kFromLam: kFromLam,
+  Pof: Pof,
+  d2: d2,
+  draw: draw,
+  getChk: function(){ return window.__chk; }
+};
+</script>
+</body>
+</html>

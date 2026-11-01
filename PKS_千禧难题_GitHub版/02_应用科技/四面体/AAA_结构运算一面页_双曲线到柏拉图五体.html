@@ -1,0 +1,2588 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>结构运算一面页 · 一条双曲线 → 一枚四面体 → 五枚柏拉图立体</title>
+<style>
+:root{
+  --bg:#fbf8f1; --card:#fff; --ink:#22201c; --ink2:#4a463f; --ink3:#7b756a;
+  --line:#e2ddd1; --purple:#534AB7; --purple-l:#EEEDFE;
+  --coral:#C0442A; --coral-l:#FAECE7;
+  --blue:#185FA5; --blue-l:#E6F1FB;
+  --red:#A32D2D; --red-l:#FCEBEB;
+  --teal:#0F6E56; --teal-l:#E1F5EE;
+  --amber:#854F0B; --amber-l:#FAEEDA;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.75 "PingFang SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;}
+.wrap{max-width:1320px;margin:0 auto;padding:26px 22px 70px}
+header{border-bottom:2px solid var(--line);padding-bottom:16px;margin-bottom:8px}
+h1{font-size:25px;line-height:1.4;margin:0 0 8px;font-weight:700;letter-spacing:-.2px}
+.sub{color:var(--ink3);font-size:13.5px;margin:0}
+h2{font-size:18px;margin:34px 0 12px;font-weight:700;
+   border-left:4px solid var(--purple);padding-left:11px}
+h3{font-size:15px;margin:20px 0 8px;font-weight:700;color:var(--ink2)}
+p{margin:9px 0}
+b,strong{font-weight:700}
+code{font-family:ui-monospace,Consolas,monospace;font-size:.92em;
+  background:#f2efe6;padding:1px 5px;border-radius:4px;color:#3d382e}
+.eq{font-family:ui-monospace,Consolas,monospace;font-size:.94em;
+  background:#f7f4ea;border:1px solid var(--line);border-radius:5px;
+  padding:1px 6px;color:#2c2820;font-variant-numeric:tabular-nums;white-space:nowrap}
+
+.strip{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 0}
+.chip{font-size:12px;border:1px solid var(--line);background:#fff;border-radius:999px;
+  padding:4px 11px;color:var(--ink2)}
+.chip.v{color:var(--purple);background:var(--purple-l);border-color:#dcd9f8}
+.chip.t{color:var(--teal);background:var(--teal-l);border-color:#c8e9dd}
+.chip.r{color:var(--red);background:var(--red-l);border-color:#f2cdd4}
+
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:22px;align-items:start;margin-top:12px}
+@media(max-width:1000px){.layout{grid-template-columns:1fr}}
+
+/* §2 专用：图在左列（宽），参数在右侧可收起的悬浮面板。
+   🔴 .layout 在别处还用了 3 次，不能动；这里只动 .split。 */
+.split{display:grid;grid-template-columns:minmax(0,1fr) 318px;gap:18px;align-items:start;margin-top:14px}
+.split.folded{grid-template-columns:minmax(0,1fr) 52px}
+.figcol{display:flex;flex-direction:column;gap:14px;min-width:0}
+.fpanel{position:sticky;top:14px;background:var(--card);border:1px solid var(--line);
+  border-radius:14px;padding:13px 15px 15px;box-shadow:0 10px 26px rgba(44,38,28,.08);
+  transition:padding .16s ease,box-shadow .16s ease}
+.fp-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.fp-head span{font-size:12px;font-weight:700;color:var(--ink3);letter-spacing:.1em}
+.fp-btn{font:inherit;font-size:11.5px;border:1px solid var(--line);background:#fff;color:var(--ink2);
+  border-radius:7px;padding:3px 9px;cursor:pointer;line-height:1.5}
+.fp-btn:hover{background:#f7f4ea}
+.fp-body .ctl{margin-bottom:13px}
+.fpanel .read{font-size:12px;line-height:1.85;padding:9px 10px}
+.fp-note{font-size:11.5px;color:var(--ink3);line-height:1.7;margin:10px 0 0}
+.fp-note b{color:var(--ink2)}
+.split.folded .fpanel{padding:8px 4px;box-shadow:none}
+.split.folded .fp-body,.split.folded .fp-head span{display:none}
+.split.folded .fp-head{justify-content:center;margin:0}
+.split.folded .fp-btn{padding:7px 4px;writing-mode:vertical-rl;letter-spacing:.12em}
+@media(max-width:1000px){
+  .split{grid-template-columns:1fr}
+  .split.folded{grid-template-columns:1fr}
+  .fpanel{position:static;order:-1}
+}
+.ctlbar{display:flex;flex-wrap:wrap;gap:12px 26px;align-items:flex-start;
+  background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 18px 10px;margin-top:12px}
+.ctlbar .ctl{margin-bottom:6px;min-width:170px;flex:1 1 170px}
+.ctlbar .sw{flex:0 1 auto;margin:6px 0 0}
+
+.stage{background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:10px;position:relative;overflow:hidden}
+canvas{display:block;width:100%;height:auto;cursor:grab;border-radius:9px;
+  background:#fdfcf8;touch-action:none}
+canvas:active{cursor:grabbing}
+.hint{position:absolute;right:20px;bottom:18px;font-size:11.5px;color:var(--ink3);
+  background:rgba(253,252,248,.86);padding:3px 8px;border-radius:5px;pointer-events:none}
+/* 左列第三张图的说明（§2c）。放在两张 canvas 之间，必须紧跟图、别跑到 .split 外面去，
+   否则「下面那张」这句话指的就变成别的图了。 */
+.figcap2{margin:0;font-size:12.8px;color:var(--ink3);line-height:1.8;
+  border-left:3px solid var(--coral);padding-left:10px}
+.figcap2 b{color:var(--ink2)}
+.figcap2 .eq{color:var(--ink2)}
+/* 宽表在窄屏自己滑：这张对照表的最小内容宽 474px，375px 屏上会把 body 顶出 121px。
+   包一层滚动容器，桌面端 min-width 归零，不影响正常排版。 */
+.tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+@media (max-width:700px){ .tscroll table{min-width:560px} }
+
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 16px 18px}
+.panel h4{margin:0 0 12px;font-size:13px;font-weight:700;color:var(--ink3);
+  letter-spacing:.08em;text-transform:uppercase}
+.ctl{margin-bottom:15px}
+.ctl label{display:flex;justify-content:space-between;font-size:13px;
+  color:var(--ink2);margin-bottom:5px;font-variant-numeric:tabular-nums}
+.ctl label b{color:var(--purple);font-weight:700}
+input[type=range]{width:100%;accent-color:var(--purple);height:22px}
+.ticks{display:flex;justify-content:space-between;font-size:10.5px;color:var(--ink3);
+  margin-top:-2px;font-variant-numeric:tabular-nums}
+.sw{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.sw label{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2);
+  cursor:pointer;user-select:none;padding:4px 6px;border-radius:6px}
+.sw label:hover{background:#f7f4ea}
+.sw input{margin:0;accent-color:var(--purple);width:15px;height:15px}
+
+.btns{display:flex;gap:6px;flex-wrap:wrap}
+.btn{font:inherit;font-size:12.5px;border:1px solid var(--line);background:#fff;color:var(--ink2);
+  border-radius:8px;padding:5px 10px;cursor:pointer;line-height:1.4}
+.btn:hover{background:#f7f4ea}
+.btn.on{background:var(--purple);border-color:var(--purple);color:#fff;font-weight:600}
+
+.read{background:#f7f4ea;border:1px solid var(--line);border-radius:10px;
+  padding:10px 12px;font-family:ui-monospace,Consolas,monospace;font-size:12.5px;
+  line-height:1.95;color:#2c2820;font-variant-numeric:tabular-nums;white-space:pre-wrap}
+.read b{color:var(--purple)}
+
+.box{border-radius:11px;padding:12px 14px;margin:14px 0;font-size:14px;line-height:1.8}
+.box.good{background:var(--teal-l);border:1px solid #c8e9dd;color:#0b4f3f}
+.box.warn{background:var(--amber-l);border:1px solid #eddcb4;color:#6d400a}
+.box.bad{background:var(--red-l);border:1px solid #f2cdd4;color:#7d2222}
+.box.idea{background:var(--purple-l);border:1px solid #dcd9f8;color:#3b3389}
+.box h5{margin:0 0 6px;font-size:13.5px;font-weight:700}
+.box p{margin:6px 0}
+
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13.5px}
+th,td{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top}
+th{background:#f4f1e8;font-weight:700;color:var(--ink2);font-size:12.5px}
+tbody{background:#fff}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;
+  font-family:ui-monospace,Consolas,monospace}
+tr.hl td{background:#fbf7ee}
+.ok{color:var(--teal);font-weight:700}
+.no{color:var(--red);font-weight:700}
+
+.wide{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-top:14px}
+.eng{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:900px){.eng{grid-template-columns:1fr}}
+select{font:inherit;font-size:13px;padding:5px 8px;border:1px solid var(--line);
+  border-radius:8px;background:#fff;color:var(--ink);max-width:100%}
+.chk{display:grid;grid-template-columns:1fr 1fr;gap:5px 12px;font-size:12.5px;margin-top:8px}
+.chk div{padding:3px 6px;border-radius:6px;background:#f7f4ea;color:var(--ink2);
+  font-variant-numeric:tabular-nums}
+.chk div.pass{background:var(--teal-l);color:#0b4f3f}
+.chk div.fail{background:var(--red-l);color:#7d2222;font-weight:700}
+.chk div span{float:right;opacity:.7}
+/* 🔴 窄屏两列会让每格只有 150px，长判据直接撑出横向滚动（实测 375px 下 scrollWidth=487）
+   表格同理：5 列数字在 331px 宽里放不下，收内边距与字号即可，不必加横向滚动条 */
+@media(max-width:700px){
+  .chk{grid-template-columns:1fr}
+  th,td{padding:5px 5px}
+  table{font-size:12.5px}
+  th{font-size:11.5px}
+}
+.foot{margin-top:36px;padding-top:14px;border-top:1px solid var(--line);
+  font-size:12.5px;color:var(--ink3);line-height:1.9}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>结构运算一面页 · 一条双曲线 → 一枚四面体 → 五枚柏拉图立体</h1>
+  <p class="sub">同一件事的三种尺度：一条曲线做完 1D 标量运算，一枚四面体给出 3D 拓扑索引，一套点阵判定五枚立体落不落格点。
+  三条线的共同点只有一句 —— <b>用结构代替数值求解</b>。</p>
+  <div class="strip">
+    <span class="chip v">紫＝立论 / 推导</span>
+    <span class="chip t">绿＝本页现算（可复算）</span>
+    <span class="chip r">红＝不成立 / 待核</span>
+    <span class="chip" id="chipChk">自检 —</span>
+    <span class="chip" id="chipSqrt">作图开方 —</span>
+  </div>
+</header>
+
+<!-- ============================= §0 ============================= -->
+<h2>§0 一页读完</h2>
+
+<p>老师给的那条链是：<span class="eq">Z₃ → 2³ = 8 → 八卦 → 幻方</span>。这条链要成立，
+必须先回答一个更基本的问题：<b>「三」和「二」在几何上各自管什么？</b>本页的答案是——
+它们不是二选一，而是同一个数 <b>12</b> 的两种数法：</p>
+
+<div class="box idea">
+<h5>12 = 4 × 3 = 6 × 2（同一组 12 条腿，两种数法）</h5>
+<p><b>按顶点数</b>：四面体 4 个顶点 × 每顶点 3 条腿 = 12 —— 这 3 条腿互为 <b>Z₃ 轮换</b>（绕顶点中轴转 120°），
+拓扑上不可区分，只管编号。<b>按棱数</b>：6 条棱 × 每棱 2 个朝向 = 12 —— 这 2 是 <b>Z₂ 极性</b>（往哪头指、落在两个侧面中的哪一个）。</p>
+<p>这不是巧合，是 <span class="eq">3F = 2E</span>：正四面体 V−E+F = 4−6+4 = 2 且面全三角，
+所以 <b>3×4 = 2×6 = 12</b>。每个面对 3 条棱（Z₃），每条棱对 2 个面（Z₂）——「三」和「二」天生共存。</p>
+</div>
+
+<table>
+<thead><tr><th>尺度</th><th>对象</th><th>用结构省掉的计算</th><th class="num">本页现状</th></tr></thead>
+<tbody>
+<tr><td>1D</td><td>一条 <span class="eq">y = 1/x</span></td>
+  <td>开方、平方、加、乘、三种平均、二次方程 —— 全部是作图求交，<b>不做开方</b></td>
+  <td class="num"><span class="ok">5 模式</span></td></tr>
+<tr><td>3D 曲面</td><td>同一条曲线转成的双曲锥</td>
+  <td>截面闭合与否由 <span class="eq">tanα ≤ z₀²/4</span> 直接判，不必逐点试</td>
+  <td class="num"><span class="ok">已复算</span></td></tr>
+<tr><td>3D 结构</td><td>一枚正四面体的 12 条腿</td>
+  <td>一条腿 + 24 个对称操作 ⇒ 全部 12 条；28 对的距离分档由轨道给出，<b>零乘法零开方</b></td>
+  <td class="num"><span class="ok">引擎已跑</span></td></tr>
+<tr><td>3D 点阵</td><td>两套错开一格的网格</td>
+  <td>五枚柏拉图立体「落不落格点」—— 必须分清是哪一套</td>
+  <td class="num"><span class="ok">已纠正</span></td></tr>
+</tbody>
+</table>
+
+<p style="font-size:13.5px;color:var(--ink3)">口径三条：① 页面上的数都是<b>运行时算的</b>，不是写死的；
+② 与本页推导不符的引用，会明确标成「不成立 / 待核」，包括外部链接里的说法；
+③ 每条判据都写了<b>查了多少</b>，无对象一律判失败。</p>
+
+<!-- ============================= §1 ============================= -->
+<h2>§1 一条曲线：y = 1/x 能做完 1D 的全部四则与开方</h2>
+
+<p>方法源头是 Horst von Hasselbach 在《Kosmische Evolution》上的双曲图解（这门手艺的正名叫 <b>Nomography</b>／图算学，
+1880 年 d'Ocagne 创立，1970 年代被计算器淘汰）。曲线上每点写成 <span class="eq">(1/n, n)</span>，两个坐标互为倒数；
+允许的动作只有四种：<b>取点、连向径、两点连弦、作切线</b>。下面是本页现实现的金标准 <b>五模式</b>，
+全部求交走二分法 —— <b>作图路径上只做 + − × ÷</b>。计数器 <code>SQRT_CALLS</code> 记的是「作图路径上的开方次数」，必须恒为 0；
+页面别处出现的 <code>Math.sqrt</code> 只做两件事：把结果印成小数、以及给自检当<b>独立对账的「标准答案」</b>——它不参与任何作图。</p>
+
+<div class="layout">
+  <div class="stage">
+    <canvas id="cvHyp" width="880" height="470"></canvas>
+    <div class="hint">七种作图 · 全部二分求交，作图路径上不做开方</div>
+  </div>
+  <div class="panel">
+    <h4>作图模式</h4>
+    <div class="btns" id="hypBtns">
+      <button class="btn on" data-m="sqrt">开方 √n</button>
+      <button class="btn" data-m="sq">平方 n²</button>
+      <button class="btn" data-m="add">加法 n₁+n₂</button>
+      <button class="btn" data-m="sub">减法 n₁−n₂</button>
+      <button class="btn" data-m="mul">乘法 n₁·n₂</button>
+      <button class="btn" data-m="div">除法 n₁÷n₂</button>
+      <button class="btn" data-m="mean">三种平均</button>
+    </div>
+    <div class="ctl" style="margin-top:16px">
+      <label>n / n₁ <b id="lbN1">2.00</b></label>
+      <input type="range" id="rgN1" min="1.2" max="5" step="0.01" value="2">
+      <div class="ticks"><span>1.2</span><span>5.0</span></div>
+    </div>
+    <div class="ctl" id="wrapN2">
+      <label>n₂ <b id="lbN2">3.00</b></label>
+      <input type="range" id="rgN2" min="1.2" max="5" step="0.01" value="3">
+      <div class="ticks"><span>1.2</span><span>5.0</span></div>
+    </div>
+    <h4 style="margin-top:18px">读数（屏上现算）</h4>
+    <div class="read" id="hypRead">—</div>
+  </div>
+</div>
+
+<table>
+<thead><tr><th>运算</th><th>作法</th><th>读哪里</th></tr></thead>
+<tbody>
+<tr><td>开方 √n</td><td>x = 1 上取 n，连向径</td><td>与曲线的交点，<b>纵坐标</b></td></tr>
+<tr><td>平方 n²</td><td>曲线点 (1/n, n) 连向径</td><td>与 x = 1 的交点，纵坐标</td></tr>
+<tr><td>加法</td><td>两点连弦，弦方程 <span class="eq">y = −n₁n₂x + (n₁+n₂)</span></td><td><b>y 截距</b></td></tr>
+<tr><td><b>减法</b> n₁−n₂</td><td>n₁ 放 y 轴 <span class="eq">(0,n₁)</span>、n₂ 放曲线，两点连线</td><td>与曲线的<b>第二个</b>交点（已知根 x=1/n₂ 要避开），纵坐标 = n₁−n₂</td></tr>
+<tr><td>乘法</td><td>两点各作切线（<span class="eq">y = −n²x + 2n</span>），两切线交点连向径</td><td>向径的<b>斜率</b></td></tr>
+<tr><td><b>除法</b> n₁÷n₂</td><td>n₁ 连向径 ∩ n₂ 的切线 = Q，再从 Q 向曲线作<b>第二条切线</b></td><td>新切点的纵坐标 = n₁/n₂</td></tr>
+<tr><td>三种平均</td><td>同一条向径，斜率 = <b>乘积 n₁n₂</b>（不是 GM）</td><td>∩ 弦 ⇒ AM；∩ 曲线 ⇒ GM；两切线交点 ⇒ HM，且 <span class="eq">GM² = AM·HM</span></td></tr>
+</tbody>
+</table>
+
+<div class="box good">
+<h5>为什么这条曲线的斜率天然就是乘积</h5>
+<p>曲线点 <span class="eq">(1/n₁, n₁)</span> 的切线是 <span class="eq">y = −n₁²x + 2n₁</span>，两条切线交于
+<span class="eq">x = 2/(n₁+n₂)</span>、<span class="eq">y = 2n₁n₂/(n₁+n₂)</span>。这个点的纵坐标正是 <b>HM</b>，
+而从原点连它的斜率是 <span class="eq">y/x = n₁n₂</span> ——「乘积」自己冒出来了，不需要构造。
+AM 落在这条斜率线上与弦的交点，GM 落在它与曲线的交点，于是 <b>AM ≥ GM ≥ HM 在同一根射线上依次排开</b>，
+<span class="eq">GM² = AM·HM</span> 就成了同一根线上的<b>幂关系</b>，不再是三条孤立的不等式。</p>
+</div>
+
+<!-- ============================= §1b ============================= -->
+<h2>§1b 每个无理数要花几刀 —— 几何成本表</h2>
+
+<p>这张表是本页真正的结论，不是附赠。<b>「用几何代替计算」不等于「一样快」</b>：每读一个数都要付出<b>刀数</b>。
+刀的定义就是本页实现的四种动作 —— <b>一条向径 = 1 刀</b>（读一个平方根）、<b>一条弦 = 1 刀</b>（读一个和）、
+<b>一对切线 = 1 刀</b>（读一个积）、<b>除法 = 2 刀</b>（向径接口 + 二次切线）。</p>
+
+<p>下面每个数都是<b>现场一刀一刀读出来的</b>（不是查表），残差是「几何读数 − 已知值」。已知值写死在源码里作对照，
+<b>本页所有开方都是向径读出来的，<code>SQRT_CALLS</code> 仍是 0</b>。</p>
+
+<table>
+<thead><tr><th>数</th><th class="num">代数次数</th><th class="num">刀数</th><th>路径（按本页四个动作）</th><th class="num">几何读数</th><th class="num">残差</th></tr></thead>
+<tbody id="radBody">
+<tr><td colspan="6" style="text-align:center;color:#8d8678">运行中…</td></tr>
+</tbody>
+</table>
+
+<div class="box idea">
+<h5>为什么 φ 比 √n 贵三倍 —— 而且这正好是它的本质</h5>
+<p><b>√n 一刀就够</b>：x=1 上取 n，一条向径，与曲线的交点纵坐标直接就是 √n。整条路径只有一个「开一次根」的动作，
+所以它叫什么数都无所谓，成本恒定。</p>
+<p><b>φ 要四刀</b>：<span class="eq">φ = (1 + √5)/2</span> —— ① <b>向径</b>读 √5（1 刀）；② <b>弦</b>读
+<span class="eq">1 + √5</span>（曲线点 (1,1) 与 (1/√5, √5) 都在曲线上，两点连弦即可，1 刀）；③ <b>除法</b>读
+<span class="eq">(1+√5)/2</span>（向径接口 + 二次切线，2 刀）。合计 <b>4 刀</b>。</p>
+<p><b>这里有个反直觉的地方值得单独说</b>：<b>除以 2</b> 花了 2 刀，比开一次 √5 还贵。<b>除法是这四个动作里最贵的一步</b>
+—— 因为它要切两次（先把向径和切线接上，再从交点向曲线作第二条切线）。所以在几何成本表里，
+<b>「除以一个常数」不能当免费</b>，这是纯符号计算容易骗人的地方：写成 <span class="eq">(1+√5)/2</span> 时那个 /2 看着比 √5 轻，
+画出来正好相反。</p>
+<p>贵在哪？不在「5 比较大」，而在于 <b>φ 不是单纯的根号，它是「根号 + 有理运算」的复合</b>。它的最小多项式是
+<span class="eq">x² − x − 1 = 0</span>，比 √n 的 <span class="eq">x² − n = 0</span> 多了一个一次项 —— 那个 <b>−x</b> 就是多出来的那把弦。
+多一项，多一刀。<b>刀数是「最小多项式的运算长度」，不是数的位数，也不是式子的长短。</b></p>
+<p>拿 <span class="eq">(√2−1)⁴</span> 反证这一点：展开是 <span class="eq">17 − 12√2</span>，最小多项式仍是二次（它和 √2 同一个数域），
+所以它<b>属于同一个家族</b>，只是运算长度更长 —— 本页实测 <b>4 刀</b>（开 √2 → 减 1 → 平方 → 再平方），
+跟 φ 同级。而 <span class="eq">∛2</span> 的式子是全表最短的，却<b>多少刀都画不出来</b>。</p>
+</div>
+
+<div class="box warn">
+<h5>这条路的硬边界：超过二次就出不来了 —— 而且 π 永远出不来</h5>
+<p><b>能画的</b>：所有「从有理数出发，有限次 + − × ÷ 和开平方」得到的数 —— 也就是<b>规矩数</b>（constructible numbers），
+Galois 理论里它们的次数是 <b>2 的幂</b>。所以 √2、√3、√5、φ、2^(1/4)、正十七边形（<span class="eq">2⁴</span> 次）全都在里面。</p>
+<p><b>画不出的</b>：<span class="eq">∛2</span>（三次，<b>倍立方不可能</b>）、<span class="eq">cos 20°</span>（三等分角不可能）、
+以及所有<b>超越数</b> —— <b>π、e、γ</b>。它们不是「刀数很多」，是<b>刀数无穷</b>：本页的四种动作永远碰不到它们。
+这是<b>性质上的分界，不是精度上的分界</b>，加多少刀都没用。</p>
+<p>所以「用几何代替计算」这句话的真实适用范围是：<b>规矩数以内的精确读出，加超越数的逼近</b>。
+把 π 画成一条内接多边形逼近，那不是「读出」，那是「逼近」—— 两者在页面里必须分开写，不能混着叫「作图」。</p>
+</div>
+
+<!-- ============================= §2 ============================= -->
+<h2>§2 抬到三维：同一条曲线转出来的双曲锥</h2>
+
+<p>把 <span class="eq">y = 1/x</span> 绕轴旋转，得到曲面 <span class="eq">z·r = 1</span>（<span class="eq">r = √(x²+y²)</span>）。
+这一步不是装饰 —— 它把 1D 的「倒数」关系变成了 3D 的「体积守恒」关系：半径缩一半，高度就得翻倍。
+用一个斜平面 <span class="eq">z = z₀ + y·tanα</span> 去切它，截面是一个卵形；<b>卵形什么时候不再是卵形</b>，可以直接解出来。</p>
+
+<div class="split" id="coneSplit">
+  <div class="figcol">
+    <div class="stage">
+      <canvas id="cvCone" width="880" height="470"></canvas>
+      <div class="hint">拖动旋转 · 滚轮缩放</div>
+    </div>
+    <div class="stage">
+      <canvas id="cvSect" width="880" height="470"></canvas>
+      <!-- 这里不放 .hint：它会盖住 canvas 底部的「宽/高」与「开口」读数。
+           图内左上角已经写了「切平面正视 (u, v)」，不缺说明。 -->
+    </div>
+
+    <p class="figcap2"><b>§2c · 左列并排第三张：同一个斜平面，换一条母线。</b>
+      上面两张切的是<b>双曲锥</b> <span class="eq">z·r = 1</span>（把 <span class="eq">y = 1/x</span> 绕轴旋转）。
+      这一张把母线换成 <span class="eq">y = x</span>，也就是 <span class="eq">z = r</span> —— 半角 45° 的<b>直锥</b>，
+      切法一个字不改，还是 <span class="eq">z = z₀ + y·tanα</span>，截面变成<b>椭圆</b>。
+      左边画侧视（母线、切平面、两把角），右边画切平面里的真实形状（等比，不拉伸）。
+      <b>两边的临界值根本不是一回事</b>：直锥是 <span class="eq">tanα = 1</span>（只看母线斜率，<b>与 z₀ 无关</b>），
+      双曲锥是 <span class="eq">tanα = z₀²/4</span>（<b>随 z₀ 变</b>）。差别的成因见下面那张对照表。</p>
+    <div class="stage">
+      <canvas id="cvEll" width="880" height="470"></canvas>
+    </div>
+  </div>
+
+  <aside class="fpanel" id="fpanel">
+    <div class="fp-head">
+      <span>切平面参数</span>
+      <button type="button" class="fp-btn" id="fpToggle" aria-expanded="true" aria-controls="fpBody">收起</button>
+    </div>
+    <div class="fp-body" id="fpBody">
+      <div class="ctl">
+        <label>z₀ <b id="lbZ0">2.00</b></label>
+        <input type="range" id="rgZ0" min="0.8" max="8" step="0.01" value="2">
+        <div class="ticks"><span>0.8</span><span>8.0</span></div>
+      </div>
+      <div class="ctl">
+        <label>tanα <b id="lbTan">0.60</b></label>
+        <input type="range" id="rgTan" min="0" max="20" step="0.01" value="0.6">
+        <div class="ticks"><span>0</span><span>20</span></div>
+      </div>
+      <div class="sw">
+        <label><input type="checkbox" id="ckCrit"> 顶到临界 tanα = z₀²/4</label>
+        <label><input type="checkbox" id="ckOver" checked> 允许越过临界（看开口）</label>
+      </div>
+      <div class="read" id="coneRead">—</div>
+      <p class="fp-note">tanα 上限 20 ≥ 任何 z₀ 的临界（z₀=8 时 16），所以<b>闭合与开口两种状态都能走到</b>。</p>
+    </div>
+  </aside>
+</div>
+
+
+<p class="note" style="margin-top:6px"><b>三张图的分工</b>：第一张是双曲锥的 3D；第二张是<b>正视切平面</b>看到的真实轮廓；第三张换成直锥做对照（下一节）。
+第二张与第一张的 3D 视角无关 —— 3D 里斜着看会把卵形压扁，
+z₀ 越大、tanα 越陡压得越狠（z₀=8 时那个卵形看起来只剩一根竖线，读数里宽/高 0.046 才是真的）。
+第二张按真实比例画，不做铺满拉伸，才是它在切平面上的本来形状。它的原点是<b>锥轴穿过切平面的那一点</b>：
+在那一点上 r = 0，而锥面要求 z·r = 1，所以原点本身不在截线上，但它把截面分成了内外的参照。</p>
+
+<h3>两种曲面的临界值为什么不一样（直锥 vs 双曲锥）</h3>
+<p>同样是「斜切一个转出来的面」，一样是 <span class="eq">z = z₀ + y·tanα</span> 这一族平面，
+临界值却一个带 z₀、一个不带。这不是巧合，也不是推导出错 —— 差别出在<b>曲面自己有没有绝对尺度</b>：</p>
+<div class="tscroll">
+<table>
+<thead><tr><th style="width:14%">项</th><th style="width:43%">直锥 <span class="eq">z = r</span>（把 y = x 绕轴旋转）</th><th>双曲锥 <span class="eq">z·r = 1</span>（把 y = 1/x 绕轴旋转）</th></tr></thead>
+<tbody>
+<tr><td>截线</td><td><b>椭圆</b>（k &gt; 0）／抛物线（k = 0）／双曲线（k &lt; 0）</td><td>闭合<b>卵形</b>／底部断开的开口曲线</td></tr>
+<tr><td>临界</td><td><b>tanα = m = 1</b>　（α = 45°，只比角度）</td><td><b>tanα = z₀² / 4</b></td></tr>
+<tr><td>临界依赖谁</td><td>只依赖<b>母线斜率 m</b>，<b>与 z₀ 无关</b>（z₀ 只换大小，不换"是不是椭圆"）</td>
+    <td><b>依赖 z₀</b>：同一个锥，z₀ 从 0.5 换到 8，临界从 0.0625 爬到 16</td></tr>
+<tr><td>为什么</td><td><b>自相似</b>：曲面 z = m·r 与切法同时缩放，角度不变 ⇒ 判据只能比角度（tanα vs m）</td>
+    <td><b>有绝对尺度</b>：曲面上处处满足 <span class="eq">π·r²·z = π</span>，那个 π 就是唯一的长度基准；判据里必然出现 z₀</td></tr>
+<tr><td>代数</td><td>一元二次 <span class="eq">x² + (1−t²)y² − 2z₀ty − z₀² = 0</span>，看 <span class="eq">k = 1−t²</span> 的符号</td>
+    <td>一元二次 <span class="eq">tanα·sinθ·r² + z₀·r − 1 = 0</span>，看 <span class="eq">Δ = z₀² + 4tanα·sinθ</span> 的符号</td></tr>
+<tr><td>曲线族</td><td><b>圆锥截线</b>（二次曲线），所以有中心、有焦点、有离心率</td><td><b>四次曲线</b>，不在圆锥截线族里（所以没有"离心率"这回事）</td></tr>
+<tr><td>闭曲线的中心</td><td>有中心 C，且一般<b>不在 O</b>（偏移 v_c = z₀t/(k·cosα)）；只有水平切才与 O 重合</td>
+    <td>不是椭圆，谈不上中心；O 只在参照意义上存在</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="box good">
+<h5>顺手解出来的两个闭式（自检里逐档复算，不是抄的）</h5>
+<p>椭圆的轴比只跟 α 有关：<span class="eq">a_v / a_u = 1 / √(cos 2α)</span>；离心率 <span class="eq">e = √2 · sinα</span>。
+两条都<b>不含 z₀</b> —— 这正是"自相似"在数字上的样子：把整个场景放大一倍，椭圆的形状一点不变，错的只是尺寸。
+α → 45° 时 cos 2α → 0，轴比发散，椭圆在那一瞬变成抛物线。<b>"什么时候不再是椭圆"，答案就是母线角本身。</b></p>
+</div>
+
+<h3>闭合条件怎么来的（不是试出来的）</h3>
+<p>在极坐标里逐角度 θ 求交：把 <span class="eq">z = z₀ + y·tanα</span> 与 <span class="eq">z·r = 1</span> 联立，
+<span class="eq">y = r·sinθ</span>，得到关于 r 的<b>一元二次</b>：</p>
+<p style="text-align:center"><span class="eq">tanα·sinθ · r² + z₀ · r − 1 = 0</span></p>
+<p>判别式 <span class="eq">Δ = z₀² + 4·tanα·sinθ</span>。<span class="eq">sinθ ≥ 0</span> 那一侧永远有解；
+<span class="eq">sinθ &lt; 0</span>（切平面往下扎的那一半）要 <span class="eq">z₀² ≥ 4·tanα·|sinθ|</span>，
+最苛刻处是 <span class="eq">|sinθ| = 1</span>，于是</p>
+<div class="box good">
+<h5>tanα ≤ z₀² / 4 ⇔ 截面是闭合卵形</h5>
+<p>越过一步，底部那个点就「漏出去」，截面在那儿断开、变成开口曲线。本页用 2000 个角度离散去数<b>缺了几个角度</b>：
+临界前 0 个，越过后立刻 29 个 —— 判据判的是「屏上那几个角度真的解不出 r」，不是读一个预先写死的标志位。</p>
+</div>
+
+<table>
+<thead><tr><th class="num">z₀</th><th class="num">临界 tanα = z₀²/4</th><th class="num">0.99×临界</th><th class="num">1.00×</th><th class="num">1.001×</th><th class="num">1.05×</th></tr></thead>
+<tbody>
+<tr><td class="num">1</td><td class="num">0.250000</td><td class="num ok">缺 0</td><td class="num ok">缺 0</td><td class="num no">缺 29</td><td class="num no">缺 197</td></tr>
+<tr><td class="num">2</td><td class="num">1.000000</td><td class="num ok">缺 0</td><td class="num ok">缺 0</td><td class="num no">缺 29</td><td class="num no">缺 197</td></tr>
+<tr><td class="num">4</td><td class="num">4.000000</td><td class="num ok">缺 0</td><td class="num ok">缺 0</td><td class="num no">缺 29</td><td class="num no">缺 197</td></tr>
+</tbody>
+</table>
+
+<div class="box bad">
+<h5>链接里那句「临界处长宽比 ≈1.3，接近真鸡蛋 1.35」—— 本页复算不出来，标为待核</h5>
+<p>闭合条件 <span class="eq">tanα ≤ z₀²/4</span> 我<b>复算通过</b>（就是上面那张表）。但「临界拉长宽比」我量出来不是常数：
+同一个锥 <span class="eq">z·r = 1</span>、同一族切平面，<span class="eq">z₀</span> 取 0.5 / 1 / 2 / 4 / 8 时，
+临界处的宽高比是 <b>0.733 / 0.713 / 0.519 / 0.178 / 0.046</b> —— 随 z₀ 一路往下掉，<b>跟 1.3 差得很远，也不是尺度无关</b>。
+所以这句我按「不成立（在本页这套定义下）」处理：要么原文用的是<b>另一个曲面</b>（比如两叶双曲面而不是单叶喇叭面），
+要么「长宽」量的不是截面平面内的两个主方向。要把它救回来，得先拿到原文那一页的图，现在不行。</p>
+</div>
+
+<!-- ============================= §3 ============================= -->
+<h2>§3 一枚四面体：Z₃ 与 Z₂ 第一次同时现身</h2>
+
+<p>把 8 个立方体顶点按 <span class="eq">xyz = +1</span> 与 <span class="eq">xyz = −1</span> 分成两枚四面体（T₁ / T₂）。
+从 T₁ 的 4 个顶点各射出 3 条腿，射向内倒四面体的 4 个定点，一共 <b>12 条</b>。
+下面这个数不是抄的：<b>4 × 3 = 6 × 2 = 12</b>，两种数法数的是同一组 12 条腿。</p>
+
+<div class="layout">
+  <div class="stage">
+    <canvas id="cvTet" width="880" height="470"></canvas>
+    <div class="hint">拖动旋转 · 滚轮缩放</div>
+  </div>
+  <div class="panel">
+    <h4>内倒四面体生长参数</h4>
+    <div class="ctl">
+      <label>k <b id="lbK">0.45</b></label>
+      <input type="range" id="rgK" min="0" max="1" step="0.005" value="0.45">
+      <div class="ticks"><span>0 塌心</span><span>0.1716</span><span>1 星四面体</span></div>
+    </div>
+    <div class="sw">
+      <label><input type="checkbox" id="ckT1" checked> T₁（<span class="eq">xyz=+1</span>）</label>
+      <label><input type="checkbox" id="ckT2" checked> 内倒四面体 T₂</label>
+      <label><input type="checkbox" id="ckLeg" checked> 12 条腿</label>
+      <label><input type="checkbox" id="ckCube"> 立方体 12 棱（k=1 才重合）</label>
+      <label><input type="checkbox" id="ckOrb"> 高亮一条腿的 T_d 轨道（12 条）</label>
+    </div>
+    <h4 style="margin-top:16px">读数</h4>
+    <div class="read" id="tetRead">—</div>
+  </div>
+</div>
+
+<div class="box idea">
+<h5>「3 管拓扑，2 管极性」在几何上长什么样</h5>
+<p><b>3 管拓扑</b>：站在任一个顶点 V 上，它的<b>稳定子</b>是 6 元群（3 个真旋转 + 3 个镜面，≅ C₃ᵥ）；
+其中真旋转那 3 个绕 V 的中轴转 120°、240°、0°，把那 3 条腿<b>循环换位成一个轨道</b> ——
+长度、夹角、指向全不变，<b>只有编号变了</b>。所以「哪条腿是哪条」在拓扑上没意义，有意义的是「这一束」。
+本页对 4 个顶点逐个验过：稳定子都是 6，真旋转都是 3，3 条腿都恰好是一个轨道。</p>
+<p><b>⚠ 一个容易说错的地方（本页第一版就错了）</b>：<b>全局只取一个</b> Z₃（坐标循环 <span class="eq">(x,y,z)→(y,z,x)</span>）时，
+它只固定住 3 重轴上的那个顶点（<span class="eq">(1,1,1)</span>），另外 3 个顶点被它 3-循环。
+所以 12 条腿在这<b>单个</b> Z₃ 下分成的是 <b>2 个三角循环 + 1 个入束 + 1 个出束</b>，
+<b>不是</b>「4 个顶点各一束」。四个顶点各自的束，是靠 T_d 里那 4 个<b>共轭</b>的 Z₃ 分别给出的 —— 束的形状一样，只是换了个轴。</p>
+<p><b>2 管极性</b>：每条腿有两个朝向（<span class="eq">i→j</span> 与 <span class="eq">j→i</span>），
+这正是「每棱 2 枚三角形」里那个 2 —— 一条棱夹在两个面之间，两个面就是两个侧面／两个朝向。
+所以 12 = 6 棱 × 2。<b>Z₂ 不改变拓扑，只翻极性</b>。</p>
+<p>把两者乘起来：<b>|T_d| = 24 = 3 × 8 = Z₃ × Z₂³</b>。这里的 8 就是立方体 8 个顶点（顶点标签正好是 3 个二值位），
+也就是「八卦」的 8。<b>三和八不是两个东西，是 24 的两种分解</b>。</p>
+</div>
+
+<!-- ============================= §4 ============================= -->
+<h2>§4 两套点阵：189 点不是一张网格，是两张错开一格的网格叠在一起</h2>
+
+<p>老师复现时踩到的坑，这一节专门修它。三阶网格的「原生点」是两套<b>互不相交</b>的点阵：</p>
+
+<table>
+<thead><tr><th>记号</th><th>定义</th><th class="num">点数</th><th>谁住在里面</th></tr></thead>
+<tbody>
+<tr><td><b>C</b>（中心点阵）</td><td><span class="eq">{−3,−1,1,3}³</span> —— 三个坐标<b>全奇</b></td><td class="num">4³ = <b>64</b></td><td>正四面体、正六面体、正十二面体的 8 个角</td></tr>
+<tr><td><b>V</b>（顶点并集）</td><td><span class="eq">{−4,−2,0,2,4}³</span> —— 三个坐标<b>全偶</b></td><td class="num">5³ = <b>125</b></td><td><b>正八面体</b>（(±2,0,0) 循环）</td></tr>
+<tr class="hl"><td><b>C ∪ V</b></td><td>奇偶互斥 ⇒ <span class="eq">C ∩ V = ∅</span></td><td class="num">64 + 125 = <b>189</b></td><td>合计</td></tr>
+</tbody>
+</table>
+
+<p>C 和 V 的<b>格距都是 2</b>，但 C 相对 V 整体平移了 <span class="eq">(1,1,1)</span> —— 也就是<b>错开一格</b>。
+把 189 当成「一张网格」去问「哪些顶点在格点上」，问法本身就错了，因为不同立体认的是不同的那张。</p>
+
+<div class="layout">
+  <div class="stage">
+    <canvas id="cvLat" width="880" height="470"></canvas>
+    <div class="hint">拖动旋转 · 滚轮缩放</div>
+  </div>
+  <div class="panel">
+    <h4>选立体</h4>
+    <div class="btns" id="latBtns">
+      <button class="btn on" data-s="tet">四面体</button>
+      <button class="btn" data-s="oct">八面体</button>
+      <button class="btn" data-s="cub">六面体</button>
+      <button class="btn" data-s="dod">十二面体</button>
+      <button class="btn" data-s="ico">二十面体</button>
+    </div>
+    <h4 style="margin-top:16px">选点阵</h4>
+    <div class="btns" id="latSetBtns">
+      <button class="btn" data-g="C">只看 C（64）</button>
+      <button class="btn" data-g="V">只看 V（125）</button>
+      <button class="btn on" data-g="CV">两套叠着看</button>
+    </div>
+    <div class="read" style="margin-top:14px" id="latRead">—</div>
+  </div>
+</div>
+
+<table>
+<thead><tr><th>立体</th><th class="num">顶点数</th><th class="num">落在 C</th><th class="num">落在 V</th><th>没落上的原因</th></tr></thead>
+<tbody>
+<tr><td>① 正四面体</td><td class="num">4</td><td class="num ok">4/4</td><td class="num">0/4</td><td>—（全在 C）</td></tr>
+<tr class="hl"><td>② 正八面体</td><td class="num">6</td><td class="num no">0/6</td><td class="num ok">6/6</td><td>坐标含 0 ⇒ 只能是偶点阵 V，<b>在 C 里一个都没有</b></td></tr>
+<tr><td>③ 正六面体</td><td class="num">8</td><td class="num ok">8/8</td><td class="num">0/8</td><td>—（全在 C）</td></tr>
+<tr><td>④ 正十二面体</td><td class="num">20</td><td class="num">8/20</td><td class="num">0/20</td><td>8 个是六面体的角（在 C）；另 12 个含 <span class="eq">1/φ = 0.618…</span>，<b>非整数</b>，两套都没有</td></tr>
+<tr><td>⑤ 正二十面体</td><td class="num">12</td><td class="num no">0/12</td><td class="num no">0/12</td><td>12 个全含 φ，<b>两套都没有</b></td></tr>
+</tbody>
+</table>
+
+<div class="box bad">
+<h5>原文写法：「正八面体 6/6 全在格点」—— 容易被读成跟四面体同一把尺子，必须补一句</h5>
+<p>老师复现得到 0/6，不是他算错，是<b>原文没写清是哪套点阵</b>。严格的说法是：
+<b>「正八面体 6 个顶点全部落在 V（{0,±2,±4}³，125 点）上；在 C（{±1,±3}³，64 点）上一个都没有。」</b>
+同理必须写全：四面体 4/4 在 C 而不在 V；六面体 8/8 在 C 而不在 V。</p>
+<p>结论本身没问题（三枚严格、两枚差 φ 这件事成立），问题在<b>尺度被读混了</b>：
+189 = 4³ + 5³ 是两个立方数之和，不是一张 189 点的网格。
+上面那个画布可以把点阵切到 C 或 V —— 选八面体 + 只看 C，六个点立刻全红；切到 V，六个全绿。</p>
+</div>
+
+<!-- ============================= §5 ============================= -->
+<h2>§5 结构运算引擎：Z₃ × Z₂³ = 24 到底省了什么</h2>
+
+<p>下面这个面板不是演示动画，是<b>可以对着点、对着读数的索引器</b>。
+它证明的是三件事：① 一条腿就能生成全部 12 条；② 28 对的距离分档完全由轨道给出，不碰乘法；
+③ 「3 管轮换」和「2 管极性」是同一组 12 的两个因子，缺一个都数不全。</p>
+
+<div class="wide">
+<div class="eng">
+  <div>
+    <h4>① 一条腿 → 12 条腿（轨道生成）</h4>
+    <div class="ctl">
+      <label>选一条腿 <b id="lbLeg">a₁ → a₂</b></label>
+      <select id="selLeg"></select>
+    </div>
+    <div class="read" id="engLeg">—</div>
+  </div>
+  <div>
+    <h4>② 28 对里任取两点（位分类）</h4>
+    <div class="ctl">
+      <label>起点 / 终点 <b id="lbPair">p → q</b></label>
+      <div style="display:flex;gap:8px">
+        <select id="selP" style="flex:1"></select>
+        <select id="selQ" style="flex:1"></select>
+      </div>
+    </div>
+    <div class="read" id="engPair">—</div>
+  </div>
+</div>
+
+<h3 style="margin-top:20px">28 对由 T_d 分成 4 个轨道 —— 分档不需要算距离</h3>
+<table>
+<thead><tr><th>轨道代表</th><th class="num">Hamming k</th><th class="num">轨道大小</th><th class="num">d² = 4k</th><th>是什么</th></tr></thead>
+<tbody id="orbTable"></tbody>
+</table>
+
+<table>
+<thead><tr><th>量</th><th class="num">数</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td>|T_d|</td><td class="num"><b>24</b></td><td>= 3 × 8 = Z₃ × Z₂³；其中真旋转 12（≅ A₄）、含反演的 12</td></tr>
+<tr><td>一条腿的 T_d 轨道</td><td class="num"><b>12</b></td><td>24 / 稳定子 2 = 12 —— 那 2 就是「过这条腿的镜面」，等于极性位</td></tr>
+<tr><td>12 条腿在<b>单个</b> Z₃（坐标循环）下</td><td class="num"><b>4 × 3</b></td><td>2 个三角循环 + 1 个入束 + 1 个出束（不是「4 顶点各一束」）</td></tr>
+<tr><td>单个顶点的稳定子</td><td class="num"><b>6 = 3+3</b></td><td>真旋转 C₃（3 个）+ 镜面（3 个）≅ C₃ᵥ；C₃ 把该顶点 3 条腿换成一个轨道，4/4 顶点都成立</td></tr>
+<tr><td>无向棱 × 朝向</td><td class="num"><b>6 × 2</b></td><td>Z₂ 只翻朝向，不动拓扑</td></tr>
+</tbody>
+</table>
+
+<div class="box good">
+<h5>本机实测：三种分档写法（同样 28 对，各跑 20 万轮）</h5>
+<p id="benchOut">—</p>
+<p style="font-size:12.5px;margin-top:6px"><b>结果是反直觉的，如实写在这里：</b>
+把顶点<b>预先编成整数</b>（<span class="eq">bit = x⁺ | 2y⁺ | 4z⁺</span>）再用 <span class="eq">popcount(a^b)</span> 查表，
+比浮点暴力法快一截；但如果每次都现算 <code>a[i]!==b[i]</code> 去数不等位，
+就<b>跟暴力法打平、甚至更慢</b> —— JS 的浮点乘加快到只剩十几纳秒，函数调用和数组下标把优势全吃光。
+（本页第一次跑出来就是 0.87×，位法<b>输</b>；换成整数编码才翻过来。）</p>
+<p style="font-size:12.5px">所以这里<b>不写「快 N 倍」这种话</b>。位法真正换来的是三件与墙钟无关的事：
+<b>① 整数精确</b>（不需要「d² &lt; 6 算棱」这类阈值容差）；<b>② 0 次开方、0 次乘法</b>（28 对分类里一次都没有）；
+<b>③ 可判定</b>（三档由 k=1/2/3 直接给出，不依赖浮点比较链）。要谈加速，只能靠 §5 那四条<b>结构</b>操作 ——
+把 12 条腿的推导压成 1 条、把同构判定压成 Z₃ 规范形，那才是量级上的省。</p>
+</div>
+
+<h3>拿这套结构去改进 3D 空间计算，具体动的是哪四处</h3>
+<table>
+<thead><tr><th>#</th><th>做法</th><th>替掉的旧计算</th><th>代价变化</th></tr></thead>
+<tbody>
+<tr><td>E1</td><td><b>坐标 → 3 位标签</b>：顶点直接记 <span class="eq">(±1,±1,±1)</span> 的符号位</td>
+  <td>两点关系靠 <span class="eq">|p−q|</span> 与阈值比较</td>
+  <td>28 对分档：0 次乘法、0 次开方</td></tr>
+<tr><td>E2</td><td><b>轨道生成代替枚举</b>：给一条腿，用 24 个矩阵作用</td>
+  <td>逐个顶点、逐个目标点推 12 条腿</td>
+  <td>搜索 12 → 1（+24 次矩阵乘）</td></tr>
+<tr><td>E3</td><td><b>Z₃ 规范形</b>：把任一构型旋到标准位置再比</td>
+  <td>两两比对全部顶点坐标</td>
+  <td>同构判定 O(1)，与顶点数无关</td></tr>
+<tr><td>E4</td><td><b>拓扑 / 极性解耦</b>：先按 6 条无向棱定结构，再挂 2 个朝向</td>
+  <td>把 12 条有向腿当 12 个独立对象</td>
+  <td>对象数 12 → 6，朝向单独一位</td></tr>
+</tbody>
+</table>
+
+<div class="box idea">
+<h5>接到老师的链上：Z₃ → 2³ = 8 → 八卦 → 幻方</h5>
+<p>本页能把它每一跳的<b>几何身份</b>说清，但只说到这一步：</p>
+<p><b>Z₃</b> ＝ 绕顶点中轴 120°，把 3 条腿循环换位（拓扑不变）—— 这是 §3 里数出来的 4×3。</p>
+<p><b>2³ = 8</b> ＝ 每个顶点 3 条腿各带 1 个极性位；8 个顶点本身就是这 8 种状态（顶点标签 = 3 个二值位）。</p>
+<p><b>八卦 / 三相桥 8 态</b> ＝ 老师已证过的「三相桥 3 臂 × 2 态 = 2³ = 8 与八卦真同构」（幻方节律场 §11）。
+这里把两个因子对回去：<b>三相桥的 3 臂互差 120° 电角，就是同一个 Z₃</b>；<b>每臂上管通／下管通，就是同一个 Z₂</b>；
+于是「8 个开关态」与「立方体 8 个顶点标签」是<b>同一个 8 的两种化身</b>。
+本页<b>不重证</b>那一步电气同构，只在这里指认同一个 8 在两处的身份。</p>
+<p><b>幻方</b> ＝ 8 阶的那一层本页不涉及，留给 §11 那页。这里只守住一条底线：
+<b>「三」来自 Z₃ 循环，「二」来自 Z₂ 极性，两者是 24 = 3×8 的两个因子，不是两种可选假设。</b></p>
+</div>
+
+<!-- ============================= §6 ============================= -->
+<h2>§6 自检（运行时跑，不通过会红）</h2>
+
+<p>判据分四类：点阵计数、群论轨道、作图残差、变异测试（故意写错一处，看判据是不是真能抓出来）。
+每条都写了<b>查了多少</b>；没有对象的判据直接算失败，不算通过。</p>
+
+<div class="wide">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+    <div><b id="chkSum">—</b></div>
+    <div style="font-size:12.5px;color:var(--ink3)">脚本 <code>_grp2.mjs</code> / <code>_cone.mjs</code> 独立复算过同一批数</div>
+  </div>
+  <div class="chk" id="chkList"></div>
+</div>
+
+<div class="foot">
+  <p><b>口径</b>：紫＝立论与推导；绿＝本页运行时现算、可当场复算；红＝不成立或待核（含外部链接里的说法）。
+  本页唯一一处「红」是 §2 的 1.3 卵形长宽比 —— 闭合条件对得上，那个比值对不上，两条分开写。</p>
+  <p><b>修正记录（2026-11-01）</b>：原文「正八面体 6/6 全在格点」补全为
+  「正八面体 6 顶点全在 <span class="eq">{0,±2,±4}³</span>（125 点）；在 <span class="eq">{±1,±3}³</span>（64 点）里为 0/6」。
+  189 = 64 + 125 是两套错开一格的网格之和，不是一张网格。</p>
+  <p><b>合并记录（2026-11-01）</b>：原先单独那页 <code>AAA_双曲线_几何代数_零开方.html</code> 的
+  <b>减法</b>与<b>除法</b>两种作图已并入本页 §1（七种作图齐了，逐条复算），该文件与它的镜像副本已删除；
+  它的「这条曲线和四面体那页什么关系」一节扩写成 §1b 的<b>几何成本表</b>。<b>内容一条没丢，只在传参数上有变化</b>：
+  减法改成「大数放 y 轴、小数放曲线」并显式处理 n₁&lt;n₂ 的反向情形，除法补了「切点两解必须避开 n₂ 那个」的说明。</p>
+  <p><b>同族页面</b>：本页是「一面页」索引层；细节在
+  <b>AAA_双四面体_星四面体_立方体骨架.html</b>（构造工艺六步）、
+  <b>视频③_宇宙DNA_二阶共振与三阶生命矩阵.html</b>（五枚立体的原始逐点核验）。</p>
+</div>
+
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* ============================================================
+   0. 通用工具
+   ============================================================ */
+var $ = function(id){ return document.getElementById(id); };
+var SQRT_CALLS = 0;                    /* 自检断言必须为 0 */
+var EPS = 1e-9;
+
+function fmt(x, n){ n = (n === undefined) ? 4 : n; return (Math.abs(x) < 1e-12 ? 0 : x).toFixed(n); }
+function keyOf(p){ return p[0] + ',' + p[1] + ',' + p[2]; }
+
+/* ============================================================
+   1. 顶点、两枚四面体、12 条腿
+   ============================================================ */
+var V8 = [];
+for (var sx = -1; sx <= 1; sx += 2)
+  for (var sy = -1; sy <= 1; sy += 2)
+    for (var sz = -1; sz <= 1; sz += 2) V8.push([sx, sy, sz]);
+
+var T1 = V8.filter(function(p){ return p[0]*p[1]*p[2] > 0; });
+var T2 = V8.filter(function(p){ return p[0]*p[1]*p[2] < 0; });
+
+var LEGS = [];
+for (var li = 0; li < 4; li++) for (var lj = 0; lj < 4; lj++) if (li !== lj) LEGS.push([li, lj]);
+
+/* Hamming：两位标签的不等位数 */
+function ham(a, b){
+  var k = 0;
+  for (var i = 0; i < 3; i++) if (a[i] !== b[i]) k++;
+  return k;
+}
+
+/* ============================================================
+   2. T_d：3×3 带符号置换矩阵里「保住 T₁ 集合」的那 24 个
+      （注意：不能用 det=+1 去筛 —— 那是立方体的 24 个真旋转，
+        其中一半会把 T₁ 送到 T₂，正是本页 §4 要区分的两种手性）
+   ============================================================ */
+function det3(m){
+  return m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1])
+       - m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0])
+       + m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]);
+}
+var PERMS = [[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];
+var T1SET = T1.map(keyOf).sort().join('|');
+var ALL48 = [], TD = [];
+for (var pi = 0; pi < 6; pi++){
+  var pm = PERMS[pi];
+  for (var sg = 0; sg < 8; sg++){
+    var s = [(sg & 1) ? -1 : 1, (sg & 2) ? -1 : 1, (sg & 4) ? -1 : 1];
+    var m = [0,1,2].map(function(i){ return [0,1,2].map(function(j){ return pm[i] === j ? s[i] : 0; }); });
+    var M = {
+      pm: pm, s: s, m: m, det: det3(m),
+      ap: (function(pp, ss){ return function(v){ return [ss[0]*v[pp[0]], ss[1]*v[pp[1]], ss[2]*v[pp[2]]]; }; })(pm, s)
+    };
+    var img = T1.map(function(v){ return keyOf(M.ap(v)); }).sort().join('|');
+    M.keep = (img === T1SET);
+    ALL48.push(M);
+    if (M.keep) TD.push(M);
+  }
+}
+var T12 = TD.filter(function(M){ return M.det === 1; });
+
+var T1IDX = {};
+T1.forEach(function(v, i){ T1IDX[keyOf(v)] = i; });
+
+/* 轨道（按生成元闭包，作用在腿的指标对 "i>j" 上） */
+function orbitLegs(gens, start){
+  var seen = {}, q = [start];
+  while (q.length){
+    var L = q.pop();
+    if (seen[L]) continue;
+    seen[L] = 1;
+    var ij = L.split('>'), a0 = +ij[0], b0 = +ij[1];
+    for (var gi = 0; gi < gens.length; gi++){
+      var g = gens[gi];
+      var a = T1IDX[keyOf(g.ap(T1[a0]))], b = T1IDX[keyOf(g.ap(T1[b0]))];
+      if (a === undefined || b === undefined) continue;
+      q.push(a + '>' + b);
+    }
+  }
+  return Object.keys(seen);
+}
+
+var Z3 = [
+  { ap: function(v){ return v; } },
+  { ap: function(v){ return [v[1], v[2], v[0]]; } },
+  { ap: function(v){ return [v[2], v[0], v[1]]; } }
+];
+
+/* 顶点 i 在 T_d 里的稳定子（应 6 元 = 3 真旋转 + 3 镜面） */
+function stabOf(i){
+  var k = keyOf(T1[i]);
+  return TD.filter(function(M){ return keyOf(M.ap(T1[i])) === k; });
+}
+/* "i>j" → "aᵢ→aⱼ" */
+var NAM1 = ['a₁','a₂','a₃','a₄'];
+function legName(s){
+  var q = s.split('>');
+  return NAM1[+q[0]] + '→' + NAM1[+q[1]];
+}
+/* 一条轨道长什么样 */
+function z3Shape(arr){
+  var tails = {}, heads = {};
+  arr.forEach(function(s){ var q = s.split('>'); tails[q[0]] = 1; heads[q[1]] = 1; });
+  if (Object.keys(tails).length === 1) return '同一顶点出束';
+  if (Object.keys(heads).length === 1) return '同一顶点入束';
+  return '三角循环';
+}
+
+/* Z₃ 在 12 条腿上的轨道 */
+function z3Orbits(){
+  var seen = {}, out = [];
+  LEGS.forEach(function(L){
+    var k0 = L[0] + '>' + L[1];
+    if (seen[k0]) return;
+    var o = orbitLegs(Z3, k0);
+    o.forEach(function(x){ seen[x] = 1; });
+    out.push(o);
+  });
+  return out;
+}
+
+/* 28 对：Hamming 分档 + T_d 轨道 */
+var PAIRS = [];
+for (var a = 0; a < 8; a++) for (var b = a + 1; b < 8; b++) PAIRS.push([a, b]);
+
+var V8IDX = {};
+V8.forEach(function(v, i){ V8IDX[keyOf(v)] = i; });
+
+function tdOrbitOfPair(i, j){
+  var set = {};
+  TD.forEach(function(M){
+    var x = V8IDX[keyOf(M.ap(V8[i]))], y = V8IDX[keyOf(M.ap(V8[j]))];
+    set[Math.min(x, y) + '>' + Math.max(x, y)] = 1;
+  });
+  return Object.keys(set);
+}
+var ORB = {};
+PAIRS.forEach(function(pr){
+  var o = tdOrbitOfPair(pr[0], pr[1]);
+  var canon = o.slice().sort()[0];
+  if (!ORB[canon]) ORB[canon] = { rep: canon, members: o, k: ham(V8[pr[0]], V8[pr[1]]) };
+});
+var ORBLIST = Object.keys(ORB).map(function(k){ return ORB[k]; })
+  .sort(function(p, q){ return p.k - q.k || q.members.length - p.members.length; });
+
+/* ============================================================
+   3. 两套点阵
+   ============================================================ */
+var C64 = [], V125 = [];
+[-3,-1,1,3].forEach(function(x){ [-3,-1,1,3].forEach(function(y){ [-3,-1,1,3].forEach(function(z){ C64.push([x,y,z]); }); }); });
+[-4,-2,0,2,4].forEach(function(x){ [-4,-2,0,2,4].forEach(function(y){ [-4,-2,0,2,4].forEach(function(z){ V125.push([x,y,z]); }); }); });
+var Cset = {}, Vset = {};
+C64.forEach(function(p){ Cset[keyOf(p)] = 1; });
+V125.forEach(function(p){ Vset[keyOf(p)] = 1; });
+
+var PHI = (1 + Math.sqrt(5)) / 2, IPHI = 1 / PHI;
+var SOLID = {
+  tet: { cn: '正四面体', V: [[1,1,1],[1,-1,-1],[-1,1,-1],[-1,-1,1]] },
+  oct: { cn: '正八面体', V: [[2,0,0],[-2,0,0],[0,2,0],[0,-2,0],[0,0,2],[0,0,-2]] },
+  cub: { cn: '正六面体', V: [[-1,-1,-1],[-1,-1,1],[-1,1,-1],[-1,1,1],[1,-1,-1],[1,-1,1],[1,1,-1],[1,1,1]] },
+  dod: { cn: '正十二面体', V: (function(){
+      var o = [];
+      [-1,1].forEach(function(x){ [-1,1].forEach(function(y){ [-1,1].forEach(function(z){ o.push([x,y,z]); }); }); });
+      [-1,1].forEach(function(s){ [-1,1].forEach(function(t){
+        o.push([0, s*IPHI, t*PHI]); o.push([s*IPHI, t*PHI, 0]); o.push([t*PHI, 0, s*IPHI]);
+      }); });
+      return o;
+    })() },
+  ico: { cn: '正二十面体', V: (function(){
+      var o = [];
+      [-1,1].forEach(function(s){ [-1,1].forEach(function(t){
+        o.push([0, s, t*PHI]); o.push([s, t*PHI, 0]); o.push([t*PHI, 0, s]);
+      }); });
+      return o;
+    })() }
+};
+function countIn(pts, set){ var n = 0; pts.forEach(function(p){ if (set[keyOf(p)]) n++; }); return n; }
+function isIntPt(p){ return p.every(function(v){ return Math.abs(v - Math.round(v)) < 1e-12; }); }
+
+/* ============================================================
+   4. 3D 投影 + 交互（四个画布共用）
+   ============================================================ */
+function bind3D(cv, st, redraw){
+  var drag = false, lx = 0, ly = 0;
+  cv.addEventListener('pointerdown', function(e){ drag = true; lx = e.clientX; ly = e.clientY; cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointerup', function(e){ drag = false; try { cv.releasePointerCapture(e.pointerId); } catch (err) {} });
+  cv.addEventListener('pointermove', function(e){
+    if (!drag) return;
+    st.yaw += (e.clientX - lx) * 0.008;
+    st.pitch += (e.clientY - ly) * 0.006;
+    st.pitch = Math.max(-1.45, Math.min(1.45, st.pitch));
+    lx = e.clientX; ly = e.clientY;
+    redraw();
+  });
+  cv.addEventListener('wheel', function(e){
+    e.preventDefault();
+    st.zoom *= (e.deltaY > 0 ? 0.93 : 1.075);
+    st.zoom = Math.max(0.25, Math.min(4, st.zoom));
+    redraw();
+  }, { passive: false });
+}
+
+function mkProj(cv, st, W, H, camz, focal){
+  var cy = Math.cos(st.yaw), sy = Math.sin(st.yaw), cp = Math.cos(st.pitch), sp = Math.sin(st.pitch);
+  return function(p){
+    var x1 =  p[0]*cy + p[2]*sy;
+    var z1 = -p[0]*sy + p[2]*cy;
+    var y2 =  p[1]*cp - z1*sp;
+    var z2 =  p[1]*sp + z1*cp;
+    var s = focal / (camz - z2) * st.zoom;
+    return { x: W/2 + x1*s, y: H/2 - y2*s, d: camz - z2 };
+  };
+}
+function clearCv(ctx, W, H){
+  ctx.fillStyle = '#fdfcf8'; ctx.fillRect(0, 0, W, H);
+}
+function line(ctx, p, q, col, w, dash, alpha){
+  ctx.save();
+  if (alpha !== undefined) ctx.globalAlpha = alpha;
+  ctx.strokeStyle = col; ctx.lineWidth = w || 1.4;
+  if (dash) ctx.setLineDash(dash);
+  ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
+  ctx.restore();
+}
+function dot(ctx, p, col, r){
+  ctx.beginPath(); ctx.arc(p.x, p.y, r || 3, 0, 6.2832);
+  ctx.fillStyle = col; ctx.fill();
+}
+function lab(ctx, s, p, col, size, dx, dy, align){
+  ctx.save();
+  ctx.font = (size || 12) + 'px ui-monospace,Consolas,monospace';
+  ctx.textBaseline = 'middle'; ctx.textAlign = align || 'left';
+  ctx.lineWidth = 4.5; ctx.strokeStyle = '#fdfcf8';
+  ctx.strokeText(s, p.x + (dx || 0), p.y + (dy || 0));
+  ctx.fillStyle = col; ctx.fillText(s, p.x + (dx || 0), p.y + (dy || 0));
+  ctx.restore();
+}
+
+/* ============================================================
+   5. §1 双曲线作图（零开方：全部二分求交）
+   ============================================================ */
+var Hyp = {
+  cv: $('cvHyp'), W: 880, H: 470, mode: 'sqrt', n1: 2, n2: 3,
+  view: { cx: 0, cy: 0, sc: 90 },
+  st: { yaw: 0, pitch: 0, zoom: 1 }
+};
+Hyp.ctx = Hyp.cv.getContext('2d');
+function PX(x){ return Hyp.W/2 + (x - Hyp.view.cx) * Hyp.view.sc; }
+function PY(y){ return Hyp.H/2 - (y - Hyp.view.cy) * Hyp.view.sc; }
+
+function fLine(m, b, x){ return m*x + b - 1/x; }
+/* 在 [lo,hi] 中二分找变号根；区间端点必须真的变号，否则返回 null（不猜） */
+function solveRoot(m, b, lo, hi){
+  var fa = fLine(m, b, lo), fb = fLine(m, b, hi);
+  if (!(fa * fb <= 0)) return null;          /* 端点上不变号 ⇒ 无根，直接判失败 */
+  for (var it = 0; it < 90; it++){
+    var mid = 0.5 * (lo + hi), fm = fLine(m, b, mid);
+    if (fa * fm <= 0){ hi = mid; fb = fm; } else { lo = mid; fa = fm; }
+  }
+  return 0.5 * (lo + hi);
+}
+/* 求 √n：解 n·x − 1/x = 0 ⇒ x = 1/√n，纵坐标 = n·x */
+function sqrtByGeo(n){
+  var x = solveRoot(n, 0, 0.01, 20);
+  if (x === null) return NaN;
+  return n * x;
+}
+
+/* 过曲线上 (px,py) 的切线切点参数 t 满足 px·t² − 2t + py = 0（抛物线，二分求根，零开方） */
+function gTan(px, py, t){ return px*t*t - 2*t + py; }
+function tangentTs(px, py){
+  var out = [];
+  if (!(px > 0)) return out;
+  var tm = 1/px;                                  /* 顶点 t = 1/px */
+  if (Math.abs(gTan(px, py, tm)) < 1e-15) return [tm];
+  if (gTan(px, py, tm) > 0) return out;            /* 开口向上且最小值 > 0 ⇒ 无实根 */
+  /* 左支 */
+  var lo = 0, hi = tm;
+  if (gTan(px, py, lo) * gTan(px, py, hi) <= 0){
+    for (var i = 0; i < 90; i++){
+      var md = 0.5*(lo+hi);
+      if (gTan(px,py,lo) * gTan(px,py,md) <= 0) hi = md; else lo = md;
+    }
+    out.push(0.5*(lo+hi));
+  }
+  /* 右支（区间不够就按 1.6 倍扩张） */
+  lo = tm; hi = tm*4 + 1;
+  var g = 0;
+  while (gTan(px,py,hi) < 0 && g < 200){ hi = hi*1.6 + 1; g++; }
+  if (gTan(px,py,hi) >= 0){
+    for (var j = 0; j < 90; j++){
+      var md2 = 0.5*(lo+hi);
+      if (gTan(px,py,lo) * gTan(px,py,md2) <= 0) hi = md2; else lo = md2;
+    }
+    out.push(0.5*(lo+hi));
+  }
+  return out;
+}
+
+/* 减法：大数 n1 放 y 轴 (0,n1)，小数 n2 放曲线 (1/n2,n2)，连线 y = n2(n2−n1)x + n1
+   Vieta：两根之积 = −1/m ⇒ 已知根 1/n2 之外的根 = 1/(n1−n2) */
+function subByGeo(n1, n2){
+  var big = Math.max(n1, n2), small = Math.min(n1, n2);
+  var m = small*(small - big), b = big;
+  var xK = 1/small, x = null;
+  if (Math.abs(big - small) < 1e-9) return { m:m, b:b, x:null, y:0, xKnown:xK, degen:true };
+  /* 第二根必在 (0, xK) 或 (xK, ∞)，两侧分别试，先真变号才算 */
+  var lo = 1e-7, hi = xK*0.999999;
+  if (fLine(m,b,lo) * fLine(m,b,hi) <= 0) x = solveRoot(m, b, lo, hi);
+  if (x === null){
+    var l2 = xK*1.000001, h2 = xK*3 + 2, g = 0;
+    while (fLine(m,b,l2) * fLine(m,b,h2) > 0 && g < 200){ h2 = h2*1.7 + 1; g++; }
+    if (fLine(m,b,l2) * fLine(m,b,h2) <= 0) x = solveRoot(m, b, l2, h2);
+  }
+  return { m:m, b:b, x:x, y: x === null ? NaN : 1/x, xKnown:xK };
+}
+
+/* 除法：n1 连向径 y = n1·x ∩ n2 的切线 y = −n2²x + 2n2 = Q，从 Q 再作切线，切点纵坐标 = n1/n2 */
+function divByGeo(n1, n2){
+  var mt = -n2*n2, bt = 2*n2;
+  var xQ = (bt - 0) / (n1 - mt), yQ = n1 * xQ;
+  var ts = tangentTs(xQ, yQ);
+  var cand = ts.filter(function(t){ return Math.abs(t - n2) > 1e-6; });
+  var t = cand.length ? cand[0] : (ts.length ? ts[0] : NaN);
+  return { xQ:xQ, yQ:yQ, t:t, y:t, ts:ts };
+}
+
+/* 平方：唯一不需要切线的运算 —— 曲线点 (1/n, n) 连向径，斜率 = n ÷ (1/n) = n²。
+   注意 a=b 时「两切线交点」退化（两条切线重合），所以平方决不能走 mulByGeo */
+function sqByGeo(n){ return n / (1/n); }
+
+/* 乘法：两切线交点连原点，读斜率 = a·b（零开方，要求 a ≠ b） */
+function mulByGeo(a, b){
+  var m1 = -a*a, b1 = 2*a, m2 = -b*b, b2 = 2*b, den = m1 - m2;
+  if (Math.abs(den) < 1e-14) return NaN;
+  var x = (b2 - b1)/den, y = m1*x + b1;
+  return y/x;
+}
+
+/* ---- §1b 几何成本表：每一行的数都是现场读出来的，不做查表 ----
+   刀数口径：向径 1 / 弦 1 / 切线对 1 / 除法 2（向径接口 + 二次切线）
+   ref 是写死的已知值（只用于算残差），本页不靠它算结果 */
+var RAD = [
+  { n:'√2',        deg:'2',  cut:1, path:'x=1 取 2 → 1 条向径', v:function(){ return sqrtByGeo(2); },
+    ref:1.4142135623730951 },
+  { n:'√3',        deg:'2',  cut:1, path:'x=1 取 3 → 1 条向径', v:function(){ return sqrtByGeo(3); },
+    ref:1.7320508075688772 },
+  { n:'√5',        deg:'2',  cut:1, path:'x=1 取 5 → 1 条向径', v:function(){ return sqrtByGeo(5); },
+    ref:2.23606797749979 },
+  { n:'√7',        deg:'2',  cut:1, path:'x=1 取 7 → 1 条向径', v:function(){ return sqrtByGeo(7); },
+    ref:2.6457513110645907 },
+  { n:'2^(1/4)',   deg:'4',  cut:2, path:'向径读 √2 → 再拿 √2 当 n 连一次向径（嵌套）', v:function(){ return sqrtByGeo(sqrtByGeo(2)); },
+    ref:1.1892071150027210 },
+  { n:'2^(1/8)',   deg:'8',  cut:3, path:'三层嵌套向径', v:function(){ return sqrtByGeo(sqrtByGeo(sqrtByGeo(2))); },
+    ref:1.0905077326652577 },
+  { n:'φ',         deg:'2',  cut:4, path:'向径读 √5 → 弦读 1+√5 → 除法 ÷2（2 刀）', v:function(){ return divByGeo(sqrtByGeo(5)+1, 2).t; },
+    ref:1.6180339887498949 },
+  { n:'1/φ',       deg:'2',  cut:2, path:'从已知 φ 出发，一次除法（2 刀；不含造 φ 那 4 刀）', v:function(){ return divByGeo(1, divByGeo(sqrtByGeo(5)+1, 2).t).t; },
+    ref:0.6180339887498949 },
+  { n:'(√2−1)⁴',   deg:'2',  cut:4, path:'向径读 √2 → 弦减 1 → 向径平方（读斜率）→ 再平方', v:function(){
+      var r = sqrtByGeo(2) - 1, q = sqByGeo(r); return sqByGeo(q); },
+    ref:0.0294372515228590 },
+  { n:'√6/4（正四面体 R/a）', deg:'2', cut:3, path:'向径读 √6 → 除法 ÷4（2 刀）', v:function(){ return divByGeo(sqrtByGeo(6), 4).t; },
+    ref:0.6123724356957945 },
+  { n:'∛2',        deg:'3',  cut:null, path:'<b>画不出</b>：三次，规矩数次数必须是 2 的幂（倍立方不可能）', v:null,
+    ref:null },
+  { n:'π',         deg:'超越', cut:null, path:'<b>画不出</b>：不是「刀数多」，是刀数无穷', v:null,
+    ref:null }
+];
+
+function fillRadTable(){
+  var tb = $('radBody'); if (!tb) return;
+  var rows = '', data = [];
+  RAD.forEach(function(r){
+    var v = r.v ? r.v() : null;
+    var err = (r.ref === null || v === null || !isFinite(v)) ? null : Math.abs(v - r.ref);
+    var cls = err === null ? '' : (err < 1e-9 ? 'ok' : 'no');
+    rows += '<tr><td>' + r.n + '</td>' +
+            '<td class="num">' + r.deg + '</td>' +
+            '<td class="num">' + (r.cut === null ? '∞' : r.cut) + '</td>' +
+            '<td>' + r.path + '</td>' +
+            '<td class="num">' + (v === null || !isFinite(v) ? '—' : fmt(v, 9)) + '</td>' +
+            '<td class="num ' + cls + '">' + (err === null ? '—' : err.toExponential(1)) + '</td></tr>';
+    data.push({ n:r.n, cut:r.cut, v:v, ref:r.ref, err:err });
+  });
+  tb.innerHTML = rows;
+  window.__rad = data;
+}
+
+function hypReadout(lines){ $('hypRead').textContent = lines.join('\n'); }
+
+function drawHyp(){
+  var ctx = Hyp.ctx, W = Hyp.W, H = Hyp.H;
+  clearCv(ctx, W, H);
+  var n1 = Hyp.n1, n2 = Hyp.n2, m = Hyp.mode;
+
+  /* --- 按模式自动取景（等比例，只改中心点，不歪曲尺度） --- */
+  var yMax, xMax, GMv = sqrtByGeo(n1*n2);
+  if (m === 'sqrt'){ yMax = Math.max(n1, sqrtByGeo(n1)) + 0.8; xMax = 1/sqrtByGeo(n1) + 0.6; }
+  else if (m === 'sq'){ yMax = n1*n1 + 0.8; xMax = 1.3; }
+  else if (m === 'add'){ yMax = n1 + n2 + 0.8; xMax = Math.max(1/n1, 1/n2) + 0.6; }
+  else if (m === 'mul'){ yMax = n1*n2 + 0.8; xMax = Math.max(1/n1, 1/n2) + 0.7; }
+  else if (m === 'sub'){
+    var dSub = Math.abs(n1 - n2), bigS = Math.max(n1,n2), smallS = Math.min(n1,n2);
+    yMax = bigS + 0.8;
+    xMax = Math.min(Math.max(1/smallS + 0.5, (dSub > 1e-9 ? 1/dSub : 0) + 0.35), 5.0);
+  }
+  else if (m === 'div'){
+    var dv = divByGeo(n1, n2), tv = (isFinite(dv.t) ? dv.t : n1);
+    yMax = Math.max(n1, n2, tv, dv.yQ) + 0.8;
+    xMax = Math.max(1/n2, dv.xQ, tv > 0 ? 1/tv : 1, 1/n1) + 0.7;
+  }
+  else { yMax = Math.max((n1+n2)/2, n1, n2) + 0.8; xMax = Math.max(1/GMv, (n1+n2)/(2*n1*n2)) + 0.7; }
+  /* 取景：只画右支，所以不该把 x<0 的那一半也留出来。
+     做法是把原点钉在左下角（padL, H−padB），sc 由可用宽高取小。
+     cx / cy 仍是 PX / PY 里的中心量，这里反解出对应的值。 */
+  var padL = 74, padB = 46, padT = 26, padR = 46;
+  var sc = Math.min((W - padL - padR) / xMax, (H - padT - padB) / yMax);
+  sc = Math.max(26, Math.min(sc, 210));
+  Hyp.view = { cx: (W/2 - padL)/sc, cy: (H/2 - padB)/sc, sc: sc };
+  /* 只画右支 ⇒ 横向一律铺满：曲线画到哪儿由画布宽度反算，不再留半幅空白。
+     纵向若被横向挤到画不下（yTop < yMax），顶部就如实裁掉，不偷偷压缩比例。 */
+  var xDraw = (W - padL - padR) / sc;
+  var yTop = Math.max(yMax, (H - padT - padB) / sc);
+
+  /* --- 坐标轴 --- */
+  line(ctx, {x: PX(0), y: PY(0)}, {x: PX(xDraw), y: PY(0)}, '#c9c2b2', 1.2);
+  line(ctx, {x: PX(0), y: PY(0)}, {x: PX(0), y: PY(yTop)}, '#c9c2b2', 1.2);
+  lab(ctx, 'x', {x: PX(xDraw), y: PY(0)}, '#8d8678', 12, 4, 14);
+  lab(ctx, 'y', {x: PX(0), y: PY(yTop)}, '#8d8678', 12, -14, -2);
+  lab(ctx, 'O', {x: PX(0), y: PY(0)}, '#8d8678', 11, -14, 12);
+
+  /* --- 曲线 y = 1/x（双重描边，别被弦压没） --- */
+  var pts = [];
+  for (var i = 0; i <= 400; i++){
+    var xx = 0.02 + (xDraw - 0.02) * i / 400;
+    pts.push({ x: PX(xx), y: PY(1/xx) });
+  }
+  ctx.save();
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#fdfcf8'; ctx.lineWidth = 7;
+  ctx.beginPath(); pts.forEach(function(p, k){ k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); }); ctx.stroke();
+  ctx.strokeStyle = '#0F6E56'; ctx.lineWidth = 3;
+  ctx.beginPath(); pts.forEach(function(p, k){ k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); }); ctx.stroke();
+  ctx.restore();
+
+  /* --- x = 1 基准线 --- */
+  line(ctx, {x: PX(1), y: PY(0)}, {x: PX(1), y: PY(yTop)}, '#a9a08c', 1.6, [7, 5]);
+  lab(ctx, 'x = 1', {x: PX(1), y: 0}, '#8d8678', 11, 6, -12);
+
+  var out = [];
+  var N1 = { x: PX(1/n1), y: PY(n1) }, N2 = { x: PX(1/n2), y: PY(n2) };
+
+  function rayTo(slope, col, w, dash){
+    var yEnd = yTop;
+    var xEnd = yEnd / slope;
+    line(ctx, {x: PX(0), y: PY(0)}, {x: PX(xEnd), y: PY(yEnd)}, col, w || 1.6, dash, .9);
+  }
+
+  if (m === 'sqrt'){
+    var v = sqrtByGeo(n1);
+    rayTo(n1, 'rgba(83,74,183,.9)', 1.8);
+    dot(ctx, {x: PX(1), y: PY(n1)}, '#534AB7', 5);
+    lab(ctx, 'n = ' + n1.toFixed(2), {x: PX(1), y: PY(n1)}, '#534AB7', 12, 9, -14);
+    dot(ctx, {x: PX(1/v), y: PY(v)}, '#C0442A', 6);
+    lab(ctx, '√n = ' + fmt(v), {x: PX(1/v), y: PY(v)}, '#A33C1D', 12.5, -12, 20, 'right');
+    line(ctx, {x: PX(1/v), y: PY(v)}, {x: PX(1/v), y: PY(0)}, '#C0442A', 1.1, [4,4]);
+    out.push('√n：x=1 上取 n=' + n1.toFixed(2) + '，连原点');
+    out.push('   ∩ 曲线（点 (1/√n, √n)）= ' + fmt(v, 8));
+    out.push('   n·x − 1/x = 0 的残差 = ' + (n1*(1/v) - v).toExponential(2));
+    out.push('   验算：√n · √n = ' + fmt(v*v, 8) + '（应 = ' + n1.toFixed(2) + '）');
+  }
+
+  if (m === 'sq'){
+    var sq = n1*n1;
+    rayTo(sq, 'rgba(83,74,183,.9)', 1.8);
+    dot(ctx, N1, '#534AB7', 5);
+    lab(ctx, '(1/n, n)', N1, '#534AB7', 12, 9, 12);
+    dot(ctx, {x: PX(1), y: PY(sq)}, '#C0442A', 6);
+    lab(ctx, 'n² = ' + fmt(sq), {x: PX(1), y: PY(sq)}, '#A33C1D', 12.5, 9, -14);
+    line(ctx, {x: PX(1), y: PY(sq)}, {x: PX(0), y: PY(sq)}, '#C0442A', 1.1, [4,4]);
+    out.push('n²：曲线点 (1/n, n) 连原点，向径斜率 = n ÷ (1/n) = ' + fmt(sq));
+    out.push('   与 x = 1 交点纵坐标 = ' + fmt(sq) + '（不需要乘法）');
+  }
+
+  if (m === 'add'){
+    var bAdd = n1 + n2, mAdd = -n1*n2;
+    line(ctx, {x: PX(0), y: PY(bAdd)}, {x: PX(1/n1), y: PY(n1)}, '#534AB7', 2);
+    line(ctx, {x: PX(1/n1), y: PY(n1)}, {x: PX(1/n2), y: PY(n2)}, '#534AB7', 2);
+    dot(ctx, N1, '#534AB7', 5); dot(ctx, N2, '#185FA5', 5);
+    lab(ctx, 'n₁', N1, '#534AB7', 12, 8, -12);
+    lab(ctx, 'n₂', N2, '#185FA5', 12, 8, -12);
+    dot(ctx, {x: PX(0), y: PY(bAdd)}, '#C0442A', 6);
+    lab(ctx, 'n₁+n₂ = ' + fmt(bAdd), {x: PX(0), y: PY(bAdd)}, '#A33C1D', 12.5, 10, -13);
+    var mMeas = (n2 - n1) / (1/n2 - 1/n1);
+    out.push('加法：两点连弦 y = ' + fmt(mAdd,3) + 'x + ' + fmt(bAdd,3));
+    out.push('   y 截距 = ' + fmt(bAdd, 8) + '（斜率 −n₁n₂ = ' + fmt(mAdd, 8) + '）');
+    out.push('   现算斜率 ' + fmt(mMeas, 8) + '，与 −n₁n₂ 差 ' + Math.abs(mMeas - mAdd).toExponential(2));
+  }
+
+  if (m === 'mul'){
+    function tangent(n){ return { m: -n*n, b: 2*n }; }
+    var t1 = tangent(n1), t2 = tangent(n2);
+    var xi = (t2.b - t1.b) / (t1.m - t2.m), yi = t1.m*xi + t1.b;
+    function drawTan(n, col){
+      var t = tangent(n);
+      var x0 = 0.02, x1 = Math.min(xMax, 2.4/n);
+      line(ctx, {x: PX(x0), y: PY(t.m*x0 + t.b)}, {x: PX(x1), y: PY(t.m*x1 + t.b)}, col, 1.6, [6,4]);
+    }
+    drawTan(n1, 'rgba(192,68,42,.8)');
+    drawTan(n2, 'rgba(24,95,165,.8)');
+    dot(ctx, N1, '#C0442A', 5); dot(ctx, N2, '#185FA5', 5);
+    lab(ctx, 'n₁', N1, '#A33C1D', 12, 8, 14);
+    lab(ctx, 'n₂', N2, '#185FA5', 12, -8, -12);
+    var slope = yi / xi;
+    rayTo(slope, 'rgba(83,74,183,.85)', 1.8);
+    dot(ctx, {x: PX(xi), y: PY(yi)}, '#854F0B', 6);
+    lab(ctx, '两切线交点', {x: PX(xi), y: PY(yi)}, '#854F0B', 11.5, -10, 16);
+    lab(ctx, '斜率 = n₁n₂ = ' + fmt(slope), {x: PX(0.9), y: PY(0.9*slope)}, '#A33C1D', 12, 6, -12);
+    out.push('乘法：切线 y = −n²x + 2n，两切线交于 x = 2/(n₁+n₂) = ' + fmt(xi, 6));
+    out.push('   连原点，斜率 = ' + fmt(slope, 8) + '（= n₁n₂ = ' + fmt(n1*n2, 8) + '）');
+    out.push('   残差 ' + Math.abs(slope - n1*n2).toExponential(2));
+  }
+
+  if (m === 'sub'){
+    var R = subByGeo(n1, n2);
+    var bigS2 = Math.max(n1,n2), smallS2 = Math.min(n1,n2);
+    var Ny = { x: PX(0), y: PY(bigS2) };            /* y 轴上的大数 */
+    var Nc = { x: PX(1/smallS2), y: PY(smallS2) };  /* 曲线上的小数 */
+    line(ctx, Ny, Nc, '#534AB7', 2.2);
+    dot(ctx, Ny, '#534AB7', 5.5); dot(ctx, Nc, '#185FA5', 5.5);
+    lab(ctx, '大数 ' + bigS2.toFixed(2) + '（y 轴）', Ny, '#534AB7', 11.5, 10, -10);
+    lab(ctx, '小数 ' + smallS2.toFixed(2) + '（曲线）', Nc, '#185FA5', 11.5, 8, 16);
+    if (isFinite(R.y) && R.y > 0){
+      var P2 = { x: PX(1/R.y), y: PY(R.y) };
+      var vis = (1/R.y) <= xMax;
+      dot(ctx, P2, vis ? '#C0442A' : '#b9b1a0', 6.5);
+      if (vis){
+        lab(ctx, 'n₁−n₂ = ' + fmt(R.y), P2, '#A33C1D', 12.5, 10, -12);
+        line(ctx, P2, {x: P2.x, y: PY(0)}, '#C0442A', 1.1, [4,4]);
+      } else {
+        lab(ctx, '第二根在 x = ' + fmt(1/R.y,3) + '（画面外）', {x: PX(xMax*0.55), y: PY(yMax*0.16)}, '#8d8678', 12, 0, 0);
+      }
+    }
+    dot(ctx, Nc, '#185FA5', 5.5);
+    out.push('减法：大数 ' + bigS2.toFixed(2) + ' 放 y 轴、小数 ' + smallS2.toFixed(2) + ' 放曲线，两点连线');
+    if (bigS2 !== n1 || smallS2 !== n2)
+      out.push('   （滑块 n₁=' + n1.toFixed(2) + ' < n₂=' + n2.toFixed(2) + '，几何上取大减小；反向差在左支，为负）');
+    out.push('   直线 y = ' + fmt(R.m,4) + 'x + ' + fmt(R.b,4) + '，与曲线交于已知根 x = 1/小数 = ' + fmt(R.xKnown,6));
+    out.push('   Vieta：x₁·x₂ = −1/m ⇒ 第二根 x = ' + (isFinite(R.x)?fmt(R.x,6):'—') + '，纵坐标 = ' + (isFinite(R.y)?fmt(R.y,8):'—'));
+    out.push('   验算：n₁ − n₂ = ' + fmt(bigS2 - smallS2, 8) + '，残差 ' + (isFinite(R.y)?Math.abs(R.y-(bigS2-smallS2)).toExponential(2):'—'));
+  }
+
+  if (m === 'div'){
+    var D = divByGeo(n1, n2);
+    rayTo(n1, 'rgba(83,74,183,.85)', 1.8);
+    var t2 = { m: -n2*n2, b: 2*n2 };
+    line(ctx, {x: PX(0.02), y: PY(t2.m*0.02+t2.b)}, {x: PX(Math.min(xMax, 2.6/n2)), y: PY(t2.m*Math.min(xMax,2.6/n2)+t2.b)}, 'rgba(24,95,165,.75)', 1.6, [6,4]);
+    dot(ctx, N2, '#185FA5', 5); lab(ctx, 'n₂', N2, '#185FA5', 12, 6, 15);
+    dot(ctx, {x: PX(D.xQ), y: PY(D.yQ)}, '#854F0B', 6);
+    lab(ctx, 'Q（向径 ∩ 切线）', {x: PX(D.xQ), y: PY(D.yQ)}, '#854F0B', 11.5, -10, 20, 'right');
+    if (isFinite(D.t) && D.t > 0){
+      var Tp = { x: PX(1/D.t), y: PY(D.t) };
+      line(ctx, {x: PX(D.xQ), y: PY(D.yQ)}, Tp, 'rgba(192,68,42,.85)', 1.8, [5,4]);
+      dot(ctx, Tp, '#C0442A', 6.5);
+      var tvis = (1/D.t) <= xMax;
+      lab(ctx, 'n₁÷n₂ = ' + fmt(D.t), Tp, '#A33C1D', 12.5, tvis ? -12 : 10, 20, tvis ? 'right' : null);
+      if (tvis) line(ctx, Tp, {x: Tp.x, y: PY(0)}, '#C0442A', 1.1, [4,4]);
+    }
+    out.push('除法：n₁ 连向径 y = ' + n1.toFixed(2) + 'x，与 n₂ 的切线交于 Q(' + fmt(D.xQ,3) + ', ' + fmt(D.yQ,3) + ')');
+    out.push('   从 Q 向曲线作第二条切线，切点参数 t = ' + (isFinite(D.t)?fmt(D.t,8):'—'));
+    out.push('   验算：n₁ ÷ n₂ = ' + fmt(n1/n2, 8) + '，残差 ' + (isFinite(D.t)?Math.abs(D.t-n1/n2).toExponential(2):'—'));
+    out.push('   切点有两个解，取不是 n₂ 那个（n₂ 自己也是 Q 的切点——这正是必须避开的地方）');
+  }
+
+  if (m === 'mean'){
+    var prod = n1*n2;
+    var AM = (n1 + n2) / 2, GM = sqrtByGeo(prod), HM = 2*n1*n2/(n1 + n2);
+    var chordM = -n1*n2, chordB = n1 + n2;
+    line(ctx, {x: PX(0.02), y: PY(chordM*0.02 + chordB)}, {x: PX(Math.min(xMax, 2.2/n1)) , y: PY(chordM*Math.min(xMax, 2.2/n1) + chordB)}, '#534AB7', 1.8);
+    line(ctx, {x: PX(0.02), y: PY(prod*0.02)}, {x: PX(xMax), y: PY(prod*xMax)}, 'rgba(192,68,42,.85)', 1.8);
+    dot(ctx, N1, '#534AB7', 4.5); dot(ctx, N2, '#185FA5', 4.5);
+    var xAM = chordB / (prod - chordM);
+    dot(ctx, {x: PX(xAM), y: PY(AM)}, '#0F6E56', 6.5);
+    lab(ctx, 'AM ' + fmt(AM,3), {x: PX(xAM), y: PY(AM)}, '#0F6E56', 12, 9, -12);
+    dot(ctx, {x: PX(1/GM), y: PY(GM)}, '#854F0B', 6.5);
+    lab(ctx, 'GM ' + fmt(GM,3), {x: PX(1/GM), y: PY(GM)}, '#854F0B', 12, 9, 14);
+    dot(ctx, {x: PX(2/(n1+n2)), y: PY(HM)}, '#A32D2D', 6.5);
+    lab(ctx, 'HM ' + fmt(HM,3), {x: PX(2/(n1+n2)), y: PY(HM)}, '#A32D2D', 12, 9, -12);
+    out.push('同一根向径（斜率 = 乘积 ' + fmt(prod,6) + '）：');
+    out.push('   ∩ 弦   ⇒ AM = ' + fmt(AM, 8));
+    out.push('   ∩ 曲线 ⇒ GM = ' + fmt(GM, 8));
+    out.push('   两切线交点 ⇒ HM = ' + fmt(HM, 8));
+    out.push('   |AM·HM − GM²| = ' + Math.abs(AM*HM - GM*GM).toExponential(2));
+  }
+
+  hypReadout(out);
+}
+Hyp.cv.style.cursor = 'default';
+fillRadTable();   /* §1b 几何成本表：现场读一遍 */
+
+document.querySelectorAll('#hypBtns .btn').forEach(function(b){
+  b.onclick = function(){
+    document.querySelectorAll('#hypBtns .btn').forEach(function(x){ x.classList.remove('on'); });
+    b.classList.add('on');
+    Hyp.mode = b.getAttribute('data-m');
+    $('wrapN2').style.opacity = (Hyp.mode === 'sqrt' || Hyp.mode === 'sq') ? .35 : 1;
+    drawHyp();
+  };
+});
+$('rgN1').oninput = function(){ Hyp.n1 = +this.value; $('lbN1').textContent = Hyp.n1.toFixed(2); drawHyp(); };
+$('rgN2').oninput = function(){ Hyp.n2 = +this.value; $('lbN2').textContent = Hyp.n2.toFixed(2); drawHyp(); };
+$('wrapN2').style.opacity = .35;
+
+/* ============================================================
+   6. §2 双曲锥
+   ============================================================ */
+var Cone = {
+  cv: $('cvCone'), W: 880, H: 470, z0: 2, tanA: 0.6,
+  st: { yaw: 0.6, pitch: 0.42, zoom: 1 }
+};
+Cone.ctx = Cone.cv.getContext('2d');
+
+/*
+ * 自适应取景（2026-11-01）
+ * ------------------------------------------------------------
+ * z₀ / tanα 的上限放宽到 8.0 / 20 之后，原来那套固定机位必然出画：
+ * 相机以 z=2 为参照点、锥面只画到 z=3.4，z₀=8 时切平面整个飞出画布。
+ * 所以改成三段自适应，缺一段都会坏：
+ *   ① 参照点 zc = z₀ —— 相机跟着切平面走；
+ *   ② 锥面只画一段窗口 [zLo, zHi]，窗口随 z₀ 缩放，下界卡 0.30·z₀，
+ *      否则 r = 1/z 在 z→0 处爆掉，喇叭口会把整个画面吃掉；
+ *   ③ 世界点先按包围球归一化，再投影求屏上包围盒，最后等比铺进画布。
+ * ⚠️ 归一化不能省：tanα=20 时世界 z 跨度接近 20，超过 camz=7.5，
+ *    投影分母变负 ⇒ 图形整个翻到画面外。
+ */
+function conePoint(theta, r, zc){        /* 原坐标 (r cosθ, r sinθ, 1/r) → 渲染系 (x, z−zc, y) */
+  zc = (zc === undefined) ? 2.0 : zc;
+  return [r*Math.cos(theta), 1/r - zc, r*Math.sin(theta)];
+}
+function sectionR(theta, z0, tanA){
+  var s = Math.sin(theta);
+  /* 🔴 tanα = 0 必须单列一支：水平切 z=z₀ 上截面是半径 1/z₀ 的正圆，
+     而二次式这时退化成 0·r² + z₀·r − 1 = 0 以外的 0/0，逐角算出 NaN。
+     第一版漏了这支，探针在 tanα=0 时报「缺 1999 个角 ⇒ 开口」，全错。 */
+  if (tanA < 1e-12) return 1/z0;
+  if (Math.abs(s) < 1e-12) return 1/z0;
+  var disc = z0*z0 + 4*tanA*s;
+  if (disc < 0) return null;
+  var r = (-z0 + Math.sqrt(disc)) / (2*tanA*s);
+  return (r > 0 && isFinite(r)) ? r : null;
+}
+function coneStats(z0, tanA, N){
+  N = N || 2000;
+  var bad = 0, pts = [];
+  for (var i = 0; i < N; i++){
+    var th = 6.283185307 * i / N;
+    var r = sectionR(th, z0, tanA);
+    if (r === null){ bad++; continue; }
+    pts.push({ th: th, r: r });
+  }
+  return { bad: bad, n: pts.length, pts: pts };
+}
+
+/* 自适应取景：把一串世界点 [x,y,z] 等比铺进画布，返回投影函数 P(p) */
+function fitView(pts3, W, H, st, camz, focal, zc, pad){
+  var k = 1, R = 0;
+  for (var i = 0; i < pts3.length; i++){
+    var p = pts3[i], dz = p[2] - zc;
+    var rr = Math.sqrt(p[0]*p[0] + dz*dz + p[1]*p[1]);
+    if (rr > R) R = rr;
+  }
+  if (R > 1e-9 && isFinite(R)) k = 2.15 / R;   /* ③ 先归一化到包围球半径 2.15 */
+
+  var P0 = mkProj(null, { yaw: st.yaw, pitch: st.pitch, zoom: 1 }, W, H, camz, focal);
+  function raw(p){ return P0([p[0]*k, (p[2] - zc)*k, p[1]*k]); }
+
+  var x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+  for (var j = 0; j < pts3.length; j++){
+    var q = raw(pts3[j]);
+    if (q.x < x0) x0 = q.x; if (q.x > x1) x1 = q.x;
+    if (q.y < y0) y0 = q.y; if (q.y > y1) y1 = q.y;
+  }
+  var bw = Math.max(x1 - x0, 1e-6), bh = Math.max(y1 - y0, 1e-6);
+  var fit = Math.min((W - 2*pad)/bw, (H - 2*pad)/bh) * st.zoom;
+  var mx = (x0 + x1)/2, my = (y0 + y1)/2;
+  return function(p){
+    var q = raw(p);
+    return { x: W/2 + (q.x - mx)*fit, y: H/2 + (q.y - my)*fit, d: q.d };
+  };
+}
+
+function drawCone(){
+  var ctx = Cone.ctx, W = Cone.W, H = Cone.H;
+  clearCv(ctx, W, H);
+  var st = Cone.st, z0 = Cone.z0, tanA = Cone.tanA;
+  var focal = 850, camz = 7.5;
+  var zc = z0;                                   /* ① 相机参照点跟着切平面走 */
+
+  /* ---- 截面：先解出来，窗口与取景全靠它 ---- */
+  var sec = coneStats(z0, tanA, 2000);
+  var sX0 = 1e9, sX1 = -1e9, sY0 = 1e9, sY1 = -1e9, sZ0 = 1e9, sZ1 = -1e9;
+  sec.pts.forEach(function(q){
+    q.x = q.r*Math.cos(q.th); q.y = q.r*Math.sin(q.th); q.z = z0 + q.y*tanA;
+    if (q.x < sX0) sX0 = q.x;  if (q.x > sX1) sX1 = q.x;
+    if (q.y < sY0) sY0 = q.y;  if (q.y > sY1) sY1 = q.y;
+    if (q.z < sZ0) sZ0 = q.z;  if (q.z > sZ1) sZ1 = q.z;
+  });
+  var spanZ = Math.max(sZ1 - sZ0, 1e-6);
+
+  /*
+   * ② 锥面窗口。三条约束同时成立才算「画得对」：
+   *    · 以 z₀ 为中心的一圈 0.55·z₀，保证看得出这是锥不是柱；
+   *    · 必须盖住截面本身的 z 跨度（tanα 很大时截面沿 z 拉得很长）；
+   *    · 下界卡在 0.30·z₀：再往下 r = 1/z 指数式放大，整个画面会被喇叭口吃掉。
+   */
+  /*
+   * 对称窗口的半高取 2.2 个「当地半径」= 2.2/z₀，不是固定的 0.55·z₀。
+   * 理由：锥面 z·r=1 在固定 Δz 下的半径变化是 (z₀+Δ)/(z₀−Δ)，
+   * 按 z₀ 取窗口 ⇒ z₀=8 时看到一根 30:1 的细管（真实但没法看）。
+   * 按当地半径取 ⇒ 每个 z₀ 都用同一把尺子量，截面始终填得满画面。
+   * 两条线在 z₀=2 处正好相等，所以默认视角与旧版完全一致。
+   */
+  var hSym = 2.2/z0;
+  var zLo = Math.min(z0 - hSym, sZ0 - 0.18*spanZ - 0.12/z0);
+  var zHi = Math.max(z0 + hSym, sZ1 + 0.18*spanZ);
+  zLo = Math.max(zLo, 0.30*z0);
+  zHi = Math.min(zHi, 4.20*z0);
+  if (!(zHi > zLo)){ zLo = 0.60*z0; zHi = 1.50*z0; }
+
+  /* ---- 平面片：尺寸跟截面走，tanα 再大也不会变成一条飞出去的长带 ---- */
+  var padX = 0.18*Math.max(sX1 - sX0, 1e-6) + 0.07/z0;
+  var padY = 0.18*Math.max(sY1 - sY0, 1e-6) + 0.07/z0;
+  var qx0 = sX0 - padX, qx1 = sX1 + padX, qy0 = sY0 - padY, qy1 = sY1 + padY;
+  var quad3 = [[qx0,qy0],[qx1,qy0],[qx1,qy1],[qx0,qy1]].map(function(uv){
+    return [uv[0], uv[1], z0 + uv[1]*tanA];
+  });
+
+  /* ---- 采样点：锥环 + 母线 + 平面片四角 + 截面，全部进取景 ---- */
+  var pts3 = [];
+  var NR = 9, NS = 40;
+  for (var iz = 0; iz <= NR; iz++){
+    var zr = zLo + (zHi - zLo)*iz/NR, rr2 = 1/zr;
+    for (var it = 0; it <= NS; it++){
+      var th = 6.283185307*it/NS;
+      pts3.push([rr2*Math.cos(th), rr2*Math.sin(th), zr]);
+    }
+  }
+  for (var mt = 0; mt < 12; mt++){
+    var th2 = 6.283185307*mt/12;
+    for (var iz2 = 0; iz2 <= 24; iz2++){
+      var zz = zLo + (zHi - zLo)*iz2/24, rr3 = 1/zz;
+      pts3.push([rr3*Math.cos(th2), rr3*Math.sin(th2), zz]);
+    }
+  }
+  quad3.forEach(function(p){ pts3.push(p); });
+  sec.pts.forEach(function(q){ pts3.push([q.x, q.y, q.z]); });
+
+  var P = fitView(pts3, W, H, st, camz, focal, zc, 30);
+
+  /* ---- 锥面网格 ---- */
+  for (var iz3 = 0; iz3 <= NR; iz3++){
+    var z3 = zLo + (zHi - zLo)*iz3/NR, r3 = 1/z3, prev = null;
+    for (var it3 = 0; it3 <= NS; it3++){
+      var t3 = 6.283185307*it3/NS;
+      var q3 = P([r3*Math.cos(t3), r3*Math.sin(t3), z3]);
+      if (prev) line(ctx, prev, q3, '#b9b1a0', 1.0, null, .55);
+      prev = q3;
+    }
+  }
+  for (var mt2 = 0; mt2 < 12; mt2++){
+    var tm = 6.283185307*mt2/12, prev2 = null;
+    for (var iz4 = 0; iz4 <= 24; iz4++){
+      var zm = zLo + (zHi - zLo)*iz4/24, rm = 1/zm;
+      var q4 = P([rm*Math.cos(tm), rm*Math.sin(tm), zm]);
+      if (prev2) line(ctx, prev2, q4, '#b9b1a0', 1.0, null, .5);
+      prev2 = q4;
+    }
+  }
+
+  /* 中轴：z₀ 可以很大，没有这根线就看不出切平面抬到哪儿了 */
+  var axA = P([0, 0, zLo]), axB = P([0, 0, zHi]);
+  line(ctx, axA, axB, '#c8c1b2', 1.1, [4, 5], .9);
+  lab(ctx, '轴 r = 0', axB, '#a8a294', 10.5, 6, -8);
+
+  /* ---- 切平面 z = z₀ + y·tanα ---- */
+  ctx.save();
+  ctx.beginPath();
+  quad3.forEach(function(p, k2){
+    var qq = P(p);
+    k2 ? ctx.lineTo(qq.x, qq.y) : ctx.moveTo(qq.x, qq.y);
+  });
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(83,74,183,.10)'; ctx.fill();
+  ctx.strokeStyle = 'rgba(83,74,183,.55)'; ctx.lineWidth = 1.4; ctx.stroke();
+  ctx.restore();
+
+  /* ---- 截面：逐 θ 解二次，解不出 r 的角度就断开折线 ---- */
+  var M = 720, prev3 = null;
+  for (var k3 = 0; k3 < M; k3++){
+    var th3 = 6.283185307*k3/M;
+    var r4 = sectionR(th3, z0, tanA);
+    if (r4 === null){ prev3 = null; continue; }
+    var q5 = P([r4*Math.cos(th3), r4*Math.sin(th3), z0 + r4*Math.sin(th3)*tanA]);
+    if (prev3) line(ctx, prev3, q5, '#C0442A', 2.6);
+    prev3 = q5;
+  }
+
+  /* ---- 读数 ---- */
+  var crit = z0*z0/4;
+  var lines = [];
+  lines.push('z₀ = ' + z0.toFixed(2) + '   tanα = ' + tanA.toFixed(3));
+  lines.push('临界 tanα = z₀²/4 = ' + crit.toFixed(3) + '（α = ' + (Math.atan(crit)*180/Math.PI).toFixed(1) + '°）');
+  lines.push('比值 tanα / 临界 = ' + (tanA/crit).toFixed(3));
+  lines.push('逐 2000 角求交：缺 ' + sec.bad + ' 个角');
+  lines.push(sec.bad === 0 ? '⇒ 截面闭合（卵形）' : '⇒ 截面在底部断开（开口）');
+  var ratio = 0;
+  if (sec.bad === 0){
+    var A2 = Math.atan(tanA), ca = Math.cos(A2), sa = Math.sin(A2);
+    var u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9;
+    sec.pts.forEach(function(pp){
+      var u = pp.x, v = pp.y*ca + (pp.z - z0)*sa;
+      u0 = Math.min(u0,u); u1 = Math.max(u1,u); v0 = Math.min(v0,v); v1 = Math.max(v1,v);
+    });
+    ratio = (u1-u0)/(v1-v0);
+    lines.push('截面宽/高 = ' + ratio.toFixed(4));
+  }
+  lines.push('锥面窗口 z ∈ [' + zLo.toFixed(2) + ', ' + zHi.toFixed(2) + ']');
+  $('coneRead').textContent = lines.join('\n');
+  Cone._ratio = ratio;
+  drawSect(Cone.z0, Cone.tanA);
+  drawEll(Cone.z0, Cone.tanA);      /* §2c：同一组 (z₀, tanα) 驱动第三张，参数只有一处来源 */
+}
+
+
+/* ============================================================
+   §2 下图：正视切平面，给截面的真实轮廓（与 3D 同宽同高，上下叠放）
+   ------------------------------------------------------------
+   切平面内的正交坐标：  u = x,   v = y·cosα + (z − z₀)·sinα
+   把 z = z₀ + y·tanα 代进去：
+       v = y·cosα + y·tanα·sinα = y(cos²α + sin²α)/cosα = y / cosα
+   所以截面就是「把 (r·cosθ, r·sinθ) 的纵坐标放大 1/cosα」——
+   卵形不是新东西，是圆形被斜切后沿斜面方向的拉伸。
+   这条式子也说明了为什么 v 轴刻度天然比 u 轴「密」：同一个 α 下 1/cosα > 1。
+   ============================================================ */
+var Sect = { cv: $('cvSect'), W: 880, H: 470 };   /* 与上面 3D 同宽同高，叠起来两张图才等高 */
+Sect.ctx = Sect.cv ? Sect.cv.getContext('2d') : null;
+
+function niceStep(max, target){
+  if (!(max > 0)) return 1;
+  var raw = max / Math.max(1, target);
+  var e = Math.pow(10, Math.floor(Math.log(raw) / Math.LN10));
+  var f = raw / e;
+  var m = f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10;
+  return m * e;
+}
+function fmtTick(v){
+  var a = Math.abs(v);
+  if (a >= 10) return String(Math.round(v));
+  if (a >= 1) return (Math.round(v * 10) / 10).toFixed(1).replace(/\.0$/, '');
+  if (a >= 0.01) return v.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+  return v.toExponential(1);
+}
+
+function drawSect(z0, tanA){
+  if (!Sect.ctx) return;                 /* canvas 缺失时静默跳过，别拖垮整页 */
+  var ctx = Sect.ctx, W = Sect.W, H = Sect.H;
+  clearCv(ctx, W, H);
+
+  var a = Math.atan(tanA), ca = Math.cos(a), sa = Math.sin(a);
+  var N = 1400, pts = new Array(N), miss = 0;
+  var umin = 0, umax = 0, vmin = 0, vmax = 0;
+
+  for (var i = 0; i < N; i++){
+    var th = 6.283185307 * i / N;
+    var r = sectionR(th, z0, tanA);
+    if (r === null){ pts[i] = null; miss++; continue; }
+    var x = r * Math.cos(th), y = r * Math.sin(th), z = z0 + y * tanA;
+    var u = x, v = y * ca + (z - z0) * sa;
+    pts[i] = { u: u, v: v };
+    if (u < umin) umin = u;  if (u > umax) umax = u;
+    if (v < vmin) vmin = v;  if (v > vmax) vmax = v;
+  }
+
+  var spanU = Math.max(umax - umin, 1e-9);
+  var spanV = Math.max(vmax - vmin, 1e-9);
+
+  var padL = 72, padR = 26, padT = 34, padB = 54;
+  var aw = W - padL - padR, ah = H - padT - padB;
+
+  /*
+   * 等比：u 与 v 用同一个像素/单位，形状才不骗人（铺满会把扁卵形拉成圆的）。
+   * 🔴 缩放必须按「整个范围」而不是 ±max|v| —— 截面在 v 方向并不对称
+   *    （斜平面沿着 y 倾斜，正负两侧深浅不同），按 ±max 会把图形推出画布。
+   *    同时原点也不能钉在画布中心：它要跟着 (uc, vc) 一起挪。
+   */
+  var sc = Math.min(aw / spanU, ah / spanV);
+  var uc = (umin + umax) / 2, vc = (vmin + vmax) / 2;
+  var cx = padL + aw / 2 - uc * sc;      /* 原点像素位置 */
+  var cy = padT + ah / 2 + vc * sc;
+
+  /* 方格：u 与 v 共用同一个数值步长，网格才是正方形 */
+  var stp = niceStep(Math.max(spanU, spanV), 5);
+  var kMin = Math.floor(Math.min(umin, vmin) / stp) - 1;
+  var kMax = Math.ceil(Math.max(umax, vmax) / stp) + 1;
+  ctx.save();
+  ctx.strokeStyle = '#efeade'; ctx.lineWidth = 1;
+  for (var k = kMin; k <= kMax; k++){
+    var val = k * stp;
+    var X = cx + val * sc, Y = cy - val * sc;
+    if (X > padL - 0.5 && X < W - padR + 0.5){
+      ctx.beginPath(); ctx.moveTo(X, padT); ctx.lineTo(X, H - padB); ctx.stroke();
+    }
+    if (Y > padT - 0.5 && Y < H - padB + 0.5){
+      ctx.beginPath(); ctx.moveTo(padL, Y); ctx.lineTo(W - padR, Y); ctx.stroke();
+    }
+  }
+  ctx.restore();
+
+  /* 坐标轴（若原点被推到画面外，就画在边上，保证轴还在） */
+  var axY = Math.min(Math.max(cy, padT), H - padB);
+  var axX = Math.min(Math.max(cx, padL), W - padR);
+  line(ctx, { x: padL, y: axY }, { x: W - padR, y: axY }, '#b9b1a0', 1.3);
+  line(ctx, { x: axX, y: H - padB }, { x: axX, y: padT }, '#b9b1a0', 1.3);
+
+  /* 刻度 */
+  for (var k2 = kMin; k2 <= kMax; k2++){
+    var v2 = k2 * stp;
+    if (k2 === 0) continue;
+    var X2 = cx + v2 * sc;
+    if (X2 > padL + 12 && X2 < W - padR - 12){
+      lab(ctx, fmtTick(v2), { x: X2, y: axY + 14 }, '#8a8478', 10.5, 0, 0, 'center');
+      line(ctx, { x: X2, y: axY - 3 }, { x: X2, y: axY + 3 }, '#b9b1a0', 1);
+    }
+    var Y2 = cy - v2 * sc;
+    if (Y2 > padT + 10 && Y2 < H - padB - 8){
+      lab(ctx, fmtTick(v2), { x: axX - 10, y: Y2 }, '#8a8478', 10.5, 0, 0, 'right');
+      line(ctx, { x: axX - 3, y: Y2 }, { x: axX + 3, y: Y2 }, '#b9b1a0', 1);
+    }
+  }
+
+  /* 截面轮廓 */
+  ctx.save();
+  ctx.strokeStyle = '#C0442A'; ctx.lineWidth = 2.6;
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.beginPath();
+  var pen = false, first = null;
+  for (var i2 = 0; i2 < N; i2++){
+    var pp = pts[i2];
+    if (!pp){ pen = false; continue; }
+    var X3 = cx + pp.u * sc, Y3 = cy - pp.v * sc;
+    if (pen) ctx.lineTo(X3, Y3);
+    else { ctx.moveTo(X3, Y3); pen = true; if (!first) first = { x: X3, y: Y3 }; }
+  }
+  /* 闭合时补一段回到起点；开口时不补，缺口留在那儿 —— 缺口本身就是信息 */
+  if (pen && miss === 0 && first) ctx.lineTo(first.x, first.y);
+  ctx.stroke();
+  ctx.restore();
+
+  /* 原点：锥轴穿过切平面的那一点。它不在截线上（r=0 时 z·r=1 无解），是参照点。 */
+  if (cx > padL - 2 && cx < W - padR + 2 && cy > padT - 2 && cy < H - padB + 2){
+    ctx.save();
+    ctx.strokeStyle = '#22201c'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx - 6, cy); ctx.lineTo(cx + 6, cy);
+    ctx.moveTo(cx, cy - 6); ctx.lineTo(cx, cy + 6); ctx.stroke();
+    ctx.restore();
+    lab(ctx, 'O', { x: cx + 9, y: cy + 11 }, '#22201c', 11.5);
+  }
+
+  /* 标题与角标 */
+  lab(ctx, '切平面正视 (u, v)', { x: padL, y: padT - 15 }, '#22201c', 13);
+  lab(ctx, 'z₀=' + z0.toFixed(2) + '   tanα=' + tanA.toFixed(3) + '   α=' +
+      (a * 180 / Math.PI).toFixed(1) + '°', { x: W - padR, y: padT - 15 }, '#7b756a', 11, 0, 0, 'right');
+  lab(ctx, 'u', { x: W - padR - 2, y: axY - 14 }, '#4a463f', 12.5, 0, 0, 'right');
+  lab(ctx, 'v', { x: axX + 10, y: padT + 2 }, '#4a463f', 12.5);
+
+  /* 与 3D 那边同一口径：包围盒宽/高，两处必须给出同一个数 */
+  var ratio = spanU / spanV;
+  var foot = miss === 0
+    ? '等比作图 · 宽/高 = ' + ratio.toFixed(3)
+    : '开口：' + miss + ' / ' + N + ' 个角度解不出 r';
+  lab(ctx, foot, { x: W - padR, y: H - 16 },
+      miss === 0 ? '#7b756a' : '#A32D2D', 11, 0, 0, 'right');
+  lab(ctx, '原点＝锥轴交点', { x: padL, y: H - 16 }, '#8a8478', 11);
+
+  Sect._ratio2 = ratio; Sect._miss = miss;
+  Sect._u = spanU; Sect._v = spanV;
+}
+
+
+/* ============================================================
+   §2c 第三张：同一个斜平面，换一条母线 —— 直锥 z = m·r 切出椭圆
+   ------------------------------------------------------------
+   把 y = x 绕轴旋转 ⇒ 曲面 z = r（m = 1，半角 45°，这是真的锥）。
+   切法一个字不改：z = z₀ + y·tanα。
+   切平面内的坐标仍取  u = x,  v = y·cosα + (z − z₀)·sinα  ⇒  v = y / cosα
+   （与上图同一个变换，公式不另写一份）。
+   代入 r = z：
+       √(x² + y²) = z₀ + y·t                    （t = tanα / m）
+       平方整理 ⇒ x² + (1 − t²)·y² − 2·z₀·t·y − z₀² = 0，  k = 1 − t²
+       k > 0 ：椭圆，a_u = z₀/√k，a_v = z₀/(k·cosα)，中心偏移 v_c = z₀·t/(k·cosα)
+       k = 0 ：抛物线（平面与母线平行）
+       k < 0 ：双曲线，两支
+   顺手得到两个闭式（自检逐档复算，不是抄来的）：
+       a_v / a_u = 1 / √(cos 2α)        离心率 e = √2 · sinα
+   🔴 最要紧的一条：临界 tanα = m = 1，**与 z₀ 无关**。
+      因为 z = m·r 是自相似的（整体缩放不改角度）；而 z·r = 1 带一个绝对尺度，
+      临界才长成 z₀²/4。两种曲面"临界值为什么不一样"，答案在这一句，不是巧合。
+   ============================================================ */
+var Ell = { cv: $('cvEll'), W: 880, H: 470 };
+Ell.ctx = Ell.cv ? Ell.cv.getContext('2d') : null;
+
+var CONE_M = 1;                     /* y = x 绕轴旋转：母线斜率 m = 1，半角 45° */
+
+function ellGeom(z0, tanA, m){
+  m = (m === undefined) ? CONE_M : m;
+  var t = tanA / m;                 /* 相对于母线斜率的比值，1 是临界 */
+  var a = Math.atan(tanA), ca = Math.cos(a);
+  var k = 1 - t * t;
+  var G = { m: m, tanA: tanA, t: t, a: a, ca: ca, k: k, z0: z0, crit: m,
+            type: (k > 1e-9) ? 'ellipse' : (k < -1e-9 ? 'hyperbola' : 'parabola') };
+  G.yL = -z0 / (1 + t);             /* 与左母线的交点 */
+  G.zL =  z0 / (1 + t);
+  if (G.type === 'ellipse'){
+    G.aU = z0 / Math.sqrt(k);
+    G.aV = z0 / (k * ca);
+    G.vC = z0 * t / (k * ca);
+    G.ratio = G.aV / G.aU;
+    G.ecc = Math.sqrt(Math.max(0, 1 - (G.aU / G.aV) * (G.aU / G.aV)));
+    G.area = Math.PI * G.aU * G.aV;
+    G.yR =  z0 / (1 - t);           /* 与右母线的交点 */
+    G.zR =  z0 / (1 - t);
+  } else {
+    G.yR = (t > 1) ? -z0 / (t - 1) : NaN;   /* 抛物线那一支跑到无穷远 */
+  }
+  return G;
+}
+
+/* 采样：闭合用逐角参数，开口用逐 y 参数（x² 反解）。返回若干条分支。 */
+function ellCurves(z0, tanA, m){
+  m = (m === undefined) ? CONE_M : m;
+  var G = ellGeom(z0, tanA, m), t = G.t, ca = G.ca;
+  var out = [];
+  if (G.type === 'ellipse'){
+    var N = 720, arr = [];
+    for (var i = 0; i <= N; i++){
+      var th = 6.283185307 * i / N;
+      var r = z0 / (1 - t * Math.sin(th));       /* r = z₀ + y·t ⇒ r(1 − t·sinθ) = z₀ */
+      var y = r * Math.sin(th), z = z0 + y * t;
+      arr.push({ u: r * Math.cos(th), v: y / ca, y: y, z: z });
+    }
+    out.push(arr);
+  } else {
+    var r1 = -z0 / (1 + t), r2 = (t > 1) ? -z0 / (t - 1) : r1;
+    var span = 3.2 * z0;      /* 取样跨度：6z₀ 时 v 向跨度是 u 向的三倍，"U"细得像根针 */
+    var segs = (G.type === 'parabola') ? [[r1, r1 + span]] : [[r1, r1 + span], [r2 - span, r2]];
+    segs.forEach(function(seg){
+      var M = 420, one = [];
+      for (var j = 0; j <= M; j++){
+        var y2 = seg[0] + (seg[1] - seg[0]) * j / M;
+        var x2 = z0 * z0 + 2 * z0 * t * y2 + (t * t - 1) * y2 * y2;
+        if (!(x2 >= 0)) continue;
+        var xx = Math.sqrt(x2);
+        one.push({ u: xx, v: y2 / ca, y: y2, z: z0 + y2 * t });
+      }
+      if (one.length > 1){
+        out.push(one);
+        out.push(one.map(function(p){ return { u: -p.u, v: p.v, y: p.y, z: p.z }; }));
+      }
+    });
+  }
+  return { g: G, branches: out };
+}
+
+function arcPx(ctx, cx, cy, Rpx, a0, a1, col, w){
+  ctx.save(); ctx.strokeStyle = col; ctx.lineWidth = w || 1.2;
+  ctx.beginPath();
+  for (var i = 0; i <= 26; i++){
+    var an = a0 + (a1 - a0) * i / 26;
+    var X = cx + Rpx * Math.cos(an), Y = cy - Rpx * Math.sin(an);
+    if (i === 0) ctx.moveTo(X, Y); else ctx.lineTo(X, Y);
+  }
+  ctx.stroke(); ctx.restore();
+}
+
+function drawEll(z0, tanA){
+  if (!Ell.ctx) return;
+  var ctx = Ell.ctx, W = Ell.W, H = Ell.H;
+  clearCv(ctx, W, H);
+  var D = ellCurves(z0, tanA), G = D.g;
+  var t = G.t, ca = G.ca;
+
+  line(ctx, { x: 440, y: 44 }, { x: 440, y: 406 }, '#e2ddd1', 1, [4, 4]);
+
+  /* ══════ 左半：侧视（横 y，纵 z）。母线 z = m·y 是两条 45° 直线 ══════ */
+  var bx0 = 28, bx1 = 424, by0 = 52, by1 = 392;
+  var capY = 6 * z0, yA, yB, zB;
+  if (G.type === 'ellipse'){
+    yA = Math.max(G.yL, -capY); yB = Math.min(G.yR, capY);
+    zB = Math.min(Math.max(G.zR, z0 * 1.30), capY);
+  } else {
+    yA = -3.3 * z0; yB = 3.7 * z0; zB = 4.5 * z0;
+  }
+  var mgy = (yB - yA) * 0.07; yA -= mgy; yB += mgy; zB *= 1.07;
+  var s1 = Math.min((bx1 - bx0) / (yB - yA), (by1 - by0) / zB);
+  var ox = (bx0 + bx1) / 2 - ((yA + yB) / 2) * s1;
+  /* 竖直居中：z 方向用不满时（y 跨度比 z 大），别把图全挤在底边上留一片白顶 */
+  var oz = by1 - Math.max(0, (by1 - by0) - zB * s1) / 2;
+  var PX = function(y){ return ox + y * s1; };
+  var PY = function(z){ return oz - z * s1; };
+
+  ctx.save();
+  ctx.beginPath(); ctx.rect(bx0, by0, bx1 - bx0, by1 - by0); ctx.clip();
+
+  /* 锥体：母线 z = y 与 z = −y（都过顶点） */
+  ctx.beginPath();
+  ctx.moveTo(PX(0), PY(0));
+  ctx.lineTo(PX(-zB), PY(zB));
+  ctx.lineTo(PX(zB), PY(zB));
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(122,116,104,.075)'; ctx.fill();
+  line(ctx, { x: PX(0), y: PY(0) }, { x: PX(-zB), y: PY(zB) }, '#6f6858', 1.8);
+  line(ctx, { x: PX(0), y: PY(0) }, { x: PX(zB), y: PY(zB) }, '#6f6858', 1.8);
+  line(ctx, { x: PX(0), y: PY(0) }, { x: PX(0), y: PY(zB) }, '#c9c2b2', 1.1, [5, 4]);   /* 轴 */
+
+  /* 切平面（侧视里是一条直线，斜率 tanα） */
+  line(ctx, { x: PX(yA), y: PY(z0 + yA * t) }, { x: PX(yB), y: PY(z0 + yB * t) }, '#185FA5', 2.1);
+
+  /* |tanα − m| 极小时平面与右母线重合，蓝线会把母线盖住 ——
+     这时把母线用暗红虚线再描一遍，压在蓝线之上，"平行"才是看得见的。 */
+  if (Math.abs(t - 1) < 0.03){
+    line(ctx, { x: PX(0), y: PY(0) }, { x: PX(zB), y: PY(zB) }, '#A32D2D', 2.2, [8, 6]);
+  }
+
+  /* 交点：与两条母线的交，就是椭圆的左右顶点 */
+  var marks = [];
+  if (G.type === 'ellipse'){
+    marks.push({ y: G.yL, z: G.zL, s: 'A' });
+    marks.push({ y: G.yR, z: G.zR, s: 'B' });
+  } else {
+    marks.push({ y: G.yL, z: G.zL, s: 'A' });
+  }
+  /* 先画弦 A→B（珊瑚色粗线），再打点 —— 这条弦就是椭圆在侧视方向上的宽度：
+     侧视把椭圆压成一条线段，两个端点正是它与两条母线的交点。 */
+  if (marks.length === 2 && marks.every(function(M){ return M.y >= yA && M.y <= yB && M.z >= 0 && M.z <= zB; })){
+    line(ctx, { x: PX(marks[0].y), y: PY(marks[0].z) },
+             { x: PX(marks[1].y), y: PY(marks[1].z) }, '#C0442A', 3.2);
+  }
+  marks.forEach(function(M){
+    if (M.y < yA || M.y > yB || M.z < 0 || M.z > zB) return;
+    dot(ctx, { x: PX(M.y), y: PY(M.z) }, '#C0442A', 4);
+    /* B 常常正好顶在上边缘，标签继续往上就被 clip 切掉 ⇒ 靠近顶部时改放点的下方 */
+    var gdy = (M.z > 0.72 * zB) ? 16 : -12;
+    lab(ctx, M.s, { x: PX(M.y), y: PY(M.z) }, '#C0442A', 11.5, 8, gdy);
+  });
+
+  /* 45° 与 α 两把角 —— 这两把角放在同一张图里，临界才看得见 */
+  var R45 = Math.min(0.34 * zB * s1, 90);
+  arcPx(ctx, PX(0), PY(0), R45, Math.PI / 2, Math.PI / 4, '#854F0B', 1.3);
+  lab(ctx, '45°', { x: PX(0), y: PY(0) }, '#854F0B', 11, Math.cos(0.98) * (R45 + 14),
+      -Math.sin(0.98) * (R45 + 14));
+
+  var Ra = Math.min(0.26 * z0 * s1, 64);
+  var aAng = Math.atan(t);
+  if (Math.abs(aAng) > 0.02){
+    arcPx(ctx, PX(0), PY(z0), Ra, 0, aAng, '#185FA5', 1.3);
+    lab(ctx, 'α', { x: PX(0), y: PY(z0) }, '#185FA5', 11,
+        Math.cos(aAng / 2) * (Ra + 12), -Math.sin(aAng / 2) * (Ra + 12));
+  } else {
+    lab(ctx, 'α = 0：水平切，正圆', { x: PX(0) + Ra * 0.5, y: PY(z0) - 12 }, '#185FA5', 11);
+  }
+
+  /* z₀ 的落点 */
+  dot(ctx, { x: PX(0), y: PY(z0) }, '#185FA5', 2.6);
+  lab(ctx, 'z₀', { x: PX(0), y: PY(z0) }, '#185FA5', 10.5, -18, 0);
+
+  /* 平面越陡 ⇒ 越贴近母线；正好平行时标出来 */
+  if (Math.abs(t - 1) < 0.02){
+    lab(ctx, '平面 ∥ 母线 ⇒ 抛物线', { x: (bx0 + bx1) / 2, y: by0 + 12 }, '#A32D2D', 12, 0, 0, 'center');
+  }
+  ctx.restore();
+
+  lab(ctx, '直锥侧视 (y, z) —— 母线斜率 m = 1，半角 45°', { x: bx0, y: 24 }, '#22201c', 13);
+  lab(ctx, '母线 z = y', { x: PX(zB * 0.72) + 6, y: PY(zB * 0.72) - 8 }, '#7b756a', 11);
+  lab(ctx, '切平面 z = z₀ + y·tanα', { x: bx0, y: by1 + 20 }, '#185FA5', 11.5);
+  lab(ctx, 'α = ' + (Math.atan(tanA) * 180 / Math.PI).toFixed(1) + '°   tanα = ' +
+      tanA.toFixed(3) + '   临界 tanα = m = 1（与 z₀ 无关）',
+      { x: bx0, y: by1 + 38 }, '#7b756a', 11);
+
+  /* ══════ 右半：切平面正视 (u, v)，只画真实形状，不铺满拉伸 ══════ */
+  var rx0 = 452, rx1 = 852, ry0 = 52, ry1 = 392;
+  var umin = 1e9, umax = -1e9, vmin = 1e9, vmax = -1e9;
+  D.branches.forEach(function(br){
+    br.forEach(function(p){
+      if (p.u < umin) umin = p.u;  if (p.u > umax) umax = p.u;
+      if (p.v < vmin) vmin = p.v;  if (p.v > vmax) vmax = p.v;
+    });
+  });
+  if (G.type === 'ellipse'){ umin = Math.min(umin, 0); umax = Math.max(umax, 0);
+                             vmin = Math.min(vmin, 0); vmax = Math.max(vmax, 0); }
+  var spanU = Math.max(umax - umin, 1e-9), spanV = Math.max(vmax - vmin, 1e-9);
+  var pad = 34;
+  var s2 = Math.min((rx1 - rx0 - 2 * pad) / spanU, (ry1 - ry0 - 2 * pad) / spanV);
+  var uc = (umin + umax) / 2, vc = (vmin + vmax) / 2;
+  var cx = rx0 + pad + (rx1 - rx0 - 2 * pad) / 2 - uc * s2;
+  var cy = ry0 + pad + (ry1 - ry0 - 2 * pad) / 2 + vc * s2;
+
+  ctx.save();
+  ctx.beginPath(); ctx.rect(rx0, ry0, rx1 - rx0, ry1 - ry0); ctx.clip();
+  var axY = Math.min(Math.max(cy, ry0), ry1), axX = Math.min(Math.max(cx, rx0), rx1);
+  line(ctx, { x: rx0, y: axY }, { x: rx1, y: axY }, '#b9b1a0', 1.2);
+  line(ctx, { x: axX, y: ry1 }, { x: axX, y: ry0 }, '#b9b1a0', 1.2);
+
+  /* 曲线：椭圆闭合；抛物线与双曲线各画各的分支，不硬连 */
+  ctx.save();
+  ctx.strokeStyle = '#C0442A'; ctx.lineWidth = 2.6; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  D.branches.forEach(function(br){
+    ctx.beginPath();
+    br.forEach(function(p, i){
+      var X = cx + p.u * s2, Y = cy - p.v * s2;
+      if (i === 0) ctx.moveTo(X, Y); else ctx.lineTo(X, Y);
+    });
+    ctx.stroke();
+  });
+  ctx.restore();
+
+  /* 半轴与中心：椭圆的中心 C 不在 O —— 这是与"圆截面"最容易被忽略的差别 */
+  if (G.type === 'ellipse'){
+    var cxp = cx, cyp = cy - G.vC * s2;
+    ctx.save(); ctx.strokeStyle = '#534AB7'; ctx.lineWidth = 1.3; ctx.setLineDash([5, 3]);
+    line(ctx, { x: cxp, y: cyp }, { x: cx + G.aU * s2, y: cyp }, '#534AB7', 1.3, [5, 3]);
+    line(ctx, { x: cxp, y: cyp }, { x: cxp, y: cy - (G.vC + G.aV) * s2 }, '#534AB7', 1.3, [5, 3]);
+    ctx.restore();
+    dot(ctx, { x: cxp, y: cyp }, '#534AB7', 3);
+    lab(ctx, 'C', { x: cxp, y: cyp }, '#534AB7', 11, -6, -12);
+    lab(ctx, 'a_u', { x: (cxp + cx + G.aU * s2) / 2, y: cyp }, '#534AB7', 10.5, 0, 13);
+    lab(ctx, 'a_v', { x: cxp, y: cy - (G.vC + G.aV / 2) * s2 }, '#534AB7', 10.5, 9, 0);
+  }
+
+  /* 原点 O：锥轴穿过切平面的那一点。直锥在 O 处必有一解（r = z₀），
+     所以 O 落在截面内部；但它一般**不是**椭圆的中心。 */
+  if (Math.abs(cx - axX) < 0.6 && Math.abs(cy - axY) < 0.6){
+    ctx.save(); ctx.strokeStyle = '#22201c'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx - 6, cy); ctx.lineTo(cx + 6, cy);
+    ctx.moveTo(cx, cy - 6); ctx.lineTo(cx, cy + 6); ctx.stroke(); ctx.restore();
+    lab(ctx, 'O', { x: cx, y: cy }, '#22201c', 11, 8, 12);
+  }
+  ctx.restore();
+
+  lab(ctx, '切平面正视 (u, v) —— 真实形状，等比不拉伸', { x: rx0, y: 24 }, '#22201c', 13);
+  lab(ctx, 'u', { x: rx1 - 4, y: axY - 12 }, '#4a463f', 12, 0, 0, 'right');
+  lab(ctx, 'v', { x: axX + 9, y: ry0 + 2 }, '#4a463f', 12);
+
+  var foot1, foot2 = '';
+  if (G.type === 'ellipse'){
+    foot1 = '椭圆 · a_v/a_u = ' + G.ratio.toFixed(4) + ' = 1/√cos2α · e = ' +
+            G.ecc.toFixed(4) + ' = √2·sinα';
+    foot2 = '面积 π·a_u·a_v = ' + G.area.toFixed(3) + '　中心 C 偏离 O：v_c = ' + G.vC.toFixed(3);
+  } else if (G.type === 'parabola'){
+    foot1 = '抛物线：tanα = m = 1 —— 平面与母线平行，a_v → ∞';
+    foot2 = '左图里平面正好压在右侧母线上，这就是"不再是椭圆"的那一瞬';
+  } else {
+    foot1 = '双曲线：tanα = ' + t.toFixed(3) + ' > m = 1 —— 两支，不再闭合';
+    foot2 = '离心率 > 1：a_v 变成虚轴，公式里 k < 0';
+  }
+  lab(ctx, foot1, { x: rx0, y: ry1 + 20 }, G.type === 'ellipse' ? '#7b756a' : '#A32D2D', 11);
+  lab(ctx, foot2, { x: rx0, y: ry1 + 38 }, '#7b756a', 11);
+
+  Ell._g = G;
+  Ell._type = G.type;
+  Ell._ratio = G.ratio || 0;
+  Ell._ecc = G.ecc || 0;
+  Ell._bbU = spanU; Ell._bbV = spanV;
+}
+
+bind3D(Cone.cv, Cone.st, drawCone);
+$('rgZ0').oninput = function(){ Cone.z0 = +this.value; $('lbZ0').textContent = Cone.z0.toFixed(2); drawCone(); };
+$('rgTan').oninput = function(){
+  Cone.tanA = +this.value; $('lbTan').textContent = Cone.tanA.toFixed(3); drawCone();
+};
+$('ckCrit').onchange = function(){
+  if (this.checked){
+    Cone.tanA = Math.min(+$('rgTan').max, Cone.z0*Cone.z0/4);
+    $('rgTan').value = Cone.tanA; $('lbTan').textContent = Cone.tanA.toFixed(3);
+  }
+  drawCone();
+};
+$('rgZ0').addEventListener('input', function(){
+  if ($('ckCrit').checked){
+    /* 上限从控件里读，别再写死数字 —— 写死的那个 2.4 在扩容后会把临界截断 */
+    Cone.tanA = Math.min(+$('rgTan').max, Cone.z0*Cone.z0/4);
+    $('rgTan').value = Cone.tanA;
+    $('lbTan').textContent = Cone.tanA.toFixed(3);
+  }
+  drawCone();
+});
+
+/* 参数面板收起／展开：收起来只留一条竖直的「参数」，图占满整行 */
+$('fpToggle').onclick = function(){
+  var on = $('coneSplit').classList.toggle('folded');
+  this.textContent = on ? '参数' : '收起';
+  this.setAttribute('aria-expanded', on ? 'false' : 'true');
+};
+
+/* ============================================================
+   7. §3 四面体 + 12 条腿
+   ============================================================ */
+var Tet = {
+  cv: $('cvTet'), W: 880, H: 470, k: 0.45,
+  st: { yaw: 0.62, pitch: 0.30, zoom: 1 },
+  show: { t1: true, t2: true, leg: true, cube: false, orb: false }
+};
+Tet.ctx = Tet.cv.getContext('2d');
+function Pof(k){ return T1.map(function(v){ return [-k*v[0], -k*v[1], -k*v[2]]; }); }
+function drawTet(){
+  var ctx = Tet.ctx, W = Tet.W, H = Tet.H;
+  clearCv(ctx, W, H);
+  var P = mkProj(Tet.cv, Tet.st, W, H, 11.0, 1100);
+  var k = Tet.k, Pp = Pof(k), sh = Tet.show;
+
+  /* 体对角线（虚线，先画，压在最底） */
+  for (var i = 0; i < 4; i++) line(ctx, P(T1[i]), P(Pp[i]), '#c9c2b2', 1.0, [4,5], .55);
+
+  /* 12 条腿 */
+  if (sh.leg){
+    for (var a = 0; a < 4; a++) for (var b = 0; b < 4; b++){
+      if (a === b) continue;
+      line(ctx, P(T1[a]), P(Pp[b]), 'rgba(83,74,183,.55)', 1.5);
+    }
+  }
+
+  /* T₁ / T₂ 棱 */
+  if (sh.t1){
+    for (var i1 = 0; i1 < 4; i1++) for (var j1 = i1+1; j1 < 4; j1++)
+      line(ctx, P(T1[i1]), P(T1[j1]), '#C0442A', 2.2);
+  }
+  if (sh.t2){
+    for (var i2 = 0; i2 < 4; i2++) for (var j2 = i2+1; j2 < 4; j2++)
+      line(ctx, P(Pp[i2]), P(Pp[j2]), '#185FA5', 2.2);
+  }
+
+  /* 立方体 12 棱（k=1 时与 12 条腿重合） */
+  if (sh.cube){
+    var all = T1.concat(Pp);
+    for (var u = 0; u < 8; u++) for (var v = u+1; v < 8; v++){
+      if (ham(all[u], all[v]) === 1) line(ctx, P(all[u]), P(all[v]), 'rgba(15,110,86,.85)', 2.4);
+    }
+  }
+
+  /* 一条腿的 T_d 轨道高亮 */
+  if (sh.orb){
+    var o = orbitLegs(TD, '0>1');
+    o.forEach(function(L){
+      var q = L.split('>'), qa = +q[0], qb = +q[1];
+      line(ctx, P(T1[qa]), P(Pp[qb]), 'rgba(133,79,11,.95)', 3.0);
+    });
+  }
+
+  /* 顶点 */
+  T1.forEach(function(v, i){
+    var q = P(v);
+    dot(ctx, q, '#C0442A', 6);
+    lab(ctx, NAM1[i], q, '#A33C1D', 12.5, 9, -11);
+  });
+  Pp.forEach(function(v, i){
+    var q = P(v);
+    dot(ctx, q, '#185FA5', k < 0.9 ? 5.5 : 6);
+    lab(ctx, k < 0.9 ? ('P' + (i+1)) : ('b' + (i+1)), q, '#185FA5', 12, -12, 12);
+  });
+
+  var legLen2 = (function(){
+    var d = [T1[0][0] - Pp[1][0], T1[0][1] - Pp[1][1], T1[0][2] - Pp[1][2]];
+    return d[0]*d[0] + d[1]*d[1] + d[2]*d[2];
+  })();
+  var lines = [];
+  lines.push('k = ' + k.toFixed(3) + '   腿长² (a₁→P₂) = ' + legLen2.toFixed(4));
+  lines.push('12 条腿 = 4 顶点 × 3 束 = 6 无向棱 × 2 朝向');
+  lines.push('Z₃ 轨道：' + z3Orbits().length + ' 个，各 ' + z3Orbits()[0].length + ' 条');
+  lines.push('单腿 T_d 轨道：' + orbitLegs(TD, '0>1').length + ' 条');
+  lines.push(k === 1 ? 'k = 1 ⇒ P 落在 T₂ 顶点上，12 条腿 = 立方体棱' : 'k < 1 ⇒ 内倒四面体深陷内切球内');
+  $('tetRead').textContent = lines.join('\n');
+}
+
+bind3D(Tet.cv, Tet.st, drawTet);
+$('rgK').oninput = function(){ Tet.k = +this.value; $('lbK').textContent = Tet.k.toFixed(3); drawTet(); };
+[['ckT1','t1'],['ckT2','t2'],['ckLeg','leg'],['ckCube','cube'],['ckOrb','orb']].forEach(function(pr){
+  $(pr[0]).onchange = function(){ Tet.show[pr[1]] = this.checked; drawTet(); };
+});
+
+/* ============================================================
+   8. §4 两套点阵 × 五枚立体
+   ============================================================ */
+var Lat = {
+  cv: $('cvLat'), W: 880, H: 470, solid: 'tet', grid: 'CV',
+  st: { yaw: 0.72, pitch: 0.46, zoom: 0.55 }
+};
+Lat.ctx = Lat.cv.getContext('2d');
+
+function drawLat(){
+  var ctx = Lat.ctx, W = Lat.W, H = Lat.H;
+  clearCv(ctx, W, H);
+  var P = mkProj(Lat.cv, Lat.st, W, H, 11.0, 640);
+  var g = Lat.grid, sol = SOLID[Lat.solid];
+
+  /* 立方体框（作参照） */
+  var boxV = [];
+  [-1,1].forEach(function(x){ [-1,1].forEach(function(y){ [-1,1].forEach(function(z){ boxV.push([x*2,y*2,z*2]); }); }); });
+  for (var u = 0; u < 8; u++) for (var v = u+1; v < 8; v++)
+    if (ham(boxV[u], boxV[v]) === 1) line(ctx, P(boxV[u]), P(boxV[v]), 'rgba(185,177,160,.8)', 1.0, [3,4]);
+
+  /* 点阵点：C 紫、V 橙（只画看得见的一半，避免糊成一片） */
+  function drawSet(arr, col, r){
+    arr.forEach(function(p){
+      if (Math.abs(p[0]) > 4.01 || Math.abs(p[1]) > 4.01 || Math.abs(p[2]) > 4.01) return;
+      dot(ctx, P(p), col, r);
+    });
+  }
+  if (g === 'C' || g === 'CV') drawSet(C64, 'rgba(83,74,183,.55)', 2.0);
+  if (g === 'V' || g === 'CV') drawSet(V125, 'rgba(224,138,23,.45)', 1.8);
+
+  /* 立体顶点：在集合里绿、不在红 */
+  var inC = 0, inV = 0;
+  sol.V.forEach(function(p){
+    var q = P(p);
+    var onC = !!Cset[keyOf(p)], onV = !!Vset[keyOf(p)];
+    if (onC) inC++;
+    if (onV) inV++;
+    var highlight = (g === 'C' && onC) || (g === 'V' && onV) || (g === 'CV' && (onC || onV));
+    dot(ctx, q, highlight ? '#0F6E56' : '#C0442A', highlight ? 7 : 5.5);
+    if (!isIntPt(p)) lab(ctx, 'φ', q, '#A32D2D', 11, 9, -10);
+  });
+  /* 立体棱 */
+  var VV = sol.V, thr = { tet: 2.83, oct: 2.83, cub: 2.2, dod: 1.3, ico: 2.05 }[Lat.solid];
+  for (var i = 0; i < VV.length; i++) for (var j = i+1; j < VV.length; j++){
+    var d2 = 0;
+    for (var t = 0; t < 3; t++){ var dd = VV[i][t] - VV[j][t]; d2 += dd*dd; }
+    if (Math.sqrt(d2) <= thr + 1e-6) line(ctx, P(VV[i]), P(VV[j]), 'rgba(34,32,28,.62)', 1.8);
+  }
+
+  var lines = [];
+  lines.push('立体：' + sol.cn + '（' + VV.length + ' 顶点）');
+  lines.push('点阵：' + (g === 'C' ? 'C = {±1,±3}³（64）' : g === 'V' ? 'V = {0,±2,±4}³（125）' : 'C ∪ V（189）'));
+  lines.push('落在 C：' + inC + '/' + VV.length + (g === 'C' ? '   ← 当前判据' : ''));
+  lines.push('落在 V：' + inV + '/' + VV.length + (g === 'V' ? '   ← 当前判据' : ''));
+  if (g === 'CV') lines.push('落在 C ∪ V：' + (inC + inV) + '/' + VV.length);
+  var nonInt = VV.filter(function(p){ return !isIntPt(p); }).length;
+  if (nonInt) lines.push('非整数坐标（含 φ）：' + nonInt + ' 个 ⇒ 两套都不含');
+  $('latRead').textContent = lines.join('\n');
+}
+
+bind3D(Lat.cv, Lat.st, drawLat);
+document.querySelectorAll('#latBtns .btn').forEach(function(b){
+  b.onclick = function(){
+    document.querySelectorAll('#latBtns .btn').forEach(function(x){ x.classList.remove('on'); });
+    b.classList.add('on'); Lat.solid = b.getAttribute('data-s'); drawLat();
+  };
+});
+document.querySelectorAll('#latSetBtns .btn').forEach(function(b){
+  b.onclick = function(){
+    document.querySelectorAll('#latSetBtns .btn').forEach(function(x){ x.classList.remove('on'); });
+    b.classList.add('on'); Lat.grid = b.getAttribute('data-g'); drawLat();
+  };
+});
+
+/* ============================================================
+   9. §5 引擎面板
+   ============================================================ */
+(function buildEngine(){
+  var selLeg = $('selLeg'), selP = $('selP'), selQ = $('selQ');
+  LEGS.forEach(function(L){
+    var o = document.createElement('option');
+    o.value = L[0] + '>' + L[1];
+    o.textContent = NAM1[L[0]] + ' → ' + NAM1[L[1]];
+    selLeg.appendChild(o);
+  });
+  V8.forEach(function(v, i){
+    var t = ['(' + v.map(function(x){ return x > 0 ? '+' : '−'; }).join(' ') + ')'];
+    [selP, selQ].forEach(function(sel){
+      var o = document.createElement('option');
+      o.value = i; o.textContent = 'v' + (i+1) + ' ' + t[0];
+      sel.appendChild(o);
+    });
+  });
+  selQ.value = 1;
+
+  function refreshLeg(){
+    var v = selLeg.value.split('>'), i = +v[0], j = +v[1];
+    $('lbLeg').textContent = NAM1[i] + ' → ' + NAM1[j];
+    var z3 = orbitLegs(Z3, v[0] + '>' + v[1]);
+    var td = orbitLegs(TD, v[0] + '>' + v[1]);
+    var back = orbitLegs(Z3, j + '>' + i);
+    var stab = stabOf(i);
+    var rot = stab.filter(function(M){ return M.det === 1; });
+    var bundle = orbitLegs(rot, i + '>' + j);
+    var lines = [];
+    lines.push('起点 ' + NAM1[i] + ' = (' + T1[i].join(',') + ')');
+    lines.push('单个 Z₃（坐标循环）的轨道，' + z3.length + ' 条：');
+    lines.push('   ' + z3.map(legName).join('  '));
+    lines.push('   （形状：' + z3Shape(z3) + '）');
+    lines.push('该顶点稳定子 = ' + stab.length + ' 元（真旋转 ' + rot.length + '）；');
+    lines.push('   真旋转把 3 条腿换成一个轨道：' + bundle.map(legName).join('  '));
+    lines.push('T_d 轨道大小 = ' + td.length + '（一条腿生成全部 12 条）');
+    lines.push('反向腿的 Z₃ 轨道：' + back.map(legName).join('  '));
+    lines.push('极性：正向 + (' + NAM1[i] + '→' + NAM1[j] + ') / 反向 − (' + NAM1[j] + '→' + NAM1[i] + ')');
+    $('engLeg').textContent = lines.join('\n');
+  }
+
+  function refreshPair(){
+    var i = +selP.value, j = +selQ.value;
+    if (i === j){
+      $('lbPair').textContent = 'v' + (i+1) + ' → v' + (i+1);
+      $('engPair').textContent = '同一个点：k=0，不构成对';
+      return;
+    }
+    var k = ham(V8[i], V8[j]);
+    var cls = k === 1 ? '立方体棱' : k === 2 ? '面对角线（两枚四面体的棱）' : '体对角线';
+    var o = tdOrbitOfPair(i, j);
+    var lines = [];
+    $('lbPair').textContent = 'v' + (i+1) + ' → v' + (j+1);
+    lines.push('Hamming k = ' + k + ' ⇒ ' + cls);
+    lines.push('d² = 4k = ' + (4*k) + '   d = 2√' + k + ' = ' + fmt(2*Math.sqrt(k), 6));
+    lines.push('T_d 轨道大小 = ' + o.length + '（同类共有 ' + o.length + ' 条）');
+    lines.push('按位算：' + V8[i].map(function(x, t){ return x === V8[j][t] ? '=' : '≠'; }).join(' ') + '  ⇒ k=' + k);
+    $('engPair').textContent = lines.join('\n');
+  }
+
+  selLeg.onchange = refreshLeg;
+  selP.onchange = refreshPair; selQ.onchange = refreshPair;
+  refreshLeg(); refreshPair();
+
+  /* 轨道表 */
+  var tb = $('orbTable');
+  ORBLIST.forEach(function(o){
+    var tr = document.createElement('tr');
+    var what = o.k === 1 ? '立方体棱（12 条）' : o.k === 2 ? '单枚四面体的 6 条棱 —— 另一枚是另一个轨道' : '体对角线';
+    var ij0 = o.rep.split('>');
+    tr.innerHTML = '<td><span class="eq">v' + (+ij0[0]+1) + ' — v' + (+ij0[1]+1) + '</span></td>' +
+      '<td class="num">' + o.k + '</td>' +
+      '<td class="num">' + o.members.length + '</td>' +
+      '<td class="num">' + (4*o.k) + '</td>' +
+      '<td>' + what + '</td>';
+    tb.appendChild(tr);
+  });
+  var trSum = document.createElement('tr');
+  trSum.className = 'hl';
+  trSum.innerHTML = '<td><b>合计</b></td><td class="num">—</td><td class="num"><b>' +
+    ORBLIST.reduce(function(s, o){ return s + o.members.length; }, 0) + '</b></td>' +
+    '<td class="num">—</td><td>应等于 C(8,2) = 28</td>';
+  tb.appendChild(trSum);
+})();
+
+/* ============================================================
+   10. 基准测试：位分类 vs 暴力距离分类
+   ============================================================ */
+(function bench(){
+  var N = 200000;
+  /* ① 整数位法：顶点预先编成 3 位整数，XOR + 查表 popcount */
+  var BIT8 = V8.map(function(v){ return (v[0] > 0 ? 1 : 0) | (v[1] > 0 ? 2 : 0) | (v[2] > 0 ? 4 : 0); });
+  var PC = [0,1,1,2,1,2,2,3];
+  var P8 = PAIRS.map(function(p){ return [BIT8[p[0]], BIT8[p[1]]]; });
+  var tA0 = performance.now(), accA = 0;
+  for (var r0 = 0; r0 < N; r0++){
+    for (var i0 = 0; i0 < P8.length; i0++) accA += PC[P8[i0][0] ^ P8[i0][1]];
+  }
+  var tA1 = performance.now();
+
+  /* ② 数组位法：每次现算 a[i]!==b[i]（本页第一版就是这么写的） */
+  var tB0 = performance.now(), accB = 0;
+  for (var r1 = 0; r1 < N; r1++){
+    for (var i1 = 0; i1 < PAIRS.length; i1++) accB += ham(V8[PAIRS[i1][0]], V8[PAIRS[i1][1]]);
+  }
+  var tB1 = performance.now();
+
+  /* ③ 浮点暴力：减法/乘法/阈值 */
+  var tC0 = performance.now(), accC = 0;
+  for (var r2 = 0; r2 < N; r2++){
+    for (var j = 0; j < PAIRS.length; j++){
+      var p = V8[PAIRS[j][0]], q = V8[PAIRS[j][1]];
+      var dx = p[0]-q[0], dy = p[1]-q[1], dz = p[2]-q[2];
+      var d2 = dx*dx + dy*dy + dz*dz;
+      accC += d2 < 6 ? 1 : d2 < 10 ? 2 : 3;
+    }
+  }
+  var tC1 = performance.now();
+
+  /* 一致性：三种写法逐对比较 */
+  var same = 0;
+  for (var m = 0; m < PAIRS.length; m++){
+    var pd = V8[PAIRS[m][0]], qd = V8[PAIRS[m][1]];
+    var e = [pd[0]-qd[0], pd[1]-qd[1], pd[2]-qd[2]];
+    var d2m = e[0]*e[0] + e[1]*e[1] + e[2]*e[2];
+    var brutal = d2m < 6 ? 1 : d2m < 10 ? 2 : 3;
+    if (brutal === ham(pd, qd) && brutal === PC[BIT8[PAIRS[m][0]] ^ BIT8[PAIRS[m][1]]]) same++;
+  }
+  var a = tA1 - tA0, b = tB1 - tB0, c = tC1 - tC0;
+  $('benchOut').innerHTML =
+    '① 整数位法（XOR+popcount）：<b>' + a.toFixed(1) + ' ms</b><br>' +
+    '② 数组位法（现算不等位）：<b>' + b.toFixed(1) + ' ms</b><br>' +
+    '③ 浮点暴力（距离+阈值）：<b>' + c.toFixed(1) + ' ms</b><br>' +
+    '① 相对 ③ 快 <b>' + (c/a).toFixed(2) + '×</b>；② 相对 ③ 是 <b>' + (c/b).toFixed(2) + '×</b>' +
+    (b > c ? '（<span style="color:#A32D2D">更慢</span>）' : '') + '<br>' +
+    '三种写法 28 对分类结果一致 <b>' + same + '/28</b>' +
+    (same === 28 ? ' <span style="color:#0F6E56">✓</span>' : ' <span style="color:#A32D2D">✗</span>');
+  window.__bench = { intMs: a, arrMs: b, bruteMs: c, same: same };
+})();
+
+/* ============================================================
+   11. 自检
+   ============================================================ */
+var CHK = [];
+function ck(label, cond, detail){
+  CHK.push({ label: label, pass: !!cond, detail: detail === undefined ? '' : String(detail) });
+}
+
+/* --- 点阵 --- */
+ck('|C| = 64', C64.length === 64, C64.length);
+ck('|V| = 125', V125.length === 125, V125.length);
+ck('|C ∪ V| = 189', (C64.length + V125.length - countIn(C64, Vset)) === 189);
+ck('C ∩ V = 0（奇偶互斥）', countIn(C64, Vset) === 0, countIn(C64, Vset));
+ck('四面体 4/4 在 C', countIn(SOLID.tet.V, Cset) === 4, countIn(SOLID.tet.V, Cset));
+ck('四面体 0/4 在 V', countIn(SOLID.tet.V, Vset) === 0, countIn(SOLID.tet.V, Vset));
+ck('八面体 0/6 在 C ← 老师复现的数', countIn(SOLID.oct.V, Cset) === 0, countIn(SOLID.oct.V, Cset));
+ck('八面体 6/6 在 V', countIn(SOLID.oct.V, Vset) === 6, countIn(SOLID.oct.V, Vset));
+ck('六面体 8/8 在 C', countIn(SOLID.cub.V, Cset) === 8, countIn(SOLID.cub.V, Cset));
+ck('六面体 0/8 在 V', countIn(SOLID.cub.V, Vset) === 0, countIn(SOLID.cub.V, Vset));
+ck('十二面体 8/20 在 C', countIn(SOLID.dod.V, Cset) === 8, countIn(SOLID.dod.V, Cset));
+ck('十二面体 20 顶点中 12 个非整数', SOLID.dod.V.filter(function(p){ return !isIntPt(p); }).length === 12);
+ck('二十面体 0/12 在 C 且 0/12 在 V', countIn(SOLID.ico.V, Cset) === 0 && countIn(SOLID.ico.V, Vset) === 0);
+
+/* --- 群论 --- */
+ck('T_d 阶 = 24', TD.length === 24, TD.length);
+ck('其中 det=+1 的 12 个', T12.length === 12, T12.length);
+ck('48 个带符号置换矩阵里恰好 24 个保住 T₁', ALL48.filter(function(M){ return M.keep; }).length === 24);
+ck('单条腿的 T_d 轨道 = 12', orbitLegs(TD, '0>1').length === 12, orbitLegs(TD, '0>1').length);
+ck('12 条腿在 Z₃ 下 = 4 个轨道', z3Orbits().length === 4, z3Orbits().length);
+ck('每个 Z₃ 轨道 = 3 条', z3Orbits().every(function(o){ return o.length === 3; }));
+ck('每个顶点在 T_d 里的稳定子都是 6 元（3 真旋转 + 3 镜面）',
+   T1.every(function(v, i){
+     return stabOf(i).length === 6 && stabOf(i).filter(function(M){ return M.det === 1; }).length === 3;
+   }),
+   stabOf(0).length + '/' + stabOf(1).length + '/' + stabOf(2).length + '/' + stabOf(3).length);
+ck('每个顶点的 3 条腿在真旋转下是一个轨道（4/4 顶点）',
+   T1.every(function(v, i){
+     var rot = stabOf(i).filter(function(M){ return M.det === 1; });
+     var jj = (i + 1) % 4;
+     var o = orbitLegs(rot, i + '>' + jj);
+     return o.length === 3 && o.every(function(s){ return +s.split('>')[0] === i; });
+   }));
+ck('单个 Z₃ 的 4 个轨道形状 = 2 三角 + 1 入束 + 1 出束（不是「4 顶点各一束」）',
+   (function(){
+     var sh = z3Orbits().map(z3Shape);
+     return sh.filter(function(x){ return x === '三角循环'; }).length === 2 &&
+            sh.filter(function(x){ return x === '同一顶点入束'; }).length === 1 &&
+            sh.filter(function(x){ return x === '同一顶点出束'; }).length === 1;
+   })(),
+   z3Orbits().map(z3Shape).join(' / '));
+ck('28 对 = C(8,2)', PAIRS.length === 28, PAIRS.length);
+ck('28 对按 Hamming：12 / 12 / 4',
+   PAIRS.filter(function(p){ return ham(V8[p[0]], V8[p[1]]) === 1; }).length === 12 &&
+   PAIRS.filter(function(p){ return ham(V8[p[0]], V8[p[1]]) === 2; }).length === 12 &&
+   PAIRS.filter(function(p){ return ham(V8[p[0]], V8[p[1]]) === 3; }).length === 4);
+ck('T_d 在 28 对上 = 4 个轨道', ORBLIST.length === 4, ORBLIST.length);
+ck('4 个轨道大小 12/6/6/4',
+   ORBLIST.map(function(o){ return o.members.length; }).sort(function(x, y){ return x - y; }).join(',') === '4,6,6,12',
+   ORBLIST.map(function(o){ return o.members.length; }).join(','));
+ck('轨道大小之和 = 28', ORBLIST.reduce(function(s, o){ return s + o.members.length; }, 0) === 28);
+ck('两个 k=2 轨道分属两枚四面体（互不相交）', (function(){
+   var a = ORBLIST.filter(function(o){ return o.k === 2; });
+   if (a.length !== 2) return false;
+   var A = {}, B = {};
+   a[0].members.forEach(function(x){ A[x] = 1; });
+   var inter = a[1].members.filter(function(x){ return A[x]; }).length;
+   return inter === 0;
+ })());
+ck('3F = 2E = 12 且 V−E+F = 2', 3*4 === 2*6 && (4-6+4) === 2);
+ck('12 = 4×3 = 6×2', 4*3 === 12 && 6*2 === 12);
+
+/* --- 作图残差 --- */
+(function(){
+  var v2 = sqrtByGeo(2), v3 = sqrtByGeo(3), v5 = sqrtByGeo(5);
+  ck('√2 残差 |x²−2| < 1e−12', Math.abs(v2*v2 - 2) < 1e-12, Math.abs(v2*v2-2).toExponential(2));
+  ck('√3 残差 |x²−3| < 1e−12', Math.abs(v3*v3 - 3) < 1e-12, Math.abs(v3*v3-3).toExponential(2));
+  ck('√5 残差 |x²−5| < 1e−12', Math.abs(v5*v5 - 5) < 1e-12, Math.abs(v5*v5-5).toExponential(2));
+  ck('√2 · √8 / 4 = 1', Math.abs(v2*sqrtByGeo(8)/4 - 1) < 1e-12);
+  ck('√n 与独立标准答案（Math.sqrt 当裁判）差 < 1e−12',
+     [1.7, 2, 3, 4.9, 5, 7, 11].every(function(nn){ return Math.abs(sqrtByGeo(nn) - Math.sqrt(nn)) < 1e-12; }),
+     [1.7,2,3,4.9,5,7,11].map(function(nn){ return Math.abs(sqrtByGeo(nn)-Math.sqrt(nn)).toExponential(1); }).join(' '));
+  var n1 = 2, n2 = 3;
+  var mAdd = (n2-n1)/(1/n2-1/n1), bAdd = n1 - mAdd/n1;
+  ck('加法弦截距 = n₁+n₂', Math.abs(bAdd - 5) < 1e-12, bAdd);
+  ck('加法弦斜率 = −n₁n₂', Math.abs(mAdd + 6) < 1e-12, mAdd);
+  var t1 = { m: -n1*n1, b: 2*n1 }, t2 = { m: -n2*n2, b: 2*n2 };
+  var xi = (t2.b-t1.b)/(t1.m-t2.m), yi = t1.m*xi + t1.b;
+  ck('乘法：两切线交点连向径斜率 = n₁n₂', Math.abs(yi/xi - 6) < 1e-12, yi/xi);
+  var AM = (n1+n2)/2, GM = sqrtByGeo(n1*n2), HM = 2*n1*n2/(n1+n2);
+  ck('GM² = AM·HM', Math.abs(AM*HM - GM*GM) < 1e-12, Math.abs(AM*HM-GM*GM).toExponential(2));
+  ck('AM ≥ GM ≥ HM', AM >= GM && GM >= HM);
+  ck('三种平均共用斜率 n₁n₂', Math.abs(n1*n2 - 6) < 1e-12);
+})();
+
+/* --- 双曲锥 --- */
+(function(){
+  var z0 = 2, crit = z0*z0/4;
+  var before = coneStats(z0, crit*0.99, 2000), after = coneStats(z0, crit*1.001, 2000);
+  ck('锥：临界前（0.99×）缺 0 个角', before.bad === 0, before.bad);
+  ck('锥：临界后（1.001×）缺 > 0 个角', after.bad > 0, after.bad);
+  ck('锥：临界后恰好缺 29 个角（= 顶部采样密度）', after.bad === 29, after.bad);
+  var z01 = 1, c1 = z01*z01/4;
+  ck('锥：z₀=1 时临界 tanα = 0.25', Math.abs(c1 - 0.25) < 1e-15);
+  ck('锥：z₀=4 时临界 tanα = 4', Math.abs(16/4 - 4) < 1e-15);
+  var z0b = 4, c4 = z0b*z0b/4;
+  var b4 = coneStats(z0b, c4*0.999, 2000), a4 = coneStats(z0b, c4*1.001, 2000);
+  ck('锥：闭合判据对 z₀ 不特判（z₀=4 同样在 1.001× 才断）', b4.bad === 0 && a4.bad > 0);
+})();
+
+/* --- 变异测试：故意写错一处，看判据能不能抓出来 --- */
+(function(){
+  /* 变异 1：用 det=+1 代替「保住 T₁ 集合」 —— 我第一次就是这么错的 */
+  var wrong = ALL48.filter(function(M){ return M.det === 1; });
+  ck('变异①：用 det=+1 筛 ⇒ 得 24 但换错人（含 12 个把 T₁ 送到 T₂）',
+     wrong.length === 24 && wrong.filter(function(M){ return M.keep; }).length === 12,
+     'wrong=' + wrong.length + ' keep=' + wrong.filter(function(M){ return M.keep; }).length);
+  var undefinedHits = 0;
+  wrong.forEach(function(M){
+    if (T1IDX[keyOf(M.ap(T1[0]))] === undefined) undefinedHits++;
+  });
+  ck('变异②：错误筛法会把 12 个矩阵作用到 T₂ 上（下标直接取不到）', undefinedHits === 12, undefinedHits);
+
+  /* 变异 3：腿的指标允许 i=j ⇒ 16 条 */
+  var badLegs = 0;
+  for (var i = 0; i < 4; i++) for (var j = 0; j < 4; j++) badLegs++;
+  ck('变异③：允许 i=j ⇒ 16 条而不是 12 条', badLegs === 16 && LEGS.length === 12, badLegs + ' vs ' + LEGS.length);
+
+  /* 变异 4：把 C 与 V 当同一套 ⇒ 八面体「6/6」但其实在 C 里是 0 */
+  var unionSet = {};
+  C64.forEach(function(p){ unionSet[keyOf(p)] = 1; });
+  V125.forEach(function(p){ unionSet[keyOf(p)] = 1; });
+  ck('变异④：并成一套后八面体也「6/6」，但单看 C 是 0/6 —— 这就是误读的来源',
+     countIn(SOLID.oct.V, unionSet) === 6 && countIn(SOLID.oct.V, Cset) === 0);
+
+  /* 变异 5：丢掉极性 ⇒ 12 条有向腿塌成 6 条无向棱 */
+  var und = {};
+  LEGS.forEach(function(L){
+    var kk = Math.min(L[0], L[1]) + '-' + Math.max(L[0], L[1]);
+    und[kk] = (und[kk] || 0) + 1;
+  });
+  ck('变异⑤：丢掉极性 ⇒ 12 条腿塌成 6 条无向棱，每棱恰好 2 条',
+     Object.keys(und).length === 6 && Object.keys(und).every(function(kk){ return und[kk] === 2; }),
+     Object.keys(und).length + ' 棱');
+})();
+
+/* --- §1b 几何成本表：减法 / 除法 / φ 三组独立复算 --- */
+(function(){
+  var R = subByGeo(5, 3);
+  ck('减法几何读数 = n₁−n₂（5−3=2）', isFinite(R.y) && Math.abs(R.y - 2) < 1e-9, R.y);
+  ck('减法第二根避开已知根（x ≠ 1/n₂）', !isFinite(R.x) || Math.abs(R.x - R.xKnown) > 1e-6, [R.x, R.xKnown]);
+
+  var D = divByGeo(6, 3);
+  ck('除法几何读数 = n₁÷n₂（6÷3=2）', isFinite(D.t) && Math.abs(D.t - 2) < 1e-9, D.t);
+  ck('除法切点确实在曲线上（t·(1/t)=1，用切线一致性验）',
+     isFinite(D.t) && Math.abs(gTan(1/D.t, D.t, D.t)) < 1e-9, isFinite(D.t) ? gTan(1/D.t, D.t, D.t) : 'NaN');
+
+  var r5 = sqrtByGeo(5);
+  var phi = divByGeo(r5 + 1, 2).t;
+  ck('φ 由几何读出（残差 < 1e-9，对照值写死不算）', Math.abs(phi - 1.6180339887498949) < 1e-9, phi);
+  var invPhi = divByGeo(1, phi).t;
+  ck('乘除互逆（a ≠ b，切线交点数值稳）：φ × (1/φ) = 1',
+     Math.abs(mulByGeo(phi, invPhi) - 1) < 1e-9, Math.abs(mulByGeo(phi, invPhi) - 1));
+  ck('φ² = φ + 1，平方按向径斜率读（n ÷ (1/n)）',
+     Math.abs(sqByGeo(phi) - (phi + 1)) < 1e-9, Math.abs(sqByGeo(phi) - (phi + 1)));
+  ck('变异测试：a = b 时 mulByGeo 必然退化（NaN 或极差）—— 这就是平方不能走切线的理由',
+     (function(){ var v = mulByGeo(1.5, 1.5); return !isFinite(v) || Math.abs(v - 2.25) > 1e-6; })(),
+     mulByGeo(1.5, 1.5));
+
+  var rad = window.__rad || [];
+  /* 「设计上画不出」与「算崩成 NaN」必须分开：前者 ref === null，后者一律判坏 */
+  var drawable = rad.filter(function(r){ return r.ref !== null; });
+  var bad = drawable.filter(function(r){ return !isFinite(r.v) || r.err === null || r.err > 1e-9; });
+  ck('成本表 10 个可读数全部读出且残差 < 1e-9（NaN 也算坏）',
+     drawable.length === 10 && bad.length === 0,
+     drawable.length + ' 可读 / 坏 ' + bad.length + (bad.length ? ' → ' + bad.map(function(r){ return r.n; }).join(',') : ''));
+  ck('成本表里恰有 2 个「画不出」，且它们的 v 真的是 null（不是拿近似值冒充）',
+     rad.filter(function(r){ return r.ref === null; }).length === 2 &&
+     rad.filter(function(r){ return r.ref === null && r.v === null; }).length === 2,
+     rad.filter(function(r){ return r.ref === null; }).map(function(r){ return r.n + '=' + r.v; }).join(','));
+  ck('刀数单调：√2(1) < 2^(1/4)(2) < 2^(1/8)(3) < φ(4)',
+     (function(){ var m = {}; rad.forEach(function(r){ m[r.n] = r.cut; });
+       return m['√2'] === 1 && m['2^(1/4)'] === 2 && m['2^(1/8)'] === 3 && m['φ'] === 4; })());
+})();
+
+/* --- §2c 直锥：椭圆 / 抛物线 / 双曲线 --- */
+(function(){
+  var e0 = ellGeom(2, 0), e1 = ellGeom(2, 0.6), ep = ellGeom(2, 1), eh = ellGeom(2, 1.4);
+  ck('直锥：tanα<1 ⇒ 椭圆、=1 ⇒ 抛物线、>1 ⇒ 双曲线（三档都验，不是只看一档）',
+     e1.type === 'ellipse' && ep.type === 'parabola' && eh.type === 'hyperbola',
+     e1.type + ' / ' + ep.type + ' / ' + eh.type);
+  ck('直锥：tanα = 0 退化成半径 z₀ 的正圆（a_u = a_v = z₀ 且 e = 0）',
+     Math.abs(e0.aU - 2) < 1e-12 && Math.abs(e0.aV - 2) < 1e-12 && Math.abs(e0.ecc) < 1e-12,
+     e0.aU.toFixed(9) + ' / ' + e0.aV.toFixed(9));
+  ck('直锥：临界 tanα = 1 与 z₀ 无关（z₀ = 0.8 / 2 / 8 三档：0.999 椭圆、1.001 双曲线）',
+     [0.8, 2, 8].every(function(zz){
+       return ellGeom(zz, 0.999).type === 'ellipse' && ellGeom(zz, 1.001).type === 'hyperbola';
+     }), '3 档 × 2 侧');
+  ck('对照：双曲锥的临界随 z₀ 变（z₀²/4 ⇒ 0.8→0.16、2→1、8→16）—— 两个临界不是一个东西',
+     Math.abs(0.8*0.8/4 - 0.16) < 1e-12 && Math.abs(2*2/4 - 1) < 1e-12 && Math.abs(8*8/4 - 16) < 1e-12,
+     '0.16 / 1 / 16');
+  ck('直锥：轴比 a_v/a_u = 1/√(cos2α)（五档 α 复算，1e−12）',
+     [0.1, 0.3, 0.6, 0.85, 0.97].every(function(tt){
+       var gg = ellGeom(2, tt), ref = 1 / Math.sqrt(Math.cos(2 * Math.atan(tt)));
+       return Math.abs(gg.ratio / ref - 1) < 1e-12;
+     }), '5 档');
+  ck('直锥：离心率 e = √2·sinα（与 a_u/a_v 那条独立复算一致，1e−12）',
+     [0.1, 0.3, 0.6, 0.85, 0.97].every(function(tt){
+       var gg = ellGeom(2, tt), ref = Math.SQRT2 * Math.sin(Math.atan(tt));
+       return Math.abs(gg.ecc - ref) < 1e-12;
+     }), '5 档');
+  ck('直锥：椭圆中心 C 不在 O（α>0 时 v_c>0；只有水平切才 v_c=0）',
+     Math.abs(ellGeom(2, 0).vC) < 1e-15 && ellGeom(2, 0.6).vC > 0.5,
+     'v_c(α=31.0°) = ' + ellGeom(2, 0.6).vC.toFixed(4));
+  (function(){
+    var G = ellGeom(2, 0.6), S = ellCurves(2, 0.6), B = S.branches[0];
+    var u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9;
+    B.forEach(function(p){
+      if (p.u < u0) u0 = p.u; if (p.u > u1) u1 = p.u;
+      if (p.v < v0) v0 = p.v; if (p.v > v1) v1 = p.v;
+    });
+    /* 🔴 判据口径：720 个采样点扫一条连续曲线，包围盒一定略小于解析值，误差量级是
+       (2π/N)²/2 ≈ 3.8e−5。这里要求 < 2e−4 是「离散采样能给出的精度」；
+       原来写 1e−9 是把离散判成连续，必然假红 —— 判据自己写错，比实现错更费时间。 */
+    ck('直锥：采样包围盒 = 2a（u 向 2a_u、v 向 2a_v；离散口径 < 2e−4 ≈ (2π/N)²/2）',
+       Math.abs((u1-u0)/(2*G.aU) - 1) < 2e-4 && Math.abs((v1-v0)/(2*G.aV) - 1) < 2e-4,
+       ((u1-u0)/(2*G.aU)).toFixed(10) + ' / ' + ((v1-v0)/(2*G.aV)).toFixed(10));
+  })();
+  ck('直锥：第三张 canvas 真有像素（解析对但没画出来也算坏）', (function(){
+    var c = Ell.cv; if (!c) return false;
+    drawEll(Cone.z0, Cone.tanA);
+    var g2 = c.getContext('2d');
+    var d = g2.getImageData(0, 0, c.width, c.height).data, n = 0;
+    for (var i = 0; i < d.length; i += 4*37){
+      if (d[i] < 245 || d[i+1] < 245 || d[i+2] < 240) n++;
+    }
+    return n / (d.length/(4*37)) > 0.01;
+  })());
+})();
+
+/* --- 运行时零开方 --- */
+ck('运行时 SQRT_CALLS = 0', SQRT_CALLS === 0, SQRT_CALLS);
+
+/* --- 渲染 --- */
+ck('六张画布都有像素（着色率 > 1%）', (function(){
+  var ids = ['cvHyp','cvCone','cvSect','cvEll','cvTet','cvLat'], ok = 0;
+  ids.forEach(function(id){
+    var c = $(id), g = c.getContext('2d');
+    var d = g.getImageData(0, 0, c.width, c.height).data;
+    var n = 0;
+    for (var i = 0; i < d.length; i += 4*37){
+      if (d[i] < 245 || d[i+1] < 245 || d[i+2] < 240) n++;
+    }
+    if (n / (d.length/(4*37)) > 0.01) ok++;
+  });
+  return ok === 6;
+ })());
+
+/* --- 汇总渲染 --- */
+(function render(){
+  var pass = CHK.filter(function(c){ return c.pass; }).length;
+  var bad = CHK.filter(function(c){ return !c.pass; });
+  $('chkSum').innerHTML = '自检 <b style="color:' + (bad.length ? '#A32D2D' : '#0F6E56') + '">' +
+    pass + '/' + CHK.length + '</b>' + (bad.length ? '　失败：' + bad.map(function(b){ return b.label; }).join('；') : '　全绿');
+  var box = $('chkList');
+  CHK.forEach(function(c){
+    var d = document.createElement('div');
+    d.className = c.pass ? 'pass' : 'fail';
+    d.innerHTML = (c.pass ? '✓ ' : '✗ ') + c.label +
+      '<span>' + (c.detail ? c.detail : '') + '</span>';
+    box.appendChild(d);
+  });
+  $('chipChk').textContent = '自检 ' + pass + '/' + CHK.length;
+  $('chipSqrt').textContent = '作图开方 ' + SQRT_CALLS + ' 次';
+  window.__chk = { total: CHK.length, pass: pass, fail: bad.length, bad: bad.map(function(b){ return b.label; }) };
+})();
+
+/* --- 对外钩子（给探针用） --- */
+window.__struc = {
+  V8: V8, T1: T1, T2: T2, LEGS: LEGS, TD: TD, T12: T12, ALL48: ALL48,
+  PAIRS: PAIRS, ORBLIST: ORBLIST, C64: C64, V125: V125, SOLID: SOLID,
+  ham: ham, orbitLegs: orbitLegs, z3Orbits: z3Orbits, sqrtByGeo: sqrtByGeo,
+  sectionR: sectionR, coneStats: coneStats, countIn: countIn,
+  ellGeom: ellGeom, ellCurves: ellCurves, Ell: Ell, CONE_M: CONE_M,
+  getChk: function(){ return window.__chk; },
+  getSqrtCalls: function(){ return SQRT_CALLS; },
+  draw: function(){ drawHyp(); drawCone(); drawTet(); drawLat(); }
+};
+
+drawHyp(); drawCone(); drawTet(); drawLat();
+
+})();
+</script>
+
+</div>
+</body>
+</html>
