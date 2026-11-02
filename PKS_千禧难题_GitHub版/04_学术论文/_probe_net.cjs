@@ -17,7 +17,8 @@ const OUT = __dirname;
 
 const NEW_IDS = ['lyapunov', 'response', 'cavity', 'participation', 'sr', 'kramers', 'psd',
   'kalman', 'sysid', 'cs', 'adjoint', 'noether', 'integrable', 'rg', 'bifurcation',
-  'fpt', 'comm', 'ricci', 'hypergraph', 'specgraph'];
+  'fpt', 'comm', 'ricci', 'hypergraph', 'specgraph',
+  'koopman', 'info_geom', 'persist_lap', 'special_fn', 'asymptotic', 'ortho_poly'];
 
 let pass = 0, fail = 0;
 const rows = [];
@@ -37,16 +38,16 @@ function chk(ok, label, got) {
       document.getElementById('sn').textContent, document.getElementById('se').textContent,
       document.getElementById('sc').textContent].join('|')`);
     const [dn, de, nn, ee, sn, se, sc] = String(size).split('|');
-    chk(dn === '195', 'DATA.nodes 是 195（175 + 新增 20）', dn);
+    chk(dn === '201', 'DATA.nodes 是 201（175 + 两批共 26）', dn);
     chk(nn === dn, '渲染层节点数 == DATA 节点数（没有解析漏掉）', nn + ' vs ' + dn);
     chk(ee === de, '过滤后边数 == DATA 边数 ⇒ 0 条悬空边（静默丢边的假绿）', ee + ' vs ' + de);
-    chk(de === '588', 'DATA.edges 是 588（500 + 新增 88）', de);
+    chk(de === '629', 'DATA.edges 是 629（500 + 88 + 41）', de);
     chk(sn === nn && se === ee, '屏幕上「节点／连线」两个数就是这两个（现算，不是写死）',
       sn + '/' + se);
     /* 面包屑只在「什么都没选中」时显示总数；点开节点后它本来就会变成节点标题。
        所以这一条必须读在点击之前 —— 第一版读在点击之后，是判据位置错（假红）。 */
     const crumb0 = await b.evalJs("(document.getElementById('crumb').innerText||'').replace(/\\s+/g,' ')");
-    chk(/195/.test(crumb0) && /588/.test(crumb0), '面包屑写 195 件工具 · 588 条连线（点开前）', crumb0);
+    chk(/201/.test(crumb0) && /629/.test(crumb0), '面包屑写 201 件工具 · 629 条连线（点开前）', crumb0);
 
     /* ---- 2. 每条边都有理由 ---- */
     const noR = await b.evalJs(`(function(){
@@ -66,7 +67,7 @@ function chk(ok, label, got) {
       var iso=N.filter(function(n){return n.deg===0;}).map(function(n){return n.id;});
       return [miss.length+'|'+miss.join(','), low.length+'|'+low.join(','), iso.length+'|'+iso.join(',')].join(';');})()`);
     const seg = String(nn2).split(';');
-    chk(seg[0].startsWith('0|'), '20 个新 id 全在渲染层（没有拼错的 id）', seg[0]);
+    chk(seg[0].startsWith('0|'), '26 个新 id 全在渲染层（没有拼错的 id）', seg[0]);
     chk(seg[1].startsWith('0|'), '每个新节点至少 3 条边（不是挂上去就完事）', seg[1]);
     chk(seg[2].startsWith('0|'), '全图 0 个孤立节点', seg[2]);
 
@@ -77,6 +78,22 @@ function chk(ok, label, got) {
     const D = JSON.parse(deg);
     chk(D.lyapunov >= 6, 'Lyapunov 谱的度数 ≥ 6（它不是叶子）', D.lyapunov);
     chk(D.cavity >= 5 && D.response >= 5, '空腔法／线性响应 度数 ≥ 5', D.cavity + '/' + D.response);
+
+    /* ---- 4b. 第二批（+6）的段位，以及「两谱别混」这条边真的在 ---- */
+    const deg2 = await b.evalJs(`(function(){
+      var o={}; ['koopman','info_geom','persist_lap','special_fn','asymptotic','ortho_poly'].forEach(function(id){
+        o[id]=byId[id]?byId[id].deg:-1;});
+      var pair=DATA.edges.filter(function(e){
+        return (e.s==='koopman'&&e.t==='lyapunov')||(e.s==='special_fn'&&e.t==='asymptotic')
+            ||(e.s==='special_fn'&&e.t==='ortho_poly');});
+      o._pair=pair.length; return JSON.stringify(o);})()`);
+    const D2 = JSON.parse(deg2);
+    chk(D2.koopman >= 6 && D2.info_geom >= 6 && D2.persist_lap >= 6,
+      '第二批三件主节点度数 ≥ 6', 'koopman ' + D2.koopman + ' / info_geom ' + D2.info_geom + ' / persist_lap ' + D2.persist_lap);
+    chk(D2.special_fn >= 8 && D2.asymptotic >= 5 && D2.ortho_poly >= 5,
+      '特殊函数 ≥8、渐近与正交多项式 ≥5（特殊函数一进来就带了两件）',
+      D2.special_fn + '/' + D2.asymptotic + '/' + D2.ortho_poly);
+    chk(D2._pair === 3, '三条关键边在：Koopman—Lyapunov（两谱别混）、特殊函数—渐近、特殊函数—正交多项式', D2._pair);
 
     /* ---- 5. 搜索能找到、点开有正文、说的是那句关键话 ---- */
     await b.evalJs(`(function(){var q=document.getElementById('q'); q.value='Lyapunov';
@@ -96,7 +113,7 @@ function chk(ok, label, got) {
 
     /* ---- 6. 标题里的数跟数据一致 ---- */
     const ttl = await b.evalJs('document.title');
-    chk(ttl.includes('195'), '<title> 里是 195 件工具', ttl);
+    chk(ttl.includes('201'), '<title> 里是 201 件工具', ttl);
 
     /* ---- 7. 新加的说明卡在、并且展开后有那四类原因 ---- */
     const det = await b.evalJs(`(function(){
@@ -107,7 +124,21 @@ function chk(ok, label, got) {
     for (const k of ['跨分支的算子技术', '工程天天用', '噪声', '不变量怎么算出来']) {
       chk(String(det).includes(k), '四类原因之一在屏上：' + k, 'ok');
     }
-    chk(String(det).includes('三条判据'), '写了选这 20 件的三条判据', 'ok');
+    chk(String(det).includes('三条判据'), '写了选这 26 件的三条判据', 'ok');
+    chk(String(det).includes('26 件'), '折叠卡标题已改成 26 件（20 + 6）', 'ok');
+    chk(String(det).includes('是书单挑的') && String(det).includes('书单不只被图检验'),
+      '写明「特殊函数是书单挑的」，且书单能反过来指出图的缺口', 'ok');
+
+    /* ---- 7b. 语义跟随实现：书单里那句「本页没有特殊函数节点」必须已经改掉 ---- */
+    const bkTxt = await b.evalJs(`(function(){
+      var B=(window.__BK_BOOKS2__||[]).concat(window.__BK_BOOKS__||[]);
+      var hit=B.filter(function(b){return (b.w||'').indexOf('特殊函数')>=0;});
+      return hit.length+'|'+(hit[0]?(hit[0].w||''):'');})()`);
+    const bp = String(bkTxt).split('|');
+    chk(Number(bp[0]) >= 1, '书单里能找到讲特殊函数的那条（NIST DLMF）', bp[0]);
+    chk(/已补上/.test(bp[1]) && !/没有「特殊函数」这个节点/.test(bp[1]),
+      '🔴 那句「本页没有这个节点」已随实现改掉（实现一改，屏上的话必须跟着改）',
+      (bp[1] || '').slice(0, 60));
     await cdp.sleep(200);
     const why = await b.evalJs(`(function(){
       var d=document.getElementById('whyNew'); var r=d.getBoundingClientRect();
