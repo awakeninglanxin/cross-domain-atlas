@@ -18,7 +18,8 @@ const OUT = __dirname;
 const NEW_IDS = ['lyapunov', 'response', 'cavity', 'participation', 'sr', 'kramers', 'psd',
   'kalman', 'sysid', 'cs', 'adjoint', 'noether', 'integrable', 'rg', 'bifurcation',
   'fpt', 'comm', 'ricci', 'hypergraph', 'specgraph',
-  'koopman', 'info_geom', 'persist_lap', 'special_fn', 'asymptotic', 'ortho_poly'];
+  'koopman', 'info_geom', 'persist_lap', 'special_fn', 'asymptotic', 'ortho_poly',
+  'hamming', 'divergence', 'energymodel', 'returntime', 'potential'];
 
 let pass = 0, fail = 0;
 const rows = [];
@@ -38,16 +39,16 @@ function chk(ok, label, got) {
       document.getElementById('sn').textContent, document.getElementById('se').textContent,
       document.getElementById('sc').textContent].join('|')`);
     const [dn, de, nn, ee, sn, se, sc] = String(size).split('|');
-    chk(dn === '201', 'DATA.nodes 是 201（175 + 两批共 26）', dn);
+    chk(dn === '206', 'DATA.nodes 是 206（175 + 三批共 31）', dn);
     chk(nn === dn, '渲染层节点数 == DATA 节点数（没有解析漏掉）', nn + ' vs ' + dn);
     chk(ee === de, '过滤后边数 == DATA 边数 ⇒ 0 条悬空边（静默丢边的假绿）', ee + ' vs ' + de);
-    chk(de === '629', 'DATA.edges 是 629（500 + 88 + 41）', de);
+    chk(de === '658', 'DATA.edges 是 658（500 + 88 + 41 + 29）', de);
     chk(sn === nn && se === ee, '屏幕上「节点／连线」两个数就是这两个（现算，不是写死）',
       sn + '/' + se);
     /* 面包屑只在「什么都没选中」时显示总数；点开节点后它本来就会变成节点标题。
        所以这一条必须读在点击之前 —— 第一版读在点击之后，是判据位置错（假红）。 */
     const crumb0 = await b.evalJs("(document.getElementById('crumb').innerText||'').replace(/\\s+/g,' ')");
-    chk(/201/.test(crumb0) && /629/.test(crumb0), '面包屑写 201 件工具 · 629 条连线（点开前）', crumb0);
+    chk(/206/.test(crumb0) && /658/.test(crumb0), '面包屑写 206 件工具 · 658 条连线（点开前）', crumb0);
 
     /* ---- 2. 每条边都有理由 ---- */
     const noR = await b.evalJs(`(function(){
@@ -67,7 +68,7 @@ function chk(ok, label, got) {
       var iso=N.filter(function(n){return n.deg===0;}).map(function(n){return n.id;});
       return [miss.length+'|'+miss.join(','), low.length+'|'+low.join(','), iso.length+'|'+iso.join(',')].join(';');})()`);
     const seg = String(nn2).split(';');
-    chk(seg[0].startsWith('0|'), '26 个新 id 全在渲染层（没有拼错的 id）', seg[0]);
+    chk(seg[0].startsWith('0|'), '31 个新 id 全在渲染层（没有拼错的 id）', seg[0]);
     chk(seg[1].startsWith('0|'), '每个新节点至少 3 条边（不是挂上去就完事）', seg[1]);
     chk(seg[2].startsWith('0|'), '全图 0 个孤立节点', seg[2]);
 
@@ -95,6 +96,40 @@ function chk(ok, label, got) {
       D2.special_fn + '/' + D2.asymptotic + '/' + D2.ortho_poly);
     chk(D2._pair === 3, '三条关键边在：Koopman—Lyapunov（两谱别混）、特殊函数—渐近、特殊函数—正交多项式', D2._pair);
 
+    /* ---- 4c. 第三批（+5，cRSI 的数学底座）---- */
+    const deg3 = await b.evalJs(`(function(){
+      var o={}; ['hamming','divergence','energymodel','returntime','potential'].forEach(function(id){
+        o[id]=byId[id]?byId[id].deg:-1;});
+      var pair=DATA.edges.filter(function(e){
+        return (e.s==='hamming'&&e.t==='group')||(e.s==='potential'&&e.t==='noether')
+            ||(e.s==='divergence'&&e.t==='stochastic');});
+      o._pair=pair.length;
+      o._crsi=DATA.nodes.filter(function(n){
+        return ['hamming','divergence','energymodel','returntime','potential'].indexOf(n.id)>=0
+            && (n.desc||'').indexOf('cRSI')>=0;}).length;
+      return JSON.stringify(o);})()`);
+    const D3 = JSON.parse(deg3);
+    chk(D3.hamming >= 6 && D3.divergence >= 6 && D3.energymodel >= 6
+      && D3.returntime >= 5 && D3.potential >= 6,
+      '第三批五件度数达标（汉明 6／分布距离 6／能量模型 6／Kac 5／势函数 6）',
+      [D3.hamming, D3.divergence, D3.energymodel, D3.returntime, D3.potential].join('/'));
+    chk(D3._pair === 3, '三条关键边在：汉明—群（自同构）、势函数—诺特（全局量判据）、分布距离—随机过程（混合时间）', D3._pair);
+    chk(D3._crsi === 5, '五件的正文都写明了 cRSI 拿它做了什么（不是空挂）', D3._crsi + '/5');
+
+    /* 🔴 左栏搜索只匹配 name + en + id，不搜正文 —— 所以不能搜「cRSI」，
+       要搜「汉明」再点开读面板。第一版搜 cRSI 命中 0，是判据错了不是页面错了。 */
+    await b.evalJs(`(function(){var q=document.getElementById('q'); q.value='汉明';
+      q.dispatchEvent(new Event('input'));})()`);
+    await cdp.sleep(250);
+    const hmHit = await b.evalJs("document.querySelectorAll('#hits .hit').length");
+    chk(Number(hmHit) >= 1, '左栏搜「汉明」有命中（新节点可被找到）', hmHit);
+    await b.evalJs("document.querySelector('#hits .hit').click()");
+    await cdp.sleep(350);
+    const hmPanel = await b.evalJs("(document.getElementById('panel').innerText||'').replace(/\\s+/g,'')");
+    chk(hmPanel.includes('cRSI'), '🔴 汉明图面板正文写着 cRSI 拿它做了什么（底座真挂着，不是空挂）',
+      hmPanel.includes('Q₆') ? '含 Q₆' : hmPanel.slice(0, 40));
+    chk(hmPanel.includes('384'), '汉明图面板写着 384 条有向边（与六维卦序同源）', 'ok');
+
     /* ---- 5. 搜索能找到、点开有正文、说的是那句关键话 ---- */
     await b.evalJs(`(function(){var q=document.getElementById('q'); q.value='Lyapunov';
       q.dispatchEvent(new Event('input'));})()`);
@@ -113,7 +148,7 @@ function chk(ok, label, got) {
 
     /* ---- 6. 标题里的数跟数据一致 ---- */
     const ttl = await b.evalJs('document.title');
-    chk(ttl.includes('201'), '<title> 里是 201 件工具', ttl);
+    chk(ttl.includes('206'), '<title> 里是 206 件工具', ttl);
 
     /* ---- 7. 新加的说明卡在、并且展开后有那四类原因 ---- */
     const det = await b.evalJs(`(function(){
@@ -125,7 +160,7 @@ function chk(ok, label, got) {
       chk(String(det).includes(k), '四类原因之一在屏上：' + k, 'ok');
     }
     chk(String(det).includes('三条判据'), '写了选这 26 件的三条判据', 'ok');
-    chk(String(det).includes('26 件'), '折叠卡标题已改成 26 件（20 + 6）', 'ok');
+    chk(String(det).includes('31 件'), '折叠卡标题已改成 31 件（20 + 6 + 5）', 'ok');
     chk(String(det).includes('是书单挑的') && String(det).includes('书单不只被图检验'),
       '写明「特殊函数是书单挑的」，且书单能反过来指出图的缺口', 'ok');
 
@@ -162,6 +197,48 @@ function chk(ok, label, got) {
     chk(String(bk).startsWith('OPEN'), '书单弹层仍能打开（扩网没有打断它）', bk);
     chk(String(bk).includes('true'), '书单统计条仍在算（主表 50 条）', 'ok');
     await b.evalJs("document.getElementById('bkX').click()");
+    await cdp.sleep(200);
+
+    /* ---- 9. 教育弹层第 5+ 节：教法那一节真的在屏上 ---- */
+    await b.evalJs("document.getElementById('eBtn').click()");
+    await cdp.sleep(350);
+    const eOpen = await b.evalJs(`(function(){
+      var o=document.getElementById('eOv');
+      if(!o) return 'MISSING';
+      return o.classList.contains('on') ? 'ON' : 'OFF';})()`);
+    chk(eOpen === 'ON', '教育弹层能打开', eOpen);
+
+    const nav5b = await b.evalJs(`(function(){
+      var a=document.querySelector('.e-nav a[href="#ee5b"]');
+      return a ? a.textContent.replace(/\\s+/g,' ') : 'MISSING';})()`);
+    chk(nav5b !== 'MISSING' && /5\+/.test(nav5b), '导航里有 5+ 这一节的入口', nav5b);
+
+    const t = await b.evalJs(`(function(){
+      var h=document.getElementById('ee5b');
+      if(!h) return 'MISSING';
+      var out=[], n=h.nextElementSibling;
+      for(var k=0;k<40 && n;k++){ if(n.id && n.id.indexOf('ee')===0) break;
+        out.push(n.innerText||n.textContent||''); n=n.nextElementSibling; }
+      return out.join('\\n').replace(/\\s+/g,'');})()`);
+    chk(t !== 'MISSING', '第 5+ 节在屏上（能取到正文）', t.slice(0, 30));
+    for (const k of ['不变量', '配对与对称', '试极端', '倒着走', '算反面']) {
+      chk(t.includes(k), '五个最小工具之一在屏上：' + k, 'ok');
+    }
+    for (const k of ['先撞墙，再给工具', '不许用超纲工具', '为什么觉得它对',
+                     '让他出题，不让他刷题', '猜、验、改', '一个结构要见三次']) {
+      chk(t.includes(k), '六条硬规矩之一在屏上：' + k.slice(0, 12), 'ok');
+    }
+    chk(t.includes('圆桌') && t.includes('正对面') && t.includes('正中心'),
+      '现场演示三步在屏上（圆桌／正对面／正中心）', 'ok');
+    chk(t.includes('鸡兔同笼') && t.includes('浓度问题') && t.includes('除以单位差'),
+      '「一个动作见三次」四张皮与那一步都在屏上', 'ok');
+    chk(t.includes('分年级') && t.includes('量纲与数量级'), '分年级表在屏上（含高中那条）', 'ok');
+    chk(!t.includes('**'), '教法节正文没有残留星号（会原样印出）', 'ok');
+    /* 截图留证：弹层是 fixed 定位，clip 会被裁 ⇒ 用视口截图；元素在滚动容器里，先滚进视口 */
+    await b.evalJs("document.getElementById('ee5b').scrollIntoView({block:'start'})");
+    await cdp.sleep(320);
+    const sh4 = await shot('net_teach.jpg');
+    await b.evalJs("document.getElementById('eX').click()");
     await cdp.sleep(200);
 
     /* ---- 10. 截图 ---- */
@@ -213,7 +290,7 @@ function chk(ok, label, got) {
     const sh3 = { f: 'net_lyap.jpg', kb: Math.round(b3.length / 1024) };
 
     console.log(rows.join('\n'));
-    console.log('\n截图：' + [sh1, sh2, sh3].map((x) => x.f + ' ' + x.kb + 'KB').join(' | '));
+    console.log('\n截图：' + [sh1, sh2, sh3, sh4].map((x) => x.f + ' ' + x.kb + 'KB').join(' | '));
     console.log('\nPASS ' + pass + ' / FAIL ' + fail);
     fs.writeFileSync(path.join(OUT, '_probe_net.json'),
       JSON.stringify({ pass, fail, total: pass + fail, size: String(size), newdeg: nn2, shots: [sh1, sh2, sh3] }, null, 1));
