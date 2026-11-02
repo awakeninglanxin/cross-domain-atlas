@@ -959,7 +959,9 @@ sec('Q 段 · 自改动力学（cRSI）');
   const m0 = sc.axes.find((a) => a.key === 'xuan').score;
   const m1 = mut((C2) => { ga(C2).theta.g = 0.45; }).axes.find((a) => a.key === 'xuan').score;
   chk(s1 > s0 && j1 < j0 && m1 > m0,
-    'Q26 三处变异都能把分数推动（演绎 3→' + s1 + '、尽善 6→' + j1 + '、选美 0→' + m1 + '）⇒ 分挂在实测上，不是手填',
+    /* 🔴 别再手写起点（原来写「演绎 3→」）：演绎接入解析实测后起点是 6，
+     *    硬写的 3 会让断言文字与实测不符 —— 数字一律用 s0/j0/m0 现取。 */
+    'Q26 三处变异都能把分数推动（演绎 ' + s0 + '→' + s1 + '、尽善 ' + j0 + '→' + j1 + '、选美 ' + m0 + '→' + m1 + '）⇒ 分挂在实测上，不是手填',
     s0 + '→' + s1 + ' / ' + j0 + '→' + j1 + ' / ' + m0 + '→' + m1);
 
   /* ---- Q27–Q29：置顶大纲（十二个字六条方针）----
@@ -1012,6 +1014,61 @@ sec('Q 段 · 自改动力学（cRSI）');
     'Q30 达真分只挂在恒等式实测（' + da0.score + '→' + da1.score +
     '），断言数 ' + T0.total + '→9999 分不动，且 score＝own（审计者能力不许继承）',
     da0.score + '→' + da1.score + ' / 改断言数 ' + da2.score + ' / own ' + da0.own + ',' + da1.own);
+}
+
+/* Q31 通天分挂不挂在实测上：注入改过 pass 的 _intensity_result.json，
+ * 看分会不会跟着掉。四档：基线 3 个过门、少一个、全不过、全过。
+ * 🔴 「全过也不涨」这一档是故意留的：证明阶梯不是「越多越好」，
+ *    而是「有观测量只值 1 分，迁移没做就到此为止」。 */
+{
+  const SCORE = require('./score.cjs'); /* 937 行那个是块级作用域，这里够不到，自己取一次（require 有缓存，同一个函数） */
+  const RJ2 = JSON.parse(fs.readFileSync(path.join(__dirname, '_crisi_result.json'), 'utf8'));
+  const T2 = { total: pass + fail }; /* 通天不吃 TOTAL，只取当前已核验数，避免依赖还没写出的 _last-test.json */
+  const INT0 = require('./_intensity_result.json');
+  const mutInt = (f) => {
+    const o = JSON.parse(JSON.stringify(INT0));
+    f(o.reportNormalized);
+    return { int: o };
+  };
+  const tongOf = (opt) => SCORE(RJ2, T2, opt).axes.find((a) => a.key === 'tong');
+  const t0 = tongOf(undefined);
+  const t1 = tongOf(mutInt((rn) => { rn.aPop.pass = false; }));
+  const t2 = tongOf(mutInt((rn) => { rn.aPop.pass = false; rn.dZong.pass = false; rn.dCuo.pass = false; }));
+  const t3 = tongOf(mutInt((rn) => { Object.keys(rn).forEach((k) => { rn[k].pass = true; }); }));
+  chk(t0.score === 1 && t1.score === 0 && t2.score === 0 && t3.score === 1,
+    'Q31 通天分只由「过门序参量个数」给（3 个→1 分；掉到 2 个→0 分；6 个全过也仍 1 分）⇒ 不是手填，也不是越多越好',
+    t0.score + '→' + t1.score + '→' + t2.score + '→' + t3.score +
+    '（nPass ' + t0.num + '/' + t1.num + '/' + t2.num + '/' + t3.num + '）');
+}
+
+/* Q32 演绎分挂不挂在实测上：注入改过 _deduce_result.json 的副本，看分会不会跟着掉。
+ * 四档：原样、阈值内侧（0.149，仍该过）、阈值外侧（0.151，必须掉）、
+ *       分离度塌到 1.0（用错表不崩 ⇒ 判据没牙 ⇒ 必须掉）。
+ * 🔴 0.149 / 0.151 这一对是故意贴着阈值做的：只判「会掉」不判「在哪儿掉」，
+ *    把阈值写成 0.9 也能过 —— 那就等于没判阈值。 */
+{
+  const SCORE2 = require('./score.cjs');
+  const RJ3 = JSON.parse(fs.readFileSync(path.join(__dirname, '_crisi_result.json'), 'utf8'));
+  const T3 = { total: pass + fail };
+  const DED0 = JSON.parse(fs.readFileSync(path.join(__dirname, '_deduce_result.json'), 'utf8'));
+  const mutDed = (f) => {
+    const o = JSON.parse(JSON.stringify(DED0));
+    f(o.cross);
+    return { ded: o };
+  };
+  const yanOf = (opt) => SCORE2(RJ3, T3, opt).axes.find((a) => a.key === 'yan');
+  const y0 = yanOf(undefined);
+  const yIn = yanOf(mutDed((c) => { c.selfMed = 0.149; }));
+  const yOut = yanOf(mutDed((c) => { c.selfMed = 0.151; }));
+  const ySep = yanOf(mutDed((c) => { c.sep = 1.0; }));
+  const yNoise = yanOf(mutDed((c) => { c.noiseMed = 0.5; }));
+  /* 基线分从 y0 读，不写死 6：万一将来实测变了，这条断言不该跟着假红 */
+  chk(y0.score === 6 && yIn.score === 6 && yOut.score === 3 && ySep.score === 3 && yNoise.score === 3,
+    'Q32 演绎分挂挂解析实测上（原样 6；误差 0.149 仍 6；0.151 掉到 3；分离度塌到 1.0 掉到 3；噪声底抬到 0.5 掉到 3）⇒ 阈值是硬的，不是摆设',
+    y0.score + '/' + yIn.score + '/' + yOut.score + '/' + ySep.score + '/' + yNoise.score);
+  chk(y0.evid.indexOf('NaN') < 0 && y0.why.indexOf('NaN') < 0,
+    'Q32b 演绎的证据与理由里没有 NaN（缺 JSON 时才许降级，不许印 NaN）',
+    (y0.evid + y0.why).slice(0, 40));
 }
 
 /* ================= 输出 ================= */

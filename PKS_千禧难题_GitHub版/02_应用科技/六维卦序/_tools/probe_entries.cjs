@@ -134,10 +134,15 @@ const COLLECT = '(' + function () {
   ck(r.m11txt.length > 800, '新组区块抓到了正文（才 好判占位符）', r.m11txt.length + ' 字');
   ck(!/undefined|NaN|\$\{/.test(r.m11txt), '🔴 新组区块内无 undefined / NaN / 未插值占位符（整页不判——原文本来就有「NaN」一词）',
     (r.m11txt.match(/undefined|NaN|\$\{/g) || []).join(',') || '0 处');
-  /* v11 新写的 cRSI 结论必须真的在屏上（读字，不读源码） */
-  ck(r.m11txt.includes('最新（v11，§9.6）') && r.m11txt.includes('17/60'),
-    'cRSI 卡片写着 v11 最新口径 17 / 60（去空白后是 17/60）',
-    r.m11txt.includes('17/60') ? '命中' : '未命中');
+  /* v12 新写的 cRSI 结论必须真的在屏上（读字，不读源码）。
+   * 🔴 这里不能只判「有数字」：17 和 20 都是数字，版本号变了必须显式改名，
+   *    否则旧版 17/60 也会 PASS —— 那就是「判据太宽」的假绿。 */
+  ck(r.m11txt.includes('最新（v12，§9.7）') && r.m11txt.includes('20/60') && !r.m11txt.includes('最新（v11，§9.6）'),
+    'cRSI 卡片写着 v12 最新口径 20 / 60，且旧的 v11 标号已不在屏上（去空白后是 20/60）',
+    (r.m11txt.includes('20/60') ? '20/60 ' : '') + (r.m11txt.includes('v12') ? 'v12' : '无v12'));
+  ck(r.m11txt.includes('4.26%') && r.m11txt.includes('43.08%') && r.m11txt.includes('10.11倍'),
+    '演绎那条的三个数在屏上（4.26% 自预测 / 43.08% 交叉 / 10.11 倍）—— 只报 4.26% 就是藏起对照',
+    r.m11txt.includes('4.26%') ? '命中' : '未命中');
   ck(r.m11txt.includes('3个过、3个挡') && r.m11txt.includes('信噪比只有1.30'),
     '通天写清「3 个过、3 个挡」且点出被挡的假绿信噪比 1.30',
     r.m11txt.includes('信噪比只有') ? '命中' : '未命中');
@@ -183,8 +188,11 @@ const COLLECT = '(' + function () {
     r.txt.includes('三张卡') ? '仍写着三张卡' : r.txt.includes('四张卡') ? '命中' : '未找到');
   ck(r.txt.includes('201项') && !r.txt.includes('170项'), '断言数改成 201 项（旧的 170 已不在屏上）',
     r.txt.includes('170项') ? '仍是 170' : '命中 201');
-  ck(r.txt.includes('17/60') && r.txt.includes('反向'), 'cRSI 卡写着 17 / 60 与单点锚会反向骗人',
-    r.txt.includes('17/60') ? '命中' : '未命中');
+  ck(r.txt.includes('20/60') && r.txt.includes('反向'), 'cRSI 卡写着 20 / 60 与单点锚会反向骗人',
+    r.txt.includes('20/60') ? '命中' : '未命中');
+  ck(r.txt.includes('4.26%') && r.txt.includes('43.08%'),
+    '演绎的双数（4.26% vs 43.08%）在双门卡上 —— 只写一个数就等于没给对照', 
+    (r.txt.includes('4.26%') ? '4.26 ' : '') + (r.txt.includes('43.08%') ? '43.08' : ''));
   ck(r.quick.length === 13, '「只想看某一类」网格 13 项', r.quick.length);
   const q11 = r.quick.filter((x) => x.h.endsWith('#m11'))[0];
   const q12 = r.quick.filter((x) => x.h.endsWith('#m12'))[0];
@@ -209,9 +217,9 @@ const COLLECT = '(' + function () {
     '这条指向六维卦序主索引，且文件存在', hit[0] ? hit[0].href.slice(-40) : '缺失');
   ck(!!hit[0] && /一组四页/.test(hit[0].ttl), '演讲页这条标题写「一组四页」',
     hit[0] ? (hit[0].ttl.match(/一组[三四]页/) || ['未找到'])[0] : '缺失');
-  ck(!!hit[0] && /17\/60/.test(hit[0].all) && /反向骗人/.test(hit[0].all),
-    '演讲页这条正文写着 17 / 60 与「单点锚会反向骗人」',
-    hit[0] && /17\/60/.test(hit[0].all) ? '命中' : '未命中');
+  ck(!!hit[0] && /20\/60/.test(hit[0].all) && /反向骗人/.test(hit[0].all) && /4\.26%/.test(hit[0].all),
+    '演讲页这条正文写着 20 / 60、「单点锚会反向骗人」与 4.26%',
+    hit[0] && /20\/60/.test(hit[0].all) ? '命中' : '未命中');
   ck(r.starLi.length >= 9, '延伸页条目总数（先测到非零）', r.starLi.length);
   ck(r.txt.includes('13组140条'), '总目录那一条的统计已更新为 13 组 140 条',
     r.txt.includes('13组140条') ? '命中' : r.txt.match(/1[23]组\d+条/) ? '旧值' : '未找到');

@@ -30,11 +30,40 @@ const P15 = R.pareto.find((p) => Math.abs(p.lam - 1.5) < 1e-9) || {};
 if (!Number.isFinite(P15.V) || !Number.isFinite(P15.age)) throw new Error('P15 取不到 λ=1.5 的 V/age，字段名又对不上了');
 const INV = R.invariance;
 /* 十二个字的打分表：唯一来源在 score.cjs（页面、雷达、合计、test-hex 都读它）。 */
+/* 两件实测（2026-11-02）：用 fs 读而不是 require，避免缓存把旧数据带进来。
+ * 缺失就是 null，页面按「没测」处理 —— 绝不让旧口径冒充有数。 */
+const jload = (p) => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, p), 'utf8')); } catch (e) { return null; } };
+const INT = jload('_intensity_result.json');
+const ANCH = jload('_anchor_result.json');
+/* v12：演绎的解析预测实测。缺失 ⇒ 本节不显示，分数退回旧观测档。 */
+const DED = jload('_deduce_result.json');
+/* 六个候选量与它们的出处：名字与公式写在这里，数一律从 JSON 读。 */
+const INT_META = [
+  ['divNorm', 'Thomas §1 · 散度', 'div F = −3b（离散化：净流 / 往来总数）'],
+  ['fluxNorm', '输运强度', 'Σ(C·|ΔV|)/ΣC ÷ edgeScale'],
+  ['aPop', 'Thomas §5 · 瓣形幅度', '|Σπ·e^{2πi·pop(x)/7}| / Σπ'],
+  ['aXx', 'Thomas §2 · 等变阶', '十二消息环上的相位聚集'],
+  ['dZong', 'C₂ 对合 · 综卦', 'Σ|V(zong(x))−V(x)|/64 ÷ edgeScale'],
+  ['dCuo', 'C₂ 对合 · 错卦', '同上，cuo(x) = 63 − x'],
+];
 const SC = require('./score.cjs')(R, TOTAL);
 /* 口径变更（2026-11-02）：达真原来把 §8 的 B「可审计」混进能力尺，现在只认内部实测。
  * 旧分由同一批数现算（不手写历史值），屏上解释变更时用的就是这些量。 */
 const OLD_DA = Math.round((SC.auditScore + SC.truthIn) / 2);
-const OLD_TOTAL = SC.total + (OLD_DA - SC.truthIn);
+/* 🔴 必须先减掉通天新涨的那 1 分，否则「旧总分」会多算 1：
+ *    第一次写漏了 - SC.tongScore，屏上印出「21 → 17」，而真实是 20 → 17。
+ *    这就是「实现一改，屏上的话必须跟着改」——数变了不回算旧值，屏上就在说谎。 */
+/* 🔴 v12 又要多减一项：演绎从 3 涨到 6（解析预测成立）。不减就会印成「23 → 20」。
+ *    这已经是第三次在这条公式上踩同一个坑（每次加一轴的新实测都要回来改一次），
+ *    所以这里把三项分开写成加法，别再写成一个复合式子。 */
+const OLD_YAN = 3;                       /* v11 及以前：演绎只有观测档，落在 3 分 */
+const OLD_TOTAL = SC.total - SC.tongScore - (SC.yanScore - OLD_YAN) + (OLD_DA - SC.truthIn);
+/* 中间态：达真降分之后、通天涨分之前的那个分。
+ * 两次口径变动必须分开写 —— 否则「20 → 17」会让人以为只降了一次，
+ * 把通天涨的那 1 分悄悄藏进达真降的分里（这就是「实现一改，屏上的话要跟着改」）。 */
+const OLD_MID = OLD_TOTAL - (OLD_DA - SC.truthIn);
+/* v12 的中间态：达真降完、通天涨完、演绎还没涨 —— 也就是上一版页面印的 17。 */
+const OLD_MID2 = OLD_MID + SC.tongScore;
 const INHERIT = SC.axes.filter((a) => a.score > a.own)
   .map((a) => a.zh + ' ' + (a.score - a.own) + ' 分').join('、');
 
@@ -52,6 +81,127 @@ const LN6 = M.ln6, LN64 = M.ln64;
 /* 曲线取值工具 */
 const at = (g, t) => g.curve.reduce((best, c) => (Math.abs(c.t - t) < Math.abs(best.t - t) ? c : best), g.curve[0]);
 const last = (g) => g.curve[g.curve.length - 1];
+
+/* ── §9.6 两件实测（2026-11-02）──
+ * 一好一坏，而且坏的那条比原来估计的更坏。
+ * 所有数都从 _intensity_result.json / _anchor_result.json 读，文案里一个数都不写死：
+ * 数据一变，屏上的话必须跟着变（这是「实现一改，屏上的话跟着改」那条）。 */
+function sec96() {
+  if (!INT || !ANCH) {
+    return '<p class="note"><b>9.6 两件实测（2026-11-02）</b>　结果文件缺失（<code>_intensity_result.json</code> / <code>_anchor_result.json</code>），本节不显示。先跑 <code>node _intensity.cjs</code> 与 <code>node _anchor.cjs</code>。</p>';
+  }
+  const RN = INT.reportNormalized;
+  const snrMin = INT.meta.gates.snrMinOfRun;
+  const advMax = INT.affineDual.maxDelta;
+  const IC = ANCH.internalCriterion, SA = ANCH.singleAnchor;
+  const CB = ANCH.combinatorics, RA = ANCH.relativeAnchor;
+
+  const rows = INT_META.map(function (m) {
+    const k = m[0], name = m[1], formula = m[2];
+    const q = RN[k] || {};
+    const ok = q.pass === true;
+    const col = ok ? C.good : C.bad;
+    return '<tr><td><b>' + name + '</b><br><span class="sd" style="font-family:ui-monospace,monospace">' + formula + '</span></td>' +
+      '<td class="sd" style="font-family:ui-monospace,monospace;color:' + C.ink + '">' +
+      q.d_in + ' / ' + q.d_out + ' / ' + q.d_rand + '</td>' +
+      '<td class="c"><b>' + (q.margin === undefined ? '—' : q.margin + '×') + '</b></td>' +
+      '<td class="c"><span style="color:' + col + ';font-weight:700">' + (ok ? '过门' : '挡下') + '</span>' +
+      (q.why ? '<br><span class="sd" style="color:' + col + '">' + esc(q.why) + '</span>' : '') + '</td></tr>';
+  }).join('');
+
+  let s = '';
+  s += '<h3>9.6 两件实测（2026-11-02，「点头」之后做的）</h3>';
+  s += '<p>上一版挂了两件事：① 把 Thomas 页那三个量（散度／等变阶／瓣形幅度）搬进通天的判据；② 用 384 爻辞的卦效应做达真的正向实验。做完是<b>一好一坏</b>，而坏的那条比原来估计的<b>更坏</b>。</p>';
+
+  s += '<p><b>① 通天：六个候选，' + SC.nPass + ' 个过门。</b>判据要过三道门，缺一不可：<b>d_in &lt; d_out 且 d_in &lt; d_rand</b>（同类扰动最稳、异源与随机都明显偏离）、<b>余量 ≥ 3×</b>、<b>信噪比 ≥ 3</b>。后两道是这次才补的 —— 没有它们，散度会以 d_rand/d_in ＝ ' +
+    f2(RN.divNorm.d_rand / RN.divNorm.d_in) + ' 的漂亮比值假绿通过，而它真实的信噪比只有 ' + snrMin.toFixed(2) + '。</p>';
+
+  s += '<div class="tw"><table class="t"><thead><tr><th style="width:30%">量（出处）</th><th style="width:21%">d_in / d_out / d_rand</th><th style="width:10%" class="c">余量</th><th class="c">判定</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+
+  s += '<p>合格的是<b>瓣形幅度、综卦对合、错卦对合</b>；被挡下的是<b>散度、通量、消息环</b>。但紧接着一条更硬的结论：这三个合格量在 <code>max−V</code> 下<b>逐位不变</b>（最大相对变化 ' + advMax.toExponential(2) + '，这点抖动全部来自那个不合格的散度）⇒ 它们是<b>吸引子的指纹，不是名字</b>：能当通天的序参量，<b>当不了达真的参照</b>。</p>';
+
+  s += '<p><b>② 达真：单点锚不但不够，还会反向骗人。</b>先把材料核实清楚：<b>384 条逐爻吉凶表全仓不存在</b> —— <code>hexagram.cjs</code> 里写着「绝不假装能重建逐爻分」。所以退一步，用唯一现成的外部点：「谦为最高原则」（源作者的视频与文档，不由 V 生成）。</p>';
+
+  s += '<div class="tw"><table class="t"><thead><tr><th style="width:24%">问的事</th><th>实测</th><th style="width:26%" class="c">能不能判方向</th></tr></thead><tbody>' +
+    '<tr><td><b>内源判据</b><br><span class="sd">落点在各自表下的分位</span></td>' +
+    '<td class="sd">V 表落 <b>' + IC.V.home + '</b>（分位 ' + f3(IC.V.pct) + '）；max−V 表落 <b>' + IC.adv.home + '</b>（分位 ' + f3(IC.adv.pct) + '）</td>' +
+    '<td class="c"><b style="color:' + C.bad + '">不能</b><br><span class="sd">两张好坏完全相反的表，系统在各自表里都跑进前 10%</span></td></tr>' +
+    '<tr><td><b>单点绝对锚</b><br><span class="sd">「谦应排第 1」</span></td>' +
+    '<td class="sd">谦在 V 下排 <b>' + SA.rankInV + '</b>（错位 ' + SA.offsetInV + '）；在 max−V 下排 <b>' + SA.rankInAdv + '</b>（错位 ' + SA.offsetInAdv + '）</td>' +
+    '<td class="c"><b style="color:' + C.bad + '">反着来</b><br><span class="sd">它更认可「' + SA.prefers + '」那张表 —— 也就是把好坏整体翻转的那张</span></td></tr>' +
+    '<tr><td><b>组合学</b><br><span class="sd">知道 n 个名次「是谁」</span></td>' +
+    '<td class="sd">剩余 (64−n)! 种序；1 个锚点还剩 1e' + CB.remainingLog10After1Anchor.toFixed(1) + ' 种；唯一确定需 <b>' + CB.anchorsNeededForUniqueOrder + '</b> 个独立点</td>' +
+    '<td class="c"><b style="color:' + C.bad + '">不够</b><br><span class="sd">现有 1 个（谦最高）</span></td></tr>' +
+    '<tr><td><b>相对锚</b><br><span class="sd">「A 应高于 B」</span></td>' +
+    '<td class="sd">' + i0(RA.pairsCompared) + ' 对非并列卦的相对高低<b>全部反转</b>（' + i0(RA.pairsFlipped) + '／' + i0(RA.pairsCompared) + '）；Spearman ρ ＝ ' + RA.spearman.toFixed(6) + '</td>' +
+    '<td class="c"><b style="color:' + C.good + '">2 个点够</b><br><span class="sd">但前提是外部知道哪个方向对</span></td></tr>' +
+    '</tbody></table></div>';
+
+  s += '<p>这就是第 5 条还挂着「待外部」的真正原因：<b>不是不做，是材料只有 1 个绝对点，而唯一确定需要 ' + CB.anchorsNeededForUniqueOrder + ' 个独立点、或一整张 384 爻辞表</b>。更糟的是绝对点这条路查明是<b>有害</b>的 —— 它会把整体翻转的表判成「更接近对」。要动手，只能从相对锚起步，或者把 384 条爻辞补出来。</p>';
+
+  s += '<p class="note"><b>这两件凭什么说不是我编的：</b>数全在 <code>_intensity_result.json</code> 与 <code>_anchor_result.json</code> 里，脚本各自独立可跑（<code>_intensity.cjs</code> ／ <code>_anchor.cjs</code>）；通天的分在 <code>score.cjs</code> 里只由「过门个数」给，Q31 变异测试（3 个→1 分、2 个→0 分、6 个全过仍 1 分）证明它不是手填。</p>';
+
+  return s;
+}
+
+/* ── §9.7 演绎升级：把「看后端」换成「解出来再对」（2026-11-02 晚）──
+ * 老师问「六步 RSI 还能升级吗」，指向那张 175 个数学工具的关系图。
+ * 逐轴对完，只有演绎这一轴能真被数学工具推动，理由和实测都写在这里。
+ * 数全部从 _deduce_result.json 读，一个都不写死。 */
+function sec97() {
+  if (!DED || !DED.cross) {
+    return '<p class="note"><b>9.7 演绎升级</b>　结果文件缺失（<code>_deduce_result.json</code>），本节不显示。先跑 <code>node _deduce.cjs</code>。</p>';
+  }
+  const CX = DED.cross, Q = CX.grid, A = DED.runs[0], B = DED.runs[1], DY = DED.dynamics;
+  const snrSelf = CX.noiseMed > 0 ? CX.selfMed / CX.noiseMed : NaN;
+
+  let s = '';
+  s += '<h3>9.7 演绎：从「看后端」换成「解出来再对」（2026-11-02 晚）</h3>';
+  s += '<p>老师问还能不能升级，给的是一张 <b>175 个数学工具、500 条关联</b>的图。我拿它把六条轴逐个对了一遍，结论是：<b>只有演绎这一条能被工具真推动</b>。其余五条不是缺工具 —— 选美是位置错（γ 写进 θ 必被梯度吃掉）、达真与通天缺的是外部材料（工具造不出第二张表），归纳与尽善已经做过实测。只有演绎停在「看」：判的是「最差那一卦多久不回来」，那是在量后端，不是在推。</p>';
+
+  s += '<p><b>用的三个工具</b>（都在那张图里）：<b>遍历理论</b>（Kac 的平均回归时间 1/π）、<b>随机过程</b>（稳态不动点）、<b>大偏差</b>（nov 的一项平稳近似）。做法分三步：<br>' +
+    '① <b>状态增广</b>：这条链的记忆只有「上一卦 p」和「每卦的 last-seen」。p 可以精确增广 ⇒ 状态数 ＝ 64×64 ＝ <b>' + (A ? '4096' : '4096') + '</b>；<b>last-seen 不能增广</b>（64 维时间戳），只能用平稳期望替代 —— 这一步就是全部误差的来源。<br>' +
+    '② <b>解自洽方程</b>：平稳下「上次访问 y 距今多久」的均值是 1/σ(y)，于是 nov(y) ≈ 1 − e<sup>−1/(64σ(y))</sup>；σ 又由 nov 决定 ⇒ 解不动点（实测 ' + A.outerIters + ' 轮收敛）。<br>' +
+    '③ <b>拿实测对</b>：同一条链跑 3 颗种子 × ' + DY.runs + ' 条短轨迹，量 (p,卦) 的经验分布。</p>';
+
+  s += '<p><b>结果：能用 6 个权重把 64 个状态的稳态算出来，误差 ' + f2(CX.selfMed * 100) + '%。</b>但「算得准」本身不是证据 —— 见下面那个 2×2。</p>';
+
+  s += '<div class="tw"><table class="t"><thead><tr><th style="width:26%">用哪张表算的 ↓ ／ 对哪张表实测 →</th><th class="c">V（位平均真表）</th><th class="c">随机表（负对照）</th></tr></thead><tbody>' +
+    '<tr><td><b>V</b><br><span class="sd">6 个权重的真表</span></td>' +
+    '<td class="c" style="background:#eef6f0"><b style="color:' + C.good + '">' + f2(Q[0][0].med * 100) + '%</b><br><span class="sd">自预测 · P95 ' + f2(Q[0][0].p95 * 100) + '%</span></td>' +
+    '<td class="c"><b style="color:' + C.bad + '">' + f2(Q[0][1].med * 100) + '%</b><br><span class="sd">交叉 · 崩了 ' + f2(Q[0][1].med / Q[0][0].med) + ' 倍</span></td></tr>' +
+    '<tr><td><b>随机表</b><br><span class="sd">打乱卦到值的对应</span></td>' +
+    '<td class="c"><b style="color:' + C.bad + '">' + f2(Q[1][0].med * 100) + '%</b><br><span class="sd">交叉 · 崩了 ' + f2(Q[1][0].med / Q[1][1].med) + ' 倍</span></td>' +
+    '<td class="c" style="background:#eef6f0"><b style="color:' + C.good + '">' + f2(Q[1][1].med * 100) + '%</b><br><span class="sd">自预测 · P95 ' + f2(Q[1][1].p95 * 100) + '%</span></td></tr>' +
+    '</tbody></table></div>';
+
+  s += '<p class="note"><b>这张 2×2 是这个实验唯一有效的判据，而我第一版差点错过它。</b>第一版只做「自预测」，跑出来<b>随机表的误差 ' + f2(Q[1][1].med * 100) + '% 比真表的 ' + f2(Q[0][0].med * 100) + '% 还小</b> —— 如果据此判「模型很好」，那就是标准的假绿：<b>预测得准不代表模型对，可能只是这张表的分布本来就平庸</b>。加上交叉之后才看得出：拿 V 的解析分布去预测随机表的实测，误差立刻从 ' + f2(Q[0][0].med * 100) + '% 涨到 ' + f2(Q[0][1].med * 100) + '%（<b>' + f2(CX.sep) + ' 倍</b>）。<b>分离度 ≥ 3 才算有牙</b>，现在是 ' + f2(CX.sep) + '。</p>';
+
+  s += '<p><b>另一个数字必须一起报：种子噪声底 ' + f2(CX.noiseMed * 100) + '%。</b>自预测误差 ' + f2(CX.selfMed * 100) + '% 是噪声的 <b>' + f2(snrSelf) + ' 倍</b> —— 也就是说残差这 ' + f2(CX.selfMed * 100) + '% 是模型的<b>真实缺口</b>（nov 用平稳期望替代 actual last-seen 造成的），不是采样涨落。只报 ' + f2(CX.selfMed * 100) + '% 而不报噪声底，等于让人以为「快完美了」。</p>';
+
+  s += '<p><b>还有一个 bug 值得留在纸上，因为它是可复现的指纹。</b>第一版解析分布的边缘印出来是 <b>39.76%</b>，而「全当均匀 1/64」的基线也是 <b>39.76%</b> —— <b>两个数一模一样</b>。这不是巧合：增广索引写成了 <code>nb[k]*N+x</code>（＝cur×64+prev），而实测那边是 <code>prev*N+cur</code>，于是「按 prev 求和」得到的是上一卦的边缘，解析解退化成均匀。判据是「解析 vs 均匀基线<b>完全相等</b>」⇒ 解析根本没在算。<b>两个本该不同的数恰好相等，比任何红灯都更像 bug。</b></p>';
+
+  /* 实测尾巴不能写死「0.500」：解析恒 0.500，实测有 sampling 涨落。
+   * 第一版写成「一动不动」是夸大 —— 实测在下面这个区间里小幅漂，必须现算。 */
+  const tvTail = DY.tvSim.filter((v, i) => DY.probeT[i] >= 6 && v !== null);
+  const tvLo = tvTail.length ? Math.min.apply(null, tvTail) : NaN;
+  const tvHi = tvTail.length ? Math.max.apply(null, tvTail) : NaN;
+  s += '<p><b>第三条硬结论：这条链的周期是 2。</b>我本来想再量动力学（混合时间），结果 TV 距离从第 6 步起就<b>停住不再下降</b>（解析恒 <b>0.500</b>，实测在 <b>' + f3(tvLo) + '–' + f3(tvHi) + '</b> 之间小幅漂）：</p>';
+
+  const pt = DY.probeT.filter((t) => t <= 24);
+  s += '<div class="tw"><table class="t"><thead><tr><th>步数 t</th>' + pt.map((t) => '<th class="c">' + t + '</th>').join('') + '</tr></thead><tbody>' +
+    '<tr><td>解析 TV</td>' + pt.map((t, i) => '<td class="c sd">' + (DY.tvAna[i] === null ? '—' : f3(DY.tvAna[i])) + '</td>').join('') + '</tr>' +
+    '<tr><td>实测 TV</td>' + pt.map((t, i) => '<td class="c sd">' + (DY.tvSim[i] === null ? '—' : f3(DY.tvSim[i])) + '</td>').join('') + '</tr>' +
+    '</tbody></table></div>';
+
+  s += '<p>原因不是数值问题：<b>Q₆ 是二部图</b>（每走一步翻一个 bit，奇偶类必然互换），再叠加「禁回头」，于是任何单条轨迹的分布都只覆盖一半状态 ⇒ <b>到 π 的 TV 永远 ≥ 0.5</b>。推论有三条：<b>① 「稳态分布」这个词在这条链上要打引号</b>，它只是时间平均（Cesàro）极限，不是极限分布；<b>② 同一卦只能隔偶数步回来</b>；<b>③ 动力学不能拿单步 TV 判</b>，第一版差点把它当「收敛失败」写成 bug。这条与 V、θ 全无关，是 Q₆ 的结构性质 —— 所以它<b>不能当判据</b>（恒真式），只能当解释。</p>';
+
+  s += '<p><b>为什么只涨到 ' + SC.yanScore + ' 分，不是 8 或 10：</b>解析只覆盖了<b>「θ 冻结」的稳态</b>这一半。自改那一半（θ 自己会漂到哪）仍然只能模拟 —— 而 cRSI 的核心恰恰是自改。<b>能算「给定 θ 的行为」不等于能算「θ 会变成什么」</b>，后者才是满分的门槛。所以 ' + SC.yanScore + ' 分，扣的 ' + (10 - SC.yanScore) + ' 分写在这里，不藏在别处。</p>';
+
+  s += '<p class="note"><b>凭什么说不是我编的：</b><code>_deduce.cjs</code> 独立可跑（' + DY.runs + ' 条短轨迹 ＋ 4096 状态幂迭代，' + A.powerIters + ' 步收敛，λ₂ ≈ ' + f3(A.lam2) + '），数全在 <code>_deduce_result.json</code>。<b>Q32 变异测试</b>证明分是算出来的：把 <code>selfMed</code> 改成 0.149 仍是 ' + SC.yanScore + ' 分，改成 0.151 立刻掉到 ' + SC.yanBase + ' 分；把 <code>sep</code> 改成 1.0、或把噪声底改成 0.5，也都掉到 ' + SC.yanBase + '。<b>解析失败时封顶 ' + Math.min(SC.yanBase, 5) + ' 分</b>（旧观测档最高 10 分），否则「后端观测得好」会冒充「推得出来」。</p>';
+
+  return s;
+}
 
 /* 四张图的统一画布 */
 const W = 660;
@@ -810,7 +960,7 @@ ${svgGoodhart()}
 <tr><td class="c"><b>选美</b></td><td>「选美是形成美文的前提」</td><td>探索项 γ ＝ <b>吸引力</b>（让人愿意继续看）</td><td>首次到达速度</td><td class="c"><span style="color:${C.bad};font-weight:700">被学成 0</span><br><span class="sd">γ 终点 ${f3(G.A.theta.g)}</span></td></tr>
 <tr><td class="c"><b>尽善</b></td><td>「美丽可以吸引人，善良可以留住人」</td><td><b>留存</b>：看完还回不回来</td><td>回访率</td><td class="c"><span style="color:${C.doc};font-weight:700">间接成立</span><br><span class="sd">门逼出 ${f2(S.A.ageAll / S.GB.ageAll)} 倍</span></td></tr>
 <tr><td class="c"><b>达真</b></td><td>「你写的东西一定要真实……人们看到这句话后，就遵照这句话去行动」</td><td><b>可复算</b>：别人能不能重跑出同一个数</td><td>第三方复现</td><td class="c"><span style="color:${C.doc};font-weight:700">靠工程</span><br><span class="sd">系统内部做不到</span></td></tr>
-<tr><td class="c"><b>通天</b></td><td>「经久不衰……去流露自性」</td><td><b>跨分布迁移</b>：换一张表还算不算数</td><td>换真表后仍有效</td><td class="c"><span style="color:${C.bad};font-weight:700">未做</span><br><span class="sd">只做了错表对照</span></td></tr>
+<tr><td class="c"><b>通天</b></td><td>「经久不衰……去流露自性」</td><td><b>跨分布迁移</b>：换一张表还算不算数</td><td>换真表后仍有效</td><td class="c"><span style="color:${SC.tongScore > 0 ? C.doc : C.bad};font-weight:700">${SC.nPass > 0 ? '有观测量' : '未做'}</span><br><span class="sd">序参量 ${SC.nPass}／${SC.intMetricN} 过门 · 迁移 0 次</span></td></tr>
 </tbody></table></div>
 <p>六条里只有第一条是干净的成立，而它成立的地方有点意外 —— <b>不是策略，是 Ω 本身</b>：六个爻位权重生成全部六十四个价值，而且能反推回去。这件事一直以「价值表」的名义待在系统里，没人把它当「归纳」。</p>
 
@@ -853,7 +1003,7 @@ ${SC.plan.map((p) => '<tr><td class="c">' + p.ord + '</td><td><b>' + p.zh + '</b
 <ul>
 ${SC.plan.map((p) => '<li><b>' + p.ord + '　' + p.zh + '</b>　<span style="color:' + ST_C[p.st] + ';font-weight:700">' + ST_ZH[p.st] + '</span>　' + p.evid + '（详见 ' + p.at + '）</li>').join('')}
 </ul>
-<p class="note">这一节本身也得达真：上面每一条的依据都能在本页别处落到具体的那张表或那个数 —— 归纳看 9.2 第三张表，演绎看 9.2 第一张表，选美看 <code>_crisi_result.json</code> 里 A 组的 <code>theta.g</code>，尽善看 §7.2 的门账本，达真看 §5⑤ 的恒等式，通天看 §6 那张错表对照。</p>
+<p class="note">这一节本身也得达真：上面每一条的依据都能在本页别处落到具体的那张表或那个数 —— 归纳看 9.2 第三张表，演绎看 9.2 第一张表，选美看 <code>_crisi_result.json</code> 里 A 组的 <code>theta.g</code>，尽善看 §7.2 的门账本，达真看 §5⑤ 的恒等式与 9.6 的单点锚证伪，通天看 §6 那张错表对照与 9.6 的三道门。</p>
 
 <h3>9.5 打分：${SC.total}／${SC.max}（自改自己挣到 ${SC.own}）</h3>
 <p>分数是判断，所以先把判断的规则说死：<b>每个字的分不是手填的</b>，由 <code>score.cjs</code> 里一条阶梯（实测值 → 档位 → 分）算出 —— 改一个输入，分数就会动；表、雷达、合计、测试断言读的都是这一份。这跟「我觉得它大概几分」是两件事。</p>
@@ -875,7 +1025,7 @@ ${SC.axes.map((a) => {
 </tbody></table></div>
 
 <p>两个数要一起看：<b>${SC.total}／${SC.max}</b> 是这套东西现在的能力位置；<b>${SC.own}／${SC.max}</b> 是自改循环自己挣到的。差的 ${SC.total - SC.own} 分全是白送的 —— ${INHERIT}；其余五格要么自己挣、要么明确欠着。自己挣到的 ${SC.own} 分里，${SC.axes[3].score} 分集中在尽善这一格。</p>
-<p class="note"><b>口径变更（2026-11-02）：</b>达真原来 ${OLD_DA} 分，其中 ${OLD_DA - SC.truthIn} 分来自 §8 的 B「可审计」（${TOTAL.total} 条断言 + ${M.seeds.length} 颗种子可重跑）。但那是<b>「我给系统写了测试」，不是「系统看见了符号」</b> —— 审计者的能力不能记到被审计者头上。严格口径下只认 §5⑤ 那条恒等式：系统连符号都看不见，做了一次诚实体检，值 ${SC.truthIn} 分。总分 ${OLD_TOTAL}／${SC.max} → <b>${SC.total}／${SC.max}</b>。<code>score.cjs</code> 里加了护栏：达真的 <code>score</code> 与 <code>own</code> 一旦不等就直接抛错，谁也不能把外部审计再加回来。</p>
+<p class="note"><b>口径变更（2026-11-02，两次，分开记）：</b>　<b>第一次 —— 达真降分。</b>达真原来 ${OLD_DA} 分，其中 ${OLD_DA - SC.truthIn} 分来自 §8 的 B「可审计」（${TOTAL.total} 条断言 + ${M.seeds.length} 颗种子可重跑）。但那是<b>「我给系统写了测试」，不是「系统看见了符号」</b> —— 审计者的能力不能记到被审计者头上。严格口径下只认 §5⑤ 那条恒等式，值 ${SC.truthIn} 分：总分 ${OLD_TOTAL}／${SC.max} → <b>${OLD_MID}／${SC.max}</b>。<code>score.cjs</code> 里加了护栏：达真的 <code>score</code> 与 <code>own</code> 一旦不等就直接抛错，谁也不能把外部审计再加回来。<br><b>第二次 —— 通天涨分。</b>通天从 <b>0</b> 分变成 <b>${SC.tongScore} 分</b>：涨的不是「迁移成功」（仍是 0 次），而是「终于有了过三道门的序参量」。总分 ${OLD_MID}／${SC.max} → <b>${SC.total}／${SC.max}</b>。这一分只由「过门个数」给，改动 JSON 里的 pass 分就跟着掉（Q31 变异测试）。<br><b>第三次 —— 演绎涨分（同日更晚，见 9.7）。</b>演绎原来 ${OLD_YAN} 分，判据只有「最差那一卦多久不回来」——那是量后端，不是推。这一版加了解析预测：从 6 个权重解自洽不动点，算出 4096 个增广状态的稳态分布，中位误差 ${f2(SC.dedSelf * 100)}%；用随机表交叉预测崩到 ${f2(SC.dedCross * 100)}%（${f2(SC.dedSep)} 倍）。总分 ${OLD_MID2}／${SC.max} → <b>${SC.total}／${SC.max}</b>。<br><b>三次合起来：${OLD_TOTAL} → ${OLD_MID} → ${OLD_MID2} → ${SC.total}（先降 ${OLD_TOTAL - OLD_MID} 分、再涨 ${OLD_MID2 - OLD_MID} 分、再涨 ${SC.total - OLD_MID2} 分）。净变化 ${SC.total === OLD_TOTAL ? '0' : (SC.total - OLD_TOTAL > 0 ? '+' : '') + (SC.total - OLD_TOTAL)} 分 —— 但这不是「涨回去」，是成分换了：达真 −${OLD_DA - SC.truthIn}、通天 +${SC.tongScore}、演绎 +${SC.yanScore - OLD_YAN}。</b></p>
 
 <div class="warn"><b>这跟 §8 的 ${8 + 8 + 5 + 3 + 6 + 7 + 4}／70 不矛盾，两把尺量的不是一件事。</b>70 分量的是<b>交付质量</b>（形式化、可审计、实证、工程），六十字量的是<b>能力在链上的位置</b>。同一套东西，工程 ${Math.round((8 + 8 + 5 + 3 + 6 + 7 + 4) / 70 * 100)} 分、能力 ${Math.round(SC.total / SC.max * 100)} 分 —— 这个落差本身就是结论：<b>我把已经会的东西做得更可信了，没有让它学会下一步。</b></div>
 
@@ -883,11 +1033,15 @@ ${SC.axes.map((a) => {
 
 <p>所以要把雷达鼓起来，唯一有效的动作不在第 4 步：<b>选美 0 → 6</b>（把 γ 移出 θ，改成采样温度或硬下限）、<b>演绎 3 → 8</b>（把累计 cover 换成滑窗覆盖）。这两格一动，第 4 步的否决率应该跟着掉 —— 这是一条可证伪的预言，不是一句安慰：若两格都补完而否决率仍停在 ${f2(SC.rejRate * 100)}%，那就说明补的是假的。</p>
 
-<div class="bad"><b>通天 0 分是硬的：</b>现有 ${R.groups.length} 组只用了 vWei 与它的 max−V 对偶 —— 取负是仿射变换，不是第二个独立序。没有异源表，迁移就无从验起。在真表做出来之前，这一格没法用「部分实现」含糊过去。</div>
+<div class="bad"><b>通天从 0 涨到 1 分，涨的不是「迁移成功」：</b>θ 迁移仍是 0 次、第二张真表仍不存在（现有 ${R.groups.length} 组只用了 vWei 与它的 max−V 对偶 —— 取负是仿射变换，不是第二个独立序）。涨的是「终于有了过三道门的序参量」：${SC.nPass}／${SC.intMetricN}。<b>它为什么不到 3 分，以及达真这轮为什么一分没涨，见 9.6。</b></div>
+
+${sec96()}
+${sec97()}
 
 <h2><span class="no">§10</span>这一页没做到的</h2>
 <ul>
-<li><b>真表是假的。</b>V ＝ Σ sᵢxᵢ 是<b>线性</b>函数，没有卦效应。所以「谦排 61/64」这个已知错误原封不动地留在系统里 —— 它会忠实地按错表行事。384 维逐爻辞的表仍然没有。</li>
+<li><b>真表是假的，而且这轮核实过了：384 条爻辞全仓不存在。</b>V ＝ Σ sᵢxᵢ 是<b>线性</b>函数，没有卦效应。所以「谦排 61/64」这个已知错误原封不动地留在系统里 —— 它会忠实地按错表行事。<code>hexagram.cjs</code> 里写着「绝不假装能重建逐爻分」，9.6 那个单点锚实验就是在这张缺料上做的。</li>
+<li><b>达真的外部锚只有 1 个绝对点，而且是反向的。</b>9.6 实测：谦在 V 下错位 ${ANCH ? ANCH.singleAnchor.offsetInV : 60}、在 max−V 下错位 ${ANCH ? ANCH.singleAnchor.offsetInAdv : 3} —— 它更认可那张把好坏整体翻转的表。绝对点这条路是死的，要走只能从带方向的相对锚起步（2 个点能检出翻转），或者把 384 爻辞补出来。</li>
 <li><b>线性 ⇒ 没有局部最优陷阱。</b>本页的「困在小圈」不是被卡住，是<b>主动收窄</b>。换成有多个局部峰的势，结论可能变。</li>
 <li><b>单智能体、无环境、无语言。</b>这不是「给大模型装良心」，是它的<b>骨架玩具</b>：只验证「自改 + 冻结目标 + 可修正性」这三个零件的相互作用。</li>
 <li><b>对抗表是人为构造的。</b>它给的是上界，不是典型值。</li>

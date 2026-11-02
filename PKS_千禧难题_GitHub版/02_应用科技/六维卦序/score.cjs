@@ -13,6 +13,16 @@
  */
 const H = require('./hexagram.cjs');
 
+/* 两件实测（2026-11-02「点头」后新增）。缺失时降级为 null，
+ * 绝不让旧口径冒充「有数」：文件不在，通天就回 0，页面自己会说没测。
+ * —— 这是「分数必须挂在实测上」的执行细节，不是可选装饰。 */
+function tryLoad(p) { try { return require(p); } catch (e) { return null; } }
+const INT = tryLoad('./_intensity_result.json');
+const ANCH = tryLoad('./_anchor_result.json');
+/* 「演绎」从「只看回访间隔」升级成「解析预测稳态分布」的那份实测。
+ * 缺失 ⇒ 退回旧判据（观测档），绝不假装有解析预测。 */
+const DED = tryLoad('./_deduce_result.json');
+
 /* 阶梯：pairs 按阈值从高到低排，x 达到哪一档就取哪一档的值。
  * 用法 pick(19.05, [[15,8],[8,7],[3,5],[0,3]]) ⇒ 8 */
 function pick(x, pairs) {
@@ -86,14 +96,20 @@ function makePlan(c) {
       ord: 5, zh: '达真', st: 'outside',
       what: '外部参照 —— 唯一能看见符号的东西',
       check: 'θ 在 Ω → max − V 下会变',
-      evid: '没做过：外部参照实验 0 次（内部恒等式做过，θ 不变）；锚是 384 条爻辞里没进 V 的卦效应，不是第二张表',
+      evid: c.ancReady
+        ? '没做过：外部参照实验仍是 0 次。做过的两次全是证伪 —— 内部恒等式（θ 不变）、单点锚（谦在 V 下排 ' +
+          c.ancR + '、在 max−V 下排 ' + c.ancA + '，这个锚反而更认可那张翻转表）'
+        : '没做过：外部参照实验 0 次；锚是 384 条爻辞里没进 V 的卦效应，不是第二张表',
       at: '§5⑤',
     },
     {
-      ord: 6, zh: '通天', st: 'none',
-      what: '迁强度量不迁 θ：真表 A → 真表 B（先对齐控制参数 g）',
-      check: '归一化后：异源表偏差 < 同类扰动组内偏差 < 随机基线偏差',
-      evid: '没做过：迁移 0 次；现有 ' + c.nGroups + ' 组只用了 vWei 与它的 max−V 对偶，没有第二个独立序',
+      ord: 6, zh: '通天', st: 'ready',
+      what: '迁强度量不迁 θ：先把控制参数 g 对齐，再看序参量稳不稳',
+      check: '归一化后 d_in < d_out 且 d_in < d_rand，余量 ≥ 3×，信噪比 ≥ 3',
+      evid: c.intPass > 0
+        ? '没做过迁移（0 次）；序参量已测：' + c.intPass + ' 个过三道门（' + c.intPassNames + '），另有 ' +
+          c.intRej + ' 个候选被挡下'
+        : '没做过：迁移 0 次；现有 ' + c.nGroups + ' 组只用了 vWei 与它的 max−V 对偶，没有第二个独立序',
       at: '§6',
     },
   ];
@@ -129,7 +145,13 @@ function assertPlan(plan) {
   return plan;
 }
 
-function build(R, TOTAL) {
+function build(R, TOTAL, opts) {
+  /* 可注入实测（只给测试用）：opts.int / opts.anch 覆盖文件读取。
+   * 有它才能做变异测试 —— 把某个 pass 改成 false，看分是不是真的跟着掉；
+   * 没有它，「分挂在实测上」这句话就只是我在文档里这么写。 */
+  const INTV = (opts && opts.int) || INT;
+  const ANCV = (opts && opts.anch) || ANCH;
+  const DEDV = (opts && opts.ded) || DED;
   const M = R.meta;
   const G = {};
   const S = {};
@@ -159,6 +181,27 @@ function build(R, TOTAL) {
   const ageC = S.C.ageAll;
   const span = ageA / M.mwin;                     // ＝多少个窗口才回来一次
 
+  /* ── 演绎：解析预测是否成立（_deduce.cjs）──
+   * 🔴 为什么不能只看「最差卦多久不回来」：那是在看后端，不是在推。
+   *    现在多了一条：从 6 个权重 + θ 解自洽不动点，能预测 4096 个增广状态的稳态分布。
+   *    判据要三样同时成立，缺一不给：
+   *      ① 自预测中位误差 < 15%（模型不是「知道大概均匀」）
+   *      ② 交叉预测 / 自预测 ≥ 3×（用错表必须崩，否则判据没牙）
+   *      ③ 自预测误差 / 种子噪声底 ≥ 3（准不是靠样本多）
+   *    通过给 6 分：只覆盖「θ 冻结」的稳态，自改那一半仍是模拟、动力学不收敛（周期 2）。 */
+  const DC = DEDV && DEDV.cross ? DEDV.cross : null;
+  const dedSelf = DC ? DC.selfMed : NaN;
+  const dedSep = DC ? DC.sep : NaN;
+  const dedNoise = DC ? DC.noiseMed : NaN;
+  const dedSnr = Number.isFinite(dedSelf) && dedNoise > 0 ? dedSelf / dedNoise : NaN;
+  const dedOk = Number.isFinite(dedSelf) && dedSelf < 0.15 && dedSep >= 3 && dedSnr >= 3;
+
+  /* 旧判据（观测档）留着当底：解析预测没做成时，它仍能说「最差那卦多久不回来」。
+   * 🔴 但两边封顶不同：解析成立 ⇒ 至少 6 分；解析失败 ⇒ 最多 5 分。
+   *    否则「后端观测得好」会冒充「推得出来」，那正是这次要修的那个错。 */
+  const yanBase = pick(span, [[30, 1], [10, 3], [3, 5], [1, 8], [0, 10]]);
+  const yanScore = dedOk ? Math.max(yanBase, 6) : Math.min(yanBase, 5);
+
   /* ── 选美：吸引力 γ 的留存率 ── */
   const g0 = M.theta0[2];
   const gEnd = G.A.theta.g;
@@ -180,8 +223,30 @@ function build(R, TOTAL) {
   const relDiff = INV.maxAbsDiff / Math.max(Math.abs(INV.onTrue.a), Math.abs(INV.onTrue.k), 1e-9);
   const truthIn = pick(relDiff, [[0.5, 8], [0.1, 5], [0.01, 3], [0, 1]]);
 
-  /* ── 通天：第二张真表上的迁移，做没做 ── */
+  /* ── 通天：两个来源，缺一不可 ──
+   * ① 序参量合格数：_intensity.cjs 按三道门（单调 + 余量 ≥3× + 信噪比 ≥3）筛出的个数；
+   * ② 迁移次数：仍是 0（没有第二张真表，θ 一次没搬过）。
+   * 🔴 分只由 ① 给，3 个以上才给 1 分，不到 3 个就是 0。
+   *    把 _intensity_result.json 里任何一个 pass 改成 false，分必须跟着掉
+   *    —— 这就是它「不是手填」的可验证处（test-hex 里有对应的变异测试）。 */
   const migrateN = 0;
+  const intPass = INTV && INTV.reportNormalized
+    ? Object.keys(INTV.reportNormalized).filter((k) => INTV.reportNormalized[k] && INTV.reportNormalized[k].pass === true)
+    : [];
+  const nPass = intPass.length;
+  const intMetricN = INTV && INTV.reportNormalized ? Object.keys(INTV.reportNormalized).length : 0;
+  const intRej = Math.max(0, intMetricN - nPass);
+  /* 被挡下的名字也从 JSON 现读，不许在文案里写死「divNorm 信噪比 1.30」——
+   * 数据一变那句话就成了假话（这正是「实现一改，屏上的话必须跟着改」）。 */
+  const intRejNames = INTV && INTV.reportNormalized
+    ? Object.keys(INTV.reportNormalized)
+        .filter((k) => INTV.reportNormalized[k] && INTV.reportNormalized[k].pass !== true)
+        .join('、')
+    : '';
+  const tongScore = pick(nPass, [[3, 1], [0, 0]]);
+
+  /* ── 达真：单点外部锚的实测量（只作证据，不加分）── */
+  const anc = ANCV && ANCV.singleAnchor ? ANCV.singleAnchor : null;
 
   const axes = [
     {
@@ -195,13 +260,20 @@ function build(R, TOTAL) {
     {
       /* 🔴 阶梯表必须按阈值从高到低排。第一版写成 [[1,10],[3,8],…] 的升序，
        *    span=29.9 一进去就命中 [10,5]，演绎直接虚高 2 分 —— band 自洽检查当场抓住。 */
-      key: 'yan', zh: '演绎', ord: 2, score: pick(span, [[30, 1], [10, 3], [3, 5], [1, 8], [0, 10]]),
-      own: pick(span, [[30, 1], [10, 3], [3, 5], [1, 8], [0, 10]]),
-      band: bandOf(pick(span, [[30, 1], [10, 3], [3, 5], [1, 8], [0, 10]])),
-      crit: '从压缩表征反复生成全体：按回访间隔判，不看累计覆盖',
-      evid: '最差那一卦 ' + i0(ageA) + ' 步没回来 ＝ ' + f2(span) + ' 个 W=' + i0(M.mwin) + ' 窗；而 ' + R.groups.length + ' 组累计 cover 全是 64',
-      why: '累计 cover 是错量：全组都满分、年龄却跨 ' + i0(ageA / S.C.ageAll) + ' 倍。换成回访间隔后这条不成立',
-      num: span,
+      key: 'yan', zh: '演绎', ord: 2,
+      score: yanScore,
+      own: yanScore,
+      band: bandOf(yanScore),
+      crit: dedOk
+        ? '从压缩表征推出全体，再拿实测对：解自洽不动点算出 4096 个状态的稳态分布，不看后端'
+        : '从压缩表征反复生成全体：按回访间隔判，不看累计覆盖',
+      evid: dedOk
+        ? '解析预测 64/64 卦的稳态分布，中位误差 ' + f2(dedSelf * 100) + '%、P95 ' + f2(DC.grid[0][0].p95 * 100) + '%；用随机表交叉预测立刻崩到 ' + f2(DC.crossMed * 100) + '%（' + f2(dedSep) + '×）；种子噪声底只有 ' + f2(dedNoise * 100) + '%'
+        : '最差那一卦 ' + i0(ageA) + ' 步没回来 ＝ ' + f2(span) + ' 个 W=' + i0(M.mwin) + ' 窗；而 ' + R.groups.length + ' 组累计 cover 全是 64',
+      why: (dedOk
+        ? '给 ' + yanScore + ' 分不到更高：解析只覆盖「θ 冻结」的稳态；自改（θ 漂移）那一半仍只能模拟，且链的周期是 2（Q₆ 二部 + 禁回头）⇒ 单步分布永不收敛，只有时间平均有稳态。'
+        : '累计 cover 是错量：全组都满分、年龄却跨 ' + i0(ageA / S.C.ageAll) + ' 倍。换成回访间隔后这条不成立'),
+      num: dedOk ? dedSelf : span,
     },
     {
       key: 'xuan', zh: '选美', ord: 3,
@@ -225,17 +297,24 @@ function build(R, TOTAL) {
       key: 'da', zh: '达真', ord: 5, score: truthIn, own: truthIn,
       band: bandOf(truthIn),
       crit: '系统能不能对一个不由 Ω 生成、且不随目标函数变号的参照负责（判方向，不看快慢）',
-      evid: '外部审计 ' + (TOTAL.total || 0) + ' 条断言 + ' + M.seeds.length + ' 颗种子可重跑（＝§8 的 B，' + AUDIT_SCORE + ' 分，是审计者的能力，不计入本尺）；内部：Ω→max−V 下 θ 只差 ' + INV.maxAbsDiff.toExponential(2) + '（相对 ' + relDiff.toExponential(2) + '），落点却 ' + INV.homeTrue + '→' + INV.homeNeg,
-      why: '严格口径只认内部这一半：做了一次「证明自己看不见符号」的诚实体检，值 ' + truthIn + ' 分。外部那半边是「我写了测试」，不是「系统看见了真假」—— 把审计者的能力记到被审计者头上，比读文献涨分更隐蔽。score＝own，一分继承都不给',
+      evid: '外部审计 ' + (TOTAL.total || 0) + ' 条断言 + ' + M.seeds.length + ' 颗种子可重跑（＝§8 的 B，' + AUDIT_SCORE + ' 分，是审计者的能力，不计入本尺）；内部：Ω→max−V 下 θ 只差 ' + INV.maxAbsDiff.toExponential(2) + '（相对 ' + relDiff.toExponential(2) + '），落点却 ' + INV.homeTrue + '→' + INV.homeNeg + (anc ? '；单点锚：谦排 ' + anc.rankInV + ' vs ' + anc.rankInAdv : ''),
+      why: '严格口径只认内部这一半：做了一次「证明自己看不见符号」的诚实体检，值 ' + truthIn + ' 分。外部那半边是「我写了测试」，不是「系统看见了真假」—— 把审计者的能力记到被审计者头上，比读文献涨分更隐蔽。' +
+        (anc ? '另做了一次证伪：单点绝对锚（谦应最高）在 V 下错位 ' + anc.offsetInV + '、在 max−V 下错位 ' + anc.offsetInAdv + '，反而更认可那张翻转表 ⇒ 绝对位置锚不是锚。要唯一确定 64 维序需 ' + (ANCV.combinatorics ? ANCV.combinatorics.anchorsNeededForUniqueOrder : 63) + ' 个独立点，现有 1 个。' : '') +
+        'score＝own，一分继承都不给',
       num: relDiff,
     },
     {
-      key: 'tong', zh: '通天', ord: 6, score: migrateN > 0 ? 7 : 0, own: 0,
-      band: migrateN > 0 ? 'part' : 'todo',
-      crit: '跨分布迁移：换一张真表还算不算数',
-      evid: '迁移实验 ' + migrateN + ' 次；只有错表对照（GB vs XB），现有序全是 vWei 与它的 max−V 对偶',
-      why: '标 0，不给安慰分。' + R.groups.length + ' 组里没有第二个独立序，异源真表还不存在（现在这张仍是 6 个位平均分）',
-      num: migrateN,
+      key: 'tong', zh: '通天', ord: 6, score: tongScore, own: tongScore,
+      band: bandOf(tongScore),
+      crit: '强度量跨表：先对齐控制参数 g，再看同类扰动最稳、异源与随机都明显偏离',
+      evid: nPass
+        ? '过三道门的序参量 ' + nPass + ' 个：' + intPass.join('、') + '（余量 ' +
+          intPass.map((k) => INTV.reportNormalized[k].margin + '×').join(' / ') + '）；迁移 ' + migrateN + ' 次'
+        : '没测过：_intensity_result.json 缺失，或 6 个候选一个都没过三道门',
+      why: migrateN === 0
+        ? '给 ' + tongScore + ' 分不到更高：序参量有了（' + nPass + '/' + intMetricN + ' 过门），但 θ 迁移仍是 0 次、第二张真表不存在。被挡下的 ' + intRej + ' 个' + (intRejNames ? '（' + intRejNames + '）' : '') + '才是重点 —— 挡下的比留下的重要'
+        : '迁移 ' + migrateN + ' 次',
+      num: nPass,
     },
   ];
 
@@ -269,10 +348,21 @@ function build(R, TOTAL) {
     gateAcc: S.GB.gateAcc,
     gateRej: S.GB.gateRej,
     nGroups: R.groups.length,
+    intPass: nPass,
+    intPassNames: intPass.join('、'),
+    intRej: intRej,
+    ancReady: !!anc,
+    ancR: anc ? anc.rankInV : 0,
+    ancA: anc ? anc.rankInAdv : 0,
   }));
 
   return { axes, total, own, max, keepX, rejRate, relDiff, maxDev, span, gKeep,
-    truthIn, auditScore: AUDIT_SCORE, plan, rejPct: f2(rejRate * 100) };
+    truthIn, auditScore: AUDIT_SCORE, plan, rejPct: f2(rejRate * 100),
+    nPass, intPass, intRej, intMetricN, tongScore, migrateN, anc, ancReady: !!anc,
+    /* v12 演绎：解析预测。yanScore 与 ded* 都要吐出来，屏上才能现算口径变更，
+     * 而不是把历史分写成常量。dedBase＝旧观测档（解析没做成时用的那个）。 */
+    yanScore, yanBase, dedOk, dedSelf, dedSep, dedNoise, dedSnr,
+    dedP95: DC ? DC.grid[0][0].p95 : NaN, dedCross: DC ? DC.crossMed : NaN };
 }
 
 module.exports = build;
