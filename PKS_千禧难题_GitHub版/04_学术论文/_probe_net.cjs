@@ -1,6 +1,6 @@
 'use strict';
 /*
- * _probe_net.cjs —— 验「扩网」这一轮：+20 节点 / +88 边。
+ * _probe_net.cjs —— 验「扩网」四批共 +51 节点 / +254 边（20+6+5+20）。
  *
  * 重点不是「加进去了没有」，是「加进去之后有没有断」：
  *  ① 页面会用 byId 过滤掉不认识的边（静默）。所以 E.length 必须 == DATA.edges.length。
@@ -19,7 +19,11 @@ const NEW_IDS = ['lyapunov', 'response', 'cavity', 'participation', 'sr', 'krame
   'kalman', 'sysid', 'cs', 'adjoint', 'noether', 'integrable', 'rg', 'bifurcation',
   'fpt', 'comm', 'ricci', 'hypergraph', 'specgraph',
   'koopman', 'info_geom', 'persist_lap', 'special_fn', 'asymptotic', 'ortho_poly',
-  'hamming', 'divergence', 'energymodel', 'returntime', 'potential'];
+  'hamming', 'divergence', 'energymodel', 'returntime', 'potential',
+  'spde', 'roughpath', 'kam', 'homogenization', 'selrule', 'expander', 'randomgraph',
+  'matroid', 'tropical', 'szemeredi', 'empirical_proc', 'online_learning', 'nonconvex',
+  'approx_algo', 'tensor_network', 'quantum_algo', 'backward_error', 'gr_math',
+  'gauss_process', 'metric_geometry'];
 
 let pass = 0, fail = 0;
 const rows = [];
@@ -39,16 +43,16 @@ function chk(ok, label, got) {
       document.getElementById('sn').textContent, document.getElementById('se').textContent,
       document.getElementById('sc').textContent].join('|')`);
     const [dn, de, nn, ee, sn, se, sc] = String(size).split('|');
-    chk(dn === '206', 'DATA.nodes 是 206（175 + 三批共 31）', dn);
+    chk(dn === '226', 'DATA.nodes 是 226（175 + 四批共 51）', dn);
     chk(nn === dn, '渲染层节点数 == DATA 节点数（没有解析漏掉）', nn + ' vs ' + dn);
     chk(ee === de, '过滤后边数 == DATA 边数 ⇒ 0 条悬空边（静默丢边的假绿）', ee + ' vs ' + de);
-    chk(de === '658', 'DATA.edges 是 658（500 + 88 + 41 + 29）', de);
+    chk(de === '754', 'DATA.edges 是 754（500 + 88 + 41 + 29 + 96）', de);
     chk(sn === nn && se === ee, '屏幕上「节点／连线」两个数就是这两个（现算，不是写死）',
       sn + '/' + se);
     /* 面包屑只在「什么都没选中」时显示总数；点开节点后它本来就会变成节点标题。
        所以这一条必须读在点击之前 —— 第一版读在点击之后，是判据位置错（假红）。 */
     const crumb0 = await b.evalJs("(document.getElementById('crumb').innerText||'').replace(/\\s+/g,' ')");
-    chk(/206/.test(crumb0) && /658/.test(crumb0), '面包屑写 206 件工具 · 658 条连线（点开前）', crumb0);
+    chk(/226/.test(crumb0) && /754/.test(crumb0), '面包屑写 226 件工具 · 754 条连线（点开前）', crumb0);
 
     /* ---- 2. 每条边都有理由 ---- */
     const noR = await b.evalJs(`(function(){
@@ -68,7 +72,7 @@ function chk(ok, label, got) {
       var iso=N.filter(function(n){return n.deg===0;}).map(function(n){return n.id;});
       return [miss.length+'|'+miss.join(','), low.length+'|'+low.join(','), iso.length+'|'+iso.join(',')].join(';');})()`);
     const seg = String(nn2).split(';');
-    chk(seg[0].startsWith('0|'), '31 个新 id 全在渲染层（没有拼错的 id）', seg[0]);
+    chk(seg[0].startsWith('0|'), '51 个新 id 全在渲染层（没有拼错的 id）', seg[0]);
     chk(seg[1].startsWith('0|'), '每个新节点至少 3 条边（不是挂上去就完事）', seg[1]);
     chk(seg[2].startsWith('0|'), '全图 0 个孤立节点', seg[2]);
 
@@ -116,6 +120,39 @@ function chk(ok, label, got) {
     chk(D3._pair === 3, '三条关键边在：汉明—群（自同构）、势函数—诺特（全局量判据）、分布距离—随机过程（混合时间）', D3._pair);
     chk(D3._crsi === 5, '五件的正文都写明了 cRSI 拿它做了什么（不是空挂）', D3._crsi + '/5');
 
+    /* ---- 4d. 第四批（+20，基础设施清单法）---- */
+    const deg4 = await b.evalJs(`(function(){
+      var o={};
+      ['spde','roughpath','kam','homogenization','selrule','expander','randomgraph','matroid','tropical',
+       'szemeredi','empirical_proc','online_learning','nonconvex','approx_algo','tensor_network',
+       'quantum_algo','backward_error','gr_math','gauss_process','metric_geometry'].forEach(function(id){
+        o[id]=byId[id]?byId[id].deg:-1;});
+      var pair=DATA.edges.filter(function(e){
+        return (e.s==='selrule'&&e.t==='fourier')||(e.s==='selrule'&&e.t==='rope')
+            ||(e.s==='alpha'&&e.t==='mcts')||(e.s==='yang_mills'&&e.t==='rg')
+            ||(e.s==='morse'&&e.t==='diff_topology')||(e.s==='gr_math'&&e.t==='sobolev');});
+      o._pair=pair.length;
+      var cats={}; N.forEach(function(n){cats[n.cat]=(cats[n.cat]||0)+1;});
+      o._ncat=Object.keys(cats).length; o._netgeom=cats.netgeom||0; o._geom=cats.geometry||0;
+      o._selc=DATA.nodes.filter(function(n){return n.id==='selrule'&&/C[\\u2082-\\u2099]|Cₙ/.test(n.desc||'');}).length;
+      var weak=['placevalue','fraction','algebra_sym','diff_topology','reciprocity','genfunc','ncg','scheme',
+        'operator_algebra','sobolev','sieve','multigrid','cg','symplectic_int','yang_mills','alpha','ns_cd'];
+      o._weak=weak.filter(function(w){return byId[w]&&byId[w].deg<3;}).length;
+      return JSON.stringify(o);})()`);
+    const D4 = JSON.parse(deg4);
+    chk(D4.selrule >= 7 && D4.spde >= 4 && D4.kam >= 5 && D4.homogenization >= 5,
+      '第四批主节点度数达标（选择定则 7／SPDE 4／KAM 5／均质化 5）',
+      [D4.selrule, D4.spde, D4.kam, D4.homogenization].join('/'));
+    chk(D4.quantum_algo >= 5 && D4.backward_error >= 5 && D4.gr_math >= 4
+      && D4.empirical_proc >= 5 && D4.tensor_network >= 4 && D4.roughpath >= 4,
+      '其余主节点度数达标（量子算法 5／向后误差 5／爱因斯坦 4／经验过程 5／张量网络 4／粗路径 4）',
+      [D4.quantum_algo, D4.backward_error, D4.gr_math, D4.empirical_proc, D4.tensor_network, D4.roughpath].join('/'));
+    chk(D4._pair === 6, '六条关键边在：选择定则—傅里叶、选择定则—RoPE（挂账关闭）、AlphaProof—MCTS、杨米尔斯—RG、莫尔斯—微分拓扑、爱因斯坦—索伯列夫', D4._pair);
+    chk(D4._ncat === 12 && D4._netgeom === 8 && D4._geom === 28,
+      '分类拆成 12 个：网络与数据几何 8 件、几何与拓扑瘦身回 28 件', D4._ncat + '/' + D4._netgeom + '/' + D4._geom);
+    chk(D4._selc === 1, '选择定则正文写着 Cₙ 等变（六维卦序挂账的关闭凭证）', D4._selc);
+    chk(D4._weak === 0, '17 个原弱节点全部 ≥ 3 条边（没有挂上去就完事的）', D4._weak);
+
     /* 🔴 左栏搜索只匹配 name + en + id，不搜正文 —— 所以不能搜「cRSI」，
        要搜「汉明」再点开读面板。第一版搜 cRSI 命中 0，是判据错了不是页面错了。 */
     await b.evalJs(`(function(){var q=document.getElementById('q'); q.value='汉明';
@@ -148,7 +185,7 @@ function chk(ok, label, got) {
 
     /* ---- 6. 标题里的数跟数据一致 ---- */
     const ttl = await b.evalJs('document.title');
-    chk(ttl.includes('206'), '<title> 里是 206 件工具', ttl);
+    chk(ttl.includes('226'), '<title> 里是 226 件工具', ttl);
 
     /* ---- 7. 新加的说明卡在、并且展开后有那四类原因 ---- */
     const det = await b.evalJs(`(function(){
@@ -159,8 +196,8 @@ function chk(ok, label, got) {
     for (const k of ['跨分支的算子技术', '工程天天用', '噪声', '不变量怎么算出来']) {
       chk(String(det).includes(k), '四类原因之一在屏上：' + k, 'ok');
     }
-    chk(String(det).includes('三条判据'), '写了选这 26 件的三条判据', 'ok');
-    chk(String(det).includes('31 件'), '折叠卡标题已改成 31 件（20 + 6 + 5）', 'ok');
+    chk(String(det).includes('三条判据'), '写了选前 31 件的三条判据', 'ok');
+    chk(String(det).includes('51 件'), '折叠卡标题已改成 51 件（20 + 6 + 5 + 20）', 'ok');
     chk(String(det).includes('是书单挑的') && String(det).includes('书单不只被图检验'),
       '写明「特殊函数是书单挑的」，且书单能反过来指出图的缺口', 'ok');
 
