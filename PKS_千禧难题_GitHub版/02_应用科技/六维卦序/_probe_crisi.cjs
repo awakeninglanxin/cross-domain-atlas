@@ -271,6 +271,16 @@ const BOX = (re, extra) => '(' + function (reStr, extraH) {
   ck(seqOk, '节号从 §0 连续排到末节，中间没跳号（个数不写死）', r.h2Nums.join('') + ' 共 ' + r.h2Nums.length + ' 节');
   ck(/§0/.test(r.h2[0]), '第一节是 §0', r.h2[0].slice(0, 8));
 
+  /* 口径变更（2026-11-02）：达真从 5 降到 1，屏上的话必须跟着改 —— 只改数不改字就是两份真相。
+   * 旧总分由同一批数现算，不手写；判据读的是屏上的字。 */
+  const OLD_TOTAL = SC.total + (Math.round((SC.auditScore + SC.truthIn) / 2) - SC.truthIn);
+  ck(/口径变更/.test(r.txt) && /审计者的能力不能记到被审计者头上/.test(r.txt) &&
+    /不计入本尺/.test(r.txt) &&
+    r.txt.indexOf(OLD_TOTAL + '／' + SC.max) >= 0 && r.txt.indexOf(SC.total + '／' + SC.max) >= 0,
+    '屏上有口径变更说明：达真降分后话跟着改（旧 ' + OLD_TOTAL + '／' + SC.max +
+    ' → 新 ' + SC.total + '／' + SC.max + '，且写明外部审计不计入本尺）',
+    '口径变更段 + 达真 evid');
+
   console.log('=== 置顶大纲（十二个字六条） ===');
   const P = r.plan;
   ck(!!P, '页面顶部真有置顶大纲这块（没有就是没做，不是藏在 §9 就算）', P ? '有' : '没有');

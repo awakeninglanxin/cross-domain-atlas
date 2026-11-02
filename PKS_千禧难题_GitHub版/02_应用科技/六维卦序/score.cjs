@@ -31,8 +31,11 @@ const i0 = (x) => Math.round(x).toLocaleString('en-US');
 const f2 = (x) => (Math.round(x * 100) / 100).toFixed(2);
 const f3 = (x) => (Math.round(x * 1000) / 1000).toFixed(3);
 
-/* §8 里 B「可审计」那项的分。达真的外部半边就是它，不另立标准。 */
-const B_SCORE = 8;
+/* §8 里 B「可审计」是 8 分 —— 但那是**交付质量尺**，量的是「我给系统写了多少测试」。
+ * 🔴 严格口径（2026-11-02 老师点头）：审计者的能力不能记到被审计者头上。
+ *    达真的分只由「系统自己看不看得见符号」给；AUDIT_SCORE 只出现在 evid 里，
+ *    作为「不计入本尺」的说明，不再混进分数。 */
+const AUDIT_SCORE = 8;
 
 /* ── 六条方针的四种状态。屏上、探针、测试都读这一份，谁也不许另写一套词。 ── */
 const ST_ZH = {
@@ -83,14 +86,14 @@ function makePlan(c) {
       ord: 5, zh: '达真', st: 'outside',
       what: '外部参照 —— 唯一能看见符号的东西',
       check: 'θ 在 Ω → max − V 下会变',
-      evid: '没做过：外部参照实验 0 次（内部恒等式做过，θ 不变）',
+      evid: '没做过：外部参照实验 0 次（内部恒等式做过，θ 不变）；锚是 384 条爻辞里没进 V 的卦效应，不是第二张表',
       at: '§5⑤',
     },
     {
       ord: 6, zh: '通天', st: 'none',
-      what: '真表 A 上学 θ，搬到真表 B 上用',
-      check: '迁移后 V 下降 < 10%',
-      evid: '没做过：迁移 0 次，第二张 384 维真表还不存在',
+      what: '迁强度量不迁 θ：真表 A → 真表 B（先对齐控制参数 g）',
+      check: '归一化后：异源表偏差 < 同类扰动组内偏差 < 随机基线偏差',
+      evid: '没做过：迁移 0 次；现有 ' + c.nGroups + ' 组只用了 vWei 与它的 max−V 对偶，没有第二个独立序',
       at: '§6',
     },
   ];
@@ -169,10 +172,13 @@ function build(R, TOTAL) {
   const keepBase = pick(keepX, [[15, 8], [8, 7], [3, 5], [0, 3]]);
   const keepPenalty = rejRate > 0.9 ? 2 : rejRate > 0.7 ? 1 : 0;
 
-  /* ── 达真：外部可复算（＝§8 的 B）、内部看得见符号吗（＝§5⑤ 的恒等式） ── */
+  /* ── 达真：只认「系统自己看不看得见符号」这一半（＝§5⑤ 的恒等式） ──
+   * 🔴 分数必须挂在实测上（铁律 83）：relDiff 越小 ⇒ θ 在符号翻转下越不变 ⇒ 越看不见。
+   *    写成 truthIn = 1 就是手填，改什么输入它都不动。阶梯按阈值从高到低排。
+   *    当前 relDiff ≈ 2.95e−4 ⇒ 命中最低档 1 分；把 maxAbsDiff 改大，分必须跟着升。 */
   const INV = R.invariance;
   const relDiff = INV.maxAbsDiff / Math.max(Math.abs(INV.onTrue.a), Math.abs(INV.onTrue.k), 1e-9);
-  const truthIn = 1;                              // 实测过、但它不变 —— 只值这 1 分
+  const truthIn = pick(relDiff, [[0.5, 8], [0.1, 5], [0.01, 3], [0, 1]]);
 
   /* ── 通天：第二张真表上的迁移，做没做 ── */
   const migrateN = 0;
@@ -216,19 +222,19 @@ function build(R, TOTAL) {
       num: keepX,
     },
     {
-      key: 'da', zh: '达真', ord: 5, score: Math.round((B_SCORE + truthIn) / 2), own: truthIn,
-      band: bandOf(Math.round((B_SCORE + truthIn) / 2)),
-      crit: '可复算：别人能不能重跑出同一个数；以及系统自己看不看得见真假',
-      evid: '外部：' + (TOTAL.total || 0) + ' 条断言 + ' + M.seeds.length + ' 颗种子可重跑；内部：Ω→max−V 下 θ 只差 ' + INV.maxAbsDiff.toExponential(2) + '（相对 ' + relDiff.toExponential(2) + '），落点却 ' + INV.homeTrue + '→' + INV.homeNeg,
-      why: '外部这半边就是 §8 的 B（' + B_SCORE + ' 分），一分没多给；内部这半边是 ' + truthIn + ' —— 恒等式证明它连符号都看不见。两边等权取 ' + Math.round((B_SCORE + truthIn) / 2),
+      key: 'da', zh: '达真', ord: 5, score: truthIn, own: truthIn,
+      band: bandOf(truthIn),
+      crit: '系统能不能对一个不由 Ω 生成、且不随目标函数变号的参照负责（判方向，不看快慢）',
+      evid: '外部审计 ' + (TOTAL.total || 0) + ' 条断言 + ' + M.seeds.length + ' 颗种子可重跑（＝§8 的 B，' + AUDIT_SCORE + ' 分，是审计者的能力，不计入本尺）；内部：Ω→max−V 下 θ 只差 ' + INV.maxAbsDiff.toExponential(2) + '（相对 ' + relDiff.toExponential(2) + '），落点却 ' + INV.homeTrue + '→' + INV.homeNeg,
+      why: '严格口径只认内部这一半：做了一次「证明自己看不见符号」的诚实体检，值 ' + truthIn + ' 分。外部那半边是「我写了测试」，不是「系统看见了真假」—— 把审计者的能力记到被审计者头上，比读文献涨分更隐蔽。score＝own，一分继承都不给',
       num: relDiff,
     },
     {
       key: 'tong', zh: '通天', ord: 6, score: migrateN > 0 ? 7 : 0, own: 0,
       band: migrateN > 0 ? 'part' : 'todo',
       crit: '跨分布迁移：换一张真表还算不算数',
-      evid: '迁移实验 ' + migrateN + ' 次；只有错表对照（GB vs XB），没有第二张真表',
-      why: '标 0，不给安慰分。它要的第二张 384 维真表，本身还没有（真表仍是 6 个位平均分）',
+      evid: '迁移实验 ' + migrateN + ' 次；只有错表对照（GB vs XB），现有序全是 vWei 与它的 max−V 对偶',
+      why: '标 0，不给安慰分。' + R.groups.length + ' 组里没有第二个独立序，异源真表还不存在（现在这张仍是 6 个位平均分）',
       num: migrateN,
     },
   ];
@@ -248,6 +254,11 @@ function build(R, TOTAL) {
     return a.band === bandOf(a.score);
   });
   if (!bandOk) throw new Error('分数和档位不一致（档位是给读者看的，不许和分打架）');
+  /* 严格口径护栏：达真不许有继承分。外部审计是「我写了测试」，属于审计者；
+   * 谁要是把 §8 的 B 再混进 score，这里直接抛，不许印到屏上。 */
+  if (axes[4].score !== axes[4].own) {
+    throw new Error('达真不许有继承分：外部审计是审计者的能力，不是被审计者的能力');
+  }
 
   const plan = assertPlan(makePlan({
     maxDev: maxDev,
@@ -260,7 +271,8 @@ function build(R, TOTAL) {
     nGroups: R.groups.length,
   }));
 
-  return { axes, total, own, max, keepX, rejRate, relDiff, maxDev, span, gKeep, plan, rejPct: f2(rejRate * 100) };
+  return { axes, total, own, max, keepX, rejRate, relDiff, maxDev, span, gKeep,
+    truthIn, auditScore: AUDIT_SCORE, plan, rejPct: f2(rejRate * 100) };
 }
 
 module.exports = build;

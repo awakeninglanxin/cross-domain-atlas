@@ -31,6 +31,12 @@ if (!Number.isFinite(P15.V) || !Number.isFinite(P15.age)) throw new Error('P15 �
 const INV = R.invariance;
 /* 十二个字的打分表：唯一来源在 score.cjs（页面、雷达、合计、test-hex 都读它）。 */
 const SC = require('./score.cjs')(R, TOTAL);
+/* 口径变更（2026-11-02）：达真原来把 §8 的 B「可审计」混进能力尺，现在只认内部实测。
+ * 旧分由同一批数现算（不手写历史值），屏上解释变更时用的就是这些量。 */
+const OLD_DA = Math.round((SC.auditScore + SC.truthIn) / 2);
+const OLD_TOTAL = SC.total + (OLD_DA - SC.truthIn);
+const INHERIT = SC.axes.filter((a) => a.score > a.own)
+  .map((a) => a.zh + ' ' + (a.score - a.own) + ' 分').join('、');
 
 const C = {
   ink: '#1d2321', dim: '#5d6663', line: '#d8d2c4', bg: '#fbf8f1', card: '#ffffff',
@@ -868,7 +874,8 @@ ${SC.axes.map((a) => {
 <tr style="background:#f6f3ea"><td class="c"><b>合计</b></td><td class="c"><b>${SC.total}／${SC.max}</b></td><td class="c"><b>${SC.own}／${SC.max}</b></td><td colspan="3">差 ${SC.total - SC.own} 分，全部来自继承：${SC.axes.filter((a) => a.score > a.own).map((a) => a.zh + ' ' + (a.score - a.own) + ' 分').join('、')}</td></tr>
 </tbody></table></div>
 
-<p>两个数要一起看：<b>${SC.total}／${SC.max}</b> 是这套东西现在的能力位置；<b>${SC.own}／${SC.max}</b> 是自改循环自己挣到的。差的 ${SC.total - SC.own} 分全是白送的 —— Ω 本来就能还原（归纳 ${SC.axes[0].score - SC.axes[0].own} 分），工程本来就能重跑（达真 ${SC.axes[4].score - SC.axes[4].own} 分）。自己挣到的 ${SC.own} 分里，${SC.axes[3].score} 分集中在尽善这一格。</p>
+<p>两个数要一起看：<b>${SC.total}／${SC.max}</b> 是这套东西现在的能力位置；<b>${SC.own}／${SC.max}</b> 是自改循环自己挣到的。差的 ${SC.total - SC.own} 分全是白送的 —— ${INHERIT}；其余五格要么自己挣、要么明确欠着。自己挣到的 ${SC.own} 分里，${SC.axes[3].score} 分集中在尽善这一格。</p>
+<p class="note"><b>口径变更（2026-11-02）：</b>达真原来 ${OLD_DA} 分，其中 ${OLD_DA - SC.truthIn} 分来自 §8 的 B「可审计」（${TOTAL.total} 条断言 + ${M.seeds.length} 颗种子可重跑）。但那是<b>「我给系统写了测试」，不是「系统看见了符号」</b> —— 审计者的能力不能记到被审计者头上。严格口径下只认 §5⑤ 那条恒等式：系统连符号都看不见，做了一次诚实体检，值 ${SC.truthIn} 分。总分 ${OLD_TOTAL}／${SC.max} → <b>${SC.total}／${SC.max}</b>。<code>score.cjs</code> 里加了护栏：达真的 <code>score</code> 与 <code>own</code> 一旦不等就直接抛错，谁也不能把外部审计再加回来。</p>
 
 <div class="warn"><b>这跟 §8 的 ${8 + 8 + 5 + 3 + 6 + 7 + 4}／70 不矛盾，两把尺量的不是一件事。</b>70 分量的是<b>交付质量</b>（形式化、可审计、实证、工程），六十字量的是<b>能力在链上的位置</b>。同一套东西，工程 ${Math.round((8 + 8 + 5 + 3 + 6 + 7 + 4) / 70 * 100)} 分、能力 ${Math.round(SC.total / SC.max * 100)} 分 —— 这个落差本身就是结论：<b>我把已经会的东西做得更可信了，没有让它学会下一步。</b></div>
 
@@ -876,7 +883,7 @@ ${SC.axes.map((a) => {
 
 <p>所以要把雷达鼓起来，唯一有效的动作不在第 4 步：<b>选美 0 → 6</b>（把 γ 移出 θ，改成采样温度或硬下限）、<b>演绎 3 → 8</b>（把累计 cover 换成滑窗覆盖）。这两格一动，第 4 步的否决率应该跟着掉 —— 这是一条可证伪的预言，不是一句安慰：若两格都补完而否决率仍停在 ${f2(SC.rejRate * 100)}%，那就说明补的是假的。</p>
 
-<div class="bad"><b>通天 0 分是硬的：</b>它要的第二张 384 维真表还不存在（现在这张仍是 6 个位平均分）。在真表做出来之前，这一格没法用「部分实现」含糊过去。</div>
+<div class="bad"><b>通天 0 分是硬的：</b>现有 ${R.groups.length} 组只用了 vWei 与它的 max−V 对偶 —— 取负是仿射变换，不是第二个独立序。没有异源表，迁移就无从验起。在真表做出来之前，这一格没法用「部分实现」含糊过去。</div>
 
 <h2><span class="no">§10</span>这一页没做到的</h2>
 <ul>

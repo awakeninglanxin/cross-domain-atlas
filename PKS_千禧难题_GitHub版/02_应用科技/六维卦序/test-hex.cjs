@@ -999,6 +999,19 @@ sec('Q 段 · 自改动力学（cRSI）');
   chk(e0 !== e1 && /\d+\.\d\d%/.test(e1) && /没做过/.test(e1),
     'Q29 大纲里的否决率是现算的（gateRej 488→100，屏上的话跟着变），且改完仍标「没做过」',
     pct(e0) + ' → ' + pct(e1));
+
+  /* ---- Q30：达真严格口径的三条护栏（2026-11-02 口径变更）----
+   * ① 分必须挂在「系统看不看得见符号」这个实测上：maxAbsDiff 改大，分必须升；
+   * ② 外部审计条数不许影响分：把断言总数改掉，分必须不动（审计者的能力不进能力尺）；
+   * ③ score＝own：达真一分继承都不给。 */
+  const da0 = sc.axes.find((a) => a.key === 'da');
+  const da1 = mut((C2) => { C2.invariance.maxAbsDiff = 3.0; }).axes.find((a) => a.key === 'da');
+  const da2 = SCORE(RJ, Object.assign({}, T0, { total: 9999 })).axes.find((a) => a.key === 'da');
+  chk(da1.score > da0.score && da2.score === da0.score &&
+    da0.score === da0.own && da1.score === da1.own,
+    'Q30 达真分只挂在恒等式实测（' + da0.score + '→' + da1.score +
+    '），断言数 ' + T0.total + '→9999 分不动，且 score＝own（审计者能力不许继承）',
+    da0.score + '→' + da1.score + ' / 改断言数 ' + da2.score + ' / own ' + da0.own + ',' + da1.own);
 }
 
 /* ================= 输出 ================= */
