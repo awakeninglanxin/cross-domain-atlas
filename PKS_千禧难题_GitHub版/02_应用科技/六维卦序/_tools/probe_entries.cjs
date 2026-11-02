@@ -63,6 +63,7 @@ const COLLECT = '(' + function () {
     starLi: q('li a.pg').map((a) => ({
       href: a.getAttribute('href'),
       ttl: ((a.querySelector('.ttl') || {}).textContent || '').replace(/\s+/g, ''),
+      all: a.textContent.replace(/\s+/g, ''),
     })),
     title: document.title,
     /* 新组区块（#m11 到 #m12 之间）的正文：判「无占位符」只许查这一段。
@@ -122,7 +123,7 @@ const COLLECT = '(' + function () {
   ck(r.toc[11] === '#m11' && r.toc[12] === '#m12', '目录第 11/12 条指向 m11/m12', r.toc.slice(11).join(' '));
 
   const yj = r.hrefs.filter((h) => /六维卦序/.test(h));
-  ck(yj.length >= 3, '正文里指向六维卦序的链接 ≥ 3 条（三页都被链上）', yj.length);
+  ck(yj.length >= 4, '正文里指向六维卦序的链接 ≥ 4 条（四页都被链上）', yj.length);
   const yjMissing = yj.filter((h) => !exists(h));
   ck(yjMissing.length === 0, '这些链接指向的文件在磁盘上都存在', yjMissing.join(',') || '0 条缺失');
   ck(r.txt.includes('13组·140个页面') || (r.txt.includes('13 组') && r.txt.includes('140')),
@@ -133,6 +134,20 @@ const COLLECT = '(' + function () {
   ck(r.m11txt.length > 800, '新组区块抓到了正文（才 好判占位符）', r.m11txt.length + ' 字');
   ck(!/undefined|NaN|\$\{/.test(r.m11txt), '🔴 新组区块内无 undefined / NaN / 未插值占位符（整页不判——原文本来就有「NaN」一词）',
     (r.m11txt.match(/undefined|NaN|\$\{/g) || []).join(',') || '0 处');
+  /* v11 新写的 cRSI 结论必须真的在屏上（读字，不读源码） */
+  ck(r.m11txt.includes('最新（v11，§9.6）') && r.m11txt.includes('17/60'),
+    'cRSI 卡片写着 v11 最新口径 17 / 60（去空白后是 17/60）',
+    r.m11txt.includes('17/60') ? '命中' : '未命中');
+  ck(r.m11txt.includes('3个过、3个挡') && r.m11txt.includes('信噪比只有1.30'),
+    '通天写清「3 个过、3 个挡」且点出被挡的假绿信噪比 1.30',
+    r.m11txt.includes('信噪比只有') ? '命中' : '未命中');
+  ck(r.m11txt.includes('会反向骗人') && r.m11txt.includes('63个独立点'),
+    '达真写清「单点绝对锚会反向骗人」与「需 63 个独立点」',
+    r.m11txt.includes('反向骗人') ? '命中' : '未命中');
+  ck(r.m11txt.includes('这一组的四页'), '组标题写「四页」（不是三页）',
+    (r.m11txt.match(/这一组的[三四]页/) || ['未找到'])[0]);
+  ck(r.m11txt.includes('（下表最后一行）'), '「挑自己的错」指向表格最后一行（加了 cRSI 后不能还写「第三页」）',
+    (r.m11txt.match(/下表第[一二三四五]页|下表最后一行/) || ['未找到'])[0]);
   ck(r.scrollW <= r.vw + 1, '1440 下无页面级横向溢出', r.scrollW + '/' + r.vw);
 
   /* 锚点真的能跳 */
@@ -157,13 +172,19 @@ const COLLECT = '(' + function () {
   errs = await c.evalJs('(window.__errs||[]).slice(0,5)');
   ck(errs.length === 0, 'JS 异常 0 条', errs.join(' | ') || 0);
   ck(r.grpExist, '新分组 #grpYijing 存在', r.grpExist);
-  ck(r.yjCards.length === 3, '该组下面正好 3 张卡', r.yjCards.length);
+  ck(r.yjCards.length >= 4, '该组下面至少 4 张卡（先测到非零，不写死「恰好」）', r.yjCards.length);
   const cyj = r.yjCards.map((x) => x.href);
-  ck(cyj.every((h) => /六维卦序/.test(h)), '3 张卡全指向六维卦序目录', cyj.length);
-  ck(cyj.filter((h) => !exists(h)).length === 0, '3 个 href 在磁盘上都存在', cyj.filter((h) => !exists(h)).join(',') || '0 缺失');
+  ck(cyj.length > 0 && cyj.every((h) => /六维卦序/.test(h)), '每张卡都指向六维卦序目录', cyj.length);
+  ck(cyj.filter((h) => !exists(h)).length === 0, '所有 href 在磁盘上都存在', cyj.filter((h) => !exists(h)).join(',') || '0 缺失');
   const ttl = r.yjCards.map((x) => x.title.replace(/\s+/g, '')).join('|');
-  ck(/四六通达/.test(ttl) && /良心与异化/.test(ttl) && /合观校核/.test(ttl),
-    '三张卡分别是 四六通达 / 良心与异化 / 合观校核', ttl.slice(0, 60));
+  ck(/四六通达/.test(ttl) && /良心与异化/.test(ttl) && /合观校核/.test(ttl) && /cRSI/.test(ttl),
+    '四张卡分别是 四六通达 / 良心与异化 / cRSI / 合观校核', ttl.slice(0, 80));
+  ck(r.txt.includes('四张卡'), '组说明写「四张卡」（不是三张）',
+    r.txt.includes('三张卡') ? '仍写着三张卡' : r.txt.includes('四张卡') ? '命中' : '未找到');
+  ck(r.txt.includes('201项') && !r.txt.includes('170项'), '断言数改成 201 项（旧的 170 已不在屏上）',
+    r.txt.includes('170项') ? '仍是 170' : '命中 201');
+  ck(r.txt.includes('17/60') && r.txt.includes('反向'), 'cRSI 卡写着 17 / 60 与单点锚会反向骗人',
+    r.txt.includes('17/60') ? '命中' : '未命中');
   ck(r.quick.length === 13, '「只想看某一类」网格 13 项', r.quick.length);
   const q11 = r.quick.filter((x) => x.h.endsWith('#m11'))[0];
   const q12 = r.quick.filter((x) => x.h.endsWith('#m12'))[0];
@@ -186,6 +207,11 @@ const COLLECT = '(' + function () {
   ck(hit.length === 1, '延伸页里新增且只新增 1 条「六维卦序」', hit.length);
   ck(!!hit[0] && exists(hit[0].href) && /六维卦序/.test(hit[0].href),
     '这条指向六维卦序主索引，且文件存在', hit[0] ? hit[0].href.slice(-40) : '缺失');
+  ck(!!hit[0] && /一组四页/.test(hit[0].ttl), '演讲页这条标题写「一组四页」',
+    hit[0] ? (hit[0].ttl.match(/一组[三四]页/) || ['未找到'])[0] : '缺失');
+  ck(!!hit[0] && /17\/60/.test(hit[0].all) && /反向骗人/.test(hit[0].all),
+    '演讲页这条正文写着 17 / 60 与「单点锚会反向骗人」',
+    hit[0] && /17\/60/.test(hit[0].all) ? '命中' : '未命中');
   ck(r.starLi.length >= 9, '延伸页条目总数（先测到非零）', r.starLi.length);
   ck(r.txt.includes('13组140条'), '总目录那一条的统计已更新为 13 组 140 条',
     r.txt.includes('13组140条') ? '命中' : r.txt.match(/1[23]组\d+条/) ? '旧值' : '未找到');
