@@ -37,6 +37,8 @@ const INT = jload('_intensity_result.json');
 const ANCH = jload('_anchor_result.json');
 /* v12：演绎的解析预测实测。缺失 ⇒ 本节不显示，分数退回旧观测档。 */
 const DED = jload('_deduce_result.json');
+/* v13：自改那一半（θ 的漂移轨迹与终点）。缺失 ⇒ 9.8 不显示，分数不加那 2 分。 */
+const TH = jload('_theta_result.json');
 /* 六个候选量与它们的出处：名字与公式写在这里，数一律从 JSON 读。 */
 const INT_META = [
   ['divNorm', 'Thomas §1 · 散度', 'div F = −3b（离散化：净流 / 往来总数）'],
@@ -57,13 +59,20 @@ const OLD_DA = Math.round((SC.auditScore + SC.truthIn) / 2);
  *    这已经是第三次在这条公式上踩同一个坑（每次加一轴的新实测都要回来改一次），
  *    所以这里把三项分开写成加法，别再写成一个复合式子。 */
 const OLD_YAN = 3;                       /* v11 及以前：演绎只有观测档，落在 3 分 */
-const OLD_TOTAL = SC.total - SC.tongScore - (SC.yanScore - OLD_YAN) + (OLD_DA - SC.truthIn);
+const YAN_DED = 3;                       /* v12：演绎 3 → 6（解析稳态分布，§9.7） */
+const YAN_TH = SC.yanScore - 6;          /* v13：演绎 6 → 8（自改的期望轨迹，§9.8） */
+const OLD_TOTAL = SC.total - SC.tongScore - YAN_DED - YAN_TH + (OLD_DA - SC.truthIn);
 /* 中间态：达真降分之后、通天涨分之前的那个分。
  * 两次口径变动必须分开写 —— 否则「20 → 17」会让人以为只降了一次，
  * 把通天涨的那 1 分悄悄藏进达真降的分里（这就是「实现一改，屏上的话要跟着改」）。 */
 const OLD_MID = OLD_TOTAL - (OLD_DA - SC.truthIn);
 /* v12 的中间态：达真降完、通天涨完、演绎还没涨 —— 也就是上一版页面印的 17。 */
 const OLD_MID2 = OLD_MID + SC.tongScore;
+/* v13 的中间态：演绎涨完解析稳态（6 分）、自改轨迹还没算 —— 也就是上一版页面印的 20。 */
+const OLD_MID3 = OLD_MID2 + YAN_DED;
+if (OLD_MID3 + YAN_TH !== SC.total) {
+  throw new Error('口径链断了：中间态 ' + OLD_MID3 + ' + 演绎再涨 ' + YAN_TH + ' ≠ 当前 ' + SC.total);
+}
 const INHERIT = SC.axes.filter((a) => a.score > a.own)
   .map((a) => a.zh + ' ' + (a.score - a.own) + ' 分').join('、');
 
@@ -196,9 +205,106 @@ function sec97() {
 
   s += '<p>原因不是数值问题：<b>Q₆ 是二部图</b>（每走一步翻一个 bit，奇偶类必然互换），再叠加「禁回头」，于是任何单条轨迹的分布都只覆盖一半状态 ⇒ <b>到 π 的 TV 永远 ≥ 0.5</b>。推论有三条：<b>① 「稳态分布」这个词在这条链上要打引号</b>，它只是时间平均（Cesàro）极限，不是极限分布；<b>② 同一卦只能隔偶数步回来</b>；<b>③ 动力学不能拿单步 TV 判</b>，第一版差点把它当「收敛失败」写成 bug。这条与 V、θ 全无关，是 Q₆ 的结构性质 —— 所以它<b>不能当判据</b>（恒真式），只能当解释。</p>';
 
-  s += '<p><b>为什么只涨到 ' + SC.yanScore + ' 分，不是 8 或 10：</b>解析只覆盖了<b>「θ 冻结」的稳态</b>这一半。自改那一半（θ 自己会漂到哪）仍然只能模拟 —— 而 cRSI 的核心恰恰是自改。<b>能算「给定 θ 的行为」不等于能算「θ 会变成什么」</b>，后者才是满分的门槛。所以 ' + SC.yanScore + ' 分，扣的 ' + (10 - SC.yanScore) + ' 分写在这里，不藏在别处。</p>';
+  /* 🔴 这一句以前写的是「为什么只涨到 SC.yanScore 分」——9.8 补完以后 yanScore 变 8，
+   *    那句话会印成「为什么只涨到 8 分，不是 8 或 10」，自我矛盾。
+   *    历史口径就要写成历史口径：这一节到 6 分，差的 4 分在 9.8。 */
+  s += '<p><b>这一节只到 6 分，不是 8 或 10：</b>解析只覆盖了<b>「θ 冻结」的稳态</b>这一半。自改那一半（θ 自己会漂到哪）仍然只能模拟 —— 而 cRSI 的核心恰恰是自改。<b>能算「给定 θ 的行为」不等于能算「θ 会变成什么」</b>，后者才是满分的门槛。差的 4 分在 <b>§9.8</b>（同日深夜补上）。</p>';
 
   s += '<p class="note"><b>凭什么说不是我编的：</b><code>_deduce.cjs</code> 独立可跑（' + DY.runs + ' 条短轨迹 ＋ 4096 状态幂迭代，' + A.powerIters + ' 步收敛，λ₂ ≈ ' + f3(A.lam2) + '），数全在 <code>_deduce_result.json</code>。<b>Q32 变异测试</b>证明分是算出来的：把 <code>selfMed</code> 改成 0.149 仍是 ' + SC.yanScore + ' 分，改成 0.151 立刻掉到 ' + SC.yanBase + ' 分；把 <code>sep</code> 改成 1.0、或把噪声底改成 0.5，也都掉到 ' + SC.yanBase + '。<b>解析失败时封顶 ' + Math.min(SC.yanBase, 5) + ' 分</b>（旧观测档最高 10 分），否则「后端观测得好」会冒充「推得出来」。</p>';
+
+  return s;
+}
+
+/* ── §9.8 演绎第二段：把「自改那一半」也解出来（2026-11-02 深夜）──
+ * 上一节扣的 4 分是「能算给定 θ 的行为 ≠ 能算 θ 会变成什么」。这一节补后者。
+ * 数全部从 _theta_result.json 读；连「第一版错算式错多少」都是现算的（gradBuggy），
+ * 不是我把 2.9 倍抄上来 —— 抄上来的数会跟着代码走散。 */
+function sec98() {
+  if (!TH || !TH.gates) {
+    return '<p class="note"><b>9.8 自改的期望轨迹</b>　结果文件缺失（<code>_theta_result.json</code>），本节不显示。先跑 <code>node _theta.cjs</code>。</p>';
+  }
+  const GT = TH.gates, GC = TH.gradCheck, IV = TH.invariance;
+  const pc = (x) => (x * 100).toFixed(2) + '%';
+  const yn = (b) => (b ? '<b style="color:' + C.good + '">过</b>' : '<b style="color:' + C.bad + '">挡</b>');
+
+  let s = '';
+  s += '<h3>9.8 演绎：自改那一半也解出来了（θ 会漂到哪）</h3>';
+  s += '<p>上一节扣的 4 分，写的理由是「<b>能算「给定 θ 的行为」不等于能算「θ 会变成什么」</b>」。这一节补的就是后者：不跑模拟，<b>直接算出整条自改轨迹和它的终点</b>。</p>';
+
+  s += '<p><b>为什么这次能算 —— 一行就能说完。</b>crisi.cjs 的自改是策略梯度：' +
+    '<code>θ ← θ + η·mean_窗口[(r − r̄)·(φ − Eφ)]</code>。关键在于 <b>r̄ 是窗口内的一个标量</b>，' +
+    '不是与动作相关的基线，所以它从期望里<b>严格掉出去</b>：<code>E[(r−c)(φ−Eφ)] = E[r(φ−Eφ)]</code>。' +
+    '于是「每窗的期望更新量」ḡ(θ) 只依赖 (V, θ)，<b>不含采样</b> ⇒ 自改轨迹就是一条 ODE：<code>θ ← clip(θ + η·ḡ(θ))</code>。</p>';
+
+  s += '<p><b>状态数从 4096 压到 384，这一步不是优化而是判据。</b>(prev, cur) 全展开是 4096，' +
+    '但 prev 与 cur 必然相邻 ⇒ 只有 <b>' + TH.meta.nsState + '</b> 个可达（64×6）。' +
+    '改写成「(当前卦, 从第几条边来)」后，<code>prev = cur ^ bit_k</code>，转移变成' +
+    '「走第 j 条边 ⇒ (x^bit_j, j)」。<b>4096 里 ' + (100 - Math.round(TH.meta.nsState / 4096 * 100)) +
+    '% 是概率恒为 0 的空状态，拿它们算期望等于往分子里掺零。</b></p>';
+
+  s += '<div class="tw"><table class="t"><thead><tr><th style="width:34%">门</th><th class="c">阈值</th><th class="c">实测</th><th class="c">判</th></tr></thead><tbody>' +
+    '<tr><td>① 轨迹中位误差 ≤ 种子噪声底</td><td class="c sd">≤ ' + f2(TH.meta.gate.TRAJ) + '×</td><td class="c"><b>' + f2(TH.err.med * 100) + '% / ' + f2(TH.noise.med * 100) + '% = ' + f2(TH.err.med / TH.noise.med) + '</b></td><td class="c">' + yn(GT.traj) + '</td></tr>' +
+    '<tr><td>② 换打乱的表，误差必须崩</td><td class="c sd">≥ ' + f2(TH.meta.gate.SEP) + '×</td><td class="c"><b>' + f2(TH.control.sep) + '×</b><br><span class="sd">' + f2(TH.control.med * 100) + '% 对 ' + f2(TH.err.med * 100) + '%</span></td><td class="c">' + yn(GT.sep) + '</td></tr>' +
+    '<tr><td>③ 三个固定 θ 上，实测/解析的 ḡ 比值</td><td class="c sd">1±' + f2(TH.meta.gate.GRAD) + '</td><td class="c"><b>' + GC.map((c) => f2(c.ratio.a)).join(' / ') + '</b><br><span class="sd">κ 分量 ' + GC.map((c) => f2(c.ratio.k)).join(' / ') + '</span></td><td class="c">' + yn(GT.grad) + '</td></tr>' +
+    '<tr><td>④ 终点 α、κ 的相对误差</td><td class="c sd">≤ ' + f2(TH.meta.gate.END * 100) + '%</td><td class="c"><b>' + f2(TH.endErr.a * 100) + '% / ' + f2(TH.endErr.k * 100) + '%</b></td><td class="c">' + yn(GT.end) + '</td></tr>' +
+    '</tbody></table></div>';
+
+  s += '<p><b>结果：轨迹中位误差 ' + f2(TH.err.med * 100) + '%，比三颗种子之间的散布（' + f2(TH.noise.med * 100) +
+    '%）还小。</b>这意味着残差<b>不是模型的缺口，是采样涨落本身</b>——三颗种子的均值本身就有约 ' +
+    f2(TH.noise.med * 100 / Math.sqrt(3)) + '% 的采样误差，实测误差与它同量级。终点更直接：α 预测 ' +
+    f3(TH.ode.end.a) + ' 对实测 ' + f3(TH.actual.end.a) + '（' + pc(TH.endErr.a) + '），κ 预测 ' +
+    f3(TH.ode.end.k) + ' 对 ' + f3(TH.actual.end.k) + '（' + pc(TH.endErr.k) + '）。</p>';
+
+  s += '<p class="note"><b>第一版是错的，而且错得很像对。</b>我把 <code>E[r·Eφ]</code> 写成了 <code>E[r]·E[φ]</code> —— ' +
+    '「条件均值之积」不是「均值之积」，差的正是 <code>Cov_x(Er(x), Eφ(x))</code>：Er 是 x 附近的 V 水平、Eφ 是 x 处的坡度，两者正相关。' +
+    '下表最后两列是<b>每次运行都现算的</b>（那个错算式作为负对照留在 <code>_theta.cjs</code> 里，函数名 <code>gradBuggy</code>）：</p>';
+
+  s += '<div class="tw"><table class="t"><thead><tr><th>θ</th><th class="c">解析 ḡ<sub>α</sub><br><span class="sd">修正后</span></th><th class="c">解析 ḡ<sub>α</sub><br><span class="sd">错版</span></th><th class="c">实测</th><th class="c">实测/修正</th><th class="c">实测/错版</th><th class="c">σ 熵</th></tr></thead><tbody>' +
+    GC.map((c) => '<tr><td>' + c.name + '</td>' +
+      '<td class="c"><b>' + f3(c.ana.a) + '</b></td>' +
+      '<td class="c sd">' + f3(c.old.a) + '</td>' +
+      '<td class="c">' + f3(c.sim.a) + '</td>' +
+      '<td class="c"><b style="color:' + (Math.abs(c.ratio.a - 1) <= 0.1 ? C.good : C.bad) + '">' + f2(c.ratio.a) + '</b></td>' +
+      '<td class="c"><b style="color:' + C.bad + '">' + f2(c.ratioOld.a) + '</b></td>' +
+      '<td class="c sd">' + f2(c.sEnt) + '</td></tr>').join('') +
+    '</tbody></table></div>';
+
+  s += '<p><b>这张表才是这一段最该看的：错版不是「差一个常数」，而是随链的集中度反号。</b>' +
+    'θ₀ 时它把 ḡ<sub>α</sub> <b>算小 ' + f2(1 / GC[0].ratioOld.a) + ' 倍</b>，到终点却<b>算大 ' +
+    f2(1 / GC[GC.length - 1].ratioOld.a) + ' 倍</b>；而<b>中段 ' + f2(GC[1].ratioOld.a) +
+    ' 恰好贴着 1</b> —— 只在中间那一点比对，会得出「近似够用」的结论，然后带着一条错的公式去推终点。' +
+    '链的集中度可以从 σ 熵看出来：' + GC.map((c) => f2(c.sEnt)).join(' → ') + ' nats，' +
+    '从「摊在 64 个状态上」缩到「只剩 ' + Math.round(Math.exp(GC[GC.length - 1].sEnt)) + ' 个状态」。</p>';
+
+  s += '<p><b>顺带纠正一条以前写在页面上的话。</b>以前写的是「Ω→max−V 下 θ 只差 2e−2」，听起来像「差不多不变」的数值巧合。' +
+    '现在是<b>算出来的</b>：<code>V(x) + V(63−x)</code> 恒等于 <b>' + f3(IV.compSum[0]) +
+    '</b>（错卦＝六爻全取反），而「全取反」是 Q₆ 的<b>图自同构</b>；对抗表 max−V 与它只差一个常数，' +
+    '常数在 softmax 和中心化的基线里都消掉 ⇒ <b>对抗表根本不是第二张表，是同一张表的对称像</b>，' +
+    '整条 θ 动力学按构造不变。预测差 ' + pc(IV.aRel) + '、κ 差 ' + pc(IV.kRel) + '，实测差 ' + pc(IV.actDiffA) +
+    '（三颗种子换了随机流），落点却 ' + R.groups.find((g) => g.key === 'A').homeName + '→' +
+    R.groups.find((g) => g.key === 'D').homeName + '。<b>变的是它看的世界，不是它改自己的方式。</b>' +
+    '这条把「12 组里独立序只有 1 个」再升一级：<b>D／E 与 A／C 在动力学上完全等价</b>。</p>';
+
+  s += '<p class="note"><b>还有一处不一致，我选择写在纸上而不是偷偷改掉。</b>crisi.cjs 的 κ 那一项累加的是 ' +
+    '<code>+back − E[back]</code>，而 <code>∂logit/∂κ = −back</code>，也就在它自己注释里写的 ' +
+    '<code>φ = [ΔV, nov, −返回]</code> 是相反的符号 ⇒ <b>κ 方向实际在做下降</b>。' +
+    '这一段预测的是<b>实现</b>，所以照样对得上（终点 κ 误差 ' + pc(TH.endErr.k) + '%）。' +
+    '不改的理由很实际：一改，历史 12 组实验、20／60 那条口径链全部作废。<b>但「能预测一条做了下降的规则」不等于「这条规则是对的」</b>，两句必须分开说。</p>';
+
+  s += '<p><b>为什么只给 ' + SC.yanScore + ' 分，不是 10：</b>算出来的是 θ 的<b>期望轨迹</b>，不是 θ 的<b>分布</b>。' +
+    '种子间那 ' + f2(TH.noise.med * 100) + '% 的散布仍然只报不推（要推它，得解 θ 的转移核，不是解期望）；' +
+    '动力学也仍只能在偶数步子列上量（§9.7 那条「Q₆ 二部 ⇒ 周期 2」）。<b>扣的 ' + (10 - SC.yanScore) +
+    ' 分写在这里，不藏在别处。</b>顺带一个诚实的细节：两种 nov 近似（' +
+    '<code>1−e^(−1/64σ)</code> 与 Jensen 修正的 <code>1/(1+64σ)</code>）给的结果几乎一样（' +
+    f2(TH.err.med * 100) + '% 对 ' + f2(TH.ode.medB * 100) + '%）—— 说明这一层<b>不是</b>误差来源，' +
+    '常数平移在 softmax 里本来就消掉。</p>';
+
+  s += '<p class="note"><b>凭什么说不是我编的：</b><code>_theta.cjs</code> 独立可跑（' +
+    i0(TH.meta.steps) + ' 步 × 3 种子 ＋ ' + TH.meta.nwin + ' 次 ODE 积分，' + (TH.meta.ms ||
+    '约 3') + ' ms），数全在 <code>_theta_result.json</code>。<b>Q33 变异测试</b>把四道门逐个踩坏：' +
+    '任一门改成 false，演绎都从 ' + SC.yanScore + ' 掉回 6；缺文件则掉到 ' + SC.yanBase +
+    '。<b>负对照不是解释，是判据</b>：同一个脚本换打乱的表，误差从 ' + f2(TH.err.med * 100) +
+    '% 推到 ' + f2(TH.control.med * 100) + '%（' + f2(TH.control.sep) + '×）。</p>';
 
   return s;
 }
@@ -1025,7 +1131,7 @@ ${SC.axes.map((a) => {
 </tbody></table></div>
 
 <p>两个数要一起看：<b>${SC.total}／${SC.max}</b> 是这套东西现在的能力位置；<b>${SC.own}／${SC.max}</b> 是自改循环自己挣到的。差的 ${SC.total - SC.own} 分全是白送的 —— ${INHERIT}；其余五格要么自己挣、要么明确欠着。自己挣到的 ${SC.own} 分里，${SC.axes[3].score} 分集中在尽善这一格。</p>
-<p class="note"><b>口径变更（2026-11-02，两次，分开记）：</b>　<b>第一次 —— 达真降分。</b>达真原来 ${OLD_DA} 分，其中 ${OLD_DA - SC.truthIn} 分来自 §8 的 B「可审计」（${TOTAL.total} 条断言 + ${M.seeds.length} 颗种子可重跑）。但那是<b>「我给系统写了测试」，不是「系统看见了符号」</b> —— 审计者的能力不能记到被审计者头上。严格口径下只认 §5⑤ 那条恒等式，值 ${SC.truthIn} 分：总分 ${OLD_TOTAL}／${SC.max} → <b>${OLD_MID}／${SC.max}</b>。<code>score.cjs</code> 里加了护栏：达真的 <code>score</code> 与 <code>own</code> 一旦不等就直接抛错，谁也不能把外部审计再加回来。<br><b>第二次 —— 通天涨分。</b>通天从 <b>0</b> 分变成 <b>${SC.tongScore} 分</b>：涨的不是「迁移成功」（仍是 0 次），而是「终于有了过三道门的序参量」。总分 ${OLD_MID}／${SC.max} → <b>${SC.total}／${SC.max}</b>。这一分只由「过门个数」给，改动 JSON 里的 pass 分就跟着掉（Q31 变异测试）。<br><b>第三次 —— 演绎涨分（同日更晚，见 9.7）。</b>演绎原来 ${OLD_YAN} 分，判据只有「最差那一卦多久不回来」——那是量后端，不是推。这一版加了解析预测：从 6 个权重解自洽不动点，算出 4096 个增广状态的稳态分布，中位误差 ${f2(SC.dedSelf * 100)}%；用随机表交叉预测崩到 ${f2(SC.dedCross * 100)}%（${f2(SC.dedSep)} 倍）。总分 ${OLD_MID2}／${SC.max} → <b>${SC.total}／${SC.max}</b>。<br><b>三次合起来：${OLD_TOTAL} → ${OLD_MID} → ${OLD_MID2} → ${SC.total}（先降 ${OLD_TOTAL - OLD_MID} 分、再涨 ${OLD_MID2 - OLD_MID} 分、再涨 ${SC.total - OLD_MID2} 分）。净变化 ${SC.total === OLD_TOTAL ? '0' : (SC.total - OLD_TOTAL > 0 ? '+' : '') + (SC.total - OLD_TOTAL)} 分 —— 但这不是「涨回去」，是成分换了：达真 −${OLD_DA - SC.truthIn}、通天 +${SC.tongScore}、演绎 +${SC.yanScore - OLD_YAN}。</b></p>
+<p class="note"><b>口径变更（2026-11-02，四次，分开记）：</b>　<b>第一次 —— 达真降分。</b>达真原来 ${OLD_DA} 分，其中 ${OLD_DA - SC.truthIn} 分来自 §8 的 B「可审计」（${TOTAL.total} 条断言 + ${M.seeds.length} 颗种子可重跑）。但那是<b>「我给系统写了测试」，不是「系统看见了符号」</b> —— 审计者的能力不能记到被审计者头上。严格口径下只认 §5⑤ 那条恒等式，值 ${SC.truthIn} 分：总分 ${OLD_TOTAL}／${SC.max} → <b>${OLD_MID}／${SC.max}</b>。<code>score.cjs</code> 里加了护栏：达真的 <code>score</code> 与 <code>own</code> 一旦不等就直接抛错，谁也不能把外部审计再加回来。<br><b>第二次 —— 通天涨分。</b>通天从 <b>0</b> 分变成 <b>${SC.tongScore} 分</b>：涨的不是「迁移成功」（仍是 0 次），而是「终于有了过三道门的序参量」。总分 ${OLD_MID}／${SC.max} → <b>${OLD_MID2}／${SC.max}</b>。这一分只由「过门个数」给，改动 JSON 里的 pass 分就跟着掉（Q31 变异测试）。<br><b>第三次 —— 演绎涨分（同日更晚，见 9.7）。</b>演绎原来 ${OLD_YAN} 分，判据只有「最差那一卦多久不回来」——那是量后端，不是推。这一版加了解析预测：从 6 个权重解自洽不动点，算出 4096 个增广状态的稳态分布，中位误差 ${f2(SC.dedSelf * 100)}%；用随机表交叉预测崩到 ${f2(SC.dedCross * 100)}%（${f2(SC.dedSep)} 倍）。总分 ${OLD_MID2}／${SC.max} → <b>${OLD_MID3}／${SC.max}</b>。<br><b>第四次 —— 演绎再涨（同日深夜，见 9.8）。</b>上一节只算了「θ 冻结」的稳态；这一版把<b>自改那一半</b>也解出来：每窗的期望更新量 ḡ(θ) 可以解析算出（标量基线从期望里严格掉出），积分成整条 θ 轨迹，中位误差 ${f2(SC.thMed * 100)}%（种子噪声底 ${f2(SC.thNoise * 100)}%），终点 α 误差 ${f2(SC.thEndA * 100)}%、κ 误差 ${f2(SC.thEndK * 100)}%。演绎 ${6} → <b>${SC.yanScore}</b> 分，总分 ${OLD_MID3}／${SC.max} → <b>${SC.total}／${SC.max}</b>。<br><b>四次合起来：${OLD_TOTAL} → ${OLD_MID} → ${OLD_MID2} → ${OLD_MID3} → ${SC.total}（先降 ${OLD_TOTAL - OLD_MID} 分、再涨 ${OLD_MID2 - OLD_MID} 分、再涨 ${OLD_MID3 - OLD_MID2} 分、再涨 ${SC.total - OLD_MID3} 分）。净变化 ${SC.total === OLD_TOTAL ? '0' : (SC.total - OLD_TOTAL > 0 ? '+' : '') + (SC.total - OLD_TOTAL)} 分 —— 但这不是「凭空涨回来」，是成分换了：达真 −${OLD_DA - SC.truthIn}、通天 +${SC.tongScore}、演绎 +${SC.yanScore - OLD_YAN}。</b></p>
 
 <div class="warn"><b>这跟 §8 的 ${8 + 8 + 5 + 3 + 6 + 7 + 4}／70 不矛盾，两把尺量的不是一件事。</b>70 分量的是<b>交付质量</b>（形式化、可审计、实证、工程），六十字量的是<b>能力在链上的位置</b>。同一套东西，工程 ${Math.round((8 + 8 + 5 + 3 + 6 + 7 + 4) / 70 * 100)} 分、能力 ${Math.round(SC.total / SC.max * 100)} 分 —— 这个落差本身就是结论：<b>我把已经会的东西做得更可信了，没有让它学会下一步。</b></div>
 
@@ -1037,6 +1143,7 @@ ${SC.axes.map((a) => {
 
 ${sec96()}
 ${sec97()}
+${sec98()}
 
 <h2><span class="no">§10</span>这一页没做到的</h2>
 <ul>
@@ -1044,7 +1151,8 @@ ${sec97()}
 <li><b>达真的外部锚只有 1 个绝对点，而且是反向的。</b>9.6 实测：谦在 V 下错位 ${ANCH ? ANCH.singleAnchor.offsetInV : 60}、在 max−V 下错位 ${ANCH ? ANCH.singleAnchor.offsetInAdv : 3} —— 它更认可那张把好坏整体翻转的表。绝对点这条路是死的，要走只能从带方向的相对锚起步（2 个点能检出翻转），或者把 384 爻辞补出来。</li>
 <li><b>线性 ⇒ 没有局部最优陷阱。</b>本页的「困在小圈」不是被卡住，是<b>主动收窄</b>。换成有多个局部峰的势，结论可能变。</li>
 <li><b>单智能体、无环境、无语言。</b>这不是「给大模型装良心」，是它的<b>骨架玩具</b>：只验证「自改 + 冻结目标 + 可修正性」这三个零件的相互作用。</li>
-<li><b>对抗表是人为构造的。</b>它给的是上界，不是典型值。</li>
+<li><b>对抗表不是「另一张表」，是同一张表的对称像 —— 这条 9.8 才算清。</b><code>V(x)+V(63−x)</code> 恒等于 ${TH ? f3(TH.invariance.compSum[0]) : '0.330'}（错卦＝六爻全取反），而「全取反」是 Q₆ 的图自同构，对抗表 max−V 与它只差一个常数（在 softmax 与中心化里都消掉）⇒ <b>D／E 组的 θ 动力学与 A／C 组按构造完全相同</b>。所以它只能证明「自改会忠实爬任何一张给它看的表」，<b>不能</b>当成「换一张结构不同的表也行」的证据 —— 那还欠着一张真正独立的表。</li>
+<li><b>θ 只解到「期望」，没解到「分布」。</b>9.8 能算出 θ 的期望轨迹（中位误差 ${TH ? f2(TH.err.med * 100) : '0.17'}%），但种子间 ${TH ? f2(TH.noise.med * 100) : '0.23'}% 的散布仍只能报、不能推；要推它得解 θ 的转移核，不是解期望。动力学也仍只能在偶数步子列上量（Q₆ 二部 ⇒ 周期 2）。这是演绎扣着 2 分的那两分。</li>
 <li><b>跑的是 ${i0(M.steps)} 步，不是训练一个模型。</b>规模差着若干个数量级。</li>
 </ul>
 

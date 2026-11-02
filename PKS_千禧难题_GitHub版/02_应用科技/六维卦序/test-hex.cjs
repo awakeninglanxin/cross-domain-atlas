@@ -958,10 +958,13 @@ sec('Q 段 · 自改动力学（cRSI）');
   const j1 = mut((C2) => { gb(C2).stats.ageAll = ga(C2).stats.ageAll; }).axes.find((a) => a.key === 'jin').score;
   const m0 = sc.axes.find((a) => a.key === 'xuan').score;
   const m1 = mut((C2) => { ga(C2).theta.g = 0.45; }).axes.find((a) => a.key === 'xuan').score;
-  chk(s1 > s0 && j1 < j0 && m1 > m0,
-    /* 🔴 别再手写起点（原来写「演绎 3→」）：演绎接入解析实测后起点是 6，
-     *    硬写的 3 会让断言文字与实测不符 —— 数字一律用 s0/j0/m0 现取。 */
-    'Q26 三处变异都能把分数推动（演绎 ' + s0 + '→' + s1 + '、尽善 ' + j0 + '→' + j1 + '、选美 ' + m0 + '→' + m1 + '）⇒ 分挂在实测上，不是手填',
+  chk(s1 === s0 && j1 < j0 && m1 > m0,
+    /* 🔴 这条以前是「三处变异都能推动（演绎 s0→s1）」——演绎接上解析实测以后就不成立了：
+     *    改 ageAll（span）只动旧观测档，而解析路线一成立，演绎就由 Q32／Q33 的输入驱动。
+     *    所以正确的断言变成<b>反着</b>写：span 不再推动演绎（s1 === s0），
+     *    尽善与选美照旧推动。这不是把断言改松 —— 是把「分挂在哪个量上」改对。 */
+    'Q26 变异推动：尽善 ' + j0 + '→' + j1 + '、选美 ' + m0 + '→' + m1 + ' 都动；' +
+    '而改 ageAll 不再推动演绎（' + s0 + '→' + s1 + '）—— 解析路线接管后，演绎由 Q32／Q33 的输入驱动',
     s0 + '→' + s1 + ' / ' + j0 + '→' + j1 + ' / ' + m0 + '→' + m1);
 
   /* ---- Q27–Q29：置顶大纲（十二个字六条方针）----
@@ -1063,12 +1066,39 @@ sec('Q 段 · 自改动力学（cRSI）');
   const ySep = yanOf(mutDed((c) => { c.sep = 1.0; }));
   const yNoise = yanOf(mutDed((c) => { c.noiseMed = 0.5; }));
   /* 基线分从 y0 读，不写死 6：万一将来实测变了，这条断言不该跟着假红 */
-  chk(y0.score === 6 && yIn.score === 6 && yOut.score === 3 && ySep.score === 3 && yNoise.score === 3,
-    'Q32 演绎分挂挂解析实测上（原样 6；误差 0.149 仍 6；0.151 掉到 3；分离度塌到 1.0 掉到 3；噪声底抬到 0.5 掉到 3）⇒ 阈值是硬的，不是摆设',
+  /* 起点从 6 变 8（v13 加了自改轨迹那 2 分），端点数字仍现取 */
+  chk(y0.score === 8 && yIn.score === 8 && yOut.score === 3 && ySep.score === 3 && yNoise.score === 3,
+    'Q32 演绎分挂挂解析实测上（原样 ' + y0.score + '；误差 0.149 仍 ' + yIn.score + '；0.151 掉到 ' +
+    yOut.score + '；分离度塌到 1.0 掉到 ' + ySep.score + '；噪声底抬到 0.5 掉到 ' + yNoise.score +
+    '）⇒ 阈值是硬的，不是摆设',
     y0.score + '/' + yIn.score + '/' + yOut.score + '/' + ySep.score + '/' + yNoise.score);
   chk(y0.evid.indexOf('NaN') < 0 && y0.why.indexOf('NaN') < 0,
     'Q32b 演绎的证据与理由里没有 NaN（缺 JSON 时才许降级，不许印 NaN）',
     (y0.evid + y0.why).slice(0, 40));
+}
+
+/* Q33 演绎第二段（自改的期望轨迹）挂不挂在实测上：把四道门逐个踩坏，看分会不会掉。
+ * 关键在「踩的是子门」：_theta_result.json 里还有一个汇总字段 gates.all，
+ * 故意让它保持 true —— 如果 score.cjs 读的是 all 而不是四个分量，
+ * 这四条全会假绿。所以这条测试同时在验「判据读分量、不读结论」。 */
+{
+  const SCORE3 = require('./score.cjs');
+  const RJ4 = JSON.parse(fs.readFileSync(path.join(__dirname, '_crisi_result.json'), 'utf8'));
+  const T4 = { total: pass + fail };
+  const TH0 = JSON.parse(fs.readFileSync(path.join(__dirname, '_theta_result.json'), 'utf8'));
+  const mutTh = (k) => {
+    const o = JSON.parse(JSON.stringify(TH0));
+    o.gates[k] = false;              /* 🔴 只踩子门，gates.all 保持 true */
+    return { theta: o };
+  };
+  const yanOf = (opt) => SCORE3(RJ4, T4, opt).axes.find((a) => a.key === 'yan');
+  const y0 = yanOf(undefined);
+  const ys = ['traj', 'sep', 'grad', 'end'].map((k) => yanOf(mutTh(k)).score);
+  const yNone = yanOf({ theta: {} }).score;
+  chk(y0.score === 8 && ys.every((v) => v === 6) && yNone === 6,
+    'Q33 演绎第二段挂挂在实测上（原样 8；四条子门任踩一条 → 6；整份结果缺 → 6）' +
+    ' ⇒ 分跟着门走，且 gates.all 保持 true 也救不回来（判据读分量、不读结论）',
+    y0.score + '/' + ys.join('/') + '/' + yNone);
 }
 
 /* ================= 输出 ================= */

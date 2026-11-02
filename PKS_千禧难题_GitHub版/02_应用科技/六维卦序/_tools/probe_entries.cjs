@@ -137,9 +137,20 @@ const COLLECT = '(' + function () {
   /* v12 新写的 cRSI 结论必须真的在屏上（读字，不读源码）。
    * 🔴 这里不能只判「有数字」：17 和 20 都是数字，版本号变了必须显式改名，
    *    否则旧版 17/60 也会 PASS —— 那就是「判据太宽」的假绿。 */
-  ck(r.m11txt.includes('最新（v12，§9.7）') && r.m11txt.includes('20/60') && !r.m11txt.includes('最新（v11，§9.6）'),
-    'cRSI 卡片写着 v12 最新口径 20 / 60，且旧的 v11 标号已不在屏上（去空白后是 20/60）',
-    (r.m11txt.includes('20/60') ? '20/60 ' : '') + (r.m11txt.includes('v12') ? 'v12' : '无v12'));
+  ck(r.m11txt.includes('最新（v13，§9.8）') && r.m11txt.includes('22/60') && !r.m11txt.includes('最新（v11，§9.6）'),
+    'cRSI 卡片写着 v13 最新口径 22 / 60，且旧的 v11 标号已不在屏上（去空白后是 22/60）',
+    (r.m11txt.includes('22/60') ? '22/60 ' : '') + (r.m11txt.includes('v13') ? 'v13' : '无v13'));
+  /* v13 新写的三个数：必须成组出现。只写 0.17% 就是藏起对照表 —— 那正是本节的核心教训。 */
+  ck(r.m11txt.includes('0.17%') && r.m11txt.includes('14.00%') && r.m11txt.includes('82.7倍'),
+    '自改轨迹的三个数在屏上（0.17% 轨迹 / 14.00% 乱表 / 82.7 倍）',
+    (r.m11txt.includes('0.17%') ? '0.17 ' : '') + (r.m11txt.includes('14.00%') ? '14.00 ' : '') +
+    (r.m11txt.includes('82.7倍') ? '82.7' : ''));
+  ck(r.m11txt.includes('1.578') && r.m11txt.includes('0.346'),
+    '错版算式随链的集中度反号（1.578 → 0.346）在屏上 —— 只说「差一点」会让人以为近似够用',
+    (r.m11txt.includes('1.578') ? '1.578 ' : '') + (r.m11txt.includes('0.346') ? '0.346' : ''));
+  ck(r.m11txt.includes('按构造不变') && r.m11txt.includes('0.330'),
+    '达真改写为「按构造不变」（V(x)+V(63−x) ≡ 0.330），不再是「实测最大差 2.82e−3」的数值巧合',
+    (r.m11txt.includes('按构造不变') ? '命中' : '仍是数值巧合'));
   ck(r.m11txt.includes('4.26%') && r.m11txt.includes('43.08%') && r.m11txt.includes('10.11倍'),
     '演绎那条的三个数在屏上（4.26% 自预测 / 43.08% 交叉 / 10.11 倍）—— 只报 4.26% 就是藏起对照',
     r.m11txt.includes('4.26%') ? '命中' : '未命中');
@@ -188,10 +199,11 @@ const COLLECT = '(' + function () {
     r.txt.includes('三张卡') ? '仍写着三张卡' : r.txt.includes('四张卡') ? '命中' : '未找到');
   ck(r.txt.includes('201项') && !r.txt.includes('170项'), '断言数改成 201 项（旧的 170 已不在屏上）',
     r.txt.includes('170项') ? '仍是 170' : '命中 201');
-  ck(r.txt.includes('20/60') && r.txt.includes('反向'), 'cRSI 卡写着 20 / 60 与单点锚会反向骗人',
-    r.txt.includes('20/60') ? '命中' : '未命中');
-  ck(r.txt.includes('4.26%') && r.txt.includes('43.08%'),
-    '演绎的双数（4.26% vs 43.08%）在双门卡上 —— 只写一个数就等于没给对照', 
+  ck(r.txt.includes('22/60') && r.txt.includes('反向'), 'cRSI 卡写着 22 / 60 与单点锚会反向骗人',
+    r.txt.includes('22/60') ? '命中' : '未命中');
+  ck(r.txt.includes('0.17%') && r.txt.includes('14.00%') && r.txt.includes('4.26%') && r.txt.includes('43.08%'),
+    '双门卡上两代双数都在（0.17% vs 14.00% 是最新；4.26% vs 43.08% 留作上一代）—— 只写一个数就等于没给对照',
+    (r.txt.includes('0.17%') ? '0.17 ' : '') + (r.txt.includes('14.00%') ? '14.00 ' : '') +
     (r.txt.includes('4.26%') ? '4.26 ' : '') + (r.txt.includes('43.08%') ? '43.08' : ''));
   ck(r.quick.length === 13, '「只想看某一类」网格 13 项', r.quick.length);
   const q11 = r.quick.filter((x) => x.h.endsWith('#m11'))[0];
@@ -217,9 +229,9 @@ const COLLECT = '(' + function () {
     '这条指向六维卦序主索引，且文件存在', hit[0] ? hit[0].href.slice(-40) : '缺失');
   ck(!!hit[0] && /一组四页/.test(hit[0].ttl), '演讲页这条标题写「一组四页」',
     hit[0] ? (hit[0].ttl.match(/一组[三四]页/) || ['未找到'])[0] : '缺失');
-  ck(!!hit[0] && /20\/60/.test(hit[0].all) && /反向骗人/.test(hit[0].all) && /4\.26%/.test(hit[0].all),
-    '演讲页这条正文写着 20 / 60、「单点锚会反向骗人」与 4.26%',
-    hit[0] && /20\/60/.test(hit[0].all) ? '命中' : '未命中');
+  ck(!!hit[0] && /22\/60/.test(hit[0].all) && /反向骗人/.test(hit[0].all) && /0\.17%/.test(hit[0].all),
+    '演讲页这条正文写着 22 / 60、「单点锚会反向骗人」与 0.17%（轨迹误差）',
+    hit[0] && /22\/60/.test(hit[0].all) ? '命中' : '未命中');
   ck(r.starLi.length >= 9, '延伸页条目总数（先测到非零）', r.starLi.length);
   ck(r.txt.includes('13组140条'), '总目录那一条的统计已更新为 13 组 140 条',
     r.txt.includes('13组140条') ? '命中' : r.txt.match(/1[23]组\d+条/) ? '旧值' : '未找到');

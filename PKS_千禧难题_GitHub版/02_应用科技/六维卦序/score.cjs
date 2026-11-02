@@ -22,6 +22,9 @@ const ANCH = tryLoad('./_anchor_result.json');
 /* 「演绎」从「只看回访间隔」升级成「解析预测稳态分布」的那份实测。
  * 缺失 ⇒ 退回旧判据（观测档），绝不假装有解析预测。 */
 const DED = tryLoad('./_deduce_result.json');
+/* 「演绎」第二次升级：把「自改那一半」也解析出来（θ 的漂移轨迹与终点）。
+ * 缺失 ⇒ 只是不加那 2 分，绝不假装算过。 */
+const THT = tryLoad('./_theta_result.json');
 
 /* 阶梯：pairs 按阈值从高到低排，x 达到哪一档就取哪一档的值。
  * 用法 pick(19.05, [[15,8],[8,7],[3,5],[0,3]]) ⇒ 8 */
@@ -72,11 +75,15 @@ function makePlan(c) {
       at: '§9.2',
     },
     {
+      /* 🔴 这一条原来写的是「累计 cover 换成滑窗覆盖」，那条改法已经做完
+       *    （§9.2 现在判的是回访间隔；解析稳态也已做，§9.7；自改的期望轨迹 §9.8）。
+       *    大纲列的是**下一步**，不是已经做完的事 —— 做完的挪到下面的分里说。
+       *    演绎现在 8／10，扣的 2 分就是这一条。 */
       ord: 2, zh: '演绎', st: 'ready',
-      what: '累计 cover 换成滑窗覆盖',
-      check: 'W＝' + i0(c.mwin) + ' 步内 64 态全被写过',
-      evid: '没算过：现在只有累计 cover，' + c.nGroups + ' 组全 64',
-      at: '§9.2',
+      what: '再推一步：θ 的涨落分布（不是期望）',
+      check: '三颗种子间 θ(t) 的散布能从转移核算出来，而不是只报出来',
+      evid: '没算过：只推出期望轨迹（中位误差 ' + f2(c.thMed * 100) + '%），种子间 ' + f2(c.thNoise * 100) + '% 的散布仍只报不推',
+      at: '§9.8',
     },
     {
       ord: 3, zh: '选美', st: 'ready',
@@ -109,7 +116,7 @@ function makePlan(c) {
       evid: c.intPass > 0
         ? '没做过迁移（0 次）；序参量已测：' + c.intPass + ' 个过三道门（' + c.intPassNames + '），另有 ' +
           c.intRej + ' 个候选被挡下'
-        : '没做过：迁移 0 次；现有 ' + c.nGroups + ' 组只用了 vWei 与它的 max−V 对偶，没有第二个独立序',
+        : '没做过：迁移 0 次；现有 ' + c.nGroups + ' 组里 max−V 根本不是第二张表（它是这张表的对称像），独立序 1 个',
       at: '§6',
     },
   ];
@@ -152,6 +159,7 @@ function build(R, TOTAL, opts) {
   const INTV = (opts && opts.int) || INT;
   const ANCV = (opts && opts.anch) || ANCH;
   const DEDV = (opts && opts.ded) || DED;
+  const THV = (opts && opts.theta) || THT;
   const M = R.meta;
   const G = {};
   const S = {};
@@ -200,7 +208,28 @@ function build(R, TOTAL, opts) {
    * 🔴 但两边封顶不同：解析成立 ⇒ 至少 6 分；解析失败 ⇒ 最多 5 分。
    *    否则「后端观测得好」会冒充「推得出来」，那正是这次要修的那个错。 */
   const yanBase = pick(span, [[30, 1], [10, 3], [3, 5], [1, 8], [0, 10]]);
-  const yanScore = dedOk ? Math.max(yanBase, 6) : Math.min(yanBase, 5);
+
+  /* ── 演绎第二段：自改的期望轨迹（_theta.cjs）──
+   * 四道门缺一不给这 2 分（阈值在 _theta.cjs 的 GATE 里，不在本文件重写一遍）：
+   *   ① 轨迹中位误差 ≤ 种子噪声底（残差只是采样涨落，不是系统缺口）
+   *   ② 乱表交叉 / 真表 ≥ 3（判据有牙）
+   *   ③ 三个固定 θ 上，实测/解析的 ḡ 比值都在 1±0.10
+   *   ④ 终点 a、k 的相对误差 ≤ 2%
+   * 🔴 为什么不直接给到 10：算出来的是 θ 的**期望轨迹**，不是 θ 的**分布**；
+   *    种子间那 0.23% 的散布仍只报不推，动力学也仍受周期 2 限制。 */
+  const thG = THV && THV.gates ? THV.gates : null;
+  /* 🔴 不读 thG.all，四条子门各自判：只信一个汇总布尔值的话，把子门改成 false
+   *    而 all 忘了改，分会照样给 —— 判据必须读分量，不读结论。 */
+  const thOk = !!(thG && thG.traj === true && thG.sep === true &&
+    thG.grad === true && thG.end === true);
+  const thMed = THV && THV.err ? THV.err.med : NaN;
+  const thNoise = THV && THV.noise ? THV.noise.med : NaN;
+  const thSep = THV && THV.control ? THV.control.sep : NaN;
+  const thEndA = THV && THV.endErr ? THV.endErr.a : NaN;
+  const thEndK = THV && THV.endErr ? THV.endErr.k : NaN;
+  const thGrad = THV && THV.gradCheck ? THV.gradCheck.map((c) => c.ratio.a) : [];
+
+  const yanScore = dedOk ? Math.max(yanBase, thOk ? 8 : 6) : Math.min(yanBase, 5);
 
   /* ── 选美：吸引力 γ 的留存率 ── */
   const g0 = M.theta0[2];
@@ -264,16 +293,24 @@ function build(R, TOTAL, opts) {
       score: yanScore,
       own: yanScore,
       band: bandOf(yanScore),
-      crit: dedOk
-        ? '从压缩表征推出全体，再拿实测对：解自洽不动点算出 4096 个状态的稳态分布，不看后端'
-        : '从压缩表征反复生成全体：按回访间隔判，不看累计覆盖',
-      evid: dedOk
-        ? '解析预测 64/64 卦的稳态分布，中位误差 ' + f2(dedSelf * 100) + '%、P95 ' + f2(DC.grid[0][0].p95 * 100) + '%；用随机表交叉预测立刻崩到 ' + f2(DC.crossMed * 100) + '%（' + f2(dedSep) + '×）；种子噪声底只有 ' + f2(dedNoise * 100) + '%'
-        : '最差那一卦 ' + i0(ageA) + ' 步没回来 ＝ ' + f2(span) + ' 个 W=' + i0(M.mwin) + ' 窗；而 ' + R.groups.length + ' 组累计 cover 全是 64',
-      why: (dedOk
-        ? '给 ' + yanScore + ' 分不到更高：解析只覆盖「θ 冻结」的稳态；自改（θ 漂移）那一半仍只能模拟，且链的周期是 2（Q₆ 二部 + 禁回头）⇒ 单步分布永不收敛，只有时间平均有稳态。'
-        : '累计 cover 是错量：全组都满分、年龄却跨 ' + i0(ageA / S.C.ageAll) + ' 倍。换成回访间隔后这条不成立'),
-      num: dedOk ? dedSelf : span,
+      crit: thOk
+        ? '推出「θ 会变成什么」：解出每窗的期望更新量 ḡ(θ)，积分成整条自改轨迹，再拿 3 颗种子对'
+        : dedOk
+          ? '从压缩表征推出全体，再拿实测对：解自洽不动点算出 4096 个状态的稳态分布，不看后端'
+          : '从压缩表征反复生成全体：按回访间隔判，不看累计覆盖',
+      evid: thOk
+        ? '先解析 64 个状态的稳态（中位误差 ' + f2(dedSelf * 100) + '%、随机表交叉崩到 ' + f2(DC.crossMed * 100) + '%），再把自改的每窗期望更新量算出来积分：50 个检查点的轨迹中位误差 ' + f2(thMed * 100) + '%（种子噪声底 ' + f2(thNoise * 100) + '%），终点 α 误差 ' + f2(thEndA * 100) + '%、κ 误差 ' + f2(thEndK * 100) + '%；换打乱的表，误差被推到 ' + f2(THV.control.med * 100) + '%（' + f2(thSep) + '×）'
+        : dedOk
+          ? '解析预测 64/64 卦的稳态分布，中位误差 ' + f2(dedSelf * 100) + '%、P95 ' + f2(DC.grid[0][0].p95 * 100) + '%；用随机表交叉预测立刻崩到 ' + f2(DC.crossMed * 100) + '%（' + f2(dedSep) + '×）；种子噪声底只有 ' + f2(dedNoise * 100) + '%'
+          : '最差那一卦 ' + i0(ageA) + ' 步没回来 ＝ ' + f2(span) + ' 个 W=' + i0(M.mwin) + ' 窗；而 ' + R.groups.length + ' 组累计 cover 全是 64',
+      why: (thOk
+        /* 🔴 这里不许用 Markdown 的星号强调：这段是插进 HTML 的纯文本，** ** 会原样印出来。
+         *    Q29 那条「没有漏出 Markdown 星号」就是专门抓这个的。 */
+        ? '给 ' + yanScore + ' 分不到 10：算出来的是 θ 的「期望轨迹」，不是 θ 的「分布」 —— 种子间那 ' + f2(thNoise * 100) + '% 的散布仍只报不推；动力学仍只能在偶数步子列上量（Q₆ 二部 ⇒ 周期 2）。'
+        : dedOk
+          ? '给 ' + yanScore + ' 分不到更高：解析只覆盖「θ 冻结」的稳态；自改（θ 漂移）那一半仍只能模拟，且链的周期是 2（Q₆ 二部 + 禁回头）⇒ 单步分布永不收敛，只有时间平均有稳态。'
+          : '累计 cover 是错量：全组都满分、年龄却跨 ' + i0(ageA / S.C.ageAll) + ' 倍。换成回访间隔后这条不成立'),
+      num: thOk ? thMed : (dedOk ? dedSelf : span),
     },
     {
       key: 'xuan', zh: '选美', ord: 3,
@@ -297,7 +334,16 @@ function build(R, TOTAL, opts) {
       key: 'da', zh: '达真', ord: 5, score: truthIn, own: truthIn,
       band: bandOf(truthIn),
       crit: '系统能不能对一个不由 Ω 生成、且不随目标函数变号的参照负责（判方向，不看快慢）',
-      evid: '外部审计 ' + (TOTAL.total || 0) + ' 条断言 + ' + M.seeds.length + ' 颗种子可重跑（＝§8 的 B，' + AUDIT_SCORE + ' 分，是审计者的能力，不计入本尺）；内部：Ω→max−V 下 θ 只差 ' + INV.maxAbsDiff.toExponential(2) + '（相对 ' + relDiff.toExponential(2) + '），落点却 ' + INV.homeTrue + '→' + INV.homeNeg + (anc ? '；单点锚：谦排 ' + anc.rankInV + ' vs ' + anc.rankInAdv : ''),
+      /* 🔴 v13 纠正：以前写「Ω→max−V 下 θ 只差 2e−2」，像是「差不多不变」。
+       *    现在是算出来的：V(x)+V(63−x) 恒等于一个常数 ⇒ 错卦（六爻全取反）是 Q₆ 的
+       *    图自同构，而这张表在它下面恰好反序 ⇒ 对抗表只是同一张表的**对称像**
+       *    （差一个常数，常数在 softmax 与中心化里都消掉）⇒ θ 按构造不变。
+       *    所以变的是「它看的世界」（落点翻转），不变的是「它怎么改自己」。 */
+      evid: '外部审计 ' + (TOTAL.total || 0) + ' 条断言 + ' + M.seeds.length + ' 颗种子可重跑（＝§8 的 B，' + AUDIT_SCORE + ' 分，是审计者的能力，不计入本尺）；内部：Ω→max−V 下 θ ' +
+        (THV && THV.invariance && THV.invariance.compIsConst
+          ? '按构造不变（V(x)+V(63−x) 恒等于 ' + f3(THV.invariance.compSum[0]) + ' ⇒ 错卦是图自同构，对抗表只是它的对称像）—— 预测差 ' + f2(THV.invariance.aRel * 100) + '%、实测差 ' + f2(THV.invariance.actDiffA * 100) + '%'
+          : '只差 ' + INV.maxAbsDiff.toExponential(2) + '（相对 ' + relDiff.toExponential(2) + '）') +
+        '，落点却 ' + INV.homeTrue + '→' + INV.homeNeg + ' —— 变的是它看的世界，不是它改自己的方式' + (anc ? '；单点锚：谦排 ' + anc.rankInV + ' vs ' + anc.rankInAdv : ''),
       why: '严格口径只认内部这一半：做了一次「证明自己看不见符号」的诚实体检，值 ' + truthIn + ' 分。外部那半边是「我写了测试」，不是「系统看见了真假」—— 把审计者的能力记到被审计者头上，比读文献涨分更隐蔽。' +
         (anc ? '另做了一次证伪：单点绝对锚（谦应最高）在 V 下错位 ' + anc.offsetInV + '、在 max−V 下错位 ' + anc.offsetInAdv + '，反而更认可那张翻转表 ⇒ 绝对位置锚不是锚。要唯一确定 64 维序需 ' + (ANCV.combinatorics ? ANCV.combinatorics.anchorsNeededForUniqueOrder : 63) + ' 个独立点，现有 1 个。' : '') +
         'score＝own，一分继承都不给',
@@ -354,6 +400,8 @@ function build(R, TOTAL, opts) {
     ancReady: !!anc,
     ancR: anc ? anc.rankInV : 0,
     ancA: anc ? anc.rankInAdv : 0,
+    thMed: thMed,
+    thNoise: thNoise,
   }));
 
   return { axes, total, own, max, keepX, rejRate, relDiff, maxDev, span, gKeep,
@@ -362,6 +410,8 @@ function build(R, TOTAL, opts) {
     /* v12 演绎：解析预测。yanScore 与 ded* 都要吐出来，屏上才能现算口径变更，
      * 而不是把历史分写成常量。dedBase＝旧观测档（解析没做成时用的那个）。 */
     yanScore, yanBase, dedOk, dedSelf, dedSep, dedNoise, dedSnr,
+    /* v13：自改的期望轨迹。thOk 决定那 2 分；其余数字供页面现算，不许写死。 */
+    thOk, thMed, thNoise, thSep, thEndA, thEndK, thGrad, thGates: thG,
     dedP95: DC ? DC.grid[0][0].p95 : NaN, dedCross: DC ? DC.crossMed : NaN };
 }
 

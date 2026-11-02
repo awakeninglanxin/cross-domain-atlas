@@ -280,36 +280,44 @@ const BOX = (re, extra) => '(' + function (reStr, extraH) {
   /* 🔴 v12 又多了演绎这一项：SC.total 里已经含它新涨的 (yanScore-3)。
    *    不减就会算出「旧总分 23」，与页面写的 20 不符 —— 这是第三次在同一处踩坑，
    *    所以判据与页面共用「三项分开减」的写法，不再用一个复合式子。 */
+  /* v13 第四次：演绎 6 → 8（自改的期望轨迹）。与页面同一套「分项减」写法。 */
   const OLD_YAN = 3;
-  const OLD_TOTAL = SC.total - SC.tongScore - (SC.yanScore - OLD_YAN) + (OLD_DA - SC.truthIn);
+  const YAN_DED = 3;
+  const YAN_TH = SC.yanScore - 6;
+  const OLD_TOTAL = SC.total - SC.tongScore - YAN_DED - YAN_TH + (OLD_DA - SC.truthIn);
   const OLD_MID = OLD_TOTAL - (OLD_DA - SC.truthIn);
   const OLD_MID2 = OLD_MID + SC.tongScore;
+  const OLD_MID3 = OLD_MID2 + YAN_DED;
   ck(/口径变更/.test(r.txt) && /审计者的能力不能记到被审计者头上/.test(r.txt) &&
     /不计入本尺/.test(r.txt) &&
     r.txt.indexOf(OLD_TOTAL + '／' + SC.max) >= 0 &&
     r.txt.indexOf(OLD_MID + '／' + SC.max) >= 0 &&
     r.txt.indexOf(OLD_MID2 + '／' + SC.max) >= 0 &&
+    r.txt.indexOf(OLD_MID3 + '／' + SC.max) >= 0 &&
     r.txt.indexOf(SC.total + '／' + SC.max) >= 0,
-    '屏上三次口径变动都写明：' + OLD_TOTAL + ' → ' + OLD_MID + '（达真降）→ ' + OLD_MID2 +
-    '（通天涨）→ ' + SC.total + '（演绎涨），且写明外部审计不计入本尺',
+    '屏上四次口径变动都写明：' + OLD_TOTAL + ' → ' + OLD_MID + '（达真降）→ ' + OLD_MID2 +
+    '（通天涨）→ ' + OLD_MID3 + '（演绎解析稳态）→ ' + SC.total + '（自改轨迹），且写明外部审计不计入本尺',
     '口径变更段 + 达真 evid');
 
   /* 三个数逐个现算：先降 / 再涨 / 再涨。只写结论不写算术，就等于让人自己猜。 */
-  const dropN = OLD_TOTAL - OLD_MID, riseN = OLD_MID2 - OLD_MID, rise2N = SC.total - OLD_MID2;
+  const dropN = OLD_TOTAL - OLD_MID, riseN = OLD_MID2 - OLD_MID,
+    rise2N = OLD_MID3 - OLD_MID2, rise3N = SC.total - OLD_MID3;
   /* 🔴 检查串一律不许带空格：第 39 行 txt 已经 replace(/\s+/g,'') 去干净了。
    *    第一版带了空格（'先降 4'、'9.6 两件实测'、'迁移 0 次'），四条全假红 ——
    *    页面是对的，是判据忘了这件事。这类假红最坑：会让人去改本来对的实现。 */
-  ck(r.txt.indexOf('先降' + dropN + '分、再涨' + riseN + '分、再涨' + rise2N + '分') >= 0,
-    '三次变动的算术自洽：先降 ' + dropN + '、再涨 ' + riseN + '、再涨 ' + rise2N + '（三个数都现算）',
-    dropN + '/' + riseN + '/' + rise2N);
-  /* 净变化为 0 这件事本身必须写明，并且必须同时写明「成分换了」——
-   * 否则「20 → 20」会被读成「什么都没发生」，而其实是 −4 +1 +3。 */
-  ck(r.txt.indexOf('净变化0分') >= 0 && r.txt.indexOf('是成分换了') >= 0 &&
+  ck(r.txt.indexOf('先降' + dropN + '分、再涨' + riseN + '分、再涨' + rise2N + '分、再涨' + rise3N + '分') >= 0,
+    '四次变动的算术自洽：先降 ' + dropN + '、再涨 ' + riseN + '、再涨 ' + rise2N + '、再涨 ' + rise3N + '（四个数都现算）',
+    dropN + '/' + riseN + '/' + rise2N + '/' + rise3N);
+  /* 🔴 净变化从 0 变成 +2 之后，「成分换了」这句话**必须留着**：
+   *    +2 同样容易被读成「系统变强了 2 分」，而成分是 达真 −4 / 通天 +1 / 演绎 +5。
+   *    判据同时卡三件：净变化值、成分换了、三项逐个点名。 */
+  const netN = SC.total - OLD_TOTAL;
+  ck(r.txt.indexOf('净变化' + (netN > 0 ? '+' : '') + netN + '分') >= 0 && r.txt.indexOf('是成分换了') >= 0 &&
     r.txt.indexOf('达真−' + (OLD_DA - SC.truthIn)) >= 0 &&
     r.txt.indexOf('通天+' + SC.tongScore) >= 0 &&
     r.txt.indexOf('演绎+' + (SC.yanScore - OLD_YAN)) >= 0,
-    '屏上写明净变化 0 分但它「是成分换了」，且三项增减逐个点名（' +
-    (OLD_DA - SC.truthIn) + '/' + SC.tongScore + '/' + (SC.yanScore - OLD_YAN) + '）—— 不许让人读成「涨回去了」',
+    '屏上写明净变化 ' + (netN > 0 ? '+' : '') + netN + ' 分但它「是成分换了」，且三项增减逐个点名（' +
+    (OLD_DA - SC.truthIn) + '/' + SC.tongScore + '/' + (SC.yanScore - OLD_YAN) + '）—— 不许让人读成「凭空涨回来」',
     '有');
 
   console.log('=== 9.6 两件实测 ===');
@@ -352,6 +360,41 @@ const BOX = (re, extra) => '(' + function (reStr, extraH) {
   ck(r.txt.indexOf('' + SC.yanScore + '分') >= 0,
     '演绎分 ' + SC.yanScore + ' 写在屏上，且与 score.cjs 现算一致', SC.yanScore);
   ck(/Q32/.test(r.txt), 'Q32 变异测试的结论写在屏上（分是算出来的，不是手填）', '有');
+
+  console.log('=== 9.8 自改的期望轨迹 ===');
+  const THP = JSON.parse(fs.readFileSync(path.join(__dirname, '_theta_result.json'), 'utf8'));
+  ck(/9\.8演绎/.test(r.txt) && /自改那一半/.test(r.txt),
+    '9.8 这一节在屏上（不是只落在 JSON 里）', '有');
+  /* 四道门逐个点名：只写「过了」不算，要把门名与实测值都摆出来 */
+  ck(SC.thGates && SC.thGates.traj === true && SC.thGates.sep === true &&
+    SC.thGates.grad === true && SC.thGates.end === true && SC.thOk === true,
+    '四道门全过（轨迹≤噪声底 / 乱表≥3× / ḡ 三点 1±0.10 / 终点≤2%），且 thOk 与之一致',
+    JSON.stringify(SC.thGates));
+  ck(r.txt.indexOf(f2p(SC.thMed * 100) + '%') >= 0 && r.txt.indexOf(f2p(SC.thNoise * 100) + '%') >= 0,
+    '轨迹误差 ' + f2p(SC.thMed * 100) + '% 与种子噪声底 ' + f2p(SC.thNoise * 100) + '% 一起在屏上' +
+    '（只报误差不报噪声，等于让人以为「快完美了」）',
+    f2p(SC.thMed * 100) + '/' + f2p(SC.thNoise * 100));
+  ck(r.txt.indexOf(f2p(SC.thSep) + '×') >= 0,
+    '分离度 ' + f2p(SC.thSep) + '× 在屏上（判据有牙的证据）', f2p(SC.thSep));
+  ck(r.txt.indexOf(f2p(SC.thEndA * 100) + '%') >= 0 && r.txt.indexOf(f2p(SC.thEndK * 100) + '%') >= 0,
+    '终点 α、κ 的相对误差都在屏上', f2p(SC.thEndA * 100) + '/' + f2p(SC.thEndK * 100));
+  /* 错版负对照：必须是现算的（gradBuggy），屏上要能看到它随集中度反号 */
+  const RO = THP.gradCheck.map((c) => c.ratioOld.a);
+  ck(RO[0] > 1.2 && RO[RO.length - 1] < 0.5 &&
+    r.txt.indexOf('条件均值之积') >= 0 && r.txt.indexOf('gradBuggy') >= 0,
+    '错算式作为负对照留在脚本里并现算（θ₀ ' + f2p(RO[0]) + ' → 终点 ' + f2p(RO[RO.length - 1]) +
+    '，随链的集中度反号）—— 不是我把 2.9 倍抄上屏',
+    RO.map((v) => f2p(v)).join('/'));
+  ck(THP.invariance.compIsConst === true && r.txt.indexOf('图自同构') >= 0 &&
+    r.txt.indexOf(f2p(THP.invariance.compSum[0])) >= 0,
+    '不变性写成「算出来的」：V(x)+V(63−x) 恒等于 ' + f2p(THP.invariance.compSum[0]) +
+    ' ⇒ 错卦是图自同构 ⇒ 对抗表是同一张表的对称像',
+    f2p(THP.invariance.compSum[0]));
+  ck(/实际在做下降/.test(r.txt),
+    'κ 那项的符号不一致写在屏上（实现与该文件自己声明的 φ 相反）—— 不许只在代码注释里', '有');
+  ck(r.txt.indexOf('演绎' + SC.yanScore + '分') >= 0 || r.txt.indexOf(SC.yanScore + '分，不是10') >= 0 ||
+    r.txt.indexOf('为什么只给' + SC.yanScore + '分') >= 0,
+    '演绎 ' + SC.yanScore + ' 分与「为什么不是 10」都在屏上', SC.yanScore);
 
   const ancv = SC.anc || {};
   ck(Number.isFinite(ancv.offsetInV) && Number.isFinite(ancv.offsetInAdv) &&
@@ -559,13 +602,16 @@ const BOX = (re, extra) => '(' + function (reStr, extraH) {
   /* 9.7 同理：2×2 表和 TV 那两张小表挤不挤，只能看。 */
   const box97 = await c.evalJs('(function(){var hs=document.querySelectorAll("h3");for(var i=0;i<hs.length;i++){if(hs[i].textContent.indexOf("9.7")>=0){var b=hs[i].getBoundingClientRect();return{x:0,y:Math.max(0,b.top+scrollY-8),w:document.documentElement.clientWidth,h:2400};}}return null;})()');
   if (box97) { await shotTo(OUT + 'cr_s97.png', box97); shots.push('cr_s97.png'); }
+  /* 9.8 有两张表（四道门 + 错版对照），挤不挤只能看。 */
+  const box98 = await c.evalJs('(function(){var hs=document.querySelectorAll("h3");for(var i=0;i<hs.length;i++){if(hs[i].textContent.indexOf("9.8")>=0){var b=hs[i].getBoundingClientRect();return{x:0,y:Math.max(0,b.top+scrollY-8),w:document.documentElement.clientWidth,h:2200};}}return null;})()');
+  if (box98) { await shotTo(OUT + 'cr_s98.png', box98); shots.push('cr_s98.png'); }
   for (let i = 1; i <= r.fig; i++) {
     const box = await c.evalJs('(function(i){var fs=document.querySelectorAll("figure.fig");var f=fs[i-1];if(!f)return null;var b=f.getBoundingClientRect();return {x:0,y:Math.max(0,b.top+scrollY-6),w:document.documentElement.clientWidth,h:b.height+14};})(' + i + ')');
     if (box) { await shotTo(OUT + 'cr_fig' + i + '.png', box); shots.push('cr_fig' + i + '.png'); }
   }
-  const wantShots = (r.plan ? 1 : 0) + 2 + 2 + r.fig;
+  const wantShots = (r.plan ? 1 : 0) + 2 + 3 + r.fig;
   ck(shots.length === wantShots,
-    '截图 ' + wantShots + ' 张（置顶大纲 + 2 节 + 9.6 + 9.7 + ' + r.fig + ' 图，张数跟着页面走）', shots.join(','));
+    '截图 ' + wantShots + ' 张（置顶大纲 + 2 节 + 9.6 + 9.7 + 9.8 + ' + r.fig + ' 图，张数跟着页面走）', shots.join(','));
 
   /* 375 */
   await c.send('Emulation.setDeviceMetricsOverride', { width: 375, height: 812, deviceScaleFactor: 1, mobile: true });
