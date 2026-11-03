@@ -724,6 +724,37 @@ function chk(c, label, extra) {
     '点 2D 键 ⇒ 叠加层显示、3D 画布让位（VIEW2D=xy）', J(s2d));
   chk(s2d.ink > 0.01, '2D 画布真画了东西（非白像素 ' + (100 * s2d.ink).toFixed(1) + '%）', s2d.ink);
 
+  /* K2. 2D 的文字不能被左下五个视角键压住（原来照 x=12 / H−32 落笔，正好压进去）。
+     判据用【像素扫出文字真实起笔位置】对【按钮的 DOM 右边缘】——
+     不读实现自己算的那个避让量，否则改回 x=12 也照样"通过"。 */
+  const lay = await ev(`(function(){
+    var cv=document.getElementById('cv2d'), g=cv.getContext('2d');
+    var dpr=cv.width/Math.max(1,cv.clientWidth);
+    var W=cv.width/dpr, H=cv.height/dpr;
+    var cvr=cv.getBoundingClientRect();
+    var vb=document.getElementById('viewbtns'), vbr=vb.getBoundingClientRect();
+    var btnRight=vbr.right-cvr.left, btnTop=vbr.top-cvr.top;
+    function leftmost(y0,y1){
+      var py0=Math.max(0,Math.round(y0*dpr)), py1=Math.min(cv.height,Math.round(y1*dpr));
+      var hh=Math.max(1,py1-py0);
+      var d=g.getImageData(0,py0,cv.width,hh).data, w=cv.width, best=-1;
+      for(var y=0;y<hh;y++){ for(var x=0;x<w;x++){ var i=(y*w+x)*4;
+        if(d[i]<200&&d[i+1]<212&&d[i+2]<222){ if(best<0||x<best) best=x; } } }
+      return best<0?-1:+(best/dpr).toFixed(1);
+    }
+    var hint=document.getElementById('hint');
+    return {W:+W.toFixed(1), H:+H.toFixed(1), btnRight:+btnRight.toFixed(1), btnTop:+btnTop.toFixed(1),
+            t1:leftmost(H-46,H-26), t2:leftmost(H-25,H-6),
+            hint:getComputedStyle(hint).display};})()`);
+  console.log('  画布 ' + lay.W + 'x' + lay.H + ' · 按钮右边缘 ' + lay.btnRight +
+              ' · 读数条起笔 上' + lay.t1 + ' 下' + lay.t2);
+  chk(lay.t1 > lay.btnRight && lay.t2 > lay.btnRight,
+    '2D 底部两行读数的起笔在视角键右边缘之外（' + lay.t1 + ' / ' + lay.t2 + ' > ' + lay.btnRight + '）',
+    J(lay));
+  chk(lay.t1 > 0 && lay.t1 < lay.W && lay.t2 > 0 && lay.t2 < lay.W,
+    '两行读数都被采到、且没被画布右边缘吃掉（起笔 ' + lay.t1 + ' / ' + lay.t2 + '）', J(lay));
+  chk(lay.hint === 'none', '2D 模式下 3D 那个「拖动旋转…」提示条已收起', lay.hint);
+
   /* 俯视：回转体 ⇒ 横向与纵向应该几乎相等（这条同时验证"正交、不是透视"） */
   await clickView('xz2d');
   await sleep(700);
@@ -741,9 +772,11 @@ function chk(c, label, extra) {
   await clickView('iso');
   await sleep(800);
   const back = await ev(`(function(){var a=document.getElementById('cv2d'),b=document.getElementById('cv3d');
-    return {c2:getComputedStyle(a).display, c3:getComputedStyle(b).display, on:VIEW2D};})()`);
+    return {c2:getComputedStyle(a).display, c3:getComputedStyle(b).display, on:VIEW2D,
+            hint:getComputedStyle(document.getElementById('hint')).display};})()`);
   chk(back.on === null && back.c2 === 'none' && back.c3 === 'block',
     '点回「等轴 xyz」⇒ 2D 层收起、3D 画布恢复', J(back));
+  chk(back.hint !== 'none', '回到 3D ⇒ 操作提示条原样还回去（display=' + back.hint + '）', J(back));
 
   console.log('\n--------');
   console.log('JS 异常：' + (errs.length ? errs.slice(0, 4).join(' ;; ') : '无'));

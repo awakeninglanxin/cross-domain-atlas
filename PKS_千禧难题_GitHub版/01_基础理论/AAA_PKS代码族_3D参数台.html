@@ -16263,13 +16263,29 @@ function draw2D(){
 
   var isXY=(VIEW2D==='xy');
   var segs=SEGS, n=segs?(segs.length/9):0;
+
+  /* 覆盖层避让：画布上浮着三个 HTML 元素（左上「暂停」键、左下五个视角键、右下 3D 提示条），
+     2D 的文字若照旧从 x=12 起笔、从 H−32 落笔，就会被按钮压住 —— 屏上等于没有读数。
+     这里按【浮层的真实右边缘】起笔，不写死像素：按钮文案一改、面板一窄，避让仍然成立。 */
+  var base=cv.getBoundingClientRect();
+  function afterEl(id,fallback){
+    var el=document.getElementById(id);
+    if(!el) return fallback;
+    if(getComputedStyle(el).display==='none') return fallback;
+    var r=el.getBoundingClientRect();
+    if(!r.width) return fallback;
+    return Math.max(fallback, Math.round(r.right-base.left)+10);
+  }
+  var tx=afterEl('btnPause',12);      /* 标题从这里起，避开左上角那个键 */
+  var bx=afterEl('viewbtns',12);      /* 底部两行数字从这里起，避开左下五个键 */
+
   ctx.fillStyle='#12305e';
   ctx.font='600 12.5px system-ui,-apple-system,"Segoe UI",sans-serif';
   ctx.fillText(isXY?'正视投影 · xy 平面（正交 · 沿 −z 看）'
-                   :'俯视投影 · xz 平面（正交 · 沿 −y 看）', 12, 20);
+                   :'俯视投影 · xz 平面（正交 · 沿 −y 看）', tx, 20);
   ctx.fillStyle='#5a6678';
   ctx.font='11px system-ui,-apple-system,"Segoe UI",sans-serif';
-  ctx.fillText('正交投影：无透视、无遮挡，可直接量长宽（3D 那三个键是透视视角，不是这张）', 12, 36);
+  ctx.fillText('正交投影：无透视、无遮挡，可直接量长宽（3D 那三个键是透视视角，不是这张）', tx, 36);
 
   if(!n){
     ctx.fillStyle='#b03020';
@@ -16341,21 +16357,36 @@ function draw2D(){
   ctx.fillStyle='#24405f'; ctx.font='11.5px Consolas,"Courier New",monospace';
   ctx.fillText('横向 '+(uMax-uMin).toFixed(4)+' × 纵向 '+(vMax-vMin).toFixed(4)+
     '（模型单位）　线段 '+n+' 根　比例 1 单位 = '+kk.toFixed(1)+' px',
-    padL, H-32);
+    bx, H-32);
   ctx.fillStyle='#8a95a5'; ctx.font='10.5px system-ui,sans-serif';
-  ctx.fillText((isXY?'横向 = x（最大宽）· 纵向 = y（长径）'
-                     :'横向 = x ／ 纵向 = z（两者相等才是回转体）')+
-    '　·　近处原色、远处混白（正交投影会把前后压平，靠深浅分前后）', padL, H-14);
+  ctx.fillText((isXY?'横 x（最大宽）· 纵 y（长径）'
+                     :'横 x · 纵 z（相等才是回转体）')+
+    '　·　近处原色 · 远处混白（正交把前后压平，靠深浅分前后）', bx, H-14);
 }
 
+/* 2D 模式下右下角那条「拖动旋转 ｜ Shift+拖动平移…」是 3D 的操作提示：
+   正交图不转不缩，留着既没用、又会把 2D 的读数条挤掉。进来收起，出去原样还回去。 */
+var HINT_SAVED2D=null;
+function hint2D(off){
+  var h=document.getElementById('hint');
+  if(!h) return;
+  if(off){
+    if(HINT_SAVED2D===null) HINT_SAVED2D=h.style.display;
+    h.style.display='none';
+  }else if(HINT_SAVED2D!==null){
+    h.style.display=HINT_SAVED2D; HINT_SAVED2D=null;
+  }
+}
 function exit2D(){
   document.getElementById('cv2d').style.display='none';
   document.getElementById('cv3d').style.display='block';
+  hint2D(false);
 }
 function setView2D(k){
   VIEW2D=k;
   var c2=document.getElementById('cv2d'), c3=document.getElementById('cv3d');
   c3.style.display='none'; c2.style.display='block';
+  hint2D(true);
   /* 2D 模式下自转没有意义，顺手暂停 —— 否则切回 3D 会发现模型转到了别处 */
   if(autoRot) setAutoRot(false);
   draw2D();
