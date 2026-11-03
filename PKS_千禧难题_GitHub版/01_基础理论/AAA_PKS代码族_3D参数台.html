@@ -92,8 +92,22 @@ a.mdlink:hover{border-bottom-style:solid}
 .tabs button{font:inherit;font-size:13px;cursor:pointer;border:1px solid #cfd8e5;background:#fff;
  color:#24405f;border-radius:999px;padding:4px 13px}
 .tabs button.on{background:#12305e;border-color:#12305e;color:#fff;font-weight:600}
-.stage{display:grid;grid-template-columns:1.3fr .7fr;gap:18px;margin:14px 0 6px;align-items:start}
-@media(max-width:960px){.stage{grid-template-columns:1fr}}
+.stage{display:grid;grid-template-columns:2fr 1fr;gap:18px;margin:14px 0 6px;align-items:start}
+/* 当前族没有 2D 截面图时（右栏收掉）3D 必须撑满，不许留一条 1fr 的空沟 */
+.stage.noprof{grid-template-columns:1fr}
+/* ⚠ 显式定位，不靠自动放置：
+   fxctl 把参数面板搬走后会在原位置插一条 .fxp-note 提示条，它是个普通块，
+   自动放置算法会把它摆进「第一行第二列」，把 2D 栏顶到第二行去
+   （2026-11-03 实测：profbox 落在 y=2732，而 cvbox 在 y=2194）。 */
+.stage > #cvbox{grid-column:1;grid-row:1}
+.stage > #profbox{grid-column:2;grid-row:1}
+.stage > .ctrl,.stage > .fxp-note{grid-column:1 / -1;grid-row:2}
+.stage.noprof > #cvbox{grid-column:1 / -1}
+@media(max-width:960px){
+  .stage,.stage.noprof{grid-template-columns:1fr}
+  .stage > #cvbox,.stage > #profbox,.stage > .ctrl,.stage > .fxp-note{
+    grid-column:1;grid-row:auto}
+}
 #cvbox{position:relative;background:linear-gradient(180deg,#f9fbfe,#eef3f9);
  border:1px solid #dde3ec;border-radius:10px;overflow:hidden;height:520px}
 #cv3d{display:block;width:100%;height:100%;cursor:grab}
@@ -108,7 +122,8 @@ a.mdlink:hover{border-bottom-style:solid}
 #btnPause.paused{background:#12305e;border-color:#12305e;color:#fff}
 #hint{position:absolute;right:10px;bottom:9px;font-size:11.4px;color:#6b7683;
  background:rgba(255,255,255,.86);border:1px solid #e1e6ee;border-radius:4px;padding:2px 8px}
-.ctrl{background:#fcfcfd;border:1px solid #e6eaf2;border-radius:10px;padding:14px 16px}
+.ctrl{background:#fcfcfd;border:1px solid #e6eaf2;border-radius:10px;padding:14px 16px;
+ grid-column:1 / -1}
 .ctrl h3{margin:0 0 4px;font-size:15.5px}
 .ctrl .pyline{font-size:11.6px;color:#8a95a5;font-family:Consolas,monospace;word-break:break-all;margin-bottom:8px;line-height:1.5}
 .row{margin:8px 0}
@@ -124,7 +139,14 @@ input[type=range]{width:100%;accent-color:#2f6fb5;height:18px}
 .readout span:first-child{color:#5a6678}
 .readout b{font-family:Consolas,monospace;color:#12305e;font-weight:600;text-align:right}
 .readout b.hit{color:#b3261e;font-weight:700}
-#prof{width:100%;height:200px;border:1px solid #e2e8f2;border-radius:6px;background:#fff;margin-top:9px;display:none}
+/* 2D 截面窗：独立右栏（不是参数）。
+   搬出 .ctrl 的原因：.ctrl 会被 fxctl 整体收进右下角「调参」浮窗，
+   图跟着进去以后只剩 200 多像素宽，等轴比例也就名存实亡了。 */
+#profbox{display:none;height:520px;box-sizing:border-box;background:#fcfcfd;
+ border:1px solid #e6eaf2;border-radius:10px;padding:12px}
+#profbox.on{display:flex;flex-direction:column}
+#prof{width:100%;flex:1 1 auto;min-height:0;border:1px solid #e2e8f2;border-radius:6px;
+ background:#fff;display:block}
 .presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .presets button{font:inherit;font-size:12.2px;cursor:pointer;border:1px solid #d8c9a8;background:#fffbf2;
  color:#7a5a1e;border-radius:5px;padding:3px 9px}
@@ -729,7 +751,6 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
     <div class="solvebox" id="dxfbox"></div>
     <div class="choices" id="choices"></div>
     <div class="readout" id="readout"></div>
-    <canvas id="prof" width="340" height="200"></canvas>
     <div class="presets" id="presets"></div>
     <!-- 导出 3D 打印文件：把「当前参数下的可见物件」直接写成 STL / OBJ / STP。
          为什么放在参数台最底下：先调参、后导出，顺序就是它的位置。
@@ -771,6 +792,10 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
         <span class="exp-size" id="expSize"></span>
       </div>
     </div>
+  </div>
+  <!-- 2D 截面窗：右栏（左 3D : 右 2D = 2 : 1）。标题画在画布内，由各族自己的 prof() 决定。 -->
+  <div id="profbox">
+    <canvas id="prof" width="340" height="200"></canvas>
   </div>
 </div>
 <!-- 2D 截面预览：左下角悬浮窗（可拖动 / 可收起），内容由 buildSecBox() 注入 -->
@@ -11306,33 +11331,49 @@ function f0SchR(th,z,c){
   return Math.PI*(1/a-1/b)/den;
 }
 function f0SchY(z){return ((z-0.10)/0.20-0.5)*F0_SCH_H;}
+/* ---- 舒伯格面的【唯一坐标来源】----
+   ⚠ 这个面不是旋转面，而且半径必须乘 F0_SCH_K 才塞得进场景。
+   缩放只加在画面上、不加在求交上 ⇒ 交线浮在离面 (1/K-1)=81.8% 的外面。
+   2026-11-03 老师从轴向看截图发现：交线点到曲面最近距离的中位是曲面网格间距的 12.4 倍。
+   所以曲面绘制、求根扫描、二分成点，三处必须都走这一个函数 —— 不许各自算一套。 */
+function f0SchPt(th,z,c){
+  var r=f0SchR(th,z,c);
+  if(!isFinite(r))return null;
+  r*=F0_SCH_K;
+  if(r>6)r=6;if(r<-6)r=-6;
+  return [r*Math.cos(th), f0SchY(z), r*Math.sin(th)];
+}
 function f0CutSch(aDeg,y0,c){
   var a=aDeg*Math.PI/180,sa=Math.sin(a),ca=Math.cos(a),tn=Math.tan(a);
   var NT=240,ZS=0.10,ZE=0.30,NZ=90,curve=[],segs=[];
+  /* 切平面方程：n·(p−p₀)=0 ⇒ (y−y0) + z·tanα = 0。p 一律取 f0SchPt 的点 */
+  function valAt(th2,zz){
+    var p=f0SchPt(th2,zz,c);
+    return p===null?NaN:(p[1]+p[2]*tn-y0);
+  }
   for(var i=0;i<=NT;i++){
-    var th=TAU*i/NT,r=0,z,prev=null,root=null,j;
+    var th=TAU*i/NT,z,prev=null,root=null,j;
     for(j=0;j<=NZ;j++){
       z=ZS+(ZE-ZS)*j/NZ;
-      var rr=f0SchR(th,z,c);
-      if(!isFinite(rr)||Math.abs(rr)>6){prev=null;continue;}
-      var val=f0SchY(z)+rr*Math.sin(th)*tn-y0;
+      var val=valAt(th,z);
+      if(!isFinite(val)){prev=null;continue;}
       if(prev!==null&&((val<0)!==(prev<0))){
-        var za=z-(ZE-ZS)/NZ,zb=z,fa=prev,fb=val,k,tmp,mid,fm;
+        var za=z-(ZE-ZS)/NZ,zb=z,fa=prev,k,mid,fm;
         for(k=0;k<60;k++){
-          mid=(za+zb)/2;
-          fm=f0SchY(mid)+f0SchR(th,mid,c)*Math.sin(th)*tn-y0;
-          if((fa<0)===(fm<0)){za=mid;fa=fm;}else{zb=mid;fb=fm;}
+          mid=(za+zb)/2;fm=valAt(th,mid);
+          if(!isFinite(fm)){za=mid;fa=-1;continue;}
+          if((fa<0)===(fm<0)){za=mid;fa=fm;}else{zb=mid;}
         }
-        root=(za+zb)/2;r=f0SchR(th,root,c);
+        root=(za+zb)/2;
         break;                       /* 取最低的那个根：外缘 */
       }
       prev=val;
     }
     if(root===null){if(curve.length>2)segs.push({pts:curve,closed:false});curve=[];continue;}
-    var y=f0SchY(root);
-    var u=r*Math.cos(th);
-    var t=sa>1e-4?(y0-y)/sa:r*Math.sin(th);
-    curve.push([u,t]);
+    var pq=f0SchPt(th,root,c);
+    if(pq===null){if(curve.length>2)segs.push({pts:curve,closed:false});curve=[];continue;}
+    /* (u,t) 就是切平面内的坐标：u=x；t=(z0−y)/sinα（α→0 时退化成 t=z） */
+    curve.push([pq[0], sa>1e-4?(y0-pq[1])/sa:pq[2]]);
   }
   if(curve.length>2)segs.push({pts:curve,closed:false});
   return {segs:segs,sa:sa,ca:ca,a:a,clipped:false,sch:true};
@@ -11456,7 +11497,9 @@ function f0Surface(S,op,tint){
       var mat=tint?new THREE.MeshPhongMaterial({vertexColors:true,shininess:34,
                  specular:0x556677,side:THREE.DoubleSide,transparent:true,
                  opacity:Math.min(0.92,op+0.22),depthWrite:false}):f0SurfMat(op);
-      g.add(new THREE.Mesh(geo,mat));
+      var mb=new THREE.Mesh(geo,mat);
+      mb.userData.f0surf=true;
+      g.add(mb);
     })(d);
   }
   return g;
@@ -11464,12 +11507,12 @@ function f0Surface(S,op,tint){
 function f0SurfaceSch(P,op){
   var c=(P.cutC===undefined?0.5:P.cutC),g=new THREE.Group();
   var geo=gridGeom(160,72,function(s,v){
-    var th=TAU*s,z=0.10+0.20*v,r=f0SchR(th,z,c)*F0_SCH_K;
-    if(!isFinite(r))r=0;
-    if(r>6)r=6;if(r<-6)r=-6;
-    return [r*Math.cos(th),f0SchY(z),r*Math.sin(th)];
+    var z=0.10+0.20*v,p=f0SchPt(TAU*s,z,c);
+    return p===null?[0,f0SchY(z),0]:p;
   });
-  g.add(new THREE.Mesh(geo,f0SurfMat(op)));
+  var ms=new THREE.Mesh(geo,f0SurfMat(op));
+  ms.userData.f0surf=true;          /* 标记：探针据此读【画出来的顶点】，不靠公式反查 */
+  g.add(ms);
   return g;
 }
 
@@ -15093,8 +15136,17 @@ function secImportFile(file){
 function drawProf(f){
   var pc=document.getElementById('prof');
   if(!pc)return;
-  if(!f||!f.prof){pc.style.display='none';return;}
-  pc.style.display='block';
+  /* 显隐交给容器：#profbox 自己 display:none 时 clientWidth=0，
+     千万别再拿 canvas 自己的 display 控制 —— 那样 ResizeObserver 会读到 0 宽再跳过重画。 */
+  var box=document.getElementById('profbox');
+  var stg=document.querySelector('.stage');
+  if(!f||!f.prof){
+    if(box)box.classList.remove('on');
+    if(stg)stg.classList.add('noprof');
+    return;
+  }
+  if(box)box.classList.add('on');
+  if(stg)stg.classList.remove('noprof');
   var w=Math.max(1,Math.round(pc.clientWidth||340));
   var h=Math.max(1,Math.round(pc.clientHeight||200));
   var dpr=Math.min(window.devicePixelRatio||1,2);
