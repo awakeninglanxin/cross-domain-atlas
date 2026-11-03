@@ -51,6 +51,12 @@ function chk(c, label, extra) {
   await send('Page.enable');
   await send('Page.navigate', { url: URL });
   await sleep(9000);
+  /* 平移量的是【相机】行为，跟网格密度无关。降到单层小网格是为了在软渲染下能出帧：
+     默认双层 56 万顶点时每帧几百毫秒，等帧会等到超时（本探针不是测性能的）。 */
+  await ev(`(function(){P.cutSkin=1;P.hxRow=16;P.cutQ=1;rebuild();return 1;})()`).catch(()=>{});
+  await ev(`(function(){P.hxQ=1.0;rebuild();return 1;})()`).catch(()=>{});
+  await sleep(2500);
+  await waitFrames(2, 9000);
 
   /* 滚到 3D 视图，量画布矩形（必须在视口内，否则鼠标事件落在别的元素上） */
   const rect = await ev(`(function(){var c=document.getElementById('cv3d');
@@ -71,10 +77,34 @@ function chk(c, label, extra) {
   /* 探针用的参考点：物体包围盒中心（世界坐标，固定不动；pan 只动相机） */
   await ev(`window.__pt=(function(){var b=new THREE.Box3().setFromObject(root);
     var c=b.getCenter(new THREE.Vector3()); return [c.x,c.y,c.z];})()`);
-  const proj = () => ev(`(function(){var v=new THREE.Vector3(window.__pt[0],window.__pt[1],window.__pt[2]).project(camera);
-    return {x:v.x,y:v.y,ndcZ:v.z};})()`);
+  /* ⚠ 量投影前必须手动跑一次页面自己的 loop()。
+     为什么：headless 的帧调度会停（实测画布滚进视口后，默认档 56 万顶点 + 软渲染，
+     rAF 从 35 fps 掉到 0~1 fps，等帧只能等到超时）⇒ 量到的是【拖动前那一帧】的相机，
+     位移恒为 0，看起来像"平移功能坏了"。这是测量方式的问题，不是页面的问题。
+     为什么不自己复述相机公式：复述就等于自证（公式写错两边一起错）。
+     调 loop() 用的是页面【唯一那份】实现，测的仍是真东西。 */
+  const proj = () => ev(`(function(){
+    try{ loop(); }catch(e){ console.error('loop 抛错：'+e.message); }
+    var v=new THREE.Vector3(window.__pt[0],window.__pt[1],window.__pt[2]).project(camera);
+    return {x:v.x,y:v.y,ndcZ:v.z, camY:+camera.position.y.toFixed(4)};})()`);
   const st = () => ev(`({az:az,el:el,zoom:zoom,px:panX,py:panY,pz:panZ,camD:camD})`);
 
+  /* 等渲染帧真的往前走。
+     ⚠ 为什么不能用固定 sleep：默认档 56 万顶点 + swiftshader 软渲染，画布一进视口，
+       每帧要几百毫秒（实测 rAF 从 35 fps 掉到 1.3 fps）。固定 sleep(320) 等不到新帧，
+       量到的还是拖动前那一帧的相机矩阵 ⇒ 位移量出 0，看起来像"平移功能坏了"。
+       这是探针的等待方式错，不是页面的错（同样条件下把 sleep 加到 3 秒就正常）。
+     等帧超时返回 false ⇒ 判失败，绝不当成"通过"。 */
+  async function waitFrames(n, budgetMs) {
+    const f0 = await ev('renderer.info.render.frame');
+    const t0 = Date.now();
+    while (Date.now() - t0 < budgetMs) {
+      await sleep(70);
+      const f = await ev('renderer.info.render.frame');
+      if (f - f0 >= n) return true;
+    }
+    return false;
+  }
   /* 拖拽：分段派发（页面按增量累加），返回屏幕位移（NDC → 像素要乘 w/2, h/2） */
   async function drag(dx, dy, shift) {
     const mod = shift ? 8 : 0;
@@ -86,7 +116,7 @@ function chk(c, label, extra) {
       await sleep(24);
     }
     await mouse('mouseReleased', Math.round(cx + dx), Math.round(cy + dy), mod, 0);
-    await sleep(320);
+    return await waitFrames(1, 2000);
   }
   const toPx = (a, b) => ({ dx: (b.x - a.x) * R2.w / 2, dy: -(b.y - a.y) * R2.h / 2 });  /* NDC y 向上 */
 

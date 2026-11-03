@@ -112,6 +112,11 @@ a.mdlink:hover{border-bottom-style:solid}
  border:1px solid #dde3ec;border-radius:10px;overflow:hidden;height:520px}
 #cv3d{display:block;width:100%;height:100%;cursor:grab}
 #cv3d:active{cursor:grabbing}
+/* 2D 正投影层（2026-11-03 老师要的「正视 / 俯视平面投影图」）
+   —— 与 3D 画布同尺寸叠放，点对应按钮才显示。
+   为什么不做成"3D 相机摆正"：那是透视投影，杆有近大远小、还被前面的挡住；
+   平面投影图要的是【正交、无遮挡、能直接量长宽】的工程图。 */
+#cv2d{position:absolute;left:0;top:0;width:100%;height:100%;display:none;z-index:1}
 #badge{position:absolute;left:12px;top:48px;font-size:12px;color:#12305e;max-width:78%;
  background:rgba(255,255,255,.92);border:1px solid #d6dfec;border-radius:4px;padding:3px 9px;font-weight:600;line-height:1.5}
 /* 暂停/继续自转：放在 3D 图形的左上角，方便直接点 */
@@ -209,7 +214,8 @@ input[type=range]{width:100%;accent-color:#2f6fb5;height:18px}
 #btnExp:hover{background:#eef7f0;border-color:#2e7d43}
 /* 3D 图左下角的「视角」三连（等轴 xyz / 正视 xy / 俯视 xz）
    —— 等轴是默认位：只有站在等轴或正视角上，画面里的长宽比才等于读数里的长宽比。 */
-#viewbtns{position:absolute;left:12px;bottom:10px;z-index:5;display:flex;gap:4px}
+#viewbtns{position:absolute;left:12px;bottom:10px;z-index:5;display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+#viewbtns .vrow{display:flex;gap:4px}
 #viewbtns button{font:inherit;font-size:11.6px;cursor:pointer;color:#24405f;
  background:rgba(255,255,255,.92);border:1px solid #cfd8e5;border-radius:5px;
  padding:3px 9px;font-weight:600;line-height:1.45;box-shadow:0 1px 3px rgba(18,48,94,.10)}
@@ -731,14 +737,21 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
 <div class="stage">
   <div id="cvbox">
     <canvas id="cv3d"></canvas>
+    <canvas id="cv2d"></canvas>
     <button id="btnPause" class="paused" type="button" title="暂停 / 继续自转（快捷键：空格）">▶ 继续自转</button>
     <!-- 导出入口：调参浮窗默认收起，这个按钮负责"展开浮窗 + 滚到导出块" -->
     <button id="btnExp" type="button" title="导出当前参数的 3D 物件（STL / OBJ / STP）">⤓ 导出 3D</button>
     <div id="badge">—</div>
     <div id="viewbtns">
-      <button type="button" data-v="iso" class="on" title="等轴视图：x / y / z 三轴等比例（默认，判读比例的标准位）">等轴 xyz</button>
-      <button type="button" data-v="xy" title="正视图：沿 −z 看 xy 平面 —— 长径 / 最大宽就是这个视图里的两个方向">正视 xy</button>
-      <button type="button" data-v="xz" title="俯视图：沿 +y 往下看 xz 平面 —— 看回转体的圆度">俯视 xz</button>
+      <div class="vrow">
+        <button type="button" data-v="xy2d" title="正视图的 2D 正投影：沿 −z 正交投到 xy 平面，无透视、无遮挡，可直接量长径与最大宽">正视投影 2D</button>
+        <button type="button" data-v="xz2d" title="俯视图的 2D 正投影：沿 −y 正交投到 xz 平面，看回转体的圆度与沿周向的分布">俯视投影 2D</button>
+      </div>
+      <div class="vrow">
+        <button type="button" data-v="iso" class="on" title="等轴视图：x / y / z 三轴等比例（默认，判读比例的标准位）">等轴 xyz</button>
+        <button type="button" data-v="xy" title="正视图：沿 −z 看 xy 平面（这是 3D 透视视角，杆有近大远小）">正视 xy</button>
+        <button type="button" data-v="xz" title="俯视图：沿 +y 往下看 xz 平面（这是 3D 透视视角）">俯视 xz</button>
+      </div>
     </div>
     <div id="hint">拖动旋转 ｜ <b>Shift+拖动平移</b> ｜ 滚轮缩放 ｜ 双击回等轴 ｜ 空格暂停自转</div>
   </div>
@@ -12238,6 +12251,9 @@ function f0CmapKind(P) { return Math.max(0, Math.min(5, (P.hxCmap === undefined 
 /* sRGB → 线性：Three 的顶点色按【线性】解释。直接塞 sRGB 值进去会整体偏暗，
    而且暗部细节糊成一团（plasma 的低端本来是深蓝紫，不转会变成近黑）。 */
 function f0S2L(c) { return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
+/* 反变换：3D 顶点色是线性空间（three.js 要），Canvas 2D 要 sRGB。
+   少了这一步，2D 投影图整体偏暗、plasma 的紫端直接糊成黑。 */
+function f0L2S(c) { return c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055; }
 
 function f0HsvCol(t) {
   var h = ((t % 1) + 1) % 1, s = 0.82, v = 0.98;
@@ -12334,10 +12350,16 @@ function f0HexL2(P) {
   var tetK = Math.max(0.30, Math.min(2.0, (P.hxTetK === undefined ? 1.0 : P.hxTetK)));
   var man = Math.max(0.30, Math.min(0.94, (P.hxL2 === undefined ? 68 : P.hxL2) / 100));
   var skin = (P.cutSkin | 0);
-  /* ⚠ key 必须含 net.ck（母线/α/z₀/M/q/杆径全在里面）+ 本层自己的三个参数。
+  /* 层间连接方式（2026-11-03 加）：0 径向直杆 / 1 节点斜腹杆 / 2 径向 + 辐条 */
+  var web = (P.hxWeb === undefined ? 1 : (P.hxWeb | 0));
+  /* 第二层绕长轴（数学 y）的相位角，度。蜂窝有 6 次对称、三角网有 3 次对称，
+     所以相位周期是 120°，给 −60~+60 就够把「内层杆与外层杆错开」的所有情形走遍。 */
+  var phase = Math.max(-60, Math.min(60, (P.hxL2phase === undefined ? 0 : P.hxL2phase)));
+  /* ⚠ key 必须含 net.ck（母线/α/z₀/M/q/杆径全在里面）+ 本层自己的每个参数。
      少了任何一个，改完参数屏上还画上一版的内层 —— 那就是 2026-11-03 抓过的
-     「缓存串味」，只不过换了一层。 */
-  var key = net.ck + '|L2|' + skin + '|' + lmode + '|' + man.toFixed(4) + '|' + tetK.toFixed(3);
+     「缓存串味」，只不过换了一层。web / phase 同理。 */
+  var key = net.ck + '|L2|' + skin + '|' + lmode + '|' + man.toFixed(4) + '|' + tetK.toFixed(3) +
+            '|W' + web + '|P' + phase.toFixed(2);
   if (F0L2_CACHE.k === key && F0L2_CACHE.v) return F0L2_CACHE.v;
 
   function d2(A, B) {
@@ -12380,16 +12402,40 @@ function f0HexL2(P) {
 
   /* ---- 内层蛋面：以原点为中心的相似缩放 ----
      蛋已居中（y = (t−tMid)·sc）⇒ 缩放后仍是同心、同轴、同形状的蛋。
-     这就是「以原点为中心缩小的蛋形曲面」的字面落实，不是另造一张面。 */
+     这就是「以原点为中心缩小的蛋形曲面」的字面落实，不是另造一张面。
+     相位：绕数学 y 轴（蛋的长轴）转 phase 度。作用不是"让两层对齐"（见下），
+     而是把内层三角杆与外层六边形杆在投影上错开 —— 两层杆正对着时，
+     从外面看像一根粗杆，看不出是两层。 */
+  var phR = phase * Math.PI / 180, cph = Math.cos(phR), sph = Math.sin(phR);
   var V2 = [];
-  for (i = 0; i < V.length; i++) V2.push([V[i][0] * lam, V[i][1] * lam, V[i][2] * lam]);
+  for (i = 0; i < V.length; i++) {
+    var x1 = V[i][0] * lam, y1 = V[i][1] * lam, z1 = V[i][2] * lam;
+    V2.push([x1 * cph - z1 * sph, y1, x1 * sph + z1 * cph]);
+  }
 
   var vc = {};
   for (i = 0; i < net.cells.length; i++) vc[net.cells[i].v] = i;
   function cR(v) { var ci = vc[v]; return ci === undefined ? st.r0 : net.cells[ci].rr; }
 
+  /* ---- 六边形的【可见中心】≠ 参数点 V ----
+     外层钢架并不是照着 V 画六边形的：它把每格画在「6 个三角面重心 triC」上，
+     于是六边形整体往里缩了一圈，V 落在钢架网面【之外】。两者之差就是曲率弓高，
+     M 越小格子越大、弓高越明显 —— 旧版径向杆从 V 出发，看着就是一根
+     「从六边形中央戳出来的柱子」（老师 2026-11-03 截图指的就是它）。
+     所以凡是要"落在钢架上"的点，一律用 poly 的平均，不用 V。 */
+  var cellCtr = [];
+  var ctrOff = 0;
+  for (i = 0; i < net.cells.length; i++) {
+    var pl0 = net.cells[i].poly, nn0 = pl0.length, sx0 = 0, sy0 = 0, sz0 = 0;
+    for (j = 0; j < nn0; j++) { sx0 += pl0[j][0]; sy0 += pl0[j][1]; sz0 += pl0[j][2]; }
+    var cc0 = [sx0 / nn0, sy0 / nn0, sz0 / nn0];
+    cellCtr.push(cc0);
+    var vv = net.cells[i].v, o0 = d2(cc0, V[vv]);
+    if (o0 > ctrOff) ctrOff = o0;
+  }
+
   /* 杆集合：全部过 pushS ⇒ 短杆上限与杆径范围只有一处口径 */
-  var tie = [], in2 = [], brace = [], apexS = [], innerS = [];
+  var tie = [], spoke = [], in2 = [], brace = [], apexS = [], innerS = [];
   var rMin = 1e9, rMax = -1e9, nClamp = 0;
   function pushS(arr, A, B, r) {
     var L = d2(A, B);
@@ -12400,8 +12446,32 @@ function f0HexL2(P) {
     arr.push({ a: A, b: B, r: r });
   }
 
-  /* ---- 层间径向杆：外层每格中心 ↔ 内层对应顶点 ---- */
-  for (i = 0; i < V.length; i++) pushS(tie, V[i], V2[i], cR(i) * 0.46);
+  /* ---- 层间连接：三种接法（2026-11-03 老师指出的「没连上节点」就是这里） ----
+     ⚠ 先说清一件事：外层钢架的【节点是 triC】（三角面重心），
+       V 只是参数点、也是六边形的几何中心，上面没有杆。
+       所以从 V 出发的杆，两端都不在节点上 —— 力学上是虚接，视觉上是
+       「一根柱子从六边形中央戳出来」。这就是 web=0 被降级成反例的原因。
+
+     web=0 径向直杆：格心(可见中心) ↔ 内层对应顶点。
+            ⚠ 仍是虚接（内层端是节点，外层端不是），只留作对照。
+     web=1 ★ 节点斜腹杆：外层每个节点 triC → 它那个三角面的三个内层顶点。
+            上弦节点 ↔ 下弦节点，这才是双层网壳的标准接法；
+            每个节点发 6 根（3 条边 × 2 端点），整层就是一个完整的空间桁架。
+     web=2 径向 + 辐条：格心先用 6 根面内辐条连到它周围的 triC（把格心做成真节点），
+            再往内打径向杆。想看「格心处到底该不该有节点」就用这一档。 */
+  if (web !== 1) {
+    for (i = 0; i < V.length; i++) {
+      var ci = vc[i];
+      var A0 = (ci === undefined) ? V[i] : cellCtr[ci];
+      pushS(tie, A0, V2[i], cR(i) * 0.46);
+    }
+    if (web === 2) {
+      for (i = 0; i < net.cells.length; i++) {
+        var pl1 = net.cells[i].poly, rS = Math.max(0.0004, net.cells[i].rr * 0.30);
+        for (j = 0; j < pl1.length; j++) pushS(spoke, cellCtr[i], pl1[j], rS);
+      }
+    }
+  }
 
   /* ---- 内层三角杆：三角网的每一条边 ---- */
   em.forEach(function (E) {
@@ -12483,8 +12553,11 @@ function f0HexL2(P) {
   /* ---- 斜撑：每条外层棱 + 对应内层棱，用 4 根斜杆封成四面体 ----
      只加径向杆时芯是柱阵 ⇒ 面内可滑（机构）。这 4 根是抗剪的。
      只接到「上下相邻」的点（triC_f 与 V2[u]，u ∈ 该面）—— 别乱连，
-     连到不相邻的点会长出一堆穿格的斜杆，看着像乱麻、实际也不传力。 */
-  if (skin >= 4) {
+     连到不相邻的点会长出一堆穿格的斜杆，看着像乱麻、实际也不传力。
+     ⚠ 这一组同时承担 web=1 的「层间腹杆」角色：既然它本来就是
+        triC → V2 的节点对节点连接，就不要再造一份重复的。（cutSkin≥4 与 web=1 取并集） */
+  var doBrace = (skin >= 4) || (web === 1);
+  if (doBrace) {
     em.forEach(function (E) {
       var rA = 0.5 * (cR(E.u) + cR(E.v)) * 0.30;
       for (var q = 0; q < E.f.length; q++) {
@@ -12493,8 +12566,10 @@ function f0HexL2(P) {
         pushS(brace, tc, V2[E.v], rA);
       }
     });
-    /* ---- 内顶点互连：相邻两个四面体的内顶点相连 ⇒ 内层三正则网 ---- */
-    em.forEach(function (E) {
+    /* ---- 内顶点互连：相邻两个四面体的内顶点相连 ⇒ 内层三正则网 ----
+       只有真的建了四面体（skin≥4）才有内顶点可连；web=1 单选时腹杆有了、
+       四面体芯还没建，这一组必须继续关着，否则会连到不存在的顶点。 */
+    if (skin >= 4) em.forEach(function (E) {
       if (E.f.length !== 2) return;
       pushS(innerS, ap[E.f[0]], ap[E.f[1]], 0.5 * (cR(E.u) + cR(E.v)) * 0.40);
     });
@@ -12510,7 +12585,11 @@ function f0HexL2(P) {
     hTetOverA: (1 - lam) * Req > 0 ? (K824 * lam * aRef) / Math.max(1e-9, lam * aRef) : 0,
     nV2: V2.length, nTet: tets.length, nTie: tie.length, nIn2: in2.length,
     nBrace: brace.length, nApex: apexS.length, nInner: innerS.length,
-    nStruts2: tie.length + in2.length + brace.length + apexS.length + innerS.length,
+    web: web, phase: phase, nSpoke: spoke.length,
+    /* 格心 V 与钢架可见中心（poly 平均）的最大偏差：旧版径向杆"戳出来"的根源，
+       以 ‰蛋高 报，读者能直接对上截图里的那截柱子。 */
+    ctrOff: ctrOff,
+    nStruts2: tie.length + spoke.length + in2.length + brace.length + apexS.length + innerS.length,
     hTetMed: tets.length ? hSum / tets.length : 0,
     tetRatio: tetR.length ? tetR[(tetR.length / 2) | 0] : 0,
     tetLo: tetR.length ? tetR[0] : 0,
@@ -12519,7 +12598,7 @@ function f0HexL2(P) {
     apexHi: apexR.length ? apexR[apexR.length - 1] : 0,
     rMin: rMin === 1e9 ? 0 : rMin, rMax: rMax === -1e9 ? 0 : rMax, nClamp: nClamp
   };
-  var out = { V2: V2, tets: tets, ap: ap, tie: tie, in2: in2, brace: brace,
+  var out = { V2: V2, tets: tets, ap: ap, tie: tie, spoke: spoke, in2: in2, brace: brace,
               apexS: apexS, innerS: innerS, stats: stats };
   F0L2_CACHE = { k: key, v: out };
   return out;
@@ -12641,6 +12720,7 @@ function f0HexBuild(P) {
       m2.name = nm2; g.add(m2);
     };
     addL('hexTie', L2.tie, 4);
+    addL('hexSpoke', L2.spoke, 4);
     addL('hexIn2', L2.in2, 4);
     addL('hexBrace', L2.brace, 4);
     addL('hexApex', L2.apexS, 4);
@@ -12694,6 +12774,40 @@ function f0HexBuild(P) {
       if (isOuter === (hxView === 2)) ch.visible = false;
     }
   }
+
+  /* ---- 2D 正投影用的「杆轴线」清单（2026-11-03 老师要的正视/俯视平面图）----
+     为什么不从 geometry 里抠三角面：杆是六棱柱，抠出来是 24 个三角形，
+     投影后是一团密集短线，看不出结构。这里直接存杆的【轴线】，
+     2D 图就是一张干净的工程正投影。颜色取杆中点、已转回 sRGB（Canvas 不吃线性色）。
+     扁平数组 9 个数一根：ax ay az bx by bz r g b。 */
+  var segArr = [];
+  var OUT2 = { hexStruts: 1, hexNodes: 1, hexPanels: 1 };
+  function segVisible(nm) {
+    if (!(hxView > 0 && (P.cutSkin | 0) >= 3)) return true;
+    return (!!OUT2[nm]) === (hxView === 1);
+  }
+  function pushSeg(list) {
+    if (!list || !list.length) return;
+    for (var q = 0; q < list.length; q++) {
+      var s0 = list[q];
+      var mx = (s0.a[0] + s0.b[0]) / 2, my = (s0.a[1] + s0.b[1]) / 2, mz = (s0.a[2] + s0.b[2]) / 2;
+      var cr, cg, cb;
+      if (useC) {
+        var cl = f0CmapColor(P, f0MapVal(P, [mx, my, mz], st));
+        cr = f0L2S(cl[0]); cg = f0L2S(cl[1]); cb = f0L2S(cl[2]);
+      } else { cr = 0.36; cg = 0.41; cb = 0.47; }
+      segArr.push(s0.a[0], s0.a[1], s0.a[2], s0.b[0], s0.b[1], s0.b[2], cr, cg, cb);
+    }
+  }
+  if (segVisible('hexStruts')) pushSeg(net.struts);
+  if (L2) {
+    if (segVisible('hexTie')) pushSeg(L2.tie);
+    if (segVisible('hexIn2')) {
+      pushSeg(L2.spoke); pushSeg(L2.in2); pushSeg(L2.brace);
+      pushSeg(L2.apexS); pushSeg(L2.innerS);
+    }
+  }
+  g.userData.f0seg = segArr.length ? segArr : null;
 
   g.userData.noArray = true;          /* 轴对称体：圆周阵列只会叠出重合杆 */
   g.userData.f0hex = st;
@@ -12787,7 +12901,7 @@ function f0HexRead(P) {
   var rows = [], R = f0Solve(P), net = f0HexNet(P);
   var skin = (P.cutSkin | 0);
   var SKN = ['原样', '单层钢架（正六边形平铺）', '单层 + 薄壳',
-             '双层壳体（外层六边形 + 内层正三角 + 径向连接杆）',
+             '双层壳体（外层六边形 + 内层正三角 + 节点连接）',
              '双层 + 斜撑 + 四面体芯（完整空间桁架）',
              '双层 + 斜撑 + 四面体芯 + 薄壳'];
   rows.push(['表面构建', '<b>' + (SKN[skin] || '蛋面钢架') + '</b>（蛋 = 斜切出来的曲线绕长轴旋转）']);
@@ -12886,7 +13000,29 @@ function f0HexRead(P) {
       '它们比的是各自那一层的胞元，所以数值不同 —— 写成一个数就是口径错']);
     rows.push(['内层正三角网', s2.nIn2 + ' 条边 · ' + s2.nTet + ' 个三角面　' +
       '（顶点 ' + s2.nV2 + ' = 外层蜂窝的格数 ⇒ 顶点数一一对应，它是蜂窝的【对偶】）']);
-    rows.push(['层间径向杆', s2.nTie + ' 根　（外层每格中心 ↔ 内层对应顶点，正好穿过六边形中央）']);
+    /* ---- 层间连接：这一行是本轮（2026-11-03）改动的核心，必须讲清「哪一端是节点」---- */
+    rows.push(['外层节点在哪', '钢架的节点是 <b>三角面重心 triC</b>（3 根杆交汇），共 ' + st.tris +
+      ' 个；六边形的几何中心 V 只是参数点，上面<b>没有杆</b>。' +
+      '两者差一个曲率弓高（本档最大 ' + (s2.ctrOff / st.H * 1000).toFixed(2) +
+      ' ‰蛋高）—— M 越小格子越大、差得越多，这正是旧版径向杆看着"从六边形中央戳出来"的原因']);
+    if (s2.web === 1) {
+      rows.push(['层间腹杆', '<b>' + s2.nBrace + '</b> 根　（外层节点 triC ↔ 内层三角面的三个顶点）' +
+        '　·　每个外层节点发 6 根（3 条边 × 2 端点）⇒ 上弦节点直接落到下弦节点，' +
+        '这才是双层网壳的标准接法。径向直杆在本档为 0 根（它两端都不是节点，已换成这一种）']);
+    } else if (s2.web === 2) {
+      rows.push(['层间径向杆 + 辐条', '<b>' + s2.nTie + '</b> 根径向 ＋ <b>' + s2.nSpoke +
+        '</b> 根面内辐条　（每个格心先用 6 根辐条连到它周围 6 个 triC，把格心做成真节点，再往内打径向杆）' +
+        '　·　杆数最多、但格心处确实有节点']);
+    } else {
+      rows.push(['层间径向杆', '<b>' + s2.nTie + '</b> 根　（格心 ↔ 格心）' +
+        '　<span style="color:#b03020">⚠ 两端都不在节点上：外层端是格心 V（无杆）、内层端才是节点 ⇒ 虚接，' +
+        '只留作反例。要真连接请把「层间连接」切到「节点斜腹杆」</span>']);
+    }
+    if (Math.abs(s2.phase) > 0.001) {
+      rows.push(['第二层相位角', s2.phase.toFixed(1) + '°　（绕长轴转）　·　作用是把内层杆与外层杆在' +
+        '投影上错开，不是"让两层节点对齐"——三角网顶点（半径 λR）与外层节点（半径 <R）本来就不在同一个旋转面上，' +
+        '转多少度都重合不了，这条只是把两层画面上分开好辨认']);
+    }
     if (skin >= 4) {
       rows.push(['斜撑（抗剪）', s2.nBrace + ' 根　（每条外层棱 4 根，把「外层棱 + 内层棱」封成四面体。' +
         '⚠ 只有径向杆时芯是【柱阵】—— 抗压不抗剪，两层能面内滑移，是机构不是结构）']);
@@ -12901,9 +13037,12 @@ function f0HexRead(P) {
         '这一行是「外心算得对不对」的直接裁判，六棱比那一行则掺进了网格本身的形状）']);
       rows.push(['内顶点互连', s2.nInner + ' 根　（相邻四面体的内顶点两两相连 ⇒ 内层三正则网，' +
         '与内层三角网互为对偶）']);
+    } else if (s2.web === 1) {
+      rows.push(['这一档（无四面体芯）', '腹杆已是节点对节点的斜杆 ⇒ 整层是完整空间桁架，抗剪成立；' +
+        '只是还没往蛋内立四面体。切到「★ 双层 + 斜撑 + 四面体芯」再往内伸一层']);
     } else {
-      rows.push(['⚠ 这一档只有径向杆', '芯是柱阵：抗压可以、抗剪为零（两层能相对面内滑移）。' +
-        '切到「双层 + 斜撑 + 四面体芯」才是完整桁架']);
+      rows.push(['⚠ 这一档没有斜腹杆', '芯只有径向杆/辐条：抗压可以、抗剪为零（两层能相对面内滑移）。' +
+        '把「层间连接」切到「节点斜腹杆」，或升到「★ 双层 + 斜撑 + 四面体芯」才是完整桁架']);
     }
     rows.push(['芯杆径', (s2.rMin / st.H * 1000).toFixed(2) + ' ~ ' +
       (s2.rMax / st.H * 1000).toFixed(2) + ' ‰蛋高（外层杆的 0.42~0.58 倍，细一档好分层）' +
@@ -12956,10 +13095,14 @@ var FAMS=[
       if(sk>=3){
         var L2b=null;try{L2b=f0HexL2(P);}catch(e){}
         if(L2b){var B2=L2b.stats;
+          var wTxt=(sk>=4)?(' · 腹杆 '+B2.nBrace+' ／ 四面体高 '+(B2.hTetMed/H2.H*1000).toFixed(0)+
+                            '‰ · 六棱比 '+B2.tetRatio.toFixed(3))
+                          :(B2.web===1?(' · 节点腹杆 '+B2.nBrace)
+                          :(B2.web===2?(' · 径向 '+B2.nTie+' ＋辐条 '+B2.nSpoke)
+                                      :' · 径向 '+B2.nTie+'（两端非节点）'));
           s='双层钢架 · 外层 '+H2.n+' 格六边形 ／ 内层 '+B2.nTet+' 个正三角 · λ='+
             (B2.lam*100).toFixed(1)+'% · 层间距 '+(B2.hNom/H2.H*100).toFixed(1)+'% 蛋高'+
-            (sk>=4?(' · 斜撑 '+B2.nBrace+' ／ 四面体高 '+(B2.hTetMed/H2.H*1000).toFixed(0)+'‰ · 六棱比 '+B2.tetRatio.toFixed(3)):' · 仅径向杆')+
-            ' · '+F0_CMAP_NAMES[f0CmapKind(P)];
+            wTxt+' · '+F0_CMAP_NAMES[f0CmapKind(P)];
         }else s='第二层算不出来（母线不是闭合蛋）· 只画外层';
       }else if(sk===2){s+=' · 带薄壳 · '+F0_CMAP_NAMES[f0CmapKind(P)];}
       else{s+=' · '+F0_CMAP_NAMES[f0CmapKind(P)];}
@@ -12989,7 +13132,7 @@ var FAMS=[
    opts:[{v:0,t:'原样（锥面 + 切面 + 交线）'},
          {v:1,t:'单层钢架（正六边形平铺 · 钢架连接）'},
          {v:2,t:'单层 + 薄壳（格内半透明面）'},
-         {v:3,t:'双层壳体（外层六边形 + 内层正三角 + 径向连接杆）'},
+         {v:3,t:'双层壳体（外层六边形 + 内层正三角 + 节点连接）'},
          {v:4,t:'★ 双层 + 斜撑 + 四面体芯（完整空间桁架 · 向蛋内再伸一层）'},
          {v:5,t:'双层 + 斜撑 + 四面体芯 + 薄壳'}]},
   {k:'hxRow',label:'母线分行数 M（目标值 · 沿蛋轴分多少道纬圈；实得见读数）',min:8,max:60,step:1,dp:0,
@@ -13007,6 +13150,14 @@ var FAMS=[
    opts:[{v:0,t:'★ 全部（外层六边形 + 内层三角 + 芯）'},
          {v:1,t:'只看外层（六边形蜂窝）'},
          {v:2,t:'只看芯（正三角 + 斜撑 + 四面体）'}]},
+  {k:'hxWeb',label:'层间怎么连（⚠ 外层节点是三角面重心 triC，不是六边形中心 V）',type:'choice',
+   when:function(P){return (P.cutSkin|0)>=3;},
+   opts:[{v:0,t:'径向直杆 · 格心 ↔ 格心（两端都不是节点 · 只作反例）'},
+         {v:1,t:'★ 节点斜腹杆 · 外层节点 triC → 内层三角三点（真桁架）'},
+         {v:2,t:'径向 + 格心辐条（格心先连 6 个 triC，把格心做成真节点）'}]},
+  {k:'hxL2phase',label:'第二层相位角 φ（° · 绕长轴转 · 把两层杆在投影上错开；周期 120°）',
+   min:-60,max:60,step:1,dp:0,
+   when:function(P){return (P.cutSkin|0)>=3;}},
   {k:'hxL2mode',label:'第二层缩到多小才对（λ 的定法）',type:'choice',
    when:function(P){return (P.cutSkin|0)>=3;},
    opts:[{v:0,t:'★ 物理最优：芯厚 = √(2/3)·a ⇒ λ = 1 − 0.8165·a/R'},
@@ -13038,7 +13189,8 @@ var FAMS=[
  def:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutZ0s:0,cutTheta:30,cutC:0.5,
       cutMode:0,cutTint:0,cutShow:0,
       cutSkin:4,hxRow:26,hxQ:1.00,hxR:3.20,hxG:0.80,hxNode:1.35,
-      hxL2mode:0,hxL2:68,hxTetK:1.00,hxCmap:0,hxMapT:0,hxView:0},
+      hxL2mode:0,hxL2:68,hxTetK:1.00,hxCmap:0,hxMapT:0,hxView:0,
+      hxWeb:1,hxL2phase:0},
  build:f0Build,read:f0Read,prof:f0Prof,zAxis:'y',
  empty:'平面与这张曲面没有交点 —— 换母线、把 α 调小、或把 z₀ 挪回曲面所在的 y 区间',
  note:'<b>这一格是原「蛋形双锥斜切_3D交互对照」页的两个视图（Ⅰ 超双曲面斜切→蛋形、Ⅱ 直圆锥斜切→圆锥曲线），'+
@@ -13093,12 +13245,14 @@ var FAMS=[
   {t:'钢架 · 更细密（M=44 · 六棱更等长 1.10）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:1,hxRow:44,hxQ:1.00}},
   {t:'钢架 · 粗杆 γ=1.4（大格明显更粗 · 能看出面积比）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:1,hxRow:24,hxQ:0.80,hxR:4.20,hxG:1.40}},
   {t:'八度蛋钢架（α=33.69° · z₀=5/3）',v:{cutSurf:0,cutA:33.690067525979787,cutZ0:5/3,cutSkin:1,hxRow:26,hxQ:0.80}},
-  {t:'★ 双层 + 四面体芯（λ 由正四面体定 · plasma）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutMode:0,cutSkin:4,hxRow:26,hxQ:1.00,hxR:3.20,hxG:0.80,hxNode:1.35,hxL2mode:0,hxL2:68,hxTetK:1.00,hxCmap:0,hxMapT:0}},
-  {t:'双层 · 只看两层壳体（没有斜撑 · 对照「机构 vs 结构」）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:3,hxRow:26,hxQ:1.00,hxCmap:0}},
-  {t:'双层 · 细网格 M=40（层间距自动变薄）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:4,hxRow:40,hxQ:1.00,hxR:2.60,hxL2mode:0,hxCmap:0}},
-  {t:'双层 · viridis 配色',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:4,hxRow:26,hxQ:1.00,hxCmap:1}},
-  {t:'双层 · 扁芯（四面体高 ×0.55 · 层间更薄）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:4,hxRow:26,hxQ:1.00,hxTetK:0.55,hxL2mode:1,hxL2:86,hxCmap:0}},
-  {t:'双层 + 四面体 + 薄壳（金色壳 + 芯）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:5,hxRow:24,hxQ:1.00,hxCmap:0,hxMapT:0}}]},
+  {t:'★ 双层 + 四面体芯（λ 由正四面体定 · plasma · 腹杆接节点）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutMode:0,cutSkin:4,hxRow:26,hxQ:1.00,hxR:3.20,hxG:0.80,hxNode:1.35,hxL2mode:0,hxL2:68,hxTetK:1.00,hxCmap:0,hxMapT:0,hxWeb:1,hxL2phase:0}},
+  {t:'双层 · 只有节点腹杆（无四面体芯 · 看两层怎么连）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:3,hxRow:26,hxQ:1.00,hxCmap:0,hxWeb:1}},
+  {t:'双层 · 反例：格心径向杆（两端都不是节点 · 会戳出来）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:3,hxRow:26,hxQ:1.00,hxCmap:0,hxWeb:0}},
+  {t:'双层 · 径向 + 格心辐条（把格心做成真节点）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:3,hxRow:26,hxQ:1.00,hxCmap:0,hxWeb:2}},
+  {t:'双层 · 细网格 M=40（层间距自动变薄）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:4,hxRow:40,hxQ:1.00,hxR:2.60,hxL2mode:0,hxCmap:0,hxWeb:1}},
+  {t:'双层 · viridis 配色',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:4,hxRow:26,hxQ:1.00,hxCmap:1,hxWeb:1}},
+  {t:'双层 · 扁芯（四面体高 ×0.55 · 层间更薄）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:4,hxRow:26,hxQ:1.00,hxTetK:0.55,hxL2mode:1,hxL2:86,hxCmap:0,hxWeb:1}},
+  {t:'双层 + 四面体 + 薄壳（金色壳 + 芯）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:5,hxRow:24,hxQ:1.00,hxCmap:0,hxMapT:0,hxWeb:1}}]},
 {id:'ripple',label:'① 双波纹盘',title:'双波纹盘 · 双截面旋成',
  pyLine:'代码_波纹盘/22_双波纹盘最佳截面曲线.py + 27_双曲线比切四象限.py',
  badge:function(P){return '双波纹盘 · n='+Math.round(P.n)+' · '+(P.mode===0?'22号（外乘衰减）':'27号（衰减内化）');},
@@ -14713,6 +14867,8 @@ function resize(){
   /* 2D 母线图跟着面板宽度重排：它的内部分辨率是按 CSS 盒子现算的，
      不重画就会留着上一款宽度（浮窗一拖宽，剖面图就被拉成另一副比例）。 */
   try{drawProf(FAMS[curFam]);}catch(e){}
+  /* 2D 正投影同理：画布尺寸变了要按新宽度重算比例尺，否则图会缩在角上 */
+  if(VIEW2D){ try{draw2D();}catch(e){} }
 }
 /* ---------------- 等轴取景：让「比例」不被画布形状偷偷改掉 ----------------
    为什么要重做这一块（2026-10-29）：
@@ -14769,9 +14925,11 @@ function rebuild(){
   /* 圆周阵列：整套模型绕该族对称轴（数学 z 轴）复制 n 份 */
   try{obj=applyArray(obj,P,f);}catch(e){console.error(e);}
   var bb=new THREE.Box3().setFromObject(obj);
+  var ctrV=new THREE.Vector3(0,0,0);
   if(!bb.isEmpty()){
     var c=bb.getCenter(new THREE.Vector3()),sz=bb.getSize(new THREE.Vector3());
     obj.position.sub(c);
+    ctrV.copy(c);
     root.add(obj);
     _sz.x=sz.x;_sz.y=sz.y;_sz.z=sz.z;
     _rad=fitRadius(obj);
@@ -14815,6 +14973,11 @@ function rebuild(){
   }
   // 2D
   drawProf(f);
+  /* 2D 正投影的数据：跟着模型一起换。放在 rebuild 末尾 ⇒ 任何参数变更路径
+     （下拉 / 滑条 / 预设 / 程序改 P）都会同步，不会出现"3D 换了、投影图还是上一版"。
+     当前若正停在 2D 视图，顺手重画一张。 */
+  try{ SEGS=collectSegs(obj,ctrV); }catch(e){ SEGS=null; }
+  if(VIEW2D) draw2D();
   /* 导出面板跟着模型一起刷新：参数一变，导出清单 / 三角数 / 尺寸就过期了。
      PKSEXP 在页面里的定义顺序在主脚本之前，但首次 rebuild（selectFam(0)）
      跑在它之后，所以这里一定有；仍加 window 兜底，防止单独拷走这一段。 */
@@ -14949,7 +15112,7 @@ function buildUI(){
           drawSecPreview();   /* 族③ 横截面类型 / 族⑤ 断面参数变了 ⇒ 2D 预览必须跟着重画 */
           /* 换中心线 / 换排列方式 ⇒ 面板里「哪些滑条还生效」全变了，必须重画 */
           if(p.k==='cline'||p.k==='lavMode'||p.k==='layLaw'||p.k==='secLaw'||p.k==='cutSurf'||p.k==='cutSkin'||
-             p.k==='hxL2mode'||p.k==='hxCmap'||p.k==='hxMapT'||p.k==='hxView'){rebuild();buildUI();return;}
+             p.k==='hxL2mode'||p.k==='hxCmap'||p.k==='hxMapT'||p.k==='hxView'||p.k==='hxWeb'){rebuild();buildUI();return;}
           rebuild();
         });
         bx.appendChild(bt);
@@ -16021,7 +16184,188 @@ canvas.addEventListener('wheel',function(e){
      —— 判据仍是"轴占屏幕的比例"：等轴 = 三轴等收缩（等轴测标准姿态），
         正视 = 沿 −z 看 xy 面（长径/最大宽就是这个视图里的两个方向），
         俯视 = 沿 +y 往下看 xz 面（看回转体的圆度）。 */
+/* ==========================================================================
+   2D 正投影图（2026-11-03 老师要的「正视 / 俯视 2D 平面投影」）
+   --------------------------------------------------------------------------
+   为什么另画一张，而不是把 3D 相机摆正：
+     相机摆正是【透视投影】—— 杆有近大远小、后面的被前面的挡住、量出来的
+     长宽还跟相机距离有关。平面投影图要的是【正交投影 + 不遮挡 + 能直接量】，
+     这两个不是一回事，所以老老实实把线段投到平面上重画一遍。
+   数据从哪来：
+     族⓪ 的 build() 里存了「杆轴线」g.userData.f0seg（一根杆一个线段，
+     含两端 sRGB 颜色）；别的族没有这份数据，就从三角形边取（见 collectSegs）。
+   ========================================================================== */
+var VIEW2D = null;      /* null = 3D；'xy' / 'xz' = 2D 正投影 */
+var SEGS = null;        /* 扁平数组 ax ay az bx by bz r g b */
+
+/* 把「当前模型」压成线段清单。ctr 是 rebuild 里把模型居中用的那个包围盒中心，
+   build() 存的是模型自身坐标，减去它才等于屏幕上的世界坐标。 */
+function collectSegs(obj, ctr){
+  if(!obj)return null;
+  var cx=ctr?ctr.x:0, cy=ctr?ctr.y:0, cz=ctr?ctr.z:0;
+  var fs=null;
+  obj.traverse(function(o){ if(!fs&&o.userData&&o.userData.f0seg) fs=o.userData.f0seg; });
+  if(fs&&fs.length){
+    var out=new Float32Array(fs.length), i;
+    for(i=0;i<fs.length;i+=9){
+      out[i]  =fs[i]  -cx; out[i+1]=fs[i+1]-cy; out[i+2]=fs[i+2]-cz;
+      out[i+3]=fs[i+3]-cx; out[i+4]=fs[i+4]-cy; out[i+5]=fs[i+5]-cz;
+      out[i+6]=fs[i+6];    out[i+7]=fs[i+7];    out[i+8]=fs[i+8];
+    }
+    return out;
+  }
+  /* 通用退路：三角形三条边。杆件少、面多的族（花瓣 / 螺旋管…）用它够看轮廓。
+     顶点数封顶 150 万：再多的族（没有 f0seg 又极密）干脆不画，避免点一下卡死。 */
+  var arr=[], np=0, skip=false;
+  obj.traverse(function(o){
+    if(o.visible===false) return;
+    var g=o.geometry;
+    if(!g||!g.attributes||!g.attributes.position) return;
+    var pos=g.attributes.position, col=g.attributes.color;
+    np+=pos.count;
+    if(np>1500000){ skip=true; return; }
+    var mat=o.material, base=(mat&&mat.color)?mat.color:null;
+    var br=base?base.r:0.42, bg=base?base.g:0.48, bb=base?base.b:0.55;
+    var idx=g.index?g.index.array:null, tri=idx?idx.length:pos.count;
+    for(var t=0;t+2<tri;t+=3){
+      var i0=idx?idx[t]:t, i1=idx?idx[t+1]:t+1, i2=idx?idx[t+2]:t+2;
+      var r=br, gg=bg, bl=bb;
+      if(col){
+        var k0=i0*3,k1=i1*3,k2=i2*3;
+        r=f0L2S((col.array[k0]+col.array[k1]+col.array[k2])/3);
+        gg=f0L2S((col.array[k0+1]+col.array[k1+1]+col.array[k2+1])/3);
+        bl=f0L2S((col.array[k0+2]+col.array[k1+2]+col.array[k2+2])/3);
+      }
+      var x0=pos.getX(i0)-cx, y0=pos.getY(i0)-cy, z0=pos.getZ(i0)-cz;
+      var x1=pos.getX(i1)-cx, y1=pos.getY(i1)-cy, z1=pos.getZ(i1)-cz;
+      var x2=pos.getX(i2)-cx, y2=pos.getY(i2)-cy, z2=pos.getZ(i2)-cz;
+      arr.push(x0,y0,z0,x1,y1,z1,r,gg,bl);
+      arr.push(x1,y1,z1,x2,y2,z2,r,gg,bl);
+      arr.push(x2,y2,z2,x0,y0,z0,r,gg,bl);
+    }
+  });
+  if(skip||!arr.length) return null;
+  return new Float32Array(arr);
+}
+
+function draw2D(){
+  var cv=document.getElementById('cv2d');
+  if(!cv||!VIEW2D) return;
+  var box=cv.parentNode;
+  var W=Math.max(1,box.clientWidth), H=Math.max(1,box.clientHeight);
+  var dpr=Math.min(2,window.devicePixelRatio||1);
+  if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){
+    cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
+  }
+  var ctx=cv.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.fillStyle='#f7f9fc'; ctx.fillRect(0,0,W,H);
+
+  var isXY=(VIEW2D==='xy');
+  var segs=SEGS, n=segs?(segs.length/9):0;
+  ctx.fillStyle='#12305e';
+  ctx.font='600 12.5px system-ui,-apple-system,"Segoe UI",sans-serif';
+  ctx.fillText(isXY?'正视投影 · xy 平面（正交 · 沿 −z 看）'
+                   :'俯视投影 · xz 平面（正交 · 沿 −y 看）', 12, 20);
+  ctx.fillStyle='#5a6678';
+  ctx.font='11px system-ui,-apple-system,"Segoe UI",sans-serif';
+  ctx.fillText('正交投影：无透视、无遮挡，可直接量长宽（3D 那三个键是透视视角，不是这张）', 12, 36);
+
+  if(!n){
+    ctx.fillStyle='#b03020';
+    ctx.font='12px system-ui,-apple-system,"Segoe UI",sans-serif';
+    ctx.fillText('这一族没有可投影的线段（几何过密或为空）—— 换回 3D 视图看', 12, H/2);
+    return;
+  }
+
+  /* 包围盒：u 一律取 x；v 取 y（正视）或 z（俯视）。
+     w 是【视线深度】—— 正交投影会把前后所有杆压到同一张纸上，
+     不区分深度就是一团麻；所以顺带算 w 的范围，画的时候远的混白。 */
+  var uMin=1e9,uMax=-1e9,vMin=1e9,vMax=-1e9,wMin=1e9,wMax=-1e9,i,o;
+  for(i=0;i<n;i++){
+    o=i*9;
+    var au=segs[o],   av=isXY?segs[o+1]:segs[o+2], aw=isXY?segs[o+2]:segs[o+1];
+    var bu=segs[o+3], bv=isXY?segs[o+4]:segs[o+5], bw=isXY?segs[o+5]:segs[o+4];
+    if(au<uMin)uMin=au; if(au>uMax)uMax=au;
+    if(bu<uMin)uMin=bu; if(bu>uMax)uMax=bu;
+    if(av<vMin)vMin=av; if(av>vMax)vMax=av;
+    if(bv<vMin)vMin=bv; if(bv>vMax)vMax=bv;
+    if(aw<wMin)wMin=aw; if(aw>wMax)wMax=aw;
+    if(bw<wMin)wMin=bw; if(bw>wMax)wMax=bw;
+  }
+  var wSpan=Math.max(1e-9,wMax-wMin);
+  var padL=34,padR=20,padT=54,padB=58;
+  var kk=Math.min((W-padL-padR)/Math.max(1e-9,uMax-uMin),(H-padT-padB)/Math.max(1e-9,vMax-vMin));
+  var mU=(uMin+uMax)/2, mV=(vMin+vMax)/2;
+  var cx0=padL+(W-padL-padR)/2, cy0=padT+(H-padT-padB)/2;
+  function X(u){ return cx0+(u-mU)*kk; }
+  function Y(v){ return cy0-(v-mV)*kk; }
+
+  /* 参考十字：过包围盒中心 —— 一眼看出是不是左右/上下对称 */
+  ctx.save();
+  ctx.strokeStyle='#c9d5e4'; ctx.lineWidth=1; ctx.setLineDash([5,5]);
+  ctx.beginPath();
+  ctx.moveTo(X(mU),padT-10); ctx.lineTo(X(mU),H-padB+10);
+  ctx.moveTo(padL-10,Y(mV)); ctx.lineTo(W-padR+10,Y(mV));
+  ctx.stroke();
+  ctx.restore();
+
+  /* 按颜色分桶：1 万根杆逐根 stroke 要几百毫秒，分成 512 桶后只有 512 次 stroke。
+     深度调制用「混白」而不是 alpha：白底上混白就等于变淡，还能继续按 RGB 分桶
+     （alpha 得再乘一维，桶数会炸）。近端原色、远端混白 55%。 */
+  var bucket={}, keys=[], qr, qg, qb, key, p;
+  var sw=[0,0,0];
+  for(i=0;i<n;i++){
+    o=i*9;
+    var u1=segs[o],   v1=isXY?segs[o+1]:segs[o+2], w1=isXY?segs[o+2]:segs[o+1];
+    var u2=segs[o+3], v2=isXY?segs[o+4]:segs[o+5], w2=isXY?segs[o+5]:segs[o+4];
+    var f=0.45+0.55*((w1+w2)/2-wMin)/wSpan;      /* 1 = 最近，0.45 = 最远 */
+    sw[0]=segs[o+6]*f+(1-f); sw[1]=segs[o+7]*f+(1-f); sw[2]=segs[o+8]*f+(1-f);
+    qr=(sw[0]*7.999)|0; qg=(sw[1]*7.999)|0; qb=(sw[2]*7.999)|0;
+    key=(qr<<6)|(qg<<3)|qb;
+    p=bucket[key];
+    if(!p){ p=bucket[key]=new Path2D(); keys.push(key); }
+    p.moveTo(X(u1),Y(v1)); p.lineTo(X(u2),Y(v2));
+  }
+  ctx.lineWidth=(n>60000)?0.65:0.95;
+  ctx.lineCap='round';
+  for(i=0;i<keys.length;i++){
+    var q0=keys[i];
+    ctx.strokeStyle='rgb('+Math.round(((q0>>6)&7)/7*255)+','+
+                            Math.round(((q0>>3)&7)/7*255)+','+
+                            Math.round((q0&7)/7*255)+')';
+    ctx.stroke(bucket[q0]);
+  }
+
+  /* 读数：这里的数就是这张图能量出来的，跟右上读数同一份几何 */
+  ctx.fillStyle='#24405f'; ctx.font='11.5px Consolas,"Courier New",monospace';
+  ctx.fillText('横向 '+(uMax-uMin).toFixed(4)+' × 纵向 '+(vMax-vMin).toFixed(4)+
+    '（模型单位）　线段 '+n+' 根　比例 1 单位 = '+kk.toFixed(1)+' px',
+    padL, H-32);
+  ctx.fillStyle='#8a95a5'; ctx.font='10.5px system-ui,sans-serif';
+  ctx.fillText((isXY?'横向 = x（最大宽）· 纵向 = y（长径）'
+                     :'横向 = x ／ 纵向 = z（两者相等才是回转体）')+
+    '　·　近处原色、远处混白（正交投影会把前后压平，靠深浅分前后）', padL, H-14);
+}
+
+function exit2D(){
+  document.getElementById('cv2d').style.display='none';
+  document.getElementById('cv3d').style.display='block';
+}
+function setView2D(k){
+  VIEW2D=k;
+  var c2=document.getElementById('cv2d'), c3=document.getElementById('cv3d');
+  c3.style.display='none'; c2.style.display='block';
+  /* 2D 模式下自转没有意义，顺手暂停 —— 否则切回 3D 会发现模型转到了别处 */
+  if(autoRot) setAutoRot(false);
+  draw2D();
+  var bs=document.querySelectorAll('#viewbtns button');
+  for(var i=0;i<bs.length;i++) bs[i].className=(bs[i].getAttribute('data-v')===k)?'on':'';
+}
+
 function setView(k){
+  /* 从一个 2D 投影键回来：先恢复 3D 画布，否则按钮会亮、屏幕上还是那张平面图 */
+  if(VIEW2D){ VIEW2D=null; exit2D(); }
   if(k==='xy'){az=0;el=0;}                 /* 正视 xy：正对 −z */
   else if(k==='xz'){az=0;el=1.45;}         /* 俯视 xz：几乎垂直往下（1.45 是拖拽的仰角上限） */
   else {az=ISO_AZ;el=ISO_EL;k='iso';}      /* 等轴 xyz（默认） */
@@ -16058,7 +16402,10 @@ window.addEventListener('resize',resize);
     while(b&&b.tagName!=='BUTTON')b=b.parentNode;
     if(!b||b.tagName!=='BUTTON')return;
     e.stopPropagation();
-    setView(b.getAttribute('data-v'));
+    var dv=b.getAttribute('data-v');
+    /* 两个 2D 键走另一条路：不是转相机，是换一张正交投影图 */
+    if(dv==='xy2d'||dv==='xz2d') setView2D(dv.substring(0,2));
+    else setView(dv);
   });
   setView('iso');
 })();

@@ -130,12 +130,15 @@ function chk(c, label, extra) {
     var cv=document.getElementById('cv3d');
     var c2=document.createElement('canvas');c2.width=cv.width;c2.height=cv.height;
     var g=c2.getContext('2d');g.drawImage(cv,0,0);
-    var d=g.getImageData(0,0,c2.width,c2.height).data,n=0,steel=0,tot=c2.width*c2.height;
+    var d=g.getImageData(0,0,c2.width,c2.height).data,n=0,steel=0,hue=0,tot=c2.width*c2.height;
     var br=d[0],bg=d[1],bb=d[2];
     for(var i=0;i<d.length;i+=4){var r=d[i],gg=d[i+1],b=d[i+2];
+      var mx=Math.max(r,gg,b),mn=Math.min(r,gg,b);
       if(Math.abs(r-br)+Math.abs(gg-bg)+Math.abs(b-bb)>18)n++;
-      if(r>100&&r<190&&gg>110&&gg<200&&b>130&&b<215&&Math.abs(r-gg)<40&&Math.abs(gg-b)<40)steel++;}
-    return {nonBg:n/tot,steel:steel,tot:tot,data:cv.toDataURL('image/jpeg',0.9)};})()`);
+      if(r>100&&r<190&&gg>110&&gg<200&&b>130&&b<215&&Math.abs(r-gg)<40&&Math.abs(gg-b)<40)steel++;
+      /* 彩色（有饱和）且不是背景：cmap 上色后杆件该落在这里 */
+      if(mx-mn>45&&mx>90)hue++;}
+    return {nonBg:n/tot,steel:steel,hue:hue,tot:tot,data:cv.toDataURL('image/jpeg',0.9)};})()`);
 
   const profStat = () => ev(`(function(){var cv=document.getElementById('prof');
     if(!cv)return null;var g=cv.getContext('2d');var w=cv.width,h=cv.height;
@@ -153,24 +156,37 @@ function chk(c, label, extra) {
   await ev(`(function(){var p=document.getElementById('fxp');if(p)p.classList.remove('fxp-min');return 1;})()`);
   await sleep(700);
 
-  /* ================= A. 默认档：锥面，不该有钢架 ================= */
-  console.log('\n[A] 默认（cutSkin=0）必须是原来的锥面，不能偷偷长出钢架');
+  /* ================= A. 族默认 = ★ 双层桁架；「原样」档必须真的没有钢架 ================= */
+  console.log('\n[A] 族默认是 ★ 双层 + 四面体芯（cutSkin=4）；切到「原样」必须干净退回锥面');
   chk((await clickTab('\u24EA \u53cc\u9525')) !== '', '切到 ⓪ 子页');
-  await sleep(1200);
+  await sleep(1400);
   const cs0 = await choicesTxt();
-  console.log('  选择器：' + cs0.slice(0, 200));
-  chk(cs0.indexOf('\u539f\u6837\uff08\u9525\u9762') >= 0 && cs0.indexOf('\u86cb\u9762\u94a2\u67b6\uff08') >= 0 &&
-      cs0.indexOf('\u86cb\u9762\u94a2\u67b6 + \u8584\u58f3') >= 0,
-    '「表面构建」三档都在（原样 / 钢架 / 钢架+薄壳）', cs0.slice(-140));
+  console.log('  选择器：' + cs0.slice(0, 220));
+  chk(cs0.indexOf('\u539f\u6837\uff08\u9525\u9762') >= 0 && cs0.indexOf('\u5355\u5c42\u94a2\u67b6\uff08') >= 0 &&
+      cs0.indexOf('\u5355\u5c42 + \u8584\u58f3') >= 0 && cs0.indexOf('\u53cc\u5c42\u58f3\u4f53\uff08') >= 0 &&
+      cs0.indexOf('\u53cc\u5c42 + \u659c\u6491 + \u56db\u9762\u4f53\u82af\uff08') >= 0 &&
+      cs0.indexOf('\u53cc\u5c42 + \u659c\u6491 + \u56db\u9762\u4f53\u82af + \u8584\u58f3') >= 0,
+    '「表面构建」六档都在（原样 / 单层 / 单层+薄壳 / 双层 / 双层+四面体 / 双层+四面体+薄壳）', cs0.slice(-160));
   let g0 = await hexGeo();
-  chk(g0.struts === 0, '默认档场景里没有 hexStruts', J(g0));
+  chk(g0.struts === 1, '族默认就有钢架（默认档已升级成双层桁架，不是原来的锥面）', J(g0));
+  const bd0 = await badge();
+  chk(bd0.indexOf('\u53cc\u5c42\u94a2\u67b6') >= 0, '族默认 badge 写着「双层钢架」', bd0);
   const labs0 = await sliderLabels();
-  chk(!labs0.some(s => s.indexOf('\u6bcd\u7ebf\u5206\u884c\u6570') >= 0),
-    '默认档不显示钢架滑条（when 生效，不是假参数）', labs0.join(',').slice(0, 100));
+  chk(labs0.some(s => s.indexOf('\u6bcd\u7ebf\u5206\u884c\u6570') >= 0),
+    '默认档显示钢架滑条（when 生效，不是假参数）', labs0.join(',').slice(0, 100));
 
-  /* ================= B. 切到钢架 ================= */
-  console.log('\n[B] 切到「蛋面钢架」');
-  await clickChoice('\u86cb\u9762\u94a2\u67b6\uff08');
+  /* 「原样」档：必须真的把钢架撤干净，不能在锥面上叠一层 */
+  await clickChoice('\u539f\u6837\uff08\u9525\u9762');
+  await sleep(2400);
+  const g0b = await hexGeo();
+  chk(g0b.struts === 0 && g0b.panels === 0, '「原样（锥面 + 切面 + 交线）」档场景里没有 hexStruts', J(g0b));
+  const labs0b = await sliderLabels();
+  chk(!labs0b.some(s => s.indexOf('\u6bcd\u7ebf\u5206\u884c\u6570') >= 0),
+    '「原样」档藏掉钢架滑条（when 按 cutSkin 分流）', labs0b.join(',').slice(0, 100));
+
+  /* ================= B. 切到单层钢架 ================= */
+  console.log('\n[B] 切到「单层钢架」');
+  await clickChoice('\u5355\u5c42\u94a2\u67b6\uff08');
   await sleep(2600);
   const labs1 = await sliderLabels();
   console.log('  滑条：' + labs1.join(' , '));
@@ -327,10 +343,10 @@ function chk(c, label, extra) {
 
   /* ================= D. 薄壳 ================= */
   console.log('\n[D] 钢架 + 薄壳');
-  await clickChoice('\u86cb\u9762\u94a2\u67b6 + \u8584\u58f3');
-  await sleep(2600);
+  const hitShell = await clickChoice('\u5355\u5c42 + \u8584\u58f3');
+  await sleep(2800);
   const g2 = await hexGeo();
-  chk(g2.panels === 1, '出现 hexPanels 薄壳', J(g2));
+  chk(hitShell !== '' && g2.panels === 1, '「单层 + 薄壳」⇒ 出现 hexPanels 薄壳', hitShell + ' ' + J(g2));
   chk(g2.pvc === true, '薄壳用顶点色（按面积占比上色）');
   chk(g2.struts === 1, '薄壳档钢架仍在（是「加」不是「换」）');
 
@@ -369,9 +385,11 @@ function chk(c, label, extra) {
   await setRange('\u9762\u79ef\u2192\u6746\u5f84\u6307\u6570', 1.4);
   await sleep(2200);
   const s1 = await shotStat();
-  console.log('  非背景像素 ' + (100 * s1.nonBg).toFixed(1) + '% / 钢灰像素 ' + s1.steel);
+  console.log('  非背景像素 ' + (100 * s1.nonBg).toFixed(1) + '% / 彩色像素 ' + s1.hue + ' / 钢灰像素 ' + s1.steel);
   chk(s1.nonBg > 0.05 && s1.nonBg < 0.995, '3D 画面里真有东西（非背景 ' + (100 * s1.nonBg).toFixed(1) + '%）');
-  chk(s1.steel > 800, '画面里有钢灰色杆件像素（' + s1.steel + ' px）');
+  /* 默认配色是 plasma ⇒ 屏上杆件必须是【有饱和的颜色】，不是原来的钢灰。
+     这条同时证明 cmap 真的上到了画面上，而不只是缓冲区里有个 color 属性。 */
+  chk(s1.hue > 2000, '画面里真有彩色杆件像素（cmap 上屏 · ' + s1.hue + ' px）', s1.hue);
   fs.writeFileSync(path.join(DIR, '_shot_f0hex.jpg'), Buffer.from(s1.data.split(',')[1], 'base64'));
   fs.writeFileSync(path.join(DIR, '_shot_f0hex_2d.jpg'), Buffer.from(await ev(`(function(){
     var cv=document.getElementById('prof');return cv.toDataURL('image/jpeg',0.92);})()`).then(d => d.split(',')[1]), 'base64'));
@@ -382,18 +400,29 @@ function chk(c, label, extra) {
   await sleep(2200);
   chk((await hexGeo()).struts === 0, '切到 ① 后没有残留钢架');
   await clickTab('\u24EA \u53cc\u9525');
-  await sleep(2600);
-  /* selectFam() 每次把 P 重置成该族 def ⇒ 切回来是「锥面档」，不是上次的钢架档。
-     这是页面所有族的统一行为，判据要按事实写，不能当成「参数没记住」。 */
+  await sleep(3000);
+  /* selectFam() 每次把 P 重置成该族 def ⇒ 切回来是【族默认 = 双层桁架】，
+     不是上次的档、也不是老版本的锥面档。判据按事实写：
+     既要核「双层回来了」，也要核「没有把上次的薄壳/单层带回来」。 */
   const g5 = await hexGeo();
-  chk(g5.struts === 0, '切回 ⓪ 回到族默认（锥面档 · selectFam 重置 P）', J(g5));
-  chk((await rowTxt('\u9525\u9762')).indexOf('\u5355\u53f6\u53cc\u66f2\u9762') >= 0,
-    '切回后读数是锥面那一套（母线 = 单叶双曲面）');
+  chk(g5.struts === 1 && g5.panels === 0, '切回 ⓪ ⇒ 回到族默认（★ 双层，不是上次的薄壳档）', J(g5));
+  const bd5 = await badge();
+  chk(bd5.indexOf('\u53cc\u5c42\u94a2\u67b6') >= 0, '切回后 badge 是「双层钢架」', bd5);
+  /* 老版本这里判「读数是单叶双曲面」—— 那是 cutSkin=0 时代的口径。
+     现在族默认是双层桁架，读数第一行是「表面构建」，没有「母线」那一行了。
+     判据改成读【表面构建】那一行：必须写着 ★ 的那一档（证明 P 被重置成族默认，
+     而不是把上一个档位的薄壳/单层带回来）。 */
+  const rSkin5 = await rowTxt('\u8868\u9762\u6784\u5efa');
+  chk(rSkin5.indexOf('\u53cc\u5c42') >= 0 && rSkin5.indexOf('\u56db\u9762\u4f53\u82af') >= 0,
+    '切回后读数第一行 = 族默认那一档（双层 + 四面体芯）', rSkin5);
+  chk(rSkin5.indexOf('\u8584\u58f3') < 0, '切回后「表面构建」不带薄壳（上一个档位没被带回来）', rSkin5);
   await clickPreset('\u2605 \u86cb\u9762\u94a2\u67b6');
   await sleep(2800);
   const g6 = await hexGeo();
-  chk(g6.struts === 1, '再点一次「★ 蛋面钢架」预设 ⇒ 钢架恢复', J(g6));
-  chk((await rowTxt('\u4e0a\u6781\u683c\uff08\u5c16\u7aef\uff09')).indexOf('0.000000') >= 0, '恢复后极格仍为 0.000000');
+  chk(g6.struts === 1, '点「★ 蛋面钢架」预设 ⇒ 单层钢架', J(g6));
+  chk((await badge()).indexOf('\u86cb\u9762\u94a2\u67b6') >= 0, '预设后 badge 退回「蛋面钢架」（单层口径）', await badge());
+  chk((await rowTxt('\u4e0a\u6781\u683c\uff08\u5c16\u7aef\uff09')).indexOf('0.000000') >= 0, '预设后极格仍为 0.000000');
+  chk((await rowTxt('\u7b2c\u4e8c\u5c42\u7f29\u653e')) === '', '单层档没有「第二层缩放 λ」那一行（读数跟着档位走）');
 
   /* ================= I. 预设 ================= */
   console.log('\n[I] 预设');
@@ -407,6 +436,314 @@ function chk(c, label, extra) {
   const mEq = rRowEq.match(/([\d.]+)\u00d7/);
   chk(hitP !== '' && !!mEq && Number(mEq[1]) < 1.45,
     '预设「等弧长对照 q=0」⇒ 行距比落回 1.45× 以内（等弧长档）', rRowEq);
+
+  /* ================= J. 双层壳体 + 四面体芯 + cmap =================
+     判据原则：能从两条【不同的行】里各取一个数、再核它们必须相等/相差一个系数，
+     就绝不写死那个数（写死 = 换个 M 就假绿）。 */
+  console.log('\n[J] 双层壳体：对偶恒等式 · 正四面体最优 · 四面体朝内 · cmap 渐变');
+  const numOf = (s, re) => {
+    const m = String(s == null ? '' : s).replace(/\s+/g, '').match(re || /(-?\d+(?:\.\d+)?)/);
+    return m ? Number(m[1]) : NaN;
+  };
+  const L2geo = () => ev(`(function(){
+    var out={};
+    root.traverse(function(o){
+      if(!o.isMesh)return;
+      if(['hexStruts','hexNodes','hexTie','hexSpoke','hexIn2','hexBrace','hexApex','hexInner','hexNodes2','hexPanels'].indexOf(o.name)<0)return;
+      var g=o.geometry, a=g.attributes.position.array, i, s=0, rmin=1e9, rmax=0, cmin=1e9, cmax=-1e9;
+      for(i=0;i<a.length;i+=3){
+        var R=Math.sqrt(a[i]*a[i]+a[i+1]*a[i+1]+a[i+2]*a[i+2]);
+        s+=R; if(R<rmin)rmin=R; if(R>rmax)rmax=R;
+      }
+      var col=g.attributes.color;
+      if(col){for(i=0;i<col.array.length;i++){if(col.array[i]<cmin)cmin=col.array[i];if(col.array[i]>cmax)cmax=col.array[i];}}
+      out[o.name]={v:g.attributes.position.count, vis:o.visible, n:a.length/3,
+        rMean:+(s/(a.length/3)).toFixed(4), rMin:+rmin.toFixed(4), rMax:+rmax.toFixed(4),
+        cAttr:!!col, vc:!!(o.material&&o.material.vertexColors),
+        cMin:col?+cmin.toFixed(4):null, cMax:col?+cmax.toFixed(4):null,
+        base:o.material&&o.material.color?o.material.color.getHexString():'',
+        /* 判「黑不黑」不能看单通道：紫色本来就该 g≈0。
+           要看【每个顶点最强的那一路】—— 它才是这个颜色亮不亮。 */
+        cDarkMax:col?(function(){var d=1e9,nb=0;
+          for(var j=0;j<col.array.length;j+=3){var m=Math.max(col.array[j],col.array[j+1],col.array[j+2]);
+            if(m<d)d=m; if(m<0.01)nb++;}
+          return {dark:+d.toFixed(4), black:nb};})():null};
+    });
+    return out;})()`);
+
+  const hitL2 = await clickPreset('\u53cc\u5c42 + \u56db\u9762\u4f53\u82af');
+  await sleep(3600);
+  chk(hitL2 !== '', '点中「★ 双层 + 四面体芯」预设', hitL2);
+  const bdL2 = await badge();
+  console.log('  badge：' + bdL2);
+  chk(bdL2.indexOf('\u53cc\u5c42\u94a2\u67b6') >= 0, 'badge 写着「双层钢架」', bdL2);
+  chk(/plasma/i.test(bdL2), 'badge 点名 plasma 配色', bdL2);
+
+  const rLam = await rowTxt('\u7b2c\u4e8c\u5c42\u7f29\u653e');
+  const rGap = await rowTxt('\u5c42\u95f4\u8ddd h');
+  const rSide = await rowTxt('\u4e09\u6761\u4fa7\u68f1');
+  const rTet = await rowTxt('\u56db\u9762\u4f53\u82af');
+  const rTri = await rowTxt('\u5185\u5c42\u6b63\u4e09\u89d2\u7f51');
+  /* 层间连接有三种接法，读数行名跟着变：web=1 是「层间腹杆」，web=0/2 是「层间径向杆」。
+     ⚠ 探针必须按当前接法去读对应的行 —— 盯死一个行名，换个接法就拿到 NaN
+     （2026-11-03 改完接法后正是这么假红了一条）。 */
+  const webMode = await ev(`(function(){return (P.hxWeb===undefined?1:(P.hxWeb|0));})()`);
+  const rTie = await rowTxt(webMode === 1 ? '\u5c42\u95f4\u8179\u6746' : '\u5c42\u95f4\u5f84\u5411\u6746');
+  /* ⚠ 文本只用来核对「屏上印的数」；结构恒等式一律用 stats 的数值 ——
+     两者混用会读错行：web=1 时 rTie 指向的是「层间腹杆」，它不是 nTie。
+     本轮就是这么假红三条的（nTie 读出 4536）。 */
+  const st2 = await ev(`(function(){var L=f0HexL2(P);if(!L)return null;var s=L.stats;
+    return {web:s.web,nTie:s.nTie,nBrace:s.nBrace,nSpoke:s.nSpoke,nIn2:s.nIn2,
+            nTet:s.nTet,nApex:s.nApex,nInner:s.nInner,nTot2:s.nStruts2,ctrOff:s.ctrOff};})()`);
+  console.log('  stats：' + JSON.stringify(st2));
+  const rBr = await rowTxt('\u659c\u6491\uff08\u6297\u526a\uff09');
+  const rApx = await rowTxt('\u5185\u9876\u70b9\u4e92\u8fde');
+  const rTot2 = await rowTxt('\u4e8c\u5c42\u603b\u6746\u6570');
+  const rCellsJ = await rowTxt('\u683c\u6570');
+
+  const lam = numOf(rLam, /^(\d+(?:\.\d+)?)%/);
+  const hOverA = numOf(rGap, /\u5916\u5c42\u8fb9\u957f=(\d+(?:\.\d+)?)/);
+  const apexRatioMed = numOf(rSide, /\u4e2d\u4f4d(\d+(?:\.\d+)?)/);
+  const nTet = numOf(rTet, /^(\d+)\u4e2a/);
+  const hTet = numOf(rTet, /\u9ad8(\d+(?:\.\d+)?)\u2030/);
+  const nEdge = numOf(rTri, /(\d+)\u6761\u8fb9/);
+  const nTri = numOf(rTri, /\u00b7(\d+)\u4e2a\u4e09\u89d2\u9762/);
+  const nTie = numOf(rTie, /(\d+)\u6839/);
+  const nSpoke = numOf(rTie, /\uff0b\s*(\d+)\s*\u6839\u9762\u5185\u8f90\u6761/) || 0;
+  const nBr = numOf(rBr, /(\d+)\u6839/);
+  const nApx = numOf(rApx, /(\d+)\u6839/);
+  const nTot2 = numOf(rTot2, /^(\d+)\u6839/);
+  const nCells = numOf(rCellsJ, /(\d+)\u683c/);
+  console.log('  λ=' + lam + '% · h/a=' + hOverA + ' · 侧棱比=' + apexRatioMed +
+    ' · 四面体=' + nTet + ' 个/' + hTet + '‰ · 内层边 ' + nEdge + '/面 ' + nTri +
+    ' · tie ' + nTie + '/brace ' + nBr + '/inner ' + nApx + ' · 二层总 ' + nTot2 + ' · 外层 ' + nCells);
+
+  chk(lam > 30 && lam < 94, '读数给出 λ 且落在滑条区间内', rLam);
+  /* 这条是 λ 定法的唯一裁判：λ 一改、层间距一改，h/a 立刻离 0.8165 跑掉 */
+  chk(Math.abs(hOverA - 0.8165) < 0.004,
+    '芯厚 ÷ 外层边长 = 0.8165（= √(2/3)，正四面体的高/底边）', 'h/a = ' + hOverA);
+  /* 侧棱等长比 = 「顶点立在外心 + 沿平面法向」的直接裁判；
+     立重心/朝原点时它会是 1.2 以上（本轮踩过 2.480） */
+  chk(Math.abs(apexRatioMed - 1) < 0.0015,
+    '三条侧棱等长比中位 = 1.0000（顶点立在外心 + 沿底座法向）', '中位 ' + apexRatioMed);
+  /* 三条【对偶】恒等式：不写死数字，只要求两行相等。
+     ⚠ 接法不同，恒等式也不同（2026-11-03 起）：
+       web=0/2 有径向杆 ⇒ 「层间径向杆 ≡ 外层格数」；
+       web=1 把径向杆整组换掉 ⇒ 那条恒等式不成立，改判「腹杆 ≡ 4×内层边数」。 */
+  if (webMode === 1) {
+    chk(st2 && st2.nTie === 0, 'web=1（节点斜腹杆）时径向杆为 0 根 —— 两端都不在节点上的那一组已整组换掉',
+      st2 && ('nTie=' + st2.nTie));
+    chk(st2 && st2.nBrace > 0 && st2.nBrace === 4 * nEdge,
+      '腹杆根数 = 4 × 内层边数（' + (st2 && st2.nBrace) + ' = 4×' + nEdge +
+      '；每条内层棱被两个外层三角面各接 2 端）');
+    chk(st2 && nTie === st2.nBrace, '屏上「层间腹杆」那一行印的数 = stats.nBrace（' + nTie + '）');
+  } else {
+    chk(st2 && nCells > 200 && st2.nTie === nCells,
+      '层间径向杆数 = 外层格数（' + (st2 && st2.nTie) + ' = ' + nCells + '；内层顶点是蜂窝格心的对偶 ⇒ 一一对应）');
+  }
+  chk(nTri > 200 && nTet === nTri,
+    '四面体个数 = 内层三角面数（' + nTet + ' = ' + nTri + '；每个三角面正好当一次底座）');
+  chk(nEdge > 200 && nApx === nEdge,
+    '内顶点互连根数 = 内层边数（' + nApx + ' = ' + nEdge + '；内顶点网是三正则 ⇒ 边数相同）');
+  chk(st2 && (st2.nTie + st2.nSpoke + st2.nIn2 + st2.nBrace + 3 * st2.nTet + st2.nInner) === st2.nTot2,
+    '杆数恒等式：tie + 辐条 + 内层边 + 腹杆 + 3×四面体 + 内互连 = 二层总杆（' +
+    [st2 && st2.nTie, st2 && st2.nSpoke, st2 && st2.nIn2, st2 && st2.nBrace,
+     3 * (st2 && st2.nTet), st2 && st2.nInner].join('+') + ' = ' + (st2 && st2.nTot2) + '）');
+
+  /* ---- 几何侧：五个 mesh 真存在，顶点数 = 杆数 × 48（sides=4 ⇒ 12 三角/杆 × 3 顶点） ---- */
+  const gJ = await L2geo();
+  console.log('  mesh：' + Object.keys(gJ).map(k => k + '=' + gJ[k].v + (gJ[k].vis ? '' : '(隐)')).join(' '));
+  chk((st2 && st2.nTie) === 0 ? !gJ.hexTie : (!!gJ.hexTie && gJ.hexTie.v === st2.nTie * 48),
+    'hexTie 顶点数 = ' + (st2 && st2.nTie) + ' 杆 × 48（4 棱柱 · 12 三角；web=1 时这一组根本不该存在）',
+    gJ.hexTie && gJ.hexTie.v);
+  chk((st2 && st2.nSpoke) === 0 ? !gJ.hexSpoke : (!!gJ.hexSpoke && gJ.hexSpoke.v === st2.nSpoke * 48),
+    'hexSpoke 顶点数 = ' + (st2 && st2.nSpoke) + ' 根辐条 × 48（只有 web=2 才有这一组）', gJ.hexSpoke && gJ.hexSpoke.v);
+  chk(!!gJ.hexIn2 && gJ.hexIn2.v === nEdge * 48, 'hexIn2 顶点数 = ' + nEdge + ' 杆 × 48', gJ.hexIn2 && gJ.hexIn2.v);
+  chk(!!gJ.hexBrace && gJ.hexBrace.v === nBr * 48, 'hexBrace 顶点数 = ' + nBr + ' 杆 × 48', gJ.hexBrace && gJ.hexBrace.v);
+  chk(!!gJ.hexApex && gJ.hexApex.v === 3 * nTet * 48, 'hexApex 顶点数 = 3×' + nTet + ' 根侧棱 × 48', gJ.hexApex && gJ.hexApex.v);
+  chk(!!gJ.hexInner && gJ.hexInner.v === nApx * 48, 'hexInner 顶点数 = ' + nApx + ' 杆 × 48', gJ.hexInner && gJ.hexInner.v);
+  /* 四面体朝内：底座顶点在内层壳上（半径 ≈ λR），锥尖再往里收 ⇒ 平均半径必然更小 */
+  chk(gJ.hexApex && gJ.hexIn2 && gJ.hexApex.rMean < gJ.hexIn2.rMean - 0.02,
+    '四面体锥尖朝蛋内（hexApex 平均半径 ' + (gJ.hexApex && gJ.hexApex.rMean) +
+    ' < 底座在内层壳上的 ' + (gJ.hexIn2 && gJ.hexIn2.rMean) + '）');
+
+  /* 屏上的「顶点合计」是公式现算的，场景里的顶点数是 THREE 真建出来的 ——
+     两边必须严丝合缝。这条同时守住「读数别手写」与「几何别少建」。 */
+  const rVtot = await rowTxt('\u9876\u70b9\u5408\u8ba1');
+  const nVtot = numOf(rVtot, /^(\d+)/);
+  const realV = Object.keys(gJ).reduce((a, k) => a + gJ[k].v, 0);
+  console.log('  顶点合计：屏上 ' + nVtot + ' ／ 场景 ' + realV);
+  chk(nVtot === realV, '屏上「顶点合计」= 场景里所有 mesh 顶点数之和（' + nVtot + ' = ' + realV + '）',
+    nVtot + ' vs ' + realV);
+
+  /* ================= J2. 层间杆到底接在哪（2026-11-03 老师指出的核心问题） =================
+     老师在截图上看到两件事：① 第二层与第一层"好像根本没有衔接杆"；② 网格稀疏时
+     "六边形中心的芯杆戳到蛋外"。根因是同一个 —— 外层钢架的节点是【三角面重心 triC】，
+     六边形格心 V 上根本没有杆，而旧版径向杆正是从 V 出发的。
+     这一段的判据不靠"看着像连上了"，而是逐个端点数落在哪。 */
+  console.log('\n[J2] 层间杆两端落在哪个节点上');
+  const endHit = await ev(`(function(){
+    var n=f0HexNet(P),L=f0HexL2(P); if(!n||!L) return null;
+    var i, key={}, vk={};
+    function kf(p){return p[0].toFixed(8)+','+p[1].toFixed(8)+','+p[2].toFixed(8);}
+    for(i=0;i<n.triC.length;i++) key[kf(n.triC[i])]=1;   /* 外层节点 = 三角面重心 */
+    for(i=0;i<n.V.length;i++)    vk[kf(n.V[i])]=1;       /* 参数点 = 六边形几何中心 */
+    var hit=0,far=0,onV=0,tieOnV=0,tieOff=0,maxOff=0;
+    for(i=0;i<L.brace.length;i++){ if(key[kf(L.brace[i].a)]) hit++; else far++;
+                                   if(vk[kf(L.brace[i].a)]) onV++; }
+    for(i=0;i<L.tie.length;i++){
+      if(vk[kf(L.tie[i].a)]) tieOnV++;
+      var a=L.tie[i].a,V=n.V[i];
+      var d=Math.sqrt((a[0]-V[0])*(a[0]-V[0])+(a[1]-V[1])*(a[1]-V[1])+(a[2]-V[2])*(a[2]-V[2]));
+      if(d>maxOff)maxOff=d; if(d>1e-9) tieOff++;
+    }
+    return {nBrace:L.brace.length, hit:hit, far:far, onV:onV,
+            nTie:L.tie.length, tieOnV:tieOnV, tieOff:tieOff,
+            maxOff:+maxOff.toFixed(6), H:n.stats.H,
+            ctrOff:+(L.stats.ctrOff).toFixed(6)};})()`);
+  console.log('  ' + JSON.stringify(endHit));
+  if (webMode === 1) {
+    chk(endHit && endHit.nBrace > 0 && endHit.hit === endHit.nBrace,
+      '腹杆的外层端【全部】落在 triC 节点上（' + (endHit && (endHit.hit + '/' + endHit.nBrace)) + '，一根不悬空）');
+    chk(endHit && endHit.onV === 0,
+      '腹杆没有一根从六边形格心 V 出发（' + (endHit && endHit.onV) + ' 根）—— 这正是"戳出来的柱子"的根源');
+    chk(!gJ.hexTie, 'web=1 时场景里不该有 hexTie 这一组（不是藏起来，是根本没建）');
+  } else {
+    chk(endHit && endHit.nTie > 0 && endHit.tieOnV === 0,
+      'web=' + webMode + ' 的径向杆不从这里格心 V 出发（落在 V 上 ' + (endHit && endHit.tieOnV) + ' 根）');
+  }
+  /* 格心 V 与钢架可见中心（6 个 triC 的平均）本来就差一个曲率弓高 ——
+     M 越小差得越多，这条把"为什么旧版会戳出来"量化在屏上。 */
+  chk(endHit && endHit.ctrOff > 0,
+    '格心 V 与钢架可见中心确有偏差（曲率弓高 ' + (endHit && (endHit.ctrOff / endHit.H * 1000).toFixed(2)) +
+    ' ‰蛋高；M 越小越大 ⇒ 旧版"从六边形中央戳出来"的机制）');
+
+  /* ---- cmap：顶点色真的存在、真在渐变、低端没糊成黑 ---- */
+  const gs = gJ.hexStruts;
+  chk(!!gs && gs.cAttr && gs.vc, '外层杆件带顶点色 + material.vertexColors', J(gs && { cAttr: gs.cAttr, vc: gs.vc }));
+  chk(!!gs && gs.cMax - gs.cMin > 0.2, '顶点色确有渐变（max−min > 0.2，不是整片单色）', gs && (gs.cMax - gs.cMin).toFixed(3));
+  /* 判「低端糊成黑」不能看单通道：紫色本来就该 g≈0（本轮就写错过一次，
+     拿 min 通道量出 0.001 当失败，其实那是正常的紫）。要看【每个顶点最强的那一路】：
+     plasma 最暗的那一格是深紫，最强通道（蓝）仍有 1/4 亮度 ⇒ 不是黑。 */
+  console.log('  最暗顶点最强通道 = ' + (gs && gs.cDarkMax && gs.cDarkMax.dark) +
+    '　近黑顶点数 = ' + (gs && gs.cDarkMax && gs.cDarkMax.black));
+  chk(!!gs && gs.cDarkMax.dark > 0.15,
+    '渐变低端不是纯黑（最暗顶点最强通道 > 0.15 ⇒ 深紫而非黑）', gs && gs.cDarkMax.dark);
+  chk(!!gs && gs.cDarkMax.black === 0,
+    '没有任何顶点三通道全暗（色域下限生效）', gs && gs.cDarkMax.black);
+  chk(!!gs && gs.base === 'ffffff', '带顶点色时底色必须是白 ffffff（否则 cmap 被乘暗）', gs && gs.base);
+
+  /* ---- 四面体高度倍数：只有高变，别的都不许动（顺带守住缓存 key 带了 tetK） ---- */
+  const setChoiceJ = async (txt) => { const r = await clickChoice(txt); await sleep(3200); return r; };
+  await ev(`(function(){var rs=[].slice.call(document.querySelectorAll('#rows .row'));
+    for(var i=0;i<rs.length;i++){var s=rs[i].querySelector('label span');
+      if(s&&s.textContent.indexOf('\u56db\u9762\u4f53\u9ad8\u5ea6\u500d\u6570')>=0){
+        var inp=rs[i].querySelector('input[type=range]'); inp.value='0.55';
+        inp.dispatchEvent(new Event('input',{bubbles:true})); return inp.value;}}
+    return 'norow';})()`);
+  await sleep(2600);
+  const rTet55 = await rowTxt('\u56db\u9762\u4f53\u82af');
+  const hTet55 = numOf(rTet55, /\u9ad8(\d+(?:\.\d+)?)\u2030/);
+  const lam55 = numOf(await rowTxt('\u7b2c\u4e8c\u5c42\u7f29\u653e'), /^(\d+(?:\.\d+)?)%/);
+  console.log('  tetK=0.55 ⇒ 高 ' + hTet55 + '‰（原 ' + hTet + '‰ · 比 ' + (hTet55 / hTet).toFixed(3) + '）· λ 仍 ' + lam55 + '%');
+  chk(Math.abs(hTet55 / hTet - 0.55) < 0.02, 'tetK=0.55 ⇒ 四面体高恰为原来的 0.55 倍（顶点沿法向按比例缩）', hTet55 + '/' + hTet);
+  chk(Math.abs(lam55 - lam) < 0.05, 'tetK 只改「扎进去多深」，不动 λ（两个高度不是一个量）', lam55 + ' vs ' + lam);
+
+  /* ---- 分层查看：只藏 visible，几何照建，读数一字不变 ---- */
+  const rowsBefore = await allRows();
+  const hitView = await setChoiceJ('\u53ea\u770b\u5916\u5c42');
+  const gv1 = await L2geo();
+  chk(hitView !== '' && gv1.hexStruts && gv1.hexStruts.vis === true &&
+    gv1.hexApex && gv1.hexApex.vis === false,
+    '「只看外层」⇒ 外层显、四面体芯隐', J({ hit: hitView, o: gv1.hexStruts && gv1.hexStruts.vis, a: gv1.hexApex && gv1.hexApex.vis }));
+  chk(gv1.hexStruts && gv1.hexStruts.v === gs.v, '藏起来不等于没建（外层顶点数与「全部」档一致）', gv1.hexStruts && gv1.hexStruts.v);
+  await setChoiceJ('\u53ea\u770b\u82af');
+  const gv2 = await L2geo();
+  chk(gv2.hexStruts && gv2.hexStruts.vis === false && gv2.hexApex && gv2.hexApex.vis === true,
+    '「只看芯」⇒ 外层隐、四面体芯显', J({ o: gv2.hexStruts && gv2.hexStruts.vis, a: gv2.hexApex && gv2.hexApex.vis }));
+  const rowsAfter = await allRows();
+  chk(J(rowsBefore) === J(rowsAfter), '分层查看不动任何一行读数（藏的是 visible，不是少算）',
+    rowsBefore.filter((x, i) => x !== rowsAfter[i]).slice(0, 3).join(' ;; '));
+
+  /* ---- 门槛：切回单层时 P.hxView 还留着 2，外层绝不能被藏掉 ---- */
+  await ev(`(function(){P.cutSkin=1;rebuild();return 1;})()`);
+  await sleep(2600);
+  const gSingle = await L2geo();
+  chk(!!gSingle.hexStruts && gSingle.hexStruts.vis === true,
+    'cutSkin=1 而 hxView 仍是「只看芯」⇒ 外层照样可见（画面不会空）',
+    J(gSingle.hexStruts && gSingle.hexStruts.vis));
+
+  /* ---- 单色钢灰：退回老路子（无顶点色、底色是钢灰） ---- */
+  await ev(`(function(){P.cutSkin=4;P.hxView=0;rebuild();return 1;})()`);
+  await sleep(3000);
+  await setChoiceJ('\u5355\u8272\u94a2\u7070');
+  const gMono = await L2geo();
+  chk(!!gMono.hexStruts && gMono.hexStruts.cAttr === false && gMono.hexStruts.vc === false,
+    '「单色钢灰」⇒ 不带顶点色（cmap 真的退出了，不是叠一层灰）', J(gMono.hexStruts && { c: gMono.hexStruts.cAttr, v: gMono.hexStruts.vc }));
+  chk(!!gMono.hexStruts && gMono.hexStruts.base === '5b6876', '单色档底色 = 钢灰 5b6876', gMono.hexStruts && gMono.hexStruts.base);
+
+  /* ---- 2D 剖面：内层母线（绿虚线）必须画出来 ---- */
+  const gp = await ev(`(function(){var cv=document.getElementById('prof');
+    if(!cv)return null;var g=cv.getContext('2d');var d=g.getImageData(0,0,cv.width,cv.height).data;
+    var green=0;for(var i=0;i<d.length;i+=4){var r=d[i],gg=d[i+1],b=d[i+2];
+      if(gg-r>35&&gg-b>35&&gg>85&&gg<175&&r<110)green++;}
+    return green;})()`);
+  chk(gp > 60, '2D 剖面画出了内层母线（绿色 #2f7d4f 像素 ' + gp + ' 个）', gp);
+
+  /* 回到 plasma / 全部，留给下一段用 */
+  await setChoiceJ('plasma');
+  await setChoiceJ('\u5168\u90e8\uff08\u5916\u5c42');
+  await sleep(600);
+
+  /* ================= K. 2D 正投影（2026-11-03 新增的两个键） ================= */
+  console.log('\n[K] 正视 / 俯视 2D 正投影');
+  await ev(`(function(){P.cutSkin=4;P.hxWeb=1;P.hxRow=26;P.hxView=0;rebuild();buildUI();return 1;})()`);
+  await sleep(3200);
+  const nOuter = numOf(await rowTxt('\u6746 / \u8282\u70b9'), /^(\d+)\s*\u6839\u6746/);
+  const nTot2b = numOf(await rowTxt('\u4e8c\u5c42\u603b\u6746\u6570'), /^(\d+)\u6839/);
+  const segN = await ev(`(function(){return SEGS?SEGS.length/9:0;})()`);
+  console.log('  2D 线段 ' + segN + ' ／ 外层杆 ' + nOuter + ' + 二层 ' + nTot2b);
+  chk(segN === nOuter + nTot2b,
+    '2D 线段数 = 外层杆 + 二层总杆（' + segN + ' = ' + nOuter + ' + ' + nTot2b + '；一根不多一根不少）',
+    segN + ' vs ' + (nOuter + nTot2b));
+
+  const clickView = (v) => ev(`(function(){var bs=document.querySelectorAll('#viewbtns button');
+    for(var i=0;i<bs.length;i++)if(bs[i].getAttribute('data-v')===${JSON.stringify(v)}){bs[i].click();return bs[i].textContent.trim();}
+    return '';})()`);
+  const twoB = await clickView('xy2d');
+  await sleep(700);
+  const s2d = await ev(`(function(){var a=document.getElementById('cv2d'),b=document.getElementById('cv3d');
+    var cv=a;var g=cv.getContext('2d');
+    var d=g.getImageData(0,0,cv.width,cv.height).data;
+    var nw=0,tot=cv.width*cv.height;
+    for(var i=0;i<d.length;i+=4){if(d[i]<245||d[i+1]<245||d[i+2]<245)nw++;}
+    return {c2:getComputedStyle(a).display, c3:getComputedStyle(b).display,
+            w:cv.width, h:cv.height, ink:+(nw/Math.max(1,tot)).toFixed(4), on:VIEW2D};})()`);
+  console.log('  点「' + twoB + '」⇒ ' + JSON.stringify(s2d));
+  chk(s2d.on === 'xy' && s2d.c2 === 'block' && s2d.c3 === 'none',
+    '点 2D 键 ⇒ 叠加层显示、3D 画布让位（VIEW2D=xy）', J(s2d));
+  chk(s2d.ink > 0.01, '2D 画布真画了东西（非白像素 ' + (100 * s2d.ink).toFixed(1) + '%）', s2d.ink);
+
+  /* 俯视：回转体 ⇒ 横向与纵向应该几乎相等（这条同时验证"正交、不是透视"） */
+  await clickView('xz2d');
+  await sleep(700);
+  const boxXZ = await ev(`(function(){var s=SEGS,i,n=s.length/9,mn=1e9,mx=-1e9,wn=1e9,wx=-1e9;
+    for(i=0;i<n;i++){var o=i*9;
+      var u1=s[o],u2=s[o+3],v1=s[o+2],v2=s[o+5];
+      if(u1<mn)mn=u1; if(u2<mn)mn=u2; if(u1>mx)mx=u1; if(u2>mx)mx=u2;
+      if(v1<wn)wn=v1; if(v2<wn)wn=v2; if(v1>wx)wx=v1; if(v2>wx)wx=v2;}
+    return {w:+(mx-mn).toFixed(4), h:+(wx-wn).toFixed(4)};})()`);
+  chk(boxXZ.h > 0 && Math.abs(boxXZ.w - boxXZ.h) / boxXZ.h < 0.01,
+    '俯视投影的横向 = 纵向（' + boxXZ.w + ' vs ' + boxXZ.h + '，差 <1% ⇒ 回转体 + 正交投影都对）',
+    J(boxXZ));
+
+  /* 从 2D 点回 3D：画布要换回来，不能"按钮亮了、屏上还是平面图" */
+  await clickView('iso');
+  await sleep(800);
+  const back = await ev(`(function(){var a=document.getElementById('cv2d'),b=document.getElementById('cv3d');
+    return {c2:getComputedStyle(a).display, c3:getComputedStyle(b).display, on:VIEW2D};})()`);
+  chk(back.on === null && back.c2 === 'none' && back.c3 === 'block',
+    '点回「等轴 xyz」⇒ 2D 层收起、3D 画布恢复', J(back));
 
   console.log('\n--------');
   console.log('JS 异常：' + (errs.length ? errs.slice(0, 4).join(' ;; ') : '无'));

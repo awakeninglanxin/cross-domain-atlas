@@ -396,8 +396,17 @@ function f0HexNet(P) {
   }
   strutR.sort(function (a, b) { return a - b; });
 
+  /* 赤道半径 = 所有顶点到轴的最大距离。配色「沿半径」映射与 L2 的 λ 都要它，
+     所以放在 net 里算一次，别让下游各算一遍各的口径。 */
+  var rEqAll = 0, iEq;
+  for (iEq = 0; iEq < V.length; iEq++) {
+    var rq = Math.sqrt(V[iEq][0] * V[iEq][0] + V[iEq][2] * V[iEq][2]);
+    if (rq > rEqAll) rEqAll = rq;
+  }
+
   var stats = {
     min: pcts[0], med: pcts[(pcts.length / 2) | 0], max: pcts[pcts.length - 1],
+    rEq: rEqAll,
     n: cells.length, n4: sidesCnt[4] || 0, n5: sidesCnt[5] || 0, n6: sidesCnt[6] || 0,
     n7: sidesCnt[7] || 0, n8: sidesCnt[8] || 0, euler: pen,
     tris: T.length, verts: V.length, struts: struts.length,
@@ -416,8 +425,434 @@ function f0HexNet(P) {
     ergOk: ergOk, ergN: eRat.length
   };
   var out = { V: V, T: T, triC: triC, cells: cells, struts: struts, stats: stats, pf: pf,
-              ringT: tt, ringU: uu, ringN: N, ringS: rs };
+              ringT: tt, ringU: uu, ringN: N, ringS: rs, ck: key };
   F0H_CACHE = { k: key, v: out };
+  return out;
+}
+
+/* ==========================================================================
+   双层壳体 · 四面体芯 · cmap 配色（2026-11-03 升级）
+   --------------------------------------------------------------------------
+   【为什么要第二层】
+     单层蜂窝是「膜」：面内有刚度，一压就皱、一剪就滑。要撑住形状必须加厚 ——
+     双层网格壳（double-layer lattice shell）就是这么来的：外层承面内，
+     中间那层「芯」承剪切，内层再把芯闭合。
+
+   【第二层为什么正好是三角形】
+     外层是正六边形蜂窝，它的【对偶】正好是正三角形网：
+       外层每一格的中心 = 内层三角形的一个顶点
+       外层每一格的边   = 内层三角形的一条边（跨两个格）
+     所以第二层不用另算采样：它跟外层是同一张网的对偶面，顶点数一一对应，
+     层间杆天然是「径向」的。这也顺手解释了为什么它一定是正三角形而不是别的。
+
+   【层间距的物理最优：正四面体】
+     外层三角网边长 a，内层缩放到 λ 后边长 λa。
+     若四面体取【正】四面体（六根杆等长），高 h = √(2/3)·λa = 0.8165·λa。
+     正四面体是最优单元，两条理由都硬：
+       · Maxwell 判据 3j−6 = 3×4−6 = 6 = b（杆数）⇒ 恰好静定、无多余杆。
+         任何别的四面体要么留机构，要么必须加杆 —— 加杆就是加重量。
+       · 六根等长 ⇒ 各杆只受轴力、弯矩为零 ⇒ 材料强度全用在拉压上。
+     层间距又由缩放给：h ≈ (1−λ)·R_eq（R_eq = 赤道半径）
+        (1−λ)R = 0.8165·λa   ⇒   λ = R / (R + 0.8165a)
+     一个式子把「物理最优」和「以原点为中心缩小的相似蛋面」绑在一起：
+     蛋面是整体相似缩放 ⇒ λ 只能是全局一个数（不能逐点变），
+     而 a 与 R 都取赤道处的值 —— 那里格子最大、层间距最吃紧。
+
+   【只有径向杆为什么不稳（这一层必须讲清）】
+     内外层顶点一一对应 ⇒ 每根径向杆像一根柱子，芯是个「柱阵」。
+     柱阵抗压不抗剪：两层可以相对面内滑移，自由度没被约束，是机构不是结构。
+     正解是把每条外层棱与对应内层棱用 4 根斜杆封成一个【四面体】：
+       外层棱两端 triC_f1 / triC_f2 ＋ 内层棱两端 λV[u] / λV[v]
+     四面体 6 条棱齐了，这个单元才刚 —— 整片壳才真正抗剪。
+     本页把「只有径向杆」和「加斜撑」分成两档，好当场对比。
+
+   【四面体芯：再往蛋内伸一层】
+     内层每个三角形作底座，向蛋内立第 4 点。方向取「重心的反径向」：
+     朝原点永不为零、不会退化（曲面法向在极点会翻号，那是坑）。
+     各四面体的内顶点再按「相邻三角面」两两相连 ⇒ 得到内层三正则网，
+     与内层三角网互为对偶。三层壳 + 三向斜撑 = 闭合空间桁架。
+   ========================================================================== */
+
+var F0L2_CACHE = { k: '', v: null };
+
+/* ---- cmap 色表 ----
+   ⚠ 这是【近似采样】（11 点），视觉用；不声称是 matplotlib 的 256 色原表。
+   首尾与中段都对得上，做渐变是安全的。顺序与 f0CmapKind 的编号一致。 */
+var F0_CMAPS = {
+  plasma: [[0.0504, 0.0298, 0.5280], [0.2001, 0.0188, 0.6153], [0.3578, 0.0114, 0.6504],
+           [0.5113, 0.0951, 0.5852], [0.6469, 0.1812, 0.4891], [0.7670, 0.2318, 0.3729],
+           [0.8701, 0.3340, 0.2694], [0.9466, 0.4728, 0.1798], [0.9876, 0.6453, 0.0795],
+           [0.9644, 0.8438, 0.2734], [0.9400, 0.9752, 0.1313]],
+  viridis: [[0.2670, 0.0049, 0.3294], [0.2826, 0.1409, 0.4575], [0.2539, 0.2653, 0.5300],
+            [0.2068, 0.3718, 0.5531], [0.1636, 0.4711, 0.5581], [0.1276, 0.5669, 0.5506],
+            [0.1347, 0.6586, 0.5176], [0.2669, 0.7488, 0.4406], [0.4775, 0.8214, 0.3182],
+            [0.7414, 0.8734, 0.1496], [0.9932, 0.9062, 0.1439]],
+  inferno: [[0.0015, 0.0005, 0.0139], [0.1466, 0.0335, 0.2434], [0.3472, 0.0289, 0.3815],
+            [0.5465, 0.0369, 0.3457], [0.7337, 0.1595, 0.2253], [0.8605, 0.3364, 0.1077],
+            [0.9419, 0.5082, 0.0277], [0.9777, 0.6998, 0.0909], [0.9259, 0.8867, 0.2306],
+            [0.8394, 0.9630, 0.4140], [0.9884, 1.0000, 0.6449]],
+  turbo: [[0.1900, 0.0718, 0.2322], [0.2754, 0.3725, 0.9201], [0.1805, 0.6303, 0.9952],
+          [0.1117, 0.8514, 0.7500], [0.3367, 0.9828, 0.4033], [0.6606, 0.9930, 0.1601],
+          [0.9081, 0.8396, 0.1006], [0.9972, 0.5816, 0.0891], [0.9683, 0.3305, 0.1286],
+          [0.8034, 0.1266, 0.1005], [0.4796, 0.0158, 0.0106]]
+};
+var F0_CMAP_NAMES = ['plasma', 'viridis', 'inferno', 'turbo', 'HSV 色环', '单色钢灰'];
+
+function f0CmapKind(P) { return Math.max(0, Math.min(5, (P.hxCmap === undefined ? 0 : (P.hxCmap | 0)))); }
+
+/* sRGB → 线性：Three 的顶点色按【线性】解释。直接塞 sRGB 值进去会整体偏暗，
+   而且暗部细节糊成一团（plasma 的低端本来是深蓝紫，不转会变成近黑）。 */
+function f0S2L(c) { return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
+/* 反变换：3D 顶点色是线性空间（three.js 要），Canvas 2D 要 sRGB。
+   少了这一步，2D 投影图整体偏暗、plasma 的紫端直接糊成黑。 */
+function f0L2S(c) { return c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055; }
+
+function f0HsvCol(t) {
+  var h = ((t % 1) + 1) % 1, s = 0.82, v = 0.98;
+  var i = Math.floor(h * 6), f = h * 6 - i, p = v * (1 - s), q = v * (1 - s * f), u = v * (1 - s * (1 - f));
+  var r, g, b;
+  switch (i % 6) {
+    case 0: r = v; g = u; b = p; break;
+    case 1: r = q; g = v; b = p; break;
+    case 2: r = p; g = v; b = u; break;
+    case 3: r = p; g = q; b = v; break;
+    case 4: r = u; g = p; b = v; break;
+    default: r = v; g = p; b = q;
+  }
+  return [r, g, b];
+}
+
+function f0CmapColor(P, t) {
+  var k = f0CmapKind(P);
+  if (k === 5) return null;                      /* 单色钢：调用方退回素色 */
+  /* 色域下限压到 12%：plasma / inferno 的最低端是近黑，转线性后钝端细节全糊掉。
+     留 12% 的下限既不丢色域长度，又能让最低那一档还看得清是「深紫」而不是「黑」。 */
+  t = 0.12 + 0.88 * Math.max(0, Math.min(1, t));
+  var rgb;
+  if (k === 4) rgb = f0HsvCol(0.66 - 0.66 * t);  /* HSV：紫蓝 → 青 → 黄橙 */
+  else {
+    var tab = F0_CMAPS[F0_CMAP_NAMES[k]] || F0_CMAPS.plasma;
+    var n = tab.length - 1, x = t * n, i2 = Math.min(n - 1, Math.floor(x)), f2 = x - i2;
+    var A = tab[i2], B = tab[i2 + 1];
+    rgb = [A[0] + (B[0] - A[0]) * f2, A[1] + (B[1] - A[1]) * f2, A[2] + (B[2] - A[2]) * f2];
+  }
+  return [f0S2L(rgb[0]), f0S2L(rgb[1]), f0S2L(rgb[2])];
+}
+
+/* 映射标量：0 = 沿蛋轴高度（默认，最像"一条渐变"）／1 = 沿半径／2 = 沿经度 */
+function f0MapVal(P, p, st) {
+  var m = (P.hxMapT === undefined ? 0 : (P.hxMapT | 0));
+  if (m === 2) return Math.atan2(p[2], p[0]) / TAU + 0.5;
+  if (m === 1) return Math.sqrt(p[0] * p[0] + p[2] * p[2]) / Math.max(1e-9, st.rEq);
+  return (p[1] + st.H / 2) / Math.max(1e-9, st.H);
+}
+
+/* ---- 通用杆件几何：一根杆 = sides 边棱柱 + 两端封口 ----
+   两端各自取色 ⇒ 同一根杆内部也有渐变（比"一根杆一个色"细腻得多）。
+   sides=6 用于外层（与「六边」呼应、能看出是实心钢杆），
+   sides=4 用于内层（细杆，6 边看不出差别，白多一倍顶点）。 */
+function f0StrutGeo(list, sides, P, st) {
+  var pos = [], col = [], idx = [], base = 0, i, k;
+  var useC = f0CmapKind(P) !== 5;
+  for (i = 0; i < list.length; i++) {
+    var S = list[i], A = S.a, B = S.b, r = S.r;
+    var dx = B[0] - A[0], dy = B[1] - A[1], dz = B[2] - A[2];
+    var L = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1e-9;
+    dx /= L; dy /= L; dz /= L;
+    var refx = 0, refy = 1, refz = 0;
+    if (Math.abs(dy) > 0.92) { refx = 1; refy = 0; refz = 0; }
+    var ux = dy * refz - dz * refy, uy = dz * refx - dx * refz, uz = dx * refy - dy * refx;
+    var ul = Math.sqrt(ux * ux + uy * uy + uz * uz) || 1e-9; ux /= ul; uy /= ul; uz /= ul;
+    var vx = dy * uz - dz * uy, vy = dz * ux - dx * uz, vz = dx * uy - dy * ux;
+    var cA = useC ? f0CmapColor(P, f0MapVal(P, A, st)) : null;
+    var cB = useC ? f0CmapColor(P, f0MapVal(P, B, st)) : null;
+    for (k = 0; k < sides; k++) {
+      var an = TAU * k / sides, cs = Math.cos(an) * r, sn = Math.sin(an) * r;
+      pos.push(A[0] + ux * cs + vx * sn, A[1] + uy * cs + vy * sn, A[2] + uz * cs + vz * sn);
+      pos.push(B[0] + ux * cs + vx * sn, B[1] + uy * cs + vy * sn, B[2] + uz * cs + vz * sn);
+      if (useC) col.push(cA[0], cA[1], cA[2], cB[0], cB[1], cB[2]);
+    }
+    var icA = pos.length / 3; pos.push(A[0], A[1], A[2]);
+    if (useC) col.push(cA[0], cA[1], cA[2]);
+    var icB = pos.length / 3; pos.push(B[0], B[1], B[2]);
+    if (useC) col.push(cB[0], cB[1], cB[2]);
+    for (k = 0; k < sides; k++) {
+      var a0 = base + k * 2, a1 = base + ((k + 1) % sides) * 2, b0 = a0 + 1, b1 = a1 + 1;
+      idx.push(a0, a1, b0, b0, a1, b1);        /* 侧壁 */
+      idx.push(icA, a1, a0);                   /* A 端盖 */
+      idx.push(icB, b0, b1);                   /* B 端盖 */
+    }
+    base += sides * 2 + 2;
+  }
+  var g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  if (useC) g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setIndex(idx);
+  var g2 = g.toNonIndexed(); g2.computeVertexNormals();
+  return g2;
+}
+
+/* ---- 第二层 + 芯：纯数学，build / read / prof 三处共用 ---- */
+function f0HexL2(P) {
+  var net = f0HexNet(P);
+  if (!net) return null;
+  var st = net.stats, V = net.V, T = net.T, i, j;
+
+  var lmode = (P.hxL2mode === undefined ? 0 : (P.hxL2mode | 0));
+  var tetK = Math.max(0.30, Math.min(2.0, (P.hxTetK === undefined ? 1.0 : P.hxTetK)));
+  var man = Math.max(0.30, Math.min(0.94, (P.hxL2 === undefined ? 68 : P.hxL2) / 100));
+  var skin = (P.cutSkin | 0);
+  /* 层间连接方式（2026-11-03 加）：0 径向直杆 / 1 节点斜腹杆 / 2 径向 + 辐条 */
+  var web = (P.hxWeb === undefined ? 1 : (P.hxWeb | 0));
+  /* 第二层绕长轴（数学 y）的相位角，度。蜂窝有 6 次对称、三角网有 3 次对称，
+     所以相位周期是 120°，给 −60~+60 就够把「内层杆与外层杆错开」的所有情形走遍。 */
+  var phase = Math.max(-60, Math.min(60, (P.hxL2phase === undefined ? 0 : P.hxL2phase)));
+  /* ⚠ key 必须含 net.ck（母线/α/z₀/M/q/杆径全在里面）+ 本层自己的每个参数。
+     少了任何一个，改完参数屏上还画上一版的内层 —— 那就是 2026-11-03 抓过的
+     「缓存串味」，只不过换了一层。web / phase 同理。 */
+  var key = net.ck + '|L2|' + skin + '|' + lmode + '|' + man.toFixed(4) + '|' + tetK.toFixed(3) +
+            '|W' + web + '|P' + phase.toFixed(2);
+  if (F0L2_CACHE.k === key && F0L2_CACHE.v) return F0L2_CACHE.v;
+
+  function d2(A, B) {
+    var x = B[0] - A[0], y = B[1] - A[1], z = B[2] - A[2];
+    return Math.sqrt(x * x + y * y + z * z);
+  }
+
+  /* 三角网的边：每条边 = 一根内层杆；同时记下它挨着哪两个三角面（斜撑与内顶点互连要用） */
+  var em = new Map();
+  function ek(a, b) { return a < b ? (a + '_' + b) : (b + '_' + a); }
+  for (i = 0; i < T.length; i++) for (j = 0; j < 3; j++) {
+    var u0 = T[i][j], v0 = T[i][(j + 1) % 3], kk = ek(u0, v0), E0 = em.get(kk);
+    if (!E0) { E0 = { u: Math.min(u0, v0), v: Math.max(u0, v0), f: [] }; em.set(kk, E0); }
+    E0.f.push(i);
+  }
+  var eLens = [];
+  em.forEach(function (E) { E.len = d2(V[E.u], V[E.v]); eLens.push(E.len); });
+  eLens.sort(function (x, y) { return x - y; });
+  var aMed = eLens.length ? eLens[(eLens.length / 2) | 0] : 0.1;
+  /* ⚠ λ 要用【90 分位】而不是中位。中位 = 全蛋所有边的一半落在它下面，
+     而三角网上绝大多数边挤在极点附近（那里格子最小）—— 用中位定 λ，
+     赤道处的芯会薄到 h/a ≈ 0.26，正四面体变成一片扁饼（2026-11-03 实测：
+     λ=86.5%、层间距仅 4.8% 蛋高）。
+     用 90 分位（≈ 赤道那批最大的格子）：赤道处严格满足 h/(λa)=0.8165，
+     两端格子小 ⇒ 该比值偏小（芯相对更薄），但那里杆短、本来不易屈曲。 */
+  var aRef = eLens.length ? eLens[Math.min(eLens.length - 1, Math.floor(eLens.length * 0.90))] : 0.1;
+  var aMax = eLens.length ? eLens[eLens.length - 1] : 0.1;
+
+  /* ---- λ：正四面体的自洽解 ---- */
+  var K824 = 0.816496580927726;               /* √(2/3) = 正四面体高 ÷ 底面边长 */
+  var Req = Math.max(1e-9, st.rEq);
+  /* 芯厚 h = 0.8165 × 外层三角网边长 ⇒ λ = 1 − h/R
+     ⚠ 别把它写成 λ = R/(R+0.8165a)：那个式子解的是「h = 0.8165·λa」，
+       而 λa 是【内层】边长 —— 式子两边同时在动，解出来的 h 与四面体高会打架
+       （2026-11-03 实测：层厚 7.6%、四面体高 4.4%，两个数对不上）。
+       正确口径：芯厚比的是【外层】边长；四面体高比的是【内层】边长。
+       两者都取自己那层的「正四面体高 = 0.8165×本层边长」，各自自洽。 */
+  var lamPhys = Math.max(0.30, Math.min(0.94, 1 - K824 * aRef / Req));
+  var lam = (lmode === 1) ? man : lamPhys;
+
+  /* ---- 内层蛋面：以原点为中心的相似缩放 ----
+     蛋已居中（y = (t−tMid)·sc）⇒ 缩放后仍是同心、同轴、同形状的蛋。
+     这就是「以原点为中心缩小的蛋形曲面」的字面落实，不是另造一张面。
+     相位：绕数学 y 轴（蛋的长轴）转 phase 度。作用不是"让两层对齐"（见下），
+     而是把内层三角杆与外层六边形杆在投影上错开 —— 两层杆正对着时，
+     从外面看像一根粗杆，看不出是两层。 */
+  var phR = phase * Math.PI / 180, cph = Math.cos(phR), sph = Math.sin(phR);
+  var V2 = [];
+  for (i = 0; i < V.length; i++) {
+    var x1 = V[i][0] * lam, y1 = V[i][1] * lam, z1 = V[i][2] * lam;
+    V2.push([x1 * cph - z1 * sph, y1, x1 * sph + z1 * cph]);
+  }
+
+  var vc = {};
+  for (i = 0; i < net.cells.length; i++) vc[net.cells[i].v] = i;
+  function cR(v) { var ci = vc[v]; return ci === undefined ? st.r0 : net.cells[ci].rr; }
+
+  /* ---- 六边形的【可见中心】≠ 参数点 V ----
+     外层钢架并不是照着 V 画六边形的：它把每格画在「6 个三角面重心 triC」上，
+     于是六边形整体往里缩了一圈，V 落在钢架网面【之外】。两者之差就是曲率弓高，
+     M 越小格子越大、弓高越明显 —— 旧版径向杆从 V 出发，看着就是一根
+     「从六边形中央戳出来的柱子」（老师 2026-11-03 截图指的就是它）。
+     所以凡是要"落在钢架上"的点，一律用 poly 的平均，不用 V。 */
+  var cellCtr = [];
+  var ctrOff = 0;
+  for (i = 0; i < net.cells.length; i++) {
+    var pl0 = net.cells[i].poly, nn0 = pl0.length, sx0 = 0, sy0 = 0, sz0 = 0;
+    for (j = 0; j < nn0; j++) { sx0 += pl0[j][0]; sy0 += pl0[j][1]; sz0 += pl0[j][2]; }
+    var cc0 = [sx0 / nn0, sy0 / nn0, sz0 / nn0];
+    cellCtr.push(cc0);
+    var vv = net.cells[i].v, o0 = d2(cc0, V[vv]);
+    if (o0 > ctrOff) ctrOff = o0;
+  }
+
+  /* 杆集合：全部过 pushS ⇒ 短杆上限与杆径范围只有一处口径 */
+  var tie = [], spoke = [], in2 = [], brace = [], apexS = [], innerS = [];
+  var rMin = 1e9, rMax = -1e9, nClamp = 0;
+  function pushS(arr, A, B, r) {
+    var L = d2(A, B);
+    if (!(L > 1e-9)) return;
+    if (r > 0.32 * L) { r = 0.32 * L; nClamp++; }
+    if (r < rMin) rMin = r;
+    if (r > rMax) rMax = r;
+    arr.push({ a: A, b: B, r: r });
+  }
+
+  /* ---- 层间连接：三种接法（2026-11-03 老师指出的「没连上节点」就是这里） ----
+     ⚠ 先说清一件事：外层钢架的【节点是 triC】（三角面重心），
+       V 只是参数点、也是六边形的几何中心，上面没有杆。
+       所以从 V 出发的杆，两端都不在节点上 —— 力学上是虚接，视觉上是
+       「一根柱子从六边形中央戳出来」。这就是 web=0 被降级成反例的原因。
+
+     web=0 径向直杆：格心(可见中心) ↔ 内层对应顶点。
+            ⚠ 仍是虚接（内层端是节点，外层端不是），只留作对照。
+     web=1 ★ 节点斜腹杆：外层每个节点 triC → 它那个三角面的三个内层顶点。
+            上弦节点 ↔ 下弦节点，这才是双层网壳的标准接法；
+            每个节点发 6 根（3 条边 × 2 端点），整层就是一个完整的空间桁架。
+     web=2 径向 + 辐条：格心先用 6 根面内辐条连到它周围的 triC（把格心做成真节点），
+            再往内打径向杆。想看「格心处到底该不该有节点」就用这一档。 */
+  if (web !== 1) {
+    for (i = 0; i < V.length; i++) {
+      var ci = vc[i];
+      var A0 = (ci === undefined) ? V[i] : cellCtr[ci];
+      pushS(tie, A0, V2[i], cR(i) * 0.46);
+    }
+    if (web === 2) {
+      for (i = 0; i < net.cells.length; i++) {
+        var pl1 = net.cells[i].poly, rS = Math.max(0.0004, net.cells[i].rr * 0.30);
+        for (j = 0; j < pl1.length; j++) pushS(spoke, cellCtr[i], pl1[j], rS);
+      }
+    }
+  }
+
+  /* ---- 内层三角杆：三角网的每一条边 ---- */
+  em.forEach(function (E) {
+    pushS(in2, V2[E.u], V2[E.v], 0.5 * (cR(E.u) + cR(E.v)) * 0.46);
+  });
+
+  /* ---- 四面体：内层每个三角面作底座，向蛋内立第 4 点 ---- */
+  var tets = [], ap = [], hSum = 0, tetR = [], apexR = [];
+  for (i = 0; i < T.length; i++) {
+    var ia = T[i][0], ib = T[i][1], ic = T[i][2];
+    var A = V2[ia], B = V2[ib], C = V2[ic];
+    /* 顶点要立在【外心】正上方，不是重心正上方 ——
+       立在重心上方时三条侧棱长短不一（实测六棱比 1.210，正四面体应是 1.000），
+       因为重心到三个顶点的距离本来就不同。外心到三点等距 ⇒ 三条侧棱严格等长。
+       2D 解法：以 A 为原点、AB 为 x 轴，则外心 ox = |AB|/2，
+       由 |O−A| = |O−C| 解出 oy = (px² + ql² − |AB|·px) / (2·ql)。 */
+    var e1x = B[0] - A[0], e1y = B[1] - A[1], e1z = B[2] - A[2];
+    var L1 = Math.sqrt(e1x * e1x + e1y * e1y + e1z * e1z) || 1e-9;
+    e1x /= L1; e1y /= L1; e1z /= L1;
+    var c2x = C[0] - A[0], c2y = C[1] - A[1], c2z = C[2] - A[2];
+    var px = c2x * e1x + c2y * e1y + c2z * e1z;             /* C 在 AB 上的投影长 */
+    var qx = c2x - px * e1x, qy = c2y - px * e1y, qz = c2z - px * e1z;
+    var ql = Math.sqrt(qx * qx + qy * qy + qz * qz) || 1e-9; /* C 到 AB 的高 */
+    var ox = L1 / 2, oy = (px * px + ql * ql - L1 * px) / (2 * ql);
+    var la = d2(A, B), lb = d2(B, C), lc = d2(C, A);
+    var aF = (la + lb + lc) / 3;
+    var Rc = Math.sqrt(ox * ox + oy * oy), useCen = true;
+    /* 钝角三角形外心跑到形外，Rc 会爆 ⇒ 退回收重心（宁愿略不完美，不要一个扎歪的尖） */
+    if (!(Rc > 1e-9) || Rc > 2.6 * aF) { Rc = aF / 1.7320508; useCen = false; }
+    var cx, cy, cz;
+    if (useCen) {
+      var kx = oy / ql;
+      cx = A[0] + ox * e1x + kx * qx;
+      cy = A[1] + ox * e1y + kx * qy;
+      cz = A[2] + ox * e1z + kx * qz;
+    } else {
+      cx = (A[0] + B[0] + C[0]) / 3; cy = (A[1] + B[1] + C[1]) / 3; cz = (A[2] + B[2] + C[2]) / 3;
+    }
+    /* h = √2·R外接圆 ：正三角形时 √2·(a/√3) = 0.8165a = 正四面体高 */
+    var hF = 1.4142135623730951 * Rc * tetK;
+    /* 顶点必须沿【底座平面的法向】立起来 —— 沿「朝原点」的方向时，径向并不垂直
+       于三角形平面，三条侧棱会被拉成长短不一（实测六棱比 1.232 而理论上限只有 1.155）。
+       法向朝哪边（内/外）：用「三顶点之和」与法向点积判。
+       为什么不用外心半径判：极点附近的三角形外心几乎在轴上，径向分量 ≈ 0，会翻错。 */
+    /* ⚠🔴 叉积三个分量按 (y,z,x) 循环，千万别写成 (z,x,y)：
+         x = ay·bz − az·by    y = az·bx − ax·bz    z = ax·by − ay·bx
+       写错成循环置换后，向量【长度对、也垂直于平面】，唯独指向别处 ——
+       于是 pO 照样等于 h、pA/pB/pC 却差 3 倍（实测 0.0436 / 0.102 / 0.136），
+       所有「长度 / 距离」类判据全抓不到，只有「三条侧棱是否等长」能抓（实测 2.480）。 */
+    var axx = B[0]-A[0], ayy = B[1]-A[1], azz = B[2]-A[2];
+    var bxx = C[0]-A[0], byy = C[1]-A[1], bzz = C[2]-A[2];
+    var fnx = ayy*bzz - azz*byy;
+    var fny = azz*bxx - axx*bzz;
+    var fnz = axx*byy - ayy*bxx;
+    var fnl = Math.sqrt(fnx*fnx + fny*fny + fnz*fnz) || 1e-9;
+    fnx /= fnl; fny /= fnl; fnz /= fnl;
+    var outDot = fnx*(A[0]+B[0]+C[0]) + fny*(A[1]+B[1]+C[1]) + fnz*(A[2]+B[2]+C[2]);
+    var sgn = outDot > 0 ? -1 : 1;
+    var P4 = [cx + sgn*fnx*hF, cy + sgn*fny*hF, cz + sgn*fnz*hF];
+    ap.push(P4); hSum += hF;
+    tets.push({ a: ia, b: ib, c: ic, p: P4, h: hF, aF: aF, ctr: [cx, cy, cz] });
+    /* 六条棱：三条底座（λa）+ 三条侧棱（hF）⇒ 这个比就是「像不像正四面体」的实测 */
+    var ap1 = d2(A, P4), ap2 = d2(B, P4), ap3 = d2(C, P4);
+    var e6 = [la, lb, lc, ap1, ap2, ap3];
+    var lo6 = e6[0], hi6 = e6[0], q6;
+    for (q6 = 1; q6 < 6; q6++) { if (e6[q6] < lo6) lo6 = e6[q6]; if (e6[q6] > hi6) hi6 = e6[q6]; }
+    tetR.push(hi6 / Math.max(1e-12, lo6));
+    /* 只测三条侧棱：外心到三顶点等距 ⇒ 这个必须是 1.000（否则是外心算错/方向不对） */
+    var apLo = Math.min(ap1, ap2, ap3), apHi = Math.max(ap1, ap2, ap3);
+    apexR.push(apHi / Math.max(1e-12, apLo));
+    var rB = (cR(ia) + cR(ib) + cR(ic)) / 3;
+    if (skin >= 4) {
+      pushS(apexS, A, P4, rB * 0.44);
+      pushS(apexS, B, P4, rB * 0.44);
+      pushS(apexS, C, P4, rB * 0.44);
+    }
+  }
+
+  /* ---- 斜撑：每条外层棱 + 对应内层棱，用 4 根斜杆封成四面体 ----
+     只加径向杆时芯是柱阵 ⇒ 面内可滑（机构）。这 4 根是抗剪的。
+     只接到「上下相邻」的点（triC_f 与 V2[u]，u ∈ 该面）—— 别乱连，
+     连到不相邻的点会长出一堆穿格的斜杆，看着像乱麻、实际也不传力。
+     ⚠ 这一组同时承担 web=1 的「层间腹杆」角色：既然它本来就是
+        triC → V2 的节点对节点连接，就不要再造一份重复的。（cutSkin≥4 与 web=1 取并集） */
+  var doBrace = (skin >= 4) || (web === 1);
+  if (doBrace) {
+    em.forEach(function (E) {
+      var rA = 0.5 * (cR(E.u) + cR(E.v)) * 0.30;
+      for (var q = 0; q < E.f.length; q++) {
+        var tc = net.triC[E.f[q]];
+        pushS(brace, tc, V2[E.u], rA);
+        pushS(brace, tc, V2[E.v], rA);
+      }
+    });
+    /* ---- 内顶点互连：相邻两个四面体的内顶点相连 ⇒ 内层三正则网 ----
+       只有真的建了四面体（skin≥4）才有内顶点可连；web=1 单选时腹杆有了、
+       四面体芯还没建，这一组必须继续关着，否则会连到不存在的顶点。 */
+    if (skin >= 4) em.forEach(function (E) {
+      if (E.f.length !== 2) return;
+      pushS(innerS, ap[E.f[0]], ap[E.f[1]], 0.5 * (cR(E.u) + cR(E.v)) * 0.40);
+    });
+  }
+
+  tetR.sort(function (x, y) { return x - y; });
+  apexR.sort(function (x, y) { return x - y; });
+  var stats = {
+    lmode: lmode, lam: lam, lamPhys: lamPhys, aMed: aMed, aRef: aRef, aMax: aMax,
+    Req: Req, tetK: tetK,
+    hNom: (1 - lam) * Req,
+    hOverA: (1 - lam) * Req / Math.max(1e-9, aRef),              /* 芯厚 ÷ 外层边长 ⇒ 0.8165 */
+    hTetOverA: (1 - lam) * Req > 0 ? (K824 * lam * aRef) / Math.max(1e-9, lam * aRef) : 0,
+    nV2: V2.length, nTet: tets.length, nTie: tie.length, nIn2: in2.length,
+    nBrace: brace.length, nApex: apexS.length, nInner: innerS.length,
+    web: web, phase: phase, nSpoke: spoke.length,
+    /* 格心 V 与钢架可见中心（poly 平均）的最大偏差：旧版径向杆"戳出来"的根源，
+       以 ‰蛋高 报，读者能直接对上截图里的那截柱子。 */
+    ctrOff: ctrOff,
+    nStruts2: tie.length + spoke.length + in2.length + brace.length + apexS.length + innerS.length,
+    hTetMed: tets.length ? hSum / tets.length : 0,
+    tetRatio: tetR.length ? tetR[(tetR.length / 2) | 0] : 0,
+    tetLo: tetR.length ? tetR[0] : 0,
+    tetHi: tetR.length ? tetR[tetR.length - 1] : 0,
+    apexMed: apexR.length ? apexR[(apexR.length / 2) | 0] : 0,
+    apexHi: apexR.length ? apexR[apexR.length - 1] : 0,
+    rMin: rMin === 1e9 ? 0 : rMin, rMax: rMax === -1e9 ? 0 : rMax, nClamp: nClamp
+  };
+  var out = { V2: V2, tets: tets, ap: ap, tie: tie, spoke: spoke, in2: in2, brace: brace,
+              apexS: apexS, innerS: innerS, stats: stats };
+  F0L2_CACHE = { k: key, v: out };
   return out;
 }
 
@@ -438,41 +873,15 @@ function f0HexBuild(P) {
   /* 杆径（cells[].rr 与 struts[].r）已在 f0HexNet 里算好 —— 读数与几何必须同一份，
      否则屏上印的数与画出来的杆是两套口径。 */
 
-  /* ---- 杆：六棱柱（六边形断面的钢杆，与「六边」呼应），两端封口 ---- */
-  var pos = [], idx = [], base = 0;
-  for (i = 0; i < net.struts.length; i++) {
-    var S = net.struts[i], A = S.a, B = S.b, r = S.r;
-    var dx = B[0] - A[0], dy = B[1] - A[1], dz = B[2] - A[2];
-    var L = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1e-9;
-    dx /= L; dy /= L; dz /= L;
-    var refx = 0, refy = 1, refz = 0;
-    if (Math.abs(dy) > 0.92) { refx = 1; refy = 0; refz = 0; }
-    var ux = dy * refz - dz * refy, uy = dz * refx - dx * refz, uz = dx * refy - dy * refx;
-    var ul = Math.sqrt(ux * ux + uy * uy + uz * uz) || 1e-9; ux /= ul; uy /= ul; uz /= ul;
-    var vx = dy * uz - dz * uy, vy = dz * ux - dx * uz, vz = dx * uy - dy * ux;
-    for (k = 0; k < 6; k++) {
-      var an = TAU * k / 6, cs = Math.cos(an) * r, sn = Math.sin(an) * r;
-      pos.push(A[0] + ux * cs + vx * sn, A[1] + uy * cs + vy * sn, A[2] + uz * cs + vz * sn);
-      pos.push(B[0] + ux * cs + vx * sn, B[1] + uy * cs + vy * sn, B[2] + uz * cs + vz * sn);
-    }
-    var cA = pos.length / 3; pos.push(A[0], A[1], A[2]);
-    var cB = pos.length / 3; pos.push(B[0], B[1], B[2]);
-    for (k = 0; k < 6; k++) {
-      var a0 = base + k * 2, a1 = base + ((k + 1) % 6) * 2, b0 = a0 + 1, b1 = a1 + 1;
-      idx.push(a0, a1, b0, b0, a1, b1);      /* 侧壁 */
-      idx.push(cA, a1, a0);                  /* A 端盖 */
-      idx.push(cB, b0, b1);                  /* B 端盖 */
-    }
-    base += 14;
-  }
-  var gg = new THREE.BufferGeometry();
-  gg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  gg.setIndex(idx);
-  var gm2 = gg.toNonIndexed(); gm2.computeVertexNormals();   /* 不索引 ⇒ 平面着色，像钢件 */
-  /* 杆件配色：深钢灰 + 中等高光。原来 0x8d99a6 / shininess 72 在浅色舞台上是
-     一片近白的淡蓝，远看像线框而不是"钢件"（老师要的是钢架，得能看出是实心杆）。 */
-  var mesh = new THREE.Mesh(gm2, new THREE.MeshPhongMaterial({
-    color: 0x5b6876, shininess: 46, specular: 0x9fb0c0, side: THREE.DoubleSide }));
+  /* ---- 外层杆：六棱柱（六边形断面的钢杆，与「六边」呼应）----
+     几何走 f0StrutGeo（与外层/内层/芯共用同一份代码），两端各自取色
+     ⇒ 同一根杆内部也有渐变，比「一根杆一个色」细腻。
+     单色钢档（cmap=5）时 f0CmapColor 返回 null ⇒ 退回原来的素色钢灰。 */
+  var useC = f0CmapKind(P) !== 5;
+  var matOut = new THREE.MeshPhongMaterial({
+    color: useC ? 0xffffff : 0x5b6876, vertexColors: useC,
+    shininess: 46, specular: 0x9fb0c0, side: THREE.DoubleSide });
+  var mesh = new THREE.Mesh(f0StrutGeo(net.struts, 6, P, st), matOut);
   mesh.name = 'hexStruts';
   g.add(mesh);
 
@@ -485,35 +894,46 @@ function f0HexBuild(P) {
     if (S2.r > triR[S2.f1]) triR[S2.f1] = S2.r;
     if (S2.r > triR[S2.f2]) triR[S2.f2] = S2.r;
   }
-  var np = [], ni = [], nbase = 0;
+  var np = [], ni = [], ncol = [], nbase = 0;
   var OCT = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
   var OF = [[0, 2, 4], [2, 1, 4], [1, 3, 4], [3, 0, 4], [2, 0, 5], [1, 2, 5], [3, 1, 5], [0, 3, 5]];
   for (i = 0; i < net.T.length; i++) {
     var R3 = Math.max(0.0006, triR[i] * nodeK);
     var q2 = net.triC[i];
-    for (k = 0; k < 6; k++) np.push(q2[0] + OCT[k][0] * R3, q2[1] + OCT[k][1] * R3, q2[2] + OCT[k][2] * R3);
+    var cN = useC ? f0CmapColor(P, f0MapVal(P, q2, st)) : null;
+    for (k = 0; k < 6; k++) {
+      np.push(q2[0] + OCT[k][0] * R3, q2[1] + OCT[k][1] * R3, q2[2] + OCT[k][2] * R3);
+      if (useC) ncol.push(cN[0], cN[1], cN[2]);
+    }
     for (k = 0; k < 8; k++) ni.push(nbase + OF[k][0], nbase + OF[k][1], nbase + OF[k][2]);
     nbase += 6;
   }
   if (np.length) {
     var ng = new THREE.BufferGeometry();
     ng.setAttribute('position', new THREE.Float32BufferAttribute(np, 3));
+    if (useC) ng.setAttribute('color', new THREE.Float32BufferAttribute(ncol, 3));
     ng.setIndex(ni);
     var ng2 = ng.toNonIndexed(); ng2.computeVertexNormals();
     var nm = new THREE.Mesh(ng2, new THREE.MeshPhongMaterial({
-      color: 0x3f4a56, shininess: 30, specular: 0x8899a8, side: THREE.DoubleSide }));
+      color: useC ? 0xffffff : 0x3f4a56, vertexColors: useC,
+      shininess: 30, specular: 0x8899a8, side: THREE.DoubleSide }));
     nm.name = 'hexNodes';
     g.add(nm);
   }
 
   /* ---- 薄壳：每格一片半透明面板（按面积占比上色），换 cutSkin=2 才出 ---- */
-  if ((P.cutSkin | 0) === 2) {
+  if ((P.cutSkin | 0) === 2 || (P.cutSkin | 0) === 5) {
     var pp = [], pc = [], pi = [], pb = 0;
     for (i = 0; i < net.cells.length; i++) {
-      var cc = net.cells[i], col = f0HexColor(cc.pct, st), n = cc.poly.length;
+      var cc = net.cells[i], n = cc.poly.length;
       var mx = 0, my = 0, mz = 0;
       for (j = 0; j < n; j++) { mx += cc.poly[j][0]; my += cc.poly[j][1]; mz += cc.poly[j][2]; }
       mx /= n; my /= n; mz /= n;
+      /* 薄壳跟杆走【同一条色带】（按位置取色），这样壳与杆是一个整体；
+         单色钢档才退回原来那套「按面积占比双色渐变」。 */
+      var col;
+      if (useC) { var cq2 = f0CmapColor(P, f0MapVal(P, [mx, my, mz], st)); col = new THREE.Color(cq2[0], cq2[1], cq2[2]); }
+      else col = f0HexColor(cc.pct, st);
       pp.push(mx, my, mz); pc.push(col.r, col.g, col.b);
       for (j = 0; j < n; j++) {
         var q3 = cc.poly[j];
@@ -534,6 +954,57 @@ function f0HexBuild(P) {
     g.add(pm);
   }
 
+  /* ---- 第二层（内层正三角网）＋ 芯：cutSkin ≥ 3 才出 ----
+     tie   层间径向杆：外层每格中心 ↔ 内层对应顶点
+     in2   内层三角网：原三角网的每条边
+     brace 斜撑：把「外层棱 + 内层棱」封成四面体（抗剪，只有 ≥4 才有）
+     apexS 四面体侧棱：内层三角形 → 蛋内的第 4 点（≥4）
+     innerS 内顶点互连：相邻四面体的内顶点相连（≥4） */
+  var L2 = null;
+  if ((P.cutSkin | 0) >= 3) L2 = f0HexL2(P);
+  if (L2) {
+    var matIn = new THREE.MeshPhongMaterial({
+      color: useC ? 0xffffff : 0x4d5966, vertexColors: useC,
+      shininess: 40, specular: 0x9fb0c0, side: THREE.DoubleSide });
+    var addL = function (nm2, list, sides) {
+      if (!list || !list.length) return;
+      var m2 = new THREE.Mesh(f0StrutGeo(list, sides, P, st), matIn);
+      m2.name = nm2; g.add(m2);
+    };
+    addL('hexTie', L2.tie, 4);
+    addL('hexSpoke', L2.spoke, 4);
+    addL('hexIn2', L2.in2, 4);
+    addL('hexBrace', L2.brace, 4);
+    addL('hexApex', L2.apexS, 4);
+    addL('hexInner', L2.innerS, 4);
+
+    /* 内层节点：那个位置是「1 根层间杆 + 3 根内层杆 + 4 根斜撑」的交汇。
+       不给节点就是虚接，远看像几根杆悬在空中碰上了。 */
+    var ip = [], ii = [], ic2 = [], ib2 = 0;
+    var ir = Math.max(0.0006, L2.stats.rMax * 1.25);
+    for (i = 0; i < L2.V2.length; i++) {
+      var v2p = L2.V2[i], cn2 = useC ? f0CmapColor(P, f0MapVal(P, v2p, st)) : null;
+      for (k = 0; k < 6; k++) {
+        ip.push(v2p[0] + OCT[k][0] * ir, v2p[1] + OCT[k][1] * ir, v2p[2] + OCT[k][2] * ir);
+        if (useC) ic2.push(cn2[0], cn2[1], cn2[2]);
+      }
+      for (k = 0; k < 8; k++) ii.push(ib2 + OF[k][0], ib2 + OF[k][1], ib2 + OF[k][2]);
+      ib2 += 6;
+    }
+    if (ip.length) {
+      var ig = new THREE.BufferGeometry();
+      ig.setAttribute('position', new THREE.Float32BufferAttribute(ip, 3));
+      if (useC) ig.setAttribute('color', new THREE.Float32BufferAttribute(ic2, 3));
+      ig.setIndex(ii);
+      var ig2 = ig.toNonIndexed(); ig2.computeVertexNormals();
+      var im = new THREE.Mesh(ig2, new THREE.MeshPhongMaterial({
+        color: useC ? 0xffffff : 0x424e5c, vertexColors: useC,
+        shininess: 30, specular: 0x8899a8, side: THREE.DoubleSide }));
+      im.name = 'hexNodes2';
+      g.add(im);
+    }
+  }
+
   /* ---- 轴：上下穿过两颗极点格的中心（构造上就是 r=0 那个点）---- */
   var axp = [new THREE.Vector3(0, -st.H / 2 - 0.06 * st.H, 0),
              new THREE.Vector3(0, st.H / 2 + 0.06 * st.H, 0)];
@@ -542,8 +1013,57 @@ function f0HexBuild(P) {
   axl.name = 'hexAxis';
   g.add(axl);
 
+  /* ---- 分层查看：hxView 1 = 只看外层（藏非外层）；2 = 只看芯（藏外层）----
+     藏的是 mesh.visible，几何照建（build 仍返回同一份 group），所以
+     「看得见什么」与「算出来什么」不会打架 —— 读数永远报的是全部建出来的量。
+     ⚠ 必须带 cutSkin>=3 的门槛：切回单层时参数项虽隐藏，P.hxView 还留着旧值，
+        不设门槛就会把唯一的外层藏掉 ⇒ 画面空掉（而读数照旧报数，最难查的那种）。 */
+  var hxView = (P.hxView | 0);
+  if (hxView > 0 && (P.cutSkin | 0) >= 3) {
+    var OUTER = { hexStruts: 1, hexNodes: 1, hexPanels: 1 };
+    for (var ci = 0; ci < g.children.length; ci++) {
+      var ch = g.children[ci], isOuter = !!OUTER[ch.name];
+      if (isOuter === (hxView === 2)) ch.visible = false;
+    }
+  }
+
+  /* ---- 2D 正投影用的「杆轴线」清单（2026-11-03 老师要的正视/俯视平面图）----
+     为什么不从 geometry 里抠三角面：杆是六棱柱，抠出来是 24 个三角形，
+     投影后是一团密集短线，看不出结构。这里直接存杆的【轴线】，
+     2D 图就是一张干净的工程正投影。颜色取杆中点、已转回 sRGB（Canvas 不吃线性色）。
+     扁平数组 9 个数一根：ax ay az bx by bz r g b。 */
+  var segArr = [];
+  var OUT2 = { hexStruts: 1, hexNodes: 1, hexPanels: 1 };
+  function segVisible(nm) {
+    if (!(hxView > 0 && (P.cutSkin | 0) >= 3)) return true;
+    return (!!OUT2[nm]) === (hxView === 1);
+  }
+  function pushSeg(list) {
+    if (!list || !list.length) return;
+    for (var q = 0; q < list.length; q++) {
+      var s0 = list[q];
+      var mx = (s0.a[0] + s0.b[0]) / 2, my = (s0.a[1] + s0.b[1]) / 2, mz = (s0.a[2] + s0.b[2]) / 2;
+      var cr, cg, cb;
+      if (useC) {
+        var cl = f0CmapColor(P, f0MapVal(P, [mx, my, mz], st));
+        cr = f0L2S(cl[0]); cg = f0L2S(cl[1]); cb = f0L2S(cl[2]);
+      } else { cr = 0.36; cg = 0.41; cb = 0.47; }
+      segArr.push(s0.a[0], s0.a[1], s0.a[2], s0.b[0], s0.b[1], s0.b[2], cr, cg, cb);
+    }
+  }
+  if (segVisible('hexStruts')) pushSeg(net.struts);
+  if (L2) {
+    if (segVisible('hexTie')) pushSeg(L2.tie);
+    if (segVisible('hexIn2')) {
+      pushSeg(L2.spoke); pushSeg(L2.in2); pushSeg(L2.brace);
+      pushSeg(L2.apexS); pushSeg(L2.innerS);
+    }
+  }
+  g.userData.f0seg = segArr.length ? segArr : null;
+
   g.userData.noArray = true;          /* 轴对称体：圆周阵列只会叠出重合杆 */
   g.userData.f0hex = st;
+  g.userData.f0hex2 = L2 ? L2.stats : null;
   return g;
 }
 
@@ -590,6 +1110,37 @@ function f0HexProf2D(ctx,W,H,P){
   }
   ctx.stroke();
 
+  /* 双层时把【内层母线】也画出来（λ 缩放：半径 ×λ，沿轴也 ×λ）。
+     这条线是「第二层是不是真的相似蛋面」的自证：形状必须与红线同形、只是小一圈。
+     顺手每 6 道纬圈画一根层间杆 —— 2D 里能直接看出层间距有多厚。 */
+  if ((P.cutSkin | 0) >= 3) {
+    var L2d = f0HexL2(P);
+    if (L2d) {
+      var lm2 = L2d.stats.lam, i3;
+      ctx.save();
+      ctx.strokeStyle='#2f7d4f'; ctx.lineWidth=1; ctx.globalAlpha=0.55;
+      for (i3 = 0; i3 < net.ringT.length; i3 += 6) {
+        var uu3 = net.ringU[i3], tt3 = net.ringT[i3];
+        if (uu3 < 1e-6) continue;
+        var ty3 = tMid + (tt3 - tMid) * lm2;
+        ctx.beginPath(); ctx.moveTo(X(uu3), T(tt3)); ctx.lineTo(X(uu3 * lm2), T(ty3)); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(X(-uu3), T(tt3)); ctx.lineTo(X(-uu3 * lm2), T(ty3)); ctx.stroke();
+      }
+      ctx.globalAlpha=1;
+      ctx.setLineDash([5,4]);
+      ctx.strokeStyle='#2f7d4f'; ctx.lineWidth=1.8;
+      ctx.beginPath();
+      for (i3 = 0; i3 < pf.pr.length; i3++) {
+        var ux3 = pf.pr[i3][1] * lm2, ty4 = tMid + (pf.pr[i3][0] - tMid) * lm2;
+        if (i3) ctx.lineTo(X(ux3), T(ty4)); else ctx.moveTo(X(ux3), T(ty4));
+      }
+      ctx.stroke();
+      ctx.restore();
+      ctx.fillStyle='#2f7d4f'; ctx.font='10.5px sans-serif';
+      ctx.fillText('内层 λ=' + (lm2 * 100).toFixed(1) + '%（相似蛋面 · 绿虚线）', 6, 24);
+    }
+  }
+
   ctx.fillStyle='#8a95a5';ctx.font='10.5px sans-serif';
   ctx.fillText('母线分行图 · 每道横线 = 一行六边形（等轴）',6,11);
   ctx.fillStyle='#12305e';ctx.font='11px sans-serif';
@@ -600,7 +1151,12 @@ function f0HexProf2D(ctx,W,H,P){
 /* ---- 蛋面钢架 · 读数 ---- */
 function f0HexRead(P) {
   var rows = [], R = f0Solve(P), net = f0HexNet(P);
-  rows.push(['表面构建', '蛋面钢架（斜切出来的蛋绕长轴旋转 · 正六边形平铺）']);
+  var skin = (P.cutSkin | 0);
+  var SKN = ['原样', '单层钢架（正六边形平铺）', '单层 + 薄壳',
+             '双层壳体（外层六边形 + 内层正三角 + 节点连接）',
+             '双层 + 斜撑 + 四面体芯（完整空间桁架）',
+             '双层 + 斜撑 + 四面体芯 + 薄壳'];
+  rows.push(['表面构建', '<b>' + (SKN[skin] || '蛋面钢架') + '</b>（蛋 = 斜切出来的曲线绕长轴旋转）']);
   if (!net) {
     rows.push(['⚠ 铺不出钢架', '钢架只对「单叶双曲面 ⇒ 闭合蛋」成立。' +
       '当前母线是「' + (R.def ? R.def.name : '?') + '」，或者 α/z₀ 让交线开口了 —— ' +
@@ -666,6 +1222,107 @@ function f0HexRead(P) {
   rows.push(['每圈 宽/行距（正六边形 = 1.1547）',
     dhN + ' 圈里 <b>' + dhOK + '</b> 圈落在 1.1547±0.02　最偏的是第 ' + dhAt +
     ' 圈（偏 ' + dhWorst.toFixed(3) + '，是收口那一圈：列数被强制降到 6 才能把钝面收住）']);
+  /* ---------------- 第二层（内层）---------------- */
+  var L2 = (skin >= 3) ? f0HexL2(P) : null;
+  if (L2) {
+    var s2 = L2.stats;
+    rows.push(['—— 第二层（内层）——', '']);
+    rows.push(['第二层缩放 λ',
+      '<b>' + (s2.lam * 100).toFixed(2) + '%</b>　（以原点为中心的相似缩放 ⇒ 内外层同心、同轴、同形状）']);
+    rows.push(['λ 怎么来的', s2.lmode === 1
+      ? '手动（滑条给定）'
+      : ('物理最优：芯厚 h = 0.8165 × a　⇒ λ = 1 − h/R　R=' + s2.Req.toFixed(4) +
+         '（赤道半径）　a=' + s2.aRef.toFixed(4) + '（三角网边长的 90 分位 ≈ 赤道那批最大的格子）' +
+         '　⇒ 实测 芯厚 ÷ 外层边长 = <b>' + s2.hOverA.toFixed(4) + '</b>（正四面体高 ÷ 底边 = 0.8165）')]);
+    rows.push(['为什么取 90 分位、不取中位',
+      '三角网上绝大多数边挤在极点附近（那里格子最小），中位只代表"小格子"。' +
+      '按中位定 λ 会把芯压成薄饼（实测中位档：λ=86.5%、层间距只有 4.8% 蛋高、h/a=0.26）。' +
+      '按 90 分位定 ⇒ 赤道那批最大的格子严格是正四面体；两端格子小、该处 h/a 偏小（芯相对更薄），' +
+      '但那里杆短，本来就不容易屈曲。边长范围：中位 ' + s2.aMed.toFixed(4) +
+      ' ／ 90 分位 ' + s2.aRef.toFixed(4) + ' ／ 最大 ' + s2.aMax.toFixed(4) +
+      '（' + (s2.aMax / Math.max(1e-9, s2.aMed)).toFixed(1) + '×）']);
+    rows.push(['为什么这么定',
+      '四面体取【正四面体】：j=4、b=6，Maxwell 判据 3j−6 = 6 = b ⇒ 恰好静定、无多余杆；' +
+      '六根杆等长 ⇒ 只受轴力、零弯矩 ⇒ 材料全用在拉压上。' +
+      '所以「层间距 = 0.8165 × 内层三角形边长」不是拍的，是省材料的最优解。']);
+    rows.push(['层间距 h（赤道）', s2.hNom.toFixed(4) + '　= (1−λ)·R　／蛋高 = ' +
+      (s2.hNom / st.H * 100).toFixed(1) + '%　／外层边长 = ' + s2.hOverA.toFixed(4)]);
+    rows.push(['两个高度别混', '芯厚 h = 0.8165 × 【外层】三角网边长（两层之间有多厚）；' +
+      '四面体高 = 0.8165 × 【内层】边长（芯里那个尖扎进去多深）。' +
+      '它们比的是各自那一层的胞元，所以数值不同 —— 写成一个数就是口径错']);
+    rows.push(['内层正三角网', s2.nIn2 + ' 条边 · ' + s2.nTet + ' 个三角面　' +
+      '（顶点 ' + s2.nV2 + ' = 外层蜂窝的格数 ⇒ 顶点数一一对应，它是蜂窝的【对偶】）']);
+    /* ---- 层间连接：这一行是本轮（2026-11-03）改动的核心，必须讲清「哪一端是节点」---- */
+    rows.push(['外层节点在哪', '钢架的节点是 <b>三角面重心 triC</b>（3 根杆交汇），共 ' + st.tris +
+      ' 个；六边形的几何中心 V 只是参数点，上面<b>没有杆</b>。' +
+      '两者差一个曲率弓高（本档最大 ' + (s2.ctrOff / st.H * 1000).toFixed(2) +
+      ' ‰蛋高）—— M 越小格子越大、差得越多，这正是旧版径向杆看着"从六边形中央戳出来"的原因']);
+    if (s2.web === 1) {
+      rows.push(['层间腹杆', '<b>' + s2.nBrace + '</b> 根　（外层节点 triC ↔ 内层三角面的三个顶点）' +
+        '　·　每个外层节点发 6 根（3 条边 × 2 端点）⇒ 上弦节点直接落到下弦节点，' +
+        '这才是双层网壳的标准接法。径向直杆在本档为 0 根（它两端都不是节点，已换成这一种）']);
+    } else if (s2.web === 2) {
+      rows.push(['层间径向杆 + 辐条', '<b>' + s2.nTie + '</b> 根径向 ＋ <b>' + s2.nSpoke +
+        '</b> 根面内辐条　（每个格心先用 6 根辐条连到它周围 6 个 triC，把格心做成真节点，再往内打径向杆）' +
+        '　·　杆数最多、但格心处确实有节点']);
+    } else {
+      rows.push(['层间径向杆', '<b>' + s2.nTie + '</b> 根　（格心 ↔ 格心）' +
+        '　<span style="color:#b03020">⚠ 两端都不在节点上：外层端是格心 V（无杆）、内层端才是节点 ⇒ 虚接，' +
+        '只留作反例。要真连接请把「层间连接」切到「节点斜腹杆」</span>']);
+    }
+    if (Math.abs(s2.phase) > 0.001) {
+      rows.push(['第二层相位角', s2.phase.toFixed(1) + '°　（绕长轴转）　·　作用是把内层杆与外层杆在' +
+        '投影上错开，不是"让两层节点对齐"——三角网顶点（半径 λR）与外层节点（半径 <R）本来就不在同一个旋转面上，' +
+        '转多少度都重合不了，这条只是把两层画面上分开好辨认']);
+    }
+    if (skin >= 4) {
+      rows.push(['斜撑（抗剪）', s2.nBrace + ' 根　（每条外层棱 4 根，把「外层棱 + 内层棱」封成四面体。' +
+        '⚠ 只有径向杆时芯是【柱阵】—— 抗压不抗剪，两层能面内滑移，是机构不是结构）']);
+      rows.push(['四面体芯', s2.nTet + ' 个 · 高 ' + (s2.hTetMed / st.H * 1000).toFixed(1) +
+        ' ‰蛋高 · 六棱等长比中位 <b>' + s2.tetRatio.toFixed(3) + '</b>（正四面体 = 1.000；' +
+        '最差 ' + s2.tetHi.toFixed(3) + '）。比值不是 1.000 是因为三角网本身不是严格正三角：' +
+        '底座三条边就有 ' + (s2.aMax / Math.max(1e-9, s2.aMed)).toFixed(1) + ' 倍的差，' +
+        '剩下的差距全来自底座']);
+      rows.push(['三条侧棱等长比（必须 = 1.000）',
+        '中位 <b>' + s2.apexMed.toFixed(4) + '</b> ／ 最差 ' + s2.apexHi.toFixed(4) +
+        '　（顶点立在外心 + 沿底座法向 ⇒ 外心到三顶点等距、方向垂直 ⇒ 三条侧棱严格等长。' +
+        '这一行是「外心算得对不对」的直接裁判，六棱比那一行则掺进了网格本身的形状）']);
+      rows.push(['内顶点互连', s2.nInner + ' 根　（相邻四面体的内顶点两两相连 ⇒ 内层三正则网，' +
+        '与内层三角网互为对偶）']);
+    } else if (s2.web === 1) {
+      rows.push(['这一档（无四面体芯）', '腹杆已是节点对节点的斜杆 ⇒ 整层是完整空间桁架，抗剪成立；' +
+        '只是还没往蛋内立四面体。切到「★ 双层 + 斜撑 + 四面体芯」再往内伸一层']);
+    } else {
+      rows.push(['⚠ 这一档没有斜腹杆', '芯只有径向杆/辐条：抗压可以、抗剪为零（两层能相对面内滑移）。' +
+        '把「层间连接」切到「节点斜腹杆」，或升到「★ 双层 + 斜撑 + 四面体芯」才是完整桁架']);
+    }
+    rows.push(['芯杆径', (s2.rMin / st.H * 1000).toFixed(2) + ' ~ ' +
+      (s2.rMax / st.H * 1000).toFixed(2) + ' ‰蛋高（外层杆的 0.42~0.58 倍，细一档好分层）' +
+      (s2.nClamp ? '　短杆上限夹住 ' + s2.nClamp + ' 根' : '')]);
+    rows.push(['二层总杆数', '<b>' + s2.nStruts2 + '</b> 根（＋外层 ' + st.struts + ' 根 = ' +
+      (s2.nStruts2 + st.struts) + ' 根）']);
+    /* 顶点合计：不是拍脑袋的「大概」，而是按建几何的定值算 ——
+       外层杆 6 棱柱 = 24 三角 = 72 顶点/根，节点八面体 = 8 面 = 24 顶点/个，
+       内层与芯全用 4 棱柱 = 16 三角 = 48 顶点/根。M 一推高它涨得很快，
+       所以这一行是给「会不会卡」一个可核的数（不含薄壳）。 */
+    var vOuter = st.struts * 72 + st.tris * 24;
+    if (L2) vOuter += s2.nStruts2 * 48 + s2.nV2 * 24;
+    rows.push(['顶点合计', '<b>' + vOuter + '</b> 个（M=26 时约 56 万；M=58 约 415 万、构建约 1.4 秒' +
+      '　·　按 外层杆×72 ＋ 节点×24 ＋ 内层/芯杆×48 ＋ 内层节点×24 现算，不含薄壳）']);
+  }
+
+  /* ---------------- 配色 ---------------- */
+  var ck = f0CmapKind(P);
+  if (ck === 5) {
+    rows.push(['配色', '单色钢灰（无渐变）']);
+  } else {
+    rows.push(['配色', 'cmap = <b>' + F0_CMAP_NAMES[ck] + '</b>　映射：' +
+      ['沿蛋轴高度（尖 → 钝一条渐变）', '沿半径（赤道深、两端浅）', '沿经度（绕一圈出彩虹）'][P.hxMapT | 0] +
+      '　· 每根杆两端各自取色 ⇒ 杆内也有渐变']);
+    rows.push(['色表口径', '11 点近似采样，不是 matplotlib 的 256 色原表（首尾与中段对得上）。' +
+      '顶点色已做 sRGB → 线性转换，否则 plasma 的低端会糊成近黑']);
+  }
+
   rows.push(['⚠ 拓扑', '球面上不可能全是正六边形：Σ(6−边数)≡12。' +
     '极点两格是六边形（构造保证），多出来的五/七边形是「每行格数不同」拉链处的必然结果']);
   return rows;
