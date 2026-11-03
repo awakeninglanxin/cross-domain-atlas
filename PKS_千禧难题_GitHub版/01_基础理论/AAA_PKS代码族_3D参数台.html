@@ -15380,11 +15380,19 @@ document.getElementById('tabs').addEventListener('click',function(e){
 });
 
 /* ---------------- 交互：拖动旋转 / Shift+拖动平移 / 滚轮缩放 / 双击复位 ----------------
-   Shift+按住拖动 = 平移（把模型在屏幕平面里挪动），用来对准局部细节；
+   Shift+按住拖动 = 平移（把模型在屏幕平面里挪动，相机与目标点【一起】挪），用来对准局部细节；
    普通拖动 = 绕中心旋转。相机用「目标点 + 距离」的写法，
    平移就是改目标点（lookAt 的中心），旋转就是改方位角/仰角。 */
-var panX=0,panY=0,panZ=0;      /* 平移量（世界坐标） */
+var panX=0,panY=0,panZ=0;      /* 平移量（轨道中心 = lookAt 的目标点，世界坐标） */
 var shiftDrag=false;
+/* 一个屏幕像素对应多少世界单位：2·d·tan(fov/2) / 画布高度。
+   d = camD·zoom 就是相机到轨道中心的距离；旧代码写死 0.0016，等于假定画布 430 px、fov 38，
+   画布一变高就"拖 100 像素、模型只走 80 像素"。 */
+function panScale(){
+  var h=renderer&&renderer.domElement?renderer.domElement.clientHeight:0;
+  if(!h)h=520;
+  return 2*camD*zoom*Math.tan((camera.fov*Math.PI/180)/2)/h;
+}
 canvas.addEventListener('mousedown',function(e){
   dragging=true;lx=e.clientX;ly=e.clientY;
   shiftDrag=!!e.shiftKey;
@@ -15399,9 +15407,23 @@ window.addEventListener('mousemove',function(e){
   var dx=e.clientX-lx,dy=e.clientY-ly;
   lx=e.clientX;ly=e.clientY;
   if(shiftDrag){
-    /* 平移：按屏幕方向在世界 x/y 上挪。缩放越小 ⇒ 同样的像素对应越大的世界位移。 */
-    var sc=camD*zoom*0.0016;
-    panX+=dx*sc;panY-=dy*sc;
+    /* 平移：把模型在【屏幕平面】里挪动 —— 方向必须由相机自己的右/上向量给，不能用世界的 x/y。
+       ⚠ 2026-11-03 修（老师：按住 Shift 往下拖，几何体却往上跑）：
+         旧写法 `panX+=dx; panY-=dy;` 两个毛病叠在一起 ——
+         ① 符号反了：目标点往 +y 挪 ⇒ 相机跟着把头抬向 +y ⇒ 物体在屏幕上反而往下走；
+         ② 更根本的是【相机根本没动】：loop 里 camera.position 不含 pan，只有 lookAt 换了目标点，
+            于是这不是平移，是原地转头（物体会跟着转，还会因为透视而变形）。
+       现在：目标点与相机【一起】沿 (−R·dx + U·dy) 挪 —— 鼠标往哪拖，模型就往哪走：
+         R = 相机右方向 = (cos az, 0, −sin az)
+         U = 相机上方向 = (−sin az·sin el, cos el, −cos az·sin el)
+       尺度用画布与 fov 现算（世界单位/像素），所以拖多少像素、模型就走多少像素。 */
+    var sc=panScale();
+    var ca2=Math.cos(az),sa2=Math.sin(az),ce2=Math.cos(el),se2=Math.sin(el);
+    var rx=ca2,ry=0,rz=-sa2;
+    var ux=-sa2*se2,uy=ce2,uz=-ca2*se2;
+    panX+=(-rx*dx+ux*dy)*sc;
+    panY+=(-ry*dx+uy*dy)*sc;
+    panZ+=(-rz*dx+uz*dy)*sc;
     return;
   }
   az-=dx*0.008;el+=dy*0.006;
@@ -15495,7 +15517,10 @@ function loop(){
   requestAnimationFrame(loop);
   if(autoRot&&!dragging)az+=0.0028;
   var d=camD*zoom;
-  camera.position.set(d*Math.cos(el)*Math.sin(az),d*Math.sin(el),d*Math.cos(el)*Math.cos(az));
+  /* 相机与目标点【一起】带平移量。只改 lookAt 而相机不动 = 原地转头，不是平移。 */
+  camera.position.set(d*Math.cos(el)*Math.sin(az)+panX,
+                      d*Math.sin(el)+panY,
+                      d*Math.cos(el)*Math.cos(az)+panZ);
   camera.lookAt(panX,panY,panZ);
   /* 引导线按屏幕像素维持粗细：滚轮缩放后距离变了就重建（内部有 1.5% 死区，
      静止时不重建，缩放时每帧最多重建一次，代价 < 1ms） */
