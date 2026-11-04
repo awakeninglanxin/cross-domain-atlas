@@ -115,6 +115,10 @@ code{background:#f3f5f9;border:1px solid #e3e7ef;border-radius:3px;padding:.5px 
 table{border-collapse:collapse;width:100%;font-size:13.5px}
 th,td{border:1px solid #dfe4ec;padding:6px 9px;vertical-align:top;text-align:left}
 th{background:#eef2f8;font-weight:600}
+#rhBd{font-size:13.4px;line-height:1.78;color:#2c3546}
+#rhBd .spectbl{margin:6px 0 10px}
+#rhBd .spectbl td.no{color:#b3261e;font-weight:600;text-align:center}
+#rhBd .spectbl td.half{color:#8a5a00;font-weight:600;text-align:center}
 tbody tr:nth-child(even){background:#fafbfd}
 .note{color:#6b7683;font-size:12.8px}
 .foot{margin-top:50px;padding-top:14px;border-top:1px solid #e5e8ee;color:#7b8595;font-size:12.6px}
@@ -919,6 +923,15 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
     <button type="button" class="nbox-b" id="famNoteBtn" aria-expanded="true">收起 ▴</button>
   </div>
   <div class="nbox-bd" id="famNote"></div>
+</div>
+
+<div class="infobox nbox" id="rhBox" style="display:none">
+  <div class="nbox-hd" id="rhHd" title="点这一条展开 / 收起判定卡">
+    <b>⑨-B 黎曼假设 × NP · 判定卡</b>
+    <span class="nbox-sum" id="rhSum">—</span>
+    <button type="button" class="nbox-b" id="rhBtn" aria-expanded="false">展开 ▾</button>
+  </div>
+  <div class="nbox-bd" id="rhBd"></div>
 </div>
 <!-- ⑪ 族底部：MD 数学笔记。正文内联在下面这个 text/markdown 块里 ——
      为什么不 fetch 外部 .md：本页既能双击 file:// 打开也能走静态服务，
@@ -8218,6 +8231,7 @@ function f10Geo(P){
           arcLen:arcLen,endAng:endAng,endPoint:e};
 }
 function f10Build(P){
+  if((P.clMode|0)===1) return f10RhBuild(P);
   var G=f10Geo(P),g=new THREE.Group(),i;
   /* 曲线本体（在 xy 平面） */
   var pts=[];
@@ -8259,6 +8273,7 @@ function f10Build(P){
   return g;
 }
 function f10Read(P){
+  if((P.clMode|0)===1) return f10RhRead(P);
   var G=f10Geo(P);
   return [
     ['曲线类型','Clothoid（回旋曲线）S 形过渡 · κ(s)=k_max·s'],
@@ -8282,6 +8297,7 @@ function f10Read(P){
   ];
 }
 function f10Prof(ctx,W,H,P){
+  if((P.clMode|0)===1){ f10RhProf(ctx,W,H,P); return; }
   var G=f10Geo(P),i;
   var xs=[],ys=[];
   for(i=0;i<G.curve.length;i++){xs.push(G.curve[i][0]);ys.push(G.curve[i][1]);}
@@ -8322,6 +8338,284 @@ function f10Prof(ctx,W,H,P){
   var dErr=Math.hypot(G.endPoint[0]-G.P2[0],G.endPoint[1]-G.P2[1]);
   ctx.fillStyle=dErr<G.D*0.02?'#1c7a3e':'#c0341f';
   ctx.fillText('L='+G.L.toFixed(1)+'  L_min='+G.Lmin.toFixed(1)+'  终点误差 '+(dErr/G.D*100).toFixed(1)+'%·D',l,H-9);
+}
+/* ==========================================================================
+   ⑨ 增设第二模式：黎曼假设 × NP —— 「试证人螺旋」
+   --------------------------------------------------------------------------
+   为什么它归这一族：⑨ 原本画的是 Clothoid —— 一条「曲率随弧长线性增长」的螺线。
+   GRH 下 Miller–Rabin 的确定性证人上限 W = 2(ln n)²，正好是一条「沿螺线走 W 步、
+   走完就盖章」的路径：越往外交错的不是长度，是试证人的序号。中心线一换，
+   管扫掠管线（TubeGeometry）原样复用，所以它落在这里而不是新开一族。
+
+   判据的出处：元宝《黎曼假设与NP问题关系探讨》2026-11-04。本页只借它的【判据】
+   （类别错位），不借它的结论；三条实验与全部数字都是本页现算。
+   ========================================================================== */
+/* 螺线起始半径：中心那个红球是「被检验的 n」，螺线必须从球外起飞才算「从 n 出发」。
+   0.26 是让管壁刚好不穿进球里（红球半径 = rT×4.6 ≈ 0.18）。 */
+var F10RH_R0=0.26;
+var F10RH=(function(){
+  var _sv=null,_svN=0;
+
+  /* 埃氏筛：返回前缀计数 pi[i]=π(i)。上限 1e7（再大就吃内存，且拖滑条会卡） */
+  function sieve(n){
+    n=Math.min(1e7,Math.max(2,Math.round(n)));
+    if(_sv&&_svN>=n)return _sv;
+    var m=new Uint8Array(n+1),i,j,pi=new Uint32Array(n+1),c=0;
+    for(i=2;i*i<=n;i++)if(!m[i])for(j=i*i;j<=n;j+=i)m[j]=1;
+    for(i=2;i<=n;i++){if(!m[i])c++;pi[i]=c;}
+    _sv=pi;_svN=n;return pi;
+  }
+  function piOf(x){x=Math.min(1e7,Math.max(2,Math.round(x)));return sieve(x)[Math.round(x)];}
+
+  /* Li(x)=∫₂ˣ dt/ln t：换元 t=e^u ⇒ ∫ e^u/u du，再用 Simpson（避开 t=1 的对数奇点） */
+  function li(x){
+    if(!(x>2))return 0;
+    var u0=Math.LN2,u1=Math.log(x),N=2000,h=(u1-u0)/N,s=0,k,u,f;
+    for(k=0;k<=N;k++){
+      u=u0+k*h;f=Math.exp(u)/u;
+      s+=f*((k===0||k===N)?1:(k%2?4:2));
+    }
+    return s*h/3;
+  }
+  function isPrime(n){
+    if(n<2)return false;if(n%2===0)return n===2;
+    for(var d=3;d*d<=n;d+=2)if(n%d===0)return false;
+    return true;
+  }
+  function factor(n){
+    var f={},d;
+    for(d=2;d*d<=n;d++){while(n%d===0){f[d]=(f[d]||0)+1;n/=d;}}
+    if(n>1)f[n]=(f[n]||0)+1;
+    return f;
+  }
+  function modPow(b,e,m){
+    var r=1;b%=m;
+    while(e>0){if(e&1)r=(r*b)%m;b=(b*b)%m;e=Math.floor(e/2);}
+    return r;
+  }
+  /* 最小原根：g 是原根 ⟺ 对 p−1 的每个素因子 q 都有 g^((p−1)/q) ≢ 1 (mod p) */
+  function leastPrimRoot(p){
+    if(!isPrime(p))return null;
+    var fs=Object.keys(factor(p-1)).map(Number),g,qi,ok;
+    for(g=2;g<p;g++){
+      ok=true;
+      for(qi=0;qi<fs.length;qi++)
+        if(modPow(g,(p-1)/fs[qi],p)===1){ok=false;break;}
+      if(ok)return g;
+    }
+    return null;
+  }
+  function lnN(bits){return bits*Math.LN2;}
+  function cap(bits){var u=lnN(bits);return 2*u*u;}          /* W = 2(ln n)² */
+  function mrFail(rounds){return Math.pow(0.25,rounds);}     /* 4^−rounds */
+
+  return {sieve:sieve,piOf:piOf,li:li,isPrime:isPrime,leastPrimRoot:leastPrimRoot,
+          lnN:lnN,cap:cap,mrFail:mrFail};
+})();
+
+/* 螺旋几何：r(t)=1+expand·t，θ(t)=2π·turns·t，z(t)=H·t —— 外扩 + 抬升的等角螺线 */
+function f10RhGeo(P){
+  var bits=Math.max(64,Math.round(P.rhBits===undefined?2048:P.rhBits));
+  var turns=Math.max(0.25,Number(P.rhTurns===undefined?2.6:P.rhTurns)||2);
+  var expand=Number(P.rhExpand===undefined?1:P.rhExpand);
+  var lift=Number(P.rhLift===undefined?0.9:P.rhLift);
+  var marks=Math.max(3,Math.min(40,Math.round(P.rhMarks===undefined?12:P.rhMarks)));
+  var N=Math.max(240,Math.min(2400,Math.round(turns*220)));
+  var H=2.2*lift,pts=[],i,t,th,r;
+  for(i=0;i<=N;i++){
+    t=i/N;th=TAU*turns*t;r=F10RH_R0+(1+expand)*t;
+    pts.push([r*Math.cos(th),r*Math.sin(th),H*t]);
+  }
+  var arc=0,a,b;
+  for(i=1;i<=N;i++){
+    a=pts[i-1];b=pts[i];
+    arc+=Math.hypot(b[0]-a[0],b[1]-a[1],b[2]-a[2]);
+  }
+  var mk=[],idx,tt;
+  for(i=0;i<marks;i++){
+    tt=(i+1)/marks;idx=Math.min(N,Math.max(0,Math.round(tt*N)));
+    mk.push({t:tt,p:pts[idx],k:i+1,last:(i===marks-1)});
+  }
+  var W=F10RH.cap(bits);
+  return {bits:bits,turns:turns,expand:expand,lift:lift,marks:marks,N:N,pts:pts,
+          arc:arc,mk:mk,W:W,lnN:F10RH.lnN(bits),H:H,
+          perTurn:W/turns,perMark:W/marks};
+}
+
+function f10RhBuild(P){
+  var G=f10RhGeo(P),g=new THREE.Group(),i;
+  var rT=Math.max(0.014,0.026*(1+0.5*G.expand));
+  function v3(a){return new THREE.Vector3(a[0],a[1],a[2]);}
+  /* 蓝段 0→0.78、绿段 0.78→1，两段共享 cut 这一个点 —— 不是把绿段叠在整条蓝管上面。
+     （第一版是「蓝画全程、绿再压上来」，屏上看到的是两根平行管，接口处露馅。） */
+  var nPts=G.pts.length,cut=Math.floor(nPts*0.78),pv=[],q=[],ii;
+  for(ii=0;ii<=cut;ii++)pv.push(v3(G.pts[ii]));
+  for(ii=cut;ii<nPts;ii++)q.push(v3(G.pts[ii]));
+  g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pv),
+    Math.max(40,Math.min(520,Math.round(pv.length/4))),rT,10,false),solid(0x2f74c8,1.0)));
+  if(q.length>1)g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(q),
+    Math.max(16,Math.min(300,Math.round(q.length/4))),rT*1.18,10,false),solid(0x1c7a3e,1.0)));
+  /* 每圈一道导轨环（Torus 默认就在 xy 平面，轴沿 z，不用转） */
+  var nRing=Math.max(1,Math.ceil(G.turns)),k,tk,rr,zz,ring;
+  for(k=1;k<=nRing;k++){
+    tk=Math.min(1,k/G.turns);rr=F10RH_R0+(1+G.expand)*tk;zz=G.H*tk;
+    ring=new THREE.Mesh(new THREE.TorusGeometry(rr,rT*0.28,6,120),
+      new THREE.MeshBasicMaterial({color:0xcfd9e6}));
+    ring.position.set(0,0,zz);
+    ring.userData.anno=true;
+    g.add(ring);
+  }
+  /* 刻度点：除最后一个外都是「试过、没露出告发者」，最后一个 = 盖章 */
+  for(i=0;i<G.mk.length;i++){
+    var m=G.mk[i],sp=new THREE.Mesh(
+      new THREE.SphereGeometry(rT*(m.last?4.2:2.8),14,10),
+      solid(m.last?0x1c7a3e:0x2f74c8,1));
+    sp.position.copy(v3(m.p));sp.userData.anno=true;g.add(sp);
+  }
+  /* 引导线：中心 → 螺线起点。没有它，红球会孤悬在中间，读不出「从 n 出发」 */
+  var lead=[new THREE.Vector3(0,0,0),new THREE.Vector3(G.pts[0][0],G.pts[0][1],G.pts[0][2])];
+  var lm=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(lead),2,rT*0.42,6,false),
+    new THREE.MeshBasicMaterial({color:0xb9c4d6}));
+  lm.userData.anno=true;g.add(lm);
+  /* 中心红球 = 被检验的 n 本身 */
+  var c=new THREE.Mesh(new THREE.SphereGeometry(rT*4.6,18,14),solid(0xd0342c,1));
+  c.userData.anno=true;g.add(c);
+  /* 🔴 必须挡住圆周阵列：本族的 reps 默认 9（S 模式的 9 份复制），
+     螺旋本身已经绕满全周，再阵列 9 份就是 9 层重叠管（2026-11-04 实测踩到）。 */
+  g.userData.noArray=true;
+  /* 账目对探针公开：蓝段点数 + 绿段点数 − 1 必须正好等于总点数（共享 cut 那一点）。
+     没有这个字段，"两段是接上的还是叠上去的"就只能靠肉眼看。 */
+  g.userData.rhSeg={nPts:nPts,cut:cut,nBlue:pv.length,nGreen:q.length};
+  g.userData.G=G;
+  return g;
+}
+
+function f10RhRead(P){
+  var G=f10RhGeo(P);
+  var x=Math.round(P.rhX===undefined?1e6:P.rhX);
+  var pix=F10RH.piOf(x),lix=F10RH.li(x),err=Math.abs(pix-lix);
+  var lx=Math.log(x),bRH=Math.sqrt(x)*lx*lx,bTr=Math.pow(x,0.999);
+  var px=Math.round(P.rhP===undefined?1000003:P.rhP);
+  var g=F10RH.leastPrimRoot(px),bPR=Math.pow(Math.log(px),2);
+  return [
+    ['结论','<b>RH 既不是 NP、也不是 coNP</b> —— 不是"太难放"，是<b>类别不对</b>'],
+    ['NP / coNP 装什么','装<b>判定问题</b>：给一条有限输入 x，问 yes / no；答 yes 要一份 ≤ 多项式长度的<b>证书</b>，且能被多项式时间验证。NP 的内核是 ∃（存在一个见证），coNP 是 ∀'],
+    ['RH 是哪种对象','一条<b>命题</b>：ζ 的所有非平凡零点实部 = ½。<b>没有输入</b> ⇒ 连"输入规模 n"都不存在，"多项式"无处安放'],
+    ['那"比 NP 难"呢','✗ 也不成立。难度比较的前置是<b>同属一个类</b>；跨类谈"更难"没有定义'],
+    ['和 NP 到底什么关系','只有<b>条件蕴含</b>这一层：RH 成立 ⇒ 推出若干数论算法的复杂度界（如确定性素性检验）。但 RH 本身不在那个类里'],
+    ['GRH 给的是确定性','不是速度：把「抽考 40 轮、错率 4⁻⁴⁰」换成「按名单问完就盖章」'],
+    ['n（安全位数）','2^'+G.bits+'　ln n = '+G.lnN.toFixed(1)],
+    ['证人上限 W = 2(ln n)²',G.W.toExponential(3)+' 个（GRH 下：n 若是合数，此数内必有告发者）'],
+    ['抽考 40 轮错率','4⁻⁴⁰ = '+F10RH.mrFail(40).toExponential(2)+'（是<b>概率</b>，不是证明）'],
+    ['实验一 · π(x) 误差','x='+x.toExponential(0)+'　π(x)='+pix+'　Li(x)='+lix.toFixed(1)+'　|π−Li|='+err.toFixed(1)],
+    ['　RH 界 √x·ln²x',bRH.toExponential(3)+'　实测占界 '+(err/bRH*100).toFixed(4)+'%（占得越小，界越松）'],
+    ['　粗界 x^0.999',bTr.toExponential(3)+'　比 RH 界宽 '+(bTr/bRH).toFixed(2)+'×　🔴 这是文中为对比给的<b>粗界</b>；真正常用的经典界是 x·e^(−a√ln x)，比它紧得多'],
+    ['实验二 · 最小原根','p='+px+'　g='+(g===null?'—':g)+'　(ln p)²='+bPR.toFixed(1)+'　'+
+      ((g!==null&&g<=bPR)?'✓ g ≤ (ln p)²':'✗ g 超过 (ln p)²')],
+    ['实验三 · 摊到每圈','W / 圈数 = '+G.perTurn.toExponential(3)+' 个/圈；图上 '+G.marks+
+      ' 个刻度是<b>压缩示意</b>，每刻度代表 '+G.perMark.toExponential(3)+' 个'],
+    ['几何','圈数 '+G.turns.toFixed(2)+'　外扩 '+G.expand.toFixed(2)+'　抬升 '+G.lift.toFixed(2)+
+      '　弧长 '+G.arc.toFixed(2)],
+    ['⚠ 条件性','上面所有"盖章"都挂在 <b>GRH 成立</b> 这个前提上。RH / GRH <b>至今未证</b> —— 这是"若…则…"，不是"已经如此"']
+  ];
+}
+
+function f10RhProf(ctx,W,H,P){
+  var G=f10RhGeo(P),i,rmax=0,dx,dy;
+  for(i=0;i<G.pts.length;i++)rmax=Math.max(rmax,Math.hypot(G.pts[i][0],G.pts[i][1]));
+  var l=52,r=W-16,t=16,b=H-36;
+  var sc=Math.min((r-l),(b-t))/2/Math.max(1e-6,rmax);
+  var cx=(l+r)/2,cy=(t+b)/2;
+  function PX(p){return cx+p[0]*sc;}
+  function PY(p){return cy-p[1]*sc;}
+  ctx.clearRect(0,0,W,H);ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#e6ecf5';ctx.lineWidth=1;
+  var nRing=Math.max(1,Math.ceil(G.turns)),k,tk;
+  for(k=1;k<=nRing;k++){
+    tk=Math.min(1,k/G.turns);
+    ctx.beginPath();ctx.arc(cx,cy,(F10RH_R0+(1+G.expand)*tk)*sc,0,TAU);ctx.stroke();
+  }
+  ctx.strokeStyle='#2f74c8';ctx.lineWidth=2.2;ctx.beginPath();
+  for(i=0;i<G.pts.length;i++){
+    dx=PX(G.pts[i]);dy=PY(G.pts[i]);
+    if(i===0)ctx.moveTo(dx,dy);else ctx.lineTo(dx,dy);
+  }
+  ctx.stroke();
+  ctx.fillStyle='#d0342c';ctx.beginPath();ctx.arc(cx,cy,4.5,0,TAU);ctx.fill();
+  for(i=0;i<G.mk.length;i++){
+    var m=G.mk[i];
+    ctx.fillStyle=m.last?'#1c7a3e':'#2f74c8';
+    ctx.beginPath();ctx.arc(PX(m.p),PY(m.p),m.last?5:3,0,TAU);ctx.fill();
+  }
+  ctx.fillStyle='#2c3546';ctx.font='11.5px Consolas,monospace';
+  ctx.fillText('试证人螺旋 · 俯视 r–θ · '+G.turns.toFixed(2)+' 圈',l,H-21);
+  ctx.fillStyle='#1c7a3e';
+  ctx.fillText('W=2(ln n)²='+G.W.toExponential(2)+'  n=2^'+G.bits,l,H-7);
+}
+
+/* ---------------- 判定卡（画在族说明下面的独立可收起块里） ---------------- */
+function f10RhCard(P){
+  var G=f10RhGeo(P);
+  var x=Math.round(P.rhX===undefined?1e6:P.rhX);
+  var pix=F10RH.piOf(x),lix=F10RH.li(x),err=Math.abs(pix-lix);
+  var lx=Math.log(x),bRH=Math.sqrt(x)*lx*lx,bTr=Math.pow(x,0.999);
+  var px=Math.round(P.rhP===undefined?1000003:P.rhP);
+  var gg=F10RH.leastPrimRoot(px),bPR=Math.pow(Math.log(px),2);
+  var h='';
+  h+='<div style="border:1px solid #bfe3d5;background:#eefaf4;border-radius:8px;padding:9px 12px;margin:4px 0 12px">'+
+     '<b style="color:#0a6b4a">✓ 走完 W = 2(ln n)² 个证人 ⇒ 无论 n 是素数还是合数，结论都确定</b>'+
+     '<span style="color:#5a6b80;font-size:12.4px">　（前提：GRH 成立 —— 这是条件句，不是已证事实）</span></div>';
+  h+='<h4 style="margin:12px 0 6px;color:#12305e">一 · 判定卡：六条说法逐条判</h4>';
+  h+='<table class="spectbl"><thead><tr><th style="width:30%">说法</th><th style="width:12%">判决</th><th>为什么</th></tr></thead><tbody>';
+  h+='<tr><td>「RH 是一个 NP 问题」</td><td class="no">✗ 类别错</td>'+
+     '<td>NP 只装<b>判定问题</b>（有输入、答 yes 要给 ≤poly 的证书）；RH 是<b>没有输入的单命题</b>，没有"输入规模"</td></tr>';
+  h+='<tr><td>「那它属于 coNP」</td><td class="no">✗ 同理</td>'+
+     '<td>coNP 是 NP 的补类，<b>仍然是语言类</b>。装不进去的原因不是"补集"而是"没输入"</td></tr>';
+  h+='<tr><td>「至少比 NP 难」</td><td class="no">✗ 无定义</td>'+
+     '<td>难度比较的前置条件是<b>同属一个类</b>；跨类谈"更难"在复杂性理论里没有定义</td></tr>';
+  h+='<tr><td>「RH 证了算法会变快」</td><td class="no">✗ 只升确定性</td>'+
+     '<td>GRH 把"抽考 40 轮"换成"按名单盖章"，改的是<b>确定性</b>，不改复杂度阶 —— 浏览器不会快一毫秒</td></tr>';
+  h+='<tr><td>「零点比例 41.6%→67.2%，快证完了」</td><td class="no">✗ 密度≠证明</td>'+
+     '<td>这是"至少多大比例在线上"的<b>密度定理</b>。哪怕推到 99.9999%，剩下 0.0001% 仍可能是<b>无穷多个</b>反例</td></tr>';
+  h+='<tr><td>「RH 与 P vs NP 有实质关联」</td><td class="half">◐ 只有单向条件链</td>'+
+     '<td>RH ⇒ 某些数论问题的复杂度界（<b>若</b> RH 成立<b>则</b>…）。这<b>不构成</b> RH ∈ P / NP 的归类</td></tr>';
+  h+='</tbody></table>';
+  h+='<h4 style="margin:16px 0 6px;color:#12305e">二 · 三个现算实验（数字每次刷新都重算，一个没写死）</h4>';
+  h+='<table class="spectbl"><thead><tr><th style="width:15%">实验</th><th style="width:44%">怎么算的</th><th>这一档实测</th></tr></thead><tbody>';
+  h+='<tr><td><b>一 · 尺子收窄</b></td><td>埃氏筛算 π(x)；Simpson 算 Li(x)=∫₂ˣdt/ln t；两条界都现算</td>'+
+     '<td>x='+x.toExponential(0)+'：π='+pix+'，Li='+lix.toFixed(1)+'，|差|='+err.toFixed(1)+'<br>'+
+     'RH 界 √x·ln²x = <b>'+bRH.toExponential(3)+'</b>（实测只占 '+(err/bRH*100).toFixed(4)+'%）<br>'+
+     '粗界 x^0.999 = '+bTr.toExponential(3)+'，比 RH 界宽 <b>'+(bTr/bRH).toFixed(2)+'×</b></td></tr>';
+  h+='<tr><td><b>二 · 最小原根</b></td><td>分解 p−1，对每个素因子 q 验 g^((p−1)/q) ≢ 1；从 g=2 起找第一个原根</td>'+
+     '<td>p='+px+'：最小原根 g = <b>'+(gg===null?'—':gg)+'</b>，而 (ln p)² = '+bPR.toFixed(1)+'　'+
+     ((gg!==null&&gg<=bPR)?'<b style="color:#0a6b4a">✓ 界成立</b>':'<b style="color:#b3261e">✗ 界破</b>')+'</td></tr>';
+  h+='<tr><td><b>三 · 证人上限</b></td><td>W=2(ln n)²，n=2^b；再摊到螺旋圈数与示意刻度</td>'+
+     '<td>n=2^'+G.bits+'：W = <b>'+G.W.toExponential(3)+'</b>；每圈 '+G.perTurn.toExponential(3)+
+     '；图上 '+G.marks+' 个刻度，每刻度 '+G.perMark.toExponential(3)+' 个（<b>压缩示意，不是真实次数</b>）</td></tr>';
+  h+='</tbody></table>';
+  h+='<h4 style="margin:16px 0 6px;color:#12305e">三 · 边界（这一节很容易被读成"RH 有结论了"）</h4>';
+  h+='<ol style="margin:0;padding-left:22px;line-height:1.85;color:#2c3546">'+
+     '<li>本页判的是<b>类别</b>，不是<b>难度</b>。说"RH 不在 NP 里"完全不说它难不难。</li>'+
+     '<li>图上刻度是<b>压缩示意</b>。2048 位时 W≈4.0×10⁶，画不出也数不完。</li>'+
+     '<li>所有 ✓ 都挂在 <b>GRH 未证</b> 这个前提上 —— 条件是条件，不许读成事实。</li>'+
+     '<li>粗界 x^0.999 是<b>原文为对比</b>给的粗界，不是经典界；经典界 x·e^(−a√ln x) 紧得多，所以"RH 比无 RH 强多少倍"这个倍数<b>不是常数</b>。</li>'+
+     '<li>本页<b>不主张</b> RH 的真假，也<b>不主张</b> P vs NP 的答案。</li></ol>';
+  h+='<div style="margin-top:10px;color:#6b7683;font-size:12.4px;line-height:1.8">'+
+     '出处：元宝《黎曼假设与NP问题关系探讨》2026-11-04（判据来源）。本页只借它的<b>判据</b>（类别错位），不借它的结论；'+
+     '三条实验与全部数字都是本页现算，与原文无关。</div>';
+  return h;
+}
+
+function f10RhCardPaint(f,P){
+  var box=document.getElementById('rhBox');
+  if(!box)return;
+  var on=!!(f&&f.id==='clothoid'&&((P.clMode|0)===1));
+  box.style.display=on?'':'none';
+  if(!on)return;
+  var bd=document.getElementById('rhBd');
+  if(bd)bd.innerHTML=f10RhCard(P);
+  var sm=document.getElementById('rhSum');
+  if(sm)sm.textContent='RH 不是 NP · 六条说法 + 三个现算实验 · 点开看';
 }
 
 /* ==========================================================================
@@ -14650,21 +14944,47 @@ var FAMS=[
       '减掉以后留在杆上的是这条内轮廓 ⇒ 一侧近乎垂直（原齿根面）、一侧是 82° 斜面（齿腹）。'+
       '切深 = 牙型径向量最大值 × pitch（GL25 默认 1.62 mm），槽宽 = 牙型轴向跨度，land = 导程 − 槽宽。'},
 
-{id:'clothoid',label:'⑨ Clothoid 过渡',title:'Clothoid S 形过渡 · 回旋曲线（2D）',
- pyLine:'生成clothoids混接原始.py（唯一一条纯 2D 曲线原理）',
- badge:function(P){var k=Math.pow(10,(P.kExp===undefined?-4.7:P.kExp));
+{id:'clothoid',label:'⑨ Clothoid 过渡 · RH 试证人螺旋',
+ title:'Clothoid S 形过渡 · 回旋曲线（2D）＋ 模式 B：黎曼假设 × NP · 试证人螺旋',
+ pyLine:'生成clothoids混接原始.py（唯一一条纯 2D 曲线原理）；判据出处：元宝《黎曼假设与NP问题关系探讨》(2026-11-04)',
+ badge:function(P){
+  if((P.clMode|0)===1){var G=f10RhGeo(P);
+    return 'RH 试证人螺旋 · n=2^'+G.bits+' · W=2(ln n)²='+G.W.toExponential(2)+' · '+
+      G.turns.toFixed(2)+' 圈 · 刻度 '+G.marks+'（压缩示意）';}
+  var k=Math.pow(10,(P.kExp===undefined?-4.7:P.kExp));
   return 'Clothoid S 过渡 · 跨距 '+(P.x2-P.x1).toFixed(0)+' · k_max='+k.toExponential(1);},
  params:[
-  {k:'x1',label:'起点 P1.x',min:-50,max:50,step:0.5,dp:1},
-  {k:'y1',label:'起点 P1.y',min:-50,max:50,step:0.5,dp:1},
-  {k:'x2',label:'终点 P2.x',min:-50,max:50,step:0.5,dp:1},
-  {k:'y2',label:'终点 P2.y',min:-50,max:50,step:0.5,dp:1},
-  {k:'ang1',label:'起点切线角（°，全局坐标）',min:0,max:360,step:1,int:true,dp:0},
-  {k:'ang2',label:'终点切线角（°，全局坐标；脚本固定 180°）',min:0,max:360,step:1,int:true,dp:0},
-  {k:'tanLen',label:'切线参考长度（只影响箭头长度）',min:1,max:40,step:0.5,dp:1},
-  {k:'L',label:'曲线长度上限 L（小于 L_min 时自动用 L_min）',min:1,max:400,step:0.5,dp:1},
-  {k:'kExp',label:'曲率变化率 k_max = 10^x（越小越平缓）',min:-5.2,max:-1,step:0.05,dp:2},
-  {k:'reps',label:'圆周阵列数 n（绕 z 轴）',min:1,max:12,step:1,int:true,dp:0}
+  {k:'clMode',label:'模式（同一族、两条中心线）',type:'choice',opts:[
+   {v:0,t:'A · Clothoid S 形过渡（回旋曲线，原算法）'},
+   {v:1,t:'★ B · 黎曼假设 × NP —— 试证人螺旋（GRH 盖章）'}]},
+  {k:'x1',label:'起点 P1.x',min:-50,max:50,step:0.5,dp:1,when:function(P){return (P.clMode|0)===0;}},
+  {k:'y1',label:'起点 P1.y',min:-50,max:50,step:0.5,dp:1,when:function(P){return (P.clMode|0)===0;}},
+  {k:'x2',label:'终点 P2.x',min:-50,max:50,step:0.5,dp:1,when:function(P){return (P.clMode|0)===0;}},
+  {k:'y2',label:'终点 P2.y',min:-50,max:50,step:0.5,dp:1,when:function(P){return (P.clMode|0)===0;}},
+  {k:'ang1',label:'起点切线角（°，全局坐标）',min:0,max:360,step:1,int:true,dp:0,when:function(P){return (P.clMode|0)===0;}},
+  {k:'ang2',label:'终点切线角（°，全局坐标；脚本固定 180°）',min:0,max:360,step:1,int:true,dp:0,when:function(P){return (P.clMode|0)===0;}},
+  {k:'tanLen',label:'切线参考长度（只影响箭头长度）',min:1,max:40,step:0.5,dp:1,when:function(P){return (P.clMode|0)===0;}},
+  {k:'L',label:'曲线长度上限 L（小于 L_min 时自动用 L_min）',min:1,max:400,step:0.5,dp:1,when:function(P){return (P.clMode|0)===0;}},
+  {k:'kExp',label:'曲率变化率 k_max = 10^x（越小越平缓）',min:-5.2,max:-1,step:0.05,dp:2,when:function(P){return (P.clMode|0)===0;}},
+  {k:'reps',label:'圆周阵列数 n（绕 z 轴）',min:1,max:12,step:1,int:true,dp:0,when:function(P){return (P.clMode|0)===0;}},
+  {k:'rhBits',label:'安全位数 b（n = 2^b）→ 定 W = 2(ln n)²',min:256,max:4096,step:256,int:true,dp:0,
+   when:function(P){return (P.clMode|0)===1;}},
+  {k:'rhTurns',label:'盘旋圈数',min:0.5,max:8,step:0.05,dp:2,
+   when:function(P){return (P.clMode|0)===1;}},
+  {k:'rhExpand',label:'外扩强度',min:0,max:2,step:0.05,dp:2,
+   when:function(P){return (P.clMode|0)===1;}},
+  {k:'rhLift',label:'抬升高度',min:0,max:2,step:0.05,dp:2,
+   when:function(P){return (P.clMode|0)===1;}},
+  {k:'rhMarks',label:'图上刻度数（压缩示意，不代表真实次数）',min:3,max:40,step:1,int:true,dp:0,
+   when:function(P){return (P.clMode|0)===1;}},
+  {k:'rhX',label:'实验一：x（π(x) 埃氏筛现算，>1e7 截断）',type:'choice',opts:[
+   {v:10000,t:'10⁴'},{v:30000,t:'3×10⁴'},{v:100000,t:'10⁵'},{v:300000,t:'3×10⁵'},
+   {v:1000000,t:'10⁶（默认）'},{v:3000000,t:'3×10⁶'},{v:10000000,t:'10⁷（筛最慢）'}],
+   when:function(P){return (P.clMode|0)===1;}},
+  {k:'rhP',label:'实验二：素数 p（最小原根现算）',type:'choice',opts:[
+   {v:1009,t:'1009'},{v:10007,t:'10007'},{v:100003,t:'100003'},
+   {v:1000003,t:'1000003（默认）'},{v:10000019,t:'10000019'}],
+   when:function(P){return (P.clMode|0)===1;}},
  ],
  /* 默认值不是随手填的：P1=(0,0)、k_max≈7.6e-4 时，数值求解出 R₁≈24.8 的 S 形回旋曲线，
     它的真实落点就是 (41.8, 8.0)、终点切线 −121.1°(=238.9°) ⇒ 把 P2 直接放到这个落点上，
@@ -14673,9 +14993,13 @@ var FAMS=[
  /* 2026-10-28 老师定版：用截图那组参数当默认（P1=(19,43) → P2=(28,−4.5)、
     ang1=227° / ang2=256°、L=160.5、k_max=10^−2.95、n=9）。
     这组 D=48.345、L_min=D·π/2=75.94、反求 R₁≈14.28、k_max≈2.857e−3、残差 3.238（D 的 6.7%）。 */
- def:{x1:19,y1:43,x2:28,y2:-4.5,ang1:227,ang2:256,tanLen:10,L:160.5,kExp:-2.95,reps:9},
+ def:{x1:19,y1:43,x2:28,y2:-4.5,ang1:227,ang2:256,tanLen:10,L:160.5,kExp:-2.95,reps:9,clMode:0,rhBits:2048,rhTurns:2.6,rhExpand:1,rhLift:0.9,rhMarks:12,rhX:1000000,rhP:1000003},
  build:f10Build,read:f10Read,prof:f10Prof,zAxis:'z',
- presets:[{t:'老师定版（P1=(19,43) → P2=(28,−4.5)·n=9）',v:{x1:19,y1:43,x2:28,y2:-4.5,ang1:227,ang2:256,tanLen:10,L:160.5,kExp:-2.95,reps:9}},
+ presets:[
+  {t:'★ RH · 2048 位（W≈4.03e6 · 默认）',v:{clMode:1,rhBits:2048,rhTurns:2.6,rhExpand:1,rhLift:0.9,rhMarks:12}},
+  {t:'RH · 256 位（W≈6.3e4 · 少绕几圈）',v:{clMode:1,rhBits:256,rhTurns:1.4,rhExpand:1,rhLift:0.9,rhMarks:8}},
+  {t:'RH · 4096 位（W≈1.63e7 · 绕高一点）',v:{clMode:1,rhBits:4096,rhTurns:3.6,rhExpand:1.4,rhLift:1.2,rhMarks:24}},
+  {t:'老师定版（P1=(19,43) → P2=(28,−4.5)·n=9）',v:{clMode:0,x1:19,y1:43,x2:28,y2:-4.5,ang1:227,ang2:256,tanLen:10,L:160.5,kExp:-2.95,reps:9}},
           {t:'可闭合·有弯度（旧默认）',v:{x1:0,y1:0,x2:42,y2:8,ang1:0,ang2:239,tanLen:10,L:100,kExp:-3.12}},
           {t:'脚本原案（P2=(50,0), k=0.01）',v:{x1:0,y1:0,x2:50,y2:0,ang1:0,ang2:180,tanLen:10,L:100,kExp:-2}},
           {t:'短距离 D=20',v:{x2:20,L:40,tanLen:5}},
@@ -14698,6 +15022,14 @@ var FAMS=[
       '<b>②</b> k_max 改成指数 <code>10^x</code>（它能跨 3 个数量级，线性滑条够不到 <code>1e-5</code> 这一档）。'+
       '默认值（<code>ang2=180°</code>、<code>k_max=2×10⁻⁵</code>）就是<b>让这条 S 真正闭合</b>的组合'+
       '（终点误差 &lt; 2%·D，读数里"是否闭合"会打 ✓）；点预设「脚本原案 k=0.01」能复现脚本原来的过约束状态，'+
+      '<hr style="border:0;border-top:1px dashed #dfe6f0;margin:14px 0">'+
+      '<b>模式 B（2026-11-04 新增）：黎曼假设 × NP —— 试证人螺旋。</b>' +
+      '中心线换成 <code>r(t)=1+expand·t，θ=2π·turns·t，z=H·t</code> 的螺线，刻度点＝试证人，' +
+      '走完 <code>W=2(ln n)²</code> 个就盖章。<b>它为什么落在这一族</b>：Clothoid 的立身之本是' +
+      '「曲率随弧长线性增长」，而这里沿螺线增长的是<b>试证人序号</b> —— 同一条管扫掠管线，只换中心线。' +
+      '<br><b>判决一句话</b>：RH <b>既不是 NP 也不是 coNP</b>，因为 NP / coNP 装的是' +
+      '<b>带输入的判定问题</b>，RH 是<b>没有输入的单命题</b> —— 不是「太难放」，是<b>类别不对</b>。' +
+      '<br>六条说法逐条判 + 三条现算实验，画在下方「⑨-B 判定卡」块里（默认收起）。' +
       '读数会直接打 ✗ —— <b>这不是本页算错，是那个算法的固有边界，如实标出来</b>。'},
 
 {id:'funnel',label:'⑩ 漏斗螺旋管',title:'漏斗对数螺旋管 · 蛋黄金比锥切面螺旋线（5 条中心线）',
@@ -16019,6 +16351,7 @@ function rebuild(){
       (warn?' class="hit"':'')+(rd[i][2]?(' data-si="'+rd[i][2]+'"'):'')+'>'+rd[i][1]+'</b></div>';
   }
   document.getElementById('readout').innerHTML=html;
+  try{ f10RhCardPaint(f,P); }catch(e){ console.error(e); }
   document.getElementById('badge').textContent=f.badge(P);
   /* 横截面 2D 预览：放在 rebuild() 里 ⇒ 任何参数变更路径（下拉 / 滑条 / 预设 /
      程序直接改 P）都会同步刷新，不会出现"3D 换了截面、2D 还是上一条曲线"。
@@ -16072,6 +16405,9 @@ function applyParam(f,p,bv){
     rebuild();buildUI();return;
   }
   drawSecPreview();   /* 族⑤ 横断面 2D 预览实时跟随（其它族无此画布，直接返回） */
+  /* ⑨ 切模式：参数表要整套换掉（S 模式 10 个滑条 vs RH 模式 7 个），
+     所以必须连 buildUI 一起重建 —— 只 rebuild() 会让「调了没反应」的旧滑条继续留在屏上。 */
+  if(p.k==='clMode'){ rebuild(); buildUI(); return; }
   /* 剖面滑动：只挪裁剪平面 + 重算那片膜，【不】重建 1 万根杆 —— 否则拖滑条是卡成幻灯片。
      这条必须在 rebuild 之前返回；走 rebuild 也"对"，只是拖不动。 */
   if(p.k==='hxSecOff'&&F0SEC.on){ syncF0Section(true); return; }
@@ -17879,6 +18215,7 @@ selectFam(0);loop();
   }
   function initFold(){
     fold('famNoteBox','famNoteHd','famNoteBtn','pks.famNote.min',false);
+    fold('rhBox','rhHd','rhBtn','pks.rh.min',true);
     fold('scanBox','scanHd','scanBtn','pks.scan.min',true);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initFold);
