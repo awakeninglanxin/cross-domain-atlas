@@ -11349,19 +11349,23 @@ function f0SchY(z){return ((z-0.10)/0.20-0.5)*F0_SCH_H;}
    缩放只加在画面上、不加在求交上 ⇒ 交线浮在离面 (1/K-1)=81.8% 的外面。
    2026-11-03 老师从轴向看截图发现：交线点到曲面最近距离的中位是曲面网格间距的 12.4 倍。
    所以曲面绘制、求根扫描、二分成点，三处必须都走这一个函数 —— 不许各自算一套。 */
-function f0SchPt(th,z,c){
+function f0SchPt(th,z,c,phi){
   var r=f0SchR(th,z,c);
   if(!isFinite(r))return null;
   r*=F0_SCH_K;
   if(r>6)r=6;if(r<-6)r=-6;
-  return [r*Math.cos(th), f0SchY(z), r*Math.sin(th)];
+  /* 相位差 φ：把【整个面】绕 z 轴刚性转 φ —— 半径仍按原来的 θ 算，只改极角。
+     ⚠ 这不是把 th 减 φ 再算半径（那会扭曲面：R 随 θ 变 ⇒ 形状会被拉伸/压扁）。
+     切平面方程里不含 φ ⇒ 面转、刀不转，截线自然换一副形状。 */
+  var t2=th+(phi||0);
+  return [r*Math.cos(t2), f0SchY(z), r*Math.sin(t2)];
 }
-function f0CutSch(aDeg,y0,c){
+function f0CutSch(aDeg,y0,c,phi){
   var a=aDeg*Math.PI/180,sa=Math.sin(a),ca=Math.cos(a),tn=Math.tan(a);
   var NT=240,ZS=0.10,ZE=0.30,NZ=90,curve=[],segs=[];
   /* 切平面方程：n·(p−p₀)=0 ⇒ (y−y0) + z·tanα = 0。p 一律取 f0SchPt 的点 */
   function valAt(th2,zz){
-    var p=f0SchPt(th2,zz,c);
+    var p=f0SchPt(th2,zz,c,phi);
     return p===null?NaN:(p[1]+p[2]*tn-y0);
   }
   for(var i=0;i<=NT;i++){
@@ -11383,7 +11387,7 @@ function f0CutSch(aDeg,y0,c){
       prev=val;
     }
     if(root===null){if(curve.length>2)segs.push({pts:curve,closed:false});curve=[];continue;}
-    var pq=f0SchPt(th,root,c);
+    var pq=f0SchPt(th,root,c,phi);
     if(pq===null){if(curve.length>2)segs.push({pts:curve,closed:false});curve=[];continue;}
     /* (u,t) 就是切平面内的坐标：u=x；t=(z0−y)/sinα（α→0 时退化成 t=z） */
     curve.push([pq[0], sa>1e-4?(y0-pq[1])/sa:pq[2]]);
@@ -11416,13 +11420,14 @@ function f0Z0(P){
 function f0Solve(P){
   var surf=P.cutSurf|0,aDeg=(P.cutA===undefined?31.7175:P.cutA),
       z0=f0Z0(P),
-      mode=(P.cutMode|0),c=(P.cutC===undefined?0.5:P.cutC);
-  var key=[surf,aDeg,z0,(P.cutTheta===undefined?30:P.cutTheta),mode,c].join('|');
+      mode=(P.cutMode|0),c=(P.cutC===undefined?0.5:P.cutC),
+      phiDeg=(P.cutPhi===undefined?0:+P.cutPhi);
+  var key=[surf,aDeg,z0,(P.cutTheta===undefined?30:P.cutTheta),mode,c,phiDeg].join('|');
   if(F0_CACHE.key===key)return F0_CACHE.val;
   var S=f0SurfDef(P),R;
-  if(S.sch)R=f0CutSch(aDeg,z0,c);
+  if(S.sch)R=f0CutSch(aDeg,z0,c,phiDeg*Math.PI/180);
   else R=f0CutRev(S,aDeg,z0);
-  R.def=S;R.aDeg=aDeg;R.z0=z0;R.mode=mode;
+  R.def=S;R.aDeg=aDeg;R.z0=z0;R.mode=mode;R.phiDeg=phiDeg;
 
   var tMin=1e9,tMax=-1e9,uMax=0,nSeg=0,nClosed=0,i,j;
   function scan(segs){
@@ -11519,8 +11524,9 @@ function f0Surface(S,op,tint){
 }
 function f0SurfaceSch(P,op){
   var c=(P.cutC===undefined?0.5:P.cutC),g=new THREE.Group();
+  var ph=(P.cutPhi===undefined?0:+P.cutPhi)*Math.PI/180;
   var geo=gridGeom(160,72,function(s,v){
-    var z=0.10+0.20*v,p=f0SchPt(TAU*s,z,c);
+    var z=0.10+0.20*v,p=f0SchPt(TAU*s,z,c,ph);
     return p===null?[0,f0SchY(z),0]:p;
   });
   var ms=new THREE.Mesh(geo,f0SurfMat(op));
@@ -11568,6 +11574,9 @@ function f0Build(P){
       var n=new THREE.Vector3(0,Math.cos(a2),Math.sin(a2)).normalize();
       m.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),n);
       m.position.set(0,z0,0);
+      /* 切平面是【切片工具】不是零件：z₀ 允许滑到 10.2，若让它参与包围盒/取景，
+         整件会被拖成远处一个点。取景与 fitRadius 都跳过它。 */
+      m.userData.f0secplane=true;
       return m;
     }
     if(R.mode===1&&R.tri){
@@ -11612,6 +11621,13 @@ function f0Read(P){
   rows.push(['切面倾角 α（与水平面）',R.aDeg.toFixed(3)+'°']);
   rows.push(['与锥轴夹角 β = 90°−α',(90-R.aDeg).toFixed(3)+'°']);
   rows.push(['切面高度 z₀',R.z0.toFixed(6)]);
+  if((P.cutSurf|0)===3){
+    rows.push(['相位差 φ（面转 · 刀不转）',(R.phiDeg||0).toFixed(0)+'°　⇒ 整张面绕 z 轴刚性转 '+
+      (R.phiDeg||0).toFixed(0)+'°，切平面法向仍为 (0, cosα, sinα)']);
+    if(Math.abs(R.z0)>1.2+1e-9)
+      rows.push(['⚠ 切面已在面外','舒伯格面本身只占 y ∈ [−1.2, 1.2]，z₀ = '+R.z0.toFixed(2)+
+        ' 落在它之外 ⇒ 没有交线；把滑条拉回 ±1.2 之间才有东西可切']);
+  }
   if(R.mode===1&&R.tri){
     var nm=['黄金极限蛋','八度蛋','Preston 四参数'];
     for(i=0;i<3;i++){
@@ -13152,11 +13168,13 @@ var FAMS=[
   {k:'cutA',label:'切面倾角 α（与水平面 · 0° = 正圆，90° = 竖直切）',min:0,max:90,step:0.005,dp:3},
   {k:'cutZ0',label:'切面高度 z₀（越高切得越靠近细腰）',min:0.40,max:2.80,step:0.002,dp:4,
    when:function(P){return (P.cutSurf|0)!==3;}},
-  {k:'cutZ0s',label:'切面高度（舒伯格面自成一个坐标系 · −1.2 到 1.2 就是它的全高）',
-   min:-1.20,max:1.20,step:0.01,dp:2,when:function(P){return (P.cutSurf|0)===3;}},
+  {k:'cutZ0s',label:'切面高度（上限 10.2 · 面本身的全高只到 ±1.2，滑出去就没有交线）',
+   min:-1.20,max:10.20,step:0.01,dp:2,when:function(P){return (P.cutSurf|0)===3;}},
   {k:'cutTheta',label:'直锥半顶角 θ（β 与它比大小 = 三种圆锥曲线的分界）',min:10,max:60,step:0.5,dp:1,
    when:function(P){return (P.cutSurf|0)===1;}},
   {k:'cutC',label:'舒伯格旋转系数 c（扰动沿 θ 卷得多快）',min:0.1,max:1.5,step:0.05,dp:2,
+   when:function(P){return (P.cutSurf|0)===3;}},
+  {k:'cutPhi',label:'相位差 φ（° · 舒伯格面绕 z 轴自转 · 斜切面不动）',min:-180,max:180,step:1,dp:0,
    when:function(P){return (P.cutSurf|0)===3;}},
   {k:'cutMode',label:'蛋数',type:'choice',
    when:function(P){return (P.cutSurf|0)===0&&(P.cutSkin|0)===0;},
@@ -13238,6 +13256,7 @@ var FAMS=[
    opts:[{v:0,t:'★ 曲面 + 切面 + 交线'},{v:1,t:'只看交线（藏起曲面）'},{v:2,t:'只看曲面（藏起切面）'}]}
  ],
  def:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutZ0s:0,cutTheta:30,cutC:0.5,
+      cutPhi:0,
       cutMode:0,cutTint:0,cutShow:0,
       cutSkin:4,hxRow:26,hxQ:1.00,hxR:3.20,hxG:0.80,hxNode:1.35,
       hxL2mode:0,hxL2:68,hxTetK:1.00,hxCmap:0,hxMapT:0,hxView:0,
@@ -14946,6 +14965,7 @@ function fitRadius(obj){
   try{
     obj.updateMatrixWorld(true);
     obj.traverse(function(o){
+      if(o.userData&&o.userData.f0secplane)return;   /* 切平面不参与取景（见 plane()） */
       var g=o.geometry;
       if(!g||!g.attributes||!g.attributes.position)return;
       var p=g.attributes.position,n=p.count||0;
@@ -15116,7 +15136,14 @@ function rebuild(){
   if(!obj){document.getElementById('badge').textContent=f.empty||'参数越界，模型为空';return;}
   /* 圆周阵列：整套模型绕该族对称轴（数学 z 轴）复制 n 份 */
   try{obj=applyArray(obj,P,f);}catch(e){console.error(e);}
-  var bb=new THREE.Box3().setFromObject(obj);
+  /* 取景包围盒【跳过切平面】：那是切片工具，z₀ 能滑到 10.2 —— 让它参与会把整件压成远处一个点。
+     （Box3.setFromObject 会把切平面一起算进去，所以这里逐件累加。） */
+  var bb=new THREE.Box3();
+  obj.updateMatrixWorld(true);
+  obj.traverse(function(o){
+    if(o.userData&&o.userData.f0secplane)return;
+    if(o.geometry)bb.expandByObject(o);
+  });
   var ctrV=new THREE.Vector3(0,0,0);
   if(!bb.isEmpty()){
     var c=bb.getCenter(new THREE.Vector3()),sz=bb.getSize(new THREE.Vector3());

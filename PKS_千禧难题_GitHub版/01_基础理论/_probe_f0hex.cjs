@@ -852,6 +852,102 @@ function chk(c, label, extra) {
   const qSec4 = await ev(`(function(){return {on:F0SEC.on,face:!!F0SEC.face};})()`);
   chk(qSec4.on === false && qSec4.face === false, '切回「不剖」⇒ 裁剪面与剖面膜一起撤掉', J(qSec4));
 
+  /* ================= N. 舒伯格锥面：相位差 φ（面转 · 刀不转）· 切面高度上限 10.2 ================= */
+  console.log('\n[N] 舒伯格锥面：φ 只转面不转刀 · z₀ 上限 10.2 不吃取景');
+
+  const schSet = async (phi, z0) => {
+    await ev(`(function(){ P.cutSurf=3; P.cutSkin=0; P.cutMode=0; P.cutA=30; P.cutC=0.5;
+      P.cutPhi=${phi}; P.cutZ0s=${z0}; P.cutShow=0; P.cutTint=0; rebuild(); buildUI(); return 1; })()`);
+    await sleep(1500);
+  };
+  /* 读【画出来的顶点】（gridGeom 的索引 = i*(nv+1)+j，同一索引就是同一 (s,v) 参数点），
+     不调 f0SchPt 复述公式 —— 那是自证。 */
+  const schSurf = () => ev(`(function(){
+    var out=null;
+    scene.traverse(function(o){ if(out)return;
+      if(o.userData&&o.userData.f0surf&&o.geometry&&o.geometry.attributes&&o.geometry.attributes.position){
+        var a=o.geometry.attributes.position,n=a.count,arr=[];
+        var step=Math.max(1,Math.floor(n/400));
+        for(var i=0;i<n;i+=step)arr.push([a.getX(i),a.getY(i),a.getZ(i)]);
+        out={n:n,pts:arr};}});
+    return out; })()`);
+  const schPlane = () => ev(`(function(){
+    var out=null;
+    scene.traverse(function(o){ if(out)return;
+      if(o.userData&&o.userData.f0secplane){
+        var n=new THREE.Vector3(0,0,1).applyQuaternion(o.quaternion).normalize();
+        out={x:+n.x.toFixed(6),y:+n.y.toFixed(6),z:+n.z.toFixed(6),py:+o.position.y.toFixed(6)};}});
+    return out; })()`);
+  const schStat = () => ev(`(function(){var R=f0Solve(P);
+    var np=0; for(var i=0;i<R.segs.length;i++)np+=R.segs[i].pts.length;
+    return {nSeg:R.nSeg,uMax:+R.uMax.toFixed(4),L:+R.L.toFixed(4),pts:np};})()`);
+
+  await schSet(0, 0);
+  const qA = await schSurf(), qPA = await schPlane(), qR0 = await schStat();
+  await schSet(90, 0);
+  const qB = await schSurf(), qPB = await schPlane(), qR90 = await schStat();
+
+  chk(!!qA && !!qB && qA.pts.length === qB.pts.length && qA.pts.length > 100,
+    '抓到画出来的曲面顶点（φ=0 / φ=90 各 ' + (qA ? qA.pts.length : 0) + ' / ' +
+    (qB ? qB.pts.length : 0) + ' 个采样点，网格 ' + (qA ? qA.n : 0) + ' 顶点）');
+
+  /* ① 刚性绕 z 旋转：半径不变、高度不变、极角整体 +90° */
+  let drMax = 0, dyMax = 0, dpMax = -1e9, dpMin = 1e9, nChk = 0;
+  for (let qi = 0; qA && qB && qi < qA.pts.length; qi++) {
+    const a0 = qA.pts[qi], b0 = qB.pts[qi];
+    const r0 = Math.hypot(a0[0], a0[2]), r1 = Math.hypot(b0[0], b0[2]);
+    drMax = Math.max(drMax, Math.abs(r1 - r0));
+    dyMax = Math.max(dyMax, Math.abs(b0[1] - a0[1]));
+    if (r0 < 0.02) continue;                       /* 贴轴点：极角不稳定，不参与极角判据 */
+    let d = (Math.atan2(b0[2], b0[0]) - Math.atan2(a0[2], a0[0])) * 180 / Math.PI;
+    while (d > 180) d -= 360; while (d < -180) d += 360;
+    dpMax = Math.max(dpMax, d); dpMin = Math.min(dpMin, d); nChk++;
+  }
+  chk(drMax < 1e-5 && dyMax < 1e-6 && dpMin > 89.5 && dpMax < 90.5 && nChk > 200,
+    'φ=90° ⇒ 整张面【刚性绕 z 转 90°】：半径变化 ' + drMax.toExponential(2) +
+    '、高度变化 ' + dyMax.toExponential(2) + '、极角差 ' + dpMin.toFixed(4) + '°…' +
+    dpMax.toFixed(4) + '°（' + nChk + ' 点）', J({ drMax, dyMax, dpMin, dpMax, nChk }));
+
+  /* ② 切平面一动不动 —— 老师那条「斜切面不围绕 z 轴旋转」的判据 */
+  chk(!!qPA && !!qPB && qPA.x === qPB.x && qPA.y === qPB.y && qPA.z === qPB.z && qPA.py === qPB.py,
+    '同一时刻切平面【一动不动】：法向 (' + (qPA ? qPA.x + ', ' + qPA.y + ', ' + qPA.z : '—') +
+    ')、切面 y=' + (qPA ? qPA.py : '—') + '，与 φ=0 逐位相同', J([qPA, qPB]));
+
+  /* ③ 面转刀不转 ⇒ 截线必然换形状 */
+  chk(qR0.pts !== qR90.pts || qR0.uMax !== qR90.uMax,
+    '面转了而刀没转 ⇒ 截线换一副（φ=0：' + qR0.nSeg + ' 支 / 跨度 ' + qR0.L +
+    '；φ=90：' + qR90.nSeg + ' 支 / 跨度 ' + qR90.L + '）', J([qR0, qR90]));
+
+  /* ④ 滑条上限 = 10.2（读参数定义，不是复述某个常量） */
+  const qMax = await ev(`(function(){var f=FAMS[0];for(var i=0;i<f.params.length;i++){
+    var p=f.params[i]; if(p.k==='cutZ0s')return {min:p.min,max:p.max,step:p.step};} return null;})()`);
+  chk(!!qMax && Math.abs(qMax.max - 10.2) < 1e-9 && Math.abs(qMax.min + 1.2) < 1e-9,
+    '切面高度滑条范围 = [' + (qMax ? qMax.min : '?') + ', ' + (qMax ? qMax.max : '?') +
+    ']（上限正是 10.2）', J(qMax));
+
+  /* ⑤ 切平面不许参与取景：z₀ 从 0 滑到 10.2，取景半径与相机距离必须不动。
+     ⚠ 允许 2% 的相对差：包围盒中心随【交线有无】略微移动（模型整体平移量变了），
+        `_rad` 是平移后量的 —— 这是真几何差异。切平面若参与，会从 ~2.18 跳到 ~11（5 倍），
+        差三个数量级，2% 这条线分得开。 */
+  await schSet(0, 0);
+  const qFit0 = await ev(`(function(){return {rad:+_rad.toFixed(6),camD:+camD.toFixed(6)};})()`);
+  await schSet(0, 10.2);
+  const qFit1 = await ev(`(function(){return {rad:+_rad.toFixed(6),camD:+camD.toFixed(6),
+    nSeg:f0Solve(P).nSeg};})()`);
+  const relR = Math.abs(qFit1.rad / qFit0.rad - 1), relC = Math.abs(qFit1.camD / qFit0.camD - 1);
+  chk(relR < 0.02 && relC < 0.02,
+    'z₀：0 → 10.2 ⇒ 取景不塌（半径 ' + qFit0.rad + ' → ' + qFit1.rad + '，差 ' +
+    (100 * relR).toFixed(2) + '%；切平面若参与会跳到 ~11 ＝ 5 倍）', J([qFit0, qFit1]));
+  chk(qFit1.nSeg === 0, 'z₀=10.2 已滑出面全高 ⇒ 交线 0 支（不是崩了，是面只到 ±1.2）', qFit1.nSeg);
+
+  /* ⑥ 屏上真的印了这两句（读数行名随实现变，判据必须读屏上的字） */
+  const qTxt = await ev(`(function(){var rows=f0Read(P),o=[];
+    for(var i=0;i<rows.length;i++)o.push(String(rows[i][0]));return o.join('|');})()`);
+  chk(qTxt.indexOf('相位差 φ') >= 0 && qTxt.indexOf('切面已在面外') >= 0,
+    '读数面板同时印出「相位差 φ」与「⚠ 切面已在面外」', qTxt.slice(0, 200));
+
+  await schSet(0, 0);   /* 复原，别给后面的段留状态 */
+
   console.log('\n--------');
   console.log('JS 异常：' + (errs.length ? errs.slice(0, 4).join(' ;; ') : '无'));
   chk(errs.length === 0, '全程没有 JS 异常', errs.slice(0, 2).join(' ;; '));
