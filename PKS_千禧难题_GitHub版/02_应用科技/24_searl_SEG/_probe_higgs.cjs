@@ -6,7 +6,7 @@ const { spawn } = require('child_process');
 const os = require('os'), path = require('path'), fs = require('fs');
 const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const PORT = 9355;
-const URL = 'http://127.0.0.1:8899/PKS_%E5%8D%83%E7%A6%A7%E9%9A%BE%E9%A2%98_GitHub%E7%89%88/02_%E5%BA%94%E7%94%A8%E7%A7%91%E6%8A%80/24_searl_SEG/AAA_koilon%E7%A3%81%E5%B8%86%E4%B8%8ESEG%E9%A3%9E%E8%A1%8C%E5%8E%9F%E7%90%86_%E9%9B%86%E6%88%90%E4%BB%BF%E7%9C%9F%E5%8F%B0.html';
+const URL = process.env.PROBE_URL || 'http://127.0.0.1:8899/02_%E5%BA%94%E7%94%A8%E7%A7%91%E6%8A%80/24_searl_SEG/AAA_koilon%E7%A3%81%E5%B8%86%E4%B8%8ESEG%E9%A3%9E%E8%A1%8C%E5%8E%9F%E7%90%86_%E9%9B%86%E6%88%90%E4%BB%BF%E7%9C%9F%E5%8F%B0.html';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const J = JSON.stringify;
 let pass = 0, fail = 0;
@@ -161,7 +161,39 @@ const lamCOf = m => (HC / m) * 1e-15;
     '第五节写明「这一节之前全页没有希格斯」');
   chk(/同一句话换了单位/.test(body), '写明「差 10¹⁷ 倍」是同一句话换单位');
 
-  console.log('\n── 六、深链与异常 ──');
+  console.log('\n── 六、溯源注记（本式不是本项目产物） ──');
+  /* 这一节的立身之本：λ = m_H²/(2v²) 的出处只能是标准模型。
+     🔴 判据只查「溯源」「出处」这种泛词 ⇒ 恒真式。必须查能被删掉的实质句。 */
+  chk(/五、这个式子的出处（溯源·必读）/.test(body), 'ⅩⅢ 有五「这个式子的出处（溯源·必读）」一节');
+  chk(/不是本项目任何一个模型的产物/.test(body), '写明「不是本项目任何一个模型的产物」');
+  chk(/在标准模型里本来就是自由参数/.test(body), '写明「λ 在标准模型里本来就是自由参数」');
+  chk(/是它的定义式/.test(body) && /不是对它的推导/.test(body), '写明「是定义式，不是推导」（防有人把注记写成自夸）');
+  /* 🔴 6254 在 v14 里出现两处（表格口径 / 盲区注记）。只查 /6254个文件/ 时，
+     改掉表格那处仍会被注记那处命中 ⇒ 假绿（变异 M4 实测没翻红）。拆成两条各卡一处。 */
+  chk(/扫过6254个文件/.test(body), '给出检索口径：扫过 6254 个文件');
+  chk(/可文本检索的6254个文件里/.test(body), '盲区注记里同一口径也写 6254（两处同源，改一处必翻红）');
+  chk(/本节之外：0处/.test(body), '写明「本节之外：0 处」');
+  chk(/只覆盖可文本检索的文件/.test(body), '披露盲区①：只覆盖可文本检索的文件');
+  chk(/png2295/.test(body) && /pdf193/.test(body), '披露盲区②：列出 png 2295 / pdf 193 抓不到');
+  chk(/证的是「字面式」没在别处出现/.test(body), '披露盲区③：只证字面式、不证结构');
+  chk(/黄金比/.test(body) && /6\.854/.test(body), '黄金蛋里的 φ⁴ 判为黄金比四次幂（6.854），不是四次自耦合');
+  chk(/374个不同小数/.test(body), '真理表实测口径：全页 374 个不同小数');
+
+  /* 独立复算三条，全部不与页面共享代码 */
+  const LADDER = [1, 2, 3, 4, 5].map(n => 1 / (2 * n * n));
+  const l5 = LADDER.map(x => x.toPrecision(4));
+  chk(l5.join(',') === '0.5000,0.1250,0.05556,0.03125,0.02000',
+    'λ 阶梯独立复算 = ' + l5.join(' / '));
+  chk(/0\.05556/.test(body) && /0\.03125/.test(body), '页面阶梯表与独立复算同值（0.05556 / 0.03125）');
+  const gapPct = (1 - 0.125 / lamRef) * 100;
+  chk(Math.abs(gapPct - 3.31) < 0.02,
+    '最近台阶差 = ' + gapPct.toFixed(2) + '%（相对目标值口径，页面写 3.31%）');
+  const mH18 = 246.22 / 2, sig = (125.25 - mH18) / 0.11;
+  chk(Math.abs(mH18 - 123.11) < 0.005 && Math.abs(sig - 19) < 1,
+    '若 λ=1/8 ⇒ m_H = v/2 = ' + mH18.toFixed(2) + ' GeV，比实测低 ' + (125.25 - mH18).toFixed(2) + ' GeV = ' + sig.toFixed(1) + 'σ');
+  chk(/19σ/.test(body) && /被排除/.test(body), '页面写明这是「被排除」而不是「差不多」');
+
+  console.log('\n── 七、深链与异常 ──');
   /* 🔴 必须换掉查询串：只改 hash 的 navigate 是「同文档片段导航」，页面不会重载，
      滑杆会留着上一步设的 v=254 ⇒ 读到 0.12148 而不是默认值（2026-11-04 踩过）。 */
   await send('Page.navigate', { url: URL + '?fresh=1&r=' + Date.now() + '#v14' });
