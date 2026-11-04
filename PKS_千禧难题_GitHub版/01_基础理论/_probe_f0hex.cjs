@@ -47,6 +47,14 @@ function chk(c, label, extra) {
     return '';})()`);
   const allRows = () => ev(`[].map.call(document.querySelectorAll('#readout div'),function(d){
     return d.querySelector('span').textContent+'='+d.querySelector('b').textContent;})`);
+  /* 整行文字（含所有 <b> 与正文、已去空白）。判「屏上那句话」必须读整句：
+     只读第一个 <b> 会读到「都立了锥」而不是那个数（2026-11-04 因此这条一直假红）。 */
+  const fullRow = (name) => ev(`(function(){
+    var rs=[].slice.call(document.querySelectorAll('#readout div'));
+    for(var i=0;i<rs.length;i++){var s=rs[i].querySelector('span');
+      if(s&&s.textContent.indexOf(${J(name)})>=0)
+        return (rs[i].textContent||'').replace(/\\s+/g,'');}
+    return '';})()`);
   const sliderLabels = () => ev(`[].map.call(document.querySelectorAll('#rows .row'),function(r){
     return (r.querySelector('label span')||{}).textContent||'';})`);
   const badge = () => ev('document.getElementById("badge").textContent.trim()');
@@ -520,10 +528,11 @@ function chk(c, label, extra) {
      本轮就是这么假红三条的（nTie 读出 4536）。 */
   const st2 = await ev(`(function(){var L=f0HexL2(P);if(!L)return null;var s=L.stats;
     return {web:s.web,nTie:s.nTie,nBrace:s.nBrace,nSpoke:s.nSpoke,nIn2:s.nIn2,
-            nTet:s.nTet,nApex:s.nApex,nInner:s.nInner,nTot2:s.nStruts2,ctrOff:s.ctrOff};})()`);
+            nTet:s.nTet,nApex:s.nApex,nInner:s.nInner,nZeroIn:s.nZeroIn,nTot2:s.nStruts2,ctrOff:s.ctrOff};})()`);
   console.log('  stats：' + JSON.stringify(st2));
   const rBr = await rowTxt('\u659c\u6491\uff08\u6297\u526a\uff09');
   const rApx = await rowTxt('\u5185\u9876\u70b9\u4e92\u8fde');
+  const rApxF = await fullRow('\u5185\u9876\u70b9\u4e92\u8fde');
   const rTot2 = await rowTxt('\u4e8c\u5c42\u603b\u6746\u6570');
   const rCellsJ = await rowTxt('\u683c\u6570');
 
@@ -537,7 +546,8 @@ function chk(c, label, extra) {
   const nTie = numOf(rTie, /(\d+)\u6839/);
   const nSpoke = numOf(rTie, /\uff0b\s*(\d+)\s*\u6839\u9762\u5185\u8f90\u6761/) || 0;
   const nBr = numOf(rBr, /(\d+)\u6839/);
-  const nApx = numOf(rApx, /(\d+)\u6839/);
+  /* 这一行的数在正文里、不在 <b> 里 ⇒ 必须读整行（2026-11-04：原来读 <b> 读到「都立了锥」，一直是 NaN）。 */
+  const nApx = numOf(rApxF, /(\d+)\u6839/);
   const nTot2 = numOf(rTot2, /^(\d+)\u6839/);
   const nCells = numOf(rCellsJ, /(\d+)\u683c/);
   console.log('  λ=' + lam + '% · h/a=' + hOverA + ' · 侧棱比=' + apexRatioMed +
@@ -569,8 +579,14 @@ function chk(c, label, extra) {
   }
   chk(nTri > 200 && nTet === nTri,
     '全建档：四面体个数 = 内层三角面数（' + nTet + ' = ' + nTri + '；每个三角面正好当一次底座）');
-  chk(nEdge > 200 && nApx === nEdge,
-    '全建档：内顶点互连根数 = 内层边数（' + nApx + ' = ' + nEdge + '；内顶点网是三正则 ⇒ 边数相同）');
+  /* 🔴 2026-11-04 纠正：这条原来判「nApx === nEdge」，把它当成恒等式 ⇒ 常年一条红。
+     查到底之后发现不是「少连了」，而是极点那几圈的三角形是针状、相邻两个锥的第 4 点重合、
+     杆长为 0（逐条数见 S10–S16）。恒等式应写成「内互连 = 内层棱数 − 零长根数」。
+     另外原来的 nApx 读的是第一个 <b>（=「都立了锥」）⇒ 根本没读到数，也是假红的一半原因。 */
+  chk(nEdge > 200 && st2 && nApx === st2.nInner &&
+      (nEdge - (st2.nZeroIn || 0)) === st2.nInner,
+    '全建档：内顶点互连 = 内层棱数 − 零长根数（' + nEdge + ' − ' + (st2 && st2.nZeroIn) +
+    ' = ' + (st2 && st2.nInner) + '；屏上印 ' + nApx + ' 根）');
   chk(st2 && (st2.nTie + st2.nSpoke + st2.nIn2 + st2.nBrace + 3 * st2.nTet + st2.nInner) === st2.nTot2,
     '杆数恒等式：tie + 辐条 + 内层边 + 腹杆 + 3×四面体 + 内互连 = 二层总杆（' +
     [st2 && st2.nTie, st2 && st2.nSpoke, st2 && st2.nIn2, st2 && st2.nBrace,
@@ -1607,6 +1623,70 @@ function chk(c, label, extra) {
     (s9 ? s9.asp : '?') + '」', J(s9));
   chk(s9 && s9.cen.indexOf('对称（椭圆体）') >= 0,
     '读数把椭圆体判成「对称（椭圆体）」，实得「' + (s9 ? s9.cen : '?') + '」', J(s9));
+
+  /* ---- S10–S16（2026-11-04）把「内顶点互连少 12 根」查到底 ----
+     原来屏上写「有 12 条内层棱不是正好被 2 个面共用（极点/经度接缝）」—— 实测是错的。
+     逐条数过：内层三角网完全流形，每条棱都正好 2 个面；少的那些是【零长】杆
+     （极点那几圈是针状三角形，相邻两个锥的第 4 点落到同一点）。
+     判据全部用页面返回的 T / ap / V 现算，不重写三角剖分（重写出来的数证明不了页面）。 */
+  await ev(`(function(){P.cutSurf=0;P.cutA=31.71747441146101;P.cutZ0=1.618033988749895;
+    P.cutSkin=4;P.hxRow=26;P.hxQ=1.0;P.hxCore=3;P.hxWeb=1;P.hxL2mode=0;P.hxL2=68;
+    buildUI();rebuild();return 1;})()`);
+  await sleep(2400);
+  const s10 = await ev(`(function(){
+    var L=f0HexL2(P), N=f0HexNet(P); if(!L||!N) return null;
+    var T=N.T, V=N.V, ap=L.ap, s=L.stats;
+    var map=new Map();
+    for (var f=0;f<T.length;f++){var A=T[f][0],B=T[f][1],C=T[f][2];
+      [[A,B],[B,C],[C,A]].forEach(function(e){
+        var k=e[0]<e[1]?e[0]+'_'+e[1]:e[1]+'_'+e[0];
+        var o=map.get(k); if(o) o.push(f); else map.set(k,[f]);});}
+    var umax=0,i2;
+    for (i2=0;i2<V.length;i2++){var u2=Math.sqrt(V[i2][0]*V[i2][0]+V[i2][2]*V[i2][2]); if(u2>umax)umax=u2;}
+    var nE=0,nNon2=0,nZero=0,nNoAp=0,maxZeroU=0,minPos=1e9,nTet=0;
+    map.forEach(function(fs,k){
+      nE++;
+      if (fs.length!==2){nNon2++;return;}
+      var P1=ap[fs[0]],P2=ap[fs[1]];
+      if(!P1||!P2){nNoAp++;return;}
+      var dx=P2[0]-P1[0],dy=P2[1]-P1[1],dz=P2[2]-P1[2];
+      var d=Math.sqrt(dx*dx+dy*dy+dz*dz);
+      if (d>1e-9){ if(d<minPos) minPos=d; return; }
+      nZero++;
+      var pr=k.split('_'),a=+pr[0],b=+pr[1];
+      var ua=Math.sqrt(V[a][0]*V[a][0]+V[a][2]*V[a][2]);
+      var ub=Math.sqrt(V[b][0]*V[b][0]+V[b][2]*V[b][2]);
+      var mu=ua>ub?ua:ub; if(mu>maxZeroU) maxZeroU=mu;
+    });
+    for (var i3=0;i3<ap.length;i3++) if (ap[i3]) nTet++;
+    return {nE:nE,nNon2:nNon2,nZero:nZero,nNoAp:nNoAp,umax:umax,maxZeroU:maxZeroU,
+            minPos:minPos,nTetAp:nTet,nInner:s.nInner,nIn2:s.nIn2,nZeroIn:s.nZeroIn,nTet:s.nTet};
+  })()`);
+  console.log('  S10 现场：' + JSON.stringify(s10));
+  chk(s10 && s10.nE > 200 && s10.nNon2 === 0,
+    'S10 内层三角网完全流形：' + (s10 && s10.nE) + ' 条棱每条都正好被 2 个面共用（不是 2 个面的 ' +
+    (s10 && s10.nNon2) + ' 条）');
+  chk(s10 && s10.nNoAp === 0, 'S10b 每个三角面都有第 4 点（ap 无缺，共 ' + (s10 && s10.nTetAp) + ' 个）',
+    s10 && s10.nNoAp);
+  chk(s10 && s10.nE === s10.nIn2,
+    'S10c stats 报的内层边数 = 从 T 现算的棱数（' + (s10 && s10.nIn2) + ' = ' + (s10 && s10.nE) + '）');
+  chk(s10 && s10.nZero > 0 && s10.nZero === s10.nZeroIn,
+    'S11 零长根数与 stats.nZeroIn 同源且不为 0（' + (s10 && s10.nZero) + ' = ' +
+    (s10 && s10.nZeroIn) + '；「不为 0」这一半是防它退化成恒真式）');
+  chk(s10 && s10.nE - s10.nZero === s10.nInner,
+    'S12 账对得上：内层棱数 − 零长根数 = 内顶点互连（' + (s10 && s10.nE) + ' − ' +
+    (s10 && s10.nZero) + ' = ' + (s10 && s10.nInner) + '）');
+  chk(s10 && s10.maxZeroU < 0.15 * s10.umax,
+    'S13 零长杆全在极点圈：最大半径 ' + (s10 && s10.maxZeroU.toFixed(4)) + ' = ' +
+    (s10 && (100 * s10.maxZeroU / s10.umax).toFixed(1)) + '% u_max（判 < 15%）');
+  chk(s10 && s10.minPos > 1e-6,
+    'S14 其余互连杆都不是零长（最短 ' + (s10 && s10.minPos.toExponential(2)) +
+    '；若整体退化，S13 也拦不住）');
+  const s10txt = await fullRow('\u5185\u9876\u70b9\u4e92\u8fde');
+  chk(s10txt.indexOf('\u96f6\u957f') >= 0,
+    'S15 屏上把原因写成「零长」，不再写「棱没被两个面共用」，实得「' + s10txt.slice(0, 100) + '」');
+  chk(s10txt.indexOf('\u5b8c\u5168\u6d41\u5f62') >= 0 && s10txt.indexOf('\u5bf9\u5f97\u4e0a') >= 0,
+    'S16 屏上同时点明「完全流形」并给出对账口径（…−…=…（对得上）），实得「' + s10txt.slice(0, 100) + '」');
 
   try { fs.rmSync(DL, { recursive: true, force: true }); } catch (e) {}
   console.log('\n--------');
