@@ -24,6 +24,13 @@ const TINF = k => 0.1 / (1 * k * 1);
 const DRAIN_H = (Ck, dT, Q) => Ck * dT / Q / 3600;
 // 能量尺度之比（相对化学 1e7 J/kg）
 const ECH = 1e7, EFIS = 3.4e14, EFIS_RATIO = EFIS / ECH;
+// 十三-6 通量账：σT⁴(300K) × 直径 1 m 双面圆盘（常数自己写，不读页面）
+const SIGMA = 5.670374419e-8, TAMB = 300, DIAM = 1.0;
+const FLUX = SIGMA * Math.pow(TAMB, 4);              // 459.3 W/m²
+const AREA = 2 * Math.PI * Math.pow(DIAM / 2, 2);     // 1.5708 m²
+const FLUX_CAP = FLUX * AREA;                         // 721.2 W
+const ETA_C = 1 - 2.725 / TAMB;                       // 卡诺 0.990917
+const GAP = 1e14 / FLUX_CAP;                          // 缺口 1.386e11
 
 (async () => {
   const ud = fs.mkdtempSync(path.join(os.tmpdir(), 'koilon13-'));
@@ -83,8 +90,9 @@ const ECH = 1e7, EFIS = 3.4e14, EFIS_RATIO = EFIS / ECH;
     };})()`);
   chk(st.nView === 13, '页面 13 个 view 都在', st.nView);
   chk(st.has13, '找到「十三、三本账」一节', st.h3);
-  chk(st.nTab13 === 2, '十三节有 2 张表（三本账 / 能量阶梯）', st.nTab13);
-  chk(st.nH4 === 5, '十三节 5 个小标题（十三-1..5）', st.nH4);
+  /* 不写死「恰好 N」：内容会增加，写死会变成假红。只要求「至少这么多」。 */
+  chk(st.nTab13 >= 3, '十三节至少 3 张表（三本账 / 能量阶梯 / 通量账）', st.nTab13);
+  chk(st.nH4 >= 8, '十三节至少 8 个小标题（十三-1..8）', st.nH4);
 
   // ---------- R2 第八节：锁相量纲 ----------
   console.log('R2 第八节量纲');
@@ -205,13 +213,70 @@ const ECH = 1e7, EFIS = 3.4e14, EFIS_RATIO = EFIS / ECH;
     return {no1: t.indexOf('没证明 koilon 存在')>=0,
             no2: t.indexOf('没证明 SEG 的异常净功率存在')>=0,
             no6: t.indexOf('模型输出')>=0,
-            m1: t.indexOf('本页没有主张「加负载') >= 0,
+            m1: t.indexOf('本页原稿判错了') >= 0,
             m2: t.indexOf('方向这一半说重了') >= 0,
             m3: t.indexOf('同一个事实换说法') >= 0};})()`);
   chk(b.no1 && b.no2 && b.no6, '十三-4 列了「本页没有证明什么」6 条', b);
-  chk(b.m1, '十三-5 澄清「本页没主张加负载更冷」（审阅误读处）', b.m1);
+  chk(b.m1, '十三-5 ① 已改成「本页原稿判错了」（不再说页面主张相反）', b.m1);
   chk(b.m2, '十三-5 指出「越耦合越冷是预设」方向那一半说重了', b.m2);
   chk(b.m3, '十三-5 指明「336 同义反复」本页已自陈', b.m3);
+
+  // ---------- R11 十二-3 / 十三-6·7·8：加负载更冷 + 通量账 + 适用域 ----------
+  console.log('R11 加负载更冷与通量账');
+  const h = await ev(`(function(){
+    var t = document.body.textContent||'';
+    return {
+      title: t.indexOf('负载是「输出」，不是热源')>=0,
+      oldGone: t.indexOf('加负载是「更热」')<0,
+      loadNoHeat: t.indexOf('进热节点的只有机内损耗')>=0,
+      slack: t.indexOf('d lnΓ / dP')>=0 && t.indexOf('d lnP')>=0,
+      dpu: t.indexOf('只有一层钕磁')>=0,
+      flux: t.indexOf('459.3')>=0, cap: t.indexOf('721 W')>=0, carnot: t.indexOf('0.9909')>=0,
+      gap: t.indexOf('11.1 个数量级')>=0, gx: t.indexOf('0.92 个广西')>=0,
+      mc2: t.indexOf('守恒律比')>=0,
+      ent: t.indexOf('不存在从这面到那面的信号传递')>=0, noSig: t.indexOf('no-signaling')>=0
+    };})()`);
+  chk(h.title && h.oldGone, '十二-3 标题已改「负载是输出，不是热源」，旧结论已消失', h);
+  chk(h.loadNoHeat, '十二-1 明写「进热节点的只有机内损耗」（负载在外电路）', h.loadNoHeat);
+  chk(h.slack, '给出可测判据 d lnΓ/dP_out > d lnP_int/dP_out', h.slack);
+  chk(h.dpu, 'DPU 发热归因于单层钕磁（结构差异，非否证 SEG）', h.dpu);
+  chk(h.flux && h.cap && h.carnot, '通量表列出 σT⁴=459.3 W/m²、721 W 上限、卡诺 0.9909', h);
+  chk(h.gap && h.gx, '缺口写成 11.1 个数量级 / 0.92 个广西（可核的直观尺度）', h);
+  chk(h.mc2, '十三-7 写明「守恒律比 E=mc² 更底层」（适用域声明）', h.mc2);
+  chk(h.ent && h.noSig, '十三-8 把「超光速传播」改成「根本没有传播」并挂 no-signaling', h);
+
+  /* 多行公式块：.cryfml 原本没有 white-space:pre-wrap，6 个块被折叠成一行。
+     这里不查 CSS 字符串，直接量渲染高度 / 行高 —— 折叠了就必然只有 1 行。 */
+  /* 十二/十三 住在 v7 视图里，不先切过去 rect 全是 0 ⇒ 会量成「0 行」的假红 */
+  await ev(`(function(){ location.hash='#v7'; return true; })()`);
+  await sleep(800);
+
+  const fmt = await ev(`(function(){
+    var d = document.querySelectorAll('.cryfml'), t = null;
+    for (var i=0;i<d.length;i++) if (d[i].textContent.indexOf('d lnΓ')>=0) t = d[i];
+    if (!t) return null;
+    var cs = getComputedStyle(t), r = t.getBoundingClientRect();
+    var lh = parseFloat(cs.lineHeight) || 0;
+    var pad = (parseFloat(cs.paddingTop)||0) + (parseFloat(cs.paddingBottom)||0);
+    return {ws: cs.whiteSpace, h: Math.round(r.height), lh: Math.round(lh),
+            lines: lh ? Math.round((r.height - pad) / lh) : 0,
+            noPL: (document.body.textContent||'').indexOf('P_load') < 0};})()`);
+  chk(fmt && fmt.ws.indexOf('pre') === 0, '多行公式块 white-space = pre-wrap（不被折叠）', fmt);
+  chk(fmt && fmt.lines >= 4, '判据公式块渲染成 ≥4 行（行高 ' + (fmt ? fmt.lh : '?') + 'px）', fmt);
+  chk(fmt && fmt.noPL, '全页已无 P_load 残留（热节点只认 P_int）', fmt);
+
+  /* 独立复算：不读页面中间变量，常数自己写 */
+  chk(near(FLUX, 459.3, 1e-3), 'σT⁴(300K) 独立复算 = ' + FLUX.toFixed(1) + ' W/m²', FLUX);
+  chk(near(FLUX_CAP, 721, 3e-3), '直径 1 m 双面圆盘上限独立复算 = ' + FLUX_CAP.toFixed(1) + ' W', FLUX_CAP);
+  chk(near(ETA_C, 0.9909, 1e-3), '卡诺上限独立复算 = ' + ETA_C.toFixed(4) + '（300 K → 2.725 K）', ETA_C);
+  /* 页面印的是「11.1」，真实 11.14 —— 比的是「四舍五入到一位后相等」，不是相对 3e-3 */
+  chk(Math.abs(Math.round(Math.log10(GAP) * 10) / 10 - 11.1) < 1e-9,
+    '缺口量级独立复算 = ' + Math.log10(GAP).toFixed(2) + ' → 印作 11.1 个数量级',
+    Math.log10(GAP));
+  const A1 = 1e6 / FLUX, A2 = 1e9 / FLUX, A3 = 1e14 / FLUX;
+  chk(near(A1 / 2.18e3, 1, 1e-2) && near(A2 / 2.18e6, 1, 1e-2) && near(A3 / 2.18e11, 1, 1e-2),
+    '三个面积与页面一致（1 MW→' + A1.toFixed(0) + ' m²｜1 GW→' + A2.toExponential(2) +
+    ' m²｜10¹⁴ W→' + A3.toExponential(2) + ' m²）', [A1, A2, A3]);
 
   // ---------- R10 运行 ----------
   console.log('R10 运行');
