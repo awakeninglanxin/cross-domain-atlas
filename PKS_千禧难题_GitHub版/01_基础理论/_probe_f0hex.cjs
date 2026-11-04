@@ -1256,10 +1256,14 @@ function chk(c, label, extra) {
        这条同时把 modelRect() 的算法钉住：它一旦退回 Box3().setFromObject(root)，
        切平面那块 size×size 的大板会把矩形撑回画布比例，这里立刻红。 */
     const cvAsp = cvDim.w / cvDim.h, gifAsp = W / H;
-    chk(Math.abs(gifAsp - cvAsp) > 0.15,
-      'GIF 宽高比 ' + gifAsp.toFixed(3) + ' ≠ 画布 ' + cvAsp.toFixed(3) +
-      '（' + W + '×' + H + ' vs ' + cvDim.w + '×' + cvDim.h + '）⇒ 真的按模型矩形裁过，不是整幅录下来',
-      J([gifAsp, cvAsp]));
+    /* 判据不能写「GIF 比例 ≠ 画布比例」——那是相对量：画布改高之后（741×636）
+       两者只差 0.147，一刀切 0.15 就假红。改成对着【模型矩形】判：
+       按模型裁 ⇒ GIF 宽高比必须等于模型矩形的宽高比（本来就该相等，与画布无关）。 */
+    const modelAsp = rcTxt ? rcTxt.w / rcTxt.h : null;
+    chk(modelAsp && Math.abs(gifAsp - modelAsp) < 0.03,
+      'GIF 宽高比 ' + gifAsp.toFixed(3) + ' = 模型矩形 ' + (modelAsp ? modelAsp.toFixed(3) : '?') +
+      '（画布是 ' + cvAsp.toFixed(3) + '）⇒ 真的按模型矩形裁过，不是整幅录下来',
+      J([gifAsp, modelAsp, cvAsp]));
     chk(rcTxt && Math.abs(H - rcTxt.h * W / rcTxt.w) <= 2,
       '高 = 裁切高 × (680 / 裁切宽)：' + (rcTxt ? rcTxt.w + '×' + rcTxt.h : '?') +
       ' → ' + (rcTxt ? (rcTxt.h * 680 / rcTxt.w).toFixed(1) : '?') + '，实际 ' + H +
@@ -1309,6 +1313,96 @@ function chk(c, label, extra) {
   chk(!/\u5b8c\u6210/.test(msgAfterMove) && /-30%/.test(msgAfterMove),
     '一动滑条，状态行就回到实时状态（' + String(msgAfterMove).slice(0, 30) + '）—— 不是把状态行永久锁死',
     msgAfterMove);
+
+  /* ================= R. 锥面定义域（面紧凑 / 线完整）+ M 上限 48（2026-11-04 老师） ================= */
+  console.log('\n[R] 锥面「高度被限制 / 曲线被拦腰截断」+ M 上限 48');
+  await ev(`(function(){var bs=document.querySelectorAll('#tabs button');
+    for(var i=0;i<bs.length;i++){if((bs[i].textContent||'').indexOf('\\u53cc\\u9525')>=0){bs[i].click();return 1;}}
+    return 0;})()`);
+  await sleep(1600);
+
+  /* ---- R1 M 滑杆上限 = 48 ---- */
+  const mUI = await ev(`(function(){
+    var ws=[].slice.call(document.querySelectorAll('#rows > div')), out=null;
+    for(var i=0;i<ws.length;i++){var l=ws[i].firstElementChild;
+      if(l&&(l.textContent||'').indexOf('\\u6BCD\\u7EBF\\u5206\\u884C\\u6570')>=0){
+        var r=ws[i].querySelector('input[type=range]');
+        out=r?{min:+r.min,max:+r.max,val:+r.value}:null;}}
+    return out;})()`);
+  chk(mUI && mUI.max === 48 && mUI.min === 8,
+    '母线分行数 M 的滑杆夹在 8~48（老师要求：上限 48，再高页面会卡死）', J(mUI));
+  chk(mUI && mUI.val === 26, '默认仍是 26（黄金蛋的档，没被上限改动波及）', mUI && mUI.val);
+
+  /* ---- R2 内核 clamp 同源：P.hxRow=60 必须被夹到 48 ---- */
+  const mClamp = await ev(`(function(){
+    var old=P.hxRow; P.hxRow=60;
+    var net=f0HexNet(P), got=net?net.stats.mTarget:null;
+    P.hxRow=old; return {input:60,used:got};})()`);
+  chk(mClamp && mClamp.used === 48,
+    '传进来的 M=60 会被内核夹到 48（旧 URL / localStorage 绕不过界面）', J(mClamp));
+
+  /* ---- R3 dom 跟着 z₀ 走，cutLo 固定在 0.34 ---- */
+  const doms = await ev(`(function(){
+    var out=[];
+    [1.618034,2.428,3.20].forEach(function(z){
+      P.cutSurf=0;P.cutA=31.7174744;P.cutZ0=z;
+      var S=f0SurfDef(P);
+      out.push({z0:z,lo:+S.dom[0][0].toFixed(4),hi:+S.dom[0][1].toFixed(4),cutLo:S.cutLo});});
+    return out;})()`);
+  chk(doms && doms[0].cutLo === 0.34 && doms[1].cutLo === 0.34 && doms[2].cutLo === 0.34,
+    '求交下界 cutLo 恒为 0.34（曲线该多长有多长，不被"画到哪"卡住）', J(doms));
+  chk(doms && doms[0].lo < doms[1].lo && doms[1].lo < doms[2].lo,
+    '曲面下界跟着 z₀ 上移（' + doms.map(d => d.lo).join(' < ') + '）—— 这就是"锥面不再被压扁"的机制',
+    J(doms.map(d => d.lo)));
+  chk(doms && doms[0].hi >= 3.0 && doms[2].hi >= 4.5,
+    '曲面上界也跟着 z₀ 抬（z₀=3.20 时到 ' + (doms ? doms[2].hi : '?') + '），交线不再撞上限', J(doms.map(d => d.hi)));
+
+  /* ---- R4 高 z₀ 三档不再截断 ---- */
+  const hiZ = await ev(`(function(){
+    var out=[];
+    [2.80,3.00,3.20].forEach(function(z){
+      P.cutSurf=0;P.cutA=38.150;P.cutZ0=z;P.cutMode=0;
+      var R=f0Solve(P);
+      out.push({z0:z,nClosed:R.nClosed,clipped:!!R.clipped,nSeg:R.nSeg});});
+    return out;})()`);
+  chk(hiZ && hiZ.every(r => !r.clipped && r.nClosed === 1),
+    'z₀ = 2.80 / 3.00 / 3.20 三档都是【闭合 1 支、0 截断】（改前 2.80 就断）', J(hiZ));
+
+  /* ---- R5 2D 红线不贴边（像素包围盒）---- */
+  await ev(`(function(){P.cutSurf=0;P.cutA=38.150;P.cutZ0=2.4280;P.cutSkin=0;P.cutMode=0;
+    rebuild();buildUI();return 1;})()`);
+  await sleep(1800);
+  const ink = await ev(`(function(){
+    var pc=document.getElementById('prof'),g=pc.getContext('2d');
+    var d=g.getImageData(0,0,pc.width,pc.height).data,W=pc.width,H=pc.height;
+    var x0=1e9,y0=1e9,x1=-1,y1=-1,n=0;
+    for(var y=0;y<H;y++)for(var x=0;x<W;x++){var i=(y*W+x)*4,r=d[i],gg=d[i+1],b=d[i+2];
+      if(r>120&&r>gg*1.6&&r>b*1.6){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;n++;}}
+    return {W:W,H:H,x0:x0,y0:y0,x1:x1,y1:y1,n:n,
+      topPct:+(100*y0/H).toFixed(2),botPct:+(100*(H-y1)/H).toFixed(2)};})()`);
+  chk(ink && ink.n > 200 && ink.topPct >= 3 && ink.botPct >= 3,
+    '2D 红线上下各留 ≥3% 的白（上 ' + (ink ? ink.topPct : '?') + '% / 下 ' +
+    (ink ? ink.botPct : '?') + '%）—— 不贴边，不会被看成"截断"', J(ink));
+  chk(ink && Math.abs((ink.x1 - ink.x0) / (ink.y1 - ink.y0) - 0.75) < 0.35,
+    '红线是竖长形（宽高比 ' + (ink ? ((ink.x1 - ink.x0) / (ink.y1 - ink.y0)).toFixed(2) : '?') +
+    '），说明等轴没被拉伸', ink && (ink.x1 - ink.x0) / (ink.y1 - ink.y0));
+
+  /* ---- R6 画布不再锁 520 ---- */
+  const rLay = await ev(`(function(){
+    var cb=document.getElementById('cvbox'),pb=document.getElementById('profbox');
+    return {vh:innerHeight, cvH:Math.round(cb.getBoundingClientRect().height),
+      profH:Math.round(pb.getBoundingClientRect().height),
+      profBmpH:document.getElementById('prof').height,
+      profCliH:document.getElementById('prof').clientHeight};})()`);
+  chk(rLay && rLay.cvH > 560,
+    '3D 画布高度 ' + (rLay ? rLay.cvH : '?') + 'px > 520（74vh 生效，不再锁死 520 让人"看不全"）', J(rLay));
+  chk(rLay && Math.abs(rLay.profH - rLay.cvH) <= 40,
+    '右栏与 3D 同高（' + (rLay ? rLay.profH : '?') + ' vs ' + (rLay ? rLay.cvH : '?') +
+    '，差 ≤40px）', J(rLay));
+  chk(rLay && Math.abs(rLay.profCliH - rLay.profBmpH) <= 2,
+    '剖面画布的位图高度与显示高度一致（' + (rLay ? rLay.profBmpH : '?') + ' vs ' +
+    (rLay ? rLay.profCliH : '?') + '）—— 没有"位图被 CSS 拉伸"这种隐形裁切', J(rLay));
+
 
   try { fs.rmSync(DL, { recursive: true, force: true }); } catch (e) {}
   console.log('\n--------');

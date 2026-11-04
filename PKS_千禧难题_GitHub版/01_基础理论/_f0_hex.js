@@ -75,7 +75,10 @@ function f0HexProf(P) {
 
 /* ---- 蛋面钢架 · 建网（纯数学，不碰 THREE；build/read/prof 三处共用）---- */
 function f0HexNet(P) {
-  var M = Math.max(8, Math.min(60, Math.round(P.hxRow === undefined ? 26 : P.hxRow)));
+  /* ⚠ 上限 48（不是 60）：M=50 时四面体芯与节点球已经把主线程卡到近崩
+     （2026-11-04 老师实测「太大会导致网页崩溃，太卡」）。clamp 与滑杆 max 必须同源，
+     否则旧 URL / localStorage 里存着 M=50 的会绕过界面继续把页面拖死。 */
+  var M = Math.max(8, Math.min(48, Math.round(P.hxRow === undefined ? 26 : P.hxRow)));
   var q = Math.max(0, Math.min(1.2, (P.hxQ === undefined ? 1.0 : P.hxQ)));
   var hxR = P.hxR === undefined ? 3.2 : P.hxR;
   var hxG = Math.max(-2, Math.min(2, P.hxG === undefined ? 0.8 : P.hxG));
@@ -1132,8 +1135,10 @@ function f0HexProf2D(ctx,W,H,P){
     return;
   }
   var st=net.stats,tMin=pf.t0,tMax=pf.t1,tSpan=Math.max(1e-6,tMax-tMin);
-  var tMid=(tMin+tMax)/2,pad=22;
-  var sc=Math.min((W-2*pad)/(2*pf.umax*1.10),(H-2*pad-20)/tSpan)*0.94;
+  var tMid=(tMin+tMax)/2,pad=26;
+  var sc=Math.min((W-2*pad)/(2*pf.umax*1.10),(H-2*pad-20)/tSpan)*0.92;
+  /* 纵向硬保险：上下各留 ≥7% 的高（同 f0Prof） */
+  sc=Math.min(sc,(H*0.86)/tSpan);
   var X=function(u){return W/2+u*sc;},T=function(t){return (H-20)/2-(t-tMid)*sc;};
   ctx.strokeStyle='#eef1f6';ctx.lineWidth=1;
   var i2;

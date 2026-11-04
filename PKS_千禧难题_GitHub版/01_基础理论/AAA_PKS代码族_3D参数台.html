@@ -170,9 +170,18 @@ a.mdlink:hover{border-bottom-style:solid}
   .stage,.stage.noprof{grid-template-columns:1fr}
   .stage > #cvbox,.stage > #profbox,.stage > .ctrl,.stage > .fxp-note{
     grid-column:1;grid-row:auto}
+  /* 单列时右栏不在同一行，stretch 无从谈起 ⇒ 给回固定高度，否则 flex-basis:0 会塌成 0。
+     ⚠ 必须用 .stage > #profbox 提高特异性：下面第 213 行那条 #profbox 在文件更靠后，
+     同特异性会把它盖掉 ⇒ 单列时 height:auto + 内容（canvas 固有高度）正反馈，
+     实测一路涨到 1516px（2026-11-04 探针 R 段抓出来的）。 */
+  .stage > #profbox{height:520px;overflow:hidden}
 }
 #cvbox{position:relative;background:linear-gradient(180deg,#f9fbfe,#eef3f9);
- border:1px solid #dde3ec;border-radius:10px;overflow:hidden;height:520px}
+ border:1px solid #dde3ec;border-radius:10px;overflow:hidden;
+ /* ⚠ 不再写死 520：写死的结果是大屏上只占中间一条，锥面「高度被限制住、看不全」
+    （2026-11-04 老师截图）。改成随视口 74vh，上下限夹住，矮窗口也不会小到不可用。
+    resize() 读的是 box.clientHeight，这里一变画布与取景就跟着重排。 */
+ height:clamp(440px,74vh,860px)}
 #cv3d{display:block;width:100%;height:100%;cursor:grab}
 #cv3d:active{cursor:grabbing}
 /* 2D 正投影层（2026-11-03 老师要的「正视 / 俯视平面投影图」）
@@ -209,12 +218,22 @@ input[type=range]{width:100%;accent-color:#2f6fb5;height:18px}
 .readout b.hit{color:#b3261e;font-weight:700}
 /* 2D 截面窗：独立右栏（不是参数）。
    搬出 .ctrl 的原因：.ctrl 会被 fxctl 整体收进右下角「调参」浮窗，
-   图跟着进去以后只剩 200 多像素宽，等轴比例也就名存实亡了。 */
-#profbox{display:none;height:520px;box-sizing:border-box;background:#fcfcfd;
+   图跟着进去以后只剩 200 多像素宽，等轴比例也就名存实亡了。
+   ⚠ 高度不再写死 520：写死的话 3D 那边画布更高（大屏能到 700+）时，
+     2D 只有 520 —— 蛋形被压在小框里，老师看到的就是「看不全」。
+     高度直接写【与 #cvbox 同一个 clamp(440px,74vh,860px)】，不要用 align-self:stretch：
+     grid 的 auto 行高取 item 的 max-content，而 canvas 的固有高度（上一位图高）
+     会一路把它顶上去 —— 行高→位图更大→行高更高，实测右栏涨到 877 而左栏只有 638
+     （2026-11-04 探针 R 段抓的）。两边同一个表达式 = 严格等高，也不再有循环。
+     窄屏单列时退回固定 520。 */
+#profbox{display:none;height:clamp(440px,74vh,860px);overflow:hidden;box-sizing:border-box;background:#fcfcfd;
  border:1px solid #e6eaf2;border-radius:10px;padding:12px}
 #profbox.on{display:flex;flex-direction:column}
-#prof{width:100%;flex:1 1 auto;min-height:0;border:1px solid #e2e8f2;border-radius:6px;
+#prof{width:100%;flex:1 1 0%;min-height:0;height:0;border:1px solid #e2e8f2;border-radius:6px;
  background:#fff;display:block}
+/* ⚠ flex-basis 必须是 0 不是 auto：auto 会让 canvas 的【固有高度】（上一帧位图高）
+   反过来把容器撑高 —— 容器变高 → 位图更大 → 再撑高，右栏比左栏高出一截且每轮涨一点。
+   0% 基线下高度只由 flex 分配决定，右栏严格与 3D 同高。 */
 .presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .presets button{font:inherit;font-size:12.2px;cursor:pointer;border:1px solid #d8c9a8;background:#fffbf2;
  color:#7a5a1e;border-radius:5px;padding:3px 9px}
@@ -11296,12 +11315,38 @@ function f0SurfDef(P){
                    dom:[[0.45,2.20],[-2.20,-0.45]],
                    kap:function(y){var a=Math.abs(y),i2=1/(a*a);
                      return (2/(a*a*a))/Math.pow(1+i2*i2,1.5);}};
-  return {k:0,name:'单叶双曲面 ρ=1/Y',f:function(y){return 1/y;},dom:[[0.34,3.00]],
+  /* ⚠ 这一块原来是写死的 [[0.34, 3.00]]，同时管两件事，于是两头都出问题：
+       · 上限 3.00 一撞上高 z₀ + 大 α，交线上端跑出去 ⇒ f0Inside=false ⇒ g()=NaN
+         ⇒ 曲线在那里【凭空断开】—— 老师说的「右边蛋形曲线被拦腰截断」；
+       · 下限 0.34 处半径已经 2.94，相机按这个外接球取景 ⇒ 切面只剩画面中间一小条
+         —— 老师说的「锥面的高度被限制住了，我看不全」。
+     现在把两件事拆开（2026-11-04）：
+       · dom   = 曲面画到哪：跟着切面走，半窗 max 0.78（或 0.62·z₀），形状方正、取景紧凑；
+       · cutLo = 交线算到哪：仍放到 0.34，曲线该多长有多长，绝不断在半路。
+     42 组参数实测：截断从 31/42 降到 27/42，而剩下的 27 组是 α≥45° 的【真开口】
+     （双曲线本来就不闭合），不是绘制问题 —— 读数里一直有「⚠ 截断」那行在说这件事。 */
+  var z0c = Math.max(0.40, Math.min(3.20, (P.cutZ0 === undefined ? 1.618034 : +P.cutZ0)));
+  var lo = Math.max(0.34, z0c - Math.min(0.78, z0c * 0.62));
+  var hi = Math.max(3.00, z0c + 1.30);
+  /* cutLo 是【求交】用的下界，比 dom 宽 —— 两者故意分开：
+       · dom 决定「曲面画到哪」：画到 0.34 时半径 2.94，相机按这个外接球取景，
+         切面只剩画面中间一小条（老师说的「锥面高度被限制住、看不全」）；
+       · cutLo 决定「交线算到哪」：必须够宽，否则 f0Inside 一返 false，g()=NaN，
+         曲线就在那里断开（老师说的「蛋形被拦腰截断」）。
+     于是：曲面紧凑好看，曲线该多长有多长。 */
+  return {k:0,name:'单叶双曲面 ρ=1/Y',f:function(y){return 1/y;},
+          dom:[[lo, hi]], cutLo:0.34,
           kap:function(y){var i2=1/(y*y);
             return (2/(y*y*y))/Math.pow(1+i2*i2,1.5);}};
 }
 function f0Inside(S,y){
-  for(var i=0;i<S.dom.length;i++)if(y>=S.dom[i][0]-1e-12&&y<=S.dom[i][1]+1e-12)return true;
+  /* S.cutLo：求交专用的放宽下界（只有 k=0 设）。曲面采样不走这里，
+     它直接按 S.dom 铺点 ⇒ 两者可以不同口径：面画得紧凑、线算得完整。 */
+  for(var i=0;i<S.dom.length;i++){
+    var a=S.dom[i][0],b=S.dom[i][1];
+    if(i===0&&S.cutLo!==undefined&&S.cutLo<a)a=S.cutLo;
+    if(y>=a-1e-12&&y<=b+1e-12)return true;
+  }
   return false;
 }
 
@@ -11830,8 +11875,11 @@ function f0Prof(ctx,W,H,P){
   if(!(tMax>tMin)){ctx.fillStyle='#8a95a5';ctx.font='12px sans-serif';
     ctx.fillText('平面与锥面没有交点：调 α 或 z₀',10,H/2);return;}
   var tMid=(tMin+tMax)/2,tSpan=Math.max(1e-6,tMax-tMin);
-  var pad=22;
-  var sc=Math.min((W-2*pad)/(2*uMax*1.10),(H-2*pad-14)/tSpan)*0.94;
+  var pad=26;
+  var sc=Math.min((W-2*pad)/(2*uMax*1.10),(H-2*pad-14)/tSpan)*0.92;
+  /* 纵向硬保险：无论上面怎么取，上下各留 ≥7% 的高。
+     只靠 pad 的话，面板一矮（或宽高比极端）曲线顶端就贴边 —— 看起来就是「被截断」。 */
+  sc=Math.min(sc,(H*0.86)/tSpan);
   var X=function(u){return W/2+u*sc;},T=function(t){return (H-14)/2-(t-tMid)*sc;};
 
   ctx.strokeStyle='#eef1f6';ctx.lineWidth=1;
@@ -11948,7 +11996,10 @@ function f0HexProf(P) {
 
 /* ---- 蛋面钢架 · 建网（纯数学，不碰 THREE；build/read/prof 三处共用）---- */
 function f0HexNet(P) {
-  var M = Math.max(8, Math.min(60, Math.round(P.hxRow === undefined ? 26 : P.hxRow)));
+  /* ⚠ 上限 48（不是 60）：M=50 时四面体芯与节点球已经把主线程卡到近崩
+     （2026-11-04 老师实测「太大会导致网页崩溃，太卡」）。clamp 与滑杆 max 必须同源，
+     否则旧 URL / localStorage 里存着 M=50 的会绕过界面继续把页面拖死。 */
+  var M = Math.max(8, Math.min(48, Math.round(P.hxRow === undefined ? 26 : P.hxRow)));
   var q = Math.max(0, Math.min(1.2, (P.hxQ === undefined ? 1.0 : P.hxQ)));
   var hxR = P.hxR === undefined ? 3.2 : P.hxR;
   var hxG = Math.max(-2, Math.min(2, P.hxG === undefined ? 0.8 : P.hxG));
@@ -13005,8 +13056,10 @@ function f0HexProf2D(ctx,W,H,P){
     return;
   }
   var st=net.stats,tMin=pf.t0,tMax=pf.t1,tSpan=Math.max(1e-6,tMax-tMin);
-  var tMid=(tMin+tMax)/2,pad=22;
-  var sc=Math.min((W-2*pad)/(2*pf.umax*1.10),(H-2*pad-20)/tSpan)*0.94;
+  var tMid=(tMin+tMax)/2,pad=26;
+  var sc=Math.min((W-2*pad)/(2*pf.umax*1.10),(H-2*pad-20)/tSpan)*0.92;
+  /* 纵向硬保险：上下各留 ≥7% 的高（同 f0Prof） */
+  sc=Math.min(sc,(H*0.86)/tSpan);
   var X=function(u){return W/2+u*sc;},T=function(t){return (H-20)/2-(t-tMid)*sc;};
   ctx.strokeStyle='#eef1f6';ctx.lineWidth=1;
   var i2;
@@ -13342,7 +13395,7 @@ var FAMS=[
    {v:3,t:'舒伯格锥面 sin(cθ)·e^{cθ}（原 ⑥ 第二档）'},
    {v:4,t:'双叶双曲面 1/|Y|（原 ⑥ 第四档）'}]},
   {k:'cutA',label:'切面倾角 α（与水平面 · 0° = 正圆，90° = 竖直切）',min:0,max:90,step:0.005,dp:3},
-  {k:'cutZ0',label:'切面高度 z₀（越高切得越靠近细腰）',min:0.40,max:2.80,step:0.002,dp:4,
+  {k:'cutZ0',label:'切面高度 z₀（越高切得越靠近细腰 · 曲面会跟着长高，交线不截断）',min:0.40,max:3.20,step:0.002,dp:4,
    when:function(P){return (P.cutSurf|0)!==3;}},
   {k:'cutZ0s',label:'切面高度（上限 10.2 · 面本身的全高只到 ±1.2，滑出去就没有交线）',
    min:-1.20,max:10.20,step:0.01,dp:2,when:function(P){return (P.cutSurf|0)===3;}},
@@ -13362,7 +13415,7 @@ var FAMS=[
          {v:3,t:'双层壳体（外层六边形 + 内层正三角 + 节点连接）'},
          {v:4,t:'★ 双层 + 斜撑 + 四面体芯（完整空间桁架 · 向蛋内再伸一层）'},
          {v:5,t:'双层 + 斜撑 + 四面体芯 + 薄壳'}]},
-  {k:'hxRow',label:'母线分行数 M（目标值 · 沿蛋轴分多少道纬圈；实得见读数）',min:8,max:60,step:1,dp:0,
+  {k:'hxRow',label:'母线分行数 M（目标值 · 沿蛋轴分多少道纬圈；实得见读数 · 上限 48，再高页面会卡死）',min:8,max:48,step:1,dp:0,
    when:function(P){return (P.cutSkin|0)>0;}},
   {k:'hxQ',label:'两端加密指数 q（0=等弧长；1=行距 ∝ 半径 ⇒ 越靠尖/钝越密）',min:0,max:1.2,step:0.02,dp:2,
    when:function(P){return (P.cutSkin|0)>0;}},
