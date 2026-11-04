@@ -72,11 +72,32 @@ function piSieve(n) {
     else { fail++; fails.push(label + (extra !== undefined ? ('  ← 实得 ' + JSON.stringify(extra)) : '')); console.log('  ✗ ' + label + (extra !== undefined ? ('  ← 实得 ' + JSON.stringify(extra)) : '')); }
   };
   const near = (a, b, rel) => Math.abs(a - b) <= rel * Math.max(1, Math.abs(b));
+  /* 取值失败时 eval 返回 {__err}，直接 .toFixed 会把整条探针崩掉 —— 崩了就看不到后面还剩几条。
+     一律走 fmt：拿不到数就印原样，判据自己判红。 */
+  const isNum = v => typeof v === 'number' && isFinite(v);
+  const fmt = (v, n) => isNum(v) ? v.toFixed(n) : String(v);
 
   await send('Page.enable'); await send('Runtime.enable');
   await send('Page.navigate', { url: URL + '?t=' + Date.now() });
-  for (let i = 0; i < 40; i++) { const r = await ev('typeof FAMS!=="undefined"&&FAMS.length'); if (r) break; await sleep(400); }
-  await sleep(1500);
+  /* 🔴 线上首跑假红过一次，原因不是页面：本地 2 s 就绪，Pages 首次冷加载要 **17.5 s**
+     （1.1 MB HTML + 600 KB three.js）；原来固定 40×400 ms + 1.5 s = 17.5 s，正好卡在边界，
+     于是 44 条全红、看起来像整页崩了，实际只是还没跑起来。
+     改成「等 readyState=complete 且 FAMS 有定义，最多 60 s」；超时就明确报「是加载慢」，
+     不许退化成"几何错了"那种误导性红。 */
+  let ready = false;
+  for (let i = 0; i < 120; i++) {
+    const r = await ev('document.readyState==="complete"&&typeof FAMS!=="undefined"&&FAMS.length');
+    if (r) { ready = true; break; }
+    await sleep(500);
+  }
+  if (!ready) {
+    const diag = await ev('({ready:document.readyState,THREE:typeof THREE,FAMS:typeof FAMS,' +
+      'scripts:document.querySelectorAll("script").length,url:location.href})');
+    console.log('✗ 60 s 内页面未就绪（FAMS 未定义）—— 先查资源加载，不是几何/判据错');
+    console.log('  诊断：' + JSON.stringify(diag));
+    ws.close(); child.kill(); process.exit(1);
+  }
+  await sleep(800);
 
   console.log('\n── R1 结构 ──');
   const s1 = await ev('({tabs:document.querySelectorAll("#tabs button").length, fams:FAMS.length})');
@@ -239,8 +260,8 @@ function piSieve(n) {
   /* 容差：改前备份实测 D=48.34511350695125 / R1=2.856699297929307。
      这里判「默认几何未变」⇒ 绝对容差 1e-3 足够。上一版用 near(...,1e-6) ⇒ 窗只有 4.8e-5，
      实测差 1.1e-4 就红（第 4 条假红）。真正逐位对照在 _cmpA.cjs（跟备份页面比）。 */
-  chk(Math.abs(back.D - 48.345) < 1e-3 && Math.abs(back.R1 - 2.8567) < 1e-3,
-    '默认几何未变：D=' + back.D.toFixed(3) + ' R1=' + back.R1.toFixed(4), [back.D, back.R1]);
+  chk(isNum(back.D) && Math.abs(back.D - 48.345) < 1e-3 && Math.abs(back.R1 - 2.8567) < 1e-3,
+    '默认几何未变：D=' + fmt(back.D, 3) + ' R1=' + fmt(back.R1, 4), [back.D, back.R1]);
 
   console.log('\n── R8 异常 ──');
   chk(errs.length === 0, '全程 0 JS 异常', errs.slice(0, 3));
