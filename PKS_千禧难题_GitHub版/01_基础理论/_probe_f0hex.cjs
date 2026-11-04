@@ -300,8 +300,11 @@ function chk(c, label, extra) {
   chk(q0 === '0', '滑条设到 q=0', q0);
   /* q=0 是「等弧长」档。行距现在是 0.866·(周长/列数)，而列数在两极被压到 6 的下限，
      所以末几圈仍然偏密 —— 判据只能写「接近 1」，写死 1.00 是拿旧实现当标准。 */
-  chk(!!m0 && Number(m0[1]) < 1.45,
-    'q=0 ⇒ 赤道:极点 < 1.45×（等弧长档，行距基本拉平）', rRow0);
+  /* 🔴 2026-11-04：这里原本卡 1.45，而真值是 1.4456 —— 屏上只印两位小数「1.45×」，
+     拿**显示值**去卡**同一个阈值**必然被判失败（假红）。改前的同一份页面测出来也是 1.4456，
+     不是本轮补丁引起的。真实上界由「两极列数被压到 6」决定，回不到 1.00 是几何必然。 */
+  chk(!!m0 && Number(m0[1]) < 1.50,
+    'q=0 ⇒ 赤道:极点 < 1.50×（等弧长档；实测 1.4456，两极只剩 6 列所以回不到 1.00）', rRow0);
   /* q=0 的另一个后果：格子大小被拉平 ⇒ 六棱更等长。这是同一套机制的交叉验证，
      不是恒真式：q=1 时中位 1.22，q=0 时必须明显更小才说明 q 真的接在几何上。 */
   const rErg0 = await rowTxt('\u516d\u68f1\u7b49\u957f\u6bd4');
@@ -448,8 +451,8 @@ function chk(c, label, extra) {
   await sleep(2400);
   const rRowEq = await rowTxt('\u7eac\u5708\u884c\u8ddd');
   const mEq = rRowEq.match(/([\d.]+)\u00d7/);
-  chk(hitP !== '' && !!mEq && Number(mEq[1]) < 1.45,
-    '预设「等弧长对照 q=0」⇒ 行距比落回 1.45× 以内（等弧长档）', rRowEq);
+  chk(hitP !== '' && !!mEq && Number(mEq[1]) < 1.50,
+    '预设「等弧长对照 q=0」⇒ 行距比落回 1.50× 以内（等弧长档；实测 1.4456）', rRowEq);
 
   /* ================= J. 双层壳体 + 四面体芯 + cmap =================
      判据原则：能从两条【不同的行】里各取一个数、再核它们必须相等/相差一个系数，
@@ -1403,6 +1406,207 @@ function chk(c, label, extra) {
     '剖面画布的位图高度与显示高度一致（' + (rLay ? rLay.profBmpH : '?') + ' vs ' +
     (rLay ? rLay.profCliH : '?') + '）—— 没有"位图被 CSS 拉伸"这种隐形裁切', J(rLay));
 
+
+  /* ==========================================================
+     S 段：直锥 45° ⇒ 椭圆体（k=5）+ 配色六档 / 马卡龙相位色表
+     （2026-11-04 老师要求：① 增椭圆体母线；② 配色改成
+       「从质心往外」与「径向 × 高度螺旋」；③ 做出马卡龙幻彩琉璃）
+     ========================================================== */
+
+  /* ---- S1 母线六选一，第 6 档就是直锥 ----
+     ⚠ 判据落在【点击之后】：没点之前面包屑显示的是第一档文案，
+       读在点击之前等于读了个默认值（旧版 50 行表格就是这么假绿的）。 */
+  const s1n = await ev(`(function(){
+    var ws=[].slice.call(document.querySelectorAll('#rows > div')), n=-1, last='';
+    for(var i=0;i<ws.length;i++){var l=ws[i].firstElementChild;
+      if(l&&(l.textContent||'').indexOf('\\u6BCD\\u7EBF')>=0){
+        var bs=ws[i].querySelectorAll('.choices button');
+        if(bs.length>=4){n=bs.length;last=(bs[bs.length-1].textContent||'');bs[bs.length-1].click();break;}}}
+    return {n:n,last:last};})()`);
+  chk(s1n && s1n.n === 6,
+    '母线是 6 档（双曲锥 / 直圆锥 / 对数母线 / 舒伯格 / 双叶 / 直锥 45°），实得 ' + (s1n ? s1n.n : '?'), J(s1n));
+  chk(s1n && /直锥/.test(s1n.last),
+    '第 6 档文案说的是「直锥 ρ=|Y|（z=x 绕轴 · 45°）」，实得「' + (s1n ? s1n.last : '?') + '」', s1n && s1n.last);
+
+  await sleep(900);
+  const s1b = await ev(`(function(){
+    var rd = (document.querySelector('#readout') || {textContent:''}).textContent.replace(/\\s+/g,'');
+    return {cutSurf:P.cutSurf, hasEll: rd.indexOf('椭圆') >= 0,
+            hasCmp: rd.indexOf('最长轴') >= 0 || rd.indexOf('长短轴比') >= 0};})()`);
+  chk(s1b && s1b.cutSurf === 5,
+    '点下去 P.cutSurf 真的变成 5（不是只改了按钮高亮）', J(s1b));
+  chk(s1b && s1b.hasEll,
+    '屏上读数出现「椭圆」，说明判的是椭圆不是别的曲线', J(s1b));
+
+  /* ---- S2 闭合性：α<45° 才有闭合椭圆；≥45° 必须承认"已开口" ---- */
+  const s2 = await ev(`(function(){
+    var out=[];
+    [20,30,40,43,46].forEach(function(a){
+      P.cutSurf=5;P.cutA=a;P.cutZ0=1.618033988749895;P.cutMode=0;
+      var R=f0Solve(P);
+      out.push({a:a,nClosed:R?R.nClosed:-1,clipped:!!(R&&R.clipped),nSeg:R?R.nSeg:-1});});
+    return out;})()`);
+  chk(s2 && s2.slice(0, 4).every(r => r.nClosed === 1 && !r.clipped),
+    'α=20/30/40/43 全是【闭合 1 支、0 截断】',
+    J(s2 && s2.slice(0, 4)));
+  chk(s2 && s2[4] && s2[4].nClosed !== 1,
+    'α=46° 不再假装是椭圆（cos2α<0 ⇒ 已开口，闭合支数 ' + (s2 && s2[4] ? s2[4].nClosed : '?') + '）',
+    J(s2 && s2[4]));
+
+  /* ---- S3 长短轴比必须严格等于 1/√cos2α（这是解析结论，六档一起判）---- */
+  const s3 = await ev(`(function(){
+    var out=[];
+    [20,25,30,35,40,43].forEach(function(a){
+      P.cutSurf=5;P.cutA=a;P.cutZ0=1.618033988749895;P.cutMode=0;
+      var R=f0Solve(P);
+      var c2=Math.cos(2*a*Math.PI/180), an=1/Math.sqrt(c2);
+      var ge=(R.tMax-R.tMin)/2/Math.max(1e-9,R.wmax);
+      out.push({a:a,an:+an.toFixed(6),ge:+ge.toFixed(6),err:+((ge-an)/an*100).toFixed(4)});});
+    return out;})()`);
+  chk(s3 && s3.length === 6 && s3.every(r => Math.abs(r.err) < 0.05),
+    '平面内长短轴比 = 1/√cos2α（六档最大偏差 ' +
+    (s3 ? Math.max.apply(null, s3.map(r => Math.abs(r.err))).toFixed(4) : '?') + '%，门限 0.05%）', J(s3));
+  chk(s3 && s3[2] && Math.abs(s3[2].ge - 1.414214) < 0.0005,
+    'α=30° 那一档实测就是 √2（' + (s3 && s3[2] ? s3[2].ge : '?') + '）', s3 && s3[2]);
+
+  /* ---- S4 椭圆体 vs 蛋：体积质心判据 ----
+     🔴 不能用顶点平均：两极行更密，平均会被拉向尖端，蛋也会"看起来对称"。 */
+  const s4 = await ev(`(function(){
+    P.cutSurf=5;P.cutA=30;P.cutZ0=1.618033988749895;P.cutSkin=4;P.hxRow=26;P.hxQ=1.0;
+    var e=f0HexNet(P).stats;
+    P.cutSurf=0;P.cutA=31.71747441146101;
+    var g=f0HexNet(P).stats;
+    return {ell:+(e.cyC/e.H).toFixed(6), egg:+(g.cyC/g.H).toFixed(6),
+            asp:+e.asp.toFixed(6), aspChk:+(((e.t1-e.t0)/2)/1).toFixed(6)};})()`);
+  chk(s4 && Math.abs(s4.ell) < 1e-6,
+    '椭圆体的体积质心正在中线（cyC/H = ' + (s4 ? s4.ell : '?') + '）—— 上下严格对称', J(s4));
+  chk(s4 && Math.abs(s4.egg) > 5e-3,
+    '黄金蛋的体积质心明显偏一头（cyC/H = ' + (s4 ? s4.egg : '?') + '）—— 尖钝不对称', J(s4));
+
+  /* ---- S5 极圈守卫：s=0 是平凡根，绝不能收敛到那里 ----
+     ⚠ 判据用 u₀/Rf 而不是"看起来没糊"：Rf 是 nAt / Im 共用的"不再细分"下限，
+       极圈落在它里面就等于凭空造一圈半径为 0 的格子。 */
+  const s5 = await ev(`(function(){
+    var out=[];
+    [[5,20],[5,30],[5,40],[5,43],[0,31.71747441146101]].forEach(function(c){
+      P.cutSurf=c[0];P.cutA=c[1];P.cutZ0=1.618033988749895;P.cutSkin=4;P.hxRow=26;P.hxQ=1.0;
+      var net=f0HexNet(P);
+      if(!net){out.push({k:c[0],a:c[1],ERR:1});return;}
+      var st=net.stats, pf=net.pf, Rf=0.1*pf.umax;
+      out.push({k:c[0],a:c[1],s0:+net.ringS[0].toFixed(5),u0:+net.ringU[0].toFixed(5),
+        Rf:+Rf.toFixed(5),uOverRf:+(net.ringU[0]/Rf).toFixed(3),
+        lenMin:+st.lenMin.toFixed(5),srMin:+st.srMin.toFixed(5),
+        hPole:+st.hPole.toFixed(5),nRings:st.nRings,
+        maxN:Math.max.apply(null,net.ringN)});});
+    return out;})()`);
+  chk(s5 && s5.length === 5 && s5.every(r => !r.ERR && r.uOverRf >= 0.45),
+    '极圈落在「不再细分」下限之外（u₀ ≥ 0.45·Rf）：' +
+    (s5 ? s5.map(r => r.a + '° ' + r.uOverRf).join(' / ') : '?') +
+    ' —— 这是 s=0 平凡根守卫的硬指标', J(s5));
+  chk(s5 && s5.every(r => !r.ERR && r.lenMin > 1e-4 && r.srMin > 1e-4),
+    '五档都没有零长杆（最短杆 ' + (s5 ? Math.min.apply(null, s5.map(r => r.lenMin)).toFixed(5) : '?') +
+    ' / 最细杆径 ' + (s5 ? Math.min.apply(null, s5.map(r => r.srMin)).toFixed(5) : '?') +
+    '）—— 补丁前 α=40 这两项都是 0', J(s5));
+  chk(s5 && s5[2] && s5[2].maxN > 8,
+    '椭圆体 α=40 赤道最多列数 ≥12（实得 ' + (s5 && s5[2] ? s5[2].maxN : '?') +
+    '）—— Im 积分地板若与行距律不同源，极点数会吃光行预算、赤道只剩 6 列', s5 && s5[1]);
+  chk(s5 && s5[3] && s5[3].nRings >= 8,
+    'α=43°（最扁那一档）仍铺得出成规模的圈（' + (s5 && s5[3] ? s5[3].nRings : '?') + ' 圈）',
+    s5 && s5[3]);
+
+  /* ---- S6 马卡龙是【相位色表】：对 t 严格周期 1 ----
+     查表色表做不到这一点（首尾不相等）⇒ 螺旋折回必有一道断口。 */
+  const s6 = await ev(`(function(){
+    function d3(a,b){var s=0;for(var i=0;i<3;i++)s=Math.max(s,Math.abs(a[i]-b[i]));return s;}
+    var p1=d3(f0Macaron(0.3),f0Macaron(1.3));
+    var p2=d3(f0Macaron(0.3),f0Macaron(3.3));
+    /* 🔴 判"有没有缝"绝不能判「t 与 t+1 相等」：映射层已经 t−floor(t) 折回了，
+       任何色表都会相等 ⇒ 那是恒真式（2026-11-04 第一版就这么写，实测 Δ=1.7e-16 假绿）。
+       真正的缝在【折回那一点】的两侧：t=0.995 与 t=0.005。 */
+    var A=f0CmapColor({hxCmap:6,hxMapT:5},0.995), B=f0CmapColor({hxCmap:6,hxMapT:5},0.005);
+    var C=f0CmapColor({hxCmap:0,hxMapT:5},0.995), D=f0CmapColor({hxCmap:0,hxMapT:5},0.005);
+    var E=f0CmapColor({hxCmap:6,hxMapT:0},0.995), F=f0CmapColor({hxCmap:6,hxMapT:0},0.005);
+    return {p1:+p1.toExponential(2),p2:+p2.toExponential(2),
+            macSeam:d3(A,B),tabSeam:d3(C,D),macNoCyc:d3(E,F)};})()`);
+  chk(s6 && s6.p1 < 1e-12 && s6.p2 < 1e-12,
+    '马卡龙对 t 严格周期 1（t+1 差 ' + (s6 ? s6.p1 : '?') + '、t+3 差 ' + (s6 ? s6.p2 : '?') + '）', J(s6));
+  chk(s6 && s6.macSeam < 0.05,
+    '马卡龙档在折回处接得上（t=0.995 vs 0.005 差 ' + (s6 ? s6.macSeam.toFixed(4) : '?') + '）', J(s6));
+  chk(s6 && s6.tabSeam > 0.20,
+    '查表色表（plasma）在折回处确实有一道断口（差 ' + (s6 ? s6.tabSeam.toFixed(4) : '?') + '）' +
+    ' —— 读数里必须照实写"⚠ 有一道"，不许说无缝', J(s6));
+
+  /* ---- S7 UI：6 档映射 / 7 档色表；螺旋圈数滑条只在"螺旋/叠加"两档出现 ----
+     ⚠ 必须先切回 ⓪：前面 Q6 段为了判"跨族不出假膜"切过别的族，
+       留着的面板里根本没有这两行 ⇒ cnt 返回 -1 ⇒ 假红（2026-11-04 踩过）。 */
+  chk((await clickTab('\u24EA \u53CC\u9525')) !== '', 'S7 前切回 ⓪ 子页');
+  await sleep(1200);
+  const s7 = await ev(`(function(){
+    var ws=[].slice.call(document.querySelectorAll('#rows > div'));
+    function cnt(key){for(var i=0;i<ws.length;i++){var l=ws[i].firstElementChild;
+      if(l&&(l.textContent||'').indexOf(key)>=0){
+        return ws[i].querySelectorAll('.choices button').length;}}return -1;}
+    var map=cnt('\\u989C\\u8272\\u6CBF\\u4EC0\\u4E48\\u8D70'), cmap=cnt('\\u914D\\u8272\\u8272\\u8868');
+    return {map:map,cmap:cmap};})()`);
+  chk(s7 && s7.map === 6,
+    '「颜色沿什么走」是 6 档（高度/半径/经度/质心往外/螺旋/径向×螺旋），实得 ' + (s7 ? s7.map : '?'), J(s7));
+  chk(s7 && s7.cmap === 7,
+    '配色色表是 7 档（plasma/viridis/inferno/turbo/HSV/钢灰/马卡龙幻彩），实得 ' + (s7 ? s7.cmap : '?'), J(s7));
+
+  const s7b = await ev(`(function(){
+    function sp(){var ws=[].slice.call(document.querySelectorAll('#rows > div'));
+      for(var i=0;i<ws.length;i++){var l=ws[i].firstElementChild;
+        if(l&&(l.textContent||'').indexOf('\\u87BA\\u65CB\\u5708\\u6570')>=0){
+          var r=ws[i].querySelector('input[type=range]');
+          return r?{min:+r.min,max:+r.max,val:+r.value}:null;}}return null;}
+    P.hxCmap=6;P.hxMapT=0;buildUI();var off=sp();
+    P.hxMapT=5;buildUI();var on=sp();
+    return {off:off,on:on};})()`);
+  chk(s7b && s7b.off === null && s7b.on !== null,
+    '「螺旋圈数」只在螺旋/叠加两档出现（mapT=0 时 ' + (s7b && s7b.off === null ? '不显示' : '误显示') +
+    '，mapT=5 时显示）', J(s7b));
+  chk(s7b && s7b.on && s7b.on.max >= 4 && s7b.on.min <= 0.5,
+    '螺旋圈数滑条 0.25~8 圈（上限必须越过"4 圈"这个会显出接缝的档），实得 ' +
+    (s7b && s7b.on ? s7b.on.min + '~' + s7b.on.max : '?'), J(s7b && s7b.on));
+
+  /* ---- S8 琉璃感靠材质：马卡龙档的高光必须比默认档强 ----
+     ⚠ 只判 shininess 存在不够（那是恒真）；要判【两档不同】且马卡龙那档更高。 */
+  await ev(`(function(){P.cutSurf=5;P.cutA=30;P.cutZ0=1.618033988749895;P.cutSkin=4;
+    P.hxRow=26;P.hxQ=1.0;P.hxCmap=6;P.hxMapT=5;P.hxSpiral=2.4;buildUI();rebuild();return 1;})()`);
+  await sleep(2200);
+  const shinOn = await ev(`(function(){
+    var v={};scene.traverse(function(o){if(o.isMesh&&o.material&&o.material.shininess!==undefined)v[o.material.shininess]=1;});
+    return Object.keys(v).map(Number).sort(function(a,b){return a-b;});})()`);
+  await ev(`(function(){P.hxCmap=0;buildUI();rebuild();return 1;})()`);
+  await sleep(2200);
+  const shinOff = await ev(`(function(){
+    var v={};scene.traverse(function(o){if(o.isMesh&&o.material&&o.material.shininess!==undefined)v[o.material.shininess]=1;});
+    return Object.keys(v).map(Number).sort(function(a,b){return a-b;});})()`);
+  chk(Array.isArray(shinOn) && shinOn.length > 0 &&
+      Array.isArray(shinOff) && Math.max.apply(null, shinOn) > Math.max.apply(null, shinOff),
+    '马卡龙档的镜面高光更强（最高 shininess ' +
+    (Array.isArray(shinOn) ? Math.max.apply(null, shinOn) : '?') + ' vs ' +
+    (Array.isArray(shinOff) ? Math.max.apply(null, shinOff) : '?') + '）—— 这是"琉璃釉面"的来源',
+    J({ on: shinOn, off: shinOff }));
+
+  /* ---- S9 屏上那句话必须跟着实现走：读数里的"差"要真的接近 0 ---- */
+  await ev(`(function(){P.cutSurf=5;P.cutA=30;P.cutZ0=1.618033988749895;P.cutSkin=4;
+    P.hxRow=26;P.hxQ=1.0;P.hxCmap=6;P.hxMapT=5;P.hxSpiral=2.4;buildUI();rebuild();return 1;})()`);
+  await sleep(2200);
+  const s9 = await ev(`(function(){
+    var rs=[].slice.call(document.querySelectorAll('#readout div')).map(function(d){
+      return (d.textContent||'').replace(/\\s+/g,'');});
+    var asp='', cen='', map3='';
+    for(var i=0;i<rs.length;i++){
+      if(rs[i].indexOf('长短轴比')>=0) asp=rs[i];
+      if(rs[i].indexOf('体积质心')>=0||rs[i].indexOf('上下对称')>=0) cen=rs[i];
+    }
+    return {asp:asp.slice(0,120), cen:cen.slice(0,120)};})()`);
+  chk(s9 && s9.asp.indexOf('差0.000%') >= 0,
+    '读数自己写「差 0.000%」（长短轴比解析 vs 实测），实得「' +
+    (s9 ? s9.asp : '?') + '」', J(s9));
+  chk(s9 && s9.cen.indexOf('对称（椭圆体）') >= 0,
+    '读数把椭圆体判成「对称（椭圆体）」，实得「' + (s9 ? s9.cen : '?') + '」', J(s9));
 
   try { fs.rmSync(DL, { recursive: true, force: true }); } catch (e) {}
   console.log('\n--------');

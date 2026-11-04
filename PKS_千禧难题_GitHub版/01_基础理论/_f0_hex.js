@@ -41,7 +41,12 @@ var F0H_CACHE = { k: '', v: null };
 /* ---- 蛋面轮廓：取闭合交线的上半枝 (t 递增, u≥0) + 累积弧长 ---- */
 function f0HexProf(P) {
   var R = f0Solve(P);
-  if ((P.cutSurf | 0) !== 0 || !R.nClosed) return null;
+  /* 蛋面与椭圆体都来自【闭合交线】：
+       0（双曲面 1/Y ⇒ 一头尖一头钝的蛋）与 5（直锥 45° ⇒ 两头一样的椭圆体）都闭合；
+       其余母线要么开口、要么根本不是旋转体（舒伯格 R 依赖 θ）。
+     判据只认 R.nClosed —— 它是【解出来的】，不是按母线名写死的。 */
+  var csk = (P.cutSurf | 0);
+  if ((csk !== 0 && csk !== 5) || !R.nClosed) return null;
   var seg = null, i;
   for (i = 0; i < R.segs.length; i++) if (R.segs[i].closed) { seg = R.segs[i]; break; }
   if (!seg) return null;
@@ -132,10 +137,41 @@ function f0HexNet(P) {
     }
     return null;
   }
-  var sTip = poleArc(false), sBase = poleArc(true);
-  var sLo = (sTip !== null && sTip > 1e-9) ? sTip : 0.5 * Rf;
-  var sHi = (sBase !== null && sBase > 1e-9) ? (Stot - sBase) : (Stot - 0.5 * Rf);
-  if (!(sHi > sLo + 1e-9)) { sLo = 0; sHi = Stot; }
+  /* 弧长上「u 第一次涨到 u0」的位置：u 从一端的 0 单调涨到 u_max，所以第一段就是极圈。
+     钝头（椭圆体）的极圈用它定位，见下面那段注释。 */
+  function arcAtU(u0) {
+    for (var q9 = 1; q9 < pr.length; q9++) {
+      if (pr[q9][1] >= u0) {
+        var uA = pr[q9 - 1][1], uB = pr[q9][1];
+        var fq = (u0 - uA) / Math.max(1e-12, uB - uA);
+        return ss[q9 - 1] + (ss[q9] - ss[q9 - 1]) * fq;
+      }
+    }
+    return 0.5 * Stot;
+  }
+  var sHalf = 0.5 * Stot;
+  var sFall = arcAtU(0.5 * Rf);
+  /* 🔴 s = 0 恒是这个方程的【平凡根】：尖端 u(0)=0 ⇒ 0 = KP·0 永远成立。
+     而 pr[0] 的 u 带 1e-9 级残差，于是 poleArc 会误判「g 由负变正」，
+     在 [0, Stot/300] 里二分、收敛到 s≈4e-7 —— 屏上的表现是整圈塌进极点：
+     2026-11-04 α=40 实测 sLo=4e-7、行距 3.6e-7、极圈半径 4e-7，三十圈挤成一撮，
+     同时 srMin=0 / lenMin=0（零长杆）、六棱比冲到 89791。
+     判据：根必须落在【u 已离开「不再细分」下限 Rf】的地方（u ≥ 0.5·Rf）。
+     不满足就退回 sFall =「u 涨到 0.5·Rf 的弧长」—— 两者同一个口径。 */
+  function okRoot(sr) {
+    if (sr === null || !(sr > 0) || !(sr < sHalf)) return null;
+    return at(sr).u >= 0.5 * Rf ? sr : null;
+  }
+  var sTip = okRoot(poleArc(false)), sBase = okRoot(poleArc(true));
+  /* ⚠ 钝头端点：极点附近 u ≈ s（曲面在极点垂直于轴），于是「极圈高度 = 正六边形行距」
+     这个方程 s = KP·u(s) 在正的 s 上【无解】。退化情形下 poleArc 会返回一个
+     贴着端点或贴着中线的假根（实测 poleArc(true) 返回 7.5696 = Stot），
+     而下面那条「不合法就整段放开」的兜底于是把 sLo、sHi 一起打回 [0, Stot] ——
+     后果：十几圈挤在极点上（行距 0）、赤道只剩 6 列、六棱比 2.98。
+     2026-11-04 椭圆体就是这么被铺坏的。修法：两个根都必须在 (0, Stot/2) 之内才算数。 */
+  var sLo = (sTip !== null && sTip > 1e-9 && sTip < sHalf) ? sTip : sFall;
+  var sHi = (sBase !== null && sBase > 1e-9 && sBase < sHalf) ? (Stot - sBase) : (Stot - sFall);
+  if (!(sHi > sLo + 1e-9)) { sLo = sFall; sHi = Stot - sFall; }
 
   /* ---- 行距必须服从【量化后的列数】，否则格子被拉长成「竖着的蜂窝」----
      旧写法：先按 q 律走出 M 行，再把列数量化到 6 —— 两者各自为政，
@@ -150,7 +186,12 @@ function f0HexNet(P) {
   var Im = 0, im;
   for (im = 1; im < pr.length; im++) {        /* ∫ (u_max/u)^q ds = 行数 × h0 */
     var um = 0.5 * (pr[im][1] + pr[im - 1][1]);
-    Im += Math.pow(umax / Math.max(um, 1e-9), q) * (ss[im] - ss[im - 1]);
+    /* 地板必须与 nAt() 里那条 max(u0, Rf) 是【同一个】口径：
+       nAt 认为「u 小到 Rf 以下的行距就是 h0」，这里却按 u→0 去加权，
+       两边算的就不是一件事。钝头时这个不一致是致命的 ——
+       ∫(u_max/u)ds 在极点附近对数发散，采样越细 Im 越大，行预算全被极点吃掉，
+       实测赤道只剩 6 列（2026-11-04 椭圆体）。抬到 Rf 之后积分与行距律才自洽。 */
+    Im += Math.pow(umax / Math.max(um, Rf), q) * (ss[im] - ss[im - 1]);
   }
   var h0 = Im / Math.max(1, M - 2);
   function nAt(u0) {                          /* 这一圈该有几列（6 的倍数） */
@@ -407,9 +448,36 @@ function f0HexNet(P) {
     if (rq > rEqAll) rEqAll = rq;
   }
 
+  /* ---- 质心（体积质心）与「从质心往外」的归一化长度 ----
+     🔴 不能用顶点平均：两极的行更密（q>0），顶点平均会被拉向尖端，
+        于是「从里往外」的渐变整颗偏一边，而屏上又看不出来它错了。
+     用旋转体的体积积分：dV = πu²dt ⇒ t̄ = ∫t·u²dt / ∫u²dt（π 与 sc 在比值里约掉）。
+     这个质心同时是读数里「蛋 vs 椭圆体」的判据：椭圆体严格对称 ⇒ 质心正在中线。 */
+  var volS = 0, volT = 0, iCen;
+  for (iCen = 1; iCen < pr.length; iCen++) {
+    var dtC = pr[iCen][0] - pr[iCen - 1][0];
+    var umC = 0.5 * (pr[iCen][1] + pr[iCen - 1][1]);
+    var dvC = umC * umC * dtC;
+    volS += dvC; volT += 0.5 * (pr[iCen][0] + pr[iCen - 1][0]) * dvC;
+  }
+  var tCen = volS > 1e-12 ? volT / volS : tMid;
+  var cyCen = (tCen - tMid) * sc;
+  var rCenMax = 0;
+  for (iCen = 0; iCen < V.length; iCen++) {
+    var exC = V[iCen][0], eyC = V[iCen][1] - cyCen, ezC = V[iCen][2];
+    var erC = Math.sqrt(exC * exC + eyC * eyC + ezC * ezC);
+    if (erC > rCenMax) rCenMax = erC;
+  }
+
   var stats = {
     min: pcts[0], med: pcts[(pcts.length / 2) | 0], max: pcts[pcts.length - 1],
-    rEq: rEqAll,
+    rEq: rEqAll, cyC: cyCen, rC: rCenMax,
+    /* 长短轴比：长轴 = 平面内 t 半跨（椭圆的长轴正落在 t 方向），
+       短轴 = 剖面最大半径 umax（解析半轴）。
+       🔴 不能用 st.rEq（= 网格顶点的最大半径）：网格顶点极少正好落在 u = umax 上，
+       实测 α=30 时 rEq 比解析半轴小 0.4%，于是「几何实测」比解析值大 0.4% ——
+       错的是口径，不是几何。换成解析半轴后两者严格相等。 */
+    asp: (pf.t1 - pf.t0) / (2 * Math.max(1e-12, pf.umax)),
     n: cells.length, n4: sidesCnt[4] || 0, n5: sidesCnt[5] || 0, n6: sidesCnt[6] || 0,
     n7: sidesCnt[7] || 0, n8: sidesCnt[8] || 0, euler: pen,
     tris: T.length, verts: V.length, struts: struts.length,
@@ -499,9 +567,9 @@ var F0_CMAPS = {
           [0.9081, 0.8396, 0.1006], [0.9972, 0.5816, 0.0891], [0.9683, 0.3305, 0.1286],
           [0.8034, 0.1266, 0.1005], [0.4796, 0.0158, 0.0106]]
 };
-var F0_CMAP_NAMES = ['plasma', 'viridis', 'inferno', 'turbo', 'HSV 色环', '单色钢灰'];
+var F0_CMAP_NAMES = ['plasma', 'viridis', 'inferno', 'turbo', 'HSV 色环', '单色钢灰', '马卡龙幻彩'];
 
-function f0CmapKind(P) { return Math.max(0, Math.min(5, (P.hxCmap === undefined ? 0 : (P.hxCmap | 0)))); }
+function f0CmapKind(P) { return Math.max(0, Math.min(6, (P.hxCmap === undefined ? 0 : (P.hxCmap | 0)))); }
 
 /* sRGB → 线性：Three 的顶点色按【线性】解释。直接塞 sRGB 值进去会整体偏暗，
    而且暗部细节糊成一团（plasma 的低端本来是深蓝紫，不转会变成近黑）。 */
@@ -528,6 +596,13 @@ function f0HsvCol(t) {
 function f0CmapColor(P, t) {
   var k = f0CmapKind(P);
   if (k === 5) return null;                      /* 单色钢：调用方退回素色 */
+  /* 马卡龙幻彩：不查表，直接按【相位】算（见 f0Macaron）。
+     这一步是「螺旋无缝」的全部秘密：对 t 严格周期 1 ⇒ t 加几圈颜色都一样，
+     回绕处没有缝可露。查表色表做不到（首尾不相等，折回处必有一道断口）。 */
+  if (k === 6) { var m6 = f0Macaron(t); return [f0S2L(m6[0]), f0S2L(m6[1]), f0S2L(m6[2])]; }
+  /* 螺旋/叠加沿经度是多值的（绕一圈 +1）⇒ 先取小数折回 0..1 再查表。
+     折回处会留下一道接缝 —— 读数里会如实说「有一道」，想无缝就换马卡龙。 */
+  if (f0MapCyc(P)) t = t - Math.floor(t);
   /* 色域下限压到 12%：plasma / inferno 的最低端是近黑，转线性后钝端细节全糊掉。
      留 12% 的下限既不丢色域长度，又能让最低那一档还看得清是「深紫」而不是「黑」。 */
   t = 0.12 + 0.88 * Math.max(0, Math.min(1, t));
@@ -542,11 +617,60 @@ function f0CmapColor(P, t) {
   return [f0S2L(rgb[0]), f0S2L(rgb[1]), f0S2L(rgb[2])];
 }
 
-/* 映射标量：0 = 沿蛋轴高度（默认，最像"一条渐变"）／1 = 沿半径／2 = 沿经度 */
+/* 马卡龙幻彩（珠光琉璃）—— 三个互差 120° 的余弦 + 一层二倍频薄晕。
+   为什么不用色表：查表是分段线性的，首尾不相等就有缝；螺旋映射必然回绕，
+   缝就必然落在某条经线上。余弦天生周期 1，t 加多少圈都接得上。
+   为什么不用 HSV 色环：HSV 的色相线性、饱和度钉死 0.82，出来是「霓虹彩虹条」；
+   马卡龙/琉璃的手感 = 高明度（0.78 基线）+ 中低饱和（±0.17）+ 一层很淡的干涉晕
+   （0.05 的二倍频项）。再配上材质那边把高光拉到 110（釉面），才像琉璃而不是塑料。 */
+function f0Macaron(t) {
+  var w = TAU * t;
+  var r = 0.78 + 0.17 * Math.cos(w) + 0.05 * Math.cos(2 * w + 0.70);
+  var g = 0.78 + 0.17 * Math.cos(w - 2.09440) + 0.05 * Math.cos(2 * w + 2.10);
+  var b = 0.78 + 0.17 * Math.cos(w + 2.09440) + 0.05 * Math.cos(2 * w - 1.30);
+  return [Math.max(0, Math.min(1, r)), Math.max(0, Math.min(1, g)), Math.max(0, Math.min(1, b))];
+}
+
+/* 映射标量（颜色沿什么走）
+   0 = 沿蛋轴高度（默认，一条竖向渐变）
+   1 = 沿半径（赤道深、两端浅）
+   2 = 沿经度（绕一圈出彩虹，能看见接缝）
+   3 = 从质心往外（到【体积质心】的球面距离；内层与四面体芯自然落进低色段 ⇒ 看得见「里外」）
+   4 = 螺旋（经度 + 圈数×高度：从下往上绕，绕几圈由 hxSpiral 定）
+   5 = 径向 × 螺旋 叠加（0.55 径向 + 0.45 螺旋）—— 「从里往外」与「从下往上盘旋」同时成立
+   ⚠ 4/5 沿经度天生是多值的（绕一圈相位 +1），所以它俩是【循环映射】：
+     只有「色表对 t 周期为 1」时才没有缝。f0MapCyc() 把这件事告诉 f0CmapColor()。
+     马卡龙幻彩是按【相位】算的（周期严格 1），螺旋绕回来接得严丝合缝；
+     plasma 这类查表色表首尾不相等，回绕处会有一道色彩断口（读数里如实写）。 */
+function f0MapCyc(P) {
+  var m = (P.hxMapT === undefined ? 0 : (P.hxMapT | 0));
+  return m === 4 || m === 5;
+}
+function f0MapSpiral(P) {
+  /* 圈数 0.25~8：太小是一条斜带，太大在「一根杆」的尺度上会打架变成噪点。 */
+  return Math.max(0.25, Math.min(8, (P.hxSpiral === undefined ? 2.4 : +P.hxSpiral)));
+}
+/* 螺旋相位：经度（0..1，从 +x 起逆时针）+ 圈数 × 高度（0..1）。
+   故意【不取小数】：取小数会在 az=±π 那条射线上留下一道断口；
+   不取小数、让色表自己对 t 有周期 1，就自动无接缝 ——
+   这也是马卡龙干脆不用查表、直接算相位的原因。 */
+function f0MapHelix(P, p, st) {
+  var az = Math.atan2(p[2], p[0]) / TAU;
+  var hh = (p[1] + st.H / 2) / Math.max(1e-9, st.H);
+  return az + f0MapSpiral(P) * hh;
+}
 function f0MapVal(P, p, st) {
   var m = (P.hxMapT === undefined ? 0 : (P.hxMapT | 0));
+  var cy = st.cyC || 0;
   if (m === 2) return Math.atan2(p[2], p[0]) / TAU + 0.5;
   if (m === 1) return Math.sqrt(p[0] * p[0] + p[2] * p[2]) / Math.max(1e-9, st.rEq);
+  if (m === 3 || m === 5) {
+    var dx = p[0], dy = p[1] - cy, dz = p[2];
+    var tr = Math.sqrt(dx * dx + dy * dy + dz * dz) / Math.max(1e-9, st.rC || 1);
+    if (m === 3) return tr;
+    return 0.55 * tr + 0.45 * f0MapHelix(P, p, st);
+  }
+  if (m === 4) return f0MapHelix(P, p, st);
   return (p[1] + st.H / 2) / Math.max(1e-9, st.H);
 }
 
@@ -923,9 +1047,13 @@ function f0HexBuild(P) {
      ⇒ 同一根杆内部也有渐变，比「一根杆一个色」细腻。
      单色钢档（cmap=5）时 f0CmapColor 返回 null ⇒ 退回原来的素色钢灰。 */
   var useC = f0CmapKind(P) !== 5;
+  /* 马卡龙幻彩档把高光拉满：高明度 + 中低饱和 + 强高光 = 釉面琉璃的手感。
+     其它色表维持哑光钢 —— plasma 的暗端被强高光一洗就变灰白，色带长度会白丢。 */
+  var glassy = (f0CmapKind(P) === 6);
   var matOut = new THREE.MeshPhongMaterial({
     color: useC ? 0xffffff : 0x5b6876, vertexColors: useC,
-    shininess: 46, specular: 0x9fb0c0, side: THREE.DoubleSide });
+    shininess: glassy ? 110 : 46, specular: glassy ? 0xe8f2ff : 0x9fb0c0,
+    side: THREE.DoubleSide });
   var mesh = new THREE.Mesh(f0StrutGeo(net.struts, 6, P, st), matOut);
   mesh.name = 'hexStruts';
   g.add(mesh);
@@ -961,7 +1089,7 @@ function f0HexBuild(P) {
     var ng2 = ng.toNonIndexed(); ng2.computeVertexNormals();
     var nm = new THREE.Mesh(ng2, new THREE.MeshPhongMaterial({
       color: useC ? 0xffffff : 0x3f4a56, vertexColors: useC,
-      shininess: 30, specular: 0x8899a8, side: THREE.DoubleSide }));
+      shininess: glassy ? 92 : 30, specular: glassy ? 0xdfeaf8 : 0x8899a8, side: THREE.DoubleSide }));
     nm.name = 'hexNodes';
     g.add(nm);
   }
@@ -1131,7 +1259,7 @@ function f0HexProf2D(ctx,W,H,P){
   var net=f0HexNet(P), pf=net?net.pf:null;
   if(!net||!pf){
     ctx.fillStyle='#8a95a5';ctx.font='12px sans-serif';
-    ctx.fillText('这档铺不出蛋面钢架：母线必须能切出【闭合的蛋】',10,H/2);
+    ctx.fillText('这档铺不出蛋面／椭圆体：母线必须能切出【闭合交线】',10,H/2);
     return;
   }
   var st=net.stats,tMin=pf.t0,tMax=pf.t1,tSpan=Math.max(1e-6,tMax-tMin);
@@ -1214,15 +1342,38 @@ function f0HexRead(P) {
              '双层壳体（外层六边形 + 内层正三角 + 节点连接）',
              '双层 + 斜撑 + 四面体芯（完整空间桁架）',
              '双层 + 斜撑 + 四面体芯 + 薄壳'];
-  rows.push(['表面构建', '<b>' + (SKN[skin] || '蛋面钢架') + '</b>（蛋 = 斜切出来的曲线绕长轴旋转）']);
+  var isEll = ((P.cutSurf | 0) === 5);
+  rows.push(['表面构建', '<b>' + (SKN[skin] || '蛋面钢架') + '</b>（' +
+    (isEll ? '椭圆体 = 直锥 z=x 斜切出的椭圆 · 半边轮廓绕长轴转'
+           : '蛋 = 双曲面 1/Y 斜切出的曲线绕长轴旋转') + '）']);
   if (!net) {
-    rows.push(['⚠ 铺不出钢架', '钢架只对「单叶双曲面 ⇒ 闭合蛋」成立。' +
+    rows.push(['⚠ 铺不出钢架', '钢架与椭圆体都只对【闭合交线】成立：' +
+      '母线 1/Y（⇒ 蛋）或直锥 45°（⇒ 椭圆体）。' +
       '当前母线是「' + (R.def ? R.def.name : '?') + '」，或者 α/z₀ 让交线开口了 —— ' +
-      '先把母线换回 1/Y、把 α 调小']);
+      '先把母线换回 1/Y 或直锥 45°、把 α 调小（直锥要 α<45° 才闭合）']);
     return rows;
   }
   var st = net.stats;
-  rows.push(['蛋面', '长轴 L ' + st.L.toFixed(4) + '（斜切曲线的真实长度 · 平面内 ' + (st.t1 - st.t0).toFixed(4) + '）']);
+  rows.push([isEll ? '椭圆体' : '蛋面', '长轴 L ' + st.L.toFixed(4) +
+    '（斜切曲线的真实长度 · 平面内 ' + (st.t1 - st.t0).toFixed(4) + '）']);
+  /* 质心 / 上下对称：这是「蛋」与「椭圆体」唯一的结构差别，必须实测，
+     不能只写在标题里。蛋的长短轴不对称 ⇒ 体积质心不在中线；
+     椭圆关于 t 轴严格对称 ⇒ 质心正好落在中线（这就是「两头一样钝」的量化说法）。 */
+  rows.push(['质心 / 上下对称', '质心偏 ' + (st.cyC / st.H * 100).toFixed(2) + '% 蛋高　·　' +
+    '上端到质心 ' + Math.abs(st.H / 2 - st.cyC).toFixed(4) +
+    ' ／ 下端 ' + Math.abs(-st.H / 2 - st.cyC).toFixed(4) +
+    '　⇒ <b>' + (Math.abs(st.cyC) < 1e-3 ? '对称（椭圆体）' : '不对称（蛋）') + '</b>' +
+    '　· 配色「从质心往外」用的就是这个质心，不是原点']);
+  if (isEll) {
+    var c2e = Math.cos(2 * (P.cutA === undefined ? 31.7175 : +P.cutA) * Math.PI / 180);
+    if (c2e > 1e-9) {
+      var rEllA = 1 / Math.sqrt(c2e), rEllM = st.asp;
+      rows.push(['椭圆体 · 长短轴比', '解析 1/√cos2α = <b>' + rEllA.toFixed(4) + '</b>' +
+        '　几何实测 (t半跨)/u_max = ' + rEllM.toFixed(4) +
+        '　差 ' + (Math.abs(rEllM - rEllA) / rEllA * 100).toFixed(3) + '%' +
+        '（只跟 α 有关、跟 z₀ 无关；α→45° 时长轴 → ∞，体就没了）']);
+    }
+  }
   rows.push(['母线分行 M', '目标 ' + st.mTarget + ' ⇒ 实得 <b>' + st.nRings + '</b> 行' +
     '（含两极；每行 = 一道纬圈。实得是「列数量化到 6 的倍数」后的整数解，' +
     '不可能每个 M 都刚好凑上，差 1~3 行是正常的）']);
@@ -1262,7 +1413,7 @@ function f0HexRead(P) {
     '每一圈的宽高比 d/行距 ≡ 1.1547（正六边形的值，读数下面一行是实测）。' +
     '但半径是【逐圈在变】的：相邻两圈差 ' + (st.hRatio > 1.001 ? '十几' : '不到一') +
     '个百分点时，每格的「上边」与「下边」本来就一边宽一边窄 —— ' +
-    '这是把蜂窝铺到旋转面上绕不过去的事。两条改善路：加密 M（M=60 时中位降到 1.070）' +
+    '这是把蜂窝铺到旋转面上绕不过去的事。两条改善路：加密 M（到上限 48 时中位约 1.06）' +
     '或把 q 调小（q=0 等弧长时中位 ≈ 1.05，但两端就不密了）。' +
     '「每格一样大」与「两端更密」本来就不能同时成立，本页选了后者 —— 这是老师要的那一条。']);
 
@@ -1360,8 +1511,13 @@ function f0HexRead(P) {
           '中位 <b>' + s2.apexMed.toFixed(4) + '</b> ／ 最差 ' + s2.apexHi.toFixed(4) +
           '　（顶点立在外心 + 沿底座法向 ⇒ 外心到三顶点等距、方向垂直 ⇒ 三条侧棱严格等长。' +
           '这一行是「外心算得对不对」的直接裁判，六棱比那一行则掺进了网格本身的形状）']);
+        /* 🔴 实测 nInner 比内层边数少 12（极点/经度接缝那 12 条棱不是正好 2 个面共用），
+           所以"互为对偶 ⇒ 边数相等"这句不成立，照实写差额。已知差，未修。 */
+        var nGapK = s2.nIn2 - s2.nInner;
         rows.push(['内顶点互连', s2.nInner + ' 根　（相邻四面体的内顶点两两相连 ⇒ 内层三正则网，' +
-          '与内层三角网互为对偶）']);
+          (nGapK === 0 ? '与内层三角网互为对偶（' + s2.nIn2 + ' 根，实测相等）'
+            : '本应与内层三角网互为对偶、边数 = ' + s2.nIn2 + '；<b>实测少 ' + nGapK +
+              ' 根</b>（有 ' + nGapK + ' 条内层棱不是正好被 2 个面共用）<b>已知差，未修</b>')]);
       } else {
         rows.push(['四面体芯', '<b>本档一个都不建</b>（内芯密度 = 不建内芯）。' +
           '这不是"没算出来"：抽稀步长取 0 时整块芯都被省掉，省的是耗材不是精度 —— ' +
@@ -1416,11 +1572,35 @@ function f0HexRead(P) {
   if (ck === 5) {
     rows.push(['配色', '单色钢灰（无渐变）']);
   } else {
-    rows.push(['配色', 'cmap = <b>' + F0_CMAP_NAMES[ck] + '</b>　映射：' +
-      ['沿蛋轴高度（尖 → 钝一条渐变）', '沿半径（赤道深、两端浅）', '沿经度（绕一圈出彩虹）'][P.hxMapT | 0] +
+    var mpt = (P.hxMapT === undefined ? 0 : (P.hxMapT | 0));
+    var MPT = ['沿蛋轴高度（尖 → 钝一条渐变）', '沿半径（赤道深、两端浅）', '沿经度（绕一圈出彩虹）',
+               '从质心往外（到体积质心的距离 · 内层与芯自然落进低色段）',
+               '螺旋（经度 + ' + f0MapSpiral(P).toFixed(2) + ' 圈 × 高度 · 从下往上绕）',
+               '径向 × 螺旋叠加（0.55 径向 + 0.45 螺旋 · 每 ' +
+                 (1 / f0MapSpiral(P)).toFixed(2) + ' 蛋高绕一圈）'];
+    rows.push(['配色', 'cmap = <b>' + F0_CMAP_NAMES[ck] + '</b>　映射：' + (MPT[mpt] || '?') +
       '　· 每根杆两端各自取色 ⇒ 杆内也有渐变']);
-    rows.push(['色表口径', '11 点近似采样，不是 matplotlib 的 256 色原表（首尾与中段对得上）。' +
-      '顶点色已做 sRGB → 线性转换，否则 plasma 的低端会糊成近黑']);
+    if (mpt === 3) {
+      rows.push(['「从质心往外」的实话', '蛋 / 椭圆体是<b>凸壳</b>：外壳上每点到质心的距离几乎只由高度决定' +
+        '（两极最远、赤道最近），所以屏上看起来仍是一条「上下」的渐变 —— 这不是画错，是几何使然。' +
+        '这条映射真正分开的是<b>内层壳体与四面体芯</b>（r 小 ⇒ 落进低色段）。' +
+        '想看"同心层"请开剖面，或把内层比例拉大']);
+    }
+    if (ck === 6) {
+      rows.push(['马卡龙怎么算的', '不查表，按相位：三个余弦互差 120°（基线 0.78、幅度 0.17）' +
+        '＋一层 0.05 的二倍频薄晕（珠光干涉色）。对 t 严格周期 1 ⇒ 螺旋绕回来接得严丝合缝 —— ' +
+        '这是查表色表做不到的（首尾不相等必有缝）']);
+    }
+    if (f0MapCyc(P)) {
+      rows.push(['螺旋接缝', ck === 6
+        ? '无（相位色表周期 = 1，绕多少圈都接得上）'
+        : '⚠ 有一道：' + F0_CMAP_NAMES[ck] + ' 是查表色表、首尾不相等，t 折回 0 的那条经线上' +
+          '会看到一道色彩断口 —— 想无缝请换「马卡龙幻彩」']);
+    }
+    rows.push(['色表口径', ck === 6
+      ? '相位色表（不是采样表）：三个余弦 + 二倍频；全程 sRGB → 线性后才进顶点色'
+      : '11 点近似采样，不是 matplotlib 的 256 色原表（首尾与中段对得上）。' +
+        '顶点色已做 sRGB → 线性转换，否则 plasma 的低端会糊成近黑']);
   }
 
   rows.push(['⚠ 拓扑', '球面上不可能全是正六边形：Σ(6−边数)≡12。' +
