@@ -47,9 +47,12 @@ const lamCOf = m => (HC / m) * 1e-15;
 
   await send('Page.enable'); await send('Runtime.enable');
 
-  /* 🔴 不许拿固定 sleep 当"加载完了"：951 KB 的页 + 三个 iframe，本地 3 s 够、线上要 8 s 以上。
-     固定等待会让判据在慢机上假红（2026-11-04 线上首跑就这样，实得 active=""）。 */
-  const waitReady = async (ms = 30000) => {
+  /* 🔴 不许拿固定 sleep 当"加载完了"。
+     实测（2026-11-04，线上）：首次加载 15.3 s，深链二次加载 **23.6 s**
+     （981 KB HTML + three.js，查询串绕过缓存后要重下）。
+     原来只等 30 s ⇒ 卡边界；更糟的是返回值被丢掉，超时后**没有任何提示**，
+     只表现为后面几条读到空串（「实得「」」「null」）。这次教训：等待结果必须被断言。 */
+  const waitReady = async (ms = 90000) => {
     const t0 = Date.now();
     while (Date.now() - t0 < ms) {
       try {
@@ -197,7 +200,9 @@ const lamCOf = m => (HC / m) * 1e-15;
   /* 🔴 必须换掉查询串：只改 hash 的 navigate 是「同文档片段导航」，页面不会重载，
      滑杆会留着上一步设的 v=254 ⇒ 读到 0.12148 而不是默认值（2026-11-04 踩过）。 */
   await send('Page.navigate', { url: URL + '?fresh=1&r=' + Date.now() + '#v14' });
-  await waitReady();
+  const ready2 = await waitReady();
+  /* 🔴 这条不许省：不等就绪就往下读，读到的是空串 ⇒ 看着像页面坏了，其实是探针太快 */
+  chk(ready2, '深链重新加载就绪（线上实测 23.6 s，上限 90 s）');
   await sleep(800);
   const deep = await ev(`document.querySelector('section.view.active') ? document.querySelector('section.view.active').id : ''`);
   chk(deep === 'v14', '带 #v14 直接打开就落在这一节，实得「' + deep + '」');
