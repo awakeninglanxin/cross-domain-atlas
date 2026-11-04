@@ -46,8 +46,25 @@ const lamCOf = m => (HC / m) * 1e-15;
   };
 
   await send('Page.enable'); await send('Runtime.enable');
+
+  /* 🔴 不许拿固定 sleep 当"加载完了"：951 KB 的页 + 三个 iframe，本地 3 s 够、线上要 8 s 以上。
+     固定等待会让判据在慢机上假红（2026-11-04 线上首跑就这样，实得 active=""）。 */
+  const waitReady = async (ms = 30000) => {
+    const t0 = Date.now();
+    while (Date.now() - t0 < ms) {
+      try {
+        const ok = await ev(`!!window.__KOILON_STATE && window.__KOILON_STATE().views === 13`);
+        if (ok) return true;
+      } catch (e) { /* 页面还在解析，忽略 */ }
+      await sleep(300);
+    }
+    return false;
+  };
+
   await send('Page.navigate', { url: URL + '?fresh=1' });
-  await sleep(3000);
+  const ready = await waitReady();
+  chk(ready, '页面就绪（__KOILON_STATE 可用且 views=13），30 s 内等到');
+  await sleep(800);
 
   const txt = (sel) => ev(`(function(){var e=document.querySelector(${J(sel)});return e?e.textContent.replace(/[\\s\\u00a0]+/g,' ').trim():'';})()`);
   const num = (t, re) => { const m = String(t).match(re); return m ? parseFloat(m[1]) : NaN; };
@@ -148,7 +165,8 @@ const lamCOf = m => (HC / m) * 1e-15;
   /* 🔴 必须换掉查询串：只改 hash 的 navigate 是「同文档片段导航」，页面不会重载，
      滑杆会留着上一步设的 v=254 ⇒ 读到 0.12148 而不是默认值（2026-11-04 踩过）。 */
   await send('Page.navigate', { url: URL + '?fresh=1&r=' + Date.now() + '#v14' });
-  await sleep(3000);
+  await waitReady();
+  await sleep(800);
   const deep = await ev(`document.querySelector('section.view.active') ? document.querySelector('section.view.active').id : ''`);
   chk(deep === 'v14', '带 #v14 直接打开就落在这一节，实得「' + deep + '」');
   const deepH = await ev(`window.__KOILON_HIGGS ? window.__KOILON_HIGGS.lambda : null`);
