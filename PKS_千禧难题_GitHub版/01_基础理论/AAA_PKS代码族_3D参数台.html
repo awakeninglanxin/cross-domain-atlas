@@ -12809,6 +12809,17 @@ function f0HexBuild(P) {
   }
   g.userData.f0seg = segArr.length ? segArr : null;
 
+  /* 剖面（2026-11-04）要用的子午线样本：单位与 mesh 完全一致（都用 st.sc 缩放、tMid 摆正），
+     所以页面侧拿它算出来的剖面膜严丝合缝贴在杆件上，不需要再乘任何系数。
+     放 userData 而不是让页面回算：回算等于把建网公式抄第二遍，抄错就是"膜与壳差一层"。 */
+  var secS = [], secMax = 0, tMid3 = (st.t0 + st.t1) / 2;
+  for (i = 0; i < net.pf.pr.length; i++) {
+    var yy = (net.pf.pr[i][0] - tMid3) * st.sc, rr2 = net.pf.pr[i][1] * st.sc;
+    secS.push([yy, rr2]);
+    if (rr2 > secMax) secMax = rr2;
+  }
+  g.userData.f0sec = { samples: secS, H: st.H, rmax: secMax };
+
   g.userData.noArray = true;          /* 轴对称体：圆周阵列只会叠出重合杆 */
   g.userData.f0hex = st;
   g.userData.f0hex2 = L2 ? L2.stats : null;
@@ -13059,6 +13070,28 @@ function f0HexRead(P) {
       '　·　按 外层杆×72 ＋ 节点×24 ＋ 内层/芯杆×48 ＋ 内层节点×24 现算，不含薄壳）']);
   }
 
+  /* ---------------- 剖面（2026-11-04 老师：左侧 3D 图要能看剖面）----------------
+     这一行必须写出【切在哪、切掉哪边、还剩多少】——只写"已剖开"等于没写：
+     平面滑到模型外面时屏上会一片空白，读者需要在这里看到原因。 */
+  var sax = (P.hxSec | 0);
+  if (sax >= 1 && sax <= 3) {
+    var sName = ['', 'xy 平面（法向 z · 沿 z 滑）', 'zy 平面（法向 x · 沿 x 滑）', 'zx 平面（法向 y · 沿 y 滑）'][sax];
+    var sHalf = (sax === 3) ? st.H / 2 : net.pf.umax * st.sc;
+    var sOff = Math.max(-100, Math.min(100, (P.hxSecOff === undefined ? 0 : +P.hxSecOff))) / 100;
+    var sD = sOff * sHalf;
+    var sKeep = (P.hxSecSide | 0) ? '≥' : '≤';
+    var sLeft = (sax === 3) ? ('保留 y ' + sKeep + ' ' + sD.toFixed(3))
+                            : ('保留 ' + (sax === 1 ? 'z' : 'x') + ' ' + sKeep + ' ' + sD.toFixed(3));
+    var sOut = Math.abs(sOff) >= 0.999;
+    rows.push(['剖面', '<b>' + sName + '</b>　·　切掉 <b>' + ((P.hxSecSide | 0) ? '−' : '+') +
+      (sax === 1 ? 'z' : sax === 2 ? 'x' : 'y') + '</b> 那一侧　·　' + sLeft +
+      (sOut ? '<br><span style="color:#b03020">⚠ 平面已滑到模型外：这一侧没有东西可留，' +
+        '屏上是空的 —— 把滑条往回拉</span>' : '')]);
+  } else {
+    rows.push(['剖面', '不剖（整体）。要看内部就把「剖开看内部」切到 xy / zy / zx 任一面 —— ' +
+      '切面是 GPU 裁剪算出来的，杆件被真切开（断口是空心的管口），不是少画几根']);
+  }
+
   /* ---------------- 配色 ---------------- */
   var ck = f0CmapKind(P);
   if (ck === 5) {
@@ -13158,6 +13191,24 @@ var FAMS=[
   {k:'hxL2phase',label:'第二层相位角 φ（° · 绕长轴转 · 把两层杆在投影上错开；周期 120°）',
    min:-60,max:60,step:1,dp:0,
    when:function(P){return (P.cutSkin|0)>=3;}},
+  /* ---- 剖面（2026-11-04 老师：左侧 3D 图要能看剖面；三个基准面可选、可沿法向滑动）---- */
+  {k:'hxSec',label:'剖开看内部（三个基准面任选 · 切面由 GPU 裁剪算出 —— 杆件被真切开，不是少画几根）',type:'choice',
+   when:function(P){return (P.cutSkin|0)>0;},
+   opts:[{v:0,t:'★ 不剖（整体）'},
+         {v:1,t:'xy 平面 · 法向 z · 沿 z 滑（切前后）'},
+         {v:2,t:'zy 平面 · 法向 x · 沿 x 滑（切左右）'},
+         {v:3,t:'zx 平面 · 法向 y · 沿 y 滑（切上下）'}]},
+  {k:'hxSecOff',label:'剖面滑动位置（% · 0 = 过中心 · xy 面沿 z／zy 面沿 x／zx 面沿 y）',
+   min:-100,max:100,step:1,dp:0,
+   when:function(P){return (P.hxSec|0)>0;}},
+  {k:'hxSecSide',label:'切掉哪一侧',
+   when:function(P){return (P.hxSec|0)>0;},type:'choice',
+   opts:[{v:0,t:'★ 切掉 +法向那侧（xy 面 = +z 前侧／zy 面 = +x／zx 面 = +y 上）'},
+         {v:1,t:'切掉 −法向那侧'}]},
+  {k:'hxSecFace',label:'剖面加不加半透膜（加膜能看清"切在哪"，不加则直接看进内部）',type:'choice',
+   when:function(P){return (P.hxSec|0)>0;},
+   opts:[{v:0,t:'★ 不加（直接看内部结构）'},
+         {v:1,t:'加（半透明面 + 轮廓线 · 轮廓就是子午线切出来的真实截面）'}]},
   {k:'hxL2mode',label:'第二层缩到多小才对（λ 的定法）',type:'choice',
    when:function(P){return (P.cutSkin|0)>=3;},
    opts:[{v:0,t:'★ 物理最优：芯厚 = √(2/3)·a ⇒ λ = 1 − 0.8165·a/R'},
@@ -13190,7 +13241,7 @@ var FAMS=[
       cutMode:0,cutTint:0,cutShow:0,
       cutSkin:4,hxRow:26,hxQ:1.00,hxR:3.20,hxG:0.80,hxNode:1.35,
       hxL2mode:0,hxL2:68,hxTetK:1.00,hxCmap:0,hxMapT:0,hxView:0,
-      hxWeb:1,hxL2phase:0},
+      hxWeb:1,hxL2phase:0,hxSec:0,hxSecOff:0,hxSecSide:0,hxSecFace:0},
  build:f0Build,read:f0Read,prof:f0Prof,zAxis:'y',
  empty:'平面与这张曲面没有交点 —— 换母线、把 α 调小、或把 z₀ 挪回曲面所在的 y 区间',
  note:'<b>这一格是原「蛋形双锥斜切_3D交互对照」页的两个视图（Ⅰ 超双曲面斜切→蛋形、Ⅱ 直圆锥斜切→圆锥曲线），'+
@@ -14827,6 +14878,9 @@ function refreshPxTubes(force){
 
 function initGL(){
   renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:true,alpha:true});
+  /* 剖面（2026-11-04）走【材质级】裁剪面：必须开这个开关，否则 material.clippingPlanes 被忽略。
+     不开的典型症状是"参数都对了、屏上一点没变"——比报错更难查。 */
+  renderer.localClippingEnabled=true;
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
   scene=new THREE.Scene();
   camera=new THREE.PerspectiveCamera(38,1,0.1,5000);
@@ -14916,6 +14970,144 @@ function applyFit(){
   camera.far=Math.max(5000,camD*60);
   camera.updateProjectionMatrix();
 }
+/* ============================================================
+   剖面（2026-11-04 老师：左侧 3D 图要能看剖面；xy / zy / zx 三个面可选、可沿法向滑动）
+   ------------------------------------------------------------
+   为什么用 GPU 裁剪、不在建网时丢杆：
+     · 丢杆得到的是「缺一块的笼子」，断口参差、看不出切在哪、也量不出剖面位置；
+     · 裁剪平面是数学平面，切在哪就在哪，杆件断口是空心的管口 —— 一眼就知道这是被切开的。
+   为什么逐帧改 constant、不走 rebuild：
+     这一族 M=26 就有 1 万个杆 / 56 万顶点，rebuild 一次是秒级；滑条要跟手，只能改平面参数。
+     平面是对象，three.js 每帧把 normal / constant 传进着色器 ⇒ 直接改字段即可，不必 needsUpdate。
+   ⚠ 平面用【世界坐标】。rebuild 已经 obj.position.sub(bbox 中心) ⇒ 世界原点就是模型中心，
+     于是「0 = 过中心」「±100% = 滑到边缘」都不用回算任何尺寸。
+   ⚠ 裁剪只挂在【这一族自己的 mesh 材质】上，不用 renderer.clippingPlanes（那是全局）：
+     全局会把剖面膜一起切掉，膜就永远看不见 —— 这正是"状态没分清"的典型假绿。
+   ============================================================ */
+var F0SEC = { on:false, obj:null, info:null, planes:[], axis:0, key:'', face:null, edge:null };
+function f0SecHalf(axis){ var inf=F0SEC.info; if(!inf) return 1; return (axis===3)?inf.H/2:inf.rmax; }
+function f0SecNorm(axis,out){
+  out=out||new THREE.Vector3();
+  if(axis===1) return out.set(0,0,1);      /* xy 面：法向 z */
+  if(axis===2) return out.set(1,0,0);      /* zy 面：法向 x */
+  return out.set(0,1,0);                   /* zx 面：法向 y */
+}
+/* 该高度处的半径（线性插值；样本就是建网用的那条子午线，口径一致） */
+function f0SecR(s,y){
+  var i,n=s.length;
+  if(!n) return 0;
+  if(y<=s[0][0]) return s[0][1];
+  if(y>=s[n-1][0]) return s[n-1][1];
+  for(i=1;i<n;i++){
+    if(s[i][0]>=y){
+      var f=(y-s[i-1][0])/Math.max(1e-12,s[i][0]-s[i-1][0]);
+      return s[i-1][1]+(s[i][1]-s[i-1][1])*f;
+    }
+  }
+  return s[n-1][1];
+}
+function f0SecDrop(){
+  if(F0SEC.face){ root.remove(F0SEC.face); F0SEC.face.geometry.dispose(); F0SEC.face.material.dispose(); F0SEC.face=null; }
+  if(F0SEC.edge){ root.remove(F0SEC.edge); F0SEC.edge.geometry.dispose(); F0SEC.edge.material.dispose(); F0SEC.edge=null; }
+  F0SEC.key='';
+}
+function initF0Section(obj){
+  f0SecDrop();
+  F0SEC.planes=[]; F0SEC.on=false; F0SEC.obj=null; F0SEC.info=null; F0SEC.axis=0;
+  var f=FAMS[curFam];
+  if(!f||f.build!==f0Build) return;          /* 剖面只属于 ⓪ 蛋面钢架，别的族一律不切 */
+  var ax=P.hxSec|0;
+  if(!(ax>=1&&ax<=3)) return;
+  var info=obj.userData&&obj.userData.f0sec;
+  if(!info||!info.samples||info.samples.length<8) return;
+  var pl=new THREE.Plane(new THREE.Vector3(0,0,-1),0);
+  F0SEC.planes=[pl]; F0SEC.on=true; F0SEC.obj=obj; F0SEC.info=info; F0SEC.axis=ax;
+  obj.traverse(function(o){
+    if(!o.isMesh&&!o.isLine) return;
+    if(o===F0SEC.face||o===F0SEC.edge) return;
+    var ms=o.material?(Array.isArray(o.material)?o.material:[o.material]):[];
+    for(var k=0;k<ms.length;k++){
+      ms[k].clippingPlanes=F0SEC.planes;
+      ms[k].clipIntersection=false;
+      ms[k].needsUpdate=true;
+    }
+  });
+  syncF0Section(true);
+}
+function syncF0Section(force){
+  if(!F0SEC.on||!F0SEC.planes.length) return;
+  var ax=F0SEC.axis, half=f0SecHalf(ax);
+  var off=Math.max(-100,Math.min(100,(P.hxSecOff===undefined?0:+P.hxSecOff)))/100;
+  var d=off*half, side=(P.hxSecSide|0), pl=F0SEC.planes[0];
+  f0SecNorm(ax,pl.normal);
+  if(side){ pl.constant=-d; }                       /* 保留 ≥ d：n·x − d ≥ 0 */
+  else { pl.normal.multiplyScalar(-1); pl.constant=d; }  /* 保留 ≤ d：−n·x + d ≥ 0 */
+  if(P.hxSecFace|0) buildF0SecFace(ax,d,force);
+  else if(F0SEC.face){ F0SEC.face.visible=false; if(F0SEC.edge)F0SEC.edge.visible=false; }
+}
+/* 剖面膜：ax=1/2 是「刀切出来的透镜」，ax=3 是「一个圆」。
+   两者都直接从子午线样本算 —— 半宽 √(r²−d²)，不是估算、不是缩放贴图。 */
+function buildF0SecFace(ax,d,force){
+  var key=ax+'|'+d.toFixed(5)+'|'+((P.hxSecFace|0)?1:0);
+  if(!force&&F0SEC.key===key){
+    if(F0SEC.face)F0SEC.face.visible=true;
+    if(F0SEC.edge)F0SEC.edge.visible=true;
+    return;
+  }
+  var inf=F0SEC.info, s=inf.samples, i, verts=[], idx=[], ring=[];
+  if(ax===3){
+    var rc=f0SecR(s,d);
+    if(!(rc>1e-5)||Math.abs(d)>=inf.H/2-1e-6){ f0SecDrop(); return; }
+    var N=96;
+    verts.push(0,d,0);
+    for(i=0;i<N;i++){
+      var th=i/N*TAU;
+      verts.push(Math.cos(th)*rc, d, Math.sin(th)*rc);
+      ring.push([Math.cos(th)*rc, d, Math.sin(th)*rc]);
+    }
+    for(i=0;i<N;i++) idx.push(0,1+i,1+((i+1)%N));
+  }else{
+    var pr2=[];
+    for(i=0;i<s.length;i++){
+      var y=s[i][0], r=s[i][1], q=r*r-d*d;
+      if(q>0) pr2.push([y,Math.sqrt(q)]);
+    }
+    if(pr2.length<2){ f0SecDrop(); return; }
+    for(i=0;i<pr2.length;i++){
+      var y2=pr2[i][0], hw=pr2[i][1];
+      if(ax===1){ verts.push(-hw,y2,d); verts.push(hw,y2,d); }
+      else      { verts.push(d,y2,-hw); verts.push(d,y2, hw); }
+    }
+    for(i=0;i<pr2.length-1;i++){
+      var a0=i*2, b0=a0+1, c0=a0+2, e0=a0+3;
+      idx.push(a0,c0,b0, b0,c0,e0);
+    }
+    /* 轮廓：左侧从下往上 + 右侧从上往下 ⇒ 一条闭合折线 */
+    for(i=0;i<pr2.length;i++) ring.push(ax===1?[-pr2[i][1],pr2[i][0],d]:[d,pr2[i][0],-pr2[i][1]]);
+    for(i=pr2.length-1;i>=0;i--) ring.push(ax===1?[pr2[i][1],pr2[i][0],d]:[d,pr2[i][0],pr2[i][1]]);
+  }
+  F0SEC.key=key;
+  if(!F0SEC.face){
+    F0SEC.face=new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({
+      color:0x2f6fb5, transparent:true, opacity:0.10, side:THREE.DoubleSide, depthWrite:false }));
+    F0SEC.face.name='f0secFace'; F0SEC.face.renderOrder=4; root.add(F0SEC.face);
+  }
+  var g2=F0SEC.face.geometry;
+  g2.setAttribute('position', new THREE.Float32BufferAttribute(verts,3));
+  g2.setIndex(idx); g2.computeVertexNormals(); g2.computeBoundingSphere();
+  F0SEC.face.visible=true;
+  if(!F0SEC.edge){
+    F0SEC.edge=new THREE.LineLoop(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({
+      color:0x1f5fa0, transparent:true, opacity:0.55 }));
+    F0SEC.edge.name='f0secEdge'; F0SEC.edge.renderOrder=5; root.add(F0SEC.edge);
+  }
+  var g3=F0SEC.edge.geometry, lp=[];
+  for(i=0;i<ring.length;i++){ lp.push(ring[i][0],ring[i][1],ring[i][2]); }
+  g3.setAttribute('position', new THREE.Float32BufferAttribute(lp,3));
+  g3.computeBoundingSphere();
+  F0SEC.edge.visible=true;
+}
+
 function rebuild(){
   var f=FAMS[curFam];
   while(root.children.length)root.remove(root.children[0]);
@@ -14946,6 +15138,9 @@ function rebuild(){
        竖直/水平两个方向里更紧的那个，保证模型落进去时 1:1 不变形、
        也不会在宽扁画布上被裁掉或缩成一小坨。 */
   applyFit();
+  /* 剖面：放在 applyFit 之后 —— 裁剪平面是世界坐标，必须等 obj 被摆到世界原点之后再挂，
+     否则切面会偏一个 bbox 中心的距离（屏上表现为"切偏了半边"）。 */
+  try{ initF0Section(obj); }catch(e){ console.error(e); }
   /* camD 刚换过 ⇒ 按新距离重算引导线的世界半径。
      （build() 里算半径时用的还是上一个族的 camD，不强制刷一帧会对不上） */
   refreshPxTubes(true);
@@ -15010,6 +15205,9 @@ function applyParam(f,p,bv){
     rebuild();buildUI();return;
   }
   drawSecPreview();   /* 族⑤ 横断面 2D 预览实时跟随（其它族无此画布，直接返回） */
+  /* 剖面滑动：只挪裁剪平面 + 重算那片膜，【不】重建 1 万根杆 —— 否则拖滑条是卡成幻灯片。
+     这条必须在 rebuild 之前返回；走 rebuild 也"对"，只是拖不动。 */
+  if(p.k==='hxSecOff'&&F0SEC.on){ syncF0Section(true); return; }
   rebuild();
 }
 /* 双击滑条右侧的读数 = 直接敲一个数（2026-11-03 老师要求，铁律见 SOUL.md 106）
@@ -15112,7 +15310,8 @@ function buildUI(){
           drawSecPreview();   /* 族③ 横截面类型 / 族⑤ 断面参数变了 ⇒ 2D 预览必须跟着重画 */
           /* 换中心线 / 换排列方式 ⇒ 面板里「哪些滑条还生效」全变了，必须重画 */
           if(p.k==='cline'||p.k==='lavMode'||p.k==='layLaw'||p.k==='secLaw'||p.k==='cutSurf'||p.k==='cutSkin'||
-             p.k==='hxL2mode'||p.k==='hxCmap'||p.k==='hxMapT'||p.k==='hxView'||p.k==='hxWeb'){rebuild();buildUI();return;}
+             p.k==='hxL2mode'||p.k==='hxCmap'||p.k==='hxMapT'||p.k==='hxView'||p.k==='hxWeb'||
+             p.k==='hxSec'||p.k==='hxSecSide'||p.k==='hxSecFace'){rebuild();buildUI();return;}
           rebuild();
         });
         bx.appendChild(bt);
@@ -16483,6 +16682,9 @@ function loop(){
   /* 引导线按屏幕像素维持粗细：滚轮缩放后距离变了就重建（内部有 1.5% 死区，
      静止时不重建，缩放时每帧最多重建一次，代价 < 1ms） */
   refreshPxTubes();
+  /* 剖面平面每帧同步：滑条的 value 一变，这里立刻反映到裁剪平面上（不重建几何）。
+     静止时这一句只做 3 次乘加 + 一次 toFixed 比较，代价可以忽略。 */
+  syncF0Section();
   renderer.render(scene,camera);
 }
 initGL();

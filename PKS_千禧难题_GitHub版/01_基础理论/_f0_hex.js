@@ -1061,6 +1061,17 @@ function f0HexBuild(P) {
   }
   g.userData.f0seg = segArr.length ? segArr : null;
 
+  /* 剖面（2026-11-04）要用的子午线样本：单位与 mesh 完全一致（都用 st.sc 缩放、tMid 摆正），
+     所以页面侧拿它算出来的剖面膜严丝合缝贴在杆件上，不需要再乘任何系数。
+     放 userData 而不是让页面回算：回算等于把建网公式抄第二遍，抄错就是"膜与壳差一层"。 */
+  var secS = [], secMax = 0, tMid3 = (st.t0 + st.t1) / 2;
+  for (i = 0; i < net.pf.pr.length; i++) {
+    var yy = (net.pf.pr[i][0] - tMid3) * st.sc, rr2 = net.pf.pr[i][1] * st.sc;
+    secS.push([yy, rr2]);
+    if (rr2 > secMax) secMax = rr2;
+  }
+  g.userData.f0sec = { samples: secS, H: st.H, rmax: secMax };
+
   g.userData.noArray = true;          /* 轴对称体：圆周阵列只会叠出重合杆 */
   g.userData.f0hex = st;
   g.userData.f0hex2 = L2 ? L2.stats : null;
@@ -1309,6 +1320,28 @@ function f0HexRead(P) {
     if (L2) vOuter += s2.nStruts2 * 48 + s2.nV2 * 24;
     rows.push(['顶点合计', '<b>' + vOuter + '</b> 个（M=26 时约 56 万；M=58 约 415 万、构建约 1.4 秒' +
       '　·　按 外层杆×72 ＋ 节点×24 ＋ 内层/芯杆×48 ＋ 内层节点×24 现算，不含薄壳）']);
+  }
+
+  /* ---------------- 剖面（2026-11-04 老师：左侧 3D 图要能看剖面）----------------
+     这一行必须写出【切在哪、切掉哪边、还剩多少】——只写"已剖开"等于没写：
+     平面滑到模型外面时屏上会一片空白，读者需要在这里看到原因。 */
+  var sax = (P.hxSec | 0);
+  if (sax >= 1 && sax <= 3) {
+    var sName = ['', 'xy 平面（法向 z · 沿 z 滑）', 'zy 平面（法向 x · 沿 x 滑）', 'zx 平面（法向 y · 沿 y 滑）'][sax];
+    var sHalf = (sax === 3) ? st.H / 2 : net.pf.umax * st.sc;
+    var sOff = Math.max(-100, Math.min(100, (P.hxSecOff === undefined ? 0 : +P.hxSecOff))) / 100;
+    var sD = sOff * sHalf;
+    var sKeep = (P.hxSecSide | 0) ? '≥' : '≤';
+    var sLeft = (sax === 3) ? ('保留 y ' + sKeep + ' ' + sD.toFixed(3))
+                            : ('保留 ' + (sax === 1 ? 'z' : 'x') + ' ' + sKeep + ' ' + sD.toFixed(3));
+    var sOut = Math.abs(sOff) >= 0.999;
+    rows.push(['剖面', '<b>' + sName + '</b>　·　切掉 <b>' + ((P.hxSecSide | 0) ? '−' : '+') +
+      (sax === 1 ? 'z' : sax === 2 ? 'x' : 'y') + '</b> 那一侧　·　' + sLeft +
+      (sOut ? '<br><span style="color:#b03020">⚠ 平面已滑到模型外：这一侧没有东西可留，' +
+        '屏上是空的 —— 把滑条往回拉</span>' : '')]);
+  } else {
+    rows.push(['剖面', '不剖（整体）。要看内部就把「剖开看内部」切到 xy / zy / zx 任一面 —— ' +
+      '切面是 GPU 裁剪算出来的，杆件被真切开（断口是空心的管口），不是少画几根']);
   }
 
   /* ---------------- 配色 ---------------- */

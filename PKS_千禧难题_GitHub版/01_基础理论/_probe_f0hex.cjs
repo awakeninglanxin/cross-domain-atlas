@@ -778,6 +778,80 @@ function chk(c, label, extra) {
     '点回「等轴 xyz」⇒ 2D 层收起、3D 画布恢复', J(back));
   chk(back.hint !== 'none', '回到 3D ⇒ 操作提示条原样还回去（display=' + back.hint + '）', J(back));
 
+  /* ================= M. 剖面（2026-11-04 老师：3D 图要能剖开看内部） =================
+     判据原则：不读"参数有没有设进去"，而读【渲染结果】——
+     裁剪平面是 GPU 干的活，参数对了但 localClippingEnabled 没开、或平面挂错材质，
+     屏上会一点没变；只查 F0SEC.axis 就永远是绿的。 */
+  console.log('\n[M] 剖面（xy / zy / zx 三面可选 · 可滑）');
+  const inkOf = () => ev(`(function(){
+    try{renderer.render(scene,camera);}catch(e){return -1;}
+    var gl=renderer.getContext(), cv=renderer.domElement;
+    var w=cv.width,h=cv.height,buf=new Uint8Array(w*h*4);
+    gl.readPixels(0,0,w,h,gl.RGBA,gl.UNSIGNED_BYTE,buf);
+    var n=0;for(var i=3;i<buf.length;i+=4){if(buf[i]>20)n++;}
+    return +(n/(w*h)).toFixed(4);})()`);
+  const setSec = (k,v) => ev(`(function(){P[${JSON.stringify(k)}]=${JSON.stringify(v)};rebuild();buildUI();return 1;})()`);
+
+  await setSec('hxSec', 0); await sleep(2600);
+  const qSec0 = await ev(`(function(){return {on:F0SEC.on,row:(function(){var rs=[].slice.call(document.querySelectorAll('#readout div'));
+    for(var i=0;i<rs.length;i++){var s=rs[i].querySelector('span');
+      if(s&&s.textContent.indexOf('剖面')>=0)return rs[i].querySelector('b').textContent.trim();}return '';})()};})()`);
+  const inkA = await inkOf();
+  chk(qSec0.on === false && qSec0.row.indexOf('不剖') >= 0, '剖面关：不挂裁剪、读数写「不剖」', J(qSec0));
+
+  await setSec('hxSec', 1); await sleep(3000);
+  const qSec1 = await ev(`(function(){var p=F0SEC.planes[0],nClip=0;
+    F0SEC.obj.traverse(function(o){if(o.isMesh&&o.material&&o.material.clippingPlanes&&o.material.clippingPlanes.length)nClip++;});
+    return {on:F0SEC.on,ax:F0SEC.axis,n:[+p.normal.x.toFixed(3),+p.normal.y.toFixed(3),+p.normal.z.toFixed(3)],
+            c:+p.constant.toFixed(4),nClip:nClip,uuid:F0SEC.obj.uuid,
+            lce:renderer.localClippingEnabled,rmax:+F0SEC.info.rmax.toFixed(4)};})()`);
+  console.log('  xy 剖：' + J(qSec1));
+  chk(qSec1.on === true && qSec1.ax === 1 && qSec1.n[2] === -1 && Math.abs(qSec1.c) < 1e-9,
+    'xy 面：法向 −z、过中心（保留 z ≤ 0）', J(qSec1));
+  chk(qSec1.nClip >= 5 && qSec1.lce === true,
+    '裁剪面挂到了 ' + qSec1.nClip + ' 个材质上、且 localClippingEnabled 已开', J(qSec1));
+
+  const inkB = await inkOf();
+  chk(inkB > 0.02 && inkB < inkA * 0.85,
+    '切掉一半后画面墨量明显减少（' + (100 * inkA).toFixed(1) + '% → ' + (100 * inkB).toFixed(1) +
+    '%）⇒ 真的少渲染了东西，不是只改了个参数', inkB);
+
+  /* 滑动：位置必须 = −40% × 半尺寸（半尺寸从 info 现取，不写死），且【不许重建模型】 */
+  await ev(`(function(){P.hxSecOff=-40;applyParam(FAMS[curFam],{k:'hxSecOff',min:-100,max:100,step:1,dp:0},document.createElement('b'));return 1;})()`);
+  await sleep(900);
+  const qSec2 = await ev(`(function(){var p=F0SEC.planes[0];
+    return {c:+p.constant.toFixed(5),uuid:F0SEC.obj.uuid,rmax:+F0SEC.info.rmax.toFixed(4)};})()`);
+  chk(Math.abs(qSec2.c - (-0.4 * qSec2.rmax)) < 1e-4,
+    '滑到 −40% ⇒ constant = −0.4 × 半径（' + qSec2.c + ' vs ' + (-0.4 * qSec2.rmax).toFixed(5) + '）', J(qSec2));
+  chk(qSec2.uuid === qSec1.uuid, '滑动只改裁剪平面，没有重建模型（obj.uuid 不变）', J(qSec2));
+
+  /* 水平剖 + 膜：膜上每个顶点都必须落在切面上，且顶点数 = 96 + 1 个圆心 */
+  await setSec('hxSec', 3); await sleep(2600);
+  await setSec('hxSecFace', 1); await sleep(2200);
+  const qSec3 = await ev(`(function(){
+    if(!F0SEC.face) return {n:0};
+    var a=F0SEC.face.geometry.attributes.position, dev=0, i;
+    var pl=F0SEC.planes[0];
+    /* 切面 y：法向 −y 时 constant 就是 d；法向 +y 时是 −d */
+    var yCut = (pl.normal.y<0) ? pl.constant : -pl.constant;
+    for(i=0;i<a.count;i++){var dy=Math.abs(a.getY(i)-yCut); if(dy>dev)dev=dy;}
+    return {n:a.count, dev:+dev.toFixed(9), yCut:+yCut.toFixed(4)};})()`);
+  chk(qSec3.n === 97 && qSec3.dev < 1e-6,
+    'zx 面剖面膜：' + qSec3.n + ' 个顶点全部落在切面 y=' + qSec3.yCut + ' 上（最大偏离 ' + qSec3.dev + '）', J(qSec3));
+
+  /* 滑到模型外面：整颗应当被切光（这是"平面真的参与渲染"的终审）。
+     🔴 方向别搞反：side=0 是「保留 ≤ d」，所以要把 d 拉到 −100% 才能切光；
+        拉到 +100% 反而一根不切 —— 判据写反了会变成永远"通过"。 */
+  await ev(`(function(){P.hxSecOff=-100;P.hxSecFace=0;applyParam(FAMS[curFam],{k:'hxSecOff',min:-100,max:100,step:1,dp:0},document.createElement('b'));return 1;})()`);
+  await sleep(900);
+  const inkC = await inkOf();
+  chk(inkC < inkA * 0.05, '把平面滑到模型外 ⇒ 画面几乎全空（墨量 ' + (100 * inkC).toFixed(2) +
+    '% < 未剖的 5%）', inkC);
+
+  await setSec('hxSec', 0); await sleep(2200);
+  const qSec4 = await ev(`(function(){return {on:F0SEC.on,face:!!F0SEC.face};})()`);
+  chk(qSec4.on === false && qSec4.face === false, '切回「不剖」⇒ 裁剪面与剖面膜一起撤掉', J(qSec4));
+
   console.log('\n--------');
   console.log('JS 异常：' + (errs.length ? errs.slice(0, 4).join(' ;; ') : '无'));
   chk(errs.length === 0, '全程没有 JS 异常', errs.slice(0, 2).join(' ;; '));
