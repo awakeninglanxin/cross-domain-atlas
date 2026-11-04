@@ -2,6 +2,7 @@
    判据全部读【屏上的字】+【场景里真实几何的顶点数/材质】+【2D 画布像素】，
    不拿函数自己的返回值当结论。 */
 const { spawn } = require('child_process');
+const { decodeFirstFrame } = require('./_gifdec.cjs');
 const os = require('os'), path = require('path'), fs = require('fs');
 const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const PORT = 9343, DIR = __dirname;
@@ -160,6 +161,19 @@ function chk(c, label, extra) {
   console.log('\n[A] 族默认是 ★ 双层 + 四面体芯（cutSkin=4）；切到「原样」必须干净退回锥面');
   chk((await clickTab('\u24EA \u53cc\u9525')) !== '', '切到 ⓪ 子页');
   await sleep(1400);
+  /* 内芯密度的【默认档】必须在这里判：等 [J] 段把 hxCore 拉到「全建」再判，
+     读到的就是被 J 改过的值（第一版就是这么假红的）。默认值只在"刚进页面"时成立。 */
+  const coreDef = await ev(`(function(){
+    var ws=[].slice.call(document.querySelectorAll('#rows > div'));
+    for(var i=0;i<ws.length;i++){
+      var lab=ws[i].firstElementChild;
+      if(!lab||(lab.textContent||'').indexOf('\u5185\u82af\u5bc6\u5ea6')<0)continue;
+      var bs=[].slice.call(ws[i].querySelectorAll('.choices button'));
+      return {n:bs.length,on:bs.map(function(b){return b.className==='on';}),
+              p:(P.hxCore===undefined?null:(P.hxCore|0))};}
+    return null;})()`);
+  chk(coreDef && coreDef.n === 4 && coreDef.p === 1 && coreDef.on[1] === true,
+    '刚进页面：内芯密度默认 = 第 2 档「★ 稀疏」（4 个档里亮着第 2 个，P.hxCore = 1）', J(coreDef));
   const cs0 = await choicesTxt();
   console.log('  选择器：' + cs0.slice(0, 220));
   chk(cs0.indexOf('\u539f\u6837\uff08\u9525\u9762') >= 0 && cs0.indexOf('\u5355\u5c42\u94a2\u67b6\uff08') >= 0 &&
@@ -479,6 +493,15 @@ function chk(c, label, extra) {
   chk(bdL2.indexOf('\u53cc\u5c42\u94a2\u67b6') >= 0, 'badge 写着「双层钢架」', bdL2);
   chk(/plasma/i.test(bdL2), 'badge 点名 plasma 配色', bdL2);
 
+  /* ⚠ 这一段判的是【对偶几何本身对不对】（四面体数 = 三角面数、内顶点网三正则），
+     这两个恒等式只在「全建」档成立：抽稀档不是每个面都长锥，按定义就不该成立。
+     所以先把内芯密度拉到「全建」再判几何；降档的账在 [Q] 里单独判。
+     （2026-11-04 加了 hxCore、默认档从"全建"变"稀疏"之后，下面两条曾变红 ——
+       红得对：不是几何错了，是判据挑错了档。判据要跟着"哪个量在哪个档才成立"走。） */
+  await ev(`(function(){P.hxCore=3;rebuild();buildUI();return 1;})()`);
+  await sleep(3200);
+  chk((await ev('P.hxCore|0')) === 3, '本次几何核验先把内芯密度拉到「全建」（下面两条恒等式只在这一档成立）');
+
   const rLam = await rowTxt('\u7b2c\u4e8c\u5c42\u7f29\u653e');
   const rGap = await rowTxt('\u5c42\u95f4\u8ddd h');
   const rSide = await rowTxt('\u4e09\u6761\u4fa7\u68f1');
@@ -542,9 +565,9 @@ function chk(c, label, extra) {
       '层间径向杆数 = 外层格数（' + (st2 && st2.nTie) + ' = ' + nCells + '；内层顶点是蜂窝格心的对偶 ⇒ 一一对应）');
   }
   chk(nTri > 200 && nTet === nTri,
-    '四面体个数 = 内层三角面数（' + nTet + ' = ' + nTri + '；每个三角面正好当一次底座）');
+    '全建档：四面体个数 = 内层三角面数（' + nTet + ' = ' + nTri + '；每个三角面正好当一次底座）');
   chk(nEdge > 200 && nApx === nEdge,
-    '内顶点互连根数 = 内层边数（' + nApx + ' = ' + nEdge + '；内顶点网是三正则 ⇒ 边数相同）');
+    '全建档：内顶点互连根数 = 内层边数（' + nApx + ' = ' + nEdge + '；内顶点网是三正则 ⇒ 边数相同）');
   chk(st2 && (st2.nTie + st2.nSpoke + st2.nIn2 + st2.nBrace + 3 * st2.nTet + st2.nInner) === st2.nTot2,
     '杆数恒等式：tie + 辐条 + 内层边 + 腹杆 + 3×四面体 + 内互连 = 二层总杆（' +
     [st2 && st2.nTie, st2 && st2.nSpoke, st2 && st2.nIn2, st2 && st2.nBrace,
@@ -1019,6 +1042,275 @@ function chk(c, label, extra) {
   await send('Emulation.clearDeviceMetricsOverride');
   await new Promise(r => setTimeout(r, 400));
 
+  /* ================= Q. 内芯降档（省料）+ 剖面浮窗（可收起）+ 播放 + GIF =================
+     2026-11-04 老师三条要求：
+     ① 「内部支撑连接杆太密，多加几个降档，结构稳固同时尽量少耗材（要 3D 打印）」；
+     ② 「自动从 −100 播到 +100，再一键导出当前视图动画为 <5MB 的尽量高清 GIF」；
+     ③ 「剖面加到别的族，做成左侧独立浮窗；参数面板都要浮窗可收起」。
+     判据原则：省料看【杆总长】不看锥数多少；浮窗看【矩形是否相交】不看样式；
+     GIF 看【文件字节 / 分辨率 / 帧数】不看按钮有没有被点过。 */
+  console.log('\n[Q] 内芯四档（省料）· 剖面浮窗（默认收起、不挡视角键）· 播放 · 跨族 · GIF');
+
+  await clickPreset('\u53cc\u5c42 + \u56db\u9762\u4f53\u82af');
+  await sleep(3800);
+
+  /* ---- Q1 四个档位与默认档 ---- */
+  const coreOpts = await ev(`(function(){
+    var ws=[].slice.call(document.querySelectorAll('#rows > div'));
+    for(var i=0;i<ws.length;i++){
+      var lab=ws[i].firstElementChild;
+      if(!lab||(lab.textContent||'').indexOf('\u5185\u82af\u5bc6\u5ea6')<0)continue;
+      var bs=[].slice.call(ws[i].querySelectorAll('.choices button'));
+      return {n:bs.length,
+        txt:bs.map(function(b){return (b.textContent||'').replace(/\s+/g,' ').slice(0,10);}),
+        on:bs.map(function(b){return b.className==='on';})};}
+    return null;})()`);
+  console.log('  档位：' + J(coreOpts));
+  chk(coreOpts && coreOpts.n === 4, '内芯密度有 4 个可选档（不建 / 稀疏 / 中 / 全建）', J(coreOpts));
+  /* 这里【不判默认档】：默认值已在 [A] 段刚进页面时判过；此处 P.hxCore 可能被 [J] 改成过全建。
+     这里判的是"按钮的选中态跟着 P 走"——选错了档，屏上就会指错行。 */
+  chk(coreOpts && coreOpts.on.filter(Boolean).length === 1 &&
+      coreOpts.on[await ev('P.hxCore|0')] === true,
+    '四档里恰好一个亮着，且亮的那个就是 P.hxCore（按钮状态与参数同源）',
+    J([coreOpts && coreOpts.on, await ev('P.hxCore|0')]));
+
+  /* ---- Q2 四档实测：锥数 / 杆总长 / 内芯占比 ---- */
+  const tiers = [];
+  for (const c of [0, 1, 2, 3]) {
+    await ev(`(function(){P.hxCore=${c};rebuild();buildUI();return 1;})()`);
+    await sleep(2600);
+    const s = await ev(`(function(){var L=f0HexL2(P);if(!L)return null;var s=L.stats;
+      return {nTet:s.nTet,step:s.coreStep,
+        share:Math.round(s.coreShare*1e4)/100,
+        lenAll:Math.round(s.lenAll*1000)/1000,
+        lenCore:Math.round(s.lenCore*1000)/1000};})()`);
+    const rC = await rowTxt('\u5185\u82af\u5bc6\u5ea6');
+    const rTet = await rowTxt('\u56db\u9762\u4f53\u82af');
+    tiers.push({ c: c, nTet: s.nTet, step: s.step, share: s.share, lenAll: s.lenAll, lenCore: s.lenCore, rC: rC, rTet: rTet });
+    console.log('  core=' + c + '  ' + J([s.nTet, s.step, s.share + '%', s.lenAll]) + '  屏：' + String(rC).slice(0, 30));
+  }
+  chk(tiers[0].nTet === 0 && tiers[0].step === 0 && tiers[0].share === 0 && tiers[0].lenCore === 0,
+    '「不建内芯」档：锥 0 个、内芯杆长 0、占比 0.0%（只减芯，外壳与腹杆一根不动）', J(tiers[0]).slice(0, 90));
+  chk(String(tiers[0].rTet).indexOf('\u672c\u6863\u4e00\u4e2a\u90fd\u4e0d\u5efa') >= 0,
+    '「不建内芯」档在屏幕上明写「本档一个都不建」，不是印个 0 冒充算出来了', String(tiers[0].rTet).slice(0, 40));
+
+  const nTot = tiers[3].nTet;
+  chk(tiers[3].step === 1 && tiers[1].nTet === Math.ceil(nTot / 4) && tiers[2].nTet === Math.ceil(nTot / 2),
+    '锥数 = ceil(全建锥数 / 步长)：' + tiers.map(t => t.nTet).join(' / ') + '（全建 ' + nTot + ' 个，步长 4 / 2 / 1）',
+    J(tiers.map(t => [t.nTet, t.step])));
+  chk(tiers[0].lenAll < tiers[1].lenAll && tiers[1].lenAll < tiers[2].lenAll && tiers[2].lenAll < tiers[3].lenAll,
+    '耗材（杆总长）随档位单调增：' + tiers.map(t => t.lenAll).join(' < '), J(tiers.map(t => t.lenAll)));
+  chk(tiers[0].share < tiers[1].share && tiers[1].share < tiers[2].share && tiers[2].share < tiers[3].share,
+    '内芯耗材占比单调增：' + tiers.map(t => t.share + '%').join(' < ') +
+    '（这才是"省了多少料"的可核对口径，只看锥数不算账）', J(tiers.map(t => t.share)));
+  chk(new Set(tiers.map(t => t.rC)).size === 4,
+    '屏上「内芯密度」那一行四档各不相同（读数真的跟着档走，不是写死一句）',
+    J(tiers.map(t => String(t.rC).slice(0, 12))));
+
+  /* ---- Q3 确定性：同一组参数两次抽稀必须逐位相同（3D 打印要能出同一份 STL）---- */
+  await ev(`(function(){P.hxCore=1;rebuild();buildUI();return 1;})()`); await sleep(2600);
+  const det1 = await ev(`(function(){return +f0HexL2(P).stats.lenAll.toFixed(9);})()`);
+  await ev(`(function(){P.hxCore=2;rebuild();buildUI();return 1;})()`); await sleep(2200);
+  await ev(`(function(){P.hxCore=1;rebuild();buildUI();return 1;})()`); await sleep(2600);
+  const det2 = await ev(`(function(){return +f0HexL2(P).stats.lenAll.toFixed(9);})()`);
+  chk(det1 === det2, '同一组参数抽稀两次，杆总长逐位相同（' + det1 + '）⇒ 确定性，不是随机采样', J([det1, det2]));
+
+  /* ---- Q4 浮窗：独立、默认收起、不与视角键抢位置、收起态仍报状态 ---- */
+  const spBox = await ev(`(function(){var b=document.getElementById('secPanel'),v=document.getElementById('viewbtns');
+    if(!b)return null;
+    var rb=b.getBoundingClientRect(),rv=v?v.getBoundingClientRect():null,ov=null;
+    if(rv){var w=Math.min(rb.right,rv.right)-Math.max(rb.left,rv.left),
+                 h=Math.min(rb.bottom,rv.bottom)-Math.max(rb.top,rv.top);
+      if(w>0&&h>0)ov={w:Math.round(w),h:Math.round(h)};}
+    var ls=null;try{ls=window.localStorage.getItem('pks.sec.min');}catch(e){}
+    return {min:b.classList.contains('min'),w:Math.round(rb.width),h:Math.round(rb.height),
+      sum:(document.getElementById('spSum')||{}).textContent,ls:ls,ov:ov,
+      pos:getComputedStyle(b).position};})()`);
+  console.log('  浮窗：' + J(spBox));
+  chk(spBox && spBox.pos === 'fixed', '剖面是独立浮窗（position:fixed），不是塞在右栏参数里', spBox && spBox.pos);
+  chk(spBox && spBox.min === true && spBox.h < 90,
+    '浮窗默认收起（高 ' + (spBox && spBox.h) + ' px，只留一条标题）', spBox && spBox.h);
+  chk(spBox && spBox.ov === null,
+    '收起态与画布左下五个视角键【矩形不相交】（展开态 376 px 会正好压住它们，所以默认必须收起）',
+    J(spBox && spBox.ov));
+  chk(spBox && String(spBox.sum).trim().length > 0,
+    '收起态标题上仍报状态「' + (spBox && String(spBox.sum).trim()) + '」—— 收起不是藏起来', spBox && spBox.sum);
+
+  await ev(`(function(){document.getElementById('spBtn').click();return 1;})()`);
+  await sleep(700);
+  const spOpen = await ev(`(function(){var b=document.getElementById('secPanel'),r=b.getBoundingClientRect();
+    var ls=null;try{ls=window.localStorage.getItem('pks.sec.min');}catch(e){}
+    return {min:b.classList.contains('min'),w:Math.round(r.width),h:Math.round(r.height),ls:ls};})()`);
+  chk(spOpen.min === false && spOpen.h > 200,
+    '点一下展开（' + spOpen.w + '×' + spOpen.h + '）', J(spOpen));
+  chk(spOpen.ls === '0', '展开状态记进 localStorage（下次进来还展开，不是每次都复位）', spOpen.ls);
+
+  /* ---- Q5 播放：−100 → +100 自动走一遍，中途能停 ---- */
+  await ev(`(function(){var bs=[].slice.call(document.querySelectorAll('#spAxis button'));
+    for(var i=0;i<bs.length;i++){if((bs[i].getAttribute('data-v')|0)===2){bs[i].click();return 1;}}return 0;})()`);
+  await sleep(2800);
+  await ev(`(function(){document.getElementById('spPlay').click();return 1;})()`);
+  await sleep(1500);
+  const mid = await ev(`(function(){return {off:P.hxSecOff|0,
+    btn:document.getElementById('spPlay').textContent.trim(),
+    txt:document.getElementById('spSt').textContent.slice(0,36)};})()`);
+  chk(mid.off > -100 && mid.off < 100, '播放 1.5 秒后剖面位置已离开起点（' + mid.off + '%）⇒ 真在动', J(mid));
+  chk(mid.btn.indexOf('\u505c\u6b62') >= 0, '播放中按钮变「■ 停止」（可以中途打断）', mid.btn);
+  await sleep(5400);
+  const end = await ev(`(function(){var pl=F0SEC.planes[0];
+    return {off:P.hxSecOff|0,btn:document.getElementById('spPlay').textContent.trim(),
+      c:+(pl?pl.constant.toFixed(4):NaN)};})()`);
+  chk(end.off === 100, '播放结束停在 +100（最大值）', J(end));
+  chk(end.btn.indexOf('\u64ad\u653e') >= 0, '播放结束按钮复位成「▶ 播放」', end.btn);
+  const inkEnd = await inkOf();
+  await ev(`(function(){P.hxSec=0;rebuild();buildUI();return 1;})()`); await sleep(2600);
+  const inkNone = await inkOf();
+  chk(inkEnd > inkNone * 0.9,
+    '播到 +100 时整颗都在（墨量 ' + (100 * inkEnd).toFixed(1) + '% vs 不剖 ' + (100 * inkNone).toFixed(1) + '%）',
+    J([inkEnd, inkNone]));
+
+  /* ---- Q6 跨族：剖面从「⓪ 专属」推广到其它族 ---- */
+  const cross = [];
+  for (const t of [['\u2460 \u53cc\u6ce2\u7eb9\u76d8', '① 双波纹盘'],
+                   ['\u2469 \u6f0f\u6597\u87ba\u65cb\u7ba1', '⑩ 漏斗螺旋管'],
+                   ['\u246A \u82b1\u5f62\u66f2\u9762', '⑪ 花形曲面']]) {
+    await clickTab(t[0]);
+    await sleep(3000);
+    const ink0 = await inkOf();
+    await ev(`(function(){P.hxSec=2;P.hxSecOff=0;rebuild();buildUI();return 1;})()`);
+    await sleep(3000);
+    const ink1 = await inkOf();
+    const cs = await ev(`(function(){return {gen:!!(F0SEC.info&&F0SEC.info.generic),
+      face:!!F0SEC.face,
+      st:document.getElementById('spSt').textContent.slice(0,64),
+      sum:document.getElementById('spSum').textContent.trim()};})()`);
+    cross.push({ name: t[1], ink0: ink0, ink1: ink1, ratio: +(ink0 / Math.max(1e-6, ink1)).toFixed(2),
+      gen: cs.gen, face: cs.face, st: cs.st, sum: cs.sum });
+    console.log('  ' + t[1] + '：未剖 ' + ink0 + ' → 切开 ' + ink1 + '（比 ' + cross[cross.length - 1].ratio + '）');
+  }
+  chk(cross.every(x => x.ratio > 1.10),
+    '三个新族都真的被切开了（未剖/切开 墨量比 ' + cross.map(x => x.ratio).join(' / ') + '，都 > 1.10）',
+    J(cross.map(x => [x.name, x.ratio])));
+  chk(cross.every(x => x.gen === true && x.st.indexOf('\u4e0d\u753b\u819c') >= 0),
+    '这三族没有单一子午线 ⇒ 屏上明写「只切、不画膜」，不拿近似圆冒充截面',
+    J(cross.map(x => String(x.st).slice(0, 30))));
+  chk(cross.every(x => x.face === false), '这三族不会画出假膜（F0SEC.face 为空）', J(cross.map(x => x.face)));
+
+  /* ---- Q7 一键导出 GIF：head / 分辨率 / 帧数 / 体积 / 起点不空白 五条一起判 ---- */
+  await clickTab('\u24EA \u53cc\u9525');
+  await sleep(3200);
+  await clickPreset('\u53cc\u5c42 + \u56db\u9762\u4f53\u82af');
+  await sleep(3800);
+  await ev(`(function(){P.hxCore=1;P.hxSec=2;P.hxSecOff=-80;rebuild();buildUI();
+    if(F0SEC.on)syncF0Section();return 1;})()`);
+  await sleep(2600);
+  /* 起点那一帧必须真有东西。⚠ 别指望"墨量很多"：side=0 是「保留 ≤ d」，
+     −80% 只剩 10% 那么薄的一片，墨量本来就只有 1~2%。
+     所以判据要用【相对】的：拿真正切光的 −100% 当零点，起点必须明显高于它。 */
+  await ev(`(function(){P.hxSecOff=-100;syncF0Section();return 1;})()`);
+  await sleep(600);
+  const inkBlank = await inkOf();
+  await ev(`(function(){P.hxSecOff=-80;syncF0Section();return 1;})()`);
+  await sleep(600);
+  const inkStart = await inkOf();
+  chk(inkStart > Math.max(0.004, inkBlank * 4),
+    '录制起点（−80%）【预览画面】里有东西：墨量 ' + (100 * inkStart).toFixed(2) + '% vs 切光的 −100% 只有 ' +
+    (100 * inkBlank).toFixed(2) + '%', J([inkStart, inkBlank]));
+
+  const DL = path.join(os.tmpdir(), 'f0hex-gif-' + Date.now());
+  fs.mkdirSync(DL, { recursive: true });
+  await send('Page.setDownloadBehavior', { behavior: 'allow', downloadPath: DL });
+  const cvDim = await ev('({w:renderer.domElement.width,h:renderer.domElement.height})');
+  /* 状态行从「录第 1 档：680×668 · 44 帧（裁到模型范围 497×607）」跳到「编码中」只要几百毫秒，
+     500 ms 轮询会整段错过（第一版就没抓到）。用 MutationObserver 把所有台词记下来再回头找。 */
+  await ev(`(function(){window.__stLog=[];var e=document.getElementById('spSt');
+    new MutationObserver(function(){window.__stLog.push(e.textContent);})
+      .observe(e,{childList:true,subtree:true,characterData:true});return 1;})()`);
+  await ev(`(function(){document.getElementById('spGif').click();return 1;})()`);
+  let gifF = null, rcTxt = null;
+  for (let i = 0; i < 240; i++) {
+    await sleep(400);
+    const fs2 = fs.readdirSync(DL).filter(f => /\.[Gg][Ii][Ff]$/.test(f));
+    if (fs2.length && fs.statSync(path.join(DL, fs2[0])).size > 10000) { gifF = fs2[0]; break; }
+  }
+  const stLog = await ev('(window.__stLog||[]).join(" ;; ")');
+  const mRc = String(stLog).match(/\u6a21\u578b\u8303\u56f4\s*(\d+)\u00d7(\d+)/);
+  if (mRc) rcTxt = { w: +mRc[1], h: +mRc[2] };
+  console.log('  状态行流水：' + String(stLog).slice(0, 200));
+  const stGif = await ev(`(function(){return document.getElementById('spSt').textContent.trim();})()`);
+  console.log('  导出台词：' + stGif);
+  chk(!!gifF, '点了「⤓ 导出 GIF」后真的落下一个 .gif 文件', fs.readdirSync(DL));
+  if (gifF) {
+    const bf = fs.readFileSync(path.join(DL, gifF));
+    const head = bf.slice(0, 6).toString('latin1');
+    const W = bf.readUInt16LE(6), H = bf.readUInt16LE(8);
+    let frames = 0;
+    for (let i = 0; i < bf.length - 3; i++) if (bf[i] === 0x21 && bf[i + 1] === 0xF9 && bf[i + 2] === 0x04) frames++;
+    const delayCs = frames ? bf.readUInt16LE((function () {
+      for (let i = 0; i < bf.length - 3; i++) if (bf[i] === 0x21 && bf[i + 1] === 0xF9) return i + 4;
+      return 0; })()) : 0;
+    console.log('  GIF：' + gifF + '  ' + bf.length + ' B  ' + W + '×' + H + '  ' + frames + ' 帧  head=' + head);
+    chk(head === 'GIF89a', '文件头是 GIF89a', head);
+    chk(W === 680, '第一档就够小 ⇒ 用了最高清的一档（宽 680，没有触发降档）', W);
+    /* 裁没裁过，看【宽高比】：整画布是 741×518（横的），按模型矩形裁完必然换一个比例。
+       这条同时把 modelRect() 的算法钉住：它一旦退回 Box3().setFromObject(root)，
+       切平面那块 size×size 的大板会把矩形撑回画布比例，这里立刻红。 */
+    const cvAsp = cvDim.w / cvDim.h, gifAsp = W / H;
+    chk(Math.abs(gifAsp - cvAsp) > 0.15,
+      'GIF 宽高比 ' + gifAsp.toFixed(3) + ' ≠ 画布 ' + cvAsp.toFixed(3) +
+      '（' + W + '×' + H + ' vs ' + cvDim.w + '×' + cvDim.h + '）⇒ 真的按模型矩形裁过，不是整幅录下来',
+      J([gifAsp, cvAsp]));
+    chk(rcTxt && Math.abs(H - rcTxt.h * W / rcTxt.w) <= 2,
+      '高 = 裁切高 × (680 / 裁切宽)：' + (rcTxt ? rcTxt.w + '×' + rcTxt.h : '?') +
+      ' → ' + (rcTxt ? (rcTxt.h * 680 / rcTxt.w).toFixed(1) : '?') + '，实际 ' + H +
+      '；分辨率按目标宽 680 定（不是 min(680, 裁宽)，那会白丢一档）', J([rcTxt, H]));
+    chk(frames >= 30, '帧数 ' + frames + '（够看，不是两张糊过去）', frames);
+    chk(bf.length < 5 * 1048576, '体积 ' + (bf.length / 1048576).toFixed(2) +
+      ' MB < 5 MB（超了会自动降档，这里连降档都没用上）', bf.length);
+    chk(delayCs > 0 && frames * delayCs >= 300 && frames * delayCs <= 500,
+      '播放时长对得上：' + frames + ' 帧 × ' + delayCs + ' cs ≈ ' + (frames * delayCs / 100).toFixed(1) +
+      ' 秒（与屏幕上的 4.2 秒一遍一致）', frames * delayCs);
+    /* 🔴 这一条才是「第一帧不能是白板」的真判据：把 GIF 的第一帧 LZW 解开、数像素。
+       上一版靠"手动把 off 设到 −80 再看画面"来判，那是【预览】不是【录制】——
+       把 grabFrames 里的 K0 从 0.10 改回 0，那条判据纹丝不动（变异测试实测：186 全绿，全是假绿）。
+       只有解码文件才能钉住它。 */
+    const fr1 = decodeFirstFrame(bf);
+    console.log('  第一帧解码：' + J({ nw: fr1.nonWhiteRatio, col: fr1.coloredRatio, px: fr1.px, colors: fr1.nColors }));
+    chk(fr1.px === W * H && fr1.nonWhiteRatio > 0.008 && fr1.coloredRatio > 0.005,
+      'GIF 第一帧解开后不是白板：非白 ' + (100 * fr1.nonWhiteRatio).toFixed(2) + '% · 有色 ' +
+      (100 * fr1.coloredRatio).toFixed(2) + '%（K0 若改回 0，这一条立刻归零）',
+      J([fr1.nonWhiteRatio, fr1.coloredRatio]));
+    /* 🔴 这条是 2026-11-04 抓到的真 bug：导出过程中每录一帧都 syncF0Section() → sync()，
+       而 sync() 会写同一个 #spSt ⇒「录第 1 档…」「完成：680×668 · 44 帧 · 2.92 MB」被下一帧的
+       「位置 −76%」整段盖掉。文件确实生成了，但屏上永远看不到成品体积。
+       判据必须读【状态行流水】，不能只判"文件存在"。 */
+    chk(/录第\s*1\s*档/.test(String(stLog)),
+      '导出过程中的「录第 1 档…采集中」在屏上出现得住（没有被每帧的控件同步盖掉）',
+      String(stLog).slice(0, 80));
+    const mDone = String(stLog).match(/\u5b8c\u6210\uff1a(\d+)\u00d7(\d+)[^;]*?([\d.]+)\s*MB/);
+    chk(!!mDone && Math.abs(+mDone[3] - bf.length / 1048576) < 0.02,
+      '屏上「完成：… MB」留得住，且印的体积与文件真实字节一致（屏 ' +
+      (mDone ? mDone[3] : '?') + ' MB vs 文件 ' + (bf.length / 1048576).toFixed(2) + ' MB）',
+      String(stLog).slice(-90));
+  }
+  /* ---- Q8 状态行归属：导出结论要留得住，但动参数必须让位（两道门一起判）---- */
+  await sleep(700);
+  const msgDone = await ev(`document.getElementById('spSt').textContent`);
+  await ev(`(function(){syncF0Section();return 1;})()`);   /* 模拟"界面继续刷新一次" */
+  await sleep(300);
+  const msgAfterSync = await ev(`document.getElementById('spSt').textContent`);
+  chk(/\u5b8c\u6210/.test(msgDone) && /\u5b8c\u6210/.test(msgAfterSync),
+    '成品结论「' + String(msgDone).slice(0, 26) + '」留得住：再刷一次界面也不会被「位置 −76%」盖掉',
+    J([msgDone.slice(0, 30), msgAfterSync.slice(0, 30)]));
+  await ev(`(function(){var r=document.getElementById('spOff');r.value=-30;
+    r.dispatchEvent(new Event('input',{bubbles:true}));return 1;})()`);
+  await sleep(500);
+  const msgAfterMove = await ev(`document.getElementById('spSt').textContent`);
+  chk(!/\u5b8c\u6210/.test(msgAfterMove) && /-30%/.test(msgAfterMove),
+    '一动滑条，状态行就回到实时状态（' + String(msgAfterMove).slice(0, 30) + '）—— 不是把状态行永久锁死',
+    msgAfterMove);
+
+  try { fs.rmSync(DL, { recursive: true, force: true }); } catch (e) {}
   console.log('\n--------');
   console.log('JS 异常：' + (errs.length ? errs.slice(0, 4).join(' ;; ') : '无'));
   chk(errs.length === 0, '全程没有 JS 异常', errs.slice(0, 2).join(' ;; '));

@@ -59,6 +59,52 @@ code{background:#f3f5f9;border:1px solid #e3e7ef;border-radius:3px;padding:.5px 
  .secbox .nbox-hd h2{flex:1 1 100%;white-space:normal;overflow:visible;text-overflow:clip}
  .secbox .nbox-sum{flex:1 1 120px;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.45}
 }
+/* ===== 剖面浮窗（2026-11-04）：独立于「调参」，任何族都能切 =====
+   位置左下（视角键上方一点），可拖动、可收起，状态记 localStorage。
+   为什么宽度固定 268px：里面全是短控件（4 个分段按钮 + 1 条滑条），
+   再宽只是留白；窄屏时改成左右 8px 拉满，避免盖住画布。 */
+.sp{position:fixed;z-index:846;left:16px;bottom:16px;width:268px;
+ display:flex;flex-direction:column;background:#fff;border:1px solid #cfd6e0;border-radius:11px;
+ box-shadow:0 2px 6px rgba(18,22,28,.08),0 12px 32px rgba(18,22,28,.14);
+ font-size:12.6px;color:#12161c;line-height:1.5;
+ -webkit-user-select:none;user-select:none}
+.sp.min{width:auto}
+.sp.min .sp-bd{display:none}
+.sp-hd{display:flex;align-items:center;gap:7px;padding:7px 9px;cursor:grab;
+ border-bottom:1px solid #e6eaf0;border-radius:11px 11px 0 0;
+ background:linear-gradient(#fbfcfe,#f4f7fb);touch-action:none}
+.sp.min .sp-hd{border-bottom:0;border-radius:11px}
+.sp-hd.drag{cursor:grabbing}
+.sp-grip{color:#9aa6b6;font-size:12px}
+.sp-hd b{font-size:13.5px;color:#0d2f63;flex:0 0 auto}
+.sp-sum{flex:1 1 auto;min-width:0;font-size:11.6px;color:#5a6b80;overflow:hidden;
+ text-overflow:ellipsis;white-space:nowrap}
+.sp-b{flex:0 0 auto;border:1px solid #c9dcf5;background:#fff;color:#2f6fb5;border-radius:4px;
+ font-size:11.4px;padding:1px 7px;cursor:pointer;font-family:inherit;line-height:1.5}
+.sp-b:hover{background:#e9f2ff}
+.sp-bd{padding:8px 10px 10px}
+.sp-lab{font-size:11.6px;color:#41546c;margin:2px 0 4px}
+.sp-lab b{color:#0d2f63}
+.sp-seg{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 7px}
+.sp-seg button{border:1px solid #d3dde9;background:#fff;color:#33465e;border-radius:5px;
+ font-size:11.4px;padding:3px 7px;cursor:pointer;font-family:inherit;line-height:1.4}
+.sp-seg button:hover{background:#f1f6fd}
+.sp-seg button.on{background:#123a6b;border-color:#123a6b;color:#fff;font-weight:600}
+.sp input[type=range]{width:100%;margin:0 0 7px;accent-color:#2f6fb5}
+.sp-chk{display:flex;align-items:center;gap:5px;font-size:11.6px;color:#41546c;
+ margin:0 0 8px;cursor:pointer;flex-wrap:wrap}
+.sp-tip{color:#8a95a5;font-size:10.6px;flex:1 1 100%}
+.sp-row2{display:flex;gap:5px;margin-bottom:6px}
+.sp-go,.sp-go2{flex:1 1 0;border-radius:5px;font-size:11.6px;padding:4px 6px;
+ cursor:pointer;font-family:inherit;line-height:1.45}
+.sp-go{border:1px solid #123a6b;background:#123a6b;color:#fff}
+.sp-go:hover{background:#1a4c86}
+.sp-go2{border:1px solid #c9dcf5;background:#fff;color:#2f6fb5}
+.sp-go2:hover{background:#e9f2ff}
+.sp-go:disabled,.sp-go2:disabled{opacity:.5;cursor:default}
+.sp-st{font-size:11px;color:#7a8698;border-top:1px dashed #e3e9f1;padding-top:5px;line-height:1.45}
+.sp-st.hit{color:#b03020}
+@media(max-width:640px){ .sp{left:8px;right:8px;bottom:8px;width:auto} }
 .warnbox{background:#fff6f5;border:1px solid #f0c2bc;border-left:4px solid #b3261e;
  border-radius:6px;padding:12px 16px;margin:16px 0;font-size:14px}
 .okbox{background:#f4faf5;border:1px solid #c6e2cc;border-left:4px solid #2e7d43;
@@ -1263,7 +1309,45 @@ k_E  = max(M_y) / |min(M_y)|</div>
 </div>
 </div>
 
+<!-- ===== 剖面浮窗（2026-11-04 老师：独立成一个面板，不要再塞在族参数里）=====
+     为什么独立：① 剖面跟"这一族怎么长"无关，任何族都该能切；
+     ② 塞在族参数里时，只有 cutSkin>0 的 ⓪ 族看得见，切到 ① 就消失了；
+     ③ 它自己有一套即时反馈（滑动是逐帧的、不重建），和"调参要 rebuild"节奏不同。
+     面板本身沿用全站习惯：fixed 浮窗、标题条可拖动、一键收起、状态记 localStorage。 -->
+<div id="secPanel" class="sp min">
+  <div class="sp-hd" id="spHd" title="拖动可移动 · 点这一条收起 / 展开">
+    <span class="sp-grip">⣿</span><b>剖面</b>
+    <span class="sp-sum" id="spSum">不剖</span>
+    <button type="button" class="sp-b" id="spBtn" aria-expanded="false">展开 ▾</button>
+  </div>
+  <div class="sp-bd" id="spBd">
+    <div class="sp-lab">剖开看内部（三个基准面任选 · 切面由 GPU 裁剪算出 —— 杆件被真切开，不是少画几根）</div>
+    <div class="sp-seg" id="spAxis">
+      <button type="button" data-v="0" class="on">不剖</button>
+      <button type="button" data-v="1">xy · 沿 z 滑</button>
+      <button type="button" data-v="2">zy · 沿 x 滑</button>
+      <button type="button" data-v="3">zx · 沿 y 滑</button>
+    </div>
+    <div class="sp-lab">滑动位置 <b id="spOffV">0</b>%（0 = 过中心；±100 = 滑到边缘）</div>
+    <input type="range" id="spOff" min="-100" max="100" step="1" value="0" aria-label="剖面滑动位置">
+    <div class="sp-lab">切掉哪一侧</div>
+    <div class="sp-seg" id="spSide">
+      <button type="button" data-v="0" class="on">+ 法向侧</button>
+      <button type="button" data-v="1">− 法向侧</button>
+    </div>
+    <label class="sp-chk"><input type="checkbox" id="spFace"> 加半透膜<span class="sp-tip">（只有 ⓪ 蛋面钢架算得出真实截面）</span></label>
+    <div class="sp-row2">
+      <button type="button" class="sp-go" id="spPlay" title="自动从 −100 滑到 +100（约 4 秒）· 再点一次中途停">▶ 播放</button>
+      <button type="button" class="sp-go2" id="spGif" title="把上面那一遍录成 GIF · 自动压到 5MB 以内">         ⤓ 导出 GIF</button>
+    </div>    <div class="sp-st" id="spSt">未剖：整颗都在</div>
+  </div>
+</div>
+
 <script src="../_vendor/three.min.js"></script>
+<!-- GIF 编码器（纯 JS、零依赖、中位切分量化 + LZW）：剖面播放动画导出用。
+     与 anu 那一页同一份实现，拷进 _vendor 免得跨目录依赖。
+     加载不到时导出按钮自己会说"编码器没加载"，不会静默失败。 -->
+<script src="_vendor/gif-encode.js"></script>
 <script>
 /* ---------------- three.js 兜底加载（治「3D 全白、参数面板却正常」的沉默失败） ----------------
    为什么需要这一小段：
@@ -12393,14 +12477,23 @@ function f0HexL2(P) {
   var skin = (P.cutSkin | 0);
   /* 层间连接方式（2026-11-03 加）：0 径向直杆 / 1 节点斜腹杆 / 2 径向 + 辐条 */
   var web = (P.hxWeb === undefined ? 1 : (P.hxWeb | 0));
+  /* 内芯密度（2026-11-04 老师：内部支撑杆太密，3D 打印要省料又得够稳）
+     0 = 不建内芯（只剩 外层蜂窝 + 层间腹杆 + 内层三角网：双层壳，最省）
+     1 = 每 4 个三角面留 1 个锥（稀疏加强筋） 2 = 每 2 个留 1 个 3 = 全建（原样）
+     抽稀用的是【三角面索引取模】这种确定规则，不用随机：同一组参数每次出来一模一样，
+     判据才可复现；而且三角面是按格逐行生成的，取模相当于隔行隔列，视觉上均匀，
+     不会出现「半边有芯、半边秃」。留下的每个锥底座仍压在三角网上 ⇒ 与壳连通，
+     不是孤立悬空的柱子。 */
+  var core = Math.max(0, Math.min(3, (P.hxCore === undefined ? 1 : (P.hxCore | 0))));
+  var coreStep = [0, 4, 2, 1][core];
   /* 第二层绕长轴（数学 y）的相位角，度。蜂窝有 6 次对称、三角网有 3 次对称，
      所以相位周期是 120°，给 −60~+60 就够把「内层杆与外层杆错开」的所有情形走遍。 */
   var phase = Math.max(-60, Math.min(60, (P.hxL2phase === undefined ? 0 : P.hxL2phase)));
   /* ⚠ key 必须含 net.ck（母线/α/z₀/M/q/杆径全在里面）+ 本层自己的每个参数。
      少了任何一个，改完参数屏上还画上一版的内层 —— 那就是 2026-11-03 抓过的
-     「缓存串味」，只不过换了一层。web / phase 同理。 */
+     「缓存串味」，只不过换了一层。web / phase / core 同理。 */
   var key = net.ck + '|L2|' + skin + '|' + lmode + '|' + man.toFixed(4) + '|' + tetK.toFixed(3) +
-            '|W' + web + '|P' + phase.toFixed(2);
+            '|W' + web + '|P' + phase.toFixed(2) + '|C' + core;
   if (F0L2_CACHE.k === key && F0L2_CACHE.v) return F0L2_CACHE.v;
 
   function d2(A, B) {
@@ -12522,6 +12615,10 @@ function f0HexL2(P) {
   /* ---- 四面体：内层每个三角面作底座，向蛋内立第 4 点 ---- */
   var tets = [], ap = [], hSum = 0, tetR = [], apexR = [];
   for (i = 0; i < T.length; i++) {
+    /* 内芯降档（coreStep：4 / 2 / 1；0 ⇒ 整块内芯不建）。
+       用「三角面索引取模」抽稀：确定性、可复现，且三角面按格逐行生成 ⇒ 相当于隔行隔列，
+       视觉均匀。留下的每个锥底座仍压在内层三角网上 ⇒ 与壳连通，不是孤立柱子。 */
+    if (coreStep === 0 || (i % coreStep) !== 0) continue;
     var ia = T[i][0], ib = T[i][1], ic = T[i][2];
     var A = V2[ia], B = V2[ib], C = V2[ic];
     /* 顶点要立在【外心】正上方，不是重心正上方 ——
@@ -12572,7 +12669,9 @@ function f0HexL2(P) {
     var outDot = fnx*(A[0]+B[0]+C[0]) + fny*(A[1]+B[1]+C[1]) + fnz*(A[2]+B[2]+C[2]);
     var sgn = outDot > 0 ? -1 : 1;
     var P4 = [cx + sgn*fnx*hF, cy + sgn*fny*hF, cz + sgn*fnz*hF];
-    ap.push(P4); hSum += hF;
+    /* 用【索引赋值】而不是 push：抽稀后 ap 会是稀疏数组，但 ap[i] 永远对应 T[i]，
+       下面 innerS 用 ap[E.f[0]]/ap[E.f[1]] 才不会错位（push 会让整条链往前挤）。 */
+    ap[i] = P4; hSum += hF;
     tets.push({ a: ia, b: ib, c: ic, p: P4, h: hF, aF: aF, ctr: [cx, cy, cz] });
     /* 六条棱：三条底座（λa）+ 三条侧棱（hF）⇒ 这个比就是「像不像正四面体」的实测 */
     var ap1 = d2(A, P4), ap2 = d2(B, P4), ap3 = d2(C, P4);
@@ -12612,12 +12711,30 @@ function f0HexL2(P) {
        四面体芯还没建，这一组必须继续关着，否则会连到不存在的顶点。 */
     if (skin >= 4) em.forEach(function (E) {
       if (E.f.length !== 2) return;
-      pushS(innerS, ap[E.f[0]], ap[E.f[1]], 0.5 * (cR(E.u) + cR(E.v)) * 0.40);
+      /* 抽稀后有一端没有锥 ⇒ 这条内顶点杆不存在（两端都得有锥才连得起来） */
+      var P1 = ap[E.f[0]], P2 = ap[E.f[1]];
+      if (!P1 || !P2) return;
+      pushS(innerS, P1, P2, 0.5 * (cR(E.u) + cR(E.v)) * 0.40);
     });
   }
 
   tetR.sort(function (x, y) { return x - y; });
   apexR.sort(function (x, y) { return x - y; });
+
+  /* ---- 耗材：杆体积 ∝ 长度（同一族里杆径是同一套口径），所以直接报【杆总长】。
+     外层杆的 r 是占位（真实半径在建几何时按 P 的杆径算），所以外层只计长度；
+     内层杆带各自 r，顺手把体积也算出来，方便和「芯占多少」对照。
+     模型单位不是 mm —— 这里不假装给克数，要克数得老师自己定缩放与材料密度。 */
+  var lenOut = 0, lenIn = 0, lenCore = 0;
+  for (i = 0; i < net.struts.length; i++) lenOut += d2(net.struts[i].a, net.struts[i].b);
+  [tie, spoke, in2, brace, apexS, innerS].forEach(function (arr, ai) {
+    for (var q = 0; q < arr.length; q++) {
+      var Lq = d2(arr[q].a, arr[q].b);
+      lenIn += Lq;
+      if (ai >= 4) lenCore += Lq;      /* apexS / innerS 才是"内芯"，前四组是壳与腹杆 */
+    }
+  });
+
   var stats = {
     lmode: lmode, lam: lam, lamPhys: lamPhys, aMed: aMed, aRef: aRef, aMax: aMax,
     Req: Req, tetK: tetK,
@@ -12625,8 +12742,17 @@ function f0HexL2(P) {
     hOverA: (1 - lam) * Req / Math.max(1e-9, aRef),              /* 芯厚 ÷ 外层边长 ⇒ 0.8165 */
     hTetOverA: (1 - lam) * Req > 0 ? (K824 * lam * aRef) / Math.max(1e-9, lam * aRef) : 0,
     nV2: V2.length, nTet: tets.length, nTie: tie.length, nIn2: in2.length,
+    /* nFace = 内层三角网的三角面总数（= T.length），nTet = 其中【真立了锥】的个数。
+       抽稀只改后者：网还是那张网（756 个面），只是不是每个面都长锥 ——
+       所以读数里必须两个数都印，别把 nTet 当"三角面数"报出去。 */
+    nFace: T.length,
     nBrace: brace.length, nApex: apexS.length, nInner: innerS.length,
     web: web, phase: phase, nSpoke: spoke.length,
+    core: core, coreStep: coreStep,
+    lenOut: lenOut, lenIn: lenIn, lenCore: lenCore,
+    lenAll: lenOut + lenIn,
+    /* 内芯占全部耗材的比例：这是老师要看的那个数 —— 降档就是把这个百分比压下去 */
+    coreShare: (lenOut + lenIn) > 1e-12 ? lenCore / (lenOut + lenIn) : 0,
     /* 格心 V 与钢架可见中心（poly 平均）的最大偏差：旧版径向杆"戳出来"的根源，
        以 ‰蛋高 报，读者能直接对上截图里的那截柱子。 */
     ctrOff: ctrOff,
@@ -13050,8 +13176,10 @@ function f0HexRead(P) {
     rows.push(['两个高度别混', '芯厚 h = 0.8165 × 【外层】三角网边长（两层之间有多厚）；' +
       '四面体高 = 0.8165 × 【内层】边长（芯里那个尖扎进去多深）。' +
       '它们比的是各自那一层的胞元，所以数值不同 —— 写成一个数就是口径错']);
-    rows.push(['内层正三角网', s2.nIn2 + ' 条边 · ' + s2.nTet + ' 个三角面　' +
-      '（顶点 ' + s2.nV2 + ' = 外层蜂窝的格数 ⇒ 顶点数一一对应，它是蜂窝的【对偶】）']);
+    rows.push(['内层正三角网', s2.nIn2 + ' 条边 · ' + s2.nFace + ' 个三角面　' +
+      '（顶点 ' + s2.nV2 + ' = 外层蜂窝的格数 ⇒ 顶点数一一对应，它是蜂窝的【对偶】）' +
+      ((s2.core | 0) < 3 ? '　·　本档只给其中 <b>' + s2.nTet + '</b> 个面立锥（' +
+        (s2.nTet / Math.max(1, s2.nFace) * 100).toFixed(1) + '%），<b>三角网本身没动</b>' : '')]);
     /* ---- 层间连接：这一行是本轮（2026-11-03）改动的核心，必须讲清「哪一端是节点」---- */
     rows.push(['外层节点在哪', '钢架的节点是 <b>三角面重心 triC</b>（3 根杆交汇），共 ' + st.tris +
       ' 个；六边形的几何中心 V 只是参数点，上面<b>没有杆</b>。' +
@@ -13078,17 +13206,40 @@ function f0HexRead(P) {
     if (skin >= 4) {
       rows.push(['斜撑（抗剪）', s2.nBrace + ' 根　（每条外层棱 4 根，把「外层棱 + 内层棱」封成四面体。' +
         '⚠ 只有径向杆时芯是【柱阵】—— 抗压不抗剪，两层能面内滑移，是机构不是结构）']);
-      rows.push(['四面体芯', s2.nTet + ' 个 · 高 ' + (s2.hTetMed / st.H * 1000).toFixed(1) +
-        ' ‰蛋高 · 六棱等长比中位 <b>' + s2.tetRatio.toFixed(3) + '</b>（正四面体 = 1.000；' +
-        '最差 ' + s2.tetHi.toFixed(3) + '）。比值不是 1.000 是因为三角网本身不是严格正三角：' +
-        '底座三条边就有 ' + (s2.aMax / Math.max(1e-9, s2.aMed)).toFixed(1) + ' 倍的差，' +
-        '剩下的差距全来自底座']);
-      rows.push(['三条侧棱等长比（必须 = 1.000）',
-        '中位 <b>' + s2.apexMed.toFixed(4) + '</b> ／ 最差 ' + s2.apexHi.toFixed(4) +
-        '　（顶点立在外心 + 沿底座法向 ⇒ 外心到三顶点等距、方向垂直 ⇒ 三条侧棱严格等长。' +
-        '这一行是「外心算得对不对」的直接裁判，六棱比那一行则掺进了网格本身的形状）']);
-      rows.push(['内顶点互连', s2.nInner + ' 根　（相邻四面体的内顶点两两相连 ⇒ 内层三正则网，' +
-        '与内层三角网互为对偶）']);
+      /* ---- 内芯密度（2026-11-04 老师：内部支撑太密，3D 打印要省料又得够稳）---- */
+      var coreName = ['不建内芯（双层壳 + 腹杆）', '稀疏 · 每 4 个三角面留 1 个锥',
+                      '中 · 每 2 个三角面留 1 个锥', '全建（每个三角面一个锥）'][s2.core] || '?';
+      rows.push(['内芯密度', '<b>' + coreName + '</b>　·　锥 ' + s2.nTet + ' 个' +
+        (s2.core === 0
+          ? '　（<b>芯里是空的</b>：只剩外层蜂窝 + 层间腹杆 + 内层三角网。省料最多，抗压靠双层壳、抗剪靠腹杆）'
+          : s2.core < 3
+            ? '　（留下的锥底座仍压在内层三角网上 ⇒ 与壳连通，不是悬空柱；' +
+              '相邻两个锥都留下了才连内顶点）'
+            : '　（每个三角面都立锥 ⇒ 内顶点连成三正则网，最费料也最刚）')]);
+      rows.push(['耗材（杆总长）', '外层 ' + s2.lenOut.toFixed(2) + ' ＋ 内层 ' + s2.lenIn.toFixed(2) +
+        ' ＝ <b>' + s2.lenAll.toFixed(2) + '</b> 模型单位　·　<b>内芯占 ' +
+        (s2.coreShare * 100).toFixed(1) + '%</b>（芯 = 锥侧棱 + 内顶点互连）' +
+        '　·　杆径一样时耗材 ∝ 这段长度，所以降档就看这个百分比']);
+      if (s2.nTet > 0) {
+        rows.push(['四面体芯', s2.nTet + ' 个 · 高 ' + (s2.hTetMed / st.H * 1000).toFixed(1) +
+          ' ‰蛋高 · 六棱等长比中位 <b>' + s2.tetRatio.toFixed(3) + '</b>（正四面体 = 1.000；' +
+          '最差 ' + s2.tetHi.toFixed(3) + '）。比值不是 1.000 是因为三角网本身不是严格正三角：' +
+          '底座三条边就有 ' + (s2.aMax / Math.max(1e-9, s2.aMed)).toFixed(1) + ' 倍的差，' +
+          '剩下的差距全来自底座']);
+        rows.push(['三条侧棱等长比（必须 = 1.000）',
+          '中位 <b>' + s2.apexMed.toFixed(4) + '</b> ／ 最差 ' + s2.apexHi.toFixed(4) +
+          '　（顶点立在外心 + 沿底座法向 ⇒ 外心到三顶点等距、方向垂直 ⇒ 三条侧棱严格等长。' +
+          '这一行是「外心算得对不对」的直接裁判，六棱比那一行则掺进了网格本身的形状）']);
+        rows.push(['内顶点互连', s2.nInner + ' 根　（相邻两个<b>都立了锥</b>的三角形之间才连得起。' +
+          (((s2.core | 0) === 3)
+            ? '全建档 ⇒ 内顶点网三正则，根数 = 内层边数 ' + s2.nIn2
+            : '本档锥是抽稀的 ⇒ 内顶点网<b>不是</b>三正则，只有 ' + s2.nInner +
+              ' 根（全建档才是 ' + s2.nIn2 + ' 根 = 内层边数）') + '）']);
+      } else {
+        rows.push(['四面体芯', '<b>本档一个都不建</b>（内芯密度 = 不建内芯）。' +
+          '这不是"没算出来"：抽稀步长取 0 时整块芯都被省掉，省的是耗材不是精度 —— ' +
+          '圆锥壳的抗压本来就靠双层壳，芯只负责抗剪与抗局部失稳']);
+      }
     } else if (s2.web === 1) {
       rows.push(['这一档（无四面体芯）', '腹杆已是节点对节点的斜杆 ⇒ 整层是完整空间桁架，抗剪成立；' +
         '只是还没往蛋内立四面体。切到「★ 双层 + 斜撑 + 四面体芯」再往内伸一层']);
@@ -13235,23 +13386,10 @@ var FAMS=[
    min:-60,max:60,step:1,dp:0,
    when:function(P){return (P.cutSkin|0)>=3;}},
   /* ---- 剖面（2026-11-04 老师：左侧 3D 图要能看剖面；三个基准面可选、可沿法向滑动）---- */
-  {k:'hxSec',label:'剖开看内部（三个基准面任选 · 切面由 GPU 裁剪算出 —— 杆件被真切开，不是少画几根）',type:'choice',
-   when:function(P){return (P.cutSkin|0)>0;},
-   opts:[{v:0,t:'★ 不剖（整体）'},
-         {v:1,t:'xy 平面 · 法向 z · 沿 z 滑（切前后）'},
-         {v:2,t:'zy 平面 · 法向 x · 沿 x 滑（切左右）'},
-         {v:3,t:'zx 平面 · 法向 y · 沿 y 滑（切上下）'}]},
-  {k:'hxSecOff',label:'剖面滑动位置（% · 0 = 过中心 · xy 面沿 z／zy 面沿 x／zx 面沿 y）',
-   min:-100,max:100,step:1,dp:0,
-   when:function(P){return (P.hxSec|0)>0;}},
-  {k:'hxSecSide',label:'切掉哪一侧',
-   when:function(P){return (P.hxSec|0)>0;},type:'choice',
-   opts:[{v:0,t:'★ 切掉 +法向那侧（xy 面 = +z 前侧／zy 面 = +x／zx 面 = +y 上）'},
-         {v:1,t:'切掉 −法向那侧'}]},
-  {k:'hxSecFace',label:'剖面加不加半透膜（加膜能看清"切在哪"，不加则直接看进内部）',type:'choice',
-   when:function(P){return (P.hxSec|0)>0;},
-   opts:[{v:0,t:'★ 不加（直接看内部结构）'},
-         {v:1,t:'加（半透明面 + 轮廓线 · 轮廓就是子午线切出来的真实截面）'}]},
+  /* ---- 剖面（2026-11-04 老师要求「独立出来」）----
+     原来这四条写在这里，只对 ⓪ 族可见（when: cutSkin>0）。现在搬到左下角独立的
+     「剖面」浮窗里（见 #secPanel），任何族都能切。这里【故意不再保留同名参数】：
+     两处都能改同一个 P 字段的话，屏上会出现"浮窗说切了、族参数说没切"的双口径。 */
   {k:'hxL2mode',label:'第二层缩到多小才对（λ 的定法）',type:'choice',
    when:function(P){return (P.cutSkin|0)>=3;},
    opts:[{v:0,t:'★ 物理最优：芯厚 = √(2/3)·a ⇒ λ = 1 − 0.8165·a/R'},
@@ -13261,7 +13399,14 @@ var FAMS=[
    when:function(P){return (P.cutSkin|0)>=3&&(P.hxL2mode|0)===1;}},
   {k:'hxTetK',label:'四面体高度倍数（1.00 = 正四面体 √(2/3)·a；<1 扁芯，>1 尖芯）',
    min:0.3,max:2.0,step:0.05,dp:2,
-   when:function(P){return (P.cutSkin|0)>=4;}},
+   when:function(P){return (P.cutSkin|0)>=4 && (P.hxCore|0)>0;}},
+  {k:'hxCore',label:'内芯密度（3D 打印省料档 · 只减芯、不动外壳与腹杆；抽稀是确定性的，同一组参数每次一样）',
+   type:'choice',
+   when:function(P){return (P.cutSkin|0)>=4;},
+   opts:[{v:0,t:'不建内芯 · 双层壳 + 腹杆（最省料 · 芯里全空）'},
+         {v:1,t:'★ 稀疏 · 每 4 个三角面留 1 个锥（默认 · 省料且仍抗剪）'},
+         {v:2,t:'中 · 每 2 个三角面留 1 个锥'},
+         {v:3,t:'全建 · 每个三角面一个锥（最费料最刚 · 旧版就是这个）'}]},
   {k:'hxCmap',label:'配色色表（cmap · 顶点色渐变）',type:'choice',
    when:function(P){return (P.cutSkin|0)>0;},
    opts:[{v:0,t:'★ plasma（金黄 → 橙红 → 紫）'},
@@ -13284,7 +13429,7 @@ var FAMS=[
       cutPhi:0,
       cutMode:0,cutTint:0,cutShow:0,
       cutSkin:4,hxRow:26,hxQ:1.00,hxR:3.20,hxG:0.80,hxNode:1.35,
-      hxL2mode:0,hxL2:68,hxTetK:1.00,hxCmap:0,hxMapT:0,hxView:0,
+      hxL2mode:0,hxL2:68,hxTetK:1.00,hxCore:1,hxCmap:0,hxMapT:0,hxView:0,
       hxWeb:1,hxL2phase:0,hxSec:0,hxSecOff:0,hxSecSide:0,hxSecFace:0},
  build:f0Build,read:f0Read,prof:f0Prof,zAxis:'y',
  empty:'平面与这张曲面没有交点 —— 换母线、把 α 调小、或把 z₀ 挪回曲面所在的 y 区间',
@@ -15059,12 +15204,23 @@ function f0SecDrop(){
 function initF0Section(obj){
   f0SecDrop();
   F0SEC.planes=[]; F0SEC.on=false; F0SEC.obj=null; F0SEC.info=null; F0SEC.axis=0;
-  var f=FAMS[curFam];
-  if(!f||f.build!==f0Build) return;          /* 剖面只属于 ⓪ 蛋面钢架，别的族一律不切 */
   var ax=P.hxSec|0;
   if(!(ax>=1&&ax<=3)) return;
+  /* 通用化（2026-11-04 老师：剖面要能用在 ①②④⑦⑧⑩⑪ 上）
+     —— 不再判断「这是哪一族」，任何族都能切。
+     差别只在【膜】：⓪ 蛋面钢架的 obj 上带着建网用的那条子午线（userData.f0sec.samples），
+     所以能算出真实截面轮廓；别的族没有单一子午线（螺旋管、花瓣、叶轮都不是回转体），
+     膜就不画 —— 宁可诚实地说"只切不画膜"，也不要拿一个近似的圆去冒充截面。
+     裁剪本身与族无关：它只需要一个平面 + 模型在世界里的位置，两者都有。 */
   var info=obj.userData&&obj.userData.f0sec;
-  if(!info||!info.samples||info.samples.length<8) return;
+  var hasProf=!!(info&&info.samples&&info.samples.length>=8);
+  if(!hasProf){
+    info={ samples:null, generic:true,
+           H:Math.max(1e-9,_sz.y),
+           rmax:Math.max(1e-9,Math.max(_sz.x,_sz.z)/2) };
+  } else {
+    info.generic=false;
+  }
   var pl=new THREE.Plane(new THREE.Vector3(0,0,-1),0);
   F0SEC.planes=[pl]; F0SEC.on=true; F0SEC.obj=obj; F0SEC.info=info; F0SEC.axis=ax;
   obj.traverse(function(o){
@@ -15087,9 +15243,332 @@ function syncF0Section(force){
   f0SecNorm(ax,pl.normal);
   if(side){ pl.constant=-d; }                       /* 保留 ≥ d：n·x − d ≥ 0 */
   else { pl.normal.multiplyScalar(-1); pl.constant=d; }  /* 保留 ≤ d：−n·x + d ≥ 0 */
-  if(P.hxSecFace|0) buildF0SecFace(ax,d,force);
+  /* 没有子午线的族：膜画不出来（硬画只能画个近似的圆/矩形，那是假的）。
+     这时直接收起膜，并把原因留在浮窗的状态行上。 */
+  if(P.hxSecFace|0 && !F0SEC.info.generic) buildF0SecFace(ax,d,force);
   else if(F0SEC.face){ F0SEC.face.visible=false; if(F0SEC.edge)F0SEC.edge.visible=false; }
+  if(window.SECPANEL && SECPANEL.sync) SECPANEL.sync();
 }
+
+/* ============================================================
+   剖面浮窗（2026-11-04 老师：独立成一个面板，别再塞在族参数里）
+   ------------------------------------------------------------
+   三件事挤在这个小面板里：
+     ① 切：面（xy/zy/zx）+ 滑动 + 哪一侧 + 膜        —— 改 P 的 hxSec* 字段
+     ② 播放：−100 → +100 自动滑一遍                     —— 逐帧改 constant，不 rebuild
+     ③ 导出 GIF：把上面那一遍录成 <5MB 的动图            —— 逐帧截图 + 自带的 GIF 编码器
+   为什么播放/导出都走 syncF0Section 而不是 rebuild：
+     这一档 M=26 有 5 万多个顶点，rebuild 一次要 1 秒级；每帧重建根本录不动。
+     裁剪平面的 normal/constant 是每帧传进着色器的，直接改字段就能跟手。
+   ============================================================ */
+var SECPANEL = (function () {
+  var box = document.getElementById('secPanel');
+  if (!box) return null;
+  var hd = document.getElementById('spHd'), tb = document.getElementById('spBtn'),
+      sum = document.getElementById('spSum'), stEl = document.getElementById('spSt'),
+      segA = document.getElementById('spAxis'), segS = document.getElementById('spSide'),
+      rOff = document.getElementById('spOff'), tOff = document.getElementById('spOffV'),
+      cbFace = document.getElementById('spFace'),
+      bPlay = document.getElementById('spPlay'), bGif = document.getElementById('spGif');
+  var KEY = 'pks.sec.min';
+  var AX = ['不剖', 'xy 面（法向 z）', 'zy 面（法向 x）', 'zx 面（法向 y）'];
+  var playing = false, busyGif = false;
+  /* pinMsg：导出结束后的那句结论（含体积）要能留在屏上。
+     ⚠ 状态行 #spSt 有两个写入方：控件同步 sync() 与导出流程。
+     导出过程中每录一帧都会 syncF0Section() → sync()，如果不设闸，
+     「录第 1 档…」「编码中…」「完成：680×668 · 44 帧 · 2.92 MB」会被
+     下一帧的「切 zy 面 · 位置 −76%…」整段盖掉 —— 屏上永远看不到成品体积
+     （2026-11-04 实测：导出成功，但"完成"那句一次都没出现）。
+     闸门只在【下一次动参数】时打开。 */
+  var pinMsg = false;
+
+  /* ---------- 折叠 ---------- */
+  function applyMin(min) {
+    if (min) box.classList.add('min'); else box.classList.remove('min');
+    tb.textContent = min ? '展开 ▾' : '收起 ▴';
+    tb.setAttribute('aria-expanded', min ? 'false' : 'true');
+  }
+  /* 默认收起（2026-11-04）：展开态 376px 高，正好压在画布左下角那五个视角键上。
+     收起后只剩一条 30px 的横条，标题上留着状态（"zy 面 · 0%"），要看细节再点开。
+     这是全站参数面板的统一习惯：常显一条摘要，正文可收。 */
+  var isMin = true;
+  try {
+    var sv = localStorage.getItem(KEY);
+    if (sv === '1') isMin = true; else if (sv === '0') isMin = false;
+  } catch (e) {}
+  applyMin(isMin);
+  tb.addEventListener('click', function (ev) {
+    ev.stopPropagation(); isMin = !isMin; applyMin(isMin);
+    try { localStorage.setItem(KEY, isMin ? '1' : '0'); } catch (e) {}
+  });
+
+  /* ---------- 拖动（标题条） ---------- */
+  (function () {
+    var dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
+    /* 记下按下时的位置：松手后的 click 靠它区分"点一下"和"拖一把" */
+    var draggedAt = { x: 0, y: 0 };
+    hd.addEventListener('pointerdown', function (ev) {
+      if (ev.target === tb) return;
+      draggedAt.x = ev.clientX; draggedAt.y = ev.clientY;
+      var r = box.getBoundingClientRect();
+      /* 一旦拖过就改用 left/top 定位，否则 bottom 会把盒子拽回去 */
+      box.style.left = r.left + 'px'; box.style.top = r.top + 'px'; box.style.bottom = 'auto';
+      dragging = true; sx = ev.clientX; sy = ev.clientY; ox = r.left; oy = r.top;
+      hd.classList.add('drag');
+      try { hd.setPointerCapture(ev.pointerId); } catch (e) {}
+    });
+    hd.addEventListener('pointermove', function (ev) {
+      if (!dragging) return;
+      var nx = ox + (ev.clientX - sx), ny = oy + (ev.clientY - sy);
+      nx = Math.max(4, Math.min(window.innerWidth - 60, nx));
+      ny = Math.max(4, Math.min(window.innerHeight - 40, ny));
+      box.style.left = nx + 'px'; box.style.top = ny + 'px';
+    });
+    function up(ev) {
+      if (!dragging) return;
+      dragging = false; hd.classList.remove('drag');
+      try { hd.releasePointerCapture(ev.pointerId); } catch (e) {}
+    }
+    hd.addEventListener('pointerup', up);
+    hd.addEventListener('pointercancel', up);
+    hd.addEventListener('click', function (ev) {
+      /* 拖动松手时也会来一次 click：位移超过 4px 就不当折叠用 */
+      if (ev.target === tb) return;
+      if (Math.abs(ev.clientX - draggedAt.x) + Math.abs(ev.clientY - draggedAt.y) > 4) return;
+      isMin = !isMin; applyMin(isMin);
+      try { localStorage.setItem(KEY, isMin ? '1' : '0'); } catch (e) {}
+    });
+  })();
+
+  /* ---------- 控件 ↔ P ---------- */
+  function markSeg(seg, v) {
+    var bs = seg.querySelectorAll('button');
+    for (var i = 0; i < bs.length; i++)
+      bs[i].classList.toggle('on', (bs[i].getAttribute('data-v') | 0) === (v | 0));
+  }
+  function paint() {
+    /* ⚠ P 在这个模块执行时还是 null：真正的初值要等主 IIFE 末尾的 selectFam(0)。
+       不加这个守卫，paint() 会在定义处同步抛错，把整个主脚本带停
+       （症状极隐蔽：页面其余部分都正常，只有所有滑块失效、P 永远是 null）。 */
+    if (!P) return;
+    pinMsg = false;      /* 动参数 ⇒ 导出结论让位，状态行回到实时状态 */
+    var ax = P.hxSec | 0, off = Math.round(P.hxSecOff === undefined ? 0 : +P.hxSecOff),
+        sd = P.hxSecSide | 0, fc = P.hxSecFace | 0;
+    markSeg(segA, ax); markSeg(segS, sd);
+    if (document.activeElement !== rOff) rOff.value = off;
+    tOff.textContent = off;
+    cbFace.checked = !!fc;
+    bPlay.textContent = playing ? '■ 停止' : '▶ 播放';
+    sync();
+  }
+  function sync() {
+    if (!P) return;
+    /* 状态行 #spSt 有两个写入方：控件同步 与 导出流程。这里必须让路：
+       busyGif 期间每录一帧都会调进来，pinMsg 期间是刚给出的成品体积。
+       不让路的话，屏上"完成：2.92 MB"会被下一帧的「位置 −76%」盖掉。 */
+    if (busyGif || pinMsg) return;
+    var ax = P.hxSec | 0;
+    if (!ax) {
+      sum.textContent = '不剖';
+      stEl.textContent = '未剖：整颗都在';
+      stEl.classList.remove('hit');
+      return;
+    }
+    var off = Math.round(P.hxSecOff === undefined ? 0 : +P.hxSecOff),
+        sd = P.hxSecSide | 0;
+    var gen = !!(F0SEC.info && F0SEC.info.generic);
+    sum.textContent = AX[ax].replace(/（.*/, '') + ' · ' + off + '%';
+    stEl.textContent = '切 ' + AX[ax] + ' · 保留 ' + (sd ? '−' : '+') + '法向侧 · 位置 ' +
+      off + '%（' + (off > 0 ? '+' : '') + (off * (F0SEC.info ? f0SecHalf(ax) : 1) / 100).toFixed(3) +
+      ' 世界单位）' + (gen ? ' · 该族没有单一子午线：只切、不画膜' : '');
+    stEl.classList.toggle('hit', gen && (P.hxSecFace | 0));
+  }
+  segA.addEventListener('click', function (ev) {
+    var b = ev.target.closest('button'); if (!b) return;
+    var v = b.getAttribute('data-v') | 0;
+    P.hxSec = v;
+    /* 换面要重新挂裁剪（initF0Section 在 rebuild 里）—— 这一下是重建，慢但必须 */
+    rebuild(); paint();
+  });
+  segS.addEventListener('click', function (ev) {
+    var b = ev.target.closest('button'); if (!b) return;
+    P.hxSecSide = b.getAttribute('data-v') | 0;
+    syncF0Section(); paint();
+  });
+  rOff.addEventListener('input', function () {
+    pinMsg = false;
+    P.hxSecOff = +rOff.value;
+    tOff.textContent = rOff.value;
+    syncF0Section();   /* 逐帧级的：只改 constant，不重建 */
+    sync();
+  });
+  cbFace.addEventListener('change', function () {
+    P.hxSecFace = cbFace.checked ? 1 : 0;
+    syncF0Section(true); paint();
+  });
+
+  /* ---------- ② 播放 ---------- */
+  function ensureCut() {
+    if ((P.hxSec | 0) > 0) return true;
+    /* 没剖就先切到 zy 面（左右切最有"打开"的感觉），这一下是重建 */
+    P.hxSec = 2; P.hxSecOff = -100; rebuild(); paint();
+    return (P.hxSec | 0) > 0;
+  }
+  function setPlayUI(on) {
+    playing = on;
+    bPlay.textContent = on ? '■ 停止' : '▶ 播放';
+    bGif.disabled = on;
+  }
+  function play() {
+    if (playing) { playing = false; setPlayUI(false); return; }
+    if (!ensureCut()) return;
+    setAutoRot(false);
+    var t0 = performance.now(), dur = 4200;
+    P.hxSecOff = -100; syncF0Section();
+    setPlayUI(true);
+    function step() {
+      if (!playing) return;
+      var k = Math.min(1, (performance.now() - t0) / dur);
+      P.hxSecOff = Math.round(-100 + 200 * k);
+      syncF0Section();
+      rOff.value = P.hxSecOff; tOff.textContent = P.hxSecOff;
+      if (k < 1) requestAnimationFrame(step);
+      else { setPlayUI(false); sync(); }
+    }
+    requestAnimationFrame(step);
+    sync();
+  }
+  bPlay.addEventListener('click', play);
+
+  /* ---------- ③ 导出 GIF ---------- */
+  /* 模型在画布上实际占的那块矩形（画布物理像素）。
+     为什么要裁：画布是宽扁的，蛋只占中间一小块 —— 整幅录下来再压到 680 宽，
+     蛋只有 300 像素，5MB 全花在四周的白边上。裁到模型范围后同样的体积能大一倍。
+     用 bbox 八个角投影求屏幕包围盒（比"中心 ± 外接球"更贴形状），四周再留 3% 余量。 */
+  function modelRect() {
+    var cw = renderer.domElement.width, ch = renderer.domElement.height;
+    /* ⚠ 不能用 Box3().setFromObject(root)：切平面（userData.f0secplane，一块 size×size 的大板）
+       也在 root 里，一起算进来会让矩形大出好几倍 —— 上一版 GIF 主体只占画面 1/4 就是这个原因。
+       与 rebuild() 里的取景算法保持一致：逐件累加、跳过切平面。 */
+    var bb = new THREE.Box3();
+    try {
+      root.updateMatrixWorld(true);
+      root.traverse(function (o) {
+        if (o.userData && o.userData.f0secplane) return;
+        if (o.geometry) bb.expandByObject(o);
+      });
+    } catch (e) { }
+    if (bb.isEmpty()) return { x: 0, y: 0, w: cw, h: ch };
+    var mn = bb.min, mx = bb.max, xs = [], ys = [], i, p;
+    for (i = 0; i < 8; i++) {
+      p = new THREE.Vector3(i & 1 ? mx.x : mn.x, i & 2 ? mx.y : mn.y, i & 4 ? mx.z : mn.z).project(camera);
+      xs.push((p.x * 0.5 + 0.5) * cw);
+      ys.push((-p.y * 0.5 + 0.5) * ch);
+    }
+    var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
+    var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+    var padX = (x1 - x0) * 0.03, padY = (y1 - y0) * 0.03;
+    x0 = Math.max(0, x0 - padX); y0 = Math.max(0, y0 - padY);
+    x1 = Math.min(cw, x1 + padX); y1 = Math.min(ch, y1 + padY);
+    if (!(x1 - x0 > 8) || !(y1 - y0 > 8)) return { x: 0, y: 0, w: cw, h: ch };
+    return { x: Math.round(x0), y: Math.round(y0), w: Math.round(x1 - x0), h: Math.round(y1 - y0) };
+  }
+  function grabFrames(W, H, N, rc, done) {
+    var tmp = document.createElement('canvas');
+    tmp.width = W; tmp.height = H;
+    var tc = tmp.getContext('2d');
+    var frames = [], i = 0;
+    /* ⚠ 起点不取 −100：那一步平面已经滑到模型外，整颗被切光，录进去就是一片白
+       （实测第一版 GIF 的第一帧真的是全白）。从 −80% 起（K0=0.10），第一帧就有东西可看；
+       终点仍取 +100（保留全部）。 */
+    var K0 = 0.10;
+    function one() {
+      var k = N <= 1 ? 1 : i / (N - 1);
+      P.hxSecOff = Math.round(-100 + 200 * (K0 + (1 - K0) * k));
+      syncF0Section();
+      try { renderer.render(scene, camera); } catch (e) {}
+      /* ⚠ 画布是 alpha:true 的透明底：先铺白再画，否则 GIF 里透明处会变黑 */
+      tc.fillStyle = '#ffffff'; tc.fillRect(0, 0, W, H);
+      tc.drawImage(renderer.domElement, rc.x, rc.y, rc.w, rc.h, 0, 0, W, H);
+      frames.push(tc.getImageData(0, 0, W, H).data);
+      i++;
+      if (i < N) setTimeout(one, 0); else done(frames);
+    }
+    one();
+  }
+  function fmtMB(b) { return (b / 1048576).toFixed(2) + ' MB'; }
+  function exportGif() {
+    if (busyGif) return;
+    if (typeof AnuGif === 'undefined') {
+      stEl.textContent = '导不了：GIF 编码器没加载（_vendor/gif-encode.js 取不到）';
+      stEl.classList.add('hit'); return;
+    }
+    if (!ensureCut()) return;
+    setAutoRot(false);
+    pinMsg = false;
+    busyGif = true; bGif.disabled = true; bPlay.disabled = true;
+    var LIMIT = 5 * 1048576;
+    var TARGET = [
+      { w: 680, n: 44 },   /* 先按高清来 */
+      { w: 560, n: 36 },
+      { w: 460, n: 30 }    /* 还超就再降一档 */
+    ];
+    var ti = 0;
+    function attempt() {
+      var cfg = TARGET[ti];
+      var rc = modelRect();
+      /* 放大到 cfg.w（不是 min）：模型只占画布 67% 宽，按 rc.w 会白丢一档分辨率 */
+      var W = cfg.w, H = Math.max(2, Math.round(rc.h * W / rc.w));
+      if (W % 2) W--; if (H % 2) H--;      /* 偶数宽高，LZW 与缩放都更整 */
+      stEl.classList.remove('hit');
+      stEl.textContent = '录第 ' + (ti + 1) + ' 档：' + W + '×' + H + ' · ' + cfg.n +
+        ' 帧（裁到模型范围 ' + rc.w + '×' + rc.h + '），采集中…';
+      grabFrames(W, H, cfg.n, rc, function (frames) {
+        stEl.textContent = '编码中（' + frames.length + ' 帧 · ' + W + '×' + H + '）…';
+        setTimeout(function () {
+          var r;
+          try {
+            r = AnuGif.encode(frames, W, H, {
+              delayCs: Math.max(2, Math.round(4200 / 10 / frames.length)),
+              loop: 0, maxColors: 128, dither: false, paletteStride: 3
+            });
+          } catch (e) {
+            busyGif = false; bGif.disabled = false; bPlay.disabled = false; pinMsg = true;
+            stEl.textContent = '编码失败：' + e.message; stEl.classList.add('hit'); return;
+          }
+          if (r.size > LIMIT && ti < TARGET.length - 1) {
+            ti++; attempt(); return;
+          }
+          /* 保存 */
+          try {
+            var blob = new Blob([r.bytes], { type: 'image/gif' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'PKS剖面_' + (FAMS[curFam].label || '').replace(/[^\w\u4e00-\u9fa5]+/g, '') +
+              '_' + AX[P.hxSec | 0].replace(/（.*/, '') + '_' + W + 'x' + H + '.gif';
+            document.body.appendChild(a); a.click();
+            setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+          } catch (e) { }
+          busyGif = false; bGif.disabled = false; bPlay.disabled = false;
+          /* 先放开闸门再 pin：不然下面这句写不进去，或者刚写就被 sync 盖掉 */
+          pinMsg = true;
+          stEl.textContent = '完成：' + W + '×' + H + ' · ' + frames.length + ' 帧 · ' +
+            fmtMB(r.size) + (r.size > LIMIT ? '（三档都超 5MB，这是最小的一档）' : '（< 5MB）');
+          stEl.classList.toggle('hit', r.size > LIMIT);
+        }, 40);
+      });
+    }
+    attempt();
+  }
+  bGif.addEventListener('click', exportGif);
+
+  paint();
+  return { sync: sync, paint: paint, play: play, gif: exportGif };
+})();
+/* 挂到 window 上：主脚本靠 window.SECPANEL 判断"浮窗模块在不在"。
+   不挂的话，rebuild() 里的守卫永远是 false（这是 var 提升的经典坑：
+   提升的只是 undefined，不是对象本身）。 */
+try { window.SECPANEL = SECPANEL; } catch (e) {}
 /* 剖面膜：ax=1/2 是「刀切出来的透镜」，ax=3 是「一个圆」。
    两者都直接从子午线样本算 —— 半宽 √(r²−d²)，不是估算、不是缩放贴图。 */
 function buildF0SecFace(ax,d,force){
@@ -15229,6 +15708,10 @@ function rebuild(){
      PKSEXP 在页面里的定义顺序在主脚本之前，但首次 rebuild（selectFam(0)）
      跑在它之后，所以这里一定有；仍加 window 兜底，防止单独拷走这一段。 */
   if(window.PKSEXP)PKSEXP.onRebuild();
+  /* 剖面浮窗跟着族走：切族后 P 被重置成新族的 def，控件与状态行要跟着回位 ——
+     否则会出现"浮窗还写着 zy 面已切，实际屏上是整颗"的双口径。
+     首次 rebuild 时 SECPANEL 还没定义，所以必须判存在。 */
+  if(window.SECPANEL && SECPANEL.paint)SECPANEL.paint();
 }
 
 /* UI */
@@ -15363,6 +15846,7 @@ function buildUI(){
           /* 换中心线 / 换排列方式 ⇒ 面板里「哪些滑条还生效」全变了，必须重画 */
           if(p.k==='cline'||p.k==='lavMode'||p.k==='layLaw'||p.k==='secLaw'||p.k==='cutSurf'||p.k==='cutSkin'||
              p.k==='hxL2mode'||p.k==='hxCmap'||p.k==='hxMapT'||p.k==='hxView'||p.k==='hxWeb'||
+             p.k==='hxCore'||
              p.k==='hxSec'||p.k==='hxSecSide'||p.k==='hxSecFace'){rebuild();buildUI();return;}
           rebuild();
         });

@@ -604,14 +604,23 @@ function f0HexL2(P) {
   var skin = (P.cutSkin | 0);
   /* 层间连接方式（2026-11-03 加）：0 径向直杆 / 1 节点斜腹杆 / 2 径向 + 辐条 */
   var web = (P.hxWeb === undefined ? 1 : (P.hxWeb | 0));
+  /* 内芯密度（2026-11-04 老师：内部支撑杆太密，3D 打印要省料又得够稳）
+     0 = 不建内芯（只剩 外层蜂窝 + 层间腹杆 + 内层三角网：双层壳，最省）
+     1 = 每 4 个三角面留 1 个锥（稀疏加强筋） 2 = 每 2 个留 1 个 3 = 全建（原样）
+     抽稀用的是【三角面索引取模】这种确定规则，不用随机：同一组参数每次出来一模一样，
+     判据才可复现；而且三角面是按格逐行生成的，取模相当于隔行隔列，视觉上均匀，
+     不会出现「半边有芯、半边秃」。留下的每个锥底座仍压在三角网上 ⇒ 与壳连通，
+     不是孤立悬空的柱子。 */
+  var core = Math.max(0, Math.min(3, (P.hxCore === undefined ? 1 : (P.hxCore | 0))));
+  var coreStep = [0, 4, 2, 1][core];
   /* 第二层绕长轴（数学 y）的相位角，度。蜂窝有 6 次对称、三角网有 3 次对称，
      所以相位周期是 120°，给 −60~+60 就够把「内层杆与外层杆错开」的所有情形走遍。 */
   var phase = Math.max(-60, Math.min(60, (P.hxL2phase === undefined ? 0 : P.hxL2phase)));
   /* ⚠ key 必须含 net.ck（母线/α/z₀/M/q/杆径全在里面）+ 本层自己的每个参数。
      少了任何一个，改完参数屏上还画上一版的内层 —— 那就是 2026-11-03 抓过的
-     「缓存串味」，只不过换了一层。web / phase 同理。 */
+     「缓存串味」，只不过换了一层。web / phase / core 同理。 */
   var key = net.ck + '|L2|' + skin + '|' + lmode + '|' + man.toFixed(4) + '|' + tetK.toFixed(3) +
-            '|W' + web + '|P' + phase.toFixed(2);
+            '|W' + web + '|P' + phase.toFixed(2) + '|C' + core;
   if (F0L2_CACHE.k === key && F0L2_CACHE.v) return F0L2_CACHE.v;
 
   function d2(A, B) {
@@ -733,6 +742,10 @@ function f0HexL2(P) {
   /* ---- 四面体：内层每个三角面作底座，向蛋内立第 4 点 ---- */
   var tets = [], ap = [], hSum = 0, tetR = [], apexR = [];
   for (i = 0; i < T.length; i++) {
+    /* 内芯降档（coreStep：4 / 2 / 1；0 ⇒ 整块内芯不建）。
+       用「三角面索引取模」抽稀：确定性、可复现，且三角面按格逐行生成 ⇒ 相当于隔行隔列，
+       视觉均匀。留下的每个锥底座仍压在内层三角网上 ⇒ 与壳连通，不是孤立柱子。 */
+    if (coreStep === 0 || (i % coreStep) !== 0) continue;
     var ia = T[i][0], ib = T[i][1], ic = T[i][2];
     var A = V2[ia], B = V2[ib], C = V2[ic];
     /* 顶点要立在【外心】正上方，不是重心正上方 ——
@@ -783,7 +796,9 @@ function f0HexL2(P) {
     var outDot = fnx*(A[0]+B[0]+C[0]) + fny*(A[1]+B[1]+C[1]) + fnz*(A[2]+B[2]+C[2]);
     var sgn = outDot > 0 ? -1 : 1;
     var P4 = [cx + sgn*fnx*hF, cy + sgn*fny*hF, cz + sgn*fnz*hF];
-    ap.push(P4); hSum += hF;
+    /* 用【索引赋值】而不是 push：抽稀后 ap 会是稀疏数组，但 ap[i] 永远对应 T[i]，
+       下面 innerS 用 ap[E.f[0]]/ap[E.f[1]] 才不会错位（push 会让整条链往前挤）。 */
+    ap[i] = P4; hSum += hF;
     tets.push({ a: ia, b: ib, c: ic, p: P4, h: hF, aF: aF, ctr: [cx, cy, cz] });
     /* 六条棱：三条底座（λa）+ 三条侧棱（hF）⇒ 这个比就是「像不像正四面体」的实测 */
     var ap1 = d2(A, P4), ap2 = d2(B, P4), ap3 = d2(C, P4);
@@ -823,12 +838,30 @@ function f0HexL2(P) {
        四面体芯还没建，这一组必须继续关着，否则会连到不存在的顶点。 */
     if (skin >= 4) em.forEach(function (E) {
       if (E.f.length !== 2) return;
-      pushS(innerS, ap[E.f[0]], ap[E.f[1]], 0.5 * (cR(E.u) + cR(E.v)) * 0.40);
+      /* 抽稀后有一端没有锥 ⇒ 这条内顶点杆不存在（两端都得有锥才连得起来） */
+      var P1 = ap[E.f[0]], P2 = ap[E.f[1]];
+      if (!P1 || !P2) return;
+      pushS(innerS, P1, P2, 0.5 * (cR(E.u) + cR(E.v)) * 0.40);
     });
   }
 
   tetR.sort(function (x, y) { return x - y; });
   apexR.sort(function (x, y) { return x - y; });
+
+  /* ---- 耗材：杆体积 ∝ 长度（同一族里杆径是同一套口径），所以直接报【杆总长】。
+     外层杆的 r 是占位（真实半径在建几何时按 P 的杆径算），所以外层只计长度；
+     内层杆带各自 r，顺手把体积也算出来，方便和「芯占多少」对照。
+     模型单位不是 mm —— 这里不假装给克数，要克数得老师自己定缩放与材料密度。 */
+  var lenOut = 0, lenIn = 0, lenCore = 0;
+  for (i = 0; i < net.struts.length; i++) lenOut += d2(net.struts[i].a, net.struts[i].b);
+  [tie, spoke, in2, brace, apexS, innerS].forEach(function (arr, ai) {
+    for (var q = 0; q < arr.length; q++) {
+      var Lq = d2(arr[q].a, arr[q].b);
+      lenIn += Lq;
+      if (ai >= 4) lenCore += Lq;      /* apexS / innerS 才是"内芯"，前四组是壳与腹杆 */
+    }
+  });
+
   var stats = {
     lmode: lmode, lam: lam, lamPhys: lamPhys, aMed: aMed, aRef: aRef, aMax: aMax,
     Req: Req, tetK: tetK,
@@ -836,8 +869,17 @@ function f0HexL2(P) {
     hOverA: (1 - lam) * Req / Math.max(1e-9, aRef),              /* 芯厚 ÷ 外层边长 ⇒ 0.8165 */
     hTetOverA: (1 - lam) * Req > 0 ? (K824 * lam * aRef) / Math.max(1e-9, lam * aRef) : 0,
     nV2: V2.length, nTet: tets.length, nTie: tie.length, nIn2: in2.length,
+    /* nFace = 内层三角网的三角面总数（= T.length），nTet = 其中【真立了锥】的个数。
+       抽稀只改后者：网还是那张网（756 个面），只是不是每个面都长锥 ——
+       所以读数里必须两个数都印，别把 nTet 当"三角面数"报出去。 */
+    nFace: T.length,
     nBrace: brace.length, nApex: apexS.length, nInner: innerS.length,
     web: web, phase: phase, nSpoke: spoke.length,
+    core: core, coreStep: coreStep,
+    lenOut: lenOut, lenIn: lenIn, lenCore: lenCore,
+    lenAll: lenOut + lenIn,
+    /* 内芯占全部耗材的比例：这是老师要看的那个数 —— 降档就是把这个百分比压下去 */
+    coreShare: (lenOut + lenIn) > 1e-12 ? lenCore / (lenOut + lenIn) : 0,
     /* 格心 V 与钢架可见中心（poly 平均）的最大偏差：旧版径向杆"戳出来"的根源，
        以 ‰蛋高 报，读者能直接对上截图里的那截柱子。 */
     ctrOff: ctrOff,
@@ -1289,17 +1331,37 @@ function f0HexRead(P) {
     if (skin >= 4) {
       rows.push(['斜撑（抗剪）', s2.nBrace + ' 根　（每条外层棱 4 根，把「外层棱 + 内层棱」封成四面体。' +
         '⚠ 只有径向杆时芯是【柱阵】—— 抗压不抗剪，两层能面内滑移，是机构不是结构）']);
-      rows.push(['四面体芯', s2.nTet + ' 个 · 高 ' + (s2.hTetMed / st.H * 1000).toFixed(1) +
-        ' ‰蛋高 · 六棱等长比中位 <b>' + s2.tetRatio.toFixed(3) + '</b>（正四面体 = 1.000；' +
-        '最差 ' + s2.tetHi.toFixed(3) + '）。比值不是 1.000 是因为三角网本身不是严格正三角：' +
-        '底座三条边就有 ' + (s2.aMax / Math.max(1e-9, s2.aMed)).toFixed(1) + ' 倍的差，' +
-        '剩下的差距全来自底座']);
-      rows.push(['三条侧棱等长比（必须 = 1.000）',
-        '中位 <b>' + s2.apexMed.toFixed(4) + '</b> ／ 最差 ' + s2.apexHi.toFixed(4) +
-        '　（顶点立在外心 + 沿底座法向 ⇒ 外心到三顶点等距、方向垂直 ⇒ 三条侧棱严格等长。' +
-        '这一行是「外心算得对不对」的直接裁判，六棱比那一行则掺进了网格本身的形状）']);
-      rows.push(['内顶点互连', s2.nInner + ' 根　（相邻四面体的内顶点两两相连 ⇒ 内层三正则网，' +
-        '与内层三角网互为对偶）']);
+      /* ---- 内芯密度（2026-11-04 老师：内部支撑太密，3D 打印要省料又得够稳）---- */
+      var coreName = ['不建内芯（双层壳 + 腹杆）', '稀疏 · 每 4 个三角面留 1 个锥',
+                      '中 · 每 2 个三角面留 1 个锥', '全建（每个三角面一个锥）'][s2.core] || '?';
+      rows.push(['内芯密度', '<b>' + coreName + '</b>　·　锥 ' + s2.nTet + ' 个' +
+        (s2.core === 0
+          ? '　（<b>芯里是空的</b>：只剩外层蜂窝 + 层间腹杆 + 内层三角网。省料最多，抗压靠双层壳、抗剪靠腹杆）'
+          : s2.core < 3
+            ? '　（留下的锥底座仍压在内层三角网上 ⇒ 与壳连通，不是悬空柱；' +
+              '相邻两个锥都留下了才连内顶点）'
+            : '　（每个三角面都立锥 ⇒ 内顶点连成三正则网，最费料也最刚）')]);
+      rows.push(['耗材（杆总长）', '外层 ' + s2.lenOut.toFixed(2) + ' ＋ 内层 ' + s2.lenIn.toFixed(2) +
+        ' ＝ <b>' + s2.lenAll.toFixed(2) + '</b> 模型单位　·　<b>内芯占 ' +
+        (s2.coreShare * 100).toFixed(1) + '%</b>（芯 = 锥侧棱 + 内顶点互连）' +
+        '　·　杆径一样时耗材 ∝ 这段长度，所以降档就看这个百分比']);
+      if (s2.nTet > 0) {
+        rows.push(['四面体芯', s2.nTet + ' 个 · 高 ' + (s2.hTetMed / st.H * 1000).toFixed(1) +
+          ' ‰蛋高 · 六棱等长比中位 <b>' + s2.tetRatio.toFixed(3) + '</b>（正四面体 = 1.000；' +
+          '最差 ' + s2.tetHi.toFixed(3) + '）。比值不是 1.000 是因为三角网本身不是严格正三角：' +
+          '底座三条边就有 ' + (s2.aMax / Math.max(1e-9, s2.aMed)).toFixed(1) + ' 倍的差，' +
+          '剩下的差距全来自底座']);
+        rows.push(['三条侧棱等长比（必须 = 1.000）',
+          '中位 <b>' + s2.apexMed.toFixed(4) + '</b> ／ 最差 ' + s2.apexHi.toFixed(4) +
+          '　（顶点立在外心 + 沿底座法向 ⇒ 外心到三顶点等距、方向垂直 ⇒ 三条侧棱严格等长。' +
+          '这一行是「外心算得对不对」的直接裁判，六棱比那一行则掺进了网格本身的形状）']);
+        rows.push(['内顶点互连', s2.nInner + ' 根　（相邻四面体的内顶点两两相连 ⇒ 内层三正则网，' +
+          '与内层三角网互为对偶）']);
+      } else {
+        rows.push(['四面体芯', '<b>本档一个都不建</b>（内芯密度 = 不建内芯）。' +
+          '这不是"没算出来"：抽稀步长取 0 时整块芯都被省掉，省的是耗材不是精度 —— ' +
+          '圆锥壳的抗压本来就靠双层壳，芯只负责抗剪与抗局部失稳']);
+      }
     } else if (s2.web === 1) {
       rows.push(['这一档（无四面体芯）', '腹杆已是节点对节点的斜杆 ⇒ 整层是完整空间桁架，抗剪成立；' +
         '只是还没往蛋内立四面体。切到「★ 双层 + 斜撑 + 四面体芯」再往内伸一层']);
