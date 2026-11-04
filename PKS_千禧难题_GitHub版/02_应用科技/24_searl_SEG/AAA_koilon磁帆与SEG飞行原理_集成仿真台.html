@@ -304,7 +304,7 @@
   <div class="hwrap">
     <div>
       <h1>koilon 磁帆 × SEG 飞行原理 · 集成仿真台
-        <small id="verTag">v2.8</small></h1>
+        <small id="verTag">v2.10</small></h1>
       <p class="hsub">
         六个仿真模块合并为一个应用：2D 磁帆 · 双环 3D · 鳟鱼磁漏斗载具 · 涡环潜艇 · SEG 点火时序 · 双层框架；
         后接<b>四个整页本体</b>：蛋外鞘（太极式再循环）、Anu 正反旋镜像（d = 5）、Anu 单丝七级螺旋（1680 匝 = 外程 + 内程）、
@@ -1069,7 +1069,7 @@ r(θ) = r₀ · [ 1 + ε_r · cos( N·θ − δ* ) ]</div>
       </p>
       <div class="slk" id="slk">
         <div class="slkrow"><label for="slkN">谐波阶 N</label>
-          <input type="range" id="slkN" min="2" max="8" step="1" value="4">
+          <input type="range" id="slkN" min="1" max="8" step="1" value="4">
           <output id="slkNv">4</output></div>
         <div class="slkrow"><label for="slkE">相对失配 ε</label>
           <input type="range" id="slkE" min="0" max="0.50" step="0.01" value="0.20">
@@ -1086,7 +1086,9 @@ r(θ) = r₀ · [ 1 + ε_r · cos( N·θ − δ* ) ]</div>
             <div>判定　<b id="slkLk">失锁</b></div>
             <div>瓣数　<b id="slkPt">4</b></div>
             <div>每圈残差　<b id="slkRes">—</b></div>
-            <div class="slkhint" id="slkHint">把 K 拖到 N·ε 之上，环带会收成一朵静止的花。</div>
+            <div class="slkhint" id="slkHint">把 K 拖到 N·ε 之上，环带会收成一朵静止的花。
+              滑杆下限已放到 <b>1</b>，只为看 N = 1 / 2 的退化图案；<b>实际配置的粒子数下限是 6</b>（老师 2026-11-01 指定），
+              N 再小只是数学上的玩具。</div>
           </div>
         </div>
       </div>
@@ -1266,9 +1268,30 @@ N = 1680  ⟹  |ε| &lt; 1/1680  ≈ 0.000595  （0.06% —— 要求两个平�
       <h4 class="cry-h4">十二-1　方程：三个通道，缺一个都不成立</h4>
       <p>
         设热量 C（J/K）、温度 T，耦合程度 κ ∈ (0, 10]（就是「运动模式与 koilon 的同步程度」，
-        与第十一节那个锁定序参量是同一个量），耦合热导 Γ = Γ₀·κ：
+        与第十一节那个锁定序参量是同一个量），记 Γ = Γ₀·κ：
       </p>
       <div class="cryfml">C · dT/dt = P<sub>load</sub> − Γ(κ)·C·(T − T<sub>k</sub>) − εσA·(T⁴ − T<sub>env</sub>⁴)</div>
+      <p>
+        <b>先把 Γ 的量纲钉死，这里最容易叫错。</b>由量纲配平
+        <code>[Γ]·[C]·[ΔT] = W</code> 得 <b>[Γ] = s⁻¹</b>：
+      </p>
+      <table class="spec">
+        <thead><tr><th>符号</th><th>名称</th><th>量纲</th><th>是什么</th></tr></thead>
+        <tbody>
+          <tr><td>λ</td><td>导热率/热导率</td><td>W/(m·K)</td>
+              <td><b>材料</b>属性，傅里叶定律 q = −λ∇T 里那个</td></tr>
+          <tr><td>G</td><td>热导</td><td>W/K</td>
+              <td><b>结构</b>属性，G = λA/L = 1/R<sub>th</sub>，可测</td></tr>
+          <tr><td>Γ</td><td>耦合热导<br>（归一化）</td><td>s⁻¹</td>
+              <td>G 除以热容，即逆热时间常数</td></tr>
+        </tbody>
+      </table>
+      <p>
+        <b>所以 Γ 不是导热率</b>（那是 λ，W/(m·K)，差两个量纲），<b>也不是热导 G</b>（W/K）——
+        <b>Γ = G/C</b>。本节把 G 写成 Γ·C，是为了让两个结果共用一个符号、一眼能读：
+        <b>时间常数 τ = C/G = 1/Γ</b>、<b>稳态 T<sub>∞</sub> = P/G = P/(ΓC)</b>；
+        若直接用 G 写，两式都得拖着 C，反而看不出「τ 与负载无关」。
+      </p>
       <p>
         三项依次是：<b>负载产热</b>（常数，加负载就是把它调大）、
         <b>耦合通道</b>（正比于温差，这是「与 koilon 同频同模式」能起作用的地方）、
@@ -1373,9 +1396,13 @@ N = 1680  ⟹  |ε| &lt; 1/1680  ≈ 0.000595  （0.06% —— 要求两个平�
         但稳态<b>更热</b>（T<sub>∞</sub> ∝ P<sub>load</sub>）是反的；<br>
         ③ 「与 koilon 同模式就能自持」—— <b>这是本节唯一不能判的一条</b>：它等价于问
         「Γ 那条通道的物理载体是什么」。方程只说明<b>若它存在，能冷到多少</b>，
-        <b>不说明它存在</b>。要判它，需要的是<b>一个测得到的热导 Γ</b>，
-        不是一句「同频同模式」。<br>
-        这就是本页对「无限运行」的全部立场：<b>把「无限」换成一条能测的 Γ，问题就从信念变成实验。</b>
+        <b>不说明它存在</b>。要判它，需要的是<b>一个测得到的热导 G = ΓC</b>（W/K，
+        用热流除以温差测，或用一根已知 λA/L 的样件反推），不是一句「同频同模式」。<br>
+        顺带把这个门槛的<b>高低</b>也算出来：Γ &gt; 0.02 s⁻¹、C = 1 J/K ⟹ <b>G &gt; 0.02 W/K</b>，
+        约等于一段 <b>1 mm² 截面、2 cm 长的铜线</b>（λ = 400）。门槛这么低，
+        说明难点<b>从来不在「能不能导热」，而在这条 G 的另一端接的是什么</b>：
+        接外部冷源就平凡（冷源本身要耗功），接 koilon 才有新物理 —— 这正是第四个闸门要问的。<br>
+        这就是本页对「无限运行」的全部立场：<b>把「无限」换成一条能测的 G，问题就从信念变成实验。</b>
       </p>
 
       <style>
@@ -1959,7 +1986,41 @@ n=1: −1/4    n=2: +1/9    n=3: −1/25    n=4: +1/64    n=5: −1/169  …
 
       <h4 class="en-h4">六-5　如果底质是「一个以无限速度铺满空间的粒子」</h4>
       <p>
-        这一条来自 Bashar 的物理模型（老师 2026-11-01 转述）：
+        这一条来自 Bashar 的物理模型，<b>不是口耳相传的模糊印象，它有专名、有原文、有四处独立场次</b>：
+        英文叫 <b>the Prime Radiant</b>（Bashar 称这个词出自「our ancient language」）。
+        中文译本不统一 —— 原始辐射／基本辐射／原初辐射，三种都是同一个词。四处原文（逐字，未改一字）：
+      </p>
+      <p style="margin:0 0 9px;padding:8px 12px;border-left:3px solid #d8e4f2;background:#fbfdff;font-size:12.8px;line-height:1.72;color:#3b4a5c">
+        <span style="font-size:11.5px;color:#7b8b9e">2012-05-26 · Four Laws of Creation</span><br>
+        “Imagine that nothing exists but a single particle… <b>Because it is massless, that means it can move at infinite
+        speed. Something that moves at infinite speed can be everywhere all at the same time.</b> Therefore, what might
+        appear to be this particle and that particle… can thus then be understood to be <b>all the same particle moving so
+        fast that it appears next to itself at the same time</b>.”
+      </p>
+      <p style="margin:0 0 9px;padding:8px 12px;border-left:3px solid #d8e4f2;background:#fbfdff;font-size:12.8px;line-height:1.72;color:#3b4a5c">
+        <span style="font-size:11.5px;color:#7b8b9e">2012-06-16 · Anxiety（“The Big Bang” 一节）</span><br>
+        “The idea is what we call or refer to in our ancient language as <b>the Prime Radiant</b>… imagine if you will that
+        there is only one particle and nothing else… <b>it can travel at infinite speed. Nothing holds it back. There are no
+        laws of physics yet</b>… then that means <b>that particle can actually appear to be everywhere at once</b>.”
+      </p>
+      <p style="margin:0 0 9px;padding:8px 12px;border-left:3px solid #d8e4f2;background:#fbfdff;font-size:12.8px;line-height:1.72;color:#3b4a5c">
+        <span style="font-size:11.5px;color:#7b8b9e">2012-12-01 · Teleportation</span><br>
+        “we give you what we have called <b>the prime radiant</b>… a <b>single particle traveling at infinite speed</b>, thus
+        appearing <b>next to itself over and over and over again</b>, appearing to be many particles.”
+      </p>
+      <p style="margin:0 0 9px;padding:8px 12px;border-left:3px solid #d8e4f2;background:#fbfdff;font-size:12.8px;line-height:1.72;color:#3b4a5c">
+        <span style="font-size:11.5px;color:#7b8b9e">2015-06-20 · Mistaken Identity</span><br>
+        “<b>the universe is only one particle. It pretends to be many particles.</b> It appears to be many particles, but it's
+        actually only one particle… <b>it can occupy every single position</b> within that void.”
+      </p>
+      <p class="vsub">
+        出处：以上四段为 Bashar 现场问答的逐字记录（superphysics.org 归档，2012/2015 各场；另有一段
+        Darryl Anka 本人出镜的英文复述见 Buddha at the Gas Pump #236 逐字稿，他用的是
+        「<b>thought experiment</b>」和「<b>the ultimate timesharing framework</b>」）。
+        🔍 检索坑：YouTube 自动字幕常把 <i>prime radiant</i> 听成 <i>“prime radius”</i>，两个词都要试。
+      </p>
+      <p>
+        老师 2026-11-01 口述的版本，与这四处原文逐条对得上：
         <b>宇宙所有物质都由同一个粒子组成；它速度无限，所以「看似在空间的任何一个角落」——那就是 koilon；
         它看似分布均匀且不动，实际是无限速度。</b>
         听着像玄学，但把它拆成四条可判的命题，每条都能单独判，而且<b>判法不一样</b>：
@@ -2008,6 +2069,17 @@ n=1: −1/4    n=2: +1/9    n=3: −1/25    n=4: +1/64    n=5: −1/169  …
         <b>「不可观测的规范选择 / 表象选择」</b>——两个表象给出同一组可观测值，就没有实验能分辨。
         这不丢人：量子力学的海森堡表象与薛定谔表象也是这么共存的。
         但它也意味着：<b>这句话本身不会给出任何可测的预言</b>，能给的预言全在「有限但极大」那个版本里。
+      </p>
+
+      <p class="note">
+        📎 <b>引用须知 —— 必须与上表一起读，否则等于是替原作者加戏</b>：
+        Bashar 在同一批原文里<b>自己两次声明这是比喻</b> ——
+        “this isn't meant to be absolutely literal, but it's the best analogy”（2012-06-16）、
+        “this is simply a symbol… a representational idea”（2015-06-20）；Darryl Anka 本人也称它是
+        “a thought experiment… not necessarily, absolutely representative of what reality is”。
+        ⟹ <b>上面那张表判的是「按字面读」的后果，不是原作者的主张。</b>
+        按作者自述读，它只是「不可观测的表象选择」的另一种说法，不给可测预言；
+        按字面读，才有 ②③④ 那三条否证。<b>两种读法不冲突，但绝不能只引一半。</b>
       </p>
 
       <h4 class="en-h4">六-6　如果 koilon 内部的振动频率是无限的</h4>
@@ -2287,6 +2359,364 @@ n=1: −1/4    n=2: +1/9    n=3: −1/25    n=4: +1/64    n=5: −1/169  …
         }
 
         s.addEventListener('input', upd);
+        upd();
+      })();
+      </script>
+
+<style>
+.fmbox{background:linear-gradient(180deg,#fbfdff,#f4f8fd);border:1px solid var(--line);
+  border-radius:8px;padding:14px 16px;margin:14px 0}
+.fmlead{margin:0 0 6px;font-size:12.5px;color:#5b6e86;letter-spacing:.4px}
+.fmbig{margin:0;font-size:13.2px;line-height:1.85;color:#16202c}
+.fmbig b{color:#00568f}
+.fm-h4{font-size:13.5px;color:#00568f;margin:20px 0 8px;padding-left:8px;
+  border-left:3px solid #00568f;line-height:1.5}
+.fmwrap{overflow-x:auto;margin:8px 0 12px}
+.fmtable{width:100%;border-collapse:collapse;font-size:12px;line-height:1.62}
+.fmtable th{background:#eef4fb;color:#5b6e86;font-weight:600;text-align:left;
+  padding:6px 8px;border-bottom:1px solid #d9e3ef;white-space:nowrap}
+.fmtable td{padding:6px 8px;border-bottom:1px solid #eef2f7;vertical-align:top;color:#16202c}
+.fmtable tr:hover td{background:#fafcff}
+.fmtable .sid{font-weight:700;color:#00568f;text-align:center;width:30px}
+.fmtable .sname{white-space:nowrap;font-weight:600}
+.fmtable .stag{font-size:10.5px;font-weight:400;color:#5b6e86}
+.fmtable .sfml{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;color:#243a52}
+.fmtable .snote{color:#5b6e86;font-size:11.5px}
+.fmtable .kname{white-space:nowrap;font-weight:600;color:#0a7f6b}
+.fmtable .kfml{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;color:#243a52}
+.fmtable .ksrc{color:#5b6e86;font-size:11px;white-space:nowrap}
+.fmtable .diff{color:#b3541e;font-size:11.5px}
+.fmnote{margin:6px 0 0;font-size:11.8px;color:#5b6e86;line-height:1.75}
+.cmbox{border:1px solid #d9e3ef;border-left:3px solid #7a3d7a;border-radius:6px;
+  padding:10px 13px;margin:12px 0;background:#fcfbfd}
+.cmhead{margin:0 0 7px;font-size:13px;color:#7a3d7a}
+.cmtbl{width:100%;border-collapse:collapse;font-size:12px;line-height:1.7}
+.cmtbl th{width:96px;text-align:left;color:#5b6e86;font-weight:600;vertical-align:top;
+  padding:4px 8px 4px 0;white-space:nowrap}
+.cmtbl td{padding:4px 0;color:#16202c}
+.cmtbl .thmrow th,.cmtbl .thmrow td{background:#f3f0f7;padding:6px 8px;border-radius:4px}
+.cmcrit{margin:7px 0 0;font-size:11.8px;color:#3d4a5c;line-height:1.7;
+  background:#f7fafd;border-radius:4px;padding:6px 9px}
+.fmrow{display:flex;align-items:center;gap:10px;margin:0 0 10px}
+.fmrow label{font-size:12.5px;color:#16202c;white-space:nowrap}
+.fmrow input[type=range]{flex:1;max-width:320px}
+.fmrow output{font-family:ui-monospace,Consolas,monospace;font-size:13px;
+  color:#00568f;font-weight:700;min-width:28px;text-align:right}
+.fmtbl{overflow-x:auto;margin-top:10px}
+.fmmini{width:100%;border-collapse:collapse;font-size:11.5px;
+  font-variant-numeric:tabular-nums}
+.fmmini th{background:#eef4fb;color:#5b6e86;font-weight:600;padding:4px 6px;
+  border-bottom:1px solid #d9e3ef;text-align:right;white-space:nowrap}
+.fmmini th:first-child{text-align:left}
+.fmmini td{padding:3px 6px;border-bottom:1px solid #f0f4f9;text-align:right;color:#16202c}
+.fmmini td:first-child{text-align:left;color:#5b6e86}
+.fmmini tr.peak td{background:#fff5ec;color:#b3541e;font-weight:600}
+.fmwarn{margin:12px 0 0;padding:11px 14px;background:#fff8f2;border:1px solid #f0d9c4;
+  border-radius:6px;font-size:12px;line-height:1.8;color:#4a3a2c}
+.fmwarn p{margin:0 0 8px}
+.fmwarn p:last-child{margin-bottom:0}
+.fmwarn b{color:#b3541e}
+.mono{font-family:ui-monospace,Consolas,monospace;font-size:11.8px}
+</style>
+
+      <h3 class="sec">七、公式对照：SEG 9 种设计方案的公式 ↔ 蛋外鞘 v9 场方程</h3>
+
+      <p>
+        前面六节讲的是「这个本体怎么动」。这一节换一个方向：<b>把另一条工程线上算的东西搬进来对照</b>。
+        来源是两个真实在跑的文件 ——
+        <code>scripts_补充/seg_orbit_spin.html</code>（SEG / IGV 几何引擎，9 种设计方案的公式，
+        每一条都能在 <code>computeGeometry()</code> 里指到行）
+        与
+        <code>koilon本体_蛋外鞘与anu/黄金极限蛋外鞘_呼吸渐变动画.html</code>（本页所仿的 v9 场方程，
+        正典口径在 <code>_docs/黄金极限蛋外鞘_v9公式总表_20261102.md</code>）。
+      </p>
+
+      <div class="fmbox">
+        <p class="fmlead"><b>先说结论（一句话）</b></p>
+        <p class="fmbig">
+          两侧共享的不是物理量，是<b>环向离散对称算子 C<sub>N</sub></b>：
+          SEG 用它把 N 个滚柱排在圆上（方案 6、侧推力判据），
+          蛋外鞘用它把流场写成 N 阶刀瓣（<span class="mono">ε·ρ·sin(nφ+…)</span>）。
+          而 C<sub>N</sub> 一旦成立，<b>傅里叶一阶系数必然为零</b> ——
+          SEG 那侧的「m≥2 且 e=0 ⟹ 净侧推力严格 0」和 koilon 那侧的「|c₁|=4.3×10⁻¹⁶」
+          不是两个巧合，是<b>同一个 c₁ = 0</b>。
+        </p>
+      </div>
+
+      <h4 class="fm-h4">七-1　SEG 的 9 种方案在解什么（逐条公式）</h4>
+      <p>
+        统一记号：环 i∈{0,1,2}（内 / 中 / 外）—— 内径 <span class="mono">B<sub>r</sub></span>、
+        外径 <span class="mono">B<sub>R</sub></span>、滚筒半径 <span class="mono">Y<sub>r</sub></span>、
+        滚筒数 <span class="mono">N</span>、定子高 <span class="mono">h<sub>s</sub></span>、
+        环面积 <span class="mono">S = π(B<sub>R</sub>²−B<sub>r</sub>²)</span>、
+        滚筒直径 <span class="mono">D = 2Y<sub>r</sub></span>。
+        「控量」一栏说明这个方案把哪个量当输入、哪个当输出。
+      </p>
+
+      <div class="fmwrap">
+        <table class="fmtable">
+          <tr><th>#</th><th>方案</th><th>公式</th><th>一句话</th></tr>
+          <tr><td class="sid">1</td><td class="sname">已知尺寸求体积<br><span class="stag">几何</span></td><td class="sfml">h<sub>s</sub> = D·e<sub>F</sub>　⟹　V = π(B<sub>R</sub>²−B<sub>r</sub>²)·h<sub>s</sub></td><td class="snote">正向问题：几何定了，体积是结果。9 个方案的公共底座。</td></tr>
+<tr><td class="sid">2</td><td class="sname">已知体积求高度<br><span class="stag">体积</span></td><td class="sfml">h<sub>s</sub> = V ⁄ [π(B<sub>R</sub>²−B<sub>r</sub>²)] = V ⁄ S</td><td class="snote">反问题：先给体积，反解定子高。本节共性 ③ 的主体。</td></tr>
+<tr><td class="sid">3</td><td class="sname">已知参数求b系数<br><span class="stag">几何</span></td><td class="sfml">h<sub>r</sub> = h<sub>s</sub>⁄k<sub>F</sub>（k1 模式）　或　h<sub>s</sub>−2k<sub>2gap</sub>（k2 模式）</td><td class="snote">b 系数 = 定子高与滚筒高的比，决定磁场耦合的轴向包络。</td></tr>
+<tr><td class="sid">4</td><td class="sname">体积等差+等厚<br><span class="stag">几何</span></td><td class="sfml">N<sub>fac</sub> = 2　·　t<sub>i</sub> = t（三环等厚）　·　V 等差</td><td class="snote">三环壁厚相同，靠半径拉开体积差。</td></tr>
+<tr><td class="sid">5</td><td class="sname">等差+等厚等间距<br><span class="stag">几何</span></td><td class="sfml">B<sub>r,i+1</sub> − B<sub>R,i</sub> = ⟨g⟩（等间距）　·　同时等厚</td><td class="snote">间隙也等分：几何上最「均匀」，但牺牲了磁压梯度。</td></tr>
+<tr><td class="sid">6</td><td class="sname">三角函数定子半径<br><span class="stag">几何</span></td><td class="sfml">B<sub>R</sub> = (D + δ) ⁄ [2·sin(π⁄N)]</td><td class="snote">🔴 本节共性 ① 的主体：N 个滚柱等距排在半径 B<sub>R</sub> 的圆上 ⟹ 正 N 边形外接圆。</td></tr>
+<tr><td class="sid">7</td><td class="sname">质量密度体积<br><span class="stag">质量</span></td><td class="sfml">h<sub>s</sub> = (m⁄ρ) ⁄ S　·　Y<sub>r</sub> = 1.5(1+0.18i)</td><td class="snote">质量 → 体积 → 高度。共性 ③ 的三段链。</td></tr>
+<tr><td class="sid">8</td><td class="sname">等体积质量模式<br><span class="stag">质量</span></td><td class="sfml">V<sub>i</sub> = Σm ⁄ (3ρ)（三环同体积）</td><td class="snote">总质量均分三环体积，质量差异只进磁极数。</td></tr>
+<tr><td class="sid">9</td><td class="sname">等体积+质量=磁极 P34<br><span class="stag">质量</span></td><td class="sfml">V<sub>i</sub> = Σm⁄(3ρ)　·　p<sub>s,i</sub> = m<sub>i</sub>　·　p<sub>r</sub> ≡ 34</td><td class="snote">定子磁极数直接取质量数，滚筒固定 34 极 ⟹ 互质关系被质量数决定。</td></tr>
+        </table>
+      </div>
+
+      <p class="fmnote">
+        ⚠ 方案 1 与 2 是<b>同一式的两个方向</b>（V = S·h ⟺ h = V/S），
+        方案 7/8/9 在此之上再加一层 <span class="mono">V = m/ρ</span>。
+        所以 9 个方案真正的独立公式只有 <b>4 条</b>：面积、体积、质量换算、正多边形容差。
+        其余都是「谁来当输入」的组合。
+      </p>
+
+      <h4 class="fm-h4">七-2　蛋外鞘 v9 的五个正典公式</h4>
+      <div class="fmwrap">
+        <table class="fmtable">
+          <tr><th>项</th><th>公式</th><th>出处</th></tr>
+          <tr><td class="kname">三段速度分解</td><td class="kfml">v = v<sub>T</sub>（输运，无散）+ v<sub>C</sub>（环向，只进 φ）+ v<sub>add</sub>（ε 刀瓣 / M₁ 偶极）</td><td class="ksrc">总表 §1.1</td></tr>
+<tr><td class="kname">流函数 / 不变流面</td><td class="kfml">ψ = z·ρ²(1−η²)，η = ρ⁄ρ<sub>e</sub>(z)　⟹　η=1 处 ψ≡0 ⟹ 蛋壳是不变流面</td><td class="ksrc">总表 §1.2</td></tr>
+<tr><td class="kname">环向角速度</td><td class="kfml">ω = K<sub>DD</sub>·Ω₀ ⁄ (ρ + r<sub>c</sub>)<sup>3/2</sup></td><td class="ksrc">总表 §2 / 页面 v9.26（r<sub>c</sub> 下限放到 0）</td></tr>
+<tr><td class="kname">软墙（C<sup>∞</sup> 化）</td><td class="kfml">t₁ = ½[(ρ−ρ<sub>eff</sub>+0.005R) + √((ρ−ρ<sub>eff</sub>+0.005R)² + σ<sub>s</sub>²)]</td><td class="ksrc">总表 §1.1</td></tr>
+<tr><td class="kname">方位谐波（三个 m）</td><td class="kfml">v<sub>r</sub> += ε·ρ·sin(nφ+k<sub>z</sub>z+ω<sub>ε</sub>t) + M₁·ρ·sin(φ+ω₁t)</td><td class="ksrc">总表 §1.5（实测 |c₁|=4.3e-16 / ερ 精确）</td></tr>
+        </table>
+      </div>
+
+      <h4 class="fm-h4">七-3　四条共性（每条都给一行可验算的判据）</h4>
+      <p>
+        下面四条按「可信度」从高到低排。第一条是<b>严格的定理</b>，第二条是<b>同一个指数</b>，
+        第三条是<b>同一个反问题</b>，第四条是<b>同一个离散化常数</b>。
+        每条都附一句「怎么用一行算式验」，不写只有形容词的判断。
+      </p>
+      
+      <div class="cmbox">
+        <p class="cmhead"><b>①　C<sub>N</sub> 对称 ⟹ 一阶谐波恒为零</b></p>
+        <table class="cmtbl">
+          <tr><th>SEG 侧</th><td>N 个等距喷口：Σcos θ<sub>k</sub> = 0、Σcos θ<sub>k</sub> sin θ<sub>k</sub> = 0、Σcos²θ<sub>k</sub> = N⁄2<br>⟹ 净侧推力 F<sub>side</sub> = F₁·e·N⁄2（N≥2，<b>e=0 时为严格 0</b>）</td></tr>
+          <tr><th>蛋外鞘侧</th><td>C<sub>N</sub> 场（刀瓣 n≥2）：傅里叶一阶系数 c₁<br>⟹ 实测 |c₁| = 4.3×10⁻¹⁶（M₁=0 时）</td></tr>
+          <tr class="thmrow"><th>同一条定理</th><td>f 具 N 重旋转对称 ⟹ c<sub>m</sub> = 0 ∀ m ≢ 0 (mod N)。N≥2 ⟹ c₁ = 0。<br>两侧都是<b>同一个积分</b>：c₁ = (1/2π)∮f(φ)e<sup>−iφ</sup>dφ。</td></tr>
+        </table>
+        <p class="cmcrit"><b>一行判据</b>：拖下面 N 的滑条：一阶谐波读数在 N≥2 时**逐位归零**（不是「很小」，是浮点下的 0）。</p>
+      </div>
+
+      <div class="cmbox">
+        <p class="cmhead"><b>②　同一个幂律 ρ<sup>−3/2</sup></b></p>
+        <table class="cmtbl">
+          <tr><th>SEG 侧</th><td>三层速度律第 4 档：p=1.5 开普勒场　ω ∝ ρ<sup>−1.5</sup></td></tr>
+          <tr><th>蛋外鞘侧</th><td>ω = K<sub>DD</sub>·Ω₀ ⁄ (ρ+r<sub>c</sub>)<sup>3/2</sup>，<b>r<sub>c</sub>=0 时严格 ρ<sup>−3/2</sup></b></td></tr>
+          <tr class="thmrow"><th>同一条定理</th><td>开普勒第三定律的角速度形式：ω ∝ r<sup>−3/2</sup>（比角动量守恒 ω∝r<sup>−2</sup> 更「按面积走」）。</td></tr>
+        </table>
+        <p class="cmcrit"><b>一行判据</b>：页面 v9.26 已允许 r<sub>c</sub>=0 ⟹ 取 log ω 对 log ρ 做线性拟合，斜率应为 −1.500。</p>
+      </div>
+
+      <div class="cmbox">
+        <p class="cmhead"><b>③　质量 → 几何：h = m ⁄ (ρ·S)</b></p>
+        <table class="cmtbl">
+          <tr><th>SEG 侧</th><td>方案 2 / 7 / 8 / 9：h<sub>s</sub> = V⁄S，V = m⁄ρ，S = π(B<sub>R</sub>²−B<sub>r</sub>²)</td></tr>
+          <tr><th>蛋外鞘侧</th><td>等密标定 SYM_OM：把「质量沿母线均匀」折算成 ρ<sub>e</sub>(z)；线密度 σ = M⁄(2πr)</td></tr>
+          <tr class="thmrow"><th>同一条定理</th><td>体积（或面积）是质量与几何之间唯一的桥；「给定质量求尺寸」在任何环状结构里都是同一个反问题。</td></tr>
+        </table>
+        <p class="cmcrit"><b>一行判据</b>：SEG 侧 h 与 m 严格线性（探针实测）；koilon 侧 σ·2πr 沿环恒定。</p>
+      </div>
+
+      <div class="cmbox">
+        <p class="cmhead"><b>④　相邻相位差 = 360°⁄N</b></p>
+        <table class="cmtbl">
+          <tr><th>SEG 侧</th><td>seg_orbit_spin 的滚柱自转：S<sub>rot</sub> = −p<sub>stator</sub>⁄p<sub>roller</sub>（极数比）；N=4 时即经典 90°</td></tr>
+          <tr><th>蛋外鞘侧</th><td>双线并绕的自动相位差：n=3→120°、n=4→90°、n=5→72°（<b>固定 90° 在 n=3 恰是最差档</b>）</td></tr>
+          <tr class="thmrow"><th>同一条定理</th><td>N 等分圆周 ⟹ 相邻相位差 2π⁄N。相位差不是可以随便写的常数，它由 N 唯一决定。</td></tr>
+        </table>
+        <p class="cmcrit"><b>一行判据</b>：koilon 侧 `_probe_v9_dualphase` 实测：D(Δφ) 取最小非零 ⟹ 自动得到 2π⁄N。</p>
+      </div>
+
+      <h4 class="fm-h4">七-4　总映射表</h4>
+      <div class="fmwrap">
+        <table class="fmtable">
+          <tr><th>SEG 侧</th><th>蛋外鞘侧</th><th>共同结构</th><th>不等价处（必须说清）</th></tr>
+          <tr><td>方案 6　B<sub>R</sub>=(D+δ)/(2sin(π/N))</td><td>刀瓣场　ρ<sub>e</sub>=ρ₀(1+ε·cos nφ)</td><td>C<sub>N</sub> 环向离散化：都是「N 个等分点参数化一个圆」</td><td class="diff">外接圆**放大半径** vs 轴向**放大幅值**</td></tr>
+<tr><td>方案 6 的 1/sin(π/N)</td><td>瓣深系数 c(n)（c(3)=1、c(6)=1.285）</td><td>N 小时的偏离量：连续极限 N→∞ 才回到轴对称</td><td class="diff">修正的是 BR 还是 H，量纲不同</td></tr>
+<tr><td>速度律 p=1.5</td><td>ω ∝ (ρ+r<sub>c</sub>)<sup>−3/2</sup></td><td>开普勒幂律——两侧是同一个指数</td><td class="diff">一侧是几何离散三层的相对速度，一侧是连续场的角速度</td></tr>
+<tr><td>方案 2/7/8/9　h=V/S</td><td>等密标定　σ = M/(2πr)</td><td>质量→体积→几何 的反问题链</td><td class="diff">一侧求定子高，一侧求母线形状</td></tr>
+<tr><td>侧推力判据 Σcosθ = 0</td><td>傅里叶判据 c₁ = 0</td><td>C<sub>N</sub> 对称 ⟹ 一阶零（同一积分）</td><td class="diff">一侧是力的一阶和，一侧是速度场的一阶系数</td></tr>
+        </table>
+      </div>
+
+      <h4 class="fm-h4">七-5　拖一个 N，同时看三条判据</h4>
+      <p>
+        这一节的核心：<b>一个滑条，两侧同时归零</b>。
+        下面三根读数分别对应上表的共性 ①、共性 ①（离散化量）、共性 ④。
+        注意第一根在 N≥2 时是<b>浮点意义上的 0</b>（不是「很小」）——
+        这就是「N≥2 且 e=0 ⟹ 净侧推力严格 0」的全部内容。
+      </p>
+
+      <div class="fmbox">
+        <div class="fmrow">
+          <label for="fmN">环向等分数 N</label>
+          <input id="fmN" type="range" min="1" max="12" step="1" value="6">
+          <output id="fmNv">6</output>
+        </div>
+
+        <svg id="fmSvg" viewBox="0 0 560 300" role="img" style="max-width:720px;display:block;margin:0 auto"
+             aria-label="N 个等分点排在圆上，一阶谐波随 N≥2 归零">
+          <rect x="10" y="10" width="240" height="240" fill="#fbfdff" stroke="#d9e3ef" rx="4"/>
+          <circle id="fmCircle" cx="130" cy="130" r="92" fill="none" stroke="#d9e3ef" stroke-width="1.4"/>
+          <g id="fmDots"></g>
+          <line id="fmVec" x1="130" y1="130" x2="130" y2="130" stroke="#b3541e" stroke-width="2.4"
+                marker-end="url(#fmArrow)"/>
+          <defs>
+            <marker id="fmArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6"
+                    orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#b3541e"/>
+            </marker>
+          </defs>
+          <text x="130" y="264" font-size="11" fill="#5b6e86" text-anchor="middle">环向 N 等分（俯视）</text>
+
+          <g id="fmBars">
+            <text x="282" y="34" font-size="11.5" fill="#16202c" font-weight="700">① 一阶谐波｜c₁｜</text>
+            <rect x="282" y="44" width="240" height="10" fill="#eef3f9" rx="2"/>
+            <rect id="fmB1" x="282" y="44" width="0" height="10" fill="#b3541e" rx="2"/>
+            <text id="fmV1" x="530" y="72" font-size="11" fill="#b3541e" text-anchor="end">—</text>
+
+            <text x="282" y="104" font-size="11.5" fill="#16202c" font-weight="700">② 多边形 ⁄ 圆 偏离 (π/N)/sin(π/N)</text>
+            <rect x="282" y="114" width="240" height="10" fill="#eef3f9" rx="2"/>
+            <rect id="fmB2" x="282" y="114" width="0" height="10" fill="#00568f" rx="2"/>
+            <text id="fmV2" x="530" y="142" font-size="11" fill="#00568f" text-anchor="end">—</text>
+
+            <text x="282" y="174" font-size="11.5" fill="#16202c" font-weight="700">③ 相邻相位差 360°⁄N</text>
+            <rect x="282" y="184" width="240" height="10" fill="#eef3f9" rx="2"/>
+            <rect id="fmB3" x="282" y="184" width="0" height="10" fill="#0a7f6b" rx="2"/>
+            <text id="fmV3" x="530" y="212" font-size="11" fill="#0a7f6b" text-anchor="end">—</text>
+          </g>
+
+          <text x="282" y="246" font-size="10.5" fill="#5b6e86">① 在 N≥2 时恒为 0（浮点 0，不是舍入）；</text>
+          <text x="282" y="262" font-size="10.5" fill="#5b6e86">② 从 1.2093（N=3）降到 1.0115（N=12）；</text>
+          <text x="282" y="278" font-size="10.5" fill="#5b6e86">③ 就是 SEG 的 90°（N=4）与 koilon 的 120°（n=3）。</text>
+        </svg>
+
+        <div class="fmtbl">
+          <table class="fmmini">
+            <tr><th>N</th><th>① ｜c₁｜</th><th>② (π/N)/sin(π/N)</th><th>③ Δφ</th></tr>
+            <tr class="peak"><td class="num">1</td><td class="num">1.000e+00</td><td class="num">—</td><td class="num">360.0°</td></tr>
+<tr><td class="num">2</td><td class="num">6.123e-17</td><td class="num">1.5708</td><td class="num">180.0°</td></tr>
+<tr><td class="num">3</td><td class="num">1.047e-16</td><td class="num">1.2092</td><td class="num">120.0°</td></tr>
+<tr><td class="num">4</td><td class="num">4.330e-17</td><td class="num">1.1107</td><td class="num">90.0°</td></tr>
+<tr><td class="num">5</td><td class="num">3.140e-17</td><td class="num">1.0690</td><td class="num">72.0°</td></tr>
+<tr><td class="num">6</td><td class="num">5.742e-17</td><td class="num">1.0472</td><td class="num">60.0°</td></tr>
+<tr><td class="num">7</td><td class="num">2.539e-17</td><td class="num">1.0344</td><td class="num">51.4°</td></tr>
+<tr><td class="num">8</td><td class="num">4.570e-17</td><td class="num">1.0262</td><td class="num">45.0°</td></tr>
+<tr><td class="num">9</td><td class="num">8.635e-17</td><td class="num">1.0206</td><td class="num">40.0°</td></tr>
+<tr><td class="num">10</td><td class="num">2.536e-17</td><td class="num">1.0166</td><td class="num">36.0°</td></tr>
+<tr><td class="num">11</td><td class="num">4.996e-17</td><td class="num">1.0137</td><td class="num">32.7°</td></tr>
+<tr><td class="num">12</td><td class="num">4.754e-17</td><td class="num">1.0115</td><td class="num">30.0°</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <h4 class="fm-h4">七-6　诚实边界</h4>
+      <div class="fmwarn">
+        <p>
+          <b>①</b> 共性是<b>数学结构</b>层面的，不是「SEG 就是 koilon」。两侧物理量不同：
+          一侧是静磁场 + 机械几何（B、p=B²/2μ₀、F=p·S），一侧是不可压缩流的流函数
+          （ψ = zρ²(1−η²)）。共享的只有<b>环向离散对称算子</b>，不共享动力学。
+        </p>
+        <p>
+          <b>②</b> 方案 6 的 <span class="mono">1/sin(π/N)</span> 与 koilon 的瓣深系数
+          <span class="mono">c(n)</span> <b>数值不等价</b>：前者放大的是<b>半径</b>（量纲 m），
+          后者放大的是<b>轴向幅值</b>（量纲为 1 的系数）。它们只是「同一个离散化误差的两个写法」，
+          不能说「c(6)=1.285 所以半径也放大 28.5%」。
+        </p>
+        <p>
+          <b>③</b> 共性 ② 的严格性依赖 <span class="mono">r<sub>c</sub>=0</span>。
+          一旦 <span class="mono">r<sub>c</sub>&gt;0</span>，指数就变成「局部斜率」，只在
+          <span class="mono">ρ≫r<sub>c</sub></span> 时才趋近 −1.5。
+          这一点页面 v9.26 的量程（r<sub>c</sub> 下限已放到 0）才让它可验。
+        </p>
+        <p>
+          <b>④</b> 本节<b>不</b>主张「SEG 与 koilon 是同一台机器」。
+          两侧能对上的只有<b>对称性</b>与<b>反问题结构</b>；
+          推力是否能出、出多少，仍由各自那一节的账本（Ⅷ 六、能量账）裁决。
+        </p>
+      </div>
+
+      <script>
+      (function(){
+        var els = {
+          N:'fmN', Nv:'fmNv',
+          B1:'fmB1', B2:'fmB2', B3:'fmB3',
+          V1:'fmV1', V2:'fmV2', V3:'fmV3',
+          dots:'fmDots', vec:'fmVec'
+        };
+        function g(k){ return document.getElementById(els[k]); }
+
+        var CX = 130, CY = 130, R = 92;
+
+        function draw(N){
+          /* N 个等分点 + 一阶谐波矢量（Σ e^{iθk} / N 的方向与长度） */
+          var dots = g('dots');
+          if(!dots) return;
+          var h = '';
+          var sx = 0, sy = 0;
+          for(var k = 0; k < N; k++){
+            var th = 2 * Math.PI * k / N;
+            var x = CX + R * Math.cos(th), y = CY - R * Math.sin(th);
+            sx += Math.cos(th); sy += Math.sin(th);
+            var rad = (N >= 2) ? 4.2 : 6.0;
+            var col = (N >= 2) ? '#00568f' : '#b3541e';
+            h += '<circle class="fmDot" cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="' + rad +
+                 '" fill="' + col + '" opacity="0.85"/>';
+            if(N <= 6){
+              h += '<line class="fmSpoke" x1="' + CX + '" y1="' + CY + '" x2="' + x.toFixed(1) +
+                   '" y2="' + y.toFixed(1) +
+                   '" stroke="#d9e3ef" stroke-width="0.9" stroke-dasharray="3 3"/>';
+            }
+          }
+          dots.innerHTML = h;
+          var vx = CX + R * 0.95 * sx / N, vy = CY - R * 0.95 * sy / N;
+          var vec = g('vec');
+          if(vec){
+            vec.setAttribute('x1', CX); vec.setAttribute('y1', CY);
+            vec.setAttribute('x2', (N >= 2 ? CX : vx).toFixed(1));
+            vec.setAttribute('y2', (N >= 2 ? CY : vy).toFixed(1));
+            vec.setAttribute('opacity', (N >= 2 ? '0' : '0.9'));
+          }
+        }
+
+        function upd(){
+          var s = g('N'); if(!s) return;
+          var N = parseInt(s.value, 10) || 1;
+          g('Nv').textContent = N;
+          /* ① 傅里叶一阶系数：|Σ e^{i2πk/N}| / N */
+          var sx = 0, sy = 0;
+          for(var k = 0; k < N; k++){
+            sx += Math.cos(2 * Math.PI * k / N);
+            sy += Math.sin(2 * Math.PI * k / N);
+          }
+          var c1 = Math.sqrt(sx * sx + sy * sy) / N;
+          if(c1 < 1e-12) c1 = 0;
+          /* ② 多边形/圆偏离：N=1 是一个点，没有多边形 ⟹ 无意义（不是「无穷大」） */
+          var dev = (N < 2) ? null : (Math.PI / N) / Math.sin(Math.PI / N);
+          /* ③ 相邻相位差 */
+          var dphi = 360 / N;
+
+          var b1 = g('B1'), b2 = g('B2'), b3 = g('B3');
+          if(b1) b1.setAttribute('width', (240 * Math.min(1, c1)).toFixed(1));
+          if(b2) b2.setAttribute('width',
+            dev === null ? '0' : (240 * Math.max(0, Math.min(1, (dev - 1) / 0.3))).toFixed(1));
+          if(b3) b3.setAttribute('width', (240 * Math.min(1, dphi / 360)).toFixed(1));
+          g('V1').textContent = (c1 === 0) ? '0（严格）' : c1.toFixed(4);
+          g('V2').textContent = (dev === null) ? '—（N=1 无多边形）' : dev.toFixed(4);
+          g('V3').textContent = dphi.toFixed(1) + '°';
+
+          draw(N);
+        }
+
+        var sl = g('N');
+        if(sl){ sl.addEventListener('input', upd); }
         upd();
       })();
       </script>
@@ -7020,7 +7450,7 @@ var VIEWS = [
      id 不回收、后面也不改名 —— 用户手里的 #v8 / #v12 这类深链必须继续可用。 */
   {id:'v7', roman:'Ⅵ', name:'SEG 点火时序', sub:'负阻 · 负载分叉'},
   {id:'v8', roman:'Ⅶ', name:'双层框架',  sub:'物理层 / 诠释层'},
-  {id:'v9', roman:'Ⅷ', name:'本体·蛋外鞘', sub:'太极式再循环 · 闭合与不对称'},
+  {id:'v9', roman:'Ⅷ', name:'koilon内部构想', sub:'太极式再循环 · 闭合与不对称'},
   {id:'v10', roman:'Ⅸ', name:'本体·Anu 正反旋', sub:'镜像对 ⟷ d = 5'},
   {id:'v11', roman:'Ⅹ', name:'本体·七级螺旋', sub:'1680 匝 = 外程 + 内程'},
   {id:'v13', roman:'Ⅺ', name:'1680 三重身份', sub:'匝数 / MeV / Hz · 尺寸反查'},
