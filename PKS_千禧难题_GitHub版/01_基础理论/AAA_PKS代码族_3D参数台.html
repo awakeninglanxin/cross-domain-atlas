@@ -42,6 +42,23 @@ code{background:#f3f5f9;border:1px solid #e3e7ef;border-radius:3px;padding:.5px 
 .nbox-bd{padding:0 16px 12px}
 .nbox.min .nbox-bd{display:none}
 .nbox.min .nbox-hd{padding-bottom:9px}
+/* 整节可收起（一 · 扫描表）：折叠头里放的是 h2，所以要抹掉 h2 自带的大上边距与分隔线，
+   否则收起来以后标题下面还挂着一条横线、上面还留 38px 空白，看着像"没收干净"。 */
+.secbox{margin:34px 0 14px;border:1px solid #dde8f5;border-radius:7px;background:#fff}
+.secbox .nbox-hd{padding:10px 14px;background:#f7faff;border-radius:7px 7px 0 0}
+.secbox.min .nbox-hd{border-radius:7px}
+.secbox .nbox-hd h2{margin:0;padding:0;border:0;font-size:17.5px;line-height:1.45;
+ flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.secbox .nbox-hd h2::before{content:"▤ ";color:#2f6fb5}
+.secbox .nbox-bd{padding:6px 16px 12px}
+.secbox .nbox-bd>p:first-child{margin-top:4px}
+/* 窄屏：标题 + 正文摘要 + 按钮挤在一行会被两头截断（900px 时就只剩"一 · 先扫一遍：六族 ×…"），
+   改成标题独占一行、摘要与按钮落到第二行；摘要允许换行，那行「文字说明」必须读得全。 */
+@media(max-width:980px){
+ .secbox .nbox-hd{flex-wrap:wrap;gap:4px 10px}
+ .secbox .nbox-hd h2{flex:1 1 100%;white-space:normal;overflow:visible;text-overflow:clip}
+ .secbox .nbox-sum{flex:1 1 120px;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.45}
+}
 .warnbox{background:#fff6f5;border:1px solid #f0c2bc;border-left:4px solid #b3261e;
  border-radius:6px;padding:12px 16px;margin:16px 0;font-size:14px}
 .okbox{background:#f4faf5;border:1px solid #c6e2cc;border-left:4px solid #2e7d43;
@@ -669,7 +686,13 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
 <b>凡是原脚本里数值会崩的地方（NaN、开方为负、曲线提前终止），这一页都不偷偷修掉，而是照实标出来。</b>
 </div>
 
-<h2>一 · 先扫一遍：六族 × 最后一代 × 有没有 md</h2>
+<div class="nbox secbox min" id="scanBox">
+<div class="nbox-hd" id="scanHd" title="点这一条展开 / 收起「扫描表」">
+  <h2>一 · 先扫一遍：六族 × 最后一代 × 有没有 md</h2>
+  <span class="nbox-sum" id="scanSum" title="收起时看这一行就够了：6 族 / 35 个 py / 配套 md 全齐；另有 DXF 程序集 8 个子目录 / 45 个 py / 421 条清单">6 族 · 35 个 py · 配套 md 全齐 ｜ 另有 DXF 程序集 8 个子目录 / 45 个 py · 421 条清单</span>
+  <button type="button" class="nbox-b" id="scanBtn" aria-expanded="false">展开 ▾</button>
+</div>
+<div class="nbox-bd">
 <p>扫描范围：根目录下 7 个 <code>代码_*</code> 目录（<code>代码_DXF生成工具</code> 是空的），共 <b>35 个 py</b>（波纹盘 13 · 螺旋锥管 9 · 蛋形曲线 4 · 外摆线均轮 4 · 双曲锥 3 · 水轮 2）。
 判别"最后一代"的依据是文件编号（<code>22_</code>、<code>30_</code> 这类）与目录内 md 的演化谱系表，不是按修改时间。</p>
 <div class="tw"><table>
@@ -729,6 +752,8 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
 <p class="note"><b>读法建议：</b>要看某一页参数台的中心线是怎么来的，先看对应子目录的 md 第 <b>二</b> 节（模版算了什么）与第 <b>十三</b> 节（检验清单）；清单每份都把<code>chk()</code> 记账跑给你看，并附一条<b>故意失败的断言</b>证明记账机制本身有效。
 合计 <b>421 条</b>，全部逐条实跑通过。<br>
 这一层最该带走的一条：<b><code>|P|</code> 对不等于位置对</b>。半径严丝合缝 10.000000 的牙版，点差 19.25。往后再验几何，先验「点到曲线的距离」，别只验「点到原点的距离」。</p>
+</div><!--/.nbox-bd 扫描表正文-->
+</div><!--/#scanBox 整节可收起-->
 
 
 <h2>二 · 参数台</h2>
@@ -16996,37 +17021,49 @@ selectFam(0);loop();
   }
 
 
-/* ================= 族说明 · 收起 / 展开 =================
-   标题条常显（写着哪一族、多少项参数），正文可折叠；状态记 localStorage。
+/* ================= 可收起的两栏：族说明 / 第一节扫描表 =================
+   同一套折叠：一条常显的标题条 + 一个按钮，正文一键收起，状态记 localStorage。
    为什么不做成 <details>：Element 自带的三角箭头样式与本页配色不搭，
    而且 <details> 的 open 状态在切族重填 innerHTML 时会被保留成"上次的"，
    反而要额外写代码复位 —— 自己写这 20 行更干净。 */
 (function(){
-  var KEY='pks.famNote.min';
+  /* dflt = 第一次进页面时是否收起。
+     - 族说明（famNoteBox）：默认展开 —— 它写的是"当前这一族的参数怎么读"，就在参数旁边，展开才有用。
+     - 第一节扫描表（scanBox）：默认收起 —— 六族 × 最后一代 × 有没有 md 是"要查的时候查一下"的资料，
+       一进页面就铺一张 6 行大表 + 8 行子目录表，把参数台推到两屏以下。收起后标题条上留一行摘要
+       （6 族 / 35 个 py / 配套 md 全齐 ｜ DXF 8 子目录 / 45 py · 421 条清单），
+       读者不展开也知道里面有什么、值不值得点。 */
+  function fold(boxId,hdId,btnId,key,dflt){
+    var box=document.getElementById(boxId);
+    var hd=document.getElementById(hdId);
+    var btn=document.getElementById(btnId);
+    if(!box||!hd||!btn)return;
+    function apply(min){
+      if(min)box.classList.add('min');else box.classList.remove('min');
+      btn.textContent=min?'展开 ▾':'收起 ▴';
+      btn.setAttribute('aria-expanded',min?'false':'true');
+    }
+    var min=dflt;
+    try{
+      var v=localStorage.getItem(key);
+      if(v==='1')min=true;else if(v==='0')min=false;   /* 存过就按存的来 */
+    }catch(e){}
+    apply(min);
+    function toggle(){
+      min=!min;apply(min);
+      try{localStorage.setItem(key,min?'1':'0');}catch(e){}
+      /* 折叠会改变页面上方的高度 —— 触发一次 resize，画布不会被留出空白 */
+      try{window.dispatchEvent(new Event('resize'));}catch(e){}
+    }
+    hd.addEventListener('click',function(ev){
+      if(ev.target===btn)return;      /* 按钮自己的 click 处理，别触发两次 */
+      toggle();
+    });
+    btn.addEventListener('click',function(ev){ev.stopPropagation();toggle();});
+  }
   function initFold(){
-  var box=document.getElementById('famNoteBox');
-  var hd=document.getElementById('famNoteHd');
-  var btn=document.getElementById('famNoteBtn');
-  if(!box||!hd||!btn)return;
-  function apply(min){
-    if(min)box.classList.add('min');else box.classList.remove('min');
-    btn.textContent=min?'展开 ▾':'收起 ▴';
-    btn.setAttribute('aria-expanded',min?'false':'true');
-  }
-  var min=false;
-  try{min=localStorage.getItem(KEY)==='1';}catch(e){}
-  apply(min);
-  function toggle(){
-    min=!min;apply(min);
-    try{localStorage.setItem(KEY,min?'1':'0');}catch(e){}
-    /* 折叠会改变画布盒子的可见高度 —— 触发一次 resize，免得上围空白 */
-    try{window.dispatchEvent(new Event('resize'));}catch(e){}
-  }
-  hd.addEventListener('click',function(ev){
-    if(ev.target===btn)return;      /* 按钮自己的 click 处理，别触发两次 */
-    toggle();
-  });
-  btn.addEventListener('click',function(ev){ev.stopPropagation();toggle();});
+    fold('famNoteBox','famNoteHd','famNoteBtn','pks.famNote.min',false);
+    fold('scanBox','scanHd','scanBtn','pks.scan.min',true);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initFold);
   else initFold();

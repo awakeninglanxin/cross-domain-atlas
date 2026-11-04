@@ -948,6 +948,77 @@ function chk(c, label, extra) {
 
   await schSet(0, 0);   /* 复原，别给后面的段留状态 */
 
+  /* ================== P. 第一节「六族 × 最后一代 × 有没有 md」整节可收起 ==================
+     判据只认 DOM 量出来的高度与屏上的字：收起 ⇒ 正文 0 px、表也量不到；标题条与那行摘要必须还在
+     （否则"收起"变成"删掉"，读者不知道这里原本有什么）。 */
+  console.log('\n[P] 第一节可收起（默认收起 · 标题条常显 · 一行文字说明）');
+  const foldState = () => ev(`(function(){
+    var b=document.getElementById('scanBox'); if(!b) return {no:true};
+    var bd=b.querySelector('.nbox-bd'), btn=document.getElementById('scanBtn'),
+        h2=b.querySelector('h2'), sum=document.getElementById('scanSum'),
+        tb=b.querySelector('table');
+    if(!bd||!btn||!h2||!sum) return {no:true, why:'缺元素'};
+    var r=tb?tb.getBoundingClientRect():null;
+    return {min:b.classList.contains('min'), btn:btn.textContent.trim(),
+      bdH:Math.round(bd.getBoundingClientRect().height),
+      tblH:r?Math.round(r.height):-1,
+      h2:h2.textContent.trim(),
+      sum:(sum.textContent||'').replace(/\\s+/g,' ').trim(),
+      ls:(function(){try{return localStorage.getItem('pks.scan.min');}catch(e){return 'ERR';}})()};})()`);
+
+  const p0 = await foldState();
+  chk(!p0.no, '第一节的折叠容器在页上（#scanBox / 标题 / 摘要 / 按钮齐全）', J(p0));
+  chk(p0.min === true && p0.bdH === 0,
+    '首次进页面 ⇒ 这一节默认收起（正文高度 ' + p0.bdH + ' px）', J([p0.min, p0.bdH]));
+  chk(p0.tblH <= 0, '收起时里面那张表量不到高度（是藏起来，不是变矮）', p0.tblH);
+  chk(p0.h2.indexOf('一 · 先扫一遍') === 0, '标题条常显，文字完整：' + p0.h2, p0.h2);
+  chk(p0.sum.indexOf('35 个 py') > 0 && p0.sum.indexOf('421 条') > 0,
+    '收起时有一行文字说明：' + p0.sum, p0.sum);
+
+  /* 摘要里的数与正文里的数必须同源 —— 正文改数忘了改摘要，这条会红 */
+  const pAll = await ev(`(function(){var b=document.getElementById('scanBox');
+    return (b.textContent||'').replace(/\\s+/g,'');})()`);
+  chk(pAll.indexOf('35个py') >= 0 && pAll.indexOf('421条') >= 0 && pAll.indexOf('45个py') >= 0,
+    '35 个 py / 45 个 py / 421 条 在整节文字里都能找到（摘要与正文对得上）', pAll.length + ' 字');
+
+  /* 点按钮 ⇒ 展开 */
+  await ev(`(function(){document.getElementById('scanBtn').click();return 1;})()`);
+  await new Promise(r => setTimeout(r, 500));
+  const p1 = await foldState();
+  chk(p1.min === false && p1.bdH > 600 && p1.tblH > 100,
+    '点「展开 ▾」⇒ 正文与表格真的铺开（正文 ' + p1.bdH + ' px / 表 ' + p1.tblH + ' px）', J(p1));
+  chk(p1.btn === '收起 ▴' && p1.ls === '0', '按钮改「收起 ▴」、状态记进 localStorage', p1.btn + ' / ' + p1.ls);
+
+  /* 点标题条（不是按钮）也要能收起，且要记住 */
+  await ev(`(function(){document.getElementById('scanHd').click();return 1;})()`);
+  await new Promise(r => setTimeout(r, 500));
+  const p2 = await foldState();
+  chk(p2.min === true && p2.bdH === 0 && p2.ls === '1',
+    '点整条标题也能收起，且 localStorage 记 ' + p2.ls, J([p2.min, p2.bdH, p2.ls]));
+
+  /* 别把「族说明」那一栏带歪：它默认仍是展开的 */
+  const pFam = await ev(`(function(){var b=document.getElementById('famNoteBox');
+    return {min:b.classList.contains('min'),
+            btn:document.getElementById('famNoteBtn').textContent.trim()};})()`);
+  chk(pFam.min === false && pFam.btn === '收起 ▴',
+    '「族说明」那一栏默认仍展开（两栏用同一套折叠，默认值各自独立）', J(pFam));
+
+  /* 窄屏：标题与那行文字说明都不许被省略号吃掉（900px 时两者都会两头截断） */
+  await send('Emulation.setDeviceMetricsOverride', { width: 900, height: 900, deviceScaleFactor: 1, mobile: false });
+  await new Promise(r => setTimeout(r, 700));
+  const pN = await ev(`(function(){
+    var hd=document.getElementById('scanHd'), h2=hd.querySelector('h2'),
+        sum=document.getElementById('scanSum'), btn=document.getElementById('scanBtn');
+    var cut=(e)=>e.scrollWidth>e.clientWidth+1;
+    return {h2Cut:cut(h2), sumCut:cut(sum),
+      btnOut:Math.round(btn.getBoundingClientRect().right-hd.getBoundingClientRect().right),
+      hdH:Math.round(hd.getBoundingClientRect().height)};})()`);
+  chk(!pN.h2Cut && !pN.sumCut,
+    '900px 宽：标题与文字说明都完整显示（不被省略号截断）', J(pN));
+  chk(pN.btnOut <= 0, '900px 宽：按钮没有溢出标题条右边缘（' + pN.btnOut + ' px）', pN.btnOut);
+  await send('Emulation.clearDeviceMetricsOverride');
+  await new Promise(r => setTimeout(r, 400));
+
   console.log('\n--------');
   console.log('JS 异常：' + (errs.length ? errs.slice(0, 4).join(' ;; ') : '无'));
   chk(errs.length === 0, '全程没有 JS 异常', errs.slice(0, 2).join(' ;; '));
