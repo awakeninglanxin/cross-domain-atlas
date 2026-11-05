@@ -35,6 +35,47 @@ select#selCmap{width:100%;padding:6px 8px;border:1px solid var(--line2);border-r
 select#selCmap option{background:var(--btna);color:var(--btnt)}
 canvas#cmapBar{display:block;width:100%;height:18px;border-radius:5px;border:1px solid var(--line)}
 body.light canvas#cv{background:transparent}
+
+/* ===== v9.44 右键出图：三档底色（透明 / 白 / 暗） =====
+   主画布只画线，底色来自 #stage 的 CSS 渐变 ⇒ 右键复制得到透明 PNG，
+   贴到白底文档里就成了白底。这里把三种底色做成一键可选。
+   ★ 配色全走 CSS 变量 ⇒ 双主题自动适配，不写死颜色。 */
+#shotM{position:fixed;left:0;top:0;z-index:99999;display:none;width:384px;padding:7px;
+  background:var(--panelbg);border:1px solid var(--line2);border-radius:11px;
+  box-shadow:0 14px 44px rgba(0,0,0,.55),0 2px 8px rgba(0,0,0,.35);
+  font-size:12px;color:var(--ink2);user-select:none;-webkit-user-select:none}
+body.light #shotM{box-shadow:0 14px 40px rgba(20,35,60,.18),0 2px 8px rgba(20,35,60,.10)}
+#shotM.on{display:block}
+#shotM .sh-h{display:flex;align-items:baseline;gap:8px;padding:5px 8px 7px;
+  border-bottom:1px solid var(--line)}
+#shotM .sh-h b{color:var(--ink);font-weight:600;font-size:12.5px;letter-spacing:.2px}
+#shotM .sh-h i{margin-left:auto;font-style:normal;color:var(--ink4);
+  font-family:ui-monospace,Consolas,monospace;font-size:11px}
+#shotM .sh-row{display:flex;align-items:center;gap:9px;padding:8px;border-radius:8px;
+  min-height:56px;transition:background .12s}
+#shotM .sh-row:hover{background:var(--bg3)}
+#shotM .sh-row.cur{background:var(--bg3);box-shadow:inset 0 0 0 1px var(--line2)}
+#shotM .sh-sw{flex:none;width:26px;height:19px;border-radius:4px;border:1px solid var(--line2);
+  background-color:#fff;
+  background-image:linear-gradient(45deg,var(--line2) 25%,transparent 25%,transparent 75%,var(--line2) 75%),
+                   linear-gradient(45deg,var(--line2) 25%,transparent 25%,transparent 75%,var(--line2) 75%);
+  background-size:8px 8px;background-position:0 0,4px 4px}
+#shotM .sh-row[data-bg="white"] .sh-sw{background-image:none;background-color:#fff;border-color:#c9d2e0}
+#shotM .sh-row[data-bg="dark"] .sh-sw{background-image:none;border-color:#2a3350;
+  background:radial-gradient(ellipse at 50% 45%,#16203c 0%,#05060c 78%)}
+#shotM .sh-t{flex:1;min-width:0;line-height:1.35}
+#shotM .sh-t b{display:block;font-weight:600;color:var(--ink);font-size:12.5px}
+#shotM .sh-t span{display:block;color:var(--ink4);font-size:11px;line-height:1.45;
+  margin-top:2px;min-height:2.9em}
+#shotM .sh-b{flex:none;padding:6px 11px;border-radius:6px;border:1px solid var(--line2);
+  background:var(--btna);color:var(--btnt);font-size:12px;font-family:inherit;
+  cursor:pointer;line-height:1.2;transition:border-color .12s,color .12s}
+#shotM .sh-b:hover{border-color:var(--acc);color:var(--acc)}
+#shotM .sh-b.ok{border-color:var(--ok);color:var(--ok)}
+#shotM .sh-f{padding:8px 8px 3px;margin-top:4px;border-top:1px solid var(--line);
+  color:var(--ink5);font-size:11px;line-height:1.65}
+#shotM .sh-f em{font-style:normal;color:var(--ink4)}
+
 #hud{position:absolute;left:12px;top:10px;font-size:11px;line-height:1.72;
   color:var(--ink3);pointer-events:none;text-shadow:var(--hudshadow)}
 #hud b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
@@ -7976,5 +8017,277 @@ function showWarmThenBoot(){
 })();
 
 </script><!--/FXCTL:JS-->
+
+<!-- ===== v9.44 右键出图菜单（三档底色） =====
+     为什么不直接用浏览器原生「复制图像」：主画布 draw() 每帧 clearRect，
+     位图是**全透明**的，底色在 #stage 的 CSS 渐变里。原生复制只拿到位图 ⇒
+     透明 PNG，贴进白底文档就成了「白底图」。这里把底色一起合成进图。 -->
+<div id="shotM" role="menu" aria-label="复制或保存这张图">
+  <div class="sh-h"><b>复制 / 保存这张图</b><i id="shSz">—</i></div>
+
+  <div class="sh-row" data-bg="alpha">
+    <span class="sh-sw" aria-hidden="true"></span>
+    <span class="sh-t"><b>透明背景</b><span>PNG 带 alpha 通道；贴到白底文档里仍显示为白</span></span>
+    <button class="sh-b" data-act="copy" type="button">复制</button>
+    <button class="sh-b" data-act="save" type="button">存</button>
+  </div>
+
+  <div class="sh-row" data-bg="white">
+    <span class="sh-sw" aria-hidden="true"></span>
+    <span class="sh-t"><b>白色底图</b><span>纯 #ffffff 实底；亮线按 0.46 压暗，否则白壳在白底上会消失</span></span>
+    <button class="sh-b" data-act="copy" type="button">复制</button>
+    <button class="sh-b" data-act="save" type="button">存</button>
+  </div>
+
+  <div class="sh-row" data-bg="dark">
+    <span class="sh-sw" aria-hidden="true"></span>
+    <span class="sh-t"><b>暗色底图</b><span>与屏上一致的径向渐变底（#10162b → #05060c）</span></span>
+    <button class="sh-b" data-act="copy" type="button">复制</button>
+    <button class="sh-b" data-act="save" type="button">存</button>
+  </div>
+
+  <div class="sh-f" id="shNote">只含画布里的几何与丝线；左上 HUD、右下图例、子午剖面是 DOM，不在图内。Esc 关闭。</div>
+</div>
+
+<script>
+/* ===== v9.44 右键出图（三档底色） =====
+   老师 2026-11-05：「右键复制的图片变成了白色底图，要做成三种选项可保存」。
+   根因：draw() 每帧 clearRect ⇒ 位图全透明，底色在 CSS 里。
+   ⇒ 复制前先铺一层底色再 drawImage，三档只差这一层。
+   ★ 判据口径：三档的「线条像素」必须完全重合（同一张 drawImage），
+     只允许背景不同 ⇒ audit() 在同一处算 mask 与 IoU（见 __eggShot.audit）。 */
+(function(){
+  'use strict';
+  var cvEl=document.getElementById('cv'), menu=document.getElementById('shotM');
+  if(!cvEl||!menu) return;
+  var szEl=document.getElementById('shSz'), noteEl=document.getElementById('shNote');
+  var NOTE0=noteEl?noteEl.textContent:'';
+  var NAME={alpha:'透明背景',white:'白色底图',dark:'暗色底图'};
+  var MODES=['alpha','white','dark'];
+  var open=false, noteT=0;
+
+  /* 底色：白＝纯实底；暗＝与 #stage 的 --stagerad 同构（中心亮、边缘暗）；
+     透明＝什么都不画（canvas 初始即全透明）。 */
+  function paintBg(g,w,h,mode){
+    if(mode==='white'){ g.fillStyle='#ffffff'; g.fillRect(0,0,w,h); return; }
+    if(mode==='dark'){
+      var rad=Math.max(w,h)*0.72;
+      var rg=g.createRadialGradient(w/2,h*0.45,0,w/2,h*0.45,rad);
+      rg.addColorStop(0,'#10162b'); rg.addColorStop(0.70,'#05060c'); rg.addColorStop(1,'#05060c');
+      g.fillStyle=rg; g.fillRect(0,0,w,h); return;
+    }
+  }
+
+  /* 🔴 白底档压暗系数。不是拍的：
+     白底相对亮度 L=1，要 WCAG AA 正文对比度 4.5:1
+     ⇒ 前景相对亮度 ≤ (1.05/4.5)−0.05 = 0.18333
+     ⇒ 线性转 sRGB：1.055·L^(1/2.4)−0.055 = 0.4616 ⇒ 8bit 118
+     ⇒ K = 118/255 = 0.463，取 0.46。
+     为什么要压暗：蛋壳网格是近白色画的，白底上 source-over 后
+     (1−a)×(255−255)=0 ⇒ 外壳**整个隐形**，白底档就废了。 */
+  var WHITE_K=0.46;
+
+  /* 线稿副本：整体乘以 WHITE_K（只动 rgb，alpha 不变） */
+  function dimSource(w,h){
+    var c=document.createElement('canvas'); c.width=w; c.height=h;
+    var g=c.getContext('2d');
+    if('filter' in g){
+      g.filter='brightness('+WHITE_K+')';
+      g.drawImage(cvEl,0,0);
+      g.filter='none';
+      return c;
+    }
+    /* 老浏览器没有 canvas filter ⇒ 逐像素乘（同一件事，只是慢） */
+    g.drawImage(cvEl,0,0);
+    var im=g.getImageData(0,0,w,h), d=im.data;
+    for(var i=0;i<d.length;i+=4){ d[i]*=WHITE_K; d[i+1]*=WHITE_K; d[i+2]*=WHITE_K; }
+    g.putImageData(im,0,0);
+    return c;
+  }
+
+  /* 合成：位图像素 1:1 拷贝（cv.width 已是物理像素，不做二次缩放）。
+     白底档贴的是**压暗版**；透明/暗底贴原图（与屏上一致）。 */
+  function mk(mode,withInk){
+    var w=Math.max(1,cvEl.width|0), h=Math.max(1,cvEl.height|0);
+    var c=document.createElement('canvas'); c.width=w; c.height=h;
+    var g=c.getContext('2d');
+    paintBg(g,w,h,mode);
+    if(withInk!==false) g.drawImage(mode==='white'?dimSource(w,h):cvEl,0,0);
+    return c;
+  }
+
+  function say(msg){
+    if(!noteEl) return;
+    noteEl.textContent=msg;
+    if(noteT) clearTimeout(noteT);
+    noteT=setTimeout(function(){ noteEl.textContent=NOTE0; noteT=0; },2600);
+  }
+
+  function curBg(){
+    return document.body.classList.contains('light')?'white':'dark';
+  }
+
+  /* ---------------- 菜单开合 ---------------- */
+  function show(x,y){
+    var w=cvEl.width|0, h=cvEl.height|0;
+    if(szEl) szEl.textContent=(w&&h)?(w+' \u00d7 '+h):'画布未就绪';
+    menu.classList.add('on'); open=true;
+    var r=menu.getBoundingClientRect();
+    var left=Math.min(x, window.innerWidth-r.width-8);
+    var top=Math.min(y, window.innerHeight-r.height-8);
+    menu.style.left=Math.max(8,left)+'px';
+    menu.style.top=Math.max(8,top)+'px';
+    var cur=curBg(), rows=menu.getElementsByClassName('sh-row');
+    for(var i=0;i<rows.length;i++)
+      rows[i].classList.toggle('cur', rows[i].getAttribute('data-bg')===cur);
+  }
+  function close(){ if(!open) return; menu.classList.remove('on'); open=false; }
+
+  /* ---------------- 复制 / 保存 ---------------- */
+  function copy(mode){
+    var c;
+    try{ c=mk(mode,true); }catch(err){ say('取图失败：'+(err&&err.message||err)); return; }
+    if(navigator.clipboard && window.ClipboardItem && window.isSecureContext){
+      /* ClipboardItem 收 Promise<Blob>：write() 仍在手势同步段里被调用，
+         不会因为 toBlob 的异步回调丢掉 transient activation。 */
+      var p=new Promise(function(res,rej){
+        try{ c.toBlob(function(b){ b?res(b):rej(new Error('toBlob 返回空')); },'image/png'); }
+        catch(err){ rej(err); }
+      });
+      navigator.clipboard.write([new ClipboardItem({'image/png':p})])
+        .then(function(){ say('已复制到剪贴板 · '+NAME[mode]+' '+c.width+'\u00d7'+c.height); },
+              function(err){
+                save(mode);
+                say('剪贴板不可用（'+((err&&err.name)||'?')+'），已改为下载');
+              });
+      return;
+    }
+    save(mode);
+    say('此环境不能写剪贴板，已改为下载');
+  }
+
+  function save(mode){
+    var c;
+    try{ c=mk(mode,true); }catch(err){ say('取图失败：'+(err&&err.message||err)); return; }
+    var name='koilon_egg_'+(mode==='alpha'?'transparent':mode)+'_'+c.width+'x'+c.height+'.png';
+    try{
+      var a=document.createElement('a');
+      a.href=c.toDataURL('image/png');
+      a.download=name; a.rel='noopener'; a.style.display='none';
+      (document.body||document.documentElement).appendChild(a);
+      a.click();
+      setTimeout(function(){ if(a.parentNode) a.parentNode.removeChild(a); },0);
+      say('已保存 '+name);
+    }catch(err){
+      say('保存失败：'+(err&&err.message||err));
+    }
+  }
+
+  /* ---------------- 审计：三档只许背景不同 ---------------- */
+  /* 🔴 mask 必须取「原画布 cv 的 alpha」，三档共用。
+     不能用「该档图 − 该档背景」自己判：那个差值的量纲随底色变
+     （透明档差的是 a×255，白底档差的是 (1−a)×(255−色)），
+     同一根弱线在三档会算出三个不同的数，判据自己就会漂 —— 首跑实测
+     ink 13480 / 7137 / 9727、IoU 0.53，看着像实现坏了，其实是口径错。
+     共用 mask 之后：
+       hit   = mask=1 处 |图 − 纯背景| > 8   （该画的画了）
+       dirty = mask=0 处 |图 − 纯背景| > 2   （不该画的没乱画）
+     透明档还能更强：diff 恒等于 cv 像素本身 ⇒ hit 必须**严格等于** srcN。 */
+  function audit(step){
+    step=(typeof step==='number'&&step>0)?Math.floor(step):3;
+    var w=Math.max(1,cvEl.width|0), h=Math.max(1,cvEl.height|0);
+    var src=cvEl.getContext('2d').getImageData(0,0,w,h).data;
+    var out={step:step,w:w,h:h,srcN:0,nDark:0,nLight:0,samples:0,m:{}};
+    var samples=0, srcN=0, nDark=0, nLight=0, x, y, y2, x2, i;
+    for(y=0;y<h;y+=step) for(x=0;x<w;x+=step){
+      i=(y*w+x)*4; samples++;
+      if(src[i+3]>24){
+        srcN++;
+        /* 暗线：cv 本色亮度 <120。白底上 255−色 >135，对比度极大，
+           这类像素在白底档**必须**命中 —— 用它判白底档有没有真的画上，
+           而不是用全部线条（浅线在白底上本来就会淡掉，那是物理不是 bug）。 */
+        var lum=0.2126*src[i]+0.7152*src[i+1]+0.0722*src[i+2];
+        if(lum < 120) nDark++;
+        if(lum > 200) nLight++;      /* 亮线：蛋壳网格那种近白线，白底上最脆的一类 */
+      }
+    }
+    out.srcN=srcN; out.nDark=nDark; out.nLight=nLight; out.samples=samples;
+
+    for(var mi=0;mi<MODES.length;mi++){
+      var m=MODES[mi];
+      var A=mk(m,true).getContext('2d').getImageData(0,0,w,h).data;
+      var B=mk(m,false).getContext('2d').getImageData(0,0,w,h).data;
+      var hit=0, hitDark=0, hitLight=0, clean=0, dirty=0, ink=0;
+      for(y2=0;y2<h;y2+=step) for(x2=0;x2<w;x2+=step){
+        var j=(y2*w+x2)*4;
+        var d=Math.abs(A[j]-B[j]); var t;
+        t=Math.abs(A[j+1]-B[j+1]); if(t>d) d=t;
+        t=Math.abs(A[j+2]-B[j+2]); if(t>d) d=t;
+        t=Math.abs(A[j+3]-B[j+3]); if(t>d) d=t;
+        if(d>8) ink++;
+        var sa=src[j+3];
+        if(sa>24){
+          if(d>8){
+            hit++;
+            var sl=0.2126*src[j]+0.7152*src[j+1]+0.0722*src[j+2];
+            if(sl < 120) hitDark++;
+            if(sl > 200) hitLight++;
+          }
+        } else if(sa===0){
+          /* 🔴 「空白」必须严定义成 alpha===0。用 >24 当空白会把
+             alpha∈(2,24] 这圈抗锯齿弱内容判成「不该有东西」⇒ dirty 假红。 */
+          if(d>2) dirty++; else clean++;
+        }
+      }
+      var ci=((Math.floor(h*0.5)*w)+Math.floor(w*0.5))*4;
+      var ii=((Math.floor(h*0.45)*w)+Math.floor(w*0.45))*4;
+      out.m[m]={corner:[A[0],A[1],A[2],A[3]],
+                inner:[A[ii],A[ii+1],A[ii+2],A[ii+3]],
+                center:[A[ci],A[ci+1],A[ci+2],A[ci+3]],
+                ink:ink, hit:hit, hitDark:hitDark, hitLight:hitLight,
+                clean:clean, dirty:dirty};
+    }
+    return out;
+  }
+
+  /* ---------------- 事件 ---------------- */
+  cvEl.addEventListener('contextmenu', function(e){
+    e.preventDefault();
+    show(e.clientX, e.clientY);
+  });
+  document.addEventListener('mousedown', function(e){
+    if(open && !menu.contains(e.target)) close();
+  }, true);
+  document.addEventListener('keydown', function(e){
+    if(open && (e.key==='Escape'||e.key==='Esc'||e.keyCode===27)) close();
+  });
+  window.addEventListener('resize', close);
+  window.addEventListener('blur', close);
+  menu.addEventListener('wheel', function(e){ e.stopPropagation(); }, {passive:true});
+
+  menu.addEventListener('click', function(e){
+    var t=e.target;
+    while(t && t!==menu && !(t.getAttribute && t.getAttribute('data-act'))) t=t.parentNode;
+    if(!t||t===menu) return;
+    var act=t.getAttribute('data-act');
+    var row=t.parentNode;
+    while(row && row!==menu && !(row.getAttribute && row.getAttribute('data-bg'))) row=row.parentNode;
+    var mode=(row&&row.getAttribute&&row.getAttribute('data-bg'))||'alpha';
+    if(act==='save') save(mode); else copy(mode);
+    t.classList.add('ok');
+    setTimeout(function(){ t.classList.remove('ok'); },900);
+  });
+
+  /* 探针入口：make/bgOnly 只出数据，不碰剪贴板与下载 */
+  window.__eggShot={
+    open:show, close:close, isOpen:function(){ return open; },
+    modes:MODES.slice(0), name:function(m){ return NAME[m]||m; },
+    make:function(m){ var c=mk(m,true); return {mode:m,w:c.width,h:c.height,url:c.toDataURL('image/png')}; },
+    bgOnly:function(m){ var c=mk(m,false); return {mode:m,w:c.width,h:c.height,url:c.toDataURL('image/png')}; },
+    audit:audit, copy:copy, save:save, cur:curBg,
+    k:function(){ return {white:WHITE_K}; }
+  };
+})();
+</script>
 </body>
 </html>
