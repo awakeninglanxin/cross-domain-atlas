@@ -977,13 +977,31 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
           <button class="gh" data-sm="2">双锥漏斗</button>
           <button class="gh" data-sm="1">泡内全空间</button>
         </div>
-        <div class="hint"><b>赤道薄盘</b>（默认）种子贴在赤道面上，只占泡高 6%。
-          反流下会被压成「中央竖柱 + 赤道水平盘」—— 因为极轴 ρ=0 与赤道面 z=0 是<b>精确不变流形</b>，
-          落在上面的粒子只能走直线，不是渲染问题。<br>
+        <div class="hint"><b>赤道薄盘</b>（默认）种子贴在赤道面上，厚薄与环带由下面三个参数定
+          （出厂值即旧版那一档）。反流下会被压成「中央竖柱 + 赤道水平盘」——
+          因为极轴 ρ=0 与赤道面 z=0 是<b>精确不变流形</b>，落在上面的粒子只能走直线，不是渲染问题。<br>
           <b>双锥漏斗</b>把种子排在「从赤道边缘收到南北极」的两张锥面上，
           开「⇄ 反流」时看见的就是上下两个朝中心的漏斗。<br>
           <b>泡内全空间</b>按体积均匀铺满整颗蛋。切档会重撒种子、重算全部轨迹。</div>
       </div>
+      <div class="presets" id="seedGPick">
+        <button class="gh" data-sg="thin">贴赤道</button>
+        <button class="gh" data-sg="axis">贴中轴</button>
+        <button class="gh on" data-sg="stock">出厂薄盘</button>
+      </div>
+      <div class="row" id="rowSeedH">
+        <div class="lab"><span>薄盘半厚 h</span><span class="v" id="vSH">0.060</span></div>
+        <input type="range" id="sSH" min="0.002" max="0.060" step="0.001" value="0.060">
+      </div>
+      <div class="row" id="rowSeedR">
+        <div class="lab"><span>内圈起点 ρ₀</span><span class="v" id="vSR">0.060</span></div>
+        <input type="range" id="sSR" min="0" max="3.000" step="0.010" value="0.060">
+      </div>
+      <div class="row" id="rowSeedS">
+        <div class="lab"><span>环带宽度</span><span class="v" id="vSS">0.80</span></div>
+        <input type="range" id="sSS" min="0.05" max="1.20" step="0.01" value="0.80">
+      </div>
+      <div class="hint" id="hSeedG">读表中…</div>
       <div class="row">
         <div class="lab"><span>粒子数 N</span><span class="v" id="vNP">18</span></div>
         <input type="range" id="sNP" min="0" max="420" step="1" value="18">
@@ -1646,12 +1664,18 @@ function seedStates(N,g0,seed){
          实测踩过：R=2 时归一化初始半径被压到 R=4 的一半 ⇒ ρ̃中位数偏 29.3%。
          🔴 这一支的 rnd() 调用顺序（rho0 → ph0 → az0）**不能动**，
             否则薄盘档的种子序列全变、20 多个探针基线一起漂。 */
-      rho0=0.06*sc+rnd()*(0.80*g0.rhoe0);
+      /* v9.43：出厂三参数 ⇒ 走原式（逐位不变）；拖过滑杆才进新式。
+         rnd() 调用次数两条路径都是 3 次（rho0 → ph0 → az0），顺序不许动。 */
+      var _sd=(R.seedH===0.06&&R.seedRin===0.06&&R.seedSpan===0.80);
+      rho0=_sd?(0.06*sc+rnd()*(0.80*g0.rhoe0))
+              :(R.seedRin*sc+rnd()*(R.seedSpan*g0.rhoe0));
       ph0=rnd()*2*Math.PI;
       /* ★ 必须 ×sc：az0 是**长度**（z 方向初始偏移）。漏乘时 R≠4 的初始条件不再相似：
          R=0.05 下 az0/ρ ≈ 0.2~1.2（R=4 只有 0.003~0.015）⟹ 轨迹完全换了一条，
-         存点数 1268→52、屏幕步长 2.9px→45.8px（实测 2026-11-01）。 */
-      var az0=(0.01+rnd()*0.05)*sc;
+         存点数 1268→52、屏幕步长 2.9px→45.8px（实测 2026-11-01）。
+         v9.43：|z0| ∈ [h/6, h]，h=R.seedH；h=0.06 时即旧的 [0.01, 0.06]。 */
+      var az0=_sd?((0.01+rnd()*0.05)*sc)
+                :((R.seedH/6+rnd()*R.seedH*(5/6))*sc);
       z0v=(i%2===0?1:-1)*az0;
     }
     CIX.push(rho0*Math.cos(ph0));
@@ -1905,6 +1929,13 @@ var R={R:4,lmMax:1,tb:5,manualLam:0,manual:true,
             旧默认是 2（双锥漏斗：种子从赤道边缘收到南北极的两张锥面）；按钮里仍在，
             切过去会重撒种子、重算全部轨迹。 */
        seedMode:0,
+       /* v9.43（老师 2026-11-05）薄盘几何三参数 —— 只对 seedMode=0 生效。
+          🔴 三个默认值必须**逐位等于旧式**：0.06 / 0.06 / 0.80。
+             旧式 rho0 = 0.06·sc + rnd()·0.80·ρe0、|z0| = (0.01+rnd()·0.05)·sc，
+             而 0.01 = 0.06/6、0.05 = 0.06·5/6 ⟹ 出厂值走原式时种子逐位不变
+             （20 多条探针基线与存点数依赖这一条）。浮点上 0.06/6 ≠ 0.01，
+             所以 seedStates 里保留「出厂值走原式」的分支 —— 不是洁癖。 */
+       seedH:0.06,seedRin:0.06,seedSpan:0.80,
        /* v9.16 泛光（1/3 缩小、≈3 px 锐光）：0 = 关；0.4~0.7 像参考图的「流光」。
           v9.18 光雾（1/10 缩小、≈10 px 弥散）单独一个开关，**默认 0 = 不打开**。 */
        bloom:0.55,haze:0,
@@ -6779,6 +6810,124 @@ document.getElementById('themeb').onclick=function(){
 var bShell=document.getElementById('shl');
 bShell.onclick=function(){R.showShell=!R.showShell;
   this.className='gh'+(R.showShell?' on':'');this.textContent='外鞘轮廓 '+(R.showShell?'开':'关');};
+/* ==================================================================
+ * v9.43 赤道薄盘的几何三参数（老师 2026-11-05）
+ *
+ * 老师原话：「这模式的 6% 可以作为可调参数吗？我希望可以更加贴赤道和贴绕中轴线」。
+ * 先把口径说清 —— 那个「6%」其实是**误读**：
+ *   旧代码 |z0| ∈ (0.01, 0.06)·sc，而 0.06 是「参考尺度 R=4 下的长度」，
+ *   不是百分比。实测（R=4、λ=1）泡高 Z_HI−Z_LO = 11.161 ⟹ 半厚最大只占 0.54%。
+ *   所以旧文案差 11 倍；这里改成运行时实算，并把三个量提成参数。
+ *
+ * 三个参数只管**撒点区间**，不碰场、不碰积分：
+ *   rho0  = rin·sc + U(0,1)·span·ρe0
+ *   |z0|  = U(h/6, h)·sc，z 上下各半
+ * 出厂值 (0.06, 0.06, 0.80) 逐位复现旧式（见 seedStates 的 _sd 分支）。
+ * ================================================================== */
+function seedGeom(){
+  var g=mkGeo(lamNow,P.R), sc=simS();
+  var H=Math.max(1e-9,g.ZHI-g.ZLO), re=g.rhoe0;
+  var zlo=1e9,zhi=-1e9,rlo=1e9,rhi=-1e9,n=0,i,s,az,r;
+  for(i=0;i<R.np;i++){
+    s=seedOf(i); if(!s)continue;
+    az=Math.abs(s[2]); r=Math.sqrt(s[0]*s[0]+s[1]*s[1]);
+    if(az<zlo)zlo=az; if(az>zhi)zhi=az;
+    if(r<rlo)rlo=r;  if(r>rhi)rhi=r;  n++;
+  }
+  if(!n){zlo=zhi=rlo=rhi=0;}
+  return {n:n,h:R.seedH,rin:R.seedRin,span:R.seedSpan,sc:sc,
+          H:H,rhoe0:re,
+          zAbsMin:zlo,zAbsMax:zhi,rMin:rlo,rMax:rhi,
+          /* 口径全部带上分母，屏上与 md 用同一个式子 */
+          zPctMax:zhi/H*100, zPctMin:zlo/H*100,
+          rPctMin:rlo/re*100, rPctMax:rhi/re*100,
+          /* 出厂值那一档的固定口径（不随滑杆变，用来核对「6%」这件事） */
+          zPctStock:(0.06*sc)/H*100};
+}
+var _seedHintCache='';
+function updSeedHint(){
+  var box=document.getElementById('hSeedG'); if(!box)return;
+  var G=seedGeom();
+  var q=function(x){return (Math.round(x*100)/100).toFixed(2);};
+  var sc=G.sc,H=Math.max(1e-9,G.H),re=Math.max(1e-9,G.rhoe0);
+  /* 理论区间：只由三个参数与几何定，与实际抽了几个点无关 */
+  var zLo=R.seedH/6*sc, zHi=R.seedH*sc;
+  var rLo=R.seedRin*sc,  rHi=R.seedRin*sc+R.seedSpan*re;
+  var stock=G.zPctStock;
+  var html=
+    '<b>理论区间</b>（与本档画几条丝无关）：|z| ∈ ['+q(zLo)+', '+q(zHi)+'] ⟹ 占泡高 '+
+    q(zLo/H*100)+'% ~ '+q(zHi/H*100)+'%；ρ ∈ ['+q(rLo/re*100)+'%, '+q(rHi/re*100)+'%] 赤道半径。<br>'+
+    '<b>N='+G.n+' 实测</b>：|z| ∈ ['+q(G.zAbsMin)+', '+q(G.zAbsMax)+']（占泡高 '+
+    q(G.zPctMin)+'% ~ '+q(G.zPctMax)+'%），ρ ∈ ['+q(G.rPctMin)+'%, '+q(G.rPctMax)+
+    '%]。<b>实测总比理论窄</b>—— 抽 n 个点的最大值够不到端点，这是抽样，不是参数没生效。<br>'+
+    '泡高 Z<sub>HI</sub>−Z<sub>LO</sub> = '+q(H)+'（λ 呼吸时它会变，百分比跟着变；'
+    +'所以「厚度」按长度读，「贴不贴」按百分比读）。<br>'+
+    '<b>贴赤道</b>＝拖小「薄盘半厚 h」（到 0.002 只剩出厂 1/30）；'+
+    '<b>贴中轴</b>＝「内圈起点」拖到 0 ＋「环带宽度」拖小，<b>两个一起</b>才看得出来'+
+    '（只拖内圈起点，18 条丝里最近那条仍可能落在 15% 处 —— 那是抽样下界）。<br>'+
+    '⚠️ 只对「赤道薄盘」档生效（另两档变灰，值保留）。行星子全落在 z=0 上就进了'+
+    '<b>精确不变流形</b>，整条丝退化成直线 —— 物理，不是 bug。<br>'+
+    '🔴 旧文案「只占泡高 6%」是把参数值 0.06 当成了百分比：出厂档实算 <b>'+q(stock)+
+    '%</b>，差 <b>'+q(6/Math.max(1e-9,stock))+' 倍</b>（λ=0 时 8 倍、λ=1 时约 11 倍），此处已改实算。';
+  if(html===_seedHintCache) return;      /* 呼吸每帧都会调，内容没变就别动 DOM */
+  _seedHintCache=html; box.innerHTML=html;
+}
+function syncSeedRows(){
+  var ids=['rowSeedH','rowSeedR','rowSeedS'],on=(R.seedMode===0),i,r,s;
+  for(i=0;i<ids.length;i++){
+    r=document.getElementById(ids[i]); if(!r)continue;
+    r.style.opacity=on?'':'0.38';
+    s=r.getElementsByTagName('input')[0];
+    if(s) s.disabled=!on;
+  }
+}
+/* 三条入口（滑杆 / 双击手输 / 探针）统一走这里 —— 2026-11-01 相似律锁定
+   曾因「三个入口各写一套」行为分叉，这里不再犯。 */
+function _seedReseed(){ var g=mkGeo(lamNow,P.R); seedStates(R.np,g,seed);
+  overEMA=-0.02; markDirty(); syncSeedRows(); updSeedHint(); }
+/* 三个参数一次写全（预设按钮要一次改三个，别连撒三次种） */
+var SEED_LIM={seedH:[0.002,0.060,3],seedRin:[0,3.000,3],seedSpan:[0.05,1.20,2]};
+function setSeedGeom(h,rin,span){
+  var ins=[[ 'seedH',h,'sSH','vSH'],['seedRin',rin,'sSR','vSR'],['seedSpan',span,'sSS','vSS']];
+  for(var i=0;i<ins.length;i++){
+    var k=ins[i][0], v=ins[i][1], lim=SEED_LIM[k];
+    if(v===undefined||v===null||!isFinite(+v)) continue;
+    R[k]=Math.max(lim[0],Math.min(lim[1],+v));
+  }
+  for(i=0;i<ins.length;i++){
+    var k2=ins[i][0], lim2=SEED_LIM[k2], val=R[k2];
+    var s=document.getElementById(ins[i][2]);
+    if(s&&Math.abs(parseFloat(s.value)-val)>1e-12) s.value=String(val);
+    var t=document.getElementById(ins[i][3]);
+    if(t) t.textContent=val.toFixed(lim2[2]);
+  }
+  _seedReseed();
+  return {h:R.seedH,rin:R.seedRin,span:R.seedSpan};
+}
+function setSeedH(v){ return setSeedGeom(v,null,null).h; }
+function setSeedRin(v){ return setSeedGeom(null,v,null).rin; }
+function setSeedSpan(v){ return setSeedGeom(null,null,v).span; }
+bind('sSH','vSH','seedH',function(x){return x.toFixed(3)},function(){setSeedH(R.seedH);});
+bind('sSR','vSR','seedRin',function(x){return x.toFixed(3)},function(){setSeedRin(R.seedRin);});
+bind('sSS','vSS','seedSpan',function(x){return x.toFixed(2)},function(){setSeedSpan(R.seedSpan);});
+/* 一键预设：老师要的两件事各给一个按钮，省得手拖两根滑杆还看不出差别。
+   三档都是**参数组合**，不是新档位 —— 语义仍属「赤道薄盘」。 */
+(function(){
+  var box=document.getElementById('seedGPick'); if(!box)return;
+  var PR={thin:[0.006,0.06,0.80],axis:[0.06,0,0.15],stock:[0.06,0.06,0.80]};
+  var bs=box.getElementsByTagName('button'),i;
+  function sync(k){ for(var j=0;j<bs.length;j++)
+    bs[j].className='gh'+(bs[j].getAttribute('data-sg')===k?' on':''); }
+  for(i=0;i<bs.length;i++)
+    bs[i].onclick=function(){
+      var k=this.getAttribute('data-sg'), p=PR[k]; if(!p)return;
+      setSeedGeom(p[0],p[1],p[2]); sync(k);
+    };
+  window.__syncSeedPick=sync;
+})();
+syncSeedRows(); updSeedHint();
+setInterval(function(){ if(R.seedMode===0) updSeedHint(); },1200);
+
 /* 初值分布（v9.15c 三档）：所有入口走同一个 setSeedMode，避免「按钮改了但状态没改」 */
 (function(){
   var box=document.getElementById('seedSeg'); if(!box) return;
@@ -6792,6 +6941,7 @@ bShell.onclick=function(){R.showShell=!R.showShell;
     var v=document.getElementById('vSeedF'); if(v) v.textContent=NAME[m];
     seedStates(R.np,GEO?GEO:mkGeo(0,P.R),seed);
     tB=0;overEMA=-0.02;markDirty();
+    syncSeedRows(); updSeedHint();
   };
   for(var i=0;i<bs.length;i++)
     bs[i].onclick=function(){window.__setSeedMode(parseInt(this.getAttribute('data-sm'),10));};
@@ -7266,6 +7416,11 @@ function boot(){
     /* 初值分布 0=薄盘（默认） 1=全泡 2=双锥漏斗 */
     setSeedMode:function(m){window.__setSeedMode(m);return R.seedMode;},
     seedMode:function(){return R.seedMode;},
+    /* v9.43 薄盘几何三参数（探针入口）+ 现场实测（数字全量，不写死一个） */
+    setSeedH:function(v){return setSeedH(v);},
+    setSeedRin:function(v){return setSeedRin(v);},
+    setSeedSpan:function(v){return setSeedSpan(v);},
+    seedGeom:seedGeom,
     setTimeRev:setTimeRev,timeRevOn:function(){return !!R.timeRev;},
     /* 双线并绕：开关 / 相位 / 族别（0 正流,1 反流） */
     setDual:setDual,dualOn:function(){return !!R.dualFlow;},
