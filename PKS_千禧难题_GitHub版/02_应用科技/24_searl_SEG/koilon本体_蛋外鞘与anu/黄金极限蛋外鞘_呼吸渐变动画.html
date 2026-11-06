@@ -84,9 +84,11 @@ body.light #shotM{box-shadow:0 14px 40px rgba(20,35,60,.18),0 2px 8px rgba(20,35
 #badge{position:absolute;right:12px;top:11px;font-size:11px;padding:5px 11px;
   border-radius:20px;background:var(--badgebg);border:1px solid var(--line2);
   color:var(--acc);pointer-events:none;letter-spacing:.6px}
-#proft{position:absolute;left:12px;bottom:212px;font-size:9.5px;
+/* v9.47：#mirDock 占了左下角最底一条（9+37 px）⟹ 子午剖面内嵌图整体上抬 43 px，
+   否则它底部那两行读数（双线 ⟨Δ⟩ / D=⟨Δ⟩/R）会从坞的上沿露出来，像画面撕裂。 */
+#proft{position:absolute;left:12px;bottom:255px;font-size:9.5px;
   color:var(--ink4);pointer-events:none;letter-spacing:1px}
-#prof{position:absolute;left:12px;bottom:12px;width:152px;height:200px;
+#prof{position:absolute;left:12px;bottom:55px;width:152px;height:200px;
   background:var(--profbg);border:1px solid var(--line);border-radius:8px;pointer-events:none}
 #lgd{position:absolute;right:12px;bottom:12px;font-size:10px;line-height:1.85;
   color:var(--ink4);pointer-events:none;text-align:right;text-shadow:var(--hudshadow)}
@@ -209,6 +211,20 @@ body.ana #stage{background:#000}
 body.ana #lgd{opacity:.22}
 #bar{display:flex;gap:7px;padding:8px 12px;background:var(--bg3);
   border-top:1px solid var(--line);align-items:center;flex-wrap:wrap}
+/* 「镜像反向」便携开关（v9.47）：钉在**页面左下角、⚖ 等轴测 按钮正上方**。
+   为什么从参数面板搬出来：这是「方向」这种全局量，看一眼画面就想翻一下，
+   每次都要开面板再找一行太重。锚 #stage（position:relative）而不是 viewport ⟹
+   底部按钮条换行变高时它自动跟着上移，不会被 #bar 压住。
+   ⚠ 它占的那一条必须让左栏数据窗让开：见 fitSres() 的下界。 */
+#mirDock{position:absolute;left:12px;bottom:9px;z-index:31;
+  display:flex;align-items:center;gap:8px;
+  padding:4px 9px 4px 5px;border-radius:11px;
+  background:var(--badgebg);border:1px solid var(--line2);
+  box-shadow:0 6px 18px rgba(0,0,0,.30);backdrop-filter:blur(3px)}
+#mirDock .std{font-size:10.5px;color:var(--ink4);letter-spacing:.2px;white-space:nowrap}
+#mirDock .std b{color:var(--acc2);font-weight:600}
+/* v9.50：坞里两组开关之间一条细竖线（不是 border-left —— 那会给按钮也加边） */
+#mirDock .dkSep{width:1px;height:18px;background:var(--line2);flex:none;margin:0 1px}
 button{font:inherit;font-size:12.5px;padding:6px 12px;border-radius:8px;
   border:1px solid var(--line2);background:var(--btna);color:var(--btnt);cursor:pointer;
   transition:.14s;white-space:nowrap}
@@ -777,10 +793,23 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
     </div>
     <div id="warm"><div id="warmt">正在按 λ=0 积分初始外鞘…</div>
       <div class="bw"><div class="bi" id="warmi"></div></div></div>
+
+    <!-- v9.47 「镜像反向」便携开关：页面左下角、⚖ 等轴测 上方。
+         从参数面板搬出来（全局方向量，不该藏在面板里找）。 -->
+    <div id="mirDock">
+      <button class="gh" id="btnMirror" title="环向角速度整体反号（ω→−ω）：轨迹绕轴反向，ρ、z 不动 ⟹ 只翻环向，不是把整幅图左右翻转。⚠ 已解出的闭合轨道是在旧方向下打靶的，翻向后作废，需重新搜索。">镜像反向 关</button>
+      <span class="std" id="mirInfo"></span>
+      <!-- v9.50 托卡马克非对称整形：老师 2026-11-05 指定放在左下角（镜像反向右侧）。
+           与「镜像反向」同属「看画面就想翻一下」的全局形态开关，所以不藏进参数面板；
+           细参数（κ / δ / τ / u）在面板里那组，按钮只管开总闸。 -->
+      <span class="dkSep"></span>
+      <button class="gh" id="btnTok" title="托卡马克式非对称整形（默认关，关时与加这个开关之前逐位相同）：把外鞘壳按球形托卡马克的 shaping 族改写 —— 拉长 κ（m=2）、三角度 δ（m=3）、环向扭转 τ（ψ=φ−τ·z̃，z̃=z/R 带符号 ⟹ 上下环自动反向拧）、上下非对称 u（上环比下环拧得多/少）。⚠ 壳形状在本页是写进 ODE 的（软墙 t1=ρ−ρe），所以开它会改轨迹 —— 那不是副作用，那正是「笼变了」；旧闭合轨道/ m 芒标定需重算。⚠ 与托卡马克只是**数学同族**（截面参数化），不是同一物理。">🧲 磁笼整形 · 关</button>
+      <span class="std" id="tokInfo"></span>
+    </div>
   </div>
 
   <div id="bar">
-    <button id="play" class="on">⏸ 暂停</button>
+    <button id="play" class="on" title="暂停 / 继续：一次冻结三件事 —— 自转（相机绕 z）、呼吸（λ 扫动）、粒子积分。默认是**边转边播**，所以按下去画面会真的停住；再按一次从原位继续。">⏸ 暂停</button>
     <button id="breath" class="on">🌬 呼吸</button>
     <button id="mSphere" class="gh">λ=0 球壳</button>
     <button id="mEgg" class="gh">λ=1 黄金蛋</button>
@@ -789,7 +818,7 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
     <button id="togp" class="gh on">剖面</button>
     <button id="anaBar" class="gh" title="红青立体：戴红青眼镜看（左红右青），可在参数面板调视差强度">🔴 红青 3D</button>
     <button id="themeb" class="gh">亮色</button>
-    <button id="btnGif" class="gh" title="把当前动画的**一个呼吸周期**录成 GIF（自动压到 5 MB 以内）">🎞 导出 GIF</button>
+    <button id="btnGif" class="gh" title="把当前动画的**一个呼吸周期**录成 GIF（自动压到 5 MB 以内）。v9.52 起**自动裁到球体内容方形、1:1 不缩放** —— 旧版按整幅 720 宽导出，球只占画布 8%，会被压到 203 px、壳内糊成灰白。v9.54 起录制时默认<b>不画外鞘三角网格</b>（泡壁内不再糊成白雾；想带上网格就把 GIF_NO_MESH 改成 false）。">🎞 导出 GIF</button>
     <button id="btnSym" class="gh" title="默认开启。按当前参数现场标定 Ω₀(λ)，让正视图里**上半与下半的整幅线密度一样**（λ 0→1 全过程跟踪）。再点一次关闭并恢复原 Ω₀。">⇅ 上下等密</button>
     <div class="spacer"></div>
     <button id="tog" class="gh">⚙ 参数面板</button>
@@ -862,8 +891,8 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
       <div class="gt">动力学（调参链 R×2 / J×3 / Ω₀×2）</div>
       <div class="row">
         <div class="lab"><span>流向 <span class="std">（可选项）</span></span><span class="v" id="vFLIP">正流 · 赤道聚 → 极区喷</span></div>
-        <div class="presets"><!-- flowui v9.20：双线并绕默认开 + 两族互为反色 --><button class="gh" id="btnFlip" title="把整条混沌流的**输运方向**翻过来：正流是「赤道内聚 → 南北极喷射」，反流是「南北极吸聚入内核 → 赤道旋出」。做法是只反输运、保留软墙约束（v_flip = −v + 2·v_C），所以轨迹仍有界（实测 6 个种子跑 100 s，max|r| 7.1~7.3，不逃逸）。环向自转方向不变。可与右边「严格逆时」叠加。默认关。">⇄ 反流 · 关</button><button class="gh" id="btnTimeRev" title="严格时间反演 t→−t：把速度**整体**取反（含软墙约束、含环向自转），等于让时间倒流。⚠ 本场是耗散的（div F&lt;0 才有吸引子），逆时后散度变号 ⟹ 吸引子变排斥子，粒子指数飞出去、轨迹被清空 —— 这是数学必然，不是页面出错。λ=1（蛋形）时实测 6 个种子分别在 2.3 / 3.4 / 3.7 / 4.5 / 7.8 / 10.6 秒后 |r|&gt;1000 被清空。想看「倒流但仍有界」请只用左边那个 ⇄ 反流。">↺ 严格逆时 · 关</button><button class="gh on" id="btnDual" title="双线并绕（默认开）：同一结构里**同时**跑正流与反流两族粒子，按配对号 (i&gt;&gt;1)&amp;1 各占一半。反流那族绕 z 整体偏 90°（俯视图可调）⟹ 手臂彼此错开、一出一入交替，像特斯拉双线并绕（两线电流异向）。子午剖面里两族落在**同一条曲线**上，只是一边走一边反向 ⟹ 轮廓更实、更干净。两族**互为反色**：正流暖（琥珀→奶白）、反流冷（深靛→天蓝），同明度、色相相差 180°，一眼分正反。★ 走的是**轨迹层的相位错位**：两族各自用 σ=±1 的场独立积分，不存在 v+(−v)=0 的零场问题（我们从不把两个速度相加成一个场）。">⇄⇄ 双线并绕 · 开</button></div>
-        <div class="hint" id="hFlip">关 = 原行为：赤道向内聚、南北极向外喷；开 = 反过来：粒子从南北两极被吸入、沿内壁下沉到赤道，再从赤道被旋出。<b>环向自转方向不跟着反</b>（只反径向/轴向输运），所以画面是「倒流但仍同一个转向」。<br><b>两个开关可以叠加</b>：先反流、再整体逆时 ⟹ 输运取正、软墙取反（v_T − v_C），同样会逃逸。严格逆时（t→−t）是全场取反，耗散系统逆时必然发散 —— <b>这不是 bug，是吸引子变排斥子</b>。实测（6 个种子）<b>λ=1 蛋形：2.3 ~ 10.6 s</b>；<b>默认的球形 λ=0：约 26 s</b>（球形态收缩更慢，逃逸也慢）后 |r|&gt;1000 被清空。只想看有界的倒流，单开「⇄ 反流」即可。</div>
+        <div class="presets"><!-- flowui v9.20：双线并绕默认开 + 两族互为反色 --><button class="gh" id="btnFlip" title="把整条混沌流的**输运方向**翻过来：正流是「赤道内聚 → 南北极喷射」，反流是「南北极吸聚入内核 → 赤道旋出」。做法是只反输运、保留软墙约束（v_flip = −v + 2·v_C），所以轨迹仍有界（实测 6 个种子跑 100 s，max|r| 7.1~7.3，不逃逸）。环向自转方向不变。可与右边「严格逆时」叠加。默认关。">⇄ 反流 · 关</button><button class="gh" id="btnTimeRev" title="严格时间反演 t→−t：把速度**整体**取反（含软墙约束、含环向自转），等于让时间倒流。⚠ 本场是耗散的（div F&lt;0 才有吸引子），逆时后散度变号 ⟹ 吸引子变排斥子，粒子指数飞出去、轨迹被清空 —— 这是数学必然，不是页面出错。λ=1（蛋形）时实测 6 个种子分别在 2.3 / 3.4 / 3.7 / 4.5 / 7.8 / 10.6 秒后 |r|&gt;1000 被清空。想看「倒流但仍有界」请只用左边那个 ⇄ 反流。">↺ 严格逆时 · 关</button><button class="gh on" id="btnOvClip" title="越界段裁剪（默认开）：严格逆时档下软壁恢复力反号，粒子真的会被推出壳外（实测 16 段端点在外、最深 0.556R），而一步跨 0.68R 只落一个终点 ⟹ 画面上是一条僵直长线穿出壳壁。开 = 任一端点在壳外的线段**不画**（线正好停在壳壁上），轨迹数据一分不动；关 = 照画（旧画面）。HUD 的「越界」读数与关档完全一致，不受影响。">▤ 越界段 · 已裁</button><button class="gh on" id="btnDual" title="双线并绕（默认开）：同一结构里**同时**跑正流与反流两族粒子，按配对号 (i&gt;&gt;1)&amp;1 各占一半。反流那族绕 z 整体偏 90°（俯视图可调）⟹ 手臂彼此错开、一出一入交替，像特斯拉双线并绕（两线电流异向）。子午剖面里两族落在**同一条曲线**上，只是一边走一边反向 ⟹ 轮廓更实、更干净。两族**互为反色**：正流暖（琥珀→奶白）、反流冷（深靛→天蓝），同明度、色相相差 180°，一眼分正反。★ 走的是**轨迹层的相位错位**：两族各自用 σ=±1 的场独立积分，不存在 v+(−v)=0 的零场问题（我们从不把两个速度相加成一个场）。">⇄⇄ 双线并绕 · 开</button></div>
+        <div class="hint" id="hFlip">关 = 原行为：赤道向内聚、南北极向外喷；开 = 反过来：粒子从南北两极被吸入、沿内壁下沉到赤道，再从赤道被旋出。<b>环向自转方向不跟着反</b>（只反径向/轴向输运），所以画面是「倒流但仍同一个转向」。<br><b>两个开关可以叠加</b>：先反流、再整体逆时 ⟹ 输运取正、软墙取反（v_T − v_C），同样会逃逸。严格逆时（t→−t）是全场取反，耗散系统逆时必然发散 —— <b>这不是 bug，是吸引子变排斥子</b>。实测（6 个种子）<b>λ=1 蛋形：2.3 ~ 10.6 s</b>；<b>默认的球形 λ=0：约 26 s</b>（球形态收缩更慢，逃逸也慢）后 |r|&gt;1000 被清空。只想看有界的倒流，单开「⇄ 反流」即可。<br><b>⚠ 逆时档下画面上会看到轨迹穿出壳壁 —— 那是真的走出去了，不是画错</b>：HUD 的「越界」就是 <code>max(ρ−ρₑ(z))</code> 的 EMA，转正即在外。<b>三格对照（各跑 6 s，同一个 <code>rhoeAt</code> 判）</b>：双线关/逆时关 壳外点 <b>0%</b>、双线开/逆时关 <b>0%</b>（最远 0.997R，全在壳内）、双线开/逆时开 <b>0.12%</b>（最深越界 0.556R、最远 1.178R）⟹ <b>双线并绕无辜，只是把逃逸看得更清楚</b>（σ=−1 那族输运反了两次，比单族更晚被清空）。<b>不是采样问题</b>：壳是凸的，两端都在壳内的直线段不可能跑出去 —— 实测 8068 段里 <b>0 段</b>穿出。<b>但逃逸那几段确实画粗</b>：单步位移远大于采样阈值时一步只落一个点（实测屏上最大步长 23.9 px，目标是 1.6 px）。所以：看到「僵直的一小截」= 采样，看到「整段跑到壳外」= 物理。<br><b>v9.49 起默认把越界段裁掉</b>（按钮 <b>▤ 越界段 · 已裁</b>，在双线并绕右边）：两端都在壳外的段不画，跨界段沿 3D 线段二分截到壳壁 —— 实测交点残差 <b>2.2e−05</b> 世界单位（<b>5.5e−06·R</b>），线正好抵住壳壁；剖面点云同步裁。<b>轨迹数据一个字都没动</b>：两档的「越界」读数、点数、最长段完全一致，按钮可切回「照画」。<br>（试过在积分里做步长减半细分：更准，但 18 颗粒子 1 s 内全部被 |r|&gt;1000 清空、画面全空 —— 粗步长本来就把逃逸「拖慢」了，所以这条不采用。）</div>
       </div>
       <div class="row">
         <div class="lab"><span>σ · 输运强度</span><span class="v" id="vSG">+1.00 · 正流</span></div>
@@ -1000,6 +1029,40 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
       <div class="hint" id="hChain"></div>
     </div>
 
+    <div class="grp" id="grpTok">
+      <div class="gt">🧲 托卡马克非对称整形<button id="btnTokRst" class="gh" title="把四个整形参数退回出厂档：κ=1.180 / δ=0.100 / τ=1.200 / u=0.000。开总闸用左下角那颗「🧲 磁笼整形」。">复位</button></div>
+      <div class="row">
+        <div class="lab"><span>拉长 κ · m=2 谐波</span><span class="v" id="vTK">1.220</span></div>
+        <input type="range" id="sTK" min="1" max="1.45" step="0.005" value="1.22">
+        <div class="hint" id="hTK">截面拉长（elongation）：半径乘子 <code>S = 1+(κ−1)·cos2ψ</code>。
+          κ=1 时这一项<b>恒等于 0</b>，与关档逐位相同。托卡马克里 κ 抬升的是<b>比压上限</b>，本页只借它的<b>形状</b>。<br>
+          🔴 <b>口径</b>：本页把 shaping 作用在<b>环向</b>（水平截面的半径随 φ 起伏），
+          所以看到的是<b>螺旋磁笼</b>（更接近仿星器的螺旋磁面）；托卡马克的 D 形是
+          <b>极向</b>截面（r–z 轮廓）。不改子午轮廓是因为 ρ<sub>e</sub>(z)=√F(z) 就是
+          ODE 里那条软墙，动它等于换一组方程（§八已写明：同族，不是同一物理）。</div>
+      </div>
+      <div class="row">
+        <div class="lab"><span>三角度 δ · m=3 谐波</span><span class="v" id="vTD">0.160</span></div>
+        <input type="range" id="sTD" min="0" max="0.40" step="0.005" value="0.16">
+        <div class="hint" id="hTD">D 形（triangularity）：<code>+δ·cos3ψ</code>。δ 越大，截面越像「D」——
+          外侧钝、内侧尖，就是 ITER 那副样子。<b>δ 与 κ 同时为 0 才算真关</b>。</div>
+      </div>
+      <div class="row">
+        <div class="lab"><span>扭转 τ · rad per (z/R)</span><span class="v" id="vTT">2.000</span></div>
+        <input type="range" id="sTT" min="-3" max="3" step="0.01" value="2">
+        <div class="hint" id="hTT">环向相位 <code>ψ = φ − τ·z̃</code>，<code>z̃ = z/R</code> <b>带符号</b>
+          ⟹ 上半环正拧、下半环反拧，<b>自动上下反向</b>（老师要的「上下环都有扭转变形」），
+          且在 z=0 处连续。τ 取负 = 整体反拧。</div>
+      </div>
+      <div class="row">
+        <div class="lab"><span>上下非对称 u</span><span class="v" id="vTU">0.000</span></div>
+        <input type="range" id="sTU" min="-0.6" max="0.6" step="0.01" value="0">
+        <div class="hint" id="hTU">上环取 <code>τ(1+u)</code>、下环取 <code>τ(1−u)</code>
+          ⟹ u=0 是「等幅反向」，u≠0 才是<b>上下不等价</b>（真非对称）。
+          范围 ±0.6 保证 <code>1−|u|</code> 不会压到 0。</div>
+      </div>
+    </div>
+
     <div class="grp">
       <div class="gt">数值方案（RK4 定步长 · 软壁承重）</div>
       <div class="row">
@@ -1078,6 +1141,10 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
           C = ∫dφ/Ω₀（子午轨迹与 Ω₀ <b>严格解耦</b> ⟹ C 与 Ω₀ 无关，一次标定即精确解，无需迭代）
           <br>两条必须<b>同时</b>满足：只有①= m 个瓣挤在一条扇骨里（看不成芒）；只有②= 在绕圈但瓣数不对。
           <br>⚠ 开启时自动关「双线并绕」（两族 T<sub>ρ</sub> 不同，会叠出两层芒）与「呼吸」（λ 变 ⟹ T<sub>ρ</sub> 变）。
+          <br>★ <b>起点自动选</b>（v9.45）：温度计不能随便挑 —— 默认档第 1 颗种子会<b>一路内落贴壁</b>
+          （ρ 0.686→0.07，实测 9 s 内 0 个极大 / 1 个极小），拿它测周期必然失败，这正是此前「只有 m=0 能用」的原因。
+          现在逐颗试跑，取<b>能用轨道 T<sub>ρ</sub> 的中位</b>；「单周期环」把粒子数收到 1 时，
+          还会沿 ρ 补几条内部探针（只挪体温计落点，不改你的参数）。
         </div>
         <div class="mcard dim" id="mnCard">m = 0 · 未接管。拖到 1…12 即自动配平 τ / Ω₀。</div>
         <label class="ck" id="ckFullWrap"><input type="checkbox" id="ckMnFull">
@@ -1146,7 +1213,7 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
         <div class="lab"><span>双线相位差</span><span class="v" id="vDP">120°</span></div>
         <input type="range" id="sDP" min="0" max="240" step="1" value="120">
         <button class="gh on" id="btnDPA" title="按 C_n 对称自动求解：让两族尽量合并成 v₊+v₋=2v_C。拖滑条即转手动">相位差 自动 开</button>
-        <div class="presets" style="margin-top:6px"><button class="gh on" id="btnEnv" title="同种子双跑：同一个起点分别走 σ=+1 与 σ=−1，同 dt 同步数 ⟹ 第 j 步就是同一时刻，两条轨迹逐点对齐 = 「同一粒子在两种流向下的位置」。剖面上把每对连起来就是**包络带**，⟨|Δ|⟩ 是它的平均宽度。关掉不影响主画面（旧的双线分族方式原样保留）。">◫ 包络线 · 开</button></div>
+        <div class="presets" style="margin-top:6px"><button class="gh on" id="btnEnv" title="同种子双跑：同一个起点分别走 σ=+1 与 σ=−1，同 dt 同步数 ⟹ 第 j 步就是同一时刻，两条轨迹逐点对齐 = 「同一粒子在两种流向下的位置」。剖面上把每对连起来就是**包络带**，⟨|Δ|⟩ 是它的平均宽度。关掉不影响主画面（旧的双线分族方式原样保留）。">◫ 包络线 · 开</button><button class="gh" id="btnEnvOnly" style="margin-left:6px" title="只看包络带：把外壳轮廓、坐标轴、丝团点云、辉光、闭合环**全部隐藏**，屏上只剩「两条轨迹 + 每对之间的连线（睫毛）」—— 这样才看得清带子有多宽、在哪一段最宽。剖面里同样只留带子。★ 依附于「包络线」开关：点它会自动把包络线打开（不会出现「按钮亮着、屏上空白」）。">◉ 只看包络线 · 关</button></div>
         <div class="hint" id="hDual"><div style="margin:0 0 7px;line-height:1.95"><span style="display:inline-flex;align-items:center;gap:5px;white-space:nowrap;margin-right:14px"><span style="display:inline-block;width:30px;height:8px;border-radius:5px;background:linear-gradient(90deg,#963e0c,#ee982c,#ffecb2)"></span><b>正流 σ=+1</b><span style="opacity:.78">赤道聚→两极喷·暖</span></span><span style="display:inline-flex;align-items:center;gap:5px;white-space:nowrap"><span style="display:inline-block;width:30px;height:8px;border-radius:5px;background:linear-gradient(90deg,#0e5abe,#46beff,#d7f0ff)"></span><b>反流 σ=−1</b><span style="opacity:.78">两极吸→赤道出·冷</span></span><div style="opacity:.55;line-height:1.5">（互为反色：同明度、色相 +180°；泡壁在双线档自动转灰白，不抢这两色）</div></div>只对「⇄⇄ 双线并绕」有效：σ=−1 那族绕 z 整体转过的角度。
           <b>默认由「自动」按 C_n 对称求解</b>（不是写死 90°）：判据是让两族尽量合并成一个场
           <b>v₊+v₋=2v_C</b>，即最小化 <b>D = ⟨|错位后的反流速度 − 同点反流速度|⟩ / ⟨|v₋|⟩</b>。
@@ -1222,7 +1289,7 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
       <div class="row">
         <button class="gh" id="btnZen">复位视角</button>
         <button class="gh" id="btnPanR">复位平移</button>
-        <button class="gh" id="btnRotP">自转 关</button>
+        <button class="gh on" id="btnRotP">自转 开</button>
       </div>
       <div class="hint" id="hView"></div>
     </div>
@@ -1263,10 +1330,7 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
         <span class="std" id="seedInfo"></span>
       </div>
       <div class="hint" id="seedNote"></div>
-      <div class="row">
-        <button class="gh" id="btnMirror">镜像反向 关</button>
-        <span class="std" id="mirInfo"></span>
-      </div>
+      <div class="hint" id="mirMoved">「镜像反向」开关已移到<b>页面左下角</b>（⚖ 等轴测 正上方），随时可点，不必再开这个面板。下面只留语义说明。</div>
       <div class="hint" id="mirNote">环向角速度整体反号（ω → −ω）：轨迹绕轴反向，ρ、z 不动。默认关（关着时逐位等于原版）。</div>
       <div class="hint" id="lkNote"></div>
     </div>
@@ -1490,11 +1554,65 @@ function Fpack(g,z){
   _FT[0]=F;_FT[1]=0.5*(1+v/r)*vp;_FT[2]=Math.sqrt(F);
   return _FT;
 }
-function rhoeAt(g,z){
+/* ── v9.50【TOKAMAK】整形形状因子：**单一真源** ─────────────────────────
+   老师 2026-11-05：把托克马克那套「非圆截面 + 环向扭转 + 上下非对称」做成可选项。
+   🔴 为什么必须只留一份：fieldAt / integrateP 热路径 / rhoeAt / 绘制层都要用它。
+      刀瓣场（BL）当年就吃过这个亏 —— fieldAt 里 reB 带瓣化、rhoeAt 不带 ⟹
+      壳在 φ 上鼓起的那几处，粒子明明还在壳内却被判成越界、被 v9.49 裁掉。
+      本函数被四处共用，形状只有一个定义。
+   ψ = φ − τ(1±u)·z̃ ,  z̃ = z/R（带符号 ⟹ **上下环自动反向扭转**，z=0 处连续）
+   S = 1 + (κ−1)·cos2ψ + δ·cos3ψ
+   ⚠ 热路径不调 atan2：直接收 cφ=x/ρ、sφ=y/ρ，用和角公式转出 cψ/sψ，
+      倍角再由 cψ/sψ 现算（c2=cψ²−sψ²，c3=cψ(4cψ²−3)）。
+   关（tokOn=false）或三项全 0 时恒等返回 1 ⟹ 逐位等于加这个开关之前。 */
+function tokMulP(cp,sp,z,Rr,e2,e3,tau,up){
+  if(e2===0&&e3===0&&tau===0)return 1;
+  var zt=z/(Rr||4);
+  var tt=tau*(zt>=0?(1+up):(1-up));
+  var a=tt*zt,ca=Math.cos(a),sa=Math.sin(a);
+  var cw=cp*ca+sp*sa, sw=sp*ca-cp*sa;        /* cos ψ / sin ψ，ψ = φ − a */
+  return 1+e2*(cw*cw-sw*sw)+e3*cw*(4*cw*cw-3);
+}
+/* 读全局 R 的薄包装（绘制层/判据用）。热路径不能读全局 R ——
+   integrateP 里的 `R` 是**局部标量**（见该函数内注释），所以那边直接调 tokMulP。 */
+function tokMul(cp,sp,z,Rr){
+  if(!R||!R.tokOn)return 1;
+  return tokMulP(cp,sp,z,Rr,R.tokKap-1,R.tokDel,R.tokTau,R.tokUp);
+}
+/* phi 省略 ⇒ 不整形（旧调用逐位不变）。绘制层传 θ；越界判据走 reAtXY。 */
+function rhoeAt(g,z,phi){
   var uu=z*g.invS,q=g.b-uu*g.s;
   var v=g.S2*(1/(q*q)-uu*uu*g.c2);
   var F=g.DELTA2+0.5*(v+Math.sqrt(v*v+g.EPSV*g.EPSV));
-  return Math.sqrt(F>0?F:0);
+  var base=Math.sqrt(F>0?F:0);
+  if(phi!==undefined&&R&&R.tokOn)
+    base*=tokMul(Math.cos(phi),Math.sin(phi),z,g.R);
+  return base;
+}
+/* 已有点 (x,y) ⇒ 含整形的壳半径。越界标记 / 裁剪二分 / HUD 用这个，
+   **不是** rhoeAt(g,z)：那两个参数里没有方位角，整形壳在 φ 上不是圆。 */
+function reAtXY(g,z,x,y){
+  var re=rhoeAt(g,z);
+  if(R&&R.tokOn){
+    var r=Math.sqrt(x*x+y*y);
+    if(r>1e-12)re*=tokMul(x/r,y/r,z,g.R);
+  }
+  return re;
+}
+/* 剖面的轮廓：r–z 图把**所有方位角折叠**到一张图上，所以在每个 z 上取
+   「φ 上的最大半径」当包络 —— 否则整形壳凹陷方向的那半圈会跑到轮廓外面，
+   看起来像「轨迹穿壳」，那是最容易被误读成 bug 的画面。
+   🔴 上界不是 1+√(e2²+e3²)（第一版就写错了）：cos2ψ 与 cos3ψ **不是独立变量**，
+      ψ=0 时两者同时取 1 ⟹ 真实最大值 = 1+|e2|+|e3|。柯西界 1+√(e2²+e3²) 只是
+      一个**下**界，用它当包络会把轮廓画窄 7%（实测 e2=0.18/e3=0.10 时
+      1.206 < 实际 1.280 ⇒ 剖面里轨迹点跑出外框 0.30）。 */
+function reMaxPhi(g,z){
+  var re=rhoeAt(g,z);
+  if(R&&R.tokOn){
+    var e2=R.tokKap-1,e3=R.tokDel;
+    if(!(e2===0&&e3===0))re*=1+Math.abs(e2)+Math.abs(e3);
+  }
+  return re;
 }
 function envOf(R){
   var zlo=1e9,zhi=-1e9;
@@ -1587,6 +1705,9 @@ function fieldAt(g,Pp,x,y,z,t,out){
   var invF=1/F, invF2=invF*invF, sig2=Pp.SIG*Pp.SIG;
   var reB=re;
   if(Pp.BL)reB*=1+Pp.BL*nCos((Pp.NBL|0)||3,x,y,rho,Pp.KTZ||0,z);
+  /* v9.50 托卡马克整形：**软墙必须跟着壳一起变**，否则粒子被推到整形后的壳外去了。
+     与 rhoeAt(g,z,φ) 用的是同一个 tokMulP ⟹ 壳 / 软墙 / 越界判据只有一个形状定义。 */
+  if(Pp.TOK)reB*=tokMulP(x/rho,y/rho,z,g.R,Pp.TOKE2,Pp.TOKE3,Pp.TOKT,Pp.TOKU);
   var t1=rho-(reB-0.005*Pp.R); t1=0.5*(t1+Math.sqrt(t1*t1+sig2));
   var t2=z-g.ZTOP;            t2=0.5*(t2+Math.sqrt(t2*t2+sig2));
   var t3=g.ZBOT-z;            t3=0.5*(t3+Math.sqrt(t3*t3+sig2));
@@ -1654,6 +1775,9 @@ function rk4(g,Pp,st,t,dt){
      15 倍的粗细差 —— 见 §3b 的实测表。） */
 var MAXP_HI=12000, MAXP=MAXP_HI, PT_BUDGET=150000;
 var CX=[],CY=[],CZ=[],CN=[],CL=[],CIX=[],CIY=[],CIZ=[],CVM=null,CLA=null;
+/* ★ v9.49 每点「是否在壳外」标记（绘制层裁剪用，1 字节/点）。
+   🔴 只影响**怎么画**，不改任何轨迹数据：CX/CY/CZ 与越界 EMA 一个字都没动。 */
+var OVF=[], OVSTAT={nOut:0,nSkip:0};
 function allocBuf(N){
   /* ★ 单颗容量随 N 自适应（2026-11-01：滑杆上限曾放到 1680，实测画质崩，改回 420）。
      固定 12000/颗 ⇒ N=1680 要 1680×12000×3×4Float32 ≈ 242 MB，浏览器必卡死；
@@ -1664,7 +1788,8 @@ function allocBuf(N){
        : Math.max(320, Math.min(MAXP_HI, Math.ceil(PT_BUDGET/Math.max(1,N)*2)+64));
   CX=[];CY=[];CZ=[];CN=[];CL=[];CVM=new Float32Array(N);CLA=new Float32Array(N);
   for(var i=0;i<N;i++){CX.push(new Float32Array(MAXP));CY.push(new Float32Array(MAXP));
-    CZ.push(new Float32Array(MAXP));CN.push(0);CL.push(-9);CVM[i]=0;CLA[i]=0;}
+    CZ.push(new Float32Array(MAXP));CN.push(0);CL.push(-9);CVM[i]=0;CLA[i]=0;
+    OVF.push(new Uint8Array(MAXP));}
 }
 function mulberry(seed){var a=seed>>>0;return function(){a=(a+0x6D2B79F5)>>>0;var t=a;
   t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;};}
@@ -1764,6 +1889,10 @@ function integrateP(g,Pp,i,st,nsteps,dt,stride,sTarget,spc){  var S=g.S,invS=g.i
   /* 兼容：FLIP 置 1 但 SG 还是 +1（老调用没写 SG）⟹ 视作 σ=−1 */
   if(Pp.FLIP && SG0===1 && !spc) SG=-1;   /* 0 时下面 4 处 if 全短路，逐位不变 */
   var NB=(Pp.NBL|0)||3,KT=Pp.KTZ||0,BL=Pp.BL||0,CNF=Pp.CN?1:0;   /* 刀瓣场：EPS 谐波 + 面瓣化 + 整场 C_n 化 */
+  /* v9.50 托卡马克整形：**先在函数头解包成局部标量**。
+     🔴 本函数内的 `R` 是局部标量（径向），不是全局参数表 —— 所以不能在这里读 R.tokOn，
+        必须走 Pp.TOK*（applySim 从 R 同步过来），否则会静默拿到半径 4 当开关。 */
+  var TK=Pp.TOK?1:0,TK2=Pp.TOKE2||0,TK3=Pp.TOKE3||0,TKT=Pp.TOKT||0,TKU=Pp.TOKU||0;
   var KD=Pp.KDD,KRR2=Pp.KRR,WRG=Pp.WR,MIR=(Pp.MIRROR||1);   /* 注意：本函数内 R 是局部标量，不能读全局 R.mirror */
   /* 自由内落档（LMOD=1）：L₀ 由「本粒子起点处的原场角速度」定
        ω_场(ρ₀) = KD·Ω₀/(ρ₀+ρ_c)^1.5 + KRR2·W_R,   L₀ = (ρ₀²+ρ_s²)·ω_场(ρ₀)
@@ -1777,7 +1906,7 @@ function integrateP(g,Pp,i,st,nsteps,dt,stride,sTarget,spc){  var S=g.S,invS=g.i
     LP0=(rho0*rho0+RS2)*(KD*(OM0/(rq0*Math.sqrt(rq0)))+KRR2*WRG);
   }
   var x=st[0],y=st[1],z=st[2],t=0,np=0,h=dt,h2=dt*0.5,h6=dt/6;
-  var ox=CX[i],oy=CY[i],oz=CZ[i];
+  var ox=CX[i],oy=CY[i],oz=CZ[i],oov=OVF[i];
   var useArc=(sTarget>0&&sTarget===sTarget), sTar=useArc?sTarget:0, sAcc=sTar, stall=0, vmax=0, arcTot=0;
   for(var n=0;n<nsteps;n++){
     var t2=t+h2,t3=t+h;
@@ -1798,6 +1927,7 @@ function integrateP(g,Pp,i,st,nsteps,dt,stride,sTarget,spc){  var S=g.S,invS=g.i
       var re=Math.sqrt(F),invF=1/F,invF2=invF*invF;
       /* 面瓣化：B≠0 时把吸引半径按 n 瓣调制 ⟹ 轨迹被钉到 n 条棱上 */
       if(BL!==0)re*=1+BL*nCos(NB,X,Y,rho,KT,Z);
+      if(TK!==0)re*=tokMulP(X/rho,Y/rho,Z,R,TK2,TK3,TKT,TKU);   /* v9.50 整形壳（与 rhoeAt 同一式） */
       var a1=rho-(re-RMv);a1=0.5*(a1+Math.sqrt(a1*a1+sig2));
       var a2=Z-ZTOP;a2=0.5*(a2+Math.sqrt(a2*a2+sig2));
       var a3=ZBOT-Z;a3=0.5*(a3+Math.sqrt(a3*a3+sig2));
@@ -1831,6 +1961,7 @@ function integrateP(g,Pp,i,st,nsteps,dt,stride,sTarget,spc){  var S=g.S,invS=g.i
       var re=Math.sqrt(F),invF=1/F,invF2=invF*invF;
       /* 面瓣化：B≠0 时把吸引半径按 n 瓣调制 ⟹ 轨迹被钉到 n 条棱上 */
       if(BL!==0)re*=1+BL*nCos(NB,X,Y,rho,KT,Z);
+      if(TK!==0)re*=tokMulP(X/rho,Y/rho,Z,R,TK2,TK3,TKT,TKU);   /* v9.50 整形壳（与 rhoeAt 同一式） */
       var a1=rho-(re-RMv);a1=0.5*(a1+Math.sqrt(a1*a1+sig2));
       var a2=Z-ZTOP;a2=0.5*(a2+Math.sqrt(a2*a2+sig2));
       var a3=ZBOT-Z;a3=0.5*(a3+Math.sqrt(a3*a3+sig2));
@@ -1864,6 +1995,7 @@ function integrateP(g,Pp,i,st,nsteps,dt,stride,sTarget,spc){  var S=g.S,invS=g.i
       var re=Math.sqrt(F),invF=1/F,invF2=invF*invF;
       /* 面瓣化：B≠0 时把吸引半径按 n 瓣调制 ⟹ 轨迹被钉到 n 条棱上 */
       if(BL!==0)re*=1+BL*nCos(NB,X,Y,rho,KT,Z);
+      if(TK!==0)re*=tokMulP(X/rho,Y/rho,Z,R,TK2,TK3,TKT,TKU);   /* v9.50 整形壳（与 rhoeAt 同一式） */
       var a1=rho-(re-RMv);a1=0.5*(a1+Math.sqrt(a1*a1+sig2));
       var a2=Z-ZTOP;a2=0.5*(a2+Math.sqrt(a2*a2+sig2));
       var a3=ZBOT-Z;a3=0.5*(a3+Math.sqrt(a3*a3+sig2));
@@ -1897,6 +2029,7 @@ function integrateP(g,Pp,i,st,nsteps,dt,stride,sTarget,spc){  var S=g.S,invS=g.i
       var re=Math.sqrt(F),invF=1/F,invF2=invF*invF;
       /* 面瓣化：B≠0 时把吸引半径按 n 瓣调制 ⟹ 轨迹被钉到 n 条棱上 */
       if(BL!==0)re*=1+BL*nCos(NB,X,Y,rho,KT,Z);
+      if(TK!==0)re*=tokMulP(X/rho,Y/rho,Z,R,TK2,TK3,TKT,TKU);   /* v9.50 整形壳（与 rhoeAt 同一式） */
       var a1=rho-(re-RMv);a1=0.5*(a1+Math.sqrt(a1*a1+sig2));
       var a2=Z-ZTOP;a2=0.5*(a2+Math.sqrt(a2*a2+sig2));
       var a3=ZBOT-Z;a3=0.5*(a3+Math.sqrt(a3*a3+sig2));
@@ -1938,18 +2071,23 @@ function integrateP(g,Pp,i,st,nsteps,dt,stride,sTarget,spc){  var S=g.S,invS=g.i
           /* 折半重采样：丢奇数号点、阈值×2。仍是「按弧长均匀」，只是分辨率降一档。
              这样 MAXP 是**绘制预算**而不是精度上限 —— 高倍缩放下自动降档、不爆内存。 */
           var w=0,q2;
-          for(q2=0;q2<np;q2+=2){ox[w]=ox[q2];oy[w]=oy[q2];oz[w]=oz[q2];w++;}
-          if(np%2===0){ox[w]=ox[np-1];oy[w]=oy[np-1];oz[w]=oz[np-1];w++;}
+          for(q2=0;q2<np;q2+=2){ox[w]=ox[q2];oy[w]=oy[q2];oz[w]=oz[q2];oov[w]=oov[q2];w++;}
+          if(np%2===0){ox[w]=ox[np-1];oy[w]=oy[np-1];oz[w]=oz[np-1];oov[w]=oov[np-1];w++;}
           np=w;sTar*=2;
         }
-        ox[np]=x;oy[np]=y;oz[np]=z;np++;
+        ox[np]=x;oy[np]=y;oz[np]=z;
+        /* 用与 HUD/探针**同一个**判据（球近似在极区能差 30%，不能用）。
+           v9.50：改走 reAtXY —— 整形壳在 φ 上不是圆，光有 z 定不出半径。 */
+        oov[np]=(Math.sqrt(x*x+y*y)>reAtXY(g,z,x,y))?1:0;
+        np++;
         sAcc-=sTar;stall=0;
       }else if(sAcc<sTar*0.02){
         /* 已（渐近）落入不动点：λ=1 实测 28 颗里有个别颗沿 vr≈−ρ 指数塌到轴上
            （z≈−3.717、vz=0），此后一步只走 ~1e-7 ⇒ 再积分上万步也添不出一个点。 */
         if(++stall>STALL_N)break;
       }else stall=0;
-    }else if(n%stride===0&&np<MAXP){ox[np]=x;oy[np]=y;oz[np]=z;np++;}
+    }else if(n%stride===0&&np<MAXP){ox[np]=x;oy[np]=y;oz[np]=z;
+      oov[np]=(Math.sqrt(x*x+y*y)>reAtXY(g,z,x,y))?1:0;np++;}
   }
   CN[i]=np;CL[i]=g.lam;CVM[i]=vmax;CLA[i]=arcTot;
   return true;
@@ -2005,6 +2143,21 @@ var R={R:4,lmMax:1,tb:5,manualLam:0,manual:true,
        /* 严格逆时 t→−t（可选，默认关）：全场反号、含软墙与环向 ω。
           耗散场反时 div 变号 ⟹ 轨迹指数逃逸，这是数学必然（见 setTimeRev 注释）。 */
        timeRev:false,
+       /* v9.49 越界段裁剪（默认开）：只裁**绘制**，不裁剪数据。关掉即回到旧画面。 */
+       ovClip:true,
+       /* v9.50【TOKAMAK】托卡马克式非对称整形（可选，默认关 ⟹ 逐位不变）。
+          —— 老师 2026-11-05：「把托克马克的非对称性那套整合进来作为可选项」。
+          口径先说清楚（与页面 §八 那句一致）：这是与球形托卡马克 shaping **数学同族**的
+          截面参数化，不是同一物理。它改的是**壳形状**，而壳形状在本页是写进 ODE 的
+          （软墙 t1 = ρ − ρe），所以开启后轨迹会变 —— 那不是副作用，那正是「笼变了」。
+          tokKap : 拉长 κ（elongation），m=2 谐波幅度 e2 = κ−1
+          tokDel : 三角度 δ（triangularity），m=3 谐波幅度
+          tokTau : 扭转率 τ (rad / 单位 z/R)。取 z̃=z/R 带符号 ⟹ **上下环自然反向扭转**，
+                   上环 ψ=φ−τ(1+u)z̃、下环 ψ=φ−τ(1−u)z̃，在 z=0 处连续。
+          tokUp  : 上下非对称 u ∈ [−0.6,0.6]：u=0 上下等幅反向（对称双环），
+                   u>0 上环拧得多、下环拧得少 ⟹ 上下环**不等价**（真非对称）。
+          ⚠ 三项全为 0（κ→1, δ=0, τ=0）时 S ≡ 1，逐位等于关。 */
+       tokOn:false,tokKap:1.22,tokDel:0.16,tokTau:2.00,tokUp:0.00,
        /* v9.20 双线并绕（**默认开**，老师 2026-11-02 要求；同时要求两族互为反色）。
           同一结构里**同时**跑正流与反流两族粒子，按**配对号** (i>>1)&1 各占一半
           （按 i 奇偶会把反流族锁死在下半空间，原因见 spcOf 上方注释）。
@@ -2040,9 +2193,13 @@ var R={R:4,lmMax:1,tb:5,manualLam:0,manual:true,
        mirror:false,
        /* seedOrb：粒子起点用「已解出的闭合曲线」还是「固定种子表」。
           关=普通流线（一般不闭合，默认，旧行为）；开=沿闭合曲线取点（首尾相接）。 */
-       /* 自转默认关（2026-11-01）：开着时 az 以 0.35 rad/s ≈ 20°/s 漂移，
-          载入 1 秒就偏离等轴测 20° ⟹ 「三轴等长」永远只是一瞬间。要看转动点「自转 开」。 */
-       seedOrb:false,autoRot:false,orbFollow:true,
+       /* 自转**默认开**（2026-11-05 老师：「暂停键失效了，本来应该是自动自转播放」）。
+          病根：呼吸关 + 自转关 ⟹ λ 恒为 manualLam ⟹ 没有脏粒子 ⟹ az 不动、点数不变
+          ⟹ 整页是一张**静止图**。「暂停 / 播放」按下去屏幕上没有任何区别，所以像按键坏了
+          （实测 R.playing 真翻、az 真冻结 —— 但可冻结的东西本来就没在动）。
+          代价：az 以 0.35 rad/s ≈ 20°/s 漂移，载入 1 秒就偏离等轴测 20° ——
+          要看等轴测点 ⚖ 等轴测（它顺手把自转停掉），要定格点左边的 ⏸ 暂停。 */
+       seedOrb:false,autoRot:true,orbFollow:true,
        /* 红青立体（Anaglyph 3D）：ana=开关；anaIpd=视差强度（瞳距倍率 0~3）；
           anaSwap=左右对调（红片戴右眼时用）。几何/颜色见 §6a。 */
        ana:false,anaIpd:1.0,anaSwap:false};
@@ -2390,13 +2547,28 @@ function strokeOrbit(o,rgb,caz,saz,cel,sel,ox,oy,k,follow,sgn){
      早期 NR=34/NM=12 的宽高比是 8.9:1，斜线几近水平，完全读不出三角形。
    红青下按眼别重投一遍。 */
 function shellPass(A,sgn,rgb){
-  if(!R.showShell)return;
+  /* v9.54【GIFNOMESH】录制「一键导出 GIF」时**默认不画**外鞘三角网格
+     （老师 2026-11-05 原话：「转成 gif 的时候默认不要画上泡壁的三角网格」）。
+     为什么只关绘制、不动别处：
+       ① **不改 R.showShell** —— 面板「外鞘轮廓 开」与按钮文案一个字都不变，
+          录制结束后的下一帧网格自动长回来，用户没有任何感知；
+       ② **不改 gifBBox 的取景** —— 取景仍在含网格的画面上量（gifStart 里、本分支
+          生效之前完成），所以裁切框与 v9.52 逐像素相同、球直径不变，不会因为少了
+          最外一圈线而把框缩小、把「球占画幅」这个已经验收过的数改掉；
+       ③ **R 扫描 GIF 不关**（条件里没有 rsc）—— 那套的看点是「壳体从一点长出来」，
+          网格是唯一的形状线索，关掉就看不出壳在长。
+     🔴 关掉的只是 shellPass 的三层线族（纬圈 / 经线 / 斜线）；粒子、闭合环、辉光、
+        剖面一概不受影响。自动曝光会因为墨量下降把丝加粗一点 —— 那是同一套伺服的
+        正常反应，不是副作用（判据不写死线宽，只判「网格没了、丝还在」）。 */
+  if(!R.showShell||(GIF_NO_MESH&&gifCap))return;
   var g=A.g,caz=A.caz,saz=A.saz,cel=A.cel,sel=A.sel,ox=A.ox,oy=A.oy,k=A.k;
   var sec=anaSec(sgn,k),j,ii,th,th2,re,zz;
   var NR=12,NM=36,NPHI=64,NZ=32;
   var H=g.ZHI-g.ZLO;
   function proj(zq,thq,re2){        /* 柱坐标 → 屏幕（re2 传 0 则现算） */
-    if(!re2)re2=rhoeAt(g,zq);
+    /* v9.50：现算时**必须带上方位角** thq —— 整形壳在 φ 上不是圆，
+       少了这个参数画出来的还是旋转体，壳会与场/软墙对不上。 */
+    if(!re2)re2=rhoeAt(g,zq,thq);
     var X=re2*Math.cos(thq),Y=re2*Math.sin(thq);
     var x1=X*caz-Y*saz,y1=X*saz+Y*caz;
     return [ox+k*x1+sec*(y1*cel+zq*sel),oy-k*(zq*cel-y1*sel)];
@@ -2419,7 +2591,9 @@ function shellPass(A,sgn,rgb){
     zz=g.ZLO+(j+0.5)/NR*H; re=rhoeAt(g,zz);
     ctx.beginPath();
     for(ii=0;ii<=NPHI;ii++){
-      var pt=proj(zz,ii/NPHI*6.2831853,re);
+      /* v9.50：整形档下每点半径随方位角变 ⇒ 不能复用同一层的 re（否则还是圆），
+         关档仍走 re 缓存，逐位不变。 */
+      var pt=proj(zz,ii/NPHI*6.2831853,R.tokOn?0:re);
       if(ii===0)ctx.moveTo(pt[0],pt[1]);else ctx.lineTo(pt[0],pt[1]);
     }
     ctx.stroke();
@@ -2502,11 +2676,13 @@ function tracksPass(A,sgn,rgb){
   var g=A.g,caz=A.caz,saz=A.saz,cel=A.cel,sel=A.sel,ox=A.ox,oy=A.oy,k=A.k;
   var sec=anaSec(sgn,k);
   var zlo=g.ZLO,zhi=g.ZHI,span=Math.max(1e-9,zhi-zlo);
-  var np2=0, pStart=[], pLen=[], Lsum=0, qx=0, qy=0;
+  var np2=0, pStart=[], pLen=[], pOvf=[], pBx=[], pBy=[], pBz=[], nSkip=0, nOut=0, Lsum=0, qx=0, qy=0;
+  OVSTAT.res=0;   /* 本趟截交点的最大残差（世界单位），探针据此判「真的落在壳壁上」 */
   for(var i=0;i<R.np;i++){
     var n=CN[i];if(n<2)continue;
     var bx=CX[i],by=CY[i],bz=CZ[i];
-    pStart.push(np2);pLen.push(n);
+    pStart.push(np2);pLen.push(n);pOvf.push(OVF[i]);
+    pBx.push(bx);pBy.push(by);pBz.push(bz);
     for(var j2=0;j2<n;j2++){
       var Xx=bx[j2],Yy=by[j2],Zz=bz[j2];
       var x1=Xx*caz-Yy*saz, y1=Xx*saz+Yy*caz;
@@ -2522,19 +2698,56 @@ function tracksPass(A,sgn,rgb){
   }
   for(var b3=0;b3<NB2;b3++)cnt[b3]=0;
   for(var p=0;p<pStart.length;p++){
-    var s0=pStart[p],L=pLen[p];
-    for(var jj=0;jj<L-1;jj++) cnt[pB[s0+jj]]++;
+    var s0=pStart[p],L=pLen[p],ov0=pOvf[p];
+    for(var jj=0;jj<L-1;jj++){
+      /* ★ v9.49 越界段：只把「两端都在壳外」的整段丢掉；
+         一端在内一端的（跨界段）保留，填充时会截到壳壁交点 ⇒ 计数与填充一一对应 */
+      if(ov0[jj])nOut++;
+      if(R.ovClip&&ov0[jj]&&ov0[jj+1]){nSkip++;continue;}
+      cnt[pB[s0+jj]]++;
+    }
   }
+  OVSTAT.nSkip=nSkip;OVSTAT.nOut=nOut;
   off[0]=0;
   for(var b5=0;b5<NB2;b5++){off[b5+1]=off[b5]+cnt[b5]*4;cur[b5]=off[b5];}
   for(var p2=0;p2<pStart.length;p2++){
-    var s1=pStart[p2],L2=pLen[p2];
+    var s1=pStart[p2],L2=pLen[p2],ov1=pOvf[p2];
     for(var j3=0;j3<L2-1;j3++){
       var idx=s1+j3, b6=pB[idx], o4=cur[b6];
-      seg[o4]=pX[idx];seg[o4+1]=pY[idx];seg[o4+2]=pX[idx+1];seg[o4+3]=pY[idx+1];
+      var Ax1=pX[idx],Ay1=pY[idx],Bx1=pX[idx+1],By1=pY[idx+1];
+      if(R.ovClip&&ov1[j3]&&ov1[j3+1])continue;      /* 两端都在壳外：整段不画 */
+      if(R.ovClip&&(ov1[j3]!==ov1[j3+1])){
+        /* 跨界段：沿 3D 线段二分找 ρ−ρe(z)=0 的那个点，把端点换成它 */
+        var BX=pBx[p2],BY=pBy[p2],BZ=pBz[p2];
+        var xa=BX[j3],ya=BY[j3],za=BZ[j3],xb=BX[j3+1],yb=BY[j3+1],zb=BZ[j3+1];
+        /* 二分不变量：tOut 处 f>0（在壳外）、tIn 处 f<0（在壳内） */
+        var tOut=(ov1[j3]?0:1), tIn=(ov1[j3]?1:0), tm, Xm, Ym, Zm, fm;
+        for(var bi=0;bi<14;bi++){
+          tm=(tOut+tIn)*0.5;
+          Xm=xa+(xb-xa)*tm; Ym=ya+(yb-ya)*tm; Zm=za+(zb-za)*tm;
+          fm=Math.sqrt(Xm*Xm+Ym*Ym)-reAtXY(g,Zm,Xm,Ym);
+          if(fm>0)tOut=tm; else tIn=tm;
+        }
+        var ts=(tOut+tIn)*0.5;
+        var cxp=xa+(xb-xa)*ts, cyp=ya+(yb-ya)*ts, czp=za+(zb-za)*ts;
+        var fres=Math.sqrt(cxp*cxp+cyp*cyp)-reAtXY(g,czp,cxp,cyp);
+        if(fres<0)fres=-fres;
+        if(fres>OVSTAT.res)OVSTAT.res=fres;
+        var px1=cxp*caz-cyp*saz, py1=cxp*saz+cyp*caz;
+        var sx0=ox+k*px1+sec*(py1*cel+czp*sel), sy0=oy-k*(czp*cel-py1*sel);
+        if(ov1[j3]){Bx1=sx0;By1=sy0;}else{Ax1=sx0;Ay1=sy0;}
+      }
+      seg[o4]=Ax1;seg[o4+1]=Ay1;seg[o4+2]=Bx1;seg[o4+3]=By1;
       cur[b6]=o4+4;
     }
   }
+  /* ★ v9.49 自检：每个色桶「写入段数」必须等于「计数段数」。
+     不等 ⇒ 描边循环会按 cnt 往下读，读到上一帧残留条目 = 画出乱线。
+     这是裁剪最危险的失效模式，所以做成**可读出来的数**，别只靠眼睛。 */
+  var _mis=0,_w=0,_c=0;
+  for(var b8=0;b8<NB2;b8++){_w+=(cur[b8]-off[b8])/4;_c+=cnt[b8];
+    if(cur[b8]!==off[b8]+cnt[b8]*4)_mis++;}
+  OVSTAT.mis=_mis;OVSTAT.drawn=_w;OVSTAT.cntAll=_c;
   ctx.globalCompositeOperation='lighter';
   /* ★ 自动曝光：线宽与亮度由本帧墨长 Lsum 现算（见 AUTO / autoExp 注释）。
      关掉自动（面板「线宽/亮度 自动 关」）时 autoExp 直接返回 R.lw / R.al ⟹ 旧行为逐位不变。 */
@@ -2559,6 +2772,118 @@ function tracksPass(A,sgn,rgb){
     ctx.stroke();
   }
   ctx.globalCompositeOperation='source-over';
+}
+
+/* v9.46 包络带（三维）：两条轨迹（正流暖 / 反流冷）+ 每对之间的「睫毛」。
+   只在「只看包络线」档单独出图 —— 其它时候画面上已经有丝团，再加带子只会糊成一片。 */
+var ENV_SIMP=null, ENV_SK=0, ENV_SEL=-999, ENV_SPN=-1, ENV_SGEN=-1;
+/* ★★ v9.56【丝滑·预处理】包络线该画哪些点，先算一次，之后每帧照着画。
+   为什么不在 draw 里逐点判：每组 9091 点 × 12 条 = 10.9 万次投影/帧，实测帧率 31.8 → 19.9；
+   预计算后每帧只投真正落笔的 ~1.1 万点。失效条件只有两个：k（缩放/画布）变了 >10%、
+   俯仰 el 变了 >3°。**方位角旋转是刚体变换，不改变偏离量**，所以自转不用重算。
+   判据（屏幕矢高）：圆弧上 矢高/弦长 = tan(θ/4)/2 ⟹ 「0.5·弦长·tan(θ/4) > ε」才落笔。
+   近轴曲率大自动密集、远场近直线自动稀疏，O(n)、每点一次 sqrt + 一次 tan、不碰 acos。
+   🔴 大转角（近轴绕圈、折返）由 tan 自己兜住：θ→π 时比值发散 ⟹ 必然落笔，
+      不必再挂「弧长上限」（v9.56b 的 ENV_ARC 已删，理由见其定义处）。 */
+function envSimpl(){
+  if(!ENV.pairs||!ENV.pairs.length||!GEO) return null;
+  var k=projK(GEO), e=R.el;
+  if(ENV_SIMP && ENV_SGEN===(ENV.gen|0) && ENV_SPN===(ENV.pairs.length|0) && Math.abs(k/ENV_SK-1)<0.10
+     && Math.abs(e-ENV_SEL)<3) return ENV_SIMP;
+  var el2=e*Math.PI/180, ce=Math.cos(el2), se=Math.sin(el2);
+  var ca=Math.cos(az), sa=Math.sin(az);
+  var lo=env.zlo*ce-GEO.R*Math.abs(se), hi=env.zhi*ce+GEO.R*Math.abs(se);
+  var ox2=W/2+R.panX, oy2=H/2+R.panY+k*(lo+hi)/2;
+  var out=[];
+  for(var i=0;i<ENV.pairs.length;i++){
+    var pr=ENV.pairs[i], n=pr.n|0;
+    if(n<4) continue;
+    for(var q=0;q<2;q++){
+      var arr=q?pr.b:pr.a;
+      var idx=[0], ex=0,ey=0,lxp=0,lyp=0,pvx=0,pvy=0,cum=0,hasDir=false,firstP=true;
+      for(var j=0;j<n;j++){
+        var X=arr[3*j],Y=arr[3*j+1],Z=arr[3*j+2];
+        var x1=X*ca-Y*sa, y1=X*sa+Y*ca;
+        var sx=ox2+k*x1, sy=oy2-k*(Z*ce-y1*se);
+        if(firstP){ ex=sx;ey=sy;lxp=sx;lyp=sy;firstP=false; continue; }
+        var dx=sx-lxp, dy=sy-lyp, dL=Math.sqrt(dx*dx+dy*dy);
+        if(dL>1e-3){                    /* < 1e-3 px 的蠕动点直接吞掉（近轴塌陷段） */
+          if(hasDir){
+            var cs=(pvx*dx+pvy*dy)/dL; if(cs>1)cs=1; else if(cs<-1)cs=-1;
+            cum+=Math.sqrt(Math.max(0,1-cs*cs));
+          }
+          pvx=dx/dL; pvy=dy/dL; hasDir=true;
+          var clx=sx-ex, cly=sy-ey;
+          /* ★★ v9.57：判据就是「弦相对真弧的矢高」。圆弧上 矢高/弦长 = tan(θ/4)/2
+             ⟹ s = 0.5·弦长·tan(θ/4)，θ 用 cum（逐步 |sinθ| 累加，小步时即转角）。
+             🔴 这一条把 v9.56b 的两条判据合成一条：
+                · 「弦长×cum > 8ε」只在**小转角**下等于矢高，θ 一大就没有依据；
+                · 「弧长上限 ENV_ARC」是 CSS px 硬常数，放大后世界弦变短 ⟹ 与「矢高≤ε」打架
+                  （3× 缩放下实测 1.43~2.49 px，怎么扫都不合格）。
+                tan 形式两头都对：小角退化成老式「弦长×cum > 8ε」，大角（近轴绕圈、折返）
+                自己发散 ⟹ 必然落笔。**不含任何世界量纲的常数**，缩放天然自洽。 */
+          if(0.5*Math.sqrt(clx*clx+cly*cly)*Math.tan(Math.min(cum,3)/4)>ENV_EPS){
+            if((j-1)>idx[idx.length-1]) idx.push(j-1);
+            ex=lxp; ey=lyp; cum=0;
+          }
+        }
+        lxp=sx; lyp=sy;
+      }
+      if((n-1)>idx[idx.length-1]) idx.push(n-1);
+      out.push({pi:i, q:q, idx:idx});
+    }
+  }
+  ENV_SIMP=out; ENV_SK=k; ENV_SEL=e; ENV_SPN=out.length; ENV_SGEN=(ENV.gen|0);
+  return out;
+}
+var _epx=0,_epy=0;
+function envPass(A,sgn,rgb){
+  if(!ENV.pairs||!ENV.pairs.length) return 0;
+  var caz=A.caz,saz=A.saz,cel=A.cel,sel=A.sel,ox=A.ox,oy=A.oy,k=A.k;
+  var sec=anaSec(sgn,k);
+  function PR(X,Y,Z){
+    var x1=X*caz-Y*saz, y1=X*saz+Y*caz;
+    _epx=ox+k*x1+sec*(y1*cel+Z*sel); _epy=oy-k*(Z*cel-y1*sel);
+  }
+  var lw=Math.max(0.7,R.lw*0.9), lash=0, i, j, q;
+  ctx.globalCompositeOperation='lighter';
+  ctx.lineCap='round';ctx.lineJoin='round';
+  /* 曲线：照 envSimpl() 的下标表画（画出来的顶点与判据算的顶点是同一批） */
+  var SS=envSimpl();
+  if(SS){
+    for(var s3=0;s3<SS.length;s3++){
+      var cc=SS[s3], prC=ENV.pairs[cc.pi]; if(!prC) continue;
+      var arrC=cc.q?prC.b:prC.a, ix=cc.idx, m3;
+      ctx.strokeStyle=rgb?('rgba('+rgb+',0.85)')
+        :(cc.q?'rgba(120,210,255,0.82)':'rgba(255,190,90,0.86)');
+      ctx.lineWidth=lw;
+      ctx.beginPath();
+      for(m3=0;m3<ix.length;m3++){
+        var j3=ix[m3];
+        PR(arrC[3*j3],arrC[3*j3+1],arrC[3*j3+2]);
+        if(m3===0)ctx.moveTo(_epx,_epy); else ctx.lineTo(_epx,_epy);
+      }
+      ctx.stroke();
+    }
+  }
+  /* 睫毛：仍按时间等距取样 —— 它表达的是「同一时刻两族分多开」，与形状无关 */
+  for(i=0;i<ENV.pairs.length;i++){
+    var pr=ENV.pairs[i], n=pr.n|0;
+    if(n<4) continue;
+    var stp=Math.max(1,Math.round(n/160));
+    ctx.strokeStyle=rgb?('rgba('+rgb+',0.30)') : 'rgba(205,165,255,0.30)';
+    ctx.lineWidth=Math.max(0.5,lw*0.6);
+    ctx.beginPath();
+    for(j=0;j<n;j+=stp){
+      PR(pr.a[3*j],pr.a[3*j+1],pr.a[3*j+2]); var ax=_epx, ay=_epy;
+      PR(pr.b[3*j],pr.b[3*j+1],pr.b[3*j+2]);
+      ctx.moveTo(ax,ay);ctx.lineTo(_epx,_epy);
+      lash++;
+    }
+    ctx.stroke();
+  }
+  ctx.globalCompositeOperation='source-over';
+  return lash;
 }
 
 /* 闭合轨道（Newton 求出的真闭合解）：上半 z=+L 与下半 z=−L 各一条，分别高亮
@@ -2597,6 +2922,14 @@ function draw(){
      外鞘 / 坐标轴 / 丝团 先全部画完，辉光只画一次（它在屏幕平面上，没有视差），
      再把两条闭合环按眼别叠上去 —— 顺序与改造前保持一致。 */
   var EY=anaEyes();
+  /* ★★ v9.46「只看包络线」：外壳 / 坐标轴 / 丝团 / 辉光 / 闭合环 / 泛光一律不画，
+     屏上只剩两条轨迹 + 睫毛（+ 剖面里的同名带子）。判据查的是像素差，不是这句话。 */
+  if(ENV.on && ENV.only){
+    if(ENV.dirty) buildEnv();
+    for(var eo=0;eo<EY.length;eo++) envPass(A,EY[eo].sgn,EY[eo].rgb);
+    drawProfile(cel,sel);
+    return;
+  }
   for(var ei=0;ei<EY.length;ei++){
     shellPass(A,EY[ei].sgn,EY[ei].rgb);
     axesPass(A,EY[ei].sgn,EY[ei].rgb);
@@ -2690,26 +3023,60 @@ var pcv=document.getElementById('prof'),pcx=pcv.getContext('2d');
  * 🔴 数学事实：两族轨迹**本来不重合** —— v₋ = −v_T + v_C ≠ −v（软墙没反）⟹
  *   D=⟨|Δ|⟩/⟨|v₋|⟩ 才是这条带的宽度；D→0 只是刀瓣对称性带来的巧合，不是恒等式。
  * ================================================================== */
-var ENV={on:true, n:6, pairs:null, dirty:true, mean:0, maxd:0};
+var ENV={on:true, n:6, pairs:null, dirty:true, mean:0, maxd:0, only:false, gen:0};
+/* v9.56：包络线绘制的**屏幕**容差（CSS px）—— 允许弦偏离真实轨迹多少（不是「准不准」，
+   是「肉眼能不能看出这是一条折线」）。详见 envSimpl 里的矢高判据。
+   ★ v9.57：0.25 → 0.18。判据换成真矢高后，实测偏离 1× = 0.388 px、3× = 0.380 px（差 2%），
+     说明这条判据真的与缩放无关了；收紧到 0.18 是为了给门槛 0.60 留余量，
+     代价是落笔段数 10446 → 12549（+20%，预算 20000）。0.18 px 仍是亚像素的 1/5。 */
+var ENV_EPS=0.18;
+/* v9.56：探针用「本帧实际落笔的顶点下标」。平时 rec=false，热循环里只多一次布尔判断。 */
+/* ★★ v9.57：**ENV_ARC 已删**（自上次落笔的弧长上限，CSS px）。
+   它当初是为了拦「近轴处绕好几圈才憋出一条长弦」；但它是**屏幕 px 的硬常数**，
+   放大后同样的世界弧长对应更短的弦 ⟹ 与「矢高 ≤ ε」这条主判据互相打架：
+   3× 缩放下实测 ARC=3 → 1.54 px、5 → 1.43 px、12 → 2.49 px（判据门槛 0.60），怎么扫都不合格。
+   现在主判据直接用矢高 0.5·弦长·tan(θ/4)（见 envSimpl），大转角自动逼出落笔点，
+   长弦在源头就不存在，兜底常数也就不需要了。 */
 function envInvalidate(){ ENV.dirty=true; }
 function buildEnv(){
   ENV.pairs=null; ENV.mean=0; ENV.maxd=0; ENV.dirty=false;
-  if(!ENV.on || !(R.np>=2) || !GEO) return;
+  /* v9.46：门槛从 np≥2 放宽到 np≥1 —— 包络带只用**种子**独立积分（不借用画面粒子），
+     单周期环把 N 收到 1 之后也该能看带子。下面槽位 1 只在真的存在时才借/还。 */
+  if(!ENV.on || !(R.np>=1) || !GEO) return;
   var K=Math.max(1,Math.min(12, ENV.n|0));
   var nsteps=Math.max(200,Math.round(R.span/R.dt));
-  var strideEff=Math.max(R.stride,Math.ceil(nsteps/MAXP));
+  /* ★★ v9.56：这里**不能**沿用 R.stride（出厂 6）。包络线的用途是「量形状」，
+     而近轴处 ω≈90 rad/s ⟹ 每 6 个 RK4 步就转过 68°，画出来是三角形。
+     改成「只受 MAXP 约束」= 每个 RK4 步都存（span 20 / dt 2.2e-3 ⟹ 9091 点）。
+     🔴 配对语义逐字不变：a/b 仍用**同一个** strideEff、同一 nsteps ⟹ 第 j 点仍是同一时刻，
+        ⟨Δ⟩ 的物理含义（同一时刻两族分开多远）不受影响，只是采样密度变了。
+        MAXP 仍是硬上限：span 调大 / dt 调小时 strideEff 自动升档，不会溢出。 */
+  var strideEff=Math.max(1,Math.ceil(nsteps/MAXP));
   /* 🔴 必须关掉「按弧长等距」采样（sTarget=0）：否则第 j 个采样点对应的是**同样的弧长**
      而不是**同一时刻**，两条速度不同的轨迹就错位了（实测会把 ⟨Δ⟩ 从 0 虚增到 2.49）。 */
   var sTar0=0;
   /* 借两个槽做临时缓冲，算完立刻恢复（主线点云不受影响） */
   var _bX0=CX[0],_bY0=CY[0],_bZ0=CZ[0],_bN0=CN[0];
-  var _bX1=CX[1],_bY1=CY[1],_bZ1=CZ[1],_bN1=CN[1];
+  var _has1=(CX.length>1), _bX1=CX[1],_bY1=CY[1],_bZ1=CZ[1],_bN1=CN[1];
   var res=[], sum=0, cnt=0, mx=0, tmp=[0,0,0];
   /* 🔴 包络层恒用 σ=±1：用户的 σ 滑条（0.5 等）不能把两族都压到 0，否则带子消失 */
   var _sgKeep=P.SG; P.SG=1;
-  for(var k=0;k<K;k++){
-    /* 只用前 K 个种子的**原始**位置（不转 dualPhi —— 转了就不是同一个起点了） */
-    var st0=seedOf(k*2);
+  /* ★★ v9.57【只画一半的病根】原来取 seedOf(k*2)。种子是按 (i, i+1) 成对生成的
+     （同一对只差 z 的符号），而 z≈0 是**精确不变流形** ⟹ 取偶数下标 = 只取 +z 那半边。
+     实测默认档：下标 0/2/4/6/8/10 的 z = +0.014/+0.026/+0.031/+0.059/+0.033/+0.018 全为正，
+     12 条轨迹的 z 区间一律 [0, 3.92]、z<−0.2 的时间占比 0.000
+     —— 这就是老师看到的「只看包络线时只有一半」。
+     改成「按 z 排序后等距取 K 个」：默认档自然跨正负两端；双锥档（|z| 到 3.8）真的按高度铺开。
+     🔴 不用「取 (k*2, k*2+1) 两个」：那是把对数翻倍，配对的语义反而被稀释。 */
+  var ord=[], oi, o2;
+  for(o2=0;o2<CIX.length;o2++) ord.push(o2);
+  ord.sort(function(a,b){ return (CIZ[a]-CIZ[b]) || (a-b); });
+  var pick=[], Kp=Math.min(K, ord.length);
+  for(o2=0;o2<Kp;o2++)
+    pick.push(ord[Kp<=1?0:Math.round(o2*(ord.length-1)/(Kp-1))]);
+  for(var k=0;k<pick.length;k++){
+    /* 只用**原始**位置（不转 dualPhi —— 转了就不是同一个起点了） */
+    var st0=seedOf(pick[k]);
     if(!st0) continue;
     var pts=[], sg, j;
     for(sg=0;sg<2;sg++){
@@ -2731,10 +3098,13 @@ function buildEnv(){
   }
   P.SG=_sgKeep;
   CX[0]=_bX0;CY[0]=_bY0;CZ[0]=_bZ0;CN[0]=_bN0;
-  CX[1]=_bX1;CY[1]=_bY1;CZ[1]=_bZ1;CN[1]=_bN1;
+  if(_has1){CX[1]=_bX1;CY[1]=_bY1;CZ[1]=_bZ1;CN[1]=_bN1;}
   ENV.pairs=res;
   ENV.mean=cnt?(sum/cnt):0;
   ENV.maxd=mx;
+  /* ★ 重算过就是新一代：envSimpl 的缓存靠它失效。
+     🔴 只比「对数」不够 —— 改种子/改场之后对数照样是 6，下标表会拿旧的去索引新数组。 */
+  ENV.gen=(ENV.gen|0)+1;
 }
 function drawProfile(cel,sel){
   if(!R.showProf)return;
@@ -2750,35 +3120,83 @@ function drawProfile(cel,sel){
   function curve(gg,col,dash,lw){
     pcx.strokeStyle=col;pcx.lineWidth=lw;pcx.setLineDash(dash);pcx.beginPath();
     var j,z,r;
-    for(j=0;j<=80;j++){z=gg.ZLO+j/80*(gg.ZHI-gg.ZLO);r=rhoeAt(gg,z);
+    for(j=0;j<=80;j++){z=gg.ZLO+j/80*(gg.ZHI-gg.ZLO);r=reMaxPhi(gg,z);
       if(j===0)pcx.moveTo(PX(r),PY(z));else pcx.lineTo(PX(r),PY(z));}
-    for(j=80;j>=0;j--){z=gg.ZLO+j/80*(gg.ZHI-gg.ZLO);r=rhoeAt(gg,z);
+    for(j=80;j>=0;j--){z=gg.ZLO+j/80*(gg.ZHI-gg.ZLO);r=reMaxPhi(gg,z);
       pcx.lineTo(PX(-r),PY(z));}
     pcx.closePath();pcx.stroke();pcx.setLineDash([]);
   }
-  if(gE0)curve(gE0,light?'rgba(120,140,170,0.55)':'rgba(120,140,175,0.45)',[4,3],1);
-  if(gE1)curve(gE1,light?'rgba(170,130,40,0.6)':'rgba(255,190,90,0.42)',[4,3],1);
-  curve(g,light?'#0b6fa4':'#7fd8ff',[],1.6);
+  /* ★★ v9.46：先算配对，再决定画什么（「只看包络线」要拿它做唯一内容） */
+  var onlyEnv=!!(ENV.on&&ENV.only);
+  if(ENV.on && ENV.dirty) buildEnv();
+  /* 睫毛 / 两条边界曲线 —— 「包络带」的本体：同一时刻两族分开多远，连起来就是带子的骨架。
+     v9.24 起这段只在注释里描述、代码里从没画过（按钮只加两行字），这次补上。 */
+  var bandInfo={pairs:0,lash:0};
+  function bandDraw(){
+    var cA=light?'rgba(170,90,10,0.92)':'rgba(255,190,90,0.85)';
+    var cB=light?'rgba(10,90,170,0.92)':'rgba(120,210,255,0.85)';
+    /* 睫毛要「看得见带子、又不糊成一片填色」：6 对 × 40 条就够了（实测 110 条/对会填满） */
+    var cL=light?'rgba(120,70,170,0.20)':'rgba(205,165,255,0.17)';
+    var i,j,q,lash=0;
+    function poly(arr,n0,stp,col){
+      for(q=0;q<2;q++){                       /* 右半 + 左半各画一条，绝不连成 Z 字 */
+        var sg=q?1:-1, rr, zz;
+        pcx.strokeStyle=col;pcx.lineWidth=1.25;pcx.beginPath();
+        for(j=0;j<n0;j+=stp){
+          rr=Math.sqrt(arr[3*j]*arr[3*j]+arr[3*j+1]*arr[3*j+1]); zz=arr[3*j+2];
+          if(j===0)pcx.moveTo(PX(sg*rr),PY(zz)); else pcx.lineTo(PX(sg*rr),PY(zz));
+        }
+        pcx.stroke();
+      }
+    }
+    for(i=0;i<ENV.pairs.length;i++){
+      var pr=ENV.pairs[i], n0=pr.n|0;
+      if(n0<4) continue;
+      var stp=Math.max(1,Math.round(n0/40));      /* 睫毛：40 条/对 */
+      var stc=Math.max(1,Math.round(n0/220));     /* 两条边界曲线：220 点/对，别画成折线 */
+      /* 睫毛 */
+      pcx.strokeStyle=cL;pcx.lineWidth=0.8;pcx.beginPath();
+      for(j=0;j<n0;j+=stp){
+        var ax=pr.a[3*j],ay=pr.a[3*j+1],az=pr.a[3*j+2];
+        var bx=pr.b[3*j],by=pr.b[3*j+1],bz=pr.b[3*j+2];
+        var ra=Math.sqrt(ax*ax+ay*ay), rb=Math.sqrt(bx*bx+by*by);
+        pcx.moveTo(PX(ra),PY(az));pcx.lineTo(PX(rb),PY(bz));
+        pcx.moveTo(PX(-ra),PY(az));pcx.lineTo(PX(-rb),PY(bz));
+        lash+=2;
+      }
+      pcx.stroke();
+      poly(pr.a,n0,stc,cA); poly(pr.b,n0,stc,cB);
+    }
+    pcx.lineWidth=1;
+    return {pairs:ENV.pairs.length,lash:lash};
+  }
+  if(!onlyEnv){
+    if(gE0)curve(gE0,light?'rgba(120,140,170,0.55)':'rgba(120,140,175,0.45)',[4,3],1);
+    if(gE1)curve(gE1,light?'rgba(170,130,40,0.6)':'rgba(255,190,90,0.42)',[4,3],1);
+    curve(g,light?'#0b6fa4':'#7fd8ff',[],1.6);
+  }
   var tot=totalPts();
   var step=Math.max(1,Math.round(tot/6000)),cnt2=0;
-  pcx.fillStyle=light?'rgba(30,60,110,0.40)':'rgba(190,225,255,0.32)';
-  for(var i=0;i<R.np;i++){
-    var n=CN[i];if(n<2)continue;
-    var bx=CX[i],by=CY[i],bz=CZ[i];
-    for(var j2=0;j2<n;j2+=step){
-      var rr=Math.sqrt(bx[j2]*bx[j2]+by[j2]*by[j2]);
-      pcx.fillRect(PX(rr)-0.6,PY(bz[j2])-0.6,1.2,1.2);
-      pcx.fillRect(PX(-rr)-0.6,PY(bz[j2])-0.6,1.2,1.2);
-      cnt2++;
+  if(!onlyEnv){
+    pcx.fillStyle=light?'rgba(30,60,110,0.40)':'rgba(190,225,255,0.32)';
+    OVSTAT.profSkip=0;   /* 本帧剖面被裁掉的点数（探针据此判剖面真的跟着裁了） */
+    for(var i=0;i<R.np;i++){
+      var n=CN[i];if(n<2)continue;
+      var bx=CX[i],by=CY[i],bz=CZ[i];
+      var ovi=OVF[i];
+      for(var j2=0;j2<n;j2+=step){
+        if(R.ovClip&&ovi&&ovi[j2]){OVSTAT.profSkip++;continue;}   /* ★ 剖面的点云也裁（三维已裁，剖面不许还撒在外面） */
+        var rr=Math.sqrt(bx[j2]*bx[j2]+by[j2]*by[j2]);
+        pcx.fillRect(PX(rr)-0.6,PY(bz[j2])-0.6,1.2,1.2);
+        pcx.fillRect(PX(-rr)-0.6,PY(bz[j2])-0.6,1.2,1.2);
+        cnt2++;
+      }
     }
   }
-  /* v9.24 双线诊断（不是「包络线」—— 下面这条结论很重要）：
-     实测 D=⟨|Δ|⟩/⟨|v₋|⟩ 在 n=3 开刀瓣时 = 0，关刀瓣 0.0105 ⟹ 正流与反流两族的
-     **轨迹集合几乎完全重合**（剖面上是同一条曲线，只是一个往上游、一个往下游）。
-     ⟹ 数学上**不存在**一条"两族之间的包络线"可画：共形的两条曲线之间没有缝隙。
-     能画的只有「同一时刻两族分开多远」（沿轨迹的背向距离），所以这里只报数字。 */
+  /* v9.24 的结论仍然成立（别删）：两族**轨迹集合**几乎完全重合，D=⟨|Δ|⟩/R 才是带子的宽度；
+     「包络线」= 同一时刻两族分开多远的那一族连线（睫毛），不是一条解析曲线。 */
   if(ENV.on){
-    if(ENV.dirty) buildEnv();
+    if(ENV.pairs && ENV.pairs.length) bandInfo=bandDraw();
     var _Rr=(GEO&&GEO.R)?GEO.R:R.R;
     var _Dp=(_Rr>0)?(ENV.mean/_Rr):0;
     pcx.font='9px -apple-system,sans-serif';
@@ -2786,10 +3204,16 @@ function drawProfile(cel,sel){
     pcx.fillText('双线 ⟨Δ⟩ '+ENV.mean.toFixed(3)+'  max '+ENV.maxd.toFixed(3),5,h-35);
     pcx.fillStyle=light?'#8a6ab0':'#a98ee0';
     pcx.fillText('D=⟨Δ⟩/R '+_Dp.toFixed(3)+'（→0 即两族共形）',5,h-25);
+    if(!ENV.pairs || !ENV.pairs.length){
+      pcx.fillStyle=light?'#a03030':'#ff9a9a';
+      pcx.fillText('无配对：需要 ≥1 颗粒子',5,h-45);
+    }
   }
-  pcx.strokeStyle=light?'rgba(120,140,170,0.6)':'rgba(90,110,145,0.7)';
-  pcx.setLineDash([2,3]);pcx.beginPath();
-  pcx.moveTo(PX(0),PY(zlo));pcx.lineTo(PX(0),PY(zhi));pcx.stroke();pcx.setLineDash([]);
+  if(!onlyEnv){
+    pcx.strokeStyle=light?'rgba(120,140,170,0.6)':'rgba(90,110,145,0.7)';
+    pcx.setLineDash([2,3]);pcx.beginPath();
+    pcx.moveTo(PX(0),PY(zlo));pcx.lineTo(PX(0),PY(zhi));pcx.stroke();pcx.setLineDash([]);
+  }
   pcx.font='9px -apple-system,sans-serif';
   pcx.fillStyle=light?'#4a5a72':'#8fa3c8';
   pcx.fillText('Z_HI '+zhi.toFixed(2),5,12);
@@ -2798,7 +3222,8 @@ function drawProfile(cel,sel){
   pcx.fillStyle=(Math.abs(ratio-KE)<2e-3)?(light?'#0f8f61':'#3ddc97'):(light?'#a87400':'#ffd84a');
   pcx.fillText('Z_HI/|Z_LO| '+ratio.toFixed(4),5,h-5);
   pcx.fillStyle=light?'#6b7c93':'#5d6f92';
-  pcx.fillText('样本 '+cnt2,w-52,12);
+  if(onlyEnv) pcx.fillText('带 '+bandInfo.pairs+' 对·睫 '+bandInfo.lash,w-80,12);
+  else pcx.fillText('样本 '+cnt2,w-52,12);
   pcx.fillText('腰 ρe(0) '+g.rhoe0.toFixed(2),w-70,h-5);
 }
 
@@ -2811,8 +3236,15 @@ function drawProfile(cel,sel){
  *   调色板：216 web-safe + 40 灰阶 = 256 色；最近邻用 15 bit 查找表
  *   体积控制：编码后超 5 MB ⟹「隔帧丢弃 + 延时相加」重编，最多 4 轮
  * ================================================================== */
-var gifCap=null,gifCv=null,gifCx=null,gifLut=null,gifPal=null;
+var gifCap=null,gifProbe=false,lamDrawn=-1,gifCv=null,gifCx=null,gifLut=null,gifPal=null;
 var GIF_MAXB=5*1024*1024, GIF_TW=720;
+/* v9.54：导出 GIF 默认**不画外鞘三角网格**（老师 2026-11-05：中间泡壁内白底看不清）。
+   true = 不画；改成 false 就退回带网格的老样子。探针的变异体正是靠这一位翻红，别删。
+   作用域只在 gifCap 存在期间（见 shellPass 首行）。 */
+var GIF_NO_MESH=true;
+/* v9.52 裁紧参数：GIF_PAD 是方形裁切框在球体 bbox 外留的边距比例（呼吸会让球胀缩，
+   留 6% 防裁边）；GIF_MIN 是小窗口时的**下限**观看尺寸（放大不增信息，只防太小看不清）。 */
+var GIF_MIN=360, GIF_PAD=0.06;
 
 function gifMakePal(){
   var p=new Uint8Array(768),i=0,r,g,b,k,v;
@@ -2914,31 +3346,116 @@ function gifBuild(frames,gw,gh,delays){
   return o.a.subarray(0,o.n);
 }
 
+/* 画布上「有墨」的包围盒。step=2 粗扫（四分之一像素量），再外扩 2 px 补回步长误差。
+   为什么需要它：球只占画布 8.3%（实测 446² / 1578×855），而旧路径按整幅宽度定标
+   ⟹ 球被压到 203 px、球壳内侧糊成灰白（见文档 §19）。 */
+function gifBBox(){
+  var w=cv.width|0,h=cv.height|0,i,x,y,row;
+  if(!w||!h) return null;
+  var d;
+  try{ d=cv.getContext('2d').getImageData(0,0,w,h).data; }catch(e){ return null; }
+  var x0=w,y0=h,x1=-1,y1=-1,step=2;
+  for(y=0;y<h;y+=step){
+    row=y*w*4;
+    for(x=0;x<w;x+=step){
+      if(d[row+x*4+3]>8){
+        if(x<x0)x0=x; if(x>x1)x1=x;
+        if(y<y0)y0=y; if(y>y1)y1=y;
+      }
+    }
+  }
+  if(x1<0) return null;
+  return {x0:Math.max(0,x0-step),y0:Math.max(0,y0-step),
+          x1:Math.min(w-1,x1+step),y1:Math.min(h-1,y1+step)};
+}
+
 function gifStart(){
-  if(gifCap) return;
+  if(gifCap||gifProbe) return;
   var btn=document.getElementById('btnGif');
   if(!btn) return;
   var T=R.tb||5;
   var c={btn:btn,T:T,nF:Math.max(24,Math.min(90,Math.round(T*15))),
-         frames:[],ts:[],t0:tB,last:-1e9,k:0,
+         frames:[],ts:[],last:-1e9,k:0,
          wasP:R.playing,wasB:R.breathing,wasM:R.manual,wasL:R.manualLam};
+  /* v9.55：取景必须装下**整个呼吸周期**，不能只量点击那一帧。
+     实测（本机 1578x855 画布）：λ=0 蛋面高 443 px、λ=1 高 563 px，且整幅上抬 76 px
+     ⟹ 只按 λ=0 定框时上沿差 108 px，蛋尖那段螺旋线被切掉（老师 2026-11-05 原话）。
+     λ 的极值只可能落在 0 与 lmMax 上（λ=lmMax*(0.5-0.5cos 2πt/T)），
+     所以把 λ 推到两端各量一次，和当前帧取并集，再定方形框。 */
+  gifProbe=true;
+  btn.textContent='⏳ 量取景…';
+  R.playing=true; R.breathing=false; R.manual=true;
+  var bbU=null;
+  function addBb(b){
+    if(!b) return;
+    if(!bbU){ bbU={x0:b.x0,y0:b.y0,x1:b.x1,y1:b.y1}; return; }
+    if(b.x0<bbU.x0)bbU.x0=b.x0;
+    if(b.y0<bbU.y0)bbU.y0=b.y0;
+    if(b.x1>bbU.x1)bbU.x1=b.x1;
+    if(b.y1>bbU.y1)bbU.y1=b.y1;
+  }
+  /* 等到 frame() 真的用目标 λ 画完一帧再量。判 lamDrawn 这个**状态**，
+     不用固定 sleep、也不靠双 rAF —— 实测双 rAF 时第一次量到的还是上一帧的墨迹。 */
+  function waitDrawn(target,next,tries){
+    tries=tries||0;
+    if(lamDrawn===target||tries>=90){ next(); return; }
+    requestAnimationFrame(function(){ waitDrawn(target,next,tries+1); });
+  }
+  function probeDone(){
+    if(!gifProbe) return;                 /* 兜底定时器与轮询谁先到都只走一次 */
+    gifProbe=false;
+    addBb(gifBBox());
+    gifBegin(c,bbU);
+  }
+  function stageB(){
+    R.manualLam=R.lmMax;
+    waitDrawn(R.lmMax,function(){ addBb(gifBBox()); probeDone(); });
+  }
+  function stageA(){
+    R.manualLam=0;
+    waitDrawn(0,function(){ addBb(gifBBox()); stageB(); });
+  }
+  /* 2.5 s 兜底：窗口不可见时 rAF 会被节流到 1 Hz，别让按钮停在「量取景」不动 */
+  setTimeout(probeDone,2500);
+  stageA();
+}
+function gifBegin(c,bb){
   /* 一个周期必须真的在呼吸、真的在播 */
   R.playing=true; R.breathing=true; R.manual=false;
-  var gw=Math.min(GIF_TW,cv.width);
-  gw=Math.max(64,gw-(gw&1));
-  var gh=Math.max(64,Math.round(gw*cv.height/cv.width));
-  gh-=(gh&1);
-  c.gw=gw; c.gh=gh;
+  /* v9.52：按内容 bbox 裁**方形**、1:1（不缩放）。
+     旧法 gw=min(720,画布宽) ⟹ 球直径只剩 720×446/1578 ＝ 203 px；
+     裁紧后球直径 ≡ 画布上的实际像素数（实测 482），等于把有效分辨率提了 2.4 倍，
+     且 1:1 无插值 ⟹ 量化后与未量化原图同档（meanL 170.2 vs 168.4、锐度 92.7 vs 90.0）。
+     v9.55：bb 是**整个 λ 周期**的并集，不再是单帧。 */
+  var sq, sx, sy;
+  if(bb){
+    var bw=bb.x1-bb.x0+1, bh=bb.y1-bb.y0+1;
+    sq=Math.round(Math.max(bw,bh)*(1+GIF_PAD*2));
+    sx=Math.round((bb.x0+bb.x1)/2-sq/2);
+    sy=Math.round((bb.y0+bb.y1)/2-sq/2);
+  }else{
+    sq=Math.min(cv.width,cv.height);
+    sx=Math.round((cv.width-sq)/2); sy=Math.round((cv.height-sq)/2);
+  }
+  sq=Math.min(sq,cv.width,cv.height);
+  sx=Math.max(0,Math.min(cv.width-sq,sx));
+  sy=Math.max(0,Math.min(cv.height-sq,sy));
+  var gw=Math.max(64,Math.min(GIF_TW,sq));
+  if(sq<GIF_MIN) gw=GIF_MIN;              /* 小窗口：只放大不缩，信息量由画布定 */
+  gw-=(gw&1);
+  var gh=gw;
+  c.gw=gw; c.gh=gh; c.sx=sx; c.sy=sy; c.ss=sq;
   if(!gifCv){
     gifCv=document.createElement('canvas');
     gifCx=gifCv.getContext('2d',{willReadFrequently:true});
   }
   gifCv.width=gw; gifCv.height=gh;
   if(!gifPal){ gifPal=gifMakePal(); gifLut=gifMakeLut(gifPal); }
-  c.gap=T/c.nF*0.7;
+  c.gap=c.T/c.nF*0.7;
+  c.t0=tB;
   gifCap=c;
-  btn.textContent='● 录制 0/'+c.nF;
-  btn.style.background='#c62828'; btn.style.color='#fff'; btn.style.borderColor='#c62828';
+  c.btn.textContent='● 录制 0/'+c.nF;
+  c.btn.style.background='#c62828'; c.btn.style.color='#fff'; c.btn.style.borderColor='#c62828';
 }
 
 function gifCapStep(){
@@ -2947,7 +3464,7 @@ function gifCapStep(){
   if(el>=c.T || c.frames.length>=c.nF){ gifFinish(); return; }
   if(el-c.last<c.gap) return;
   gifCv.width=c.gw; gifCv.height=c.gh;
-  gifCx.drawImage(cv,0,0,c.gw,c.gh);
+  gifCx.drawImage(cv,c.sx,c.sy,c.ss,c.ss,0,0,c.gw,c.gh);   /* v9.52：源矩形＝内容方形 */
   var d=gifCx.getImageData(0,0,c.gw,c.gh).data;
   var p=c.gw*c.gh,idx=new Uint8Array(p),i,q=0;
   for(i=0;i<p;i++){
@@ -2971,15 +3488,32 @@ function gifFinish(){
   }
   c.btn.textContent='编码中…';
   setTimeout(function(){
-    var frames=c.frames,delays=dl,out=null,tryN=0;
-    while(tryN<4){
+    /* v9.53 体积控制：从**全帧**按比例均匀抽稀，而不是「隔帧丢一半」。
+       隔帧丢一半会把 73 帧直接砍到 37（8.3 fps，肉眼觉得顿）；
+       抽稀到 0.78 还能留 57 帧（11.5 fps），同样 ≤5 MB 但动感好得多。
+       延时按**被合并帧的区间和**累加 ⟹ 总时长严格不变（不是简单乘 2）。
+       始终从 allF 抽，不在已抽稀的结果上再抽，避免累积损失。 */
+    function pick(F,D,k){
+      var m=F.length,cnt=Math.max(8,Math.round(m*k));
+      var nf=[],nd=[],j,t,s,i0,i1;
+      for(j=0;j<cnt;j++){
+        i0=Math.round(j*m/cnt); i1=Math.round((j+1)*m/cnt);
+        if(i1<=i0) i1=Math.min(m,i0+1);
+        nf.push(F[i0]); s=0;
+        for(t=i0;t<i1;t++) s+=D[t];
+        nd.push(s||D[i0]||2);
+      }
+      return {f:nf,d:nd};
+    }
+    var allF=c.frames,allD=dl,frames=c.frames,delays=dl,out=null,tryN=0;
+    var KEEP=[1,0.78,0.62,0.5,0.40,0.32];
+    while(tryN<KEEP.length){
       out=gifBuild(frames,c.gw,c.gh,delays);
       if(out.length<=GIF_MAXB||frames.length<8) break;
-      var nf=[],nd=[],j;
-      for(j=0;j<frames.length;j+=2){
-        nf.push(frames[j]); nd.push(delays[j]+(delays[j+1]||delays[j]));
-      }
-      frames=nf; delays=nd; tryN++;
+      tryN++;
+      if(tryN>=KEEP.length) break;
+      var pk=pick(allF,allD,KEEP[tryN]);
+      frames=pk.f; delays=pk.d;
     }
     window.__lastGif=out;                     /* 给探针取证用，无副作用 */
     var mb=(out.length/1048576).toFixed(2);
@@ -3434,6 +3968,8 @@ function frame(now){
     }
   }
   /* 自转独立于呼吸：R.autoRot 关掉后画面就停转（原来自转绑在 R.playing 上，没法单独停）。
+     ★ v9.51 起 R.autoRot **默认开**，而这一行仍要求 R.playing ⟹ 左边的 ⏸ 暂停
+     同时冻结「自转 + 呼吸 + 粒子」三件事（这正是老师说的「自动自转播放」的暂停语义）。
      镜像（ω → −ω）时**自转方向也一起反**：粒子绕轴反了，相机却还朝原方向扫，
      观感上是「东西在往回飘」而不是「整个系统镜像」。老师 2026-11-01 要求同步。 */
   if(R.playing&&R.autoRot) az+=dts*R.rs*(R.mirror?-1:1);
@@ -3481,7 +4017,7 @@ function frame(now){
       var bx=CX[id],by=CY[id],bz=CZ[id],nn=CN[id],mx=-1e9;
       var stp=Math.max(1,(nn/400)|0);
       for(var w2=0;w2<nn;w2+=stp){
-        var rr2=Math.sqrt(bx[w2]*bx[w2]+by[w2]*by[w2])-rhoeAt(GEO,bz[w2]);
+        var rr2=Math.sqrt(bx[w2]*bx[w2]+by[w2]*by[w2])-reAtXY(GEO,bz[w2],bx[w2],by[w2]);
         if(rr2>mx)mx=rr2;
       }
       overEMA=0.6*overEMA+0.4*mx;
@@ -3509,6 +4045,9 @@ function frame(now){
 
   var td0=performance.now();
   draw();
+  lamDrawn=lamNow;   /* v9.55：本帧**实际画出来**的 λ。预扫靠它判「画完了没有」——
+                        双 rAF 不够：实测点击后第一次 rAF 量到的仍是上一帧的墨迹
+                        （变异体 lf2 全绿就是这个坑，见文档 §21）。 */
   if(gifCap) gifCapStep();
   if(rsc) rscanStep();
   msDraw=performance.now()-td0;
@@ -4561,6 +5100,13 @@ function applySim(){
   P.KTZ = R.bladeOn ? (R.KTZ||0) : 0;
   P.BL  = R.bladeOn ? bladeEff() : 0;   /* v9.23：瓣深自动的生效值（关自动时 ≡ R.BL） */
   P.CN  = R.bladeOn ? 1 : 0;   /* 1 ⇒ 整场严格 C_n（vz 也换成 n 阶） */
+  /* v9.50 托卡马克整形：热路径只认 P.TOK*（integrateP 里的 R 是局部半径标量）。
+     关 ⇒ TOK=0，热路径两处 `if(TK!==0)` 全短路 ⟹ 逐位等于加这个开关之前。 */
+  P.TOK  = R.tokOn ? 1 : 0;
+  P.TOKE2= R.tokKap - 1;
+  P.TOKE3= R.tokDel;
+  P.TOKT = R.tokTau;
+  P.TOKU = R.tokUp;
   /* 反流：0=正流（默认）、1=输运反号；见 fieldAt 里 v = -v + 2·v_C 的推导 */
   /* v9.24：σ 是唯一真源；FLIP 保留为「σ<0」的快捷布尔（走旧原式 ⟹ 历史轨迹逐位不变） */
   P.SG   = (R.sigma===undefined?1:R.sigma);
@@ -4868,6 +5414,18 @@ function setWallFlip(on){
   syncFlowUI(); applySim(); markDirty();
   return !!R.wallFlip;
 }
+/* v9.49 越界段裁剪开关：只改绘制，不动数据 */
+function setOvClip(on){
+  R.ovClip=!!on;
+  var b=document.getElementById('btnOvClip');
+  if(b){b.textContent='▤ 越界段 · '+(R.ovClip?'已裁':'照画');
+        b.className='gh'+(R.ovClip?' on':'');}
+  markDirty();
+  return !!R.ovClip;
+}
+var _ovcBtn=document.getElementById('btnOvClip');
+if(_ovcBtn)_ovcBtn.onclick=function(){setOvClip(!R.ovClip);};
+setOvClip(R.ovClip);
 var _wfBtn=document.getElementById('btnWF');
 if(_wfBtn)_wfBtn.onclick=function(){setWallFlip(!R.wallFlip);};
 syncFlowUI();        /* σ / τ 读数初始化（不重复 applySim） */
@@ -4882,17 +5440,35 @@ function setDual(on){
   markDirty();
 }
 /* v9.24 包络层开关（默认开；关掉只是不画，不影响点云） */
+function envOnlyBtn(){
+  var b=document.getElementById('btnEnvOnly');
+  if(b){b.textContent='◉ 只看包络线 · '+(ENV.only?'开':'关');
+        b.className='gh'+(ENV.only?' on':'');}
+}
 function setEnv(on){
   ENV.on=!!on;
-  if(!ENV.on){ ENV.pairs=null; ENV.mean=0; ENV.maxd=0; }
+  if(!ENV.on){ ENV.pairs=null; ENV.mean=0; ENV.maxd=0; ENV.only=false; envOnlyBtn(); }
   var b=document.getElementById('btnEnv');
   if(b){b.textContent='◫ 包络线 · '+(ENV.on?'开':'关');
         b.className='gh'+(ENV.on?' on':'');}
   envInvalidate(); markDirty();
   return ENV.on;
 }
+/* ★ v9.46「只看包络线」：其它线全部隐藏，只留包络带。
+   它**依附**于包络线开关：点它会自动把包络线打开 —— 否则会出现「按钮亮着、屏上空白」，
+   那种状态比按钮不存在更坏（用户会以为页面坏了）。 */
+function setEnvOnly(on){
+  ENV.only=!!on;
+  if(ENV.only && !ENV.on) setEnv(true);
+  envOnlyBtn();
+  if(ENV.only) envInvalidate();
+  markDirty();
+  return ENV.only;
+}
 var _enBtn=document.getElementById('btnEnv');
 if(_enBtn)_enBtn.onclick=function(){setEnv(!ENV.on);};
+var _enOBtn=document.getElementById('btnEnvOnly');
+if(_enOBtn)_enOBtn.onclick=function(){setEnvOnly(!ENV.only);};
 var _duBtn=document.getElementById('btnDual');
 if(_duBtn)_duBtn.onclick=function(){setDual(!R.dualFlow);};
 setDual(R.dualFlow);   /* v9.20 初始化：把按钮文案/高亮/提示一起对齐到默认态（默认开） */
@@ -5146,7 +5722,9 @@ bind('sNP','vNP','np',function(x){return String(x|0)},function(){
  *    ⚠ 只有一种情况会破线性：内圈被 WMAX=0.30/dt 截断（trunc=true）⟹ 自动做第二次迭代。
  * ================================================================== */
 var MN={on:false,m:0,T:0,Tm:0,Tn:0,Tbad:0,Thm:0,Tnh:0,C:0,span:0,om:0,panelOm:0,extAt:0,k:1,
-        warn:'',key:'',busy:false,pre:null,preDual:false,preBreath:false,trunc:false,ms:0};
+        warn:'',key:'',busy:false,pre:null,preDual:false,preBreath:false,trunc:false,ms:0,
+        /* v9.45 自动选轨：survey 结果（可跨 m 复用）/ 选中的起点 / 可用条数 / T 散布 */
+        survey:null,seedTag:-1,syn:false,frac:0,nCand:0,nOk:0,Tmin:0,Tmax:0,sms:0,spanMax:0};
 var MN_T0=3.179;          /* 兜底周期：只用于估积分上限，标定后一律用实测值 */
 /* v9.29【MN_FULL】单周期环：只改**视角**，不改场。saved 存旧视角以备还原。 */
 var MNF={on:false,saved:null};
@@ -5161,6 +5739,7 @@ function mnDebounce(){
 function mnSig(){
   return [P.R,P.J,P.OM0,P.RC,P.RJ,P.EPS,P.SG,P.TW,P.LMOD,P.RHOS,
           P.KDD,P.KRR,P.WR,P.NBL,P.KTZ,P.BL,P.CN,P.M1,P.M1WR,P.M1PH,
+          P.TOK,P.TOKE2,P.TOKE3,P.TOKT,P.TOKU,
           (R.bladeOn?1:0),(R.timeRev?1:0),(R.mirror?1:0),
           lamNow.toFixed(3),R.dt.toPrecision(4)].join('|');
 }
@@ -5170,23 +5749,39 @@ function updLoops(){
   e.textContent=(R.span/T).toFixed(1);
 }
 
-/* 一次连续积分：同时得到 T_ρ（ρ 极值间隔）与 C(t)=∫(ω/Ω₀)dt 的累积表（供任意 τ 插值）。 */
-function mnCalib(m, omGuess){
-  var g=mkGeo(lamNow,P.R), dt=Math.min(R.dt,2.2e-3), sc=simS();
-  var st=seedFor(0).slice();
-  /* Ω₀ 只当「标尺」用：C 的定义里已经除掉了它 ⟹ 取什么都行，但不能取 0（0/0）。
-     Ω₀ 真的被拖到 0 时，临时按「面板值 1.0」当标尺。 */
+/* ==================================================================
+ * v9.45【MN 自动选轨 + 抗抖】—— 老师 2026-11-05
+ *   「为啥除了 m=0 以外，m=其它值都失败了？单周期环打勾后，
+ *     你要自动调整其他的参数让它成功啊。」
+ *
+ * 🔴 根因（实测，不是猜）：旧版固定拿 seedFor(0) 当体温计。默认 λ=0/R=4 时
+ *   那颗起点 ρ₀=0.686，一路**内落到 ρ≈0.07 贴壁**（z→3.9186 停住）——
+ *   9 s 里只出 1 个极小、0 个极大 ⟹ 「0 个极大 / 1 个极小」就是这一条。
+ *   画面上中圈那 9 颗（ρ₀ 1.5~2.7）全都正常振荡（T_ρ≈4.4 s，9 s 里 2 极 2 谷）。
+ *   ⟹ 不是场坏了，是「拿错了一颗种子当体温计」。
+ * 🔴 更坏的一条：「单周期环」把 N 收到 1 ⇒ 只剩第 0 颗可用，偏偏它就是内落那颗
+ *   ⟹ 一勾必失败。这就是老师说的「打勾后要自动调」。
+ * 🔴 还有一种假成功：贴壁后 ρ 在 0.0698 附近高频抖动，旧代码 `i-lastI>10` 只挡
+ *   「同点连报」，挡不住抖动 ⟹ 会量出 T_ρ≈0.05 s（随 dt 线性变，纯数值伪影），
+ *   于是 τ=m·0.05 短得看不见。所以极值必须带**幅度门槛**：转折幅度 < 2% 赤道半径
+ *   一律判为抖动，丢弃且不更新参考点。
+ * ================================================================== */
+
+/* ---------- 单次积分内核：自测 T_ρ（同类极值间隔中位）＋ C(t) 累积表 ---------- */
+function mnRun(st0, W, dt, m, omGuess){
+  var g=mkGeo(lamNow,P.R), sc=simS();
+  /* Ω₀ 只当「标尺」：C 的定义里已经除掉它 ⟹ 取什么都行，但不能取 0（0/0）。 */
   var omEff=(omGuess>0)?omGuess:((Math.abs(P.OM0)>1e-12)?P.OM0:Math.pow(sc,1.5));
   var LM=(P.LMOD===1), RS2=P.RHOS*P.RHOS, KD=P.KDD, KRR=P.KRR, WRG=P.WR;
   var RC=P.RC, WMAX=0.30/dt, EA2=P.EPSA*P.EPSA;
+  var st=[st0[0],st0[1],st0[2]];
   var rho0=Math.sqrt(st[0]*st[0]+st[1]*st[1]+EA2), rq0=rho0+RC;
-  /* L₀ 与 integrateP 里同一个式子（起点处两档角速度逐位相同） */
-  var L0=LM? (rho0*rho0+RS2)*(KD*(omEff/(rq0*Math.sqrt(rq0)))+KRR*WRG) : 0;
-  var tmax=Math.min(52,(m+2.2)*MN_T0);
-  var nmax=Math.min(420000,Math.round(tmax/dt));
-  var prevRho=Math.sqrt(st[0]*st[0]+st[1]*st[1]), prevD=null, lastI=-99;
-  var mxT=[], mnT=[], ev=[], C=0, t=0, trunc=false;
-  var tblT=[],tblC=[], nextT=0;
+  var L0=LM?(rho0*rho0+RS2)*(KD*(omEff/(rq0*Math.sqrt(rq0)))+KRR*WRG):0;
+  var nmax=Math.min(900000,Math.max(1,Math.round(W/dt)));
+  var ampMin=0.02*g.rhoe0;      /* ★ 抖动门槛：转折幅度 < 2% 赤道半径 ⟹ 不算极值 */
+  var prevRho=rho0, prevD=null, lastI=-99, pend=0;
+  var rmin=rho0, rmax=rho0, C=0, t=0, trunc=false, blew=false;
+  var ev=[], tblT=[0], tblC=[0], nextT=0.20;
   for(var i=0;i<nmax;i++){
     rk4(g,P,st,t,dt); t+=dt;
     var rho=Math.sqrt(st[0]*st[0]+st[1]*st[1]);
@@ -5195,39 +5790,54 @@ function mnCalib(m, omGuess){
             if(w> WMAX){w= WMAX;trunc=true;} else if(w<-WMAX){w=-WMAX;trunc=true;} }
     else  { var rq=rho+RC; w=KD*(omEff/(rq*Math.sqrt(rq)))+KRR*WRG; }
     C+=w*dt/omEff;
+    if(rho<rmin) rmin=rho;
+    if(rho>rmax) rmax=rho;
     var dr=rho-prevRho;
-    /* 🔴 T_ρ **不能**用「2×相邻极值间隔」：这条子午振荡是**非对称**的
-       （实测极大→极小 2.2484 s、极小→极大 0.9306 s，差 2.4 倍，ρ̇ 在内侧快、外侧慢），
-       取中位数再 ×2 会得到 4.47 s（比真值 3.179 大 40%），瓣数系统性少数。
-       正解：**按类型分开**，T_ρ = 极大到极大的中位间隔（= 极小到极小，两者必须一致）。
-       `i-lastI>10` 防同一个点因浮点抖动连报两次。 */
-    if(prevD!==null && i-lastI>10){
-      if(prevD>0&&dr<=0){ mxT.push(t); ev.push([t,1]); lastI=i; }   /* ρ 极大 = 瓣尖 */
-      else if(prevD<0&&dr>=0){ mnT.push(t); ev.push([t,0]); lastI=i; } /* ρ 极小 = 谷底 */
+    if(prevD!==null && (i-lastI)>24){
+      var turn=0;
+      if(prevD>0&&dr<=0) turn=1;          /* ρ 极大 = 瓣尖 */
+      else if(prevD<0&&dr>=0) turn=2;     /* ρ 极小 = 谷底 */
+      if(turn){
+        /* 第一个极值无条件收（pend 初始 0）；之后必须与上一个**被接受的**极值拉开
+           至少 ampMin，否则判为数值抖动 —— 关键是**不更新 pend**，否则会被抖动带跑。 */
+        if(!pend || Math.abs(rho-pend)>=ampMin){ ev.push([t,turn,rho]); pend=rho; lastI=i; }
+      }
     }
     prevD=dr; prevRho=rho;
     if(t>=nextT){ tblT.push(t); tblC.push(C); nextT+=0.20; }
-    if(!isFinite(rho)||rho>1e3) break;
+    if(!isFinite(rho)||rho>1e3){ blew=true; break; }
   }
-  /* T_ρ = 2×相邻极值间隔；取**中位数**（避开起步半周期与暂态前两个） */
-  var Trho=0;
-  var med=function(a){ if(!a.length)return 0; var b=a.slice(); b.sort(function(x,y){return x-y;});
+  var mxT=[],mnT=[],allT=[],k;
+  for(k=0;k<ev.length;k++){ allT.push(ev[k][0]); if(ev[k][1]===1) mxT.push(ev[k][0]); else mnT.push(ev[k][0]); }
+  var med=function(a){ if(!a.length)return 0; var b=a.slice().sort(function(x,y){return x-y;});
                        return b[b.length>>1]; };
-  var difOf=function(a){ var d=[]; for(var k=1;k<a.length;k++) d.push(a[k]-a[k-1]); return d; };
-  var Tm=med(difOf(mxT)), Tn=med(difOf(mnT));
-  var Trho=(Tm>0&&Tn>0)?0.5*(Tm+Tn):(Tm||Tn);
-  /* Tbad = 用「2×相邻(不分类型)极值间隔」这个**错算法**会得到的值 —— 只用于卡片上打脸取证 */
-  var allT=mxT.concat(mnT); allT.sort(function(a,b){return a-b;});
-  var Tbad=2*med(difOf(allT));
-  /* 半周期两段不等长 —— 这才是「不能拿 2×相邻间隔当周期」的根 */
-  var hmL=[],mhL=[];
-  for(var e2=1;e2<ev.length;e2++){ var dq=ev[e2][0]-ev[e2-1][0];
-    if(ev[e2-1][1]===1&&ev[e2][1]===0) hmL.push(dq);
-    else if(ev[e2-1][1]===0&&ev[e2][1]===1) mhL.push(dq); }
-  var Thm=med(hmL), Tnh=med(mhL);
-  if(!(Trho>0)) return {ok:false,why:'测不到子午周期（轨迹逃逸/无界？只抓到 '
-      +mxT.length+' 个极大 / '+mnT.length+' 个极小）',T:0,C:0,span:0,panelOm:0,ext:0};
-  var span=m*Trho, warn='';
+  var dif=function(a){ var d=[]; for(var q=1;q<a.length;q++) d.push(a[q]-a[q-1]); return d; };
+  var Tm=med(dif(mxT)), Tn=med(dif(mnT));
+  var T=(Tm>0&&Tn>0)?0.5*(Tm+Tn):(Tm||Tn);
+  /* 错算法（2×不分类型相邻间隔）—— 只用于卡片上打脸取证，不参与计算 */
+  var Tbad=2*med(dif(allT));
+  var hm=[],mh=[];
+  for(k=1;k<ev.length;k++){ var dq=ev[k][0]-ev[k-1][0];
+    if(ev[k-1][1]===1&&ev[k][1]===2) hm.push(dq);
+    else if(ev[k-1][1]===2&&ev[k][1]===1) mh.push(dq); }
+  var Thm=med(hm), Tnh=med(mh);
+  if(!(T>0)) return {ok:false,T:0,C:0,span:0,panelOm:0,ext:0,
+      /* 🔴 失败也要把数报出来：判据要能查「它数出了几个极值」，只给一句 why 的话，
+         探针读到 undefined 再 `|0` 就恒等于 0 —— 那是恒真式（v9.45 踩过）。 */
+      nMax:mxT.length,nMin:mnT.length,evN:ev.length,rmin:rmin,rmax:rmax,
+      why:'这条轨道没有振荡（ρ 从 '+rho0.toFixed(3)+' 走到 '+rmin.toFixed(3)
+          +'~'+rmax.toFixed(3)+'）：极大 '+mxT.length+' 个 / 极小 '+mnT.length+' 个'
+          +(blew?'，且积分中途发散':'')};
+  var mm=(m>0?m:1);
+  var span=mm*T;
+  /* 🔴 对齐到第 m 个瓣尖（v9.45）：起点是半空的种子，先内落再回升，**第一个 ρ 极大出现在
+     t1≈1.05·T**（实测 4.50 vs T=4.19）。所以 τ=m·T 会把窗口切在第一个瓣尖之前 ——
+     实测 m=1 时 extAt=0，屏幕上就是「刚长出一个瓣就被截断」。
+     取「第 m 个极大 + 0.15·T」，窗口里才有 m 个完整瓣尖。上限 1.6× 防异常。 */
+  if(mxT.length>=mm){
+    var sAlign=mxT[mm-1]+0.15*T;
+    if(sAlign>span && sAlign<span*1.6) span=sAlign;
+  }
   var CAt=function(tt){
     if(tblT.length<2) return 0;
     if(tt<=tblT[0]) return tblC[0]*tt/Math.max(1e-12,tblT[0]);
@@ -5237,15 +5847,97 @@ function mnCalib(m, omGuess){
     }
     return tblC[tblC.length-1];
   };
-  var Cspan=CAt(span);
-  if(span>tblT[tblT.length-1]+1e-9){ warn='τ 超出标定窗口，C 走了外推（结果偏小）'; }
-  if(!(Cspan>0)) return {ok:false,why:'C=0（Ω₀ 项被刚性档 K_RR·W_R 独占，无法用 Ω₀ 调方位）',T:Trho,C:0,span:span,panelOm:0,ext:0};
-  var om=2*Math.PI/Cspan;                 /* P 单位（相似律缩放后的真实 Ω₀） */
-  var panelOm=om/Math.pow(sc,1.5);        /* 换算回面板值 */
-  /* 窗口内的**瓣尖数** = ρ 极大的个数（不是极值总数：每个瓣含一极大一极小） */
-  var extAt=0; for(var q2=0;q2<mxT.length;q2++) if(mxT[q2]<=span) extAt++;
-  return {ok:true,T:Trho,C:Cspan,span:span,panelOm:panelOm,ext:extAt,extAll:mxT.length,
-          Tm:Tm,Tn:Tn,Tbad:Tbad,Thm:Thm,Tnh:Tnh,tEnd:t,trunc:trunc,warn:warn};
+  var Cspan=CAt(span), warn='';
+  if(span>tblT[tblT.length-1]+1e-9) warn='τ 超出标定窗口，C 走了外推（结果偏小）';
+  if(!(Cspan>0)) return {ok:false,T:T,why:'C=0（Ω₀ 项被刚性档 K_RR·W_R 独占，无法用 Ω₀ 调方位）',
+                         C:0,span:span,panelOm:0,ext:0,nMax:mxT.length,nMin:mnT.length};
+  var om=2*Math.PI/Cspan;
+  var panelOm=om/Math.pow(sc,1.5);
+  var extAt=0; for(k=0;k<mxT.length;k++) if(mxT[k]<=span+1e-9) extAt++;
+  return {ok:true,T:T,Tm:Tm,Tn:Tn,Tbad:Tbad,Thm:Thm,Tnh:Tnh,C:Cspan,span:span,
+          panelOm:panelOm,ext:extAt,extAll:mxT.length,tEnd:t,trunc:trunc,warn:warn,
+          rmin:rmin,rmax:rmax,nMax:mxT.length,nMin:mnT.length,evN:ev.length};
+}
+
+/* ---------- 候选起点：画面种子 + （N 太小时）沿 ρ 扫的内部探针 ---------- */
+function mnCands(){
+  var out=[], N=Math.min(12,Math.max(1,R.np|0)), i;
+  for(i=0;i<N;i++){ var s=seedFor(i); if(s) out.push({st:[s[0],s[1],s[2]],tag:i,syn:false}); }
+  /* 勾「单周期环」会把 N 收到 1，只剩内落那颗。补一组内部探针（φ/z 沿用第 0 颗，
+     只把 ρ 往中圈挪）—— 这是「自动调参让它成功」，调的是**体温计的落点**，不改用户参数。 */
+  if(out.length<6){
+    var g=mkGeo(lamNow,P.R), b=seedFor(0);
+    if(b){
+      /* 🔴 两个维度都要扫（_diag_syn 实测）：
+         ① ρ：ρ<0.8·ρe0 一律内落贴壁（画面第 1、2、3、13、15 颗就是这类），
+            ρ≥1.5·ρe0 才振荡 ⟹ 探针取 0.55~0.92 ρe0；
+         ② **z 的大小与符号**：|z| ≤ 0.0138 落在 z≈0 的**精确不变流形**上（只沿赤道面滑、
+            永不振荡），|z| ≥ 0.02 立刻正常振荡且 **T_ρ 与 |z| 无关**（0.02/0.03/0.06 六档全
+            4.1877）⟹ 把 |z| 抬到 0.03~0.09 的带宽内，正负各试一遍。 */
+      var ph=Math.atan2(b[1],b[0]), az=Math.min(0.09,Math.max(0.03,Math.abs(b[2])));
+      var fr=[0.55,0.68,0.80,0.92], sg=[1,-1], ss, kk;
+      for(ss=0;ss<sg.length;ss++){
+        for(kk=0;kk<fr.length;kk++){
+          var rr=fr[kk]*g.rhoe0;
+          out.push({st:[rr*Math.cos(ph),rr*Math.sin(ph),sg[ss]*az],
+                    tag:kk*2+ss,syn:true,frac:fr[kk]});
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/* ---------- 逐颗试跑，选中位周期的那条 ---------- */
+function mnSurvey(){
+  var dt=Math.min(R.dt,2.2e-3), cands=mnCands(), W=6*MN_T0, list=[], pass, i;
+  for(pass=0;pass<3;pass++){
+    list=[];
+    for(i=0;i<cands.length;i++){
+      var q=mnRun(cands[i].st,W,dt,1,0);
+      if(q.ok && q.T>30*dt) list.push({i:i,T:q.T,amp:q.rmax-q.rmin,nMax:q.nMax});
+    }
+    if(list.length) break;
+    W*=2;
+  }
+  if(!list.length) return {ok:false,nCand:cands.length,W:W,
+    why:'试了 '+cands.length+' 条候选轨道（单条最长 '+W.toFixed(0)+' s），没有一条完成两个完整振荡 —— '
+       +(R.timeRev
+         ? '<b>「时钟反向」开着</b>：反向档下轨迹从种子点<b>单向逃逸</b>（不再回到起点附近），'
+          +'子午面根本没有振荡周期，m 芒无从谈起。把它关掉再试。'
+         : '这个参数组合下子午面不振荡（不是算法问题，请把 J / σ / 刀瓣这几个决定子午场的量挪一挪）')};
+  var Ts=list.map(function(a){return a.T;}).sort(function(a,b){return a-b;});
+  var Tmed=Ts[Ts.length>>1];
+  var bi=list[0], bd=1e9, k;
+  for(k=0;k<list.length;k++){
+    var d=Math.abs(list[k].T-Tmed)/Tmed;
+    if(d<bd-1e-9 || (Math.abs(d-bd)<1e-9 && list[k].amp>bi.amp)){ bd=d; bi=list[k]; }
+  }
+  return {ok:true,T:Tmed,st:cands[bi.i].st,tag:cands[bi.i].tag,syn:!!cands[bi.i].syn,
+          frac:cands[bi.i].frac,nCand:cands.length,nOk:list.length,W:W,dt:dt,
+          Tmin:Ts[0],Tmax:Ts[Ts.length-1]};
+}
+
+/* ---------- 标定：用 survey 选中的轨道，窗口按实测 T 定 ---------- */
+function mnCalib(m, omGuess, opt){
+  opt=opt||{};
+  var sur=opt.survey||MN.survey||mnSurvey();
+  if(!sur.ok) return {ok:false,why:sur.why,T:0,C:0,span:0,panelOm:0,ext:0,survey:sur};
+  var dt=sur.dt||Math.min(R.dt,2.2e-3), mm=(m>0?m:1);
+  /* 窗口至少 4.5 个周期：只有 2 个同类极值时「中位间隔」就是那一个间隔，
+     起步暂态（种子在半空、先内落再回升）会把 T_ρ 抬到 1.00~1.05 倍，
+     m=1 时 span=1·T 恰好**差 0.5% 不够一个瓣尖** ⟹ 卡片会显示「窗口内 0 个瓣尖」。 */
+  var W2=Math.max(mm*sur.T+0.9*sur.T, 4.5*sur.T);
+  var r=mnRun(sur.st,W2,dt,mm,omGuess||0);
+  if(!r.ok) return {ok:false,why:'选中轨道在 '+W2.toFixed(1)+' s 窗口内测不到周期：'+r.why,survey:sur};
+  /* 实测 T 与 survey 中位差 >5% ⟹ 用实测 T 重定窗口再跑一次（大 m 时窗口差 5% 会少一个瓣） */
+  if(Math.abs(r.T-sur.T)/sur.T>0.05){
+    var W3=Math.max(mm*r.T+0.9*r.T, 4.5*r.T), r2=mnRun(sur.st,W3,dt,mm,omGuess||0);
+    if(r2.ok&&r2.C>0) r=r2;
+  }
+  r.survey=sur; r.seedTag=sur.tag; r.syn=sur.syn; r.frac=sur.frac;
+  r.nOk=sur.nOk; r.nCand=sur.nCand; r.Tmin=sur.Tmin; r.Tmax=sur.Tmax;
+  return r;
 }
 
 /* m 芒卡片：**标红**列出「现在不由你控制」的每一项 */
@@ -5264,6 +5956,14 @@ function mnRender(){
   var s=simS(), stepDeg=360/MN.m*MN.k;
   var preOm=(MN.pre?MN.pre.om:MN.om), preSpan=(MN.pre?MN.pre.span:MN.span);
   var h='<span class="hd">⚠ 自动接管中 · m = '+MN.m+' 芒（这两项已标红）</span>';
+  if(MN.nCand){
+    var sp=(MN.Tmax-MN.Tmin)/Math.max(1e-9,MN.T)*100;
+    h+='<span class="k">轨道：</span>自动选<b>第 '+MN.seedTag+' 颗</b>'
+      +(MN.syn?'<b class="bad">（画面可用起点 '+MN.nCand+' 条、原起点会内落贴壁 ⟹ 改用内部探针 '
+             +(MN.frac*100).toFixed(0)+'% 赤道半径）</b>':'')
+      +' <span class="k">共试 '+MN.nCand+' 条、'+MN.nOk+' 条能振荡，T<sub>ρ</sub> 散布 '
+      +sp.toFixed(1)+'%；选轨耗时 '+MN.sms.toFixed(0)+' ms</span><br>';
+  }
   h+='<span class="k">① 瓣数：</span>τ <b>'+preSpan.toFixed(2)+' → '+MN.span.toFixed(2)+' s</b>'
     +' = '+MN.m+' × T<sub>ρ</sub> <b>'+MN.T.toFixed(4)+' s</b>'
     +' <span class="k">（窗口内 '+MN.extAt+' 个瓣尖）</span><br>';
@@ -5320,9 +6020,14 @@ function mnApply(force){
     var dh=document.getElementById('hDual'); if(dh)dh.className='hint dim';
     applySim();
   }
-  var r=mnCalib(m,0);
+  /* v9.45 选轨：指纹没变就复用上一次的 survey（拖 m 滑条时省掉 ~100 ms 的重扫） */
+  var ts=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
+  var sur=(MN.survey && MN.key && MN.key===sig)?MN.survey:null;
+  if(!sur){ sur=mnSurvey(); MN.survey=sur; }
+  MN.sms=((typeof performance!=='undefined'&&performance.now)?performance.now():Date.now())-ts;
+  var r=mnCalib(m,0,{survey:sur});
   if(r.ok && r.trunc){                    /* WMAX 截断 ⟹ 用解出的 Ω₀ 再标一次（局部线性修正） */
-    var r2=mnCalib(m,r.panelOm*Math.pow(simS(),1.5));
+    var r2=mnCalib(m,r.panelOm*Math.pow(simS(),1.5),{survey:sur});
     if(r2.ok) r=r2;
   }
   MN.ms=((typeof performance!=='undefined'&&performance.now)?performance.now():Date.now())-t0;
@@ -5330,7 +6035,11 @@ function mnApply(force){
     MN.on=false;
     var el=document.getElementById('mnCard');
     if(el){ el.className='mcard'; el.innerHTML='<span class="hd">⚠ m = '+m+' 标定失败</span>'
-      +'<span class="bad">'+r.why+'</span><br><span class="k">已回退到手调 τ / Ω₀。</span>'; }
+      +'<span class="bad">'+r.why+'</span>'
+      +'<br><span class="k">已回退到手调 τ / Ω₀。试了 '
+      +((r.survey&&r.survey.nCand)||MN.nCand||0)+' 条候选轨道'
+      +(r.survey&&r.survey.ok?'（其中 '+r.survey.nOk+' 条能振荡，但选中那条在 m='+m+' 的窗口里又不行）':'')
+      +'。</span>'; }
     var v0=document.getElementById('vMN'); if(v0){v0.textContent='✕ 失败';v0.className='v';}
     return;
   }
@@ -5339,19 +6048,38 @@ function mnApply(force){
   MN.Thm=r.Thm||0; MN.Tnh=r.Tnh||0;
   MN.panelOm=r.panelOm; MN.extAt=(r.ext!==undefined?r.ext:0)|0; MN.k=1;
   MN.trunc=!!r.trunc; MN.warn=r.warn||'';
+  MN.seedTag=(r.seedTag===undefined?-1:r.seedTag); MN.syn=!!r.syn; MN.frac=r.frac||0;
+  MN.nCand=r.nCand||0; MN.nOk=r.nOk||0;
+  MN.Tmin=r.Tmin||r.T; MN.Tmax=r.Tmax||r.T;
   MN.busy=true;
   /* 🔴 **不能走 setSlider**：range 的 value 会按 step 对齐（step=0.05 时 22.2299→22.25、
      step=0.01 时 0.5626→0.56），闭合角立刻偏 0.5%，m 芒就不准了。
      这里**直赋 R**（真值），滑条只做视觉同步（disabled ⟹ 不会回写）。 */
-  R.span = Math.min(MN_HI,Math.max(MN_LO,r.span));
+  /* v9.45：**不按滑条量程截断**。T_ρ≈4.4 s 时 m=12 要 52.8 s，旧上限 48 会静默截掉 4.8 s
+     ⟹ 少一个瓣却照样显示「成功」，这比失败更难发现。滑条已 disabled，只做视觉同步，
+     所以把它 max 临时撑到真值之上（mnOff 里还原）。 */
+  R.span = Math.max(0.5, r.span);
   R.OM0  = Math.min(24,Math.max(0,r.panelOm));
   var s1=document.getElementById('sSP'), s2=document.getElementById('sOM');
   var v1=document.getElementById('vSP'), v2=document.getElementById('vOM');
-  if(s1){ s1.value=R.span; s1.disabled=true; }
+  if(s1){ if(!MN.spanMax) MN.spanMax=+s1.max||MN_HI;
+          if(+(s1.max) < R.span*1.02) s1.max=String(Math.ceil(R.span*1.02));
+          s1.value=R.span; s1.disabled=true; }
   if(s2){ s2.value=R.OM0;  s2.disabled=true; }
   if(v1)v1.textContent=R.span.toFixed(2);
   if(v2)v2.textContent=R.OM0.toFixed(2);
   applySim(); markDirty(); updLoops();
+  /* v9.45【画面与标定对齐】：粒子数 ≤2 时（「单周期环」会把 N 收到 1）画面只剩第 0 颗，
+     若标定的起点不是它，屏幕上那条线与 m 个瓣就对不上 —— 看起来就是「成功了但没有芒」。
+     这里把第 0 颗挪到标定起点：改的是**起点**，不动场、不动其它参数。 */
+  if((R.np|0)<=2 && r.survey && r.survey.ok && r.survey.st){
+    var s0=seedOf(0), sx=r.survey.st;
+    var d2=(s0[0]-sx[0])*(s0[0]-sx[0])+(s0[1]-sx[1])*(s0[1]-sx[1])+(s0[2]-sx[2])*(s0[2]-sx[2]);
+    if(d2>1e-14){
+      CIX[0]=sx[0]; CIY[0]=sx[1]; CIZ[0]=sx[2];
+      applySim(); markDirty();
+    }
+  }
   MN.key=mnSig();          /* 🔴 必须在 applySim 之后重算：Ω₀ 一写回，P.OM0 就变了，
                               否则兜底扫描每 1.2 s 都判「指纹变了」⟹ 无限重标定 */
   MN.busy=false;
@@ -5365,7 +6093,9 @@ function mnOff(){
   if(!MN.on){ mnRender(); return; }
   MN.on=false; MN.key='';
   var s1=document.getElementById('sSP'), s2=document.getElementById('sOM');
-  if(s1)s1.disabled=false; if(s2)s2.disabled=false;
+  if(s1){ s1.disabled=false; if(MN.spanMax) s1.max=String(MN.spanMax); }
+  if(s2)s2.disabled=false;
+  MN.survey=null; MN.nCand=0; MN.nOk=0; MN.seedTag=-1; MN.syn=false; MN.frac=0;
   MN.busy=true;
   if(MN.pre){ setSlider('sSP',MN.pre.span); setSlider('sOM',MN.pre.om); }
   MN.busy=false;
@@ -5410,7 +6140,7 @@ function mnFullSet(on){
     /* ① m=0 ⟹ 按当前窗口的圈数取最接近的整数（不是随便给 5） */
     var m=Math.round(R.mn)||0;
     if(m<1){
-      var T=(MN.T>0?MN.T:MN_T0);
+      var T=(MN.T>0?MN.T:((MN.survey&&MN.survey.T>0)?MN.survey.T:MN_T0));
       m=Math.max(1,Math.min(12,Math.round((R.span||T)/T)));
       setSlider('sMN',m);              /* 走 bind 入口 ⟹ 自动 mnApply + markDirty */
     }
@@ -5827,6 +6557,58 @@ function setMirror(on){
   markDirty(); fillLock();
 }
 document.getElementById('btnMirror').onclick=function(){setMirror(!R.mirror);};
+/* v9.47：坞里的状态行开机就得有字 —— 不调 setMirror()（那会把面板说明改写成
+   「已回到默认方向。」并 markDirty 一次），只把 span 的初始文案对齐当前 R.mirror。 */
+(function(){
+  var i=document.getElementById('mirInfo'); if(!i)return;
+  i.innerHTML=R.mirror?'ω → <b>−ω</b>（绕轴反向）':'ω → +ω（默认方向）';
+})();
+
+/* ── v9.50【TOKAMAK】总闸 + 四参数（老师 2026-11-05：做成可选项，按钮放左下角）──
+   ★ 按钮只切总闸，细参数进面板：这是「看一眼画面就想换形态」的开关（与镜像反向同类），
+     但 κ/δ/τ/u 不是天天拖的量 —— 两条路都留，谁也别逼谁。
+   ★ tokApply 必须调 applySim()：热路径 integrateP 里的 `R` 是**局部半径标量**，
+     整形参数只能经 P.TOK* 进去。漏这一步就会出现「壳变了、轨迹没变」的分家，
+     那正是 2026-11-01 相似律三入口各写一套的老坑。
+   ★ 不重撒种子：壳变形后让粒子按原起点继续跑，软墙会把它们压回新壳 ——
+     这样切开关是「渐变」而不是「画面整体跳一下」。 */
+function tokLab(){
+  var i=document.getElementById('tokInfo');
+  if(i)i.innerHTML=R.tokOn
+    ?('κ<b>'+R.tokKap.toFixed(2)+'</b> δ'+R.tokDel.toFixed(2)
+      +' τ'+R.tokTau.toFixed(2)+' u'+R.tokUp.toFixed(2))
+    :'';
+}
+function tokApply(){ applySim(); tokLab(); markDirty(); }
+function setTok(on){
+  R.tokOn=!!on;
+  var b=document.getElementById('btnTok');
+  if(b){b.textContent='🧲 磁笼整形 · '+(R.tokOn?'开':'关');
+        b.className='gh'+(R.tokOn?' on':'');}
+  tokApply();
+  return R.tokOn;
+}
+function tokReset(){
+  var m=[['sTK','vTK','tokKap',1.22,3],['sTD','vTD','tokDel',0.16,3],
+         ['sTT','vTT','tokTau',2.00,2],['sTU','vTU','tokUp',0.00,3]], q, s, v;
+  for(q=0;q<m.length;q++){
+    R[m[q][2]]=m[q][3];
+    s=document.getElementById(m[q][0]); if(s)s.value=String(m[q][3]);
+    v=document.getElementById(m[q][1]); if(v)v.textContent=m[q][3].toFixed(m[q][4]);
+  }
+  tokApply();
+}
+bind('sTK','vTK','tokKap',function(x){return x.toFixed(3);},tokApply);
+bind('sTD','vTD','tokDel',function(x){return x.toFixed(3);},tokApply);
+bind('sTT','vTT','tokTau',function(x){return x.toFixed(2);},tokApply);
+bind('sTU','vTU','tokUp',function(x){return x.toFixed(3);},tokApply);
+(function(){
+  var b=document.getElementById('btnTok');
+  if(b)b.onclick=function(){setTok(!R.tokOn);};
+  var r=document.getElementById('btnTokRst');
+  if(r)r.onclick=tokReset;
+})();
+setTok(R.tokOn);   /* 初始化：按钮文案 + P.TOK* 落到「关」 */
 
 (function(){
   var s=document.getElementById('sRhoS');if(!s)return;
@@ -6798,10 +7580,14 @@ function fitSres(){
     return;
   }
   /* 上界：#wres 底边 + 8（两窗不叠）；下界：#bar 顶边 − 6（不许压住底部按钮条）。
+     v9.47：左下角多了 #mirDock（镜像反向），它也在左栏这条线上 ⟹ 下界再取 min(条顶, 坞顶) − 6，
+     否则数据窗会压住那个按钮（按钮在 z 31，压着看不见＝等于没做）。
      中段临时压住 #nav / #prof —— 它们都是 bottom 锚定，视口变矮就往上爬，
      实测 800 高时左栏只剩 0 px 缝隙，硬躲开等于没有窗。SEG 收起后它们自动露出。 */
   var top=s.getBoundingClientRect().top;
   var bot=bar?bar.getBoundingClientRect().top-6:window.innerHeight-8;
+  var dock=document.getElementById('mirDock');
+  if(dock){ var dr=dock.getBoundingClientRect(); if(dr.height>0) bot=Math.min(bot,dr.top-6); }
   var avail=(s.dataset.userH==='1')?(window.innerHeight-8-top):(bot-top);
   avail=Math.min(avail,560);                       /* 高屏上别拉成一整列 */
   s.style.maxHeight=Math.max(60,Math.round(avail))+'px';
@@ -7414,6 +8200,17 @@ function boot(){
   warpUpd();                       /* 曲速面板：预热结束后按当前 (λ,R) 出数 */
   window.__egg={
     R:R,P:P,mkGeo:mkGeo,Fpack:Fpack,rhoeAt:rhoeAt,rk4:rk4,fieldAt:fieldAt,
+    /* v9.50 托卡马克整形：形状三入口 + 状态 + 开关（探针要能分别验「壳/软墙/判据同源」） */
+    reAtXY:reAtXY,reMaxPhi:reMaxPhi,tokMul:tokMul,tokMulP:tokMulP,
+    setTok:setTok,tokReset:tokReset,
+    /* v9.50：integrateP 是**原地写 CX/CY/CZ 缓冲**的（不返回终点），探针要能读末点。
+       别拿 st 比较 —— integrateP 把 st 的初值拷进局部 x/y/z，跑完 st 一个字都不变
+       （第一版探针就因此误判「两套实现差 2.81」）。 */
+    lastPt:function(i){var n=CN[i]|0;return n?[CX[i][n-1],CY[i][n-1],CZ[i][n-1]]:null;},
+    ptCount:function(i){return CN[i]|0;},
+    tok:function(){return {on:R.tokOn,kap:R.tokKap,del:R.tokDel,tau:R.tokTau,up:R.tokUp,
+                           TOK:P.TOK,E2:P.TOKE2,E3:P.TOKE3,TT:P.TOKT,TU:P.TOKU,
+                           sig:(typeof mnSig==='function'?mnSig():null)};},
     /* v9.4：m=1 偶极偏心（探针用）。走 setSlider ⟹ 与拖滑杆/手输完全同一条路
        （受滑杆 min/max 夹取、触发 input、由 bind 的 after 去 applySim+markDirty） */
     eccenSeg:eccenSeg,
@@ -7425,13 +8222,24 @@ function boot(){
     },
     m1:function(){return {M1:P.M1,w:P.M1WR,ph:P.M1PH};},
     integrateP:integrateP,PHI:PHI,KG:KG,KE:KE,
+    /* v9.45：λ 只读入口（诊断 / 探针 dump 轨迹用；seedFor 早已导出） */
+    lam:function(){return lamNow;},
     searchClosure:searchClosure,crossMapJS:crossMapJS,newtonJS:newtonJS,
     crossMapAzJS:crossMapAzJS,mapTurnsJS:mapTurnsJS,crossMapNJ:crossMapNJ,
     XL:XL,PER_TAU:PER_TAU,cfl:function(){return cflNow;},rjrel:rjrel,
     /* v9.27 m 芒通项：状态 / 设值 / 标定（探针用；标定是同步的，约 30~150 ms） */
     mn:function(){return {on:MN.on,m:MN.m,T:MN.T,Tm:MN.Tm,Tn:MN.Tn,Tbad:MN.Tbad,Thm:MN.Thm,Tnh:MN.Tnh,C:MN.C,span:MN.span,panelOm:MN.panelOm,
                            extAt:MN.extAt,k:MN.k,trunc:MN.trunc,warn:MN.warn,ms:MN.ms,
-                           T0:MN_T0,LO:MN_LO,HI:MN_HI};},
+                           T0:MN_T0,LO:MN_LO,HI:MN_HI,
+                           /* v9.45 自动选轨：探针要能验证「不是靠 seedFor(0) 撞对的」 */
+                           seedTag:MN.seedTag,syn:MN.syn,frac:MN.frac,nCand:MN.nCand,nOk:MN.nOk,
+                           Tmin:MN.Tmin,Tmax:MN.Tmax,sms:MN.sms,spanMax:MN.spanMax,
+                           survey:(MN.survey?{ok:MN.survey.ok,nCand:MN.survey.nCand,
+                                              nOk:MN.survey.nOk,T:MN.survey.T,
+                                              tag:MN.survey.tag,syn:!!MN.survey.syn,
+                                              st:MN.survey.st,
+                                              Tmin:MN.survey.Tmin,Tmax:MN.survey.Tmax}:null)};},
+    mnSurvey:mnSurvey,mnRun:mnRun,mnCands:mnCands,
     setMn:function(m){ setSlider('sMN',m); return {m:MN.m,on:MN.on}; },
     mnCalib:mnCalib,mnApply:mnApply,mnOff:mnOff,
     /* v9.25 FREQ_LOCK：三个频率常量 + T_ε + 当前是否真的定常（EPS=0 且无 m=1 / 刀瓣谐波） */
@@ -7449,10 +8257,48 @@ function boot(){
     /* v9.24：σ 连续 + 壁符号 */
     setSigma:setSigma,sigma:function(){return (R.sigma===undefined?1:R.sigma);},
     setWallFlip:setWallFlip,wallFlipOn:function(){return !!R.wallFlip;},
-    /* v9.24 包络层 */
+    /* v9.24 包络层 + v9.46 只看包络线 */
     setEnv:setEnv,envOn:function(){return !!ENV.on;},
-    envStat:function(){return {on:!!ENV.on,n:(ENV.pairs||[]).length,
-      mean:ENV.mean,maxd:ENV.maxd,dirty:!!ENV.dirty};},
+    setOvClip:setOvClip,ovClip:function(){return !!R.ovClip;},
+    ovStat:function(){return {on:!!R.ovClip,skip:OVSTAT.nSkip,out:OVSTAT.nOut,res:OVSTAT.res||0,
+      drawn:OVSTAT.drawn||0,cntAll:OVSTAT.cntAll||0,mis:OVSTAT.mis|0,
+      profSkip:OVSTAT.profSkip|0};},
+    setEnvOnly:setEnvOnly,envOnly:function(){return !!ENV.only;},
+    envPass:envPass,
+    /* v9.56：**真正落笔的顶点下标**（折角这类病只在绘制层，数据层看不出来）。
+       envTrace(true) 强制重算一次，确认判据不是在读旧表。 */
+    envTrace:function(on){ if(on){ENV_SIMP=null; envSimpl();} return !!ENV_SIMP; },
+    envTraceDump:function(){ var ss=envSimpl()||[], r=[];
+      for(var i=0;i<ss.length;i++) r.push({pi:ss[i].pi,q:ss[i].q,
+        idx:Array.prototype.slice.call(ss[i].idx)});
+      return {eps:ENV_EPS,n:(ENV.pairs||[]).length,curves:r}; },
+    /* 原始存点（屏幕坐标 + ρ），探针自己算「被丢掉的点离弦多远」（不依赖页内的判据） */
+    envRaw:function(i,q){
+      var pr=(ENV.pairs||[])[i]; if(!pr) return null;
+      var n=pr.n|0, arr=q?pr.b:pr.a, out=new Array(n*3);
+      var e=R.el*Math.PI/180, ce=Math.cos(e), se=Math.sin(e);
+      var ca=Math.cos(az), sa=Math.sin(az), kk=projK(GEO);
+      var lo=env.zlo*ce-GEO.R*Math.abs(se), hi=env.zhi*ce+GEO.R*Math.abs(se);
+      var ox2=W/2+R.panX, oy2=H/2+R.panY+kk*(lo+hi)/2;
+      for(var j=0;j<n;j++){
+        var X=arr[3*j],Y=arr[3*j+1],Z=arr[3*j+2];
+        var x1=X*ca-Y*sa, y1=X*sa+Y*ca;
+        out[3*j]=ox2+kk*x1; out[3*j+1]=oy2-kk*(Z*ce-y1*se);
+        out[3*j+2]=Math.sqrt(X*X+Y*Y);
+      }
+      return {n:n,pts:out};
+    },
+    /* v9.57：世界坐标副本（探针要自己算「z 走向 / 上下半区时间占比」，
+       才能分辨「上半没画」是数据本身就缺、还是绘制层丢了）。
+       🔴 不复用 envRaw：它的三列是 (sx,sy,ρ)，改列序会打断已有探针。 */
+    envWorld:function(i,q){
+      var pr=(ENV.pairs||[])[i]; if(!pr) return null;
+      var n=pr.n|0, arr=q?pr.b:pr.a, out=new Array(n*3);
+      for(var j=0;j<n;j++){out[3*j]=arr[3*j];out[3*j+1]=arr[3*j+1];out[3*j+2]=arr[3*j+2];}
+      return {n:n,w:out};
+    },
+    envStat:function(){return {on:!!ENV.on,only:!!ENV.only,n:(ENV.pairs||[]).length,
+      mean:ENV.mean,maxd:ENV.maxd,dirty:!!ENV.dirty,gen:(ENV.gen|0)};},
     envForce:function(){buildEnv();return {n:(ENV.pairs||[]).length,mean:ENV.mean,maxd:ENV.maxd};},
     /* 初值分布 0=薄盘（默认） 1=全泡 2=双锥漏斗 */
     setSeedMode:function(m){window.__setSeedMode(m);return R.seedMode;},
@@ -7632,6 +8478,10 @@ function boot(){
       return SEG;},
     segOut:function(){var o=document.getElementById('sout');
       return o?{html:o.innerHTML,text:o.textContent}:null;},
+    /* v9.48 诊断出口：当前几何对象（rhoeAt / mkGeo 早就在上面导出了，这里只补 GEO，
+       因为「这条轨迹是不是真的跑到壳外」必须拿**当前** g 去算；
+       用球近似代替会差 30%：极区 ρₑ 与 ρe0 不是一回事）。 */
+    geo:function(){return GEO;},
     state:function(){var ratio=GEO.ZHI/Math.abs(GEO.ZLO);
       return {lam:lamNow,k:GEO.k,b:GEO.b,S:GEO.S,ZHI:GEO.ZHI,ZLO:GEO.ZLO,ratio:ratio,
         kE:KE,kElive:GEO.kE,ratioDev:ratio-KE,ratioDevLive:ratio-GEO.kE,
