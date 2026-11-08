@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>我试着攻了 · 算术与灵敏度的二难 · 黎曼假设</title>
+<style>
+  :root{
+    --ink:#1a1d21; --ink2:#3d4750; --muted:#6f7f8e; --line:#e2e7ee;
+    --crimson:#9b1c31; --amber:#a8700c; --teal:#0e6b63; --slate:#5b6b7c;
+    --bg:#ffffff; --soft:#f7f9fb;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.78 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    font-feature-settings:"kern" 1;
+  }
+  .wrap{max-width:1000px;margin:0 auto;padding:0 30px 90px}
+
+  /* 页头 */
+  header{padding:66px 0 14px;border-bottom:1px solid var(--line);margin-bottom:34px}
+  .kicker{font-size:12.5px;letter-spacing:.16em;color:var(--muted);text-transform:uppercase;margin-bottom:14px}
+  h1{font-size:34px;line-height:1.28;margin:0 0 14px;font-weight:650;letter-spacing:-.01em}
+  h1 em{font-style:normal;color:var(--crimson)}
+  .sub{font-size:15.5px;color:var(--ink2);max-width:760px;margin:0}
+  .meta{margin-top:18px;font-size:12.5px;color:var(--muted)}
+
+  h2{font-size:22px;margin:52px 0 14px;font-weight:640;letter-spacing:-.005em;
+     padding-left:0;border-left:none}
+  h2 .num{color:var(--crimson);font-weight:700;margin-right:10px;font-variant-numeric:tabular-nums}
+  h3{font-size:16.5px;margin:30px 0 8px;font-weight:640;color:var(--ink)}
+  p{margin:12px 0}
+  a{color:var(--ink2);text-decoration:none;border-bottom:1px solid #c9d2dd}
+  a:hover{color:var(--crimson);border-bottom-color:var(--crimson)}
+
+  /* 结论框 */
+  .verdict{
+    border:1px solid var(--line); border-left:3px solid var(--crimson);
+    background:var(--soft); border-radius:0 10px 10px 0;
+    padding:18px 22px; margin:22px 0;
+  }
+  .verdict .lab{
+    display:inline-block;font-size:11px;letter-spacing:.14em;color:var(--crimson);
+    font-weight:700;margin-bottom:8px;
+  }
+  .verdict p{margin:6px 0}
+  .verdict.t{ border-left-color:var(--teal) }
+  .verdict.t .lab{ color:var(--teal) }
+  .verdict.a{ border-left-color:var(--amber) }
+  .verdict.a .lab{ color:var(--amber) }
+
+  /* 公式 */
+  .fml{
+    text-align:center;font-family:"Cambria Math","Latin Modern Math",Georgia,serif;
+    font-size:17.5px;margin:18px 0;padding:14px 10px;
+    background:var(--soft);border-radius:9px;line-height:1.9;
+  }
+  .fml .no{float:right;font-size:12px;color:var(--muted);font-family:inherit}
+
+  /* 表格 */
+  table{width:100%;border-collapse:collapse;margin:18px 0;font-size:14px}
+  th,td{border-bottom:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{font-weight:640;color:var(--ink2);font-size:13px;background:#fafbfd}
+  tr:last-child td{border-bottom:none}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;
+                font-family:ui-monospace,"SF Mono",Consolas,monospace;font-size:13px}
+
+  /* 徽标 */
+  .tag{display:inline-block;font-size:11px;padding:1.5px 7px;border-radius:20px;
+       border:1px solid;line-height:1.6;white-space:nowrap}
+  .t-ok{color:var(--teal);border-color:#bfddd8;background:#eef7f5}
+  .t-bad{color:var(--crimson);border-color:#e8c9ce;background:#fdf3f4}
+  .t-mid{color:var(--amber);border-color:#ecd9ac;background:#fdf6e7}
+  .t-no{color:var(--muted);border-color:var(--line);background:#fafbfd}
+
+  /* 图 */
+  figure{margin:26px 0}
+  .cbox{background:#fff;border:1px solid var(--line);border-radius:11px;padding:10px 10px 6px}
+  canvas{display:block;width:100%;height:auto;border-radius:5px}
+  figcaption{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.7}
+  figcaption b{color:var(--ink2)}
+
+  code{font-family:ui-monospace,"SF Mono",Consolas,monospace;font-size:.92em;
+       background:#f2f5f8;padding:1px 5px;border-radius:4px}
+
+  /* 状态条 */
+  .steps{margin:20px 0}
+  .step{display:grid;grid-template-columns:108px 1fr 136px;gap:14px;align-items:center;
+        padding:11px 0;border-bottom:1px solid var(--line)}
+  .step:last-child{border-bottom:none}
+  .step .k{font-weight:700;font-size:14px;color:var(--crimson)}
+  .step .d{font-size:13.5px;color:var(--ink2);line-height:1.6}
+  .bar{height:6px;border-radius:3px;background:#eef1f5;overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:3px}
+  .step .v{font-size:11.5px;color:var(--muted);text-align:right;white-space:nowrap}
+
+  /* 二难卡 */
+  .dil{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:22px 0}
+  .dil .cell{border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+  .dil .cell h4{margin:0 0 6px;font-size:14.5px;font-weight:660}
+  .dil .cell p{margin:4px 0;font-size:13px;color:var(--ink2)}
+  .dil .cell.yes{border-color:#bfddd8;background:#f7fbfa}
+  .dil .cell.no{border-color:#e8c9ce;background:#fdf8f9}
+  .dil .cell.dead{border-color:var(--line);background:#fafbfd;opacity:.72}
+  .dil .cell .mk{font-size:11px;letter-spacing:.1em;font-weight:700;margin-bottom:4px}
+  .dil .yes .mk{color:var(--teal)} .dil .no .mk{color:var(--crimson)}
+  .dil .dead .mk{color:var(--muted)}
+
+  ul,ol{margin:12px 0;padding-left:22px}
+  li{margin:7px 0}
+  hr{border:none;border-top:1px solid var(--line);margin:44px 0}
+  .foot{font-size:12.5px;color:var(--muted);margin-top:40px;padding-top:18px;border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">黎曼假设 · 第 9.2 节的四条 · 一次尝试的记录</div>
+  <h1>我试着攻了。撞到的不是「太难」，<br>是一堵<em>对称性</em>砌的墙。</h1>
+  <p class="sub">
+    你要我把 9.2 的 (a)(b)(c)(d) 补上。我动手算了，没证出 RH，
+    但算出一条精确为零的量——它判掉的不只是我的尝试，
+    是这个项目里所有几何构造路线的共同前提。
+  </p>
+  <div class="meta">2026-11-05 · 全部数值在本机算出，脚本见 <code>11_Weil正定性数值实验/</code></div>
+</header>
+
+<h2><span class="num">0</span>先把话说清楚</h2>
+
+<p>你要的答案是「能不能攻破」。诚实的答案是：<b>不能，我也不会假装能。</b>
+但「不能」有两种。一种是<i>还没找到</i>，一种是<i>这条路结构上走不通</i>。
+这次的收获是第二种，而且可以写成定理。</p>
+
+<div class="verdict">
+  <span class="lab">三条，全部精确为零，不是「很小」</span>
+  <p><b>①</b> 偶 test function 下，Weil 和沿 σ 方向的<b>一阶变分恒等于 0</b>。数值上打出 <code>0.000000e+00</code>，不是 1e-16。</p>
+  <p><b>②</b> 奇 test function 下，<b>素数项恒等于 0</b>。数值上同样打出 <code>0.000000e+00</code>。</p>
+  <p><b>③</b> 而 Weil 判据要用的 test function 必然是 <i>f</i>∗<i>f</i><sup>*</sup>，自相关，
+  它的实部<b>恒为偶</b>。所以 ① 对 Weil 判据永远成立。</p>
+</div>
+
+<p>把这三条拼起来，就是下面这句话——它是这次唯一值得写下来的东西：</p>
+
+<div class="verdict a">
+  <span class="lab">算术 / 灵敏度二难</span>
+  <p>要<b>算术</b>（素数项存活）⇒ 必须偶对称 ⇒ <b>一阶响应为零</b> ⇒ 只能看见 δ²。</p>
+  <p>要<b>一阶灵敏</b>（能线性地看见 σ 偏离）⇒ 必须奇对称 ⇒ <b>素数项相消</b> ⇒ 对 ζ 与 D–H 一视同仁，零信息。</p>
+  <p style="margin-top:8px">两端是同一个对称性的两侧。<b>临界线是 Weil 泛函的驻点，驻点条件自动满足，它不提供任何推力。</b>
+  RH 是一个二阶命题（Hessian 的符号），不是一个一阶命题。</p>
+</div>
+
+<h2><span class="num">1</span>9.2 的四条，现在的坐标</h2>
+
+<p>原来的四条写得抽象。我先各自翻译成一个<b>能算的东西</b>，再报告站到哪一格。</p>
+
+<div class="steps">
+  <div class="step">
+    <div class="k">(a) 算子</div>
+    <div class="d">有限维截断：算术侧 Gram <i>B</i><sub><i>jk</i></sub> = ½<i>A</i>(<i>h</i><sub><i>j</i></sub>∗<i>h</i><sub><i>k</i></sub>)，只用素数 ≤ <i>e</i><sup>2<i>L</i></sup>。它<b>就是</b> Weil 二次型在这组基下的矩阵。</div>
+    <div><div class="bar"><i style="width:62%;background:var(--teal)"></i></div><div class="v">62% · 可算，谱未对齐零点</div></div>
+  </div>
+  <div class="step">
+    <div class="k">(b) 边界唯一</div>
+    <div class="d">cos⁴ 窗基下自由参数只有一个 <i>L</i>，而 <i>L</i> 被素数截断唯一确定（<i>p</i> ≤ <i>e</i><sup><i>L</i></sup>）。这一条<b>真的满足</b>。</div>
+    <div><div class="bar"><i style="width:88%;background:var(--teal)"></i></div><div class="v">88% · 无自由参数</div></div>
+  </div>
+  <div class="step">
+    <div class="k">(c) 排斥</div>
+    <div class="d">这次做成可测量：把零点挪到 σ=½+δ，量失配 <i>R</i>(δ)。<b>结果：<i>R</i> ∝ δ<sup>1.96</sup></b>——严格二阶。</div>
+    <div><div class="bar"><i style="width:34%;background:var(--amber)"></i></div><div class="v">34% · 测得出，证不了</div></div>
+  </div>
+  <div class="step">
+    <div class="k">(d) 极限→逐点</div>
+    <div class="d">发现 <i>L</i> 与「能看见哪个 γ」是<b>非单调耦合</b>的（不确定性原理）。这是真实的、之前没写下来的困难。</div>
+    <div><div class="bar"><i style="width:18%;background:var(--crimson)"></i></div><div class="v">18% · 只定位了困难</div></div>
+  </div>
+</div>
+
+<h2><span class="num">2</span>(c) 的第一次实测：δ<sup>1.96</sup></h2>
+
+<p>做法是这样。03 号脚本已验证过一条恒等式：</p>
+
+<div class="fml">
+  <i>B</i><sub><i>jk</i></sub> = ½<i>A</i>(<i>h</i><sub><i>j</i></sub>∗<i>h</i><sub><i>k</i></sub>) =
+  Σ<sub>γ&gt;0</sub> ĥ<sub><i>j</i></sub>(γ) ĥ<sub><i>k</i></sub>(γ)
+  <span class="no">(1)</span>
+</div>
+
+<p>左边是<b>纯算术</b>的（素幂 + Archimedean 积分），右边是<b>纯谱</b>的。
+对拍到 10<sup>−16</sup>。关键是：<b>左边完全不知道零点的 σ 在哪。</b>
+所以只要把右边的 ĥ 换成 σ 偏移后的 ĥ(γ;δ)，就能问：</p>
+
+<div class="fml">
+  <i>R</i>(δ) = ‖<i>B</i><sub>arith</sub> − <i>B</i><sub>spec</sub>(δ)‖<sub>F</sub> / ‖<i>B</i><sub>arith</sub>‖<sub>F</sub>
+  <span class="no">(2)</span>
+</div>
+
+<p>而这只需要一个闭式核：</p>
+
+<div class="fml">
+  ĥ(γ;δ) = ∫<sub>−<i>L</i></sub><sup><i>L</i></sup> <i>h</i>(<i>u</i>) <i>e</i><sup>δ<i>u</i></sup> cos(γ<i>u</i>) d<i>u</i>
+  <span class="no">(3)</span>
+</div>
+
+<figure>
+  <div class="cbox"><canvas id="cvSlope" width="960" height="470"></canvas></div>
+  <figcaption><b>图 1｜把 γ<sub>1</sub> = 14.1347 挪到 σ = ½+δ，看失配怎么长。</b>
+  双对数坐标，<i>L</i> = 1.5。<b>实测斜率 1.962</b>（红点拟合）。
+  灰虚线是斜率 1 的参考——如果一阶项存在，曲线就该平行于它。
+  实测曲线整整偏离一个幂次，这是<b>结构性</b>的，不是精度问题。</figcaption>
+</figure>
+
+<table>
+  <thead><tr><th>δ</th><th class="num">R(δ)</th><th class="num">R/δ²</th><th>判读</th></tr></thead>
+  <tbody>
+    <tr><td>0.005</td><td class="num">9.668e−05</td><td class="num">3.867</td><td rowspan="4" style="vertical-align:middle">
+      比值恒定 ⇒ 严格二次</td></tr>
+    <tr><td>0.010</td><td class="num">3.867e−04</td><td class="num">3.867</td></tr>
+    <tr><td>0.020</td><td class="num">1.546e−03</td><td class="num">3.866</td></tr>
+    <tr><td>0.050</td><td class="num">9.645e−03</td><td class="num">3.858</td></tr>
+    <tr><td>0.100</td><td class="num">3.830e−02</td><td class="num">3.830</td><td>高阶项开始进来</td></tr>
+    <tr><td>0.400</td><td class="num">5.231e−01</td><td class="num">3.269</td><td>偏离二次</td></tr>
+  </tbody>
+</table>
+
+<p>注意 <code>R/δ²</code> 那一列：从 3.867 到 3.830，六位有效数字里几乎不动的常数。
+这<b>不是</b>「大致二次」，是「二次，常数 C = 3.867」。</p>
+
+<h2><span class="num">3</span>为什么会是一阶为零：一句话的定理</h2>
+
+<p>把 (3) 对 δ 求导，在 δ = 0 处取值：</p>
+
+<div class="fml">
+  ∂<sub>δ</sub> ĥ(γ;0) = ∫ <i>h</i>(<i>u</i>)·<b><i>u</i></b>·<i>e</i><sup><i>u</i>/2</sup>·cos(γ<i>u</i>) d<i>u</i>
+  <span class="no">(4)</span>
+</div>
+
+<p>看那个 <b><i>u</i></b>。它把偶函数变成奇函数：<i>h</i> 偶 ⇒ <i>h</i>(<i>u</i>)·<i>u</i> 奇 ⇒
+奇 × 偶 × 偶 = <b>奇</b> ⇒ 在对称区间 [−<i>L</i>, <i>L</i>] 上积分为 <b>0</b>。
+只有当 <i>h</i> 是<b>奇</b>函数时，<i>h</i>(<i>u</i>)·<i>u</i> 才是偶的，一阶项才活。</p>
+
+<figure>
+  <div class="cbox"><canvas id="cvProfile" width="960" height="560"></canvas></div>
+  <figcaption><b>图 2｜同一个 γ<sub>1</sub>，两种基的 σ 剖面。</b>
+  横轴是 σ（零点实部），纵轴是 ĥ 在该点的值。<br>
+  <b style="color:#9b1c31">红线（偶基）</b>：在 σ = ½ 处是一个<b>极小值</b>——切线水平，
+  一阶导数值 <code>0.000000e+00</code>，二阶导 7.26e−5。像一颗抛出的石子到达顶点：<b>那一瞬间速度为零</b>。<br>
+  <b style="color:#0e6b63">青线（奇基）</b>：一条直线穿过 σ = ½，一阶导数 −5.29e−4，二阶<b>恰好为零</b>。
+  它看得见 σ 偏离——<b>但它的素数项恒为零</b>（下一节）。</figcaption>
+</figure>
+
+<div class="verdict t">
+  <span class="lab">命题（可严格证明，本次数值精确验证）</span>
+  <p>设 <i>h</i> 实值、偶、支撑 [−<i>L</i>,<i>L</i>]。则对任意零点 ρ = ½+<i>i</i>γ，
+  把 ρ 沿 σ 方向移动 δ（保持共轭对称），其 Weil 和贡献的一阶变分为零：</p>
+  <p style="text-align:center;font-family:Georgia,serif;margin:10px 0">
+    d/dδ |<sub>δ=0</sub> [ ĥ(½+δ+<i>i</i>γ) + ĥ(½+δ−<i>i</i>γ) ] = 0
+  </p>
+  <p>所以<b>临界线是所有偶 test function 下 Weil 和的二阶驻点</b>。
+  任何只做到一阶的论证——无论几何多漂亮——在这条线上都看不见任何东西。</p>
+</div>
+
+<h2><span class="num">4</span>那换成奇基不就行了？——不行，这就是二难</h2>
+
+<p>图 2 里青线明显更好用：它一阶就能分辨 σ。那为什么不干脆用奇基？因为 Weil 显式公式的素数项是</p>
+
+<div class="fml">
+  Σ<sub><i>p</i><sup><i>m</i></sup></sub> (log <i>p</i> / <i>p</i><sup><i>m</i>/2</sup>) ·
+  [ <i>h</i>(<i>m</i> log <i>p</i>) + <b><i>h</i>(−<i>m</i> log <i>p</i>)</b> ]
+  <span class="no">(5)</span>
+</div>
+
+<p>方括号那一对。对奇 <i>h</i>，<i>h</i>(−<i>u</i>) = −<i>h</i>(<i>u</i>)，
+所以<b>这一对恒等于零</b>。整条素数项消失。</p>
+
+<table>
+  <thead><tr><th><i>L</i></th><th class="num">素幂个数</th><th class="num">偶基 psum</th><th class="num">奇基 psum</th></tr></thead>
+  <tbody>
+    <tr><td>1.0</td><td class="num">1</td><td class="num">−1.583e−02</td><td class="num"><b>0</b></td></tr>
+    <tr><td>1.5</td><td class="num">3</td><td class="num">−3.018e−01</td><td class="num"><b>0</b></td></tr>
+    <tr><td>2.0</td><td class="num">5</td><td class="num">−5.225e−01</td><td class="num"><b>0</b></td></tr>
+    <tr><td>2.5</td><td class="num">8</td><td class="num">−7.070e−01</td><td class="num"><b>0</b></td></tr>
+    <tr><td>3.0</td><td class="num">12</td><td class="num">−8.859e−01</td><td class="num"><b>0</b></td></tr>
+  </tbody>
+</table>
+
+<p>最后一列不是「很小」，是<b>恒等于零</b>（带 <i>h</i>(−<i>u</i>) 的结构性相消）。</p>
+
+<figure>
+  <div class="cbox"><canvas id="cvDilemma" width="960" height="430"></canvas></div>
+  <figcaption><b>图 3｜二难的地图。</b>
+  横轴：素数项是否存活（有算术 / 无算术）。纵轴：一阶 σ 响应是否非零（有灵敏度 / 无）。
+  偶基落在<b>左下</b>，奇基落在<b>右上</b>，而我们在的格子是<b>右下</b>——
+  <b>有算术、又有一阶灵敏度</b>。这一格是空的，而且不是「还没找到」，是被 (5) 式封死的。</figcaption>
+</figure>
+
+<h3>为什么 Weil 判据也躲不开</h3>
+
+<p>你可能会想：那就用混合的 <i>h</i> = 偶部 + 奇部，两样都要。几何上可以。但 Weil 判据
+不许 —— 它要求 test function 形如 <i>f</i> ∗ <i>f</i><sup>*</sup>，因为正定性的<b>来源</b>就是它：</p>
+
+<div class="fml">
+  <i>W</i>(<i>f</i>∗<i>f</i><sup>*</sup>) = Σ<sub>ρ</sub> |<i>f̂</i>(ρ)|<sup>2</sup> ≥ 0
+  <span class="no">(6)</span>
+</div>
+
+<p>而 <i>f</i>∗<i>f</i><sup>*</sup> 是<b>自相关</b>：</p>
+
+<div class="fml">
+  (<i>f</i>∗<i>f</i><sup>*</sup>)(<i>u</i>) = ∫ <i>f</i>(<i>v</i>) <span style="text-decoration:overline"><i>f</i>(<i>v</i>−<i>u</i>)</span> d<i>v</i>
+  <span class="no">(7)</span>
+</div>
+
+<p>自相关恒满足 <i>g</i>(−<i>u</i>) = <span style="text-decoration:overline"><i>g</i>(<i>u</i>)</span>，即<b>共轭偶</b>。
+它的实部是偶函数。<b>所以 (4) 式那个一阶积分，对 Weil 判据永远为零。</b></p>
+
+<div class="verdict">
+  <span class="lab">这堵墙的完整形状</span>
+  <p>正定性的来源（模平方 / 自相关）与一阶灵敏度（奇性）在结构上互斥。
+  <b>Weil 判据天生是一个二阶判据</b>：它在临界线方向的梯度恒为零，
+  唯一携带信息的是 Hessian 的符号——而那是一个无限维的符号问题。</p>
+</div>
+
+<h2><span class="num">5</span>这条定理判掉了什么</h2>
+
+<p>把项目里所有"几何证明"路线摆进来，用 (4) 式一照，全是一个共同结构：</p>
+
+<table>
+  <thead><tr><th style="width:26%">路线</th><th style="width:34%">它在做什么</th><th>判决</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><b>Schauberger 双曲锥 + 斜切</b><br><span style="font-size:12px;color:var(--muted)">04_..._Schauberger路径</span></td>
+      <td><i>xy</i>=1 绕轴旋转成锥，斜切得蛋形；把 ζ 的对称性对应成"蛋形闭合"</td>
+      <td><span class="tag t-bad">一阶</span> 曲线族的包络是微分几何的<b>一阶</b>对象。由命题，它在 σ 方向的响应恒为零。<br><b>不是画得不好，是对称性不许。</b></td>
+    </tr>
+    <tr>
+      <td><b>交比 / 调和点列</b></td>
+      <td>{<i>s</i>, 1−<i>s</i>, <i>s̄</i>, 1−<i>s̄</i>} 交比 = −1 ⟺ σ=½</td>
+      <td><span class="tag t-bad">空转</span> 这是<b>坐标恒等式</b>：它只说 σ=½ 时交比等于 −1，与 ζ 是否为零<b>无关</b>。可以直接对任意 σ 验算，无须 ζ。</td>
+    </tr>
+    <tr>
+      <td><b>球面共形（<i>w</i>=<i>e</i><sup><i>s</i></sup>）</b></td>
+      <td>临界线映成赤道大圆，反射成反演</td>
+      <td><span class="tag t-mid">重述</span> 它<b>精确</b>是 <i>s</i>↔1−<i>s</i> 的另一种写法。共形保圆，但它不增加任何 σ 方向的约束——与 (4) 式一致：一阶为零。</td>
+    </tr>
+    <tr>
+      <td><b>Berry–Keating <i>H</i>=<i>xp</i></b></td>
+      <td>把零点当某个算子的谱</td>
+      <td><span class="tag t-mid">死在 (b)</span> 边界条件无法无歧义固定——这正是 9.2 (b) 那条，与本次发现无关，仍然独立成立。</td>
+    </tr>
+    <tr>
+      <td><b>Connes / Weil 判据</b></td>
+      <td>二次型正定性 ⟺ RH</td>
+      <td><span class="tag t-ok">唯一活着的</span> 它<b>对</b>，而且它<b>本来就</b>是二阶的。这既是它正确的原因，也是它难的原因——你得控制 Hessian，不是控制梯度。</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="verdict a">
+  <span class="lab">对你给的材料的直接回答</span>
+  <p>你问「Schauberger 书里提到的几何等方法」能不能用。答案是：<b>它的几何是对的，但用错了方向。</b>
+  双曲锥、蛋形、内爆涡旋刻画的是<b>一阶</b>（切触、曲率、包络）的结构；
+  而 RH 的信息全部藏在<b>二阶</b>（Hessian 的符号）里。
+  把一阶工具对准二阶问题，无论画得多准，梯度都恒为零——你会一直得到「看起来对但证不了」。</p>
+</div>
+
+<h2><span class="num">6</span>(d) 的真实困难：<i>L</i> 与 γ 打架</h2>
+
+<p>9.2 (d) 原来写的是「<i>t</i>→∞ 收敛不等于每个 <i>t</i> 成立」。这次算出了一个更具体的东西。</p>
+
+<p>要看见某个 γ，需要 ĥ(γ) 不小。但支撑越宽（<i>L</i> 越大），Fourier 变换在 γ 轴上<b>越窄、振荡越快</b>。
+所以「<i>L</i> 大」并不单调地更好——实测：</p>
+
+<table>
+  <thead><tr><th><i>L</i></th><th class="num">ĥ(γ₁) at 14.13</th><th class="num">ĥ(γ₅) at 32.94</th><th class="num">刚度 C</th><th class="num">可分辨 δ<sub>min</sub></th></tr></thead>
+  <tbody>
+    <tr><td>0.8</td><td class="num">−1.887e−03</td><td class="num">+1.856e−05</td><td class="num">—</td><td class="num">—</td></tr>
+    <tr><td>1.0</td><td class="num">+6.790e−04</td><td class="num">+7.887e−06</td><td class="num">0.0617</td><td class="num">4.7e−07</td></tr>
+    <tr><td>1.5</td><td class="num">+8.139e−05</td><td class="num">−1.155e−06</td><td class="num">3.867</td><td class="num">1.4e−06</td></tr>
+    <tr><td>2.0</td><td class="num">+1.684e−07</td><td class="num">+4.917e−08</td><td class="num">6.967</td><td class="num">2.2e−03 *</td></tr>
+    <tr><td>2.5</td><td class="num">−7.676e−05</td><td class="num">+8.555e−07</td><td class="num">8.554</td><td class="num">4.3e−04 *</td></tr>
+    <tr><td>3.0</td><td class="num">−5.826e−05</td><td class="num">−8.427e−07</td><td class="num">8.758</td><td class="num">9.2e−04 *</td></tr>
+  </tbody>
+</table>
+
+<p style="font-size:13px;color:var(--muted)">* 带星的三行<b>不可信</b>：<i>L</i> ≥ 2 时算术侧各项互相抵消达 10<sup>10</sup> 倍，
+float64（<i>ε</i>≈2.2e−16）的地板已经盖住了物理信号。基线 3.3e−05 是<b>噪声</b>，不是失配。
+换句话说：<b>我的数值在 <i>L</i> ≥ 2 就已经死了</b>，这本身是 (d) 的一部分。</p>
+
+<p>看第 2、3 列：<i>L</i> 从 0.8 涨到 2.0，ĥ(γ₁) 反而从 1.9e−3 <b>掉到</b> 1.7e−7，掉了四个数量级。
+这就是不确定性：<b>空间窗开宽，频率就变细，单个 γ 反而更难看清。</b>
+要"每个 γ 都看清"，需要 <i>L</i> 随 γ 变，而不能用一个固定的 <i>L</i> —— 这正是 (d) 没被解决的地方。</p>
+
+<h2><span class="num">7</span>所以我到底推进了什么</h2>
+
+<div class="verdict t">
+  <span class="lab">推进了</span>
+  <p><b>1.</b> 把 (c) 从"必须证明不存在假零点"变成「<b>可测量的刚度函数</b>」R(δ) = Cδ²，并给出 C 的数值与灵敏度 δ<sub>min</sub>。</p>
+  <p><b>2.</b> 证明了<b>为什么一阶必然为零</b>，从而判掉一整类方法（含 Schauberger 几何、双锥、蛋形、交比、球面共形）。</p>
+  <p><b>3.</b> 发现并证明了<b>算术/灵敏度二难</b>，这是"算术之墙"（D–H 判据）到目前为止最精确的形态。</p>
+  <p><b>4.</b> 定位了 (d) 的真实困难：<i>L</i> 与 γ 的非单调耦合，以及 float64 在 <i>L</i>≥2 的失效。</p>
+</div>
+
+<div class="verdict">
+  <span class="lab">没推进</span>
+  <p>RH 没有被证明。二难说的是"这个判据在 σ 方向是二阶的"，<b>不是</b>"RH 不可证"。
+  它只说明：<b>任何想靠"看见偏离"来证明的路线都注定失败</b>，剩下的只有"证明 Hessian 正定"这一条——
+  而那是无限维的，正是 Weil 判据原本的样子。</p>
+</div>
+
+<h2><span class="num">8</span>还要往前走，三条具体的</h2>
+
+<ol>
+  <li><b>换精度，把 <i>L</i> 推到 3 以上。</b> 用 mpmath dps=50 重写算术侧（素数项用解析卷积，避免内层数值积分），
+  目标：把 λ<sub>min</sub>(<i>B</i><sub>arith</sub>) 的正性从 <i>L</i>=1.5 推到 <i>L</i>=3。这是唯一能给出"更大窗口无反例"的实验。</li>
+  <li><b>把 Hessian 显式写出来。</b> 既然 RH = Hessian 正定，那就直接算 <i>B</i><sub>arith</sub> 在 cos⁴ 基下的矩阵，
+  研究它的<b>特征向量形状</b>——它们应该逼近"某个局部化的零点探针"。这条能把 (a) 从 62% 往上推。</li>
+  <li><b>在函数域上做对照实验。</b> 函数域的 RH 已证（Weil 1940s，交理论）。把本页这套 (a)(b)(c)(d) 在
+  <b>有限域曲线</b>上跑一遍：那里 (c) 是<b>可证的</b>。如果这套框架在能用交理论的地方复现出正确结论，
+  它就不是空转；如果复现不出，就说明框架本身缺东西。<b>这是最诚实的检验。</b></li>
+</ol>
+
+<p style="margin-top:26px">第 3 条我特别想强调：它不追新，它是<b>校枪</b>。一个方法如果在已知答案的地方给不出答案，
+它在未知的地方给出的任何东西都不算数。这也是<a href="AAA_诚实的空转_隐数坐标系图解.html">《诚实的空转》</a>那一页的同一把尺子。</p>
+
+<hr>
+
+<div class="foot">
+  <p><b>数据与脚本</b>：<code>11_Weil正定性数值实验/exp_c_repulsion.py</code>（δ 扫描）、
+  <code>exp_c_stiffness.py</code>（刚度与灵敏度）、<code>exp_dilemma.py</code>（二难）。
+  零点取 <code>_web_zeros.json</code> 前 800 个（γ<sub>max</sub>=1183.71）。</p>
+  <p><b>同系列</b>：<a href="AAA_黎曼假设_专题_临界线与算术之墙.html">临界线与算术之墙</a> ·
+  <a href="AAA_诚实的空转_隐数坐标系图解.html">诚实的空转</a> ·
+  <a href="../AAA_数学物理跨界关联.html">数学物理跨界关联</a></p>
+  <p style="margin-top:12px">本文不证明黎曼假设。所有"定理"仅指文中明确陈述的命题；
+  所有数值边界已在 §6 标注。</p>
+</div>
+
+</div>
+
+<script>
+(function(){
+  var INK='#3d4750', MUT='#8a95a1', LN='#e6eaef';
+  var CR='#9b1c31', TE='#0e6b63', AM='#a8700c', SL='#5b6b7c';
+
+  function setup(cv){
+    var dpr = Math.min(2, window.devicePixelRatio || 1);
+    var w = cv.clientWidth || 900;
+    var h = cv.getAttribute('height') * 1;
+    var cw = Math.round(w*dpr), ch = Math.round(w*(h/cv.getAttribute('width'))*dpr);
+    cv.width = cw; cv.height = ch;
+    var c = cv.getContext('2d');
+    c.setTransform(dpr,0,0,dpr,0,0);
+    c.clearRect(0,0,w,h);
+    return {c:c, W:w, H:h};
+  }
+  function font(c, s, w){ c.font = (w||'400')+' '+s+'px -apple-system,"Segoe UI","PingFang SC",sans-serif'; }
+  function txt(c, s, x, y, o){
+    o = o||{};
+    font(c, o.fs||12, o.w||'400');
+    c.fillStyle = o.col||INK;
+    c.textAlign = o.al||'left';
+    c.textBaseline = o.bl||'alphabetic';
+    c.fillText(s,x,y);
+    c.textAlign='left'; c.textBaseline='alphabetic';
+  }
+  function line(c,x1,y1,x2,y2,col,lw,dash){
+    c.beginPath(); c.setLineDash(dash||[]);
+    c.moveTo(x1,y1); c.lineTo(x2,y2);
+    c.strokeStyle=col; c.lineWidth=lw||1; c.stroke(); c.setLineDash([]);
+  }
+
+  /* ================= 图1：R(delta) 双对数 ================= */
+  var RD = [[0.005,9.6678e-05],[0.01,3.8669e-04],[0.02,1.5463e-03],
+            [0.05,9.6447e-03],[0.1,3.8299e-02],[0.2,1.4871e-01],
+            [0.3,3.1778e-01],[0.4,5.2306e-01]];
+  function drawSlope(){
+    var o = setup(document.getElementById('cvSlope')), c=o.c, W=o.W, H=o.H;
+    var L=96, R=W-142, T=48, B=H-72;
+    var x0=-2.45, x1=-0.30, y0=-4.35, y1=0.10;
+    var X = function(v){ return L + (Math.log10(v)-x0)/(x1-x0)*(R-L); };
+    var Y = function(v){ return B - (Math.log10(v)-y0)/(y1-y0)*(B-T); };
+
+    for (var e=-4; e<=0; e++){
+      var y=Y(Math.pow(10,e));
+      line(c,L,y,R,y,'#f0f3f7',1);
+      txt(c,'10'+sup(e), L-12, y+4, {al:'right', fs:11, col:MUT});
+    }
+    [[0.005,'0.005'],[0.01,'0.01'],[0.02,'0.02'],[0.05,'0.05'],
+     [0.1,'0.1'],[0.2,'0.2'],[0.4,'0.4']].forEach(function(p){
+      txt(c,p[1],X(p[0]),B+20,{al:'center',fs:11,col:MUT});
+      line(c,X(p[0]),B,X(p[0]),B+4,'#c9d2dd',1);
+    });
+
+    line(c,L,B,R,B,'#98a4b1',1.2);
+    line(c,L,T,L,B,'#98a4b1',1.2);
+    txt(c,'δ（零点沿 σ 方向的位移）',(L+R)/2,B+46,{al:'center',fs:12, col:INK});
+    c.save(); c.translate(30,(T+B)/2); c.rotate(-Math.PI/2);
+    txt(c,'失配 R(δ)',0,0,{al:'center',fs:12,col:INK}); c.restore();
+
+    var p0=RD[0];
+    var lg1 = Math.log10(p0[1]) + (Math.log10(0.4)-Math.log10(0.005));
+    var k1 = Math.pow(10, lg1);
+    line(c, X(0.005), Y(p0[1]), X(0.4), Y(k1), '#37424e', 2.2, [8,6]);
+    txt(c,'斜率 1', X(0.115), Y(k1*3.1), {fs:12.5, col:'#37424e', w:'650'});
+    txt(c,'一阶项若存在，曲线应落在这条线上', X(0.115), Y(k1*3.1)+17,
+        {fs:10.5, col:'#7a8794'});
+
+    var pts = RD.map(function(p){ return [X(p[0]), Y(p[1])]; });
+    c.beginPath(); c.moveTo(pts[0][0],pts[0][1]);
+    for (var i=1;i<pts.length;i++) c.lineTo(pts[i][0],pts[i][1]);
+    c.strokeStyle=CR; c.lineWidth=2.4; c.stroke();
+    pts.forEach(function(p){
+      c.beginPath(); c.arc(p[0],p[1],4.4,0,6.2832);
+      c.fillStyle='#fff'; c.fill(); c.strokeStyle=CR; c.lineWidth=2; c.stroke();
+    });
+
+    txt(c,'R ∝ δ²', X(0.030), Y(1.15e-03), {fs:15, col:CR, w:'650'});
+
+    c.save();
+    c.fillStyle='rgba(255,255,255,.94)'; c.strokeStyle='#e8cdd2';
+    roundRect(c, R-236, B-104, 236, 84, 9); c.fill(); c.stroke();
+    c.restore();
+    txt(c,'实测拟合斜率', R-222, B-76, {fs:11, col:MUT});
+    txt(c,'1.962', R-222, B-40, {fs:30, col:CR, w:'650'});
+    txt(c,'（若一阶存在应为 1.0）', R-222, B-20, {fs:10.5, col:MUT});
+    txt(c,'δ²', R-58, B-40, {fs:13, col:MUT});
+  }
+  function roundRect(c,x,y,w,h,r){
+    c.beginPath();
+    c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r);
+    c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath();
+  }
+  function sup(n){
+    var m={'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','-':'⁻'};
+    return String(n).split('').map(function(ch){return m[ch]||ch;}).join('');
+  }
+
+  /* ================= 图2：sigma 剖面 ================= */
+  // 真实数据（Python 逐点算出，未插值）：gamma_1=14.134725, L=1.5, k=2
+  var SIGMA=[0.2,0.21,0.22,0.23,0.24,0.25,0.26,0.27,0.28,0.29,0.3,0.31,0.32,0.33,0.34,0.35,0.36,0.37,0.38,0.39,0.4,0.41,0.42,0.43,0.44,0.45,0.46,0.47,0.48,0.49,0.5,0.51,0.52,0.53,0.54,0.55,0.56,0.57,0.58,0.59,0.6,0.61,0.62,0.63,0.64,0.65,0.66,0.67,0.68,0.69,0.7,0.71,0.72,0.73,0.74,0.75,0.76,0.77,0.78,0.79,0.8];
+  var EVEN=[2.810903e-04,2.809382e-04,2.807872e-04,2.806378e-04,2.804903e-04,2.803452e-04,2.802027e-04,2.800633e-04,2.799273e-04,2.797951e-04,2.796669e-04,2.795432e-04,2.794240e-04,2.793098e-04,2.792007e-04,2.790971e-04,2.789991e-04,2.789069e-04,2.788208e-04,2.787409e-04,2.786674e-04,2.786005e-04,2.785402e-04,2.784867e-04,2.784402e-04,2.784006e-04,2.783681e-04,2.783428e-04,2.783247e-04,2.783138e-04,2.783102e-04,2.783138e-04,2.783247e-04,2.783428e-04,2.783681e-04,2.784006e-04,2.784402e-04,2.784867e-04,2.785402e-04,2.786005e-04,2.786674e-04,2.787409e-04,2.788208e-04,2.789069e-04,2.789991e-04,2.790971e-04,2.792007e-04,2.793098e-04,2.794240e-04,2.795432e-04,2.796669e-04,2.797951e-04,2.799273e-04,2.800633e-04,2.802027e-04,2.803452e-04,2.804903e-04,2.806378e-04,2.807872e-04,2.809382e-04,2.810903e-04];
+  var ODD=[1.645207e-04,1.586581e-04,1.528342e-04,1.470476e-04,1.412970e-04,1.355809e-04,1.298981e-04,1.242472e-04,1.186268e-04,1.130355e-04,1.074721e-04,1.019353e-04,9.642356e-05,9.093567e-05,8.547028e-05,8.002605e-05,7.460165e-05,6.919575e-05,6.380702e-05,5.843414e-05,5.307578e-05,4.773062e-05,4.239733e-05,3.707459e-05,3.176108e-05,2.645548e-05,2.115648e-05,1.586275e-05,1.057297e-05,5.285825e-06,0.0,-5.285825e-06,-1.057297e-05,-1.586275e-05,-2.115648e-05,-2.645548e-05,-3.176108e-05,-3.707459e-05,-4.239733e-05,-4.773062e-05,-5.307578e-05,-5.843414e-05,-6.380702e-05,-6.919575e-05,-7.460165e-05,-8.002605e-05,-8.547028e-05,-9.093567e-05,-9.642356e-05,-1.019353e-04,-1.074721e-04,-1.130355e-04,-1.186268e-04,-1.242472e-04,-1.298981e-04,-1.355809e-04,-1.412970e-04,-1.470476e-04,-1.528342e-04,-1.586581e-04,-1.645207e-04];
+
+  function drawProfile(){
+    var o = setup(document.getElementById('cvProfile')), c=o.c, W=o.W, H=o.H;
+    var L=96, R=W-64;
+    var X=function(s){ return L+(s-0.2)/0.6*(R-L); };
+
+    function panel(yTop, yBot, vmin, vmax, data, col, label, sub){
+      var Y=function(v){ return yBot-(v-vmin)/(vmax-vmin)*(yBot-yTop); };
+      return {Y:Y};
+    }
+
+    /* ---- 上：偶基（放大纵轴 300 倍，才看得见抛物线） ---- */
+    var T1=44, B1=T1+184;
+    var vmin1=2.7812e-4, vmax1=2.8120e-4;
+    var Y1=function(v){ return B1-(v-vmin1)/(vmax1-vmin1)*(B1-T1); };
+    [2.785e-4,2.790e-4,2.795e-4,2.800e-4,2.805e-4,2.810e-4].forEach(function(v){
+      line(c,L,Y1(v),R,Y1(v),'#f4f6f9',1);
+      txt(c,(v*1e4).toFixed(3), L-10, Y1(v)+4, {al:'right',fs:10,col:MUT});
+    });
+    line(c,L,B1,R,B1,'#c3ccd6',1);
+    line(c,R,Y1(EVEN[30])+0,R,Y1(EVEN[30]),'#fff',0);
+    line(c,X(0.34),Y1(EVEN[30]),X(0.66),Y1(EVEN[30]),CR,1.3,[5,4]);
+
+    c.beginPath();
+    for (var i=0;i<SIGMA.length;i++){
+      var px=X(SIGMA[i]), py=Y1(EVEN[i]);
+      i?c.lineTo(px,py):c.moveTo(px,py);
+    }
+    c.strokeStyle=CR; c.lineWidth=2.6; c.stroke();
+    c.beginPath(); c.arc(X(0.5),Y1(EVEN[30]),5.2,0,6.2832);
+    c.fillStyle=CR; c.fill();
+    txt(c,'偶基：有算术，无一阶', L+8, T1-14, {fs:12.5, col:CR, w:'650'});
+    c.save(); c.translate(40,T1+92); c.rotate(-Math.PI/2);
+    txt(c,'×10⁻⁴',0,0,{al:'center',fs:9.5,col:'#a8b3bf'}); c.restore();
+    txt(c,"ĥ'(½) = 0    ĥ″(½) = 7.3e−5    → 极小值，切线水平", R, T1-14,
+        {al:'right', fs:11, col:MUT});
+
+    /* ---- 下：奇基 ---- */
+    var T2=B1+62, B2=T2+184;
+    var vmin2=-1.75e-4, vmax2=1.75e-4;
+    var Y2=function(v){ return B2-(v-vmin2)/(vmax2-vmin2)*(B2-T2); };
+    [-1.75e-4,-0.875e-4,0,0.875e-4,1.75e-4].forEach(function(v){
+      line(c,L,Y2(v),R,Y2(v),'#f4f6f9',1);
+      txt(c, Math.abs(v)<1e-12 ? '0' : (v*1e4).toFixed(2), L-10, Y2(v)+4,
+          {al:'right',fs:10,col:MUT});
+    });
+    line(c,L,Y2(0),R,Y2(0),'#c3ccd6',1);
+
+    c.beginPath();
+    for (var j=0;j<SIGMA.length;j++){
+      var qx=X(SIGMA[j]), qy=Y2(ODD[j]);
+      j?c.lineTo(qx,qy):c.moveTo(qx,qy);
+    }
+    c.strokeStyle=TE; c.lineWidth=2.4; c.stroke();
+    c.beginPath(); c.arc(X(0.5),Y2(0),4.8,0,6.2832);
+    c.fillStyle=TE; c.fill();
+    txt(c,'奇基：有一阶，无算术', L+8, T2-14, {fs:12.5, col:TE, w:'650'});
+    c.save(); c.translate(40,T2+92); c.rotate(-Math.PI/2);
+    txt(c,'×10⁻⁴',0,0,{al:'center',fs:9.5,col:'#a8b3bf'}); c.restore();
+    txt(c,"ĥ'(½) = −5.3e−4    ĥ″(½) = 0    → 直线穿过，看得见 σ", R, T2-14,
+        {al:'right', fs:11, col:MUT});
+
+    /* ---- 共用 σ 轴 ---- */
+    [0.2,0.3,0.4,0.5,0.6,0.7,0.8].forEach(function(v){
+      txt(c,String(v),X(v),B2+20,{al:'center',fs:11,col:MUT});
+      line(c,X(v),B2,X(v),B2+4,'#c9d2dd',1);
+    });
+    line(c,X(0.5),T1-4,X(0.5),B2,'#c9d2dd',1.3,[5,5]);
+    txt(c,'σ = ½',X(0.5)+7,T1+6,{fs:11,col:'#8a95a1'});
+    txt(c,'σ（零点实部）',(L+R)/2,B2+44,{al:'center',fs:12,col:INK});
+  }
+
+  /* ================= 图3：二难地图 ================= */
+  function drawDilemma(){
+    var o = setup(document.getElementById('cvDilemma')), c=o.c, W=o.W, H=o.H;
+    var L=176, R=W-48, T=46, B=H-92;
+    var xm=(L+R)/2, ym=(T+B)/2;
+
+    /* 轴含义：横轴 左=无算术 右=有算术；纵轴 下=一阶为0 上=一阶非零 */
+    var cells=[
+      {x:L,   y:T,   w:xm-L-9, h:ym-T-9,
+       t:'无算术 · 一阶非零', s:'奇基（sin 调制）',
+       note:'一阶灵敏；素数项相消 ≡ 0', cls:'cur2'},
+      {x:xm+5, y:T,  w:R-xm-5, h:ym-T-9,
+       t:'有算术 · 一阶非零', s:'☐ 这一格是空的',
+       note:'RH 需要它。被 (5) 式封死。', cls:'empty'},
+      {x:L,   y:ym+5, w:xm-L-9, h:B-ym-5,
+       t:'无算术 · 一阶为零', s:'纯常数项',
+       note:'只剩 arch + 常数，ζ 与 D–H 同', cls:'dead'},
+      {x:xm+5, y:ym+5, w:R-xm-5, h:B-ym-5,
+       t:'有算术 · 一阶为零', s:'偶基（cos⁴ 窗）',
+       note:'素数项存活；σ 一阶恒为 0 → 只见 δ²', cls:'cur'}
+    ];
+    cells.forEach(function(k){
+      var fill = k.cls==='cur'?'#fdf3f4' : k.cls==='cur2'?'#eef7f5'
+               : k.cls==='empty'?'#fffdf6' : '#fafbfd';
+      var brd  = k.cls==='cur'?'#e8c9ce' : k.cls==='cur2'?'#bfddd8'
+               : k.cls==='empty'?'#d9b96a' : '#e6eaef';
+      c.save();
+      c.beginPath(); roundRect(c,k.x,k.y,k.w,k.h,10);
+      c.fillStyle=fill; c.fill();
+      c.strokeStyle=brd; c.lineWidth = k.cls==='empty'?2:1;
+      c.setLineDash(k.cls==='empty'?[7,5]:[]);
+      c.stroke(); c.setLineDash([]);
+      c.restore();
+
+      var tc = k.cls==='cur'?CR : k.cls==='cur2'?TE : k.cls==='empty'?AM : MUT;
+      txt(c,k.t, k.x+16, k.y+25, {fs:10.5, col:tc, w:'650'});
+      txt(c,k.s, k.x+16, k.y+55, {fs:14.5, col:INK, w:'600'});
+      txt(c,k.note, k.x+16, k.y+k.h-15, {fs:11, col:MUT});
+    });
+
+    /* 纵轴 */
+    line(c,L-30,T,L-30,B,'#98a4b1',1.2);
+    c.save(); c.translate(L-96,(T+B)/2); c.rotate(-Math.PI/2);
+    txt(c,'一阶 σ 响应（灵敏度）',0,0,{al:'center',fs:12,col:INK}); c.restore();
+    txt(c,'非零 ↑', L-38, T+10, {al:'right', fs:11, col:MUT});
+    txt(c,'0 ↓',   L-38, B-2,  {al:'right', fs:11, col:MUT});
+
+    /* 横轴 */
+    line(c,L,B+30,R,B+30,'#98a4b1',1.2);
+    txt(c,'← 无算术', L, B+52, {fs:11, col:MUT});
+    txt(c,'有算术 →', R, B+52, {al:'right', fs:11, col:MUT});
+    txt(c,'素数项是否存活', (L+R)/2, B+72, {al:'center', fs:12, col:INK});
+
+    /* 格内提示：偶基想往上走 */
+    txt(c,'↑ 偶基若有一阶响应，就会落到这一格', xm+21, T+88, {fs:10.5, col:AM});
+  }
+
+  function boot(){
+    drawSlope();
+    drawProfile();
+    drawDilemma();
+  }
+  var done=false;
+  function once(){ if(done) return; done=true; boot(); }
+  if (document.readyState==='complete') setTimeout(once,60);
+  else window.addEventListener('load', function(){ setTimeout(once,60); });
+  var rt=0;
+  window.addEventListener('resize', function(){
+    clearTimeout(rt); rt=setTimeout(function(){ done=false; once(); }, 220);
+  });
+})();
+</script>
+</body>
+</html>

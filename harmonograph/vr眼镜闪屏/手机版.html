@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#05060a">
+<title>闪屏 · 手机版｜横屏左右分屏 + 光驱动频闪</title>
+<style>
+  :root{
+    --line:rgba(126,224,255,.16); --txt:#e9eef8; --dim:#97a2bb;
+    --acc:#7ee0ff; --warn:#ffb86b; --ok:#7ee0a0;
+    --sheet:rgba(13,15,22,.96);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:#000;color:var(--txt);overflow:hidden;
+    font:13px/1.5 -apple-system,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    -webkit-user-select:none;user-select:none;touch-action:manipulation}
+  #cv{position:fixed;inset:0;width:100%;height:100%;display:block;background:#000;touch-action:none}
+
+  #hud{position:fixed;left:calc(12px + env(safe-area-inset-left));top:calc(10px + env(safe-area-inset-top));
+    pointer-events:none;z-index:5;max-width:60vw}
+  #hud .l1{font-size:13px;font-variant-numeric:tabular-nums;text-shadow:0 1px 4px #000}
+  #hud .l2{font-size:11px;color:var(--dim);margin-top:1px;text-shadow:0 1px 4px #000}
+  #hudNote{margin-top:3px;font-size:10.5px;line-height:1.4;text-shadow:0 1px 4px #000}
+
+  #gear{position:fixed;right:calc(12px + env(safe-area-inset-right));top:calc(10px + env(safe-area-inset-top));
+    z-index:12;background:rgba(13,15,22,.86);border:1px solid var(--line);border-radius:24px;
+    padding:9px 14px;font-size:12.5px;color:var(--acc);backdrop-filter:blur(8px);display:none}
+  #gear.show{display:block}
+
+  /* 底部抽屉 */
+  #sheet{position:fixed;left:0;right:0;bottom:0;z-index:11;background:var(--sheet);
+    border-top:1px solid var(--line);border-radius:18px 18px 0 0;
+    padding:6px 12px calc(12px + env(safe-area-inset-bottom));
+    max-height:74vh;display:flex;flex-direction:column;
+    transform:translateY(0);transition:transform .26s ease;
+    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+  #sheet.hide{transform:translateY(calc(100% + 2px))}
+  #grab{width:44px;height:4px;border-radius:3px;background:rgba(160,180,215,.35);margin:4px auto 6px;flex:none}
+  #tabs{display:flex;gap:5px;margin-bottom:8px;flex:none}
+  #tabs button{flex:1;padding:8px 4px;font-size:12px;border-radius:9px;border:1px solid transparent;
+    background:rgba(255,255,255,.05);color:var(--dim)}
+  #tabs button.on{background:rgba(126,224,255,.18);border-color:rgba(126,224,255,.5);color:#eaffff}
+  #paneWrap{overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;min-height:0;padding-bottom:4px}
+  .pane{display:none}
+  .pane.on{display:block}
+  h3{margin:8px 0 6px;font-size:11px;letter-spacing:.1em;color:rgba(126,224,255,.78);font-weight:600;
+    display:flex;align-items:center;gap:6px}
+  h3 .tag{margin-left:auto;font-size:9.5px;color:var(--dim);border:1px solid var(--line);
+    border-radius:20px;padding:1px 7px;letter-spacing:0}
+  h3 .tag.on{color:var(--ok);border-color:rgba(126,224,160,.4)}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+  button{font:inherit;color:var(--txt);background:rgba(255,255,255,.05);
+    border:1px solid rgba(140,160,200,.22);border-radius:10px;padding:9px 8px;font-size:12px;
+    min-height:38px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  button.on{background:rgba(126,224,255,.18);border-color:rgba(126,224,255,.6);color:#eaffff}
+  button:disabled{opacity:.35;pointer-events:none}
+  button.primary{background:linear-gradient(180deg,rgba(126,224,255,.3),rgba(126,224,255,.14));
+    border-color:rgba(126,224,255,.55);font-weight:600;font-size:13.5px;min-height:44px}
+  button.ghost{background:transparent;color:var(--dim)}
+  .row{display:flex;align-items:center;gap:9px;margin:8px 0}
+  .row>span{width:48px;flex:none;color:var(--dim);font-size:11.5px}
+  .row>b{width:46px;flex:none;text-align:right;font-size:11.5px;color:var(--acc);font-weight:500;
+    font-variant-numeric:tabular-nums}
+  input[type=range]{flex:1;-webkit-appearance:none;height:4px;border-radius:4px;
+    background:rgba(140,165,210,.28);outline:none}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;
+    background:var(--acc);box-shadow:0 0 10px rgba(126,224,255,.6)}
+  .row2{display:flex;gap:6px;margin:8px 0}
+  .row2>*{flex:1}
+  select{width:100%;font:inherit;font-size:12px;color:var(--txt);background:rgba(255,255,255,.06);
+    border:1px solid rgba(140,160,200,.22);border-radius:10px;padding:9px 8px;min-height:38px}
+  .chk{display:flex;align-items:center;gap:8px;font-size:12px;margin:4px 0 8px;color:#cfd8ea}
+  .chk input{width:18px;height:18px;accent-color:var(--acc)}
+  .tiny{margin:5px 0 0;font-size:10.6px;line-height:1.5;color:var(--dim)}
+  .tiny b{color:#cfd8ea}
+  .warnline{color:var(--warn)}
+  .okline{color:var(--ok)}
+  .sqgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:4px 0 2px}
+  .sqgrid input{width:100%;font:inherit;font-size:14px;color:var(--txt);text-align:center;
+    background:rgba(255,255,255,.06);border:1px solid rgba(140,160,200,.22);border-radius:9px;
+    padding:8px 4px;outline:none;font-variant-numeric:tabular-nums}
+  .seg{display:flex;gap:5px}
+  .seg button{flex:1;font-size:11.5px;padding:6px 2px;min-height:34px}
+  .palwrap{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+  .palwrap button{font-size:11.5px;padding:7px 2px;min-height:34px}
+
+  /* 安全门 / 结束 */
+  .modal{position:fixed;inset:0;z-index:30;background:rgba(3,4,8,.88);
+    display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(6px)}
+  .modal.hide{display:none}
+  .modal .card{width:min(520px,96vw);max-height:92vh;overflow:auto;background:#0c0e15;
+    border:1px solid rgba(255,184,107,.3);border-radius:16px;padding:18px 18px 16px}
+  .modal h2{margin:0 0 10px;font-size:16px}
+  .modal ul{margin:0 0 14px;padding-left:16px;font-size:12px;line-height:1.7;color:#cdd6e8}
+  .modal li b{color:#ffd8a8}
+  .modal .row2{margin:0}
+
+  /* 请横屏 */
+  #rotate{position:fixed;inset:0;z-index:25;background:rgba(3,4,8,.94);display:none;
+    flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px}
+  #rotate.show{display:flex}
+  #rotate .icon{width:64px;height:64px;border:2px solid var(--acc);border-radius:12px;
+    animation:rot 1.6s ease-in-out infinite}
+  @keyframes rot{0%,40%{transform:rotate(0)}60%,100%{transform:rotate(90deg)}}
+  #rotate p{margin:0;font-size:13px;color:#cfd8ea;line-height:1.6}
+  #rotate small{color:var(--dim);font-size:11.5px}
+  @media (orientation:portrait){
+    #rotate.show{display:flex}
+  }
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+
+<div id="hud">
+  <div class="l1" id="hudFreq">—</div>
+  <div class="l2" id="hudStage">预览</div>
+  <div id="hudNote"></div>
+</div>
+<button id="gear">⚙</button>
+
+<section id="sheet" class="hide">
+  <div id="grab"></div>
+  <div id="tabs">
+    <button data-tab="sess" class="on">会话</button>
+    <button data-tab="view">画面</button>
+    <button data-tab="freq">频率</button>
+    <button data-tab="sq">数字</button>
+    <button data-tab="cy">卡比</button>
+    <button data-tab="look">观感</button>
+  </div>
+  <div id="paneWrap">
+
+    <div class="pane on" data-pane="sess">
+      <h3>会话 · 频段斜坡 <span class="tag" id="sessTag">自由</span></h3>
+      <div class="grid2" id="sessRow"></div>
+      <div class="row2">
+        <button id="btnStart" class="primary">▶ 开始</button>
+        <button id="btnPause">⏸ 暂停</button>
+        <button id="btnStop" class="ghost">■ 结束</button>
+      </div>
+      <p class="tiny" id="sessDesc">—</p>
+      <p class="tiny">点屏 = 暂停/继续　·　长按 1.2 秒 = 结束</p>
+    </div>
+
+    <div class="pane" data-pane="view">
+      <h3>频率来源 · 图形</h3>
+      <div class="seg" id="srcRow">
+        <button data-src="sq">四相数 2D</button>
+        <button data-src="hex" class="on">六角数 3D</button>
+        <button data-src="cy">卡拉比丘 3D</button>
+        <button data-src="scene">线框场景</button>
+      </div>
+      <p class="tiny" id="srcTip">六角数：三对 = x/y/z 三轴 ⇒ 3D 纽结；卡拉比丘：五次曲面线框（参数在「卡比」页）。<b>输出模式只对 3D 生效</b>（2D 单屏铺满）。</p>
+      <h3>输出模式 <span class="tag" id="modeTag">3D</span></h3>
+      <div class="grid3" id="modeRow">
+        <button data-mode="vr" class="on">VR 分屏</button>
+        <button data-mode="anaglyph">红青</button>
+        <button data-mode="sbs">裸眼并排</button>
+      </div>
+      <p class="tiny" id="modeTip">横屏后左右两个屏区，各给一只眼 + 桶形畸变预补偿。</p>
+      <div id="secScene2">
+        <h3>场景 <span class="tag" id="sceneTag">多面体</span></h3>
+        <div class="grid2" id="sceneRow"></div>
+        <label class="row"><span>旋转</span>
+          <input type="range" id="sp" min="0" max="2.5" step="0.05" value="1"><b id="spv">1.00</b></label>
+      </div>
+    </div>
+
+    <div class="pane" data-pane="freq">
+      <h3>频率 / 波形</h3>
+      <label class="row"><span>左眼</span>
+        <input type="range" id="fL" min="0.5" max="30" step="0.1" value="10"><b id="fLv">10.0</b></label>
+      <label class="row"><span>右眼</span>
+        <input type="range" id="fR" min="0.5" max="30" step="0.1" value="10"><b id="fRv">10.0</b></label>
+      <div class="row"><span>相位</span>
+        <div class="seg" id="phaseRow" style="flex:1">
+          <button data-ph="0">0°</button><button data-ph="90">90°</button>
+          <button data-ph="180" class="on">180°</button><button data-ph="270">270°</button>
+        </div></div>
+      <label class="row"><span>占空</span>
+        <input type="range" id="duty" min="10" max="90" step="1" value="50"><b id="dutyv">50%</b></label>
+      <div class="seg" id="waveRow">
+        <button data-wave="square">方波</button>
+        <button data-wave="sine" class="on">正弦</button>
+        <button data-wave="tri">三角</button>
+      </div>
+      <p class="tiny">滑杆只在「自由」会话下生效；定时会话由曲目接管。</p>
+    </div>
+
+    <div class="pane" data-pane="sq">
+      <div id="secSq2">
+      <h3>四相数 · 二阶方（2D）<span class="tag" id="sqTag">关</span></h3>
+      <div class="sqgrid">
+        <input type="number" id="sqa" value="220" step="any" inputmode="decimal">
+        <input type="number" id="sqb" value="221" step="any" inputmode="decimal">
+        <input type="number" id="sqc" value="3" step="any" inputmode="decimal">
+        <input type="number" id="sqd" value="4" step="any" inputmode="decimal">
+      </div>
+      <p class="tiny" id="sqSum">—</p>
+      <select id="sqMode">
+        <option value="pair">双频叠加 · 每眼两组纯净频率</option>
+        <option value="beat">差频直驱 · 对角线之差</option>
+      </select>
+      <label class="row"><span>基频</span>
+        <input type="range" id="sqBase" min="1" max="30" step="0.1" value="6"><b id="sqBasev">6.0</b></label>
+      <div class="seg" id="sqBaseRow">
+        <button data-base="6" class="on">θ 6</button>
+        <button data-base="10">α 10 ⚠</button>
+        <button data-base="16">β 16 ⚠</button>
+      </div>
+      <p class="tiny" id="sqOut">—</p>
+      <div class="seg" id="style2dRow" title="2D 图形款式">
+        <button data-st="line" class="on">单线</button>
+        <button data-st="quad">四重镜像</button>
+        <button data-st="dots">点彩</button>
+      </div>
+      <div class="seg" id="win2dRow">
+        <button data-w="full" class="on">整周期 · 闭合</button>
+        <button data-w="short">短窗 14 圈 · 美形</button>
+      </div>
+      <div class="grid3" id="sqOps" style="margin-top:5px">
+        <button id="sqBalance" class="on" title="保持开启：自动调 c 使 a+d = b+c；点击可关">配平</button>
+        <button id="sqSkel" class="on" title="保持开启：自动对望对各除 gcd（探索器骨架口径）；点击可关">骨架化简</button>
+        <button id="sqSwap">x↔y 互换</button>
+      </div>
+      <div class="grid2" style="margin-top:5px" id="sqPresets">
+        <button data-sq="220,221,3,4">冠军骨架 220·221/3·4</button>
+        <button data-sq="1100,945,1260,1105">冠军还原 1105态</button>
+        <button data-sq="1,4,5,8">素对 1·4 / 5·8</button>
+        <button data-sq="117,1,209,9">T_c 闭合 tc:HOT</button>
+      </div>
+      <p class="tiny" id="sqClose">—</p>
+      <p class="tiny">规则 A：<b>a+d = b+c</b>。k = 基频 / max(四数)，频率可为分数。
+        基频 6Hz 时全部 &lt; 8Hz，避开敏感区。图形 = sin(a t)−sin(d t) / cos(b t)−cos(c t)，
+        t 走满公共周期 <b>T = 2π/gcd(四数)</b> ⇒ 精确闭合（探索器同款口径）。</p>
+      </div>
+
+      <div id="secHex2">
+      <h3 style="margin-top:16px">六角数 · 三对六频（3D）<span class="tag" id="hexTag">开</span></h3>
+      <div class="sqgrid">
+        <input type="number" id="hex1" value="1848" step="any" inputmode="decimal" title="x₁">
+        <input type="number" id="hex2" value="1640" step="any" inputmode="decimal" title="x₂">
+        <input type="number" id="hex3" value="3216" step="any" inputmode="decimal" title="y₁">
+        <input type="number" id="hex4" value="272" step="any" inputmode="decimal" title="y₂">
+        <input type="number" id="hex5" value="3112" step="any" inputmode="decimal" title="z₁">
+        <input type="number" id="hex6" value="376" step="any" inputmode="decimal" title="z₂">
+      </div>
+      <p class="tiny">三对 = <b>x / y / z 三轴</b>（六角幻方 6 个角区和）。<b>x 对给左眼、y 对给右眼、z 对只塑形</b>。</p>
+      <label class="row"><span>基频</span>
+        <input type="range" id="hexBase" min="1" max="30" step="0.1" value="6"><b id="hexBasev">6.0</b></label>
+      <div class="seg" id="hexBaseRow">
+        <button data-base="6" class="on">θ 6</button>
+        <button data-base="10">α 10 ⚠</button>
+        <button data-base="16">β 16 ⚠</button>
+      </div>
+      <p class="tiny" id="hexOut">—</p>
+      <div class="seg" id="style3dRow" title="3D 纽结款式">
+        <button data-st="line" class="on">实线</button>
+        <button data-st="dots">点彩</button>
+      </div>
+      <div class="seg" id="win3dRow">
+        <button data-w="full" class="on">整周期 · 闭合</button>
+        <button data-w="short">短窗 12 圈 · 美形</button>
+      </div>
+      <div class="grid3" id="hexOps" style="margin-top:5px">
+        <button id="hexBalance">配平三对</button>
+        <button id="hexSkel">骨架化简</button>
+        <button id="hexSwap">x↔y 互换</button>
+      </div>
+      <div class="grid3" style="margin-top:5px" id="hexPresets">
+        <button data-hex="1848,1640,3216,272,3112,376">n=9·r=4</button>
+        <button data-hex="221,240,237,217,217,239">n=5·r=2</button>
+        <button data-hex="9,16,15,3,10,18">n=3 真解</button>
+      </div>
+      <p class="tiny" id="hexClose">—</p>
+      <p class="tiny">k = 基频 / max(六数) ⇒ 频率可为分数；图形走满<b>公共周期 T = 2π/gcd(六数)</b>（精确闭合）。
+        定时会话运行时由曲目接管基频。</p>
+      </div>
+    </div>
+
+    <div class="pane" data-pane="cy">
+      <h3>卡拉比丘 · Calabi–Yau 五次曲面</h3>
+      <div class="seg" id="cyVarRow">
+        <button data-v="std" class="on">标准</button>
+        <button data-v="egg">蛋形</button>
+        <button data-v="tower">塔</button>
+        <button data-v="thick">厚度</button>
+        <button data-v="flower">花</button>
+      </div>
+      <div class="seg" id="cyDirRow" style="margin-top:6px">
+        <button data-dir="-1" class="on">逆时针</button>
+        <button data-dir="1">顺时针</button>
+        <button data-st="line" class="on" data-cy-style>实线</button>
+        <button data-st="surf" data-cy-style>曲面</button>
+        <button data-st="dots" data-cy-style>点彩</button>
+      </div>
+      <label class="row"><span>n 阶数</span>
+        <input type="range" id="cyN" min="1" max="8" step="1" value="3"><b id="cyNv">3</b></label>
+      <label class="row"><span>空间 α</span>
+        <input type="range" id="cyA" min="0" max="6.2832" step="0.01745" value="0.7854"><b id="cyAv">π/4</b></label>
+      <div class="row"><span>相位层</span>
+        <div class="seg" id="cyPhRow" style="flex:1">
+          <button data-ph="1" class="on">1</button><button data-ph="2">2</button>
+          <button data-ph="4">4</button><button data-ph="6">6</button><button data-ph="8">8</button>
+        </div></div>
+      <label class="row"><span>采样</span>
+        <input type="range" id="cyS" min="4" max="26" step="1" value="12"><b id="cySv">12</b></label>
+      <label class="row"><span>展幅 u</span>
+        <input type="range" id="cySpan" min="0.3" max="1.6" step="0.05" value="1"><b id="cySpanv">1.00</b></label>
+      <label class="row"><span>塔层</span>
+        <input type="range" id="cyTower" min="1" max="4" step="1" value="2"><b id="cyTowerv">2</b></label>
+      <label class="row"><span>厚度</span>
+        <input type="range" id="cyThick" min="0.01" max="0.25" step="0.01" value="0.06"><b id="cyThickv">0.06</b></label>
+      <label class="row"><span>仰角</span>
+        <input type="range" id="cyElev" min="-1.57" max="1.57" step="0.02" value="0.30"><b id="cyElevv">17°</b></label>
+      <label class="row"><span>方位</span>
+        <input type="range" id="cyAzim" min="0" max="6.2832" step="0.02" value="0.60"><b id="cyAzimv">34°</b></label>
+      <label class="row"><span>自转</span>
+        <input type="range" id="cySpin" min="0" max="1.2" step="0.02" value="0.30"><b id="cySpinv">0.30</b></label>
+      <div class="grid3" style="margin-top:6px" id="cyPresets">
+        <button data-cy="std1">标准 n1</button>
+        <button data-cy="egg3">蛋 n3</button>
+        <button data-cy="tower3">塔 n3</button>
+        <button data-cy="thick2">厚度 n2</button>
+        <button data-cy="flower4">花 n4·6φ</button>
+        <button data-cy="merge3">合并 n3·4φ</button>
+      </div>
+      <div class="grid2" style="margin-top:6px" id="cyOps">
+        <button id="cyReset">视角复位</button>
+        <button id="cyKeep">重新生成</button>
+      </div>
+      <p class="tiny" id="cyOut">—</p>
+      <p class="tiny">与 <code>calabi*.py</code> 同公式：x=Re[e^{iφ₁}cosh(z)^{2/n}]、y=Re[e^{iφ₂}sinh(z)^{2/n}]、
+        z₃=cosα·Im z₁+sinα·Im z₂。相位层&gt;1 = 多相位合并（错色相叠加）。采样有预算，n 大时自动降。</p>
+    </div>
+
+    <div class="pane" data-pane="look">
+      <h3>观感</h3>
+      <label class="row"><span>亮度</span>
+        <input type="range" id="br" min="20" max="100" step="1" value="100"><b id="brv">100%</b></label>
+      <label class="row"><span>背景闪</span>
+        <input type="range" id="bg" min="0" max="100" step="1" value="0"><b id="bgv">0%</b></label>
+      <div class="seg" id="bgSplitRow">
+        <button data-bgs="tb" class="on">上下</button>
+        <button data-bgs="lr">左右</button>
+        <button data-bgs="quad">四象限</button>
+        <button data-bgs="none">整屏</button>
+      </div>
+      <p class="tiny">默认<b>上下</b>两屏、面积对等（四相数 上=a 下=c）；四象限 = 左上 a / 右上 b / 左下 c / 右下 d。
+        六角数取 x₁y₁ / x₁x₂ / y₁y₂，线框用左/右眼。<b>背景闪 100% = 纯黑↔纯白全对比</b>。
+        红青模式下背景同样分区闪，但白底相位视差会被冲淡 —— 要立体+背景闪请用 VR 分屏。</p>
+      <label class="row"><span>视差</span>
+        <input type="range" id="ipd" min="0" max="12" step="0.05" value="1.10"><b id="ipdv">1.10</b></label>
+      <label class="row"><span>畸变</span>
+        <input type="range" id="dist" min="-0.3" max="0.45" step="0.01" value="0.12"><b id="distv">0.12</b></label>
+      <div class="palwrap" id="palRow">
+        <button data-pal="aurora" class="on">极光</button>
+        <button data-pal="ice">冰蓝</button>
+        <button data-pal="ember">余烬</button>
+        <button data-pal="violet">紫罗兰</button>
+        <button data-pal="emerald">翡翠</button>
+        <button data-pal="gold">熔金</button>
+        <button data-pal="sakura">樱雪</button>
+        <button data-pal="neon">霓虹</button>
+        <button data-pal="sunset">落霞</button>
+        <button data-pal="ocean">深海</button>
+        <button data-pal="flow">流彩·全谱</button>
+        <button data-pal="macaron">马卡龙流光</button>
+      </div>
+      <p class="tiny">视差 0–12：&gt;2 会眼酸复视，≥6 多数人无法融合；边缘弯就加大畸变，中心发虚就减小。
+        静态色盘带慢漂移，<b>流彩·全谱</b>／<b>马卡龙流光</b> 会连续流动。</p>
+      <p class="tiny warnline">⚠ 8–30Hz 是光敏性癫痫敏感区，没有病史也可能中招；有癫痫史/偏头痛/孕妇/儿童请勿使用。</p>
+    </div>
+
+  </div>
+</section>
+
+<div id="rotate" class="show">
+  <div class="icon"></div>
+  <p><b>请横屏使用</b><br>横过来后左右两个屏区分别给一只眼</p>
+  <small>点这里进入全屏并尝试锁定横屏</small>
+  <button id="rotateGo" class="primary" style="min-width:180px">进入全屏横屏</button>
+</div>
+
+<div id="gate" class="modal hide">
+  <div class="card">
+    <h2>先读 3 行，再开屏</h2>
+    <ul>
+      <li><b>8–30 Hz 是光敏性癫痫最敏感的区间</b>，没有既往病史也可能首次中招；有癫痫史、偏头痛、孕妇、儿童请勿使用。</li>
+      <li>默认亮度 60%、开场 3 秒渐亮、结束前 5 秒渐暗；首次先点「试 3 秒」。</li>
+      <li>眼痛、恶心、眩晕、幻视停不下来就立刻停。</li>
+    </ul>
+    <div class="row2">
+      <button id="gateTest" class="ghost">先试 3 秒</button>
+      <button id="gateGo" class="primary">我已了解 · 开始</button>
+    </div>
+  </div>
+</div>
+
+<div id="done" class="modal hide">
+  <div class="card">
+    <h2 id="doneTitle">会话结束</h2>
+    <p class="tiny" id="doneText">—</p>
+    <div class="row2" style="margin-top:14px">
+      <button id="doneAgain" class="primary">再来一次</button>
+      <button id="doneClose" class="ghost">回到预览</button>
+    </div>
+  </div>
+</div>
+
+<script src="engine.js"></script>
+<script>
+(function () {
+  var F = window.FLASH, S = F.S;
+  F.init(document.getElementById('cv'));
+  var $ = function (id) { return document.getElementById(id); };
+  var on = function (el, v) { el.classList.toggle('on', !!v); };
+
+  /* ---------- 抽屉 / 标签 ---------- */
+  function openSheet() { $('sheet').classList.remove('hide'); $('gear').classList.add('show'); }
+  function closeSheet() { $('sheet').classList.add('hide'); }
+  $('gear').addEventListener('click', function () {
+    if ($('sheet').classList.contains('hide')) openSheet();
+    else closeSheet();
+  });
+  [].forEach.call($('tabs').children, function (b) {
+    b.addEventListener('click', function () {
+      [].forEach.call($('tabs').children, function (c) { on(c, c === b); });
+      [].forEach.call(document.querySelectorAll('.pane'), function (p) {
+        p.classList.toggle('on', p.dataset.pane === b.dataset.tab);
+      });
+      $('paneWrap').scrollTop = 0;
+    });
+  });
+
+  /* ---------- 场景 ---------- */
+  var sceneRow = $('sceneRow');
+  Object.keys(F.SCENES).forEach(function (k) {
+    var b = document.createElement('button');
+    b.textContent = F.SCENES[k].label;
+    b.dataset.scene = k;
+    if (k === S.scene) b.classList.add('on');
+    b.addEventListener('click', function () {
+      F.setScene(k);
+      [].forEach.call(sceneRow.children, function (c) { on(c, c.dataset.scene === k); });
+      $('sceneTag').textContent = F.SCENES[k].label.split(' · ')[0];
+    });
+    sceneRow.appendChild(b);
+  });
+
+  /* ---------- 会话 ---------- */
+  var sessRow = $('sessRow');
+  function markSess() {
+    [].forEach.call(sessRow.children, function (c) { on(c, c.dataset.sess === S.session); });
+    var se = F.SESSIONS[S.session], tot = F.totalOf(S.session);
+    $('sessTag').textContent = se.name.split(' · ')[0];
+    $('sessDesc').textContent = se.desc + (tot ? '　共 ' + F.fmtTime(tot) : '　不自动结束');
+  }
+  Object.keys(F.SESSIONS).forEach(function (k) {
+    var b = document.createElement('button');
+    b.textContent = F.SESSIONS[k].name;
+    b.dataset.sess = k;
+    if (k === S.session) b.classList.add('on');
+    b.addEventListener('click', function () {
+      F.setSession(k); markSess();
+      if (S.running) F.start();
+    });
+    sessRow.appendChild(b);
+  });
+  markSess();
+
+  /* ---------- 输出模式 ---------- */
+  var modeTips = {
+    vr: '左右半屏各一只眼 + 桶形畸变预补偿。横屏塞进 Cardboard 类盒子。',
+    anaglyph: '全屏红/青叠加，需要红青眼镜，亮度有损失。',
+    sbs: '左右无畸变并排，可练平行眼/交叉眼。'
+  };
+  [].forEach.call($('modeRow').children, function (b) {
+    b.addEventListener('click', function () {
+      F.setMode(b.dataset.mode);
+      [].forEach.call($('modeRow').children, function (c) { on(c, c === b); });
+      $('modeTip').textContent = modeTips[b.dataset.mode];
+    });
+  });
+
+  /* ---------- 滑杆 ---------- */
+  function bindRange(id, apply, fmt) {
+    var el = $(id), out = $(id + 'v');
+    el.addEventListener('input', function () {
+      var v = parseFloat(el.value);
+      apply(v);
+      if (out) out.textContent = fmt(v);
+    });
+  }
+  bindRange('sp', function (v) { S.sceneSpeed = v; }, function (v) { return v.toFixed(2); });
+  bindRange('br', function (v) { S.brightness = v / 100; }, function (v) { return Math.round(v) + '%'; });
+  bindRange('bg', function (v) { S.bg = v / 100; }, function (v) { return Math.round(v) + '%'; });
+  bindRange('ipd', function (v) { S.ipd = v; }, function (v) { return v.toFixed(2); });
+  bindRange('dist', function (v) { S.distort = v; }, function (v) { return v.toFixed(2); });
+  bindRange('duty', function (v) { S.duty = v / 100; }, function (v) { return Math.round(v) + '%'; });
+  bindRange('fL', function (v) { F.setUserFreq(v, parseFloat($('fR').value)); }, function (v) { return v.toFixed(1); });
+  bindRange('fR', function (v) { F.setUserFreq(parseFloat($('fL').value), v); }, function (v) { return v.toFixed(1); });
+  bindRange('sqBase', function (v) { S.sq.base = v; sqRefresh(); }, function (v) { return v.toFixed(1); });
+  bindRange('hexBase', function (v) { S.hex.base = v; hexRefresh(); }, function (v) { return v.toFixed(1); });
+
+  [].forEach.call($('phaseRow').children, function (b) {
+    b.addEventListener('click', function () {
+      S.phase = +b.dataset.ph;
+      [].forEach.call($('phaseRow').children, function (c) { on(c, c === b); });
+    });
+  });
+  [].forEach.call($('waveRow').children, function (b) {
+    b.addEventListener('click', function () {
+      S.wave = b.dataset.wave;
+      [].forEach.call($('waveRow').children, function (c) { on(c, c === b); });
+    });
+  });
+  [].forEach.call($('palRow').children, function (b) {
+    b.addEventListener('click', function () {
+      S.palette = b.dataset.pal;
+      [].forEach.call($('palRow').children, function (c) { on(c, c === b); });
+    });
+  });
+  [].forEach.call($('bgSplitRow').children, function (b) {
+    b.addEventListener('click', function () {
+      S.bgSplit = b.dataset.bgs;
+      [].forEach.call($('bgSplitRow').children, function (c) { on(c, c === b); });
+    });
+  });
+
+  /* ---------- 频率来源 ---------- */
+  function setSrc(v) {
+    S.src = v;
+    [].forEach.call($('srcRow').children, function (c) { on(c, c.dataset.src === v); });
+    $('secScene2').style.display = v === 'scene' ? '' : 'none';
+    $('secSq2').style.display = v === 'sq' ? '' : 'none';
+    $('secHex2').style.display = v === 'hex' ? '' : 'none';
+    var m3d = v !== 'sq';
+    [].forEach.call($('modeRow').children, function (c) { c.disabled = !m3d; });
+    $('modeTag').textContent = m3d ? '3D' : '2D 单屏';
+    $('modeTip').textContent = !m3d
+      ? '2D 四相数为单屏铺满、无立体视差 —— 输出模式仅对 3D 生效。'
+      : modeTips[S.mode];
+    sqRefresh(); hexRefresh();
+  }
+  [].forEach.call($('srcRow').children, function (b) {
+    b.addEventListener('click', function () { setSrc(b.dataset.src); });
+  });
+
+  /* ---------- 四相数（2D） ---------- */
+  function sqRefresh() {
+    ['a', 'b', 'c', 'd'].forEach(function (k) {
+      var v = parseFloat($('sq' + k).value);
+      S.sq[k] = isFinite(v) ? v : 0;
+    });
+    F.shapeDirty();
+    var d = F.sqDerive(), fm = function (v) { return v.toFixed(2); };
+    var ok = Math.abs(d.sumL - d.sumR) < 1e-9;
+    $('sqSum').innerHTML = 'a+d = <b>' + d.sumL + '</b>　b+c = <b>' + d.sumR + '</b>　' +
+      (ok ? '<span class="okline">✔ 规则 A 成立</span>'
+          : '<span class="warnline">✘ 不相等（Δ=' + (d.sumL - d.sumR).toFixed(2) + '）</span>');
+    var all = d.L.concat(d.R), bad = all.some(function (v) { return v >= 8 && v <= 30; });
+    $('sqOut').innerHTML = 'k = ' + d.k.toFixed(5) + '　四路 ' +
+      d.L[0].toFixed(2) + ' / ' + d.L[1].toFixed(2) + ' / ' + d.R[0].toFixed(2) + ' / ' + d.R[1].toFixed(2) + ' Hz' +
+      (S.sq.mode === 'beat' ? '（差频直驱）' : '（拍 ' + fm(d.beatL) + ' / ' + fm(d.beatR) + '）') +
+      (bad ? '<br><span class="warnline">⚠ 有频率落在 8–30Hz 敏感区</span>' : '');
+    $('sqTag').textContent = S.src === 'sq' ? '开' : '关';
+    $('sqTag').classList.toggle('on', S.src === 'sq');
+    $('sqBasev').textContent = (+S.sq.base).toFixed(1);
+    var si = F.shapeInfo().sq;
+    $('sqClose').innerHTML = '取样窗：T = ' + si.t.toFixed(3) + '×2π · 最大 ' + Math.round(si.cyc) + ' 圈 · ' +
+      (si.closed ? '<span class="okline">✔ 精确闭合</span>' : '<span class="warnline">⚠ 短窗不闭合</span>');
+  }
+  ['sqa', 'sqb', 'sqc', 'sqd'].forEach(function (id) { $(id).addEventListener('input', sqRefresh); });
+  $('sqMode').addEventListener('change', function () { S.sq.mode = this.value; F.shapeDirty(); sqRefresh(); });
+  [].forEach.call($('sqBaseRow').children, function (b) {
+    b.addEventListener('click', function () {
+      S.sq.base = +b.dataset.base; $('sqBase').value = S.sq.base;
+      [].forEach.call($('sqBaseRow').children, function (c) { on(c, c === b); });
+      sqRefresh();
+    });
+  });
+  [].forEach.call($('sqPresets').children, function (b) {
+    b.addEventListener('click', function () {
+      var v = b.dataset.sq.split(',');
+      ['a', 'b', 'c', 'd'].forEach(function (k, i) { $('sq' + k).value = v[i]; });
+      sqPipeline();          /* 预设也过「配平→骨架」流水线（开关开着时） */
+    });
+  });
+  [].forEach.call($('style2dRow').children, function (b) {
+    b.addEventListener('click', function () {
+      S.style2d = b.dataset.st;
+      [].forEach.call($('style2dRow').children, function (c) { on(c, c === b); });
+    });
+  });
+  [].forEach.call($('win2dRow').children, function (b) {
+    b.addEventListener('click', function () {
+      S.win2d = b.dataset.w; F.shapeDirty(); sqRefresh();
+      [].forEach.call($('win2dRow').children, function (c) { on(c, c === b); });
+    });
+  });
+  function r4(v) { return Math.round(v * 1e6) / 1e6; }
+  function sqSet(a, b, c, d) {
+    $('sqa').value = a; $('sqb').value = b; $('sqc').value = c; $('sqd').value = d;
+    sqRefresh();
+  }
+  /* 配平 / 骨架化简 = 可保持开关（默认双开）：切预设、点开关时自动跑「配平 → 骨架」流水线 */
+  var sqAuto = { bal: true, skel: true };
+  function sqPipeline() {
+    var a = parseFloat($('sqa').value) || 0, b = parseFloat($('sqb').value) || 0,
+        c = parseFloat($('sqc').value) || 0, d = parseFloat($('sqd').value) || 0;
+    if (sqAuto.bal) c = r4(a + d - b);                     /* 规则 A：c := a+d−b */
+    if (sqAuto.skel) {
+      var g1 = F.numGcdAll([a, d]), g2 = F.numGcdAll([b, c]);
+      a = r4(a / g1); d = r4(d / g1); b = r4(b / g2); c = r4(c / g2);  /* v23 骨架口径 */
+    }
+    sqSet(a, b, c, d);
+  }
+  $('sqBalance').addEventListener('click', function () {
+    sqAuto.bal = !sqAuto.bal;
+    this.classList.toggle('on', sqAuto.bal);
+    sqPipeline();
+  });
+  $('sqSkel').addEventListener('click', function () {
+    sqAuto.skel = !sqAuto.skel;
+    this.classList.toggle('on', sqAuto.skel);
+    sqPipeline();
+  });
+  $('sqSwap').addEventListener('click', function () {
+    var a = S.sq.a, b = S.sq.b, c = S.sq.c, d = S.sq.d;
+    sqSet(b, a, d, c);
+  });
+  sqPipeline();          /* 冷启动：默认「配平 + 骨架化简」双开，直接对预设跑流水线 */
+
+  /* ---------- 六角数（3D） ---------- */
+  function hexRefresh() {
+    ['n1', 'n2', 'n3', 'n4', 'n5', 'n6'].forEach(function (k, i) {
+      var v = parseFloat($('hex' + (i + 1)).value);
+      S.hex[k] = isFinite(v) ? v : 0;
+    });
+    F.shapeDirty();
+    var d = F.hexDerive(), fm = function (v) { return v.toFixed(2); };
+    var all = d.f, bad = all.some(function (v) { return v >= 8 && v <= 30; });
+    $('hexOut').innerHTML =
+      'k = ' + d.k.toFixed(6) + '<br>' +
+      'x 对 <b>' + fm(d.f[0]) + ' + ' + fm(d.f[1]) + '</b> Hz（左眼）<br>' +
+      'y 对 <b>' + fm(d.f[2]) + ' + ' + fm(d.f[3]) + '</b> Hz（右眼）<br>' +
+      'z 对 ' + fm(d.f[4]) + ' + ' + fm(d.f[5]) + ' Hz（只塑形）' +
+      (bad ? '<br><span class="warnline">⚠ 有频率落在 8–30Hz 敏感区</span>' : '');
+    $('hexBasev').textContent = (+S.hex.base).toFixed(1);
+    var si2 = F.shapeInfo().hex;
+    $('hexClose').innerHTML = '取样窗：T = ' + si2.t.toFixed(3) + '×2π · 最大 ' + Math.round(si2.cyc) + ' 圈 · ' +
+      (si2.closed ? '<span class="okline">✔ 精确闭合</span>' : '<span class="warnline">⚠ 短窗不闭合</span>');
+  }
+  ['hex1', 'hex2', 'hex3', 'hex4', 'hex5', 'hex6'].forEach(function (id) {
+    $(id).addEventListener('input', hexRefresh);
+  });
+  [].forEach.call($('hexBaseRow').children, function (b) {
+    b.addEventListener('click', function () {
+      S.hex.base = +b.dataset.base; $('hexBase').value = S.hex.base;
+      [].forEach.call($('hexBaseRow').children, function (c) { on(c, c === b); });
+      hexRefresh();
+    });
+  });
+  [].forEach.call($('hexPresets').children, function (b) {
+    b.addEventListener('click', function () {
+      var v = b.dataset.hex.split(',');
+      ['n1', 'n2', 'n3', 'n4', 'n5', 'n6'].forEach(function (k, i) { $('hex' + (i + 1)).value = v[i]; });
+      hexPipeline();       /* 六角开关默认关 → 原样；开了就自动过流水线 */
+    });
+  });
+  [].forEach.call($('style3dRow').children, function (b) {
+    b.addEventListener('click', function () {
+      S.style3d = b.dataset.st;
+      [].forEach.call($('style3dRow').children, function (c) { on(c, c === b); });
+    });
+  });
+  [].forEach.call($('win3dRow').children, function (b) {
+    b.addEventListener('click', function () {
+      S.win3d = b.dataset.w; F.shapeDirty(); hexRefresh();
+      [].forEach.call($('win3dRow').children, function (c) { on(c, c === b); });
+    });
+  });
+  function hexVals() { return ['n1', 'n2', 'n3', 'n4', 'n5', 'n6'].map(function (k) { return S.hex[k]; }); }
+  function hexSet(v) {
+    v.forEach(function (x, i) { $('hex' + (i + 1)).value = r4(x); });
+    hexRefresh();
+  }
+  /* 配平三对 / 骨架化简 = 可保持开关（六角默认关：保留 n=9·r=4 等预设原始数字） */
+  var hexAuto = { bal: false, skel: false };
+  function hexPipeline() {
+    var v = [1, 2, 3, 4, 5, 6].map(function (i) { return parseFloat($('hex' + i).value) || 0; });
+    if (hexAuto.bal) {
+      var tgt = (v[0] + v[1] + v[2] + v[3] + v[4] + v[5]) / 3;
+      v[1] += tgt - (v[0] + v[1]); v[3] += tgt - (v[2] + v[3]); v[5] += tgt - (v[4] + v[5]);
+    }
+    if (hexAuto.skel) {
+      var g1 = F.numGcdAll([v[0], v[1]]), g2 = F.numGcdAll([v[2], v[3]]), g3 = F.numGcdAll([v[4], v[5]]);
+      v = [v[0] / g1, v[1] / g1, v[2] / g2, v[3] / g2, v[4] / g3, v[5] / g3];
+    }
+    hexSet(v);
+  }
+  $('hexBalance').addEventListener('click', function () {
+    hexAuto.bal = !hexAuto.bal;
+    this.classList.toggle('on', hexAuto.bal);
+    hexPipeline();
+  });
+  $('hexSkel').addEventListener('click', function () {
+    hexAuto.skel = !hexAuto.skel;
+    this.classList.toggle('on', hexAuto.skel);
+    hexPipeline();
+  });
+  $('hexSwap').addEventListener('click', function () {
+    var v = hexVals();
+    hexSet([v[2], v[3], v[0], v[1], v[4], v[5]]);
+  });
+  hexRefresh();
+  /* ---------- 卡拉比丘（Calabi–Yau） ---------- */
+  function cyFmtA(v) {
+    var q = v / (Math.PI / 4);
+    if (Math.abs(q - Math.round(q)) < 0.02) {
+      var p = Math.round(q);
+      if (p === 0) return '0';
+      if (p === 1) return 'π/4';
+      if (p === 2) return 'π/2';
+      if (p === 4) return 'π';
+      return p + 'π/4';
+    }
+    return v.toFixed(2);
+  }
+  function cyRefresh() {
+    var c = S.cy;
+    c.n = Math.round(parseFloat($('cyN').value)) || 3;
+    c.alpha = parseFloat($('cyA').value) || 0;
+    c.slices = Math.round(parseFloat($('cyS').value)) || 12;
+    c.span = parseFloat($('cySpan').value) || 1;
+    c.towerLayers = Math.round(parseFloat($('cyTower').value)) || 2;
+    c.thick = parseFloat($('cyThick').value) || 0.06;
+    c.elev = parseFloat($('cyElev').value);
+    c.azim = parseFloat($('cyAzim').value);
+    c.spin = parseFloat($('cySpin').value);
+    F.shapeDirty();
+    $('cyNv').textContent = c.n;
+    $('cyAv').textContent = cyFmtA(c.alpha);
+    $('cySv').textContent = c.slices;
+    $('cySpanv').textContent = (+c.span).toFixed(2);
+    $('cyTowerv').textContent = c.towerLayers;
+    $('cyThickv').textContent = (+c.thick).toFixed(2);
+    $('cyElevv').textContent = Math.round(c.elev * 180 / Math.PI) + '°';
+    $('cyAzimv').textContent = Math.round(((c.azim % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) * 180 / Math.PI) + '°';
+    $('cySpinv').textContent = (+c.spin).toFixed(2);
+    var st = F.cyStats();
+    var vn = { std: '标准', egg: '蛋形', tower: '塔', thick: '厚度', flower: '花' }[st.variant] || st.variant;
+    $('cyOut').innerHTML = '变体 <b>' + vn + '</b>　n = <b>' + st.n + '</b>（' + st.pairs + ' sheet）　相位 ' + st.phases +
+      ' 层　每轴 ' + st.S1 + '　塔 ' + st.stacks + '　壳 ' + st.shells + '<br>顶点 <b>' + st.verts +
+      '</b>　线段 <b>' + st.segs + '</b>' +
+      (st.segs >= 14000 ? '　<span class="warnline">⚠ 采样已压到上限</span>' : '');
+  }
+  ['cyN', 'cyA', 'cyS', 'cySpan', 'cyTower', 'cyThick', 'cyElev', 'cyAzim', 'cySpin'].forEach(function (id) {
+    $(id).addEventListener('input', cyRefresh);
+  });
+  [].forEach.call($('cyVarRow').children, function (b) {
+    b.addEventListener('click', function () {
+      S.cy.variant = b.dataset.v;
+      if (b.dataset.v === 'flower' && S.cy.phases === 1) {   /* 花 = 蛋 + 多相位，自动铺开 */
+        S.cy.phases = 4;
+        [].forEach.call($('cyPhRow').children, function (c) { on(c, +c.dataset.ph === 4); });
+      }
+      [].forEach.call($('cyVarRow').children, function (c) { on(c, c === b); });
+      cyRefresh();
+    });
+  });
+  [].forEach.call($('cyDirRow').children, function (b) {
+    b.addEventListener('click', function () {
+      if (b.hasAttribute('data-cy-style')) {
+        S.cy.style = b.dataset.st;
+        [].forEach.call($('cyDirRow').children, function (c) {
+          if (c.hasAttribute('data-cy-style')) on(c, c === b);
+        });
+      } else {
+        S.cy.dir = +b.dataset.dir;
+        [].forEach.call($('cyDirRow').children, function (c) {
+          if (!c.hasAttribute('data-cy-style')) on(c, c === b);
+        });
+      }
+      cyRefresh();
+    });
+  });
+  [].forEach.call($('cyPhRow').children, function (b) {
+    b.addEventListener('click', function () {
+      S.cy.phases = +b.dataset.ph;
+      [].forEach.call($('cyPhRow').children, function (c) { on(c, c === b); });
+      cyRefresh();
+    });
+  });
+  var CY_PRESETS = {
+    std1:   { n: 1, variant: 'std', phases: 1, alpha: Math.PI / 4, slices: 14, span: 1, towerLayers: 2, thick: 0.06 },
+    egg3:   { n: 3, variant: 'egg', phases: 1, alpha: Math.PI / 4, slices: 12, span: 1, towerLayers: 2, thick: 0.06 },
+    tower3: { n: 3, variant: 'tower', phases: 1, alpha: 3.59, slices: 10, span: 1, towerLayers: 2, thick: 0.06 },
+    thick2: { n: 2, variant: 'thick', phases: 1, alpha: 0, slices: 12, span: 1, towerLayers: 2, thick: 0.12 },
+    flower4: { n: 4, variant: 'flower', phases: 6, alpha: Math.PI / 4, slices: 9, span: 1, towerLayers: 2, thick: 0.06 },
+    merge3: { n: 3, variant: 'std', phases: 4, alpha: 0, slices: 10, span: 1, towerLayers: 2, thick: 0.06 }
+  };
+  [].forEach.call($('cyPresets').children, function (b) {
+    b.addEventListener('click', function () {
+      var p = CY_PRESETS[b.dataset.cy];
+      if (!p) return;
+      $('cyN').value = p.n; $('cyA').value = p.alpha; $('cyS').value = p.slices;
+      $('cySpan').value = p.span; $('cyTower').value = p.towerLayers; $('cyThick').value = p.thick;
+      S.cy.variant = p.variant; S.cy.phases = p.phases;
+      [].forEach.call($('cyVarRow').children, function (c) { on(c, c.dataset.v === p.variant); });
+      [].forEach.call($('cyPhRow').children, function (c) { on(c, +c.dataset.ph === p.phases); });
+      cyRefresh();
+    });
+  });
+  $('cyReset').addEventListener('click', function () {
+    $('cyElev').value = 0.30; $('cyAzim').value = 0.60; $('cySpin').value = 0.30;
+    cyRefresh();
+  });
+  $('cyKeep').addEventListener('click', function () { if (F.cyResetBudget) F.cyResetBudget(); cyRefresh(); });
+  cyRefresh();
+  setSrc(S.src);
+
+  /* ---------- 开始 / 暂停 / 结束 ---------- */
+  var gateSeen = false;
+  async function goFullscreen() {
+    F.fsOn();
+    await F.lockLandscape();
+    F.keepAwake();
+    setTimeout(function () { F.resize(); }, 400);
+  }
+  function doStart() {
+    goFullscreen();
+    if (!gateSeen) { $('gate').classList.remove('hide'); return; }
+    F.start(); closeSheet();
+  }
+  function doTest() {
+    gateSeen = true; $('gate').classList.add('hide');
+    F.setSession('test3'); markSess(); F.start(); closeSheet();
+  }
+  $('gateGo').addEventListener('click', function () {
+    gateSeen = true; $('gate').classList.add('hide'); F.start(); closeSheet();
+  });
+  $('gateTest').addEventListener('click', doTest);
+  $('btnStart').addEventListener('click', doStart);
+  $('btnPause').addEventListener('click', function () {
+    var p = F.togglePause();
+    $('btnPause').textContent = p ? '▶ 继续' : '⏸ 暂停';
+  });
+  $('btnStop').addEventListener('click', function () { F.stop(false); });
+  $('rotateGo').addEventListener('click', function () {
+    goFullscreen();
+    setTimeout(function () { if (window.innerHeight > window.innerWidth) { /* 仍竖屏：提示留着 */ } }, 600);
+  });
+  S.onEnd = function (finished) {
+    $('btnPause').textContent = '⏸ 暂停';
+    $('done').classList.remove('hide');
+    $('doneTitle').textContent = finished ? '会话结束' : '已手动结束';
+    $('doneText').textContent = finished ? '最后 5 秒已渐暗。摘下设备，远眺放松一下。'
+      : '随时可以重来 —— 记得先试 3 秒。';
+    if (document.exitFullscreen && document.fullscreenElement) document.exitFullscreen().catch(function () {});
+  };
+  $('doneAgain').addEventListener('click', function () { $('done').classList.add('hide'); doStart(); });
+  $('doneClose').addEventListener('click', function () { $('done').classList.add('hide'); });
+
+  /* ---------- 点屏暂停 / 长按结束 ---------- */
+  var pressT = 0, pressX = 0, pressY = 0, pressTimer = null, longFired = false;
+  var cv = $('cv');
+  cv.addEventListener('pointerdown', function (e) {
+    pressT = Date.now(); pressX = e.clientX; pressY = e.clientY; longFired = false;
+    clearTimeout(pressTimer);
+    pressTimer = setTimeout(function () {
+      if (!S.running) return;
+      longFired = true;
+      F.stop(false);
+    }, 1200);
+  });
+  cv.addEventListener('pointermove', function (e) {
+    if (Math.hypot(e.clientX - pressX, e.clientY - pressY) > 14) clearTimeout(pressTimer);
+  });
+  cv.addEventListener('pointerup', function () {
+    clearTimeout(pressTimer);
+    if (longFired) return;
+    if (Date.now() - pressT < 1200 && S.running) {
+      F.togglePause();
+      $('btnPause').textContent = S.paused ? '▶ 继续' : '⏸ 暂停';
+    }
+  });
+  cv.addEventListener('pointercancel', function () { clearTimeout(pressTimer); });
+
+  /* ---------- 横屏提示 ---------- */
+  function orient() {
+    var portrait = window.innerHeight > window.innerWidth;
+    $('rotate').classList.toggle('show', portrait);
+    setTimeout(function () { F.resize(); }, 250);
+  }
+  window.addEventListener('resize', orient);
+  window.addEventListener('orientationchange', function () { setTimeout(orient, 350); });
+  orient();
+})();
+</script>
+</body>
+</html>
