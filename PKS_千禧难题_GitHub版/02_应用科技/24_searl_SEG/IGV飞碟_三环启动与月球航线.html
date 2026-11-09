@@ -41,6 +41,8 @@
   .row > .col { flex:1 1 400px; min-width:320px; }
   .row > .col.narrow { flex:0 1 300px; min-width:260px; }
   canvas.sim { width:100%; background:#f2f6fb; border:1px solid var(--line); border-radius:8px; display:block; }
+  /* 姿态 3D 画布：显式声明比例与最小高度，任何渲染器下都不会塌成 0 高 */
+  #cAttitude { aspect-ratio:640 / 420; min-height:180px; }
   .ctrl { display:flex; flex-wrap:wrap; gap:12px 16px; align-items:center; margin-top:10px; padding:9px 13px;
     background:var(--panel2); border-radius:8px; font-size:12.5px; }
   .ctrl label { color:var(--dim); white-space:nowrap; }
@@ -433,7 +435,7 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
 
 <header>
   <h1>IGV 反重力飞碟 · <span class="hl">三环启动 × 无线电操控 × 姿态与月球航线</span>
-    <span style="font-size:13px;color:#32425b">v1.2</span></h1>
+    <span style="font-size:13px;color:#32425b">v1.4</span></h1>
   <p class="sub">
     姊妹页：<code>SEG充磁三明治_三种磁场仿真.html</code>（讲<b>零件怎么造</b>）—— 本页讲<b>整机怎么开</b>。<br>
     <b>底本</b>：① J.A. Thomas Jr.《Antigravity: The Dream Made Reality》(Searl 授权传记 + 1990–1993 访谈，130 页) ·
@@ -485,6 +487,7 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
   <button data-v="v9">Ⅸ 物理口径与接口</button>
   <button data-v="v10">Ⅹ 原文索引</button>
   <button data-v="v11">Ⅺ 抽打陀螺</button>
+  <button data-v="v12">Ⅻ 对比卡尔 OTC-X1</button>
 </nav>
 
 <main>
@@ -1396,8 +1399,10 @@ SEG 5  悬停 / 着陆  若要落到月面：β·a_IGV 必须 < 1.62 m/s²（= �
           <b>✗ 本页不做 FEA</b>：所有画布都是<b>几何示意 / 唯象曲线</b>，不解场。<br>
           <b>✗ 本页不新增数值判据</b>：充磁页的 <span class="kv">Λ / δmax / Δend</span> 三条判据
           <b>一字未动</b>，本页也不引入新的「合格线」。<br>
-          <b>✗ 本页不主张物理成立</b>：所有 <span class="ev a">A</span> 层引文都是
-          <b>「Searl 说过」</b>，不是<b>「物理如此」</b>。<br>
+          <b>本页对物理真伪不下判决</b>：所有 <span class="ev a">A</span> 层引文都是
+          <b>「Searl 说过」</b>，标的是<b>文献出处</b>，不是<b>「物理如此」</b>；
+          但<b>也不等于「物理不如此」</b>。这一层要靠实验判定，本页给的是几何与控制论 ——
+          <b>它恰好与推力机制的真伪无关</b>，所以机制无论成不成立，本节的秩结论都成立。<br>
           <b>✗ 本页不代表 Searl 授权</b>：本站点与 searlfx.com / Searl Magnetics 无任何关系。
         </p>
       </div>
@@ -1896,11 +1901,546 @@ SEG 5  悬停 / 着陆  若要落到月面：β·a_IGV 必须 < 1.62 m/s²（= �
   </div>
 </section>
 
+<!-- ══════════════════ Ⅻ 与卡尔 OTC-X1 的控制系统对比 ══════════════════ -->
+<section class="view" id="v12">
+  <div class="card">
+    <h2>Ⅻ 与卡尔 OTC-X1 的控制系统对比 —— <span class="hl">同一句「减功率」，两次独立到达</span></h2>
+    <p class="desc">
+      前十一节讲的是<b>这台机器怎么开</b>。这一节换一个坐标系：把 IGV 放到
+      <b>1958 年俄克拉何马州的卡尔（O. T. Carr）OTC-X1</b> 旁边，只看一件事 —— <b>「怎么转向」</b>。
+      两边相隔十年、隔一个大洋、彼此<b>没有任何引用关系</b>，但描述转向的那句话几乎是同一个模子：
+      <b>在环上挑一个点，把这个点的功率减掉</b>。
+      <br>本节把这句话写成一个 <b>6×N 控制分配矩阵</b>，于是「像不像」不再靠感觉，
+      而变成一个<b>可以算出来的秩</b>。<span class="ev c">C 本项目推演</span>
+    </p>
+
+    <div class="gapbox">
+      <div class="big">🔴 一句话结论：两机的控制秩都是 3，而且缺的是同一维</div>
+      <p class="note" style="margin-top:8px">
+        Carr 单环 12 块、Searl 单圈 64 格 —— <b>控制分配矩阵的秩都恒为 3，与执行器数无关</b>。
+        更强的结果：把 IGV 的 cell（原文 §50 口径「该扇区升力归零 + 向下 drag」）写成矩阵，
+        它和 Carr「<b>12 块全部纯轴向（β = 0）</b>」<b>张成同一个三维子空间</b>（脚本实算 <code>same_span = True</code>，
+        残差 &lt; 1e-7）。<br>
+        ⇒ <b>IGV 正好落在 Carr 那张设计表的 β = 0 那一格里。</b>
+        而那张表是去年为 Carr 一个人算的 —— 它无意中已经把 Searl 的机器包含在内了。<br>
+        差别因此不在「能不能转」，而在三件工程实现：<b>① 12 格 vs 64 格；② 模拟量 vs 开关量；③ 三环是推力环还是转子。</b>
+      </p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 class="h3s">A · 两份原始描述，同一句控制律</h3>
+    <div class="row">
+      <div class="col">
+        <blockquote class="q">
+          <span class="ev a">A</span> <b>卡尔 · 1958 年专利（US2912244A「Amusement Device」）</b><br>
+          「with the flick of a switch … alter our course in any desired direction by
+          <b>interposing artificial variable resistances</b> among the natural forces of pressure in
+          <b>differential relationships</b>」
+          <span class="zi">拨一下开关……在自然压力之间<b>插入可变的人造阻抗</b>，靠<b>差分关系</b>改变航向。</span>
+          <span class="en">Tim Ventura 转述同一件事时用的是工程师语言：
+          「<b>Reducing power to one magnet while maintaining the others</b>」——「把一块磁铁的功率降下来，其余维持不动」。</span>
+        </blockquote>
+        <p class="note">
+          关键词是 <b>reducing</b>：一个可以连续调的<b>量</b>。12 块磁铁各有一路可调阻抗，
+          所以卡尔的控制量是<b>模拟量</b>。
+        </p>
+      </div>
+      <div class="col">
+        <blockquote class="q">
+          <span class="ev a">A</span> <b>瑟尔 · 授权传记 p38 / 四卷 f4 §50</b><br>
+          「you are just <b>denying power to a certain point</b>」
+          <span class="zi">你只是<b>在某个点位上把功率扣掉</b>。</span>
+          <span class="en">「Under power it acts at both an <b>electrical and magnetic switch</b>.
+          <b>It cuts the electric power</b> from underneath grid at the same time revise the magnetic field of
+          that segment area. The magnetic field then acts in a <b>downward thrust termed drag</b>
+          acting upon that segment area.」</span>
+        </blockquote>
+        <p class="note">
+          关键词是 <b>cuts / switch</b>：一个<b>开关</b>。64 格各有一根液压顶杆把它从水平扳到垂直，
+          断能是二态的，所以瑟尔的控制量是<b>开关量</b>。<br>
+          ⇒ <b>这一句措辞差异（reducing vs denying）是本节后面所有差异的根。</b>
+        </p>
+      </div>
+    </div>
+
+    <table class="spec">
+      <thead><tr><th style="width:12%">要素</th><th style="width:26%">Carr · OTC-X1</th><th style="width:26%">Searl · IGV</th><th style="width:36%">判定</th></tr></thead>
+      <tbody>
+        <tr><td><b>控制原语</b></td>
+            <td>环上挑一块，降它的功率</td>
+            <td>环上挑一格，扣它的功率</td>
+            <td class="ok"><b>同一句</b>：单点减能 ⟹ 差分升力 ⟹ 倾斜</td></tr>
+        <tr><td><b>控制量性质</b></td>
+            <td>模拟量（variable resistance）</td>
+            <td>开关量（switch / cuts）</td>
+            <td class="warn"><b>这里不一样</b>，见 G 节：方向与幅度能否分开调</td></tr>
+        <tr><td><b>几何</b></td>
+            <td>12 块 / 环，三层同心环</td>
+            <td>64 格 / 圈，只有最外一圈</td>
+            <td class="warn">差 5.33 倍分辨率，且环数不同，见 E · H</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3 class="h3s">B · 把 IGV 也写成一个 6×N 矩阵</h3>
+    <p class="note">
+      每个执行器在位置 <code>r</code>、沿单位方向 <code>u</code> 出力，对整机贡献一个六维 wrench
+      <code>[ u ; r × u ]</code>。N 个拼起来就是控制分配矩阵 A，<b>rank(A) 就是这台几何能独立产生的运动维数</b>。
+      与电压、磁体、功率<b>全部无关</b>。
+    </p>
+    <div class="fml">w_k = [ u_k ; r_k × u_k ]                        6×1 列
+IGV cell（§50 逐字口径）:  u_k = (0, 0, −1)      该扇区升力归零 + 向下 drag
+                 ⟹  w_k = [ 0, 0, −(L0+D) ; +(L0+D)·R·e_φ(φ_k) ]
+A = [ w_0  w_1  …  w_(N−1) ]                     6×N
+rank(A) = 3                                      任何 N 都是 3</div>
+    <table class="spec">
+      <thead><tr><th class="num">N（单元数）</th><th class="num">12</th><th class="num">16</th><th class="num">22</th><th class="num">32</th><th class="num">64</th><th class="num">96</th></tr></thead>
+      <tbody>
+        <tr><td><b>rank</b></td><td class="num">3</td><td class="num">3</td><td class="num">3</td><td class="num">3</td><td class="num"><b>3</b></td><td class="num">3</td></tr>
+        <tr><td>每列的力</td><td class="num" colspan="6">全部为 (0, 0, −1) —— 只有竖直分量，横向恒为 0</td></tr>
+        <tr><td>每列的力矩</td><td class="num" colspan="6">全部落在 xy 平面内 —— Mz 恒为 0</td></tr>
+      </tbody>
+    </table>
+    <p class="srcnote">
+      ★ <b>64 个开关不是 64 个自由度</b>，而是同一个三维子空间上的 64 种取法。
+      这一点最容易误读：中文资料把「64」当成能力，其实它是<b>分辨率</b>。
+      <br>脚本：<code>scripts_补充/seg_igv_carr_control_compare.py</code> 第 A 节（纯 Python，两遍修正 Gram-Schmidt）。
+    </p>
+  </div>
+
+  <div class="card">
+    <h3 class="h3s">★ C · 同构证明：IGV 64 格 ≡ Carr 单环 β = 0</h3>
+    <p class="note">
+      Carr 那套几何的一般形式是「每块沿自身轴出力，轴相对竖直倾 β」，其列向量为
+      <code>[ sinβ·e_r + cosβ·e_z ; R·cosβ·e_φ ]</code>。
+      把 <b>β = 0</b> 代进去 —— 后面那一项恰好退化成<b>纯 −e_z 的力 + 纯 e_φ 的力矩</b>，
+      这正是 IGV 的 cell 在原文里被描述的效果。
+    </p>
+    <div class="fml">Carr  β = 0 :   u_k = e_z        ⟹ w_k = [ 0,0,1 ; −R·e_φ(φ_k) ]
+IGV   cell :   u_k = −e_z      ⟹ w_k = [ 0,0,−1 ; +R·e_φ(φ_k) ]
+                                ↑ 只差一个整体符号，列空间完全相同</div>
+    <table class="spec">
+      <thead><tr><th style="width:30%">检查项</th><th style="width:22%">结果</th><th style="width:48%">含义</th></tr></thead>
+      <tbody>
+        <tr><td>IGV 64 格 rank</td><td class="num">3</td><td>—</td></tr>
+        <tr><td>Carr 12 块 β=0 rank</td><td class="num">3</td><td>—</td></tr>
+        <tr><td><b>两个列空间是否相同</b></td><td class="num ok"><b>True</b></td>
+            <td>互相投影残差 &lt; 1e-7 ⟹ <b>可达的 wrench 集合形状完全相同</b></td></tr>
+        <tr><td>共用子空间</td><td class="num">Fx=Fy=Mz=0</td>
+            <td>只剩 Fz、Mx、My 三个自由量</td></tr>
+      </tbody>
+    </table>
+    <p class="srcnote">
+      🔑 <b>这条结论为什么值得单列一节</b>：<code>AAA_SEG是聚变推进器吗…</code> 的 §7.5.14 第二节那张斜表里，
+      β = 0 那一行原本只写着一句「<b>Fx、Fy、Mz 全为 0，只剩 Fz、Mx、My</b>」——
+      那是为 Carr 推的极限情形，当时当作「一种退化」。
+      现在看，<b>瑟尔的整台飞行器就活在这一格里</b>：他不是没做到倾斜，而是根本不需要倾斜。
+      两页在此对接。
+    </p>
+  </div>
+
+  <div class="card">
+    <h3 class="h3s">★ D · 一条可推导的结论：打 φ_k 的那一格 ⟹ 朝 φ_k 的那个方向倾</h3>
+    <p class="note">
+      Ⅺ B 里那句「<b>打 φ_addr 就折向 φ_addr</b>」当时只敢标
+      <span class="ev c">C 几何读法</span>，因为它是我从图上读出来的，原文只说了「改变该扇区磁场 / 产生向下 drag」。
+      有了矩阵以后，它可以<b>被推出来</b>，而且只占三行：
+    </p>
+    <div class="fml">① 该格动作的净 wrench： M = (L0+D) · R · e_φ(φ_k)       —— 力矩轴 = 该处的切向
+② M 与 e_z 垂直  ⟹ 机体只绕<b>水平轴</b>转，不会自转（Mz = 0，见 I 节）
+③ d(e_z)/dt ∝ M × e_z ∝ e_φ × e_z = e_r(φ_k)          —— 顶轴朝该格方位偏</div>
+    <table class="spec">
+      <thead><tr><th class="num">k</th><th class="num">φ_k</th><th class="num">M/|M| · e_φ</th><th class="num">(e_φ × e_z) · e_r</th><th class="num">倾的方向 · e_r</th></tr></thead>
+      <tbody>
+        <tr><td class="num">0</td><td class="num">0°</td><td class="num">+1.000000</td><td class="num">+1.000000</td><td class="num">+1.000000</td></tr>
+        <tr><td class="num">16</td><td class="num">90°</td><td class="num">+1.000000</td><td class="num">+1.000000</td><td class="num">+1.000000</td></tr>
+        <tr><td class="num">32</td><td class="num">180°</td><td class="num">+1.000000</td><td class="num">+1.000000</td><td class="num">+1.000000</td></tr>
+        <tr><td class="num">48</td><td class="num">270°</td><td class="num">+1.000000</td><td class="num">+1.000000</td><td class="num">+1.000000</td></tr>
+        <tr><td class="num">63</td><td class="num">354.375°</td><td class="num">+1.000000</td><td class="num">+1.000000</td><td class="num">+1.000000</td></tr>
+      </tbody>
+    </table>
+    <p class="note">
+      🔑 <b>两件附带的事</b>：<br>
+      ① 结论对原文的歧义<b>是稳健的</b> —— 「升力归零」与「额外向下 drag」两种读法的<b>符号一致</b>，
+      因为两者的净效果都是「该方位多了一个向下的力」，只是 L0+D 里 D 那一项在不在。
+      <br>② 它与常识一致：<b>右边掉升力 ⟹ 向右滚 ⟹ 推力矢量偏右 ⟹ 向右加速</b>。
+      这一步虽然是中学力学，但原先缺的就是「右边掉升力」这一环 —— 现在它是 §50 的原文。
+      <span class="ev b">B 原文 + 本项目推导</span>
+    </p>
+  </div>
+
+  <div class="card">
+    <h3 class="h3s">E · 逐项差异表（十二项）</h3>
+    <table class="spec">
+      <thead><tr><th style="width:14%">项</th><th style="width:34%">Carr · OTC-X1（1958）</th><th style="width:34%">Searl · IGV（1968–）</th><th style="width:18%">差在哪</th></tr></thead>
+      <tbody>
+        <tr><td><b>① 原始控制语</b></td><td>reducing power to one magnet</td><td>denying power to a certain point</td><td class="ok">同一句</td></tr>
+        <tr><td><b>② 执行器</b></td><td>周缘电磁铁 12 块 / 环，共三环</td><td>flight cell 64 格，只有一圈</td><td>数量 5.33×</td></tr>
+        <tr><td><b>③ 单体的力</b></td><td>沿自身轴：法向 cosβ + 径向 sinβ</td><td>该扇区净力沿 −z（升力归零 + drag）</td><td class="bad">本表最要紧的一行</td></tr>
+        <tr><td><b>④ 控制量</b></td><td>模拟量，可连续调</td><td>开关量，全有 / 全无</td><td class="bad">决定航迹形状</td></tr>
+        <tr><td><b>⑤ 方位分辨率</b></td><td>360° / 12 = <b>30°</b></td><td>360° / 64 = <b>5.625°</b></td><td>细 5.33×</td></tr>
+        <tr><td><b>⑥ 单次力矩</b></td><td>R·sinβ/12 = <b>0.404 m</b>（β=45°）</td><td>R/64 = <b>0.086 m</b></td><td>大 4.70×</td></tr>
+        <tr><td><b>⑦ 控制分配秩</b></td><td>3（单环）/ 5（±交替）/ <b>6</b>（三环带切向）</td><td><b>3</b>（任何 N；加切向仍 3）</td><td class="bad">结构性差异</td></tr>
+        <tr><td><b>⑧ 横向力</b></td><td>有，但与力矩<b>刚性耦合</b> κ = R cotβ = 6.86 m</td><td><b>恒为 0</b>（κ → ∞）</td><td>一个「捆着给」，一个「不给」</td></tr>
+        <tr><td><b>⑨ 偏航 Mz</b></td><td>单环恒 0；第三环切向补到 6</td><td>恒 0，也不需要（先倾后移）</td><td>见 I 节</td></tr>
+        <tr><td><b>⑩ 第二条通道</b></td><td>无 —— 只有稳态调功</td><td>有 —— plunger 脉冲打滚筒（陀螺效应）</td><td class="warn">IGV 多一条<b>瞬态</b>通道</td></tr>
+        <tr><td><b>⑪ 转向手段</b></td><td>功率差分 ⟹ 力矩 ⟹ 倾转</td><td>打一格 / 切环 ⟹ 升力缺口 ⟹ 倾 14°</td><td class="ok">同一物理：先倾后移</td></tr>
+        <tr><td><b>⑫ 航迹</b></td><td>理论上可连续（模拟量）</td><td><b>必然是折线</b>（离散 + 开关）</td><td>见 G 节</td></tr>
+      </tbody>
+    </table>
+    <p class="srcnote">
+      ⚠️ 第 ⑫ 行只说「理论上」：<b>没有任何 OTC-X1 的飞行记录</b>（Carr 那条线连一台独立验证的样机都没有，
+      Naing 的五个原型升力一律为零）。所以「Carr 能飞圆弧」不是结论，只是<b>模型允许</b>。
+    </p>
+  </div>
+
+  <div class="card">
+    <h3 class="h3s">F · 量化：方位分辨率 × 单次力矩粒度，两头是反向的</h3>
+    <table class="spec">
+      <thead><tr><th style="width:26%">量</th><th class="num">Carr（R = 6.86 m，12 块）</th><th class="num">IGV（R = 5.50 m，64 格）</th></tr></thead>
+      <tbody>
+        <tr><td><b>可打到的最细方位</b></td><td class="num">30.000°</td><td class="num"><b>5.6250°</b></td></tr>
+        <tr><td><b>单次动作的力矩 / 总推力</b></td><td class="num">0.404 m（β=45°）</td><td class="num">0.0859 m</td></tr>
+        <tr><td>同上（β=30° / 60°）</td><td class="num">0.286 / 0.495 m</td><td class="num">0.0859 m（与 N 无关）</td></tr>
+        <tr><td><b>两者之比</b></td><td class="num" colspan="2"><b>4.70 倍</b> —— 粗的那台每次给的力矩反而大</td></tr>
+      </tbody>
+    </table>
+    <p class="note">
+      🔑 这一格有个反直觉的味道：<b>格数多 5.33 倍，单次力矩就小 4.70 倍</b>。
+      因为力矩臂是同一量级的半径，而每格分摊的推力是 F/N。
+      <br>⇒ <b>细粒度 × 小力矩 ⟹ 用「连续小打」逼近目标 ⟹ 航迹由许多小折段拼成。</b>
+      这正好是 Ⅵ 那张 Z 字图的数值底子 —— <b>原文描述的航迹，与几何算出来的航迹是同一个形状</b>。
+      这是一条<b>支持性</b>证据而非缺陷：<b>Z 字不是随口说的，是这种执行器必然画出来的线</b>；
+      反过来说，如果原文说它能走平滑弧线，那才与 64 格开关量对不上。
+      <span class="ev c">C 本项目推演</span>
+    </p>
+  </div>
+
+  <div class="card">
+    <h3 class="h3s">★ G · 开关量：方向与幅度绑在一条线上 —— 以及怎么解开</h3>
+    <p class="note">
+      模拟量可以「转角同时保幅度」；开关量不行。只断一格 ⟹ 方向 = 该格方位（64 档），<b>幅度固定为 1 个单位</b>。
+      想转到两格中间，就必须同时断两格 —— 而这时幅度一定会变：
+    </p>
+    <table class="spec">
+      <thead><tr><th class="num">两格相隔</th><th class="num">1 格</th><th class="num">2 格</th><th class="num">4 格</th><th class="num">8 格</th><th class="num">16 格</th><th class="num">32 格</th></tr></thead>
+      <tbody>
+        <tr><td>合力矩幅度（单位）</td><td class="num">1.9976</td><td class="num">1.9904</td><td class="num">1.9616</td><td class="num">1.8478</td><td class="num">1.4142</td><td class="num"><b>0</b></td></tr>
+        <tr><td>方向可转（相对第 1 格）</td><td class="num">+2.812°</td><td class="num">+5.625°</td><td class="num">+11.25°</td><td class="num">+22.5°</td><td class="num">+45.0°</td><td class="num">+90.0°</td></tr>
+      </tbody>
+    </table>
+    <p class="note">
+      🔑 想转<b>半档</b>（+2.8125°）⟹ 幅度必须掉到 1.9976；想保住幅度 1 ⟹ 只能整档走 5.625°。
+      <b>方向与幅度共用一个自由度</b>，这正是开关量相对模拟量的代价。<br>
+      ⚠️ 注意最后一列：<b>对径两格同时断 ⟹ 力矩完全抵消</b>（幅度 0、方向无定义）。
+      模拟量里没有这个位置（可以一边 0.5 一边 0.4），开关量里它是一个<b>零点</b> ——
+      而<b>零点不是故障，是可标定的参考点</b>：拿它做「力矩归零 / 原点自检」正合适。<br>
+      ⇒ 小信号配平（把倾角稳在 13.9° 而不是 14.1°）<b>有两条出路，都是成熟技术</b>：<br>
+      ① <b>时间平均</b>：让某几格按固定频率开合、取平均力 —— 就是 PWM。分辨率 = <code>1/K</code> 格
+         （K = 一个调制周期的时隙数）；要稳到 <b>0.1°</b> 只需 <code>K ≥ 56</code>，即 <b>6 位 PWM</b>；<br>
+      ② <b>差动对</b>：以上面那个零点为中心，让对径两格的占空比不等 ⟹ 任意小的净力矩，方向仍连续。<br>
+      ⚠️ 真正的门槛在<b>带宽</b>而不是<b>分辨率</b>：这些单元是大电感，开关频率受 <code>L/R</code> 限制
+      （<code>τ = L/R</code>，可用上限约 <code>1/(10τ)</code>）。<b>L/R 未公开 ⟹ 这里只能给公式、给不出结论</b>；
+      一旦测出绕线电感与回路电阻，这条门槛立刻能算出数字。<br>
+      📌 <b>原文通篇没有提到调制 / 占空比 / 频率控制</b> —— 这是<b>文献事实</b>（A 层：找不到就是找不到）。
+      但它只说明<b>文献没写</b>，<b>不等于机器没有</b>：1950 年代的专利与图纸普遍不写实现细节，
+      卡尔那 13 页原始图纸里同样<b>一个字的调制描述都没有</b>。用「原文未提」去判「做不到」，是两种尺子。
+      <span class="ev c">C 本项目推演</span>
+    </p>
+  </div>
+
+  <div class="card">
+    <h3 class="h3s">H · 同一个「三环」，两种身份 —— 这才是两机最本质的差别</h3>
+    <p class="note">
+      两台机器都有「三环」，所以很容易被当成同一件事。但在这套语言里，三环的身份完全不同：
+    </p>
+    <table class="spec">
+      <thead><tr><th style="width:20%">三环是什么</th><th style="width:34%">Carr：<b>推力环</b></th><th style="width:34%">Searl：<b>转子</b></th><th style="width:12%">后果</th></tr></thead>
+      <tbody>
+        <tr><td>每环装什么</td><td>12 块电磁铁（每环都是推力）</td><td>12 / 22 / 32 套滚筒（磁路与角动量）</td><td>—</td></tr>
+        <tr><td>半径</td><td>三环异径 ⟹ κ 三个值</td><td>推力单元只在最外一圈 ⟹ κ 一个值</td><td>—</td></tr>
+        <tr><td><b>对 rank 的贡献</b></td><td>3 ⟹ 5 ⟹ <b>6</b></td><td><b>0</b>（三环根本不进控制分配矩阵）</td><td class="bad">决定性</td></tr>
+        <tr><td>在本书里的角色</td><td>转向机构</td><td>发电 + 角动量 + 陀螺通道（plunger 打的就是它）</td><td>—</td></tr>
+      </tbody>
+    </table>
+    <p class="note">
+      ★ 一个<b>反事实</b>算一下就知道这条差别有多硬：假定把 flight cell 也装到三个滚筒环上
+      （半径取 2.2 / 3.8 / 5.5 m，比例照 12 / 22 / 32），控制分配矩阵会变成：
+    </p>
+    <table class="spec">
+      <thead><tr><th style="width:44%">假设配置</th><th class="num">执行器</th><th class="num">rank</th></tr></thead>
+      <tbody>
+        <tr><td>三环全装 cell，纯轴向（β=0）</td><td class="num">66</td><td class="num">3</td></tr>
+        <tr><td>三环全装 cell，同倾 45°</td><td class="num">66</td><td class="num"><b>5</b></td></tr>
+        <tr><td>三环全装 cell，倾 45° + 切向 30°</td><td class="num">66</td><td class="num"><b>6</b></td></tr>
+        <tr><td><b>实际：只有最外圈 32 格</b></td><td class="num">32</td><td class="num"><b>3</b></td></tr>
+      </tbody>
+    </table>
+    <p class="note">
+      🔑 所以 <b>IGV 的 rank 3 不是设计失误，是「只做一圈推力单元 + 用倾转转向」这个选择的必然结果</b>。
+      他把三环的力气花在磁路上，就没打算用三环转向 —— 这与他那句
+      「<b>切掉一块 ⟹ 那里就没有推进力</b>」是同一个思路的两个说法：<b>转向靠打破对称，不靠多自由度。</b>
+      <br>⚠️ 上表是<b>假想配置</b>（半径 2.2 / 3.8 / 5.5 为假定值），Searl 从未这样设计。<span class="ev c">C</span>
+    </p>
+  </div>
+
+  <div class="card">
+    <h3 class="h3s">H-bis · rank 3 不等于飞不起来 —— 欠驱动是飞行器的常态，不是缺陷</h3>
+    <p class="note">
+      上面那个「3」很容易被读成「缺了两个方向，所以飞不了」。这是把<b>秩</b>当成了<b>飞行能力</b>。
+      控制分配矩阵的秩 = <b>瞬时能独立指定的 wrench 方向数</b>；而飞行器要的是<b>位置 + 姿态共 6 维</b>，
+      差额靠<b>二阶积分</b>补 —— 也就是「倾斜 ⟹ 产生横向加速度」。凡是这样补的，都叫<b>欠驱动</b>，
+      而欠驱动是绝大多数飞行器的<b>常态</b>：
+    </p>
+    <table class="spec">
+      <thead><tr><th style="width:32%">飞行器</th><th class="num" style="width:16%">输入 / rank</th><th style="width:52%">差额怎么补</th></tr></thead>
+      <tbody>
+        <tr><td>四旋翼</td><td class="num">4 / <b>4</b></td><td>Fz、Mx、My、Mz 瞬时可指；横向靠<b>倾转</b>（姿态内环 + 位置外环）</td></tr>
+        <tr><td>固定翼</td><td class="num">4 / <b>4</b></td><td>推力 + 三轴力矩；升力由速度产生 ⟹ 横向、垂向都是姿态的函数</td></tr>
+        <tr><td>直升机</td><td class="num">4 / <b>4</b></td><td>总距 + 周期变距（2 个）+ 尾桨；横向同样是<b>倾转</b></td></tr>
+        <tr><td><b>IGV（本节口径）</b></td><td class="num">N / <b>3</b></td><td>Fz、Mx、My 可指；横向靠倾转 —— 与四旋翼<b>同构</b>，只少一个偏航通道</td></tr>
+      </tbody>
+    </table>
+    <p class="note">
+      🔑 所以「rank 3」<b>不构成 IGV 飞不起来的判据</b>：四旋翼 rank 4 也飞得很好；
+      IGV 只比它少一个偏航通道，而偏航对「先倾后移」的机器本来就不需要（见 I 节 ①）。
+      更要紧的是：<b>它比四旋翼少一层气动滞后</b> —— 四旋翼要先改姿态、再等桨盘倾斜产生侧力，
+      而 IGV 的力方向与倾角是<b>同一件事</b>。<br>
+      真正决定能不能飞的是另外两件，而这两件<b>都有已知路径</b>：<br>
+      ① <b>闭环带宽</b>：能不能把倾角稳到零点几度 —— 门槛在 G 节（最小步长），出路是时间平均；<br>
+      ② <b>推重比</b>：必须大于 1 —— 14° 只给 0.249 g，要更大的倾角或更大的功率/面积（见 C 节倾转表）。<br>
+      ⇒ <b>秩只回答「能动哪几个方向」，不回答「飞不飞得起来」。</b>把两者混为一谈，是本节第一版的问题；
+      这一版把它们分开写。<span class="ev c">C 本项目推演</span>
+    </p>
+  </div>
+
+  <div class="card">
+    <h3 class="h3s">I · 偏航：同一条 Mz ≡ 0，一边是稳定，一边是隐患</h3>
+    <p class="note">
+      两机在这条上完全一样：<b>单环、单元力无切向分量 ⟹ Mz ≡ 0</b>（脚本各随 400 组随机出力：Carr 的 |Mz|/|M| 最大 <b>8.7e-16</b>，IGV 恒为 <b>0</b>）。但同一条结论，落到两台机器上含义正相反：
+    </p>
+    <div class="row">
+      <div class="col">
+        <p class="note" style="margin-top:0">
+          <b>① 对 IGV：这是好事。</b>机体<b>不会自发自转</b>，倾角方向一旦定住就稳在那儿
+          —— 这与原文 p37「the bow ring … <b>keeps it there level and constant</b>」对得上。
+          而且<b>它不需要偏航</b>：这是一台「先倾后移」的机器，航向由倾的方向决定，
+          机体「头朝哪」不影响往哪飞（和四旋翼一样）。<b>缺一个偏航通道，在这里不是缺陷。</b>
+        </p>
+        <p class="note">
+          顺带给出一条<b>可证伪</b>：如果 cell 真带切向分量，Mz 就不再恒 0，这台机就能产生偏航力矩；
+          而<b>原著通篇没有「悬停自转 / 原地调头」的任何描述</b>。⟹ 反证：cell 的力基本无切向分量。
+        </p>
+      </div>
+      <div class="col">
+        <p class="note" style="margin-top:0">
+          <b>② 对 OTC-X1：这是隐患。</b>Carr 的三环是<b>对转滚筒</b>，携带巨大角动量
+          （§7.5.14 六：总角动量 <code>L = I₁ω₁ − I₂ω₂</code> 只由转速决定，<b>内力矩改不动 L</b>）。
+          一台<b>携带大角动量、却拿不出偏航力矩</b>的机器，姿态在偏航方向上等于没有闭环
+          —— 这才是三环必须存在的真正理由之一，而<b>不是</b>「三环才能转向」
+          （§7.5.14 三 那句应<b>修正</b>为「三环是偏航的一条路径，不是必要条件」：单环 ±45° 交替就已是 5）。<br>
+          ⇒ 一句话：<b>同一条 Mz ≡ 0，在 IGV 是「用不着」，在 OTC-X1 是「躲不开」。</b>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 class="h3s">J · 交互：两个环并排，点一格看它给出什么力矩</h3>
+    <div class="row">
+      <div class="col">
+        <canvas class="sim" id="cCtl" width="660" height="430" style="max-width:660px"></canvas>
+        <div class="ctrl">
+          <label>卡尔倾角 <span class="kv">β</span>
+            <input type="range" id="sCtlBeta" min="0" max="90" step="5" value="45">
+            <span class="val" id="sCtlBetav">45°</span></label>
+          <label>IGV 单元数 <span class="kv">N</span>
+            <input type="range" id="sCtlN" min="8" max="64" step="8" value="64">
+            <span class="val" id="sCtlNv">64</span></label>
+        </div>
+        <div class="legend">
+          <span><span class="chip" style="background:#8b000e"></span>被选中的单元</span>
+          <span><span class="chip" style="background:#00568f"></span>其余单元</span>
+          <span><span class="chip" style="background:#1b6a50"></span>倾的方向（e_r）</span>
+          <span><span class="chip" style="background:#875f00"></span>力矩轴（e_φ）</span>
+        </div>
+        <p class="note" id="ctlVerdict">—</p>
+      </div>
+      <div class="col">
+        <p class="note" style="margin-top:0">
+          <b>怎么看</b>：左右两个环各代表一台机器，环上每一格是一个执行器。
+          <b>点任意一格</b>，图上会从圆心画出两支箭头 ——
+          <span class="kv">绿色 = 该格被扣掉后碟体倾的方向</span>，
+          <span class="kv">橙色虚线 = 力矩轴</span>。两者永远<b>互相垂直</b>，且都在水平面内
+          （这就是 Mz ≡ 0 的图形含义）。
+        </p>
+        <p class="note">
+          <b>拖 β</b>：左边卡尔的环会跟着倾，右上角 <code>rank</code> 实时重算。
+          你会看到它在 15°–75° 之间一直是 3，只有到 90° 掉到 2 —— 与 §7.5.14 那张表逐格一致。
+          <br><b>拖 N</b>：右边瑟尔的格数变，<code>rank</code> 永远是 3。
+        </p>
+        <p class="srcnote">
+          本图是<b>纯几何演示</b>：只画方向与秩，<b>不画力的大小</b>、不画时间过程。
+          空心方块的位置是示意，不代表真实半径比例（卡尔 6.86 m / IGV 5.50 m 画成了等大）。
+          <span class="ev c">C 本项目推演</span>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 class="h3s">K · 三条可检验预判（正反双分支）+ 与 §7.5.14 的对接</h3>
+    <p class="note">
+      三条预判<b>两个方向都写</b>：左边是「若模型对，应该看到什么」，右边是「若看到的相反，模型怎么改」。
+      <b>能被打败的才是预判</b>；但「被打败」只意味着<b>这一层要修正</b>，不等于整台机器不成立 ——
+      因为秩结论与推力机制真伪无关（见本节口径）。
+    </p>
+    <table class="spec">
+      <thead><tr><th style="width:6%">编号</th><th style="width:38%">预判</th><th style="width:28%">若成立 ⟹ 应观察到</th><th style="width:28%">若看到相反 ⟹ 怎么改</th></tr></thead>
+      <tbody>
+        <tr><td class="num"><b>P1</b></td>
+            <td>cell 的力<b>无切向分量</b> ⟹ 拿不出偏航力矩 ⟹ 转向一律「先倾后移」</td>
+            <td>悬停与平移时<b>航向恒定</b>；Ⅵ 的 Z 字航迹正是这个形状 —— <b>现有记载全部被解释</b></td>
+            <td>出现「悬停自转 / 原地调头」的记录（访谈、照片序列、目击）⟹ cell 带切向分量，或另有第 4 类旋转执行器 ⟹ <b>模型补一项，不作废</b></td></tr>
+        <tr><td class="num"><b>P2</b></td>
+            <td>控制量是开关量 ⟹ 小信号配平靠占空比</td>
+            <td>运行时有可听的<b>拍频</b>或周期振动（柱塞脉动 / 单元开合）—— <b>可录、可测的正向特征</b></td>
+            <td>录音 / 振动<b>完全无周期性</b> ⟹ 另有模拟调制（磁通偏置、气隙微调）⟹ <b>细化实现层，不动机制层</b></td></tr>
+        <tr><td class="num"><b>P3</b></td>
+            <td>Carr 12 块是模拟量差分 ⟹ 允许带横移的悬停，但<b>必伴滚转</b>（κ = 6.86 m 把力矩锁在横移上）</td>
+            <td>悬停横移时可见轻微滚转，且滚转方向<b>由横移方向唯一决定</b>（影像可逐帧比对）</td>
+            <td>纯平移而<b>无任何滚转</b> ⟹ 存在第 13 个独立控制量（原文未提）⟹ <b>模型扩维，不是作废</b></td></tr>
+      </tbody>
+    </table>
+    <p class="note">
+      🔗 <b>两页对接点（四处）</b>：<br>
+      ① <b>§7.5.14 二</b> 的斜表 β = 0 行 ⟹ 就是本节的 IGV（C 节）；<br>
+      ② <b>§7.5.14 五</b> 的倾转表 ⟹ 本页原文的 <b>14°</b> 代进去是 <b>0.2493 g = 2.445 m/s²、推力 +3.1%</b>，
+         正好夹在该表 10°（0.176 g）与 15°（0.268 g）两行之间 —— 两张表是同一族曲线；<br>
+      ③ <b>§7.5.14 六</b> 的偏航守恒 ⟹ 本节的 I 节（同一条 Mz ≡ 0 的两面）；<br>
+      ④ <b>§7.5.14 三</b> 的「三环才能转向」应<b>修正</b>为「三环是偏航力矩的一条路径，不是必要条件」⟹
+         本节 H 节给出三环的<b>真正理由</b>：Carr 那边三环是<b>推力环</b>（异径 ⟹ 三个 κ ⟹ 3→5→6），
+         Searl 那边三环是<b>转子</b>（管磁路与角动量）—— <b>三环不多余，只是两家各司其职</b>。
+    </p>
+    <p class="srcnote">
+      ⚠️ <b>本节口径</b>：A 节引文为原文（<span class="ev a">A</span>）；B–F 的矩阵计算为<b>精确线性代数</b>
+      （模型给定即可复算，非拟合）；G–I 的推论为 <span class="ev c">C</span>。
+      本节<b>只对「控制权限」这一层下判断</b> —— 秩、零空间、可达集形状都是几何事实，
+      <b>与推力从哪来无关</b>。推力机制本身（磁场与引力如何耦合）本节<b>既不证实也不否定</b>：
+      那要靠实验，而不是几何。<br>
+      ⇒ 换句话说：本节证明的是「<b>即使推力成立，这台机器也只能这样机动</b>」；
+      而「推力能不能成立」是<b>另一层</b>的问题，本文档<b>不构成对它的否定</b>。
+    </p>
+  </div>
+
+  <div class="card">
+    <h3 class="h3s">L · 他值得被认真对待 —— 行为证据、真实内核、与「破解」的三步</h3>
+    <p class="note">
+      本节回答一个合理的质疑：<b>一个人把六十年押在同一个说法上、到死都没放弃，这本身就是一种证据。</b>
+      这个论证成立，但<b>有边界</b>；把边界说清，比站队有用。
+    </p>
+
+<h4 style="margin:15px 0 6px;font-size:14.5px;color:#1b3a5c;border-left:3px solid #7c8fa8;padding-left:8px">一、行为证据：为什么「一生坚持」有分量</h4>
+    <p class="note">
+      骗子的典型模式是<b>卖产品 → 收钱 → 换赛道或消失</b>。他的模式恰好<b>相反</b>：
+      <b>没有成规模的受害者名单</b>、<b>没卖过一台声称可飞的整机</b>、不靠专利费生活；
+      而代价是实打实的 —— 资料被销毁（p88：当局在他家烧了 <b>4 天</b>）、1983 年「成功期」结束、
+      2003 年被下毒、2005 年家中物品被窃、长期被主流当作笑话。
+      行为经济学把这叫做 <b>costly signaling</b>（昂贵信号）：<b>只有真信的人才付得起这个价</b>。
+      <b>六十年不改口、不改方案、不换叙事</b> —— 这在统计上更接近「真信」，而不是「行骗」。
+      ⇒ <b>可以高置信度地说：他是真诚的。</b>这一点本页 v1.3 及以前<b>一个字都没写</b>，是缺失，本节补上。<br>
+      ⚠️ 但两个命题必须分开：<b>真诚 ⟹ 他相信他看到的</b>；<b>不 ⟹ 他看到的等于他的解释。</b>
+      一个人可以同时是<b>诚实的</b>和<b>解释错了的</b> —— 这是对历史人物最省力、也最不侮辱人的读法。
+    </p>
+
+<h4 style="margin:15px 0 6px;font-size:14.5px;color:#1b3a5c;border-left:3px solid #7c8fa8;padding-left:8px">二、「约 40 台」这个数字，以及为什么没有样机留下来</h4>
+    <table class="spec">
+      <thead><tr><th style="width:26%">记载</th><th class="num" style="width:14%">年代</th><th style="width:60%">内容与级别</th></tr></thead>
+      <tbody>
+        <tr><td><b>约 40 架「不回收模型」</b></td><td class="num">1950–1964</td><td>直上直下、极快（照片说明原话）<span class="ev a">A 自述</span> ＋ 照片说明</td></tr>
+        <tr><td>飞走丢失 <b>6 台</b></td><td class="num">1950s</td><td>原话：「<b>If it wants to fly, give it a body.</b>」<span class="ev a">A</span></td></tr>
+        <tr><td><b>SWALLOW FM598 MK.II</b></td><td class="num">1956</td><td>38 ft 径、<b>64 飞行单元</b>、载 3 人，Warminster（Wilts）外飞<span class="ev a">A</span> ＋ 照片</td></tr>
+        <tr><td>首台发电机 / 家用机</td><td class="num">1952</td><td>3 ft 径、<b>小柴油机拖动起动</b>；家用 <b>240 V / 11 kW</b><span class="ev a">A</span></td></tr>
+        <tr><td><b>独立报刊与电视</b></td><td class="num">1969–1973</td><td>Hants &amp; Berks Gazette（1969-07-04，及 1973–75 三张照片）、Southern TV（1972-04-23）<b>报刊 / 电视</b></td></tr>
+      </tbody>
+    </table>
+    <p class="note">
+      🔑 关键的一步区分：<b>「40 台」是 40 架一次性模型，不是 40 台可重复验证的机器。</b>
+      这不是贬低 —— 它恰好<b>解释了今天为什么看不到样机</b>：飞走了（6 台）、1968 年飞行后销毁、
+      1971 年资料被烧、2003 / 2005 两次被侵入。
+      ⇒ <b>「没有实物」在他的叙事内部是自洽的，不是自相矛盾。</b><br>
+      但反过来也要说清：<b>「有报刊报道」不等于「验证通过」</b> ——
+      记者报的是<b>他说的和演的</b>，不做独立测量。<b>两句都得说，这才是中立</b>；
+      只取一句，无论取哪一句，都是在替读者下结论。
+    </p>
+
+<h4 style="margin:15px 0 6px;font-size:14.5px;color:#1b3a5c;border-left:3px solid #7c8fa8;padding-left:8px">三、他的机制里有三块，主流工程本来就承认</h4>
+    <table class="spec">
+      <thead><tr><th style="width:22%">他的部件</th><th style="width:26%">对应的成熟器件</th><th style="width:52%">能解释什么</th></tr></thead>
+      <tbody>
+        <tr><td>定子环 ＋ 滚筒</td><td><b>磁性行星齿轮</b> / 磁耦合</td><td>pull-out torque、<b>slip（滑差）</b>、失步后重同步 ⟹ 「印纹错开 ⟹ 周向净力 ⟹ 滚筒自转」<b>不需要任何新物理</b></td></tr>
+        <tr><td>旋转导体切割磁通</td><td><b>单极发电机</b>（法拉第圆盘，1831）</td><td>1950 年滑环实验量到小电动势、空转时头发竖起 —— <b>都可能是真的</b>（Vaegs 1971 就指出这一条）</td></tr>
+        <tr><td>高速旋转的损耗</td><td>磁滞 ＋ 涡流（∝ ω²）</td><td>发热、效率随转速下降、以及「烧地」</td></tr>
+      </tbody>
+    </table>
+    <p class="note">
+      🔑 三块加起来，足以解释<b>「会转、会发电、会发热、会自激」</b>这些<b>现象</b>。
+      ⇒ 所以「他什么都没做出来」这个说法是错的：<b>现象层他大概率真做到了</b>，而且<b>不违反任何已知物理</b>。
+      真正待定的只有一件事 —— 见下。
+    </p>
+
+<h4 style="margin:15px 0 6px;font-size:14.5px;color:#1b3a5c;border-left:3px solid #7c8fa8;padding-left:8px">四、唯一的断点：能量账</h4>
+    <p class="note">
+      「会转、会发电」不需要新物理；<b>「发出来的比投进去的多」才需要。</b>中间只差一本账：<br>
+      <code>输入 = 同轴扭矩 × 角速度</code>；<code>输出 = 电（U·I·cosφ）＋ 机械 ＋ 热</code>。<br>
+      闭合 ⟹ 常规机器；不闭合 ⟹ 有新源。这是<b>唯一</b>能一锤定音的量，也是六十年来<b>从未被完整公开测过</b>的量。<br>
+      ⚠️ 顺带<b>修正本页 v1.3 一处对他不利的写法</b>：G 节把「700 hp / 522 kW」与「Naing 实测 212.4 W」
+      并置成 <b>2458 倍差</b>，读起来像在指认造假。但那个实测给的是 <b>236 V × 6 A × 功率因数 0.15</b>
+      —— <b>视在 1416 VA、无功 1400 var</b>，是<b>空载、低功率因数</b>的读数。
+      拿它去比铭牌输出功率，本来就不是同一件事。
+      ⇒ <b>它不是「他撒谎」的证据，而是「这台机器从没被完整测过」的证据。</b>两者差别很大。
+    </p>
+
+<h4 style="margin:15px 0 6px;font-size:14.5px;color:#1b3a5c;border-left:3px solid #7c8fa8;padding-left:8px">五、「破解」的三步 —— 第 1 步今天就能做</h4>
+    <table class="spec">
+      <thead><tr><th class="num" style="width:7%">步</th><th style="width:24%">目标</th><th style="width:69%">判据 / 需要什么</th></tr></thead>
+      <tbody>
+        <tr><td class="num"><b>1</b></td><td><b>复现转动</b>（现象学）</td><td>磁齿轮 ＋ 可控错移量 Δp，常规材料即可，<b>不涉及任何新物理</b>。判据：存在 Δp &gt; 0 使滚筒持续加速到某一稳态转速</td></tr>
+        <tr><td class="num"><b>2</b></td><td><b>闭合能量账</b>（决定成败）</td><td>扭矩传感器 ＋ 电量分析仪 ＋ 量热（或绝热罩）。判据：η =（电＋机械）/（输入＋环境）是否 &gt; 1，<b>且必须先扣除热</b>——这是所有「自由能」声称翻车的地方</td></tr>
+        <tr><td class="num"><b>3</b></td><td><b>复现减重 / 升力</b>（终点）</td><td>真空钟罩 ＋ 多点天平 ＋ 温度控制 ＋ 电磁屏蔽。判据：质量读数随场强 / 转速的偏移，是否超出天平分辨率与热对流误差</td></tr>
+      </tbody>
+    </table>
+    <p class="note">
+      ⇒ 三步<b>都不需要瑟尔的原件</b>，只需要他的<b>配方</b>（<code>Law of the Squares</code> 的印纹 ＋ 错移量）。
+      这正是「<b>总有一天会有人破解出来</b>」的物理含义：<b>他留下的不是产品，是一份设计说明。</b>
+      而这也意味着 —— <b>判定权在任何有扭矩传感器与量热计的人手里，不在信仰里，也不在嘲笑里。</b>
+      <span class="ev c">C 本项目推演</span>
+    </p>
+    <p class="srcnote">
+      ⚠️ <b>本节口径</b>：第一部分「真诚」是<b>行为证据的推断</b>（B 级：不可证伪，但强）；
+      第二部分的年代与数量转引自项目时间线
+      <code>07_现代物理提纯/00_导读_提纯总览与溯源时间线.md</code>（原表逐行标了 [T]/[U]/[M] 与级别）；
+      第三部分的三个对应器件是<b>通说</b>（B）；第四、五部分是<b>方法论建议</b>（C）。
+      本节<b>不宣称</b>任何一步已经成功，也<b>不宣称</b>它不可能成功 —— <b>它只界定「怎样才算成功」</b>。
+    </p>
+  </div>
+</section>
+
 </main>
 
 <footer>
-  IGV 反重力飞碟 · 三环启动 × 无线电操控 × 姿态与月球航线 · v1.2 · 浅色主题<br>
+  IGV 反重力飞碟 · 三环启动 × 无线电操控 × 姿态与月球航线 · v1.4 · 浅色主题<br>
   姊妹页：<code>SEG充磁三明治_三种磁场仿真.html</code> ｜ 本页为文献考据 + 几何演示，非工程手册、非 FEA、非实测<br>
+  <b>v1.4</b> Ⅻ 节叙述框架<b>中立化</b>：K 节由「可证伪预判 / 怎么推翻它」改为<b>正反双分支</b>；
+  新增 <b>H-bis</b>（rank 3 = 欠驱动，是飞行器常态而非缺陷）；G 节的「死点 / 代价」改为<b>可标定零点 + 两条成熟出路</b>
+  （PWM 与差动对，6 位即可到 0.1°），并给出真正的门槛公式 <code>τ = L/R</code>；
+  所有数字一字未改，只改框架。另新增 <b>L 节</b>（行为证据 / 「约 40 台」的性质 / 三块成熟内核 /
+  唯一断点是能量账 / 破解三步），并修正 G 节对 Naing 实测口径的不当对比。<br>
+  <b>v1.3</b> 新增 <b>Ⅻ 与卡尔 OTC-X1 的控制系统对比</b> —— 两机写成同一个 6×N 控制分配矩阵、
+  <b>IGV 64 格 ≡ Carr 单环 β = 0</b> 的同构证明、「打 φ_k ⟹ 朝 φ_k 倾」的推导、开关量 vs 模拟量、
+  同一个「三环」的两种身份；脚本 <code>scripts_补充/seg_igv_carr_control_compare.py</code>。<br>
   <b>v1.2</b> 新增页首<b>「🔗 飞碟科技子页」导航</b> —— 《飞碟科技横向对比_八体系共性解剖》／《飞碟工程图纸集_剖面与3D》（63 张）／《曲速泡与场推进_WHIP-Kerr-微波波导》
 </footer>
 <script>
@@ -1964,6 +2504,8 @@ $('btnExp').addEventListener('click', () => {
     姿态_倾角deg:    +$('sTilt').value,
     姿态_断能方位deg:+$('sCut').value,
     外围_单元数:     +$('sCellsN').value,
+    对比_卡尔倾角deg:+$('sCtlBeta').value,
+    对比_IGV单元数:  +$('sCtlN').value,
     Z字_折角deg:     +$('sZigPsi').value,
     Z字_段长:        +$('sZigL').value,
     Z字_折角数:      +$('sZigN').value,
@@ -2856,6 +3398,220 @@ REDRAW.v6 = drawZig;
 REDRAW.v8 = drawMoon;
 REDRAW.v11 = hamDraw;
 requestAnimationFrame(loop);
+
+
+/* ═══════════════════════════════════════════════════════════════
+   Ⅻ · 两机控制分配并排（卡尔 12 块 vs IGV N 格）
+   口径：只画方向与秩；不画力的大小、不画时间过程。
+   ═══════════════════════════════════════════════════════════════ */
+const cvCtl = $('cCtl'), gCtl = cvCtl ? cvCtl.getContext('2d') : null;
+const CTW = cvCtl ? cvCtl.width : 0, CTH = cvCtl ? cvCtl.height : 0;
+let ctlSel = { side: 'igv', k: 0 };
+
+/* 6xN 控制分配矩阵的秩（两遍修正 Gram-Schmidt） */
+function ctlRank(cols){
+  const basis = [];
+  for(let ci = 0; ci < cols.length; ci++){
+    const c = cols[ci];
+    let n0 = 0; for(let i = 0; i < 6; i++) n0 += c[i]*c[i];
+    n0 = Math.sqrt(n0); if(n0 < 1e-12) continue;
+    const v = c.slice();
+    for(let pass = 0; pass < 2; pass++){
+      for(let bi = 0; bi < basis.length; bi++){
+        const b = basis[bi];
+        let d = 0; for(let i = 0; i < 6; i++) d += v[i]*b[i];
+        for(let i = 0; i < 6; i++) v[i] -= d*b[i];
+      }
+    }
+    let n1 = 0; for(let i = 0; i < 6; i++) n1 += v[i]*v[i];
+    n1 = Math.sqrt(n1);
+    if(n1 / n0 > 1e-8) basis.push(v.map(x => x/n1));
+  }
+  return basis.length;
+}
+
+/* 卡尔：每块沿自身轴出力（β 相对竖直），半径归一化为 1 */
+function ctlCarrCols(N, betaDeg){
+  const b = betaDeg*D2R, cols = [];
+  for(let k = 0; k < N; k++){
+    const ph = 2*Math.PI*k/N, sb = Math.sin(b), cb = Math.cos(b);
+    const u = [sb*Math.cos(ph), sb*Math.sin(ph), cb];
+    const r = [Math.cos(ph), Math.sin(ph), 0];
+    cols.push([u[0], u[1], u[2],
+               r[1]*u[2]-r[2]*u[1], r[2]*u[0]-r[0]*u[2], r[0]*u[1]-r[1]*u[0]]);
+  }
+  return cols;
+}
+/* IGV：该格净力沿 −z（升力归零 + 向下 drag） */
+function ctlIgvCols(N){
+  const cols = [];
+  for(let k = 0; k < N; k++){
+    const ph = 2*Math.PI*k/N, u = [0, 0, -1], r = [Math.cos(ph), Math.sin(ph), 0];
+    cols.push([u[0], u[1], u[2],
+               r[1]*u[2]-r[2]*u[1], r[2]*u[0]-r[0]*u[2], r[0]*u[1]-r[1]*u[0]]);
+  }
+  return cols;
+}
+
+function ctlDraw(){
+  if(!gCtl) return;
+  const Nc = 12, beta = +$('sCtlBeta').value, Ni = +$('sCtlN').value;
+  const rkC = ctlRank(ctlCarrCols(Nc, beta)), rkI = ctlRank(ctlIgvCols(Ni));
+  gCtl.clearRect(0, 0, CTW, CTH);
+
+  const panels = [
+    { side:'carr', cx:168, cy:250, Rp:118, N:Nc, rk:rkC,
+      title:'卡尔 OTC-X1', sub:'12 块 / 环 · 倾角 β = ' + beta + '°' },
+    { side:'igv',  cx:492, cy:250, Rp:118, N:Ni, rk:rkI,
+      title:'瑟尔 IGV', sub:Ni + ' 格 / 圈 · 单元力 = −z' }
+  ];
+
+  for(let pi = 0; pi < panels.length; pi++){
+    const P = panels[pi];
+    /* 标题 */
+    gCtl.fillStyle = '#00568f';
+    gCtl.font = 'bold 13px "Microsoft YaHei",sans-serif';
+    gCtl.textAlign = 'center';
+    gCtl.fillText(P.title, P.cx, 28);
+    gCtl.fillStyle = '#32425b';
+    gCtl.font = '11.5px Consolas,monospace';
+    gCtl.fillText(P.sub, P.cx, 46);
+    /* rank 徽标 */
+    gCtl.fillStyle = P.rk === 3 ? '#e5f7f0' : '#f0e6f7';
+    gCtl.strokeStyle = P.rk === 3 ? '#146b45' : '#4f0076';
+    const bw = 92, bh = 26, bx = P.cx - bw/2, by = 56;
+    gCtl.beginPath();
+    if(gCtl.roundRect) gCtl.roundRect(bx, by, bw, bh, 8); else gCtl.rect(bx, by, bw, bh);
+    gCtl.fill(); gCtl.stroke();
+    gCtl.fillStyle = P.rk === 3 ? '#146b45' : '#4f0076';
+    gCtl.font = 'bold 13px Consolas,monospace';
+    gCtl.fillText('rank = ' + P.rk, P.cx, by + 18);
+
+    /* 碟体 */
+    gCtl.beginPath();
+    gCtl.arc(P.cx, P.cy, P.Rp*0.46, 0, 2*Math.PI);
+    gCtl.fillStyle = '#dfe6f2'; gCtl.fill();
+    gCtl.strokeStyle = '#bfcce3'; gCtl.lineWidth = 1; gCtl.stroke();
+    /* 单元环 */
+    gCtl.beginPath();
+    gCtl.arc(P.cx, P.cy, P.Rp, 0, 2*Math.PI);
+    gCtl.setLineDash([3, 4]); gCtl.strokeStyle = '#bfcce3'; gCtl.stroke();
+    gCtl.setLineDash([]);
+
+    /* 每个执行器 */
+    for(let k = 0; k < P.N; k++){
+      const ph = 2*Math.PI*k/P.N;
+      const x = P.cx + P.Rp*Math.cos(ph), y = P.cy - P.Rp*Math.sin(ph);
+      const on = (ctlSel.side === P.side && ctlSel.k === k);
+      const sz = Math.max(4.2, 13 - P.N*0.11);
+      gCtl.save();
+      gCtl.translate(x, y);
+      gCtl.rotate(-ph);
+      gCtl.beginPath();
+      gCtl.rect(-sz/2, -sz/2, sz, sz);
+      gCtl.fillStyle = on ? '#8b000e' : '#00568f';
+      gCtl.fill();
+      if(on){ gCtl.strokeStyle = '#5a0009'; gCtl.lineWidth = 2; gCtl.stroke(); }
+      gCtl.restore();
+    }
+
+    /* 选中格的箭头：e_r（倾的方向，实线）/ e_φ（力矩轴，虚线） */
+    if(ctlSel.side === P.side && ctlSel.k < P.N){
+      const ph = 2*Math.PI*ctlSel.k/P.N;
+      const er = [Math.cos(ph), Math.sin(ph)], et = [-Math.sin(ph), Math.cos(ph)];
+      const L = P.Rp*0.85;
+      const ax = (d, col, dash, label) => {
+        gCtl.beginPath();
+        gCtl.setLineDash(dash);
+        gCtl.moveTo(P.cx, P.cy);
+        const X = P.cx + d[0]*L, Y = P.cy - d[1]*L;
+        gCtl.lineTo(X, Y);
+        gCtl.strokeStyle = col; gCtl.lineWidth = 2.4; gCtl.stroke();
+        gCtl.setLineDash([]);
+        gCtl.beginPath();
+        const ang = Math.atan2(-(d[1]*L), d[0]*L);
+        gCtl.moveTo(X, Y);
+        gCtl.lineTo(X - 9*Math.cos(ang - 0.4), Y - 9*Math.sin(ang - 0.4));
+        gCtl.lineTo(X - 9*Math.cos(ang + 0.4), Y - 9*Math.sin(ang + 0.4));
+        gCtl.closePath(); gCtl.fillStyle = col; gCtl.fill();
+        /* 标签放箭头中段、侧偏一格，加底色描边 —— 避免压住环上的方格 */
+        const lx = P.cx + d[0]*L*0.60 - d[1]*13;
+        const ly = P.cy - d[1]*L*0.60 - d[0]*13;
+        gCtl.textAlign = 'center';
+        gCtl.font = 'bold 11px Consolas,monospace';
+        gCtl.lineWidth = 3.5;
+        gCtl.strokeStyle = 'rgba(232,238,247,0.95)';
+        gCtl.strokeText(label, lx, ly);
+        gCtl.fillStyle = col;
+        gCtl.fillText(label, lx, ly);
+      };
+      ax(er, '#1b6a50', [], 'e_r 倾');
+      ax(et, '#875f00', [5, 4], 'e_phi 力矩轴');
+      /* 选中格引出线 */
+      gCtl.beginPath();
+      gCtl.arc(P.cx + P.Rp*er[0], P.cy - P.Rp*er[1], 9, 0, 2*Math.PI);
+      gCtl.strokeStyle = '#8b000e'; gCtl.lineWidth = 1.6; gCtl.stroke();
+    }
+  }
+
+  /* 中央分隔线与脚注 */
+  gCtl.beginPath();
+  gCtl.moveTo(330, 90); gCtl.lineTo(330, 400);
+  gCtl.setLineDash([4, 5]); gCtl.strokeStyle = '#bfcce3'; gCtl.lineWidth = 1; gCtl.stroke();
+  gCtl.setLineDash([]);
+  gCtl.fillStyle = '#32425b'; gCtl.font = '11.5px Consolas,monospace';
+  gCtl.textAlign = 'center';
+  gCtl.fillText('点环上任一格 ⟹ 看它给出的力矩轴与倾的方向', CTW/2, 418);
+
+  /* 读数 */
+  const P = (ctlSel.side === 'igv') ? panels[1] : panels[0];
+  const phd = (360*ctlSel.k/Math.max(1, P.N));
+  const v = $('ctlVerdict');
+  if(v){
+    if(ctlSel.side === 'igv'){
+      v.innerHTML = '选中 <b>IGV 第 ' + ctlSel.k + ' 格</b>（方位 ' + phd.toFixed(3) + '°）：' +
+        '力矩轴 = 切向 e_phi（橙虚线），倾的方向 = 该格方位（绿实线）⟹ ' +
+        '碟体<b>朝 ' + phd.toFixed(3) + '° 方向压下并加速</b>；' +
+        '当前 rank = <b>' + rkI + '</b>（与 N 无关）；本次动作只动 <span class="kv">Fz / Mx / My</span>，<b>不产生偏航</b>。' +
+        ' <span class="ev c">C</span>';
+    }else{
+      v.innerHTML = '选中 <b>卡尔第 ' + ctlSel.k + ' 块</b>（方位 ' + phd.toFixed(3) + '°，β = ' + beta + '°）：' +
+        '该块的力含径向分量 ⟹ 力矩与横向力<b>按 κ = R·cotβ 刚性绑定</b>；' +
+        '当前 rank = <b>' + rkC + '</b>（' + (rkC === 2 ? '纯径向，连升力都没有' : rkC === 3 ? 'Fx/Fy 与 Mx/My 分不开' : '约束被破开') + '）。' +
+        ' <span class="ev c">C</span>';
+    }
+  }
+}
+
+if(cvCtl){
+  cvCtl.addEventListener('click', function(ev){
+    const rect = cvCtl.getBoundingClientRect();
+    const x = (ev.clientX - rect.left) * (CTW / rect.width);
+    const y = (ev.clientY - rect.top) * (CTH / rect.height);
+    const side = x < 330 ? 'carr' : 'igv';
+    const cx = side === 'carr' ? 168 : 492, cy = 250;
+    const N = side === 'carr' ? 12 : (+$('sCtlN').value);
+    let ph = Math.atan2(cy - y, x - cx);
+    if(ph < 0) ph += 2*Math.PI;
+    let k = Math.round(ph / (2*Math.PI/N)) % N;
+    ctlSel = { side: side, k: k };
+    ctlDraw();
+  });
+  bind('sCtlBeta', v => v + '\u00b0', () => ctlDraw());
+  bind('sCtlN',    v => v,             () => ctlDraw());
+  ctlDraw();
+}
+
+/* ── hash 直达：从别的页面链到 #v12 也能切过去（视图默认是 display:none） ── */
+(function(){
+  function byHash(){
+    var h = (location.hash || '').replace('#', '');
+    var el = h ? document.getElementById(h) : null;
+    if(el && el.classList && el.classList.contains('view')) show(h);
+  }
+  window.addEventListener('hashchange', byHash);
+  byHash();
+})();
 
 })();
 </script>

@@ -236,6 +236,16 @@ table.lvl td.ok0{color:#8a9099}
 .ttrmin{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:6px 0 2px;font-size:12.2px;color:#6d2a93}
 .ttrmin select{font-weight:600;color:#4a1063;padding:2px 6px;border:1px solid #d9c6e8;border-radius:6px;background:#fff}
 .ttrDimLab{color:#8e44ad;font-weight:600;font-size:12.2px}
+/* ⑫-K 同阶解数普查（4 阶全枚举） */
+.m4kox{overflow-x:auto;padding-bottom:2px}
+.m4kgrid{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+.m4kbox{border:1px solid var(--line);border-radius:8px;padding:7px 9px;background:#fff}
+.m4kcap{font-size:11.5px;color:#63268a;font-weight:600;margin-bottom:4px}
+table.m4km{border-collapse:collapse;font:13px Consolas,"Cascadia Mono",monospace}
+table.m4km td{border:1px solid #dcdfe4;padding:3px 7px;text-align:right;min-width:20px}
+table.m4km td.pdm{background:#d6eeda;color:#146b34;font-weight:700}
+table.m4km td.asm{background:#f8dcc0;color:#8a4516;font-weight:700}
+
 @media (max-width:1100px){.chartgrid,.lvl2col{grid-template-columns:1fr}}
 </style></head><body><div class="wrap">
 
@@ -1727,6 +1737,23 @@ n 为偶数 :  S ≡ n/2  (mod n)</pre>
       n = 25 约 1/70、n = 27 约 1/1700、n = 32 约 1/500、n = 64 约 1/200，现场限额搜索即可；
       其余 p<sup>k</sup> 阶走现场搜索兜底（限额 6000 次 / 400 ms，失败就如实说明，不编造）。
     </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">⑫-K 同阶解数普查 —— 4 阶一共 880 张：十三法占几成、三种对称怎么分层</h3>
+    <div class="bdmini">
+      ⑫-A…⑫-J 问的都是「<b>给定阶数，能不能生成</b>」；这一节反过来问「<b>整个空间有多大、我们的方法占几成</b>」。
+      4 阶是唯一能<b>全数枚举</b>的偶数阶（3 阶只有 8 张、5 阶起 275,305,224 张，枚举不动），所以拿 4 阶当标定物。<br>
+      <b>口径</b>：填 1…16、幻和 34。「<b>全部</b>」= 把 8 种朝向（4 旋转 &#215; 2 镜像）算作<b>不同</b>的方阵；
+      「<b>本质不同</b>」= 按这 8 种对称<b>去重</b>后的张数。下面每一格都是<b>现算</b>，不预存任何一张方阵 ——
+      <span class="hint">16! &#8776; 2.09&#215;10<sup>13</sup> 条全排列按 7 &#181;s/条要跑 4.7 年，所以必须按行和剪枝：行和恒为 34 &#8658;
+      先列 2064 条有序四元组行，取两行（位掩码判不重叠），剩下 8 个数按「列和 = 34」逐列配对，末了补第 3 行行和与两条主对角。
+      本机 <span id="mq2Kms">约 1</span> 秒跑完 7040 张。</span>
+    </div>
+    <div id="mq2K0" style="margin-top:8px"></div>
+    <div id="mq2K1"></div>
+    <div id="mq2K2"></div>
+    <div id="mq2K3"></div>
   </div>
 </section>
 
@@ -9610,6 +9637,317 @@ function mq2Bind(){
   mq2AddShow();
 }
 
+/* ================= ⑫-K 同阶解数普查：4 阶全枚举 =================
+   为什么不能直接 16! 全排列：16! = 2.09e13 条，实测 7.03 µs/条（numpy 版）=> 4.7 年。
+   剪枝链：行和恒为 34 => 先枚举全部「有序四元组行」(2064 条) => 取两行（位掩码判不重叠）
+   => 剩下 8 个数按「列和 = 34」逐列配对（第 4 列由行和唯一确定，不穷举）
+   => 末了补两条主对角。3.26e6 节点跑完全域，7040 张 / D4 去重 880 张。
+   ⚠️ 踩过的坑：只判「列和」时，r3 与 r4 只是「成对和 34」，第 3 行自己可以不是 34 ——
+      一开始漏了这条，多算出 14880 张（正好多一倍多）。第 3 行行和必须单独判。 */
+var M4K = { done:false, nAll:0, nEss:0, nSig:0, ess:[], keySet:{}, ms:0, nodes:0 };
+
+function m4kRows34(){
+  var out=[], a, b, c, d;
+  for(a=1;a<=16;a++) for(b=1;b<=16;b++){ if(b===a) continue;
+    for(c=1;c<=16;c++){ if(c===a || c===b) continue;
+      d=34-a-b-c; if(d<1 || d>16 || d===a || d===b || d===c) continue;
+      out.push([a,b,c,d]);
+    }
+  }
+  return out;
+}
+function m4kTurns(g){ var o=[], i; for(i=0;i<4;i++) o.push([g[3][i], g[2][i], g[1][i], g[0][i]]); return o; }
+function m4kFlip(g){ var o=[], i; for(i=0;i<4;i++) o.push([g[i][3], g[i][2], g[i][1], g[i][0]]); return o; }
+function m4kFlat(g){ return g[0].concat(g[1], g[2], g[3]).join(','); }
+function m4kKey(g){
+  var best=null, cur=g, t, s;
+  for(t=0;t<4;t++){
+    s=m4kFlat(cur);          if(best===null || s<best) best=s;
+    s=m4kFlat(m4kFlip(cur)); if(s<best) best=s;
+    cur=m4kTurns(cur);
+  }
+  return best;
+}
+
+function m4kRun(){
+  if(M4K.done) return M4K;
+  var t0=(new Date()).getTime();
+  var R=m4kRows34(), nr=R.length, i, j, k, v;
+  var masks=new Array(nr);
+  for(i=0;i<nr;i++) masks[i]=(1<<(R[i][0]-1))|(1<<(R[i][1]-1))|(1<<(R[i][2]-1))|(1<<(R[i][3]-1));
+  var cap1=[0,0,0,0], cap2=[0,0,0,0], r3=[0,0,0,0], r4=[0,0,0,0];
+  var used=[0,0,0,0,0,0,0,0], idx=new Array(17), rest=new Array(8);
+  var cnt=0, sigN=0, nodes=0, essMap={}, sigMap={}, keySet={}, ess=[];
+  var r1, r2, m1, m2, a, b, c, ia, ib, ic, i3, i4, q, need, g, key, sg, p, o2;
+  for(i=0;i<nr;i++){
+    r1=R[i]; m1=masks[i];
+    cap1[0]=34-r1[0]; cap1[1]=34-r1[1]; cap1[2]=34-r1[2]; cap1[3]=34-r1[3];
+    for(j=0;j<nr;j++){
+      if(m1 & masks[j]) continue;
+      r2=R[j];
+      cap2[0]=cap1[0]-r2[0]; cap2[1]=cap1[1]-r2[1]; cap2[2]=cap1[2]-r2[2]; cap2[3]=cap1[3]-r2[3];
+      if(cap2[0]<3 || cap2[1]<3 || cap2[2]<3 || cap2[3]<3) continue;
+      if(cap2[0]>31 || cap2[1]>31 || cap2[2]>31 || cap2[3]>31) continue;
+      m2=m1|masks[j];
+      for(v=0;v<17;v++) idx[v]=-1;
+      used[0]=used[1]=used[2]=used[3]=used[4]=used[5]=used[6]=used[7]=0;
+      k=0;
+      for(v=1;v<=16;v++) if(!(m2 & (1<<(v-1)))){ idx[v]=k; rest[k]=v; k++; }
+      for(a=0;a<8;a++){
+        r3[0]=rest[a]; q=cap2[0]-r3[0];
+        if(q===r3[0] || q<1 || q>16) continue;
+        ia=idx[q]; if(ia<0) continue;
+        used[a]=1; used[ia]=1;
+        for(b=0;b<8;b++){
+          if(used[b]) continue;
+          r3[1]=rest[b]; q=cap2[1]-r3[1];
+          if(q===r3[1] || q<1 || q>16) continue;
+          ib=idx[q]; if(ib<0 || used[ib]) continue;
+          used[b]=1; used[ib]=1;
+          for(c=0;c<8;c++){
+            if(used[c]) continue;
+            r3[2]=rest[c]; q=cap2[2]-r3[2];
+            if(q===r3[2] || q<1 || q>16) continue;
+            ic=idx[q]; if(ic<0 || used[ic]) continue;
+            used[c]=1; used[ic]=1;
+            nodes++;
+            need=34-r3[0]-r3[1]-r3[2];
+            if(need>=1 && need<=16){
+              i3=idx[need];
+              if(i3>=0 && !used[i3]){
+                q=cap2[3]-need;
+                if(q!==need && q>=1 && q<=16){
+                  i4=idx[q];
+                  if(i4>=0 && !used[i4] && i4!==i3){
+                    r3[3]=need;
+                    r4[0]=cap2[0]-r3[0]; r4[1]=cap2[1]-r3[1]; r4[2]=cap2[2]-r3[2]; r4[3]=q;
+                    if(r1[0]+r2[1]+r3[2]+r4[3]===34 && r1[3]+r2[2]+r3[1]+r4[0]===34){
+                      cnt++;
+                      g=[r1, r2, [r3[0],r3[1],r3[2],r3[3]], [r4[0],r4[1],r4[2],r4[3]]];
+                      key=m4kKey(g);
+                      if(!essMap[key]){ essMap[key]=g; ess.push(g); keySet[key]=1; }
+                      sg='';
+                      for(p=0;p<4;p++) for(o2=0;o2<4;o2++){
+                        sg+=((((g[p][o2]-1)>>2)-p)+':'+((((g[p][o2]-1)&3))-o2)+'|');
+                      }
+                      if(!sigMap[sg]){ sigMap[sg]=1; sigN++; }
+                    }
+                  }
+                }
+              }
+            }
+            used[c]=0; used[ic]=0;
+          }
+          used[b]=0; used[ib]=0;
+        }
+        used[a]=0; used[ia]=0;
+      }
+    }
+  }
+  M4K.nAll=cnt; M4K.nEss=ess.length; M4K.nSig=sigN; M4K.ess=ess;
+  M4K.keySet=keySet; M4K.nodes=nodes; M4K.done=true;
+  M4K.ms=(new Date()).getTime()-t0;
+  return M4K;
+}
+
+function m4kFmt(x){
+  var t=''+x, o='', i;
+  for(i=0;i<t.length;i++){ if(i && (t.length-i)%3===0) o+=','; o+=t.charAt(i); }
+  return o;
+}
+
+/* 把方阵画成小表；hi = 'pd' 时给折对角所过之格上色，'as' 时给中心互补格上色 */
+function m4kMat(g, hi){
+  var h='<table class="m4km">', i, j, cls, hit;
+  for(i=0;i<4;i++){
+    h+='<tr>';
+    for(j=0;j<4;j++){
+      cls=''; hit=false;
+      if(hi==='pd'){ if((i-j+4)%4===1) hit=true; }     /* 只标一条折对角：绕过上下边界的那条 */
+      if(hi==='as'){ if(i<2 && j<2) hit=true; }        /* 只标左上 2x2：它与右下 2x2 逐格互补到 17 */
+      if(hit) cls=(hi==='pd'?' class="pdm"':' class="asm"');
+      h+='<td'+cls+'>'+g[i][j]+'</td>';
+    }
+    h+='</tr>';
+  }
+  return h+'</table>';
+}
+
+/* 排名归一化到 1…16：消掉 0 起 / 1 起 / 整体加常数的差别 */
+function m4kNorm(M){
+  var v=[], i, j, srt, out=[], row, p;
+  if(!M || M.length!==4) return null;
+  for(i=0;i<4;i++){ if(!M[i] || M[i].length!==4) return null; for(j=0;j<4;j++) v.push(M[i][j]); }
+  srt=v.slice().sort(function(x,y){ return x-y; });
+  for(i=0;i<4;i++){
+    row=[];
+    for(j=0;j<4;j++){ p=srt.indexOf(M[i][j]); if(p<0) return null; row.push(p+1); }
+    out.push(row);
+  }
+  return out;
+}
+
+/* 十三条路线在 n = 4 各给几张、是否落在 880 张之内 */
+var M4K_ROUTE=[['siamese','暹罗法'],['dbl','双偶对角互补'],['strachey','Strachey / LUX'],
+  ['margo','Margossian 泛对角'],['step','骑士步法'],['comp','复合 / 张量积'],
+  ['ultra','超魔 ultramagic'],['trans3','环形 + 转置'],['ad','Planck A–D'],
+  ['nearpan','三步近泛对角'],['bimagic','双幻方 bimagic'],
+  ['pow','mi(q) 幂法'],['lin','mi(q) 2 位线性法']];
+
+function m4kCov(){
+  m4kRun();
+  var rows=[], uniq={}, nHit=0, nOk=0, i, r, M, nm, key, ok, why, inSet;
+  for(i=0;i<M4K_ROUTE.length;i++){
+    key=M4K_ROUTE[i][0]; nm=M4K_ROUTE[i][1];
+    ok=false; why=''; M=null; inSet=false;
+    try{
+      r=miqSolve(4, key, 1);
+      if(r && r.ok){ ok=true; M=r.M; if(r.note) why=r.note; }
+      else if(r && r.note) why=r.note;
+    }catch(e){ ok=false; why='本页未实现该路线：'+(e && e.message ? e.message : '异常'); }
+    if(ok){
+      M=m4kNorm(M);
+      if(!M){ ok=false; why='产出不是 1…16 的全排列'; }
+      else{
+        key=m4kKey(M);
+        inSet=!!M4K.keySet[key];
+        if(inSet && !uniq[key]){ uniq[key]=1; nHit++; }
+      }
+    }
+    rows.push({ name:nm, ok:ok, m:M, note:why, hit:inSet });
+    if(ok) nOk++;
+  }
+  return { rows:rows, nHit:nHit, nOk:nOk };
+}
+
+function m4kLayer(){
+  /* 只用本页 ⑫-G 的 msProp 判据，逐张过 880 张 —— 结果存进 M4K，供 ③④ 两块共用 */
+  if(M4K.lay) return M4K.lay;
+  var i, g, p, L={ pan:0, ass:0, both:0, plain:0, conj:0, mp:0, repPd:null, repAs:null, repPl:null };
+  for(i=0;i<M4K.ess.length;i++){
+    g=M4K.ess[i]; p=msProp(g, 4, 1);
+    if(p.conj) L.conj++;
+    if(p.mp) L.mp++;
+    if(p.pandiag && p.assoc){ L.both++; if(!L.repPd) L.repPd=g; }
+    else if(p.pandiag){ L.pan++; if(!L.repPd) L.repPd=g; }
+    else if(p.assoc){ L.ass++; if(!L.repAs) L.repAs=g; }
+    else { L.plain++; if(!L.repPl) L.repPl=g; }
+  }
+  M4K.lay=L;
+  return L;
+}
+
+function mq2KRender(){
+  m4kRun(); m4kLayer();
+  var el;
+
+  /* ---- ⑫-K-1 计数 ---- */
+  el=$('mq2K0');
+  if(el){
+    el.innerHTML='<div class="bdmini" style="margin-bottom:6px"><b>① 先数清总量</b></div>'
+      + '<div class="m4kox"><table class="lvl"><thead><tr><th>口径</th><th>张数</th><th>说明</th></tr></thead><tbody>'
+      + '<tr><td>全部（8 种朝向算不同）</td><td class="red">'+m4kFmt(M4K.nAll)+'</td><td>回溯全数枚举，一张不漏</td></tr>'
+      + '<tr><td>本质不同（按 D4 去重）</td><td class="red">'+m4kFmt(M4K.nEss)+'</td><td>4 旋转 &#215; 2 镜像 = 8 种对称</td></tr>'
+      + '<tr><td>每条轨道的大小</td><td>'+(M4K.nEss*8===M4K.nAll?'恒 8':'不齐')+'</td><td>'
+      + (M4K.nEss*8===M4K.nAll ? '没有一张与自己的对称像重合（无自对称方阵）' : '存在自对称方阵，轨道不足 8')
+      + '</td></tr>'
+      + '<tr><td>逐位核对</td><td>'+(M4K.nEss*8===M4K.nAll?'&#10003;':'&#10007;')+'</td><td>'
+      + m4kFmt(M4K.nEss)+' &#215; 8 = '+m4kFmt(M4K.nEss*8)+'</td></tr>'
+      + '</tbody></table></div>'
+      + '<div class="bdmini" style="margin-top:6px">枚举节点 <b>'+m4kFmt(M4K.nodes)+'</b> 次、耗时 <b>'
+      + M4K.ms+' ms</b>。对照：直接 16! 全排列 = 2.09&#215;10<sup>13</sup> 条，按 7 &#181;s/条要 <b>4.7 年</b>。'
+      + '这就是「4 阶还能全枚举、5 阶就没戏」的分界线。</div>';
+  }
+
+  /* ---- ⑫-K-2 属性分层 ---- */
+  el=$('mq2K1');
+  if(el){
+    var L=m4kLayer();
+    var nPan=L.pan, nAss=L.ass, nBoth=L.both, nPlain=L.plain, repPd=L.repPd, repAs=L.repAs, repPl=L.repPl;
+    var nConj=L.conj, nMp=L.mp;
+    var tot=M4K.ess.length;
+    var pc=function(x){ return (100*x/tot).toFixed(2)+'%'; };
+    el.innerHTML='<div class="bdmini" style="margin:12px 0 6px"><b>② 再把 880 张按属性分层</b>'
+      + ' —— 判据直接用本页 ⑫-G 的 <span class="miqmono">msProp()</span>，口径与上文完全一致</div>'
+      + '<div class="m4kox"><table class="lvl"><thead><tr><th>层</th><th>判据</th><th>张数</th><th>占比</th></tr></thead><tbody>'
+      + '<tr><td>泛对角</td><td>折对角（broken diagonal）也全等和</td><td class="red">'+nPan+'</td><td>'+pc(nPan)+'</td></tr>'
+      + '<tr><td>结合型 assoc</td><td>中心互补 M[i][j]+M[3&#8722;i][3&#8722;j] = 17</td><td class="red">'+nAss+'</td><td>'+pc(nAss)+'</td></tr>'
+      + '<tr><td>普通</td><td>只有行 / 列 / 两条主对角</td><td>'+m4kFmt(nPlain)+'</td><td>'+pc(nPlain)+'</td></tr>'
+      + '<tr><td>两者兼有</td><td>泛对角 且 结合</td><td>'+nBoth+'</td><td>'+pc(nBoth)+'</td></tr>'
+      + '<tr><td>合计</td><td>逐位核对 '+nPan+'+'+nAss+'+'+m4kFmt(nPlain)+'</td><td>'
+      + ((nPan+nAss+nPlain===tot)?'&#10003; '+tot:'&#10007; '+(nPan+nAss+nPlain)+'/'+tot)+'</td><td>100%</td></tr>'
+      + '</tbody></table></div>'
+      + '<div class="bdmini" style="margin-top:8px;padding:9px 12px;background:#f6f0fa;border-left:4px solid var(--acc);border-radius:8px">'
+      + '<b>本页实测（不是文献说法）：</b>在 n = 4 上，<b>泛对角</b>、<b>共轭互补</b>（M[i][j]+M[i+2][j+2] = 17）、'
+      + '<b>最完美</b>（所有 2&#215;2 环绕块和 = 34）这三个属性<b>完全重合</b> —— 本次 880 张逐张现算，三者都是同一批 <b>'
+      + nPan+'</b> 张（共轭互补 <b>'+nConj+'</b>、最完美 <b>'+nMp+'</b>）。<br>'
+      + '而<b>泛对角与结合型互斥</b>（交集 <b>'+nBoth+'</b>）—— 这不是巧合：泛对角管「斜向闭合」，结合型管「中心对偶」，'
+      + '两条约束同时压上去，4 阶的自由度不够。</div>'
+      + '<div class="m4kgrid">'
+      + '<div class="m4kbox"><div class="m4kcap">泛对角 / 最完美（'+nPan+' 张之一）</div>'+m4kMat(repPd,'pd')+'</div>'
+      + '<div class="m4kbox"><div class="m4kcap">结合型（'+nAss+' 张之一）</div>'+m4kMat(repAs,'as')+'</div>'
+      + '<div class="m4kbox"><div class="m4kcap">普通（'+m4kFmt(nPlain)+' 张之一）</div>'+m4kMat(repPl,'')+'</div>'
+      + '</div>'
+      + '<div class="bdmini" style="margin-top:4px"><span class="hint">左图绿格 = 一条<b>折对角</b>（绕过上下边界，同样要等和 34）；'
+      + '中图橙格 = 左上 2&#215;2，它与右下 2&#215;2 逐格互补到 17。</span></div>'
+      + '<div class="bdmini" style="margin-top:8px"><b>对 SEG 的意义</b>：4 阶 = 滚筒 4 环 / 4&#215;4 磁块阵，幻和 34 就是线值。'
+      + '<b>泛对角那 48 张</b>连斜向跨环路径也等和 &#8658; 环向无净差；<b>结合型那 48 张</b>每块的对面就是它的互补极（a+17）&#8658; 径向对偶。'
+      + '两族互斥，所以 4 阶滚筒<b>只能二选一</b>。剩下 '+m4kFmt(nPlain)+' 张只有最朴素的行列对称，充磁时得自己补对称性。</div>';
+  }
+
+  /* ---- ⑫-K-3 十三法覆盖率 ---- */
+  el=$('mq2K2');
+  if(el){
+    var cov=m4kCov(), h='', k, grids='';
+    var pct=(100*cov.nHit/M4K.nEss).toFixed(3);
+    h+='<div class="bdmini" style="margin:12px 0 6px"><b>③ 十三条路线在 n = 4 上各占多少</b>'
+      + ' —— 逐条真调 <span class="miqmono">miqSolve(4, key, 1)</span>，产出方阵先排名归一化到 1…16，'
+      + '再比对是否落在上面 880 张之内（「落在」= 去掉旋转镜像后与某一张完全重合）</div>';
+    h+='<div class="m4kox"><table class="lvl"><thead><tr><th>路线</th><th>n = 4 能否生成</th><th>落在 880 内</th></tr></thead><tbody>';
+    for(k=0;k<cov.rows.length;k++){
+      var rr=cov.rows[k];
+      if(rr.ok && rr.m) grids+='<div class="m4kbox"><div class="m4kcap">'+rr.name+'（'+(rr.hit?'&#10003; 在 880 内':'&#10007; 不在')+'）</div>'+m4kMat(rr.m,'')+'</div>';
+      h+='<tr><td>'+rr.name+'</td>'
+        + '<td>'+(rr.ok?'能':'<b class="okr">不能</b>')+'</td>'
+        + '<td>'+(rr.ok?(rr.hit?'&#10003;':'&#10007;'):'&#8212;')+'</td></tr>';
+    }
+    h+='</tbody></table></div>';
+    if(grids) h+='<div class="m4kgrid">'+grids+'</div>';
+    h+='<div class="bdmini" style="margin-top:9px;padding:9px 12px;background:#fdf6f6;border-radius:8px">'
+      + '十三条路线合计只命中 <b>'+cov.nHit+'</b> 张 / '+m4kFmt(M4K.nEss)+' = <b>'+pct+'%</b>。'
+      + '这个数字才是 ⑫-B「自动选路线」的真实能力边界：<b>生成法保证「给出一张」，从不保证「给出全部」</b>。'
+      + '⑫-I 的可达性表回答「能不能拿到某个属性」，这一节回答「占整个空间的几成」—— 两件事。<br>'
+      + '<span class="hint">能生成的 '+cov.nOk+' 条里有几条其实是<b>同一张</b>（例如 Margossian 与 mi(q) 2 位线性法在 n = 4 上产出完全重合），'
+      + '所以去重后只剩 '+cov.nHit+' 张；「不能」的 '+(M4K_ROUTE.length-cov.nOk)+' 条都是<b>阶数条件不满足</b>'
+      + '（奇数阶专用 / n &#8801; 2 mod 4 / 最小 8 阶 / 需拆成并不存在的 2 阶），与 ⑫-B 下拉框里的说明逐条对应，不是本页实现缺漏。</span></div>';
+    el.innerHTML=h;
+  }
+
+  /* ---- ⑫-K-4 位移签名为什么不能当分类 ---- */
+  el=$('mq2K3');
+  if(el){
+    var ok1=(M4K.nSig===M4K.nAll);
+    el.innerHTML='<div class="bdmini" style="margin:12px 0 6px"><b>④ 「按位移路径分类」这条路走不通（现算证据）</b></div>'
+      + '<div class="bdmini">原设想：对每一格算位移 d<sub>i,j</sub> = （这个数的原始有序位置）&#8722;（它现在的位置），'
+      + '拿这 16 个向量组成「路径签名」来给幻方分类。问题是 —— <b>这个映射是双射</b>：<br>'
+      + '<span class="miqmono">M[i][j] = 4&#183;(i + d<sub>i</sub>) + (j + d<sub>j</sub>) + 1</span>'
+      + '（0 起下标），给出签名就能把方阵<b>唯一反解回来</b>。<br>'
+      + '实测：'+m4kFmt(M4K.nAll)+' 张幻方 &#8594; <b>'+m4kFmt(M4K.nSig)+'</b> 个互不相同的签名'
+      + '（'+(ok1?'<b>&#10003; 无一重复</b>':'<b>&#10007; 有重复</b>')+'）。'
+      + '所以拿签名当「类别」＝给每张幻方发一个<b>身份证号</b>，永远分不出类来 —— 这一条<b>与阶数无关</b>，任何 n 都成立。<br>'
+      + '<b>要分类只能用签名的不变量</b>：上面 ② 的 '+m4kLayer().pan+' / '+m4kLayer().ass+' / '+m4kFmt(m4kLayer().plain)+' 三分法用的是<b>属性不变量</b>；'
+      + '另一条可用轴是位移方向的<b>直方图</b>（(d<sub>i</sub>,d<sub>j</sub>) 只有 7&#215;7 = 49 种取值，可以按方向分布分层），'
+      + '或位移场的<b>旋度 / 绕数</b>。用签名本身，不行。</div>';
+  }
+}
+
+function mq2KRun(){
+  m4kRun();
+  var el=$('mq2Kms');
+  if(el) el.innerHTML='约 '+(M4K.ms/1000).toFixed(1);
+  mq2KRender();
+}
+
 /* ---------------- 启动 ---------------- */
 (function boot(){
   glInit();
@@ -9635,6 +9973,7 @@ function mq2Bind(){
   frRun();
   mq2Bind();
   mq2Run();
+  mq2KRun();          /* ⑫-K 同阶解数普查：4 阶全枚举（约 1 秒，一次性） */
   if(typeof ttrSelAll === 'function') ttrSelAll();   /* 全页统一维度：把顶栏提示与各选择器对齐 */
   /* 深链：#<tab> 直达某标签页 —— 例如 «…瑟尔幻方真理表_即时生成.html#bond» 直接打开 ⑨ */
   (function(){ try{

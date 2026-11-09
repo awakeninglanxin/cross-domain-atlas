@@ -4474,4 +4474,769 @@ window.__size={UC12:UC12, DSP0:DSP0, DOTK:DOTK,
                M[2][0]*q[0] + M[2][1]*q[1] + M[2][2]*q[2] ];
     };
   }
-  var FD0 = 
+  var FD0 = FDIR.slice();                 // 原始朝向（夹角谱 / 内接立方体都在它上面量）
+  var BI5 = 0, BY5 = -2;
+  FD0.forEach(function(f, ix){ if (f[1] > BY5) { BY5 = f[1]; BI5 = ix; } });
+  var R0 = rotTo(FD0[BI5], [0, 1, 0]);
+  /* 再绕竖轴微转：让「已最接近屏幕正上方」的那个环成员精确落在正上方（残余 < 1e-9，
+     只是抹掉浮点尘埃；俯视时屏幕上方 = −z）。相位与原文图一致：一圈顶点朝上、另一圈平边朝上。 */
+  var SPIN = 0, SPIN_D = 1e9;
+  FD0.map(R0).forEach(function(f){
+    if (Math.abs(f[1]) > 0.99) return;                       // 极点投影半径为 0，方位角无意义
+    var az = Math.atan2(-f[2], f[0]);
+    var dv = Math.abs(Math.atan2(Math.sin(az - Math.PI/2), Math.cos(az - Math.PI/2)));
+    if (dv < SPIN_D) { SPIN_D = dv; SPIN = Math.PI/2 - az; }
+  });
+  var SC5 = Math.cos(SPIN), SS5 = Math.sin(SPIN);
+  function ROT5(v){
+    var w = R0(v);
+    return [ w[0]*SC5 + w[2]*SS5, w[1], -w[0]*SS5 + w[2]*SC5 ];
+  }
+  FDIR = FD0.map(ROT5);
+  /* 竖轴 = 五重轴 ⇒ 12 个面心分三档：极点 1 + 上环 5 + 下环 5 + 极点 1。
+     两环投影半径严格相等、方位角互错 36° —— 这就是 here.pdf 图 8.48 俯视该有的样子。 */
+  var C5 = { poleTop: -1, poleBot: -1, ringA: [], ringB: [] };
+  FDIR.forEach(function(f, i){
+    if (f[1] > 0.999999) C5.poleTop = i;
+    else if (f[1] < -0.999999) C5.poleBot = i;
+    else if (f[1] > 0) C5.ringA.push(i);
+    else C5.ringB.push(i);
+  });
+  function azOf(i){ return (Math.atan2(-FDIR[i][2], FDIR[i][0]) * 180 / Math.PI + 360) % 360; }
+  C5.yRing = Math.abs(FDIR[C5.ringA[0]][1]);
+  C5.rho = Math.sqrt(FDIR[C5.ringA[0]][0]*FDIR[C5.ringA[0]][0] + FDIR[C5.ringA[0]][2]*FDIR[C5.ringA[0]][2]);
+  C5.azA = C5.ringA.map(azOf).sort(function(x, y){ return x - y; });
+  C5.azB = C5.ringB.map(azOf).sort(function(x, y){ return x - y; });
+  C5.dAz = 999;
+  C5.azA.forEach(function(x){ C5.azB.forEach(function(y){
+    var d = Math.abs(x - y); if (d > 180) d = 360 - d;
+    if (d < C5.dAz) C5.dAz = d;
+  }); });
+  var K_DOD = 1 / R_FACE;            // 基准尺度：面心距 = 1
+  // 展示归一：「12 漏斗」的射程 = 一根扇面的长度（0.40 × 默认碳距 1.55 = 0.620）。
+  // 原来面心距 = 1.000、外接 1.258 —— 中央这套 12 棱结构比一根扇面还长 1.6 倍，画面里压过八面体外框。
+  // 只改整体比例，不改任何角度关系：12 个面心仍严格落在 12 个漏斗末端上。
+  var R_FACE_S = 0.62;
+  var SC_DOD = R_FACE_S;             // 基准尺度就是「面心距 = 1」，故缩放因子 = 面心距本身
+
+  /* 顶点与面心必须用同一个 ROT5：刚体只转不动形，棱长 / 夹角 / 内接立方体全不变 */
+  function scaleDod(v){ return ROT5(mul(v, K_DOD * SC_DOD)); }
+  var VD = V.map(scaleDod);           // 十二面体顶点（面心距 0.620 的尺度）
+  var R_CIRC_S = R_CIRC * K_DOD * SC_DOD;
+
+  // 十二面体棱
+  var eMin = Infinity;
+  for (var a1 = 0; a1 < 20; a1++) for (var b1 = a1+1; b1 < 20; b1++) {
+    var dd = nrm(sub(VD[a1], VD[b1])); if (dd < eMin) eMin = dd;
+  }
+  var EDGES_DOD = [];
+  for (var a2 = 0; a2 < 20; a2++) for (var b2 = a2+1; b2 < 20; b2++) {
+    if (nrm(sub(VD[a2], VD[b2])) < eMin * 1.05) EDGES_DOD.push([a2,b2]);
+  }
+
+  // 12 面心夹角谱
+  var pairAngles = [];
+  for (var p1 = 0; p1 < 12; p1++) for (var p2 = p1+1; p2 < 12; p2++)
+    pairAngles.push(angDeg(FDIR[p1], FDIR[p2]));
+  function spectrum(arr, tol){
+    tol = tol || 0.01;
+    var out = [];
+    arr.forEach(function(a){
+      for (var q = 0; q < out.length; q++) if (Math.abs(out[q].a - a) < tol) { out[q].n++; return; }
+      out.push({ a: a, n: 1 });
+    });
+    out.sort(function(x,y){ return x.a - y.a; });
+    return out;
+  }
+  var SPEC = spectrum(pairAngles);
+
+  // 沿一个面心（五重轴）的极角分层
+  var axis0 = FDIR[0], lats = [];
+  FDIR.forEach(function(f){ lats.push(angDeg(f, axis0)); });
+  var LAYERS = spectrum(lats);
+
+  /* ---------- 2. 八面体：6 顶点 = 内接立方体的 6 个面法向 = 坐标轴 ---------- */
+  var CUBE_V = V.filter(function(v){
+    return Math.abs(Math.abs(v[0])-1) < 1e-9 && Math.abs(Math.abs(v[1])-1) < 1e-9 && Math.abs(Math.abs(v[2])-1) < 1e-9;
+  });
+  var OCT = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+  var OCT_EDGES = [];
+  for (var i3 = 0; i3 < 6; i3++) for (var j3 = i3+1; j3 < 6; j3++)
+    if (Math.abs(dot(OCT[i3], OCT[j3])) < 1e-12) OCT_EDGES.push([i3,j3]);
+
+  /* ---------- 3. 关键否定：12 点同比例排在八面体 12 棱上 ---------- */
+  function splitSpec(t){
+    var P = OCT_EDGES.map(function(e){
+      return unit([ (1-t)*OCT[e[0]][0] + t*OCT[e[1]][0],
+                    (1-t)*OCT[e[0]][1] + t*OCT[e[1]][1],
+                    (1-t)*OCT[e[0]][2] + t*OCT[e[1]][2] ]);
+    });
+    var arr = [];
+    for (var x = 0; x < 12; x++) for (var y = x+1; y < 12; y++) arr.push(angDeg(P[x], P[y]));
+    return { pts: P, spec: spectrum(arr, 0.05), raw: arr };
+  }
+  var target = SPEC.map(function(s){ return Math.round(s.a*1000)/1000; }).join('|');
+  var hits = 0, bestT = 0, bestDiff = 1e9;
+  for (var ti = 1; ti < 1000; ti++) {
+    var t = ti / 1000;
+    var sp = splitSpec(t).spec;
+    var sig = sp.map(function(s){ return Math.round(s.a*1000)/1000; }).join('|');
+    if (sig === target) hits++;
+    var diff = Math.abs(sp.length - SPEC.length);
+    if (diff < bestDiff) { bestDiff = diff; bestT = t; }
+  }
+
+  /* ---------- 4. 立方八面体（反例） ---------- */
+  var CUBO = [[1,1,0],[1,-1,0],[-1,1,0],[-1,-1,0],[1,0,1],[1,0,-1],[-1,0,1],[-1,0,-1],
+              [0,1,1],[0,1,-1],[0,-1,1],[0,-1,-1]].map(unit);
+  var cubArr = [];
+  for (var c1 = 0; c1 < 12; c1++) for (var c2 = c1+1; c2 < 12; c2++) cubArr.push(angDeg(CUBO[c1], CUBO[c2]));
+  var CUB_SPEC = spectrum(cubArr);
+
+  /* ---------- 5. 写死数字的文字读数 ---------- */
+  function f3(x){ return (Math.round(x*1000)/1000).toFixed(3); }
+  function pad(n){ return n < 10 ? ' ' + n : '' + n; }
+
+  var htmlNum = ''
+    + '<div><b>正十二面体</b>：20 顶点 / ' + EDGES_DOD.length + ' 棱 / 12 面；'
+    + '内切·外接比 r/R = <b>' + f3(R_FACE/R_CIRC) + '</b>；本图取<b>面心距 = 一根扇面长 0.620</b> ⇒ 外接 ' + f3(R_CIRC_S) + '（原来面心距 1.000 / 外接 ' + f3(R_CIRC/R_FACE) + '）</div>'
+    + '<div><b>12 个面心的夹角只有 ' + SPEC.length + ' 档</b>：'
+    + SPEC.map(function(s){ return f3(s.a) + '° ×' + s.n; }).join('　') + '</div>'
+    + '<div><b>沿一个面心看其余 11 个</b>（极角）：'
+    + LAYERS.map(function(s){ return f3(s.a) + '° ×' + s.n; }).join('　')
+    + '　<span class="ok">=' + LAYERS.map(function(s){return s.n;}).join('+') + '</span></div>'
+    + '<div><b>十二面体自身坐标</b>：' + (CUBE_V.length === 8 ? '20 个顶点里正好含 ' + CUBE_V.length + ' 个立方体顶点（±1,±1,±1）' : '未检出内接立方体')
+    + ' ⇒ 内接立方体 6 个面的法向沿坐标轴。本页把十二面体刚转到「面心朝上」（八面体不动），这个立方体随之转动，'
+    + '与八面体 6 顶点<b>不再同向</b> —— 朝向是显示口径，不影响任何夹角 / 拓扑结论</div>'
+    + '<div><b>1:φ 压棱</b>：扫描 999 个分割比 t（12 条棱同比例），命中 <span class="no">' + hits + '</span> 个'
+    + ' ⇒ ' + (hits === 0 ? '<span class="no">不成立</span>' : '<span class="ok">成立</span>')
+    + '（t = 0.5 时给出立方八面体的 60°/90°/120°）</div>'
+    + '<div><b>立方八面体</b>夹角谱：' + CUB_SPEC.map(function(s){ return f3(s.a) + '°×' + s.n; }).join('　')
+    + '　vs 面心谱 ' + SPEC.length + ' 档 ⇒ <span class="no">不同构</span></div>';
+
+  var elNum = document.getElementById('litNum');
+  if (elNum) elNum.innerHTML = htmlNum;
+
+  function setTxt(id, v){ var e = document.getElementById(id); if (e) e.textContent = v; }
+  setTxt('tRR', f3(R_FACE/R_CIRC) + ' / 1');
+  setTxt('tA1', SPEC[0] ? f3(SPEC[0].a) + '°' : '—');
+  setTxt('tA2', SPEC.length >= 3 ? f3(SPEC[1].a) + '° / ' + f3(SPEC[2].a) + '°' : '—');
+  setTxt('tLay', LAYERS.map(function(s){ return s.n; }).join('+') + '（' + LAYERS.length + ' 层）');
+  setTxt('tOct', '±x / ±y / ±z（6 个）');
+  setTxt('tPhi', '命中 ' + hits + ' / 999 ⇒ 不成立');
+  setTxt('tCub', CUB_SPEC.length + ' 档 vs ' + SPEC.length + ' 档');
+
+    /* ---------- 5b. 几何自检：从坐标表实算，不抄常数 ----------
+     口径三分：真坐标可复算 / 拓扑精确但几何仅示意 / 旋钮不是物理量 */
+  function aDist(a, b){
+    var dx = a[0]-b[0], dy = a[1]-b[1], dz = a[2]-b[2];
+    return Math.sqrt(dx*dx + dy*dy + dz*dz);
+  }
+  function aStr(kv, sep, fmt){
+    var ks = Object.keys(kv).map(Number).sort(function(x,y){ return x-y; });
+    return ks.map(function(k){ return fmt(k, kv[k]); }).join(sep);
+  }
+  function aAudit(vs, es, fs){
+    var n = vs.length, i, k, deg = [];
+    for (i = 0; i < n; i++) deg.push(0);
+    for (i = 0; i < es.length; i++){ deg[es[i][0]]++; deg[es[i][1]]++; }
+    var reg = {}, dmin = 99, dmax = 0;
+    for (i = 0; i < n; i++){
+      reg[deg[i]] = (reg[deg[i]] || 0) + 1;
+      if (deg[i] < dmin) dmin = deg[i];
+      if (deg[i] > dmax) dmax = deg[i];
+    }
+    var hist = {};
+    for (i = 0; i < fs.length; i++){
+      var L = fs[i].length; hist[L] = (hist[L] || 0) + 1;
+    }
+    // 每条键是否恰属 2 个面（拓扑闭合的必要条件）
+    var em = {}, bad = 0;
+    for (i = 0; i < fs.length; i++){
+      var f = fs[i];
+      for (k = 0; k < f.length; k++){
+        var a = f[k], b = f[(k+1) % f.length];
+        var key = a < b ? a+'_'+b : b+'_'+a;
+        em[key] = (em[key] || 0) + 1;
+      }
+    }
+    var keys = Object.keys(em);
+    for (i = 0; i < keys.length; i++) if (em[keys[i]] !== 2) bad++;
+    // 键长统计
+    var lens = [], sum = 0;
+    for (i = 0; i < es.length; i++){
+      var d = aDist(vs[es[i][0]], vs[es[i][1]]);
+      lens.push(d); sum += d;
+    }
+    var mean = sum / lens.length, v2 = 0;
+    for (i = 0; i < lens.length; i++) v2 += (lens[i]-mean)*(lens[i]-mean);
+    var sd = Math.sqrt(v2 / lens.length);
+    // 共边五元环（IPR 判据）
+    var pv = {}, pent = 0, adj = 0;
+    for (i = 0; i < fs.length; i++){
+      var f2 = fs[i]; if (f2.length !== 5) continue;
+      pent++;
+      for (k = 0; k < f2.length; k++){
+        var a2 = f2[k], b2 = f2[(k+1) % f2.length];
+        var k2 = a2 < b2 ? a2+'_'+b2 : b2+'_'+a2;
+        pv[k2] = (pv[k2] || 0) + 1;
+      }
+    }
+    var pk = Object.keys(pv);
+    for (i = 0; i < pk.length; i++) if (pv[pk[i]] > 1) adj++;
+    return { n:n, e:es.length, f:fs.length, dmin:dmin, dmax:dmax, reg:reg,
+             hist:hist, euler:n - es.length + fs.length,
+             cover:keys.length, bad:bad, mean:mean, cv:(sd/mean),
+             pent:pent, pentAdj:adj };
+  }
+  // 主惯性轴 → rms 等效半轴（均匀球壳上 σ² = R²/5）
+  function aAxes(vs){
+    var n = vs.length, i, j, c = [0,0,0];
+    for (i = 0; i < n; i++){ c[0]+=vs[i][0]; c[1]+=vs[i][1]; c[2]+=vs[i][2]; }
+    c = [c[0]/n, c[1]/n, c[2]/n];
+    var M = [[0,0,0],[0,0,0],[0,0,0]];
+    for (i = 0; i < n; i++){
+      var q = [vs[i][0]-c[0], vs[i][1]-c[1], vs[i][2]-c[2]];
+      for (j = 0; j < 3; j++) for (var k = 0; k < 3; k++) M[j][k] += q[j]*q[k]/n;
+    }
+    var A = [[M[0][0],M[0][1],M[0][2]],[M[1][0],M[1][1],M[1][2]],[M[2][0],M[2][1],M[2][2]]];
+    for (var sweep = 0; sweep < 40; sweep++){
+      var p = 0, q2 = 1, best = 0;
+      for (j = 0; j < 3; j++) for (var k2 = j+1; k2 < 3; k2++)
+        if (Math.abs(A[j][k2]) > best){ best = Math.abs(A[j][k2]); p = j; q2 = k2; }
+      if (best < 1e-14) break;
+      var th = (A[q2][q2] - A[p][p]) / (2 * A[p][q2]);
+      var t = (th >= 0 ? 1 : -1) / (Math.abs(th) + Math.sqrt(th*th + 1));
+      var cc = 1 / Math.sqrt(t*t + 1), ss = t * cc;
+      for (var k3 = 0; k3 < 3; k3++){
+        var ap = A[k3][p], aq = A[k3][q2];
+        A[k3][p] = cc*ap - ss*aq; A[k3][q2] = ss*ap + cc*aq;
+      }
+      for (var k4 = 0; k4 < 3; k4++){
+        var ap2 = A[p][k4], aq2 = A[q2][k4];
+        A[p][k4] = cc*ap2 - ss*aq2; A[q2][k4] = ss*ap2 + cc*aq2;
+      }
+    }
+    var ev = [A[0][0], A[1][1], A[2][2]].sort(function(x,y){ return y-x; });
+    var semi = ev.map(function(x){ return Math.sqrt(Math.max(0, 5*x)); });
+    return { semi:semi, ratio: semi[0] / Math.max(1e-9, semi[2]) };
+  }
+  // 赤道调制：与主视图 eqRad 同口径（带 |y|≤0.75、窗 ±0.2 rad、96 采样）
+  function aEqMod(vs){
+    var N = 96, half = Math.PI * 0.14, rs = [], i, k;
+    for (k = 0; k < N; k++){
+      var a = k/N * 2*Math.PI, best = 0;
+      for (i = 0; i < vs.length; i++){
+        if (Math.abs(vs[i][1]) > 0.75) continue;
+        var th = Math.atan2(vs[i][2], vs[i][0]);
+        var dd = Math.abs(((th - a + 3*Math.PI) % (2*Math.PI)) - Math.PI);
+        if (dd > half) continue;
+        var r2 = Math.sqrt(vs[i][0]*vs[i][0] + vs[i][2]*vs[i][2]);
+        if (r2 > best) best = r2;
+      }
+      if (best > 0) rs.push(best);
+    }
+    var m = 0; for (i = 0; i < rs.length; i++) m += rs[i];
+    m /= rs.length;
+    var lo = 1e9, hi = 0;
+    for (i = 0; i < rs.length; i++){ if (rs[i] < lo) lo = rs[i]; if (rs[i] > hi) hi = rs[i]; }
+    return { pp: (hi - lo) / m, mean: m, lo: lo, hi: hi, n: rs.length };
+  }
+  // 镜面 / 反演检验（tol 取坐标尺度千分之一）
+  function aMirror(vs, axis, tol){
+    var worst = 0, miss = 0, i, j;
+    for (i = 0; i < vs.length; i++){
+      var w = [vs[i][0], vs[i][1], vs[i][2]]; w[axis] = -w[axis];
+      var best = 1e9;
+      for (j = 0; j < vs.length; j++){ var d = aDist(w, vs[j]); if (d < best) best = d; }
+      if (best > worst) worst = best;
+      if (best > tol) miss++;
+    }
+    return { miss:miss, worst:worst };
+  }
+  function aInv(vs, tol){
+    var worst = 0, miss = 0, i, j;
+    for (i = 0; i < vs.length; i++){
+      var w = [-vs[i][0], -vs[i][1], -vs[i][2]], best = 1e9;
+      for (j = 0; j < vs.length; j++){ var d = aDist(w, vs[j]); if (d < best) best = d; }
+      if (best > worst) worst = best;
+      if (best > tol) miss++;
+    }
+    return { miss:miss, worst:worst };
+  }
+  function aSym(vs){
+    var tol = 0.002, planes = [], i, ax = ['x','y','z'];
+    for (i = 0; i < 3; i++){ if (aMirror(vs, i, tol).miss === 0) planes.push(ax[i]); }
+    var inv = aInv(vs, tol).miss === 0;
+    return { planes: planes, inv: inv, chiral: (planes.length === 0 && !inv) };
+  }
+
+  var AR = aAudit(V168R, E168R, C5_168.concat(C6_168R, C7_168R));
+  var AS = aAudit(V168, E168, C7_168.concat(C6_168));
+  var A60 = aAudit(V60, E60, P60.concat(H60));
+  var A70 = aAudit(V_c70, E_c70, F_c70);
+  var A78 = aAudit(V_c78, E_c78, F_c78);
+  var AX60 = aAxes(V60), AX70 = aAxes(V_c70), AX78 = aAxes(V_c78);
+  var MQ60 = aEqMod(V60), MQ70 = aEqMod(V_c70), MQ78 = aEqMod(V_c78), MQR = aEqMod(V168R);
+  var Y60 = aSym(V60), Y70 = aSym(V_c70), Y78 = aSym(V_c78), YR = aSym(V168R);
+  var pct = function(x){ return (x*100).toFixed(1) + '%'; };
+  var faceStr = function(A){
+    return aStr(A.hist, ' · ', function(k, v){ return k + '×' + v; });
+  };
+  var degStr = function(A){
+    if (A.dmin === A.dmax) return A.dmin + '（' + A.n + '/' + A.n + '）';
+    return aStr(A.reg, ' · ', function(k, v){ return k + '×' + v; });
+  };
+  var eulerStr = function(A){
+    var g = (2 - A.euler) / 2;
+    if (A.euler === 2) return '2（球面）';
+    if (A.euler === 0) return '0（g = 1）';
+    return A.euler + '（g = ' + g + '）';
+  };
+  var veStr = function(A){ return A.n + ' / ' + A.e + ' / ' + A.f; };
+  var closed = function(A){ return A.dmin === 3 && A.dmax === 3 && A.bad === 0 && A.cover === A.e; };
+
+  setTxt('g60n', veStr(A60)); setTxt('g60f', faceStr(A60)); setTxt('g60d', degStr(A60));
+  setTxt('g60e', eulerStr(A60)); setTxt('g60c', pct(A60.cv));
+  setTxt('g60r', closed(A60) && A60.pent === 12 && A60.pentAdj === 0
+    ? '✓ 真·富勒烯' : '✗ 图不闭合');
+  setTxt('g70n', veStr(A70)); setTxt('g70f', faceStr(A70)); setTxt('g70d', degStr(A70));
+  setTxt('g70e', eulerStr(A70)); setTxt('g70c', pct(A70.cv));
+  setTxt('g70r', closed(A70) && A70.pent === 12 && A70.pentAdj === 0
+    ? '✓ 真坐标 · IPR' : '✗ 图不闭合');
+  setTxt('g78n', veStr(A78)); setTxt('g78f', faceStr(A78)); setTxt('g78d', degStr(A78));
+  setTxt('g78e', eulerStr(A78)); setTxt('g78c', pct(A78.cv));
+  setTxt('g78r', closed(A78) && A78.pent === 12 && A78.pentAdj === 0
+    ? '✓ 真坐标 · IPR' : '✗ 图不闭合');
+  setTxt('grn', veStr(AR)); setTxt('grf', faceStr(AR)); setTxt('grd', degStr(AR));
+  setTxt('gre', eulerStr(AR)); setTxt('grc', pct(AR.cv));
+  setTxt('grr', closed(AR) && AR.euler === 0 && AR.pent === AR.hist[7]
+    ? '✓ g = 1 环面（n₅ = n₇ = ' + AR.pent + '）' : '✗ 亏格不符');
+  setTxt('gsn', veStr(AS)); setTxt('gsf', faceStr(AS)); setTxt('gsd', degStr(AS));
+  setTxt('gse', eulerStr(AS)); setTxt('gsc', pct(AS.cv));
+  setTxt('gsr', closed(AS) && AS.euler === -4
+    ? '拓扑 ✓ · 几何仅示意' : '✗ 图不闭合');
+
+  var semiStr = function(X){
+    return X.ratio.toFixed(4) + '（' + X.semi.map(function(x){ return x.toFixed(3); }).join(' : ') + '）';
+  };
+  var symStr = function(Y){
+    // 逻辑不对称：检出一个镜面 ⇒ 严格非手性；只查 3 个坐标面查不到 ⇒ 什么都不能断言
+    if (Y.chiral) return '未检出坐标面镜面 ⇒ 手性未判定（仅查 x/y/z）';
+    var s = [];
+    Y.planes.forEach(function(a){ s.push('σ(' + a + '=0)'); });
+    if (Y.inv) s.push('i（反演）');
+    return '检出 ' + s.join('、') + ' ⇒ 非手性';
+  };
+  setTxt('s60', semiStr(AX60)); setTxt('m60', pct(MQ60.pp)); setTxt('h60', symStr(Y60));
+  setTxt('s70', semiStr(AX70)); setTxt('m70', pct(MQ70.pp)); setTxt('h70', symStr(Y70));
+  setTxt('s78', semiStr(AX78)); setTxt('m78', pct(MQ78.pp)); setTxt('h78', symStr(Y78));
+  var rmax = 0, rmin = 1e9;
+  for (var ir = 0; ir < V168R.length; ir++){
+    var rr = nrm(V168R[ir]);
+    if (rr > rmax) rmax = rr;
+    if (rr < rmin) rmin = rr;
+  }
+  var Rmaj = (rmax + rmin) / 2, Rmin = (rmax - rmin) / 2;
+  setTxt('sRing', 'R/r = ' + (Rmaj / Rmin).toFixed(2) + '（外缘 ' + rmax.toFixed(3) + ' / 内缘 ' + rmin.toFixed(3) + '）');
+  setTxt('mRing', pct(MQR.pp)); setTxt('hRing', symStr(YR));
+  setTxt('gsCvTxt', pct(AS.cv)); setTxt('grCvTxt', pct(AR.cv));
+
+  // 主视图 HUD 里那两个数原来是写死的，改成同一套实算值（口径只有一处）
+  if (typeof CAGE === 'object' && CAGE){
+    CAGE.c70.ratio = AX70.ratio; CAGE.c70.mod = MQ70.pp * 100;
+    CAGE.c78.ratio = AX78.ratio; CAGE.c78.mod = MQ78.pp * 100;
+    CAGE.c70.note = '橄榄球 · rms 轴比 ' + AX70.ratio.toFixed(3) + ' · 赤道调制 ' + pct(MQ70.pp) + '（实算）';
+    CAGE.c78.note = '三轴椭球 · rms 轴比 ' + AX78.ratio.toFixed(3) + ' · 赤道调制 ' + pct(MQ78.pp) + '（实算）';
+  }
+  var GEO = {
+    topo: { c60:[A60.n,A60.e,A60.f,A60.euler], c70:[A70.n,A70.e,A70.f,A70.euler],
+            c78:[A78.n,A78.e,A78.f,A78.euler], ring:[AR.n,AR.e,AR.f,AR.euler],
+            schw:[AS.n,AS.e,AS.f,AS.euler] },
+    cv: { c60:A60.cv, c70:A70.cv, c78:A78.cv, ring:AR.cv, schw:AS.cv },
+    closed: { c60:closed(A60), c70:closed(A70), c78:closed(A78), ring:closed(AR), schw:closed(AS) },
+    ipr: { c70:A70.pentAdj, c78:A78.pentAdj },
+    n57: { p5:AR.pent, p7:AR.hist[7] || 0 },
+    axes: { c60:AX60.ratio, c70:AX70.ratio, c78:AX78.ratio },
+    mod: { c60:MQ60.pp, c70:MQ70.pp, c78:MQ78.pp, ring:MQR.pp },
+    sym: { c60:Y60, c70:Y70, c78:Y78, ring:YR },
+    ringRR: Rmaj / Rmin
+  };
+
+  /* ---------- 6. 迷你渲染器 ---------- */
+  var cv = document.getElementById('litCv');
+  if (!cv) return;
+  var ctx = cv.getContext('2d');
+  var CW = cv.width, CH = cv.height;
+
+  var view = { yaw: 0.6, pitch: 0.32, dist: 6.5, scale: 1.0 };   // 5.2 时 y=±2.17 的极轴夸克被切在画外（380±409px）
+  var opt = { auto: true, dod: true, oct: true, inF: true, car: true, fan: true, cube: false, cut: false };
+  var O_DEF = 1.55;          // 碳距中心（= 八面体顶点距）；十二面体面心距见 R_FACE_S
+  var O = O_DEF;
+
+  function project(v){
+    var x = v[0], y = v[1], z = v[2];
+    var cy = Math.cos(view.yaw), sy = Math.sin(view.yaw);
+    var x1 =  x*cy + z*sy;
+    var z1 = -x*sy + z*cy;
+    var cp = Math.cos(view.pitch), sp = Math.sin(view.pitch);
+    var y2 = y*cp - z1*sp;
+    var z2 = y*sp + z1*cp;
+    var zz = z2 + view.dist;
+    if (zz < 0.15) zz = 0.15;
+    var k = view.scale * (CW * 1.00) / zz;
+    return { x: CW/2 + x1*k, y: CH/2 - y2*k, z: z2, k: k };
+  }
+
+  var items = [];
+  function pushSeg(a, b, color, w, alpha){
+    var A = project(a), B = project(b);
+    items.push({ z: (A.z + B.z) / 2, draw: function(){
+      ctx.globalAlpha = alpha === undefined ? 1 : alpha;
+      ctx.strokeStyle = color; ctx.lineWidth = w;
+      ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke();
+    }});
+  }
+  function pushDot(p, r, color, alpha){
+    var P = project(p);
+    items.push({ z: P.z, draw: function(){
+      ctx.globalAlpha = alpha === undefined ? 1 : alpha;
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(P.x, P.y, Math.max(1.2, r * P.k / 90), 0, 6.2832); ctx.fill();
+    }});
+  }
+  function pushCircle3(center, u, v, radius, color, w, alpha){
+    var N = 22, prev = null, first = null;
+    for (var q = 0; q <= N; q++) {
+      var th = q / N * 6.2832;
+      var pt = add(center, add(mul(u, radius*Math.cos(th)), mul(v, radius*Math.sin(th))));
+      if (q > 0) pushSeg(prev, pt, color, w, alpha);
+      else first = pt;
+      prev = pt;
+    }
+  }
+
+  /* ---------- 7. 场景装配 ---------- */
+  function build(){
+    items = [];
+
+    // 7.1 中心正十二面体
+    if (opt.dod) {
+      EDGES_DOD.forEach(function(e){
+        pushSeg(VD[e[0]], VD[e[1]], '#8fdcff', 1.75, 0.96);
+      });
+      VD.forEach(function(v){ pushDot(v, 2.6, '#bfe9ff', 0.95); });
+    }
+
+    // 7.2 12 个入环漏斗：中心 → 12 个面心
+    if (opt.inF) {
+      FDIR.forEach(function(f){
+        var tip = mul(f, R_FACE_S);      // 末端 = 十二面体面心（随十二面体一起缩放）
+        // 底面小圆（在中心附近，沿 f 方向的垂直基）
+        var tmp = Math.abs(f[1]) < 0.9 ? [0,1,0] : [1,0,0];
+        var u = unit(cross(f, tmp)), w = unit(cross(f, u));
+        var baseC = mul(f, 0.12 * R_FACE_S);
+        var rBase = 0.055 * R_FACE_S, rTip = 0.085 * R_FACE_S;
+        pushCircle3(baseC, u, w, rBase, '#ffb01f', 1.2, 0.85);
+        for (var q = 0; q < 3; q++) {
+          var th = q * 2.0944;
+          var bp = add(baseC, add(mul(u, rBase*Math.cos(th)), mul(w, rBase*Math.sin(th))));
+          pushSeg(bp, tip, '#ffb01f', 1.1, 0.72);
+        }
+        pushCircle3(tip, u, w, rTip, '#ffd54a', 1.3, 0.9);
+        pushDot(tip, 2.2, '#ffd54a', 1);
+      });
+    }
+
+    // 7.2b 俯视引导：两个互错 36° 的正五边形 + 投影圆（只在接近正俯视时出现）
+    /* 依据：12 个面心按五重轴分层 = 极点 1 + 上环 5 + 下环 5 + 极点 1；
+       两环投影半径相等、方位角互错 36° ⇒ 正俯视时就是一正一反两个正五边形叠成一圈。 */
+    var nearTop = Math.abs(Math.abs(view.pitch) - Math.PI/2) < 0.10;
+    if (nearTop && opt.dod) {
+      var RG = R_FACE_S;
+      var ptOf = function(i){ return mul(FDIR[i], RG); };
+      var ringOrder = function(ix){
+        return ix.slice().sort(function(a, b){ return azOf(a) - azOf(b); });
+      };
+      var ringPoly = function(ix, col){
+        var o = ringOrder(ix);
+        for (var q = 0; q < o.length; q++) pushSeg(ptOf(o[q]), ptOf(o[(q+1) % o.length]), col, 1.8, 0.95);
+      };
+      // 投影圆：画在中平面 y = 0，正俯视时正好穿过那 10 个面心（虚线，48 段画一半）
+      var RP = C5.rho * RG, NSEG = 48;
+      for (var q3 = 0; q3 < NSEG; q3 += 2) {
+        var t1 = q3 / NSEG * 6.2832, t2 = (q3 + 1) / NSEG * 6.2832;
+        pushSeg([RP*Math.cos(t1), 0, -RP*Math.sin(t1)],
+                [RP*Math.cos(t2), 0, -RP*Math.sin(t2)], '#7fa6c8', 1.2, 0.5);
+      }
+      ringPoly(C5.ringA, '#ff2d6f');     // 上环（近侧）
+      ringPoly(C5.ringB, '#ffb020');     // 下环（远侧）
+    }
+
+    // 7.3 八面体线框 + 6 个碳 + 6 个扇
+    var octPts = OCT.map(function(o){ return mul(o, O); });
+    if (opt.oct) {
+      OCT_EDGES.forEach(function(e){
+        pushSeg(octPts[e[0]], octPts[e[1]], '#8a7bff', 1.3, 0.55);
+      });
+    }
+    if (opt.car) {
+      octPts.forEach(function(p){
+        pushDot(p, 9.0, '#ff6b6b', 0.95);
+        pushDot(p, 3.4, '#ffe0e0', 0.9);
+      });
+    }
+    if (opt.fan) {
+      /* 6 把【平面扇】：每扇 6 条漏斗严格共面、张角 180°（±90° 两端互为反向），
+         两端各 1 个 d、内侧 4 个 u —— 对应 here.pdf 印刷页 232 的 Fig 8.51「Set of 6 funnels」。
+         扇面朝向：赤道 4 把全部躺在赤道面 y = 0 ⇒ 24 个夸克共面；
+                  上下 2 把竖立、且同在 z = 0 这一张平面上 ⇒ 两把扇子共面。 */
+      var FAN_LEN = 0.40 * O, W_BASE = 0.013 * O, W_MOUTH = 0.062 * O;
+      var __FT = [];
+      octPts.forEach(function(c, ci){
+        var v = unit(OCT[ci]);
+        var isAx = Math.abs(v[1]) > 0.9;
+        var PN = isAx ? [0,0,1] : [0,1,0];        // 扇面法向
+        var t = unit(cross(PN, v));               // 扇面内的横向基
+        for (var q2 = 0; q2 < 6; q2++) {
+          var deg = -75 + 30*q2;                  // -75 -45 -15 +15 +45 +75（6 × 30° = 180°）
+          var th = deg * Math.PI / 180;
+          var d = add(mul(v, Math.cos(th)), mul(t, Math.sin(th)));
+          var u2 = unit(cross(PN, d));            // 扇面内的「宽度」方向
+          var base = add(c, mul(d, 0.035 * O));
+          var mouth = add(c, mul(d, FAN_LEN));
+          var e1 = add(base, mul(u2, W_BASE)), e2 = add(base, mul(u2, -W_BASE));
+          var e3 = add(mouth, mul(u2, W_MOUTH)), e4 = add(mouth, mul(u2, -W_MOUTH));
+          pushSeg(e1, e3, '#31d0c6', 1.35, 0.75);
+          pushSeg(e2, e4, '#31d0c6', 1.35, 0.75);
+          pushSeg(e3, e4, '#31d0c6', 1.35, 0.75);
+          var isD = (q2 === 0 || q2 === 5);
+          var qp = add(c, mul(d, FAN_LEN * 1.14));
+          pushDot(qp, 3.2, isD ? '#ff7bb0' : '#5cffc8', 1);
+          __FT.push({ arm: ci, axis: v, plane: PN, dir: d, deg: deg,
+                      tip: mouth, q: qp, kind: isD ? 'd' : 'u' });
+        }
+      });
+      window.__fanTips = __FT;
+      window.__fanMeta = { span: 180, step: 30, len: FAN_LEN,
+                           planes: { eq: [0,1,0], ax: [0,0,1] }, tiers: C5 };
+    }
+
+    // 7.4 内接立方体
+    if (opt.cube) {
+      var cs = CUBE_V.map(function(v){ return mul(unit(v), R_CIRC_S); });
+      for (var a4 = 0; a4 < 8; a4++) for (var b4 = a4+1; b4 < 8; b4++) {
+        var d4 = nrm(sub(cs[a4], cs[b4]));
+        if (d4 < 2.05 * R_CIRC_S * 0.8) pushSeg(cs[a4], cs[b4], '#5b6a80', 1.0, 0.5);
+      }
+    }
+
+    // 7.5 八面体 12 棱 1:φ 分割点（反例展示）
+    if (opt.cut) {
+      var sp = splitSpec(IQ).pts;
+      sp.forEach(function(p){
+        pushDot(mul(p, O), 4.2, '#ff5b8e', 0.95);
+        pushSeg([0,0,0], mul(p, O), '#ff5b8e', 0.8, 0.22);
+      });
+    }
+
+    // 7.6 中心点
+    pushDot([0,0,0], 2.4, '#ffffff', 0.7);
+  }
+
+  function draw(){
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.clearRect(0, 0, CW, CH);
+    // 背景
+    var g = ctx.createRadialGradient(CW/2, CH/2, 40, CW/2, CH/2, Math.max(CW,CH)*0.72);
+    g.addColorStop(0, '#131c2c'); g.addColorStop(1, '#0a0f18');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, CW, CH);
+
+    build();
+    items.sort(function(x,y){ return x.z - y.z; });
+    ctx.lineCap = 'round';
+    items.forEach(function(it){ it.draw(); });
+    ctx.globalAlpha = 1;
+
+    // 角标
+    ctx.fillStyle = 'rgba(200,220,245,.72)';
+    ctx.font = '21px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText('苯 C₆H₆ · M.P.M.（按原文重建）', 20, 36);
+    ctx.fillStyle = 'rgba(160,185,215,.62)';
+    ctx.font = '17px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillStyle = 'rgba(10,15,24,.80)';
+    ctx.fillRect(0, CH - 68, CW, 68);
+    ctx.fillStyle = 'rgba(170,195,225,.82)';
+    ctx.fillText('12 面心 · 竖轴 = 5 重轴（面心朝上）：极点 1 + 两圈各 5（同一投影圆、互错 36°）+ 极点 1', 20, CH - 44);
+    ctx.fillText('6 碳 → 八面体 6 顶点　｜　6 把平面扇 × 6 漏斗 = 36 夸克（每扇 180°：两端 d×2、内侧 u×4）', 20, CH - 20);
+  }
+
+  /* ---------- 8. 交互 ---------- */
+  var dragging = false, lastX = 0, lastY = 0;
+  cv.addEventListener('pointerdown', function(e){
+    dragging = true; lastX = e.clientX; lastY = e.clientY;
+    try { cv.setPointerCapture(e.pointerId); } catch(err) {}
+  });
+  cv.addEventListener('pointermove', function(e){
+    if (!dragging) return;
+    var dx = e.clientX - lastX, dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    view.yaw += dx * 0.008;
+    view.pitch += dy * 0.006;
+    view.pitch = Math.max(-1.45, Math.min(1.45, view.pitch));
+  });
+  cv.addEventListener('pointerup', function(){ dragging = false; });
+  cv.addEventListener('pointercancel', function(){ dragging = false; });
+  cv.addEventListener('wheel', function(e){
+    e.preventDefault();
+    view.dist *= (e.deltaY > 0 ? 1.08 : 0.926);
+    view.dist = Math.max(2.2, Math.min(14, view.dist));
+  }, { passive: false });
+
+  var raf = null, lastT = 0;
+  function loop(ts){
+    if (!lastT) lastT = ts;
+    var dt = Math.min(60, ts - lastT); lastT = ts;
+    if (opt.auto) view.yaw += dt * 0.00022;
+    draw();
+    raf = requestAnimationFrame(loop);
+  }
+
+  /* ---------- 9. 绑定 ---------- */
+  function bindChk(id, key){
+    var e = document.getElementById(id);
+    if (!e) return;
+    e.checked = !!opt[key];
+    e.addEventListener('change', function(){ opt[key] = e.checked; draw(); });
+  }
+  bindChk('mDod','dod'); bindChk('mOct','oct'); bindChk('mIn','inF');
+  bindChk('mCar','car'); bindChk('mFan','fan'); bindChk('mCube','cube'); bindChk('mCut','cut');
+
+  var mAuto = document.getElementById('mAuto');
+  if (mAuto) mAuto.addEventListener('click', function(){
+    opt.auto = !opt.auto; mAuto.classList.toggle('on', opt.auto);
+  });
+  var mTop = document.getElementById('mTop');
+  if (mTop) mTop.addEventListener('click', function(){
+    view.pitch = Math.PI/2 - 0.001; view.yaw = 0; opt.auto = false;
+    if (mAuto) mAuto.classList.remove('on');
+  });
+  var mSide = document.getElementById('mSide');
+  if (mSide) mSide.addEventListener('click', function(){
+    view.pitch = 0; view.yaw = 0.6; opt.auto = false;
+    if (mAuto) mAuto.classList.remove('on');
+  });
+
+  var mO = document.getElementById('mO'), mOv = document.getElementById('mOv');
+  if (mO) {
+    mO.addEventListener('input', function(){
+      O = Number(mO.value) / 100;
+      if (mOv) mOv.textContent = O.toFixed(2);
+      draw();
+    });
+    O = Number(mO.value) / 100;
+    if (mOv) mOv.textContent = O.toFixed(2);
+  }
+
+  /* ---------- 10. 读数 ---------- */
+  var mRead = document.getElementById('mRead');
+  function updRead(){
+    if (!mRead) return;
+    var specTxt = SPEC.map(function(s){ return f3(s.a) + '°×' + s.n; }).join('　');
+    mRead.innerHTML =
+        '<div><b>面心夹角谱</b>（12 个面心，' + pairAngles.length + ' 对）：' + specTxt + '</div>'
+      + '<div><b>沿五重轴极角</b>：' + LAYERS.map(function(s){ return f3(s.a) + '°×' + s.n; }).join('　')
+      + '　<span class="ok">' + LAYERS.map(function(s){return s.n;}).join('+') + '</span></div>'
+      + '<div><b>竖轴 = 5 重轴（面心朝上）</b>：极点 <b>1</b> + 上环 <b>' + C5.ringA.length + '</b> + 下环 <b>' + C5.ringB.length + '</b> + 极点 <b>1</b>；两环<b>投影半径相等</b>（' + f3(C5.rho) + '·面心距）+ 方位角<b>互错 ' + f3(C5.dAz) + '°</b> ⇒ 俯视 = 正中 1 点 + 10 点落成一圈，两个错开 36° 的正五边形</div>'
+      + '<div><b>碳距中心</b> ' + O.toFixed(2) + ' ｜ 面心距 ' + f3(R_FACE_S) + ' ｜ 十二面体外接 ' + f3(R_CIRC_S) + '（= 一根扇面长）'
+      + '</div>'
+      + '<div><b>夸克</b> 6 扇 × 6 = <b>36</b>（每扇 <b style="color:#e0407e">2d</b> 在两端 + <b style="color:#0f9d8a">4u</b> 在内侧）　｜　赤道 4 扇共面 y = 0 ⇒ <b>24 夸克共面</b>（上下 2 扇：2 层相握时朝外极点亦为平面扇 z = 0，相握侧仍为花瓣锥）　｜　扇面张角 <b>180°</b>（6 × 30°，相邻 30°）</div>'
+      + '<div><b>1:φ 压棱检验</b>：999 个 t，命中 <span class="no">' + hits + '</span> ⇒ '
+      + (hits === 0 ? '<span class="no">八面体 12 棱装不下 12 个面心方向</span>' : '<span class="ok">成立</span>') + '</div>';
+  }
+
+  /* ---------- 11. 开关浮层 ---------- */
+  var lit = document.getElementById('lit');
+  var btn = document.getElementById('litBtn');
+  var cls = document.getElementById('litClose');
+  function openLit(){
+    if (!lit) return;
+    lit.classList.add('on');
+    if (!raf) raf = requestAnimationFrame(loop);
+    updRead();
+  }
+  function closeLit(){
+    if (!lit) return;
+    lit.classList.remove('on');
+    if (raf) { cancelAnimationFrame(raf); raf = null; lastT = 0; }
+  }
+  if (btn) btn.addEventListener('click', openLit);
+  if (cls) cls.addEventListener('click', closeLit);
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape') closeLit();
+  });
+
+  updRead();
+  draw();
+  window.__litOK = { spec: SPEC, layers: LAYERS, hits: hits, edges: EDGES_DOD.length, geo: GEO,
+    faceR: R_FACE_S, dodR: R_CIRC_S, scDod: SC_DOD, fanSpan: 180, fanStep: 30, oDef: 1.55,
+    tiers: { pole: 2, ring: C5.ringA.length + C5.ringB.length, perRing: 5,
+             up: C5.ringA.length, dn: C5.ringB.length, eq: 0 },
+    c5: { rho: C5.rho, yRing: C5.yRing, dAz: C5.dAz, azA: C5.azA, azB: C5.azB,
+          poleTop: C5.poleTop, poleBot: C5.poleBot, ringA: C5.ringA, ringB: C5.ringB },
+    faceDirs: FDIR, verDirs: VD, proj: project, cubV: CUBE_V.length,
+    pitch: function(){ return view.pitch; }, yaw: function(){ return view.yaw; },
+    faceY: FDIR.map(function(f){ return f[1]; }),
+    qCount: (function(){ var n=0,d=0,u=0; (window.__fanTips||[]).forEach(function(t){ n++; if(t.kind==='d') d++; else u++; }); return { n:n, d:d, u:u }; })(),
+    fanPts: (window.__fanTips||[]).map(function(t){ return { arm:t.arm, deg:t.deg, kind:t.kind, plane:t.plane, dir:t.dir, q:t.q, tip:t.tip }; }), cageMod: (typeof CAGE === 'object' && CAGE) ? { c70: CAGE.c70.mod, c78: CAGE.c78.mod } : null,
+    cage3d: (function(){ try{ const o={}; for(const k of ['c70','c78','c80']) o[k]=cageMetric(k); return o; }catch(e){ return null; } })(),
+    cageAPU: (function(){ try{ const o={}; for(const k of ['c70','c78','c80']) o[k]=cageAPU(k); return o; }catch(e){ return null; } })(),
+    fit: (function(){ try{ const f=solveFit(); return f? {R:Rf(f.Rfit), eqU:f.eqU, polU:f.polU, gU:f.gU, a0:f.a0, axialA:f.axialA, radialA:f.radialA, diffA:f.diffA} : null; }catch(e){ return null; } })() };
+})();
+
+
+/* ===================== v4：说明文字可收起 ===================== */
+(function(){
+  var hud=document.getElementById('hud');
+  if(hud){
+    var hb=document.getElementById('hudTog');
+    if(hb) hb.onclick=function(){
+      var off=hud.classList.toggle('off');
+      hb.textContent = off ? '展开 ▾' : '收起 ▴';
+    };
+  }
+  var LIVE=/^(layNote|coneNote|nNote|drNote|axNote|orbNote)$/;   // axNote 每换中心体就重写，折叠会看不到
+  window.__foldLive=LIVE.source;   // 每帧被 HUD 重写的实时读数，不做折叠（c60note 是静态长说明，照折）
+  var pairs=[];
+  var notes=document.querySelectorAll('#panel .note');
+  for(var k=0;k<notes.length;k++){
+    (function(n){
+      if(n.id && LIVE.test(n.id)) return;
+      var b=document.createElement('button');
+      b.type='button'; b.className='ntog';
+      b.innerHTML='<span class="car">▾</span>说明';
+      b.setAttribute('data-for', n.id||'');
+      n.parentNode.insertBefore(b,n);
+      var set=function(hid){
+        n.classList.toggle('hid',hid);
+        b.querySelector('.car').textContent = hid ? '▸' : '▾';
+        b.title = hid ? '展开这段说明' : '收起这段说明';
+      };
+      b.onclick=function(){ set(!n.classList.contains('hid')); };
+      pairs.push({b:b,n:n,set:set});
+      // 长说明默认收起（>220 字），短提示保持展开
+      if(!(n.id && LIVE.test(n.id)) && (n.textContent||'').replace(/\s+/g,'').length>220) set(true);
+    })(notes[k]);
+  }
+  var all=document.getElementById('noteAll');
+  if(all) all.onclick=function(){
+    var anyOpen=false;
+    for(var i=0;i<pairs.length;i++) if(!pairs[i].n.classList.contains('hid')) anyOpen=true;
+    for(var j=0;j<pairs.length;j++) pairs[j].set(anyOpen);
+    all.textContent = anyOpen ? '展开全部说明 ▾' : '收起全部说明 ▴';
+  };
+  window.__fold={notes:pairs.length, live:LIVE.source};
+})();
+</script>
+</body>
+</html>

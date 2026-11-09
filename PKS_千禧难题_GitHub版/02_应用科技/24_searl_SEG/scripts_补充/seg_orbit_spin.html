@@ -5,7 +5,7 @@
 body{background:#fff;color:#222;font-family:system-ui;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding-top:310px}
 #header{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(255,255,255,0.94);backdrop-filter:blur(14px);border-bottom:1px solid #ccc;padding:3px 0 5px;display:flex;flex-direction:column;align-items:center}
 #toggleHdr{position:absolute;right:8px;top:4px;padding:2px 6px;font-size:.65em;background:none;border:1px solid #bbb;border-radius:4px;color:#666;cursor:pointer}
-#header.collapsed .htpanel,#header.collapsed .smoothbar,#header.collapsed .info{display:none}
+#header.collapsed .htpanel,#header.collapsed .smoothbar,#header.collapsed .info,#header.collapsed .vlrow,#header.collapsed #vLawTab{display:none}
 h1{font-size:1em;margin:2px 0 0;color:#223}
 .topbar{display:flex;gap:8px;align-items:center;margin:2px 0;flex-wrap:wrap;justify-content:center}
 .topbar select{padding:5px 8px;border-radius:6px;border:1px solid #bbb;background:#f5f5f5;color:#333;font-size:11px;max-width:380px}
@@ -25,17 +25,31 @@ canvas{border:1px solid #ccc;border-radius:10px;display:block;margin:4px auto}
 .htgroup input[type=range]{width:76px;height:10px;accent-color:#378add;margin:0}
 .htgroup input[type=number]{width:38px;background:#fff;color:#333;border:1px solid #ccc;border-radius:4px;font-size:.85em;text-align:center;padding:2px}
 .htbtn{padding:3px 8px;border:none;border-radius:4px;cursor:pointer;font-size:.75em;color:#fff;background:#1d9e75}
-</style></head><body>
+
+/* ==== 三层速度律面板（2026-11-01 增） ==== */
+.vlrow{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;font-size:.62em;color:#556;margin:2px 0}
+.vlrow .vlab{font-weight:bold;color:#445}
+.vlrow select{font-size:1em;padding:1px 3px;background:#fff;color:#333;border:1px solid #ccc;border-radius:4px}
+.vlrow button{font-size:1em;padding:2px 8px;background:#1d9e75;border:none;color:#fff;border-radius:4px;cursor:pointer}
+.vlrow button:hover{background:#178a66}
+.vlrow .vlnote{color:#889}
+#vLawTab{margin:1px auto 2px;max-width:960px;overflow-x:auto}
+.vltab{width:100%;border-collapse:collapse;font-size:.58em;color:#445}
+.vltab th,.vltab td{border:1px solid #ddd;padding:1px 5px;text-align:center;white-space:nowrap}
+.vltab th{background:#f0f0f5;font-weight:bold}
+.vltab td.lab{text-align:left}
+.vljudge{font-size:.58em;color:#556;text-align:center;line-height:1.5;margin-top:2px}
+.vljudge b{color:#c0392b}</style></head><body>
 <div id="header">
 <button id="toggleHdr" onclick="document.getElementById('header').classList.toggle('collapsed')">−</button>
-<h1>SEG / IGV 文档物理引擎 · 2D俯视 + 3D等角投影 · 质量推荐</h1>
+<h1>SEG / IGV 文档物理引擎 · 2D 俯视 + 2D 剖面正视（双视图）· 三层速度律 · 质量推荐</h1>
 <div class="topbar">
   <select id="devSelect" onchange="loadDev(this.value)"></select>
   <select id="schemeSelect" onchange="loadScheme(this.value)"></select>
   <select id="cfgSelect" onchange="loadCfg(this.value)"></select>
-  <button onclick="paused=!paused">⏯</button>
+  <button id="btnPlay" onclick="togglePlay()" title="空格/点击画布也可切换">⏸ 暂停</button>
   <button onclick="speed=speed>=3?0.5:speed+0.5;document.getElementById('spd').textContent=speed+'x'">⏩</button>
-  <span id="spd" style="font-size:.65em;color:#8899bb">0x</span>
+  <span id="spd" style="font-size:.65em;color:#8899bb">0.6x</span>
   <span style="font-size:.65em;color:#8899bb">加速⏱<input type="range" id="rampR" min="0.0005" max="0.006" value="0.002" step="0.0005" oninput="document.getElementById('rampRN').value=(this.value*1000).toFixed(1)+'ms';rampRate=+this.value" style="width:60px;vertical-align:middle"><span id="rampRN" style="width:32px;display:inline-block;text-align:center">2.0ms</span></span>
   <span style="font-size:.65em;color:#8899bb">自转🌀<span id="selfRotN" style="color:#5599dd">行星齿轮</span></span>
   <button onclick="selfRotLocked=!selfRotLocked;document.getElementById('selfLockRow').style.display=selfRotLocked?'none':'flex';document.getElementById('selfRotN').textContent=selfRotLocked?'行星齿轮':'手动'" style="padding:1px 5px;font-size:.6em;background:#223;border:1px solid #334;color:#aac;border-radius:3px;cursor:pointer">🔓解锁</button>
@@ -45,6 +59,21 @@ canvas{border:1px solid #ccc;border-radius:10px;display:block;margin:4px auto}
   <span>综合性价比得分</span><div class="bar"><div class="fill" id="smoothFill"></div></div><span id="smoothVal"></span>
 </div>
 <div class="info" id="statusBar"></div>
+<div class="vlrow">
+  <span class="vlab">三层速度律</span>
+  <select id="vLawSel" onchange="onVLawChange(this.value)">
+    <option value="ramp">ramp 档 base^i（原行为 · 外层快）</option>
+    <option value="p2">p=2 角动量守恒 ω∝ρ⁻²（内层快）</option>
+    <option value="p15">p=1.5 开普勒场 ω∝ρ⁻¹·⁵</option>
+    <option value="p1">p=1 线速度相同（固态盘）</option>
+    <option value="p0">p=0 刚体同转（三层同步）</option>
+    <option value="peq">端点对齐 β^i（三级每级等比）</option>
+  </select>
+  <button onclick="probeMidInvariant()">ρ中 能动吗？（实测）</button>
+  <span class="vlnote">改滚筒数会改 ρ，读数实时重算 · 本页为唯一正典（旧版 seg_orbit_spin原版.html 已归档）</span>
+</div>
+<div id="vLawTab"></div>
+<div id="vLawProbe" class="vljudge"></div>
 <div class="htpanel">
   <span class="htgroup"><label>定子高内</label><div class="row"><input type="range" id="hs0" min="3" max="120" value="50" step="1" oninput="onHtChange()"><input type="number" id="hn0" value="50" onchange="onHtNum(0)"></div></span>
   <span class="htgroup"><label>定子高中</label><div class="row"><input type="range" id="hs1" min="3" max="120" value="34" step="1" oninput="onHtChange()"><input type="number" id="hn1" value="34" onchange="onHtNum(1)"></div></span>
@@ -131,8 +160,8 @@ function computeMaterialDensity(mass, devk){
 }
 
 // Globals
-let devKey='SEG',schemeId=9,cfg=ALL_CFGS[0],geo,angle=0,viewYaw=0,viewYawAuto=true,speed=0,paused=true,showTrajectory=true,showSpiral=true,showBSpiral=true,curveMode='catmull';
-let spiralTrail=[],bSpiralTrail=[],trajTrail=[[],[],[]],trailMul=1,rampProg=0,rampRate=0.002,selfRotLocked=true,selfRotOver=[-1,-1,-1],selfAngles=[0,0,0];
+let devKey='SEG',schemeId=9,cfg=ALL_CFGS[0],geo,angle=0,speed=0.6,paused=false,showTrajectory=true,showSpiral=true,showBSpiral=true,curveMode='catmull';
+let spiralTrail=[],bSpiralTrail=[],trajTrail=[[],[],[]],trailMul=1,rampProg=0,rampRate=0.002,selfRotLocked=true,selfRotOver=[-1,-1,-1],selfAngles=[0,0,0];let vLaw='ramp';
 function getSelfRot(i){return selfRotLocked?-(geo.layers[i].statorPoles/geo.layers[i].rollerPoles):selfRotOver[i];}
 function updateTrailDisplay(){const base=1+1.5*rampProg;let syncRad=4;document.getElementById('syncFramesN').textContent='';for(let r=1;r<=20;r++){if(Math.abs(base*r-Math.round(base*r))<1e-9){syncRad=r;break;}}const sf=Math.round(syncRad*1257/(speed||0.5));document.getElementById('syncFramesN').textContent='同步≈'+sf+'帧';document.getElementById('trailN').textContent=trailMul+'x';}
 let heightOverrides={s:[],r:[]},heightAuto=true;
@@ -148,7 +177,88 @@ function gcd(a,b){a=Math.abs(a);b=Math.abs(b);while(b){[a,b]=[b,a%b];}return a;}
 function lcm(a,b){return a*b/gcd(a,b);}
 function bestDivisor(nP,maxV){let best=1;for(let d=1;d<=Math.sqrt(nP);d++){if(nP%d===0){const d2=nP/d;if(d<=maxV&&d>best)best=d;if(d2<=maxV&&d2>best)best=d2;}}return best>=60?best:Math.min(nP,maxV);}
 function unifiedVis(sp){const G=gcd(gcd(sp[0],sp[1]),sp[2]);if(G>1){for(let d=360;d>=60;d--){if(G%d===0)return[d,d,d];}}const vis=[360,360,360];for(let i=0;i<3;i++){const nP=sp[i];let found=false;for(let d=360;d>=60;d--){if(nP%d===0){vis[i]=d;found=true;break;}}if(!found)vis[i]=Math.min(nP,180);}const sorted=[...vis].sort((a,b)=>a-b);const target=sorted[1];for(let i=0;i<3;i++){const nP=sp[i];let best=vis[i],bestDist=Math.abs(vis[i]-target);for(let delta=0;delta<=60;delta++){for(const sign of[1,-1]){const c=target+sign*delta;if(c>=60&&c<=360&&nP%c===0&&delta<bestDist){best=c;bestDist=delta;}}}vis[i]=best;}return vis;}
-function layerSpeed(i){const base=1+1.5*rampProg;return Math.pow(base,i);}
+/* ============================================================
+   三层速度律（2026-11-01）：ω_i 与 ρ_i 的关系
+   ramp  : ω_i = base^i·ω_0，base 由 rampProg 从 1 爬到 2.5  ⟹ 外层快（原行为）
+   p0..p2: ω_i = (ρ_0/ρ_i)^p·ω_0
+           p=0 刚体 / p=1 线速度均匀 / p=1.5 开普勒 / p=2 角动量守恒（内层快）
+   ============================================================ */
+const VLAW_P={p0:0,p1:1,p15:1.5,p2:2};
+function layerSpeed(i){
+  if(vLaw==='ramp'){const base=1+1.5*rampProg;return Math.pow(base,i);}
+  if(vLaw==='peq'){                       /* 端点对齐：每级等比 β，β^(N-1)=(ρ内/ρ外)² */
+    const L=geo.layers, N=L.length;
+    const beta=Math.pow(L[0].orbit/L[N-1].orbit, 2/(N-1));
+    return Math.pow(beta,i);
+  }
+  const p=VLAW_P[vLaw];
+  const r0=(geo&&geo.layers[0].orbit)||1, ri=(geo&&geo.layers[i].orbit)||1;
+  return Math.pow(r0/ri,p);
+}
+function spdMul(i){return Math.max(0.02,layerSpeed(i));}
+function onVLawChange(v){vLaw=v;rampProg=0;vlawReport();}
+function f4(x,d){return isFinite(x)?x.toFixed(d===undefined?4:d):'—';}
+function vlawReport(){
+  if(!geo||!geo.layers||geo.layers.length<3)return;
+  const L=geo.layers, r=L.map(l=>l.orbit), w=L.map((l,i)=>layerSpeed(i));
+  const v=w.map((x,i)=>x*r[i]);
+  const ws=L.map((l,i)=>(l.num+1)*w[i]);          /* 纯滚动：ω_self ∝ (n+1)·ω_orb */
+  const n=L.map(l=>l.num);
+  const gm=Math.sqrt(r[0]*r[2]), dev=gm>0?r[1]/gm-1:0;
+  const pEff=(w[0]>0&&w[2]>0&&r[2]>r[0])?Math.log(w[2]/w[0])/Math.log(r[0]/r[2]):NaN;
+  const sq=Math.pow(r[0]/r[2],2);                 /* 平方律：外/内 = (ρ内/ρ外)² */
+  const e1=document.getElementById('vLawInfo');
+  let h='<table class="vltab"><tr><th>量</th><th>内</th><th>中</th><th>外</th><th>中/内</th><th>外/中</th><th>外/内</th></tr>';
+  function row(name,arr,dec){
+    h+='<tr><td class="lab">'+name+'</td><td>'+f4(arr[0],dec)+'</td><td>'+f4(arr[1],dec)+'</td><td>'+f4(arr[2],dec)+'</td>'+
+       '<td>'+f4(arr[1]/arr[0])+'</td><td>'+f4(arr[2]/arr[1])+'</td><td>'+f4(arr[2]/arr[0])+'</td></tr>';
+  }
+  row('半径 ρ (cm) · 滚筒数 '+n.join('/'),r,2);
+  row('公转角速度 ω',w,4);
+  row('公转线速度 v = ωρ',v,4);
+  row('自转角速度 ∝(n+1)·ω',ws,4);
+  h+='</table>';
+  const dirTxt=(w[2]>w[0])?'外层快':(w[2]<w[0]?'内层快':'三层同速');
+  const jt='ω 的 <b>外/内 = '+f4(w[2]/w[0])+'</b>（'+dirTxt+'） · 反算 p = <b>'+f4(pEff,3)+'</b>'+'（只由内外两端反算，不辨中间层）'
+    +' · 平方律目标 (ρ内/ρ外)² = <b>'+f4(sq)+'</b>（即内层快 '+f4(1/sq,3)+' 倍）'
+    +'<br>中层 ρ = '+f4(r[1],2)+' cm vs 几何中项 √(ρ内·ρ外) = '+f4(gm,2)+' cm ⟹ 偏 <b>'
+    +(dev>=0?'+':'')+f4(dev*100,1)+'%</b> · 两级倍率 '+f4(w[1]/w[0])+' / '+f4(w[2]/w[1])
+    +'（差 '+f4(Math.abs(w[1]/w[0]/(w[2]/w[1])-1)*100,1)+'%）';
+  const t=document.getElementById('vLawTab');
+  if(t)t.innerHTML=h+'<div class="vljudge">'+jt+'</div>';
+}
+/* 中层 → 几何中项：让两级倍率相等（平方律 + 三层的必要条件） */
+/* 「ρ中 能动吗？」实测：把中层滚筒数扫 ±3，看 ρ中 是否变。
+   结论（实测）：在等厚约束生效时 ρ中 ≡ (ρ内+ρ外)/2 —— 算术中项，改 num 动不了。
+   ⟹ 三级「每级倍率相等」在现行几何下不可能；想要每级等比只能换到「端点对齐」档。 */
+function probeMidInvariant(){
+  if(!geo||!geo.layers)return;
+  const n0=geo.layers[0].num, n2=geo.layers[2].num, keep=geo.layers[1].num;
+  const el1=document.getElementById('rn1'), vs=[];
+  const lo=Math.max(n0+1,keep-3), hi=Math.min(n2-1,keep+3);
+  for(let n=lo;n<=hi;n++){ el1.value=n; onRNChange(); vs.push([n,geo.layers[1].orbit]); }
+  el1.value=keep; onRNChange();
+  const arr=vs.map(v=>v[1]);
+  const spread=Math.max.apply(null,arr)-Math.min.apply(null,arr);
+  const r0=geo.layers[0].orbit, r2=geo.layers[2].orbit;
+  const am=(r0+r2)/2, gm=Math.sqrt(r0*r2);
+  const q1=layerSpeed(1)/layerSpeed(0), q2=layerSpeed(2)/layerSpeed(1);
+  const box=document.getElementById('vLawProbe');
+  var nFlat=0; for(var i2=0;i2<arr.length;i2++) if(Math.abs(arr[i2]-am)<1e-9) nFlat++;
+  var nEdge=Math.max.apply(null,vs.filter(function(v){return Math.abs(v[1]-am)<1e-9;}).map(function(v){return v[0];}))||0;
+  var r1=geo.layers[1].orbit;
+  if(box)box.innerHTML='<b>实测试验</b>：中层滚筒数 '+vs.map(v=>v[0]).join(' / ')
+    +' ⟹ ρ中 = '+arr.map(x=>x.toFixed(2)).join(' / ')+' cm（极差 <b>'+spread.toFixed(4)+'</b> cm）'
+    +'<br>⟹ '+nFlat+' 个取值里 ρ中 恒为 <b>'+am.toFixed(2)+'</b> cm = (ρ内+ρ外)/2 —— <b>算术中项被等厚约束钉死</b>'
+    +'（滚筒数 ≤ '+nEdge+' 时全不动；再往上等厚约束失效，ρ中 才自己撑开）'
+    +'<br>几何中项只需 <b>'+gm.toFixed(2)+'</b> cm（偏 +'+((am/gm-1)*100).toFixed(1)+'%），但<b>压不下去</b>：'
+    +'约束只会把中层钳在内外环正中，改小滚筒数完全无效'
+    +'<br>⟹ 现行几何下两级倍率必然不等（本档 '+q1.toFixed(4)+' / '+q2.toFixed(4)+'，差 '
+    +((q1/q2-1)*100).toFixed(1)+'%）。三级每级等比只能换「端点对齐 β^i」档：端点不变，中层从 '
+    +(Math.pow(r0/Math.max(r1,1e-9),2)).toFixed(4)+' 改成 β = '+(r0/r2).toFixed(4)+'。'
+    +'<br>⟹ <b>量中层就能分清两条律</b>：0.3503 → ρ 平方律；0.4203 → 每级等比。';
+  vlawReport();
+}
 
 function computeGeometry(dk,si,cf){
   const dev=DEVICE[dk];const rings=dev.rings,matLayers=dev.matLayers;
@@ -239,7 +349,7 @@ function draw2D(){
   ctx.clearRect(0,0,W,H);drawCheckerboard(ctx,W,H);
   updateParticles(sc,cx,cy);drawParticles(sc,cx,cy);
   const rings=geo.rings,mats=getMat(geo.devKey),vList=fullPoles?geo.layers.map(l=>l.statorPoles):unifiedVis(geo.layers.map(l=>l.statorPoles));
-  for(let i=rings-1;i>=0;i--){const lay=geo.layers[i],col=LAYER_COLORS[i%6],opx=lay.orbit*sc,orbA=angle*layerSpeed(i),ratio=lay.statorPoles/lay.rollerPoles,tTr=lay.Yr*sc,sub=Math.round(layerSpeed(i)),dF=0.005*speed*layerSpeed(i);for(let s=0;!paused&&s<sub;s++){const a=orbA-dF*(sub-1-s)/sub,sa2=-ratio*a,ex=cx+opx*Math.cos(a)+tTr*Math.cos(a+sa2),ey=cy+opx*Math.sin(a)+tTr*Math.sin(a+sa2);trajTrail[i].push({x:ex,y:ey});}if(showTrajectory)drawTrajectory(x2,trajTrail[i],col);drawRoller2D(cx,cy,opx,lay.num,lay.rollerPoles,col,orbA,i,sc);drawStator2D(cx,cy,lay.Br*sc,lay.BR*sc,lay.statorPoles,col,mats,vList[i]);}
+  for(let i=rings-1;i>=0;i--){const lay=geo.layers[i],col=LAYER_COLORS[i%6],opx=lay.orbit*sc,orbA=angle*layerSpeed(i),ratio=lay.statorPoles/lay.rollerPoles,tTr=lay.Yr*sc,sub=Math.max(1,Math.round(layerSpeed(i))),dF=0.005*speed*layerSpeed(i);for(let s=0;!paused&&s<sub;s++){const a=orbA-dF*(sub-1-s)/sub,sa2=-ratio*a,ex=cx+opx*Math.cos(a)+tTr*Math.cos(a+sa2),ey=cy+opx*Math.sin(a)+tTr*Math.sin(a+sa2);trajTrail[i].push({x:ex,y:ey});}if(showTrajectory)drawTrajectory(x2,trajTrail[i],col);drawRoller2D(cx,cy,opx,lay.num,lay.rollerPoles,col,orbA,i,sc);drawStator2D(cx,cy,lay.Br*sc,lay.BR*sc,lay.statorPoles,col,mats,vList[i]);}
   if(showSpiral&&!paused){const pts=geo.layers.map((l,i)=>({x:cx+l.orbit*sc*Math.cos(angle*layerSpeed(i)),y:cy+l.orbit*sc*Math.sin(angle*layerSpeed(i))}));spiralTrail.push(pts);if(spiralTrail.length>90*trailMul)spiralTrail.shift();}
   if(showBSpiral&&!paused){const bps=geo.layers.map((l,i)=>{const ox=cx+l.orbit*sc*Math.cos(angle*layerSpeed(i)),oy=cy+l.orbit*sc*Math.sin(angle*layerSpeed(i)),tr=l.Yr*sc;return{x:ox+tr*Math.cos(selfAngles[i]),y:oy+tr*Math.sin(selfAngles[i])}});bSpiralTrail.push(bps);if(bSpiralTrail.length>90*trailMul)bSpiralTrail.shift();}
   if(showSpiral){for(let t=0;t<spiralTrail.length;t++){const p=spiralTrail[t],alpha=t/spiralTrail.length;x2.beginPath();x2.moveTo(p[0].x,p[0].y);drawSp(x2,p[0],p[1],p[2]);x2.strokeStyle='rgba(255,140,30,0.5)';x2.lineWidth=0.6;x2.stroke();}
@@ -251,8 +361,8 @@ function draw2D(){
 
 }
 
-function initParticles(){particles=[];const N=300,W=Math.min(window.innerWidth-32,1400),sc=W*0.45/geo.maxR;for(let i=0;i<N;i++){const ri=Math.floor(Math.random()*geo.rings),lay=geo.layers[ri],r=lay.orbit*sc+(Math.random()*2-1)*lay.Yr*sc;particles.push({r,a:Math.random()*2*Math.PI,vr:0.02+Math.random()*0.08,vt:[1,2.5,6.25][ri]*0.01*(0.5+Math.random()),ring:ri,life:1,alpha:0.3+Math.random()*0.5});}}
-function updateParticles(sc,cx,cy){const scS=smoothScore(),rough=Math.max(0.005,(100-scS)/100*0.25),radU=scS/100;particles.forEach(p=>{p.life-=0.001;if(p.life<=0){const ri=Math.floor(Math.random()*geo.rings),lay=geo.layers[ri];p.ring=ri;p.r=lay.orbit*sc+(Math.random()*2-1)*lay.Yr*sc;p.a=Math.random()*2*Math.PI;p.vr=0.02+Math.random()*0.08;p.vt=[1,2.5,6.25][ri]*0.01*(0.5+Math.random());p.life=1;p.alpha=0.3+Math.random()*0.5;return;}p.vr+=0.0008*(1+p.r/cx)*radU;const bA=p.a*(p.ring+1)*3;p.vt+=rough*Math.sin(bA)*0.001;p.vr*=0.998;p.vt*=0.998;p.r+=p.vr;p.a+=p.vt/p.r;const lay=geo.layers[p.ring];if(p.r>lay.orbit*sc+lay.Yr*sc+8)p.life=0;if(p.r<20){p.r=20;p.vr*=-0.5;}});}
+function initParticles(){particles=[];const N=300,W=Math.min(window.innerWidth-32,1400),sc=W*0.45/geo.maxR;for(let i=0;i<N;i++){const ri=Math.floor(Math.random()*geo.rings),lay=geo.layers[ri],r=lay.orbit*sc+(Math.random()*2-1)*lay.Yr*sc;particles.push({r,a:Math.random()*2*Math.PI,vr:0.02+Math.random()*0.08,vt:spdMul(ri)*0.01*(0.5+Math.random()),ring:ri,life:1,alpha:0.3+Math.random()*0.5});}}
+function updateParticles(sc,cx,cy){const scS=smoothScore(),rough=Math.max(0.005,(100-scS)/100*0.25),radU=scS/100;particles.forEach(p=>{p.life-=0.001;if(p.life<=0){const ri=Math.floor(Math.random()*geo.rings),lay=geo.layers[ri];p.ring=ri;p.r=lay.orbit*sc+(Math.random()*2-1)*lay.Yr*sc;p.a=Math.random()*2*Math.PI;p.vr=0.02+Math.random()*0.08;p.vt=spdMul(ri)*0.01*(0.5+Math.random());p.life=1;p.alpha=0.3+Math.random()*0.5;return;}p.vr+=0.0008*(1+p.r/cx)*radU;const bA=p.a*(p.ring+1)*3;p.vt+=rough*Math.sin(bA)*0.001;p.vr*=0.998;p.vt*=0.998;p.r+=p.vr;p.a+=p.vt/p.r;const lay=geo.layers[p.ring];if(p.r>lay.orbit*sc+lay.Yr*sc+8)p.life=0;if(p.r<20){p.r=20;p.vr*=-0.5;}});}
 function drawParticles(sc,cx,cy){const bins=40,dens=new Array(bins).fill(0);particles.forEach(p=>{const bi=Math.min(bins-1,Math.max(0,Math.floor(p.r/(cx*0.8)*bins)));dens[bi]++;});const maxD=Math.max(1,...dens);particles.forEach(p=>{if(p.life<=0)return;const px=cx+p.r*Math.cos(p.a),py=cy+p.r*Math.sin(p.a),bi=Math.min(bins-1,Math.max(0,Math.floor(p.r/(cx*0.8)*bins))),dN=dens[bi]/maxD;x2.beginPath();x2.arc(px,py,1.5,0,2*Math.PI);x2.fillStyle=`rgba(${150+50*dN|0},${130+60*dN|0},${40+30*dN|0},${p.alpha*(0.3+0.7*dN)})`;x2.fill();});}
 
 // 正视图（2D侧视，对称左右，半透明黄色）
@@ -301,7 +411,7 @@ function drawFront(){
   ctx.fillText(DEVICE[geo.devKey].name+' 方案'+schemeId+' 间隙='+(clearanceGap||0.5).toFixed(1)+'cm',cx,12);
 }// SCORE + UI
 function smoothScore(){const sp=schemeId===9&&massOverrides.m?massOverrides.m:cfg.sp,rp=schemeId===9?[34,34,34]:cfg.rp,rings=geo.rings;let s=0;const hp=sp.map(v=>v/2),hr=rp.map(v=>v/2);for(let i=0;i<rings;i++){if(gcd(hp[i],hr[i])===1)s+=22;}let cgS=0;for(let i=0;i<rings-1;i++)cgS+=1/(gcd(hp[i],hp[i+1])+1);s+=18*cgS/(rings-1);const diff=(rp[0]!==rp[1])+(rp[1]!==rp[2])+(rp[0]!==rp[2]);s+=diff*2;if(rp.every(v=>v===rp[0]))s+=8;let tot=hp[0];for(let i=1;i<rings;i++)tot=lcm(tot,hp[i]);s+=Math.log10(tot+1)*0.9;return Math.min(100,Math.round(s));}
-function updateStatus(){const sp=schemeId===9&&massOverrides.m?massOverrides.m:cfg.sp,rp=schemeId===9?[34,34,34]:cfg.rp;let all1=true;for(let i=0;i<geo.rings;i++)if(gcd(sp[i]/2,rp[i]/2)!==1)all1=false;const sc=smoothScore();document.getElementById('statusBar').innerHTML='<span class="'+(all1?'good':'bad')+'">'+(all1?'✓ 全互质':'✗ 公约数')+'</span> | '+DEVICE[devKey].name+' · '+geo.rings+'环 | 方案'+schemeId;document.getElementById('smoothFill').style.width=sc+'%';document.getElementById('smoothFill').style.background=sc>=80?'#1d9e75':sc>=50?'#ba7517':'#e24b4a';document.getElementById('smoothVal').textContent=sc+'分';}
+function updateStatus(){const sp=schemeId===9&&massOverrides.m?massOverrides.m:cfg.sp,rp=schemeId===9?[34,34,34]:cfg.rp;let all1=true;for(let i=0;i<geo.rings;i++)if(gcd(sp[i]/2,rp[i]/2)!==1)all1=false;const sc=smoothScore();document.getElementById('statusBar').innerHTML='<span class="'+(all1?'good':'bad')+'">'+(all1?'✓ 全互质':'✗ 公约数')+'</span> | '+DEVICE[devKey].name+' · '+geo.rings+'环 | 方案'+schemeId;document.getElementById('smoothFill').style.width=sc+'%';document.getElementById('smoothFill').style.background=sc>=80?'#1d9e75':sc>=50?'#ba7517':'#e24b4a';document.getElementById('smoothVal').textContent=sc+'分';vlawReport();}
 
 function buildDevSelect(){const s=document.getElementById('devSelect');Object.values(DEVICE).forEach(d=>{const o=document.createElement('option');o.value=d.key;o.textContent=d.name;s.appendChild(o);});s.value=devKey;}
 function buildSchemeSelect(){const s=document.getElementById('schemeSelect');SCHEMES.forEach(sc=>{const o=document.createElement('option');o.value=sc.id;o.textContent=sc.name;s.appendChild(o);});s.value=schemeId;}
@@ -342,12 +452,16 @@ function resetHeights(){heightAuto=true;heightOverrides={s:[],r:[]};paramAuto=tr
 // init
 c2d.addEventListener('wheel',e=>{e.preventDefault();speed=Math.max(0,Math.min(4,speed+(e.deltaY>0?-0.2:0.2)));document.getElementById('spd').textContent=speed+'x';});
 c3dv.addEventListener('wheel',e=>{e.preventDefault();speed=Math.max(0.1,Math.min(4,speed+(e.deltaY>0?-0.2:0.2)));document.getElementById('spd').textContent=speed+'x';});
-c2d.addEventListener('click',()=>{paused=!paused;if(!paused&&speed===0){speed=0.5;document.getElementById('spd').textContent='0.5x';}});c3dv.addEventListener('click',()=>{viewYawAuto=!viewYawAuto;});
+c2d.addEventListener('click',()=>{togglePlay();if(!paused&&speed===0){speed=0.5;}});c3dv.addEventListener('click',()=>{togglePlay();});
 if(schemeId===9)cfg=ALL_CFGS[2];
 geo=computeGeometry(devKey,schemeId,cfg);buildDevSelect();buildSchemeSelect();buildCfgSelect();buildMassSelect();
 if(schemeId===9)document.getElementById('cfgSelect').value=2;
 initParticles();updateStatus();syncHtSliders();updateSliderLock();updateVolDisplay();
-setInterval(()=>{if(!paused){rampProg=Math.min(1,rampProg+rampRate*speed);angle+=0.005*speed;for(let i=0;i<3;i++)selfAngles[i]+=0.005*speed*getSelfRot(i);}if(viewYawAuto)viewYaw+=0.003*speed;updateTrailDisplay();},16);
-(function frame(){draw2D();drawFront();requestAnimationFrame(frame);})();
+setInterval(()=>{if(!paused){rampProg=Math.min(1,rampProg+rampRate*speed);angle+=0.005*speed;for(let i=0;i<3;i++)selfAngles[i]+=0.005*speed*getSelfRot(i);}updateTrailDisplay();},16);
+function togglePlay(){paused=!paused;if(!paused&&speed===0){speed=0.6;}syncPlay();}
+var __pz=null,__spv=null;
+function syncPlay(){if(__pz===paused&&__spv===speed)return;__pz=paused;__spv=speed;var b=document.getElementById('btnPlay');if(b){var t=paused?'▶ 播放':'⏸ 暂停';if(b.textContent!==t)b.textContent=t;}
+  var s=document.getElementById('spd');if(s){var v=(+speed.toFixed(2))+'x';if(s.textContent!==v)s.textContent=v;}}
+(function frame(){draw2D();drawFront();syncPlay();requestAnimationFrame(frame);})();
 async function captureScreenshot(){const btn=document.getElementById('btnCap');btn.textContent='⏳生成中...';btn.disabled=true;window.scrollTo(0,0);await new Promise(r=>setTimeout(r,200));try{let h2c;try{({default:h2c}=await import('./vendor/html2canvas.esm.js'));}catch(_e1){try{({default:h2c}=await import('https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.esm.js'));}catch(_e2){({default:h2c}=await import('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.esm.js'));}}const el=document.body;const canvas=await h2c(el,{scale:2,backgroundColor:'#ffffff',useCORS:true,logging:false,windowWidth:document.documentElement.scrollWidth,windowHeight:document.documentElement.scrollHeight});const a=document.createElement('a');a.download='SEG_截图_'+new Date().toISOString().slice(0,19).replace(/[T:]/g,'-')+'.png';a.href=canvas.toDataURL('image/png');a.click();}catch(e){alert('截图失败: '+e.message+'。可改用浏览器自带截图 Ctrl+Shift+S');}btn.textContent='📷截长图';btn.disabled=false;}
 </script></body></html>
