@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link rel="icon" href="data:,">
+<title>火箭引擎冷却通道 · 变分型涌现（元宝回答全记录 ①）</title>
+<style>
+:root{--bg:#ffffff;--fg:#1b1b1b;--line:#dcdfe4;--acc:#0a66c2;--mut:#5b6470;--warm:#b8530b;--cool:#0d7b86;--warn:#b3261e;--soft:#f6f8fa;--ok:#1e7e34;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:"Microsoft YaHei","SimHei",system-ui,sans-serif;line-height:1.75;font-size:15px}
+a{color:var(--acc)}
+.wrap{max-width:1160px;margin:0 auto;padding:0 22px 80px}
+header{border-bottom:2px solid var(--line);padding:26px 0 18px;margin-bottom:18px}
+h1{font-size:25px;margin:0 0 6px;letter-spacing:.3px}
+.sub{color:var(--mut);font-size:13.5px;margin:0}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px}
+.pill{display:inline-block;border:1px solid var(--line);border-radius:20px;padding:4px 13px;font-size:13px;background:var(--soft);text-decoration:none}
+.pill.hi{background:#eaf3fd;border-color:#b9d7f6;color:var(--acc);font-weight:700}
+.tag{font-size:12px;color:var(--mut);border:1px solid var(--line);border-radius:4px;padding:2px 7px}
+nav.toc{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:12px 18px;margin-bottom:26px;font-size:13.5px}
+nav.toc b{margin-right:10px}
+nav.toc a{display:inline-block;margin:2px 14px 2px 0;text-decoration:none}
+section{margin:0 0 30px;scroll-margin-top:14px}
+h2{font-size:19px;border-left:4px solid var(--acc);padding-left:11px;margin:0 0 12px}
+h3{font-size:16px;margin:20px 0 8px}
+.card{border:1px solid var(--line);border-radius:8px;padding:15px 18px;margin-bottom:14px;background:#fff}
+.card.lead{background:#f3f8ff;border-color:#cfe2f8}
+p{margin:8px 0}
+ul{margin:8px 0 8px 4px;padding-left:20px}
+li{margin:5px 0}
+code{background:var(--soft);border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-family:Consolas,monospace;font-size:13.5px}
+.fml{background:#fbfcfe;border:1px solid var(--line);border-left:3px solid var(--acc);padding:9px 14px;margin:10px 0;font-family:Consolas,"Microsoft YaHei",monospace;font-size:14px;overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;margin:10px 0}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--soft);font-weight:700}
+tr:nth-child(even) td{background:#fcfcfd}
+.note{background:#fffaf0;border-left:3px solid #e0a800;padding:9px 13px;border-radius:0 6px 6px 0;font-size:13.5px;color:#5b4a20;margin:10px 0}
+.warn{background:#fff5f4;border-left:3px solid var(--warn);padding:9px 13px;border-radius:0 6px 6px 0;font-size:13.5px;color:#6c2823;margin:10px 0}
+.ok{background:#f2fbf4;border-left:3px solid var(--ok);padding:9px 13px;border-radius:0 6px 6px 0;font-size:13.5px;color:#1d5629;margin:10px 0}
+/* 演示台 */
+.lab{border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(20,40,80,.05)}
+.lab .hd{background:var(--soft);border-bottom:1px solid var(--line);padding:9px 16px;font-size:14px;font-weight:700;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.lab .hd span{font-weight:400;color:var(--mut);font-size:12.5px}
+.labgrid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(255px,1fr)}
+@media(max-width:860px){.labgrid{grid-template-columns:1fr}}
+.canvasbox{padding:10px;border-right:1px solid var(--line);background:#fff}
+@media(max-width:860px){.canvasbox{border-right:none;border-bottom:1px solid var(--line)}}
+canvas{width:100%;height:430px;display:block;cursor:default;touch-action:none}
+.ctrlbox{padding:14px 16px;background:#fcfdff}
+.ctrl{margin-bottom:12px}
+.ctrl label{display:block;font-size:12.5px;color:var(--mut);margin-bottom:3px}
+.ctrl .v{color:var(--acc);font-weight:700;float:right}
+input[type=range]{width:100%;accent-color:var(--acc)}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+button{font-family:inherit;font-size:13px;padding:6px 12px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--fg);cursor:pointer}
+button:hover{background:#eef4fb;border-color:#b9d7f6}
+button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px;font-size:13px}
+.stat{border:1px solid var(--line);border-radius:6px;background:#fff;padding:7px 9px}
+.stat b{display:block;font-size:17px;color:var(--acc);line-height:1.3}
+.stat small{color:var(--mut)}
+.legend{font-size:12px;color:var(--mut);margin-top:10px;line-height:1.7}
+.sw{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:-1px;margin:0 4px 0 8px}
+footer{border-top:1px solid var(--line);padding:18px 0;color:var(--mut);font-size:13px}
+/* ③ 3D 剖切视图 */
+.view3d{border-top:1px solid var(--line);padding:10px 10px 8px;background:#fff}
+#gl3d{height:470px;border:1px solid #e6ebf1;border-radius:8px;background:#fdfdfe;cursor:grab}
+#gl3d:active{cursor:grabbing}
+.glhint{font-size:12px;color:var(--mut);margin-top:7px;line-height:1.7}
+.gl3derr{margin-top:8px;background:#fff5f4;border-left:3px solid var(--warn);color:#6c2823;padding:8px 12px;font-size:13px;border-radius:0 6px 6px 0}
+.kicker{font-size:13px;color:var(--mut);margin:0 0 4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <p class="kicker">元宝回答全记录 · ① / ②　｜　来源分享页 Fg0WWvF57zqW（分享于 2026-11-08）</p>
+  <h1>火箭引擎自生成最优构造 · 变分型涌现</h1>
+  <p class="sub">把发动机翻译成一道带物理约束的优化题：不画形状，只给守恒律与边界，让层级分叉树自己长出来。</p>
+  <div class="bar">
+    <a class="pill hi" href="AAA_02_双桥开尔文水滴_失稳型涌现.html">→ 下一篇：双桥开尔文水滴（失稳型涌现）</a>
+    <a class="pill" href="00_元宝回答全文_Fg0WWvF57zqW.md">全文存档（md）</a>
+    <a class="pill" href="https://yb.tencent.com/s/Fg0WWvF57zqW" target="_blank" rel="noopener">原分享页</a>
+    <span class="tag">白底深字</span><span class="tag">单文件离线</span><span class="tag">Canvas 2D 原理示意</span>
+  </div>
+</header>
+
+<nav class="toc"><b>目录</b>
+<a href="#demo">0 · 交互演示台</a><a href="#s1">1 · 删掉「形状」</a><a href="#s2">2 · 物理场长材料</a>
+<a href="#s3">3 · 为什么像血管</a><a href="#s4">4 · 金属 3D 打印</a><a href="#s5">5 · 两点别误会</a>
+<a href="#s6">6 · three.js 第一版</a><a href="#s7">7 · 剖开内部第二版</a><a href="#s8">8 · 差距与对照</a>
+<a href="#s9">9 · 两类涌现的分界</a>
+</nav>
+
+<section id="demo">
+  <h2>0 · 交互演示台：只给边界，让分叉树自己长</h2>
+  <div class="lab">
+    <div class="hd"><span style="font-weight:700">圆筒壁展开 · 煤油（橙）／液氧（青）双路壁内通道</span>
+      <span>72×40 降阶热场 · Murray 定径 · 择优分叉 + 热点补种 · Shift+拖动可搬动画面</span></div>
+    <div class="labgrid">
+      <div class="canvasbox"><canvas id="tree"></canvas></div>
+      <div class="ctrlbox">
+        <div class="ctrl"><label>压降惩罚 λ <span class="v" id="vLam">0.55</span></label><input id="lam" type="range" min="0" max="1.5" step="0.05" value="0.55"></div>
+        <div class="ctrl"><label>最小可打印流道 <span class="v" id="vMin">0.8 mm</span></label><input id="mind" type="range" min="0.6" max="2.0" step="0.1" value="0.8"></div>
+        <div class="ctrl"><label>燃气峰值 <span class="v" id="vGas">3000 °C</span></label><input id="gas" type="range" min="2200" max="3400" step="50" value="3000"></div>
+        <div class="ctrl"><label>材料耐温上限 <span class="v" id="vLim">1250 °C</span></label><input id="lim" type="range" min="900" max="1600" step="25" value="1250"></div>
+        <div class="ctrl"><label>冷却剂入口温度 <span class="v" id="vIn">40 °C</span></label><input id="tin" type="range" min="20" max="120" step="5" value="40"></div>
+        <div class="ctrl"><label>迭代轮数 <span class="v" id="vR">11</span></label><input id="rnd" type="range" min="5" max="14" step="1" value="11"></div>
+        <div class="btns"><button class="pri" id="rerun">重新生长</button><button id="pause">暂停</button><button id="home">归位</button></div>
+        <div class="stats">
+          <div class="stat"><b id="stSeg">0</b><small>通道段数</small></div>
+          <div class="stat"><b id="stDep">0</b><small>最深分叉级数</small></div>
+          <div class="stat"><b id="stHot">—</b><small>平均超限 °C</small></div>
+          <div class="stat"><b id="stFar">—</b><small>远端覆盖率</small></div>
+          <div class="stat"><b id="stPump">—</b><small>泵功 / 预算</small></div>
+          <div class="stat"><b id="stRound">0/11</b><small>迭代轮</small></div>
+        </div>
+        <div class="legend">
+          <span class="sw" style="background:#fde3c8"></span>热场浅色＝安全／<span class="sw" style="background:#f3b28c"></span>橙红＝超耐温<br>
+          <span class="sw" style="background:#d4740f"></span>煤油路　<span class="sw" style="background:#0d7b86"></span>液氧路<br>
+          对照：把 λ 拖到 <b>0</b> 看分叉失控、远端反而缺冷；把最小流道拖到 <b>1.8 mm</b> 看分叉变浅。
+        </div>
+      </div>
+    </div>
+    <div class="view3d">
+      <div class="viewttl"><span>③ 3D 剖切发动机：壁内双路通道 · 冷却剂流动（拖动旋转 · 滚轮缩放 · 双击归位）</span><span id="gl3dTxt">—</span></div>
+      <canvas id="gl3d"></canvas>
+      <div class="btns" style="margin:8px 0 0">
+        <button id="spin3d" class="on">自动旋转</button>
+        <button id="cut3d" class="on">剖切 180°</button>
+        <button id="reset3d">视角归位</button>
+      </div>
+      <div class="glhint">这张图<b>不是另画的示意图</b>：它把左边 ① 的通道树逐段卷到回转体上——周向 <code>φ = x/GW·2π</code>（真实整周，不压缩）、轴向 <code>t = y/GH</code>、半径落在<b>内衬外表面</b> <code>R = 0.88·R(t) + 0.012</code>。左边每长出一条支路，这里就多一段管子；改参数重新生长，壁上的树也跟着换。<br><b>为什么镜头里只看到一半</b>：内衬是<b>不透明</b>的整周回转面，近侧那半张把远侧的通道全挡住了——所以剩下的是近侧半周、贴在壁上的那一半支路，位置是真的，不是裁掉了。<b>合拢</b>＝外面套一层玻璃罩；<b>半剖</b>＝把正对镜头的 180° 外壳整片拿走，露出内衬外表面上的通道，以及剖口处 12% 壁厚的实心断面。</div>
+      <div id="gl3dErr" class="gl3derr" style="display:none"></div>
+    </div>
+  </div>
+  <div class="note">本页演示是<b>按对话规格独立重建的降阶原理示意</b>：72×40 网格、简化导热平滑、启发式灵敏度，不是共轭传热 CFD，也不能出工程件。统计数值用于看趋势，不逐位复刻对话里那个 demo 的读数；对话原文记录的读数见下文本节与第 7 节。</div>
+</section>
+
+<section id="s1">
+  <h2>1 · 先把「形状」从题目里删掉</h2>
+  <div class="card lead"><b>一句话</b>：它不是「AI 照着心脏画了张图」，而是把发动机翻译成一道带物理约束的优化题，让算法自己决定每个位置是金属还是流道；之所以「像血管」，是因为在「用最小代价把热量搬走」这件事上，数学最优解本来就长那样。</div>
+  <div class="card">
+    <p>传统 CAD 是人画草图、再仿真验证；这里反过来——把整块可用体积切成<b>体素／隐式场</b>，每格只有「固体 or 流体」两种身份。人只给推力、室压、推进剂、燃气温度、材料、3D 打印工艺限制（正是视频说的压力／温度／燃料／推力／制造约束），目标函数写成：</p>
+    <div class="fml">min　壁温　+　压降泵功　+　应力罚项　　s.t.　打得出来（最小壁厚／最小流道／悬垂角…）</div>
+    <p>没有「发动机该长什么样」这个初始条件，几何才可能长成任意分叉、<b>0.8 mm</b> 的细通道。</p>
+  </div>
+</section>
+
+<section id="s2">
+  <h2>2 · 让物理场把材料「长」出来</h2>
+  <div class="card">
+    <p>每轮跑<b>共轭传热 CFD + 结构场</b>，得到温度场、压力场；再用<b>伴随法</b>做灵敏度分析，算「这一格改成流道，目标会变好多少」，然后更新材料分布、反复收敛——这就是拓扑优化／创成式设计的标准循环。</p>
+    <div class="fml">热场／压力场 → 伴随灵敏度 ∂J/∂ρ → 更新材料分布 ρ → 再仿真 → 收敛</div>
+    <p>画面里的 LEAP 标识对应迪拜 <b>LEAP 71 的 Noyron</b>：它把热力学、流体、制造规则写成「计算工程模型」，生成时就大致正确，再用点火试车的实测温度／压力曲线回灌校正。所以不是一次成神，是<b>设计 → 打印 → 试车 → 回灌</b>的闭环。</p>
+  </div>
+</section>
+
+<section id="s3">
+  <h2>3 · 为什么偏偏像血管（最关键）</h2>
+  <div class="card">
+    <p>3000 °C 级燃气下，低温推进剂要先绕壁吸热再进燃烧室（<b>再生冷却</b>），一路得同时满足三件互相打架的事：换热面积够大、流动阻力够小、金属壁厚够承压。</p>
+    <p>而「在有限空间里用最小阻力把流体送到每一个点」这个变分问题，最优解就是<b>层级分叉、逐级变细</b>的树状网络：</p>
+    <div class="fml">Murray 定律：d_parent³ = Σ d_child³　　（两子管等径时 r_child = r_parent / 2^(1/3)）</div>
+    <p>分叉角与长度比也有最优值（对话取约 <b>75°</b> 夹角定径）。<b>构形定律</b>说得更直白：凡有「流动 + 空间填充」的系统都会朝阻力更小的方向演化，于是心血管、叶脉、河流、肺，和这台发动机的冷却通道，撞进同一族几何。</p>
+    <div class="ok">大自然用几百万年试错，算法用几十分钟迭代，爬的是同一座山。<b>没要求它仿生，恰恰是因为约束给死之后，能活下来的解就剩那一族。</b></div>
+  </div>
+</section>
+
+<section id="s4">
+  <h2>4 · 最后一环：金属 3D 打印</h2>
+  <div class="card"><p>随形内流道、螺旋／分叉通道、铜合金一体成型，铣削加焊接根本做不出来；<b>激光粉末床熔融（LPBF）</b>把「任意拓扑」直接变成实物，还顺手消掉焊缝和泄漏点。没有增材制造，这套几何只能停在硬盘里。</p></div>
+</section>
+
+<section id="s5">
+  <h2>5 · 别误会两点</h2>
+  <div class="card"><ul>
+    <li>这里的「AI」<b>不是大模型在画图纸</b>，是物理规则 + 程序化生成 + 仿真迭代（LEAP 71 自己叫 <i>Large Computational Engineering Model</i>），早期 Hyperganic 称「数字演化反馈」。</li>
+    <li>「最优」是给定模型、目标权重和工艺约束下的<b>近似最优</b>：换热与压降的权重一变，流道就更弯、冒出更多微分支；试车里尖端烧熔、再回灌修模型，才是常态。</li>
+  </ul>
+  <p style="border-top:1px dashed var(--line);padding-top:10px;margin-top:12px"><b>机器越来越不像机器，是因为我们终于没把「机器该长什么样」写进初始条件里。</b></p></div>
+</section>
+
+<section id="s6">
+  <h2>6 · 追问：能用 three.js 做同样的「按物理边界自动涌现」吗？</h2>
+  <div class="card">
+    <p><b>能，但要分两层说</b>：three.js 只负责「画」，它自己不会涌现结构。真正让形状长出来的是旁边那套「物理场 → 过热信号 → 分叉决策 → 回算温度」的循环。浏览器里能跑它的降阶版，观感和原理跟视频一致；换成能点火、能打印的工程件，就得换整套栈。</p>
+    <p>对话中给出的第一版单文件演示：只给边界条件，不画任何一根流道，结构自己长出来；可拖 <b>5 个滑块</b>（燃气峰值、材料耐温、压降惩罚、最小可打印流道、冷却剂入口温度），旋转缩放看圆筒壁上的流道。</p>
+    <h3>里面的「物理」</h3><ul>
+      <li>给定喉部最热、周向非均匀的热流分布 → 算出无冷却壁温场</li>
+      <li>与耐温上限比对，局部过热就是灵敏度信号，枝端朝最热方向偏转</li>
+      <li>分叉按 Murray 定律 <code>d³=Σd³</code>、约 75° 夹角定径；细管沿程吸热升温，冷却能力自然衰减，逼出更多分叉</li>
+      <li>路径压降预算、打印最小尺寸、段数上限共同叫停</li>
+      <li>每轮回算温度场，默认约 <b>7 轮、330 段</b>收敛，仍残留少量局部热点——和真实试车里尖端烧熔一样</li>
+    </ul>
+    <h3>两个反直觉对照（对话原文记录）</h3>
+    <table><tr><th>改动</th><th>结果</th><th>说明</th></tr>
+      <tr><td>压降惩罚 → 0</td><td>分叉失控，<b>远端覆盖反而不足</b></td><td>预算放宽让近端支路疯长，段数／泵功被吃掉，走不到远端</td></tr>
+      <tr><td>最小流道 → 1.8 mm</td><td>分叉深度 <b>5 级 → 4 级</b></td><td>可打印下限抬一级，最细分叉直接不合法</td></tr>
+    </table>
+    <p class="kicker">约束怎么给，形状就怎么长——这才是视频里最值得看的部分。</p>
+  </div>
+</section>
+
+<section id="s7">
+  <h2>7 · 再追问：内部火箭引擎结构没画，只画了壁外的管 → 剖开重做</h2>
+  <div class="card">
+    <h3>这版补上的结构</h3><ul>
+      <li><b>环形燃烧室 + 中心气动塞（aerospike）</b>，外壁按燃烧室 → 喉部 → 扩张段生成型面，默认切掉约 1/4 正对相机</li>
+      <li>通道<b>嵌在壁厚内部</b>：外走煤油（橙）、内走液氧（青），两路都从底部集流环逆着燃气往上长，正是中心锥最难冷却的那个解法</li>
+      <li>剖切面上有一排排发光细孔，对应视频里「0.8 mm 级小通道」的切面观感</li>
+      <li>顶部喷注器单元数量由燃气／压降参数自动定，底部两圈集流环；壁厚随局部热流自适应，热处更薄、通道必须装得进壁厚才能分叉</li>
+    </ul>
+    <h3>算法补的两处关键逻辑</h3><ul>
+      <li><b>择优分叉</b>：每轮只让收益排前 50% 的枝端分叉，避免分叉失控</li>
+      <li><b>热点补种</b>：分叉之间若留出持续过热的空隙，算法自己从那块另引一条支路——之前中心锥温度压不下来就是这个洞</li>
+    </ul>
+    <div class="fml">默认收敛：11 轮 · 461 段壁内通道 · 7/6 级分叉 · 平均超限 17 °C · 两路泵功 59/60 不超预算 · 零运行时异常</div>
+    <p>两个值得试的：拖「剖切比例」到 40% 看壁厚里的通道断面；把「压降惩罚」拉到 0——预算放宽反而让支路疯长、远端缺冷，比默认更差，这是真实优化里很典型的陷阱。旧版 <code>emergent_engine.html</code> 留作对照。</p>
+  </div>
+</section>
+
+<section id="s8">
+  <h2>8 · 和真家伙的差距（别混淆）</h2>
+  <div class="card">
+    <table><tr><th style="width:16%">层面</th><th>真实工程栈</th><th>浏览器 demo</th></tr>
+      <tr><td>几何内核</td><td>体素／隐式场（PicoGK + OpenVDB），直接出可制造文件</td><td>72×40 → 64×36 降阶网格，参数曲线</td></tr>
+      <tr><td>物理场</td><td>共轭传热 CFD + 结构应力场</td><td>简化导热平滑 + 给定热流分布</td></tr>
+      <tr><td>灵敏度</td><td>伴随法 ∂J/∂ρ</td><td>启发式「过热即信号」</td></tr>
+      <tr><td>闭环</td><td>点火试车实测温度／压力回灌校正</td><td>无试车回灌</td></tr>
+      <tr><td>制造</td><td>金属 3D 打印，任意拓扑一体成型</td><td>无</td></tr>
+    </table>
+    <p>换句话说，<b>把简化场换成真 CFD 和体素内核，算法逻辑不用改</b>，但那就不是浏览器 demo 了。对话亦注明：沙盒 WebGL 被禁用，只验证了几何与交互逻辑，视觉效果需在联网环境打开（从 CDN 取 three.js）。要继续往真 CFD 方向走，下一步该换的是几何内核，不是再加渲染细节。</p>
+  </div>
+</section>
+
+<section id="s9">
+  <h2>9 · 两类涌现的分界（通往下一篇）</h2>
+  <div class="card">
+    <table><tr><th style="width:20%"></th><th>本页：火箭冷却通道</th><th>下一篇：开尔文水环</th></tr>
+      <tr><td><b>类型</b></td><td>变分型</td><td>失稳型</td></tr>
+      <tr><td>机制</td><td>给定边界，求「换热最大 + 泵功最小 + 不烧穿」的稳态最优几何</td><td>没有目标函数，正反馈把微涨落放大、破缺对称</td></tr>
+      <tr><td>结果</td><td>收敛到 Murray 分叉树，是个<b>不动点</b></td><td>靠放电／漏电／阻尼稳住，是<b>耗散结构</b></td></tr>
+      <tr><td>饱和机制</td><td>耐温上限 + 压降预算</td><td>击穿电压 + 瑞利极限</td></tr>
+      <tr><td>停机后</td><td>结构还在</td><td>停水，电压和环一起衰减</td></tr>
+    </table>
+    <p>共通的是：都不把形状写进初始条件，只给守恒律和边界。差别是，一个选出<b>最省的解</b>，一个选出<b>最先失稳的模</b>。</p>
+    <a class="pill hi" href="AAA_02_双桥开尔文水滴_失稳型涌现.html">→ 去看双桥开尔文水滴（含双柱远距分离修正）</a>
+  </div>
+</section>
+
+<footer>提取自元宝分享页 Fg0WWvF57zqW · 2026-11-08 整理 · 本页所有文字观点归原回答，交互演示为按规格独立重建的降阶示意。<br>
+同目录下：<a href="00_元宝回答全文_Fg0WWvF57zqW.md">全文存档</a> ／ <a href="AAA_02_双桥开尔文水滴_失稳型涌现.html">网页 ②</a></footer>
+</div>
+
+<script src="vendor/three.min.js"></script>
+<script>
+(function(){
+"use strict";
+var cv=document.getElementById('tree'),ctx=cv.getContext('2d');
+var GW=72,GH=40,MAXSEG=560,R0=2.4;
+var W=760,H=430,dpr=1;
+var heat=null,teff=null,cool=null,segs=[],active=[],round=0,maxRound=11;
+var paused=false,panX=0,panY=0,drag=null,lastStep=0,bornAt=0;
+var stats={seg:0,dep:0,hot:0,far:0,pump:0};
+var off=document.createElement('canvas');off.width=GW;off.height=GH;
+var octx=off.getContext('2d'),img=octx.createImageData(GW,GH);
+
+function P(){return{
+ lam:parseFloat(document.getElementById('lam').value),
+ mind:parseFloat(document.getElementById('mind').value),
+ gas:parseFloat(document.getElementById('gas').value),
+ lim:parseFloat(document.getElementById('lim').value),
+ tin:parseFloat(document.getElementById('tin').value),
+ rnd:parseInt(document.getElementById('rnd').value,10)
+}}
+function fit(){var r=cv.getBoundingClientRect();W=Math.max(320,r.width);H=r.height||430;dpr=window.devicePixelRatio||1;cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);if(G3&&G3.ready)size3D();}
+
+function box(){return{x0:38,y0:26,w:W-76,h:H-92}}
+function gx2px(g,b){return b.x0+g/GW*b.w}
+function gy2py(g,b){return b.y0+(1-g/GH)*b.h}
+
+function buildHeat(p){
+ heat=new Float32Array(GW*GH);
+ for(var j=0;j<GH;j++)for(var i=0;i<GW;i++){
+  var y=j/GH, x=i/GW;
+  var throat=Math.exp(-Math.pow((y-0.62)/0.17,2));
+  var around=1+0.28*Math.cos(3*2*Math.PI*x)+0.12*Math.sin(2*Math.PI*y);
+  heat[j*GW+i]=Math.max(0.05,throat*around);
+ }
+}
+function idx(i,j){return Math.max(0,Math.min(GH-1,j))*GW+Math.max(0,Math.min(GW-1,i))}
+function recalc(p){
+ cool=new Float32Array(GW*GH);
+ for(var s=0;s<segs.length;s++){
+  var g=segs[s],steps=Math.max(2,Math.round(g.len*1.5));
+  for(var k=0;k<=steps;k++){
+   var t=k/steps,xi=g.x1+(g.x2-g.x1)*t,yi=g.y1+(g.y2-g.y1)*t;
+   var ci=Math.round(xi),cj=Math.round(yi);
+   var amp=g.r*1.7/(1+0.16*g.depth)*(1-0.004*Math.max(0,p.tin-40));
+   for(var dj=-2;dj<=2;dj++)for(var di=-2;di<=2;di++){
+    var d2=di*di+dj*dj;if(d2>5)continue;
+    cool[idx(ci+di,cj+dj)]+=amp*Math.exp(-d2/2.2);
+   }
+  }
+ }
+ var raw=new Float32Array(GW*GH),sm=new Float32Array(GW*GH),T0=260,Tpeak=p.gas*0.92;
+ for(var jj=0;jj<GH;jj++)for(var ii=0;ii<GW;ii++){
+  var id=jj*GW+ii;
+  raw[id]=Math.max(T0,T0+Tpeak*heat[id]-cool[id]*185);
+ }
+ for(var j2=0;j2<GH;j2++)for(var i2=0;i2<GW;i2++){
+  var sum=0,n=0;
+  for(var dj2=-1;dj2<=1;dj2++)for(var di2=-1;di2<=1;di2++){sum+=raw[idx(i2+di2,j2+dj2)];n++}
+  sm[j2*GW+i2]=raw[j2*GW+i2]*0.55+(sum/n)*0.45;
+ }
+ teff=sm;
+ // 热场色图
+ var d=img.data;
+ for(var j3=0;j3<GH;j3++)for(var i3=0;i3<GW;i3++){
+  var v=teff[(GH-1-j3)*GW+i3]; // offscreen y 向下
+  var over=Math.max(0,Math.min(1,(v-p.lim)/(p.gas*0.55)));
+  var q=v/(p.gas*1.05);
+  var r=252-18*q-10*over, gg=252-42*q-108*over, bb=252-30*q-176*over;
+  var o=(j3*GW+i3)*4;d[o]=r;d[o+1]=gg;d[o+2]=bb;d[o+3]=255;
+ }
+ octx.putImageData(img,0,0);
+ return sm;
+}
+function overAt(x,y,p){
+ var s=0,n=0;
+ for(var k=1;k<=7;k++){
+  var xi=Math.round(x+Math.sin(segs.length?0:0)*0+k*0),yi=Math.round(y+k);
+  s+=Math.max(0,teff[idx(xi,yi)]-p.lim);n++;
+ }
+ return s/n;
+}
+function restart(){
+ var p=P();fit();buildHeat(p);segs=[];active=[];round=0;maxRound=p.rnd;paused=false;
+ document.getElementById('pause').textContent='暂停';
+ document.getElementById('stRound').textContent='0/'+maxRound;
+ var b=box();
+ // 两路从底部集流环起，周向不同位置
+ active.push({x:GW*0.27,y:0.4,ang:-0.05,r:R0,depth:0,c:0,pump:0});
+ active.push({x:GW*0.73,y:0.4,ang:0.05,r:R0,depth:0,c:1,pump:0});
+ recalc(p);lastStep=performance.now();bornAt=lastStep;
+ draw();
+}
+function step(){
+ var p=P();if(round>=maxRound||paused)return;
+ round++;
+ var frac=Math.max(0.22,0.95-p.lam*0.46);
+ var budget=110/(0.32+p.lam*1.7);
+ var maxDepth=Math.max(2,Math.min(7,Math.floor(5.6-(p.mind-0.8)*1.35)));
+ var tips=active.slice();
+ // 收益 = 前方过热度，择优分叉
+ var gains=tips.map(function(t){return{t:t,g:overAt(t.x,t.y,p)*(1-t.depth*0.05)+Math.random()*8}});
+ gains.sort(function(a,b){return b.g-a.g});
+ var cut=Math.max(1,Math.floor(tips.length*frac));
+ var allow=tips.map(function(){return false});
+ for(var q=0;q<Math.min(cut,gains.length);q++)allow[tips.indexOf(gains[q].t)]=true;
+ var next=[],totalPump=0;
+ for(var s0=0;s0<segs.length;s0++)totalPump+=segs[s0].pump;
+ for(var a=0;a<tips.length;a++){
+  var t=tips[a],fork=allow[a]&&t.depth<maxDepth&&(t.r/Math.cbrt(2))>=p.mind;
+  var baseAng=t.ang+(Math.random()-0.5)*0.20;
+  var L=Math.max(1.7,4.4*Math.pow(0.90,t.depth));
+  var branches=fork?2:1;
+  for(var bI=0;bI<branches;bI++){
+   if(segs.length>=MAXSEG)break;
+   var ang=baseAng+(fork?(bI===0?-0.6545:0.6545):0); // ±37.5° → 75°
+   var nr=fork?t.r/Math.cbrt(2):t.r;
+   var ndx=Math.sin(ang)*L,ndy=Math.cos(ang)*L;
+   // 朝最热方向轻微偏转（启发式灵敏度）
+   var probeL=overAt(t.x+ndx*0.5,t.y+ndy*0.5,p),probeR=overAt(t.x+ndx*0.5+2,t.y+ndy*0.5,p);
+   ang+=(probeR>probeL?0.06:-0.06);ndx=Math.sin(ang)*L;ndy=Math.cos(ang)*L;
+   var x2=t.x+ndx,y2=t.y+ndy;
+   if(x2<0.5||x2>GW-0.5||y2>GH-0.5)continue;
+   var pm=L/Math.pow(nr,4)*0.020;
+   if(totalPump+pm>budget)continue;
+   totalPump+=pm;
+   var sg={x1:t.x,y1:t.y,x2:x2,y2:y2,len:L,r:nr,depth:t.depth,c:t.c,pump:pm,born:performance.now()};
+   segs.push(sg);
+   next.push({x:x2,y:y2,ang:ang,r:nr,depth:t.depth+(fork?1:0),c:t.c,pump:totalPump});
+  }
+ }
+ // 热点补种：持续过热且周围无段的格点，从最近干线另引支路
+ var cand=[];
+ for(var j=6;j<GH-2;j+=2)for(var i=3;i<GW-3;i+=3){
+  var ov=teff[idx(i,j)]-p.lim;if(ov<160)continue;
+  var near=false;
+  for(var s1=0;s1<segs.length;s1++){var g=segs[s1];if(Math.abs((g.x1+g.x2)/2-i)<3&&Math.abs((g.y1+g.y2)/2-j)<3){near=true;break}}
+  if(!near)cand.push({i:i,j:j,ov:ov});
+ }
+ cand.sort(function(x,y){return y.ov-x.ov});
+ for(var c=0;c<Math.min(2,cand.length)&&segs.length<MAXSEG;c++){
+  var pt=cand[c],best=null,bd=1e9;
+  for(var s2=0;s2<segs.length;s2++){var g2=segs[s2];var mx=(g2.x1+g2.x2)/2,my=(g2.y1+g2.y2)/2;var dd=(mx-pt.i)*(mx-pt.i)+(my-pt.j)*(my-pt.j);if(dd<bd){bd=dd;best={x:mx,y:my,r:g2.r,c:g2.c,depth:g2.depth}}}
+  if(best&&bd<900){
+   var dx=pt.i-best.x,dy=pt.j-best.y,L2=Math.min(5,Math.sqrt(dx*dx+dy*dy));
+   if(L2<1.2)continue;
+   var an=Math.atan2(dx,dy);
+   segs.push({x1:best.x,y1:best.y,x2:best.x+Math.sin(an)*L2,y2:best.y+Math.cos(an)*L2,len:L2,r:Math.max(p.mind,best.r*0.8),depth:Math.min(6,best.depth+1),c:best.c,pump:0.3,born:performance.now()});
+   next.push({x:best.x+Math.sin(an)*L2,y:best.y+Math.cos(an)*L2,ang:an,r:Math.max(p.mind,best.r*0.8),depth:Math.min(6,best.depth+1),c:best.c,pump:0});
+  }
+ }
+ active=next.length?next:tips.slice(0,4);
+ recalc(p);
+ // 统计
+ var hotSum=0,hotN=0,far=0,farN=0;
+ for(var j4=0;j4<GH;j4++)for(var i4=0;i4<GW;i4++){
+  var v=teff[j4*GW+i4];hotSum+=Math.max(0,v-p.lim);hotN++;
+  if(j4>GH*0.62){farN++;if(cool[j4*GW+i4]>0.7)far++}
+ }
+ var maxD=0,pmp=0;
+ for(var s3=0;s3<segs.length;s3++){maxD=Math.max(maxD,segs[s3].depth);pmp+=segs[s3].pump}
+ stats={seg:segs.length,dep:maxD+1,hot:hotSum/hotN,far:far/Math.max(1,farN)*100,pump:pmp/(110/(0.32+p.lam*1.7))*100};
+ document.getElementById('stSeg').textContent=stats.seg;
+ document.getElementById('stDep').textContent=stats.dep;
+ document.getElementById('stHot').textContent=stats.hot.toFixed(0);
+ document.getElementById('stFar').textContent=stats.far.toFixed(0)+'%';
+ document.getElementById('stPump').textContent=stats.pump.toFixed(0)+'%';
+ document.getElementById('stRound').textContent=round+'/'+maxRound;
+}
+function draw(){
+ var b=box(),p=P();
+ ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);
+ ctx.save();ctx.translate(panX,panY);
+ // 热场
+ ctx.imageSmoothingEnabled=true;
+ ctx.drawImage(off,b.x0,b.y0,b.w,b.h);
+ // 网格
+ ctx.strokeStyle='rgba(60,80,110,.07)';ctx.lineWidth=1;
+ for(var i=0;i<=GW;i+=6){ctx.beginPath();ctx.moveTo(b.x0+i/GW*b.w,b.y0);ctx.lineTo(b.x0+i/GW*b.w,b.y0+b.h);ctx.stroke()}
+ for(var j=0;j<=GH;j+=5){ctx.beginPath();ctx.moveTo(b.x0,b.y0+j/GH*b.h);ctx.lineTo(b.x0+b.w,b.y0+j/GH*b.h);ctx.stroke()}
+ ctx.strokeStyle='#94a3b4';ctx.lineWidth=1.2;ctx.strokeRect(b.x0,b.y0,b.w,b.h);
+ // 喉部线
+ var ty=gy2py(GH*0.62,b);ctx.setLineDash([5,5]);ctx.strokeStyle='#c0392b';ctx.beginPath();ctx.moveTo(b.x0,ty);ctx.lineTo(b.x0+b.w,ty);ctx.stroke();ctx.setLineDash([]);
+ ctx.fillStyle='#b3261e';ctx.font='12px "Microsoft YaHei"';ctx.fillText('喉部热峰',b.x0+6,ty-6);
+ // 顶部喷注器
+ for(var t=0;t<24;t++){ctx.fillStyle=t%2?'#e8eef5':'#dce6f2';ctx.fillRect(b.x0+(t+0.5)/24*b.w-3,b.y0-7,6,7)}
+ ctx.fillStyle='#5b6470';ctx.font='11px "Microsoft YaHei"';ctx.fillText('喷注器',b.x0+2,b.y0-11);
+ // 底部集流环
+ ctx.fillStyle='rgba(212,116,15,.16)';ctx.fillRect(b.x0,b.y0+b.h+5,b.w,10);
+ ctx.fillStyle='rgba(13,123,134,.16)';ctx.fillRect(b.x0,b.y0+b.h+17,b.w,10);
+ ctx.fillStyle='#b8530b';ctx.font='11px "Microsoft YaHei"';ctx.fillText('煤油集流环',b.x0+4,b.y0+b.h+15);
+ ctx.fillStyle='#0d7b86';ctx.fillText('液氧集流环',b.x0+4,b.y0+b.h+27);
+ // 通道
+ var now=performance.now();
+ for(var s=0;s<segs.length;s++){
+  var g=segs[s],al=Math.min(1,Math.max(0.12,(now-g.born)/320));
+  ctx.globalAlpha=al;ctx.strokeStyle=g.c?'#0d7b86':'#d4740f';ctx.lineCap='round';
+  ctx.lineWidth=Math.max(1,g.r*1.75);
+  ctx.beginPath();ctx.moveTo(gx2px(g.x1,b),gy2py(g.y1,b));ctx.lineTo(gx2px(g.x2,b),gy2py(g.y2,b));ctx.stroke();
+ }
+ ctx.globalAlpha=1;
+ // 枝端小点
+ ctx.fillStyle='#1a1a1a';
+ for(var a=0;a<active.length;a++){var t2=active[a];ctx.beginPath();ctx.arc(gx2px(t2.x,b),gy2py(t2.y,b),1.6,0,7);ctx.fill()}
+ // 说明
+ ctx.fillStyle='#5b6470';ctx.font='11px "Microsoft YaHei"';
+ ctx.fillText('周向 →',b.x0+b.w-58,b.y0+b.h+27);
+ ctx.save();ctx.translate(b.x0-24,b.y0+b.h/2);ctx.rotate(-Math.PI/2);ctx.fillText('轴向（燃烧室→喉部→扩张段）',-92,0);ctx.restore();
+ ctx.fillStyle='#1b1b1b';ctx.font='bold 12px "Microsoft YaHei"';
+ ctx.fillText('迭代 '+round+'/'+maxRound+'　段 '+segs.length+'　平均分叉 '+(segs.length?stats.dep:0)+' 级',b.x0+8,b.y0+18);
+ ctx.restore();
+}
+/* ==================== ③ 3D 剖切发动机（three.js / WebGL） ====================
+   二维展开图上的通道树 (segs: x=周向 0..GW，y=轴向 0..GH) 直接卷到回转体壁内：
+   θ = x/GW·2π，轴向 t = y/GH，半径 R = 轮廓(t) − 壁厚偏移。
+   通道用合并的六棱柱管渲染（一次 draw call），冷却剂用实例化小球沿线流动。 */
+var G3={ready:false,cut:true,spin:true,H:4.2,builtSegs:-1,lastBuild:0};
+/* th=0.42 rad(24°)：剖口在 φ=±90°。相机稍偏一点，一条剖切面正对镜头、另一条背过去，
+   剖口不会左右对称得像张平面图；ph=1.05 略高于视线水平，能看进喷管里去。 */
+var O3={r:8.4,th:0.42,ph:1.05,tgtY:2.10};
+
+/* 发动机型面：t=0 喷管出口（下），t=0.62 喉部，t=1 喷注器端（上） */
+function radiusAt(t){
+  if(t<0)t=0; if(t>1)t=1;
+  var u,s;
+  /* 喷管扩张段：喉部 0.42 → 出口 0.98（面积比 ~5.4）*/
+  if(t<=0.60){ u=(0.60-t)/0.60; return 0.42+0.56*Math.pow(u,1.75); }
+  /* 收敛段 + 燃烧室：喉部 0.42 → 室 0.78 */
+  if(t<=0.82){ u=(t-0.60)/0.22; s=u*u*(3-2*u); return 0.42+0.36*s; }
+  u=Math.min(1,(t-0.82)/0.06); s=u*u*(3-2*u);
+  return 0.78-0.015*s;
+}
+function contourPts(n){
+  var pts=[],i,t;
+  for(i=0;i<=n;i++){ t=i/n; pts.push(new THREE.Vector2(radiusAt(t),t*G3.H)); }
+  return pts;
+}
+/* 2D 展开图 → 3D 的映射：
+   ① 周向仍按真实整周卷：φ = x/GW·2π，和左边 ① 的「周向 →」一一对应，不做任何压缩。
+   ② 半径落在内衬外表面上：0.88·R(t)，管心再抬 0.012 —— 通道是铣在内衬外表面的槽，
+      外面那层壳只是焊上去的闭合套（真实再生冷却就是这么做的，SSME 同款构造）。
+   ③ 那「远侧半棵树立在屏幕上乱成一片」怎么解决？不靠裁切，靠遮挡：内衬是**不透明**的
+      整周回转面，近侧那半张内衬把远侧的通道全挡住了。于是镜头里只剩近侧半周、
+      贴在壁上的那一半支路，位置还是真的。 */
+function chPhi(x){ return x/GW*Math.PI*2; }            /* x: 0..GW → φ: 0..360°，真实整周 */
+/* 管心 = 内衬外表面 + 0.85×管半径：管子约 1/3 埋进壁面、2/3 露出来。
+   常量偏移不行——管径 0.010~0.018 一变，细管子会整根被不透明内衬吞掉，画面只剩几段碎线。 */
+function chR(t,rad){ if(rad===undefined) rad=0.028; return radiusAt(t)*0.88+rad*1.45; }
+function mapPt(x,y){
+  var t=Math.max(0,Math.min(1,y/GH)), ph=chPhi(x), R=chR(t);
+  return new THREE.Vector3(Math.sin(ph)*R, t*G3.H, Math.cos(ph)*R);
+}
+
+function engineFail(msg){
+  var e=document.getElementById('gl3dErr');
+  if(e){e.style.display='block';e.innerHTML=msg;}
+}
+
+function init3D(){
+  if(!window.THREE){
+    engineFail('three.js 未加载：③ 用同目录 <code>vendor/three.min.js</code> 渲染。请确认这个文件与页面一起拷贝（缺失只影响 ③，二维展开图照常）。');
+    return;
+  }
+  var cv=document.getElementById('gl3d');
+  var rd;
+  try{ rd=new THREE.WebGLRenderer({canvas:cv,antialias:true}); }
+  catch(err){ engineFail('WebGL 初始化失败：'+err.message); return; }
+  rd.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+  rd.setClearColor(0xfdfdfe,1);
+  var sc=new THREE.Scene();
+  /* near/far 别随手写 0.1/200：深度精度≈near 决定的，0.1 时 0.01~0.03 的
+     "管子露出量"跟深度分辨率同量级，一堆管子会被判成在内衬后面而消失。 */
+  var cam=new THREE.PerspectiveCamera(34,1,0.6,70);
+  G3.rd=rd;G3.sc=sc;G3.cam=cam;G3.cv=cv;
+
+  sc.add(new THREE.HemisphereLight(0xffffff,0xdbe4ee,0.92));
+  var d1=new THREE.DirectionalLight(0xffffff,0.62);d1.position.set(6,10,7);sc.add(d1);
+  var d2=new THREE.DirectionalLight(0xffffff,0.28);d2.position.set(-7,4,-6);sc.add(d2);
+  var inner=new THREE.PointLight(0xff8a3c,1.5,6.5);inner.position.set(0,1.5,0);sc.add(inner);
+
+  var grid=new THREE.GridHelper(14,14,0xe9eef5,0xf3f6fa);grid.position.y=-0.02;sc.add(grid);
+
+  /* ---- 壳体（可剖切）---- */
+  G3.wallG=new THREE.Group();sc.add(G3.wallG);
+  buildWall();
+
+  /* ---- 喷注器 ---- */
+  var injG=new THREE.Group();sc.add(injG);G3.injG=injG;
+  var topY=G3.H-0.02, Rtop=radiusAt(1)-0.02;
+  var dome=new THREE.Mesh(new THREE.CylinderGeometry(Rtop,Rtop*0.94,0.10,48,1,false),
+    new THREE.MeshStandardMaterial({color:0xdfe7f1,metalness:0.35,roughness:0.4}));
+  dome.position.y=topY+0.05;injG.add(dome);
+  for(var i=0;i<28;i++){
+    var a=i/28*Math.PI*2, rr=Rtop*0.72;
+    var pin=new THREE.Mesh(new THREE.CylinderGeometry(0.018,0.024,0.09,8),
+      new THREE.MeshStandardMaterial({color:0x9aa5b1,metalness:0.5,roughness:0.35}));
+    pin.position.set(Math.cos(a)*rr,topY-0.02,Math.sin(a)*rr);injG.add(pin);
+  }
+
+  /* ---- 集流环（底部两圈）+ 出口唇 ---- */
+  function ring(y,R,col,rad){
+    var t=new THREE.Mesh(new THREE.TorusGeometry(R,rad,8,64),
+      new THREE.MeshStandardMaterial({color:col,metalness:0.35,roughness:0.45}));
+    t.rotation.x=Math.PI/2;t.position.y=y;sc.add(t);return t;
+  }
+  /* 集流环要箍在通道起点那一圈上（通道从 t=0.01 起长），否则看着是悬空的一道环 */
+  ring(0.105,chR(0.105/G3.H)+0.016,0xd4740f,0.023);
+  ring(0.048,chR(0.048/G3.H)-0.026,0x0d7b86,0.019);
+  ring(0.000,radiusAt(0)*0.985,0xc3cfdb,0.011);
+
+  /* ---- 通道几何（合并）---- */
+  var chMat=new THREE.MeshStandardMaterial({vertexColors:true,metalness:0.25,roughness:0.42});
+  G3.chGeo=new THREE.BufferGeometry();
+  G3.chMesh=new THREE.Mesh(G3.chGeo,chMat);sc.add(G3.chMesh);
+
+  /* ---- 冷却剂流动粒子 ---- */
+  var pg=new THREE.SphereGeometry(0.013,6,5);
+  function pm(c){return new THREE.InstancedMesh(pg,new THREE.MeshStandardMaterial({color:c,roughness:0.3,metalness:0.1,emissive:c,emissiveIntensity:0.5}),100);}
+  G3.fo=pm(0xd4740f);G3.ft=pm(0x0d7b86);
+  [G3.fo,G3.ft].forEach(function(m){m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);sc.add(m);m.count=0;});
+  G3.flow=[];
+  for(i=0;i<170;i++) G3.flow.push({s:Math.floor(Math.random()*400),t:Math.random(),v:0.5+Math.random()*0.8,c:i%2});
+
+  /* ---- 标签 ---- */
+  function label(txt,x,y,z,col){
+    var c=document.createElement('canvas');c.width=512;c.height=128;
+    var g=c.getContext('2d');
+    g.font='bold 44px "Microsoft YaHei","PingFang SC",sans-serif';
+    g.textAlign='center';g.textBaseline='middle';
+    var w=g.measureText(txt).width+34;
+    g.fillStyle='rgba(255,255,255,.92)';g.fillRect(256-w/2,10,w,108);
+    g.fillStyle=col||'#41505f';g.fillText(txt,256,66);
+    var tex=new THREE.CanvasTexture(c);tex.minFilter=THREE.LinearFilter;
+    var sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+    sp.position.set(x,y,z);sp.scale.set(1.42,0.355,1);sc.add(sp);
+    return sp;
+  }
+  label('喷注器',0,G3.H+0.30,0,'#5b6470');
+  label('燃烧室',1.34,3.62,0,'#5b6470');
+  label('喉部',1.12,2.42,0,'#b3261e');
+  label('扩张段',1.42,1.25,0,'#5b6470');
+  label('壁内通道',-1.32,3.05,0,'#a85c0d');
+  label('集流环',-1.28,0.20,0,'#0b6b75');
+
+  /* ---- 交互 ---- */
+  var dr=null;
+  cv.addEventListener('mousedown',function(e){dr={x:e.clientX,y:e.clientY,th:O3.th,ph:O3.ph};cv.style.cursor='grabbing';e.preventDefault();});
+  window.addEventListener('mousemove',function(e){
+    if(!dr)return;
+    O3.th=dr.th-(e.clientX-dr.x)*0.007;
+    O3.ph=Math.max(0.12,Math.min(1.62,dr.ph-(e.clientY-dr.y)*0.006));
+  });
+  window.addEventListener('mouseup',function(){if(dr){dr=null;cv.style.cursor='grab';}});
+  cv.addEventListener('wheel',function(e){
+    e.preventDefault();
+    O3.r=Math.max(4.2,Math.min(22,O3.r*(1+(e.deltaY>0?0.09:-0.09))));
+  },{passive:false});
+  cv.addEventListener('dblclick',function(){O3.r=9.3;O3.th=0.05;O3.ph=1.26;});
+
+  G3.ready=true;
+  size3D();updateCam();rebuildChannels(true);
+}
+
+function size3D(){
+  if(!G3.ready)return;
+  var r=G3.cv.getBoundingClientRect();
+  var w=Math.max(300,r.width),h=Math.max(200,r.height||470);
+  G3.rd.setSize(w,h,false);
+  G3.cam.aspect=w/h;G3.cam.updateProjectionMatrix();
+}
+function updateCam(){
+  var sp=Math.sin(O3.ph),cp=Math.cos(O3.ph);
+  G3.cam.position.set(O3.r*sp*Math.sin(O3.th),O3.r*cp+O3.tgtY,O3.r*sp*Math.cos(O3.th));
+  G3.cam.lookAt(0,O3.tgtY,0);
+}
+function buildWall(){
+  while(G3.wallG.children.length){
+    var c=G3.wallG.children.pop();
+    if(c.geometry)c.geometry.dispose();
+    if(c.material)c.material.dispose();
+  }
+  var pts=contourPts(48);
+  /* 半剖：留远侧 180°，把正对镜头那半片外壳整片拿走。剖口落在 φ=±90°。 */
+  var len=G3.cut?Math.PI:Math.PI*2;
+  var start=G3.cut?Math.PI/2:0;
+  /* 剖切时外壳不透明：半透明壳会把前后两半叠成穿心乱线。 */
+  var shell=new THREE.Mesh(new THREE.LatheGeometry(pts,72,start,len),
+    G3.cut
+      ? new THREE.MeshStandardMaterial({color:0xccd9e6,metalness:0.18,roughness:0.55,side:THREE.DoubleSide})
+      : new THREE.MeshStandardMaterial({color:0xdde7f2,metalness:0.2,roughness:0.3,
+          transparent:true,opacity:0.20,side:THREE.DoubleSide,depthWrite:false}));
+  G3.wallG.add(shell);
+  /* 内壁（燃气侧衬里）：永远铺满 360°、不透明。
+     它就是剖开后通道背后那张干净的底——通道在它外侧 0.012 处，不会被它挡住。
+     合拢态外壳是玻璃罩，所以隔着一层玻璃也还看得见内衬外表面上的通道。 */
+  var inner=new THREE.Mesh(new THREE.LatheGeometry(pts.map(function(p){return new THREE.Vector2(p.x*0.88,p.y);}),72,0,Math.PI*2),
+    new THREE.MeshStandardMaterial({color:0xe4cdb4,metalness:0.06,roughness:0.84,side:THREE.DoubleSide,
+      emissive:0xff6a28,emissiveIntensity:G3.cut?0.10:0.05}));
+  G3.wallG.add(inner);
+  /* 剖切面：沿两条剖切母线拉「壁厚」窄带（0.88R→1.00R）。
+     没有这条带，通道看着像贴在一张纸片上；有了 12% 壁厚的实心断面，才读得出
+     「外壳——壁厚——内衬」这三层，通道是嵌在这一层里的。 */
+  if(G3.cut){
+    var mW=new THREE.MeshStandardMaterial({color:0xb9c9d9,metalness:0.25,roughness:0.5,side:THREE.DoubleSide});
+    [start,start+len].forEach(function(a){
+      var n=pts.length-1,pos=[],idx=[],i2;
+      for(i2=0;i2<=n;i2++){
+        var p=pts[i2];
+        pos.push(Math.sin(a)*p.x*0.88,p.y,Math.cos(a)*p.x*0.88);
+        pos.push(Math.sin(a)*p.x,p.y,Math.cos(a)*p.x);
+      }
+      for(i2=0;i2<n;i2++){var b0=i2*2;idx.push(b0,b0+1,b0+3,b0,b0+3,b0+2);}
+      var g2=new THREE.BufferGeometry();
+      g2.setAttribute('position',new THREE.BufferAttribute(new Float32Array(pos),3));
+      g2.setIndex(idx);g2.computeVertexNormals();
+      G3.wallG.add(new THREE.Mesh(g2,mW));
+      /* 外缘描一条细线，边界更利落 */
+      var g3=new THREE.BufferGeometry(),arr=[];
+      pts.forEach(function(p){arr.push(Math.sin(a)*p.x,p.y,Math.cos(a)*p.x);});
+      g3.setAttribute('position',new THREE.BufferAttribute(new Float32Array(arr),3));
+      G3.wallG.add(new THREE.Line(g3,new THREE.LineBasicMaterial({color:0x9db0c4})));
+    });
+  }else{
+    /* 闭合时补一条顶部/底部圆环 */
+    [0,G3.H].forEach(function(y){
+      var rr=radiusAt(y/G3.H);
+      var t=new THREE.Mesh(new THREE.TorusGeometry(rr,0.008,6,72),
+        new THREE.MeshBasicMaterial({color:0xb9c6d4}));
+      t.rotation.x=Math.PI/2;t.position.y=y;G3.wallG.add(t);
+    });
+  }
+}
+
+/* 把一段通道压成六棱柱加进合并几何 */
+function pushTube(P,N,C,I,p1,p2,rad,col){
+  var dir=p2.clone().sub(p1),L=dir.length();
+  if(L<1e-4)return;
+  dir.normalize();
+  var up=Math.abs(dir.y)>0.9?new THREE.Vector3(1,0,0):new THREE.Vector3(0,1,0);
+  var u=new THREE.Vector3().crossVectors(dir,up).normalize();
+  var v=new THREE.Vector3().crossVectors(dir,u).normalize();
+  var base=P.length/3,S=6,k,a,ox,oy,oz;
+  for(k=0;k<S;k++){
+    a=k/S*Math.PI*2;
+    ox=Math.cos(a)*rad;oy=Math.sin(a)*rad;
+    for(var e=0;e<2;e++){
+      var p=e?p2:p1;
+      P.push(p.x+u.x*ox+v.x*oy,p.y+u.y*ox+v.y*oy,p.z+u.z*ox+v.z*oy);
+      var nx=u.x*Math.cos(a)+v.x*Math.sin(a),
+          ny=u.y*Math.cos(a)+v.y*Math.sin(a),
+          nz=u.z*Math.cos(a)+v.z*Math.sin(a);
+      N.push(nx,ny,nz);
+      C.push(col[0],col[1],col[2]);
+    }
+  }
+  for(k=0;k<S;k++){
+    var a0=base+k*2,a1=base+((k+1)%S)*2,b0=a0+1,b1=a1+1;
+    I.push(a0,b0,b1,a0,b1,a1);
+  }
+}
+
+function rebuildChannels(force){
+  if(!G3.ready)return;
+  var now=performance.now();
+  if(!force&&now-G3.lastBuild<130)return;
+  G3.lastBuild=now;
+  var P=[],N=[],C=[],I=[],i;
+  var COR=[0.83,0.42,0.06],COT=[0.05,0.48,0.53];
+  for(i=0;i<segs.length;i++){
+    var g=segs[i];
+    /* 整周卷，不裁切：跨 0°/360° 的段本来就是同一条通道，照常画；
+       远侧那半自然被不透明内衬挡住，不需要按角度剪枝。 */
+    var t1=Math.max(0,Math.min(1,g.y1/GH)),t2=Math.max(0,Math.min(1,g.y2/GH));
+    var ph1=chPhi(g.x1),ph2=chPhi(g.x2);
+    /* 管半径：把 2D 的 r（mm 级）映射成视觉半径，细到 0.8 mm 也还看得见。
+       必须先算出 rad，半径要按它抬——否则细管子会整根沉进不透明内衬里。 */
+    /* 管径必须按整个模型的尺度挑：0.010 的管子在半径 1.0 的喷管上只有 1.3 px，
+       等于没画；放大到 0.016~0.040（2~5 px）才看得出"这是一根管子"。 */
+    var rad=Math.max(0.016,Math.min(0.040,g.r*0.012));
+    var R1=chR(t1,rad),R2=chR(t2,rad);
+    var p1=new THREE.Vector3(Math.sin(ph1)*R1,t1*G3.H,Math.cos(ph1)*R1);
+    var p2=new THREE.Vector3(Math.sin(ph2)*R2,t2*G3.H,Math.cos(ph2)*R2);
+    pushTube(P,N,C,I,p1,p2,rad,g.c?COT:COR);
+  }
+  var geo=G3.chGeo;
+  geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(P),3));
+  geo.setAttribute('normal',new THREE.BufferAttribute(new Float32Array(N),3));
+  geo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(C),3));
+  geo.setIndex(I);
+  geo.computeBoundingSphere();
+  G3.builtSegs=segs.length;
+  document.getElementById('gl3dTxt').textContent='通道 '+segs.length+' 段 · '+(G3.cut?'半剖':'合拢');
+}
+
+var _fm=new THREE.Object3D(),_fv=new THREE.Vector3();
+var _lastT=0;
+function update3D(){
+  if(!G3.ready)return;
+  var now=performance.now();
+  var dt=_lastT?Math.min(0.05,(now-_lastT)/1000):0.016;_lastT=now;
+
+  /* 通道几何按需重建（生长过程中每 130 ms 一次，够跟手） */
+  if(segs.length!==G3.builtSegs) rebuildChannels(false);
+
+  /* 流动粒子：沿通道从集流环往上游走 */
+  var co=0,ct=0,n=segs.length;
+  for(var i=0;i<G3.flow.length;i++){
+    var f=G3.flow[i];
+    f.t+=dt*f.v*0.55;
+    if(n===0){continue}
+    if(f.t>=1||f.s>=n){f.t=0;f.s=Math.floor(Math.random()*n);}
+    var g=segs[f.s];
+    if(!g)continue;
+    var t1=Math.max(0,Math.min(1,g.y1/GH)),t2=Math.max(0,Math.min(1,g.y2/GH));
+    var ph1=chPhi(g.x1),ph2=chPhi(g.x2);
+    var R1=chR(t1),R2=chR(t2),phf=ph1+(ph2-ph1)*f.t,Rf=R1+(R2-R1)*f.t;
+    var x=Math.sin(phf)*Rf;
+    var z=Math.cos(phf)*Rf;
+    var y=(t1+(t2-t1)*f.t)*G3.H;
+    _fm.position.set(x,y,z);_fm.scale.setScalar(1);_fm.updateMatrix();
+    if(f.c){if(ct<100)G3.ft.setMatrixAt(ct++,_fm.matrix);}
+    else {if(co<100)G3.fo.setMatrixAt(co++,_fm.matrix);}
+  }
+  G3.fo.count=co;G3.ft.count=ct;
+  G3.fo.instanceMatrix.needsUpdate=true;G3.ft.instanceMatrix.needsUpdate=true;
+
+  if(G3.spin) O3.th+=0.0024;
+  updateCam();
+  G3.rd.render(G3.sc,G3.cam);
+}
+
+function loop(ts){
+ if(!paused&&ts-lastStep>270&&round<maxRound){step();lastStep=ts}
+ draw();update3D();requestAnimationFrame(loop);
+}
+// 控件
+var ids=['lam','mind','gas','lim','tin','rnd'];
+ids.forEach(function(id){
+ var el=document.getElementById(id);
+ el.addEventListener('input',function(){
+  var p=P();
+  document.getElementById('vLam').textContent=p.lam.toFixed(2);
+  document.getElementById('vMin').textContent=p.mind.toFixed(1)+' mm';
+  document.getElementById('vGas').textContent=p.gas+' °C';
+  document.getElementById('vLim').textContent=p.lim+' °C';
+  document.getElementById('vIn').textContent=p.tin+' °C';
+  document.getElementById('vR').textContent=p.rnd;
+  restart();
+ });
+});
+document.getElementById('rerun').addEventListener('click',restart);
+document.getElementById('pause').addEventListener('click',function(){paused=!paused;this.textContent=paused?'继续':'暂停'});
+document.getElementById('home').addEventListener('click',function(){panX=0;panY=0});
+// Shift + 拖动搬动画面（相机／坐标不动）
+cv.addEventListener('mousedown',function(e){
+ if(!e.shiftKey)return;
+ drag={x:e.clientX,y:e.clientY,px:panX,py:panY};cv.style.cursor='grabbing';e.preventDefault();
+});
+window.addEventListener('mousemove',function(e){
+ if(!drag)return;
+ panX=Math.max(-W*0.6,Math.min(W*0.6,drag.px+(e.clientX-drag.x)));
+ panY=Math.max(-H*0.6,Math.min(H*0.6,drag.py+(e.clientY-drag.y)));
+});
+window.addEventListener('mouseup',function(){drag=null;cv.style.cursor='default'});
+window.addEventListener('blur',function(){drag=null;cv.style.cursor='default'});
+cv.addEventListener('dblclick',function(){panX=0;panY=0});
+cv.addEventListener('mousemove',function(e){if(!drag)cv.style.cursor=e.shiftKey?'grab':'default'});
+window.addEventListener('resize',function(){fit();draw()});
+restart();init3D();
+document.getElementById('spin3d').addEventListener('click',function(){
+ G3.spin=!G3.spin;this.className=G3.spin?'on':'';
+});
+document.getElementById('cut3d').addEventListener('click',function(){
+ G3.cut=!G3.cut;this.className=G3.cut?'on':'';buildWall();
+ document.getElementById('gl3dTxt').textContent='通道 '+segs.length+' 段 · '+(G3.cut?'半剖':'合拢');
+});
+document.getElementById('reset3d').addEventListener('click',function(){O3.r=9.3;O3.th=0.05;O3.ph=1.26;});
+/* 验证钩子（只读） */
+window.__E3={get:function(){return {ready:G3.ready,segs:segs.length,built:G3.builtSegs,cut:G3.cut,
+  tris:G3.rd?G3.rd.info.render.triangles:0,calls:G3.rd?G3.rd.info.render.calls:0};},
+  setCut:function(v){G3.cut=v;buildWall();},
+  setCam:function(r,th,ph,tY){O3.r=r;O3.th=th;O3.ph=ph;if(tY!==undefined)O3.tgtY=tY;},
+  spin:function(v){G3.spin=v;},
+  liner:function(v){ G3.wallG.children.forEach(function(c){
+      if(c.material&&c.material.color&&c.material.color.getHex()===0xe4cdb4) c.visible=v; }); },
+  /* 临时诊断：按方位角 12 等分统计段数，顺带看半径范围 */
+  dbg:function(){
+    var h=[0,0,0,0,0,0,0,0,0,0,0,0],i,g,m,b,rmin=9,rmax=0,vis=0;
+    for(i=0;i<segs.length;i++){
+      g=segs[i]; m=((g.x1+g.x2)/2)/GW; b=Math.floor(m*12)%12; h[b]++;
+      var t=Math.max(0,Math.min(1,(g.y1+g.y2)/2/GH)), R=chR(t);
+      rmin=Math.min(rmin,R); rmax=Math.max(rmax,R);
+      var ph=(Math.PI*2*m);
+      var d=Math.abs(((ph-0.42+Math.PI)%(Math.PI*2))-Math.PI);
+      if(d<Math.PI/2) vis++;
+    }
+    return {hist:h,vis:vis,total:segs.length,rmin:rmin,rmax:rmax};
+  }};
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
