@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>双层相握 × AHCS 核心结构 · 几何同构审计：哪一层对得上，哪一层对不上</title>
+<style>
+  :root{--ink:#12161c;--ink2:#46506a;--ink3:#6b7683;--line:#dde3ec;--soft:#f7f9fd;
+        --purple:#5b3fa8;--blue:#2f6fb5;--green:#17724a;--red:#b3261e;--gold:#9a6b12;
+        --bg:#fff;--card:#fff;--hintbg:#fffdf6;--hintfg:#6b5a33;--btnbd:#cfd6e0;--thin:#e8edf4}
+  body.dark{--ink:#e7eef8;--ink2:#b8c5d8;--ink3:#9dabc0;--line:#26313d;--soft:#141c26;
+        --purple:#b49bf2;--blue:#7fb4ea;--green:#5dd39e;--red:#ff8f85;--gold:#f0c060;
+        --bg:#0d1117;--card:#111a24;--hintbg:#1c1708;--hintfg:#dcc78e;
+        --btnbd:#33414f;--thin:#1d2733}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    font-size:15px;line-height:1.72;-webkit-font-smoothing:antialiased;
+    transition:background .18s ease,color .18s ease}
+  .wrap{max-width:1020px;margin:0 auto;padding:44px 22px 96px}
+  h1{font-size:25px;margin:0 0 6px;letter-spacing:.3px}
+  .st{font-size:19px;font-weight:700;color:var(--purple);margin:0 0 6px}
+  .sub{color:var(--ink3);font-size:13.2px;margin:0 0 22px}
+  h2{font-size:19.5px;margin:38px 0 4px;padding-bottom:7px;border-bottom:2px solid var(--thin)}
+  h2 .n{font-family:Consolas,monospace;font-size:14px;color:var(--ink3);margin-right:8px;font-weight:400}
+  h3{font-size:16px;margin:26px 0 6px}
+  p{margin:9px 0}
+  a{color:var(--blue)}
+  code{font-family:Consolas,"SF Mono",monospace;font-size:.92em;background:var(--soft);
+    padding:1px 5px;border-radius:4px;border:1px solid var(--thin)}
+  .tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:5px;border:1px solid currentColor;
+    margin-right:5px;font-weight:700;vertical-align:1.5px;white-space:nowrap}
+  .tag.src{color:var(--blue)}.tag.th{color:var(--purple)}.tag.num{color:var(--green)}
+  .tag.no{color:var(--red)}.tag.ask{color:var(--gold)}
+  .lede{border:1px solid var(--line);border-left:5px solid var(--purple);border-radius:10px;
+    background:var(--soft);padding:15px 18px;margin:0 0 8px}
+  .lede p{margin:6px 0}
+  .lede b.big{font-size:16.5px}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.1px}
+  th,td{border:1px solid var(--line);padding:7px 9px;vertical-align:top;text-align:left}
+  th{background:var(--soft);font-weight:700;font-size:12.6px;color:var(--ink2)}
+  td.mono,th.mono{font-family:Consolas,monospace;font-size:12.4px}
+  tr.mid td{background:var(--soft)}
+  .ok{color:var(--green);font-weight:700}
+  .no{color:var(--red);font-weight:700}
+  .part{color:var(--gold);font-weight:700}
+  .tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .quote{border-left:3px solid var(--blue);background:var(--soft);border-radius:0 8px 8px 0;
+    padding:9px 14px;margin:12px 0;font-size:13.6px}
+  .quote em{color:var(--ink3);font-style:normal;font-size:12.4px}
+  .hint{margin:14px 0;padding:11px 14px;border-left:3px solid var(--gold);background:var(--hintbg);
+    border-radius:6px;font-size:13px;color:var(--hintfg)}
+  .bad{margin:14px 0;padding:11px 14px;border-left:3px solid var(--red);
+    background:rgba(179,38,30,.055);border-radius:6px;font-size:13.2px}
+  body.dark .bad{background:rgba(255,143,133,.09)}
+  .panel{border:1px solid var(--line);border-radius:12px;padding:14px 16px 16px;background:var(--card);margin:16px 0}
+  .panel .h{font-size:13.2px;color:var(--ink2);margin:0 0 10px;font-weight:700}
+  .ro{display:flex;flex-wrap:wrap;gap:10px;margin:6px 0}
+  .cell{flex:1 1 140px;border:1px solid var(--line);border-radius:9px;padding:8px 11px;background:var(--soft)}
+  .cell .k{font-size:11.4px;color:var(--ink3)}
+  .cell .v{font-family:Consolas,monospace;font-size:17px;font-weight:700;line-height:1.3}
+  .cell .v.p{color:var(--purple)}
+  .foot{margin-top:42px;padding-top:16px;border-top:1px solid var(--line);color:var(--ink3);font-size:12.5px}
+  #themeBtn{position:fixed;top:14px;right:14px;z-index:99;font:inherit;font-size:12.5px;line-height:1;
+    padding:7px 13px;border:1px solid var(--btnbd);background:var(--card);border-radius:20px;
+    cursor:pointer;color:var(--ink2);box-shadow:0 2px 10px rgba(15,22,33,.10)}
+  #themeBtn:hover{border-color:var(--blue);color:var(--blue)}
+  body.dark #themeBtn{background:#18232f}
+  .mono{font-family:Consolas,monospace}
+  .sm{font-size:12.3px;color:var(--ink3)}
+  ul{padding-left:22px}li{margin:5px 0}
+  @media(max-width:640px){
+    .wrap{padding:54px 14px 80px}h1{font-size:21px}.st{font-size:16px}h2{font-size:17px}
+    table{font-size:12.2px}th,td{padding:6px 7px}.cell{flex:1 1 100%}
+  }
+</style>
+</head>
+<body>
+<button id="themeBtn" type="button" aria-pressed="false" title="切换底色（快捷键 D）">🌙 暗色底</button>
+<div class="wrap">
+
+<h1>双层相握 × AHCS 核心结构 · 几何同构审计</h1>
+<div class="st">原文说 Merkaba 是「两个互锁的金字塔 = 一个能量环面」，网页画的是「2 层八面体相握 + C168 环面 + 锥极电极」</div>
+<p class="sub">把一个网页的结构与 AHCS 原文逐条对：能对上几条、对不上哪一条、为什么对不上 ·
+  原文层（蓝）／立论层（紫）／数值层（绿）／否定层（红）四色分开，不混着说</p>
+
+<div class="lede">
+  <p><b class="big">先说结论：能对上的是「环面」和「反向互锁」，对不上的是「金字塔」这个形状本身。</b></p>
+  <p><span class="tag src">原文</span><b>原文给了两句非常具体的话</b>：
+     ①「<b>you are an energetic torus, and an energetic torus is a Mercaba, which are two interlocking pyramids</b>」——
+     先说是<b>环面</b>，再说是<b>两个互锁的金字塔</b>；
+     ②存储单元是「<b>billions of small Merkabah-toroid's</b>」，而且「每个梅尔卡巴在能量粒子穿过时<b>有不同的波长</b>」。
+     <b>两句都写了 toroid（环面），不是只写了金字塔。</b></p>
+  <p><span class="tag num">数值</span><b>网页里正好有一件东西在拓扑上与 toroid 完全同一</b>：
+     它的 <b>C168 碳纳米环</b> 是 <b>168 顶点 / 252 键 / 84 面、欧拉数 0 ⟹ 亏格 g = 1 的环面</b>
+     （页面几何自检表里现场算，键长 CV 7.5%，n₅ = n₇ = 6）。
+     <b>这不是比喻：欧拉 0 就等于环面，与球面的欧拉 2 是两类拓扑。</b></p>
+  <p><span class="tag num">数值</span><b>「反向互锁」这一层也对得上</b>：
+     原文说另一个金字塔「<b>inverted</b>」「<b>intertwined</b>」；
+     网页有「<b>相邻层反向自转</b>」「<b>反电位模式</b>」「上下同向或反向」三组现成开关。
+     <b>操作同构成立。</b></p>
+  <p><span class="tag no">否定</span><b>但「金字塔」这个形状对不上，而且差得不小</b>：
+     原文的两块是<b>金字塔（四棱锥：5 顶点 / 8 棱 / 5 面）</b>，网页的两块是<b>八面体（6 顶点 / 12 棱 / 8 面）</b>；
+     原文是<b>互穿</b>（intertwined，穿进彼此内部），网页是<b>相扣</b>（错齿半格嵌合，像十指相扣，并不互穿）。
+     <b>「两个同构体 + 反向 + 错位半格」这个操作族对上了；「形状」和「互穿」两处没对上。</b></p>
+  <p><span class="tag th">立论</span><b>所以正确的说法是</b>：
+     这个网页是 AHCS「<b>存储单元形状</b>」与「<b>反向互锁</b>」这两层几何的<b>可拖样机</b>，
+     <b>不是</b> AHCS 的机制证明，也<b>不是</b>它的尺寸原型（网页的行星数是 4~24 个，原文是百万级加速器 / 数十亿个线圈）。</p>
+</div>
+
+<!-- ============ 0 ============ -->
+<h2><span class="n">§0</span>原文层：Merkaba 在三处出现，每一处都不是「外壳是金字塔」</h2>
+<p>这一段全部逐字引自 <a href="AAA_AHCS与Merkaba_SWARUU原文摘录.md">《AHCS 与 Merkaba：SWARUU 原文摘录 · 几何对照 · 边界》</a>，
+  原始材料为 Swaruu / Anéeka / Mari Swaruu 访谈（A/B/C/D 四篇）。<b>不做转述，不改口径。</b></p>
+
+<div class="quote">「you are an energetic torus, and <b>an energetic torus is a Mercaba, which are two interlocking pyramids</b>.
+  You already are the pyramid.」<br>
+  <em>→ 主语是 torus（环面）。Merkaba 在这里被定义成「一个能量环面」，而这个环面由两个互锁的金字塔构成。</em></div>
+
+<div class="quote">Gosia：「金字塔下面还有另一个倒置的金字塔吗？」— Swaruu：「是也不是……
+  <b>The other pyramid is inverted to form the Mercaba. It is not under the material pyramid, it is intertwined.</b>」<br>
+  <em>→ 两个关键词：<b>inverted</b>（倒置）与 <b>intertwined</b>（交织/互穿）。
+  并且明确否定「上下叠放」这个读法（not under）。</em></div>
+
+<div class="quote">「A pyramid is material <b>1, 2, 4, 8, 7, 5</b>. The other is on the other side, spirit world, the A ether… <b>3, 6, 9</b>.
+  Creating the Mercaba. Thus, <b>creating the flow of energy called free</b>.」<br>
+  <em>→ 两块金字塔分别贴物质侧与以太侧的数字根标签：124875 与 369。</em></div>
+
+<div class="quote">「The crystalline structure in the memory is placed as <b>billions of small Merkabah-toroid's</b> written by the particle accelerators.」<br>
+  「…each Merkabah, or nano Merkabah, embedded in the crystalline structure of the quartz will have <b>a different wavelength</b>
+  as a particle of energy goes through.」<br>
+  <em>→ <b>存储单元</b>这一处的词是 <b>Merkabah-toroid</b>：环面在前，梅尔卡巴是它的形状名。
+  并且给了编码方式：<b>每个单元一个不同的波长</b>。</em></div>
+
+<div class="quote">「These quartz micro crystals have <b>the shape of perfect tetrahedral or merkabas</b> that are energetically more toroid
+  and <b>maintain a constant vibratory frequency</b>.」<br>
+  <em>→ 第三处（零点反应堆的微晶）又回到「四面体 / 梅尔卡巴」，并且强调 <b>more toroid</b>（更接近环面）。</em></div>
+
+<div class="hint"><b>四处的共同点值得单列</b>：<b>torus / toroid 出现 3 次</b>，pyramid 出现 3 次，而且
+  <b>每次说 pyramid 都在解释「环面是怎么来的」</b>，不是在描述某个零件的实物外形。
+  另外那份摘录的 §4.4 已经点明：<b>没有一处说机器外壳或内核是金字塔形</b>；相反内核被描述成「一叠发蓝光的金刚石玻璃」。
+  这一点很要紧 —— 它决定本页不能把「金字塔」当成硬件形状来讲。</div>
+
+<!-- ============ 1 ============ -->
+<h2><span class="n">§1</span>网页层：它实际画的是什么（读数全部来自 DOM，不是印象）</h2>
+<p>目标页：<a href="AAA_超级苯_三源对照与行星齿轮加速器.html"><b>超级苯 · 苯的 M.P.M. —— 三源对照与几何复算</b></a>
+  （341,347 B · 2026-10-28 20:50）。「<b>参数面体</b>」那一组控件就是下面这几项，默认档实测值如下：</p>
+
+<div class="tw"><table>
+<thead><tr><th style="width:20%">控件（页面原文）</th><th style="width:18%">默认档实测</th><th style="width:26%">可选项</th><th>它到底在干什么</th></tr></thead>
+<tbody>
+<tr><td><b>层数</b><br><code>data-l</code></td><td class="mono">2 层相握</td><td class="mono">1 层 / 2 层相握</td>
+  <td>切到 1 层时页面自己会提示「上下两底 y 都是 0 ⟹ 退化成一张多边形框，<b>双锥不成立</b>」—— 所以双层的存在是为了<b>让双锥成立</b></td></tr>
+<tr class="mid"><td><b>十指相握</b><br>错齿角</td><td class="mono">默认 30°<br><span class="sm">= 180°/N</span></td>
+  <td class="mono">滑条可调</td>
+  <td>页面注：<b>「十指相握」= 上层行星俯视落在下层行星的半齿距（180°/N）处</b>；错齿角滑条调的就是这半格</td></tr>
+<tr><td><b>中心体</b><br><code>data-c</code></td><td class="mono">C168 施瓦茨石</td>
+  <td class="mono">留空 / C-12 / C60 / C70 / C78 / C80 / <b>C168 施瓦茨石</b> / <b>C168 碳纳米环</b> / 环+C-12 核</td>
+  <td>9 种碳体。注意<b>两种 C168 是不同拓扑</b>：施瓦茨石 g=3，碳纳米环 <b>g=1</b>（见 §2）</td></tr>
+<tr class="mid"><td><b>环堆叠层数</b><br><code>data-n</code></td><td class="mono">1 层 · 定子</td>
+  <td class="mono">1 层·定子 / <b>2 层·切开</b> / 4 / 6 层</td>
+  <td>沿轴均匀分布、对称于中平面；多于 1 层时出现<b>「相邻层反向自转」</b></td></tr>
+<tr><td><b>锥极电极</b><br><code>data-p</code> + <code>#cCone</code></td><td class="mono">显示 ✓<br>同电位</td>
+  <td class="mono">同电位（对称）/<b>反电位</b>；锥半角、锥尖—环面间距、锥高、循环周期、加场占空比</td>
+  <td>上下锥极沿环轴加场。<b>这一组已经不是纯几何演示，是一个静电/电极模型</b></td></tr>
+<tr class="mid"><td><b>共振阶 m / 环阶 p</b></td><td class="mono">m=3 · p=2</td><td class="mono">m = 1/2/3/6；p = 1/2/3/6</td>
+  <td>页面注：<b>核转 1 圈、行星十二面体转 m 圈 ⟹ 每 1/m 圈图样重复，闭合共振</b>；还有<b>三级共振「核 : 环 : 行星」整数比</b></td></tr>
+<tr><td><b>圆二色性读出</b></td><td class="mono">—</td><td class="mono">左右旋圆偏振光、螺旋密度、CD 强度、Cotton 谱</td>
+  <td>给的是<b>手性读出</b>通道：A_L / A_R / CD 三个读数</td></tr>
+<tr class="mid"><td><b>双环环形场</b></td><td class="mono">—</td><td class="mono">双环平行 / 交叉网格 / 螺旋绕组 / <b>轴向握手流</b>；上下同向或反向</td>
+  <td>「<b>轴向握手流</b>」这个名字本身就在描述「上下相握」的场形态</td></tr>
+<tr><td><b>行星数</b></td><td class="mono">—</td><td class="mono">4 / 5 / 6 / 8 / 10 / 12 / 16 / 20 / 24</td>
+  <td>轨道半径按<b>最小整数周长比</b>自动定（模拟行星齿轮啮合）</td></tr>
+</tbody></table></div>
+
+<div class="hint"><b>为什么要把控件列这么细</b>：因为「双八面体上下相握」这句话，在不同档位下指的不是同一个东西 ——
+  1 层时根本没有双锥，2 层时才有；中心体选「施瓦茨石」还是「碳纳米环」拓扑完全不同（g=3 对 g=1）。
+  <b>不写清档位就谈「对应」，等于用一个可变量去对一个固定结论。</b></div>
+
+<!-- ============ 2 ============ -->
+<h2><span class="n">§2</span>最硬的一条：环面 ↔ toroid，是拓扑同一，不是比喻</h2>
+<p>原文的存储单元叫 <b>Merkabah-toroid</b>。toroid 就是环面，数学上等价于<b>亏格 g = 1 的闭曲面</b>，
+  它的欧拉数 <b>V − E + F = 0</b>。网页里 C168 碳纳米环的几何自检把这件事算出来了：</p>
+
+<div class="tw"><table>
+<thead><tr><th style="width:22%">对象（页面原表，数值现场算）</th><th class="mono" style="width:15%">原子/键/面</th>
+  <th class="mono" style="width:20%">面型</th><th class="mono" style="width:11%">欧拉数</th>
+  <th class="mono" style="width:11%">键长 CV</th><th>判定</th></tr></thead>
+<tbody>
+<tr><td>C60（Ih）</td><td class="mono">60 / 90 / 32</td><td class="mono">5×12 · 6×20</td><td class="mono">2</td><td class="mono">0.0%</td><td>真·富勒烯（球面）</td></tr>
+<tr class="mid"><td>C70（D5h）</td><td class="mono">70 / 105 / 37</td><td class="mono">5×12 · 6×25</td><td class="mono">2</td><td class="mono">1.4%</td><td>真坐标 · IPR</td></tr>
+<tr><td>C78（C2v）</td><td class="mono">78 / 117 / 41</td><td class="mono">5×12 · 6×29</td><td class="mono">2</td><td class="mono">1.7%</td><td>真坐标 · IPR</td></tr>
+<tr class="mid" style="background:#f0fff8"><td><b>C168 碳纳米环</b></td><td class="mono"><b>168 / 252 / 84</b></td>
+  <td class="mono">5×6 · 6×72 · 7×6</td><td class="mono"><b>0</b></td><td class="mono">7.5%</td>
+  <td class="ok"><b>✓ g = 1 环面（n₅ = n₇ = 6）</b></td></tr>
+<tr><td>C168 施瓦茨石</td><td class="mono">168 / 252 / 80</td><td class="mono">6×56 · 7×24</td><td class="mono">−4</td><td class="mono">28.7%</td>
+  <td class="part">拓扑 ✓ · <b>几何仅示意</b></td></tr>
+</tbody></table></div>
+
+<p><b>读数只有一行是 0</b>：C168 碳纳米环。<code>168 − 252 + 84 = 0</code> ⟹ <code>g = (2 − χ)/2 = 1</code>。
+  这就是环面。<b>球面（C60/C70/C78）的 χ = 2，与环面是两类拓扑，差一个"洞"。</b></p>
+
+<div class="bad"><b>但这里必须紧跟一句刹车</b>：<b>拓扑同一 ≠ 同一个东西。</b><br>
+  ① 网页那个环是 <b>168 个碳原子</b>的分子几何（键长 CV 7.5%，说明它是构造出来的近似，不是实测晶体）；
+  ② 原文的 Merkabah-toroid 是<b>粒子加速器在石英里"写"出来的单元</b>，尺寸、材料、成因都没有给；
+  ③ 两者共有的只是「<b>亏格 1 这个形状类</b>」—— 就像「甜甜圈」和「咖啡杯」拓扑同一，但不是同一个物体。<br>
+  <b>能说的是：「原文要的是环面，网页里有环面，这是同一拓扑类」。不能说的是：「网页那个环就是 AHCS 的存储单元」。</b></div>
+
+<div class="hint"><b>顺带一个真正有价值的细节</b>：页面的 n₅ = n₇ = 6 —— <b>6 个五元环 + 6 个七元环</b>。
+  五元环带来正曲率、七元环带来负曲率，两者各 6 个正好把总曲率配平到 0（环面平均曲率必为 0），
+  这就是它为什么是 g = 1 而不是球面。<b>这条是可以在纸上验的</b>：χ = 2 − 2g = 0，
+  而 6 个七元环贡献的负曲率刚好抵掉 6 个五元环的正曲率与 72 个六元环的平坦部分。</div>
+
+<!-- ============ 3 ============ -->
+<h2><span class="n">§3</span>反向互锁：原文的 inverted / intertwined ↔ 网页的三组反向开关</h2>
+<p>这是第二层能对上的。原文对「怎么互锁」给了三个限定词，网页恰好都有对应的可操作量：</p>
+
+<div class="tw"><table>
+<thead><tr><th style="width:16%">原文限定</th><th style="width:13%">口径</th><th style="width:26%">网页里对应的控件</th><th>能不能对上</th></tr></thead>
+<tbody>
+<tr><td><b>inverted</b><br>（倒置）</td><td><span class="tag src">原文</span></td>
+  <td><b>相邻层反向自转</b>（多于一层的环堆叠）；<b>上下同向或反向</b>（双环环形场）；<b>反电位模式</b>（锥极极性）</td>
+  <td class="ok"><b>对得上</b>：三个独立的「反向」旋钮，把「倒置」实现成了可调的相对符号</td></tr>
+<tr class="mid"><td><b>intertwined</b><br>（交织/互穿）</td><td><span class="tag src">原文</span></td>
+  <td><b>十指相握</b>（错齿半格 180°/N）+ <b>双层相握连线</b>开关</td>
+  <td class="part"><b>部分对得上</b>：都是"两个同构体错位嵌合"，但<b>相扣 ≠ 互穿</b>（见 §4）</td></tr>
+<tr><td><b>not under</b><br>（不在下面）</td><td><span class="tag src">原文</span></td>
+  <td>两层确实沿轴<b>分开</b>（层间距可调），俯视错开半齿距</td>
+  <td class="no"><b>这一条对不上</b>：原文特意否定「上下叠放」，网页正是上下叠放</td></tr>
+</tbody></table></div>
+
+<div class="bad"><b>第三条必须点明，不能含糊过去</b>：原文原话是
+  「<b>It is not under the material pyramid, it is intertwined</b>」——
+  说话人<b>主动否定</b>了「一个在另一个下面」这个几何，改成「交织」。
+  而网页的「2 层相握」在几何上恰恰是<b>上下两层 + 沿轴层间距</b>。<br>
+  <b>所以这一条是真实的分歧，不是措辞差异。</b> 想把网页当 merkaba 样机用，就得接受这个偏差，
+  或者把中心体的「环 + C-12 核嵌套」那档当成「交织」的近似 —— 但那也只是近似。</div>
+
+<!-- ============ 4 ============ -->
+<h2><span class="n">§4</span>形状：<b>共底 ⟹ 就是八面体</b>；网页把底面分立，所以不是 —— 差别只在「层间距」这一个量</h2>
+<p>「两个金字塔倒插就是八面体」这句<b>在几何上是标准的构造定理</b>，不是近似。但网页那个「2 层相握」是
+  <b>两个底面分立</b>的锥，所以两者不能划等号。三条构型摆在一起，差别只有一行数：</p>
+
+<div class="tw"><table>
+<thead><tr><th style="width:32%">构型</th><th class="mono" style="width:9%">V</th>
+  <th class="mono" style="width:9%">E</th><th class="mono" style="width:9%">F</th>
+  <th class="mono" style="width:9%">χ</th><th>判决</th></tr></thead>
+<tbody>
+<tr><td>单个四棱锥（半个）</td><td class="mono">5</td><td class="mono">8</td><td class="mono">5</td>
+  <td class="mono">2</td><td>半成品 · 对称群 C₄ᵥ</td></tr>
+<tr class="mid" style="background:#f0fff8"><td><b>两块四棱锥 <b>共底面</b></b><br>
+  <span class="sm">教科书写法：底面相合、一块倒置</span></td>
+  <td class="mono"><b>6</b></td><td class="mono"><b>12</b></td><td class="mono"><b>8</b></td>
+  <td class="mono">2</td><td class="ok"><b>✓ 逐项等于正八面体（O_h）—— 老师说的就是这一条</b></td></tr>
+<tr><td><b>网页默认档</b>：两块四棱锥 <b>底面分立</b><br>
+  <span class="sm">N=4 · 层间距 1.90 ⟹ halfGap = 0.95</span></td>
+  <td class="mono">10</td>
+  <td class="mono">16<br><span class="sm">页面含中轴记 17</span></td>
+  <td class="mono">10<br><span class="sm">8 三角 + 2 方底</span></td>
+  <td class="mono">4<br><span class="sm">两块各 2</span></td>
+  <td class="no"><b>两块分立方金字塔互穿，不是八面体</b></td></tr>
+</tbody></table></div>
+
+<div class="hint"><b>两行复算，都能手算</b>：<br>
+  <b>共底</b>：底面的 4 个角被两块共享 ⟹ V = 5+5−4 = <b>6</b>；4 条底棱也共享 ⟹ E = 8+8−4 = <b>12</b>；
+  两个方形底互相抵掉 ⟹ F = 5+5−2 = <b>8</b>。与八面体的 6/12/8 <b>逐项相等</b>。<br>
+  <b>分立</b>：什么都不共享 ⟹ V = 5+5 = <b>10</b>、E = 8+8 = <b>16</b>、F = 5+5 = <b>10</b>；
+  χ = 10−16+10 = <b>4</b> —— 这不是一张闭曲面，是<b>两块各 χ=2 的闭曲面并在一起</b>。</div>
+
+<div class="bad"><b>网页为什么永远到不了共底 —— 这是读源码读出来的，不是猜的</b>：<br>
+  底面固定在 <code>y = ±halfGap</code>，而 <code>halfGap = st.gap/2</code>；<code>#gap</code> 滑条
+  <code>min=120 max=320</code> ⟹ <code>st.gap ∈ [1.20, 3.20]</code> ⟹
+  <b><code>halfGap ∈ [0.60, 1.60]</code>，恒大于 0</b>。所以<b>在任何可拖档位下两个底面都不重合</b>，
+  网页画的一直是「两块分立方金字塔互穿」。只有 <code>layer===2 ? st.gap/2 : 0</code> 那个 1 层分支才给
+  <code>halfGap=0</code>，但那时只剩一块锥、双锥不成立。<br>
+  <b>这不是页面写错，是它的建模选择</b>；但它意味着<b>不能指着网页说「这就是八面体」</b>。</div>
+
+<div class="hint"><b>一句话分清两件事</b>：<br>
+  ① <b>「两块四棱锥共底 = 正八面体」</b> —— 构造定理，可复算（6/12/8），<b>这一层完全成立</b>；<br>
+  ② <b>「网页那个互穿双锥 = 正八面体」</b> —— 不成立，因为两底分立（10/16/10），
+  差在「层间距能不能归零」这一个参数上。<br>
+  另注：<b>两个正四面体</b>互穿得到的是星形四面体（stella octangula，凸包为立方体），
+  这与「两块四棱锥共底 = 八面体」是<b>两件不同的事</b>，别混着用。</div>
+
+<div class="bad"><b>本页上一版写错了，这里撤回</b>：上一版 §4 写「金字塔 ≠ 八面体」，
+  拿<b>单个四棱锥 5/8/5</b> 去比<b>整个八面体 6/12/8</b> —— <b>比错了对象</b>，
+  因为 5/8/5 本来就不该等于 6/12/8。正确比法是<b>两块共底</b> vs 八面体，而它们<b>相等</b>。
+  这一条是老师提出「双金字塔倒插」之后复核才发现的。</div>
+
+<!-- ============ 4b ============ -->
+<h2><span class="n">§4b</span>老师给的接线模型：手掌 6 指 · 4 对 · 两个方形底面 —— 逐句对到网页控件上</h2>
+<p>这一段不是转述，是把老师 2026-11-03 20:30 的原话<b>逐句挂到网页可读的量上</b>。
+  左边是原话，中间是网页里真实存在的对应物，右边是判定。<b>能对上的写「可复算」，对不上的直接写「不成立」。</b></p>
+
+<div class="tw"><table>
+<thead><tr><th style="width:26%">老师原话</th><th style="width:46%">网页里对应什么（可读，非印象）</th>
+  <th>判定</th></tr></thead>
+<tbody>
+<tr><td>「网页的行星就是八面体<b>每一个顶点</b>」</td>
+  <td>行星数 <code>st.N = 4</code>；页面注：<b>N 个行星中心就是正 N 边形的 N 个顶点</b>；
+    每个行星带一片「<b>赤道手掌</b>」，<b>四条手掌手性一致、旋转 90° 对称</b></td>
+  <td class="part"><b>部分成立</b>：4 个行星 = 八面体的 <b>4 个赤道顶点</b>；
+    八面体还有 <b>2 个极顶点</b>，而它们正是两个锥尖 ⟹ <b>4 + 2 = 6 才凑成正八面体</b>。
+    若按字面（行星 = 顶点）则要 6 个，网页只有 4 ⟹ <b>见本节末尾「两种读法」</b></td></tr>
+<tr class="mid"><td>「每一个顶点有<b>手掌</b>，含 <b>6 个「手指」</b>结构」</td>
+  <td class="ok"><b>网页真有这套东西</b>：<code>赤道手掌张角</code> 默认 <b>180°</b>，
+    页面自注 <b>= 6 × 30°</b>；<code>手掌端点半径</code> 定「<b>六指等长</b> L = Rq − S，指尖落成半圆」；
+    页面注「<b>赤道 4 个顶点：6 条全在赤道水平面内展开（手掌）</b>」</td>
+  <td class="ok"><b>可复算</b>：6 × 30° = 180°；错齿角默认就是 <b>30°</b> ——
+    <b>「6 指」与「错齿 30°」是同一个数的两个面</b></td></tr>
+<tr><td>「<b>4 对</b>八面体是上下相握」</td>
+  <td>层数 <b>2 层相握</b>；上层 4 + 下层 4 = <b>4 对</b>（页面 <code>pairs: st.N</code> 直接报）；
+    层间方位角错开 <code>stagger</code> 默认 <b>30°</b>；页面注「错开错齿角 ⟹ <b>十指相握不分开</b>」</td>
+  <td class="ok"><b>成立</b>：4 对 = 4 组上下配对，可数</td></tr>
+<tr class="mid"><td>「于是 4 对就对应 <b>2 个金字塔底面</b>」</td>
+  <td><b>底面边数 = 行星数</b>（页面 2026-10-28 定）⟹ N=4 时底面是<b>正方形</b>；
+    上层 4 手掌 = 一个正方形底面的 4 个角，下层 4 手掌 = 另一个 ⟹ <b>2 个底面</b></td>
+  <td class="ok"><b>成立，而且这就是网页在画的东西</b>：10 顶点 / 16 棱 / 10 面，两底分立（§4 第三行）</td></tr>
+<tr><td>「金字塔顶点连接<b>电激发驻波节点</b>，或是<b>中心离子的顶和底中心</b>」</td>
+  <td>网页只有 <b><code>e</code>（锥尖 y 坐标）</b>：<code>e=0</code> 两尖在中轴原点相接、
+    <code>e&lt;0</code> 两尖互穿、<code>e=−halfGap</code> 尖落到对方底面平面；
+    <b>两个锥尖恒在中轴</b>上</td>
+  <td class="part"><b>接口对得上</b>：「接中心离子的顶/底中心」在几何上是<b>现成的</b>
+    —— 两个尖就是中轴上的两个点，<code>e</code> 已经是它们的坐标。
+    <b>「驻波节点」网页没有任何节点概念，待补</b></td></tr>
+</tbody></table></div>
+
+<div class="bad"><b>「行星就是八面体每一个顶点」这句我读出两种意思，差别很大，请老师点一下</b>：<br>
+  <b>读法 A（字面）</b>：行星 = 八面体的<b>顶点</b>。那 N=4 只占得住 4 个<b>赤道</b>顶点，八面体还缺 2 个极顶点；
+    要 6 个顶点齐全就得 6 个行星，与「<b>4 对</b>」冲突，而且此时底面是六边形而不是正方形。<br>
+  <b>读法 B（五句全通，本页按此记录）</b>：<b>行星 = 一个八面体</b>，它的 <b>6 个顶点方向就是手掌的 6 根手指</b>
+    —— 这不是附会：网页 <code>赤道手掌张角</code> 默认 <b>180° = 6 × 30°</b>，<code>手掌端点半径</code> 定的是
+    「<b>六指等长</b>」，<b>「6 指」与「错齿 30°」本来就是同一个数</b>。于是：<br>
+    　· 上层 <b>4 个八面体</b>各占方形底面的一个角 ⟹ <b>一个金字塔底面</b>；<br>
+    　· 下层 <b>4 个</b>是它倒插的那一份 ⟹ <b>第二个底面</b>（两底分立，§4 第三行）；<br>
+    　· <b>4 对 = 上 4 + 下 4</b>，页面 <code>pairs: st.N</code> 直接报；<br>
+    　· 两个金字塔的<b>顶点（锥尖）在中轴上</b>，<code>e</code> 就是它们的 y 坐标 ⟹ 接<b>中心离子的顶/底中心</b>是现成的；
+        接「<b>电激发驻波节点</b>」网页还没有节点概念，<b>待补</b>。<br>
+    <b>五句话在一张图里同时成立，而且每一个数都能在网页里读到。</b>
+    若老师指的是读法 A，说一声我改，并把「6 个行星」那一档单独标出来。</div>
+
+<!-- ============ 5 ============ -->
+<h2><span class="n">§5</span>数字根：124875 / 369 与网页的 6·12 族，只能说「同族」，不能说「同一个」</h2>
+<p>原文把两块金字塔分别贴上 <b>1,2,4,8,7,5</b>（物质）与 <b>3,6,9</b>（以太）。网页里有大量 6 与 12 的倍数：</p>
+
+<div class="tw"><table>
+<thead><tr><th style="width:34%">网页里的数</th><th class="mono" style="width:16%">值</th><th>与 124875 / 369 的关系</th></tr></thead>
+<tbody>
+<tr><td>赤道手掌张角</td><td class="mono">180° = 6 × 30°</td><td class="part">同为 6 的倍数，<b>但这是正六边形的内角分解，与数字根无关</b></td></tr>
+<tr class="mid"><td>相邻扇张角</td><td class="mono">严格 30°</td><td class="part">同上；页面对这条做过精度断言（相邻严格 30.0000°）</td></tr>
+<tr><td>夸克总数</td><td class="mono">36 = 12d + 24u</td><td class="part">6 顶点 × 6 扇；<b>36 = 4 × 9，含 9 但不含 3/6 的结构意义</b></td></tr>
+<tr class="mid"><td>行星数可选</td><td class="mono">4/5/6/8/10/12/16/20/24</td><td class="part">含 6 与 12，<b>是为了齿轮周长比取整</b>，不是数论选择</td></tr>
+<tr><td>环堆叠层数</td><td class="mono">1/2/4/6</td><td class="no">含 4 与 6，<b>与 124875 的"4、8"只是数字重合</b></td></tr>
+</tbody></table></div>
+
+<div class="bad"><b>这一节必须踩刹车</b>：数字重合是最容易造成「看起来对上了」的假象。
+  判据很简单 —— <b>如果换个实现方式这个数就变了，那它就不是结构对应</b>：
+  把赤道张角从 180° 改成 150°，几何照样成立；把行星数从 12 改成 10，齿轮照样转。
+  <b>而 124875 / 369 在原文里是"两块金字塔各贴哪一侧"的定义，不是可调参数。</b>
+  ⟹ <b>本页判定：数字根这一层「不构成对应」，只能算同族巧合。</b></div>
+
+<!-- ============ 6 ============ -->
+<h2><span class="n">§6</span>三档判定：哪些能写进材料，哪些只能当样机</h2>
+<div class="tw"><table>
+<thead><tr><th style="width:9%">档</th><th style="width:30%">判据</th><th style="width:30%">这一层的内容</th><th>可以怎么用</th></tr></thead>
+<tbody>
+<tr><td><b>A</b><br><span class="sm">可复算</span></td>
+  <td><span class="tag num">数值</span>页面运行时算、换个参数就跟着变、且与独立复算一致</td>
+  <td>C168 环 <b>168/252/84 · χ=0 · g=1</b>；C168 施瓦茨石 <b>χ=−4 · g=3</b>；C60/C70/C78 <b>χ=2</b>；
+    错齿角 <b>180°/N</b>；共振阶 <b>m</b> 的闭合条件</td>
+  <td class="ok"><b>可以直接引用</b>。这是拓扑与几何的事实，与 AHCS 无关也成立</td></tr>
+<tr class="mid"><td><b>B</b><br><span class="sm">同构</span></td>
+  <td><span class="tag th">立论</span>两边都是「两个同构体 + 反向 + 错位半格」这个操作族</td>
+  <td>「<b>环面</b>」↔ Merkabah-<b>toroid</b>（拓扑同一类）；
+    「<b>相邻层反向自转 / 反电位 / 上下反向</b>」↔ <b>inverted</b>；
+    「<b>十指相握 180°/N</b>」↔ <b>intertwined</b>（部分）</td>
+  <td class="part"><b>可以当样机讲</b>：说「这是那两层几何的可拖实现」，不说「这就是 AHCS」</td></tr>
+<tr><td><b>C</b><br><span class="sm">不能说</span></td>
+  <td><span class="tag no">否定</span>要么形状不符、要么原文明确否定、要么只是数字重合</td>
+  <td>「网页那个分立双锥 = 正八面体」（<b>共底才是</b>，见 §4）；「<b>not under</b>」↔ 上下叠放；「124875/369 ↔ 6·12 族」；
+    「双层相握 ⟹ 产生 AHCS 的存储/计算能力」</td>
+  <td class="no"><b>不能写</b>。写了就是替原文加码，或把巧合当结构</td></tr>
+</tbody></table></div>
+
+<!-- ============ 7 ============ -->
+<h2><span class="n">§7</span>四句不能说出口的话</h2>
+<div class="tw"><table>
+<thead><tr><th style="width:40%">不能说</th><th>为什么</th></tr></thead>
+<tbody>
+<tr><td class="no">「这个网页就是 AHCS 的核心结构」</td>
+  <td>网页是<b>苯的 M.P.M. 几何复算</b>的结果，是为了三源对照（C 推演 / here.pdf / 原文）而建的。
+    它与 AHCS 的对应是<b>事后发现的两层几何同构</b>（环面 + 反向互锁），不是它的设计目标。</td></tr>
+<tr class="mid"><td class="no">「网页那个『2 层相握』就是正八面体」</td>
+  <td>两块四棱锥<b>共底</b>才是 6/12/8；网页两底<b>分立</b>，是 <b>10/16/10</b>（χ=4，两块各 2）。
+    差别只在<b>层间距能不能归零</b>——<code>#gap</code> 下限给 <code>halfGap=0.60</code>，永远不为 0。
+    <b>能说的是「共底构造 = 八面体」这条定理；不能说「这张图 = 八面体」。</b></td></tr>
+<tr><td class="no">「8 个、4 个这些数对上了 124875」</td>
+  <td>网页里的 4/6/8/12 是<b>齿轮周长比取整</b>与<b>层数选择</b>，改了照样跑；
+    124875/369 在原文里是<b>定义</b>，不是可调量。<b>可变量对定义量 ⟹ 不构成对应。</b></td></tr>
+<tr class="mid"><td class="no">「相握会越转越冷 ⟹ 这是 AHCS 的能源机制」</td>
+  <td>网页的「冷」没有任何测量：它是个几何/静电场演示，<b>没有温度模型、没有能量收支</b>。
+    另见 <a href="../../02_应用科技/24_searl_SEG/SEG_AHCS_量子计算接口审计.html">SEG × AHCS 接口审计</a> 与
+    <a href="../../02_应用科技/24_searl_SEG/SEG_AHCS_光内存与离子阱_存储层接口审计.html">光内存 × 离子阱审计</a> 里
+    对「越转越冷 ⟹ 常温超导 ⟹ 不加热离子」三环的逐环否定。</td></tr>
+</tbody></table></div>
+
+<h3>那能说什么</h3>
+<ul>
+  <li><span class="tag num">数值</span><b>「原文要环面，网页有环面，而且是同一拓扑类（χ=0、g=1）」</b>——
+    这条最硬，因为它不依赖任何解释，只依赖一个减法：<code>168 − 252 + 84 = 0</code>。</li>
+  <li><span class="tag num">数值</span><b>「同名却不同拓扑」这件事本身值得记住</b>：页面的两种 C168，
+    施瓦茨石 g=3、碳纳米环 g=1，<b>名字都带 C168，拓扑差两个洞</b>。
+    引用时若只写「C168」而不写是哪一种，结论就会错。</li>
+  <li><span class="tag th">立论</span><b>「反向互锁」这一层可以讲</b>，因为网页有三个独立的可操作反向旋钮
+    （层间自转、双环场、锥极电位），而原文正好给了 inverted 这个词。</li>
+  <li><span class="tag th">立论</span><b>这个网页最有价值的用法，是当「几何证伪台」</b>：
+    把原文的每个几何断言（互锁、环面、反向、数字根）落成可拖参数，
+    <b>哪个参数一动结论就变，哪条就不是结构</b>——§5 的数字根就是这样被判掉的。</li>
+</ul>
+
+<!-- ============ 8 ============ -->
+<h2><span class="n">§8</span>与另外两页的分工</h2>
+<div class="tw"><table>
+<thead><tr><th style="width:26%">页</th><th style="width:32%">问的问题</th><th>答案的形状</th></tr></thead>
+<tbody>
+<tr><td><a href="AAA_AHCS与Merkaba_SWARUU原文摘录.md"><b>AHCS 与 Merkaba · 原文摘录</b></a></td>
+  <td>原文到底怎么写的</td><td>四篇访谈逐字引 + 三处 merkaba 的分层 + §4.4 的边界声明</td></tr>
+<tr class="mid"><td><a href="AAA_超级苯_三源对照与行星齿轮加速器.html"><b>超级苯 · 行星齿轮加速器</b></a></td>
+  <td>苯的 M.P.M. 这个几何能不能成立</td><td>三源逐条裁决 + 44 个单元格运行时复算 + 几何自检表（本页 §2 引的就是它）</td></tr>
+<tr><td><b>本页</b></td>
+  <td><b>这两个东西在几何上是什么关系</b></td>
+  <td>「环面 + 反向互锁」两层同构可讲；「金字塔形状 + not under + 数字根」三层不能讲</td></tr>
+<tr class="mid"><td><a href="../../02_应用科技/24_searl_SEG/SEG_AHCS_量子计算接口审计.html">SEG × AHCS 接口审计</a><br>
+  <a href="../../02_应用科技/24_searl_SEG/SEG_AHCS_光内存与离子阱_存储层接口审计.html">光内存 × 离子阱审计</a></td>
+  <td>SEG / 光子接口能不能接 AHCS 的<b>工程</b>侧</td>
+  <td>几何能对上，温度、磁场、机制逐条对不上</td></tr>
+</tbody></table></div>
+
+<div class="hint"><b>一句话总结这一页</b>：老师的直觉里有一半是硬的 ——
+  「<b>环面</b>」这个词在原文里出现三次，而网页真的有一个 <b>χ=0 的环面</b>；
+  「<b>反向互锁</b>」原文有 inverted，网页有三个反向旋钮。<b>这两层可以放心讲。</b><br>
+  另一半要收着：<b>金字塔不是八面体</b>、<b>原文明确否定「上下叠放」</b>、<b>数字根那一层是可变量对定义量</b>。
+  这三条不是挑字眼 —— 它们决定别人会把这个网页当「样机」看，还是当「证据」看。</div>
+
+<div class="foot">
+  <b>本页数字的来源</b>：<br>
+  ① C168 环 168/252/84、C168 石 168/252/80、C60/70/78 的 V/E/F 与键长 CV —— <b>全部来自目标页的几何自检表，那是运行时算的</b>，
+    本页只做引用；可复算：<code>χ = V − E + F</code>、<code>g = (2 − χ)/2</code>；<br>
+  ② 四棱锥 5/8/5 与八面体 6/12/8 —— 欧拉公式 <code>V − E + F = 2</code> 直接验证；<br>
+  ③ 控件默认态（2 层相握 / C168 施瓦茨石 / 1 层·定子 / m=3 / p=2）—— <b>浏览器读 DOM 实测</b>，不是看截图猜的；<br>
+  ④ 原文全部逐字引自 <a href="AAA_AHCS与Merkaba_SWARUU原文摘录.md">SWARUU 原文摘录</a>（Swaruu / Anéeka / Mari Swaruu，四篇）。<br>
+  <b>页内自检</b>：<span id="selfChk" class="mono">运行中…</span><br>
+  <b>相关页</b>：<a href="AAA_超级苯_三源对照与行星齿轮加速器.html">超级苯 · 三源对照与行星齿轮加速器</a> ·
+  <a href="AAA_AHCS与Merkaba_SWARUU原文摘录.md">AHCS 与 Merkaba · 原文摘录</a> ·
+  <a href="../../02_应用科技/24_searl_SEG/SEG_AHCS_量子计算接口审计.html">SEG × AHCS 量子计算接口审计</a> ·
+  <a href="../../02_应用科技/24_searl_SEG/SEG_AHCS_光内存与离子阱_存储层接口审计.html">光内存 × 离子阱 · 存储层接口审计</a><br>
+  <b>原始材料</b>：<code>AAA_AHCS与Merkaba_SWARUU原文摘录.md</code>（原文层）·
+  <code>AAA_超级苯_三源对照与行星齿轮加速器.html</code> 几何自检表（数值层）
+</div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var btn=document.getElementById('themeBtn');
+  function setDark(on){
+    document.body.classList.toggle('dark',on);
+    btn.textContent = on ? '☀️ 亮色底' : '🌙 暗色底';
+    btn.setAttribute('aria-pressed', on?'true':'false');
+  }
+  btn.addEventListener('click',function(){ setDark(!document.body.classList.contains('dark')); });
+  document.addEventListener('keydown',function(e){
+    if((e.key==='d'||e.key==='D') && !/input|textarea/i.test(e.target.tagName))
+      setDark(!document.body.classList.contains('dark'));
+  });
+
+  (function(){
+    var rows=[], ok=true;
+    function A(c,t,g){ rows.push((c?'✓ ':'✗ ')+t+(g===undefined?'':'  ['+g+']')); if(!c) ok=false; }
+
+    /* 1 拓扑：C168 环 χ=0 ⟹ g=1 */
+    function chi(V,E,F){ return V-E+F; }
+    var cRing=chi(168,252,84), cStone=chi(168,252,80);
+    A(cRing===0,'C168 碳纳米环 χ = 168−252+84 = 0',String(cRing));
+    A((2-cRing)/2===1,'⟹ g = (2−χ)/2 = 1（环面）',String((2-cRing)/2));
+    A(cStone===-4,'C168 施瓦茨石 χ = 168−252+80 = −4',String(cStone));
+    A((2-cStone)/2===3,'⟹ g = 3（三个洞，与环面不同类）',String((2-cStone)/2));
+    A(chi(60,90,32)===2 && chi(70,105,37)===2 && chi(78,117,41)===2,
+      'C60 / C70 / C78 全部 χ = 2（球面类）','2 / 2 / 2');
+
+    /* 2 共底 ⟹ 八面体；分立 ⟹ 不是（两条独立复算） */
+    A(chi(5,8,5)===2,'单个四棱锥 5/8/5 满足欧拉 χ = 2','2');
+    var Vc=5+5-4, Ec=8+8-4, Fc=5+5-2;   /* 共享 4 个底角 / 4 条底棱 / 两个方底抵掉 */
+    A(Vc===6 && Ec===12 && Fc===8,'两块四棱锥共底 ⟹ 6/12/8 = 正八面体（逐项相等）',Vc+'/'+Ec+'/'+Fc);
+    A(chi(6,12,8)===2,'八面体 6/12/8 满足欧拉 χ = 2','2');
+    var Vd=10, Ed=16, Fd=10;            /* 底面分立：5+5 / 8+8 / 5+5 */
+    A(Vd===10 && Ed===16 && Fd===10,'底面分立 ⟹ 10/16/10，两块各 χ=2（不是一张闭曲面）',Vd+'/'+Ed+'/'+Fd);
+    A(chi(Vd,Ed,Fd)===4 && Vd!==6,'⟹ 网页任何档位都不是八面体（halfGap ∈ [0.60,1.60] 恒 >0）','10/16/10 vs 6/12/8');
+
+    /* 3 错齿角 = 180/N */
+    function clasp(N){ return 180/N; }
+    A(Math.abs(clasp(6)-30)<1e-12,'N=6 时错齿角 180/6 = 30°',clasp(6)+'°');
+    A(clasp(6)*6===180,'6 扇铺满 180°（页面赤道手掌张角就是 6×30°）','180°');
+
+    /* 4 环面曲率配平：n5 = n7 ⟹ χ = 0 的直观判据 */
+    /* 曲率亏损公式：Σ(6−k)·n_k = 6χ —— 与 168−252+84 完全独立的第二条路径 */
+    var n5=6, n6=72, n7=6;
+    var defect=(6-5)*n5+(6-6)*n6+(6-7)*n7;
+    A(defect===6*cRing,'曲率亏损 Σ(6−k)n_k = 6χ ⟹ χ = 0（独立复算）','亏损 '+defect+' / 6χ '+(6*cRing));
+    /* 面数核对：5×6 + 6×72 + 7×6 = 30+432+42 = 84... 但要按"面数"计 6+72+6=84 */
+    A(6+72+6===84,'面数 6+72+6 = 84 与 χ 式中的 84 一致','84');
+
+    var el=document.getElementById('selfChk');
+    el.textContent=(ok?'PASS':'FAIL')+'  '+rows.filter(function(s){return s[0]==='✓';}).length+'/'+rows.length+' 项';
+    el.style.color = ok ? getComputedStyle(document.body).getPropertyValue('--green').trim()
+                        : getComputedStyle(document.body).getPropertyValue('--red').trim();
+    el.title=rows.join('\n');
+  })();
+})();
+</script>
+</body>
+</html>

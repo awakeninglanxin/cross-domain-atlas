@@ -1,0 +1,2466 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>蛋形量化与飞行假说 · 1400 种鸟蛋的评估系统</title>
+<style>
+:root{
+  --ink:#1c1c1c; --ink2:#3f3f3f; --dim:#767676; --line:#e2e1dc;
+  --bg:#fafaf7; --panel:#ffffff; --panel2:#f5f4ef; --panel3:#eceae3;
+  --gold:#c8912a; --gold-d:#8a5c10; --gold-l:#f6e5b8;
+  --red:#c0392b; --red-d:#7b1f14; --red-l:#fbeae8;
+  --blue:#1f6feb; --blue-d:#124a9e; --blue-l:#e8f0fd;
+  --green:#2e7d32; --green-d:#1d5420; --green-l:#e9f5ea;
+  --purple:#6a3d9a; --purple-d:#4a2870;
+  --mono:"Cascadia Mono","Consolas","Source Han Mono SC","Microsoft YaHei",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:"Microsoft YaHei","PingFang SC","Hiragino Sans GB","Source Han Sans SC",sans-serif;
+  font-size:14.5px; line-height:1.72; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1560px;margin:0 auto;padding:0 22px 70px}
+
+header{padding:30px 0 18px;border-bottom:1px solid var(--line);margin-bottom:20px}
+h1{margin:0 0 8px;font-size:23px;font-weight:700;letter-spacing:.2px}
+h1 .sub{font-weight:400;color:var(--dim);font-size:15px;margin-left:10px}
+.meta{display:flex;flex-wrap:wrap;gap:8px 20px;color:var(--dim);font-size:12.8px;font-family:var(--mono)}
+.meta b{color:var(--ink2);font-weight:600}
+.kv{display:inline-block;padding:2px 9px;border:1px solid var(--line);border-radius:20px;background:#fff}
+
+nav.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0 22px}
+nav.tabs button{
+  font:inherit;font-size:13.6px;padding:9px 17px;border:1px solid var(--line);
+  background:#fff;color:var(--ink2);border-radius:9px;cursor:pointer;transition:.16s;
+}
+nav.tabs button:hover{border-color:#c9c7c0;background:#fdfcf9}
+nav.tabs button.on{background:var(--ink);color:#fff;border-color:var(--ink);font-weight:600}
+nav.tabs button .n{opacity:.55;margin-right:6px;font-family:var(--mono)}
+nav.tabs button.on .n{opacity:.7}
+
+.view{display:none}
+.view.on{display:block;animation:fade .22s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+.split{display:grid;grid-template-columns:minmax(0,1fr) 392px;gap:18px;align-items:start}
+@media(max-width:1180px){.split{grid-template-columns:1fr}}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.card>h3{margin:0;padding:12px 16px;font-size:13.4px;font-weight:700;color:var(--ink2);
+  border-bottom:1px solid var(--line);background:var(--panel2);letter-spacing:.3px}
+.card .body{padding:15px 16px}
+.card .body.tight{padding:0}
+
+.stage{position:relative;width:100%;background:#fff}
+.stage canvas{display:block;width:100%}
+.stage .hud{position:absolute;left:12px;top:11px;font-family:var(--mono);font-size:11.6px;
+  color:var(--ink2);background:rgba(255,255,255,.92);border:1px solid var(--line);
+  border-radius:8px;padding:7px 10px;line-height:1.6;pointer-events:none;max-width:60%}
+.stage .hud b{color:var(--gold-d)}
+.stage .hud .k{color:var(--blue-d)}
+
+.ctl{margin-bottom:15px}
+.ctl:last-child{margin-bottom:0}
+.ctl label{display:flex;justify-content:space-between;align-items:baseline;
+  font-size:12.8px;color:var(--ink2);margin-bottom:5px}
+.ctl label .v{font-family:var(--mono);color:var(--gold-d);font-weight:700}
+.ctl input[type=range]{width:100%;accent-color:var(--gold);height:20px}
+.ctl .hint{font-size:11.6px;color:var(--dim);margin-top:3px;font-family:var(--mono)}
+
+.btns{display:flex;flex-wrap:wrap;gap:7px;margin-top:4px}
+.btns button{font:inherit;font-size:12.5px;padding:6px 12px;border:1px solid var(--line);
+  background:#fff;border-radius:7px;cursor:pointer;color:var(--ink2)}
+.btns button:hover{border-color:var(--gold);color:var(--gold-d)}
+.btns button.on{background:var(--gold);border-color:var(--gold-d);color:#fff;font-weight:600}
+
+.readout{font-family:var(--mono);font-size:12.4px;background:var(--panel2);
+  border:1px solid var(--line);border-radius:9px;padding:10px 12px;line-height:1.85}
+.readout .row{display:flex;justify-content:space-between;gap:10px}
+.readout .row span:last-child{color:var(--gold-d);font-weight:700}
+.readout .row.hi span:last-child{color:var(--red)}
+.readout .row.ok span:last-child{color:var(--green)}
+.readout .row.b span:last-child{color:var(--blue-d)}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:1000px){.grid2,.grid3{grid-template-columns:1fr}}
+
+table.t{width:100%;border-collapse:collapse;font-size:13px}
+table.t th,table.t td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+table.t th{background:var(--panel2);font-weight:600;color:var(--ink2);font-size:12.4px}
+table.t td.num{font-family:var(--mono);text-align:right;white-space:nowrap}
+table.t tr:hover td{background:#fdfcf8}
+table.t td.hl{background:var(--gold-l);font-weight:700;color:var(--gold-d)}
+table.t caption{caption-side:top;text-align:left;font-size:12.5px;color:var(--dim);padding:0 0 8px}
+table.t td .ok{color:var(--green-d);font-weight:700}
+table.t td .no{color:var(--red-d);font-weight:700}
+
+figure{margin:0}
+figure img{width:100%;display:block;border:1px solid var(--line);border-radius:10px;background:#fff}
+figcaption{font-size:12.4px;color:var(--dim);margin-top:8px;line-height:1.65}
+figcaption b{color:var(--ink2)}
+
+.note{border-left:3px solid var(--gold);background:#fffdf6;padding:11px 14px;border-radius:0 9px 9px 0;
+  font-size:13px;margin:14px 0}
+.note.warn{border-left-color:var(--red);background:#fef6f5}
+.note.ok{border-left-color:var(--green);background:#f5fbf6}
+.note.b{border-left-color:var(--blue);background:#f5f9ff}
+.note.p{border-left-color:var(--purple);background:#faf7fd}
+.note b{color:var(--ink)}
+
+ul.plain{margin:8px 0;padding-left:20px}
+ul.plain li{margin-bottom:6px}
+ol.plain{margin:8px 0;padding-left:22px}
+ol.plain li{margin-bottom:7px}
+
+.proof{font-family:var(--mono);font-size:12.6px;background:var(--panel2);border:1px solid var(--line);
+  border-radius:9px;padding:12px 14px;line-height:1.95;overflow-x:auto}
+.proof b{color:var(--gold-d)}
+.proof .c{color:var(--blue-d)}
+
+.quote{border-left:3px solid var(--ink2);background:#fff;padding:9px 14px;margin:11px 0;
+  font-size:12.9px;color:var(--ink2);font-style:italic;border-radius:0 8px 8px 0}
+.quote .src{display:block;font-style:normal;font-size:11.8px;color:var(--dim);margin-top:5px;font-family:var(--mono)}
+
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12.4px;color:var(--ink2);margin-top:10px}
+.legend i{display:inline-block;width:16px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.legend .dot{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:middle;margin-right:6px}
+
+h2.sec{font-size:17px;margin:26px 0 12px;padding-bottom:7px;border-bottom:1px solid var(--line)}
+h3.sub{font-size:14.6px;margin:20px 0 9px;color:var(--ink2)}
+h4.sub2{font-size:13.4px;margin:16px 0 7px;color:var(--ink2)}
+p{margin:9px 0}
+code{font-family:var(--mono);font-size:12.6px;background:var(--panel3);padding:1.5px 5px;border-radius:4px}
+a.mdlink{color:#8c3b0e;text-decoration:none;border-bottom:1px dashed #c98a4b;padding-bottom:1px}
+a.mdlink:hover{color:#c0392b;border-bottom-style:solid}
+a.pdflink{color:var(--blue-d);text-decoration:none;border-bottom:1px dashed #7ba4e8;padding-bottom:1px}
+a.pdflink:hover{color:var(--red);border-bottom-style:solid}
+
+.badge{display:inline-block;font-size:11px;font-family:var(--mono);padding:2px 8px;border-radius:11px;
+  border:1px solid var(--line);background:#fff;color:var(--ink2);margin-right:6px}
+.badge.a{border-color:#9ec5a4;background:var(--green-l);color:var(--green-d)}
+.badge.b{border-color:#e2c98a;background:#fdf8e9;color:var(--gold-d)}
+.badge.c{border-color:#c9a0e0;background:#f6eefa;color:var(--purple-d)}
+.badge.x{border-color:#e8a9a0;background:var(--red-l);color:var(--red-d)}
+
+.pcard{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;
+  border:1px solid var(--line);border-radius:12px;background:#fff;padding:14px 16px;margin-bottom:12px}
+.pcard .tag{font-family:var(--mono);font-size:11.5px;color:#fff;background:var(--ink);
+  border-radius:8px;padding:6px 9px;text-align:center;line-height:1.35;min-width:66px}
+.pcard h4{margin:0 0 4px;font-size:14.2px}
+.pcard .au{font-size:12.4px;color:var(--dim);margin-bottom:7px}
+.pcard .au b{color:var(--ink2)}
+.pcard dl{margin:0;font-size:12.6px;display:grid;grid-template-columns:auto 1fr;gap:2px 10px}
+.pcard dt{color:var(--dim);font-family:var(--mono);font-size:11.8px}
+.pcard dd{margin:0}
+.pcard .why{margin-top:8px;font-size:12.8px;border-top:1px dashed var(--line);padding-top:8px}
+
+.chain{display:flex;flex-direction:column;gap:0}
+.chain .step{display:grid;grid-template-columns:34px 1fr;gap:12px;padding:11px 0}
+.chain .step .ix{width:28px;height:28px;border-radius:50%;background:var(--ink);color:#fff;
+  font-family:var(--mono);font-size:12.5px;display:flex;align-items:center;justify-content:center;font-weight:700}
+.chain .step.win .ix{background:var(--gold);}
+.chain .step .tx{font-size:13.2px}
+.chain .step .tx b{color:var(--gold-d)}
+.chain .step .tx .fml{font-family:var(--mono);font-size:12.2px;background:var(--panel2);
+  border:1px solid var(--line);border-radius:7px;padding:6px 9px;margin-top:6px;display:block;line-height:1.8}
+.chain .rc{border-left:2px dashed var(--line);margin-left:17px;height:0}
+
+#fatal{display:none;position:fixed;left:0;right:0;top:0;z-index:9999;background:#c0392b;color:#fff;
+  padding:12px 18px;font-size:13.5px;font-family:var(--mono);white-space:pre-wrap}
+.footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);
+  font-size:12.2px;color:var(--dim);font-family:var(--mono);line-height:1.9}
+</style>
+</head>
+<body>
+<div id="fatal"></div>
+
+<div class="wrap">
+
+<header>
+  <h1>蛋形量化与飞行假说<span class="sub">1400 种鸟蛋的评估系统是怎么搭起来的　·　与 Schauberger 锥切蛋的优劣对照</span></h1>
+  <div class="meta">
+    <span class="kv">Stoddard 2017 · <b>Science 356:1249</b></span>
+    <span class="kv">Preston 1953 · <b>Auk 70:160</b></span>
+    <span class="kv">Preston 1968 · <b>Auk 85:454</b></span>
+    <span class="kv">Biggins 2018 · <b>Ecol Evol 8:9728</b></span>
+    <span class="kv">Shi 2023 · <b>Symmetry 15:231</b></span>
+    <span class="kv">样品 <b>49,175 枚 / ~1400 种</b></span>
+    <span class="kv">归档 <b>papers/</b> · 5 篇 · 6.80 MB</span>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="on" data-v="v1"><span class="n">Ⅰ</span>原论文归档</button>
+  <button data-v="v2"><span class="n">Ⅱ</span>评估系统怎么搭起来的</button>
+  <button data-v="v3"><span class="n">Ⅲ</span>核心量化蛋形的推导</button>
+  <button data-v="v4"><span class="n">Ⅳ</span>为何飞行强的鸟蛋更拉长更不对称</button>
+  <button data-v="v5"><span class="n">Ⅴ</span>Schauberger 蛋形 优势与缺点</button>
+  <button data-v="v6"><span class="n">Ⅵ</span>数据 · 分级 · 结论</button>
+</nav>
+
+<main>
+
+<!-- ==================== 视图 Ⅰ ：论文归档 ==================== -->
+<section id="v1" class="view on">
+
+  <div class="note b">
+    <b>本页的用法</b>：五篇原始论文已全部下载到本页同级的 <code>papers/</code> 目录（<b>可点击蓝色链接直接打开 PDF</b>），
+    逐篇的 DOI、卷期页码、许可协议与下载途径另见 <a class="mdlink" href="papers/SOURCES.md"><code>papers/SOURCES.md</code></a>。
+    正文的文字版另存为 <a class="mdlink" href="04_蛋形量化与飞行假说.md"><code>04_蛋形量化与飞行假说.md</code></a>。
+  </div>
+
+  <div class="pcard">
+    <div class="tag">主线索<br>7 页</div>
+    <div>
+      <h4>Avian egg shape: Form, function, and evolution</h4>
+      <div class="au">Mary Caswell Stoddard, Ee Hou Yong, Derya Akkaynak, Catherine Sheard, Joseph A. Tobias, L. Mahadevan</div>
+      <dl>
+        <dt>期刊</dt><dd>Science <b>356</b>(6344): <b>1249–1254</b>（2017-06-23）</dd>
+        <dt>DOI</dt><dd>10.1126/science.aaj1945</dd>
+        <dt>许可</dt><dd>© 2017 AAAS；Science 为订阅制，本件为机构托管版，仅供阅读引用</dd>
+        <dt>本地</dt><dd><a class="pdflink" href="papers/stoddard2017_science_eggshape.pdf">papers/stoddard2017_science_eggshape.pdf</a> · 1.38 MB</dd>
+      </dl>
+      <div class="why"><b>为什么是主线索</b>：全文用「形态测量 + 力学模型 + 宏观进化」三条线分析 <b>1400 种鸟蛋</b>，
+      是「<b>飞行能力强的鸟，蛋更拉长、更不对称</b>」这一结论的<b>原始出处</b>。本页 Ⅳ 的全部论断以此文为准。</div>
+    </div>
+  </div>
+
+  <div class="pcard">
+    <div class="tag">方程本体<br>24 页</div>
+    <div>
+      <h4>The Shapes of Birds' Eggs</h4>
+      <div class="au">F. W. Preston（单作者）</div>
+      <dl>
+        <dt>期刊</dt><dd>The Auk <b>70</b>(2), Article 5, <b>pp. 160–182</b>（1953）</dd>
+        <dt>DOI</dt><dd>无（1953 年 Auk 历史卷不分配 DOI）</dd>
+        <dt>永久链接</dt><dd>digitalcommons.usf.edu/auk/vol70/iss2/5</dd>
+        <dt>许可</dt><dd>由 SORA（Searchable Ornithological Research Archive）数字化并免费开放</dd>
+        <dt>本地</dt><dd><a class="pdflink" href="papers/preston1953_shape_of_birds_eggs.pdf">papers/preston1953_shape_of_birds_eggs.pdf</a> · 1.24 MB</dd>
+      </dl>
+      <div class="why"><b>为什么关键</b>：本页 Ⅲ 推导所依据的 <b>Eq.(3) / Eq.(6) / Eq.(6a) / Eq.(6b) / Eq.(6c)</b> 全部出自本文。
+      原文还给出了三种命名的蛋型：<i>Simple Ovoid</i>、<i>Standard Avian Egg-Shape</i>、<i>Alcid Ovoid</i>。</div>
+    </div>
+  </div>
+
+  <div class="pcard">
+    <div class="tag">三指数<br>10 页</div>
+    <div>
+      <h4>The Shapes of Birds' Eggs: Mathematical Aspects</h4>
+      <div class="au">F. W. Preston</div>
+      <dl>
+        <dt>期刊</dt><dd>The Auk <b>85</b>: <b>454–463</b>（1968-07）</dd>
+        <dt>DOI</dt><dd>无</dd>
+        <dt>许可</dt><dd>SORA 数字化免费开放</dd>
+        <dt>本地</dt><dd><a class="pdflink" href="papers/preston1968_mathematical_aspects.pdf">papers/preston1968_mathematical_aspects.pdf</a> · 0.50 MB</dd>
+      </dl>
+      <div class="why"><b>为什么关键</b>：本文给出 <b>asymmetry / bicone / elongation</b> 三个无量纲指数的<b>原始定义</b>
+      （Eq.6/7 解析版、Eq.10/11 实用版），并写下本页 Ⅲ 的枢纽句：
+      「奇次与偶次下标 c <b>完全分离</b>，bicone 不影响 asymmetry，反之亦然」。</div>
+    </div>
+  </div>
+
+  <div class="pcard">
+    <div class="tag">批评校正<br>12 页</div>
+    <div>
+      <h4>Accurately quantifying the shape of birds' eggs</h4>
+      <div class="au">J. D. Biggins, J. E. Thompson, T. R. Birkhead</div>
+      <dl>
+        <dt>期刊</dt><dd>Ecology and Evolution <b>8</b>(19): <b>9728–9738</b>（2018）</dd>
+        <dt>DOI</dt><dd>10.1002/ece3.4412</dd>
+        <dt>许可</dt><dd><b>CC BY 4.0</b>（可分发、改编、商用，须署名）</dd>
+        <dt>本地</dt><dd><a class="pdflink" href="papers/biggins2018_quantifying_shape.pdf">papers/biggins2018_quantifying_shape.pdf</a> · 1.77 MB</dd>
+      </dl>
+      <div class="why"><b>为什么关键</b>：① 明确指出 Stoddard 用的是 <b>Baker (2002) 两参数式</b>，
+      且该方法<b>对梨形蛋量化不准、故梨形蛋被排除</b>；② 指出真正用<b>傅里叶技术</b>的是 <b>Attard et al. (2017)</b>；
+      ③ 用同一枚海雀蛋实测：Preston 误差 <b>0.00091</b> vs Baker 误差 <b>0.0116</b>（差 <b>12.7 倍</b>）；
+      ④ 推荐 Preston 四参数为<b>未来所有蛋形研究的起点</b>。</div>
+    </div>
+  </div>
+
+  <div class="pcard">
+    <div class="tag">现代实现<br>10 页</div>
+    <div>
+      <h4>A New Program to Estimate the Parameters of Preston's Equation, a General Formula for Describing the Egg Shape of Birds</h4>
+      <div class="au">Peijian Shi, Lin Wang, Brady K. Quinn, Johan Gielis</div>
+      <dl>
+        <dt>期刊</dt><dd>Symmetry <b>15</b>(1): <b>231</b>（2023-01-13）</dd>
+        <dt>DOI</dt><dd>10.3390/sym15010231</dd>
+        <dt>许可</dt><dd><b>CC BY 4.0</b>（MDPI 开放获取）</dd>
+        <dt>本地</dt><dd><a class="pdflink" href="papers/shi2023_preston_eq_program.pdf">papers/shi2023_preston_eq_program.pdf</a> · 1.92 MB</dd>
+      </dl>
+      <div class="why"><b>为什么关键</b>：把 Preston 方程从 1953 年的纸面变成<b>可运行的估计程序</b>。
+      并指出传统做法（改写为 Todd–Smart 式 + 把蛋长缩放到 2）<b>隐含假设「过两端最远两点的直线就是中线」</b>、
+      即假设拍照轮廓<b>完全左右对称</b> —— 这个假设因拍摄误差和摆放误差「很少成立」。
+      本文提出 <b>optimPE</b>（自动搜索最优中线）来修正，实测优于传统 <b>lmPE</b>（多元线性回归）。</div>
+    </div>
+  </div>
+
+  <div class="note warn">
+    <b>两处如实登记（不臆造、不静默）</b>
+    <ul class="plain">
+      <li><b>文件名勘误</b>：第五篇最初误存为 <code>narushin2023_*.pdf</code>。逐页读首页后确认实际第一作者是
+      <b>Shi, P.</b>（Narushin 不是本文作者，他是另一篇常被并列引用的蛋形公式作者）。<b>已改名</b>。
+      → 记入本项目工程铁律：<b>文件名不可当作者用，必须读首页署名</b>。</li>
+      <li><b>未获取的一篇</b>：Biggins 2022《Preston's universal formula for avian egg shape》（Ornithology / OUP），
+      OpenAlex 标 <code>oa_status = closed</code>，Wayback 各时间戳直连超时（150 s）。
+      <b>不影响本页结论</b> —— 本页所需的 Eq.(6)/(6a)/(6b)/(6c) 与三指数定义已在前两篇原文中取得。
+      如日後引用 2022 年观点，须标「未见原文，转引」。</li>
+    </ul>
+  </div>
+
+</section>
+<!-- ==================== 视图 Ⅱ ：评估系统 ==================== -->
+<section id="v2" class="view">
+
+  <h2 class="sec">从一个想法到能跑统计的评估系统：七步链</h2>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Stoddard et al. (2017) 的实际技术路线</h3>
+      <div class="body">
+        <div class="chain">
+
+          <div class="step">
+            <div class="ix">1</div>
+            <div class="tx"><b>建数据集</b> —— 不是「找 1400 张图」，而是把博物馆藏卵做了数字化形态测量。
+              <span class="fml">49,175 枚蛋　→　约 1,400 种（≈ 全部鸟种的 14%）　→　35 个现生目 + 2 个灭绝目</span>
+            </div>
+          </div>
+          <div class="rc"></div>
+
+          <div class="step">
+            <div class="ix">2</div>
+            <div class="tx"><b>把每枚蛋的轮廓抽成一条平面子午线</b>（蛋绕长轴旋转对称 ⇒ 二维子午线就完全决定形状），
+              并<b>归一到同一长度</b>去掉大小影响。
+              <span class="fml">归一化：长轴 = 1，轴向坐标 v ∈ [−1, 1]</span>
+            </div>
+          </div>
+          <div class="rc"></div>
+
+          <div class="step win">
+            <div class="ix">3</div>
+            <div class="tx"><b>拟合一个只有两个参数的形状模型</b> —— 这是全链最关键的一步。
+              Stoddard 用的是 <b>Baker (2002) 的两参数闭式</b>（由 Biggins 2018 明确指出）：
+              <span class="fml">y(v) = T · (1+v)<sup>1/(1+λ)</sup> · (1−v)<sup>λ/(1+λ)</sup>
+T  = 赤道半宽 / 长轴（管「胖瘦」）
+λ  = 不对称参数；λ = 1 时该式退化为椭圆 y = T√(1−v²)</span>
+            </div>
+          </div>
+          <div class="rc"></div>
+
+          <div class="step win">
+            <div class="ix">4</div>
+            <div class="tx"><b>从拟合参数里抽出两个「生物学上有意义」的变量</b> —— 减 1 是为了让圆（或椭圆）对应 0：
+              <span class="fml">asymmetry  A = max{λ, 1/λ} − 1        ← 用 max 是为了正确处理近对称情形
+ellipticity E = (1/T) − 1 = (L/d) − 1   ← d = 赤道直径，L = 长轴</span>
+              注意：<b>A 与 E 都是无量纲形状量，与蛋的大小无关</b>。
+            </div>
+          </div>
+          <div class="rc"></div>
+
+          <div class="step">
+            <div class="ix">5</div>
+            <div class="tx"><b>把 1400 个点画进二维形态空间（morphospace）</b> —— A 作横轴、E 作纵轴。
+              这一步让「形状多样性」第一次变成一个<b>可以看、可以测量占据域</b>的几何对象（见右侧图）。
+            </div>
+          </div>
+          <div class="rc"></div>
+
+          <div class="step">
+            <div class="ix">6</div>
+            <div class="tx"><b>挂上系统发育树</b> —— 取其中 <b>1,209 个有分子序列的种</b>建树，
+              把蛋长、A、E 映射到树枝末端。这样才能区分「共同祖先遗传」与「独立适应」。
+              <span class="fml">观察：高度不对称的蛋在<b>企鹅</b>和<b>鸻鹬</b>里<b>各自独立演化出来</b>（平行演化）</span>
+            </div>
+          </div>
+          <div class="rc"></div>
+
+          <div class="step win">
+            <div class="ix">7</div>
+            <div class="tx"><b>贝叶斯系统发育混合效应模型 + 飞行能力指标 HWI</b> —— 这才是「评估系统」的判决环节：
+              <span class="fml">HWI = Kipp's distance / total wing chord
+Kipp's distance = 最长初级飞羽尖端 → 第一枚次级飞羽尖端 的距离
+wing chord      = 腕关节 → 翼尖 的距离
+⇒ HWI 高 = 翼尖更窄更尖 = 飞行效率/扩散能力更强</span>
+              把 A、E 对成虫体重、窝卵数、食性、巢型、巢位、发育模式、纬度/温度/降水、HWI 一起回归。
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="margin-bottom:16px">
+        <h3>蛋形形态空间（asymmetry × ellipticity）</h3>
+        <div class="body tight">
+          <div class="stage">
+            <canvas id="cvMorph" width="740" height="700"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
+        <h3>图例与实测边界（数值全部取自原文）</h3>
+        <div class="body">
+          <div class="readout" id="roMorph"></div>
+        </div>
+      </div>
+
+      <div class="note p">
+        <b>★ 三个必须写清的观察（原文）</b>
+        <ol class="plain">
+          <li><b>蛋形是连续的</b>：传统分类（球形/椭圆/锥形/梨形）之间<b>没有分界</b>。
+            A 从 0.001 连续铺到 0.485，E 从 0.097 连续铺到 0.724。</li>
+          <li><b>「最典型的蛋形」不是鸡蛋</b>：密度图显示大量物种汇聚在 <b>A ∈ [0.1, 0.2]、E ∈ [0.3, 0.4]</b>，
+            形状接近 <i>Prinia gracilis</i>（优雅鹪莺）的蛋，而<b>不是</b>大家熟悉的「鸡蛋」——家鸡的祖先红原鸡（<i>Gallus gallus</i>）的蛋形。
+            原文直言：文献里常列的传统蛋形分类，<b>没有任何一类落在真正最常见的蛋形附近</b>。</li>
+          <li><b>某个区域被自然「空着」</b>：占据域是三角形，<b>缺少「球形但不对称」</b>的蛋（原文比喻像热气球）。
+            原文给出的解释是二选一：要么膜性质极端变化在演化上难以实现（受约束），
+            要么这种形状能出现但被强烈选择淘汰（不适适应）。</li>
+        </ol>
+      </div>
+
+      <div class="note warn">
+        <b>★ 这个框架最大的伤口（Biggins 2018 点名）</b><br>
+        Baker 两参数式<b>对梨形蛋（pyriform，如海雀、鸻鹬）拟合很差</b>，于是 Stoddard 把这类蛋
+        <b>直接排除了</b>。原文写道：
+        <div class="quote">"…this method did not quantify the shape of pyriform eggs sufficiently accurately
+          and so they were excluded from their analysis."
+          <span class="src">Biggins, Thompson &amp; Birkhead 2018, Ecology and Evolution 8:9728（引 Stoddard 2017 fig. S2）</span>
+        </div>
+        而<b>恰好</b>，梨形蛋正是「不对称度」最极端的那一端 —— 也就是说，<b>评估系统在最有信息量的区域失明</b>。
+        这正是下一节要引入 Preston 四参数的直接原因。
+      </div>
+    </div>
+  </div>
+
+</section>
+<!-- ==================== 视图 Ⅲ ：推导 ==================== -->
+<section id="v3" class="view">
+
+  <div class="note b">
+    <b>本节目标</b>：把「核心量化蛋形」的方程<b>从零推出来</b>，而不是把结论抄一遍。
+    推导严格按 Preston 1953 → Preston 1968 → Biggins 2018 三篇原文的顺序走，
+    每一步后面跟<b>本项目自己跑出来的数值验证</b>（脚本 <code>src/egg_shape_indices_verify.py</code>，结果 <code>data/egg_shape_indices_verify.json</code>）。
+  </div>
+
+  <h2 class="sec">Ⅲ-1　起点：蛋是一条「圆 + 修正」的平面子午线</h2>
+
+  <p>蛋有绕长轴的旋转对称 ⇒ 平面子午线完全决定形状。取长轴水平、两极点置于 <code>x = ±1</code>（于是<b>长轴长 = 2</b>），
+  把子午线写成「圆乘一个修正因子」：</p>
+
+  <div class="proof">
+    y(x) = <b>f(x)</b> · √(1 − x²)　　　　　　　<b>Eq.(1)</b>　<span class="c">← Biggins 2018 的现代记号</span>
+
+    f(x) ≡ 1　　　　　　　　　　→ 圆
+    f(x) ≡ T　　　　　　　　　　→ 长轴水平的椭圆（T = 短轴/长轴）
+    f(x) = T(1 + a·x)　　　　　 → Preston 的 <b>Simple Ovoid</b>
+    f(x) = T(1 + a·x + b·x²)　　→ Preston 的 <b>Standard Avian Egg-Shape</b>
+    f(x) = T(1 + a·x + b·x² + c·x³)　→ <b>通用四参数式</b>（梨形 Alcid 蛋必须用三次项）
+  </div>
+
+  <div class="note warn">
+    <b>⚠️ 第一号口径陷阱：同一篇文献有两套记号</b><br>
+    Preston 1953 自己写的是<b>参数式</b>、且长轴竖着放：
+    <div class="proof" style="margin-top:8px">
+      y = a·sin θ
+      x = b·cos θ · (1 + c₁·sin θ + c₂·sin²θ + c₃·sin³θ)　　<b>Eq.(6)</b>
+      ────────────────────────────────────────────────
+      a = L/2（长半轴）　　b = <b>赤道</b>半宽　　θ = 偏心角（eccentric angle）
+    </div>
+    而 Biggins 2018 为了和 Baker/Carter/Troscianko 各家并列比较，把它改写成了<b>显式式</b>（上式 Eq.(1) 形式）。
+    两套记号的对应是：
+    <div class="proof" style="margin-top:8px">
+      Preston 1953 的 <b>c₁</b>　↔　Biggins 的 <b>a</b>　（sin θ 的<b>一次</b>幂）
+      Preston 1953 的 <b>c₂</b>　↔　Biggins 的 <b>b</b>　（<b>二次</b>幂）
+      Preston 1953 的 <b>c₃</b>　↔　Biggins 的 <b>c</b>　（<b>三次</b>幂）
+      且 Biggins 的 x = sin θ，正是 Preston 的<b>长轴坐标</b>
+    </div>
+    <b>本页及本项目脚本统一采用 Preston 原记号 <code>(c₁, c₂, c₃)</code></b>，避免混用。
+  </div>
+
+  <h3 class="sub">Ⅰ-校正：Preston 1953 的四条方程 —— 编号必须读原文（本项目曾错位）</h3>
+
+  <table class="t">
+    <caption>Preston 1953 原文 (pp.163–164) 逐条核对结果</caption>
+    <tr><th style="width:78px">原文编号</th><th>方程</th><th>Preston 的命名</th><th>用途</th></tr>
+    <tr><td><b>Eq.(3)</b></td><td class="num">x = b·cosθ·(1 + c₁sinθ)</td><td>Simple Ovoid（"perfect ovoid"）</td><td>最简近似</td></tr>
+    <tr><td><b>Eq.(6)</b></td><td class="num">x = b·cosθ·(1 + c₁sinθ + c₂sin²θ + c₃sin³θ)</td><td>通用式</td><td>任意蛋</td></tr>
+    <tr><td><b>Eq.(6a)</b></td><td class="num">x = b·cosθ·(1 + c₁sinθ + c₂sin²θ)</td><td><b>Standard Avian Egg-Shape</b></td><td>除海雀外的绝大多数蛋</td></tr>
+    <tr><td><b>Eq.(6b)</b></td><td class="num">x = b·cosθ·(1 + c₁sinθ)</td><td>Simple Ovoid</td><td>"a few eggs"</td></tr>
+    <tr><td><b>Eq.(6c)</b></td><td class="num">x = b·cosθ·(1 + c₂sin²θ)</td><td>——</td><td>「<b>两端 virtually alike</b>」的蛋</td></tr>
+  </table>
+
+  <div class="note">
+    ★ <b>一处易混，先说明白</b>：<b>Eq.(3) 与 Eq.(6b) 是同一个式子</b>（形式与命名都相同）。
+    Preston 先用 <b>Eq.(3)</b> 提出最简 ovoid（原文：<i>"This equation represents what I shall call the
+    'simple' or 'perfect' ovoid."</i>），之后在 <b>Eq.(4) → (5) → (6)</b> 的一般化体系里，
+    把它退化为「只保留 c₁」的特例，即 <b>Eq.(6b)</b>（原文 p.165：<i>"equation (6b), that for the
+    Simple Ovoid"</i>）。<b>两行并列不是写重了，而是同一对象在「提出期」与「编号期」的两个编号。</b>
+    <br>★ 本文另给两个术语（原文原话，A 级）：把 c₂ 称为 <b>Biconical Term</b>
+    （<i>"This has the effect of making both ends of the egg slightly more conical than in the Simple Ovoid.
+    We may therefore call this the Biconical Term"</i>），并把<b>只含 c₁ 与 c₂</b> 的蛋形称为
+    <b>Standard Avian Egg-Shape</b>（<i>"refer to eggs having only c₁ and c₂ terms as the Standard Avian
+    Egg-Shape, for c₃ is usually zero or negligible"</i>）—— 这正是 <b>Eq.(6a)</b>。
+  </div>
+
+  <div class="note warn">
+    <b>⚠️ 本项目在此处犯过一次真错，如实记录</b>：早前把「只用 c₁ 的式子」记成 Eq.(6a)、
+    「只用 c₂ 的式子」记成 Eq.(6b)，<b>各错一位</b>；实际是 <b>Eq.(6b) = 只用 c₁</b>、<b>Eq.(6c) = 只用 c₂</b>。
+    式子本身与计算无误，只有<b>编号标错</b>。现已按原文校正。
+    → 记入工程铁律：<b>引用历史文献的方程编号，必须回原文逐条数，不许凭印象</b>。
+  </div>
+
+  <h2 class="sec">Ⅲ-2　枢纽：奇次项管不对称，偶次项管双锥 —— 而且互不干扰</h2>
+
+  <div class="quote" style="border-left-color:var(--gold)">
+    "We might therefore logically define the right hand side of these equations as the asymmetry and the bicone
+    respectively. This would be, in principle, the right thing to do, because
+    <b>the odd and even subscripts of the 'c's are completely separated and there is no effect of bicone on
+    asymmetry or vice versa.</b>"
+    <span class="src">F. W. Preston 1968, The Auk 85:458 — 本页全篇的枢纽句</span>
+  </div>
+
+  <p>Preston 1953 也早说过同一件事的另一面：</p>
+  <div class="quote">
+    "…the effect of a non-negligible c₃ is to <b>emphasize the attenuation of one end of the egg and the blunting of
+    the other</b>, whereas the coefficients of even terms (c₂ for instance) <b>attenuate, or blunt, both ends equally</b>."
+    <span class="src">F. W. Preston 1953, The Auk 70:164</span>
+  </div>
+
+  <p>本项目把它写成可检验的<b>对称性判据</b>，并实测（脚本 ①②）：</p>
+
+  <div class="proof">
+    <b>判据 A　长轴镜像</b>（θ → π − θ ⇒ (x, y) → (−x, y)）
+      对<b>任意</b> c₁, c₂, c₃ <b>恒成立</b>　　残差 ≈ 1e−15　<span class="c">← 这是「旋转体」的前提，不可能破</span>
+
+    <b>判据 B　半周对称</b>（θ → θ + π ⇒ (x, y) → (−x, −y)，即「两端 virtually alike」）
+      <b>⇔　c₁ = 0 且 c₃ = 0</b>（只留偶次项）
+  </div>
+
+  <table class="t">
+    <caption>实测（脚本 ①）：半周对称残差 —— 数值上精确复现判据 B</caption>
+    <tr><th>算例</th><th class="num">c₁</th><th class="num">c₂</th><th class="num">c₃</th><th class="num">半周残差</th><th>结论</th><th class="num">长轴镜像残差</th></tr>
+    <tr><td>圆</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">2.05e−15</td><td class="ok">半周对称</td><td class="num">6.9e−16</td></tr>
+    <tr><td>纯双锥 c₂ = −0.10</td><td class="num">0</td><td class="num">−0.10</td><td class="num">0</td><td class="num">2.03e−15</td><td class="ok">半周对称</td><td class="num">8.1e−16</td></tr>
+    <tr><td>纯不对称 c₁ = −0.25</td><td class="num">−0.25</td><td class="num">0</td><td class="num">0</td><td class="num">2.50e−01</td><td class="no">破缺</td><td class="num">8.1e−16</td></tr>
+    <tr><td>纯三次 c₃ = −0.03</td><td class="num">0</td><td class="num">0</td><td class="num">−0.03</td><td class="num">1.95e−02</td><td class="no">破缺</td><td class="num">8.1e−16</td></tr>
+    <tr><td>黄金蛋的 Preston 拟合</td><td class="num">−0.0865</td><td class="num">−0.0440</td><td class="num">−0.0206</td><td class="num">9.73e−02</td><td class="no">破缺</td><td class="num">9.2e−16</td></tr>
+    <tr><td>海雀(Murre)型</td><td class="num">−0.2200</td><td class="num">−0.0100</td><td class="num">−0.0700</td><td class="num">2.57e−01</td><td class="no">破缺</td><td class="num">9.2e−16</td></tr>
+  </table>
+
+  <div class="note ok">
+    <b>这条判据的意义</b>：它把「不对称 / 双锥」从<b>形容词</b>变成了<b>代数条件</b>。
+    ⇒ 你<b>想只改不对称而不碰双锥</b>，唯一办法就是只动 c₁、c₃；
+    ⇒ 你<b>想造一个两端完全一样的蛋</b>（Preston 的 Eq.6c 型），必须令 c₁ = c₃ = 0。
+    这就是为什么 Preston 的四参数是<b>恰好够用</b>的：奇部 2 个自由度 + 偶部 1 个自由度 + 尺度 1 个。
+  </div>
+
+  <h2 class="sec">Ⅲ-3　从「两端曲率」走到三个指数（Preston 1968 Eq.1 → 2 → 4/5 → 6/7 → 10/11）</h2>
+
+  <div class="proof">
+    <b>Step 1</b>　参数式（原文 Eq.1）：
+      y = a·sin θ，　x = b·cos θ·(1 + c₁sinθ + c₂sin²θ + c₃sin³θ + …)
+
+    <b>Step 2</b>　极点曲率（原文 Eq.2；R<sub>B</sub> = 钝端最大内切圆半径，R<sub>P</sub> = 尖端）：
+      R<sub>B</sub> / R<sub>P</sub> = [ (1 + c₁ + c₂ + c₃ + …) / (1 − c₁ + c₂ − c₃ + …) ]²
+
+      　★ 为什么偏偏在极点这么写？原文解释：sin θ 只在 ±1 之间，
+      　除极点外高次幂都极小，<b>唯独在极点 sinⁿθ ≡ 1</b>（不管 n 多大）
+      　⇒ 极点处「c₃ 和 c₁ 一样重要」。
+
+    <b>Step 3</b>　开方、相减/相加（原文 Eq.4/5），奇部与偶部被彻底分开：
+      (√R<sub>B</sub> − √R<sub>P</sub>)·√(a/2b) = c₁ + c₃ + c₅ + …
+      (√R<sub>B</sub> + √R<sub>P</sub>)·√(a/2b) = 1 + c₂ + c₄ + …
+
+    <b>Step 4</b>　于是定义（原文 Eq.6/7）：
+      <b>Asymmetry ≡ Σ c<sub>奇</sub></b> = (√R<sub>B</sub> − √R<sub>P</sub>)·√(a/2b)
+      <b>Bicone　  ≡ Σ c<sub>偶</sub> − 1</b> = (√R<sub>B</sub> + √R<sub>P</sub>)·√(a/2b) − 1
+
+    <b>Step 5</b>　实用版（原文 Eq.10/11）—— 原文说明为制表方便，干脆把所有根号去掉，
+      「quite usefully though a little arbitrarily」：
+      <b>Asymmetry = (R<sub>B</sub> − R<sub>P</sub>) · L / B²</b>
+      <b>Bicone　  = (R<sub>B</sub> + R<sub>P</sub>) · L / B² − 1</b>
+    （L = 长轴，B = 最大直径；两式对圆都取 0，这正是「减 1」的用意）
+  </div>
+
+  <p><b>本项目的数值验证（脚本 ②）</b>：把极点曲率<b>数值</b>算出来，与原文 Eq.(2) 的解析式对比：</p>
+
+  <table class="t">
+    <caption>极点曲率比 R<sub>B</sub>/R<sub>P</sub>：数值解 vs Preston 1968 Eq.(2) 解析式</caption>
+    <tr><th>算例</th><th class="num">数值直算</th><th class="num">解析式 ((1+c₁+c₂+c₃)/(1−c₁+c₂−c₃))²</th><th class="num">相对差</th></tr>
+    <tr><td>圆</td><td class="num">1.000000</td><td class="num">1.000000</td><td class="num">0.0000%</td></tr>
+    <tr><td>椭圆 (c₂ = −0.05)</td><td class="num">1.000000</td><td class="num">1.000000</td><td class="num">0.0000%</td></tr>
+    <tr><td>纯不对称 c₁ = −0.25</td><td class="num">0.360000</td><td class="num">0.360000</td><td class="num">0.0000%</td></tr>
+    <tr><td><b>纯双锥 c₂ = −0.10</b></td><td class="num">1.000000</td><td class="num">1.000000</td><td class="num">0.0000%</td></tr>
+    <tr><td>纯三次 c₃ = −0.03</td><td class="num">0.886888</td><td class="num">0.886888</td><td class="num">0.0000%</td></tr>
+    <tr><td>黄金蛋拟合</td><td class="num">0.637701</td><td class="num">0.637701</td><td class="num">0.0000%</td></tr>
+    <tr><td>海雀型</td><td class="num">0.299072</td><td class="num">0.299072</td><td class="num">0.0000%</td></tr>
+  </table>
+
+  <div class="note ok">
+    <b>7/7 相对差 = 0.0000%</b> —— 解析式被完全复现。
+    同时得到一条极有用的结论：<b>纯双锥蛋（只留 c₂）的端点曲率比恒 = 1</b> ——
+    也就是「两端曲率完全相同」。这个「= 1」在后文 Ⅴ 节会成为 Schauberger 锥切蛋族的<b>硬墙</b>。
+  </div>
+
+  <h2 class="sec">Ⅲ-4　第二号口径陷阱：b 不是最大半宽</h2>
+
+  <div class="quote" style="border-left-color:var(--red)">
+    "Note that <b>b is not half the maximum breadth</b>, though it may be, and usually is, very close to it.
+    Unfortunately with the more extreme-shaped eggs, <b>the difference is substantial</b>, and this has been the
+    deciding point in our treatment of the subject for the Handbook."
+    <span class="src">F. W. Preston 1968, The Auk 85:458 — 原文自己先警告了</span>
+  </div>
+
+  <p><b>实测（脚本 ③）</b>：把 b 固定为 1，量出曲线真正的最大半宽：</p>
+
+  <table class="t">
+    <caption>b 与真量测最大半宽的差距</caption>
+    <tr><th>算例</th><th class="num">b（赤道半宽）</th><th class="num">真量测最大半宽</th><th class="num">差</th></tr>
+    <tr><td>圆 / 椭圆 / 纯双锥</td><td class="num">1.000000</td><td class="num">1.000000</td><td class="num">0.000%</td></tr>
+    <tr><td class="hl">黄金蛋的 Preston 拟合</td><td class="num">1.000000</td><td class="num">1.003423</td><td class="num hl">+0.341%</td></tr>
+    <tr><td>海雀(Murre)型</td><td class="num">1.000000</td><td class="num">1.023084</td><td class="num">+2.256%</td></tr>
+    <tr><td>纯不对称 c₁ = −0.25</td><td class="num">1.000000</td><td class="num">1.029166</td><td class="num">+2.834%</td></tr>
+  </table>
+
+  <div class="note warn">
+    <b>★ 这一条不是学究式考据，它抓到过本项目的真 bug（而且是两个）</b>：本项目主页面（<a class="mdlink" href="蛋形双锥斜切_3D交互对照.html">双锥斜切 3D 对照</a>）
+    的 <code>fitEgg()</code> 曾把拟合参数 <code>B</code> 直接当成量测到的形状指数 <code>SI</code> 使用，
+    于是 JS 读出 <b>0.7142312</b>，与真值 <b>0.7166758</b> 差了 <b>0.34%</b>，而且同页另一处表还写 0.357116 与之自相矛盾。
+    修法：JS 改为<b>20000 点真量测</b>最大半宽，与锥切蛋的 <code>cutEgg()</code> 统一口径。
+    <b>+0.341% 正是上表中黄金蛋拟合那一行的数字</b> —— 与 bug 的误差量级完全对上。
+    <br><br>
+    <b>★ 顺带抓出第二个 bug：Python 侧的读数自己也有独立偏差（2026-10-12 修）</b>。
+    本页所有「Python 读数」出自 <code>src/egg_harmonic_symmetry.py</code>，它对 Preston 曲线先
+    <code>unitize</code>（按 y 极差归一化）再取 <code>max|x|</code>。而
+    <code>preston_full → preston_profile</code> 的轴向采样刻意取
+    <code>v ∈ [−(1−10⁻⁵), 1−10⁻⁵]</code>（避开端点处 1/√(1−v²) 与 1/s³ 的奇点）⇒
+    <b>y 极差 = 0.99999·L</b>，<code>unitize</code> 于是把 x 放大 1/0.99999 = <b>1.00001 倍</b>，
+    SI 被<b>系统性抬高 1×10⁻⁵ 相对量</b>。这与 JS 侧真量测的差恰好是
+    <code>0.7166757568 × 1.00001 = 0.7166829</code> —— 两次独立偏差数值上完全吻合，可以确信根因。
+    修法：SI 改为<b>直接由模型算</b> <code>2·max|x| / L_true</code>，不再经过 <code>unitize</code>。
+    （<code>max|x|</code> 在轴向内部、赤道附近取得，端点排除对它无影响 ⇒ 该式为精确值。）
+    修后 Python 侧 <b>0.7166757563</b> 与 JS 侧 <b>0.7166757568</b> 只差 <b>5.3×10⁻¹⁰</b>。
+  </div>
+
+  <h2 class="sec">Ⅲ-5　Baker 两参数式（Stoddard 实际用的那一个）</h2>
+
+  <div class="proof">
+    y(v) = T · (1+v)<sup>1/(1+λ)</sup> · (1−v)<sup>λ/(1+λ)</sup>　　　　<span class="c">Baker 2002；Biggins 2018 Eq.(3)/(4)</span>
+
+    只有 2 个参数：T（胖瘦）与 λ（不对称）。λ = 1 时退化为椭圆。
+    Stoddard 取：　A = max{λ, 1/λ} − 1　　E = (1/T) − 1 = (L/d) − 1
+  </div>
+
+  <p>Biggins 2018 把各家公式放进同一个框架 <code>y = f(x)√(1−x²)</code> 里比了拟合质量
+  （误差定义沿用 Biggins Eq.(6)：长轴归一到 1 时的均方根半宽差）。同一枚海雀蛋（guillemot C126，N = 3,488 点/侧）：</p>
+
+  <table class="t">
+    <caption>同一枚海雀蛋上各家公式的拟合误差（倍数以 Preston 为基准）</caption>
+    <tr><th>方法</th><th class="num">参数个数</th><th class="num">误差</th><th class="num">相对 Preston</th></tr>
+    <tr><td class="hl">Preston 1953 四参数</td><td class="num">4</td><td class="num">0.00091</td><td class="num hl">1.0 ×（基准）</td></tr>
+    <tr><td>Troscianko 2014（四项扩展）</td><td class="num">4</td><td class="num">—</td><td class="num">1.8 ×</td></tr>
+    <tr><td>Baker 2002（四项扩展）</td><td class="num">4</td><td class="num">—</td><td class="num">2.7 ×</td></tr>
+    <tr><td>Carter 1968（四项扩展）</td><td class="num">4</td><td class="num">—</td><td class="num">3.4 ×</td></tr>
+    <tr><td>Troscianko 2014（原式）</td><td class="num">3</td><td class="num">—</td><td class="num">5.0 ×</td></tr>
+    <tr><td>Carter–Morley Jones 1970</td><td class="num">4+1</td><td class="num">—</td><td class="num">10.7 ×（且拟合曲线有可见波纹）</td></tr>
+    <tr><td class="hl"><b>Baker 2002（原式，= Stoddard 用的）</b></td><td class="num">2</td><td class="num hl">0.0116</td><td class="num hl"><b>12.7 ×</b></td></tr>
+    <tr><td>Carter 1968（原式）</td><td class="num">2</td><td class="num">—</td><td class="num">17.0 ×</td></tr>
+  </table>
+
+  <p>在 132 枚蛋（10 个种）上的整体分布：<b>Preston 的误差范围 0.00064 ~ 0.00466</b>（N 从 1,706 到 3,622）。
+  Biggins 的总结语：</p>
+  <div class="quote">
+    "Preston's method is the best choice for providing a <b>consistently accurate summary over a range of egg shapes</b>."
+    <span class="src">Biggins et al. 2018, Ecology and Evolution 8:9735</span>
+  </div>
+
+  <h2 class="sec">Ⅲ-6　实验台：亲手拨动 c₁ / c₂ / c₃</h2>
+
+  <div class="split">
+    <div class="card">
+      <h3>子午线 + 两端<u>密切圆</u>（曲率半径大者 = 钝端，蓝；小者 = 尖端，红）+ 半周对称幽灵像</h3>
+      <div class="body tight">
+        <div class="stage">
+          <canvas id="cvPreston" width="940" height="720"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <h3>参数</h3>
+        <div class="body">
+          <div class="ctl">
+            <label>c₁　（一次幂 · <b>不对称</b>） <span class="v" id="lC1">−0.2200</span></label>
+            <input type="range" id="rC1" min="-0.35" max="0.35" step="0.005" value="-0.22">
+            <div class="hint">Preston 原话：c₁ 恒为正表示「大端朝上」；此处取负 = 尖端朝上，仅为看清形状</div>
+          </div>
+          <div class="ctl">
+            <label>c₂　（二次幂 · <b>双锥 bicone</b>） <span class="v" id="lC2">−0.0100</span></label>
+            <input type="range" id="rC2" min="-0.25" max="0.15" step="0.005" value="-0.01">
+            <div class="hint">负值 = 两端更尖（Preston：自然界多为负）；正值 = 两端更钝</div>
+          </div>
+          <div class="ctl">
+            <label>c₃　（三次幂 · <b>梨形，仍是 asymmetry</b>） <span class="v" id="lC3">−0.0700</span></label>
+            <input type="range" id="rC3" min="-0.12" max="0.12" step="0.0025" value="-0.07">
+            <div class="hint">只有 c₃ 足够大才能描述海雀类梨形蛋 —— Preston 称之 Alcid Ovoid</div>
+          </div>
+          <div class="btns" style="margin-top:10px">
+            <button id="bCircle">圆</button>
+            <button id="bEll">椭圆</button>
+            <button id="bA1">纯不对称 c₁</button>
+            <button id="bA2">纯双锥 c₂</button>
+            <button id="bAlc" class="on">海雀型</button>
+            <button id="bGold">黄金蛋拟合</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>即时读数（全部按 Preston 1968 原式）</h3>
+        <div class="body">
+          <div class="readout" id="roP"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>怎么玩才能看出门道</b>：
+    <ol class="plain">
+      <li>只动 <b>c₁</b>（c₂ = c₃ = 0）→ 看 <b>R<sub>B</sub>/R<sub>P</sub> 变化、Bicone 恒 = 0</b>：不对称是纯奇效应。</li>
+      <li>只动 <b>c₂</b>（c₁ = c₃ = 0）→ 看 <b>R<sub>B</sub>/R<sub>P</sub> 恒 = 1、Asymmetry 恒 = 0</b>：双锥是纯偶效应。</li>
+      <li>看 HUD 的 <b>「半周对称」</b> 一行：只要 c₁ 或 c₃ 非零，它立刻从 <b>对称</b> 翻成 <b>破缺</b> —— 这就是 Ⅲ-2 的判据 B。</li>
+      <li>对比 <b>b</b> 与 <b>最大半宽</b> 两行：把 c₁ 拉到 −0.3 附近，差距会涨到 2.8% 量级 —— 这就是 Ⅲ-4 的陷阱。</li>
+    </ol>
+  </div>
+
+</section>
+<!-- ==================== 视图 Ⅳ ：飞行假说 ==================== -->
+<section id="v4" class="view">
+
+  <h2 class="sec">Ⅳ-1　结论本身（原文摘要）</h2>
+  <div class="quote" style="border-left-color:var(--green)">
+    "…using phylogenetic models, we show that <b>egg shape correlates with flight ability</b> on broad taxonomic
+    scales, suggesting that <b>adaptations for flight may have been critical drivers of egg-shape variation in birds</b>."
+    <span class="src">Stoddard et al. 2017, Science 356:1249 — 摘要末句</span>
+  </div>
+
+  <h3 class="sub">回归结果：什么能预测蛋，什么不能</h3>
+
+  <table class="t">
+    <caption>贝叶斯系统发育混合效应模型的结果（原文 table S2 的文字结论）</caption>
+    <tr><th>被解释量</th><th>显著的解释变量</th><th>不显著的</th></tr>
+    <tr>
+      <td><b>蛋长（size）</b></td>
+      <td>成虫体重 ✓、窝卵数 ✓（窝大 → 蛋短）、食性 ✓（高钙 → 蛋长）、发育模式 ✓（越早成 → 蛋长）</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><b>蛋形（asymmetry &amp; ellipticity）</b></td>
+      <td class="hl">蛋大小（蛋长与体重的 PC1）✓　·　<b>HWI</b> ✓（高 HWI ⇒ 更不对称 <b>或</b> 更椭圆）<br>
+        另：ellipticity 还受 PC2 正向预测（「相对体重偏大的蛋」更椭圆）</td>
+      <td class="no"><b>窝卵数 ✗　发育模式 ✗　环境（纬度/温度/降水）✗　巢型 ✗　巢位 ✗</b></td>
+    </tr>
+  </table>
+
+  <div class="note warn">
+    <b>被这批数据直接否掉的两个经典假说</b>
+    <ul class="plain">
+      <li><b>「悬崖筑巢的鸟产锥形蛋、只会原地打转不易滚落」</b>（Lack 的经典故事）
+        → 在全鸟类尺度上 <b>找不到支持</b>（figs. S11–S12）。</li>
+      <li><b>「蛋形与窝卵数相关（孵化效率最优形状）」</b>
+        → 理论最优形状<b>落在真实占据域之外</b>，只有窝卵数 n = 3 与 n = 9 两种例外还勉强在域内（fig. S11）。</li>
+    </ul>
+    ⇒ 注意原文措辞的分寸：是「在全鸟类尺度上不显著」，<b>不是</b>「这些假说被证明为假」。
+  </div>
+
+  <h2 class="sec">Ⅳ-2　机制：为什么是「飞行能力」而不是「飞行动作」</h2>
+
+  <div class="chain">
+    <div class="step"><div class="ix">1</div><div class="tx">
+      强飞行需要 <b>流线型、肌肉化的体型</b>。这条选择压力<b>对雌雄都成立</b>。</div></div>
+    <div class="rc"></div>
+    <div class="step"><div class="ix">2</div><div class="tx">
+      随之而来的是：<b>体型变小、腹腔减小、丢失功能性卵巢与输卵管</b>（鸟类把生殖器官做成「按需增重」）。</div></div>
+    <div class="rc"></div>
+    <div class="step win"><div class="ix">3</div><div class="tx">
+      这三件事<b>共同约束了「拉伸后输卵管的最大宽度」</b> ⇒ 蛋的<b>腰围上限被压低</b>。</div></div>
+    <div class="rc"></div>
+    <div class="step win"><div class="ix">4</div><div class="tx">
+      但蛋的<b>体积</b>还要够大（雏鸟要长）。在腰围受限时，唯一出路是
+      <b>把蛋拉长 / 拉不对称</b> —— 因为同样的腰围下，长一点、斜一点就能塞进更多体积。
+      <span class="fml">原文："…can be accommodated by increasing ellipticity and/or asymmetry of eggs
+to <b>increase egg volume while maintaining or reducing girth</b>."</span></div></div>
+    <div class="rc"></div>
+    <div class="step"><div class="ix">5</div><div class="tx">
+      实证对应：<b>图 5A/5B</b> —— 「同腰围下，更不对称 / 更椭圆的蛋，体积更大」。</div></div>
+  </div>
+
+  <div class="note b">
+    <b>★ 原文自己把两种常见误读先堵死了 —— 引用时务必带上</b>
+    <div class="quote" style="margin-top:8px">
+      "We do <b>not</b> suggest that a female's flight behavior during the egg formation period directly affects
+      egg formation, nor do we suggest that egg shape so strongly influences the flight abilities of female birds
+      during their egg-laying period that selection has produced an <b>aerodynamic egg</b>."
+      <span class="src">Stoddard et al. 2017, Science 356:1252</span>
+    </div>
+    ⇒ ① <b>不是</b>「产卵期飞得多 → 蛋被挤变形」（不是个体层面的力学因果）；
+    ⇒ ② <b>不是</b>「蛋形是为了空气动力学」（蛋并不在飞行中承流）；
+    ⇒ 正确的是：<b>普适的强飞行适应 → 雌雄都流线型化 → 雌性「顺带」产出更不对称 / 更椭圆的蛋</b>。
+    原文并坦白：<b>连接形态适应与蛋形的具体生理机制目前未知</b>，最可能落在生
+    物物理模型里的两个量上 —— <b>膜厚度分布</b> 与 <b>跨膜压差</b>。
+  </div>
+
+  <h2 class="sec">Ⅳ-3　反例与例外 —— 原文自己列出来的（这一节最见诚实度）</h2>
+
+  <table class="t">
+    <caption>会飞的 / 不会飞的，与蛋形的对应关系</caption>
+    <tr><th>类群</th><th>飞行能力</th><th>蛋形实测</th><th>是否支持假说</th></tr>
+    <tr><td>鸻鹬类 Charadriiformes（n = 154）</td><td>强</td><td>占据形态空间面积极大（远超物种数更多的雀形目）</td><td class="ok">支持</td></tr>
+    <tr><td>雀形目 Passeriformes（n = 740）</td><td>多数强</td><td>高 HWI ⇒ 更椭圆（小窝卵数时尤其）</td><td class="ok">支持</td></tr>
+    <tr><td>几维鸟 kiwi</td><td>不会飞</td><td>超椭圆蛋，不对称度<b>低</b></td><td class="ok">支持（缺飞行 ⇒ 缺不对称）</td></tr>
+    <tr><td>鸵鸟 ostrich</td><td>不会飞</td><td>近球形</td><td class="ok">支持</td></tr>
+    <tr><td>美洲鸵 / 鹤鸵 rhea / cassowary</td><td>不会飞</td><td>椭圆但不对称度<b>不高</b></td><td class="ok">支持</td></tr>
+    <tr><td class="hl"><b>企鹅 penguins</b></td><td class="hl"><b>不会飞</b></td><td class="hl"><b>高度不对称</b></td><td class="no"><b>反例</b></td></tr>
+  </table>
+
+  <div class="note p">
+    <b>企鹅这个反例，原文没有回避</b>。原文给的解释是：
+    企鹅是<b>强力水下游泳者</b>，所以「流线型体型」的选择压力<b>在飞行之外依然存在</b>
+    ⇒ 在「<b>流线型体型</b>」这个更本质的层面，企鹅其实<b>仍然支持</b>该机制，只是在「飞行」这个标签上构成反例。
+    <div class="quote" style="margin-top:8px">
+      "Penguins are a clear exception (fig. S13), but because they are <b>powerful underwater swimmers</b>,
+      it remains plausible that selection for a streamlined body plan has nonetheless influenced the evolution
+      of egg asymmetry in the absence of flight."
+      <span class="src">Stoddard et al. 2017, Science 356:1252</span>
+    </div>
+  </div>
+
+  <h4 class="sub2">小尺度上的例外（原文明确保留）</h4>
+  <ul class="plain">
+    <li><b>鸻鹬类内部</b>：不对称度与 <b>发育模式</b> 相关，而<b>不是</b>与 HWI 相关。
+      原文给的候选解释：不对称蛋的<b>钝端可以容纳密集气孔的呼吸位点</b>，供早成雏的快速神经发育使用。</li>
+    <li><b>雀形目内部</b>：控制了其他效应后，<b>小窝卵数</b>的种更倾向产椭圆蛋。</li>
+    <li>原文的自我限定：「<b>these associations do not apply equally to all smaller clades</b>」（这些关联并不同等适用于所有较小类群）。</li>
+  </ul>
+
+  <h2 class="sec">Ⅳ-4　★ 本项目的独立复算：把「同腰围 ⇒ 体积更大」拆到几何内核</h2>
+
+  <div class="note p">
+    <span class="badge c">C 级 · 本项目推演</span>
+    下面这一段<b>不是 Stoddard 的原文主张</b>，而是本项目在 Preston 模型上把它的图 5A/5B 重算一遍之后得到的<b>几何澄清</b>。
+    Stoddard 本人的统计是 1,400 种真实数据的相关性（<b>A 级</b>），两者不冲突，但<b>几何解释需要说准</b>。
+  </div>
+
+  <div class="grid2">
+    <div>
+      <h4 class="sub2">第一步：同腰围下，体积与长轴长严格成正比</h4>
+      <div class="proof">
+        旋转体体积　V = π ∫ x² dy
+
+        只把形状沿<b>轴向</b>缩放 k 倍 ⇒ x 不变、dy 乘 k ⇒ <b>V 恰乘 k，腰围完全不变</b>
+        ⇒　<b>V / L 只取决于形状，与大小无关</b>
+      </div>
+      <p>实测（脚本 ⑤）：对四种形状各取 a = 0.5 / 1 / 2 / 4（L = 1 / 2 / 4 / 8）：</p>
+      <table class="t">
+        <tr><th>形状</th><th class="num">V/L 的四个取值</th><th class="num">相对离散</th></tr>
+        <tr><td>椭圆</td><td class="num">2.094395102 ×4</td><td class="num">0.000e+00</td></tr>
+        <tr><td>纯不对称 c₁ = −0.20</td><td class="num">2.111150263 ×4</td><td class="num">0.000e+00</td></tr>
+        <tr><td>纯双锥 c₂ = −0.15</td><td class="num">1.972770587 ×4</td><td class="num">0.000e+00</td></tr>
+        <tr><td>海雀型</td><td class="num">2.112327114 ×4</td><td class="num">0.000e+00</td></tr>
+      </table>
+      <div class="note ok" style="margin-top:10px">
+        <b>离散恰好为 0</b>（不是「很小」，是浮点意义上的 0） ⇒ <b>V ∝ L 是恒等式</b>。
+        （椭圆那行 2.094395102 = 2π/3，正是长轴 2、半宽 1 的椭球体积 4π/3 除以 2，可作交叉校验。）
+      </div>
+    </div>
+
+    <div>
+      <h4 class="sub2">第二步：那「形状畸变本身」到底加不加体积？</h4>
+      <p>把腰围<b>和</b>长轴<b>同时</b>固定（a = 1、最大半宽归一到 1），只变形状：</p>
+      <table class="t">
+        <caption>同腰围 + 同长轴下的体积（脚本 ④）</caption>
+        <tr><th>形状</th><th class="num">体积</th><th class="num">相对椭圆</th><th class="num">R<sub>B</sub>/R<sub>P</sub></th></tr>
+        <tr><td>椭圆（c₁ = c₂ = 0）</td><td class="num">4.188790</td><td class="num">0.00%</td><td class="num">1.0000</td></tr>
+        <tr><td>加不对称 c₁ = −0.20</td><td class="num">4.065510</td><td class="num no">−2.94%</td><td class="num">0.4444</td></tr>
+        <tr><td>加双锥 c₂ = −0.15</td><td class="num">3.945541</td><td class="num no">−5.81%</td><td class="num">1.0000</td></tr>
+        <tr><td>两者都加</td><td class="num">3.862222</td><td class="num no">−7.80%</td><td class="num">0.3832</td></tr>
+      </table>
+      <div class="note warn" style="margin-top:10px">
+        <b>结论</b>：在 <b>同腰围 + 同长轴</b> 的严格对照下，形状畸变本身<b>反而减小体积</b>。
+        所以 Stoddard 图 5A/5B 的几何内核是：<b>那些更不对称 / 更椭圆的蛋，在同样的腰围下更长（L 更大）</b>，
+        体积增益来自 <b>L</b>，而不是来自「形状被扭得更能装东西」。
+      </div>
+    </div>
+  </div>
+
+  <h4 class="sub2">第三步：(V/L) 到底谁最大？——不能一句「椭圆最大」带过</h4>
+  <p>在 (c₁, c₂) 的 31 × 16 = 496 点网格上扫 V/L（同腰围）：</p>
+  <div class="readout" id="roFig5"></div>
+  <div class="note warn" style="margin-top:12px">
+    <b>c₂ 的符号决定方向</b>：<code>c₂ &gt; 0</code>（两端更钝）<b>抬高</b> V/L；
+    <code>c₂ &lt; 0</code>（Preston 说自然界多为负）<b>压低</b> V/L。
+    因此「椭圆使 V/L 最大」<b>不成立</b> —— 网格上确界 2.179966 出现在 (c₁ = 0, c₂ = +0.10)，
+    高于椭圆的 2.094395。这一点如果只做定性叙述就会被带偏。
+  </div>
+
+  <div class="note b">
+    <b>怎么和 Stoddard 的结论对齐？</b><br>
+    Stoddard 的横轴是「蛋的腰围（最宽处）」，纵轴是体积，<b>并没有固定长轴</b>。
+    在这个更宽松的对照下，「同腰围下更不对称 / 更椭圆的蛋体积更大」
+    ⟺ 「它们更长」—— 两者在几何上<b>完全等价</b>。
+    本项目的复算只是把这个等价关系明确化，并指出：<b>增益归因于长度，不归因于形状畸变</b>。
+    <span class="badge c">C 级 · 本项目推演</span>
+  </div>
+
+</section>
+
+
+<!-- ==================== 视图 Ⅴ ：Schauberger 对照 ==================== -->
+<section id="v5" class="view">
+
+  <h2 class="sec">Ⅴ-1　先摆清两者的身份</h2>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Schauberger 锥切蛋（本项目上一轮的锥切蛋族）</h3>
+      <div class="body">
+        <ul class="plain">
+          <li><b>数学来源</b>：单叶双曲面 <code>ρ = 1/Y</code> 被平面 <code>Y = z₀ − Z·tanα</code> 斜切，
+            截面就是蛋形。<b>是几何构造，不是曲线拟合。</b></li>
+          <li><b>参数</b>：<code>(α, z₀)</code> 共 <b>2 个</b>；黄金极限蛋只是被黄金比锁定的<b>一个点</b>：
+            <code>α = arctan(1/φ) = 31.7175°</code>、<code>z₀ = φ = 1.618034</code>、
+            <code>k_E* = 1.937087243</code>。</li>
+          <li>★ <b>同族不止一个点</b>：<code>k_E</code> 连续变化就得到<b>一整族</b>锥切蛋
+            （<code>α</code>、<code>z₀</code> 都由 <code>k_E</code> 唯一决定）。
+            本页取<b>两个代表点</b>做对照 —— ①<b>黄金极限蛋</b>（黄金比锁定，无理数）；
+            ②<b>八度蛋</b> <code>k_E = 2.000000000</code>（<code>α = 33.690068°</code>、
+            <code>z₀ = 5/3 = 1.666667</code>），即<b>「正好翻一倍」的整数点</b>。
+            <b>只拿黄金蛋一个点去对 Preston 是不完整的</b> —— 两点的差别见 <b>Ⅴ-2 表</b> 与 <b>Ⅴ-2b</b>。</li>
+          <li><b>本项目的取向</b>：它是<b>生成机制</b>（能回答「这个形状从哪来」），
+            不是<b>描述工具</b>（不负责拟合任意一枚真实鸟蛋）。</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Preston 四参数 / Baker 两参数（本页 Ⅱ–Ⅳ 的体系）</h3>
+      <div class="body">
+        <ul class="plain">
+          <li><b>数学来源</b>：把子午线写成 `圆 × 修正多项式`，对<b>具体那一枚蛋</b>做最小二乘。
+            <b>是描述工具，不解释形状从何而来。</b></li>
+          <li><b>参数</b>：Preston <b>4 个</b> <code>(c₁,c₂,c₃,B)</code>；Baker（Stoddard 实际用的）<b>2 个</b> <code>(T,λ)</code>。</li>
+          <li><b>文献地位</b>：1953 / 1968 / 2018 / 2023 四篇可引文献 + 1400 种数据库 +
+            被 Biggins 2018 推荐为「<b>未来所有蛋形研究的起点</b>」。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="sec">Ⅴ-2　逐维度对照表</h2>
+
+  <table class="t">
+    <caption>★ <b>本表把锥切蛋族拆成两个代表点</b>（黄金极限蛋 / 八度蛋）——
+      只列黄金蛋一个点，会把「同族不同 k_E 的差异」整个抹掉。
+      锥切蛋两列数据来自本项目本轮补算（<code>src/egg_feat_octave.py</code>，弧长 EFD 口径），
+      Preston / Baker 数据来自原文。</caption>
+    <tr>
+      <th style="width:128px">维度</th>
+      <th>① 黄金极限蛋<br><small>k_E* = 1.9370872</small></th>
+      <th>② 八度蛋<br><small>k_E = 2.0000000</small></th>
+      <th>③ Preston 四参数</th>
+      <th>④ Baker 两参数<br><small>（Stoddard 实际用）</small></th>
+    </tr>
+    <tr>
+      <td><b>参数个数</b></td>
+      <td class="hl">2（α, z₀），被黄金比锁成 <b>1 点</b></td>
+      <td class="hl">2（α, z₀），k_E 取<b>整数 2</b></td>
+      <td>4（c₁,c₂,c₃,B）</td>
+      <td>2（T, λ）</td>
+    </tr>
+    <tr>
+      <td><b>性质</b></td>
+      <td class="hl">几何构造（推导得到）</td>
+      <td class="hl">几何构造（<b>同族另一点</b>）</td>
+      <td>经验拟合（最小二乘）</td>
+      <td>经验拟合</td>
+    </tr>
+    <tr>
+      <td><b>形状指数 SI</b><br><small>= 2·最大半宽 ／ 长轴</small></td>
+      <td class="num">0.716754</td>
+      <td class="num">0.688927<br><small class="no">窄 3.88%</small></td>
+      <td class="num hl">0.716676</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><b>尖端 ／ 钝端<br>曲率比</b></td>
+      <td class="num">1.574139</td>
+      <td class="num hl">1.750000<br><small>两头差别 +11.2%</small></td>
+      <td class="num">1.568133</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><b>能否独立控制<br>不对称 vs 双锥</b></td>
+      <td class="no"><b>不能</b>：改 α 或 z₀ 会同时动两者</td>
+      <td class="no"><b>不能</b>：同族，同一种耦合</td>
+      <td class="ok"><b>能</b>：奇/偶完全分离（原文枢纽句）</td>
+      <td class="no"><b>不能</b>：只有 λ 管不对称，<b>没有 bicone 自由度</b></td>
+    </tr>
+    <tr>
+      <td><b>梨形（Alcid）能力</b></td>
+      <td>看 Ⅴ-3 扫描</td>
+      <td>看 Ⅴ-3 扫描</td>
+      <td class="ok"><b>够用</b>（c₃ 项；Preston 原话「需三次项」）</td>
+      <td class="no"><b>不足</b>：实测误差 12.7× Preston，梨形蛋被排除</td>
+    </tr>
+    <tr>
+      <td><b>自身被 Preston<br>四参数拟合的残差</b></td>
+      <td class="num">max <b>0.11552%</b>（半宽）</td>
+      <td class="num">max <b>0.16033%</b><br><small>1.388× 于黄金蛋</small></td>
+      <td>—（自己）</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><b>拟合<b>真实鸟蛋</b><br>的残差（基准）</b></td>
+      <td class="num" colspan="2">族内最优见 Ⅴ-3<br><small>（锥切蛋是<b>生成</b>，不是拟合）</small></td>
+      <td class="num hl">0.00091（海雀蛋 C126，基准）</td>
+      <td class="num no">0.0116（同蛋，<b>12.7×</b>）</td>
+    </tr>
+    <tr>
+      <td><b>谐波纯度</b><br><small>x 的 2 次谐波<br>（弧长 EFD 口径）</small></td>
+      <td class="num hl">0.007830</td>
+      <td class="num">0.009233<br><small>偶次更强 +17.9%</small></td>
+      <td class="num hl">0.007825</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><b>可覆盖形状域</b></td>
+      <td class="num" colspan="2">SI ∈ [0.415, 0.990]（<b>2 维子流形</b>；两个代表点都落在其上）</td>
+      <td class="ok">任意蛋（4 自由度，可逼近任意精度）</td>
+      <td>实心圆/椭圆 + 中等不对称</td>
+    </tr>
+    <tr>
+      <td><b>对应的生物学<br>评估体系</b></td>
+      <td class="no" colspan="2"><b>无</b>。目前没有任何公开的跨物种蛋形数据库用锥切蛋参数建过模</td>
+      <td class="ok">有：Biggins 2018 推荐为统一标准</td>
+      <td class="ok">有：Stoddard 2017 的 1400 种 / 49,175 枚体系</td>
+    </tr>
+  </table>
+
+  <div class="note b">
+    ★ <b>本表一处重要更正（本轮）</b>：「谐波纯度」这一行原先写
+    <code>0.0246（黄金蛋）vs 0.3504（Preston）</code>，并据此称「黄金蛋谐波差 14 倍、更纯」。
+    <b>那是两个 bug 叠加出的伪影</b>（① Preston 拿到的是半条蛋；② 极角展开的谐波依赖原点）。
+    改用<b>弧长 EFD</b>（平移不变）重算后，<b>黄金蛋 0.007830 与 Preston 0.007825 只差 0.06%</b>
+    —— <b>「谐波更纯」这条优势不成立</b>。锥切蛋族真正站得住的优势是
+    「<b>几何可构造 + 参数少 + 同源自洽</b>」，不是谐波纯度。
+    完整推导见 <a class="mdlink" href="03_谐波奇偶性与跨行业应用.md">03 号 md §2</a>。
+    <span class="badge a">A</span>
+  </div>
+
+  <h2 class="sec">Ⅴ-2b　同族第二个点：八度蛋 —— 它为什么必须在场</h2>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>「八度」这个名字从哪来</h3>
+      <div class="body">
+        <ul class="plain">
+          <li>锥切蛋族的<b>蛋形度</b> <code>k_E</code> 是一个连续参数：
+            <code>z₀ = (1 + k_E²)/(1 + k_E)</code>、<code>tan α = k_E(k_E − 1)/(k_E + 1)</code>
+            都由它<b>唯一决定</b>。⇒ 一族无穷多条蛋形曲线。</li>
+          <li><b>黄金极限蛋</b>取 <code>k_E* = 1.9370872430</code> ——
+            <code>φk² − φ²k − 1 = 0</code> 的<b>正根</b>，是个<b>无理数</b>。</li>
+          <li><b>八度蛋</b>取 <code>k_E = 2.0000000000</code> —— <b>最靠近的整数</b>。
+            「八度」= 音乐里的 octave = <b>频率比 2 : 1</b>，取「正好翻一倍」之意。</li>
+          <li>⇒ 两个点是同一族里「<b>无理数锁定的点</b>」与「<b>整数点</b>」的对照。
+            <b>它们不是两条独立公式，而是同一条公式的两次取值</b> ——
+            所以本页仍称「<b>六种公式</b>」，不因加了八度蛋而变成七种。</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card">
+      <h3>三点差异（长轴 = 1，同口径）</h3>
+      <div class="body">
+        <table class="t">
+          <tr><th>量</th><th class="num">黄金蛋</th><th class="num">八度蛋</th><th class="num">变化</th></tr>
+          <tr><td>形状指数 SI</td><td class="num">0.716754</td><td class="num">0.688927</td><td class="num"><span class="no">−3.88%</span></td></tr>
+          <tr><td>尖端 ／ 钝端曲率比</td><td class="num">1.574139</td><td class="num">1.750000</td><td class="num"><span class="ok">+11.17%</span></td></tr>
+          <tr><td>x 的 2 次谐波</td><td class="num">0.007830</td><td class="num">0.009233</td><td class="num"><span class="ok">+17.92%</span></td></tr>
+          <tr><td>偶次能量占比</td><td class="num">0.0471%</td><td class="num">0.0697%</td><td class="num"><span class="ok">+48.0%</span></td></tr>
+        </table>
+        <p>★ <b>两个口径不同向</b>：八度蛋<b>更窄</b>（SI 小 3.88%），却<b>两头差别更大</b>
+          （曲率比 1.75 &gt; 1.574）。<b>「更圆」与「更蛋」不是同一件事</b> ——
+          只盯一个指标，会得出方向相反的结论。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="note p">
+    ★ <b>这一节与第 Ⅳ 部分（飞行假说）直接挂钩</b><br>
+    Stoddard 的结论是「<b>飞行能力强的鸟，蛋更拉长、更不对称</b>」。
+    在锥切蛋族里，这两维各有明确对应：
+    <ul class="plain">
+      <li><b>「更不对称」</b>这一维 ⇒ 由 <code>k_E</code> 往<b>大</b>走实现：
+        <code>k_E: 1.9370872 → 2.0000000</code> 时，曲率比 <b>1.574139 → 1.750000</b>（+11.17%）、
+        偶次能量占比 <b>0.0471% → 0.0697%</b>（+48.0%）；</li>
+      <li><b>「更拉长」</b>这一维 ⇒ 对应 <b>SI 变小</b>：
+        <b>0.716754 → 0.688927</b>（−3.88%）。</li>
+    </ul>
+    ⇒ <b>八度蛋在「不对称」上比黄金蛋更「蛋」，但同时也更窄</b>；换到 Stoddard 的二维形态空间，
+    它比黄金蛋更靠近<b>「不对称轴」正方向</b>。
+    <b>将来若要把锥切蛋参数搬进 1400 种体系，八度蛋这个点不能省</b> ——
+    它是族内「不对称侧」的代表。
+    <span class="badge a">A</span> 读数 ＋ <span class="badge c">C</span> 跨体系定位解读
+  </div>
+
+  <div class="note">
+    <b>八度蛋的「代价」：族内更难被别的成员逼近</b><br>
+    把「八度蛋自身的 Preston 四参数拟合」当目标，再让锥切族 <code>(α, z₀)</code> 全平面去贴：
+    <ul class="plain">
+      <li>族内最优 <code>(α, z₀) = (28.708216°, 1.506962)</code>，err_max = <b>0.0017478（0.4843%）</b>；</li>
+      <li>同法对黄金蛋目标（T1）只需 <b>0.0010088（0.2799%）</b> ⇒ <b>八度蛋目标难 1.73×</b>；</li>
+      <li>原因<b>不是扫描没找到</b>，而是<b>八度蛋的 Preston 拟合本身带着更大的近似残差</b>
+        （0.16033% vs 黄金蛋 0.11552%，<b>1.388×</b>）—— <b>目标曲线自身就偏离族多一点</b>。</li>
+    </ul>
+    换句话说：<b>k_E 越往整数点走，锥切曲线越「偏」，用四参数描述它的代价也越大。</b>
+    <span class="badge a">A</span>
+  </div>
+
+  <h2 class="sec">Ⅴ-2c　两个 3D 蛋形曲面：本页的 2D 曲线到底是从哪里切出来的</h2>
+
+  <p>老师给的两个 3D 曲面，一个是<b>老相识</b>（只是换了 3D 写法），一个是<b>全新机制</b>。
+    先把关系摆清，再往下走 —— 否则很容易把同一个东西当成两个。<br>
+    <small>下面的 <b>① / ② 沿用老师原图里的编号</b>：① = <code>x²+y²+z² = a·2^z</code>，
+    ② = <code>x²+y² = 1/(b − z·sinα)² − (z·cosα)²</code>。编号顺序与「新 / 旧」无关。</small></p>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>② 锥切蛋曲面 —— 就是本页 Ⅱ–Ⅴ 一直在用的那条曲线，绕 z 轴转出来的</h3>
+      <div class="body">
+        <div class="proof">
+          <b>3D 曲面</b>　x² + y² = 1/(b − z·sinα)² − (z·cosα)²<br>
+          <span class="c">作代换 Z = z·cosα（把「沿斜切平面量」换成「沿世界轴量」）</span><br>
+          　⇒　x² + y² = 1/(b − Z·tanα)² − Z²<br>
+          <span class="c">取正视 zx 平面（令 y = 0）</span><br>
+          　⇒　x² = 1/(b − Z·tanα)² − Z²<br>
+          <span class="c">记 Z → y、b → z₀、tanα → k，即本页 A1 形式</span><br>
+          　⇒　x = ±√( 1/(z₀ − y·sinα)² − (y·cosα)² )
+        </div>
+        <p>⇒ <b>两式逐项相同</b>。它们不是两条曲线，是<b>同一条曲线的两种写法</b>：
+          一条叫「平面斜切超双曲面」，一条叫「2D 曲线绕 z 轴旋转」。
+          老师给的两个滑块 <code>(b, k)</code> 就是本页的 <code>(z₀, tanα)</code>。</p>
+        <div class="note b">
+          <b>链接里的参数验算</b>（<code>b = 1.5</code>、<code>k = 0.5</code>）<span class="badge a">A</span><br>
+          <code>tanα = 0.5</code> ⇒ <code>α = 26.5650512°</code>；<br>
+          解 <code>k_E(k_E − 1)/(k_E + 1) = 0.5</code>，即 <code>k_E² − 1.5·k_E − 0.5 = 0</code>
+          ⇒ <code>k_E = 1.7807764064</code>；<br>
+          反推 <code>z₀ = (1 + k_E²)/(1 + k_E) = 1.5000000000 ≡ b</code> ✓<br>
+          ⇒ 那个链接演示的是锥切蛋族里 <code>k_E = 1.7807764</code> 的那一个点 ——
+          <b>既不是黄金极限蛋（1.9370872），也不是八度蛋（2）</b>。
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>① 指数蛋曲面 —— 全新的第四种生成机制</h3>
+      <div class="body">
+        <div class="proof">
+          <b>3D 曲面</b>　x² + y² + z² = a·2^z<br>
+          <span class="c">取正视 zx 平面（令 y = 0）</span><br>
+          　⇒　x² = a·2^z − z²<br>
+          <span class="c">记 F(z) = a·2^z − z²，则正视轮廓（取 |x| 极大分支）</span><br>
+          　⇒　ρ(z) = √( a·2^z − z² )
+        </div>
+        <p>★ <b>它既不是锥切、也不是曲线拟合，而是「球面 × 指数」的旋转体</b> ——
+          半径随高度按 <code>2^z</code> 指数放大，再减去 <code>z²</code> 的球面收缩。
+          <b>它是本页第一个不用「斜切平面」就能长出蛋形的机制。</b></p>
+        <div class="note">
+          <b>为什么两端都是「圆顶」而不是尖点</b><span class="badge c">C</span><br>
+          端点满足 <code>F(z_e) = 0</code> 且 <code>F′(z_e) ≠ 0</code>
+          ⇒ <code>ρ ≈ √(F′(z_e)·(z − z_e))</code>，即 <code>ρ ~ √ε</code>。<br>
+          <b>而 <code>ρ ~ ε</code>（线性）才是尖点</b>（圆锥顶点）。
+          所以这个曲面两端都是<b>球面圆顶</b>，但<b>两端曲率半径不相等</b>
+          （<code>R = |F′(z_e)|/2</code>）—— <b>这才是它成为「蛋」的原因</b>，
+          也是它和「旋转椭球」的分水岭。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h3>两个曲面并排 —— 拖动画面可旋转；金色母线 = <code>φ=0</code> 与 <code>φ=π</code> 两条经线，
+      点「正视图」让两者重合即为 <code>zx</code> 平面上的 2D 蛋形曲线</h3>
+    <div class="stage"><canvas id="cvSolid" width="1120" height="500"></canvas></div>
+    <div class="body" style="padding:13px 16px">
+      <div class="grid2">
+        <div class="ctl">
+          <label>方位角 yaw <span class="v" id="lYaw">42°</span></label>
+          <input type="range" id="rYaw" min="0" max="360" step="1" value="42">
+        </div>
+        <div class="ctl">
+          <label>仰角 pitch <span class="v" id="lPit">16°</span></label>
+          <input type="range" id="rPit" min="-4" max="86" step="1" value="16">
+        </div>
+      </div>
+      <div class="btns">
+        <button id="bFront">★ 正视图（yaw 0° / pitch 0°）</button>
+        <button id="bSide">侧视（pitch 0°）</button>
+        <button id="bTop">俯视（pitch 86°）</button>
+        <button id="bReset3d">复位（yaw 42° / pitch 16°）</button>
+      </div>
+      <p style="font-size:12.4px;color:var(--dim);margin:11px 0 0">
+        左：锥切蛋曲面（黄金极限蛋 <code>k_E = 1.9370872</code>，轴向 z ∈ [−0.6068754, 1.1755705]）　·　
+        右：指数蛋曲面（<code>a = 1</code>，轴向 z ∈ [−0.7666647, 2]）。<br>
+        两图<b>各自按轴向长归一化</b>，所以比的是<b>形状</b>而不是尺寸
+        （真实轴向长 1.7824 vs 2.7667，相差 1.552 倍）。<br>
+        <b>金色那条线到底是不是 2D 蛋形曲线？</b>——金色画的是曲面上 <code>φ = 0</code> 与
+        <code>φ = π</code> 这<b>两条经线</b>。任意旋转角下它们只各自贴着曲面一侧，
+        <b>只有点「正视图」把 yaw 与 pitch 都归零（视线沿 ±y 轴）时，两条经线才重合</b>，
+        此时金色线＝<code>zx</code> 平面上 <code>x = ±ρ(z)</code> 的完整轮廓，
+        也就是本页一直在比的那条 2D 蛋形曲线。
+      </p>
+      <div class="note ok" style="margin:12px 0 0">
+        ★ <b>顺带一处交叉验证</b><span class="badge a">A</span>：
+        由锥切蛋的解析半径 <code>ρ(z) = √( 1/(z₀ − z·sinα)² − z²cos²α )</code>
+        直接数值求极大，得 <code>ρ_max = 0.6387876787</code>（在 <code>z = 0.2125972664</code>），
+        于是 <code>SI = 2ρ_max/Δz = 2×0.6387876787 / 1.7824458577 = 0.71675409</code> ——
+        与 <b>Ⅴ-2 表里既有读数 0.716754 逐位一致</b>。
+        ⇒ 3D 曲面的正视轮廓与页面一直在用的 2D 曲线<b>确实是同一条</b>，
+        不是两个碰巧长得像的东西。
+      </div>
+    </div>
+  </div>
+
+  <h2 class="sec">Ⅴ-2d　第四种生成机制：指数蛋 —— 把它加进对比</h2>
+
+  <p>指数蛋只有<b>一个</b>自由参数 <code>a</code>，与锥切蛋族只有<b>一个</b>自由参数
+    <code>k_E</code> 结构相同；但两者在「形状空间」里走的<b>是不同的路径</b>。
+    下表全部由 <code>src/egg_exp_curve.py</code> 复算，口径与既有 JSON 完全一致（长轴 = 1，弧长 EFD）。</p>
+
+  <table class="t">
+    <caption>★ 第 5 列 <code>a*</code> 是「扫描全 <code>a</code> 后与黄金极限蛋轮廓差最小」的那个点。
+      末行「与黄金蛋的轮廓差」定义为 <code>max|Δ半宽| / max半宽</code>（长轴已归一，<b>不做 SI 对齐</b>）。</caption>
+    <tr>
+      <th style="width:190px">量</th>
+      <th class="num">黄金极限蛋</th>
+      <th class="num">八度蛋</th>
+      <th class="num">指数蛋<br>a = 1</th>
+      <th class="num">指数蛋<br>a* = 1.076783</th>
+    </tr>
+    <tr>
+      <td><b>生成参数</b></td>
+      <td class="num">k_E = 1.9370872</td>
+      <td class="num">k_E = 2.0000000</td>
+      <td class="num hl">a = 1.0000000</td>
+      <td class="num">a = 1.0767832</td>
+    </tr>
+    <tr>
+      <td><b>形状指数 SI</b><br><small>2·最大半宽 / 长轴</small></td>
+      <td class="num">0.716754</td>
+      <td class="num">0.688927</td>
+      <td class="num hl">0.780041</td>
+      <td class="num">0.727477</td>
+    </tr>
+    <tr>
+      <td><b>端点曲率比</b><br><small>κ(尖端) / κ(钝端)</small></td>
+      <td class="num">1.574139</td>
+      <td class="num">1.750000</td>
+      <td class="num hl">1.581168</td>
+      <td class="num">2.193162</td>
+    </tr>
+    <tr>
+      <td><b>最宽点位置</b><br><small>自钝端起算 / 全长</small></td>
+      <td class="num">0.459782</td>
+      <td class="num">0.453521</td>
+      <td class="num hl">0.452348</td>
+      <td class="num">0.429726</td>
+    </tr>
+    <tr>
+      <td><b>x 的 2 次谐波</b><br><small>弧长 EFD 口径</small></td>
+      <td class="num">0.007830</td>
+      <td class="num">0.009233</td>
+      <td class="num hl">0.008919</td>
+      <td class="num">0.014076</td>
+    </tr>
+    <tr>
+      <td><b>偶次能量占比</b></td>
+      <td class="num">0.0471%</td>
+      <td class="num">0.0697%</td>
+      <td class="num hl">0.0545%</td>
+      <td class="num">0.1507%</td>
+    </tr>
+    <tr>
+      <td><b>自身被 Preston 四参数<br>拟合的相对残差</b></td>
+      <td class="num">0.11552%</td>
+      <td class="num">0.16033%</td>
+      <td class="num hl"><b>0.04478%</b></td>
+      <td class="num">0.09941%</td>
+    </tr>
+    <tr>
+      <td><b>与黄金极限蛋的轮廓差</b></td>
+      <td class="num">—</td>
+      <td class="num">—</td>
+      <td class="num hl">8.2488%</td>
+      <td class="num"><b>3.8609%</b></td>
+    </tr>
+  </table>
+
+  <div class="note">
+    <b>表里最值得注意的三件事</b>
+    <ol class="plain">
+      <li><b>a = 1 的「不对称度」几乎撞上黄金蛋</b>：端点曲率比
+        <b>1.581168 vs 1.574139，只差 0.45%</b>；但同一时刻 SI 差了 <b>8.83%</b>
+        （0.780041 vs 0.716754）。⇒ <b>「不对称度」与「胖瘦」是两个独立旋钮</b>，
+        只对齐其中一个，会误以为两条曲线很像。</li>
+      <li><b>指数蛋比锥切蛋更容易被 Preston 四参数描述</b>：自身残差
+        <b>0.04478% vs 0.11552%，小 2.58 倍</b>。这既是优点（好描述）也是缺点
+        —— <b>它的形状更「普通」，独特性更低</b>；而锥切蛋恰恰是「难被四参数拟合」
+        却仍然闭合、可解析的那一类。</li>
+      <li><b>「轮廓最像」的点，在不对称度上并不像</b>：最优 <code>a* = 1.076783</code>
+        把轮廓差从 8.25% 压到 <b>3.86%</b>，但此刻曲率比已经升到
+        <b>2.193162</b>（黄金蛋 1.574139）—— <b>胜在整体轮廓，输在端点</b>。
+        这说明指数蛋族<b>无法同时匹配黄金蛋的两个形状特征</b>，
+        它能做到的最好就是「取一个折中」。</li>
+    </ol>
+  </div>
+
+  <div class="note b">
+    <b>★ <code>a</code> 的单调性与上界</b>（本页扫描 109 个 <code>a</code>，<code>src/egg_exp_curve.py</code>）<span class="badge a">A</span>
+    <ul class="plain">
+      <li><b><code>a</code> 只有一个旋钮，却同时推动两个方向</b>：
+        <code>a: 0.02 → 1.12672</code> 时，SI <b>0.997581 → 0.631016</b>（更窄），
+        曲率比 <b>1.000319 → 113.054391</b>（更不对称）。
+        ⇒ <b>两个方向同向</b>，这与第 Ⅳ 部分「飞行强的鸟蛋更拉长、更不对称」恰好一致。</li>
+      <li><b>但两者走的是不同路径</b>：锥切蛋族 <code>k_E</code> 从 1.9371 到 2 只把
+        SI 从 0.716754 挪到 0.688927（−3.88%），曲率比从 1.574139 挪到 1.750000（+11.17%）；
+        指数蛋族在同一形状区间里曲率比爬得快得多。
+        <b>把它们都丢进 Stoddard 的二维形态空间，两条曲线族会画出两条不同的弧。</b></li>
+      <li><b>闭合解有上界</b>：<code>a ≤ a_max = (2/ln 2)² / 2^(2/ln 2) = 1.1267306423</code>。
+        超过就没有闭合分支（<code>F(z) = a·2^z − z²</code> 不再有两个正根）。
+        <code>a → a_max</code> 时上端两正根重合 ⇒ <b>上端由球面圆顶收成尖点</b>
+        （曲率比冲到 113，就是这个过程的数值证据）。</li>
+      <li>★ <b>最贴黄金蛋 <code>a* = 1.076783</code>（轮廓差 3.8609%）／最贴八度蛋 <code>a* = 1.095509</code>（4.8965%）</b>
+        —— 两个都在 <code>a_max</code> 附近，说明<b>「像锥切蛋」要求把 <code>a</code> 顶到接近上界</b>。</li>
+    </ul>
+  </div>
+
+  <figure style="margin-top:18px">
+    <img src="figs/egg_exp_vs_family.png" alt="指数蛋 vs 黄金极限蛋 / 八度蛋 / Preston 四参数：轮廓叠加、a 的单调性、轮廓差与形状族">
+    <figcaption>
+      <b>图 5　指数蛋与既有三体系的对照</b>　（<code>src/egg_exp_plot.py</code> → <code>figs/egg_exp_vs_family.png</code>）<br>
+      <b>A</b> 四条轮廓叠画（长轴 = 1、钝端朝下）：指数蛋在 <code>a = 1</code> 时明显<b>更宽</b>；
+      <b>B</b> <code>a</code> 单调推 SI（青，左轴）与曲率比（红，右轴），
+      并标出 <code>a = 1</code> 的曲率比与黄金蛋只差 0.45%；
+      <b>C</b> 轮廓差随 <code>a</code> 先降后升，星号处即两个最优 <code>a</code>；
+      <b>D</b> <code>a</code> 的形状族，往 <code>a_max</code> 走上端由圆顶收成尖点。
+    </figcaption>
+  </figure>
+
+  <h2 class="sec">Ⅴ-3　本项目上一轮的实测：锥切蛋族能贴到 Preston 多近？</h2>
+
+  <p>做法（脚本 <code>src/egg_scan_preston_match.py</code>）：在 <code>(α, z₀)</code> 二维参数上做粗扫 + 坐标下降精修，
+  目标是把<b>归一化到同一 SI</b> 后的 Preston 特征曲线贴到最紧。误差沿用 Preston 自己的口径
+  <code>err = max|U_cand − U_target|</code>（长轴 = 1 的半宽之差）。</p>
+
+  <table class="t">
+    <caption>六条目标曲线的匹配结果（A 级实测）</caption>
+    <tr><th>目标曲线</th><th class="num">最优 α</th><th class="num">最优 z₀</th><th class="num">err_max</th><th class="num">相对</th><th class="num">相对「黄金蛋直接当答案」提升</th></tr>
+    <tr><td>T1　黄金蛋自身的 Preston 四参数拟合</td><td class="num">30.8161°</td><td class="num">1.58647</td><td class="num">0.0010088</td><td class="num hl">0.2799%</td><td class="num">1.65 ×</td></tr>
+    <tr><td>T2a　纯不对称 c₁ = −0.10</td><td class="num">30.6536°</td><td class="num">1.58646</td><td class="num">0.0041886</td><td class="num">1.1530%</td><td class="num">1.64 ×</td></tr>
+    <tr><td>T2b　纯不对称 c₁ = −0.25</td><td class="num">19.3462°</td><td class="num">1.18899</td><td class="num">0.0142730</td><td class="num">3.9041%</td><td class="num">1.93 ×</td></tr>
+    <tr><td>T3a　纯双锥 c₂ = −0.10</td><td class="num">43.3343°</td><td class="num">2.55298</td><td class="num">0.0097199</td><td class="num">2.7744%</td><td class="num">2.39 ×</td></tr>
+    <tr><td>T3b　纯双锥 c₂ = +0.10</td><td class="num">40.6655°</td><td class="num">2.63634</td><td class="num">0.0095958</td><td class="num">2.5964%</td><td class="num">4.03 ×</td></tr>
+    <tr><td>T4　梨形（海雀 murre 型）极端</td><td class="num">20.0016°</td><td class="num">1.20886</td><td class="num">0.0197288</td><td class="num no">5.4890%</td><td class="num">2.55 ×</td></tr>
+  </table>
+
+  <figure>
+    <img src="figs/egg_scan_preston_match.png" alt="锥切蛋族的 SI 可达域、T1 叠加与残差、六目标误差成对条形、误差随不对称度分布">
+    <figcaption>
+      <b>图 · 扫描全景</b>　由 <code>src/egg_scan_preston_match_plot.py</code> 生成（数据 <code>data/egg_scan_preston_match.json</code>）。
+      （A）<b>SI 可达域</b>：锥切蛋族在 (α, z₀) 平面上存在的形状指数地图 —— 灰区为「锥切方程处处有解判据」不过的点，
+      故族内 SI 只能铺到 <b>[0.415, 0.990]</b>；六个 ★ 为六条目标各自的最优点。
+      （B）<b>T1 的贴合</b>：上为三条曲线叠加（Preston 目标 / 最优锥切蛋 / 黄金蛋不调参），下为残差，
+      <b>纵轴用对称对数</b> —— 因为黄金蛋残差 ~2.5×10⁻²、最优解 ~8×10⁻⁴，线性轴会把红线压成一条直线。
+      （C）<b>六目标成对条形</b>（灰 = 黄金蛋直接当答案；红 = 族内最优），绿色数字为提升倍数。
+      （D）<b>误差的双重结构</b>：红色虚线是「越不对称越吃力」的趋势（非纯双锥目标）；
+      而两条纯双锥目标无论怎么调都卡在 <b>2.6 ~ 2.8% 的硬墙</b>上 —— 那是<b>另一个机制</b>（端点曲率比做不到 1），
+      <b>不能并进同一条单调趋势里解释</b>。
+    </figcaption>
+  </figure>
+
+  <div class="note warn">
+    <b>两条结构性结论（这才是重点）</b>
+    <ol class="plain">
+      <li><b>锥切蛋族「两端半径差」的自由度很弱</b> —— 纯双锥蛋（只留 c₂，端点曲率比恒 = 1.000000）在锥切蛋族里
+        <b>根本无法达到</b>：即便取到族内最优，仍有 2.6 ~ 2.8% 的偏差。
+        这条硬墙的物理含义是：<b>平面切一个单叶双曲面，切出来的两端曲率天然带差异，无法做出「两端完全一样」的蛋</b>。</li>
+      <li><b>匹配质量随目标不对称度单调下降</b>：0.28% → 1.15% → 2.77% → 3.90% → 5.49%。
+        也就是说，<b>锥切蛋族越往「对称 / 双锥」方向走越吃力，越靠近黄金蛋自身那个点越准。</b></li>
+    </ol>
+  </div>
+
+  <h2 class="sec">Ⅴ-4　优势与缺点：一张清单</h2>
+
+  <div class="grid2">
+    <div class="card">
+      <h3 style="color:var(--green-d)">Schauberger 锥切蛋的优势</h3>
+      <div class="body">
+        <ol class="plain">
+          <li><b>参数少且物理可构造</b>：2 个参数、(α, z₀) 都有明确的几何意义。
+            能回答「这个形状<b>从哪来</b>」—— 而 Preston/Baker 只能回答「<b>长什么样</b>」。</li>
+          <li><b>黄金比锁定，无需数据</b>：<code>α = arctan(1/φ)</code>、<code>z₀ = φ</code> 时给出唯一「极限蛋」，
+            方程是<b>推出来的</b>，不是拟合出来的。</li>
+          <li><b>同源自洽</b>：同一组 (α, z₀) 同时决定 3D 锥面、切平面、2D 蛋形、端点曲率 ——
+            多个视图共用一套参数，不会「同源双图脱节」。</li>
+          <li><b>同族可连续调参</b>：<code>k_E</code> 一个数就同时决定 α、z₀、SI 与端点曲率比 ——
+            从黄金蛋（<code>k_E* = 1.9370872</code>）走到八度蛋（<code>k_E = 2</code>），
+            曲率比就从 1.574139 抬到 <b>1.750000</b>。一条曲线族覆盖「更圆 ↔ 更蛋」的连续谱，
+            而 Preston 族要同时动 4 个数才能做到。</li>
+          <li>⚠️ <b>一条已作废的「优势」</b>：本清单原先称「谐波更纯：2 次谐波 0.0246 vs 0.3504，差 14 倍」——
+            经复算<b>不成立</b>（那是极角口径两个 bug 叠加的伪影）。改用<b>弧长 EFD</b> 后，
+            黄金蛋 0.007830 与 Preston 0.007825 <b>只差 0.06%</b>。
+            详见 Ⅴ-2 表下的更正框与 <a class="mdlink" href="03_谐波奇偶性与跨行业应用.md">03 号 md §2</a>。</li>
+          <li><b>端点曲率有解析式</b>：<code>κ_end = 2/|F′(t_e)|</code>，可与 Preston 的
+            <code>((1+c₁+c₂+c₃)/(1−c₁+c₂−c₃))²</code> 做同口径对账。</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="color:var(--red-d)">Schauberger 锥切蛋的缺点</h3>
+      <div class="body">
+        <ol class="plain">
+          <li><b>自由度不足</b>：2 个 vs 需要 4 个。
+            <b>纯双锥蛋在族内不可达</b>（最优仍差 2.6~2.8%）。</li>
+          <li><b>不能独立拨动不对称与双锥</b>：Preston 的「奇偶完全分离」是锥切蛋做不到的。
+            对比之下 Baker 连 bicone 自由度都没有 —— 所以三者里只有 Preston 是完备的。</li>
+          <li><b>「拟合」与「生成」不是一回事</b>：面对一枚真实鸟蛋，锥切蛋族只能给出「族内最优」，
+            Preston 能给「任意精度的描述」。<b>用错场景会把两者误当竞争者。</b></li>
+          <li><b>覆盖不了全部蛋形</b>：SI 可达范围 0.415 ~ 0.990，只是 Stoddard 三角形态空间里的一条 2 维子流形。</li>
+          <li><b>没有配套的统计评估体系</b>：截止本页写作时，<b>没有任何公开的跨物种蛋形数据库用锥切蛋参数建过模</b>，
+            因此它在「飞行假说」这类宏观演化问题上<b>暂时无法产出可比较的结论</b>。</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <div class="note ok">
+    <b>一句话定位（本项目结论）</b><br>
+    两者<b>不是竞争关系，而是分工</b>：
+    <ul class="plain">
+      <li>要做 <b>量化与统计</b>（评估系统、飞行假说、跨物种比较）⇒ 用 <b>Preston 四参数</b>
+        （Biggins 2018 的明确推荐；Baker 两参数是被批评的那个）。</li>
+      <li>要做 <b>生成机制与参数方程</b>（形状为什么是这样、如何从几何原理构造）⇒ 用 <b>Schauberger 锥切蛋</b>。</li>
+      <li>★ <b>真正的空白在这里</b>：Schauberger 蛋形真正站得住的优势是
+        「<b>几何可构造 + 参数少 + 同源自洽</b>」，且 <code>k_E</code> <b>一个数就能连续扫过
+        「更圆 ↔ 更蛋」的全谱</b>（黄金蛋 → 八度蛋：曲率比 1.574139 → 1.750000）。
+        但<b>目前没有任何生物学评估体系去度量这个优势</b>。
+        如果要把这条优势变成可比较的科学结论，需要<br>
+        —— 把锥切蛋的 (α, z₀) 也搬进 Stoddard 式的 1400 种形态空间
+        （<b>八度蛋这个「不对称侧」代表点不能省</b>），<br>
+        —— 并检验「(α, z₀) 的某个组合」是否与 HWI 有独立于 A、E 的相关性。<br>
+        ⚠️ 原写的「谐波更纯 ／ 反对称更干净」<b>已作废</b> —— 见 Ⅴ-2 表下的更正框。<br>
+        这是本专题下一轮的候选方向。</li>
+    </ul>
+  </div>
+
+</section>
+<!-- ==================== 视图 Ⅵ ：数据与结论 ==================== -->
+<section id="v6" class="view">
+
+  <h2 class="sec">Ⅵ-1　本页所有关键数字的汇总表</h2>
+
+  <table class="t">
+    <caption>证据分级：<span class="badge a">A</span>原文直接引用或本项目数值复现（解析式与数值相对差 0.0000%）　
+      <span class="badge b">B</span>有原文支持但非原文数字（换算/重构）　
+      <span class="badge c">C</span>本项目推演，须标「推演」　
+      <span class="badge x">待核</span>来源存疑</caption>
+    <tr><th>量</th><th class="num">数值</th><th>含义 / 口径</th><th>级</th><th>来源</th></tr>
+
+    <tr><td>蛋样品总数</td><td class="num">49,175</td><td>枚</td><td><span class="badge a">A</span></td><td>Stoddard 2017 p.2</td></tr>
+    <tr><td>覆盖物种数</td><td class="num">~1,400</td><td>≈ 全部鸟种的 14%；35 现生目 + 2 灭绝目</td><td><span class="badge a">A</span></td><td>Stoddard 2017</td></tr>
+    <tr><td>asymmetry 实测范围</td><td class="num">0.001 → 0.485</td><td>岛环颈鸠 → 小滨鹬</td><td><span class="badge a">A</span></td><td>Stoddard 2017</td></tr>
+    <tr><td>ellipticity 实测范围</td><td class="num">0.097 → 0.724</td><td>褐鹰鸮 → 马累冢雉</td><td><span class="badge a">A</span></td><td>Stoddard 2017</td></tr>
+    <tr><td>最密形态区</td><td class="num">A∈[0.1,0.2]，E∈[0.3,0.4]</td><td>≈ 优雅鹪莺的蛋，<b>不是</b>家鸡蛋形</td><td><span class="badge a">A</span></td><td>Stoddard 2017 fig. S4</td></tr>
+    <tr><td>建树物种数</td><td class="num">1,209</td><td>有分子序列的种</td><td><span class="badge a">A</span></td><td>Stoddard 2017 p.4</td></tr>
+
+    <tr><td>HWI 定义</td><td class="num">Kipp's distance / wing chord</td><td>最长初级飞羽尖→首次级飞羽尖 ／ 腕关节→翼尖</td><td><span class="badge a">A</span></td><td>Stoddard 2017 p.4</td></tr>
+
+    <tr><td>Preston 四参数式</td><td class="num">f(x)=T(1+ax+bx²+cx³)</td><td>y = f(x)·√(1−x²)，长轴归一到 2</td><td><span class="badge a">A</span></td><td>Biggins 2018 Eq.(2)</td></tr>
+    <tr><td>Baker 两参数式</td><td class="num">y = T(1+x)<sup>1/(1+λ)</sup>(1−x)<sup>λ/(1+λ)</sup></td><td>Stoddard 实际使用的式子</td><td><span class="badge a">A</span></td><td>Biggins 2018 Eq.(3)/(4)</td></tr>
+    <tr><td>Stoddard 的 A</td><td class="num">max{λ, 1/λ} − 1</td><td>减 1 使圆对应 0；max 处理近对称</td><td><span class="badge a">A</span></td><td>Biggins 2018 §2.6.3（引 Stoddard SM-p4）</td></tr>
+    <tr><td>Stoddard 的 E</td><td class="num">(1/T) − 1 = (L/d) − 1</td><td>d = 赤道直径</td><td><span class="badge a">A</span></td><td>Biggins 2018 §2.6.1</td></tr>
+
+    <tr><td class="hl">奇偶分离定理</td><td class="num hl">奇次 c ⇒ asymmetry；偶次 c ⇒ bicone，互不干扰</td><td>半周对称 ⇔ c₁ = c₃ = 0</td><td><span class="badge a">A</span></td><td>Preston 1968 p.458 原文 + 本项目数值验证</td></tr>
+    <tr><td>极点曲率比公式</td><td class="num">((1+c₁+c₂+c₃)/(1−c₁+c₂−c₃))²</td><td>数值直算与解析式相对差 <b>0.0000%</b>（7/7）</td><td><span class="badge a">A</span></td><td>Preston 1968 Eq.(2)；本项目脚本 ②</td></tr>
+    <tr><td>纯双锥的端点曲率比</td><td class="num hl">1.000000</td><td>恒等 —— 锥切蛋族达不到</td><td><span class="badge a">A</span></td><td>本项目脚本 ②</td></tr>
+
+    <tr><td>b vs 最大半宽（黄金蛋拟合）</td><td class="num">+0.341%</td><td>修正主页面 <code>fitEgg()</code> bug 的依据</td><td><span class="badge a">A</span></td><td>本项目脚本 ③；Preston 1968 p.458 先警告</td></tr>
+    <tr><td>b vs 最大半宽（c₁=−0.25）</td><td class="num">+2.834%</td><td>越不对称差越大</td><td><span class="badge a">A</span></td><td>同上</td></tr>
+
+    <tr><td>海雀蛋拟合误差（Preston）</td><td class="num">0.00091</td><td>N = 3,488 点/侧</td><td><span class="badge a">A</span></td><td>Biggins 2018 Fig.3</td></tr>
+    <tr><td>海雀蛋拟合误差（Baker）</td><td class="num">0.0116</td><td><b>12.7 倍</b>于 Preston</td><td><span class="badge a">A</span></td><td>Biggins 2018 Fig.4</td></tr>
+    <tr><td>Preston 误差范围（132 枚）</td><td class="num">0.00064 ~ 0.00466</td><td>N 从 1,706 到 3,622</td><td><span class="badge a">A</span></td><td>Biggins 2018 §3.2</td></tr>
+
+    <tr><td class="hl">V ∝ L（同腰围）</td><td class="num hl">严格成立，V/L 离散 = 0.000e+00</td><td>四种形状 × 四种缩放</td><td><span class="badge a">A</span></td><td>本项目脚本 ⑤</td></tr>
+    <tr><td>同腰同长下加不对称 c₁=−0.20</td><td class="num">−2.94%</td><td>体积相对椭圆</td><td><span class="badge a">A</span></td><td>本项目脚本 ④</td></tr>
+    <tr><td>同腰同长下加双锥 c₂=−0.15</td><td class="num">−5.81%</td><td>体积相对椭圆</td><td><span class="badge a">A</span></td><td>本项目脚本 ④</td></tr>
+    <tr><td>(V/L) 网格上确界</td><td class="num">2.179966</td><td>在 (c₁=0, c₂=+0.10)；椭圆为 2.094395 (=2π/3)</td><td><span class="badge a">A</span></td><td>本项目脚本 ④</td></tr>
+    <tr><td>(V/L) 网格下确界</td><td class="num">1.855851</td><td>在 (c₁=−0.30, c₂=−0.20)</td><td><span class="badge a">A</span></td><td>本项目脚本 ④</td></tr>
+
+    <tr><td>「图 5A/B 的几何内核 = 同腰围下更长」</td><td class="num">—</td><td><b>本项目推演</b>，非 Stoddard 原文主张</td><td><span class="badge c">C</span></td><td>本项目</td></tr>
+
+    <tr><td>锥切蛋最优贴合 T1（黄金蛋）</td><td class="num">err_max = 0.0010088（0.2799%）</td><td>α = 30.8161°，z₀ = 1.58647</td><td><span class="badge a">A</span></td><td>本项目脚本 <code>egg_scan_preston_match.py</code></td></tr>
+    <tr><td>锥切蛋族纯双锥可达性</td><td class="num">不可达（最优仍差 2.6~2.8%）</td><td>因端点曲率比恒 = 1 在族内做不到</td><td><span class="badge a">A</span></td><td>同上</td></tr>
+    <tr><td>锥切蛋 SI 可达范围</td><td class="num">0.415216 ~ 0.989621</td><td>有效点 1,118 / 1,980 网格点</td><td><span class="badge a">A</span></td><td>同上</td></tr>
+    <tr><td>三蛋的 x 的 2 次谐波（弧长 EFD）</td><td class="num">0.007830 / 0.009233 / 0.007825</td><td>黄金 / 八度 / Preston，<b>三者同量级</b></td><td><span class="badge a">A</span></td><td>本项目 <code>egg_harmonic_symmetry.py</code>（<a class="mdlink" href="03_谐波奇偶性与跨行业应用.md">03 号 md §3.2</a>）</td></tr>
+    <tr><td class="no">【已作废】黄金蛋 vs Preston 的 2 次谐波</td><td class="num">0.0246 vs 0.3504</td><td class="no"><b>伪影，14 倍差不存在</b>（极角口径两 bug 叠加）</td><td><span class="badge x">作废</span></td><td>保留记录见 <a class="mdlink" href="03_谐波奇偶性与跨行业应用.md">03 号 md §2</a></td></tr>
+
+    <tr><td class="hl">八度蛋 k_E</td><td class="num hl">2.0000000</td><td>α = 33.690068°，z₀ = 5/3 = 1.6666667</td><td><span class="badge a">A</span></td><td>本项目 <code>egg_feat_octave.py</code></td></tr>
+    <tr><td>黄金蛋 → 八度蛋：SI</td><td class="num">0.716754 → 0.688927</td><td><b>−3.88%</b>，八度蛋更窄</td><td><span class="badge a">A</span></td><td>同上</td></tr>
+    <tr><td>黄金蛋 → 八度蛋：曲率比</td><td class="num">1.574139 → 1.750000</td><td><b>+11.17%</b>，八度蛋两头差别更大</td><td><span class="badge a">A</span></td><td>同上</td></tr>
+    <tr><td>八度蛋被 Preston 四参数拟合的残差</td><td class="num">max 0.16033%（半宽）</td><td>黄金蛋 0.11552% ⇒ 八度蛋 <b>1.388×</b></td><td><span class="badge a">A</span></td><td>同上</td></tr>
+    <tr><td>锥切蛋最优贴合 T0（八度蛋目标）</td><td class="num">err_max = 0.0017478（0.4843%）</td><td>α = 28.708216°，z₀ = 1.506962；比 T1 难 <b>1.73×</b></td><td><span class="badge a">A</span></td><td>同上</td></tr>
+
+    <tr><td class="hl">指数蛋（第四种生成机制）</td><td class="num hl">x² + y² + z² = a·2^z</td><td>正视 zx 平面 ⇒ ρ(z) = √(a·2<sup>z</sup> − z²)；单参数族，<b>不用斜切平面</b></td><td><span class="badge a">A</span></td><td>本项目 <code>src/egg_exp_curve.py</code></td></tr>
+    <tr><td>指数蛋闭合解上界</td><td class="num">a_max = 1.1267306423</td><td>= (2/ln 2)² / 2<sup>2/ln 2</sup>；超过则无闭合分支</td><td><span class="badge a">A</span></td><td>同上（解析）</td></tr>
+    <tr><td>指数蛋 a = 1 的轴向域</td><td class="num">z ∈ [−0.7666646960, 2]</td><td>两端 F(z) = a·2<sup>z</sup> − z² = 0 且 F′ ≠ 0 ⇒ ρ ~ √ε ⇒ <b>球面圆顶</b>（非尖点）</td><td><span class="badge a">A</span></td><td>同上</td></tr>
+    <tr><td>指数蛋 a = 1：SI / 曲率比</td><td class="num">0.780041 / 1.581168</td><td>曲率比与黄金蛋只差 <b>0.45%</b>，但 SI 差 <b>8.83%</b> ⇒ 两个旋钮独立</td><td><span class="badge a">A</span></td><td>同上</td></tr>
+    <tr><td>指数蛋 a = 1 自身被 Preston 拟合的残差</td><td class="num">0.04478%</td><td>黄金蛋 0.11552% ⇒ 指数蛋<b>小 2.58×</b>（更好描述，但独特性更低）</td><td><span class="badge a">A</span></td><td>同上</td></tr>
+    <tr><td>指数蛋最贴黄金蛋</td><td class="num">a* = 1.0767832，轮廓差 3.8609%</td><td>此刻曲率比已升到 2.193162（黄金蛋 1.574139）⇒ 胜在整体轮廓、输在端点</td><td><span class="badge a">A</span></td><td>同上（109 点扫描）</td></tr>
+    <tr><td class="hl">锥切蛋曲面的轴向域与 ρ_max 复算</td><td class="num hl">z ∈ [−0.6068754, 1.1755705]　ρ_max = 0.6387876787</td><td>⇒ SI = 0.71675409，与 Ⅴ-2 表既有读数 0.716754 <b>逐位一致</b>（3D 轮廓 ≡ 2D 曲线 的交叉验证）</td><td><span class="badge a">A</span></td><td>同上</td></tr>
+    <tr><td>CalcPlot3D 链接的参数反推</td><td class="num">b = 1.5, k = 0.5 ⇒ k_E = 1.7807764064</td><td>锥切蛋族的<b>一般点</b>（既非黄金 1.9370872，也非八度 2）</td><td><span class="badge a">A</span></td><td>同上 §⑥（含 z₀ 反推 = 1.5000000000）</td></tr>
+
+    <tr><td>Biggins 2022 原文</td><td class="num">未获取</td><td>OA closed；Wayback 直连超时。<b>不臆造内容</b></td><td><span class="badge x">待核</span></td><td>见 <a class="mdlink" href="papers/SOURCES.md">SOURCES.md §6</a></td></tr>
+  </table>
+
+  <h2 class="sec">Ⅵ-2　三条结论</h2>
+
+  <div class="note ok">
+    <b>结论一 · 评估系统的骨架是「两步降维」</b><br>
+    Stoddard 团队没有直接用傅里叶描述子的高维系数（那是 Attard et al. 2017 的路线），
+    而是走了 <b>「2 参数形状模型 → 2 个生物学变量」</b>：
+    <code>Baker 两参数 (T, λ)</code> ⟶ <code>asymmetry A</code> + <code>ellipticity E</code> ⟶ 二维形态空间。
+    好处是每个轴都有生物学可解释性（「不对称」与「胖瘦」），代价是<b>该两参数模型对梨形蛋失准，
+    于是最极端的那一端被排除在分析之外</b>。这个取舍是整个体系最大的结构性弱点，也是 Biggins 2018 的立论点。
+  </div>
+
+  <div class="note b">
+    <b>结论二 · 「飞行能力强的鸟产更拉长、更不对称的蛋」，机制是「腰围受限下的体积补偿」</b><br>
+    不是蛋在飞行中受力变形，也不是蛋形为了气动 —— 原文明确否定了这两种误读。
+    真正的链条是：<b>强飞行 ⇒ 流线型体型 + 丢失功能性卵巢/输卵管 ⇒ 拉伸后输卵管最大宽度受限 ⇒
+    用拉长与不对称在同样腰围下塞进更大体积</b>。
+    这条链条在<b>全鸟类尺度上成立</b>，在鸻鹬、雀形目等小类群内部未必成立（原文自己保留）；
+    企鹅是「不会飞却是高度不对称蛋」的反例，合理的化解是「流线型体型」比「飞行」更本质。
+  </div>
+
+  <div class="note p">
+    <b>结论三 · Schauberger 锥切蛋与 Preston 体系是分工，不是竞争</b><br>
+    <b>Preston 四参数</b>赢在完备性（4 个自由度可逼近任意蛋形；奇偶分离可独立拨动不对称与双锥）与
+    <b>配套的生物学评估体系</b>（1400 种数据库 + 统计模型）。
+    <b>Schauberger 锥切蛋</b>赢在<b>可解释性与参数经济</b>（2 个几何参数就能生成，能回答「形状从哪来」），
+    且 <code>k_E</code> <b>一个数就能连续扫过「更圆 ↔ 更蛋」的全谱</b>
+    （黄金蛋 → 八度蛋：曲率比 1.574139 → 1.750000，SI 0.716754 → 0.688927）。
+    <b>（原先写的「谐波更纯、差约 14 倍」已作废</b> —— 那是极角口径两个 bug 的伪影，
+    改用弧长 EFD 后黄金蛋与 Preston 只差 0.06%，见 Ⅴ-2 表下的更正框。<b>）</b>
+    但它的<b>硬伤同样明确</b>：2 个自由度做不出「两端曲率完全相同」的双锥蛋（族内最优仍差 2.6~2.8%），
+    且至今<b>没有任何公开数据库用它的参数建过模</b> —— 所以在「飞行假说」这类问题上暂时无话可说。
+    <br>★ <b>本轮新增的「指数蛋」（<code>x² + y² + z² = a·2^z</code>）是第三条路</b>：
+    它<b>不用斜切平面</b>，而是「球面 × 指数」的旋转体，只有一个旋钮 <code>a</code>，
+    结构与锥切蛋族的 <code>k_E</code> 一样是单参数；但两者在「形状空间」里走的是<b>不同的弧</b>
+    —— <code>a</code> 同样在「更窄 + 更不对称」上同向推进，却<b>推得陡得多</b>（曲率比可从 1.0003 冲到 113），
+    详见 <b>Ⅴ-2d</b>。
+    <span class="badge c">C 级 · 本项目推演</span>
+  </div>
+
+  <h2 class="sec">Ⅵ-3　归档文件清单（本次新增）</h2>
+
+  <table class="t">
+    <tr><th>路径</th><th>说明</th><th class="num">大小</th></tr>
+    <tr><td><code>papers/stoddard2017_science_eggshape.pdf</code></td><td>主线索（Science）</td><td class="num">1.38 MB</td></tr>
+    <tr><td><code>papers/preston1953_shape_of_birds_eggs.pdf</code></td><td>方程本体（Auk 70）</td><td class="num">1.24 MB</td></tr>
+    <tr><td><code>papers/preston1968_mathematical_aspects.pdf</code></td><td>三指数定义（Auk 85）</td><td class="num">0.50 MB</td></tr>
+    <tr><td><code>papers/biggins2018_quantifying_shape.pdf</code></td><td>对 Stoddard 方法的批评与校正（CC BY）</td><td class="num">1.77 MB</td></tr>
+    <tr><td><code>papers/shi2023_preston_eq_program.pdf</code></td><td>Preston 方程的现代数值实现（CC BY）</td><td class="num">1.92 MB</td></tr>
+    <tr><td class="hl"><code>papers/SOURCES.md</code></td><td class="hl">五篇的 DOI / 卷期页 / 许可 / 下载途径 / 未获取说明</td><td class="num">—</td></tr>
+    <tr><td><code>04_蛋形量化与飞行假说.html</code></td><td>本页</td><td class="num">—</td></tr>
+    <tr><td><code>04_蛋形量化与飞行假说.md</code></td><td>本页正文的文字版（可被网页链接）</td><td class="num">—</td></tr>
+    <tr><td><code>src/egg_shape_indices_verify.py</code></td><td>本页 ①②③④⑤ 五项数值复核脚本</td><td class="num">—</td></tr>
+    <tr><td><code>data/egg_shape_indices_verify.json</code></td><td>上述脚本的完整输出</td><td class="num">—</td></tr>
+    <tr><td><code>src/egg_scan_preston_match.py</code></td><td>锥切蛋族 (α, z₀) 二维扫描 + 坐标下降精修</td><td class="num">—</td></tr>
+    <tr><td class="hl"><code>src/egg_scan_preston_match_plot.py</code></td><td class="hl">本页 Ⅴ-3 扫描全景图（四面板）的绘图脚本</td><td class="num">—</td></tr>
+    <tr><td><code>figs/egg_scan_preston_match.png</code></td><td>Ⅴ-3 图：SI 可达域 / T1 叠加与残差 / 误差成对条形 / 误差随不对称度</td><td class="num">0.27 MB</td></tr>
+    <tr><td><code>data/egg_scan_preston_match.json</code></td><td>六目标的 (α, z₀) 最优解、误差、提升倍数、SI 可达域统计</td><td class="num">—</td></tr>
+    <tr><td class="hl"><code>src/egg_feat_octave.py</code></td><td class="hl">★ 本轮新增：八度蛋读数补算（Preston 拟合 / 谐波 / 曲率 / T0 扫描），供 Ⅴ-2 表与 Ⅴ-2b</td><td class="num">—</td></tr>
+    <tr><td><code>data/egg_feat_octave.json</code></td><td>上述脚本的完整输出（黄金 / 八度 / Preston 三列同口径读数）</td><td class="num">—</td></tr>
+    <tr><td class="hl"><code>src/egg_exp_curve.py</code></td><td class="hl">★ 本轮新增：指数蛋 <code>x²+y²+z²=a·2^z</code> 的解析域 / 端点曲率 / 全套读数 + a 扫描 + 两个 3D 曲面等价性验算</td><td class="num">—</td></tr>
+    <tr><td><code>data/egg_exp_curve.json</code></td><td>上述脚本的完整输出（a = 1 读数 / 109 点扫描 / 最优 a / CalcPlot3D 参数反推）</td><td class="num">—</td></tr>
+    <tr><td class="hl"><code>src/egg_exp_plot.py</code></td><td class="hl">★ 本轮新增：Ⅴ-2d 图 5 的绘图脚本（四面板：轮廓叠画 / a 单调性 / 轮廓差 / 形状族）</td><td class="num">—</td></tr>
+    <tr><td><code>figs/egg_exp_vs_family.png</code></td><td>Ⅴ-2d 图 5：指数蛋 vs 黄金极限蛋 / 八度蛋 / Preston 四参数</td><td class="num">0.51 MB</td></tr>
+  </table>
+
+  <div class="note">
+    <b>回到本项目主页面</b>：
+    <a class="mdlink" href="蛋形双锥斜切_3D交互对照.html">蛋形双锥斜切_3D交互对照.html</a>（超双曲锥斜切 → 蛋形 / 直圆锥斜切 → 三种圆锥曲线 / 六公式 vs Preston 曲率与波形）　·　
+    <a class="mdlink" href="README.md">README.md</a>　·　
+    <a class="mdlink" href="03_谐波奇偶性与跨行业应用.md">03_谐波奇偶性与跨行业应用.md</a>
+  </div>
+
+</section>
+
+</main>
+
+<div class="footer">
+  蛋形量化与飞行假说 · 归档于 <code>03_验证工具/01_geometry/蛋形对比_六公式vsPreston_双锥斜切/</code><br>
+  论文原文 5 篇（6.80 MB）· 本项目数值复核 5 项 · 全部结果为可复跑脚本产出<br>
+  证据分级：<span class="badge a">A</span> 原文/数值复现　<span class="badge b">B</span> 换算重构　<span class="badge c">C</span> 本项目推演　<span class="badge x">待核</span> 来源存疑
+</div>
+
+</div>
+
+<script>
+"use strict";
+(function(){
+
+  /* ============================================================
+     0. 全局错误必须【可见】—— 不许静默失败
+     ============================================================ */
+  var fatalBox = document.getElementById('fatal');
+  function fatal(msg){
+    fatalBox.style.display = 'block';
+    fatalBox.textContent = '页面脚本异常（本页禁止静默失败）：\n' + msg;
+  }
+  window.addEventListener('error', function(e){
+    fatal((e.message || '未知错误') + '\n@ ' + (e.filename || '') + ':' + (e.lineno || ''));
+  });
+
+  /* ============================================================
+     1. Tab 切换
+     ============================================================ */
+  var tabsNav = document.getElementById('tabs');
+  var views = {};
+  Array.prototype.forEach.call(document.querySelectorAll('.view'), function(s){ views[s.id] = s; });
+  tabsNav.addEventListener('click', function(ev){
+    var b = ev.target.closest('button[data-v]');
+    if(!b) return;
+    Array.prototype.forEach.call(tabsNav.querySelectorAll('button'), function(x){
+      x.classList.toggle('on', x === b);
+    });
+    Object.keys(views).forEach(function(k){ views[k].classList.toggle('on', k === b.dataset.v); });
+    if(b.dataset.v === 'v2' && window.__drawMorph) window.__drawMorph();
+    if(b.dataset.v === 'v3' && window.__drawPreston) window.__drawPreston();
+    if(b.dataset.v === 'v5' && window.__drawSolid) window.__drawSolid();
+  });
+
+  /* ============================================================
+     2. Baker (2002) 两参数式的归一化子午线（Stoddard 用的式子）
+        y(v) = T * (1+v)^(1/(1+lam)) * (1-v)^(lam/(1+lam)),  v in [-1, 1]
+        轴向 v 对应长轴；长度归一到 2（v=±1 为两极）
+     ============================================================ */
+  function bakerHalf(v, T, lam){
+    var a = 1.0 + v, b = 1.0 - v;
+    if(a < 0){ a = 0; } if(b < 0){ b = 0; }
+    var e1 = 1.0/(1.0 + lam), e2 = lam/(1.0 + lam);
+    return T * Math.pow(a, e1) * Math.pow(b, e2);
+  }
+
+  /* ============================================================
+     3. 形态空间（asymmetry × ellipticity）
+        ★ 只画原文给过数值的东西：
+          · 三角占据域的三个顶点（原文文字描述）
+          · 最密区 A∈[0.1,0.2], E∈[0.3,0.4]
+          · A、E 各自的极值 —— 每个种原文只给了一个坐标，
+            所以标在【坐标轴上】，绝不为它编另一个坐标
+          · 缺失区（球形但不对称）
+     ============================================================ */
+  function drawMorph(){
+    var cv = document.getElementById('cvMorph');
+    if(!cv) return;
+    var ctx = cv.getContext('2d');
+    /* 画布 740 x 700；★ 本图不用 HTML HUD 浮层（会压住画布标题），信息全在下方读数面板 */
+    var W = cv.width, H = cv.height;
+    var mL = 78, mR = 34, mT = 46, mB = 104;
+    var pw = W - mL - mR, ph = H - mT - mB;
+
+    var AMAX = 0.52, EMAX = 0.80;
+    function X(a){ return mL + a / AMAX * pw; }
+    function Y(e){ return mT + ph - e / EMAX * ph; }
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
+
+    /* 网格 */
+    ctx.strokeStyle = '#eeece6'; ctx.lineWidth = 1;
+    for(var a = 0; a <= 0.5; a += 0.1){
+      ctx.beginPath(); ctx.moveTo(X(a), mT); ctx.lineTo(X(a), mT + ph); ctx.stroke();
+    }
+    for(var e = 0; e <= 0.8; e += 0.1){
+      ctx.beginPath(); ctx.moveTo(mL, Y(e)); ctx.lineTo(mL + pw, Y(e)); ctx.stroke();
+    }
+
+    /* 三角占据域顶点 */
+    var V1 = [0.0, 0.0], V2 = [0.0, 0.75], V3 = [0.50, 0.75];
+    var P1 = [X(V1[0]), Y(V1[1])], P2 = [X(V2[0]), Y(V2[1])], P3 = [X(V3[0]), Y(V3[1])];
+
+    /* 占据域填充 */
+    ctx.beginPath();
+    ctx.moveTo(P1[0], P1[1]); ctx.lineTo(P2[0], P2[1]); ctx.lineTo(P3[0], P3[1]); ctx.closePath();
+    ctx.fillStyle = '#f2f7ff'; ctx.fill();
+
+    /* 缺失区阴影：斜边下方（球形但不对称） */
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(P1[0], P1[1]); ctx.lineTo(P3[0], P3[1]);
+    ctx.lineTo(P3[0], P1[1]); ctx.closePath();
+    ctx.fillStyle = '#fdf1ef'; ctx.fill();
+    ctx.restore();
+
+    /* 边界 */
+    ctx.beginPath();
+    ctx.moveTo(P1[0], P1[1]); ctx.lineTo(P2[0], P2[1]); ctx.lineTo(P3[0], P3[1]); ctx.closePath();
+    ctx.strokeStyle = '#1f6feb'; ctx.lineWidth = 2.4; ctx.stroke();
+
+    /* 斜边（数据实际边界）加粗 */
+    ctx.beginPath(); ctx.moveTo(P1[0], P1[1]); ctx.lineTo(P3[0], P3[1]);
+    ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 2.4; ctx.setLineDash([]); ctx.stroke();
+
+    /* 最密区 */
+    var bx = X(0.10), by = Y(0.40), bw = X(0.20) - X(0.10), bh = Y(0.30) - Y(0.40);
+    ctx.fillStyle = 'rgba(200,145,42,.22)';
+    ctx.fillRect(bx, Y(0.40), bw, Y(0.30) - Y(0.40));
+    ctx.strokeStyle = '#8a5c10'; ctx.lineWidth = 1.8;
+    ctx.strokeRect(bx, Y(0.40), bw, Y(0.30) - Y(0.40));
+    ctx.fillStyle = '#8a5c10'; ctx.font = 'bold 13px "Microsoft YaHei",sans-serif';
+    ctx.fillText('最密形态区', bx + 6, Y(0.40) + 18);
+    ctx.font = '12px "Microsoft YaHei",sans-serif';
+    ctx.fillText('A∈[0.1,0.2]  E∈[0.3,0.4]', bx + 6, Y(0.40) + 34);
+
+    /* 三个顶点处画示意蛋（由 Baker 式算出，非数据点） */
+    function miniEgg(cx, cy, T, lam, scale){
+      ctx.beginPath();
+      var N = 160;
+      for(var i = 0; i <= N; i++){
+        var v = -1 + 2 * i / N;
+        var hw = bakerHalf(v, T, lam);
+        ctx.lineTo(cx + hw * scale, cy - v * scale);
+      }
+      for(var j = N; j >= 0; j--){
+        var v2 = -1 + 2 * j / N;
+        var hw2 = bakerHalf(v2, T, lam);
+        ctx.lineTo(cx - hw2 * scale, cy - v2 * scale);
+      }
+      ctx.closePath();
+      ctx.fillStyle = '#ffffff'; ctx.fill();
+      ctx.strokeStyle = '#1c1c1c'; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    miniEgg(P1[0] + 52, P1[1] - 44, 0.97, 1.0, 24);       /* 对称球形 */
+    miniEgg(P2[0] + 46, P2[1] + 58, 0.50, 1.0, 24);       /* 对称椭圆 */
+    miniEgg(P3[0] - 46, P3[1] + 58, 0.60, 0.673, 24);     /* 不对称椭圆 */
+
+    /* 顶点标注（避让开示意蛋本体） */
+    ctx.font = 'bold 12.5px "Microsoft YaHei",sans-serif'; ctx.fillStyle = '#124a9e';
+    ctx.textAlign = 'left';
+    /* 「对称 + 球形」是原点那个尖角顶点，三角形内那一小片是楔形、塞不下标签
+       ⇒ 移到 x 轴下方正对顶点处（原来放在内部会与极值标签撞车）*/
+    ctx.fillText('对称 + 球形', P1[0] + 2, mT + ph + 38);
+    ctx.fillText('对称 + 椭圆', P2[0] + 20, P2[1] + 96);
+    ctx.textAlign = 'right';
+    ctx.fillText('不对称 + 椭圆', P3[0] - 20, P3[1] + 96);
+    ctx.textAlign = 'left';
+
+    /* 缺失区标注 */
+    ctx.save();
+    ctx.translate(X(0.16), Y(0.17));
+    ctx.fillStyle = '#b03a2e'; ctx.font = 'bold 13px "Microsoft YaHei",sans-serif';
+    ctx.fillText('缺失区：球形但不对称', 0, 0);
+    ctx.font = '12px "Microsoft YaHei",sans-serif';
+    ctx.fillStyle = '#7b1f14';
+    ctx.fillText('原文比喻「像热气球」', 0, 17);
+    ctx.fillText('自然界的鸟蛋不占据这一片', 0, 34);
+    ctx.restore();
+
+    /* 极值：只标在坐标轴上 —— 不编另一个坐标
+       ★ 标签分两行放，避免与常规刻度数字重叠（曾撞在一起变成「0.A=0.001」） */
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#2e7d32';
+    ctx.beginPath(); ctx.moveTo(X(0.001), mT + ph); ctx.lineTo(X(0.001), mT + ph + 9); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(X(0.485), mT + ph); ctx.lineTo(X(0.485), mT + ph + 9); ctx.stroke();
+    ctx.strokeStyle = '#6a3d9a';
+    ctx.beginPath(); ctx.moveTo(mL - 9, Y(0.097)); ctx.lineTo(mL, Y(0.097)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(mL - 9, Y(0.724)); ctx.lineTo(mL, Y(0.724)); ctx.stroke();
+
+    /* 极值图例（★ 原先 4 个标签散落在轴边，左下角的「E 最小 0.097」与顶点标注
+       「对称 + 球形」直接撞在一起。真看图才发现 ⇒ 收进一个图例框，轴上只留彩色刻度短线） */
+    var lx = X(0.16) - 21, ly = mT + 46, lw = 252, lh = 58;
+    ctx.fillStyle = 'rgba(255,255,255,.9)';
+    ctx.fillRect(lx, ly, lw, lh);
+    ctx.strokeStyle = '#d8d4c8'; ctx.lineWidth = 1.2;
+    ctx.strokeRect(lx, ly, lw, lh);
+    ctx.font = '11.5px "Microsoft YaHei",sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#2e7d32';
+    ctx.fillText('A 最小 0.001', lx + 12, ly + 23);
+    ctx.fillText('A 最大 0.485', lx + 12, ly + 43);
+    ctx.fillStyle = '#6a3d9a';
+    ctx.fillText('E 最小 0.097', lx + 132, ly + 23);
+    ctx.fillText('E 最大 0.724', lx + 132, ly + 43);
+    ctx.textAlign = 'left';
+
+    /* 轴 */
+    ctx.strokeStyle = '#1c1c1c'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(mL, mT); ctx.lineTo(mL, mT + ph); ctx.lineTo(mL + pw, mT + ph); ctx.stroke();
+    ctx.fillStyle = '#1c1c1c'; ctx.font = 'bold 13px "Microsoft YaHei",sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('asymmetry  A', mL + pw, mT + ph + 64);
+    ctx.textAlign = 'left';
+    ctx.save();
+    ctx.translate(26, mT + 110); ctx.rotate(-Math.PI / 2);
+    ctx.fillText('ellipticity  E', 0, 0);
+    ctx.restore();
+
+    ctx.font = '11.5px "Consolas",monospace'; ctx.fillStyle = '#767676';
+    for(var a2 = 0; a2 <= 0.5; a2 += 0.1){
+      ctx.textAlign = 'center';
+      ctx.fillText(a2.toFixed(1), X(a2), mT + ph + 20);
+    }
+    ctx.textAlign = 'right';
+    for(var e2 = 0; e2 <= 0.8; e2 += 0.1){
+      ctx.fillText(e2.toFixed(1), mL - 12, Y(e2) + 4);
+    }
+    ctx.textAlign = 'left';
+
+    /* 标题 */
+    ctx.fillStyle = '#1c1c1c'; ctx.font = 'bold 14px "Microsoft YaHei",sans-serif';
+    ctx.fillText('蛋形形态空间：1400 种鸟蛋的平均蛋形', mL, 26);
+    ctx.font = '11.5px "Microsoft YaHei",sans-serif'; ctx.fillStyle = '#767676';
+    ctx.fillText('占据域为三角形；三角域边界依原文文字描述绘制，顶点处的蛋形为 Baker 式算出的示意轮廓（非实测数据点）。', mL, mT + ph + 88);
+  }
+  window.__drawMorph = drawMorph;
+
+  document.getElementById('roMorph').innerHTML = [
+    ['最密形态区', 'A∈[0.1,0.2] · E∈[0.3,0.4]', 'row ok'],
+    ['该区代表蛋', '优雅鹪莺 Prinia gracilis', 'row'],
+    ['传统印象中的蛋', '红原鸡 Gallus gallus ✗ 不在最密区', 'row hi'],
+    ['asymmetry 下限', '0.001（岛环颈鸠）', 'row'],
+    ['asymmetry 上限', '0.485（小滨鹬）', 'row'],
+    ['ellipticity 下限', '0.097（褐鹰鸮）', 'row'],
+    ['ellipticity 上限', '0.724（马累冢雉）', 'row'],
+    ['形态空间形状', '三角形（缺「球形+不对称」）', 'row b'],
+    ['鸻鹬类凸包面积', '远大于雀形目（n=154 vs n=740）', 'row'],
+    ['样品种数', '49,175 枚 / ~1400 种 / 37 目', 'row']
+  ].map(function(r){
+    return '<div class="' + r[2] + '"><span>' + r[0] + '</span><span>' + r[1] + '</span></div>';
+  }).join('');
+
+  /* ============================================================
+     4. Preston 四参数实验台
+        y = a sin t, x = b cos t (1 + c1 sin t + c2 sin^2 t + c3 sin^3 t)
+        a = b = 1 作图；长轴沿竖直方向（Preston 原排版）
+        端点曲率半径：R_B = b^2 * Phi1^2 / a,  R_P = b^2 * Phi2^2 / a
+          Phi1 = 1 + c1 + c2 + c3,  Phi2 = 1 - c1 + c2 - c3
+        （已由 src/egg_shape_indices_verify.py 数值验证：比值与解析式相对差 0.0000%）
+     ============================================================ */
+  var P = { c1:-0.22, c2:-0.01, c3:-0.07 };
+
+  function prestonProfile(c1, c2, c3, n){
+    var xs = new Float64Array(n + 1), ys = new Float64Array(n + 1);
+    for(var i = 0; i <= n; i++){
+      var t = 2.0 * Math.PI * i / n;
+      var u = Math.sin(t);
+      var phi = 1.0 + c1 * u + c2 * u * u + c3 * u * u * u;
+      xs[i] = Math.cos(t) * phi;
+      ys[i] = u;
+    }
+    return { x: xs, y: ys };
+  }
+
+  function prestonMetrics(c1, c2, c3){
+    var maxHW = 0, vAtMax = 0;
+    /* 最大半宽 + 它出现在哪个纬度（★ 最大半宽不在赤道 v=0，见 Preston 1968 p458） */
+    var M = 400000;
+    for(var i = 0; i <= M; i++){
+      var t = -Math.PI / 2 + Math.PI * i / M;
+      var u = Math.sin(t);
+      var phi = 1.0 + c1 * u + c2 * u * u + c3 * u * u * u;
+      var x = Math.cos(t) * phi;
+      if(Math.abs(x) > maxHW){ maxHW = Math.abs(x); vAtMax = u; }
+    }
+    /* 体积 V = pi * ∫ x^2 dy（★ 只在半圈 t∈[-pi/2, pi/2] 上积分，整圈上下抵消会恒为 0） */
+    var vol = 0;
+    for(var j = 0; j < M; j++){
+      var t0 = -Math.PI / 2 + Math.PI * j / M, t1 = -Math.PI / 2 + Math.PI * (j + 1) / M;
+      var u0 = Math.sin(t0), p0 = 1.0 + c1 * u0 + c2 * u0 * u0 + c3 * u0 * u0 * u0;
+      var u1 = Math.sin(t1), p1 = 1.0 + c1 * u1 + c2 * u1 * u1 + c3 * u1 * u1 * u1;
+      var x0 = Math.cos(t0) * p0, x1 = Math.cos(t1) * p1;
+      var dy = Math.sin(t1) - Math.sin(t0);
+      vol += (x0 * x0 + x1 * x1) / 2 * dy;
+    }
+    vol = Math.abs(Math.PI * vol);
+    var phi1 = 1.0 + c1 + c2 + c3, phi2 = 1.0 - c1 + c2 - c3;
+    /* ★ 两个极点各自的【曲率半径】（b = a = 1 时就是 Φ²）：
+         θ = π/2  → y = +a，半径 Rplus  = Φ₁²
+         θ = 3π/2 → y = −a，半径 Rminus = Φ₂²
+       ★ 哪个是钝端？曲率半径【大】的那一端才是钝端（更平坦）。
+         c₁ > 0 时钝端确实在 +a（Preston 原话：c₁ 恒正表示大端朝上）；
+         c₁ < 0 时两端角色【互换】，绝不能把 "钝端" 钉死在 +a 上。
+         本项目第一版就踩了这个坑（图注与数值对不上），真看图才发现。 */
+    var Rplus = phi1 * phi1, Rminus = phi2 * phi2;
+    var blunttIsPlus = (Rplus >= Rminus);
+    var RB = Math.max(Rplus, Rminus);
+    var RP = Math.min(Rplus, Rminus);
+    var L = 2.0, B = 2.0 * maxHW;
+    var asym10 = (RB - RP) * L / (B * B);
+    var bico11 = (RB + RP) * L / (B * B) - 1.0;
+    var ratio = RB / RP;                                  /* ★ 恒 ≥ 1 */
+    /* 半周对称残差 */
+    var res = 0;
+    for(var k = 0; k <= 2000; k++){
+      var tk = 2.0 * Math.PI * k / 2000;
+      var u1 = Math.sin(tk), p1 = 1 + c1 * u1 + c2 * u1 * u1 + c3 * u1 * u1 * u1;
+      var xa = Math.cos(tk) * p1, ya = u1;
+      var u2 = Math.sin(tk + Math.PI), p2 = 1 + c1 * u2 + c2 * u2 * u2 + c3 * u2 * u2 * u2;
+      var xb = Math.cos(tk + Math.PI) * p2, yb = u2;
+      var d = Math.abs(xb + xa) + Math.abs(yb + ya);
+      if(d > res) res = d;
+    }
+    var name = '圆 / 椭圆';
+    if(Math.abs(c3) > 1e-12){
+      name = 'Eq.(6) 通用式 · Alcid Ovoid 型';
+    }else if(Math.abs(c2) > 1e-12 && Math.abs(c1) > 1e-12){
+      name = 'Eq.(6a) Standard Avian Egg-Shape';
+    }else if(Math.abs(c2) > 1e-12){
+      name = 'Eq.(6c) 两端 virtually alike';
+    }else if(Math.abs(c1) > 1e-12){
+      name = 'Eq.(6b) Simple Ovoid';
+    }
+    return { maxHW:maxHW, vAtMax:vAtMax, vol:vol, RB:RB, RP:RP, ratio:ratio,
+             Rplus:Rplus, Rminus:Rminus, blunttIsPlus:blunttIsPlus,
+             asym10:asym10, bico11:bico11, halfTurnRes:res,
+             Hsym:(res < 1e-9), bGap:(maxHW - 1) / maxHW * 100,
+             VL:vol / 2.0, VLgirth:vol / (maxHW * maxHW) / 2.0, name:name };
+  }
+
+  var lastP = null;
+
+  function drawPreston(){
+    var cv = document.getElementById('cvPreston');
+    if(!cv) return;
+    var ctx = cv.getContext('2d');
+    var W = cv.width, H = cv.height;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
+
+    var c1 = P.c1, c2 = P.c2, c3 = P.c3;
+    var m = prestonMetrics(c1, c2, c3);
+    lastP = m;
+
+    /* ★ 自适应缩放（第二版）。
+       密切圆的圆心就在【极点】上，半径 R·sc ⇒ 纵向真实范围是
+           上：sc·(1 + R₊)（从蛋心到 +a 端圆顶）
+           下：sc·(1 + R₋)
+       —— 这两段【不相等】。第一版按 2·sc·(1+max R) 缩、再把蛋心钉在 H/2，
+       结果整幅图下沉、底部空一大块，且大圆虚线横穿右侧文字（真看图才发现）。
+       正解：按真实总高 sc·(2 + R₊ + R₋) 定 sc，再让 +a 端圆顶刚好落在上边距上。 */
+    /* sideRoom 要给右侧最长那句标签留位：'最大半宽 1.055048 (+5.218%)'
+       若只按圆自己算（58），标签会被判放不下而翻左，与大圆左下空白连成断线 */
+    var topPad = 40, botPad = 50, sideRoom = 228;
+    var cx = W * 0.50;
+    var sc = Math.min((H - topPad - botPad) / (2.0 + m.Rplus + m.Rminus),
+                      (W * 0.50 - sideRoom) / Math.max(1.0, m.Rplus, m.Rminus));
+    /* ★ 定完 sc 再【按真实内容高度重新居中】。
+       若直接写 cy = topPad + sc·(1+R₊)，只在「纵向恰好顶格」时成立；
+       一旦 sc 被横向约束（R₊/R₋ 悬殊时几乎总是如此），图形会整体贴上边、底部空一大块。 */
+    var cy = (H - sc * (2.0 + m.Rplus + m.Rminus)) * 0.5 + sc * (1.0 + m.Rplus);
+
+    /* 长轴 + 赤道线 */
+    ctx.strokeStyle = '#e2e1dc'; ctx.lineWidth = 1; ctx.setLineDash([5, 5]);
+    ctx.beginPath(); ctx.moveTo(cx, cy - sc * 1.14); ctx.lineTo(cx, cy + sc * 1.14); ctx.stroke();
+    ctx.setLineDash([]);
+
+    /* 半周对称幽灵像：把曲线绕中心转 180° */
+    var n = 900;
+    ctx.beginPath();
+    for(var i = 0; i <= n; i++){
+      var t = 2.0 * Math.PI * i / n;
+      var u = Math.sin(t), phi = 1.0 + c1 * u + c2 * u * u + c3 * u * u * u;
+      var x = Math.cos(t) * phi, y = u;
+      var gx = cx - x * sc, gy = cy + y * sc;
+      if(i === 0){ ctx.moveTo(gx, gy); } else { ctx.lineTo(gx, gy); }
+    }
+    ctx.closePath();
+    ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 2.2; ctx.setLineDash([7, 5]); ctx.stroke();
+    ctx.setLineDash([]);
+
+    /* 主曲线 */
+    ctx.beginPath();
+    for(var i2 = 0; i2 <= n; i2++){
+      var t2 = 2.0 * Math.PI * i2 / n;
+      var u2 = Math.sin(t2), p2 = 1.0 + c1 * u2 + c2 * u2 * u2 + c3 * u2 * u2 * u2;
+      var xx = Math.cos(t2) * p2, yy = u2;
+      var gx2 = cx + xx * sc, gy2 = cy - yy * sc;
+      if(i2 === 0){ ctx.moveTo(gx2, gy2); } else { ctx.lineTo(gx2, gy2); }
+    }
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(200,145,42,.10)'; ctx.fill();
+    ctx.strokeStyle = '#1c1c1c'; ctx.lineWidth = 2.6; ctx.stroke();
+
+    /* 两端【密切圆】（= 该极点处的曲率圆）。
+       ★ 密切圆不是「蛋内最大内切圆」—— 尖端处它会鼓出蛋体之外，那是几何本来的样子
+         （拿椭圆端部一试就知道：半轴 a=2,b=1 时端点曲率半径 = a²/b = 4，远超短半轴 1）。*/
+    function circleAt(sign, R, color){
+      var py = cy - sign * sc;
+      ctx.beginPath(); ctx.arc(cx, py, R * sc, 0, 2 * Math.PI);
+      ctx.strokeStyle = color; ctx.lineWidth = 2.0;
+      ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
+    }
+    circleAt(+1, m.Rplus, m.blunttIsPlus ? '#1f6feb' : '#c0392b');
+    circleAt(-1, m.Rminus, m.blunttIsPlus ? '#c0392b' : '#1f6feb');
+
+    /* b（赤道半宽）与最大半宽的横向指示线
+       ★ 最大半宽【不在赤道】，画在它真正出现的纬度上 —— 不许拿赤道线冒充 */
+    ctx.strokeStyle = '#1f6feb'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(cx - sc, cy); ctx.lineTo(cx + sc, cy); ctx.stroke();
+    ctx.strokeStyle = '#2e7d32';
+    var yMax = cy - m.vAtMax * sc;
+    ctx.beginPath(); ctx.moveTo(cx - m.maxHW * sc, yMax); ctx.lineTo(cx + m.maxHW * sc, yMax); ctx.stroke();
+    ctx.setLineDash([]);
+
+    /* —— 横向两条指示线的标注 ——
+       ★ 第一版把它们画在线的端点外侧，正好被【最大密切圆的虚线】横穿（真看图才发现）。
+         正解：统一画到最大密切圆【之外】；右端放不下就翻到左端。 */
+    var maxR = Math.max(1.0, m.Rplus, m.Rminus);
+    var xOut = cx + maxR * sc + 10;
+    ctx.font = 'bold 12px "Microsoft YaHei",sans-serif';
+    function sideLabel(y, color, text){
+      ctx.fillStyle = color; ctx.font = 'bold 12px "Microsoft YaHei",sans-serif';
+      if(xOut + ctx.measureText(text).width < W - 8){
+        ctx.textAlign = 'left'; ctx.fillText(text, xOut, y);
+      }else{
+        ctx.textAlign = 'right';
+        ctx.fillText(text, cx - maxR * sc - 10, y);
+      }
+      ctx.textAlign = 'left';
+    }
+    var yb = cy + 14;
+    var ym = yMax - 7;
+    if(Math.abs(ym - yb) < 16){ ym = yMax + 22; }   /* 最大半宽纬度贴近赤道时错开一行 */
+    sideLabel(yb, '#124a9e', 'b = 1.000000（赤道半宽）');
+    /* ★ 这句长度决定它会不会被翻到左端：比 b 标签长 ⇒ 必须收紧（去掉「=」与全角括号），
+       否则 745 + 198 > 932 会被判放不下而翻左，与大圆左下那一大片空白连成一条断线 */
+    sideLabel(ym, '#1d5420', '最大半宽 ' + m.maxHW.toFixed(6) + ' (+' + m.bGap.toFixed(3) + '%)');
+
+    /* —— 极点曲率半径：标在【各自密切圆】的外侧，右端放不下就翻左端 ——
+       （第一版用一句话「θ=π/2 处曲率半径 = …」放在 x=cx+R₊·sc 处，
+         结果大圆的弧从文字中间穿过去。改成短标签并带端别颜色） */
+    function poleLabel(xEdge, y, color, text){
+      ctx.fillStyle = color; ctx.font = 'bold 12px "Microsoft YaHei",sans-serif';
+      if(xEdge + 8 + ctx.measureText(text).width < W - 8){
+        ctx.textAlign = 'left'; ctx.fillText(text, xEdge + 8, y + 4);
+      }else{
+        ctx.textAlign = 'right'; ctx.fillText(text, 2 * cx - xEdge - 8, y + 4);
+      }
+      ctx.textAlign = 'left';
+    }
+    poleLabel(cx + m.Rplus * sc, cy - sc, m.blunttIsPlus ? '#1f6feb' : '#c0392b',
+              'R(θ=π/2) = ' + m.Rplus.toFixed(6) + (m.blunttIsPlus ? '（钝端）' : '（尖端）'));
+    poleLabel(cx + m.Rminus * sc, cy + sc, m.blunttIsPlus ? '#c0392b' : '#1f6feb',
+              'R(θ=3π/2) = ' + m.Rminus.toFixed(6) + (m.blunttIsPlus ? '（尖端）' : '（钝端）'));
+
+    /* 两端标签 —— ★ 角色按曲率半径判定，不钉死在 +a；位置让开密切圆（圆顶之上 / 圆底之下） */
+    ctx.font = 'bold 13px "Microsoft YaHei",sans-serif'; ctx.textAlign = 'center';
+    ctx.fillStyle = m.blunttIsPlus ? '#124a9e' : '#7b1f14';
+    ctx.fillText('y = +a　' + (m.blunttIsPlus ? '钝端（曲率半径大）' : '尖端（曲率半径小）'),
+                 cx, cy - sc * (1.0 + m.Rplus) - 10);
+    ctx.fillStyle = m.blunttIsPlus ? '#7b1f14' : '#124a9e';
+    ctx.fillText('y = −a　' + (m.blunttIsPlus ? '尖端（曲率半径小）' : '钝端（曲率半径大）'),
+                 cx, cy + sc * (1.0 + m.Rminus) + 26);
+    ctx.textAlign = 'left';
+
+    /* HUD（★ 改挂右上角：缩放改为按真实纵向范围居中后，图形会往左下铺开，
+       左上角开始被大圆擦到；右上角在全部预设下都是空的） */
+    /* —— 图例：★ 不再用 HTML 浮层 ——
+       .stage canvas 是 width:100% 拉伸渲染，而浮层用 CSS px 绝对定位 ⇒ 两者坐标系不一致：
+       宽屏（1104px）时浮层缩到画布里还勉强，窄屏时浮层几乎不动、画布缩小 ⇒ 必然压到曲线上。
+       正解：直接画在画布上，随画布一起缩放。 */
+    (function drawHud(){
+      var lines = [
+        ['开口 ' + m.name, '#3f3f3f'],
+        ['长轴沿竖直（Preston 原排版）', '#767676'],
+        ['b = a = 1', '#767676'],
+        ['红虚线 = 半周幽灵像（转 180°）', '#c0392b'],
+        ['虚线圆 = 极点密切圆（非内切圆）', '#124a9e'],
+        ['绿线 = 最大半宽纬度（≠ 赤道）', '#1d5420']
+      ];
+      ctx.font = '11.6px Consolas,"Microsoft YaHei",monospace';
+      var wid = 0;
+      for(var i = 0; i < lines.length; i++){
+        wid = Math.max(wid, ctx.measureText(lines[i][0]).width);
+      }
+      var lgW = Math.ceil(wid) + 20, lgH = lines.length * 17 + 14;
+      /* 挂左上角：滑块全域内（c₁ ∈ ±0.35）两端密切圆在 y ≤ 143 处都不会越到 x < 228，
+         而本框右缘 ≤ 243 ⇒ 唯一需要保证的是【框高 ≤ 143】，即行数 ≤ 7 */
+      var lgX = 12, lgY = 10;
+      ctx.fillStyle = 'rgba(255,255,255,.94)';
+      ctx.fillRect(lgX, lgY, lgW, lgH);
+      ctx.strokeStyle = '#e2e1dc'; ctx.lineWidth = 1;
+      ctx.strokeRect(lgX, lgY, lgW, lgH);
+      ctx.textAlign = 'left';
+      for(var j = 0; j < lines.length; j++){
+        ctx.fillStyle = lines[j][1];
+        ctx.fillText(lines[j][0], lgX + 10, lgY + 21 + j * 17);
+      }
+    })();
+
+    /* 读数面板 */
+    var cls = m.Hsym ? 'row ok' : 'row hi';
+    document.getElementById('roP').innerHTML = [
+      ['开口（按 c₁c₂c₃ 判归属）', m.name, 'row b'],
+      ['Φ₁ = 1+c₁+c₂+c₃　(θ=π/2, y=+a)', (1 + c1 + c2 + c3).toFixed(8), 'row b'],
+      ['Φ₂ = 1−c₁+c₂−c₃　(θ=3π/2, y=−a)', (1 - c1 + c2 - c3).toFixed(8), 'row b'],
+      ['R(θ=π/2) = Φ₁²（b=a=1）', m.Rplus.toFixed(8), 'row'],
+      ['R(θ=3π/2) = Φ₂²（b=a=1）', m.Rminus.toFixed(8), 'row'],
+      ['★ 钝端在哪一端', m.blunttIsPlus ? 'y = +a（θ=π/2）' : 'y = −a（θ=3π/2）', 'row hi'],
+      ['R_B（钝端曲率半径 = 大者）', m.RB.toFixed(8), 'row'],
+      ['R_P（尖端曲率半径 = 小者）', m.RP.toFixed(8), 'row'],
+      ['R_B / R_P（Eq.2，恒 ≥1）', m.ratio.toFixed(8), 'row'],
+      ['Asymmetry　Eq.(10) = (R_B−R_P)·L/B²', m.asym10.toFixed(8), 'row'],
+      ['Bicone　　Eq.(11) = (R_B+R_P)·L/B² − 1', m.bico11.toFixed(8), 'row'],
+      ['— 对称性 —', '', 'row'],
+      ['半周对称残差', m.halfTurnRes.toExponential(3), cls],
+      ['半周对称？（两端一致）', m.Hsym ? '是' : '否', cls],
+      ['— 口径 —', '', 'row'],
+      ['b（赤道半宽）', '1.000000', 'row b'],
+      ['真量测最大半宽', m.maxHW.toFixed(8), m.bGap > 1 ? 'row hi' : 'row ok'],
+      ['二者之差', (m.bGap > 0 ? '+' : '') + m.bGap.toFixed(4) + '%', m.bGap > 1 ? 'row hi' : 'row ok'],
+      ['最大半宽所在纬度 v', m.vAtMax.toFixed(6), 'row'],
+      ['— 体积 —', '', 'row'],
+      ['V（a=b=1）', m.vol.toFixed(8), 'row'],
+      ['V / L（同腰围，形状因子）', m.VLgirth.toFixed(8), 'row'],
+      ['椭圆基准 V/L = 2π/3', '2.09439510', 'row'],
+      ['— 画布 —', '', 'row'],
+      ['自适应缩放基准 max(1,R₊,R₋)', maxR.toFixed(6), 'row'],
+      ['绘图比例 sc（px/单位）', sc.toFixed(3), 'row'],
+      ['纵向范围', '上 ' + (sc * (1 + m.Rplus)).toFixed(1) + 'px / 下 ' + (sc * (1 + m.Rminus)).toFixed(1) + 'px', 'row']
+    ].map(function(r){
+      return '<div class="' + r[2] + '"><span>' + r[0] + '</span><span>' + r[1] + '</span></div>';
+    }).join('');
+  }
+  window.__drawPreston = drawPreston;
+
+  /* 控件 */
+  function bind(id, lbl, key, fmt){
+    var el = document.getElementById(id);
+    el.addEventListener('input', function(){
+      P[key] = parseFloat(el.value);
+      document.getElementById(lbl).textContent = fmt(P[key]);
+      drawPreston();
+    });
+  }
+  bind('rC1', 'lC1', 'c1', function(v){ return v.toFixed(4); });
+  bind('rC2', 'lC2', 'c2', function(v){ return v.toFixed(4); });
+  bind('rC3', 'lC3', 'c3', function(v){ return v.toFixed(4); });
+
+  function preset(c1, c2, c3, btnId){
+    P.c1 = c1; P.c2 = c2; P.c3 = c3;
+    document.getElementById('rC1').value = c1; document.getElementById('lC1').textContent = c1.toFixed(4);
+    document.getElementById('rC2').value = c2; document.getElementById('lC2').textContent = c2.toFixed(4);
+    document.getElementById('rC3').value = c3; document.getElementById('lC3').textContent = c3.toFixed(4);
+    ['bCircle', 'bEll', 'bA1', 'bA2', 'bAlc', 'bGold'].forEach(function(b){
+      document.getElementById(b).classList.toggle('on', b === btnId);
+    });
+    drawPreston();
+  }
+  document.getElementById('bCircle').addEventListener('click', function(){ preset(0, 0, 0, 'bCircle'); });
+  document.getElementById('bEll').addEventListener('click', function(){ preset(0, -0.05, 0, 'bEll'); });
+  document.getElementById('bA1').addEventListener('click', function(){ preset(-0.25, 0, 0, 'bA1'); });
+  document.getElementById('bA2').addEventListener('click', function(){ preset(0, -0.10, 0, 'bA2'); });
+  document.getElementById('bAlc').addEventListener('click', function(){ preset(-0.22, -0.01, -0.07, 'bAlc'); });
+  document.getElementById('bGold').addEventListener('click', function(){
+    preset(-0.08649647372092618, -0.044043136861146304, -0.020570303794540883, 'bGold');
+  });
+
+  /* ============================================================
+     5. 图 5A/5B 复算读数（数字直接取自 data/egg_shape_indices_verify.json）
+     ============================================================ */
+  document.getElementById('roFig5').innerHTML = [
+    ['复算设计', '固定长轴 a=1；半宽归一到最大半宽=1（同腰围）；31×16=496 点', 'row'],
+    ['corr( |asymmetry| , V )', '−0.4685', 'row hi'],
+    ['corr( |c₂| , V )', '−0.6279', 'row hi'],
+    ['体积区间', '3.71170 ~ 4.35993（跨度 17.46%）', 'row'],
+    ['(V/L) 椭圆基准', '2.09439510　= 2π/3', 'row ok'],
+    ['(V/L) 网格上确界', '2.179966　@ (c₁=0, c₂=+0.10)', 'row b'],
+    ['(V/L) 网格下确界', '1.855851　@ (c₁=−0.30, c₂=−0.20)', 'row b'],
+    ['⇒ 方向由 c₂ 符号决定', 'c₂>0 抬高 V/L；c₂<0（自然界常见）压低 V/L', 'row hi'],
+    ['数据来源', 'src/egg_shape_indices_verify.py · ④', 'row']
+  ].map(function(r){
+    return '<div class="' + r[2] + '"><span>' + r[0] + '</span><span>' + r[1] + '</span></div>';
+  }).join('');
+
+  /* ============================================================
+     6. 两个 3D 蛋形曲面（视图 Ⅴ）：锥切蛋曲面 vs 指数蛋曲面
+        —— 线框旋转体 + 高亮金色母线（母线 = 正视 zx 平面看到的 2D 蛋形曲线）
+
+        ★ 单一数据源：yaw / pitch 只存在两根滑块里；
+          画布拖动只把数值写回滑块，绝不另存一份
+        ★ 所有文字都画在 canvas 上，不用 HTML 浮层 ——
+          .stage canvas 是 width:100% 拉伸渲染，浮层用 CSS px 定位必然错位
+     ============================================================ */
+  var SOL_N = 26;      // 轴向分段（环数 = SOL_N + 1）
+  var SOL_M = 72;      // 每环采样点数
+  var SOL_K = 12;      // 经线条数
+
+  function bisectRoot(f, lo, hi, it){
+    var flo = f(lo), n = it || 90;
+    for(var i = 0; i < n; i++){
+      var m = 0.5 * (lo + hi), fm = f(m);
+      if(!isFinite(fm)) break;
+      if((flo > 0) === (fm > 0)){ lo = m; flo = fm; } else { hi = m; }
+    }
+    return 0.5 * (lo + hi);
+  }
+
+  /* 锥切蛋曲面：x² + y² = 1/(z₀ − z·sinα)² − (z·cosα)²，取黄金极限蛋 */
+  function makeCone(){
+    var kE = 1.9370872430462651;
+    var z0 = (1 + kE * kE) / (1 + kE);
+    var al = Math.atan(kE * (kE - 1) / (kE + 1));
+    var sa = Math.sin(al), ca = Math.cos(al);
+    var f = function(y){
+      var u = z0 - y * sa;
+      if(u <= 1e-12) return -1e9;
+      return 1 / (u * u) - y * y * ca * ca;
+    };
+    return {
+      name: '② 锥切蛋曲面',
+      zlo: bisectRoot(f, -1.0, -0.3), zhi: bisectRoot(f, 0.5, 1.5),
+      rho: function(y){ var v = f(y); return v > 0 ? Math.sqrt(v) : 0; },
+      eq: 'x² + y² = 1/(b − z·sinα)² − (z·cosα)²',
+      sub: '黄金极限蛋　k_E = 1.9370872　α = 31.7174744°　z₀ = φ = 1.6180340',
+      read: 'SI = 0.716754　·　κ(尖)/κ(钝) = 1.574139',
+      rgb: '168,124,40'
+    };
+  }
+
+  /* 指数蛋曲面：x² + y² + z² = a·2^z，取 a = 1 */
+  function makeExp(){
+    var a = 1.0;
+    var f = function(z){ return a * Math.pow(2, z) - z * z; };
+    return {
+      name: '① 指数蛋曲面',
+      zlo: bisectRoot(f, -1.2, -0.2), zhi: bisectRoot(f, 0.2, 2.8),
+      rho: function(z){ var v = f(z); return v > 0 ? Math.sqrt(v) : 0; },
+      eq: 'x² + y² + z² = a·2^z',
+      sub: 'a = 1.0000000　单参数族，闭合解上界 a_max = 1.1267306',
+      read: 'SI = 0.780041　·　κ(尖)/κ(钝) = 1.581168',
+      rgb: '20,110,130'
+    };
+  }
+
+  function rhoMaxOf(S){
+    var m = 0, zi = S.zlo, N = 3000;
+    for(var i = 0; i <= N; i++){
+      var z = S.zlo + (S.zhi - S.zlo) * i / N, r = S.rho(z);
+      if(r > m){ m = r; zi = z; }
+    }
+    return { rmax: m, z: zi, SI: 2 * m / (S.zhi - S.zlo) };
+  }
+
+  function drawSolid(){
+    var cv = document.getElementById('cvSolid');
+    if(!cv) return;
+    var ctx = cv.getContext('2d');
+    var W = cv.width, H = cv.height;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
+
+    var rY = document.getElementById('rYaw'), rP = document.getElementById('rPit');
+    var yaw = parseFloat(rY.value) * Math.PI / 180;
+    var pit = parseFloat(rP.value) * Math.PI / 180;
+    var cyw = Math.cos(yaw), syw = Math.sin(yaw);
+    var cp = Math.cos(pit), sp = Math.sin(pit);
+
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 13.5px "Microsoft YaHei", sans-serif';
+    ctx.fillStyle = '#c8912a';
+    ctx.fillText('金色粗线 = φ=0 与 φ=π 两条经线；点「正视图」使两者重合，即为 zx 平面上的 2D 蛋形曲线', W / 2, 16);
+
+    var solids = [makeCone(), makeExp()];
+
+    for(var si = 0; si < solids.length; si++){
+      var S = solids[si];
+      var cx = W * (si === 0 ? 0.265 : 0.745);
+      var cy0 = H * 0.520;
+      var zc = 0.5 * (S.zlo + S.zhi);
+      var R = 168;
+      var sc = R / (0.5 * (S.zhi - S.zlo));
+
+      var P = function(x, y, z){
+        var ax = x * cyw - y * syw;
+        var ay = x * syw + y * cyw;
+        var up = z * cp - ay * sp;
+        var dep = z * sp + ay * cp;
+        return [cx + sc * ax, cy0 - sc * (up - zc), dep];
+      };
+
+      /* ---- 组装线段：环（固定轴向）+ 经线（固定方位角） ---- */
+      var segs = [];
+      var i, j, k, z, r, pts, ph;
+      for(i = 0; i <= SOL_N; i++){
+        z = S.zlo + (S.zhi - S.zlo) * i / SOL_N;
+        r = S.rho(z); pts = [];
+        for(j = 0; j <= SOL_M; j++){
+          ph = 2 * Math.PI * j / SOL_M;
+          pts.push(P(r * Math.cos(ph), r * Math.sin(ph), z));
+        }
+        segs.push(pts);
+      }
+      var NZ = SOL_N * 4;
+      for(k = 0; k < SOL_K; k++){
+        ph = 2 * Math.PI * k / SOL_K; pts = [];
+        for(i = 0; i <= NZ; i++){
+          z = S.zlo + (S.zhi - S.zlo) * i / NZ;
+          r = S.rho(z);
+          pts.push(P(r * Math.cos(ph), r * Math.sin(ph), z));
+        }
+        segs.push(pts);
+      }
+
+      /* ---- 深度排序：远的先画（线框 + 深度淡出） ---- */
+      var deps = [], q, t;
+      for(q = 0; q < segs.length; q++){
+        var sm = 0, pp = segs[q];
+        for(t = 0; t < pp.length; t++) sm += pp[t][2];
+        deps.push(sm / pp.length);
+      }
+      var dLo = Math.min.apply(null, deps), dHi = Math.max.apply(null, deps);
+      var order = [];
+      for(q = 0; q < deps.length; q++) order.push(q);
+      order.sort(function(A, B){ return deps[B] - deps[A]; });
+
+      for(q = 0; q < order.length; q++){
+        var idx = order[q], pl = segs[idx];
+        var u = (deps[idx] - dLo) / Math.max(1e-9, dHi - dLo);   // 0 = 最近
+        var alpha = 0.60 - 0.42 * u;
+        ctx.beginPath();
+        ctx.moveTo(pl[0][0], pl[0][1]);
+        for(t = 1; t < pl.length; t++) ctx.lineTo(pl[t][0], pl[t][1]);
+        ctx.strokeStyle = 'rgba(' + S.rgb + ',' + alpha.toFixed(3) + ')';
+        ctx.lineWidth = Math.max(0.4, 0.85 - 0.35 * u);
+        ctx.stroke();
+      }
+
+      /* ---- 金色母线：φ = 0 与 φ = π，合起来就是正视 zx 平面的 2D 轮廓 ---- */
+      var two = [0, Math.PI];
+      for(k = 0; k < 2; k++){
+        ph = two[k]; pts = [];
+        for(i = 0; i <= 240; i++){
+          z = S.zlo + (S.zhi - S.zlo) * i / 240;
+          r = S.rho(z);
+          pts.push(P(r * Math.cos(ph), r * Math.sin(ph), z));
+        }
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0], pts[0][1]);
+        for(t = 1; t < pts.length; t++) ctx.lineTo(pts[t][0], pts[t][1]);
+        ctx.strokeStyle = 'rgba(200,145,42,0.96)';
+        ctx.lineWidth = 2.3;
+        ctx.stroke();
+      }
+
+      /* ---- 文字（全画在 canvas 上，随画布一起缩放） ---- */
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#1c1c1c';
+      ctx.font = 'bold 15px "Microsoft YaHei", sans-serif';
+      ctx.fillText(S.name, cx, 44);
+      ctx.font = '12.5px "Cascadia Mono","Consolas",monospace';
+      ctx.fillStyle = '#3f3f3f';
+      ctx.fillText(S.eq, cx, 66);
+      ctx.font = '12px "Microsoft YaHei", sans-serif';
+      ctx.fillStyle = '#767676';
+      ctx.fillText(S.sub, cx, 86);
+      ctx.font = '12.5px "Cascadia Mono","Consolas",monospace';
+      ctx.fillStyle = '#8a5c10';
+      ctx.fillText(S.read, cx, H - 32);
+      ctx.font = '12px "Cascadia Mono","Consolas",monospace';
+      ctx.fillStyle = '#767676';
+      ctx.fillText('轴向 z ∈ [' + S.zlo.toFixed(6) + ', ' + S.zhi.toFixed(6) + ']', cx, H - 14);
+    }
+  }
+
+  /* ---- 交互：滑块是唯一数据源，拖动只写回滑块 ---- */
+  var cvSolidEl = document.getElementById('cvSolid');
+  var rYawEl = document.getElementById('rYaw'), rPitEl = document.getElementById('rPit');
+  var lYawEl = document.getElementById('lYaw'), lPitEl = document.getElementById('lPit');
+
+  function syncSolid(){
+    lYawEl.textContent = rYawEl.value + '°';
+    lPitEl.textContent = rPitEl.value + '°';
+    drawSolid();
+  }
+  rYawEl.addEventListener('input', syncSolid);
+  rPitEl.addEventListener('input', syncSolid);
+  //   ★ 正视图（yaw 0° / pitch 0°）：视线沿 ±y 轴 ⇒ 投影就是 zx 平面，
+  //     φ=0 与 φ=π 两条金色经线重合成 x = ±ρ(z)，即真正的 2D 蛋形轮廓。
+  //     其余 10 条经线投影为 cos(φ_k)·ρ(z) 的嵌套内曲线，正好当参照。
+  document.getElementById('bFront').addEventListener('click', function(){ rYawEl.value = 0; rPitEl.value = 0; syncSolid(); });
+  document.getElementById('bSide').addEventListener('click', function(){ rPitEl.value = 0; syncSolid(); });
+  document.getElementById('bTop').addEventListener('click', function(){ rPitEl.value = 86; syncSolid(); });
+  document.getElementById('bReset3d').addEventListener('click', function(){
+    rYawEl.value = 42; rPitEl.value = 16; syncSolid();
+  });
+
+  var drag3d = null;
+  cvSolidEl.style.cursor = 'grab';
+  cvSolidEl.addEventListener('pointerdown', function(ev){
+    drag3d = { x: ev.clientX, y: ev.clientY, yaw: +rYawEl.value, pit: +rPitEl.value };
+    if(cvSolidEl.setPointerCapture){ cvSolidEl.setPointerCapture(ev.pointerId); }
+    cvSolidEl.style.cursor = 'grabbing';
+  });
+  cvSolidEl.addEventListener('pointermove', function(ev){
+    if(!drag3d) return;
+    var cw = cvSolidEl.clientWidth || 1120, ch = cvSolidEl.clientHeight || 500;
+    var nx = drag3d.yaw + (ev.clientX - drag3d.x) * 360 / cw;
+    nx = ((nx % 360) + 360) % 360;
+    var np = Math.max(-4, Math.min(86, drag3d.pit + (ev.clientY - drag3d.y) * 90 / ch));
+    rYawEl.value = Math.round(nx);
+    rPitEl.value = Math.round(np);
+    syncSolid();
+  });
+  function endDrag3d(){ if(!drag3d) return; drag3d = null; cvSolidEl.style.cursor = 'grab'; }
+  cvSolidEl.addEventListener('pointerup', endDrag3d);
+  cvSolidEl.addEventListener('pointercancel', endDrag3d);
+  cvSolidEl.addEventListener('pointerleave', endDrag3d);
+
+  window.__drawSolid = drawSolid;
+  window.__setSolidView = function(y, p){ rYawEl.value = y; rPitEl.value = p; syncSolid(); };
+  window.__solidProbe = function(){
+    var out = [], arr = [makeCone(), makeExp()];
+    for(var i = 0; i < 2; i++){
+      var m = rhoMaxOf(arr[i]);
+      out.push({ zlo: arr[i].zlo, zhi: arr[i].zhi, rhoMax: m.rmax, zOfMax: m.z, SI: m.SI });
+    }
+    return { yaw: +rYawEl.value, pit: +rPitEl.value,
+             cone: out[0], exp: out[1],
+             canvasW: cvSolidEl.width, canvasH: cvSolidEl.height };
+  };
+
+  /* ============================================================
+     7. 首屏渲染
+     ============================================================ */
+  try{
+    drawMorph();
+    drawPreston();
+    drawSolid();
+  }catch(err){
+    fatal('首屏渲染失败：' + (err && err.message ? err.message : err));
+  }
+
+})();
+</script>
+</body>
+</html>

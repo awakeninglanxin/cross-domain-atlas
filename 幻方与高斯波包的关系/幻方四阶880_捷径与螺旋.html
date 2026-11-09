@@ -1,0 +1,2048 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>四阶幻方 7040 / 880 · 捷径枚举与螺旋声场</title>
+<style>
+:root{
+  --ink:#241f1c; --bg:#fbf9f4; --card:#ffffff; --line:#e2dccf;
+  --pp:#534ab7; --gg:#1f7a52; --rd:#b3352c; --am:#a8701a;
+  --mute:#6d675e; --soft:#f4f1e8;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);
+  font:15px/1.72 "Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1240px;margin:0 auto;padding:26px 20px 90px}
+h1{font-size:25px;line-height:1.35;margin:0 0 6px;letter-spacing:-.2px}
+h2{font-size:18px;margin:38px 0 12px;padding-bottom:7px;border-bottom:1px solid var(--line)}
+h3{font-size:15.5px;margin:22px 0 8px;color:var(--pp)}
+p{margin:9px 0}
+a{color:var(--pp);text-decoration:none;border-bottom:1px solid rgba(83,74,183,.32)}
+a:hover{border-bottom-color:var(--pp)}
+.sub{color:var(--mute);font-size:13.5px;margin:0 0 14px}
+code{font:13px/1 "Cascadia Mono",Consolas,monospace;background:var(--soft);
+  padding:1.5px 5px;border-radius:3px;color:#3a3340}
+.eq{font:15.5px/2 "Segoe UI","Cambria Math",serif;background:var(--soft);
+  padding:11px 15px;border-radius:5px;border-left:3px solid var(--pp);
+  margin:12px 0;overflow-x:auto;white-space:nowrap}
+.eq b{color:var(--pp);font-weight:600}
+.note{background:#fff;border:1px solid var(--line);border-left:3px solid var(--pp);
+  padding:11px 15px;border-radius:4px;margin:14px 0;font-size:14.3px}
+.note.g{border-left-color:var(--gg)}
+.note.r{border-left-color:var(--rd)}
+.note.a{border-left-color:var(--am)}
+.note b{font-weight:600}
+.note.g b{color:var(--gg)} .note.r b{color:var(--rd)} .note.a b{color:var(--am)}
+.pur{color:var(--pp);font-weight:600}
+.grn{color:var(--gg);font-weight:600}
+.red{color:var(--rd);font-weight:600}
+.amc{color:var(--am);font-weight:600}
+
+.tw{overflow-x:auto;margin:10px 0}
+table{border-collapse:collapse;width:100%;font-size:13.6px}
+th,td{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top}
+th{background:var(--soft);font-weight:600;white-space:nowrap}
+td.n{font-family:"Cascadia Mono",Consolas,monospace;white-space:nowrap}
+td.c{text-align:center}
+
+/* 顶栏 */
+#bar{position:sticky;top:0;z-index:30;background:rgba(251,249,244,.96);
+  backdrop-filter:blur(8px);border-bottom:1px solid var(--line);
+  padding:9px 20px;margin:0 -20px 18px;
+  display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+#bar .lab{font-size:12.5px;color:var(--mute)}
+button{font:14px/1 inherit;padding:9px 15px;border-radius:5px;cursor:pointer;
+  border:1px solid var(--line);background:#fff;color:var(--ink);transition:.14s}
+button:hover{border-color:var(--pp);color:var(--pp)}
+button.pri{background:var(--pp);border-color:var(--pp);color:#fff;font-weight:600}
+button.pri:hover{background:#453d9e;color:#fff}
+button:disabled{opacity:.42;cursor:not-allowed}
+#st{font-size:13px;color:var(--mute);min-width:190px}
+#st.on{color:var(--gg);font-weight:600}
+
+/* 主交互区：图在左（宽）+ 参数在右 */
+.grid{display:grid;grid-template-columns:1fr 300px;gap:22px;align-items:start}
+@media(max-width:940px){.grid{grid-template-columns:1fr}}
+
+.mg{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;max-width:400px}
+.mc{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;
+  font:600 21px/1 "Segoe UI",system-ui,sans-serif;
+  border:1px solid var(--line);border-radius:7px;background:#fff;
+  cursor:pointer;color:var(--ink);transition:.12s;user-select:none}
+.mc:hover{border-color:var(--pp)}
+.mc.hl{background:#f0edff;border-color:var(--pp)}
+.mc.sel{outline:2px solid var(--pp);outline-offset:-2px}
+.mc.dg{background:#fdf3e4}
+
+.dual{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;max-width:400px}
+.dlab{font-size:12.5px;color:var(--mute);margin-bottom:5px}
+.mini{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.mn{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;
+  font:600 14px/1 "Cascadia Mono",Consolas,monospace;
+  border:1px solid var(--line);border-radius:4px;background:var(--soft);color:#3a3340}
+
+.canvasbox{margin-top:16px}
+canvas{display:block;width:100%;height:auto;border:1px solid var(--line);
+  border-radius:6px;background:#fff}
+.cap{font-size:12.5px;color:var(--mute);margin:6px 0 0}
+
+.panel{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px 15px}
+.panel .ph{font-size:13px;font-weight:600;color:var(--pp);letter-spacing:.3px;
+  padding-bottom:9px;margin-bottom:4px;border-bottom:1px solid var(--line);
+  display:flex;justify-content:space-between;align-items:center}
+.panel .ph .tag{font-size:11px;font-weight:500;color:var(--mute);
+  background:var(--soft);border-radius:9px;padding:2px 8px}
+.fld{margin-top:13px}
+.fld>label.t,.t{display:block;font-size:12.5px;color:var(--mute);margin-bottom:5px}
+.fld>label.t b,.t b{color:var(--ink);font-weight:600}
+.t2{display:block;font-size:12px;color:var(--mute);margin:9px 0 3px}
+.t2 b{color:var(--ink);font-weight:600}
+select{width:100%;font:13.5px/1.4 inherit;padding:7px 8px;border:1px solid var(--line);
+  border-radius:5px;background:#fff;color:var(--ink)}
+input[type=range]{width:100%;margin:0;accent-color:var(--pp)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px}
+.row2 button{padding:8px 4px;font-size:13px}
+.hint{font-size:11.8px;color:var(--mute);margin-top:5px;line-height:1.5}
+.badges{margin-top:10px;display:flex;gap:6px;flex-wrap:wrap}
+.bg{font-size:11.5px;border-radius:9px;padding:2px 9px;border:1px solid var(--line);
+  background:var(--soft);color:var(--mute)}
+.bg.on{background:#e8f5ee;border-color:#bfe0cd;color:var(--gg);font-weight:600}
+
+#chk{font-size:13px;border:1px solid var(--line);border-radius:6px;background:#fff;
+  padding:4px 0;margin-top:10px}
+#chk .r{display:flex;gap:9px;padding:4px 13px;border-bottom:1px dashed #eee9dd}
+#chk .r:last-child{border-bottom:0}
+#chk .k{width:74px;flex:none;font-weight:600;font-size:12px}
+#chk .ok{color:var(--gg)} #chk .no{color:var(--rd)}
+#chk .v{color:var(--mute);font-size:12.5px}
+#sum{font-size:13px;margin-top:8px}
+#errbox{position:fixed;right:14px;bottom:14px;z-index:99;max-width:520px;
+  background:#fdecea;color:#8a1f18;border:1px solid #f0b5ae;border-radius:6px;
+  padding:9px 13px;font:12.5px/1.5 monospace;display:none;white-space:pre-wrap}
+/* 6 阶井字切法（§7） */
+.cmat{display:grid;grid-template-columns:38px repeat(10,1fr);gap:3px;max-width:436px;margin-top:4px}
+.cmat .hd{font-size:10.5px;color:var(--mute);text-align:center;padding:1px 0;
+  font-family:"Cascadia Mono",Consolas,monospace}
+.cmat .rl{font-size:10.5px;color:var(--mute);text-align:right;padding:1px 3px 1px 0;
+  font-family:"Cascadia Mono",Consolas,monospace;white-space:nowrap}
+.cm{aspect-ratio:1/1;border:1px solid #d8d1c1;border-radius:3px;background:#f9f7f1;
+  display:flex;align-items:center;justify-content:center;font:700 12px/1 monospace;
+  color:transparent;cursor:pointer;transition:.12s}
+.cm:hover{border-color:var(--pp);background:#efeaff}
+.cm.hitA{background:#d9eede;border-color:#6fb28b;color:#14663f}
+.cm.hitB{background:#e4dfff;border-color:#9689dd;color:#3b3470}
+.cm.sel{outline:2px solid var(--ink);outline-offset:-2px}
+.cutwrap{display:grid;grid-template-columns:auto 1fr;gap:18px;margin-top:14px;align-items:start}
+@media(max-width:660px){.cutwrap{grid-template-columns:1fr}}
+.g6{display:grid;grid-template-columns:repeat(6,34px);border:1px solid var(--line);
+  border-radius:4px;overflow:hidden;background:#fff}
+.g6 div{display:flex;align-items:center;justify-content:center;
+  font:600 12.5px/1 "Cascadia Mono",Consolas,monospace;color:#3a3340;
+  width:34px;height:34px;border-right:1px solid #f1ece0;border-bottom:1px solid #f1ece0}
+.cinfo{font-size:12.4px;line-height:1.66;color:var(--mute)}
+.cinfo b{color:var(--ink)}
+.cinfo .hit{color:var(--gg);font-weight:600}
+.cinfo .no{color:#c2bbae}
+.critlist{font-size:12.4px;color:var(--mute);line-height:1.72}
+.critlist div{margin:2px 0}
+.critlist span{display:inline-block;width:15px;color:var(--pp);font-weight:700}
+#inSq{width:100%;font:13px/1.55 "Cascadia Mono",Consolas,monospace;padding:9px 10px;
+  border:1px solid var(--line);border-radius:5px;background:#fff;color:var(--ink);
+  resize:vertical;margin-top:2px}
+#clsOut{margin-top:11px;font-size:12.6px;line-height:1.7}
+#clsOut .bad{color:var(--rd);font-weight:600}
+#clsOut .good{color:var(--gg);font-weight:600}
+#clsOut .row{display:flex;gap:9px;padding:3px 0;border-bottom:1px dashed #eee9dd}
+#clsOut .row:last-child{border-bottom:0}
+#clsOut .k{flex:none;color:var(--mute);min-width:86px}
+</style>
+</head>
+<body>
+<div id="errbox"></div>
+<div class="wrap">
+
+<h1>四阶幻方：16! 走不通，0.2 秒量级足够</h1>
+<p class="sub">从「跑不完」到 153 ms —— 一份可验算的捷径，以及把同一内核铺成 12 个可调因子的声场。<br>
+本页只做「时域滑行 + 曲线调制」；<b>四律稳态叠加 / 立体声相位 / WAV 导出</b> 在 <a href="幻方波包_播放器.html">播放器页</a>，两页不重复。</p>
+
+<div id="bar">
+  <button id="btnPlay" class="pri">播放</button>
+  <button id="btnStop">停止</button>
+  <span id="st">就绪</span>
+  <span class="lab" id="timing">枚举中…</span>
+</div>
+
+<h2>§0 结论先行</h2>
+
+<div class="tw">
+<table>
+<tr><th style="width:150px">问题</th><th style="width:120px">数字</th><th>怎么来的（可复算）</th></tr>
+<tr><td>暴力枚举上限</td><td class="n">20,922,789,888,000</td><td>16! = 2.09×10¹³；按 1e6 次/秒判幻方 ⟹ <b>约 242 天</b></td></tr>
+<tr><td>4 元和 = 34 的子集</td><td class="n">86</td><td>从 C(16,4) = 1820 里筛 sum=34</td></tr>
+<tr><td>列划分</td><td class="n">392</td><td>把 1…16 拆成 4 个「和 = 34」的四元组（精确覆盖）</td></tr>
+<tr><td><b>全部幻方</b></td><td class="n">7040</td><td>392 × 24 列序，逐行递推 + 对角校验</td></tr>
+<tr><td><b>本质不同</b></td><td class="n">880</td><td>7040 ÷ 8（D4 旋转镜像）；<b>每个轨道恰好 8 个</b></td></tr>
+<tr><td>泛对角 / 结合型</td><td class="n">384 / 384</td><td>本质各 48；两者是<b>不同的两批</b>（同大小）</td></tr>
+<tr><td>能推广到 n 阶吗</td><td class="n">2 / 4</td><td>四招里只有 ①③ 是真通项；④ 的除数是 ρ(n) 不是 8；精确值只到 6 阶 —— 见 <b>§6</b></td></tr>
+<tr><td>6 阶能拼出来吗</td><td class="n">2 / 100</td><td>井字切 100 种，只有 <b>2 种</b>能切出结构（3×2 块扩 1392.64 万张 / 4+2 同心）—— 见 <b>§7</b></td></tr>
+<tr><td>本页实测耗时</td><td class="n">顶栏显示</td><td>同一内核：Node 下 153 ms，浏览器 0.2–0.6 s；Python 独立实现 15.6 s，结果 md5 逐字节相同</td></tr>
+</table>
+</div>
+
+<div class="note a">
+<b>先纠正一个口径。</b>「4 阶幻方共 880 种」是对的，但它是<b>模掉 8 个旋转镜像之后</b>的种数。
+全部是 <b>7040</b> 个。本页把两个口径都列出来，并且证明 880 = 7040 / 8 不是巧合 —— 
+<b>880 个轨道的稳定子全部平凡</b>（不存在任何一张 4 阶幻方转一下或翻一下还等于自己）。
+</div>
+
+<h2>§1 16! 到底有多远</h2>
+
+<p>原脚本 <code>4阶幻方种类.py</code> 的做法是：把 1…16 的所有排列枚举一遍，每个排列 reshape 成 4×4，再判幻方。
+判据没错，规模错了。</p>
+
+<div class="eq">16! = <b>20,922,789,888,000</b> 次判幻方 &nbsp;⟹&nbsp; 1e6 次/秒 = <b>2.09×10⁷ s ≈ 242 天</b></div>
+
+<p>而且这不是「慢一点」：判幻方要 10 次加法和若干分支，实际每秒也就 1e5 量级 ⟹ 变成 <b>6.6 年</b>。
+真正致命的是它<b>几乎不剪枝</b>：前 12 个数填完，第 13 个数还在瞎试，而 4 阶的约束强到第 4 个数就该被定死。</p>
+
+<div class="note r">
+<b>为什么「加机器」不是答案。</b>2.09×10¹³ 除以 1000 核也只是 3.6×10¹⁰ 次 —— 仍然要几小时，
+而且要重写并行。而下面四个招式把它压到 1.4×10⁷，<b>单个浏览器标签页 0.2 秒量级</b>。
+差距不是 1000 倍，是 10⁶ 倍，方向错了加多少机器都没用。
+</div>
+
+<h2>§2 捷径：四个招式</h2>
+
+<h3>招式 1 · 末元递推（每层 ÷16）</h3>
+<p>一行 4 个数和为 34 ⟹ 第 4 个 = 34 − 前 3 个。它不进循环，只做一次查表。四行都这么办，
+循环层数从 16 层降到 12 层，且每层少 16 倍。</p>
+
+<h3>招式 2 · 位分解双射（让条件裂成两半）</h3>
+<p>把格值 v 写成 <code>v − 1 = a + 4b</code>（a = 低两位，b = 高两位，两者都在 0…3）。
+于是一行四格的和是</p>
+<div class="eq">Σv = 4 + <b>Σa</b> + 4·<b>Σb</b> = 34 &nbsp;⟹&nbsp; <b>Σa + 4·Σb = 30</b> &nbsp;&nbsp;（Σa, Σb 都在 0…12）</div>
+<p>这个方程在 0…12 里只有三组解 —— <b>(6, 6)</b>、<b>(2, 7)</b>、<b>(10, 5)</b>。于是方阵分成两族：</p>
+
+<div class="tw">
+<table>
+<tr><th>族</th><th style="width:110px">数量</th><th>特征</th></tr>
+<tr><td><b>干净分裂</b></td><td class="n">5248 / 7040</td><td>a、b 两套 0…3 数组的 <b>4 行 4 列 2 对角全部 = 6</b></td></tr>
+<tr><td>对角混搭</td><td class="n">1792 / 7040</td><td>4 行 4 列仍是 6，但<b>两条主对角线</b>变成 <b>2</b> 与 <b>10</b>（另一套 b 相应是 7 与 5）；两族之和正好 7040</td></tr>
+</table>
+</div>
+
+<div class="note r">
+<b>这一条我判错过两次，都被自己的自检打红。</b>第一版我写「每张方阵的 a、b 都各自 8 线皆 6」——
+只有 <b>5248</b> 张成立。改了口径之后又错一次：我以为破的是「某一行」，实测 <b>4 行 4 列永远是 6</b>，
+破的只可能是<b>两条主对角线</b>（1792 张，取值恰好是 2 与 10，没有第三种）。
+所以页内断言现在是四条：行/列恒 6、对角恒等式 <code>Σa + 4Σb = 30</code>、干净 5248、混搭 1792 且只出现 (2,10)。
+</div>
+
+<p>另一个必要条件是<b>正交</b>：16 个格子上的 (a, b) 对必须两两不同，等价于 v 恰好是 1…16 的全排列。
+丢勒那张就是干净分裂的正样本。</p>
+
+<div class="note g">
+<b>丢勒那张方阵（本页第 7030 号）</b>可以直接当教材：
+<div class="tw" style="margin:8px 0 0">
+<table style="max-width:430px;text-align:center">
+<tr><th colspan="4">M（丢勒）</th><th colspan="4">a = v−1 mod 4</th><th colspan="4">b = ⌊(v−1)/4⌋</th></tr>
+<tr><td class="c">16</td><td class="c">3</td><td class="c">2</td><td class="c">13</td><td class="c">3</td><td class="c">2</td><td class="c">1</td><td class="c">0</td><td class="c">3</td><td class="c">0</td><td class="c">0</td><td class="c">3</td></tr>
+<tr><td class="c">5</td><td class="c">10</td><td class="c">11</td><td class="c">8</td><td class="c">0</td><td class="c">1</td><td class="c">2</td><td class="c">3</td><td class="c">1</td><td class="c">2</td><td class="c">2</td><td class="c">1</td></tr>
+<tr><td class="c">9</td><td class="c">6</td><td class="c">7</td><td class="c">12</td><td class="c">0</td><td class="c">1</td><td class="c">2</td><td class="c">3</td><td class="c">2</td><td class="c">1</td><td class="c">1</td><td class="c">2</td></tr>
+<tr><td class="c">4</td><td class="c">15</td><td class="c">14</td><td class="c">1</td><td class="c">3</td><td class="c">2</td><td class="c">1</td><td class="c">0</td><td class="c">0</td><td class="c">3</td><td class="c">3</td><td class="c">0</td></tr>
+</table>
+</div>
+两套 0…3 数组<b>各自的 4 行 4 列 2 对角全部 = 6</b>，且 16 个 (a,b) 两两不同 —— 断言全绿（见 §10）。
+</div>
+
+<h3>招式 3 · 精确覆盖（16! → 3.9×10²）</h3>
+<p>一列 4 个数和为 34 ⟹ 这列必是 86 个「四元和 = 34」子集之一。反过来先把这 86 个集合列出来，
+再问「怎样拼成 4 列覆盖 1…16」—— 只有 <b>392</b> 种拼法。搜索空间从 2.09×10¹³ 掉到 392。</p>
+
+<div class="note">
+<b>这里踩过一个坑，值得记。</b>第一版我用「列划分 + 一种列序」枚举，只得到 <b>300</b> 个 —— 
+因为划分 DFS 是按「最小未覆盖元素」出发的，每得到一个划分只有<b>一种列序</b>。
+列是可以任意排的 ⟹ 少乘了 <b>4! = 24</b>。乘回去才是 7040。
+（300 × 24 ≈ 7200，与 7040 的差值是那些列序撞车的组合。）
+</div>
+
+<h3>招式 4 · 商掉对称群（7040 → 880）</h3>
+<p>D4 的 8 个元素（转 0/90/180/270° × 是否镜像）作用在方阵上。取每条的<b>字典序最小代表</b>做规范型，
+分组即轨道。实测：<b>880 个轨道，大小全是 8</b> ⟹ 除法干净，没有余数，也没有「对称的方阵」拖后腿。</p>
+
+<h3>组合起来的账</h3>
+<div class="tw">
+<table>
+<tr><th>阶段</th><th style="width:130px">规模</th><th>说明</th></tr>
+<tr><td>1. 列候选</td><td class="n">86</td><td>4 元和 = 34 的子集</td></tr>
+<tr><td>2. 精确覆盖</td><td class="n">392</td><td>每划分 4 个集合</td></tr>
+<tr><td>3. 列序</td><td class="n">× 24</td><td>4! 个排列（第一版就漏在这里）</td></tr>
+<tr><td>4. 逐行递推</td><td class="n">512 → 81 → 16</td><td>末元定出 + 剪枝</td></tr>
+<tr><td>5. 对角校验</td><td class="n">2 次比较</td><td>留到最后，最便宜</td></tr>
+<tr><td><b>合计</b></td><td class="n">≈ 1.4×10⁷</td><td><b>153 ms</b>（本页 ; Python 15.6 s）</td></tr>
+</table>
+</div>
+
+<h2>§3 结果核对：7040 / 880 / 384 / 48</h2>
+
+<p>下面的数字全部由本页内核现场算出，不是抄的。加载页面时它的耗时已经打在顶栏里。</p>
+
+<div class="tw">
+<table>
+<tr><th>量</th><th style="width:90px">全部</th><th style="width:110px">本质不同</th><th>判据</th></tr>
+<tr><td>4 阶幻方</td><td class="n">7040</td><td class="n">880</td><td>8 线（4 行 4 列 2 对角）皆 34</td></tr>
+<tr><td>泛对角</td><td class="n">384</td><td class="n">48</td><td>8 条折断对角线也全是 34</td></tr>
+<tr><td>结合型</td><td class="n">384</td><td class="n">48</td><td>中心对称两格互补：m[i][j] + m[3−i][3−j] = 17</td></tr>
+<tr><td>最完美</td><td class="n">384</td><td class="n">48</td><td>9 个 2×2 块（含环绕）全为 34</td></tr>
+</table>
+</div>
+
+<div class="note g">
+<b>两个可验算的强结论。</b><br>
+① <b>泛对角 ⟺ 最完美</b>（4 阶特有）：两个集合都是 384 个且<b>互相包含</b>，本页断言直接比集合相等。<br>
+② <b>泛对角 ≠ 结合型</b>：数量相同（384 / 48）却是<b>不同的两批</b> —— 数量骗人，必须比集合。
+</div>
+
+<h2>§4 原脚本的「12 类」为什么跑不起来 —— 但 12 类本身是对的</h2>
+
+<p>原文件的 <code>classify_by_paths</code> 想按「位移路径」把幻方分成 12 类：
+对每个格子算 <code>(原行 − 现行, 原列 − 现列)</code>（原位置 = 这个数值在哪一格），拼成 16 个向量的元组，
+再和 12 个预设 <code>path_patterns</code> 精确比对。</p>
+
+<div class="note r">
+<b>这里有两条彼此独立的毛病。</b><br>
+① <code>path_patterns</code> 在这个文件里<b>从未定义</b>，直接运行必 <code>NameError</code>。<br>
+② 即便补上 12 个模式，<b>按「绝对格位」比对也必然落空</b>：实测 7040 个幻方有 <b>7040 个互不相同的位移元组</b>，
+这个元组是<b>完全不变式</b>（等价于方阵本身），12 个固定模式最多只能命中 12 张。
+</div>
+
+<div class="note g">
+<b>订正（2026-11-04，读完 Arto Heino《Magic Square Four》Part Two 全表之后）：第 ② 条不等于「12 类不存在」。</b><br>
+12 类的正确做法是：把 8 个<b>互补对</b> <code>(1,16)(2,15)…(8,9)</code> 在 16 格上各连一条线，得到一张<b>连线图案</b>；
+只看图案、<b>模掉 D4 的 8 个对称</b> —— 880 张恰好落成 <b>12 种</b>，大小
+<b>304 / 96 / 96 / 56×4 / 48×3 / 8×2</b>，与 Heino 的 <code>Set 1…12</code> 索引名单<b>12/12 一一对应</b>
+（用 Part Two 第 24–34 页的 Frénicle 全表还原出 880 张，再逐一比对）。
+<br>差别只在一个词：<b>不是钉死绝对格位，而是商掉对称</b>。我上一版把这两件事混成了一件，这里改回来。
+</div>
+
+<p>下面这批实测仍然有用 —— 它们回答了「为什么照着绝对格位去找一定落空」：</p>
+
+<div class="tw">
+<table>
+<tr><th>分类依据</th><th style="width:112px">类数</th><th>结论</th></tr>
+<tr><td><b>互补对连线图案（模 D4）</b></td><td class="n"><b>12</b></td><td><b>就是它</b> —— 每类 8…304 张，覆盖全部 880</td></tr>
+<tr><td>位移元组（原脚本）</td><td class="n">7040</td><td>完全不变式，退化成「一个方阵一类」⟹ 比对照样落空</td></tr>
+<tr><td>位移向量多重集（含重数）</td><td class="n">5102</td><td>仍然几乎唯一</td></tr>
+<tr><td>位移长度平方的多重集</td><td class="n">229</td><td>粗了，但也不是 12</td></tr>
+<tr><td>首行四个数的集合</td><td class="n">51</td><td>可行，但类大小极不均</td></tr>
+<tr><td>四角四数的集合</td><td class="n">50</td><td>同上</td></tr>
+<tr><td>(1 的位置, 16 的位置) 在 D4 下的轨道</td><td class="n">15</td><td>最接近 12，但确实是 15</td></tr>
+<tr><td>a 数组（低位）在 D4 下的轨道</td><td class="n">60</td><td>—</td></tr>
+<tr><td><b>D4 轨道（整张方阵）</b></td><td class="n"><b>880</b></td><td>唯一干净、每类恰好 8 个</td></tr>
+</table>
+</div>
+
+<div class="note">
+一条经验：<b>「数不出 12」不等于「12 不存在」，往往是「商得不够」。</b>
+按绝对格位分，7040 张方阵就是 7040 个元组；把 D4 商掉，才落到 12。
+另有一个容易混的坑：Heino 站点里还有一处「12 种 2×2 配对密码 = 4!/2」，
+那是<b>局部 2×2 的排法数</b>，不是分类 —— 两者碰巧都是 12，照它推会跑偏。
+</div>
+
+<h2>§5 画廊：880 本质 / 7040 全部 / 48 泛对角</h2>
+
+<p>点格子可以看它所在的行、列、两条对角线。左图是方阵，中下两图是它的 a / b 位分解。
+右面板每个改动都会立刻重画并重新合成音频。</p>
+
+<div class="grid">
+  <div>
+    <div id="mg" class="mg"></div>
+
+    <div class="badges" id="badges">
+      <span class="bg" id="bgPd">泛对角</span>
+      <span class="bg" id="bgAs">结合型</span>
+      <span class="bg" id="bgMp">最完美</span>
+      <span class="bg" id="bgOrb">轨道 8 个</span>
+      <span class="bg" id="bgCl">—</span>
+    </div>
+
+    <div class="dual">
+      <div>
+        <div class="dlab">a = (v − 1) mod 4 &nbsp;（低两位）</div>
+        <div id="ma" class="mini"></div>
+      </div>
+      <div>
+        <div class="dlab">b = ⌊(v − 1) / 4⌋ &nbsp;（高两位）</div>
+        <div id="mb" class="mini"></div>
+      </div>
+    </div>
+
+    <div class="canvasbox">
+      <canvas id="cvPitch" width="1240" height="560"></canvas>
+      <p class="cap">音高轨迹：灰线 = 目标滑行（16 段，格间连续），紫线 = 叠加 z 通道频偏后的<b>实际瞬时频率</b>。
+      小圈是 16 个格子的定音点，竖虚线是播放头。螺旋本体<span id="spiralInfo"></span></p>
+    </div>
+
+    <div class="canvasbox">
+      <canvas id="cvMod" width="1240" height="380"></canvas>
+      <p class="cap">三条调制曲线：<span class="pur">x → 相位</span>、<span class="grn">y → 振幅</span>、
+      <span class="amc">z → 频偏</span>。竖线是播放头。</p>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="ph">参数面板 <span class="tag">12 因子 · 一个内核</span></div>
+
+    <div class="fld">
+      <label class="t">① 方阵来源</label>
+      <select id="selSrc">
+        <option value="ess">本质不同 · 880（D4 轨道代表）</option>
+        <option value="all">全部 · 7040（含旋转镜像）</option>
+        <option value="pd">泛对角 · 384（本质 48）</option>
+        <option value="as">结合型 · 384（本质 48）</option>
+      </select>
+      <div class="hint" id="srcInfo">—</div>
+    </div>
+
+    <div class="fld">
+      <label class="t">② 索引 <b id="idxTxt">1 / 880</b></label>
+      <input type="range" id="rgIdx" min="0" max="879" value="0">
+      <div class="row2">
+        <button id="btnPrev">◀ 上一个</button>
+        <button id="btnNext">下一个 ▶</button>
+      </div>
+      <button id="btnRnd" style="width:100%;margin-top:7px">随机一个</button>
+    </div>
+
+    <div class="fld">
+      <label class="t">③ 滑行路径</label>
+      <select id="selPath">
+        <option value="row">行优先 ①→⑯</option>
+        <option value="col">列优先</option>
+        <option value="num">数值升序 1→16</option>
+        <option value="numdesc">数值降序 16→1</option>
+        <option value="spiral">由外向内螺旋</option>
+        <option value="diag">对角蛇形</option>
+      </select>
+    </div>
+
+    <div class="fld">
+      <label class="t">④ 每格时长 <b id="cellTxt">320 ms</b></label>
+      <input type="range" id="rgCell" min="90" max="700" step="10" value="320">
+    </div>
+
+    <div class="fld">
+      <label class="t">⑤ 音高映射</label>
+      <select id="selMap">
+        <option value="semi">音程（半音步进）</option>
+        <option value="lin">线性（Hz 等距）</option>
+      </select>
+      <div class="t2">⑥ 基频 f₀ <b id="f0Txt">196 Hz</b></div>
+      <input type="range" id="rgF0" min="110" max="440" step="2" value="196">
+      <div class="t2">⑦ 步进 <b id="stepTxt">1 半音</b></div>
+      <input type="range" id="rgStep" min="1" max="5" step="1" value="1">
+    </div>
+
+    <div class="fld">
+      <label class="t">⑧ 螺旋指数 p</label>
+      <select id="selP">
+        <option value="3">p = 3 · θ = r³（立方根律，原脚本）</option>
+        <option value="2.718281828459045">p = e · θ = r^e（自然律）</option>
+        <option value="2">p = 2 · θ = r²（费马 / 抛物螺线）</option>
+        <option value="1">p = 1 · θ = r（阿基米德）</option>
+      </select>
+    </div>
+
+    <div class="fld">
+      <label class="t">⑨⑩⑪ 三通道深度</label>
+      <div class="t2">z → 频偏 <b id="kfTxt">7.83 Hz</b></div>
+      <input type="range" id="rgKf" min="0" max="40" step="0.1" value="7.83">
+      <div class="t2">y → 振幅 <b id="kaTxt">35 %</b></div>
+      <input type="range" id="rgKa" min="0" max="90" step="1" value="35">
+      <div class="t2">x → 相位 <b id="kpTxt">45 %</b></div>
+      <input type="range" id="rgKp" min="0" max="100" step="1" value="45">
+    </div>
+
+    <div class="fld">
+      <label class="t">⑫ 拍频 Δ（右声道错开） <b id="beatTxt">0 Hz</b></label>
+      <input type="range" id="rgBeat" min="0" max="10" step="0.1" value="0">
+    </div>
+
+    <div class="fld">
+      <label class="t">波形 / 包络 / 音量</label>
+      <select id="selWave">
+        <option value="sine">正弦</option>
+        <option value="tri">三角</option>
+        <option value="warm">暖（含 2·3 次谐波）</option>
+      </select>
+      <select id="selEnv" style="margin-top:6px">
+        <option value="through">滑行（格间连续）</option>
+        <option value="step">跳格（格内定音）</option>
+      </select>
+      <div class="t2">音量 <b id="volTxt">55 %</b></div>
+      <input type="range" id="rgVol" min="5" max="100" step="1" value="55">
+    </div>
+  </div>
+</div>
+
+<h2>§6 阶数外推：3 阶到 ∞，四招还剩几招</h2>
+
+<p>4 阶 12 秒算完，很容易让人以为「这套招式很强」。换阶数就露底了：<b>四招里只有两招是真通项</b>；
+另外两招在 4 阶特别灵，是因为 <b>4 阶自身的条件恰好合适</b>，不是算法本身更强。</p>
+
+<h3>6.1 四招逐个体检</h3>
+<div class="tw">
+<table>
+<tr><th style="width:96px">招式</th><th style="width:80px">能推广吗</th><th style="width:236px">一般结论</th><th>实测量</th></tr>
+<tr><td>① 末元递推</td><td class="c grn">能</td><td>约束是线性的，最后 n 个元被前面定死</td>
+<td class="n">自由度 (n−1)²−2 = <b>n²−2n−1</b><br>n=3…10 ⟹ 2, 7, 14, 23, 34, 47, 62, 79</td></tr>
+<tr><td>② 进位分解</td><td class="c grn">能</td><td>v−1 = n·b + a ⟹ Σa + nΣb = n(n²−1)/2</td>
+<td class="n">格点数 <b>n</b>（奇）/ <b>n−1</b>（偶）<br>但<b>只在 4 阶塌缩到 1 个</b></td></tr>
+<tr><td>③ 精确覆盖</td><td class="c grn">能</td><td>先筛「n 元和 = M」的子集，再求它们的精确覆盖</td>
+<td class="n">A(n)：8 → 86 → 1,394 → 32,134<br>→ 957,332 → 3.5×10⁷ → 1.5×10⁹</td></tr>
+<tr><td>④ 商对称</td><td class="c amc">能，除数变</td><td>不是固定的 8，而是 <b>ρ(n)</b>；4 阶 ρ = 32</td>
+<td class="n">D4 = 8 ⟹ 880<br>全同构群 = 32 ⟹ <b>220</b></td></tr>
+</table>
+</div>
+
+<h3>6.2 招式②的正身：进位分解（这条对任意 n 成立）</h3>
+
+<div class="eq">v − 1 = n·b + a &nbsp;&nbsp;(a, b ∈ 0…n−1) &nbsp;⟹&nbsp; Σa + n·Σb = <b>n(n²−1)/2</b></div>
+
+<p>所以「位分解」不是 4 阶的技巧，它是<b>位权的推广</b>（n=10 时就是十进制）。4 阶那三个格点
+(6,6) (2,7) (10,5) 只是它在 n=4 的取值。一条线的格点数还有通项：
+<b>n 为奇数时 n 个，n 为偶数时 n−1 个</b>（实测 3,3,5,5,7,7,9,9；页面自检按通项现场重算）。</p>
+
+<div class="note r">
+<b>但「每行 Σa 恒为 6」是 4 阶独有的红利。</b>我随机取样了 27 张 5 阶幻方，
+其中 <b>14 张出现 Σb = 9 或 11</b>（格点 8…12 里三个值都现身）。
+所以 4 阶能 12 秒收工，是<b>四个条件同时在线</b>：A(4)=86 极小、格点塌缩成 1 个、B(4)=392 极小、可行排列少。
+换到 5 阶，光是列划分就从 392 涨到 <b>3,245,664</b>。
+</div>
+
+<h3>6.3 n = 3…9 的实测压缩表</h3>
+
+<div class="tw">
+<table>
+<tr><th>n</th><th>M 常数</th><th>维数</th><th>A(n) 线和集合</th><th>格点</th><th>B(n) 块划分</th><th>全部幻方</th></tr>
+<tr><td class="n">3</td><td class="n">15</td><td class="n">2</td><td class="n">8</td><td class="n">3</td><td class="n">2</td><td class="n">8</td></tr>
+<tr><td class="n">4</td><td class="n">34</td><td class="n">7</td><td class="n"><b>86</b></td><td class="n">3</td><td class="n"><b>392</b></td><td class="n"><b>7,040</b></td></tr>
+<tr><td class="n">5</td><td class="n">65</td><td class="n">14</td><td class="n">1,394</td><td class="n">5</td><td class="n">3,245,664</td><td class="n">2,202,441,792</td></tr>
+<tr><td class="n">6</td><td class="n">111</td><td class="n">23</td><td class="n">32,134</td><td class="n">5</td><td class="n">—</td><td class="n">1.42×10²⁰</td></tr>
+<tr><td class="n">7</td><td class="n">175</td><td class="n">34</td><td class="n">957,332</td><td class="n">7</td><td class="n">—</td><td class="n">未知</td></tr>
+<tr><td class="n">8</td><td class="n">260</td><td class="n">47</td><td class="n">35,154,340</td><td class="n">7</td><td class="n">—</td><td class="n">未知</td></tr>
+<tr><td class="n">9</td><td class="n">369</td><td class="n">62</td><td class="n">1,537,408,202</td><td class="n">9</td><td class="n">—</td><td class="n">未知</td></tr>
+</table>
+</div>
+<p class="cap">A(n)、格点数、B(n) 都是本机实测（Python 脚本 <code>_ordern_probe.py</code>），不是查表抄来的。
+n=6 的 B(n) 已经跑不动（量级 10¹⁵ 以上），所以是「—」而不是「0」。</p>
+
+<h3>6.4 拖动 n：多项式增长 vs 指数增长</h3>
+
+<p>A(n) 从 3 阶起<b>就已经是维数的 4 倍</b>（8 vs 2），到 9 阶是 <b>2.5×10⁷ 倍</b>。下图把两者放在同一把对数尺上，看斜率差：</p>
+
+<div class="grid">
+  <div>
+    <div class="canvasbox" style="margin-top:0">
+      <canvas id="cvOrder" width="1240" height="460"></canvas>
+      <p class="cap">两条线<b>都用左轴 log10 的同一刻度</b> —— 这一点很要紧：<b>双纵轴会把指数差藏起来</b>
+      （各归各的刻度就永远看着像平行）。<span class="pur">紫线</span> = A(n) 线和集合数，每阶涨 1.03 → 1.64 个数量级；
+      <span class="grn">绿线</span> = 线性维数 n²−2n−1，每阶只涨 0.54 → 0.12 个数量级且越来越平。
+      <b>斜率差就是复杂度差。</b>末端值：A(9) = 1,537,408,202（log10 9.19），维数 = 62（log10 1.79）。竖虚线是当前 n。</p>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="ph">阶数 n <span class="tag" id="ordTag">4</span></div>
+    <input type="range" id="rgN" min="3" max="12" step="1" value="4">
+    <div class="row2" style="margin-top:9px">
+      <button id="btnN3">跳到 3 阶</button>
+      <button id="btnN5">跳到 5 阶</button>
+    </div>
+    <div id="ordInfo" style="margin-top:12px;font-size:13px"></div>
+    <div class="hint" id="ordHint">—</div>
+  </div>
+</div>
+
+<h3>6.5 构造法的覆盖率在塌陷</h3>
+
+<div class="tw">
+<table>
+<tr><th>n</th><th>构造法能给出（拉丁对型）</th><th>全部幻方</th><th>覆盖率</th></tr>
+<tr><td class="n">3</td><td class="n">8</td><td class="n">8</td><td class="n grn">100 %</td></tr>
+<tr><td class="n">4</td><td class="n">1,536</td><td class="n">7,040</td><td class="n">21.82 %</td></tr>
+<tr><td class="n">5</td><td class="n">143,424</td><td class="n">2,202,441,792</td><td class="n red">0.0065 %</td></tr>
+</table>
+</div>
+
+<div class="note a">
+<b>「有通项」与「能数清」是两件事。</b>存在性通项确实有：奇数阶 de la Loubère（连续斜放）、
+n≡0 (mod 4) 交叉换位、n≡2 (mod 4) Strachey / LUX —— 三族覆盖<b>所有 n ≥ 3</b>，
+所以无穷阶幻方一定存在。但它们给出的只是<b>子族</b>：覆盖率 100% → 21.8% → 6.5×10⁻⁵，
+再往上就是天文数字分之一。
+</div>
+
+<h3>6.6 招式④的除数不是 8，是 ρ(n)</h3>
+
+<p>D4（转 0/90/180/270° × 是否镜像）只是第一层。还有一类变换同样保持两条对角线：
+<b>(P A P)，其中 π(i) + π(n−1−i) = n−1</b>。4 阶这样的 π 有 8 个，
+与 D4 复合去重后 <b>|G| = 32</b>，正好把 7040 分成 <b>220 个轨道、每个 32 个</b>
+（这一步是页面自检现场跑完的，不是抄的）。</p>
+
+<div class="eq">D4 口径：7040 ÷ 8 = <b>880</b>（Frénicle 经典）&nbsp;&nbsp;｜&nbsp;&nbsp;全同构口径：7040 ÷ 32 = <b>220</b>（Schroeppel basic form）</div>
+
+<div class="note a">
+两个口径都对，但<b>不能混用</b>。文献里 5 阶的 275,305,224 已经<b>是 ÷8 之后</b>的结果（×8 = 2,202,441,792）；
+要到全同构口径，再 ÷4 得 <b>68,826,306</b>（等价于 2,202,441,792 ÷ 32）。<br>
+另有一处我标黄：文献给 ρ(6) = 80，但 8 × 17,753,889,197,660,635,632 不能被 80 整除 ——
+那个 ρ 只能当「单个方阵能生成多少张」的族大小，<b>不能当群阶用</b>。
+</div>
+
+<h3>6.7 计算上可约吗？必须分三层回答</h3>
+
+<div class="tw">
+<table>
+<tr><th style="width:132px">层次</th><th style="width:96px">可约吗</th><th>理由与边界</th></tr>
+<tr><td>线性约束</td><td class="c grn">完全可约</td><td>n² 个变量、2n+2 条线和条件（其中 1 条冗余）⟹ 解空间维数 n²−2n−1，多项式时间就能参数化</td></tr>
+<tr><td>「1…n² 各用一次」</td><td class="c red">不可约</td><td>这一步把线性代数变成多排列 / 精确覆盖，属于 #P；计数是 #P-完全量级</td></tr>
+<tr><td>判定：给定 n² 个整数能否排成幻方</td><td class="c red">NP-完全</td><td>由 SUBSET-SUM 归约（math.SE 上的标准结论）</td></tr>
+<tr><td>判定：部分填好的 n×n 能否补全</td><td class="c amc">开放</td><td>cstheory 上明确写「应该 NP-难，但还没有归约」；同族的拉丁方补全已知 NP-完全（Colbourn 1984）</td></tr>
+</table>
+</div>
+
+<p>三条工程杠杆及其极限：<b>对称性</b>只省一个常数 ρ(n)（几十到几百倍）；
+<b>结构子族</b>覆盖率指数衰减；<b>精确覆盖</b>把 (n²)! 压到 A(n)ⁿ 量级，
+但 A(n) 自己就在指数增长（4 阶 86 → 9 阶 1.5×10⁹）。三条都不改变复杂度类别。</p>
+
+<h3>6.8 已知精确值，只到 6 阶</h3>
+
+<div class="tw">
+<table>
+<tr><th>n</th><th>全部（含 8 朝向）</th><th>本质种数（÷8）</th><th>全同构口径（÷ρ）</th></tr>
+<tr><td class="n">3</td><td class="n">8</td><td class="n">1</td><td class="n">1</td></tr>
+<tr><td class="n">4</td><td class="n">7,040</td><td class="n">880</td><td class="n">220</td></tr>
+<tr><td class="n">5</td><td class="n">2,202,441,792</td><td class="n">275,305,224</td><td class="n">68,826,306</td></tr>
+<tr><td class="n">6</td><td class="n">142,031,113,581,285,085,056</td><td class="n">17,753,889,197,660,635,632</td><td class="n">—</td></tr>
+<tr><td class="n">≥7</td><td class="n" colspan="3">未知。不是「算得慢」，是<b>数量级已超出可枚举范围</b></td></tr>
+</table>
+</div>
+
+<div class="note g">
+<b>6 阶不是「未知」。</b>2024 年 Hidetoshi Mino 用几百块 GPU、约 8 万机时算出
+17,753,889,197,660,635,632（本质种数）；2016 年 Croy–Hansen–McQuillan 的 modular lifting
+已把范围压到 10¹⁹ 以下。<b>这一节里只有这两个数与 5 阶的 68,826,306 不是我算的</b>，来源标在此处。
+</div>
+
+<p><b>三层答案：</b>4 阶靠巧劲（7040 这个量级）；5 阶靠工程（1973 年 Schroeppel 专门写回溯程序）；
+6 阶靠算力（几百块 GPU）；<b>7 阶起，答案在数学上存在，人类没有能力把它数出来</b> —— 这不是算法不够好。</p>
+
+<h2>§7 6 阶：3 阶骨架与 4 阶内核</h2>
+
+<p>6 阶有 <b>1.42×10²⁰</b> 张，是 4 阶的 <b>2×10¹⁶ 倍</b>。想拿 3 阶和 4 阶的招式去拼它 —— 
+这个直觉在魔方上百分百成立，在幻方上只成立<b>两小块</b>，但这两小块可以精确数清。
+本节先把「怎么切」这件事本身摊开：井字切法有 <code>C(5,2)² = 100</code> 种，
+<b>能切出结构的只有 2 种</b>。</p>
+
+<h3>7.1 为什么 6 阶接不住 4 阶那四招</h3>
+<div class="tw">
+<table>
+<tr><th style="width:104px">招式</th><th>到 6 阶的下场</th></tr>
+<tr><td>① 末元递推</td><td>通项还在，维数 <b>23</b>。但那只是「实数解的空间」，跟「1…36 各用一次」这一条毫无关系</td></tr>
+<tr><td>② 进位分解</td><td>格点 5 个（偶数阶 n−1）。而 4 阶那条「每行 Σa 恒 = 6」出了 4 阶就不成立（§6.2 已用 5 阶证伪）</td></tr>
+<tr><td>③ 精确覆盖</td><td>行字典 A(6) = 32,134 还撑得住；<b>列划分 B(6) 直接崩</b>：4 阶 392 → 5 阶 3,245,664 → 6 阶量级 10¹⁵ 以上</td></tr>
+<tr><td>④ 商对称</td><td>照旧只省一个常数（ρ(6)），把 10²⁰ 变成 10¹⁹，不改变类别</td></tr>
+<tr><td class="amc">合计</td><td>4 阶能 12 秒收工，靠的是<b>四个红利同时在线</b>；6 阶一条都不在线</td></tr>
+</table>
+</div>
+
+<h3>7.2 切法有多少种：100 = 10 × 10</h3>
+
+<p>要让 6 阶「看起来像 3 阶」，就得在行列上各切两刀，把它分成 3×3 个块 —— 
+也就是您画的那种井字切线，只是<b>两刀不一定切在正中间</b>。6 行之间有 5 条缝，从中选 2 条：</p>
+
+<div class="eq"><b>C(5,2) = 10</b> 种横切 &nbsp;×&nbsp; <b>C(5,2) = 10</b> 种竖切 &nbsp;⟹&nbsp; <b>100 种切法</b></div>
+
+<h3>7.3 100 格矩阵：只有 2 格亮</h3>
+
+<p>下面 100 格就是全部切法：行 = 横切位置，列 = 竖切位置。点任意一格，看它切出来的 9 个块长什么样。
+<b class="grn">绿格</b>能切出「9 块各装连续 4 数」，<b class="pur">紫格</b>能切出「中心 4×4 自身是幻方」，
+其余 <b>98 格在四条判据下全空</b>。</p>
+
+<div class="grid">
+  <div>
+    <div id="cutMat" class="cmat"></div>
+    <p class="cap" style="color:#8d877c;margin-top:7px">标签 <code>1·2</code> = 切线落在第 1 与第 2 行（或列）之间；6 行只有 5 条缝，选 2 条 ⟹ 10 种。</p>
+    <p class="cap" id="cutCap">—</p>
+    <div class="cutwrap">
+      <div id="cg6" class="g6"></div>
+      <div id="cInfo" class="cinfo">—</div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="ph">示例方阵 <span class="tag" id="s6Tag">甲</span></div>
+    <div class="row2">
+      <button id="btnS6A">甲 · 3×2 块扩</button>
+      <button id="btnS6B">乙 · 4+2 同心</button>
+    </div>
+    <div class="fld">
+      <span class="t">四条判据（作用在 9 个块上）</span>
+      <div class="critlist">
+        <div><span>①</span>块内数值构成等差数列</div>
+        <div><span>②</span>块内数值是连续整数</div>
+        <div><span>③</span>9 块之和彼此相等</div>
+        <div><span>④</span>中心块自身（≥3×3）是幻方</div>
+      </div>
+    </div>
+    <div class="hint" id="cutHint">—</div>
+  </div>
+</div>
+
+<h3>7.4 您画的那种混合切法：为什么它不是结构</h3>
+
+<p>您图上画的切线不是均匀的 —— 横切 (1,5)、竖切 (2,5)，切出来的 9 块大小是
+<b>[2, 3, 1, 8, 12, 4, 2, 3, 1]</b>，没有一块是 4 个数。<b>这一点您说得对，比我上一版的说法准确</b>：
+「每块连线 4 数」只对甲族成立，不该当成前提。点矩阵里 <code>(1,5) × (2,5)</code> 那一格就能看到它。</p>
+
+<p>它在四条判据下 <b>0 命中</b>。理由不在块大小不齐，而在这 9 个块和幻常数不沾边：</p>
+
+<div class="tw">
+<table>
+<tr><th>9 块之和</th><td class="n">61 · 29 · 21 · 132 · 229 · 83 · 29 · 75 · 7</td></tr>
+<tr><th>合计</th><td class="n">666 = 36 个数之总和（1+…+36），平均每块 <b>74</b></td></tr>
+<tr><th>而幻常数是</th><td class="n"><b>111</b> —— 一条线要 111，一块只有 74，说明这条切线没避开任何约束</td></tr>
+</table>
+</div>
+
+<div class="note a">
+<b>但「不均匀」不是罪证。</b>乙族的正确切法 (1,5)×(1,5) 一样不均匀：块大小
+<b>[1, 4, 1, 4, 16, 4, 1, 4, 1]</b>。它之所以成立，是因为那个 16 格的中心块
+<b>自身就是一张 4 阶幻方</b> —— 判据在块内结构，不在块大小。
+所以「井字切」这件事，切的从来不是尺寸，是<b>能不能把约束切到块内部去</b>。
+</div>
+
+<h3>7.5 亮的那两格，各自是什么族</h3>
+
+<p><b class="grn">甲 · 3×2 块扩 —— 切法 (2,4) × (2,4)</b></p>
+<p>9 个块各 2×2，每块装的是<b>连续 4 个整数</b> <code>{4k−3, …, 4k}</code>；9 个块编号 k 排成的 3×3
+必须<b>本身是 3 阶幻方</b>（行、列、对角全 15）；块内 4 个数按 L / U / X 三种模板之一落位，
+模板布局是固定的 <code>LLL / LUL / ULU</code>。这就是「3 阶骨架 + 2×2 膨胀」。</p>
+<p>这里必须把<b>三个数</b>分开，混起来就成了错话（我第一版就写错了）：</p>
+<div class="tw">
+<table>
+<tr><th style="width:230px">口径</th><th style="width:150px">张数</th><th>怎么来的</th></tr>
+<tr><td><b>LUX 模板</b>本身（块内按 L/U/X 固定落位）</td><td class="n">16</td>
+<td>8 个 3 阶 k 布局 × 2 种模板布局 <code>LLL/LUL/ULU</code>；教科书写的就是这 16 张</td></tr>
+<tr><td>「9 块各装连续 4 数 + k 是 3 阶幻方」，<b>不限模板</b></td><td class="n"><b>13,926,400</b></td>
+<td>本机精确枚举（<code>_sec7_count.py</code>）：每块 24 种摆法，8 个 k 布局各 1,740,800，八线全 111 逐一验过</td></tr>
+<tr><td>全部 6 阶幻方</td><td class="n">142,031,113,581,285,085,056</td>
+<td>Mino 2024（§6.8）</td></tr>
+</table>
+</div>
+<p>所以：<b>模板只占这个族的 1.1×10⁻⁶，族本身又只占全部的 9.8×10⁻¹⁴</b>。
+「3 阶骨架 + 2×2 膨胀」是真的存在，但它抓住的不是 6 阶幻方的多数，而是它的<b>尘埃</b>。</p>
+
+<p><b class="pur">乙 · 4+2 同心 —— 切法 (1,5) × (1,5)</b></p>
+<p>中心 4×4 自身是一张 4 阶幻方，幻常数 <b>74 = 34 + 4×10</b>。核里装的数被<b>钉死</b>在
+<code>{11, …, 26}</code>（即 {1…16} 整体 +10）—— 现场枚举 c = 0…20，只有 c = 10 能让外框
+<code>{1…10} ∪ {27…36}</code> 在 <code>v ↔ 37−v</code> 下闭合。外框 20 格正好 10 对互补数，各和 37，
+于是中间四行、四列都是 <b>4 个核心数（74）+ 2 个框数（37）= 111</b>；首末两行两列上没有核心数，靠 6 个框数凑 111。两条对角同理：两个框角 <code>37</code> + 核的对角 <code>74</code>，也是 111。</p>
+<p>这一族的总张数我没有算，就不填虚数。但「核必须恰好是 11…26」这一条是钉死的，可以直接验。</p>
+
+<div class="note g">
+<b>另一个独立证据：写程序的人也是这么切进去的。</b>Harry White 的 <code>Order6C.cpp</code> 里，
+处理中心的数组是按 <code>maxCenterCombos = 86</code>（= A(4)，4 阶线和集合数）和
+<code>maxCenterPermus = 2064 = 86 × 24</code>、<code>maxNumCenterSquares = 1000 /* 880 ? */</code>
+开的 —— 86 是 4 阶的行字典大小，880 是 4 阶本质种数。他的「中心」是一个 4 阶问题，
+外面再套 3 阶骨架。这与上面的两族是同一件事的两个入口。
+</div>
+
+<h3>7.6 判族器：粘一张 6×6 进来</h3>
+
+<p>把您手里的 6 阶幻方（36 个数，空格 / 逗号 / 换行都行）贴进来，它会<b>现场把 100 种切法全扫一遍</b>，
+报出哪一种切线能切出结构、命中了哪条判据。两张示例可以一键填进去对照。</p>
+
+<div class="grid">
+  <div>
+    <textarea id="inSq" rows="6" spellcheck="false" placeholder="36 个数，例如&#10;32 29 4 1 24 21&#10;30 31 2 3 22 23&#10;..."></textarea>
+    <div class="row2" style="grid-template-columns:1.4fr 1fr 1fr">
+      <button id="btnCls" class="pri">扫 100 种切法</button>
+      <button id="btnFillA">填甲示例</button>
+      <button id="btnFillB">填乙示例</button>
+    </div>
+    <div id="clsOut"><span style="color:var(--mute)">点「扫 100 种切法」，或先点「填甲 / 填乙示例」。</span></div>
+  </div>
+  <div class="panel">
+    <div class="ph">怎么读结果 <span class="tag">判据优先</span></div>
+    <div class="hint" style="margin-top:0">
+      报「0 命中」不代表它不是幻方 —— 只代表它的结构不在这 4 条判据里。
+      <b>1.42×10²⁰ 张里，被这 4 条抓得住的是极少数。</b><br><br>
+      命中<b>「中心幻方」</b> ⟹ 4+2 同心族。<br>
+      命中<b>「连续」+ 9 块各 4 数</b> ⟹ 3×2 块扩族。
+    </div>
+  </div>
+</div>
+
+<h3>7.7 魔方类比断在哪一步</h3>
+
+<p>您举的 6 阶魔方用 3 阶 + 4 阶手法解开 —— 那是真的，而且必然成立。差别只有一条，
+但这一条是结构性的：</p>
+
+<div class="tw">
+<table>
+<tr><th style="width:150px"></th><th style="width:44%">6 阶魔方</th><th>6 阶幻方</th></tr>
+<tr><td>36 个位置有「轨道」吗</td>
+<td>有：8 个角块 / 12 个棱块 / 16 个中心块，<b>永远跑不出自己的轨道</b></td>
+<td>没有：36 格地位完全相同，任何格可以放任何数</td></tr>
+<tr><td>降阶意味着什么</td>
+<td>把 6 阶当 3 阶用：角块 ↔ 3 阶角块，棱块 ↔ 3 阶棱块，中心块自己配对成「大中心」</td>
+<td>把 9 个块当 9 个格子用 —— 只在恰好能切成 2×2 块、且块内 4 数连续时才成立</td></tr>
+<tr><td>覆盖率</td>
+<td class="grn">100 %（任何一张 6 阶魔方都能这么解）</td>
+<td class="red">1.39×10⁷ / 1.42×10²⁰ ≈ 9.8×10⁻¹⁴</td></tr>
+<tr><td>为什么</td>
+<td>约束是<b>局部的、保结构的</b>；4 个中心块同色，互换无代价</td>
+<td>约束是<b>全局的</b>：主对角线从 (0,0) 一路拉到 (5,5)，横穿 3 个块，一降阶就断</td></tr>
+</table>
+</div>
+
+<p>所以「6 阶魔方 = 3 阶 + 4 阶手法」之所以成立，不是因为降阶本身有魔力，
+而是因为魔方的置换群本来就<b>分块作用</b>。幻方没有这个群结构：它是 36 个格子上一个
+<b>全局耦合</b>的线性约束 + 一个排列约束，切下去就散。</p>
+
+<h3>7.8 一句话</h3>
+
+<div class="note">
+3 阶骨架确实存在（<b>1392.64 万张</b>），4 阶内核也确实存在（核被钉死在 <b>{11…26}</b>）——
+但它们加起来还不到 10²⁰ 的 10⁻¹³，<b>是标本，不是配方</b>。
+魔方那套手法的真正前提是「位置有轨道」，幻方从第一格起就没有。
+</div>
+
+<h2>§8 从格子到声音：滑行旋律</h2>
+
+<p>16 个格子 ⟹ 16 个音高。按选定路径依次走过，格与格之间<b>连续滑行</b>（不是逐个敲）。
+这与播放器页的「16 个频率同时发声的稳态叠加」是两件事：那边是<b>频域拼图</b>，这边是<b>时域漫游</b>。</p>
+
+<div class="note r">
+<b>一个容易写错的式子。</b>很多脚本（包括 <code>费马螺旋</code> 那个）写成
+<code>sin(2π · f(t) · t)</code>。它的<b>瞬时频率不是 f(t)</b>，而是
+<div class="eq" style="margin:8px 0 0">f<sub>inst</sub> = (1/2π)·d/dt[2π f(t)·t] = <b>f(t) + t·f′(t)</b></div>
+多出来的 <code>t·f′</code> 随 t 线性放大：第 10 秒即使 f′ 只有 2 Hz/s，也已经<b>偏了 20 Hz</b>。
+正确写法是<b>相位累加</b>：<code>φ += 2π f(t) dt</code>，此时 f<sub>inst</sub> 严格等于 f(t)。
+本页用的是累加；下面的数字是本页实测的偏差量。
+</div>
+
+<p class="cap" id="chirpNote">—</p>
+
+<h2>§9 费马螺旋三通道调制</h2>
+
+<p>原脚本 <code>3d音乐费马e螺旋</code> 的做法很漂亮，一句话能说完：<b>一条球面螺旋的三个坐标，分别去调制三个声学量</b>。</p>
+
+<div class="eq">
+t = arctan(5u)·2 &nbsp;;&nbsp; θ = |t|<sup>p</sup>·sign(t) &nbsp;;&nbsp; φ = arctan(tanh 2t) <br>
+x = cos φ·cos θ &nbsp;&nbsp; y = cos φ·sin θ &nbsp;&nbsp; z = sin φ <br>
+<b>x → 相位</b> &nbsp; <b>y → 振幅</b> &nbsp; <b>z → 频偏</b> &nbsp;&nbsp;（各自过一层 tanh(2v)·scale 平滑）
+</div>
+
+<p>右声道用 θ + π ⟹ x→−x、y→−y、z 不变：<b>相位与振幅对置、频率同步</b>，天然就是一对反相的呼吸。
+这就是「拍」的来源。本页的拍频滑条再额外给右声道一个频率差 Δ，两者可以叠加也可以关掉。</p>
+
+<div class="note g">
+<b>顺手挖出两处原脚本的问题</b>（不影响听感，但影响可读性）：<br>
+① <code>combined</code> / <code>combined_normalized</code>（双高斯加权）算了两行就再没被用过 —— 是死代码，
+真正的 t 来自 <code>arctan(5u)·2</code>。<br>
+② 调制量用 <code>sin(2π·f·t)</code> 直接算，见 §8 的 <code>t·f′</code> 偏差。
+</div>
+
+<p>指数 p 的四个档位不是随便放的：</p>
+<div class="tw">
+<table>
+<tr><th style="width:150px">p</th><th style="width:170px">关系</th><th>形状与听感</th></tr>
+<tr><td class="n">p = 1</td><td>θ = r</td><td>阿基米德，等速转圈，调制最「匀」</td></tr>
+<tr><td class="n">p = 2</td><td>θ = r²（r = √θ）</td><td><b>费马 / 抛物螺线</b>，两头密、中间疏</td></tr>
+<tr><td class="n">p = 3</td><td>θ = r³（r = ∛θ）</td><td>立方根律 —— <code>3d费马3螺旋线.py</code> 用的这一支</td></tr>
+<tr><td class="n">p = e</td><td>θ = r<sup>e</sup>（r = θ<sup>1/e</sup>）</td><td>自然律 2.718 —— <code>3d音乐费马e螺旋</code> 真正的取值</td></tr>
+</table>
+</div>
+
+<div class="note a">
+<b>命名核对：</b>原脚本文件名写「费马e螺旋」，代码里 <code>formula_power = np.e ≈ 2.718</code>；
+而另一个文件 <code>3d费马3螺旋线.py</code> 用的是 <code>1/3</code>（即 p = 3）。
+两个指数都留在这四档里，您可以听差别：p 越大，θ 在两端增长越猛，中段的调制越「陡」。
+</div>
+
+<h2>§10 自检</h2>
+<div id="chk">运行中…</div>
+<div id="sum"></div>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+var $ = function(id){ return document.getElementById(id); };
+window.onerror = function(m, s, l, c){
+  var b = $('errbox'); b.style.display = 'block';
+  b.textContent = 'JS 错误：' + m + '\n' + (s||'') + ':' + l + ':' + c;
+  return false;
+};
+
+/* ============ 1. 枚举内核（唯一一处） ============ */
+function enumerate4(){
+  var t0 = Date.now(), S = 34;
+  var sv = [], sm = [], a, b, c, d;
+  for(a = 1; a <= 13; a++) for(b = a + 1; b <= 14; b++) for(c = b + 1; c <= 15; c++){
+    d = S - a - b - c;
+    if(d <= c || d > 16) continue;
+    sv.push([a,b,c,d]);
+    sm.push((1 << (a-1)) | (1 << (b-1)) | (1 << (c-1)) | (1 << (d-1)));
+  }
+  var nS = sv.length, t1 = Date.now();
+
+  var byv = [], i, j;
+  for(i = 0; i < 16; i++) byv.push([]);
+  for(i = 0; i < nS; i++){ for(j = 0; j < 4; j++) byv[sv[i][j]-1].push(i); }
+
+  var parts = [], FULL = 65535;
+  (function dfs(used, cur){
+    if(used === FULL){ parts.push(cur.slice()); return; }
+    var v = 0; while((used >> v) & 1) v++;
+    var list = byv[v];
+    for(var k = 0; k < list.length; k++){
+      var id = list[k], m = sm[id];
+      if(used & m) continue;
+      cur.push(id); dfs(used | m, cur); cur.pop();
+    }
+  })(0, []);
+  var t2 = Date.now();
+
+  var PERM = [[0,1,2,3],[0,1,3,2],[0,2,1,3],[0,2,3,1],[0,3,1,2],[0,3,2,1],
+              [1,0,2,3],[1,0,3,2],[1,2,0,3],[1,2,3,0],[1,3,0,2],[1,3,2,0],
+              [2,0,1,3],[2,0,3,1],[2,1,0,3],[2,1,3,0],[2,3,0,1],[2,3,1,0],
+              [3,0,1,2],[3,0,2,1],[3,1,0,2],[3,1,2,0],[3,2,0,1],[3,2,1,0]];
+  var out = [];
+  for(var pi = 0; pi < parts.length; pi++){
+    var P = parts[pi];
+    for(var q = 0; q < 24; q++){
+      var O = PERM[q];
+      var c0 = sv[P[O[0]]], c1 = sv[P[O[1]]], c2 = sv[P[O[2]]], c3 = sv[P[O[3]]];
+      var m3 = sm[P[O[3]]];
+      var A0, B1, C2, D3, kk;
+      for(var i0 = 0; i0 < 4; i0++){
+        A0 = c0[i0];
+        for(var i1 = 0; i1 < 4; i1++){
+          B1 = c1[i1];
+          for(var i2 = 0; i2 < 4; i2++){
+            C2 = c2[i2];
+            D3 = S - A0 - B1 - C2;
+            if(D3 < 1 || D3 > 16) continue;
+            if(!((m3 >> (D3-1)) & 1)) continue;
+            var r0 = [], r1 = [], r2 = [], r3 = [];
+            for(kk = 0; kk < 4; kk++){
+              if(c0[kk] !== A0) r0.push(c0[kk]);
+              if(c1[kk] !== B1) r1.push(c1[kk]);
+              if(c2[kk] !== C2) r2.push(c2[kk]);
+              if(c3[kk] !== D3) r3.push(c3[kk]);
+            }
+            for(var j0 = 0; j0 < 3; j0++){
+              var E4 = r0[j0];
+              for(var j1 = 0; j1 < 3; j1++){
+                var F5 = r1[j1];
+                for(var j2 = 0; j2 < 3; j2++){
+                  var G6 = r2[j2], H7 = S - E4 - F5 - G6;
+                  if(H7 < 1 || H7 > 16) continue;
+                  if(r3.indexOf(H7) < 0) continue;
+                  var s0 = [], s1 = [], s2 = [], s3 = [], tt;
+                  for(tt = 0; tt < 3; tt++){
+                    if(r0[tt] !== E4) s0.push(r0[tt]);
+                    if(r1[tt] !== F5) s1.push(r1[tt]);
+                    if(r2[tt] !== G6) s2.push(r2[tt]);
+                    if(r3[tt] !== H7) s3.push(r3[tt]);
+                  }
+                  for(var k0 = 0; k0 < 2; k0++){
+                    var I8 = s0[k0];
+                    for(var k1 = 0; k1 < 2; k1++){
+                      var J9 = s1[k1];
+                      for(var k2 = 0; k2 < 2; k2++){
+                        var K10 = s2[k2], L11 = S - I8 - J9 - K10;
+                        if(L11 < 1 || L11 > 16) continue;
+                        if(s3.indexOf(L11) < 0) continue;
+                        var M12 = (s0[0] === I8) ? s0[1] : s0[0];
+                        var N13 = (s1[0] === J9) ? s1[1] : s1[0];
+                        var O14 = (s2[0] === K10) ? s2[1] : s2[0];
+                        var P15 = (s3[0] === L11) ? s3[1] : s3[0];
+                        if(A0 + F5 + K10 + P15 !== S) continue;
+                        if(D3 + G6 + J9 + M12 !== S) continue;
+                        out.push([A0,B1,C2,D3, E4,F5,G6,H7, I8,J9,K10,L11, M12,N13,O14,P15]);
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  return {sq:out, nSet:nS, nPart:parts.length,
+          tSet:t1-t0, tCover:t2-t1, tEnum:Date.now()-t2, total:Date.now()-t0};
+}
+
+/* ============ 2. 对称与轨道 ============ */
+function rot90(a){
+  return [a[12],a[8],a[4],a[0], a[13],a[9],a[5],a[1],
+          a[14],a[10],a[6],a[2], a[15],a[11],a[7],a[3]];
+}
+function mirH(a){
+  return [a[3],a[2],a[1],a[0], a[7],a[6],a[5],a[4],
+          a[11],a[10],a[9],a[8], a[15],a[14],a[13],a[12]];
+}
+function k16(a){ return a.join(','); }
+function canon(a){
+  var best = k16(a), x = a, k, y;
+  for(k = 0; k < 4; k++){
+    if(k16(x) < best) best = k16(x);
+    y = mirH(x);
+    if(k16(y) < best) best = k16(y);
+    x = rot90(x);
+  }
+  return best;
+}
+function isPd(a){
+  var k, s, i;
+  for(k = 0; k < 4; k++){
+    s = 0; for(i = 0; i < 4; i++) s += a[i*4 + ((i+k) % 4)];
+    if(s !== 34) return false;
+    s = 0; for(i = 0; i < 4; i++) s += a[i*4 + ((k-i+4) % 4)];
+    if(s !== 34) return false;
+  }
+  return true;
+}
+function isAs(a){
+  for(var i = 0; i < 16; i++) if(a[i] + a[15-i] !== 17) return false;
+  return true;
+}
+function isMp(a){
+  for(var i = 0; i < 4; i++) for(var j = 0; j < 4; j++){
+    var s = a[i*4+j] + a[i*4+((j+1)%4)] + a[((i+1)%4)*4+j] + a[((i+1)%4)*4+((j+1)%4)];
+    if(s !== 34) return false;
+  }
+  return true;
+}
+
+/* ============ 3. 加载即算 ============ */
+var ENG = enumerate4();
+var SQ  = ENG.sq;
+var ORB = [], ORBI = {}, ESS = [], PDL = [], ASL = [];
+(function(){
+  var i, c;
+  for(i = 0; i < SQ.length; i++){
+    c = canon(SQ[i]);
+    if(ORBI[c] === undefined){ ORBI[c] = ORB.length; ORB.push(SQ[i]); ESS.push(i); }
+    if(isPd(SQ[i])) PDL.push(i);
+    if(isAs(SQ[i])) ASL.push(i);
+  }
+})();
+var ORB_SIZE = {}; (function(){
+  for(var i = 0; i < SQ.length; i++){
+    var c = canon(SQ[i]); ORB_SIZE[c] = (ORB_SIZE[c] || 0) + 1;
+  }
+})();
+$('timing').textContent = '枚举 ' + ENG.sq.length + ' 个 · ' + ENG.total + ' ms（集合 ' + ENG.nSet +
+  ' / 划分 ' + ENG.nPart + '）';
+
+/* ============ 4. 状态 ============ */
+var ST = {
+  src:'ess', idx:0, path:'row', cellMs:320,
+  map:'semi', f0:196, step:1,
+  p:3, Kf:7.83, Ka:0.35, Kp:0.45, beat:0,
+  wave:'sine', env:'through', vol:0.55
+};
+var SRC = { ess:ESS, all:null, pd:PDL, as:ASL };
+function listOf(src){
+  if(src === 'all'){ var a = []; for(var i = 0; i < SQ.length; i++) a.push(i); return a; }
+  return SRC[src];
+}
+function curSq(){
+  var L = listOf(ST.src);
+  if(ST.idx >= L.length) ST.idx = L.length - 1;
+  if(ST.idx < 0) ST.idx = 0;
+  return SQ[L[ST.idx]];
+}
+
+/* ============ 5. 路径 ============ */
+var PATHS = {
+  row:     [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
+  col:     [0,4,8,12,1,5,9,13,2,6,10,14,3,7,11,15],
+  spiral:  [0,1,2,3,7,11,15,14,13,12,8,4,5,6,10,9],
+  diag:    [0,1,4,8,5,2,3,6,9,12,13,10,7,11,14,15]
+};
+function orderOf(sq, p){
+  var i, arr = [], o;
+  if(p === 'num' || p === 'numdesc'){
+    for(i = 0; i < 16; i++) arr.push(i);
+    arr.sort(function(x, y){ return sq[x] - sq[y]; });
+    if(p === 'numdesc') arr.reverse();
+    return arr;
+  }
+  return PATHS[p] || PATHS.row;
+}
+
+/* ============ 6. 频率映射 ============ */
+function fOf(v){
+  if(ST.map === 'lin') return ST.f0 + (v - 1) * ST.step;
+  return ST.f0 * Math.pow(2, (v - 1) * ST.step / 12);
+}
+
+/* ============ 7. 螺旋 ============ */
+function spiralAt(u){
+  var tt = Math.atan(5 * (2*u - 1)) * 2;
+  var th = (tt >= 0 ? 1 : -1) * Math.pow(Math.abs(tt), ST.p);
+  var ph = Math.atan(Math.tanh(2 * tt));
+  var cp = Math.cos(ph);
+  return { x: cp * Math.cos(th), y: cp * Math.sin(th), z: Math.sin(ph), th: th, ph: ph };
+}
+
+/* ============ 8. 合成 ============ */
+var SR = 44100;
+function waveOf(ph){
+  var s = Math.sin(ph);
+  if(ST.wave === 'tri') return 2 / Math.PI * Math.asin(Math.max(-1, Math.min(1, s)));
+  if(ST.wave === 'warm') return (s + 0.28 * Math.sin(2*ph) + 0.12 * Math.sin(3*ph)) / 1.40;
+  return s;
+}
+function buildBuf(){
+  var dur = 16 * ST.cellMs / 1000;
+  var n = Math.round(dur * SR), dt = 1 / SR;
+  var L = new Float32Array(n), R = new Float32Array(n);
+  var sq = curSq(), ord = orderOf(sq, ST.path);
+  var fv = [], i;
+  for(i = 0; i < 16; i++) fv.push(fOf(sq[ord[i]]));
+  var phL = 0, phR = 0, fadeN = Math.round(0.04 * SR);
+  for(i = 0; i < n; i++){
+    var t = i * dt, u = t / dur;
+    var pos = u * 16, k = Math.floor(pos); if(k > 15) k = 15;
+    var fr = pos - k;
+    var f1 = fv[k], f2 = fv[(k + 1) & 15];
+    var fg = (ST.env === 'through') ? (f1 + (f2 - f1) * fr) : f1;
+    var sp = spiralAt(u);
+    var fL = fg + ST.Kf * Math.tanh(2 * sp.z);
+    if(fL < 10) fL = 10;
+    var fR = fL + ST.beat;
+    phL += 2 * Math.PI * fL * dt;
+    phR += 2 * Math.PI * fR * dt;
+    var ty = Math.tanh(2 * sp.y), tx = Math.tanh(2 * sp.x);
+    var aL = 1 + ST.Ka * ty; if(aL < 0.03) aL = 0.03;
+    var aR = 1 - ST.Ka * ty; if(aR < 0.03) aR = 0.03;
+    var pL = ST.Kp * Math.PI * tx, pR = -pL;
+    var env = 1;
+    if(i < fadeN) env = 0.5 - 0.5 * Math.cos(Math.PI * (i + 1) / (fadeN + 1));
+    else if(i > n - 1 - fadeN) env = 0.5 - 0.5 * Math.cos(Math.PI * (n - i) / (fadeN + 1));
+    L[i] = ST.vol * aL * env * waveOf(phL + pL);
+    R[i] = ST.vol * aR * env * waveOf(phR + pR);
+  }
+  return { L:L, R:R, dur:dur, n:n };
+}
+
+/* 瞬间频率偏差：sin(2πf(t)·t) 多出来的 t·f′ */
+function chirpDev(){
+  var dur = 16 * ST.cellMs / 1000, N = 600, mx = 0, at = 0, i;
+  for(i = 1; i < N; i++){
+    var t = dur * i / N;
+    var u = i / N;
+    var z1 = spiralAt(u - 0.5/N).z, z2 = spiralAt(u + 0.5/N).z;
+    var f1 = ST.Kf * Math.tanh(2 * z1), f2 = ST.Kf * Math.tanh(2 * z2);
+    var df = (f2 - f1) / (dur / N);
+    var v = Math.abs(t * df);
+    if(v > mx){ mx = v; at = t; }
+  }
+  return { max:mx, at:at };
+}
+
+/* ============ 9. 绘制 ============ */
+var DPR = Math.min(2, window.devicePixelRatio || 1);
+function fit(cv){
+  var w = cv.clientWidth || 620, h = Math.round(w * (cv.getAttribute('height') / cv.getAttribute('width')));
+  cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR);
+  cv.style.height = h + 'px';
+  var g = cv.getContext('2d'); g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  return { g:g, w:w, h:h };
+}
+function drawPitch(uNow){
+  var o = fit($('cvPitch')), g = o.g, w = o.w, h = o.h;
+  g.clearRect(0, 0, w, h);
+  var x0 = 46, x1 = w - 14, y0 = 18, y1 = h - 26, i;
+  var sq = curSq(), ord = orderOf(sq, ST.path), fv = [];
+  for(i = 0; i < 16; i++) fv.push(fOf(sq[ord[i]]));
+  var lo = Math.min.apply(null, fv) - Math.abs(ST.Kf);
+  var hi = Math.max.apply(null, fv) + Math.abs(ST.Kf);
+  var mid = (lo + hi) / 2, half = Math.max((hi - lo) / 2, 1);
+  lo = mid - half * 1.12; hi = mid + half * 1.12;
+  function X(u){ return x0 + (x1 - x0) * u; }
+  function Y(f){ return y1 - (f - lo) / (hi - lo) * (y1 - y0); }
+  g.font = '11px system-ui';
+  for(i = 0; i <= 4; i++){
+    var yy = y0 + (y1 - y0) * i / 4;
+    g.strokeStyle = '#f0ece1'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(x0, yy); g.lineTo(x1, yy); g.stroke();
+    g.fillStyle = '#9a948a';
+    g.fillText((hi - (hi - lo) * i / 4).toFixed(0) + (i === 0 ? ' Hz' : ''), 6, yy + 4);
+  }
+  function fAt(u){
+    var pos = u * 16, k = Math.floor(pos); if(k > 15) k = 15;
+    var fr = pos - k, fa = fv[k], fb = fv[(k + 1) & 15];
+    return (ST.env === 'through') ? (fa + (fb - fa) * fr) : fa;
+  }
+  g.strokeStyle = '#c9c3b4'; g.lineWidth = 1.6; g.beginPath();
+  for(i = 0; i <= 360; i++){
+    var u1 = i / 360;
+    if(i === 0) g.moveTo(X(u1), Y(fAt(u1))); else g.lineTo(X(u1), Y(fAt(u1)));
+  }
+  g.stroke();
+  g.strokeStyle = '#534ab7'; g.lineWidth = 2.2; g.beginPath();
+  for(i = 0; i <= 360; i++){
+    var u2 = i / 360;
+    var ff = fAt(u2) + ST.Kf * Math.tanh(2 * spiralAt(u2).z);
+    if(ff < 10) ff = 10;
+    if(i === 0) g.moveTo(X(u2), Y(ff)); else g.lineTo(X(u2), Y(ff));
+  }
+  g.stroke();
+  g.fillStyle = '#fff'; g.strokeStyle = '#8d86c9'; g.lineWidth = 1.1;
+  for(i = 0; i < 16; i++){
+    g.beginPath(); g.arc(X(i / 16), Y(fv[i]), 3, 0, 6.2832); g.fill(); g.stroke();
+  }
+  var Xn = X(Math.max(0, Math.min(1, uNow)));
+  g.strokeStyle = '#241f1c'; g.lineWidth = 1.3; g.setLineDash([4, 3]);
+  g.beginPath(); g.moveTo(Xn, y0); g.lineTo(Xn, y1); g.stroke(); g.setLineDash([]);
+  g.fillStyle = '#c9c3b4'; g.fillRect(x1 - 148, 6, 15, 3);
+  g.fillStyle = '#6d675e'; g.fillText('目标滑行', x1 - 128, 12);
+  g.fillStyle = '#534ab7'; g.fillRect(x1 - 62, 6, 15, 3);
+  g.fillStyle = '#6d675e'; g.fillText('实调频', x1 - 42, 12);
+  var tm = Math.abs(Math.atan(5) * 2), thm = Math.pow(tm, ST.p);
+  $('spiralInfo').textContent = ' ｜ θ 扫过 ±' + thm.toFixed(2) + ' rad ≈ ±' +
+    (thm / 6.2832).toFixed(2) + ' 圈，半径只在 0.707–1 之间变（所以俯视投影叠起来像个圆，那时看不出圈数）。';
+}
+function drawMod(uNow){
+  var o = fit($('cvMod')), g = o.g, w = o.w, h = o.h;
+  g.clearRect(0, 0, w, h);
+  var pad = 22, x0 = pad, x1 = w - pad, y0 = pad, y1 = h - pad, i, N = 300;
+  g.strokeStyle = '#f0ece1'; g.lineWidth = 1;
+  for(i = 0; i <= 4; i++){
+    var y = y0 + (y1 - y0) * i / 4;
+    g.beginPath(); g.moveTo(x0, y); g.lineTo(x1, y); g.stroke();
+  }
+  function line(fn, col, wid){
+    g.strokeStyle = col; g.lineWidth = wid; g.beginPath();
+    for(var k = 0; k <= N; k++){
+      var p = spiralAt(k / N), v = fn(p);
+      var X = x0 + (x1 - x0) * k / N;
+      var Y = (y0 + y1) / 2 - v * (y1 - y0) / 2 * 0.92;
+      if(k === 0) g.moveTo(X, Y); else g.lineTo(X, Y);
+    }
+    g.stroke();
+  }
+  line(function(p){ return Math.tanh(2*p.x); }, '#534ab7', 2);
+  line(function(p){ return Math.tanh(2*p.y); }, '#1f7a52', 2);
+  line(function(p){ return Math.tanh(2*p.z); }, '#a8701a', 2);
+  var Xn = x0 + (x1 - x0) * Math.max(0, Math.min(1, uNow));
+  g.strokeStyle = '#241f1c'; g.lineWidth = 1.4; g.setLineDash([4, 3]);
+  g.beginPath(); g.moveTo(Xn, y0); g.lineTo(Xn, y1); g.stroke(); g.setLineDash([]);
+  g.font = '11px system-ui'; g.fillStyle = '#9a948a';
+  g.fillText('u = 0', x0, h - 6); g.fillText('u = 1', x1 - 30, h - 6);
+}
+function drawGrid(){
+  var sq = curSq(), box = $('mg'), i;
+  if(box.children.length !== 16){
+    box.innerHTML = '';
+    for(i = 0; i < 16; i++){
+      var d = document.createElement('div');
+      d.className = 'mc'; d.setAttribute('data-i', String(i));
+      box.appendChild(d);
+    }
+  }
+  for(i = 0; i < 16; i++) box.children[i].textContent = String(sq[i]);
+  $('ma').innerHTML = ''; $('mb').innerHTML = '';
+  for(i = 0; i < 16; i++){
+    var da = document.createElement('div'); da.className = 'mn';
+    da.textContent = String((sq[i] - 1) % 4);
+    $('ma').appendChild(da);
+    var db = document.createElement('div'); db.className = 'mn';
+    db.textContent = String(Math.floor((sq[i] - 1) / 4));
+    $('mb').appendChild(db);
+  }
+  $('bgPd').className = 'bg' + (isPd(sq) ? ' on' : '');
+  $('bgAs').className = 'bg' + (isAs(sq) ? ' on' : '');
+  $('bgMp').className = 'bg' + (isMp(sq) ? ' on' : '');
+  var sz = ORB_SIZE[canon(sq)] || 0;
+  $('bgOrb').textContent = '轨道 ' + sz + ' 个';
+  $('bgOrb').className = 'bg' + (sz === 8 ? ' on' : '');
+  var a9 = [], b9 = [], cl = true, t9, i9, j9;
+  for(t9 = 0; t9 < 16; t9++){
+    a9.push((sq[t9] - 1) % 4); b9.push(Math.floor((sq[t9] - 1) / 4));
+  }
+  for(i9 = 0; i9 < 4; i9++){
+    var s1 = 0, s2 = 0, s3 = 0, s4 = 0;
+    for(j9 = 0; j9 < 4; j9++){
+      s1 += a9[i9*4+j9]; s2 += b9[i9*4+j9];
+      s3 += a9[j9*4+i9]; s4 += b9[j9*4+i9];
+    }
+    if(s1 !== 6 || s2 !== 6 || s3 !== 6 || s4 !== 6) cl = false;
+  }
+  if(a9[0]+a9[5]+a9[10]+a9[15] !== 6 || a9[3]+a9[6]+a9[9]+a9[12] !== 6) cl = false;
+  if(b9[0]+b9[5]+b9[10]+b9[15] !== 6 || b9[3]+b9[6]+b9[9]+b9[12] !== 6) cl = false;
+  $('bgCl').textContent = cl ? '干净分裂 6/6' : '对角混搭 (2,10)';
+  $('bgCl').className = 'bg' + (cl ? ' on' : '');
+  $('idxTxt').textContent = (ST.idx + 1) + ' / ' + listOf(ST.src).length;
+  var m = { ess:'本质不同：每个 D4 轨道只留字典序最小的一张',
+            all:'全部 7040：同一个形状的 8 个旋转/镜像都算',
+            pd:'泛对角 384 张（本质 48）：8 条折断对角线和也是 34',
+            as:'结合型 384 张（本质 48）：中心对称两格互补为 17' };
+  $('srcInfo').textContent = m[ST.src] + '；当前第 ' + (ST.idx + 1) + ' 个';
+}
+function drawAll(u){
+  u = (typeof u === 'number') ? u : 0;
+  drawGrid(); drawPitch(u); drawMod(u);
+}
+function highlight(i){
+  var cells = $('mg').children, r = Math.floor(i / 4), c = i % 4, k;
+  for(k = 0; k < 16; k++){
+    var rr = Math.floor(k / 4), cc = k % 4;
+    var on = (rr === r) || (cc === c) ||
+             (rr === cc && r === c) || (rr + cc === 3 && r + c === 3);
+    cells[k].className = 'mc' + (on ? ' hl' : '') + (k === i ? ' sel' : '');
+  }
+}
+
+/* ============ 10. 播放 ============ */
+var actx = null, srcNode = null, buf = null, tStart = 0, durPlay = 0, raf = 0;
+function stopPlay(){
+  if(srcNode){ try{ srcNode.stop(); }catch(e){} srcNode = null; }
+  if(raf){ cancelAnimationFrame(raf); raf = 0; }
+  $('st').className = ''; $('st').textContent = '已停止';
+  drawAll(0);
+}
+function play(){
+  stopPlay();
+  if(!actx){
+    var AC = window.AudioContext || window.webkitAudioContext;
+    actx = new AC();
+  }
+  if(actx.state === 'suspended') actx.resume();
+  var b = buildBuf();
+  buf = actx.createBuffer(2, b.n, SR);
+  buf.getChannelData(0).set(b.L);
+  buf.getChannelData(1).set(b.R);
+  srcNode = actx.createBufferSource();
+  srcNode.buffer = buf; srcNode.loop = false; srcNode.connect(actx.destination);
+  durPlay = b.dur; tStart = actx.currentTime + 0.03;
+  srcNode.start(tStart);
+  $('st').className = 'on';
+  $('st').textContent = '播放中 · ' + durPlay.toFixed(2) + ' s · ' + ST.cellMs + ' ms/格';
+  (function loop(){
+    var u = (actx.currentTime - tStart) / durPlay;
+    if(u >= 1){ stopPlay(); $('st').textContent = '播放结束'; return; }
+    drawPitch(Math.max(0, u)); drawMod(Math.max(0, u));
+    raf = requestAnimationFrame(loop);
+  })();
+}
+
+/* ============ 11. 接线 ============ */
+function refreshInfo(){
+  $('cellTxt').textContent = ST.cellMs + ' ms';
+  $('f0Txt').textContent = ST.f0 + ' Hz';
+  $('stepTxt').textContent = ST.step + (ST.map === 'semi' ? ' 半音' : ' Hz');
+  $('kfTxt').textContent = ST.Kf.toFixed(2) + ' Hz';
+  $('kaTxt').textContent = Math.round(ST.Ka * 100) + ' %';
+  $('kpTxt').textContent = Math.round(ST.Kp * 100) + ' %';
+  $('beatTxt').textContent = ST.beat.toFixed(1) + ' Hz';
+  $('volTxt').textContent = Math.round(ST.vol * 100) + ' %';
+  var cd = chirpDev();
+  $('chirpNote').innerHTML = '本页实测（当前参数）：<code>t·f′</code> 的最大偏差 = <b>' +
+    cd.max.toFixed(2) + ' Hz</b>，出现在 t = ' + cd.at.toFixed(2) + ' s。' +
+    '作为对照，基频在 ' + ST.f0 + ' Hz 附近、一个半音是 ' +
+    (ST.f0 * (Math.pow(2, 1/12) - 1)).toFixed(1) + ' Hz —— 也就是说这个偏差相当于 ' +
+    (cd.max / (ST.f0 * (Math.pow(2, 1/12) - 1))).toFixed(1) + ' 个半音。' +
+    '用累加写法时这一项恒为 0。';
+}
+$('selSrc').addEventListener('change', function(){ ST.src = this.value; ST.idx = 0; $('rgIdx').max = String(listOf(ST.src).length - 1); drawAll(0); refreshInfo(); });
+$('rgIdx').addEventListener('input', function(){ ST.idx = +this.value; drawAll(0); });
+$('btnPrev').addEventListener('click', function(){ ST.idx = (ST.idx - 1 + listOf(ST.src).length) % listOf(ST.src).length; $('rgIdx').value = String(ST.idx); drawAll(0); });
+$('btnNext').addEventListener('click', function(){ ST.idx = (ST.idx + 1) % listOf(ST.src).length; $('rgIdx').value = String(ST.idx); drawAll(0); });
+$('btnRnd').addEventListener('click', function(){ ST.idx = Math.floor(Math.random() * listOf(ST.src).length); $('rgIdx').value = String(ST.idx); drawAll(0); });
+$('selPath').addEventListener('change', function(){ ST.path = this.value; drawAll(0); });
+$('rgCell').addEventListener('input', function(){ ST.cellMs = +this.value; refreshInfo(); });
+$('selMap').addEventListener('change', function(){ ST.map = this.value; refreshInfo(); });
+$('rgF0').addEventListener('input', function(){ ST.f0 = +this.value; refreshInfo(); });
+$('rgStep').addEventListener('input', function(){ ST.step = +this.value; refreshInfo(); });
+$('selP').addEventListener('change', function(){ ST.p = parseFloat(this.value); drawAll(0); refreshInfo(); });
+$('rgKf').addEventListener('input', function(){ ST.Kf = +this.value; refreshInfo(); });
+$('rgKa').addEventListener('input', function(){ ST.Ka = (+this.value) / 100; refreshInfo(); });
+$('rgKp').addEventListener('input', function(){ ST.Kp = (+this.value) / 100; refreshInfo(); });
+$('rgBeat').addEventListener('input', function(){ ST.beat = +this.value; refreshInfo(); });
+$('selWave').addEventListener('change', function(){ ST.wave = this.value; });
+$('selEnv').addEventListener('change', function(){ ST.env = this.value; });
+$('rgVol').addEventListener('input', function(){ ST.vol = (+this.value) / 100; refreshInfo(); });
+$('btnPlay').addEventListener('click', play);
+$('btnStop').addEventListener('click', stopPlay);
+$('mg').addEventListener('click', function(e){
+  var t = e.target;
+  if(t && t.className && t.className.indexOf('mc') === 0) highlight(+t.getAttribute('data-i'));
+});
+window.addEventListener('resize', function(){ drawAll(0); });
+
+/* ============ 11.5 阶数外推（§6） ============ */
+var ORD = {
+  3:{M:15,  dim:2,  A:8,          B:'2',        total:'8',                            ess:'1'},
+  4:{M:34,  dim:7,  A:86,         B:'392',      total:'7,040',                        ess:'880'},
+  5:{M:65,  dim:14, A:1394,       B:'3,245,664', total:'2,202,441,792',               ess:'275,305,224'},
+  6:{M:111, dim:23, A:32134,      B:'—',        total:'142,031,113,581,285,085,056',  ess:'17,753,889,197,660,635,632'},
+  7:{M:175, dim:34, A:957332,     B:'—',        total:'未知',                          ess:'未知'},
+  8:{M:260, dim:47, A:35154340,   B:'—',        total:'未知',                          ess:'未知'},
+  9:{M:369, dim:62, A:1537408202, B:'—',        total:'未知',                          ess:'未知'}
+};
+function fmtN(v){
+  var s = String(v), o = '', k = 0;
+  for(var i = s.length - 1; i >= 0; i--){ o = s.charAt(i) + o; if(++k % 3 === 0 && i > 0) o = ',' + o; }
+  return o;
+}
+function gridPts(n){
+  return Math.floor((n*n - 1) / 2) - Math.ceil((n-1)*(n-1) / 2) + 1;
+}
+function countSets(n){
+  var M = n*(n*n+1)/2, cnt = 0;
+  (function rec(start, depth, sum){
+    if(depth === n){ if(sum === M) cnt++; return; }
+    var left = n - depth, hi = n*n - left + 1;
+    for(var v = start; v <= hi; v++){
+      if(sum + v > M) break;
+      rec(v + 1, depth + 1, sum + v);
+    }
+  })(1, 0, 0);
+  return cnt;
+}
+function enc16(g){
+  var s = '';
+  for(var i = 0; i < 16; i++) s += String.fromCharCode(64 + g[i]);
+  return s;
+}
+function drawOrder(nSel){
+  var o = fit($('cvOrder')), g = o.g, w = o.w, h = o.h;
+  g.clearRect(0, 0, w, h);
+  var x0 = 58, x1 = w - 36, y0 = 26, y1 = h - 40;
+  var ns = [3,4,5,6,7,8,9], i;
+  function X(n){ return x0 + (x1 - x0) * (n - 3) / 6; }
+  function Y(v){ return y1 - (v / 10) * (y1 - y0); }
+
+  g.font = '11px system-ui';
+  for(i = 0; i <= 5; i++){
+    var yy = y0 + (y1 - y0) * i / 5;
+    g.strokeStyle = '#f0ece1'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(x0, yy); g.lineTo(x1, yy); g.stroke();
+    g.fillStyle = '#9a948a';
+    g.fillText(String(10 - 2*i), 28, yy + 4);
+  }
+  g.fillStyle = '#6d675e'; g.font = '11.5px system-ui';
+  for(i = 0; i < ns.length; i++) g.fillText(String(ns[i]), X(ns[i]) - 3, y1 + 16);
+  g.fillText('n', x1 + 9, y1 + 16);
+  g.fillStyle = '#9a948a'; g.font = '11px system-ui';
+  g.fillText('log10', 6, 12);
+
+  g.strokeStyle = '#1f7a52'; g.lineWidth = 2.2; g.beginPath();
+  for(i = 0; i < ns.length; i++){
+    var dx = X(ns[i]), dy = Y(Math.log(ORD[ns[i]].dim) / Math.LN10);
+    if(i === 0) g.moveTo(dx, dy); else g.lineTo(dx, dy);
+  }
+  g.stroke();
+
+  g.strokeStyle = '#534ab7'; g.lineWidth = 2.3; g.beginPath();
+  for(i = 0; i < ns.length; i++){
+    var ax = X(ns[i]), ay = Y(Math.log(ORD[ns[i]].A) / Math.LN10);
+    if(i === 0) g.moveTo(ax, ay); else g.lineTo(ax, ay);
+  }
+  g.stroke();
+  for(i = 0; i < ns.length; i++){
+    var px = X(ns[i]), py = Y(Math.log(ORD[ns[i]].A) / Math.LN10);
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(px, py, 3.6, 0, 6.2832); g.fill();
+    g.strokeStyle = '#534ab7'; g.lineWidth = 1.9; g.stroke();
+  }
+  for(i = 0; i < ns.length; i++){
+    var qx = X(ns[i]), qy = Y(Math.log(ORD[ns[i]].dim) / Math.LN10);
+    g.fillStyle = '#1f7a52'; g.beginPath(); g.arc(qx, qy, 2.7, 0, 6.2832); g.fill();
+  }
+  if(nSel >= 3 && nSel <= 9){
+    g.strokeStyle = 'rgba(83,74,183,.55)'; g.lineWidth = 1.1; g.setLineDash([4, 4]);
+    g.beginPath(); g.moveTo(X(nSel), y0 - 6); g.lineTo(X(nSel), y1); g.stroke();
+    g.setLineDash([]);
+  }
+}
+function ordInfoHTML(n){
+  var o = ORD[n], M = n*(n*n+1)/2, dim = n*n - 2*n - 1, gp = gridPts(n);
+  var rows = [
+    ['M = n(n²+1)/2', fmtN(M)],
+    ['维数 n²−2n−1', fmtN(dim)],
+    ['一条线的格点数', fmtN(gp)],
+    ['A(n) 线和集合', o ? fmtN(o.A) : '— 未实测'],
+    ['B(n) 块划分', o ? o.B : '—'],
+    ['全部幻方', o ? o.total : '未知'],
+    ['本质种数 ÷8', o ? o.ess : '未知']
+  ];
+  var s = '';
+  for(var i = 0; i < rows.length; i++){
+    s += '<div style="display:flex;justify-content:space-between;gap:8px;padding:3.5px 0;border-bottom:1px dashed #eee9dd;align-items:baseline">' +
+         '<span style="color:var(--mute);font-size:12.2px;white-space:nowrap;flex:none">' + rows[i][0] + '</span>' +
+         '<b style="font-family:\'Cascadia Mono\',Consolas,monospace;font-size:12.2px;text-align:right;min-width:0;word-break:break-all">' +
+         rows[i][1] + '</b></div>';
+  }
+  return s;
+}
+function updOrder(){
+  var n = +$('rgN').value;
+  $('ordTag').textContent = String(n);
+  $('ordInfo').innerHTML = ordInfoHTML(n);
+  $('ordHint').innerHTML = ORD[n]
+    ? 'A(n)、B(n) 是本机实测；M、维数、格点数由通项<b>现算</b>，并与实测对拍（见 §10 自检）。'
+    : 'n = ' + n + ' 的 A(n) 未实测：C(' + (n*n) + ',' + n + ') 已是天文数字，筛子和不可行。' +
+      'M、维数、格点数仍可按通项算 —— 这正是「公式有、数字没有」。';
+  drawOrder(n);
+}
+function bindOrder(){
+  $('rgN').addEventListener('input', updOrder);
+  $('btnN3').addEventListener('click', function(){ $('rgN').value = '3'; updOrder(); });
+  $('btnN5').addEventListener('click', function(){ $('rgN').value = '5'; updOrder(); });
+  updOrder();
+}
+
+/* ============ 11.6 6 阶井字切法（§7） ============ */
+var COL6 = '#3b3470';
+var S6 = {
+  A: [32,29,4,1,24,21, 30,31,2,3,22,23, 12,9,17,20,28,25,
+      10,11,18,19,26,27, 13,16,36,33,5,8, 14,15,34,35,6,7],
+  B: [4,27,30,9,36,5, 31,16,13,25,20,6, 2,14,19,15,26,35,
+      34,23,18,22,11,3, 8,21,24,12,17,29, 32,10,7,28,1,33]
+};
+var SP6 = [[1,2],[1,3],[1,4],[1,5],[2,3],[2,4],[2,5],[3,4],[3,5],[4,5]];
+var CUTS = (function(){
+  var o = [], i, j;
+  for(i = 0; i < 10; i++) for(j = 0; j < 10; j++)
+    o.push([SP6[i][0], SP6[i][1], SP6[j][0], SP6[j][1]]);
+  return o;
+})();
+var S6CUR = 'A', S6CUT = 55;
+
+function sumOf(a){ var s = 0, i; for(i = 0; i < a.length; i++) s += a[i]; return s; }
+function blk6(g, cut){
+  var ri = cut[0], rj = cut[1], ci = cut[2], cj = cut[3];
+  var rs = [[0,ri],[ri,rj],[rj,6]], cs = [[0,ci],[ci,cj],[cj,6]], out = [];
+  for(var a = 0; a < 3; a++) for(var b = 0; b < 3; b++){
+    var v = [];
+    for(var r = rs[a][0]; r < rs[a][1]; r++)
+      for(var c = cs[b][0]; c < cs[b][1]; c++) v.push(g[r*6+c]);
+    out.push(v);
+  }
+  return out;
+}
+function blkSizes(cut){
+  var B = blk6(S6[S6CUR], cut) , o = [], i;
+  for(i = 0; i < 9; i++) o.push(B[i].length);
+  return o;
+}
+function isArith(v){
+  if(v.length < 2) return 0;
+  var s = v.slice().sort(function(x, y){ return x - y; }), d = s[1] - s[0], i;
+  for(i = 2; i < s.length; i++) if(s[i] - s[i-1] !== d) return 0;
+  return d;
+}
+function isConsec(v){
+  if(v.length < 2) return 0;
+  var s = v.slice().sort(function(x, y){ return x - y; }), i;
+  for(i = 1; i < s.length; i++) if(s[i] !== s[i-1] + 1) return 0;
+  return 1;
+}
+function magicBlk(v, w, h){
+  if(w !== h || w < 3 || v.length !== w * h) return 0;
+  var s = sumOf(v.slice(0, w)), i, r, c, t;
+  for(r = 0; r < h; r++){ t = 0; for(c = 0; c < w; c++) t += v[r*w+c]; if(t !== s) return 0; }
+  for(c = 0; c < w; c++){ t = 0; for(r = 0; r < h; r++) t += v[r*w+c]; if(t !== s) return 0; }
+  t = 0; for(i = 0; i < w; i++) t += v[i*w+i]; if(t !== s) return 0;
+  t = 0; for(i = 0; i < w; i++) t += v[i*w+(w-1-i)]; if(t !== s) return 0;
+  return 1;
+}
+function crit6(g, cut){
+  var B = blk6(g, cut), out = [], i, ar = true, co = true, eq = true, s0 = sumOf(B[0]);
+  for(i = 0; i < 9; i++){
+    if(!isArith(B[i])) ar = false;
+    if(!isConsec(B[i])) co = false;
+    if(sumOf(B[i]) !== s0) eq = false;
+  }
+  if(ar) out.push('等差');
+  if(co) out.push('连续');
+  if(eq) out.push('等和');
+  if(magicBlk(B[4], cut[3] - cut[2], cut[1] - cut[0])) out.push('中心幻方');
+  return out;
+}
+function magic6err(g){
+  var i, r, c, seen = {}, t;
+  if(g.length !== 36) return '长度';
+  for(i = 0; i < 36; i++){ if(seen[g[i]] || g[i] < 1 || g[i] > 36) return '不是 1…36 全排列'; seen[g[i]] = 1; }
+  for(r = 0; r < 6; r++){ t = 0; for(c = 0; c < 6; c++) t += g[r*6+c]; if(t !== 111) return '行' + (r+1); }
+  for(c = 0; c < 6; c++){ t = 0; for(r = 0; r < 6; r++) t += g[r*6+c]; if(t !== 111) return '列' + (c+1); }
+  t = 0; for(i = 0; i < 6; i++) t += g[i*7]; if(t !== 111) return '主对角';
+  t = 0; for(i = 0; i < 6; i++) t += g[i*6+5-i]; if(t !== 111) return '副对角';
+  return null;
+}
+
+function s6matrix(){
+  var h = '', i, j, k, cls, ttl, ca, cb;
+  h += '<div class="hd rl"></div>';
+  for(j = 0; j < 10; j++) h += '<div class="hd">' + SP6[j][0] + '\u00b7' + SP6[j][1] + '</div>';
+  for(i = 0; i < 10; i++){
+    h += '<div class="rl">' + SP6[i][0] + '\u00b7' + SP6[i][1] + '</div>';
+    for(j = 0; j < 10; j++){
+      k = i * 10 + j;
+      ca = crit6(S6.A, CUTS[k]); cb = crit6(S6.B, CUTS[k]);
+      cls = 'cm';
+      if(ca.indexOf('连续') >= 0) cls += ' hitA';
+      else if(cb.indexOf('中心幻方') >= 0) cls += ' hitB';
+      ttl = '横切(' + CUTS[k][0] + ',' + CUTS[k][1] + ') 竖切(' + CUTS[k][2] + ',' + CUTS[k][3] + ')'
+          + '  块大小 ' + blkSizes(CUTS[k]).join('/')
+          + '  甲:' + (ca.length ? ca.join('+') : '空')
+          + '  乙:' + (cb.length ? cb.join('+') : '空');
+      h += '<div class="' + cls + '" data-k="' + k + '" title="' + ttl + '">\u00b7</div>';
+    }
+  }
+  $('cutMat').innerHTML = h;
+  var cells = $('cutMat').querySelectorAll('.cm');
+  for(var t = 0; t < cells.length; t++){
+    cells[t].addEventListener('click', function(){
+      s6pick(+this.getAttribute('data-k'));
+    });
+  }
+}
+function s6pick(k){
+  S6CUT = k;
+  var cells = $('cutMat').querySelectorAll('.cm');
+  for(var t = 0; t < cells.length; t++)
+    cells[t].classList.toggle('sel', +cells[t].getAttribute('data-k') === k);
+  s6draw();
+}
+function s6draw(){
+  var cut = CUTS[S6CUT], g = S6[S6CUR], r, c, i, st, h = '';
+  $('s6Tag').textContent = (S6CUR === 'A') ? '甲' : '乙';
+  for(r = 0; r < 6; r++) for(c = 0; c < 6; c++){
+    st = '';
+    if(r === 0 || r === cut[0] || r === cut[1]) st += 'border-top:3px solid ' + COL6 + ';';
+    if(r === 5) st += 'border-bottom:3px solid ' + COL6 + ';';
+    if(c === 0 || c === cut[2] || c === cut[3]) st += 'border-left:3px solid ' + COL6 + ';';
+    if(c === 5) st += 'border-right:3px solid ' + COL6 + ';';
+    h += '<div style="' + st + '">' + g[r*6+c] + '</div>';
+  }
+  $('cg6').innerHTML = h;
+
+  var B = blk6(g, cut), sizes = [], sums = [], cr = crit6(g, cut);
+  for(i = 0; i < 9; i++){ sizes.push(B[i].length); sums.push(sumOf(B[i])); }
+  var nm = ['① 全等差', '② 连续整数', '③ 9 块等和', '④ 中心幻方'];
+  var ky = ['等差', '连续', '等和', '中心幻方'];
+  var lines = '';
+  for(i = 0; i < 4; i++){
+    var on = cr.indexOf(ky[i]) >= 0;
+    lines += '<div><span class="' + (on ? 'hit' : 'no') + '">' + (on ? '命中' : '空  ') + '</span> ' + nm[i] + '</div>';
+  }
+  var bl = '', i2;
+  for(i2 = 0; i2 < 9; i2++){ bl += sizes[i2] + (i2 % 3 === 2 ? '<br>' : ' \u00b7 '); }
+  $('cInfo').innerHTML =
+    '<div><b>块大小</b><br>' + bl + '</div>' +
+    '<div style="margin-top:6px"><b>9 块之和</b> ' + sums.join(' \u00b7 ') + '</div>' +
+    '<div style="margin-top:6px">' + lines + '</div>';
+
+  $('cutCap').innerHTML = '当前：<b>' + (S6CUR === 'A' ? '甲 · 3×2 块扩' : '乙 · 4+2 同心')
+    + '</b>，横切 (' + cut[0] + ',' + cut[1] + ')、竖切 (' + cut[2] + ',' + cut[3]
+    + ')，块大小 [' + sizes.join(', ') + ']。';
+
+  $('cutHint').innerHTML = cr.length
+    ? '这一格<b class="grn">亮</b>：命中 <b>' + cr.join(' + ') + '</b>。'
+    : '这一格是<b>空</b>的 —— 这条切线没把约束切进块里。同一个刀口切到另一族上，结果可能完全不同。';
+}
+function gridText(g){
+  var s = '', r, c;
+  for(r = 0; r < 6; r++){
+    var row = [];
+    for(c = 0; c < 6; c++) row.push(String(g[r*6+c]));
+    s += row.join(' ') + (r < 5 ? '\n' : '');
+  }
+  return s;
+}
+function parseSq(t){
+  var m = String(t).match(/\d+/g), a = [], i;
+  if(!m) return a;
+  for(i = 0; i < m.length; i++) a.push(+m[i]);
+  return a;
+}
+function classify6(a){
+  var i, r, c, t, bad = [];
+  if(a.length !== 36)
+    return {err: '需要 36 个整数，现在解析出 ' + a.length + ' 个', magic: false, bad: [], hits: []};
+  var s = a.slice().sort(function(x, y){ return x - y; });
+  for(i = 0; i < 36; i++)
+    if(s[i] !== i + 1) return {err: '这 36 个数不是 1…36 的一个排列', magic: false, bad: [], hits: []};
+  for(r = 0; r < 6; r++){ t = 0; for(c = 0; c < 6; c++) t += a[r*6+c]; if(t !== 111) bad.push('行' + (r+1) + '=' + t); }
+  for(c = 0; c < 6; c++){ t = 0; for(r = 0; r < 6; r++) t += a[r*6+c]; if(t !== 111) bad.push('列' + (c+1) + '=' + t); }
+  t = 0; for(i = 0; i < 6; i++) t += a[i*7]; if(t !== 111) bad.push('主对角=' + t);
+  t = 0; for(i = 0; i < 6; i++) t += a[i*6+5-i]; if(t !== 111) bad.push('副对角=' + t);
+  var hits = [];
+  for(var k = 0; k < CUTS.length; k++){
+    var cr = crit6(a, CUTS[k]);
+    if(cr.length) hits.push({k: k, cut: CUTS[k], cr: cr});
+  }
+  return {err: null, magic: bad.length === 0, bad: bad, hits: hits};
+}
+function clsOut(res){
+  var h = '';
+  if(res.err){
+    h += '<div class="row"><span class="k">解析</span><span class="bad">' + res.err + '</span></div>';
+    $('clsOut').innerHTML = h; return;
+  }
+  h += '<div class="row"><span class="k">是否幻方</span><span class="' + (res.magic ? 'good' : 'bad') + '">'
+     + (res.magic ? '是 —— 6 行、6 列、2 对角全 111' : '不是 —— ' + res.bad.slice(0, 4).join('；')
+        + (res.bad.length > 4 ? ' …共 ' + res.bad.length + ' 条线错' : '')) + '</span></div>';
+  if(!res.hits.length){
+    h += '<div class="row"><span class="k">100 种切法</span><span><b>0 命中</b> —— 结构不在这 4 条判据里</span></div>';
+  }else{
+    var t = [], fam = [], i, cr;
+    for(i = 0; i < res.hits.length && i < 6; i++){
+      var x = res.hits[i];
+      t.push('横切(' + x.cut[0] + ',' + x.cut[1] + ') × 竖切(' + x.cut[2] + ',' + x.cut[3] + ') ⟹ ' + x.cr.join(' + '));
+    }
+    for(i = 0; i < res.hits.length; i++){
+      cr = res.hits[i].cr;
+      var f = (cr.indexOf('中心幻方') >= 0) ? '4+2 同心族' : (cr.indexOf('连续') >= 0 ? '3×2 块扩族' : '');
+      if(f && fam.indexOf(f) < 0) fam.push(f);
+    }
+    h += '<div class="row"><span class="k">100 种切法</span><span>命中 <b>' + res.hits.length + '</b> 种<br>' + t.join('<br>') + '</span></div>';
+    h += '<div class="row"><span class="k">疑似族</span><span class="good">' + (fam.length ? fam.join(' / ') : '仅命中弱判据，无法判族') + '</span></div>';
+  }
+  $('clsOut').innerHTML = h;
+}
+function bindS6(){
+  $('btnS6A').addEventListener('click', function(){ S6CUR = 'A'; s6draw(); });
+  $('btnS6B').addEventListener('click', function(){ S6CUR = 'B'; s6draw(); });
+  $('btnFillA').addEventListener('click', function(){
+    $('inSq').value = gridText(S6.A); clsOut(classify6(S6.A.slice()));
+  });
+  $('btnFillB').addEventListener('click', function(){
+    $('inSq').value = gridText(S6.B); clsOut(classify6(S6.B.slice()));
+  });
+  $('btnCls').addEventListener('click', function(){ clsOut(classify6(parseSq($('inSq').value))); });
+  s6matrix();
+  s6pick(55);
+}
+
+/* ============ 12. 自检 ============ */
+function runChecks(){
+  var rows = [], bad = 0;
+  function ck(ok, name, val){
+    if(!ok) bad++;
+    rows.push({ok:ok, name:name, val:val});
+  }
+  ck(ENG.nSet === 86, '4 元和=34 的子集', ENG.nSet + ' 个');
+  ck(ENG.nPart === 392, '列划分（精确覆盖）', ENG.nPart + ' 种');
+  ck(SQ.length === 7040, '全部幻方数', SQ.length + ' 个');
+  ck(ORB.length === 880, 'D4 本质轨道数', ORB.length + ' 个');
+  var sz = {}, all8 = true;
+  for(var k in ORB_SIZE){ sz[ORB_SIZE[k]] = 1; if(ORB_SIZE[k] !== 8) all8 = false; }
+  ck(all8, '每个轨道恰好 8 个', '轨道大小集合 = {' + Object.keys(sz).join(',') + '} ⟹ 无对称方阵');
+  ck(PDL.length === 384, '泛对角（全部）', PDL.length + ' 个');
+  ck(ASL.length === 384, '结合型（全部）', ASL.length + ' 个');
+  var opd = {}, oas = {};
+  for(var i = 0; i < PDL.length; i++) opd[canon(SQ[PDL[i]])] = 1;
+  for(var j = 0; j < ASL.length; j++) oas[canon(SQ[ASL[j]])] = 1;
+  ck(Object.keys(opd).length === 48, '泛对角（本质）', Object.keys(opd).length + ' 类');
+  ck(Object.keys(oas).length === 48, '结合型（本质）', Object.keys(oas).length + ' 类');
+  var sameSet = true, s1 = {}, s2 = {};
+  for(var a1 = 0; a1 < PDL.length; a1++) s1[k16(SQ[PDL[a1]])] = 1;
+  for(var a2 = 0; a2 < ASL.length; a2++) s2[k16(SQ[ASL[a2]])] = 1;
+  var diffs = 0;
+  for(var key in s1) if(!s2[key]) diffs++;
+  ck(diffs === 384, '泛对角与结合型是不同的两批', '互差 ' + diffs + ' 个');
+  var mpn = 0, mpEqPd = true;
+  for(var b1 = 0; b1 < SQ.length; b1++){
+    if(isMp(SQ[b1])) mpn++;
+    if(isMp(SQ[b1]) !== isPd(SQ[b1])) mpEqPd = false;
+  }
+  ck(mpn === 384 && mpEqPd, '泛对角 ⟺ 最完美（4 阶）', mpn + ' 个 · 集合相等');
+  var perr = 0, lerr = 0;
+  for(var c1 = 0; c1 < SQ.length; c1++){
+    var m = SQ[c1], used = {}, u2 = 0;
+    for(var d1 = 0; d1 < 16; d1++){ if(used[m[d1]]) u2 = 1; used[m[d1]] = 1; }
+    if(u2 || m.length !== 16) perr++;
+    for(var r1 = 0; r1 < 4; r1++){
+      var s = m[r1*4] + m[r1*4+1] + m[r1*4+2] + m[r1*4+3];
+      if(s !== 34) lerr++;
+      var sc = m[r1] + m[4+r1] + m[8+r1] + m[12+r1];
+      if(sc !== 34) lerr++;
+    }
+    if(m[0]+m[5]+m[10]+m[15] !== 34) lerr++;
+    if(m[3]+m[6]+m[9]+m[12] !== 34) lerr++;
+  }
+  ck(perr === 0, '每张都是 1…16 全排列', '违例 ' + perr + ' 个');
+  ck(lerr === 0, '每张 8 线皆 34', '违例 ' + lerr + ' 条');
+  var paths = {};
+  for(var e1 = 0; e1 < SQ.length; e1++){
+    var q1 = SQ[e1], pt = [];
+    for(var f1 = 0; f1 < 16; f1++){
+      var orow = Math.floor((q1[f1] - 1) / 4), ocol = (q1[f1] - 1) % 4;
+      pt.push((orow - Math.floor(f1/4)) + ':' + (ocol - (f1 % 4)));
+    }
+    paths[pt.join('|')] = 1;
+  }
+  var np = 0; for(var g1 in paths) np++;
+  ck(np === 7040, '位移元组各不相同', np + ' 个 ⟹ 按绝对格位比对必然落空');
+  /* 位分解：全量统计「干净分裂」与「对角混搭」—— 这两个数我一开始判错了 */
+  var clean = 0, dgSq = 0, dgBad = 0, rcBad = 0, idBad = 0;
+  for(var h0 = 0; h0 < SQ.length; h0++){
+    var m0 = SQ[h0], a0 = [], b0 = [], cl = true;
+    for(var h1 = 0; h1 < 16; h1++){
+      a0.push((m0[h1] - 1) % 4); b0.push(Math.floor((m0[h1] - 1) / 4));
+    }
+    var i3, j3;
+    for(i3 = 0; i3 < 4; i3++){
+      var sa = 0, sb = 0, ta = 0, tb = 0;
+      for(j3 = 0; j3 < 4; j3++){
+        sa += a0[i3*4+j3]; sb += b0[i3*4+j3];
+        ta += a0[j3*4+i3]; tb += b0[j3*4+i3];
+      }
+      if(sa !== 6 || sb !== 6 || ta !== 6 || tb !== 6) rcBad++;
+    }
+    var d1 = a0[0]+a0[5]+a0[10]+a0[15], d2 = a0[3]+a0[6]+a0[9]+a0[12];
+    var e1 = b0[0]+b0[5]+b0[10]+b0[15], e2 = b0[3]+b0[6]+b0[9]+b0[12];
+    if(d1 + 4*e1 !== 30 || d2 + 4*e2 !== 30) idBad++;
+    if(d1 !== 6 || d2 !== 6){
+      cl = false; dgSq++;
+      if(!((d1 === 2 && d2 === 10) || (d1 === 10 && d2 === 2))) dgBad++;
+    }
+    if(cl) clean++;
+  }
+  ck(rcBad === 0, 'a、b 的 4 行 4 列恒为 6', '7040×8 条线，违例 ' + rcBad);
+  ck(idBad === 0, '位分解恒等式 Σa + 4Σb = 30（两条对角）', '违例 ' + idBad);
+  ck(clean === 5248, '干净分裂（对角也是 6）', clean + ' / 7040');
+  ck(dgSq === 1792 && dgBad === 0, '对角混搭恒为 (2,10)，无其他取值', dgSq + ' 张');
+  var sq0 = curSq(), ps = {};
+  for(var k3 = 0; k3 < 16; k3++){
+    ps[((sq0[k3] - 1) % 4) + '_' + Math.floor((sq0[k3] - 1) / 4)] = 1;
+  }
+  ck(Object.keys(ps).length === 16, '(a,b) 两两不同 ⟹ 正交', Object.keys(ps).length + ' 对（当前方阵）');
+  var sphi = 0, mirr = 0;
+  for(var m1 = 0; m1 <= 60; m1++){
+    var p1 = spiralAt(m1 / 60);
+    if(Math.abs(Math.sqrt(p1.x*p1.x + p1.y*p1.y + p1.z*p1.z) - 1) > 1e-9) sphi++;
+    var u2 = m1 / 60, t2 = Math.atan(5 * (2*u2 - 1)) * 2;
+    var th2 = (t2 >= 0 ? 1 : -1) * Math.pow(Math.abs(t2), ST.p) + Math.PI;
+    var ph2 = Math.atan(Math.tanh(2 * t2)), cp2 = Math.cos(ph2);
+    var xr = cp2 * Math.cos(th2), yr = cp2 * Math.sin(th2), zr = Math.sin(ph2);
+    if(Math.abs(xr + p1.x) > 1e-12 || Math.abs(yr + p1.y) > 1e-12 || Math.abs(zr - p1.z) > 1e-12) mirr++;
+  }
+  ck(sphi === 0, '螺旋落在单位球面', 'x²+y²+z² = 1，误差 < 1e-9');
+  ck(mirr === 0, 'θ+π 的右声道 = (−x, −y, z)', '60 个采样点逐个比');
+  var bb2 = buildBuf(), nan = 0, peak = 0;
+  for(var n3 = 0; n3 < bb2.n; n3++){
+    if(!isFinite(bb2.L[n3]) || !isFinite(bb2.R[n3])) nan++;
+    var vv = Math.max(Math.abs(bb2.L[n3]), Math.abs(bb2.R[n3]));
+    if(vv > peak) peak = vv;
+  }
+  ck(nan === 0, '合成音频无 NaN/Inf', bb2.n + ' 采样');
+  ck(peak <= 1.001, '峰值不削波', peak.toFixed(4));
+  ck(Math.abs(bb2.dur - 16 * ST.cellMs / 1000) < 1e-9, '时长 = 16 × 每格时长', bb2.dur.toFixed(3) + ' s');
+
+  /* ---- §6 阶数外推：通项 vs 实测（全部现场算） ---- */
+  var oks = [3,4,5,6,7,8,9], nM = 0, nD = 0;
+  for(var oi = 0; oi < oks.length; oi++){
+    var nn = oks[oi];
+    if(nn*(nn*nn+1)/2 === ORD[nn].M) nM++;
+    if(nn*nn - 2*nn - 1 === ORD[nn].dim) nD++;
+  }
+  ck(nM === 7, 'M(n) = n(n²+1)/2', 'n=3…9 全中 ' + nM + '/7');
+  ck(nD === 7, '一维维数 n²−2n−1', 'n=3…9 全中 ' + nD + '/7');
+  var gOk = 0, gTxt = [];
+  for(var gj = 3; gj <= 10; gj++){
+    var gv = gridPts(gj), want = (gj % 2) ? gj : gj - 1;
+    if(gv === want) gOk++;
+    gTxt.push(gv);
+  }
+  ck(gOk === 8, '格点数 = n（奇）/ n−1（偶）', gTxt.join(',') + '（3…10）');
+  var A3 = countSets(3), A4 = countSets(4), A5 = countSets(5);
+  ck(A3 === 8 && A4 === 86 && A5 === 1394, 'A(n) 现场枚举', A3 + ' / ' + A4 + ' / ' + A5);
+  var lat = 0;
+  for(var l1 = 0; l1 < SQ.length; l1++){
+    var L = SQ[l1], qa = [], ra = [], okL = true;
+    for(var l2 = 0; l2 < 16; l2++){ qa.push(Math.floor((L[l2]-1)/4)); ra.push((L[l2]-1)%4); }
+    for(var l3 = 0; l3 < 4 && okL; l3++){
+      var s1a = {}, s1b = {}, s2a = {}, s2b = {};
+      for(var l4 = 0; l4 < 4; l4++){
+        s1a[qa[l3*4+l4]] = 1; s1b[ra[l3*4+l4]] = 1;
+        s2a[qa[l4*4+l3]] = 1; s2b[ra[l4*4+l3]] = 1;
+      }
+      if(Object.keys(s1a).length !== 4 || Object.keys(s1b).length !== 4 ||
+         Object.keys(s2a).length !== 4 || Object.keys(s2b).length !== 4) okL = false;
+    }
+    if(okL) lat++;
+  }
+  ck(lat === 1536, '拉丁型（q、r 均为拉丁方）', lat + ' / 7040 = ' + (lat/70.4).toFixed(2) + '%');
+  var D4p = [];
+  for(var mi = 0; mi < 2; mi++) for(var ki = 0; ki < 4; ki++){
+    var ff = [];
+    for(var i2 = 0; i2 < 16; i2++){
+      var r2 = Math.floor(i2/4), c2 = i2 % 4;
+      if(mi) c2 = 3 - c2;
+      for(var t2 = 0; t2 < ki; t2++){ var tp = r2; r2 = c2; c2 = 3 - tp; }
+      ff.push(r2*4 + c2);
+    }
+    D4p.push(ff);
+  }
+  var allPerm = [];
+  (function gen(a, used){
+    if(a.length === 4){ allPerm.push(a.slice()); return; }
+    for(var v = 0; v < 4; v++) if(!used[v]){ used[v] = 1; a.push(v); gen(a, used); a.pop(); used[v] = 0; }
+  })([], [0,0,0,0]);
+  var PI = [];
+  for(var pi2 = 0; pi2 < allPerm.length; pi2++){
+    var pp = allPerm[pi2], okp = true;
+    for(var q2 = 0; q2 < 4; q2++) if(pp[q2] + pp[3-q2] !== 3) okp = false;
+    if(okp) PI.push(pp);
+  }
+  var Gs = {}, nG = 0, GM = [];
+  for(var d4i = 0; d4i < 8; d4i++) for(var pii = 0; pii < PI.length; pii++){
+    var pv = PI[pii], comp2 = [];
+    for(var i3 = 0; i3 < 16; i3++)
+      comp2.push(D4p[d4i][pv[Math.floor(i3/4)]*4 + pv[i3 % 4]]);
+    var key = comp2.join(',');
+    if(!Gs[key]){ Gs[key] = 1; nG++; GM.push(comp2); }
+  }
+  ck(nG === 32, '|D4 ⋊ C(σ)| 去重 = 32', 'D4 8 × C(σ) ' + PI.length + ' → ' + nG);
+  var SQID = {};
+  for(var z0 = 0; z0 < SQ.length; z0++) SQID[enc16(SQ[z0])] = z0;
+  var orbSeen = {}, nOrb = 0, orbSize = {}, miss = 0;
+  for(var s0 = 0; s0 < SQ.length; s0++){
+    if(orbSeen[s0]) continue;
+    nOrb++;
+    var stk = [s0], cnt = 0;
+    while(stk.length){
+      var cu = stk.pop();
+      if(orbSeen[cu]) continue;
+      orbSeen[cu] = 1; cnt++;
+      var gs2 = SQ[cu];
+      for(var t6 = 0; t6 < GM.length; t6++){
+        var F = GM[t6], e2 = '';
+        for(var i6 = 0; i6 < 16; i6++) e2 += String.fromCharCode(64 + gs2[F[i6]]);
+        var id6 = SQID[e2];
+        if(id6 === undefined){ miss++; continue; }
+        if(!orbSeen[id6]) stk.push(id6);
+      }
+    }
+    orbSize[cnt] = (orbSize[cnt] || 0) + 1;
+  }
+  window.__orbN = nOrb;
+  ck(nOrb === 220 && orbSize[32] === 220 && miss === 0,
+     '商掉 G 后 220 个轨道', nOrb + ' 个，大小 {' + Object.keys(orbSize).join(',') + '}，出界 ' + miss);
+  ck(ENG.nPart * 24 === 9408 && SQ.length === 7040,
+     '列序上界 392×24，对角刷掉 2368', '9408 → 7040');
+  /* ---- §7 6 阶井字切法（全部现场算） ---- */
+  ck(CUTS.length === 100, '井字切法 = C(5,2)²', CUTS.length + ' 种');
+  var hA = [], hB = [], q7;
+  for(q7 = 0; q7 < CUTS.length; q7++){
+    if(crit6(S6.A, CUTS[q7]).length) hA.push(q7);
+    if(crit6(S6.B, CUTS[q7]).length) hB.push(q7);
+  }
+  ck(hA.length === 1 && hB.length === 1 && hA[0] !== hB[0], '100 格只有 2 格亮',
+     '甲在 (' + (hA.length ? CUTS[hA[0]].join(',') : '无') + ') · 乙在 (' +
+     (hB.length ? CUTS[hB[0]].join(',') : '无') + ')');
+  var BA7 = blk6(S6.A, [2,4,2,4]), co7 = true, d7 = {}, i7, K7 = [], ks = [];
+  for(i7 = 0; i7 < 9; i7++){
+    if(!isConsec(BA7[i7])) co7 = false;
+    d7[isArith(BA7[i7])] = 1;
+    K7.push((Math.min.apply(null, BA7[i7]) + 3) / 4);
+  }
+  ck(co7 && Object.keys(d7).join(',') === '1', '(2,4)² 九块全连续 4 数',
+     '公差集合 {' + Object.keys(d7).join(',') + '}');
+  ks = [K7[0]+K7[1]+K7[2], K7[3]+K7[4]+K7[5], K7[6]+K7[7]+K7[8],
+        K7[0]+K7[3]+K7[6], K7[1]+K7[4]+K7[7], K7[2]+K7[5]+K7[8],
+        K7[0]+K7[4]+K7[8], K7[2]+K7[4]+K7[6]];
+  var ksum = 0;
+  for(i7 = 0; i7 < 8; i7++) if(ks[i7] === 15) ksum++;
+  ck(ksum === 8, '块编号 k 排成 3 阶幻方', K7.join('') + ' 八条线全 15');
+  var core7 = [], r7, c7;
+  for(r7 = 1; r7 < 5; r7++) for(c7 = 1; c7 < 5; c7++) core7.push(S6.B[r7*6+c7]);
+  ck(magicBlk(core7, 4, 4) === 1 && sumOf(core7.slice(0,4)) === 74,
+     '乙 中心 4×4 自身是幻方', '常数 74 = 34 + 4×10');
+  var fr = [], fs7 = {}, okf = 0;
+  for(c7 = 0; c7 < 6; c7++){ fr.push(S6.B[c7]); fr.push(S6.B[30+c7]); }
+  for(r7 = 1; r7 < 5; r7++){ fr.push(S6.B[r7*6]); fr.push(S6.B[r7*6+5]); }
+  for(i7 = 0; i7 < fr.length; i7++) fs7[fr[i7]] = 1;
+  for(i7 = 0; i7 < fr.length; i7++) if(fs7[37 - fr[i7]]) okf++;
+  ck(okf === 20 && fr.length === 20, '乙 外框 20 格两两互补 = 37', okf + '/20');
+  var BX7 = blk6(S6.A, [1,5,2,5]), sz7 = [];
+  for(i7 = 0; i7 < 9; i7++) sz7.push(BX7[i7].length);
+  ck(sz7.join(',') === '2,3,1,8,12,4,2,3,1' && crit6(S6.A, [1,5,2,5]).length === 0,
+     '混合切法 (1,5)×(2,5)', sz7.join('·') + '，4 条判据 0 命中');
+  ck(magic6err(S6.A) === null && magic6err(S6.B) === null,
+     '两张示例都是合法 6 阶幻方', '8 线全 111');
+  var html = '';
+  for(var q3 = 0; q3 < rows.length; q3++){
+    html += '<div class="r"><span class="k ' + (rows[q3].ok ? 'ok' : 'no') + '">' +
+      (rows[q3].ok ? 'OK' : 'FAIL') + '</span><span class="v">' + rows[q3].name +
+      '：' + rows[q3].val + '</span></div>';
+  }
+  $('chk').innerHTML = html;
+  $('sum').innerHTML = bad === 0
+    ? '<b class="grn">全部 ' + rows.length + ' 项通过。</b> 这些数字是页面加载时现场算的，不是写死的。'
+    : '<b class="red">' + bad + ' 项失败。</b> 请把这一行连同上面的 FAIL 一起反馈。';
+}
+
+/* ============ 13. 启动 ============ */
+drawAll(0);
+refreshInfo();
+bindOrder();
+bindS6();
+runChecks();
+
+window.__m4 = {
+  st: function(){ return { src:ST.src, idx:ST.idx, path:ST.path, cellMs:ST.cellMs, p:ST.p,
+                          Kf:ST.Kf, Ka:ST.Ka, Kp:ST.Kp, beat:ST.beat, map:ST.map,
+                          f0:ST.f0, step:ST.step, wave:ST.wave, env:ST.env, vol:ST.vol }; },
+  set: function(k, v){
+    if(!(k in ST)) return false;
+    ST[k] = v;
+    if(k === 'src'){ ST.idx = 0; $('rgIdx').max = String(listOf(ST.src).length - 1); $('rgIdx').value = '0'; }
+    if(k === 'idx'){ $('rgIdx').value = String(v); }
+    if(k === 'p' && $('selP')) $('selP').value = String(v);
+    drawAll(0); refreshInfo(); return true;
+  },
+  counts: function(){ return { sq:SQ.length, orb:ORB.length, pd:PDL.length, as:ASL.length,
+                               nSet:ENG.nSet, nPart:ENG.nPart, ms:ENG.total }; },
+  cur: function(){ return curSq().slice(); },
+  order: function(){ return orderOf(curSq(), ST.path); },
+  fOf: fOf, spiral: spiralAt, buildBuf: buildBuf, chirpDev: chirpDev,
+  canon: canon, isPd: isPd, isAs: isAs, isMp: isMp,
+  play: play, stop: stopPlay,
+  checks: function(){ return document.querySelectorAll('#chk .r').length; },
+  ord: function(n){ return { M:n*(n*n+1)/2, dim:n*n-2*n-1, gp:gridPts(n), A:(ORD[n]||{}).A || null }; },
+  ordKeys: function(){ var a = []; for(var k in ORD) a.push(+k); return a.sort(); },
+  setN: function(n){ var r = $('rgN'); r.value = String(n); updOrder(); return +r.value; },
+  countSets: countSets, gridPts: gridPts,
+  nOrb: function(){ return window.__orbN; },
+  s6: function(){ return { A:S6.A.slice(), B:S6.B.slice(), cut:S6CUT, cur:S6CUR,
+                           cuts:CUTS.map(function(c){ return c.slice(); }) }; },
+  s6crit: function(g, cut){ return crit6(g, cut); },
+  s6blk: function(g, cut){ return blk6(g, cut); },
+  s6scan: function(g){ var o = [], i, r;
+    for(i = 0; i < CUTS.length; i++){ r = crit6(g, CUTS[i]);
+      if(r.length) o.push({ k:i, cut:CUTS[i], cr:r }); } return o; },
+  s6cls: function(t){ return classify6(parseSq(t)); },
+  s6pick: function(k){ s6pick(k); return S6CUT; },
+  s6cur: function(s){ if(s === 'A' || s === 'B'){ S6CUR = s; s6draw(); } return S6CUR; },
+  magic6err: magic6err
+};
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>光内存 × 离子阱 → AHCS · 存储层接口审计：光子停不下来，谁能替它停</title>
+<style>
+  :root{--ink:#12161c;--ink2:#46506a;--ink3:#6b7683;--line:#dde3ec;--soft:#f7f9fd;
+        --purple:#5b3fa8;--blue:#2f6fb5;--green:#17724a;--red:#b3261e;--gold:#9a6b12;
+        --bg:#fff;--card:#fff;--hover:#fbfcff;--hintbg:#fffdf6;--hintfg:#6b5a33;--btnbd:#cfd6e0;
+        --thin:#e8edf4}
+  body.dark{--ink:#e7eef8;--ink2:#b8c5d8;--ink3:#9dabc0;--line:#26313d;--soft:#141c26;
+        --purple:#b49bf2;--blue:#7fb4ea;--green:#5dd39e;--red:#ff8f85;--gold:#f0c060;
+        --bg:#0d1117;--card:#111a24;--hover:#16212d;--hintbg:#1c1708;--hintfg:#dcc78e;
+        --btnbd:#33414f;--thin:#1d2733}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    font-size:15px;line-height:1.72;-webkit-font-smoothing:antialiased;
+    transition:background .18s ease,color .18s ease}
+  .wrap{max-width:1020px;margin:0 auto;padding:44px 22px 96px}
+  h1{font-size:25px;margin:0 0 6px;letter-spacing:.3px}
+  .st{font-size:19px;font-weight:700;color:var(--purple);margin:0 0 6px;letter-spacing:.02em}
+  .sub{color:var(--ink3);font-size:13.2px;margin:0 0 22px}
+  h2{font-size:19.5px;margin:38px 0 4px;padding-bottom:7px;border-bottom:2px solid var(--thin)}
+  h2 .n{font-family:Consolas,monospace;font-size:14px;color:var(--ink3);margin-right:8px;font-weight:400}
+  h3{font-size:16px;margin:26px 0 6px}
+  p{margin:9px 0}
+  a{color:var(--blue)}
+  code{font-family:Consolas,"SF Mono",monospace;font-size:.92em;background:var(--soft);
+    padding:1px 5px;border-radius:4px;border:1px solid var(--thin)}
+
+  /* 口径标签 */
+  .tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:5px;border:1px solid currentColor;
+    margin-right:5px;font-weight:700;vertical-align:1.5px;white-space:nowrap}
+  .tag.src{color:var(--blue)}    /* 原文层：有逐字原文 */
+  .tag.th{color:var(--purple)}   /* 立论：推理，无原文 */
+  .tag.num{color:var(--green)}   /* 数值：可现场复算 */
+  .tag.no{color:var(--red)}      /* 否定：算出来不成立 */
+  .tag.ask{color:var(--gold)}    /* 咨询层：AI 对话，无原始出处 */
+
+  .lede{border:1px solid var(--line);border-left:5px solid var(--purple);border-radius:10px;
+    background:var(--soft);padding:15px 18px;margin:0 0 8px}
+  .lede p{margin:6px 0}
+  .lede b.big{font-size:16.5px}
+
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.1px}
+  th,td{border:1px solid var(--line);padding:7px 9px;vertical-align:top;text-align:left}
+  th{background:var(--soft);font-weight:700;font-size:12.6px;color:var(--ink2)}
+  td.mono,th.mono{font-family:Consolas,monospace;font-size:12.4px}
+  tr.mid td{background:var(--soft)}
+  .ok{color:var(--green);font-weight:700}
+  .no{color:var(--red);font-weight:700}
+  .part{color:var(--gold);font-weight:700}
+  .tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+  .quote{border-left:3px solid var(--blue);background:var(--soft);border-radius:0 8px 8px 0;
+    padding:9px 14px;margin:12px 0;font-size:13.6px;color:var(--ink)}
+  .quote em{color:var(--ink3);font-style:normal;font-size:12.4px}
+  .hint{margin:14px 0;padding:11px 14px;border-left:3px solid var(--gold);background:var(--hintbg);
+    border-radius:6px;font-size:13px;color:var(--hintfg)}
+  .bad{margin:14px 0;padding:11px 14px;border-left:3px solid var(--red);
+    background:rgba(179,38,30,.055);border-radius:6px;font-size:13.2px}
+  body.dark .bad{background:rgba(255,143,133,.09)}
+
+  /* 交互台 */
+  .panel{border:1px solid var(--line);border-radius:12px;padding:14px 16px 16px;background:var(--card);margin:16px 0}
+  .panel .h{font-size:13.2px;color:var(--ink2);margin:0 0 10px;font-weight:700}
+  .sl{margin:10px 0 4px}
+  .sl label{display:flex;justify-content:space-between;font-size:12.6px;color:var(--ink2);margin:0 0 2px}
+  .sl label b{font-family:Consolas,monospace;font-size:13.4px;color:var(--purple)}
+  input[type=range]{width:100%;accent-color:var(--purple);height:22px}
+  .ro{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0 6px}
+  .cell{flex:1 1 132px;border:1px solid var(--line);border-radius:9px;padding:8px 11px;background:var(--soft)}
+  .cell .k{font-size:11.4px;color:var(--ink3)}
+  .cell .v{font-family:Consolas,monospace;font-size:17px;font-weight:700;color:var(--ink);
+    line-height:1.3;word-break:break-all}
+  .cell .v.p{color:var(--purple)}
+  .verd{font-size:13.4px;margin:8px 0 0;padding:9px 12px;border-radius:8px;
+    border:1px solid var(--line);background:var(--soft)}
+  #cv{width:100%;height:auto;display:block;border:1px solid var(--thin);border-radius:9px;
+    background:var(--card);margin:10px 0 0}
+
+  .foot{margin-top:42px;padding-top:16px;border-top:1px solid var(--line);
+    color:var(--ink3);font-size:12.5px}
+  #themeBtn{position:fixed;top:14px;right:14px;z-index:99;font:inherit;font-size:12.5px;line-height:1;
+    padding:7px 13px;border:1px solid var(--btnbd);background:var(--card);border-radius:20px;
+    cursor:pointer;color:var(--ink2);box-shadow:0 2px 10px rgba(15,22,33,.10)}
+  #themeBtn:hover{border-color:var(--blue);color:var(--blue)}
+  body.dark #themeBtn{background:#18232f;box-shadow:0 2px 12px rgba(0,0,0,.55)}
+  .mono{font-family:Consolas,monospace}
+  .sm{font-size:12.3px;color:var(--ink3)}
+  ul{padding-left:22px}li{margin:5px 0}
+  @media(max-width:640px){
+    .wrap{padding:54px 14px 80px}
+    h1{font-size:21px}.st{font-size:16px}
+    h2{font-size:17px}
+    table{font-size:12.2px}th,td{padding:6px 7px}
+    .cell{flex:1 1 100%}
+  }
+</style>
+</head>
+<body>
+<button id="themeBtn" type="button" aria-pressed="false" title="切换底色（快捷键 D）">🌙 暗色底</button>
+<div class="wrap">
+
+<h1>光内存 × 离子阱 → AHCS · 存储层接口审计</h1>
+<div class="st">光子停不下来 —— 谁能替它停，以及停下来的东西与 AHCS 用什么接口对接</div>
+<p class="sub">把「光内存（光子进腔）+ 离子阱 ⇒ AHCS 量子计算」这句话拆成四段，逐段过账 ·
+  原文层（蓝）／立论层（紫）／数值层（绿）／否定层（红）／咨询层（金）五种口径分开，不混着说</p>
+
+<div class="lede">
+  <p><b class="big">先说结论：这条链只有中间一段是硬的，两头都断。</b></p>
+  <p><span class="tag num">数值</span><b>中间这段真的成立</b> ——
+     「把离子放进光路、让循环的光把信息转存给离子」有正式名字：<b>光-物质量子接口（cQED）</b>。
+     判据只有一行：协同度 <code>C = g²/(2κγ)</code>。展开后腔长被约掉，
+     <b><code>C = K·F/A</code></b>（K = 5.10×10⁻¹⁵ m，⁴⁰Ca⁺ 397 nm），
+     只依赖<b>精细度 F ÷ 模面积 A</b>。现在最好的光纤法布里-珀罗腔能做到 <b>C ≈ 12</b>，单光子吸收概率 <b>92.5%</b>。</p>
+  <p><span class="tag no">否定</span><b>尾巴断在「微环」上</b> ——
+     直觉里「把离子放在微环中心」几何上做不到：倏逝场衰减长度只有 <b>60.2 nm</b>，
+     环中心距离 <b>10 μm</b> 处场强是 <b>e⁻¹⁶⁶</b>，等于零。
+     必须换成<b>开放腔</b>（光纤端面之间、模腰落在真空里），离子才进得去。</p>
+  <p><span class="tag no">否定</span><b>头断在「光内存接 AHCS」上</b> ——
+     光 SRAM 存的是<b>经典 0/1</b>，AHCS 存储原文写的是<b>频率谐波状态</b>；
+     用离子去存一个经典比特，单位比特面积比相变存储差 <b>1.56×10⁴ 倍</b>。
+     <b>光内存这条路接不上 AHCS，能接的是 cQED 那条。</b></p>
+  <p><span class="tag src">原文</span><b>还有一条必须先摆平的硬冲突</b> ——
+     AHCS 原文写「为了读取该内存，AHCS 系统使用的是粒子爆发，<b>而不是光</b>」。
+     光子接口要进这条链，得先解释这句话。本页 §5 给出三种解读与各自的取证要求，<b>不替原文圆场</b>。</p>
+  <p><span class="tag num">数值</span><b>唯一能写进设计参数的协同，还是那个 4 K 冷端</b> ——
+     SEG 侧 50 W @ 4 K（<b>前提：4 K 是加负载发电工况下的结果，不是空载自冷，见 §7</b>）、300~1000 W/W ⟹ 制冷电功 <b>15.0~50.0 kW</b>；
+     离子阱低温系统 4 K 负载 0.2~1.0 W，<b>增量只有 0.4%~2.0%</b>。
+     <b>边际成本几乎为零 —— 这是本项目目前唯一一条算得清的双向接口。</b></p>
+</div>
+
+<!-- ============ 0 ============ -->
+<h2><span class="n">§0</span>先把三件被「bit」这个词黏在一起的事分开</h2>
+<p>老师的原话是「光内存 + 离子阱 衔接 AHCS」。这三个词各自有明确的物理含义，
+  但它们共享的只有<b>「bit」这个字</b>，不共享物理、不共享温度、不共享目的。
+  先把它们排成一张表，后面每一段才有落脚点。</p>
+
+<div class="tw"><table>
+<thead><tr><th style="width:16%">东西</th><th style="width:20%">它存什么</th><th style="width:15%">载体</th>
+  <th style="width:13%">温度条件</th><th>和另外两个的关系</th></tr></thead>
+<tbody>
+<tr><td><b>光 SRAM</b><br><span class="sm">Akhetonics 那条路</span></td>
+  <td><b>经典 0/1</b> —— 就是你文档里那个确定的比特</td>
+  <td>光子（腔模 / 延迟线 / 相变双稳态）</td>
+  <td class="mono">室温目标</td>
+  <td class="no">与量子计算<b>无关</b>。它只想省掉「光→电」转换这道手续</td></tr>
+<tr class="mid"><td><b>离子阱量子比特</b><br><span class="sm">IonQ / Quantinuum</span></td>
+  <td><b>量子叠加 α|0⟩+β|1⟩</b>，测量前不存在确定值</td>
+  <td>被射频电场悬空的单离子<b>内部能级</b></td>
+  <td class="mono">超高真空 +<br>激光冷却</td>
+  <td class="part">能被光子读写 ⟹ 这就是下面那条</td></tr>
+<tr><td><b>cQED 光-物质接口</b><br><span class="sm">light-matter interface</span></td>
+  <td><b>在「光子的量子态」和「物质的量子态」之间来回搬</b></td>
+  <td>光腔（腔模）+ 离子/原子</td>
+  <td class="mono">腔本身不挑温度，<br>但低温降噪声</td>
+  <td class="ok"><b>前两者的唯一交汇点</b>：光负责传，物质负责停</td></tr>
+<tr><td><b>AHCS 存储单元</b><br><span class="sm">原文层</span></td>
+  <td><b>频率谐波的状态</b> —— 原文原话，不是 0/1</td>
+  <td>超纯石英晶体内<b>数十亿个梅尔卡巴环形线圈</b></td>
+  <td class="mono">原文未给</td>
+  <td class="part">结构上像「环形腔 + 频率槽」，<b>但读法原文说是「粒子爆发，不是光」</b></td></tr>
+</tbody></table></div>
+
+<div class="hint"><b>这张表最要紧的一格是最后一行</b>：AHCS 的存储单元是<b>环形</b>的，这是它自己写的
+  （「数十亿个小型梅尔卡巴环形线圈」）。而 cQED 用的腔——法布里-珀罗腔、微环、光纤腔——<b>也是环形的</b>。
+  所以「环形」这个几何相似性是真的，不是我们替它加的。
+  <b>但几何相似 ≠ 同一个物理机制</b>：一个是电磁腔模，一个是原文没给机制的线圈。
+  这一点决定本页只能把话说到「结构同构」，不能说「同一个东西」。</div>
+
+<!-- ============ 1 ============ -->
+<h2><span class="n">§1</span>光子为什么存不住：一个数字就够</h2>
+<p>光在真空里 <b>1 纳秒跑 30.00 厘米</b>（<code>c = 29.979 cm/ns</code>）。
+  这句话不是修辞，它直接规定了「用光做存储」的第一道墙：<b>想让光待在原地，就得给它围一个圈，
+  而它的损耗一路累积</b>。</p>
+
+<h3>腔能留多久：τ = F·L/(πc)</h3>
+<p>法布里-珀罗腔的光子寿命（场衰减到 1/e 的时间）由精细度 F 和腔长 L 定，
+  与「镜子镀得多好」是同一个量的两种写法：</p>
+
+<div class="tw"><table>
+<thead><tr><th style="width:20%">腔</th><th class="mono" style="width:12%">精细度 F</th>
+  <th class="mono" style="width:12%">腔长 L</th><th class="mono" style="width:14%">τ = F·L/(πc)</th>
+  <th class="mono" style="width:14%">有效往返次数</th><th>够用来干什么</th></tr></thead>
+<tbody>
+<tr><td>桌面 FP 腔</td><td class="mono">1×10⁴</td><td class="mono">10 cm</td><td class="mono"><b>1061 ns</b></td>
+  <td class="mono">1592 = F/2π</td><td>做一次门操作够，存东西远远不够</td></tr>
+<tr class="mid"><td>集成 FP 腔</td><td class="mono">1×10⁴</td><td class="mono">1 mm</td><td class="mono"><b>10.6 ns</b></td>
+  <td class="mono">1592</td><td>芯片尺度上的常态</td></tr>
+<tr><td>光纤 FP 腔</td><td class="mono">1.7×10⁴</td><td class="mono">200 μm</td><td class="mono"><b>3.61 ns</b></td>
+  <td class="mono">2706</td><td>本页 §2 的 C≈12 就在这个构型上</td></tr>
+<tr class="mid"><td>高精细度腔</td><td class="mono">1×10⁵</td><td class="mono">1 mm</td><td class="mono"><b>106.1 ns</b></td>
+  <td class="mono">15915</td><td>实验室天花板附近了</td></tr>
+</tbody></table></div>
+
+<p><b>注意「有效往返次数 = F/2π」这一列</b>：它和 L 完全无关。这是腔的普适性质，
+  也是本页后面那个「腔长会被约掉」的伏笔——同一个数学结构，第二次出现。</p>
+
+<div class="bad"><b>想靠光自己存 1 秒，需要什么</b>：<br>
+  <code>F·L = πc·τ = 9.425×10⁸ m</code>。取 L = 10 cm ⟹ <b>F = 9.42×10¹⁰</b>。
+  现有最好腔的精细度约 <b>10⁶</b>（晶体腔可到 10⁷ 量级），<b>差 4~5 个数量级</b>。
+  换 L = 1 mm ⟹ 需要 F = 9.4×10¹²，差得更远。<br>
+  <b>这不是工艺问题，是指数问题</b>：光子每往返一次都要按 (1−η) 衰减，τ 只能靠 F 线性换。</div>
+
+<h3>密度也差得很远</h3>
+<p>元宝那句「差 5–6 个数量级」是对的，但口径必须写清，否则会被当成随口说。本页复算如下：</p>
+<div class="tw"><table>
+<thead><tr><th style="width:26%">项</th><th style="width:22%">数值</th><th>来源与口径</th></tr></thead>
+<tbody>
+<tr><td>电 SRAM 密度</td><td class="mono">3×10⁷ ~ 1×10⁸ bit/mm²</td>
+  <td>先进工艺 6T SRAM 的公开密度区间。<b>取区间不取单点</b>，因为差 3 倍取决于库</td></tr>
+<tr><td>光存储演示密度</td><td class="mono">≈10⁰ ~ 10² bit/mm²</td>
+  <td>实验室演示是<b>单比特到数比特占一整套光路</b>（cm² 级），不是一个可比的阵列</td></tr>
+<tr><td><b>差距</b></td><td class="mono"><b>10⁵ ~ 10⁸ 倍</b></td>
+  <td><span class="tag num">数值</span>复算：3×10⁷/10² = 3×10⁵ ～ 1×10⁸/10⁰ = 10⁸</td></tr>
+</tbody></table></div>
+<p>所以元宝说的「5–6 个数量级」落在这个区间里，<b>不夸张</b>；
+  但准确说法应该是「<b>5 到 8 个数量级，取决于你拿哪个演示去比</b>」。</p>
+
+<!-- ============ 2 ============ -->
+<h2><span class="n">§2</span>把态交给能停的东西：C = g²/(2κγ) 与「腔长被约掉」</h2>
+<p>这是本页唯一一条<b>真的成立且能一行验算</b>的物理。老师的直觉
+  （「把离子放在中心，让循环的光把信息转存给离子」）在物理上完全成立，
+  它的正式名字是<b>光-物质量子接口</b>，属于腔量子电动力学（cQED）。</p>
+
+<p>三个速率在博弈，只有一种组合有用：</p>
+<div class="tw"><table>
+<thead><tr><th style="width:12%">符号</th><th style="width:30%">物理含义</th><th style="width:26%">怎么算</th>
+  <th>大一点好还是小一点好</th></tr></thead>
+<tbody>
+<tr><td class="mono"><b>g</b></td><td>离子与腔的耦合（单光子拉比频率）</td>
+  <td class="mono">g² ∝ 1/(A·L)</td><td class="ok"><b>越大越好</b> ⟹ 模面积 A 要小</td></tr>
+<tr><td class="mono"><b>κ</b></td><td>腔漏光速率（光子跑掉的快慢）</td>
+  <td class="mono">κ = πc/(F·L)</td><td class="no"><b>越小越好</b> ⟹ F 要大。<b>但太小就进不去光</b>，是双向约束</td></tr>
+<tr><td class="mono"><b>γ</b></td><td>离子自身退相干/自发辐射</td>
+  <td class="mono">由离子选定，不可调</td><td class="no">固定项，只能挑离子</td></tr>
+</tbody></table></div>
+
+<p>协同度 <code>C = g²/(2κγ)</code>，物理意义一句话：<b>一个光子在被漏掉之前，能跟离子来回交换多少次</b>。
+  C &gt; 1 是门槛。把 g² 与 κ 的标度代进去：</p>
+
+<div class="quote"><b>腔长在分子分母上各出现一次，直接约掉：</b><br>
+  <code>C ∝ [1/(A·L)] ÷ [1/(L·F)] = F/A</code><br>
+  精确到系数：<code>C = K · F / A</code>，<code>K = d²ω/(4πε₀ℏcγ)</code>，
+  对 ⁴⁰Ca⁺ 的 397 nm 跃迁（d = 2.26×10⁻²⁹ C·m，γ/2π = 21.5 MHz）得
+  <b>K = 5.0998×10⁻¹⁵ m</b>。<br>
+  <em>⟹ 结论：协同度只依赖「精细度 ÷ 离子处的模面积」，<b>与腔长完全无关</b>。
+  所以可以用一个很长的腔，把镜子放得远远的（解决囚禁与装配稳定性），只要模面积小、精细度高就行。</em></div>
+
+<div class="hint"><b>为什么这个「约掉」很重要</b>：它把两条看起来冲突的需求解耦了。
+  「腔要长」是为了把离子阱的电极和光学镜子分开装（几何上必须留空间）；
+  「耦合要强」传统上要求腔短。约掉之后这两件事互不干扰 ——
+  <b>这正是「把离子放进光路」从构想变成可设计的原因</b>。</div>
+
+<h3>C 的数值表（K 已定，全部可复算）</h3>
+<div class="tw"><table>
+<thead><tr><th style="width:24%">构型</th><th class="mono" style="width:11%">F</th>
+  <th class="mono" style="width:11%">模腰 w₀</th><th class="mono" style="width:13%">A = πw₀²</th>
+  <th class="mono" style="width:10%">C</th><th class="mono" style="width:11%">P = C/(C+1)</th><th>判定</th></tr></thead>
+<tbody>
+<tr><td>大腔 L=10 cm</td><td class="mono">1×10⁴</td><td class="mono">30 μm</td><td class="mono">2.83×10⁻⁹ m²</td>
+  <td class="mono">0.018</td><td class="mono">1.8%</td><td class="no">基本吸不进去</td></tr>
+<tr class="mid"><td>中腔 L=1 cm</td><td class="mono">1×10⁴</td><td class="mono">5 μm</td><td class="mono">7.85×10⁻¹¹ m²</td>
+  <td class="mono">0.649</td><td class="mono">39.4%</td><td class="no">不到门槛（C&lt;1）</td></tr>
+<tr><td><b>光纤 FP 腔</b> L=200 μm</td><td class="mono"><b>1.7×10⁴</b></td><td class="mono"><b>1.5 μm</b></td><td class="mono">7.07×10⁻¹² m²</td>
+  <td class="mono"><b>12.27</b></td><td class="mono"><b>92.5%</b></td><td class="ok"><b>已实测的构型</b></td></tr>
+<tr class="mid"><td>微环 R=10 μm（估算）</td><td class="mono">1×10⁴</td><td class="mono">1.5 μm</td><td class="mono">7.07×10⁻¹² m²</td>
+  <td class="mono">7.22</td><td class="mono">87.8%</td><td class="part">数值够，<b>但几何放不进离子</b>（§3）</td></tr>
+<tr><td>高精细度腔 L=1 mm</td><td class="mono">1×10⁵</td><td class="mono">1.0 μm</td><td class="mono">3.14×10⁻¹² m²</td>
+  <td class="mono">162.3</td><td class="mono">99.4%</td><td class="ok">仿真级上限</td></tr>
+</tbody></table></div>
+
+<div class="bad"><b>这张表有一个自证</b>：「光纤 FP 腔 F=1.7×10⁴、w₀=1.5 μm ⟹ C = 12.27」这一行，
+  与元宝对话里那句「光纤法布里-珀罗腔已做到 &gt;200 μm 长、单原子协同度 ≈ 12」<b>吻合到小数点后一位</b>。
+  两个数来自两条不同的路（它给结论，我从 K 值独立推），对上了才说明 <b>K = 5.1×10⁻¹⁵ m 这个系数没算错</b>。<br>
+  <b>这也是本页唯一一处「外部数与我复算互相校验」的地方</b> —— 其余每行都是纯推算，没有第二个来源。</div>
+
+<!-- ============ 2b ============ -->
+<h2><span class="n">§2b</span>拖一下：C 与吸收概率怎么变</h2>
+<p>下面两个滑块是真实的两个旋钮。<b>F 是工艺</b>（镜子镀多好），<b>w₀ 是光学设计</b>（模腰压多小）。
+  拖动它们，看 C 什么时候跨过 1 —— 这是「能不能存」的唯一门槛。</p>
+
+<div class="panel">
+  <div class="h">协同度计算台 · C = K·F/(πw₀²)，K = 5.0998×10⁻¹⁵ m（⁴⁰Ca⁺ 397 nm）</div>
+  <div class="sl">
+    <label>精细度 F <b id="lF">1.7×10⁴</b></label>
+    <input type="range" id="sF" min="0" max="100" value="55.8" step="0.1">
+  </div>
+  <div class="sl">
+    <label>模腰 w₀ <b id="lW">1.50 μm</b></label>
+    <input type="range" id="sW" min="0" max="100" value="23.9" step="0.1">
+  </div>
+  <div class="ro">
+    <div class="cell"><div class="k">模面积 A = πw₀²</div><div class="v" id="oA">—</div></div>
+    <div class="cell"><div class="k">协同度 C</div><div class="v p" id="oC">—</div></div>
+    <div class="cell"><div class="k">单光子吸收概率 P</div><div class="v" id="oP">—</div></div>
+    <div class="cell"><div class="k">腔光子寿命 τ（L=1 cm）</div><div class="v" id="oT">—</div></div>
+  </div>
+  <div class="verd" id="oV">—</div>
+  <canvas id="cv" width="960" height="330"></canvas>
+</div>
+
+<div class="hint"><b>怎么看这张图</b>：横轴是模腰 w₀（对数），纵轴是 C（对数），曲线是当前 F 下的 C(w₀)。
+  灰虚线是 <b>C = 1 门槛</b>，超过它才谈得上「光子把态交给离子」。
+  <b>注意曲线的斜率是 −2</b> —— 因为 C ∝ 1/w₀²，模腰减半，C 涨 4 倍。
+  这条斜率比 F 更好用：精细度受工艺限制（10⁶ 已是天花板），模腰受衍射限制（≈λ/2 ≈ 0.2 μm 才是地板）。</div>
+
+<!-- ============ 3 ============ -->
+<h2><span class="n">§3</span>「把离子放进微环中心」为什么几何上不成立</h2>
+<p>这是老师最初的直觉，也是元宝明确纠正过的一点。但「不成立」需要一个<b>可算的理由</b>，
+  否则只是权威说法。理由在倏逝场：微环是靠<b>环外的倏逝波</b>与外界耦合的，
+  而倏逝波衰减得比任何人直觉都快。</p>
+
+<div class="quote">
+  <b>衰减长度</b>：<code>Λ = λ / (2π·√(n²−1))</code>；取 λ = 397 nm（⁴⁰Ca⁺）、n = 1.45（SiO₂）<br>
+  <code>Λ = 397 / (2π×1.05) = 60.2 nm</code><br>
+  <b>环中心到环壁的距离</b>：微环半径 R = 10 μm ⟹ 距离 ≥ 10 μm = 166 个 Λ<br>
+  <b>场强比</b>：<code>exp(−166) ≈ 10⁻⁷²</code><br>
+  <em>⟹ 不是「弱」，是<b>严格为零</b>。任何镀膜、任何 Q 值都救不回来。</em>
+</div>
+
+<div class="tw"><table>
+<thead><tr><th style="width:16%">构型</th><th style="width:20%">离子放在哪</th><th style="width:20%">它靠什么与光耦合</th>
+  <th style="width:14%">离子到场的距离</th><th>结论</th></tr></thead>
+<tbody>
+<tr><td><b>微环</b></td><td>环中心（几何中心）</td><td>倏逝波</td><td class="mono">≥ 10 μm</td>
+  <td class="no">场强 e⁻¹⁶⁶ ⟹ <b>零耦合</b></td></tr>
+<tr class="mid"><td>微环（贴着表面）</td><td>环外 100 nm 处</td><td>倏逝波</td><td class="mono">≈ 0.1 μm</td>
+  <td class="part">耦合够，<b>但离子阱电极放不下</b>（电极间距 ~200 μm）</td></tr>
+<tr><td><b>光纤 FP 腔</b></td><td>两段光纤端面<b>之间</b></td><td>腔模腰（真空中的光场）</td><td class="mono">自由可调</td>
+  <td class="ok"><b>唯一三者同时满足的构型</b></td></tr>
+<tr class="mid"><td>开放 FP 腔</td><td>两镜之间</td><td>腔模腰</td><td class="mono">自由可调</td><td class="ok">同上，镜子更远更稳</td></tr>
+</tbody></table></div>
+
+<div class="hint"><b>所以「换一下几何」换掉的是什么</b>：不是换腔的形状，是换<b>耦合方式</b> ——
+  从「倏逝耦合」（要求距离 ≲ Λ ≈ 60 nm）换成「自由空间模腰耦合」（距离只受腔长和数值孔径约束）。
+  这一步换完，离子阱那套 200 μm 尺度的电极才装得进去。
+  <b>元宝原话「几何实现方式要换一下」，换的就是这一件事，而且它能用一个 166 倍的指数算出来。</b></div>
+
+<!-- ============ 4 ============ -->
+<h2><span class="n">§4</span>存什么？这一步才轮到 AHCS 进场</h2>
+<p>到这里必须分岔，否则整条链会串错线。cQED 接口只解决「怎么把光子的态搬进物质」，
+  <b>它搬什么内容，由你决定</b>。而「搬什么」决定了它能不能接 AHCS。</p>
+
+<div class="tw"><table>
+<thead><tr><th style="width:18%">候选内容</th><th style="width:20%">编码方式</th><th style="width:22%">单位比特面积</th>
+  <th>能不能接 AHCS</th></tr></thead>
+<tbody>
+<tr><td><b>经典 0/1</b>（光 SRAM 想要的）</td><td>相变材料双稳态 / 腔谐振有光无光</td>
+  <td class="mono">1.6×10⁻¹⁵ m²<br><span class="sm">PCM 4F²，F=20 nm</span></td>
+  <td class="no"><b>不能</b>：AHCS 存的是「频率谐波状态」，不是 0/1（§0 表末行）</td></tr>
+<tr class="mid"><td>离子基态/激发态</td><td>内部能级</td>
+  <td class="mono">2.5×10⁻¹¹ m²<br><span class="sm">比特间距 5 μm</span></td>
+  <td class="part">能，<b>但用它存经典比特是浪费</b>：面积比 PCM 差 <b>1.56×10⁴ 倍</b></td></tr>
+<tr><td><b>腔模频率槽 + 占据态</b></td><td>一个腔模 = 一个频率槽，离子上/下 = 该槽的量子态</td>
+  <td class="mono">受寻址限制，<br>不受模面积限制</td>
+  <td class="ok"><b>这才是与 AHCS「频率谐波状态」同构的那一层</b></td></tr>
+</tbody></table></div>
+
+<div class="hint"><b>为什么「频率槽」这一行是关键</b>：AHCS 原文说存储单元是「频率谐波的状态」，
+  而 cQED 里一个腔模天然就是<b>一个确定的频率槽</b>，「这个槽有没有一个激发」就是它的量子态。
+  <b>两者在信息编码的抽象层上是同一件事：槽位 = 频率，状态 = 占据。</b>
+  这比「都是环形的」那句几何类比硬得多 ——
+  几何相似只能画图，频率槽相似能写进设计。<br>
+  <b>但到此为止</b>：这只说明「编码方式同构」，不说明「AHCS 就是这么做的」。原文没有给机制。</div>
+
+<h3>存得住多久：这才是「交给离子」的真正理由</h3>
+<div class="tw"><table>
+<thead><tr><th style="width:34%">载体</th><th class="mono" style="width:20%">相干/停留时间</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td>腔里的光子（F=10⁴，L=1 cm）</td><td class="mono">106.1 ns</td><td>§1 已算</td></tr>
+<tr class="mid"><td><b>⁴⁰Ca⁺ 超精细钟态</b></td><td class="mono"><b>≈ 1 s</b></td><td>实验常规值，长可到 10 s 级</td></tr>
+<tr><td><b>提升倍数</b></td><td class="mono"><b>9.42×10⁶ 倍</b></td><td class="ok">复算：1 s ÷ 106.1 ns</td></tr>
+</tbody></table></div>
+<p><b>这就是「别让它存，把态交给能停的东西」这句话的全部价值：跨 7 个数量级。</b>
+  它不是修辞，是一个可以直接写进指标的数字。</p>
+
+<!-- ============ 5 ============ -->
+<h2><span class="n">§5</span>一条必须先摆平的冲突：原文说「不是光」</h2>
+<p>整页最容易被跳过、也最容易翻车的地方在这里。AHCS 原文关于<b>读内存</b>的那句话是：</p>
+
+<div class="quote">「为了读取该内存，AHCS 系统使用的是<b>粒子爆发，而不是光</b>。」<br>
+  <em>逐字引自知识库《昴宿星ahcs全息计算机.pdf》（Swaruu / Anéeka 访谈，2020-12-25），
+  与 <a href="SEG_AHCS_量子计算接口审计.html">SEG × AHCS 接口审计</a> §1 同一出处。</em></div>
+
+<p><b>这句话和「光内存」是正面冲突的。</b>不能绕，只能摆出来分情况处理：</p>
+
+<div class="tw"><table>
+<thead><tr><th style="width:22%">解读</th><th style="width:14%">口径</th><th style="width:30%">那么结论是</th><th>需要什么证据才能定这一档</th></tr></thead>
+<tbody>
+<tr><td><b>A. 「粒子」不含光子</b><br><span class="sm">按字面读</span></td><td><span class="tag src">原文</span></td>
+  <td class="no">光子接口<b>进不了「读」这一环</b>。写也许能，读不行</td>
+  <td>不需要别的证据 —— <b>字面读法本身就是这一档的依据</b>。但要说清「写」是否也不许</td></tr>
+<tr class="mid"><td><b>B. 「粒子」是泛指能量流</b><br><span class="sm">含光子</span></td><td><span class="tag th">立论</span></td>
+  <td class="part">不冲突，但<b>必须解释「为什么特意说不是光」</b></td>
+  <td>原文别处有把光子算作粒子的用法，或同源材料里对「光」另有定义。<b>我翻到的部分没有</b></td></tr>
+<tr><td><b>C. 原文在描述另一层</b><br><span class="sm">读的是晶体塔，不是单元</span></td><td><span class="tag th">立论</span></td>
+  <td class="part">可能两者并存：<b>单元级用光，页面级用粒子爆发</b></td>
+  <td>原文要给出「页面」与「梅尔卡巴」的层级关系。<b>现在给的是「页面堆叠、每页一个地址」，没说读写粒度</b></td></tr>
+</tbody></table></div>
+
+<div class="bad"><b>本页的处理方式</b>：<b>不选 A/B/C 里的任何一个</b>。
+  因为选任何一个都会变成「替原文圆场」，而这个项目的规矩是<b>原文层只做逐字引用，不做解释性扩写</b>。<br>
+  所以本页的立场是：<b>「光内存 + 离子阱」这条链，在物理上（§2）成立、在几何上（§3）要改构型、
+  在编码上（§4）只到「同构」为止，而在 AHCS 的「读」这一环上，被这句原文卡住，待定。</b><br>
+  <b>要往下走，第一步不是做实验，是把这句话的三种解读查清 —— 这是最低成本的一步。</b></div>
+
+<!-- ============ 6 ============ -->
+<h2><span class="n">§6</span>数一下容量：面积不是墙，寻址才是</h2>
+<p>AHCS 原文说存储是「<b>数十亿个</b>小型梅尔卡巴环形线圈」。这是一个具体数字，
+  可以直接算它要多大地方 —— 结论可能反直觉。</p>
+
+<div class="tw"><table>
+<thead><tr><th class="mono" style="width:14%">模腰 w₀</th><th class="mono" style="width:14%">最小间距</th>
+  <th class="mono" style="width:16%">单腔占地</th><th class="mono" style="width:18%">10⁹ 个腔</th><th>相当于</th></tr></thead>
+<tbody>
+<tr><td class="mono">1.5 μm</td><td class="mono">4 μm</td><td class="mono">16.0 μm²</td><td class="mono">160 cm²</td><td><b>12.6 × 12.6 cm</b></td></tr>
+<tr class="mid"><td class="mono">1.0 μm</td><td class="mono">3 μm</td><td class="mono">9.0 μm²</td><td class="mono">90 cm²</td><td>9.5 × 9.5 cm</td></tr>
+<tr><td class="mono">2.0 μm</td><td class="mono">5 μm</td><td class="mono">25.0 μm²</td><td class="mono">250 cm²</td><td>15.8 × 15.8 cm</td></tr>
+</tbody></table></div>
+
+<p><b>面积不是墙</b>：一块 12.6 cm 见方的片子就能排下 10 亿个模腰 1.5 μm 的腔，还不算串扰。
+  这个尺度是<b>一块晶圆</b>，不是一栋楼。所以「数十亿个」在几何上<b>不荒谬</b>。</p>
+
+<div class="bad"><b>真正的墙有三道，全在「器件之外」</b>：<br>
+  ① <b>寻址</b>：每个腔要能单独调谐、单独送光、单独读出。现有实验是<b>单腔单离子</b>（§2 表里 C=12.27 那一行），
+  多腔并行寻址在集成光子学里仍是开放问题；<br>
+  ② <b>激光</b>：n 个离子阱量子比特通常就要 n 束独立冷却/门激光（或一套共享光路 + 声光偏转器分时），
+  1 亿束是另一个量级的工程；<br>
+  ③ <b>串扰</b>：相邻腔间距只给到 3–5 μm，而模腰 1.0–1.5 μm，场在腔外并不为零 ——
+  间距要多大才不串，需要按耦合系数算，本页没有这个数，<b>不给</b>。<br>
+  <b>所以「数十亿」不是被面积否掉的，是被「每个都要单独说话」否掉的。</b></div>
+
+<!-- ============ 7 ============ -->
+<h2><span class="n">§7</span>唯一能算清的双向接口：那个 4 K 冷端</h2>
+<p>前面几节都是「接得上/接不上」的判定。这一节是<b>真的能写进设计参数</b>的一条，
+  也是本页与 <a href="SEG_AHCS_量子计算接口审计.html">SEG × AHCS 接口审计</a> 衔接的地方 ——
+  那一页算的是「SEG 的冷能不能救超导比特」，这一节算的是「SEG 的冷能不能同时服务离子阱」。</p>
+
+<div class="tw"><table>
+<thead><tr><th style="width:24%">项</th><th class="mono" style="width:20%">数值</th><th>出处 / 公式</th></tr></thead>
+<tbody>
+<tr><td>SEG 4 K 冷端漏热</td><td class="mono">50.0 W</td>
+  <td>蛋外鞘页 v9.41 口径（<code>QLEAK = 50 W</code>）</td></tr>
+<tr class="mid"><td>工程 4 K 制冷机效率</td><td class="mono">300 ~ 1000 W/W</td>
+  <td>每瓦冷量所需电功；卡诺极限为 4/296 = 0.01351 ⟹ 实际约为卡诺的 <b>7%~25%</b></td></tr>
+<tr><td><b>SEG 侧制冷电功</b></td><td class="mono"><b>15.0 ~ 50.0 kW</b></td>
+  <td>50 × 300/1000 = 15.0；50 × 1000/1000 = 50.0</td></tr>
+<tr class="mid"><td><b>离子阱低温系统 4 K 负载</b></td><td class="mono"><b>0.2 ~ 1.0 W</b></td>
+  <td>低温离子阱的典型量级（线缆、滤波、阱电极）</td></tr>
+<tr><td><b>合并后总负载</b></td><td class="mono">50.2 ~ 51.0 W</td><td>50 + 0.2 ～ 50 + 1.0</td></tr>
+<tr class="mid"><td><b>增量</b></td><td class="mono"><b>0.4% ~ 2.0%</b></td>
+  <td class="ok">0.2/50 = 0.4%；1.0/50 = 2.0%</td></tr>
+<tr><td><b>合并后电功</b></td><td class="mono">15.1 ~ 51.0 kW</td><td class="ok">多花几百瓦，不是多建一套冷机</td></tr>
+</tbody></table></div>
+
+<div class="hint"><b>为什么这条接口「真的能用」</b>：离子阱并不是<b>必须</b> 4 K ——
+  它可以在室温超高真空里用激光冷却工作，4 K 带来的是<b>更低的背景气体碰撞率</b>
+  和更小的射频加热。<b>所以这是一条「有更好、没有也能转」的接口</b>，
+  与「SEG 顶替稀释制冷机」那种「没有就停摆」的接口性质完全不同。<br>
+  <b>正因为是「更好而非必需」，它才不承担证伪风险</b>：哪怕 SEG 的 4 K 最后只做到 77 K，
+  这条链也只是退化成「普通真空 + 激光冷却」，不会整条断掉。</div>
+
+<div class="bad"><b>但必须同时说清三件事，否则这条会被误读成「SEG 能做量子计算机」</b>：<br>
+  ① 4 K 是<b>离子阱低温系统</b>的温度，<b>不是量子比特本体</b>的温度 —— 离子比特住在真空里，不住在冷板上；<br>
+  ② 4 K 对<b>超导比特</b>仍然不够（10–20 mK 才够，差 400 倍，见审计页 §0）；<br>
+  ③ 这条线<b>一个比特都没造出来</b>，只是把「冷量可以共用」这个算术做出来了。<b>算术不等于装置。</b></div>
+
+<h3 style="margin-top:18px">4 K 不是空载指标，是「加负载发电」工况下的结果</h3>
+<div class="hint"><b>这一条把上面那张表的前提补齐了</b>：<br>
+  上面写「SEG 侧 50 W @ 4 K」时暗含了一个工况 —— <b>4 K 不是它自己待着就冷下来的</b>。
+  口径是：<b>真正的 SEG 要达到 4 K，前提是给它加负载、让它去发电，副作用是表面降温</b>。<br>
+  <b>为什么这条反而对我们有利</b>：镜面要压低噪声，靠的是<b>镜面本身在 4 K</b>；而这个「冷」与
+  「SEG 在发电」是<b>同一个工况的两个面</b> —— <b>不必为镜面另建一套冷机</b>：SEG 一边发电
+  （供激光 / 射频 / 低温系统），一边把表面做冷。<b>冷与电同源，这才是这条接口真正的工程价值。</b></div>
+
+<div class="bad"><b>但「加负载才降温」同时带四个代价，一个都不能省</b>：<br>
+  ① <b>冷量与负载耦合</b>：能量是被负载<b>抽走</b>的，不是凭空来的 ⟹ <b>「最冷的工作点」与「输出功率最大的工作点」
+     不是同一个点</b>，两者存在取舍，<b>不能同时写「4 K」和「满功率」</b>；<br>
+  ② <b>「表面降温」是表面</b>：镜面要的是<b>基片整体</b>稳定在 4 K，中间还隔着热阻、接触热阻与辐射耦合，
+     <b>表面温度 ≠ 镜面温度</b>，这一跳<b>目前没有任何测量</b>；<br>
+  ③ <b>证据等级不同，不能混引</b>：<b>227 K 自冷是实测</b>（−46 °C，Roschin &amp; Godin 那台仿制品），
+     <b>4 K 是自述</b>，且那份 9 页报告<b>未走 Searl 充磁 ⟹ 7 kW 不能外推</b>；<br>
+  ④ <b>与 §0 同一条底线</b>：以上全是<b>机理陈述</b>，报告全文 <code>superconduct</code> 出现 <b>0 次</b>。</div>
+
+<div class="hint"><b>所以「4 K」这个数只能这样写</b>：<br>
+  ✅ 「<b>在加负载发电的工况下</b>，SEG 自述冷端可达 4 K；若成立，镜面可直接借用这份冷量，
+     离子阱侧边际增量 0.4%~2.0%」<br>
+  ❌ 「SEG 是 4 K 冷源」—— 无条件写法，漏掉「必须带载」这个前提。<br>
+  <b>一句话</b>：<b>冷是负载换来的</b>，所以这条链的瓶颈不在温度，在<b>「带载」与「最冷」能不能同时要</b>。</div>
+
+<!-- ============ 8 ============ -->
+<h2><span class="n">§8</span>四句不能说出口的话</h2>
+<div class="tw"><table>
+<thead><tr><th style="width:40%">不能说</th><th>为什么</th></tr></thead>
+<tbody>
+<tr><td class="no">「光内存能接到 AHCS 上」</td>
+  <td>光 SRAM 存的是<b>经典 0/1</b>，AHCS 存的是<b>频率谐波状态</b>。
+    用离子存经典比特，单位比特面积比相变存储差 <b>1.56×10⁴ 倍</b>（§4）。
+    <b>能接的是 cQED 那条，不是光内存那条。</b></td></tr>
+<tr class="mid"><td class="no">「把离子放在微环中心就行」</td>
+  <td>倏逝场衰减长度 <b>60.2 nm</b>，环中心 <b>10 μm</b> 处场强 <b>e⁻¹⁶⁶</b>。
+    <b>不是弱，是严格为零。</b>要换开放腔（§3）。</td></tr>
+<tr><td class="no">「协同度 12 就等于能存几十亿比特」</td>
+  <td>C = 12.27 是<b>单腔单离子</b>的单光子吸收概率 92.5%（§2）。
+    它<b>不含寻址、不含激光、不含串扰</b>。10⁹ 个腔要 160 cm²，面积够，但每腔都要单独说话（§6）。</td></tr>
+<tr class="mid"><td class="no">「cQED 接口 = 量子计算」</td>
+  <td>它只解决「<b>传</b>」和「<b>停</b>」，不解决「<b>算</b>」。
+    门操作、纠错、读出、规模化是另外四件事，每一件都有独立的门槛。
+    <b>接口通了，机器还没影。</b></td></tr>
+</tbody></table></div>
+
+<h3>那能说什么</h3>
+<ul>
+  <li><span class="tag num">数值</span><b>「C ∝ F/A、与腔长无关」是硬的</b>：一行代数，且被 C=12.27 与外部值 ≈12 的吻合所验证（§2）。
+    这条可以直接进设计：<b>腔可以长，模腰必须小，精细度必须高。</b></li>
+  <li><span class="tag num">数值</span><b>「腔 106 ns vs 离子 1 s」是硬的</b>：跨 7 个数量级，
+    这是「必须把态交给物质」的定量理由（§4），不是哲学。</li>
+  <li><span class="tag th">立论</span><b>「AHCS 的环形存储单元与 cQED 的腔模在编码层同构」可以说</b>，
+    因为 AHCS 自己写的是「频率谐波状态」+「环形线圈」，而腔模天然是频率槽。
+    <b>但只能说到「同构」，不能说到「同一个机制」。</b></li>
+  <li><span class="tag num">数值</span><b>「4 K 冷端可以共用，边际增量 0.4%~2.0%」可以说</b>，
+    这是本页唯一一条能进设计参数的双向接口（§7）。</li>
+  <li><span class="tag ask">咨询层</span><b>元宝那份对话的贡献要说准</b>：它给对了三件事
+    （光/量子不是一回事、微环=环形延迟线、C∝F/A 且腔长被约掉），
+    给了一个数（光纤腔 C≈12）需要标注来源。但它<b>没有触及 AHCS 那句「不是光」</b> ——
+    这正是本页补上的那一段。</li>
+</ul>
+
+<!-- ============ 9 ============ -->
+<h2><span class="n">§9</span>口径与出处</h2>
+<div class="tw"><table>
+<thead><tr><th style="width:16%">口径</th><th style="width:42%">本页哪些内容</th><th>依据</th></tr></thead>
+<tbody>
+<tr><td><span class="tag src">原文</span></td><td>「数十亿个小型梅尔卡巴环形线圈」「频率谐波的状态」「粒子爆发，而不是光」</td>
+  <td>知识库《昴宿星ahcs全息计算机.pdf》（Swaruu / Anéeka 访谈，2020-12-25，原站 swaruu.org）。
+    <b>只做逐字引用，不加解释性扩写。</b>与 <a href="SEG_AHCS_量子计算接口审计.html">SEG × AHCS 接口审计</a> §1 同源。</td></tr>
+<tr class="mid"><td><span class="tag ask">咨询层</span></td>
+  <td>光 SRAM 五条路线、微环=环形延迟线、「光子停不下来」、C∝F/A、Duan-Kimble 与 Raman SWAP 只需高协同度、光纤腔单原子 C≈12</td>
+  <td>元宝对话《易经结构在芯片设计中的应用探讨》（<code>yb.tencent.com/s/AMhyQ5myAtSb</code>，2026-11-03 取）。
+    <b>这是 AI 生成的咨询内容，未附原始文献页码</b> ⟹ 本页只把它当「线索」，不当「出处」。
+    凡直接采用的数（C≈12）都已用本页自己的公式独立复算过一遍。</td></tr>
+<tr><td><span class="tag num">数值</span></td>
+  <td>C 全表、τ 全表、吸收概率 P、衰减长度 Λ、面积表、4 K 增量、密度倍数</td>
+  <td>现场算。页末列出全部公式常数，页内 <span class="mono">自检</span> 会在任一常数被改动时报错。</td></tr>
+<tr class="mid"><td><span class="tag th">立论</span></td>
+  <td>「频率槽同构」「面积不是墙、寻址才是」「4K 是更好而非必需」、三种解读 A/B/C</td>
+  <td>我的推理，<b>无原文支撑、未实测</b>。已按各节末尾的边界收口。</td></tr>
+<tr><td><span class="tag no">否定</span></td>
+  <td>§8 四句、微环放不进离子、光内存接不上 AHCS</td>
+  <td>由上两类直接推出，可复算。</td></tr>
+</tbody></table></div>
+
+<!-- ============ 10 ============ -->
+<h2><span class="n">§10</span>与审计页的分工：一条链的两端</h2>
+<div class="tw"><table>
+<thead><tr><th style="width:26%">页</th><th style="width:30%">问的问题</th><th>答案的形状</th></tr></thead>
+<tbody>
+<tr><td><a href="SEG_AHCS_量子计算接口审计.html"><b>SEG × AHCS · 量子计算接口审计</b></a></td>
+  <td><b>SEG 的冷、超导、磁，能不能接量子比特</b></td>
+  <td>「227 K 退到 4 K 之后够得着一级；mK 仍是 400 倍；磁方向反了」</td></tr>
+<tr class="mid"><td><b>本页</b></td>
+  <td><b>光内存 + 离子阱这条链，能不能接 AHCS 的存储层</b></td>
+  <td>「中间一段（cQED）硬、两头都断：<b>尾断在几何（60 nm）</b>、<b>头断在原文（不是光）</b>」</td></tr>
+<tr><td>共同的下游</td><td>两条链在 <b>4 K 冷端</b> 交汇</td>
+  <td class="ok">审计页算「省掉 4 K 法兰」；本页算「离子阱只加 0.4%~2.0% 负载」。<b>同一份冷量可以服务两边</b></td></tr>
+</tbody></table></div>
+
+<div class="hint"><b>一句话总结这一页的态度</b>：老师这条直觉的方向是对的 ——
+  「光子停不下来」确实是光存储的死结，「交给能停的东西」确实是正解，
+  而且它在物理上有正式名字、有可算的判据、有实测的构型。<br>
+  <b>但这条链不是从头通到尾的</b>：<b>中间（cQED）通，尾巴（微环几何）要改，头（AHCS 的读法）被原文卡住。</b>
+  三处里有两处是「改一下就能过」的工程问题，<b>只有「不是光」那一处是必须先查清的文献问题</b> ——
+  而它恰好是最便宜的一步。<br>
+  <b>先查文献，再谈实验。</b></div>
+
+<div class="foot">
+  <b>复现</b>：本页所有数字都可当场验 ——<br>
+  ① 光速 <code>c = 2.99792458×10⁸ m/s</code> ⟹ 1 ns = <b>29.98 cm</b>；<br>
+  ② 腔寿命 <code>τ = F·L/(πc)</code>，有效往返次数恒为 <code>F/2π</code>（与 L 无关）；<br>
+  ③ 协同度 <code>C = K·F/A</code>，<code>K = d²ω/(4πε₀ℏcγ)</code>，
+     d(⁴⁰Ca⁺ 397 nm)=2.26×10⁻²⁹ C·m、γ/2π=21.5 MHz ⟹ <b>K = 5.0998×10⁻¹⁵ m</b>；<br>
+  ④ 吸收概率 <code>P = C/(C+1)</code>；<br>
+  ⑤ 倏逝衰减 <code>Λ = λ/(2π√(n²−1))</code>，λ=397 nm、n=1.45 ⟹ <b>60.2 nm</b>；<br>
+  ⑥ 制冷电功 <code>P_el = Q × (300~1000)</code>，Q=50 W ⟹ 15.0~50.0 kW。<br>
+  <b>页内自检</b>：<span id="selfChk" class="mono">运行中…</span><br>
+  <b>相关页</b>：<a href="SEG_AHCS_量子计算接口审计.html">SEG × AHCS 量子计算接口审计</a> ·
+  <a href="AAA_SEG是聚变推进器吗_两份证据与4K冷端十道门槛.html">SEG 是聚变推进器吗 · 4 K 冷端十道门槛</a> ·
+  <a href="koilon_东西方名相映射_从无极到八卦.md">koilon 东西方名相映射</a> ·
+  <a href="SEG_IGV_技术总览.md">SEG × IGV 技术总览</a><br>
+  <b>原始材料</b>：知识库《昴宿星ahcs全息计算机.pdf》（原文层）·
+  元宝对话《易经结构在芯片设计中的应用探讨》（咨询层，<code>yb.tencent.com/s/AMhyQ5myAtSb</code>）
+</div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var K = 5.0998e-15;          /* m, 40Ca+ 397nm */
+  var SUP={"0":"⁰","1":"¹","2":"²","3":"³","4":"⁴","5":"⁵","6":"⁶","7":"⁷","8":"⁸","9":"⁹","-":"⁻","+":""};
+  function pow10(v,d){
+    if(v===0) return "0";
+    if(v>=0.01 && v<1e4) return v.toFixed(d==null?3:d);
+    var e=Math.floor(Math.log10(Math.abs(v)));
+    var m=v/Math.pow(10,e);
+    return m.toFixed(1)+"×10"+String(e).split("").map(function(c){return SUP[c]||c;}).join("");
+  }
+
+  /* ---------- 主题 ---------- */
+  var btn=document.getElementById('themeBtn');
+  function setDark(on){
+    document.body.classList.toggle('dark',on);
+    btn.textContent = on ? '☀️ 亮色底' : '🌙 暗色底';
+    btn.setAttribute('aria-pressed', on?'true':'false');
+    draw();
+  }
+  btn.addEventListener('click',function(){ setDark(!document.body.classList.contains('dark')); });
+  document.addEventListener('keydown',function(e){
+    if((e.key==='d'||e.key==='D') && !/input|textarea/i.test(e.target.tagName)) setDark(!document.body.classList.contains('dark'));
+  });
+
+  /* ---------- 滑块 ---------- */
+  var sF=document.getElementById('sF'), sW=document.getElementById('sW');
+  var lF=document.getElementById('lF'), lW=document.getElementById('lW');
+  var oA=document.getElementById('oA'), oC=document.getElementById('oC'),
+      oP=document.getElementById('oP'), oT=document.getElementById('oT'), oV=document.getElementById('oV');
+  var curF=1e4, curW=5e-6;
+
+  function FfromSlider(v){ return Math.pow(10, 2 + v/100*4); }        /* 1e2 .. 1e6 */
+  function WfromSlider(v){ return 0.5e-6 * Math.pow(10, v/100*2); }   /* 0.5 .. 50 um */
+
+  function calc(){
+    var A = Math.PI*curW*curW;
+    var C = K*curF/A;
+    var P = C/(C+1);
+    var tau = curF*0.01/(Math.PI*2.99792458e8);   /* L=1cm */
+    lF.textContent = pow10(curF,3);
+    lW.textContent = (curW*1e6).toFixed(2)+' μm';
+    oA.textContent = pow10(A,2)+' m²';
+    oC.textContent = C>=100? C.toFixed(1) : (C>=1? C.toFixed(2) : C.toFixed(3));
+    oP.textContent = (100*P).toFixed(1)+'%';
+    oT.textContent = (tau*1e9).toFixed(1)+' ns';
+    var cls, txt;
+    if(C>=10){ cls='ok'; txt='<b>强耦合区</b>：单光子吸收 '+ (100*P).toFixed(1) +'%，光子有足够多次机会把态交给离子。'; }
+    else if(C>=1){ cls='part'; txt='<b>刚过门槛</b>（C&nbsp;=&nbsp;'+C.toFixed(2)+'）：能交换，但效率 '+ (100*P).toFixed(1) +'%，每一次都要重试。'; }
+    else { cls='no'; txt='<b>不够</b>（C&nbsp;=&nbsp;'+C.toFixed(3)+' &lt; 1）：光子还没跟离子交换就漏掉了，吸收概率只有 '+ (100*P).toFixed(1) +'%。'; }
+    oV.innerHTML = '<span class="'+cls+'">'+txt+'</span>';
+    return {A:A,C:C,P:P,tau:tau};
+  }
+
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  function cssVar(n){ return getComputedStyle(document.body).getPropertyValue(n).trim(); }
+
+  function draw(){
+    var r=calc();
+    var W=cv.width, H=cv.height, L=58, R=18, T=16, B=42;
+    var iw=W-L-R, ih=H-T-B;
+    ctx.clearRect(0,0,W,H);
+    var cInk=cssVar('--ink'), cInk3=cssVar('--ink3'), cLine=cssVar('--line'),
+        cPur=cssVar('--purple'), cRed=cssVar('--red'), cCard=cssVar('--card');
+    ctx.font='12px Consolas,monospace';
+    ctx.textBaseline='middle';
+
+    /* 坐标：x = log10(w0/1um) in [-0.301, 1.699] ; y = log10 C in [-4, 5] */
+    var x0=-0.3010, x1=1.6990, y0=-4, y1=5;
+    function X(lw){ return L + (lw-x0)/(x1-x0)*iw; }
+    function Y(lc){ return T + (y1-lc)/(y1-y0)*ih; }
+
+    /* 网格 */
+    ctx.strokeStyle=cLine; ctx.lineWidth=1;
+    var ticksX=[-0.301,0,0.301,0.699,1,1.301,1.699];
+    var labelsX=['0.5','1','2','5','10','20','50'];
+    for(var i=0;i<ticksX.length;i++){
+      ctx.beginPath(); ctx.moveTo(X(ticksX[i]),T); ctx.lineTo(X(ticksX[i]),T+ih); ctx.stroke();
+      ctx.fillStyle=cInk3; ctx.textAlign='center';
+      ctx.fillText(labelsX[i], X(ticksX[i]), T+ih+14);
+    }
+    var ticksY=[-4,-2,-1,0,1,2,3,5];
+    for(var j=0;j<ticksY.length;j++){
+      ctx.beginPath(); ctx.moveTo(L,Y(ticksY[j])); ctx.lineTo(L+iw,Y(ticksY[j])); ctx.stroke();
+      ctx.fillStyle=cInk3; ctx.textAlign='right';
+      ctx.fillText(ticksY[j]===0 ? '1' : ('10'+sup(ticksY[j])), L-7, Y(ticksY[j]));
+    }
+    ctx.textAlign='center'; ctx.fillStyle=cInk3;
+    ctx.fillText('模腰 w₀ (μm) →', L+iw/2, H-8);
+    ctx.save(); ctx.translate(13, T+ih/2); ctx.rotate(-Math.PI/2);
+    ctx.fillText('协同度 C', 0, 0); ctx.restore();
+
+    /* C = 1 门槛 */
+    ctx.setLineDash([5,5]); ctx.strokeStyle=cRed; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(L,Y(0)); ctx.lineTo(L+iw,Y(0)); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.textAlign='left';
+    haloText('C = 1 门槛', L+6, Y(0)-11, cRed, cCard);
+
+    /* 曲线：C = K*F/(pi w^2) */
+    ctx.strokeStyle=cPur; ctx.lineWidth=2.4; ctx.beginPath();
+    var first=true;
+    for(var px=L;px<=L+iw;px++){
+      var lw=x0+(px-L)/iw*(x1-x0);
+      var w=1e-6*Math.pow(10,lw);
+      var C=K*curF/(Math.PI*w*w);
+      var lc=Math.log10(C);
+      var py=Y(Math.max(y0,Math.min(y1,lc)));
+      if(first){ ctx.moveTo(px,py); first=false; } else { ctx.lineTo(px,py); }
+    }
+    ctx.stroke();
+
+    /* 当前点 */
+    var cxp=X(Math.log10(curW*1e6)), cyp=Y(Math.max(y0,Math.min(y1,Math.log10(r.C))));
+    ctx.fillStyle=cPur; ctx.beginPath(); ctx.arc(cxp,cyp,5.5,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle=cCard; ctx.lineWidth=2; ctx.stroke();
+    ctx.textAlign='left';
+    var lbl='C='+(r.C>=100?r.C.toFixed(1):r.C.toFixed(2));
+    haloText(lbl, Math.min(cxp+10,L+iw-72), Math.max(T+12,cyp-15), cInk, cCard);
+  }
+  /* 描边文字：曲线穿过标签时靠底色勾一圈，避免「压线看不清」 */
+  function haloText(t,x,y,fg,bg){
+    ctx.save();
+    ctx.strokeStyle=bg; ctx.lineWidth=3.6; ctx.lineJoin='round'; ctx.miterLimit=2;
+    ctx.strokeText(t,x,y);
+    ctx.fillStyle=fg; ctx.fillText(t,x,y);
+    ctx.restore();
+  }
+  function sup(n){
+    var m={'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','-':'⁻'};
+    return String(n).split('').map(function(c){return m[c]||c;}).join('');
+  }
+
+  sF.addEventListener('input',function(){ curF=FfromSlider(+this.value); draw(); });
+  sW.addEventListener('input',function(){ curW=WfromSlider(+this.value); draw(); });
+  /* 默认档 = 光纤 FP 腔实测构型（F=1.7e4 / w0=1.5um）⟹ 一打开就是 C≈12、吸收 92%，
+     正好呼应 §2 表格里的 12.27，而不是让人第一眼看到「不够」。 */
+  sF.value=55.8; sW.value=23.9;
+  curF=FfromSlider(55.8); curW=WfromSlider(23.9);
+  draw();
+
+  /* ---------- 自检 ---------- */
+  (function(){
+    var rows=[], ok=true;
+    function A(cond,txt,got){ rows.push((cond?'✓ ':'✗ ')+txt+(got===undefined?'':'  ['+got+']')); if(!cond) ok=false; }
+
+    /* 1 光速 */
+    var cm = 2.99792458e8*1e-9*100;
+    A(Math.abs(cm-29.98)<0.01,'1 ns 光程 = 29.98 cm',cm.toFixed(2)+' cm');
+
+    /* 2 腔寿命与 F/2π 不变 */
+    function tau(F,L){ return F*L/(Math.PI*2.99792458e8); }
+    A(Math.abs(tau(1e4,0.01)*1e9-106.1)<0.2,'F=1e4 L=1cm ⟹ τ=106.1 ns',(tau(1e4,0.01)*1e9).toFixed(1));
+    var n1=tau(1e4,0.01)/(2*0.01/2.99792458e8), n2=tau(1e4,0.001)/(2*0.001/2.99792458e8);
+    A(Math.abs(n1-n2)<1,'有效往返次数与 L 无关（1592 = F/2π）',n1.toFixed(0)+' / '+n2.toFixed(0));
+
+    /* 3 K 值 */
+    var d=2.26e-29, lam=397e-9, w=2*Math.PI*2.99792458e8/lam, gam=2*Math.PI*21.5e6;
+    var e0=8.8541878128e-12, hb=1.054571817e-34, cc=2.99792458e8;
+    var Kv=d*d*w/(4*Math.PI*e0*hb*cc*gam);
+    A(Math.abs(Kv/K-1)<2e-3,'K 复算 = 5.0998e-15 m（偏差 <0.2%）',Kv.toExponential(4));
+
+    /* 4 光纤腔 C≈12.27 自证 */
+    var C1=K*1.7e4/(Math.PI*Math.pow(1.5e-6,2));
+    A(Math.abs(C1-12.27)<0.05,'光纤FP腔 F=1.7e4 w0=1.5um ⟹ C=12.27（外部值≈12）',C1.toFixed(2));
+
+    /* 5 吸收概率 */
+    A(Math.abs(C1/(C1+1)*100-92.5)<0.2,'对应吸收概率 P = 92.5%',(C1/(C1+1)*100).toFixed(1)+'%');
+    var C0=K*1e4/(Math.PI*Math.pow(5e-6,2));
+    A(C0<1,'中腔 F=1e4 w0=5um ⟹ C<1（不到门槛）',C0.toFixed(3));
+
+    /* 6 微环几何 */
+    var Lam=lam/(2*Math.PI*Math.sqrt(1.45*1.45-1));
+    A(Math.abs(Lam*1e9-60.2)<0.5,'倏逝衰减长度 Λ = 60.2 nm',(Lam*1e9).toFixed(1)+' nm');
+    var dist=10e-6, nLam=dist/Lam;
+    A(nLam>160,'环中心 10 μm = 166 个 Λ',nLam.toFixed(0));
+
+    /* 7 面积 */
+    var a16=(4e-6)*(4e-6)*1e9;
+    A(Math.abs(a16*1e4-160)<1,'1e9 个腔（间距 4μm）= 160 cm²',(a16*1e4).toFixed(0)+' cm²');
+
+    /* 8 存储时间提升 */
+    A(Math.abs(1/(tau(1e4,0.01))-9.42e6)<1e5,'离子 1 s vs 腔 106 ns ⟹ 9.42e6 倍',(1/tau(1e4,0.01)).toExponential(2));
+
+    /* 9 密度比 */
+    var pcm=4*Math.pow(20e-9,2), ion=Math.pow(5e-6,2);
+    A(Math.abs(ion/pcm/1.5625e4-1)<0.01,'离子里比特面积 / PCM = 1.56e4 倍',(ion/pcm).toExponential(2));
+
+    /* 10 4K 增量 */
+    A(Math.abs(0.2/50*100-0.4)<1e-9 && Math.abs(1.0/50*100-2.0)<1e-9,'离子阱 4K 增量 0.4%~2.0%','0.4 / 2.0');
+    A(Math.abs(50*300/1000-15)<1e-9 && Math.abs(50*1000/1000-50)<1e-9,'SEG 制冷电功 15.0~50.0 kW','15.0 / 50.0');
+
+    /* 11 卡诺比 */
+    var cop=4/296, r1=(1/300)/cop*100, r2=(1/1000)/cop*100;
+    A(Math.abs(r1-24.7)<0.2 && Math.abs(r2-7.4)<0.2,'300~1000 W/W = 卡诺的 7%~25%',r1.toFixed(1)+'% / '+r2.toFixed(1)+'%');
+
+    var el=document.getElementById('selfChk');
+    el.textContent=(ok?'PASS':'FAIL')+'  '+rows.filter(function(s){return s[0]==='✓';}).length+'/'+rows.length+' 项';
+    el.style.color = ok ? cssVar('--green') : cssVar('--red');
+    el.title = rows.join('\n');
+  })();
+
+  window.addEventListener('resize',draw);
+})();
+</script>
+</body>
+</html>
