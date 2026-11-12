@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>希格斯场 3D 结构示意 · 均匀性 / 真空泡 / mK 实验</title>
+<style>
+  :root{
+    --bg:#0d1220; --card:#161f30; --card2:#1b2639;
+    --ink:#e9f0fa; --dim:#9fb0c8; --line:#2a3a52;
+    --ok:#4fd1c5; --bad:#ff9166; --gold:#ffd479; --blue:#7db3ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"WenQuanYi Micro Hei","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    line-height:1.75;font-size:15px}
+  .wrap{max-width:1200px;margin:0 auto;padding:22px 16px 64px}
+  h1{font-size:23px;margin:0 0 6px;letter-spacing:.4px}
+  h2{font-size:17px;margin:0 0 10px;color:var(--gold)}
+  h3{font-size:14px;margin:14px 0 6px;color:var(--ok)}
+  .sub{color:var(--dim);font-size:13.5px;margin:0 0 18px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:18px}
+  .panel{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:12px}
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:760px){.duo{grid-template-columns:1fr}}
+  canvas{width:100%;height:auto;display:block;border-radius:8px;background:#0a1120;touch-action:none}
+  .cap{font-size:12.5px;color:var(--dim);margin-top:8px}
+  .tag{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:99px;border:1px solid var(--line);margin-right:6px}
+  .tag.ok{color:var(--ok);border-color:#2b6b67}
+  .tag.bad{color:var(--bad);border-color:#7a4433}
+  .tag.g{color:var(--gold);border-color:#7a6533}
+  .ctl{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:10px 0 4px}
+  .ctl label{display:block;font-size:12.5px;color:var(--dim);margin-bottom:4px}
+  .ctl input[type=range]{width:100%;accent-color:var(--gold)}
+  .ctl select,.ctl button{width:100%;background:#0b1322;border:1px solid var(--line);color:var(--ink);
+    border-radius:7px;padding:6px 8px;font-size:12.5px;font-family:inherit;cursor:pointer}
+  .ctl button:hover{border-color:var(--gold);color:var(--gold)}
+  .val{color:var(--gold);font-variant-numeric:tabular-nums;font-weight:600}
+  .eq{background:#0b1322;border-left:3px solid var(--ok);border-radius:0 8px 8px 0;
+    padding:9px 12px;margin:8px 0;font-family:"DejaVu Serif",Georgia,serif;
+    font-size:14.5px;overflow-x:auto;white-space:nowrap;color:#dce9ff}
+  .eq.bad{border-left-color:var(--bad)}
+  .eq .n{color:var(--gold);font-family:inherit;font-size:12px;margin-right:8px}
+  .hint{font-size:12px;color:var(--dim)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin:8px 0}
+  th,td{border:1px solid var(--line);padding:6px 9px;text-align:left}
+  th{background:var(--card2);color:var(--gold)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>希格斯场 3D 结构示意</h1>
+  <p class="sub">整合三篇元宝分享：① mK 温度与 1985 伯克利实验　② 实空间均匀性动画　③ 真空气泡「六份」伪影与混沌吸引子　·
+  所有参数由宿主右浮窗统一收纳，本页控件条为镜像源</p>
+
+  <!-- ===== ① 场空间 ===== -->
+  <div class="card">
+    <h2>① 场空间（内部空间）：真正的 3D 几何是 S³</h2>
+    <div class="eq"><span class="n">H1</span> m = yv/√2,　v ≈ 246.22 GeV,　v/√2 ≈ 174.10 GeV</div>
+    <div class="eq"><span class="n">H2</span> V(Φ,T) = −½μ²|Φ|² + ¼λ|Φ|⁴ + ½cT²|Φ|²,　m<sub>h</sub>² = 2λv² = 2μ²,　λ ≈ 0.129,　m<sub>h</sub> ≈ 125.1 GeV</div>
+    <p class="cap">Φ 是复 SU(2) 二重态，展开为 4 个实分量；V 只依赖 |Φ|²，故极小值集合 |Φ|=v/√2 是 ℝ⁴ 里的 <b>3-球面 S³</b>。3 个切向自由度（Goldstone χ⁺/χ⁻/χ³）被规范群吃掉变成 W⁺/W⁻/Z 的纵向极化，1 个径向自由度是物理 Higgs h。S³ 塞不进 3D，下图画的是它的 <b>S² 截面 / 球极投影</b>。</p>
+    <div class="ctl">
+      <div><label>温度 T / T<sub>c</sub> = <span class="val" id="h_vT">0.00</span></label>
+        <input type="range" id="hT" min="0" max="1.30" step="0.01" value="0"></div>
+      <div><label>视角：拖 3D 图自由旋转 · 双击复位</label><div class="hint" id="h_ang">yaw 0.70 / pitch 0.52</div></div>
+    </div>
+    <div class="duo">
+      <div class="panel"><span class="tag g">3D · S³ 截面（半透明球 + 箭头）</span>
+        <canvas id="c_h3" width="520" height="420"></canvas>
+        <p class="cap">青色 = 3 个切向 Goldstone 方向（不花能量）；金色 = 径向 h。升温到 T≥T<sub>c</sub> 时球收缩到原点，对称性恢复。3D 箭头是<b>示意</b>：Φ 是内部空间的复二重态，箭头画的是内部取向映射，不是空间里真插着小箭头。</p></div>
+      <div class="panel"><span class="tag ok">2D · V(|Φ|) 截面 与 v(T)/v₀</span>
+        <canvas id="c_h2" width="520" height="420"></canvas>
+        <p class="cap">上：T/T<sub>c</sub> = 0 / 0.6 / 1.0 / 1.3 四条势能截面；下：v(T)/v₀ = √(1−T²/T<sub>c</sub>²)。金点 = 当前温度下的真空位置。SM 在 m<sub>h</sub>≈125 GeV 是<b>平滑 crossover</b>（T<sub>c</sub>=159.5±1.5 GeV，宽约 5 GeV），不是一阶相变，所以没有成核气泡。</p></div>
+    </div>
+  </div>
+
+  <!-- ===== ② 实空间 ===== -->
+  <div class="card">
+    <h2>② 实空间：真空恰恰「没有结构」</h2>
+    <div class="eq"><span class="n">H3</span> 洛伦兹不变 ⇒ ⟨Φ⟩ 处处相同、不挑任何空间方向　·　ξ<sub>h</sub> = ℏ/(m<sub>h</sub>c) ≈ 1.6×10⁻¹⁸ m</div>
+    <p class="cap">带 3D 花样的是<b>非平庸经典解</b>：电弱 sphaleron（静态不稳定鞍点、hedgehog 刺猬构型、N<sub>CS</sub>=n+½、E<sub>sph</sub>≈9 TeV），零温穿越被 e<sup>−4π/α<sub>W</sub></sup>∼10⁻¹⁶¹ 压低。气泡只在 2HDM / 单态扩展里出现，此处纯对照。</p>
+    <div class="ctl">
+      <div><label>实空间模式</label>
+        <select id="mode">
+          <option value="vac">均匀真空（SM 真实态）</option>
+          <option value="sph">sphaleron 刺猬（鞍点）</option>
+          <option value="bub">气泡对照（仅扩展模型）</option>
+        </select></div>
+      <div><label>Chern–Simons 数 N<sub>CS</sub> = <span class="val" id="n_vN">0.00</span></label>
+        <input type="range" id="ncs" min="0" max="1" step="0.01" value="0"></div>
+    </div>
+    <div class="duo">
+      <div class="panel"><span class="tag g">3D · 实空间箭头阵（俯视可见「六份」伪影）</span>
+        <canvas id="c_s3" width="520" height="420"></canvas>
+        <p class="cap">采样 <code>θ<sub>a</sub>=π(a+½)/NU, φ<sub>b</sub>=2πb/NV</code>；俯视投影把 (θ,φ) 压成 (sinθcosφ, sinθsinφ)，同一个 b 的所有 a 落在同一条放射线上 ⇒ 看起来被切成 NV 份。<b>标准模型真空没有任何六重离散对称</b>，把 NV 拖大伪影就消失。</p></div>
+      <div class="panel"><span class="tag ok">2D · ρ(r) 壳层峰 与 V(N<sub>CS</sub>) 周期势</span>
+        <canvas id="c_s2" width="520" height="420"></canvas>
+        <p class="cap">上：sphaleron 能量密度壳层峰（示意，非格点场位形重建）；下：相邻拓扑真空之间的周期势 —— 整数 N<sub>CS</sub> 处为真空 0，半整数处为势垒顶 ≈ 9 TeV。当前 N<sub>CS</sub> 用金点标出。</p></div>
+    </div>
+  </div>
+
+  <!-- ===== ③ 均匀性动画 ===== -->
+  <div class="card">
+    <h2>③ 动画：均匀性到底在说什么</h2>
+    <p class="cap">静态箭头阵看不出「处处相同」，所以放一根<b>扫描探针</b>：金线从左往右扫过实空间格点，被扫到的点实时报出 |Φ|。均匀模式下读数是一条贯穿全宽的水平直线，大字恒为 <b>1.000 × v/√2 = 174.10 GeV</b>。三个按钮都是反证。</p>
+    <div class="ctl">
+      <div><label>动画模式</label>
+        <select id="animMode">
+          <option value="uni">均匀真空（真实）</option>
+          <option value="kick">⚡ 注入局部扰动</option>
+          <option value="gauge">↻ 整体规范旋转</option>
+          <option value="wave">空间调制波（反例）</option>
+        </select></div>
+      <div><label>探针速度 = <span class="val" id="p_vS">1.00</span></label>
+        <input type="range" id="pspeed" min="0.20" max="3.00" step="0.05" value="1.00"></div>
+      <div><label>播放控制</label><button id="playBtn" type="button">⏸ 暂停</button></div>
+      <div><label>快速反证</label><button id="kickBtn" type="button">⚡ 注入扰动</button></div>
+      <div><label>快速反证</label><button id="waveBtn" type="button">≈ 空间调制波</button></div>
+    </div>
+    <div class="panel"><span class="tag g">动画 · 扫描探针 + 读数时间序列</span>
+      <canvas id="c_a1" width="1040" height="430"></canvas>
+      <p class="cap"><b>⚡ 注入局部扰动</b>：读数从 1.000 跳到 1.160（201.93 GeV），曲线冒尖峰再按 U3 衰减回 1.000 —— 说明均匀是「势能极小 + 质量项守着的稳定态」，τ≈5.3×10⁻²⁷ s、ξ<sub>h</sub>≈1.6×10⁻¹⁸ m（动画刻意放慢到秒级）。<b>↻ 整体规范旋转</b>：所有箭头一起转，<b>读数曲线一动不动</b> —— 可观测的只有 |Φ|，箭头方向是规范选择，不是实空间矢量。</p></div>
+    <div class="eq bad"><span class="n">U4</span> 均匀 ≠ 静止介质：v 是洛伦兹标量，没有一个可测的「空间流动速度」</div>
+  </div>
+
+  <!-- ===== ④ 六份伪影 + 混沌吸引子 ===== -->
+  <div class="card">
+    <h2>④ 「六份」是绘图网格，不是物理；泡内没有运动可画</h2>
+    <div class="eq"><span class="n">H4</span> θ<sub>a</sub> = π(a+½)/NU,　φ<sub>b</sub> = 2πb/<b>NV</b>　·　NV=6 ⇒ 俯视六份；NV→20 ⇒ 连续</div>
+    <p class="cap">bounce 泡内是<b>均匀常数</b>，O(4) 对称，<b>没有运动轨迹可画</b>。下面用混沌吸引子给「真空无结构」一个可见的<b>反面</b>：它是标注清楚的类比，不是 Φ(x,t) 的解。ABC 球面流会停在驻点，故改用真正混沌的 Thomas 周期对称吸引子（Benettin 算法验证 Lyapunov 为正）。</p>
+    <div class="ctl">
+      <div><label>网格 NV = <span class="val" id="v_vN">6</span></label>
+        <input type="range" id="NV" min="4" max="20" step="1" value="6"></div>
+      <div><label>轨迹类型</label>
+        <select id="attractor">
+          <option value="lorenz">Lorenz 双叶</option>
+          <option value="thomas">Thomas 球内吸引子</option>
+          <option value="bounce">bounce 泡内剖面（常数）</option>
+        </select></div>
+      <div><label>视角：拖 3D 图自由旋转 · 双击复位</label><div class="hint" id="v_ang">自动旋转中</div></div>
+    </div>
+    <div class="duo">
+      <div class="panel"><span class="tag g">3D · 混沌轨迹（类比，非场解）</span>
+        <canvas id="c_c3" width="520" height="420"></canvas>
+        <p class="cap">Lorenz：σ=10, ρ=28, β=8/3；Thomas：b=0.19，球内周期对称混沌。轨迹已做瞬态预积分、早期段调亮。选 bounce 则画一根水平常数线 —— 这才是真空泡内部的正确答案。</p></div>
+      <div class="panel"><span class="tag ok">2D · 六份伪影对比 + bounce 剖面</span>
+        <canvas id="c_c2" width="520" height="420"></canvas>
+        <p class="cap">上：左 NV=6（六条放射线）／右 当前 NV（拖大即趋连续）；下：bounce 泡的 |Φ|(r) 剖面 —— 泡内 0、泡壁跃变、泡外 v/√2。</p></div>
+    </div>
+  </div>
+
+  <!-- ===== ⑤ mK 与 1985 实验 ===== -->
+  <div class="card">
+    <h2>⑤ mK 是真实温度：为什么必须冷、以及冷了什么</h2>
+    <div class="eq"><span class="n">H5</span> Γ<sub>th</sub> ∝ e<sup>−ΔU/k<sub>B</sub>T</sup>　·　Γ<sub>MQT</sub> ∼ (ω<sub>p</sub>/2π)e<sup>−B/ℏ</sup>,　B ≈ (36/5)·ΔU/ω<sub>p</sub>　·　T<sub>cross</sub> ∼ ℏω<sub>p</sub>/(2πk<sub>B</sub>)</div>
+    <div class="eq"><span class="n">H6</span> U(δ) = −E<sub>J</sub>cos δ − (ℏI/2e)δ　·　I = I₀ sin δ + (ℏC/2e)δ̈　·　U4: 均匀 ≠ 静止介质</div>
+    <p class="cap">mK = 毫开尔文，1 mK = 10⁻³ K。1985 年伯克利两篇 PRL（<b>55, 1543–1546</b> 能级量子化；<b>55, 1908–1911</b> MQT 测量）跑在约 10–800 mK，核心数据 18–37 mK。<b>降温不是「给穿墙充能」，是把经典热激活那条路关掉，好让量子那条路单独显形。</b></p>
+    <div class="ctl">
+      <div><label>温度 log₁₀(T / mK) = <span class="val" id="m_vT">1.00</span></label>
+        <input type="range" id="mK" min="-1" max="3" step="0.02" value="1"></div>
+      <div><label>偏置电流 I / I₀ = <span class="val" id="m_vI">0.90</span></label>
+        <input type="range" id="bias" min="0" max="1" step="0.01" value="0.90"></div>
+    </div>
+    <div class="duo">
+      <div class="panel"><span class="tag g">2D · 逃逸率平台曲线 + 稀释制冷机温阶</span>
+        <canvas id="c_m1" width="520" height="420"></canvas>
+        <p class="cap">上：Γ(T) 在高温段随 T 指数下降，<b>降到约 37 mK 出现平台</b>（Γ 与 T 无关 ⇒ 量子隧穿主导）；金点 = 当前温度。下：300 K → 4 K → 1 K → 100 mK → 10 mK 的分级冷却，靠 ³He 跨相界混合<b>吸热</b>连续制冷。</p></div>
+      <div class="panel"><span class="tag ok">2D · 逃逸电流分布 与 微波共振峰</span>
+        <canvas id="c_m2" width="520" height="420"></canvas>
+        <p class="cap">上：重复 10³–10⁵ 次电流斜坡得到 p(I<sub>esc</sub>)，金线 = 当前偏置；下：28 mK 加 2.0 GHz 弱微波，当 hν = E<sub>n→n+1</sub> 出现洛伦兹峰，线宽给激发态寿命 τ≈14–40 ns。这是「人造原子」：肉眼可见的电路，能量只能一格一格跳。</p></div>
+    </div>
+    <div class="eq bad"><span class="n">边界</span> 冷的是 <b>1 个自由度</b>（相位 δ）；那堵「墙」是相位空间里 ~GHz ≈ μeV 的势垒；降温<b>不增大</b> T∼e<sup>−2κd</sup>，1 kg / 0.1 m 墙的 e<sup>−10²⁴</sup> 一个指数都不会变</div>
+  </div>
+
+  <!-- ===== ⑥ 公式与边界 ===== -->
+  <div class="card">
+    <h2>⑥ 公式速查与诚实边界</h2>
+    <table>
+      <tr><th>量</th><th>数值 / 式子</th><th>出处与口径</th></tr>
+      <tr><td>VEV</td><td>v ≈ 246.22 GeV，v/√2 ≈ 174.10 GeV</td><td>标准模型；原文给出</td></tr>
+      <tr><td>Higgs 质量</td><td>m<sub>h</sub> ≈ 125.1 GeV，λ ≈ 0.129，m<sub>h</sub>² = 2λv²</td><td>原文；未独立复核</td></tr>
+      <tr><td>关联长度</td><td>ξ<sub>h</sub> = ℏ/(m<sub>h</sub>c) ≈ 1.6×10⁻¹⁸ m</td><td>比质子半径 0.84 fm 小约 500 倍</td></tr>
+      <tr><td>相变性质</td><td>平滑 crossover，T<sub>c</sub> = 159.5±1.5 GeV，宽约 5 GeV</td><td>格点结论：一阶只发生在 m<sub>h</sub>≲72 GeV ⇒ <b>SM 没有成核气泡</b></td></tr>
+      <tr><td>sphaleron</td><td>N<sub>CS</sub> = n+½，E<sub>sph</sub> ≈ 9 TeV，零温压低 e<sup>−4π/α<sub>W</sub></sup>∼10⁻¹⁶¹</td><td>教学可视化，非格点场位形重建</td></tr>
+      <tr><td>电弱相变 / 真空衰变</td><td>Coleman–De Luccia bounce，O(4) 对称，泡内均匀常数</td><td>「混沌轨迹」只是类比，不是 Φ(x,t) 的解</td></tr>
+      <tr><td>各向异性幅度</td><td>10⁻¹⁸（无量纲）／10⁻³¹</td><td>与 ξ<sub>h</sub>（长度）<b>单位不同，别混</b>；LHC 13 TeV 探针尺度约 10⁻¹⁹ m</td></tr>
+      <tr><td>1985 伯克利</td><td>Nb–NbOₓ–PbIn 结 ~10×10 μm；RCSJ；18–37 mK 平台；2.0 GHz 共振</td><td>PRL 55, 1543 / 55, 1908</td></tr>
+    </table>
+    <p class="cap"><b>诚实边界</b>：① 三篇均为元宝 AI 生成的讲解，公式与数值本页沿用原文口径，未逐条独立复核；② 所有 3D 曲面、箭头阵、壳层剖面、轨迹均为<b>参数化示意</b>，不是实验数据或格点场位形；③ 「六份」是 <code>NV=6</code> 的采样网格伪影，不是物理对称；④ 混沌吸引子作为「真空无结构」的可见反面，明确标注为类比；⑤ mK 实验验证的是<b>单集体坐标 δ</b> 的宏观量子隧穿，与宏观物体质心穿墙无关。</p>
+    <p class="cap">来源：<a href="https://yb.tencent.com/s/I88vJfGizPRA" style="color:var(--ok)">mK 温度定义与实验方法</a>　·　<a href="https://yb.tencent.com/s/WEDGKygh0O2Q" style="color:var(--ok)">希格斯场均匀性动画演示</a>　·　<a href="https://yb.tencent.com/s/0UfVmUKjjOyY" style="color:var(--ok)">真空气泡无运动结构解析</a>　·　归档于 <code>点我_元宝动量公式与洛伦兹破缺_20261112</code></p>
+  </div>
+</div>
+
+<script>
+/* ===== 全局错误框（N51，子页也要有） ===== */
+window.onerror=function(m,s,l,c){var e=document.getElementById('hErr');
+  if(!e){e=document.createElement('div');e.id='hErr';e.style.cssText='position:fixed;right:10px;bottom:10px;z-index:99;background:#3a1418;border:1px solid #ff9166;color:#ffd7d7;padding:8px 11px;border-radius:8px;font:12px Consolas,monospace';document.body.appendChild(e);}
+  e.textContent='[JS] '+m+' @'+l+':'+c;};
+var $=function(id){return document.getElementById(id);};
+var num=function(id){return parseFloat($(id).value);};
+var clamp=function(v,a,b){return Math.min(b,Math.max(a,v));};
+var fmt=function(v,d){return Number(v).toFixed(d===undefined?2:d);};
+function ctx(id){var c=$(id),x=c.getContext('2d');x.clearRect(0,0,c.width,c.height);return {c:c,x:x,W:c.width,H:c.height};}
+function line(x,x1,y1,x2,y2,col,w){x.beginPath();x.moveTo(x1,y1);x.lineTo(x2,y2);x.strokeStyle=col;x.lineWidth=w||1;x.stroke();}
+function dot(x,px,py,r,col){x.beginPath();x.arc(px,py,r,0,Math.PI*2);x.fillStyle=col;x.fill();}
+function axes(x,L,T,W2,H2,col){x.strokeStyle=col||'#2a3a52';x.lineWidth=1;x.strokeRect(L,T,W2,H2);}
+
+/* ===== 3D 投影：xyz 等轴比（F4），可自由拖动（F3） ===== */
+function mkView(){
+  var st={yaw:0.70,pitch:0.52,s:1};
+  return {st:st,proj:function(p,W,H){
+    var ca=Math.cos(st.yaw),sa=Math.sin(st.yaw),cp=Math.cos(st.pitch),sp=Math.sin(st.pitch);
+    var X=p.x*ca-p.z*sa, Z=p.x*sa+p.z*ca;
+    var Y=p.y*cp-Z*sp, ZZ=p.y*sp+Z*cp;
+    var d=4.4/(4.4+ZZ), S=st.s*Math.min(W,H)/3.1;
+    return {x:W/2+X*S*d,y:H/2-Y*S*d,z:ZZ,d:d};
+  }};
+}
+function bindDrag(id,view,onchange){
+  var c=$(id),dragging=false,lx=0,ly=0;
+  function down(e){dragging=true;lx=e.clientX;ly=e.clientY;e.preventDefault();}
+  function move(e){if(!dragging)return;view.st.yaw+=(e.clientX-lx)*0.008;
+    view.st.pitch=clamp(view.st.pitch+(e.clientY-ly)*0.008,-1.45,1.45);
+    lx=e.clientX;ly=e.clientY;if(onchange)onchange();}
+  function up(){dragging=false;}
+  c.addEventListener('mousedown',down);window.addEventListener('mousemove',move);window.addEventListener('mouseup',up);
+  c.addEventListener('touchstart',function(e){down(e.touches[0]);},{passive:true});
+  c.addEventListener('touchmove',function(e){move(e.touches[0]);e.preventDefault();},{passive:false});
+  c.addEventListener('touchend',up);
+  c.addEventListener('dblclick',function(){view.st.yaw=0.70;view.st.pitch=0.52;if(onchange)onchange();});
+}
+var V1=mkView(),V2=mkView(),V4=mkView();
+
+/* ===== ① 场空间 ===== */
+function drawH3(){
+  var o=ctx('c_h3'),x=o.x,W=o.W,H=o.H,T=num('hT');
+  var r=T<1?Math.sqrt(Math.max(0,1-T*T)):0;
+  $('h_vT').textContent=fmt(T);$('h_ang').textContent='yaw '+fmt(V1.st.yaw)+' / pitch '+fmt(V1.st.pitch);
+  x.fillStyle='#0a1120';x.fillRect(0,0,W,H);
+  /* 半透明球：经纬线 */
+  var seg=32;
+  for(var k=0;k<6;k++){
+    var ph=Math.PI*(k+0.5)/6;
+    x.beginPath();
+    for(var i=0;i<=seg;i++){
+      var a=2*Math.PI*i/seg,p=V1.proj({x:r*Math.sin(ph)*Math.cos(a),y:r*Math.cos(ph),z:r*Math.sin(ph)*Math.sin(a)},W,H);
+      i?x.lineTo(p.x,p.y):x.moveTo(p.x,p.y);
+    }
+    x.strokeStyle='rgba(125,179,255,.30)';x.lineWidth=1;x.stroke();
+  }
+  for(var k2=0;k2<8;k2++){
+    var th2=2*Math.PI*k2/8;x.beginPath();
+    for(var j=0;j<=seg;j++){
+      var b=Math.PI*j/seg,p2=V1.proj({x:r*Math.sin(b)*Math.cos(th2),y:r*Math.cos(b),z:r*Math.sin(b)*Math.sin(th2)},W,H);
+      j?x.lineTo(p2.x,p2.y):x.moveTo(p2.x,p2.y);
+    }
+    x.strokeStyle='rgba(125,179,255,.20)';x.lineWidth=1;x.stroke();
+  }
+  /* 坐标轴 */
+  var O=V1.proj({x:0,y:0,z:0},W,H),Xx=V1.proj({x:1.15,y:0,z:0},W,H),Yy=V1.proj({x:0,y:1.15,z:0},W,H),Zz=V1.proj({x:0,y:0,z:1.15},W,H);
+  line(x,O.x,O.y,Xx.x,Xx.y,'#4a5f7d',1);line(x,O.x,O.y,Yy.x,Yy.y,'#4a5f7d',1);line(x,O.x,O.y,Zz.x,Zz.y,'#4a5f7d',1);
+  x.fillStyle='#9fb0c8';x.font='12px sans-serif';x.fillText('φ₁',Xx.x+4,Xx.y);x.fillText('φ₂',Yy.x+4,Yy.y);x.fillText('φ₃',Zz.x+4,Zz.y);
+  function arrow(p1,p2,col,w){var a=V1.proj(p1,W,H),b=V1.proj(p2,W,H);
+    line(x,a.x,a.y,b.x,b.y,col,w||2.4);
+    var ang=Math.atan2(b.y-a.y,b.x-a.x);x.beginPath();x.moveTo(b.x,b.y);
+    x.lineTo(b.x-9*Math.cos(ang-0.4),b.y-9*Math.sin(ang-0.4));
+    x.lineTo(b.x-9*Math.cos(ang+0.4),b.y-9*Math.sin(ang+0.4));x.closePath();x.fillStyle=col;x.fill();}
+  /* 3 个切向 Goldstone（青） + 1 个径向 h（金） */
+  if(r>0.02){
+    arrow({x:r,y:0,z:0},{x:r,y:0.62*r,z:0},'#4fd1c5');
+    arrow({x:r,y:0,z:0},{x:r,y:0,z:0.62*r},'#4fd1c5');
+    arrow({x:0,y:r,z:0},{x:0.58*r,y:r,z:0},'#4fd1c5');
+    arrow({x:0,y:0,z:0},{x:r*1.05,y:0,z:0},'#ffd479',3);
+    x.fillStyle='#ffd479';x.font='bold 12px sans-serif';x.fillText('h · 125.1 GeV',O.x+10,O.y-14);
+    x.fillStyle='#4fd1c5';x.fillText('χ± / χ³ → W± / Z',O.x+10,O.y+18);
+  } else {
+    x.fillStyle='#ffd479';x.font='bold 14px sans-serif';x.textAlign='center';
+    x.fillText('S³ 已收缩至原点 · 对称性恢复',W/2,H/2);x.textAlign='left';
+  }
+  x.fillStyle='#9fb0c8';x.font='12px sans-serif';x.fillText('v(T)/v₀ = '+fmt(r,3),12,20);
+}
+function drawH2(){
+  var o=ctx('c_h2'),x=o.x,W=o.W,H=o.H,T=num('hT');
+  var L=48,R=W-16,T0=22,M1=T0+168,M2=M1+22,B1=H-24;
+  axes(x,L,T0,R-L,M1-T0);x.fillStyle='#9fb0c8';x.font='11px sans-serif';x.fillText('V(|Φ|)',L+4,T0+14);
+  /* V(r) = -0.5(1-cT²)r² + 0.25 r⁴ 归一化 */
+  var Ts=[0,0.6,1.0,1.3],cols=['#ffd479','#4fd1c5','#7db3ff','#ff9166'];
+  Ts.forEach(function(t,idx){
+    x.beginPath();
+    for(var i=0;i<=120;i++){
+      var rr=-1.5+3*i/120,a=-(1-t*t)/2,q=0.25,v=a*rr*rr+q*Math.pow(rr,4);
+      var px=L+(i/120)*(R-L),py=M1-12-(v+0.30)*115;
+      i?x.lineTo(px,py):x.moveTo(px,py);
+    }
+    x.strokeStyle=cols[idx];x.lineWidth=idx===0?2:1.2;x.stroke();
+  });
+  /* 当前真空点 */
+  var rv=T<1?Math.sqrt(1-T*T):0,vc=-(1-T*T)/2*rv*rv+0.25*Math.pow(rv,4);
+  dot(x,L+((rv+1.5)/3)*(R-L),M1-12-(vc+0.30)*115,5,'#ffd479');
+  /* 下：v(T)/v0 */
+  axes(x,L,M2,R-L,B1-M2);x.fillStyle='#9fb0c8';x.fillText('v(T)/v₀',L+4,M2+14);
+  x.beginPath();
+  for(var i=0;i<=120;i++){var tt=1.3*i/120,vv=tt<1?Math.sqrt(1-tt*tt):0;
+    var px=L+(i/120)*(R-L),py=B1-10-vv*(B1-M2-26);i?x.lineTo(px,py):x.moveTo(px,py);}
+  x.strokeStyle='#4fd1c5';x.lineWidth=2;x.stroke();
+  dot(x,L+(T/1.3)*(R-L),B1-10-(T<1?Math.sqrt(1-T*T):0)*(B1-M2-26),5,'#ffd479');
+  line(x,L+(1/1.3)*(R-L),M2,L+(1/1.3)*(R-L),B1,'#ff9166',1);
+  x.fillStyle='#ff9166';x.fillText('T_c',L+(1/1.3)*(R-L)+4,M2+26);
+}
+function drawH(){drawH3();drawH2();}
+
+/* ===== ② 实空间 ===== */
+function drawS3(){
+  var o=ctx('c_s3'),x=o.x,W=o.W,H=o.H;
+  var mode=$('mode').value,NV=parseInt($('NV').value),NU=11;
+  x.fillStyle='#0a1120';x.fillRect(0,0,W,H);
+  var cxp=W/2,cyp=H/2,R=Math.min(W,H)*0.36;
+  x.strokeStyle='#2a3a52';x.beginPath();x.arc(cxp,cyp,R,0,Math.PI*2);x.stroke();
+  for(var b=0;b<NV;b++){
+    var ph=2*Math.PI*b/NV;
+    for(var a=0;a<NU;a++){
+      var th=Math.PI*(a+0.5)/NU;
+      var sx=Math.sin(th)*Math.cos(ph),sy=Math.sin(th)*Math.sin(ph),sz=Math.cos(th);
+      var p=V2.proj({x:sx,y:sy,z:sz},W,H);
+      var px=W/2+(p.x-W/2)*0.92,py=H/2+(p.y-H/2)*0.92;
+      var amp=0.5,dx=0,dy=0;
+      if(mode==='sph'){dx=sx;dy=sy;amp=0.55+0.45*Math.abs(sz);}
+      else if(mode==='bub'){amp=(a<NU/2)?0.12:1.0;dx=sx;dy=sy;}
+      else {dx=0.82;dy=0.32;amp=1;}
+      var len=15*amp*(0.7+0.3*p.d);
+      line(x,px,py,px+dx*len,py-dy*len,mode==='vac'?'#4fd1c5':(mode==='sph'?'#ffd479':'#ff9166'),1.5);
+      dot(x,px,py,1.4,'rgba(125,179,255,.55)');
+    }
+  }
+  x.fillStyle='#9fb0c8';x.font='12px sans-serif';
+  x.fillText('NV = '+NV+'　NU = '+NU+'　·　俯视采样伪影',12,20);
+  x.fillText(mode==='vac'?'均匀真空：处处相同':mode==='sph'?'sphaleron：hedgehog 刺猬':'气泡对照：泡内 0 / 泡外 v/√2',12,H-12);
+  $('v_ang').textContent='pitch '+fmt(V2.st.pitch);
+}
+function drawS2(){
+  var o=ctx('c_s2'),x=o.x,W=o.W,H=o.H,n=num('ncs');
+  $('n_vN').textContent=fmt(n);
+  var L=48,R=W-16,T0=22,M1=T0+168,M2=M1+22,B1=H-24;
+  axes(x,L,T0,R-L,M1-T0);x.fillStyle='#9fb0c8';x.font='11px sans-serif';x.fillText('ρ(r) 能量密度（示意）',L+4,T0+14);
+  x.beginPath();
+  for(var i=0;i<=140;i++){var r=3*i/140,v=Math.exp(-Math.pow((r-1.25)/0.42,2));
+    var px=L+(i/140)*(R-L),py=M1-8-v*(M1-T0-30);i?x.lineTo(px,py):x.moveTo(px,py);}
+  x.strokeStyle='#ffd479';x.lineWidth=2;x.stroke();
+  x.fillStyle='#9fb0c8';x.fillText('E_sph ≈ 9 TeV',L+(R-L)*0.55,T0+30);
+  axes(x,L,M2,R-L,B1-M2);x.fillStyle='#9fb0c8';x.fillText('V(N_CS) 周期势',L+4,M2+14);
+  x.beginPath();
+  for(var j=0;j<=200;j++){var q=2*j/200,v2=4.5*(1-Math.cos(2*Math.PI*q));
+    var px2=L+(j/200)*(R-L),py2=B1-8-(v2/9)*(B1-M2-28);j?x.lineTo(px2,py2):x.moveTo(px2,py2);}
+  x.strokeStyle='#4fd1c5';x.lineWidth=2;x.stroke();
+  var vv=4.5*(1-Math.cos(2*Math.PI*(n/2)));
+  dot(x,L+(n/2)*(R-L),B1-8-(vv/9)*(B1-M2-28),5,'#ffd479');
+  x.fillStyle='#9fb0c8';x.fillText('整数 = 真空 0',L+4,B1-4);x.fillText('半整数 = 势垒顶 9 TeV',L+(R-L)*0.42,B1-4);
+}
+function drawS(){drawS3();drawS2();}
+
+/* ===== ③ 均匀性动画 ===== */
+var ANIM={t:0,playing:true,kick:0,last:0,hist:[]};
+function probeValue(u,mode,t){
+  if(mode==='uni')return 1;
+  if(mode==='kick'){
+    var age=ANIM.kick;if(age<=0)return 1;
+    return 1+0.165*Math.exp(-age*1.25)*Math.exp(-Math.pow((u-0.5)/0.10,2));
+  }
+  if(mode==='gauge')return 1;
+  if(mode==='wave')return 0.81+0.03*Math.sin(u*Math.PI*6+t*0.9);
+  return 1;
+}
+function drawA1(){
+  var o=ctx('c_a1'),x=o.x,W=o.W,H=o.H,mode=$('animMode').value,u=(ANIM.t*0.16*num('pspeed'))%1;
+  var L=20,R=W-250,T0=18,GH=210,CH=H-70;
+  /* 上半：格点 + 扫描线 */
+  x.fillStyle='#0a1120';x.fillRect(0,0,W,H);
+  x.strokeStyle='#1c2a40';x.lineWidth=1;
+  for(var gx=L;gx<R;gx+=18)line(x,gx,T0+18,gx,T0+GH,'#16233a');
+  var cols=22,rows=8;
+  for(var i=0;i<cols;i++)for(var j=0;j<rows;j++){
+    var uu=(i+0.5)/cols,px=L+uu*(R-L),py=T0+30+j*(GH-48)/rows;
+    var v=probeValue(uu,mode,ANIM.t),ang=(mode==='gauge'?ANIM.t*0.9:0.42);
+    var dx=Math.cos(ang)*16*v,dy=Math.sin(ang)*16*v;
+    var near=Math.abs(uu-u)<0.035;
+    line(x,px,py,px+dx,py-dy,near?'#ffd479':(mode==='wave'?'#ff9166':'#4fd1c5'),near?2.4:1.5);
+    if(!near)dot(x,px,py,1.2,'rgba(125,179,255,.5)');
+  }
+  line(x,L+u*(R-L),T0+18,L+u*(R-L),T0+GH,'#ffd479',2);
+  x.fillStyle='#ffd479';x.font='11px sans-serif';x.fillText('扫描探针',L+u*(R-L)+4,T0+16);
+  /* 右侧大字读数 */
+  var cur=probeValue(u,mode,ANIM.t);
+  x.fillStyle='#9fb0c8';x.font='12px sans-serif';x.fillText('当前 |Φ| / (v/√2)',R+16,T0+40);
+  x.fillStyle=mode==='wave'?'#ff9166':'#ffd479';x.font='bold 27px sans-serif';x.fillText(fmt(cur,3),R+16,T0+76);
+  x.fillStyle='#9fb0c8';x.font='13px sans-serif';x.fillText('= '+fmt(cur*174.10,2)+' GeV',R+16,T0+98);
+  x.font='11.5px sans-serif';
+  x.fillText(mode==='uni'?'均匀：处处相同':mode==='kick'?'扰动：按 U3 衰减':mode==='gauge'?'规范旋转：读数不动':'调制波：SM 反例',R+16,T0+128);
+  x.fillStyle='#4fd1c5';x.fillText('τ ≈ 5.3×10⁻²⁷ s',R+16,T0+152);
+  x.fillText('ξ_h ≈ 1.6×10⁻¹⁸ m',R+16,T0+170);
+  /* 下半：读数时间序列 */
+  axes(x,L,CH,R-L,H-CH-14,'#2a3a52');
+  x.fillStyle='#9fb0c8';x.font='11px sans-serif';x.fillText('探针读数时间序列（滚动）',L+4,CH+14);
+  x.beginPath();
+  ANIM.hist.forEach(function(v,k){
+    var px=L+(k/Math.max(1,ANIM.hist.length-1))*(R-L),py=H-16-((v-0.72)/0.50)*(H-CH-30);
+    k?x.lineTo(px,py):x.moveTo(px,py);
+  });
+  x.strokeStyle='#ffd479';x.lineWidth=2;x.stroke();
+  line(x,L,H-16-((1-0.72)/0.50)*(H-CH-30),R,H-16-((1-0.72)/0.50)*(H-CH-30),'#2b6b67',1);
+  x.fillStyle='#9fb0c8';x.fillText('1.000 × v/√2 = 174.10 GeV',L+4,H-4);
+}
+function tick(ts){
+  var dt=ANIM.last?Math.min(0.06,(ts-ANIM.last)/1000):0.016;ANIM.last=ts;
+  if(ANIM.playing){
+    ANIM.t+=dt;
+    if(ANIM.kick>0){ANIM.kick-=dt;if(ANIM.kick<0)ANIM.kick=0;}
+    var u=(ANIM.t*0.16*num('pspeed'))%1;
+    ANIM.hist.push(probeValue(u,$('animMode').value,ANIM.t));
+    if(ANIM.hist.length>180)ANIM.hist.shift();
+    drawA1();
+    if($('attractor').value!=='bounce'&&Math.floor(ANIM.t*12)%3===0){V4.st.yaw+=0.004;drawC3();}
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ===== ④ 六份伪影 + 混沌轨迹 ===== */
+function lorenzPts(N){
+  var pts=[],x=0.1,y=0,z=0,dt=0.005,s=10,r=28,b=8/3;
+  for(var i=0;i<N;i++){
+    var dx=s*(y-x),dy=x*(r-z)-y,dz=x*y-b*z;
+    x+=dx*dt;y+=dy*dt;z+=dz*dt;
+    if(i>1200)pts.push({x:(x-0)/20,y:(z-25)/22,z:(y-0)/20});
+  }
+  return pts;
+}
+function thomasPts(N){
+  var pts=[],x=1.1,y=1.1,z=0.1,dt=0.05,b=0.19;
+  for(var i=0;i<N;i++){
+    var dx=Math.sin(y)-b*x,dy=Math.sin(z)-b*y,dz=Math.sin(x)-b*z;
+    x+=dx*dt;y+=dy*dt;z+=dz*dt;
+    x=clamp(x,-8,8);y=clamp(y,-8,8);z=clamp(z,-8,8);
+    if(i>600)pts.push({x:x/5,y:y/5,z:z/5});
+  }
+  return pts;
+}
+function drawC3(){
+  var o=ctx('c_c3'),x=o.x,W=o.W,H=o.H,sel=$('attractor').value;
+  x.fillStyle='#0a1120';x.fillRect(0,0,W,H);
+  if(sel==='bounce'){
+    x.fillStyle='#4fd1c5';x.font='bold 15px sans-serif';x.textAlign='center';
+    x.fillText('bounce 泡内：|Φ| = 常数',W/2,H/2-18);x.textAlign='left';
+    x.font='12px sans-serif';x.fillStyle='#9fb0c8';x.fillText('没有运动轨迹可画 —— 这才是物理答案',W/2-130,H/2+10);
+    line(x,40,H/2+52,W-40,H/2+52,'#ffd479',3);
+    x.fillStyle='#ffd479';x.fillText('⟨Φ⟩ 处处相同',W/2-44,H/2+76);
+    return;
+  }
+  var pts=sel==='lorenz'?lorenzPts(4600):thomasPts(4200);
+  var prev=null;
+  for(var i=0;i<pts.length;i++){
+    var p=V4.proj(pts[i],W,H);
+    if(prev){
+      var a=clamp((i/pts.length)*1.4+0.25,0.22,0.95);
+      line(x,prev.x,prev.y,p.x,p.y,'rgba('+(sel==='lorenz'?'79,209,197':'125,179,255')+','+fmt(a,2)+')',1.05);
+    }
+    prev=p;
+  }
+  x.fillStyle='#9fb0c8';x.font='12px sans-serif';
+  x.fillText(sel==='lorenz'?'Lorenz：σ=10 ρ=28 β=8/3':'Thomas：b=0.19（Benettin λ>0）',12,20);
+  x.fillText('⚠ 类比，非 Φ(x,t) 的解',12,H-12);
+}
+function drawC2(){
+  var o=ctx('c_c2'),x=o.x,W=o.W,H=o.H,NV=parseInt($('NV').value);
+  $('v_vN').textContent=String(NV);
+  var half=(W-30)/2,cy=118,R=78;
+  function radial(cx,n,label,col){
+    x.strokeStyle='#2a3a52';x.beginPath();x.arc(cx,cy,R,0,Math.PI*2);x.stroke();
+    for(var b=0;b<n;b++){
+      var ph=2*Math.PI*b/n;
+      for(var a=0;a<9;a++){
+        var th=Math.PI*(a+0.5)/9,rr=R*Math.sin(th);
+        dot(x,cx+rr*Math.cos(ph),cy+rr*Math.sin(ph),1.7,col);
+      }
+    }
+    x.fillStyle='#9fb0c8';x.font='12px sans-serif';x.textAlign='center';x.fillText(label,cx,cy+R+22);x.textAlign='left';
+  }
+  x.fillStyle='#0a1120';x.fillRect(0,0,W,H);
+  radial(15+half/2,6,'NV = 6 → 六条放射线','rgba(255,145,102,.85)');
+  radial(15+half+15+half/2,NV,'NV = '+NV+' → 趋连续','rgba(79,209,197,.85)');
+  /* bounce 剖面 */
+  var L=42,R2=W-16,T0=250,B=H-26;
+  axes(x,L,T0,R2-L,B-T0);x.fillStyle='#9fb0c8';x.font='11px sans-serif';x.fillText('bounce 泡：|Φ|(r)',L+4,T0+14);
+  x.beginPath();
+  for(var i=0;i<=160;i++){
+    var r=3*i/160,v=1/(1+Math.exp(-(r-1.35)*9));
+    var px=L+(i/160)*(R2-L),py=B-8-v*(B-T0-28);i?x.lineTo(px,py):x.moveTo(px,py);
+  }
+  x.strokeStyle='#ffd479';x.lineWidth=2;x.stroke();
+  x.fillStyle='#9fb0c8';x.fillText('泡内 0（均匀常数）',L+8,B-6);x.fillText('泡外 v/√2',L+(R2-L)*0.72,B-6);
+}
+function drawC(){drawC3();drawC2();}
+
+/* ===== ⑤ mK 实验 ===== */
+function drawM1(){
+  var o=ctx('c_m1'),x=o.x,W=o.W,H=o.H,T=Math.pow(10,num('mK'));
+  $('m_vT').textContent=fmt(num('mK'));
+  var L=48,R=W-16,T0=22,M1=T0+168,M2=M1+22,B1=H-24;
+  axes(x,L,T0,R-L,M1-T0);x.fillStyle='#9fb0c8';x.font='11px sans-serif';x.fillText('逃逸率 Γ(T)：热激活 → 量子平台',L+4,T0+14);
+  x.beginPath();
+  for(var i=0;i<=160;i++){
+    var lg=-1+4*i/160,t=Math.pow(10,lg);
+    var g=Math.min(1,0.035+Math.pow(t/37,1.75)/(1+Math.pow(t/37,1.75))*0.96);
+    var px=L+(i/160)*(R-L),py=M1-10-g*(M1-T0-30);i?x.lineTo(px,py):x.moveTo(px,py);
+  }
+  x.strokeStyle='#4fd1c5';x.lineWidth=2;x.stroke();
+  line(x,L+(1.568/4)*(R-L),T0,L+(1.568/4)*(R-L),M1,'#ff9166',1);
+  x.fillStyle='#ff9166';x.fillText('≈37 mK 平台',L+(1.568/4)*(R-L)+4,T0+30);
+  dot(x,L+((num('mK')+1)/4)*(R-L),M1-10-Math.min(1,0.035+Math.pow(T/37,1.75)/(1+Math.pow(T/37,1.75))*0.96)*(M1-T0-30),5,'#ffd479');
+  /* 温阶 */
+  axes(x,L,M2,R-L,B1-M2);x.fillStyle='#9fb0c8';x.fillText('稀释制冷机温阶',L+4,M2+14);
+  var steps=[['300 K','#7db3ff'],['4 K','#7db3ff'],['1 K','#4fd1c5'],['100 mK','#4fd1c5'],['10 mK','#ffd479']];
+  steps.forEach(function(s,i){
+    var y=M2+28+i*((B1-M2-38)/5),w=(R-L)*(0.86-i*0.13);
+    x.fillStyle=s[1];x.globalAlpha=0.72;x.fillRect(L+6,y,w,9);x.globalAlpha=1;
+    x.fillStyle='#9fb0c8';x.font='10.5px sans-serif';x.fillText(s[0],L+10+w,y+8);
+  });
+  x.fillStyle='#9fb0c8';x.font='10.5px sans-serif';x.fillText('³He 跨相界混合吸热 · 连续制冷 · 24–48 h 分级冷却',L+6,B1-4);
+}
+function drawM2(){
+  var o=ctx('c_m2'),x=o.x,W=o.W,H=o.H,b=num('bias');
+  $('m_vI').textContent=fmt(b);
+  var L=48,R=W-16,T0=22,M1=T0+168,M2=M1+22,B1=H-24;
+  axes(x,L,T0,R-L,M1-T0);x.fillStyle='#9fb0c8';x.font='11px sans-serif';x.fillText('逃逸电流分布 p(I_esc)',L+4,T0+14);
+  x.beginPath();
+  for(var i=0;i<=160;i++){
+    var u=i/160,v=Math.exp(-Math.pow((u-0.72)/0.13,2));
+    var px=L+u*(R-L),py=M1-8-v*(M1-T0-30);i?x.lineTo(px,py):x.moveTo(px,py);
+  }
+  x.strokeStyle='#4fd1c5';x.lineWidth=2;x.stroke();
+  line(x,L+b*(R-L),T0,L+b*(R-L),M1,'#ffd479',2);
+  x.fillStyle='#ffd479';x.fillText('I/I₀ = '+fmt(b),L+b*(R-L)+4,T0+30);
+  axes(x,L,M2,R-L,B1-M2);x.fillStyle='#9fb0c8';x.fillText('2.0 GHz 微波共振：洛伦兹峰',L+4,M2+14);
+  x.beginPath();
+  for(var j=0;j<=200;j++){
+    var f=0.5+2.5*j/200,v2=0;
+    [[0.92,0.055],[1.55,0.045],[2.10,0.038]].forEach(function(pk){v2+=pk[1]/((f-pk[0])*(f-pk[0])+pk[1]*pk[1]*9);});
+    v2=Math.min(1,v2/24);
+    var px2=L+(j/200)*(R-L),py2=B1-8-v2*(B1-M2-28);j?x.lineTo(px2,py2):x.moveTo(px2,py2);
+  }
+  x.strokeStyle='#7db3ff';x.lineWidth=2;x.stroke();
+  x.fillStyle='#9fb0c8';x.fillText('E₀→₁ / E₁→₂ / E₂→₃　·　τ ≈ 14–40 ns',L+6,B1-5);
+}
+function drawM(){drawM1();drawM2();}
+
+/* ===== 绑定：所有真实控件都绑 input + change（宿主镜像靠派发这两个事件驱动） ===== */
+function redrawAll(){drawH();drawS();drawC();drawM();drawA1();}
+function bind(id,fn){var e=$(id);e.addEventListener('input',fn);e.addEventListener('change',fn);}
+bind('hT',drawH);
+bind('mode',drawS);bind('ncs',drawS);
+bind('animMode',function(){ANIM.hist=[];ANIM.kick=0;drawA1();});
+bind('pspeed',drawA1);
+bind('NV',function(){drawS3();drawC2();});
+bind('attractor',drawC3);
+bind('mK',drawM);bind('bias',drawM);
+$('playBtn').addEventListener('click',function(){
+  ANIM.playing=!ANIM.playing;
+  this.textContent=ANIM.playing?'⏸ 暂停':'▶ 播放';
+});
+$('kickBtn').addEventListener('click',function(){
+  $('animMode').value='kick';ANIM.kick=2.6;ANIM.hist=[];ANIM.t=0;drawA1();
+});
+$('waveBtn').addEventListener('click',function(){
+  $('animMode').value='wave';ANIM.kick=0;ANIM.hist=[];ANIM.t=0;drawA1();
+});
+bindDrag('c_h3',V1,drawH3);
+bindDrag('c_s3',V2,drawS3);
+bindDrag('c_c3',V4,drawC3);
+for(var q=0;q<180;q++)ANIM.hist.push(1);
+redrawAll();
+requestAnimationFrame(tick);
+</script>
+
+<!-- CD_INLINE_DOCK · SOUL F13 独立单文件右浮窗（原控件与事件一字不改） -->
+<style id="cdInlineCSS">
+/* inline-dock.css — 注入到独立单文件，使其自身也具备右浮窗参数面板
+   仅在 JS 判定「不是 iframe」并加上 html.cd-inline-on 后生效，
+   因此被宿主 dock-core 收纳时这些规则全部不匹配，宿主 .ctl{display:none} 照常生效。 */
+html.cd-inline-on{--cd-w:340px;--cd-top:58px;--cd-right:14px}
+html.cd-inline-on body{padding-right:calc(var(--cd-w) + 26px) !important;
+  transition:padding-right .18s ease}
+#cdDockInline{position:fixed;top:var(--cd-top);right:var(--cd-right);width:var(--cd-w);
+  max-height:calc(100vh - var(--cd-top) - 18px);z-index:9000;box-sizing:border-box;
+  background:#141838;border:1px solid #2f3568;border-radius:12px;
+  box-shadow:0 16px 48px rgba(0,0,0,.55);display:flex;flex-direction:column;overflow:hidden;
+  color:#dfe3f5;font-family:"Segoe UI","Microsoft YaHei",sans-serif;line-height:1.6}
+#cdDockInline.cd-collapsed{height:auto}
+#cdDockInline.cd-collapsed #cdBodyInline,#cdDockInline.cd-collapsed #cdFootInline{display:none}
+#cdHeadInline{display:flex;align-items:center;gap:8px;padding:9px 11px;cursor:move;
+  background:linear-gradient(90deg,#1d2148,#171b3c);border-bottom:1px solid #2f3568;
+  user-select:none;flex:none;font-size:12.5px}
+#cdHeadInline .cd-t{flex:1;color:#d4af6a;font-weight:600;letter-spacing:.5px}
+#cdHeadInline button{background:none;border:1px solid #2f3568;color:#9aa0c9;
+  border-radius:6px;cursor:pointer;font-size:11px;padding:2px 7px}
+#cdHeadInline button:hover{color:#dfe3f5;border-color:#d4af6a}
+#cdGripInline{position:absolute;left:0;top:0;bottom:0;width:7px;cursor:ew-resize;z-index:3}
+#cdGripInline:hover{background:rgba(212,175,106,.30)}
+#cdBodyInline{overflow:auto;padding:10px 12px 6px;flex:1;min-height:60px}
+#cdFootInline{border-top:1px solid #2f3568;padding:7px 11px;font-size:11px;color:#9aa0c9;
+  display:flex;gap:5px;align-items:center;flex:none;flex-wrap:wrap}
+/* 状态文字独占一行，宽度档按钮整齐排在下一行 */
+#cdFootInline .cd-state-inline{flex-basis:100%;line-height:1.5}
+#cdFootInline button{cursor:pointer;border:1px solid #2f3568;border-radius:5px;
+  padding:1px 6px;background:none;color:#9aa0c9;font-size:11px}
+#cdFootInline button:hover{color:#d4af6a;border-color:#d4af6a}
+#cdHudInline{position:fixed;top:10px;right:var(--cd-right);width:var(--cd-w);
+  z-index:9200;box-sizing:border-box;display:flex;align-items:center;gap:8px;
+  background:rgba(20,24,56,.92);border:1px solid #2f3568;border-radius:9px;
+  padding:6px 10px;font-size:11.5px;color:#9aa0c9}
+#cdHudInline b{color:#d4af6a;font-weight:600}
+#cdHudInline span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#cdHudInline.min #cdHudInlineBody{display:none}
+#cdHudInline button{background:none;border:1px solid #2f3568;color:#9aa0c9;
+  border-radius:6px;cursor:pointer;font-size:11px;padding:2px 7px;flex:none}
+#cdErrInline{position:fixed;right:14px;bottom:14px;z-index:9900;max-width:440px;display:none;
+  background:#3a1418;border:1px solid #e24b4a;color:#ffd7d7;border-radius:8px;
+  padding:9px 12px;font:12px/1.5 Consolas,monospace;white-space:pre-wrap}
+
+/* 原控件条：从横铺改为浮窗内单列；控件本身与事件一律不动 */
+html.cd-inline-on .ctl{position:static !important;display:block !important;
+  grid-template-columns:1fr !important;gap:0 !important;margin:0 !important;
+  padding:0 !important;background:none !important;border:0 !important;
+  box-shadow:none !important;width:100% !important;max-height:none !important;
+  overflow:visible !important}
+html.cd-inline-on .ctl > div{margin:0 0 11px}
+html.cd-inline-on .ctl label{display:flex;justify-content:space-between;align-items:baseline;
+  gap:6px;font-size:11.5px;color:#9aa0c9;margin-bottom:3px}
+html.cd-inline-on .ctl .val{display:none}
+html.cd-inline-on .ctl input[type=range]{width:100%;accent-color:#d4af6a;margin:0;cursor:pointer}
+html.cd-inline-on .ctl select{width:100%;background:#0b0f28;border:1px solid #2f3568;
+  border-radius:6px;color:#dfe3f5;font-size:11.5px;padding:4px 6px;cursor:pointer}
+html.cd-inline-on .ctl button{background:#1c2149;border:1px solid #2f3568;color:#dfe3f5;
+  border-radius:6px;font-size:11px;padding:5px 9px;cursor:pointer;margin:0 6px 8px 0}
+html.cd-inline-on .ctl button:hover{border-color:#d4af6a;color:#d4af6a}
+html.cd-inline-on .cd-num{width:72px;flex:none;text-align:right;background:#0b0f28;
+  border:1px solid #2f3568;border-radius:5px;color:#d4af6a;font-size:11.5px;
+  padding:2px 5px;font-variant-numeric:tabular-nums;font-family:inherit}
+html.cd-inline-on .cd-num:focus{outline:none;border-color:#d4af6a}
+html.cd-inline-on .cd-btnrow{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+
+/* F14：散装控制条（.btnrow 播放/单步/复位等）搬进浮窗后的版式。
+   弹簧 div 要隐藏，读数换行，否则窄浮窗里会把按钮挤到看不见。 */
+html.cd-inline-on #cdBodyInline > .btnrow,
+html.cd-inline-on #cdBodyInline > .cd-extra{
+  display:flex;flex-wrap:wrap;gap:6px;align-items:center;
+  margin:0 0 12px;padding:0 0 10px;border-bottom:1px dashed #2f3568}
+html.cd-inline-on #cdBodyInline > .btnrow > div[style*="flex"]{display:none}
+html.cd-inline-on #cdBodyInline > .btnrow button,
+html.cd-inline-on #cdBodyInline > .cd-extra button{
+  background:#1c2149;border:1px solid #2f3568;color:#dfe3f5;
+  border-radius:6px;font-size:11px;padding:5px 9px;cursor:pointer;margin:0}
+html.cd-inline-on #cdBodyInline > .btnrow button:hover,
+html.cd-inline-on #cdBodyInline > .cd-extra button:hover{border-color:#d4af6a;color:#d4af6a}
+html.cd-inline-on #cdBodyInline > .btnrow button.on{
+  background:#173a3a;border-color:#4ec9a8;color:#4ec9a8}
+html.cd-inline-on #cdBodyInline > .btnrow .readout{
+  flex-basis:100%;font-size:11px;color:#9aa0c9}
+html.cd-inline-on #cdBodyInline > .btnrow .readout b{color:#d4af6a}
+html.cd-inline-on #cdBodyInline > .cd-extra input[type=range],
+html.cd-inline-on #cdBodyInline > .cd-extra select{width:100%;accent-color:#d4af6a}
+/* 参数多的页面（如 higgs_core 17 个控件）浮窗内可滚动，滚动条要看得见 */
+html.cd-inline-on #cdBodyInline{scrollbar-width:thin;scrollbar-color:#d4af6a #0b0f28}
+html.cd-inline-on #cdBodyInline::-webkit-scrollbar{width:9px}
+html.cd-inline-on #cdBodyInline::-webkit-scrollbar-thumb{background:#3a4173;border-radius:5px}
+html.cd-inline-on #cdBodyInline::-webkit-scrollbar-thumb:hover{background:#d4af6a}
+
+/* 顺带修 grid 的 1fr auto-min 撑宽（长公式页实测 scrollWidth 1915 > iframe 1080） */
+html.cd-inline-on .duo{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
+html.cd-inline-on .trio{grid-template-columns:repeat(3,minmax(0,1fr)) !important}
+html.cd-inline-on .cmp{grid-template-columns:138px minmax(0,1fr) minmax(0,1fr) !important}
+html.cd-inline-on .map{grid-template-columns:1.05fr minmax(0,1fr) minmax(0,1fr) !important}
+html.cd-inline-on .eq,html.cd-inline-on .note,html.cd-inline-on .panel{overflow-wrap:anywhere;word-break:break-word}
+html.cd-inline-on .eq{overflow-x:auto}
+html.cd-inline-on canvas{max-width:100%}
+
+@media(max-width:760px){
+  html.cd-inline-on{--cd-w:270px;--cd-top:52px}
+  html.cd-inline-on body{padding-right:0 !important}
+  #cdDockInline{position:relative;top:auto;right:auto;width:100%;max-height:none;margin:8px 0;border-radius:8px}
+  #cdHudInline{display:none}
+  #cdGripInline{display:none}
+}
+
+</style>
+<script id="cdInlineDock">
+/* inline-dock.js — 注入到独立单文件：把原 .ctl 包进自带右浮窗
+   SOUL F13：独立文件自身必须有右浮窗；被宿主 iframe 加载时自动让位，避免双重浮窗。
+   F11 同源：控件还是原来那批，事件一个不改；只改它们所在的容器。 */
+(function () {
+  'use strict';
+  /* 宿主 dock-core 会注入 .ctl{display:none} 并镜像收纳，这里必须完全不启用 */
+  if (window.self !== window.top) return;
+  /* ⚠️ 多数页面有「多个 .ctl」（每段图一条控件条），必须全部搬进浮窗，
+     只搬第一个的话其余控件条仍横铺在正文里 = F13 没做完 */
+  var ctls = Array.prototype.slice.call(document.querySelectorAll('.ctl'));
+  if (!ctls.length) return;
+  var root = document.documentElement, body = document.body;
+  root.classList.add('cd-inline-on');
+
+  var $ = function (s, b) { return (b || document).querySelector(s); };
+  var $$ = function (s, b) { return Array.prototype.slice.call((b || document).querySelectorAll(s)); };
+
+  /* N51：全局报错红框 */
+  var err = document.createElement('div'); err.id = 'cdErrInline'; body.appendChild(err);
+  function showErr(m) { err.style.display = 'block'; err.textContent = '[JS 错误] ' + m; }
+  window.onerror = function (m, s, l, c) { showErr(m + ' @' + (s || '').split('/').pop() + ':' + l + ':' + c); };
+
+  /* N184：右上角 HUD，只放标签、可收起；放在浮窗正上方右侧让位区，不遮正文 */
+  var hud = document.createElement('div'); hud.id = 'cdHudInline';
+  var title = (document.title || '可视化').split('｜')[0].slice(0, 26);
+  hud.innerHTML = '<b>张祥前素材库</b><span id="cdHudInlineBody">· ' + title + '</span>' +
+                  '<button data-act="hudInline">收起</button>';
+  body.appendChild(hud);
+
+  /* 浮窗外壳：把「所有」带可调参数的控件条按原文档顺序整个搬进去，
+     DOM 节点不重建 ⇒ 事件与状态原样保留。
+     F14：只认 .ctl 会漏掉播放控制条（.btnrow 的 暂停 / 单步 / 复位），
+     它们会留在正文里、紧挨着图 ⇒ 参数与图同侧，违反右浮窗铁律。 */
+  var dock = document.createElement('div'); dock.id = 'cdDockInline';
+  ctls[0].parentNode.insertBefore(dock, ctls[0]);
+  var grip = document.createElement('div'); grip.id = 'cdGripInline';
+  grip.title = '拖动调整浮窗宽度'; dock.appendChild(grip);
+  var head = document.createElement('div'); head.id = 'cdHeadInline';
+  head.innerHTML = '<span class="cd-t">⚙ 参数面板</span><button data-act="collapseInline">收起</button>';
+  dock.appendChild(head);
+  var bd = document.createElement('div'); bd.id = 'cdBodyInline';
+  dock.appendChild(bd);
+
+  /* 扫描 .ctl 之外仍留在正文的可调控件，按「控制条整组」或「单控件包一层」收纳 */
+  var CTRL_SEL = 'input[type=range],input[type=number],select,button';
+  var extra = [];
+  $$(CTRL_SEL, document.body).forEach(function (el) {
+    if (dock.contains(el) || hud.contains(el) || err.contains(el)) return;
+    if (ctls.some(function (c) { return c.contains(el); })) return;  // .ctl 内的已单独收纳
+    var p = el.parentElement;
+    if (!p) return;
+    var isBar = /(?:btnrow|btnbar|toolbar|controls?|ctrl|playbar|ops)/i.test(String(p.className || ''));
+    if (isBar && !p.querySelector('canvas') && !p.querySelector('h1,h2,h3')) {
+      if (extra.indexOf(p) < 0) extra.push(p);            // 整条控制条搬走，读数随行
+    } else {
+      var w = document.createElement('div'); w.className = 'cd-extra';
+      p.insertBefore(w, el); w.appendChild(el); extra.push(w);  // 散控件包一层再搬
+    }
+  });
+
+  /* 按原文档顺序合并，保证「播放按钮在上、参数在下」 */
+  var all = ctls.concat(extra);
+  all.sort(function (a, b) {
+    if (a === b) return 0;
+    return (a.compareDocumentPosition(b) & 4) ? -1 : 1;  // 4 = DOCUMENT_POSITION_FOLLOWING
+  });
+  all.forEach(function (c) { bd.appendChild(c); });
+
+  var ft = document.createElement('div'); ft.id = 'cdFootInline';
+  ft.innerHTML = '<span class="cd-state-inline"></span><span style="flex:1"></span><span>宽度</span>' +
+    '<button data-w="280">窄</button><button data-w="360">中</button><button data-w="460">宽</button>';
+  dock.appendChild(ft);
+
+  var ranges = $$('input[type=range]', bd);
+  var discrete = $$('select,button', bd).length;
+  /* 参数多时浮窗内部要滚动；明确标出来，避免被误读成「参数没全放进去」 */
+  var stateEl = $('.cd-state-inline', ft);
+  function refreshState() {
+    var more = bd.scrollHeight > bd.clientHeight + 4;
+    stateEl.textContent = ranges.length + ' 滑条 / ' + discrete + ' 开关 · ' +
+      all.length + ' 组控件' + (more ? ' · ↕ 可滚动' : '') + ' · 可拖可收';
+    stateEl.style.color = more ? '#d4af6a' : '';
+  }
+  refreshState();
+  window.addEventListener('resize', refreshState);
+
+  /* N241：滑条右侧数字是输入口，不是标签（隐藏原只读 .val，换成可输入） */
+  function nice(v, step) {
+    var dec = (String(step || '0.01').split('.')[1] || '').length;
+    return Number(v).toFixed(Math.min(4, dec));
+  }
+  ranges.forEach(function (rg) {
+    var holder = rg.parentElement;
+    var lab = holder ? holder.querySelector('label') : null;
+    var valEl = holder ? holder.querySelector('.val') : null;
+    if (valEl) valEl.style.display = 'none';
+    var num = document.createElement('input');
+    num.type = 'text'; num.className = 'cd-num'; num.title = '可直接输入数值（与滑条同源）';
+    num.value = nice(rg.value, rg.step);
+    (lab || holder).appendChild(num);
+
+    function apply(v, scroll) {
+      var x = parseFloat(v);
+      if (!isFinite(x)) { num.value = nice(rg.value, rg.step); return; }
+      x = Math.min(parseFloat(rg.max || '1'), Math.max(parseFloat(rg.min || '0'), x));
+      rg.value = nice(x, rg.step);
+      rg.dispatchEvent(new Event('input', { bubbles: true }));
+      rg.dispatchEvent(new Event('change', { bubbles: true }));
+      num.value = nice(rg.value, rg.step);
+      /* N207：改完参数把对应那张图送到眼前 */
+      if (scroll) {
+        var n = dock.nextElementSibling;
+        for (var k = 0; k < 4 && n; k++, n = n.nextElementSibling) {
+          var cv = n.querySelector ? n.querySelector('canvas') : null;
+          if (cv) { try { cv.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {} break; }
+        }
+      }
+    }
+    rg.addEventListener('input', function () { num.value = nice(rg.value, rg.step); });
+    num.addEventListener('change', function () { apply(num.value, true); });
+    num.addEventListener('keydown', function (e) { if (e.key === 'Enter') { apply(num.value, true); num.blur(); } });
+    num.addEventListener('dblclick', function () { num.select(); });
+  });
+
+  /* N196 可拖；N199 尺寸可调 */
+  var dragging = null;
+  head.addEventListener('mousedown', function (e) {
+    if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+    dragging = { x: e.clientX, y: e.clientY, top: dock.offsetTop,
+                 right: root.clientWidth - dock.offsetLeft - dock.offsetWidth };
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', function (e) {
+    if (!dragging) return;
+    dock.style.top = Math.max(0, dragging.top + e.clientY - dragging.y) + 'px';
+    dock.style.right = Math.max(0, dragging.right - (e.clientX - dragging.x)) + 'px';
+  });
+  document.addEventListener('mouseup', function () { dragging = null; });
+
+  var resizing = null;
+  grip.addEventListener('mousedown', function (e) {
+    resizing = { x: e.clientX, w: dock.offsetWidth };
+    e.preventDefault(); e.stopPropagation();
+  });
+  document.addEventListener('mousemove', function (e) {
+    if (!resizing) return;
+    var w = Math.min(560, Math.max(258, resizing.w + resizing.x - e.clientX));
+    root.style.setProperty('--cd-w', w + 'px');
+  });
+  document.addEventListener('mouseup', function () { resizing = null; });
+
+  $$('#cdDockInline [data-act], #cdHudInline [data-act]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var a = b.getAttribute('data-act');
+      if (a === 'collapseInline') {
+        dock.classList.toggle('cd-collapsed');
+        b.textContent = dock.classList.contains('cd-collapsed') ? '展开' : '收起';
+      } else {
+        hud.classList.toggle('min');
+        b.textContent = hud.classList.contains('min') ? '展开' : '收起';
+      }
+    });
+  });
+  $$('#cdFootInline [data-w]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      root.style.setProperty('--cd-w', b.getAttribute('data-w') + 'px');
+      setTimeout(refreshState, 80);
+    });
+  });
+})();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>场决定质量 · 三种严格机制的 3D / 2D 图解</title>
+<style>
+  :root{
+    --bg:#0d1220; --card:#161f30; --card2:#1b2639;
+    --ink:#e9f0fa; --dim:#9fb0c8; --line:#2a3a52;
+    --ok:#4fd1c5; --bad:#ff9166; --gold:#ffd479; --blue:#7db3ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"WenQuanYi Micro Hei","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    line-height:1.75;font-size:15px}
+  .wrap{max-width:1200px;margin:0 auto;padding:22px 16px 64px}
+  h1{font-size:23px;margin:0 0 6px;letter-spacing:.4px}
+  h2{font-size:17px;margin:0 0 10px;color:var(--gold)}
+  h3{font-size:14px;margin:14px 0 6px;color:var(--ok)}
+  .sub{color:var(--dim);font-size:13.5px;margin:0 0 18px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:18px}
+  .panel{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:12px}
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:760px){.duo{grid-template-columns:1fr}}
+  canvas{width:100%;height:auto;display:block;border-radius:8px;background:#0a1120;touch-action:none}
+  .cap{font-size:12.5px;color:var(--dim);margin-top:8px}
+  .tag{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:99px;border:1px solid var(--line);margin-right:6px}
+  .tag.ok{color:var(--ok);border-color:#2b6b67}
+  .tag.bad{color:var(--bad);border-color:#7a4433}
+  .tag.g{color:var(--gold);border-color:#7a6533}
+  .ctl{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:10px 0 4px}
+  .ctl label{display:block;font-size:12.5px;color:var(--dim);margin-bottom:4px}
+  .ctl input[type=range]{width:100%;accent-color:var(--gold)}
+  .val{color:var(--gold);font-variant-numeric:tabular-nums;font-weight:600}
+  .eq{background:#0b1322;border-left:3px solid var(--ok);border-radius:0 8px 8px 0;
+    padding:9px 12px;margin:8px 0;font-family:"DejaVu Serif",Georgia,serif;
+    font-size:14.5px;overflow-x:auto;white-space:nowrap;color:#dce9ff}
+  .eq.bad{border-left-color:var(--bad)}
+  .eq .n{color:var(--gold);font-family:inherit;font-size:12px;margin-right:8px}
+  .note{font-size:12.8px;color:var(--dim);margin:5px 0 0}
+  .cmp{display:grid;grid-template-columns:96px 1fr 1fr;gap:0;font-size:13px}
+  .cmp>div{padding:8px 10px;border-bottom:1px solid var(--line)}
+  .cmp .h{color:var(--gold);font-weight:600;background:#101a2b}
+  .cmp .k{color:var(--dim)}
+  b.ok{color:var(--ok)} b.bad{color:var(--bad)} b.g,b.gold{color:var(--gold)} b.blue{color:var(--blue)}
+  .foot{font-size:12.5px;color:var(--dim);border-top:1px dashed var(--line);padding-top:14px;margin-top:8px}
+  .hint{font-size:11.5px;color:var(--dim);margin-top:6px}
+  @media(max-width:620px){.eq{font-size:13px}.cmp{grid-template-columns:70px 1fr 1fr;font-size:11.5px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>「场决定质量」的三种严格机制 · 3D / 2D 图解</h1>
+<p class="sub">共同点：质量不是粒子内禀标签，而是与某个场背景的耦合结果。差别在<b class="g">改的是哪一种质量、要付多少能量、能否拿去开飞碟</b>。每张 3D 图可拖拽旋转，滑块实时重算；2D 图是同一公式的截面/曲线。</p>
+
+<!-- ===================== 机制一 ===================== -->
+<div class="card">
+  <h2>① 希格斯机制 + 电弱对称性恢复 <span class="tag g">最正统的「归零」</span></h2>
+  <div class="eq"><span class="n">H1</span>
+    m<sub>f</sub> = <span class="frac"><i>y<sub>f</sub> v(T)</i><i>√2</i></span> ,&nbsp;
+    V(φ) = −½μ²|φ|² + ¼λ|φ|⁴ + ½ c T²|φ|² ,&nbsp;
+    v(T) = v₀ √(1 − T²/T<sub>c</sub>²)
+  </div>
+  <div class="eq"><span class="n">H2</span>
+    v₀ = 246.22 GeV ,&nbsp; T<sub>c</sub> ≈ 160 GeV ≈ 1.85×10¹⁵ K → v→0 ，电子 / W / Z 的静质量<b class="g">真的归零</b>
+  </div>
+
+  <div class="ctl">
+    <div><label>温度 T / T<sub>c</sub> = <span class="val" id="h_vT">0.00</span></label>
+      <input type="range" id="hT" min="0" max="1.30" step="0.01" value="0"></div>
+    <div><label>视角：拖 3D 图旋转 · 双击复位</label><div class="hint" id="h_ang">yaw 0.70 / pitch 0.52</div></div>
+  </div>
+
+  <div class="duo">
+    <div class="panel">
+      <span class="tag g">3D · 墨西哥帽势 V(φ₁,φ₂)</span>
+      <canvas id="h3" width="520" height="420"></canvas>
+      <p class="cap">径向 r=|φ|，竖直为势能。T=0 时帽檐一圈都是真空（自发破缺）；升温把帽心抬起来，T≥T<sub>c</sub> 时极小值移到 φ=0，对称性恢复。金点 = 当前真空位置 v(T)。</p>
+    </div>
+    <div class="panel">
+      <span class="tag ok">2D · 径向截面 + 质量跑动</span>
+      <canvas id="h2" width="520" height="420"></canvas>
+      <p class="cap">上：V(r) 在 T/T<sub>c</sub>=0 / 0.6 / 1.0 / 1.3 的四条截面；下：m(T)/m₀=v(T)/v₀，到 T<sub>c</sub> 归零。注意这是<b class="bad">把整个真空加热到宇宙初期</b>，不是省能量操作。</p>
+    </div>
+  </div>
+
+  <h3>为什么飞船不会变轻</h3>
+  <p class="note">质子 938.27 MeV 里，三个价夸克的希格斯质量加起来只有约 9 MeV（约 1%）；<b class="blue">90% 以上来自 QCD 束缚能</b>——格点 QCD 分解：夸克动能+势能 32%、胶子场能 36%、迹反常 23%、夸克质量项约 9%。把希格斯关掉，质子还剩约九成质量；但电子变无质量 → 玻尔半径 a₀=ℏ/(mₑcα) 发散 → 原子、化学、材料全都不存在。W/Z 也失去质量，弱力变长程，恒星燃烧被改写。</p>
+  <div class="eq bad"><span class="n">H3</span>
+    m<sub>proton</sub> ≈ E<sub>QCD</sub>/c² + Σ m<sub>q</sub> ，&nbsp; E<sub>QCD</sub>/m<sub>p</sub>c² ≳ 0.9 &nbsp;⇒&nbsp; v→0 时「飞碟材料」先消失
+  </div>
+</div>
+
+<!-- ===================== 机制二 ===================== -->
+<div class="card">
+  <h2>② symmetron / chameleon 屏蔽标量场 <span class="tag ok">最像「建个场结构改质量」</span></h2>
+  <div class="eq"><span class="n">S1</span>
+    V(φ) = −½μ²φ² + ¼λφ⁴ ，&nbsp; A(φ) = 1 + <span class="frac"><i>φ²</i><i>2M²</i></span> ，&nbsp;
+    V<sub>eff</sub>(φ;ρ) = ½( <span class="frac"><i>ρ</i><i>μ²M²</i></span> − 1 ) μ²φ² + ¼λφ⁴
+  </div>
+  <div class="eq"><span class="n">S2</span>
+    φ<sub>VEV</sub>(ρ) = <span class="frac"><i>μ</i><i>√λ</i></span> √(1 − ρ̃) （ρ̃&lt;1） ，&nbsp;
+    耦合 ∝ φ<sub>VEV</sub> → ρ̃≥1 时 <b class="ok">φ=0、对称性恢复、第五力被屏蔽</b>
+  </div>
+  <div class="eq"><span class="n">S3</span>
+    chameleon：m<sub>eff</sub>(ρ) 随环境密度单调上升 → 高密度区力程 λ∼1/m<sub>eff</sub> 变短而「隐身」
+  </div>
+
+  <div class="ctl">
+    <div><label>环境密度 ρ̃ = ρ/(μ²M²) = <span class="val" id="s_vR">0.20</span></label>
+      <input type="range" id="sR" min="0" max="2.00" step="0.01" value="0.20"></div>
+    <div><label>视角：拖 3D 图旋转 · 双击复位</label><div class="hint" id="s_ang">yaw 0.62 / pitch 0.50</div></div>
+  </div>
+
+  <div class="duo">
+    <div class="panel">
+      <span class="tag ok">3D · 有效势曲面 V<sub>eff</sub>(φ, ρ̃)</span>
+      <canvas id="s3" width="520" height="420"></canvas>
+      <p class="cap">横轴 φ，深度轴 ρ̃（物质密度），竖直为 V<sub>eff</sub>。<b class="ok">前方低密度 = 双阱</b>（对称破缺、VEV≠0、耦合开启）；<b class="bad">后方高密度 = 单阱</b>（φ=0、屏蔽）。橙点 = 当前密度下的真空。</p>
+    </div>
+    <div class="panel">
+      <span class="tag ok">2D · VEV / 耦合 / 有效质量</span>
+      <canvas id="s2" width="520" height="420"></canvas>
+      <p class="cap">上：φ<sub>VEV</sub>(ρ̃) 与第五力耦合（ρ̃≥1 后归零）；下：chameleon 的 m<sub>eff</sub>(ρ̃) 上升、力程缩短。灰带 ≈ 太阳系/实验室密度区，已被 qBOUNCE、中子干涉、月球激光测距、Eöt-Wash 反复收紧；CANNEX 是下一代微米–毫米短程力实验。</p>
+    </div>
+  </div>
+
+  <h3>关键限定</h3>
+  <p class="note">改的是<b class="bad">那个假想标量场自己的有效质量 / 与物质的耦合</b>，不是你我手里物体的静质量。且它是被实验不断挤窄的候选模型：2024 年 <i>Universe</i> 综述用真实残余气体密度 ρ<sub>v</sub>=2.32×10⁻⁷ kg/m³ 重算 qBOUNCE，把 symmetron 可探测范围从 μ=10 eV 扩到 0.1 MeV，多项约束提升数个数量级，<b class="bad">至今零观测支持</b>。</p>
+</div>
+
+<!-- ===================== 机制三 ===================== -->
+<div class="card">
+  <h2>③ 凝聚态「有效质量为零」 <span class="tag ok">实验室里真做出来了</span></h2>
+  <div class="eq"><span class="n">C1</span>
+    m* = ℏ² ( <span class="frac"><i>∂²E</i><i>∂k²</i></span> )<sup>−1</sup> ,&nbsp;
+    抛物线 E = ℏ²k²/2m → m*=m ；<b class="ok">线性 E = ±ℏv<sub>F</sub>|k| → ∂²E/∂k² = 0 → m*→∞（无质量狄拉克准粒子）</b>
+  </div>
+  <div class="eq"><span class="n">C2</span>
+    E<sub>±</sub>(k) = ±√[ (ℏv<sub>F</sub>k)² + Δ² ] ，&nbsp; Δ=0 无质量；Δ&gt;0（应变 / 掺杂 / 磁场破对称）→ 打开能隙、恢复有限 m*
+  </div>
+  <div class="eq"><span class="n">C3</span>
+    石墨烯 v<sub>F</sub> ≈ c/300 ；外尔半金属中左右手 Weyl 点在动量空间分离，无质量与手性绑定
+  </div>
+
+  <div class="ctl">
+    <div><label>能隙 Δ / ℏv<sub>F</sub> = <span class="val" id="c_vG">0.00</span>（应变/对称性破缺）</label>
+      <input type="range" id="cG" min="0" max="0.60" step="0.01" value="0"></div>
+    <div><label>视角：拖 3D 图旋转 · 双击复位</label><div class="hint" id="c_ang">yaw 0.75 / pitch 0.48</div></div>
+  </div>
+
+  <div class="duo">
+    <div class="panel">
+      <span class="tag ok">3D · 狄拉克双锥 E(k<sub>x</sub>,k<sub>y</sub>)</span>
+      <canvas id="c3" width="520" height="420"></canvas>
+      <p class="cap">上下两叶在 Δ=0 时于 Dirac 点尖锥相接（线性色散、m*=0）。拖动滑块打开 Δ，锥顶分离成旋转双曲面 → 低能近似变抛物线 → 获得有限有效质量。这就是「应变石墨烯 → 半狄拉克费米子」的几何图像。</p>
+    </div>
+    <div class="panel">
+      <span class="tag ok">2D · 色散截面 E(k)</span>
+      <canvas id="c2" width="520" height="420"></canvas>
+      <p class="cap">青 = 线性（无质量）；橙 = 当前 Δ 下的有隙双曲线；灰虚线 = 抛物线 E=ℏ²k²/2m 对照。判断标准只有一句：<b class="g">看 E(k) 的二阶导，不看样品重量</b>。</p>
+    </div>
+  </div>
+
+  <h3>最容易被偷换的一步</h3>
+  <p class="note">这是<b class="bad">晶格中的准粒子激发</b>：样品该一克还是一克，电子的静质量 0.511 MeV 一毫克没变。改的是周期性势场里 E(k) 的曲率，不是洛伦兹标量 m。把「有效质量」偷换成「静质量」，是全网这类内容最普遍的漏洞。</p>
+</div>
+
+<!-- ===================== 对照 ===================== -->
+<div class="card">
+  <h2>④ 三者对照 · 以及为什么都不是飞碟</h2>
+  <div class="cmp">
+    <div class="h">机制</div><div class="h">改的是哪种「质量」</div><div class="h">代价 / 边界</div>
+    <div class="k">希格斯恢复</div>
+    <div>基本费米子与 W/Z 的<b>静质量项</b>，v(T)→0 严格归零</div>
+    <div>T~1.85×10¹⁵ K；质子余 ~90% QCD 质量；原子/化学先消失；最费能量</div>
+    <div class="k">屏蔽标量场</div>
+    <div>假想标量场的<b>有效质量 & 第五力耦合</b>，随环境密度开关</div>
+    <div>不动物体静质量；系数被精密实验压了多个数量级，零观测支持</div>
+    <div class="k">凝聚态</div>
+    <div>晶格准粒子的<b>有效质量 m*</b>（色散曲率）</div>
+    <div>样品静质量不变；只在材料内部成立，不能拿去飞</div>
+    <div class="k">张氏「质变」</div>
+    <div><b class="bad">声称改宏观飞碟的静质量并归零</b></div>
+    <div>无作用量、无能标、无系数表；5 吨对应 4.5×10²⁰ J 无处可去；与 10⁻¹⁸ 级各向异性零结果冲突</div>
+  </div>
+  <p class="foot"><b>边界声明：</b>本页三张 3D 图都是按上方公式数值采样绘制的示意曲面，不是实验数据重建；「对称性恢复」「屏蔽」「无质量准粒子」分别是标准模型、修改引力候选模型、凝聚态中真实成立或真实观测到的机制，但<b class="bad">没有任何一种支持「建立场结构让宏观物体静质量归零且不消耗能量」</b>。场决定质量，恰恰意味着质量就是那份 E=mc² 的能量——动它就得结账。</p>
+</div>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+var OK="#4fd1c5",BAD="#ff9166",GOLD="#ffd479",BLUE="#7db3ff",DIM="#9fb0c8",GRID="#223149",INK="#e9f0fa";
+var PI=Math.PI,TAU=2*PI;
+function $(id){return document.getElementById(id);}
+function num(id){return parseFloat($(id).value);}
+function fmt(x,n){return x.toFixed(n===undefined?2:n);}
+
+/* ---------- 通用 2D 绘图 ---------- */
+function plot2D(cv,panels){
+  var dpr=window.devicePixelRatio||1;
+  var w=cv.clientWidth||cv.width, h=Math.round(w*(cv.height/cv.width));
+  cv.width=Math.round(w*dpr); cv.height=Math.round(h*dpr);
+  var ctx=cv.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,w,h); ctx.fillStyle="#0a1120"; ctx.fillRect(0,0,w,h);
+  var n=panels.length, gap=10, ph=(h-16-gap*(n-1))/n;
+  for(var pi=0;pi<n;pi++){
+    var P=panels[pi], L=44,R=w-14,T=8+pi*(ph+gap),B=T+ph-12;
+    var xmin=P.xmin,xmax=P.xmax,ymin=P.ymin,ymax=P.ymax;
+    function X(v){return L+(v-xmin)/(xmax-xmin)*(R-L);}
+    function Y(v){return B-(v-ymin)/(ymax-ymin)*(B-T);}
+    // grid
+    ctx.strokeStyle=GRID;ctx.lineWidth=1;
+    var nx=P.nx||5,ny=P.ny||4;
+    for(var i=0;i<=nx;i++){var gx=L+(R-L)*i/nx;ctx.beginPath();ctx.moveTo(gx,T);ctx.lineTo(gx,B);ctx.stroke();}
+    for(var j=0;j<=ny;j++){var gy=T+(B-T)*j/ny;ctx.beginPath();ctx.moveTo(L,gy);ctx.lineTo(R,gy);ctx.stroke();}
+    ctx.strokeStyle="rgba(159,176,200,.35)";
+    if(ymin<0&&ymax>0){ctx.beginPath();ctx.moveTo(L,Y(0));ctx.lineTo(R,Y(0));ctx.stroke();}
+    // series
+    (P.series||[]).forEach(function(S){
+      ctx.strokeStyle=S.color;ctx.lineWidth=S.width||2;ctx.setLineDash(S.dash||[]);
+      ctx.beginPath();
+      S.pts.forEach(function(p,k){var xx=X(p[0]),yy=Y(Math.max(ymin,Math.min(ymax,p[1])));
+        if(k===0)ctx.moveTo(xx,yy);else ctx.lineTo(xx,yy);});
+      ctx.stroke();ctx.setLineDash([]);
+    });
+    // points
+    (P.dots||[]).forEach(function(D){
+      ctx.fillStyle=D.color||GOLD;ctx.beginPath();ctx.arc(X(D.x),Y(D.y),D.r||4,0,TAU);ctx.fill();
+      if(D.label){ctx.fillStyle=D.color||GOLD;ctx.font="10.5px 'WenQuanYi Micro Hei',sans-serif";
+        ctx.fillText(D.label,X(D.x)+6,Y(D.y)-6);}
+    });
+    // vlines / bands
+    (P.bands||[]).forEach(function(bd){
+      ctx.fillStyle=bd.color||"rgba(159,176,200,.10)";
+      ctx.fillRect(X(bd.a),T,X(bd.b)-X(bd.a),B-T);
+      if(bd.label){ctx.fillStyle=DIM;ctx.font="10px 'WenQuanYi Micro Hei',sans-serif";
+        ctx.fillText(bd.label,X(bd.a)+5,T+12);}
+    });
+    (P.vlines||[]).forEach(function(vl){
+      ctx.strokeStyle=vl.color||"rgba(255,145,102,.6)";ctx.setLineDash([4,4]);ctx.lineWidth=1.2;
+      ctx.beginPath();ctx.moveTo(X(vl.x),T);ctx.lineTo(X(vl.x),B);ctx.stroke();ctx.setLineDash([]);
+      if(vl.label){ctx.fillStyle=vl.color||BAD;ctx.font="10px 'WenQuanYi Micro Hei',sans-serif";
+        ctx.fillText(vl.label,X(vl.x)+4,T+12);}
+    });
+    ctx.fillStyle=DIM;ctx.font="10.5px 'WenQuanYi Micro Hei',sans-serif";
+    ctx.fillText(P.title||"",L,T+12);
+    if(P.xlabel)ctx.fillText(P.xlabel,R-58,B+11);
+    if(P.ytop)ctx.fillText(P.ytop,L+4,T+11);
+    ctx.fillStyle="rgba(159,176,200,.75)";
+    ctx.fillText(fmt(xmin,1),L-2,B+11);ctx.fillText(fmt(xmax,1),R-24,B+11);
+  }
+}
+
+/* ---------- 通用 3D 曲面 ---------- */
+function Surf3D(cv,opt){
+  var st={yaw:opt.yaw||0.7,pitch:opt.pitch||0.5,drag:false,lx:0,ly:0};
+  function render(){
+    var dpr=window.devicePixelRatio||1;
+    var w=cv.clientWidth||cv.width,h=Math.round(w*(cv.height/cv.width));
+    cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);
+    var ctx=cv.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,w,h);ctx.fillStyle="#0a1120";ctx.fillRect(0,0,w,h);
+    var cx=w/2,cy=h*0.56,s=Math.min(w,h)*0.30;
+    var cyaw=Math.cos(st.yaw),syaw=Math.sin(st.yaw),cp=Math.cos(st.pitch),sp=Math.sin(st.pitch);
+    function proj(x,y,z){
+      var X=x*cyaw-y*syaw, Y=x*syaw+y*cyaw;
+      return {x:cx+X*s, y:cy-z*s*cp+Y*s*sp, d:Y*cp+z*sp};
+    }
+    var n=opt.n||26, umin=opt.umin, umax=opt.umax, vmin=opt.vmin, vmax=opt.vmax;
+    var quads=[];
+    for(var i=0;i<n;i++)for(var j=0;j<n;j++){
+      var u0=umin+(umax-umin)*i/n,u1=umin+(umax-umin)*(i+1)/n;
+      var v0=vmin+(vmax-vmin)*j/n,v1=vmin+(vmax-vmin)*(j+1)/n;
+      var pts=[[u0,v0],[u1,v0],[u1,v1],[u0,v1]].map(function(q){
+        var zz=opt.f(q[0],q[1]);
+        if(!isFinite(zz))zz=0;
+        zz=Math.max(opt.zmin||-1.4,Math.min(opt.zmax||1.4,zz));
+        return proj(q[0],q[1],zz);
+      });
+      var d=(pts[0].d+pts[1].d+pts[2].d+pts[3].d)/4;
+      var zavg=(opt.g?opt.g((u0+u1)/2,(v0+v1)/2):0);
+      quads.push({p:pts,d:d,z:zavg});
+    }
+    quads.sort(function(a,b){return a.d-b.d;});
+    quads.forEach(function(Q){
+      ctx.beginPath();ctx.moveTo(Q.p[0].x,Q.p[0].y);
+      for(var k=1;k<4;k++)ctx.lineTo(Q.p[k].x,Q.p[k].y);
+      ctx.closePath();
+      var t=Math.max(0,Math.min(1,(Q.z-(opt.cmin||-1))/(opt.cmax||1)));
+      var col=opt.color(t,Q.d);
+      ctx.fillStyle=col.fill;ctx.fill();
+      if(opt.wire!==false){ctx.strokeStyle=col.line;ctx.lineWidth=.5;ctx.stroke();}
+    });
+    // axes
+    var O=proj(umin,vmin,0),Ax=proj(umax,vmin,0),Ay=proj(umin,vmax,0),Az=proj(umin,vmin,opt.zmax||1.4);
+    ctx.strokeStyle="rgba(159,176,200,.55)";ctx.lineWidth=1.2;
+    [[O,Ax],[O,Ay],[O,Az]].forEach(function(e){
+      ctx.beginPath();ctx.moveTo(e[0].x,e[0].y);ctx.lineTo(e[1].x,e[1].y);ctx.stroke();});
+    ctx.fillStyle=DIM;ctx.font="10.5px 'WenQuanYi Micro Hei',sans-serif";
+    ctx.fillText(opt.ax||"φ₁",Ax.x+3,Ax.y+4);
+    ctx.fillText(opt.ay||"φ₂",Ay.x+3,Ay.y+4);
+    ctx.fillText(opt.az||"V",Az.x-14,Az.y-4);
+    // overlay curves: each is array of [u,v,z]
+    (opt.curves||[]).forEach(function(C){
+      ctx.strokeStyle=C.color;ctx.lineWidth=C.width||2.2;ctx.setLineDash(C.dash||[]);
+      ctx.beginPath();
+      C.pts.forEach(function(q,k){
+        var zz=Math.max(opt.zmin||-1.4,Math.min(opt.zmax||1.4,q[2]));
+        var p=proj(q[0],q[1],zz);
+        if(k===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y);
+      });
+      ctx.stroke();ctx.setLineDash([]);
+    });
+    // markers
+    (opt.dots||[]).forEach(function(D){
+      var p=proj(D.u,D.v,Math.max(opt.zmin||-1.4,Math.min(opt.zmax||1.4,D.z)));
+      ctx.fillStyle=D.color||GOLD;ctx.beginPath();ctx.arc(p.x,p.y,D.r||4.5,0,TAU);ctx.fill();
+      if(D.label){ctx.fillStyle=D.color||GOLD;ctx.font="10.5px 'WenQuanYi Micro Hei',sans-serif";
+        ctx.fillText(D.label,p.x+7,p.y-7);}
+    });
+    if(opt.legend){ctx.fillStyle=DIM;ctx.font="10.5px 'WenQuanYi Micro Hei',sans-serif";
+      opt.legend.forEach(function(t,k){ctx.fillText(t,10,h-12-(opt.legend.length-1-k)*14);});}
+  }
+  function down(e){st.drag=true;var p=e.touches?e.touches[0]:e;st.lx=p.clientX;st.ly=p.clientY;}
+  function move(e){if(!st.drag)return;var p=e.touches?e.touches[0]:e;
+    st.yaw+=(p.clientX-st.lx)*0.008;st.pitch=Math.max(0.12,Math.min(1.25,st.pitch+(p.clientY-st.ly)*0.006));
+    st.lx=p.clientX;st.ly=p.clientY;render();if(opt.onangle)opt.onangle(st);e.preventDefault();}
+  function up(){st.drag=false;}
+  cv.addEventListener("mousedown",down);window.addEventListener("mousemove",move);window.addEventListener("mouseup",up);
+  cv.addEventListener("touchstart",down,{passive:true});
+  cv.addEventListener("touchmove",move,{passive:false});
+  cv.addEventListener("touchend",up);
+  cv.addEventListener("dblclick",function(){st.yaw=opt.yaw||0.7;st.pitch=opt.pitch||0.5;render();if(opt.onangle)opt.onangle(st);});
+  return {render:render,state:st};
+}
+
+function lerpColor(a,b,t){
+  function hx(c){return [parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];}
+  var A=hx(a),B=hx(b);
+  return "rgb("+Math.round(A[0]+(B[0]-A[0])*t)+","+Math.round(A[1]+(B[1]-A[1])*t)+","+
+         Math.round(A[2]+(B[2]-A[2])*t)+")";
+}
+
+/* ===================== 机制一 ===================== */
+var H={
+  T:0,
+  V:function(r,tau){return -0.5*r*r+0.25*Math.pow(r,4)+0.5*tau*r*r;},
+  vmin:function(tau){return Math.sqrt(Math.max(0,1-tau));}
+};
+var hSurf=Surf3D($("h3"),{
+  yaw:0.70,pitch:0.52,n:30,umin:-1.55,umax:1.55,vmin:-1.55,vmax:1.55,zmin:-0.42,zmax:0.62,
+  ax:"φ₁",ay:"φ₂",az:"V",
+  f:function(x,y){var r=Math.hypot(x,y);return H.V(r,Math.pow(H.T,2))*2.0;},
+  g:function(x,y){var r=Math.hypot(x,y);return H.V(r,Math.pow(H.T,2))*2.0;},
+  cmin:-0.42,cmax:0.62,
+  color:function(t,d){var base=lerpColor("#1c5f66","#ffd479",t);
+    return {fill:base.replace("rgb","rgba").replace(")",",0.72)"),line:"rgba(255,212,121,.13)"};},
+  curves:(function(){
+    var out=[];
+    // 帽檐参考圈（T=0 的极小环）
+    var ring=[];for(var i=0;i<=120;i++){var a=i*TAU/120;ring.push([Math.cos(a),Math.sin(a),H.V(1,0)*2.0]);}
+    out.push({pts:ring,color:"rgba(79,209,197,.85)",width:2,dash:[5,4]});
+    return out;
+  })(),
+  onangle:function(s){$("h_ang").textContent="yaw "+fmt(s.yaw)+" / pitch "+fmt(s.pitch);}
+});
+function hDots(){
+  var tau=Math.pow(H.T,2),v=H.vmin(tau);
+  var a=0.7;
+  return [{u:v*Math.cos(a),v:v*Math.sin(a),z:H.V(v,tau)*2.0,color:GOLD,r:5,
+           label:"v(T)="+(v*246.22).toFixed(1)+" GeV"}];
+}
+function drawH(){
+  H.T=num("hT");$("h_vT").textContent=fmt(H.T);
+  var tau=Math.pow(H.T,2),v=H.vmin(tau);
+  hSurf.curves=(function(){
+    var out=[],ring=[];
+    for(var i=0;i<=120;i++){var a=i*TAU/120;ring.push([Math.cos(a),Math.sin(a),H.V(1,0)*2.0]);}
+    out.push({pts:ring,color:"rgba(79,209,197,.8)",width:1.8,dash:[5,4]});
+    // 当前极小环
+    if(v>0.01){var r2=[];for(var j=0;j<=120;j++){var b=j*TAU/120;r2.push([v*Math.cos(b),v*Math.sin(b),H.V(v,tau)*2.0]);}
+      out.push({pts:r2,color:GOLD,width:2.4});}
+    return out;
+  })();
+  hSurf.dots=hDots();hSurf.render();
+
+  // 2D: 上 V(r) 族，下 m(T)/m0
+  var taus=[0,0.36,1,1.69],cols=[BAD,"rgba(255,212,121,.8)",OK,"rgba(125,179,255,.75)"];
+  var up=[];
+  taus.forEach(function(t,k){
+    var pts=[];for(var i=0;i<=160;i++){var r=1.6*i/160;pts.push([r,H.V(r,t)*2.0]);}
+    up.push({pts:pts,color:cols[k],width:k===1?2.4:1.6,dash:k===3?[5,4]:[]});
+  });
+  var vDots=taus.map(function(t,k){var vv=H.vmin(t);return {x:vv,y:H.V(vv,t)*2.0,color:cols[k],r:3};});
+  vDots.push({x:v,y:H.V(v,tau)*2.0,color:GOLD,r:5,label:"当前"});
+  var low=[];for(var i2=0;i2<=160;i2++){var T=1.3*i2/160;low.push([T,H.vmin(T*T)]);}
+  plot2D($("h2"),[
+    {title:"V(r) 径向截面  ·  T/Tc = 0 / 0.6 / 1.0 / 1.3",xmin:0,xmax:1.6,ymin:-0.42,ymax:0.62,
+     xlabel:"r = |φ|",ny:4,series:up,dots:vDots,
+     vlines:[{x:v,color:GOLD,label:"v(T)"}]},
+    {title:"m(T)/m₀ = v(T)/v₀",xmin:0,xmax:1.3,ymin:0,ymax:1.05,xlabel:"T / Tc",ny:4,
+     series:[{pts:low,color:GOLD,width:2.4}],
+     dots:[{x:H.T,y:H.vmin(tau),color:BAD,r:5,label:fmt(H.vmin(tau))}],
+     vlines:[{x:1,color:OK,label:"Tc≈160 GeV"}]}
+  ]);
+}
+
+/* ===================== 机制二 ===================== */
+var S={rho:0.2};
+function sV(phi,rh){return 0.5*(rh-1)*phi*phi+0.25*Math.pow(phi,4);}
+function sPhi(rh){return Math.sqrt(Math.max(0,1-rh));}
+var sSurf=Surf3D($("s3"),{
+  yaw:0.62,pitch:0.50,n:30,umin:-1.5,umax:1.5,vmin:0,vmax:2.0,zmin:-0.30,zmax:0.55,
+  ax:"φ",ay:"ρ̃（密度）",az:"V_eff",
+  f:function(x,y){return sV(x,y)*2.2;},
+  g:function(x,y){return sV(x,y)*2.2;},
+  cmin:-0.30,cmax:0.55,
+  color:function(t,d){var base=lerpColor("#1a4f63","#4fd1c5",t);
+    return {fill:base.replace("rgb","rgba").replace(")",",0.70)"),line:"rgba(79,209,197,.12)"};},
+  onangle:function(s){$("s_ang").textContent="yaw "+fmt(s.yaw)+" / pitch "+fmt(s.pitch);}
+});
+function drawS(){
+  S.rho=num("sR");$("s_vR").textContent=fmt(S.rho);
+  // 当前密度下的 V(φ) 截面曲线
+  var cur=[];for(var i=0;i<=160;i++){var p=-1.5+3*i/160;cur.push([p,S.rho,sV(p,S.rho)*2.2]);}
+  var ph=sPhi(S.rho);
+  sSurf.curves=[{pts:cur,color:GOLD,width:2.6}];
+  sSurf.dots=[{u:ph,v:S.rho,z:sV(ph,S.rho)*2.2,color:BAD,r:5,label:"φ_VEV="+fmt(ph)}];
+  sSurf.render();
+
+  var up1=[],up2=[],lo=[];
+  for(var j=0;j<=200;j++){
+    var r=2*j/200,v=sPhi(r);
+    up1.push([r,v]);up2.push([r,v*v]);
+    lo.push([r,0.35+1.15*Math.pow(r,0.55)]);   // chameleon m_eff 示意单调上升
+  }
+  plot2D($("s2"),[
+    {title:"φ_VEV(ρ̃) 与第五力耦合 ∝ φ_VEV（ρ̃≥1 后归零）",
+     xmin:0,xmax:2,ymin:0,ymax:1.08,xlabel:"ρ̃ = ρ/(μ²M²)",ny:4,
+     series:[{pts:up1,color:OK,width:2.4},{pts:up2,color:GOLD,width:1.8,dash:[5,4]}],
+     dots:[{x:S.rho,y:sPhi(S.rho),color:BAD,r:5,label:"当前"}],
+     vlines:[{x:1,color:BAD,label:"ρ̃=1 屏蔽阈值"}],
+     bands:[{a:1.35,b:2,color:"rgba(255,145,102,.09)",label:"地球/实验室高密度"}]},
+    {title:"chameleon：m_eff(ρ̃) ↑ ⇒ 力程 1/m_eff ↓（隐身）",
+     xmin:0,xmax:2,ymin:0,ymax:2.05,xlabel:"ρ̃",ny:4,
+     series:[{pts:lo,color:BLUE,width:2.4}],
+     dots:[{x:S.rho,y:0.35+1.15*Math.pow(S.rho,0.55),color:GOLD,r:4}],
+     vlines:[{x:1,color:BAD}]}
+  ]);
+}
+
+/* ===================== 机制三 ===================== */
+var C={g:0};
+function cE(kx,ky,sign){return sign*Math.sqrt(kx*kx+ky*ky+C.g*C.g)*0.95;}
+var cSurf=Surf3D($("c3"),{
+  yaw:0.75,pitch:0.48,n:26,umin:-1.15,umax:1.15,vmin:-1.15,vmax:1.15,zmin:-1.25,zmax:1.25,
+  ax:"kₓ",ay:"kᵧ",az:"E",
+  f:function(){return 0;}, // 由 curves/两层曲面替代：用 opt.layers
+  g:function(){return 0;},
+  cmin:-1.2,cmax:1.2,
+  color:function(){return {fill:"rgba(20,40,60,.5)",line:"rgba(40,70,95,.2)"};},
+  onangle:function(s){$("c_ang").textContent="yaw "+fmt(s.yaw)+" / pitch "+fmt(s.pitch);}
+});
+// 自定义：两叶曲面（重写 render 通过注入 layers 支持）
+// 用更直接的办法：把 f 定义为上叶，再额外画下叶（通过 curves 里的网格线）
+function drawC(){
+  C.g=num("cG");$("c_vG").textContent=fmt(C.g);
+  // 用线框画上下两叶：生成经纬网格线作为 curves
+  var lines=[],NR=11,NA=26;
+  [1,-1].forEach(function(sign){
+    var col=sign>0?"rgba(79,209,197,.55)":"rgba(255,145,102,.55)";
+    for(var ri=1;ri<=NR;ri++){
+      var rr=1.15*ri/NR,pts=[];
+      for(var ai=0;ai<=NA;ai++){
+        var a=ai*TAU/NA,kx=rr*Math.cos(a),ky=rr*Math.sin(a);
+        pts.push([kx,ky,cE(kx,ky,sign)]);
+      }
+      lines.push({pts:pts,color:col,width:1});
+    }
+    for(var ai2=0;ai2<NA;ai2+=2){
+      var a2=ai2*TAU/NA,pts2=[];
+      for(var rj=0;rj<=NR;rj++){
+        var r2=1.15*rj/NR,kx2=r2*Math.cos(a2),ky2=r2*Math.sin(a2);
+        pts2.push([kx2,ky2,cE(kx2,ky2,sign)]);
+      }
+      lines.push({pts:pts2,color:col,width:1});
+    }
+  });
+  // 中央 k=0 处的能隙连线
+  lines.push({pts:[[0,0,-C.g*0.95],[0,0,C.g*0.95]],color:GOLD,width:2.4,dash:[4,3]});
+  cSurf.curves=lines;
+  cSurf.dots=[{u:0,v:0,z:C.g*0.95,color:GOLD,r:4,label:C.g>0.01?"Δ":"Dirac 点"}];
+  cSurf.render();
+
+  // 2D 色散截面
+  var lin=[],gap=[],para=[],kmax=1.2;
+  for(var i=0;i<=200;i++){
+    var k=-kmax+2*kmax*i/200;
+    lin.push([k,Math.sign(k)*Math.abs(k)*0.95]);
+    gap.push([k,Math.sign(k)*Math.sqrt(k*k+C.g*C.g)*0.95]);
+    para.push([k,0.62*k*k]);
+  }
+  plot2D($("c2"),[
+    {title:"E(k) 截面：线性 / 有隙 / 抛物线对照",xmin:-1.2,xmax:1.2,ymin:-1.35,ymax:1.35,
+     xlabel:"k",ny:4,nx:6,
+     series:[{pts:lin,color:OK,width:2.4},{pts:gap,color:BAD,width:2.6},
+             {pts:para,color:"rgba(159,176,200,.75)",width:1.6,dash:[5,4]}],
+     dots:C.g>0.01?[{x:0,y:C.g*0.95,color:GOLD,r:4,label:"Δ="+fmt(C.g)}]:
+                   [{x:0,y:0,color:GOLD,r:4,label:"m*=0"}]},
+    {title:"曲率判据：m* = ℏ²(∂²E/∂k²)⁻¹",xmin:-1.2,xmax:1.2,ymin:0,ymax:1.25,
+     xlabel:"k",ny:4,nx:6,
+     series:[
+       {pts:(function(){var a=[];for(var q=0;q<=200;q++){var k=-1.2+2.4*q/200;a.push([k,0.06]);}return a;})(),color:OK,width:2.2},
+       {pts:(function(){var a=[];for(var q=0;q<=200;q++){var k=-1.2+2.4*q/200;
+             a.push([k,0.06+1.15*C.g*C.g/Math.pow(Math.max(0.12,Math.abs(k)*Math.abs(k)+C.g*C.g),1.5)*0.10]);}return a;})(),
+        color:BAD,width:2.2},
+       {pts:(function(){var a=[];for(var q=0;q<=200;q++){var k=-1.2+2.4*q/200;a.push([k,1.10]);}return a;})(),
+        color:"rgba(159,176,200,.7)",width:1.6,dash:[5,4]}
+     ],
+     bands:[{a:-0.25,b:0.25,color:"rgba(255,212,121,.08)",label:"Dirac 点附近"}]}
+  ]);
+}
+
+/* ---------- 绑定 ---------- */
+["hT"].forEach(function(id){$(id).addEventListener("input",drawH);$(id).addEventListener("change",drawH);});
+["sR"].forEach(function(id){$(id).addEventListener("input",drawS);$(id).addEventListener("change",drawS);});
+["cG"].forEach(function(id){$(id).addEventListener("input",drawC);$(id).addEventListener("change",drawC);});
+function redrawAll(){drawH();drawS();drawC();}
+window.addEventListener("resize",redrawAll);
+redrawAll();
+})();
+</script>
+
+<!-- CD_INLINE_DOCK · SOUL F13 独立单文件右浮窗（原控件与事件一字不改） -->
+<style id="cdInlineCSS">
+/* inline-dock.css — 注入到独立单文件，使其自身也具备右浮窗参数面板
+   仅在 JS 判定「不是 iframe」并加上 html.cd-inline-on 后生效，
+   因此被宿主 dock-core 收纳时这些规则全部不匹配，宿主 .ctl{display:none} 照常生效。 */
+html.cd-inline-on{--cd-w:340px;--cd-top:58px;--cd-right:14px}
+html.cd-inline-on body{padding-right:calc(var(--cd-w) + 26px) !important;
+  transition:padding-right .18s ease}
+#cdDockInline{position:fixed;top:var(--cd-top);right:var(--cd-right);width:var(--cd-w);
+  max-height:calc(100vh - var(--cd-top) - 18px);z-index:9000;box-sizing:border-box;
+  background:#141838;border:1px solid #2f3568;border-radius:12px;
+  box-shadow:0 16px 48px rgba(0,0,0,.55);display:flex;flex-direction:column;overflow:hidden;
+  color:#dfe3f5;font-family:"Segoe UI","Microsoft YaHei",sans-serif;line-height:1.6}
+#cdDockInline.cd-collapsed{height:auto}
+#cdDockInline.cd-collapsed #cdBodyInline,#cdDockInline.cd-collapsed #cdFootInline{display:none}
+#cdHeadInline{display:flex;align-items:center;gap:8px;padding:9px 11px;cursor:move;
+  background:linear-gradient(90deg,#1d2148,#171b3c);border-bottom:1px solid #2f3568;
+  user-select:none;flex:none;font-size:12.5px}
+#cdHeadInline .cd-t{flex:1;color:#d4af6a;font-weight:600;letter-spacing:.5px}
+#cdHeadInline button{background:none;border:1px solid #2f3568;color:#9aa0c9;
+  border-radius:6px;cursor:pointer;font-size:11px;padding:2px 7px}
+#cdHeadInline button:hover{color:#dfe3f5;border-color:#d4af6a}
+#cdGripInline{position:absolute;left:0;top:0;bottom:0;width:7px;cursor:ew-resize;z-index:3}
+#cdGripInline:hover{background:rgba(212,175,106,.30)}
+#cdBodyInline{overflow:auto;padding:10px 12px 6px;flex:1;min-height:60px}
+#cdFootInline{border-top:1px solid #2f3568;padding:7px 11px;font-size:11px;color:#9aa0c9;
+  display:flex;gap:5px;align-items:center;flex:none;flex-wrap:wrap}
+/* 状态文字独占一行，宽度档按钮整齐排在下一行 */
+#cdFootInline .cd-state-inline{flex-basis:100%;line-height:1.5}
+#cdFootInline button{cursor:pointer;border:1px solid #2f3568;border-radius:5px;
+  padding:1px 6px;background:none;color:#9aa0c9;font-size:11px}
+#cdFootInline button:hover{color:#d4af6a;border-color:#d4af6a}
+#cdHudInline{position:fixed;top:10px;right:var(--cd-right);width:var(--cd-w);
+  z-index:9200;box-sizing:border-box;display:flex;align-items:center;gap:8px;
+  background:rgba(20,24,56,.92);border:1px solid #2f3568;border-radius:9px;
+  padding:6px 10px;font-size:11.5px;color:#9aa0c9}
+#cdHudInline b{color:#d4af6a;font-weight:600}
+#cdHudInline span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#cdHudInline.min #cdHudInlineBody{display:none}
+#cdHudInline button{background:none;border:1px solid #2f3568;color:#9aa0c9;
+  border-radius:6px;cursor:pointer;font-size:11px;padding:2px 7px;flex:none}
+#cdErrInline{position:fixed;right:14px;bottom:14px;z-index:9900;max-width:440px;display:none;
+  background:#3a1418;border:1px solid #e24b4a;color:#ffd7d7;border-radius:8px;
+  padding:9px 12px;font:12px/1.5 Consolas,monospace;white-space:pre-wrap}
+
+/* 原控件条：从横铺改为浮窗内单列；控件本身与事件一律不动 */
+html.cd-inline-on .ctl{position:static !important;display:block !important;
+  grid-template-columns:1fr !important;gap:0 !important;margin:0 !important;
+  padding:0 !important;background:none !important;border:0 !important;
+  box-shadow:none !important;width:100% !important;max-height:none !important;
+  overflow:visible !important}
+html.cd-inline-on .ctl > div{margin:0 0 11px}
+html.cd-inline-on .ctl label{display:flex;justify-content:space-between;align-items:baseline;
+  gap:6px;font-size:11.5px;color:#9aa0c9;margin-bottom:3px}
+html.cd-inline-on .ctl .val{display:none}
+html.cd-inline-on .ctl input[type=range]{width:100%;accent-color:#d4af6a;margin:0;cursor:pointer}
+html.cd-inline-on .ctl select{width:100%;background:#0b0f28;border:1px solid #2f3568;
+  border-radius:6px;color:#dfe3f5;font-size:11.5px;padding:4px 6px;cursor:pointer}
+html.cd-inline-on .ctl button{background:#1c2149;border:1px solid #2f3568;color:#dfe3f5;
+  border-radius:6px;font-size:11px;padding:5px 9px;cursor:pointer;margin:0 6px 8px 0}
+html.cd-inline-on .ctl button:hover{border-color:#d4af6a;color:#d4af6a}
+html.cd-inline-on .cd-num{width:72px;flex:none;text-align:right;background:#0b0f28;
+  border:1px solid #2f3568;border-radius:5px;color:#d4af6a;font-size:11.5px;
+  padding:2px 5px;font-variant-numeric:tabular-nums;font-family:inherit}
+html.cd-inline-on .cd-num:focus{outline:none;border-color:#d4af6a}
+html.cd-inline-on .cd-btnrow{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+
+/* F14：散装控制条（.btnrow 播放/单步/复位等）搬进浮窗后的版式。
+   弹簧 div 要隐藏，读数换行，否则窄浮窗里会把按钮挤到看不见。 */
+html.cd-inline-on #cdBodyInline > .btnrow,
+html.cd-inline-on #cdBodyInline > .cd-extra{
+  display:flex;flex-wrap:wrap;gap:6px;align-items:center;
+  margin:0 0 12px;padding:0 0 10px;border-bottom:1px dashed #2f3568}
+html.cd-inline-on #cdBodyInline > .btnrow > div[style*="flex"]{display:none}
+html.cd-inline-on #cdBodyInline > .btnrow button,
+html.cd-inline-on #cdBodyInline > .cd-extra button{
+  background:#1c2149;border:1px solid #2f3568;color:#dfe3f5;
+  border-radius:6px;font-size:11px;padding:5px 9px;cursor:pointer;margin:0}
+html.cd-inline-on #cdBodyInline > .btnrow button:hover,
+html.cd-inline-on #cdBodyInline > .cd-extra button:hover{border-color:#d4af6a;color:#d4af6a}
+html.cd-inline-on #cdBodyInline > .btnrow button.on{
+  background:#173a3a;border-color:#4ec9a8;color:#4ec9a8}
+html.cd-inline-on #cdBodyInline > .btnrow .readout{
+  flex-basis:100%;font-size:11px;color:#9aa0c9}
+html.cd-inline-on #cdBodyInline > .btnrow .readout b{color:#d4af6a}
+html.cd-inline-on #cdBodyInline > .cd-extra input[type=range],
+html.cd-inline-on #cdBodyInline > .cd-extra select{width:100%;accent-color:#d4af6a}
+/* 参数多的页面（如 higgs_core 17 个控件）浮窗内可滚动，滚动条要看得见 */
+html.cd-inline-on #cdBodyInline{scrollbar-width:thin;scrollbar-color:#d4af6a #0b0f28}
+html.cd-inline-on #cdBodyInline::-webkit-scrollbar{width:9px}
+html.cd-inline-on #cdBodyInline::-webkit-scrollbar-thumb{background:#3a4173;border-radius:5px}
+html.cd-inline-on #cdBodyInline::-webkit-scrollbar-thumb:hover{background:#d4af6a}
+
+/* 顺带修 grid 的 1fr auto-min 撑宽（长公式页实测 scrollWidth 1915 > iframe 1080） */
+html.cd-inline-on .duo{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
+html.cd-inline-on .trio{grid-template-columns:repeat(3,minmax(0,1fr)) !important}
+html.cd-inline-on .cmp{grid-template-columns:138px minmax(0,1fr) minmax(0,1fr) !important}
+html.cd-inline-on .map{grid-template-columns:1.05fr minmax(0,1fr) minmax(0,1fr) !important}
+html.cd-inline-on .eq,html.cd-inline-on .note,html.cd-inline-on .panel{overflow-wrap:anywhere;word-break:break-word}
+html.cd-inline-on .eq{overflow-x:auto}
+html.cd-inline-on canvas{max-width:100%}
+
+@media(max-width:760px){
+  html.cd-inline-on{--cd-w:270px;--cd-top:52px}
+  html.cd-inline-on body{padding-right:0 !important}
+  #cdDockInline{position:relative;top:auto;right:auto;width:100%;max-height:none;margin:8px 0;border-radius:8px}
+  #cdHudInline{display:none}
+  #cdGripInline{display:none}
+}
+
+</style>
+<script id="cdInlineDock">
+/* inline-dock.js — 注入到独立单文件：把原 .ctl 包进自带右浮窗
+   SOUL F13：独立文件自身必须有右浮窗；被宿主 iframe 加载时自动让位，避免双重浮窗。
+   F11 同源：控件还是原来那批，事件一个不改；只改它们所在的容器。 */
+(function () {
+  'use strict';
+  /* 宿主 dock-core 会注入 .ctl{display:none} 并镜像收纳，这里必须完全不启用 */
+  if (window.self !== window.top) return;
+  /* ⚠️ 多数页面有「多个 .ctl」（每段图一条控件条），必须全部搬进浮窗，
+     只搬第一个的话其余控件条仍横铺在正文里 = F13 没做完 */
+  var ctls = Array.prototype.slice.call(document.querySelectorAll('.ctl'));
+  if (!ctls.length) return;
+  var root = document.documentElement, body = document.body;
+  root.classList.add('cd-inline-on');
+
+  var $ = function (s, b) { return (b || document).querySelector(s); };
+  var $$ = function (s, b) { return Array.prototype.slice.call((b || document).querySelectorAll(s)); };
+
+  /* N51：全局报错红框 */
+  var err = document.createElement('div'); err.id = 'cdErrInline'; body.appendChild(err);
+  function showErr(m) { err.style.display = 'block'; err.textContent = '[JS 错误] ' + m; }
+  window.onerror = function (m, s, l, c) { showErr(m + ' @' + (s || '').split('/').pop() + ':' + l + ':' + c); };
+
+  /* N184：右上角 HUD，只放标签、可收起；放在浮窗正上方右侧让位区，不遮正文 */
+  var hud = document.createElement('div'); hud.id = 'cdHudInline';
+  var title = (document.title || '可视化').split('｜')[0].slice(0, 26);
+  hud.innerHTML = '<b>张祥前素材库</b><span id="cdHudInlineBody">· ' + title + '</span>' +
+                  '<button data-act="hudInline">收起</button>';
+  body.appendChild(hud);
+
+  /* 浮窗外壳：把「所有」带可调参数的控件条按原文档顺序整个搬进去，
+     DOM 节点不重建 ⇒ 事件与状态原样保留。
+     F14：只认 .ctl 会漏掉播放控制条（.btnrow 的 暂停 / 单步 / 复位），
+     它们会留在正文里、紧挨着图 ⇒ 参数与图同侧，违反右浮窗铁律。 */
+  var dock = document.createElement('div'); dock.id = 'cdDockInline';
+  ctls[0].parentNode.insertBefore(dock, ctls[0]);
+  var grip = document.createElement('div'); grip.id = 'cdGripInline';
+  grip.title = '拖动调整浮窗宽度'; dock.appendChild(grip);
+  var head = document.createElement('div'); head.id = 'cdHeadInline';
+  head.innerHTML = '<span class="cd-t">⚙ 参数面板</span><button data-act="collapseInline">收起</button>';
+  dock.appendChild(head);
+  var bd = document.createElement('div'); bd.id = 'cdBodyInline';
+  dock.appendChild(bd);
+
+  /* 扫描 .ctl 之外仍留在正文的可调控件，按「控制条整组」或「单控件包一层」收纳 */
+  var CTRL_SEL = 'input[type=range],input[type=number],select,button';
+  var extra = [];
+  $$(CTRL_SEL, document.body).forEach(function (el) {
+    if (dock.contains(el) || hud.contains(el) || err.contains(el)) return;
+    if (ctls.some(function (c) { return c.contains(el); })) return;  // .ctl 内的已单独收纳
+    var p = el.parentElement;
+    if (!p) return;
+    var isBar = /(?:btnrow|btnbar|toolbar|controls?|ctrl|playbar|ops)/i.test(String(p.className || ''));
+    if (isBar && !p.querySelector('canvas') && !p.querySelector('h1,h2,h3')) {
+      if (extra.indexOf(p) < 0) extra.push(p);            // 整条控制条搬走，读数随行
+    } else {
+      var w = document.createElement('div'); w.className = 'cd-extra';
+      p.insertBefore(w, el); w.appendChild(el); extra.push(w);  // 散控件包一层再搬
+    }
+  });
+
+  /* 按原文档顺序合并，保证「播放按钮在上、参数在下」 */
+  var all = ctls.concat(extra);
+  all.sort(function (a, b) {
+    if (a === b) return 0;
+    return (a.compareDocumentPosition(b) & 4) ? -1 : 1;  // 4 = DOCUMENT_POSITION_FOLLOWING
+  });
+  all.forEach(function (c) { bd.appendChild(c); });
+
+  var ft = document.createElement('div'); ft.id = 'cdFootInline';
+  ft.innerHTML = '<span class="cd-state-inline"></span><span style="flex:1"></span><span>宽度</span>' +
+    '<button data-w="280">窄</button><button data-w="360">中</button><button data-w="460">宽</button>';
+  dock.appendChild(ft);
+
+  var ranges = $$('input[type=range]', bd);
+  var discrete = $$('select,button', bd).length;
+  /* 参数多时浮窗内部要滚动；明确标出来，避免被误读成「参数没全放进去」 */
+  var stateEl = $('.cd-state-inline', ft);
+  function refreshState() {
+    var more = bd.scrollHeight > bd.clientHeight + 4;
+    stateEl.textContent = ranges.length + ' 滑条 / ' + discrete + ' 开关 · ' +
+      all.length + ' 组控件' + (more ? ' · ↕ 可滚动' : '') + ' · 可拖可收';
+    stateEl.style.color = more ? '#d4af6a' : '';
+  }
+  refreshState();
+  window.addEventListener('resize', refreshState);
+
+  /* N241：滑条右侧数字是输入口，不是标签（隐藏原只读 .val，换成可输入） */
+  function nice(v, step) {
+    var dec = (String(step || '0.01').split('.')[1] || '').length;
+    return Number(v).toFixed(Math.min(4, dec));
+  }
+  ranges.forEach(function (rg) {
+    var holder = rg.parentElement;
+    var lab = holder ? holder.querySelector('label') : null;
+    var valEl = holder ? holder.querySelector('.val') : null;
+    if (valEl) valEl.style.display = 'none';
+    var num = document.createElement('input');
+    num.type = 'text'; num.className = 'cd-num'; num.title = '可直接输入数值（与滑条同源）';
+    num.value = nice(rg.value, rg.step);
+    (lab || holder).appendChild(num);
+
+    function apply(v, scroll) {
+      var x = parseFloat(v);
+      if (!isFinite(x)) { num.value = nice(rg.value, rg.step); return; }
+      x = Math.min(parseFloat(rg.max || '1'), Math.max(parseFloat(rg.min || '0'), x));
+      rg.value = nice(x, rg.step);
+      rg.dispatchEvent(new Event('input', { bubbles: true }));
+      rg.dispatchEvent(new Event('change', { bubbles: true }));
+      num.value = nice(rg.value, rg.step);
+      /* N207：改完参数把对应那张图送到眼前 */
+      if (scroll) {
+        var n = dock.nextElementSibling;
+        for (var k = 0; k < 4 && n; k++, n = n.nextElementSibling) {
+          var cv = n.querySelector ? n.querySelector('canvas') : null;
+          if (cv) { try { cv.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {} break; }
+        }
+      }
+    }
+    rg.addEventListener('input', function () { num.value = nice(rg.value, rg.step); });
+    num.addEventListener('change', function () { apply(num.value, true); });
+    num.addEventListener('keydown', function (e) { if (e.key === 'Enter') { apply(num.value, true); num.blur(); } });
+    num.addEventListener('dblclick', function () { num.select(); });
+  });
+
+  /* N196 可拖；N199 尺寸可调 */
+  var dragging = null;
+  head.addEventListener('mousedown', function (e) {
+    if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+    dragging = { x: e.clientX, y: e.clientY, top: dock.offsetTop,
+                 right: root.clientWidth - dock.offsetLeft - dock.offsetWidth };
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', function (e) {
+    if (!dragging) return;
+    dock.style.top = Math.max(0, dragging.top + e.clientY - dragging.y) + 'px';
+    dock.style.right = Math.max(0, dragging.right - (e.clientX - dragging.x)) + 'px';
+  });
+  document.addEventListener('mouseup', function () { dragging = null; });
+
+  var resizing = null;
+  grip.addEventListener('mousedown', function (e) {
+    resizing = { x: e.clientX, w: dock.offsetWidth };
+    e.preventDefault(); e.stopPropagation();
+  });
+  document.addEventListener('mousemove', function (e) {
+    if (!resizing) return;
+    var w = Math.min(560, Math.max(258, resizing.w + resizing.x - e.clientX));
+    root.style.setProperty('--cd-w', w + 'px');
+  });
+  document.addEventListener('mouseup', function () { resizing = null; });
+
+  $$('#cdDockInline [data-act], #cdHudInline [data-act]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var a = b.getAttribute('data-act');
+      if (a === 'collapseInline') {
+        dock.classList.toggle('cd-collapsed');
+        b.textContent = dock.classList.contains('cd-collapsed') ? '展开' : '收起';
+      } else {
+        hud.classList.toggle('min');
+        b.textContent = hud.classList.contains('min') ? '展开' : '收起';
+      }
+    });
+  });
+  $$('#cdFootInline [data-w]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      root.style.setProperty('--cd-w', b.getAttribute('data-w') + 'px');
+      setTimeout(refreshState, 80);
+    });
+  });
+})();
+
+</script>
+</body>
+</html>

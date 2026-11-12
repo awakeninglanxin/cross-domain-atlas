@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>洛伦兹破缺形状族 · 椭圆 / 蛋形 / 梨形</title>
+<style>
+  :root{
+    --bg:#0d1220; --card:#161f30; --card2:#1b2639;
+    --ink:#e9f0fa; --dim:#9fb0c8; --line:#2a3a52;
+    --ok:#4fd1c5; --bad:#ff9166; --gold:#ffd479;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"WenQuanYi Micro Hei","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    line-height:1.7;font-size:15px}
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 16px 60px}
+  h1{font-size:23px;margin:0 0 6px;letter-spacing:.5px}
+  h2{font-size:16px;margin:0 0 12px;color:var(--gold)}
+  .sub{color:var(--dim);font-size:13.5px;margin:0 0 18px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
+  .panel{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:12px}
+  .controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+  .ctl label{display:block;font-size:12.5px;color:var(--dim);margin-bottom:4px}
+  .ctl input[type=range]{width:100%;accent-color:var(--bad)}
+  .ctl select{width:100%;background:#0f1828;color:var(--ink);border:1px solid var(--line);
+    border-radius:7px;padding:6px 8px;font-size:14px}
+  .val{color:var(--gold);font-variant-numeric:tabular-nums;font-weight:600}
+  .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+  canvas{width:100%;height:auto;display:block;border-radius:8px;background:#0c1424}
+  .cap{font-size:12.5px;color:var(--dim);margin-top:8px}
+  .tag{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:99px;
+    border:1px solid var(--line);margin-right:6px}
+  .tag.ok{color:var(--ok);border-color:#2b6b67}
+  .tag.bad{color:var(--bad);border-color:#7a4433}
+  .eq{background:#0b1322;border-left:3px solid var(--ok);border-radius:0 8px 8px 0;
+    padding:10px 12px;margin:9px 0;font-family:"DejaVu Serif",Georgia,serif;
+    font-size:15px;overflow-x:auto;white-space:nowrap;color:#dce9ff}
+  .eq.bad{border-left-color:var(--bad)}
+  .eq .n{color:var(--gold);font-family:inherit;font-size:12px;margin-right:8px}
+  .frac{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;
+    font-size:.86em;margin:0 2px}
+  .frac i{font-style:normal;padding:0 4px}
+  .frac i:first-child{border-bottom:1px solid currentColor}
+  sub,sup{font-size:.7em}
+  .note{font-size:12.8px;color:var(--dim);margin:6px 0 0}
+  .cmp{display:grid;grid-template-columns:100px 1fr 1fr;gap:0;font-size:13.5px}
+  .cmp>div{padding:9px 10px;border-bottom:1px solid var(--line)}
+  .cmp .h{color:var(--gold);font-weight:600;background:#101a2b}
+  .cmp .k{color:var(--dim)}
+  .foot{font-size:12.5px;color:var(--dim);border-top:1px dashed var(--line);padding-top:14px;margin-top:6px}
+  b.ok{color:var(--ok)} b.bad{color:var(--bad)} b.g{color:var(--gold)}
+  .shapeinfo{background:#101a2b;border:1px solid var(--line);border-radius:9px;
+    padding:10px 12px;margin-top:12px;font-size:13px}
+  @media(max-width:620px){ .cmp{grid-template-columns:76px 1fr 1fr;font-size:12px} .eq{font-size:13.5px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>破缺形状族：椭圆、蛋形、梨形都算，但破的东西不一样</h1>
+<p class="sub">「破缺」= 出现坐标无关的背景张量，等频面不再是正圆。<b class="bad">任何非正圆都算</b>；形状是背景张量的角动量指纹：椭圆是偶 <i>l</i>（中心对称），蛋形多破一层——有头尾，<i>l</i>=1 奇宇称（<b>k</b> → −<b>k</b> 不再一样）。下面用谐波展开统一驱动绘图。</p>
+
+<div class="card">
+  <h2>① 调参（公式直接驱动绘图）</h2>
+  <div class="controls">
+    <div class="ctl"><label>形状模式</label>
+      <select id="shape">
+        <option value="quad" selected>椭圆 · 四极 l=2</option>
+        <option value="egg">蛋形 · l=1 + l=2</option>
+        <option value="pear">梨形/三角 · l=3 + l=2</option>
+        <option value="iso">仅整体缩放 l=0</option>
+      </select></div>
+    <div class="ctl"><label>裸破缺幅度 δ₀ = <span class="val" id="v_d0">0.20</span></label>
+      <input type="range" id="d0" min="0" max="0.40" step="0.01" value="0.20"></div>
+    <div class="ctl"><label>优先轴 θ₀ = <span class="val" id="v_th">25°</span></label>
+      <input type="range" id="th" min="0" max="180" step="1" value="25"></div>
+    <div class="ctl"><label>能标 log₁₀(E/Λ) = <span class="val" id="v_E">0.0</span></label>
+      <input type="range" id="E" min="-9" max="0" step="0.1" value="0"></div>
+    <div class="ctl"><label>算符质量量纲 d = <span class="val" id="v_d">5</span></label>
+      <select id="dim"><option>3</option><option>4</option><option selected>5</option><option>6</option></select></div>
+    <div class="ctl"><label>宏观平均畴数 N = <span class="val" id="v_N">200</span></label>
+      <input type="range" id="N" min="1" max="1000" step="1" value="200"></div>
+  </div>
+  <div class="shapeinfo" id="sinfo">—</div>
+  <p class="note">有效幅度 δ<sub>eff</sub>(E) = <span class="val" id="v_de">—</span>；宏观多畴平均后 ⟨κ⟩<sub>L</sub> = <span class="val" id="v_dm">—</span>；局域二阶 ⟨κ(x)κ(x)⟩ ∝ δ<sub>eff</sub>² = <span class="val" id="v_d2">—</span>；<b class="bad">奇偶不对称量 Δ<sub>odd</sub> = max|r(θ)−r(θ+π)| = <span class="val" id="v_odd">—</span></b>（蛋形专属可观测量，正反方向光速差）。</p>
+</div>
+
+<div class="card">
+  <h2>② 专门公式（SME 参数化，非张氏动量公式）</h2>
+
+  <div class="eq"><span class="n">①</span> ℒ<sub>photon</sub> = −¼ F<sub>μν</sub>F<sup>μν</sup> + ½ ε<sup>κλμν</sup>A<sub>λ</sub>(k̂<sub>AF</sub>)<sub>κ</sub>F<sub>μν</sub> − ¼ F<sub>κλ</sub>(k̂<sub>F</sub>)<sup>κλμν</sup>F<sub>μν</sub> &nbsp;；&nbsp;
+       ℒ<sub>fermion</sub> = ½ i ψ̄(γ<sup>ν</sup> + c<sup>μν</sup>γ<sub>μ</sub>) ↔∂<sub>ν</sub>ψ − m ψ̄ψ</div>
+  <p class="note">SME 把所有可能的破缺写成「背景张量系数 × 常规算符」；(k̂<sub>AF</sub>)<sup>(d)</sup> 只在<b class="bad">奇 d</b>（CPT-odd），(k̂<sub>F</sub>)<sup>(d)</sup> 只在<b class="ok">偶 d</b>（CPT-even）。系数按粒子 sector 独立。</p>
+
+  <div class="eq bad"><span class="n">②</span> κ<sub>ij</sub> = δ<sub>eff</sub> ( n̂<sub>i</sub>n̂<sub>j</sub> − ½ δ<sub>ij</sub> ) &nbsp;,&nbsp; n̂ = (cos θ₀, sin θ₀) &nbsp;（无迹四极，2D 版）</div>
+
+  <div class="eq bad"><span class="n">③</span> ω² = c² ( k² + κ<sub>ij</sub> k<sub>i</sub> k<sub>j</sub> ) &nbsp;⇒&nbsp;
+       等频面 &nbsp; k(θ) = <span class="frac"><i>k₀</i><i>√(1 + δ<sub>eff</sub> cos2(θ−θ₀))</i></span> ≈ k₀[1 − ½δ<sub>eff</sub> cos2(θ−θ₀)]</div>
+
+  <div class="eq"><span class="n">④</span> v<sub>g</sub> = ∇<sub>k</sub>ω ，
+       一般形状 r(θ) 的法线偏角 &nbsp; tan ψ = − <span class="frac"><i>r′(θ)</i><i>r(θ)</i></span></div>
+  <p class="note">r′≡0（正圆）时 ψ≡0；任何 r′≠0 都让能流／力线偏离径向。这就是「力线歪掉」。</p>
+
+  <div class="eq bad"><span class="n">⑧</span> 谐波展开（本页绘图所用）：
+       r(θ) = 1 + A₁ cos(θ−θ₀) + A₂ cos2(θ−θ₀) + A₃ cos3(θ−θ₀) &nbsp;,&nbsp;
+       A₂ = −½δ<sub>eff</sub></div>
+  <div class="eq bad"><span class="n">⑧′</span> r′(θ) = −A₁ sin(θ−θ₀) − 2A₂ sin2(θ−θ₀) − 3A₃ sin3(θ−θ₀) &nbsp;⇒&nbsp; β = r′/r ， n̂ ∝ ê<sub>r</sub> − β ê<sub>θ</sub></div>
+  <p class="note">A₁≠0 → 一头大一头小的<b class="bad">蛋形（limaçon 型，l=1 偶极）</b>；A₃≠0 → 梨形／三瓣（l=3 八极）。l=1 就是「有上游和下游」。球谐分解里 l=0 各向同性、l=1 偶极、l=2 四极、l=3 八极，各可单独测量。</p>
+
+  <div class="eq"><span class="n">⑨</span> Δ<sub>odd</sub> = max<sub>θ</sub> | r(θ) − r(θ+π) | = 2|A₁| + 2|A₃| &nbsp;（偶 <i>l</i> 项全部抵消）</div>
+  <p class="note"><b>这是蛋形与椭圆最硬的区别</b>：椭圆 r(θ)=r(θ+π)，正反方向光速相同；蛋形 Δ<sub>odd</sub>≠0，正反方向光速不同。非对称环形腔专门测这个（odd-parity），已达 10⁻¹⁵；宇宙源光谱偏振把 parity-odd 系数压到 &lt;10⁻¹⁶；真空双折射给 (k<sub>AF</sub>) 约 10⁻⁴³ GeV、双折射型 (k<sub>F</sub>) 约 10⁻³⁷。<b class="bad">蛋形对应的奇宇称类，反而比椭圆被压得更死。</b></p>
+
+  <div class="eq"><span class="n">⑤</span> δ<sub>eff</sub>(E) = δ₀ ( E / Λ )<sup>d−4</sup> &nbsp;；&nbsp;
+       d = 3,4 → 低能不抑制（早该看见，已被排除）；d ≥ 5 → 随 E 放大</div>
+
+  <div class="eq"><span class="n">⑥</span> ⟨κ⟩<sub>L</sub> = κ₀ / √N ， N = ( L / ξ )³ &nbsp;；&nbsp;
+       ⟨κ(x)κ(x)⟩ = κ₀² ≠ 0（局域）</div>
+  <p class="note">宏观大尺度一阶矢量确实平均掉；但局域二阶关联不随 N 消失，原子自旋、腔模这类探针感受的正是它，表现为各向异性／恒星日调制。宏观看不见 ≠ 没被测过。</p>
+
+  <div class="eq"><span class="n">⑩</span> 洛伦兹群 = rotations ⊕ boosts &nbsp;：&nbsp;
+       形状（l=1,2,3）破的是<b>旋转各向同性</b>；<b class="gold">boost 破缺另算</b>，表现为随地球自转／公转的恒星日调制</div>
+  <p class="note">任何带固定优先轴的形状（椭圆或蛋形）在 boost 下都会变形，因此都算洛伦兹破缺；但「是不是蛋形」和「boost 有没有破」是两个独立问题，别混成一个。</p>
+
+  <div class="eq bad"><span class="n">⑦</span> m<sub>ij</sub> = m(δ<sub>ij</sub> + κ<sub>ij</sub>) ，
+       m<sub>ij</sub> <span class="frac"><i>dv<sub>j</sub></i><i>dt</i></span> = q( E<sub>i</sub> + ε<sub>ijk</sub> v<sub>j</sub> B<sub>k</sub> )
+       &nbsp;⇒&nbsp; ω<sub>c</sub>(θ) ≈ (qB/m)[ 1 − δ<sub>eff</sub> cos2(θ−θ₀) ]</div>
+  <p class="note">示意式（忽略相对论 γ 与 κ 对 v×B 的高阶耦合）：回旋频率随方向变，正圆轨道变椭圆；若再叠加 l=1，轨道变成一头尖的蛋形闭合线并进动。</p>
+</div>
+
+<div class="card">
+  <h2>③ 四张图：宏观 / 微观 / 力线轨道 / 形状指纹</h2>
+  <div class="grid3">
+    <div class="panel">
+      <span class="tag ok">宏观 · 多畴平均</span>
+      <canvas id="c1" width="360" height="330"></canvas>
+      <p class="cap">青虚线 = 不变时的正圆等频面；实线 = 当前形状；箭头 = 能流法线。宏观 ⟨κ⟩→0，几乎重合，箭头仍沿径向。</p>
+    </div>
+    <div class="panel">
+      <span class="tag bad">微观单畴 · 破缺示意</span>
+      <canvas id="c2" width="360" height="330"></canvas>
+      <p class="cap">优先轴 θ₀ 用橙虚线标出。<b class="bad">蛋形时 r(θ)≠r(θ+π)</b>，一端鼓一端收，法线不再过中心。这是参数化可能性，不是已观测事实。</p>
+    </div>
+    <div class="panel">
+      <span class="tag ok">力线检验 · 回旋轨道</span>
+      <canvas id="c3" width="360" height="330"></canvas>
+      <p class="cap">青 = 洛伦兹不变的正圆回旋；橙 = 各向异性后的椭圆／蛋形轨道 + 进动。箭头显示力不再恒垂直于半径。</p>
+    </div>
+    <div class="panel">
+      <span class="tag bad">形状指纹 · r(θ) 与 r(θ+π)</span>
+      <canvas id="c5" width="360" height="330"></canvas>
+      <p class="cap">上方极坐标里青/橙两条闭合线错开 = 正反方向不同（Δ<sub>odd</sub>≠0）；下方曲线是 r(θ)−r(θ+π)。椭圆模式此值恒为 0。</p>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>④ 能标跑动：为什么「宏观无、微观可能有」</h2>
+  <div class="panel"><canvas id="c4" width="1080" height="300"></canvas></div>
+  <p class="cap">横轴 log₁₀(E/Λ)，纵轴 log₁₀ δ<sub>eff</sub>。d≥5 时低能被 (E/Λ)<sup>d−4</sup> 压到近乎零（宏观），高动量转移 Q² 或阈值过程才放大。灰横线是光子 sector 10⁻¹⁸ 量级的取向各向异性界；右上角「阈值放大」对应 GZK／真空契伦科夫：无契伦科夫辐射已把 n=3 色散参数压到 η ≲ 10⁻¹⁴。</p>
+</div>
+
+<div class="card">
+  <h2>⑤ 形状 ↔ 对称性 ↔ 系数 ↔ 实验</h2>
+  <div class="cmp">
+    <div class="h">形状</div><div class="h">破掉什么 / SME 归属</div><div class="h">实验状况</div>
+    <div class="k">正圆 l=0</div><div>各向同性；可只剩光速整体平移（仍是洛伦兹破缺，但不给方向）</div><div>Kennedy–Thorndike / Ives–Stilwell 类，零结果</div>
+    <div class="k">椭圆 l=2</div><div>中心对称 <b>k</b>→−<b>k</b> 不变；偶宇称、CPT-even，(k̂<sub>F</sub>)<sup>(偶 d)</sup> / c<sup>μν</sup> 无迹四极</div><div>腔体 10⁻¹⁸、钟比对、CMS 顶夸克 1–8×10⁻³，零结果</div>
+    <div class="k"><b class="bad">蛋形 l=1</b></div><div><b class="bad">多破一层：反演／宇称</b>，有上游下游，奇 d、(k̂<sub>AF</sub>) CPT-odd 矢量背景；Δ<sub>odd</sub>≠0</div><div>odd-parity 环形腔 10⁻¹⁵、光谱偏振 &lt;10⁻¹⁶、真空双折射 (k<sub>AF</sub>) ~10⁻⁴³ GeV —— 压得比椭圆更狠</div>
+    <div class="k">梨形 l=3</div><div>奇宇称高阶八极；d≥5 非最小算符，球谐系数 k<sup>(d)</sup><sub>(V)jm</sub> 等</div><div>2020 年用 7554/7376 条偏振观测约束 d=4,5,6 的 10/16/42 个各向异性系数；d≥5 参数空间仍部分开放</div>
+    <div class="k">张氏 C 落哪</div><div><b class="bad">落宏观 d≤4 且被排除</b>：全空间同一个确定矢量 C、伽利略式 C−V、算 5 吨飞碟与质量归零；若它真留下可分辨的「上游／下游」，那正是 l=1 型，恰好撞进被压到 10⁻⁴³ GeV 的那一格</div><div>不等于微观藏身处：要进去得先交协变作用量、SME 系数与量纲、阈值／跑动行为、一个可证伪的具体数值</div>
+  </div>
+  <p class="foot"><b>边界声明：</b>本页画的是主流 SME 式「如果破缺发生会长什么样」的参数化示意，不是已观测事实，也不是张祥前统一场论的示意图。形状由球谐／自旋加权球谐分解分类（Kostelecký &amp; Mewes 2009），奇 d ↔ CPT-odd、偶 d ↔ CPT-even；无质量光子要求 CPT-even 双折射模型里 j&lt;2 的系数为零，所以 l=1 主要落在 CPT-odd 那一支。宏观平均为零确实成立（⑥式），但结论与「科学家误以为光速不变」相反：正因为局域二阶量不消失，实验才把各向异性压到 10⁻¹⁸ 以下；微观开放的是 d≥5 的参数空间，不是任何跨尺度、无能标的经典矢量场。</p>
+</div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var OK="#4fd1c5", BAD="#ff9166", GOLD="#ffd479", DIM="#9fb0c8", GRID="#223149", INK="#e9f0fa";
+  var PI=Math.PI, TAU=2*PI;
+  function $(id){return document.getElementById(id);}
+  function num(id){return parseFloat($(id).value);}
+  function shapeInfo(st){
+    if(st.shape==="quad") return "<b class='ok'>椭圆（l=2 四极）</b>：r(θ)=r(θ+π)，中心对称，只破旋转各向同性，<b>k</b> 与 −<b>k</b> 速度相同。CPT-even 无迹张量 κ<sub>ij</sub>。";
+    if(st.shape==="egg") return "<b class='bad'>蛋形（l=1 偶极 + l=2）</b>：limaçon 型，一头鼓一头收，<b>破反演/宇称</b>，正反方向光速不同 → Δ<sub>odd</sub>≠0。对应奇 d 的 (k̂<sub>AF</sub>) CPT-odd 矢量背景，被偏振观测压得最死。";
+    if(st.shape==="pear") return "<b class='bad'>梨形／三瓣（l=3 八极 + l=2）</b>：奇宇称高阶结构，属 d≥5 非最小 SME，用自旋加权球谐系数 k<sup>(d)</sup><sub>(V)jm</sub> 分类，参数空间尚未全封。";
+    return "<b class='ok'>仅 l=0 整体缩放</b>：仍是正圆，无方向性；只能改光速整体数值，不给各向异性。形状图里与青虚线同心。";
+  }
+  function coefs(st){
+    var d=st.deC, a2=-0.5*d, a1=0, a3=0;
+    if(st.shape==="egg") a1=0.35*d;
+    if(st.shape==="pear") a3=0.25*d;
+    if(st.shape==="iso") a2=0;
+    return {a1:a1,a2:a2,a3:a3};
+  }
+  function state(){
+    var d0=num("d0"), th=num("th")*PI/180, El=num("E"), d=parseInt($("dim").value,10), N=num("N");
+    var shape=$("shape").value;
+    var de=d0*Math.pow(Math.pow(10,El),d-4);
+    var deC=Math.min(0.85,de);
+    var dm=deC/Math.sqrt(N);
+    return {d0:d0,th:th,El:El,d:d,N:N,shape:shape,de:de,deC:deC,dm:dm};
+  }
+  function rOf(t,c,th){
+    var u=t-th;
+    var r=1 + c.a1*Math.cos(u) + c.a2*Math.cos(2*u) + c.a3*Math.cos(3*u);
+    return Math.max(0.04,r);
+  }
+  function dOf(t,c,th){
+    var u=t-th;
+    return -c.a1*Math.sin(u) - 2*c.a2*Math.sin(2*u) - 3*c.a3*Math.sin(3*u);
+  }
+  function fmt(x){
+    if(!isFinite(x)) return "—";
+    if(x===0) return "0";
+    var e=Math.floor(Math.log10(Math.abs(x)));
+    if(e>=-3 && e<4) return x.toFixed(4).replace(/0+$/,"").replace(/\.$/,"");
+    return x.toExponential(2);
+  }
+  function setup(cv){
+    var dpr=window.devicePixelRatio||1;
+    var w=cv.clientWidth||cv.width, h=Math.round(w*(cv.height/cv.width));
+    cv.width=Math.round(w*dpr); cv.height=Math.round(h*dpr);
+    var ctx=cv.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0);
+    return {ctx:ctx,w:w,h:h};
+  }
+  function arrow(ctx,x1,y1,x2,y2,color,lw){
+    ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=lw||1.6;
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    var a=Math.atan2(y2-y1,x2-x1), s=6;
+    ctx.beginPath(); ctx.moveTo(x2,y2);
+    ctx.lineTo(x2-s*Math.cos(a-0.42),y2-s*Math.sin(a-0.42));
+    ctx.lineTo(x2-s*Math.cos(a+0.42),y2-s*Math.sin(a+0.42));
+    ctx.closePath(); ctx.fill();
+  }
+  function label(ctx,txt,x,y,color,size,align){
+    ctx.fillStyle=color||DIM; ctx.font=(size||11)+"px 'WenQuanYi Micro Hei',sans-serif";
+    ctx.textAlign=align||"left"; ctx.fillText(txt,x,y); ctx.textAlign="left";
+  }
+  function drawField(cv,delta,th,shape,macro,N){
+    var s=setup(cv), ctx=s.ctx, W=s.w, H=s.h;
+    var cx=W/2, cy=H/2+6, R=Math.min(W,H)*0.30;
+    var c=coefs({deC:delta,shape:shape});
+    ctx.clearRect(0,0,W,H); ctx.fillStyle="#0c1424"; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle=GRID; ctx.lineWidth=1;
+    for(var g=1;g<=3;g++){ ctx.beginPath(); ctx.arc(cx,cy,R*g/3,0,TAU); ctx.stroke(); }
+    for(var a=0;a<12;a++){
+      var t=a*TAU/12;
+      ctx.beginPath(); ctx.moveTo(cx,cy);
+      ctx.lineTo(cx+R*1.12*Math.cos(t),cy+R*1.12*Math.sin(t)); ctx.stroke();
+    }
+    // invariant circle
+    ctx.strokeStyle=OK; ctx.setLineDash([5,5]); ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(cx,cy,R,0,TAU); ctx.stroke(); ctx.setLineDash([]);
+    label(ctx,"洛伦兹不变：r = 1",10,18,OK,11);
+    // priority axis (head-tail arrow for odd-l)
+    if(!macro && delta>0.002 && shape!=="iso"){
+      ctx.strokeStyle="rgba(255,145,102,.55)"; ctx.setLineDash([4,4]); ctx.lineWidth=1.2;
+      ctx.beginPath();
+      ctx.moveTo(cx-R*1.3*Math.cos(th),cy-R*1.3*Math.sin(th));
+      ctx.lineTo(cx+R*1.3*Math.cos(th),cy+R*1.3*Math.sin(th));
+      ctx.stroke(); ctx.setLineDash([]);
+      label(ctx,"κ 优先轴 θ₀",cx+R*0.68*Math.cos(th)-30,cy+R*0.68*Math.sin(th)-8,BAD,10.5);
+      if(shape==="egg"||shape==="pear"){
+        var hx=cx+R*1.22*Math.cos(th), hy=cy+R*1.22*Math.sin(th);
+        label(ctx,"「上游」",hx-16,hy+16,GOLD,10);
+      }
+    }
+    // distorted surface
+    ctx.beginPath();
+    for(var i=0;i<=360;i++){
+      var t2=i*TAU/360, r=R*rOf(t2,c,th);
+      var x=cx+r*Math.cos(t2), y=cy+r*Math.sin(t2);
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.closePath();
+    ctx.fillStyle=macro?"rgba(79,209,197,.07)":"rgba(255,145,102,.14)";
+    ctx.fill();
+    ctx.strokeStyle=macro?OK:BAD; ctx.lineWidth=2.2; ctx.stroke();
+    // normals
+    for(var j=0;j<12;j++){
+      var t3=j*TAU/12, rr=R*rOf(t3,c,th);
+      var px=cx+rr*Math.cos(t3), py=cy+rr*Math.sin(t3);
+      var beta=dOf(t3,c,th)/rOf(t3,c,th);
+      var erx=Math.cos(t3), ery=Math.sin(t3), etx=-Math.sin(t3), ety=Math.cos(t3);
+      var nx=erx-beta*etx, ny=ery-beta*ety, L=Math.hypot(nx,ny)||1;
+      arrow(ctx,px,py,px+nx/L*24,py+ny/L*24,macro?OK:BAD,1.4);
+    }
+    ctx.fillStyle=INK; ctx.beginPath(); ctx.arc(cx,cy,2.6,0,TAU); ctx.fill();
+    if(macro){
+      var ox=W-92, oy=H-84, seed=7;
+      label(ctx,"多畴平均",ox,oy-30,DIM,10.5);
+      for(var q=0;q<Math.min(N,24);q++){
+        seed=(seed*1103515245+12345)%2147483647;
+        var u=(seed/2147483647)*TAU;
+        var ax=ox+26+(q%6)*9, ay=oy+((q/6)|0)*11;
+        var vx=Math.cos(u)*4.5, vy=Math.sin(u)*4.5;
+        ctx.strokeStyle="rgba(159,176,200,.5)"; ctx.lineWidth=1;
+        ctx.beginPath(); ctx.moveTo(ax-vx,ay-vy); ctx.lineTo(ax+vx,ay+vy); ctx.stroke();
+      }
+      label(ctx,"Σ≈0",ox+58,oy+34,OK,10.5);
+      label(ctx,"但 ⟨κ²⟩≠0",ox,oy+50,GOLD,10.5);
+    }
+    var mn={quad:"椭圆 l=2",egg:"蛋形 l=1+2",pear:"梨形 l=3+2",iso:"正圆 l=0"};
+    label(ctx,mn[shape]+" , δ="+fmt(delta),10,H-12,macro?OK:BAD,11.5);
+  }
+  function drawOrbit(cv,delta,th,shape){
+    var s=setup(cv), ctx=s.ctx, W=s.w, H=s.h;
+    var cx=W/2, cy=H/2, R=Math.min(W,H)*0.27;
+    var c=coefs({deC:delta,shape:shape});
+    ctx.clearRect(0,0,W,H); ctx.fillStyle="#0c1424"; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle=GRID; ctx.lineWidth=1;
+    for(var g=-2;g<=2;g++){
+      ctx.beginPath(); ctx.moveTo(cx+g*R/2,cy-R*1.4); ctx.lineTo(cx+g*R/2,cy+R*1.4); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx-R*1.4,cy+g*R/2); ctx.lineTo(cx+R*1.4,cy+g*R/2); ctx.stroke();
+    }
+    label(ctx,"B ⊙ 出纸面",10,18,DIM,11);
+    ctx.strokeStyle=OK; ctx.lineWidth=2; ctx.setLineDash([5,4]);
+    ctx.beginPath(); ctx.arc(cx,cy,R,0,TAU); ctx.stroke(); ctx.setLineDash([]);
+    var rot=th+0.18*delta;
+    function pt(t){
+      var u=t-rot;
+      var rr=R*(1 + c.a1*Math.cos(u) + 0.9*(c.a2+0.5*delta)*0+ c.a2*Math.cos(2*u) + c.a3*Math.cos(3*u));
+      return [rr*Math.cos(t),rr*Math.sin(t)];
+    }
+    ctx.strokeStyle=BAD; ctx.lineWidth=2.2; ctx.beginPath();
+    for(var i=0;i<=300;i++){
+      var p=pt(i*TAU/300);
+      if(i===0) ctx.moveTo(cx+p[0],cy+p[1]); else ctx.lineTo(cx+p[0],cy+p[1]);
+    }
+    ctx.closePath(); ctx.stroke();
+    for(var j=0;j<6;j++){
+      var t2=j*TAU/6;
+      arrow(ctx,cx+R*Math.cos(t2),cy+R*Math.sin(t2),
+            cx+R*Math.cos(t2)-Math.cos(t2)*22,cy+R*Math.sin(t2)-Math.sin(t2)*22,
+            "rgba(79,209,197,.75)",1.3);
+      var p2=pt(t2), qx=cx+p2[0], qy=cy+p2[1];
+      var eps=0.004, pa=pt(t2-eps), pb=pt(t2+eps);
+      var vx=pb[0]-pa[0], vy=pb[1]-pa[1], L=Math.hypot(vx,vy)||1;
+      arrow(ctx,qx,qy,qx+(-vy/L)*22,qy+(vx/L)*22,BAD,1.5);
+    }
+    label(ctx,"正圆：ω_c 各向同性",10,H-30,OK,11);
+    label(ctx,"形变 + 进动：ω_c(θ) 随方向",10,H-12,BAD,11);
+  }
+  function drawFingerprint(cv,delta,th,shape){
+    var s=setup(cv), ctx=s.ctx, W=s.w, H=s.h;
+    var c=coefs({deC:delta,shape:shape});
+    ctx.clearRect(0,0,W,H); ctx.fillStyle="#0c1424"; ctx.fillRect(0,0,W,H);
+    var cx=W/2, cy=H*0.34, R=Math.min(W,H)*0.20;
+    // two opposite-direction copies
+    function path(shift,color,dash){
+      ctx.strokeStyle=color; ctx.setLineDash(dash||[]); ctx.lineWidth=1.9; ctx.beginPath();
+      for(var i=0;i<=240;i++){
+        var t=i*TAU/240, r=R*rOf(t+shift,c,th);
+        var x=cx+r*Math.cos(t), y=cy+r*Math.sin(t);
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      }
+      ctx.closePath(); ctx.stroke(); ctx.setLineDash([]);
+    }
+    path(0,BAD); path(PI,OK,[4,4]);
+    ctx.fillStyle=INK; ctx.beginPath(); ctx.arc(cx,cy,2.4,0,TAU); ctx.fill();
+    label(ctx,"r(θ)",10,16,BAD,11); label(ctx,"r(θ+π)",10,30,OK,11);
+    // lower panel: difference curve
+    var T=cy+R+22, B=H-24, L=28, Rr=W-14;
+    ctx.strokeStyle=GRID; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(L,(T+B)/2); ctx.lineTo(Rr,(T+B)/2); ctx.stroke();
+    ctx.strokeStyle=GOLD; ctx.lineWidth=2; ctx.beginPath();
+    var mx=0.0001;
+    for(var k=0;k<=240;k++){
+      var t2=k*TAU/240;
+      var v=rOf(t2,c,th)-rOf(t2+PI,c,th);
+      mx=Math.max(mx,Math.abs(v));
+    }
+    for(var k2=0;k2<=240;k2++){
+      var t3=k2*TAU/240, v2=rOf(t3,c,th)-rOf(t3+PI,c,th);
+      var x2=L+(Rr-L)*k2/240, y2=(T+B)/2 - v2/(mx*1.25)*(B-T)/2;
+      if(k2===0) ctx.moveTo(x2,y2); else ctx.lineTo(x2,y2);
+    }
+    ctx.stroke();
+    label(ctx,"Δ_odd = "+fmt(2*(Math.abs(c.a1)+Math.abs(c.a3))),L,T+12,GOLD,11);
+    label(ctx,"0",L,(T+B)/2+4,DIM,10);
+    label(ctx,"椭圆/正圆：此线恒为 0",L,B-2,DIM,10.5);
+  }
+  function sup(n){return String(n).replace(/-/g,"⁻").replace(/0/g,"⁰").replace(/1/g,"¹")
+      .replace(/2/g,"²").replace(/3/g,"³").replace(/4/g,"⁴").replace(/5/g,"⁵")
+      .replace(/6/g,"⁶").replace(/7/g,"⁷").replace(/8/g,"⁸").replace(/9/g,"⁹");}
+  function drawRunning(cv,st){
+    var s=setup(cv), ctx=s.ctx, W=s.w, H=s.h;
+    ctx.clearRect(0,0,W,H); ctx.fillStyle="#0c1424"; ctx.fillRect(0,0,W,H);
+    var L=48,R=W-18,T=22,B=H-34, xmin=-9,xmax=0,ymin=-20,ymax=0;
+    function X(e){return L+(e-xmin)/(xmax-xmin)*(R-L);}
+    function Y(v){return B-(v-ymin)/(ymax-ymin)*(B-T);}
+    ctx.strokeStyle=GRID; ctx.lineWidth=1;
+    for(var e=xmin;e<=xmax;e++){
+      var xx=X(e); ctx.beginPath(); ctx.moveTo(xx,T); ctx.lineTo(xx,B); ctx.stroke();
+      label(ctx,"10"+sup(e),xx-9,H-16,DIM,10);
+    }
+    for(var v=ymax;v>=ymin;v-=4){
+      var yy=Y(v); ctx.beginPath(); ctx.moveTo(L,yy); ctx.lineTo(R,yy); ctx.stroke();
+      label(ctx,"10"+sup(v),6,yy+3,DIM,10);
+    }
+    var yb=Y(-18);
+    ctx.strokeStyle="rgba(159,176,200,.75)"; ctx.setLineDash([6,4]); ctx.lineWidth=1.3;
+    ctx.beginPath(); ctx.moveTo(L,yb); ctx.lineTo(R,yb); ctx.stroke(); ctx.setLineDash([]);
+    label(ctx,"光子 sector 各向异性界 ≈10⁻¹⁸",L+8,yb-6,DIM,10.5);
+    var dims=[3,4,5,6], cols=["rgba(255,145,102,.35)","rgba(255,145,102,.35)","rgba(255,212,121,.45)","rgba(79,209,197,.4)"];
+    for(var k=0;k<dims.length;k++){
+      var dd=dims[k]; ctx.strokeStyle=(dd===st.d)? (dd<=4?BAD:GOLD) : cols[k];
+      ctx.lineWidth=(dd===st.d)?2.4:1.1; ctx.beginPath();
+      for(var i=0;i<=180;i++){
+        var e2=xmin+(xmax-xmin)*i/180, val=(dd-4)*e2;
+        var px=X(e2), py=Y(Math.max(ymin,Math.min(ymax,val)));
+        if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+      }
+      ctx.stroke();
+      label(ctx,"d="+dd,X(-1.2)+5,Y(Math.max(ymin,Math.min(ymax,(dd-4)*(-1.2))))-4,
+            (dd===st.d)?(dd<=4?BAD:GOLD):DIM,10.5);
+    }
+    var cx=X(st.El), cy=Y(Math.max(ymin,Math.min(ymax,Math.log10(Math.max(1e-20,st.de)))));
+    ctx.strokeStyle="rgba(255,255,255,.35)"; ctx.setLineDash([3,4]);
+    ctx.beginPath(); ctx.moveTo(cx,T); ctx.lineTo(cx,B); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle=GOLD; ctx.beginPath(); ctx.arc(cx,cy,4.5,0,TAU); ctx.fill();
+    label(ctx,"当前 δ_eff="+fmt(st.de),Math.min(cx+8,R-140),Math.max(T+14,cy-8),GOLD,11);
+    label(ctx,"◀ 宏观 E≪Λ：压低到近乎零",L+10,B-10,OK,11);
+    label(ctx,"微观 / 高 Q²：阈值放大 ▶",R-205,B-10,BAD,11);
+    label(ctx,st.d<=4?"d≤4 不受抑制 → 低能早该看见 → 已被排除":
+          "d≥5：随 (E/Λ)^(d−4) 放大，参数空间仍部分开放",L+10,T+12,st.d<=4?BAD:GOLD,11.5);
+  }
+  function redraw(){
+    var st=state(), c=coefs(st), cm=coefs({deC:st.dm,shape:st.shape});
+    var odd=2*(Math.abs(c.a1)+Math.abs(c.a3));
+    $("v_d0").textContent=st.d0.toFixed(2);
+    $("v_th").textContent=Math.round(num("th"))+"°";
+    $("v_E").textContent=st.El.toFixed(1);
+    $("v_d").textContent=st.d;
+    $("v_N").textContent=st.N;
+    $("v_de").textContent=fmt(st.de)+(st.de>0.85?"（绘图钳制 0.85）":"");
+    $("v_dm").textContent=fmt(st.dm);
+    $("v_d2").textContent=fmt(st.de*st.de);
+    $("v_odd").textContent=fmt(odd);
+    $("sinfo").innerHTML=shapeInfo(st);
+    drawField($("c1"),Math.min(0.85,st.dm),st.th,st.shape,true,st.N);
+    drawField($("c2"),st.deC,st.th,st.shape,false,st.N);
+    drawOrbit($("c3"),st.deC,st.th,st.shape);
+    drawFingerprint($("c5"),st.deC,st.th,st.shape);
+    drawRunning($("c4"),st);
+    void cm;
+  }
+  ["d0","th","E","dim","N","shape"].forEach(function(id){
+    $(id).addEventListener("input",redraw);
+    $(id).addEventListener("change",redraw);
+  });
+  window.addEventListener("resize",redraw);
+  redraw();
+})();
+</script>
+
+<!-- CD_INLINE_DOCK · SOUL F13 独立单文件右浮窗（原控件与事件一字不改） -->
+<style id="cdInlineCSS">
+/* inline-dock.css — 注入到独立单文件，使其自身也具备右浮窗参数面板
+   仅在 JS 判定「不是 iframe」并加上 html.cd-inline-on 后生效，
+   因此被宿主 dock-core 收纳时这些规则全部不匹配，宿主 .ctl{display:none} 照常生效。 */
+html.cd-inline-on{--cd-w:340px;--cd-top:58px;--cd-right:14px}
+html.cd-inline-on body{padding-right:calc(var(--cd-w) + 26px) !important;
+  transition:padding-right .18s ease}
+#cdDockInline{position:fixed;top:var(--cd-top);right:var(--cd-right);width:var(--cd-w);
+  max-height:calc(100vh - var(--cd-top) - 18px);z-index:9000;box-sizing:border-box;
+  background:#141838;border:1px solid #2f3568;border-radius:12px;
+  box-shadow:0 16px 48px rgba(0,0,0,.55);display:flex;flex-direction:column;overflow:hidden;
+  color:#dfe3f5;font-family:"Segoe UI","Microsoft YaHei",sans-serif;line-height:1.6}
+#cdDockInline.cd-collapsed{height:auto}
+#cdDockInline.cd-collapsed #cdBodyInline,#cdDockInline.cd-collapsed #cdFootInline{display:none}
+#cdHeadInline{display:flex;align-items:center;gap:8px;padding:9px 11px;cursor:move;
+  background:linear-gradient(90deg,#1d2148,#171b3c);border-bottom:1px solid #2f3568;
+  user-select:none;flex:none;font-size:12.5px}
+#cdHeadInline .cd-t{flex:1;color:#d4af6a;font-weight:600;letter-spacing:.5px}
+#cdHeadInline button{background:none;border:1px solid #2f3568;color:#9aa0c9;
+  border-radius:6px;cursor:pointer;font-size:11px;padding:2px 7px}
+#cdHeadInline button:hover{color:#dfe3f5;border-color:#d4af6a}
+#cdGripInline{position:absolute;left:0;top:0;bottom:0;width:7px;cursor:ew-resize;z-index:3}
+#cdGripInline:hover{background:rgba(212,175,106,.30)}
+#cdBodyInline{overflow:auto;padding:10px 12px 6px;flex:1;min-height:60px}
+#cdFootInline{border-top:1px solid #2f3568;padding:7px 11px;font-size:11px;color:#9aa0c9;
+  display:flex;gap:5px;align-items:center;flex:none;flex-wrap:wrap}
+/* 状态文字独占一行，宽度档按钮整齐排在下一行 */
+#cdFootInline .cd-state-inline{flex-basis:100%;line-height:1.5}
+#cdFootInline button{cursor:pointer;border:1px solid #2f3568;border-radius:5px;
+  padding:1px 6px;background:none;color:#9aa0c9;font-size:11px}
+#cdFootInline button:hover{color:#d4af6a;border-color:#d4af6a}
+#cdHudInline{position:fixed;top:10px;right:var(--cd-right);width:var(--cd-w);
+  z-index:9200;box-sizing:border-box;display:flex;align-items:center;gap:8px;
+  background:rgba(20,24,56,.92);border:1px solid #2f3568;border-radius:9px;
+  padding:6px 10px;font-size:11.5px;color:#9aa0c9}
+#cdHudInline b{color:#d4af6a;font-weight:600}
+#cdHudInline span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#cdHudInline.min #cdHudInlineBody{display:none}
+#cdHudInline button{background:none;border:1px solid #2f3568;color:#9aa0c9;
+  border-radius:6px;cursor:pointer;font-size:11px;padding:2px 7px;flex:none}
+#cdErrInline{position:fixed;right:14px;bottom:14px;z-index:9900;max-width:440px;display:none;
+  background:#3a1418;border:1px solid #e24b4a;color:#ffd7d7;border-radius:8px;
+  padding:9px 12px;font:12px/1.5 Consolas,monospace;white-space:pre-wrap}
+
+/* 原控件条：从横铺改为浮窗内单列；控件本身与事件一律不动 */
+html.cd-inline-on .ctl{position:static !important;display:block !important;
+  grid-template-columns:1fr !important;gap:0 !important;margin:0 !important;
+  padding:0 !important;background:none !important;border:0 !important;
+  box-shadow:none !important;width:100% !important;max-height:none !important;
+  overflow:visible !important}
+html.cd-inline-on .ctl > div{margin:0 0 11px}
+html.cd-inline-on .ctl label{display:flex;justify-content:space-between;align-items:baseline;
+  gap:6px;font-size:11.5px;color:#9aa0c9;margin-bottom:3px}
+html.cd-inline-on .ctl .val{display:none}
+html.cd-inline-on .ctl input[type=range]{width:100%;accent-color:#d4af6a;margin:0;cursor:pointer}
+html.cd-inline-on .ctl select{width:100%;background:#0b0f28;border:1px solid #2f3568;
+  border-radius:6px;color:#dfe3f5;font-size:11.5px;padding:4px 6px;cursor:pointer}
+html.cd-inline-on .ctl button{background:#1c2149;border:1px solid #2f3568;color:#dfe3f5;
+  border-radius:6px;font-size:11px;padding:5px 9px;cursor:pointer;margin:0 6px 8px 0}
+html.cd-inline-on .ctl button:hover{border-color:#d4af6a;color:#d4af6a}
+html.cd-inline-on .cd-num{width:72px;flex:none;text-align:right;background:#0b0f28;
+  border:1px solid #2f3568;border-radius:5px;color:#d4af6a;font-size:11.5px;
+  padding:2px 5px;font-variant-numeric:tabular-nums;font-family:inherit}
+html.cd-inline-on .cd-num:focus{outline:none;border-color:#d4af6a}
+html.cd-inline-on .cd-btnrow{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+
+/* F14：散装控制条（.btnrow 播放/单步/复位等）搬进浮窗后的版式。
+   弹簧 div 要隐藏，读数换行，否则窄浮窗里会把按钮挤到看不见。 */
+html.cd-inline-on #cdBodyInline > .btnrow,
+html.cd-inline-on #cdBodyInline > .cd-extra{
+  display:flex;flex-wrap:wrap;gap:6px;align-items:center;
+  margin:0 0 12px;padding:0 0 10px;border-bottom:1px dashed #2f3568}
+html.cd-inline-on #cdBodyInline > .btnrow > div[style*="flex"]{display:none}
+html.cd-inline-on #cdBodyInline > .btnrow button,
+html.cd-inline-on #cdBodyInline > .cd-extra button{
+  background:#1c2149;border:1px solid #2f3568;color:#dfe3f5;
+  border-radius:6px;font-size:11px;padding:5px 9px;cursor:pointer;margin:0}
+html.cd-inline-on #cdBodyInline > .btnrow button:hover,
+html.cd-inline-on #cdBodyInline > .cd-extra button:hover{border-color:#d4af6a;color:#d4af6a}
+html.cd-inline-on #cdBodyInline > .btnrow button.on{
+  background:#173a3a;border-color:#4ec9a8;color:#4ec9a8}
+html.cd-inline-on #cdBodyInline > .btnrow .readout{
+  flex-basis:100%;font-size:11px;color:#9aa0c9}
+html.cd-inline-on #cdBodyInline > .btnrow .readout b{color:#d4af6a}
+html.cd-inline-on #cdBodyInline > .cd-extra input[type=range],
+html.cd-inline-on #cdBodyInline > .cd-extra select{width:100%;accent-color:#d4af6a}
+/* 参数多的页面（如 higgs_core 17 个控件）浮窗内可滚动，滚动条要看得见 */
+html.cd-inline-on #cdBodyInline{scrollbar-width:thin;scrollbar-color:#d4af6a #0b0f28}
+html.cd-inline-on #cdBodyInline::-webkit-scrollbar{width:9px}
+html.cd-inline-on #cdBodyInline::-webkit-scrollbar-thumb{background:#3a4173;border-radius:5px}
+html.cd-inline-on #cdBodyInline::-webkit-scrollbar-thumb:hover{background:#d4af6a}
+
+/* 顺带修 grid 的 1fr auto-min 撑宽（长公式页实测 scrollWidth 1915 > iframe 1080） */
+html.cd-inline-on .duo{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
+html.cd-inline-on .trio{grid-template-columns:repeat(3,minmax(0,1fr)) !important}
+html.cd-inline-on .cmp{grid-template-columns:138px minmax(0,1fr) minmax(0,1fr) !important}
+html.cd-inline-on .map{grid-template-columns:1.05fr minmax(0,1fr) minmax(0,1fr) !important}
+html.cd-inline-on .eq,html.cd-inline-on .note,html.cd-inline-on .panel{overflow-wrap:anywhere;word-break:break-word}
+html.cd-inline-on .eq{overflow-x:auto}
+html.cd-inline-on canvas{max-width:100%}
+
+@media(max-width:760px){
+  html.cd-inline-on{--cd-w:270px;--cd-top:52px}
+  html.cd-inline-on body{padding-right:0 !important}
+  #cdDockInline{position:relative;top:auto;right:auto;width:100%;max-height:none;margin:8px 0;border-radius:8px}
+  #cdHudInline{display:none}
+  #cdGripInline{display:none}
+}
+
+</style>
+<script id="cdInlineDock">
+/* inline-dock.js — 注入到独立单文件：把原 .ctl 包进自带右浮窗
+   SOUL F13：独立文件自身必须有右浮窗；被宿主 iframe 加载时自动让位，避免双重浮窗。
+   F11 同源：控件还是原来那批，事件一个不改；只改它们所在的容器。 */
+(function () {
+  'use strict';
+  /* 宿主 dock-core 会注入 .ctl{display:none} 并镜像收纳，这里必须完全不启用 */
+  if (window.self !== window.top) return;
+  /* ⚠️ 多数页面有「多个 .ctl」（每段图一条控件条），必须全部搬进浮窗，
+     只搬第一个的话其余控件条仍横铺在正文里 = F13 没做完 */
+  var ctls = Array.prototype.slice.call(document.querySelectorAll('.ctl'));
+  if (!ctls.length) return;
+  var root = document.documentElement, body = document.body;
+  root.classList.add('cd-inline-on');
+
+  var $ = function (s, b) { return (b || document).querySelector(s); };
+  var $$ = function (s, b) { return Array.prototype.slice.call((b || document).querySelectorAll(s)); };
+
+  /* N51：全局报错红框 */
+  var err = document.createElement('div'); err.id = 'cdErrInline'; body.appendChild(err);
+  function showErr(m) { err.style.display = 'block'; err.textContent = '[JS 错误] ' + m; }
+  window.onerror = function (m, s, l, c) { showErr(m + ' @' + (s || '').split('/').pop() + ':' + l + ':' + c); };
+
+  /* N184：右上角 HUD，只放标签、可收起；放在浮窗正上方右侧让位区，不遮正文 */
+  var hud = document.createElement('div'); hud.id = 'cdHudInline';
+  var title = (document.title || '可视化').split('｜')[0].slice(0, 26);
+  hud.innerHTML = '<b>张祥前素材库</b><span id="cdHudInlineBody">· ' + title + '</span>' +
+                  '<button data-act="hudInline">收起</button>';
+  body.appendChild(hud);
+
+  /* 浮窗外壳：把「所有」带可调参数的控件条按原文档顺序整个搬进去，
+     DOM 节点不重建 ⇒ 事件与状态原样保留。
+     F14：只认 .ctl 会漏掉播放控制条（.btnrow 的 暂停 / 单步 / 复位），
+     它们会留在正文里、紧挨着图 ⇒ 参数与图同侧，违反右浮窗铁律。 */
+  var dock = document.createElement('div'); dock.id = 'cdDockInline';
+  ctls[0].parentNode.insertBefore(dock, ctls[0]);
+  var grip = document.createElement('div'); grip.id = 'cdGripInline';
+  grip.title = '拖动调整浮窗宽度'; dock.appendChild(grip);
+  var head = document.createElement('div'); head.id = 'cdHeadInline';
+  head.innerHTML = '<span class="cd-t">⚙ 参数面板</span><button data-act="collapseInline">收起</button>';
+  dock.appendChild(head);
+  var bd = document.createElement('div'); bd.id = 'cdBodyInline';
+  dock.appendChild(bd);
+
+  /* 扫描 .ctl 之外仍留在正文的可调控件，按「控制条整组」或「单控件包一层」收纳 */
+  var CTRL_SEL = 'input[type=range],input[type=number],select,button';
+  var extra = [];
+  $$(CTRL_SEL, document.body).forEach(function (el) {
+    if (dock.contains(el) || hud.contains(el) || err.contains(el)) return;
+    if (ctls.some(function (c) { return c.contains(el); })) return;  // .ctl 内的已单独收纳
+    var p = el.parentElement;
+    if (!p) return;
+    var isBar = /(?:btnrow|btnbar|toolbar|controls?|ctrl|playbar|ops)/i.test(String(p.className || ''));
+    if (isBar && !p.querySelector('canvas') && !p.querySelector('h1,h2,h3')) {
+      if (extra.indexOf(p) < 0) extra.push(p);            // 整条控制条搬走，读数随行
+    } else {
+      var w = document.createElement('div'); w.className = 'cd-extra';
+      p.insertBefore(w, el); w.appendChild(el); extra.push(w);  // 散控件包一层再搬
+    }
+  });
+
+  /* 按原文档顺序合并，保证「播放按钮在上、参数在下」 */
+  var all = ctls.concat(extra);
+  all.sort(function (a, b) {
+    if (a === b) return 0;
+    return (a.compareDocumentPosition(b) & 4) ? -1 : 1;  // 4 = DOCUMENT_POSITION_FOLLOWING
+  });
+  all.forEach(function (c) { bd.appendChild(c); });
+
+  var ft = document.createElement('div'); ft.id = 'cdFootInline';
+  ft.innerHTML = '<span class="cd-state-inline"></span><span style="flex:1"></span><span>宽度</span>' +
+    '<button data-w="280">窄</button><button data-w="360">中</button><button data-w="460">宽</button>';
+  dock.appendChild(ft);
+
+  var ranges = $$('input[type=range]', bd);
+  var discrete = $$('select,button', bd).length;
+  /* 参数多时浮窗内部要滚动；明确标出来，避免被误读成「参数没全放进去」 */
+  var stateEl = $('.cd-state-inline', ft);
+  function refreshState() {
+    var more = bd.scrollHeight > bd.clientHeight + 4;
+    stateEl.textContent = ranges.length + ' 滑条 / ' + discrete + ' 开关 · ' +
+      all.length + ' 组控件' + (more ? ' · ↕ 可滚动' : '') + ' · 可拖可收';
+    stateEl.style.color = more ? '#d4af6a' : '';
+  }
+  refreshState();
+  window.addEventListener('resize', refreshState);
+
+  /* N241：滑条右侧数字是输入口，不是标签（隐藏原只读 .val，换成可输入） */
+  function nice(v, step) {
+    var dec = (String(step || '0.01').split('.')[1] || '').length;
+    return Number(v).toFixed(Math.min(4, dec));
+  }
+  ranges.forEach(function (rg) {
+    var holder = rg.parentElement;
+    var lab = holder ? holder.querySelector('label') : null;
+    var valEl = holder ? holder.querySelector('.val') : null;
+    if (valEl) valEl.style.display = 'none';
+    var num = document.createElement('input');
+    num.type = 'text'; num.className = 'cd-num'; num.title = '可直接输入数值（与滑条同源）';
+    num.value = nice(rg.value, rg.step);
+    (lab || holder).appendChild(num);
+
+    function apply(v, scroll) {
+      var x = parseFloat(v);
+      if (!isFinite(x)) { num.value = nice(rg.value, rg.step); return; }
+      x = Math.min(parseFloat(rg.max || '1'), Math.max(parseFloat(rg.min || '0'), x));
+      rg.value = nice(x, rg.step);
+      rg.dispatchEvent(new Event('input', { bubbles: true }));
+      rg.dispatchEvent(new Event('change', { bubbles: true }));
+      num.value = nice(rg.value, rg.step);
+      /* N207：改完参数把对应那张图送到眼前 */
+      if (scroll) {
+        var n = dock.nextElementSibling;
+        for (var k = 0; k < 4 && n; k++, n = n.nextElementSibling) {
+          var cv = n.querySelector ? n.querySelector('canvas') : null;
+          if (cv) { try { cv.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {} break; }
+        }
+      }
+    }
+    rg.addEventListener('input', function () { num.value = nice(rg.value, rg.step); });
+    num.addEventListener('change', function () { apply(num.value, true); });
+    num.addEventListener('keydown', function (e) { if (e.key === 'Enter') { apply(num.value, true); num.blur(); } });
+    num.addEventListener('dblclick', function () { num.select(); });
+  });
+
+  /* N196 可拖；N199 尺寸可调 */
+  var dragging = null;
+  head.addEventListener('mousedown', function (e) {
+    if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+    dragging = { x: e.clientX, y: e.clientY, top: dock.offsetTop,
+                 right: root.clientWidth - dock.offsetLeft - dock.offsetWidth };
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', function (e) {
+    if (!dragging) return;
+    dock.style.top = Math.max(0, dragging.top + e.clientY - dragging.y) + 'px';
+    dock.style.right = Math.max(0, dragging.right - (e.clientX - dragging.x)) + 'px';
+  });
+  document.addEventListener('mouseup', function () { dragging = null; });
+
+  var resizing = null;
+  grip.addEventListener('mousedown', function (e) {
+    resizing = { x: e.clientX, w: dock.offsetWidth };
+    e.preventDefault(); e.stopPropagation();
+  });
+  document.addEventListener('mousemove', function (e) {
+    if (!resizing) return;
+    var w = Math.min(560, Math.max(258, resizing.w + resizing.x - e.clientX));
+    root.style.setProperty('--cd-w', w + 'px');
+  });
+  document.addEventListener('mouseup', function () { resizing = null; });
+
+  $$('#cdDockInline [data-act], #cdHudInline [data-act]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var a = b.getAttribute('data-act');
+      if (a === 'collapseInline') {
+        dock.classList.toggle('cd-collapsed');
+        b.textContent = dock.classList.contains('cd-collapsed') ? '展开' : '收起';
+      } else {
+        hud.classList.toggle('min');
+        b.textContent = hud.classList.contains('min') ? '展开' : '收起';
+      }
+    });
+  });
+  $$('#cdFootInline [data-w]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      root.style.setProperty('--cd-w', b.getAttribute('data-w') + 'px');
+      setTimeout(refreshState, 80);
+    });
+  });
+})();
+
+</script>
+</body>
+</html>

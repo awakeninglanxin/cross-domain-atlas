@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>罗素「平面→球→平面」形态循环 × δΓ 相体积元：撞脸，但不是同一个东西</title>
+<style>
+  :root{
+    --bg:#0d1220;--card:#161f30;--card2:#1b2639;--ink:#e9f0fa;
+    --dim:#9fb0c8;--line:#2a3a52;--ok:#4fd1c5;--bad:#ff9166;
+    --gold:#ffd479;--blue:#7db3ff;--warm:#ffb066;--purple:#a98bd6;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"WenQuanYi Micro Hei","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    line-height:1.75;font-size:15px}
+  .wrap{max-width:1240px;margin:0 auto;padding:22px 16px 64px}
+  h1{font-size:22px;margin:0 0 6px;letter-spacing:.3px}
+  h2{font-size:17px;margin:0 0 10px;color:var(--gold)}
+  h3{font-size:14px;margin:16px 0 6px;color:var(--ok)}
+  .sub{color:var(--dim);font-size:13.5px;margin:0 0 18px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:18px}
+  .panel{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:12px}
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:860px){.duo{grid-template-columns:1fr}}
+  canvas{width:100%;height:auto;display:block;border-radius:8px;background:#0a1120;touch-action:none}
+  .cap{font-size:12.5px;color:var(--dim);margin-top:8px}
+  .tag{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:99px;border:1px solid var(--line);margin-right:6px}
+  .tag.ok{color:var(--ok);border-color:#2b6b67}
+  .tag.bad{color:var(--bad);border-color:#7a4433}
+  .tag.g{color:var(--gold);border-color:#7a6533}
+  .tag.b{color:var(--blue);border-color:#3b5a80}
+  .tag.w{color:var(--warm);border-color:#7a5730}
+  .ctl{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:12px;margin:10px 0 4px}
+  .ctl label{display:block;font-size:12.5px;color:var(--dim);margin-bottom:4px}
+  .ctl input[type=range]{width:100%;accent-color:var(--gold)}
+  .ctl select{width:100%;background:#0b1322;color:var(--ink);border:1px solid var(--line);
+    border-radius:6px;padding:5px 7px;font-family:inherit;font-size:12.5px}
+  .val{color:var(--gold);font-variant-numeric:tabular-nums;font-weight:600}
+  .eq{background:#0b1322;border-left:3px solid var(--ok);border-radius:0 8px 8px 0;
+    padding:9px 12px;margin:8px 0;font-family:"DejaVu Serif",Georgia,serif;
+    font-size:14.5px;overflow-x:auto;white-space:nowrap;color:#dce9ff}
+  .eq.bad{border-left-color:var(--bad)}
+  .eq.gold{border-left-color:var(--gold)}
+  .eq.warm{border-left-color:var(--warm)}
+  .eq.blue{border-left-color:var(--blue)}
+  .eq .n{color:var(--gold);font-family:inherit;font-size:12px;margin-right:8px}
+  .frac{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;
+    font-size:.84em;margin:0 2px}
+  .frac i{font-style:normal;padding:0 4px}
+  .frac i:first-child{border-bottom:1px solid currentColor}
+  sub,sup{font-size:.7em}
+  .note{font-size:12.8px;color:var(--dim);margin:5px 0 0}
+  .readout{display:inline-block;background:#0b1322;border:1px solid var(--line);
+    border-radius:6px;padding:5px 10px;font-size:12px;color:var(--dim);
+    font-variant-numeric:tabular-nums}
+  .readout b{color:var(--gold)}
+  .btnrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0 4px}
+  .btn{background:#0b1322;color:var(--ink);border:1px solid var(--line);
+    border-radius:7px;padding:6px 12px;font-family:inherit;font-size:12.5px;
+    cursor:pointer;min-height:34px}
+  .btn:hover{border-color:var(--gold);color:var(--gold)}
+  .btn.on{background:#173a3a;border-color:var(--ok);color:var(--ok)}
+  .big{font-size:22px;font-weight:700;color:var(--gold);
+    font-variant-numeric:tabular-nums;line-height:1.35}
+  .spacebar{border-radius:8px;padding:7px 11px;font-size:12.3px;font-weight:600;
+    letter-spacing:.2px;margin-bottom:9px}
+  .spacebar.L{background:rgba(255,176,102,.12);border:1px solid #7a5730;color:var(--warm)}
+  .spacebar.R{background:rgba(169,139,214,.12);border:1px solid #574770;color:var(--purple)}
+  .cmp{display:grid;grid-template-columns:138px 1fr 1fr;gap:0;font-size:12.8px}
+  .cmp>div{padding:8px 10px;border-bottom:1px solid var(--line)}
+  .cmp .h{color:var(--gold);font-weight:600;background:#101a2b}
+  .cmp .k{color:var(--dim)}
+  @media(max-width:620px){.cmp{grid-template-columns:88px 1fr 1fr;font-size:11.2px}
+    .cmp>div{padding:6px 5px}}
+  b.ok{color:var(--ok)}b.bad{color:var(--bad)}b.g{color:var(--gold)}b.blue{color:var(--blue)}
+  b.w{color:var(--warm)}b.p{color:var(--purple)}
+  .foot{font-size:12.5px;color:var(--dim);border-top:1px dashed var(--line);padding-top:14px;margin-top:8px}
+  .hint{font-size:11.5px;color:var(--dim);margin-top:6px}
+  .warn{background:rgba(255,145,102,.09);border:1px solid #7a4433;border-radius:8px;
+    padding:9px 12px;font-size:12.6px;color:#ffc7ab;margin:9px 0}
+  .src{font-size:12.6px;line-height:1.95;color:var(--dim)}
+  .src b{color:var(--ink)}
+  @media(max-width:620px){
+    .eq{font-size:13px;white-space:normal;word-break:break-word;line-height:1.9}
+    h1{font-size:19px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>罗素「平面 → 球 → 平面」形态循环 × δΓ 相体积元</h1>
+<p class="sub">结论先行：<b class="w">两栏全程都长得几乎一样</b>——一起做「扁平 → 球 → 扁平」的往返循环。但两者画的根本不是同一个空间：左栏是<b class="w">实空间 x,y,z 里的物质形态</b>，右栏是<b class="p">相空间里的体积元 δΓ</b>。更要命的是：<b class="bad">只要右栏跟着这个循环，δΓ 就必然从薄片涨回球</b>，而 ∇·f&lt;0 的耗散系统只允许单调收缩。形似是几何同构，不是同一对象；把循环照搬过去，物理上直接违规。</p>
+
+<!-- ============== ① 公式底稿 ============== -->
+<div class="card">
+  <h2>① 两栏各自的公式底稿 <span class="tag g">先看清画的是什么</span></h2>
+
+  <div class="duo">
+    <div class="panel">
+      <div class="spacebar L">左栏 · 实空间 (x,y,z) · 物质形态 · Russell / Pat Flaugher 1995</div>
+      <div class="eq warm"><span class="n">R1</span>
+        旋转曲面示意参数化（<b class="w">本页为可视化自设</b>）：<br>
+        ρ(v) = H + (1−H) sin v ， z(v) = S cos v ， v∈[0,π]，绕 z 轴旋转 u∈[0,2π)
+      </div>
+      <div class="eq warm"><span class="n">R2</span>
+        H = 洞半径（0 = 球，→1 = 平面环带）；S = 极轴 / 赤道 比（1 = 球，→0 = 压扁）。<br>
+        <b>H=0, S=1 ⇒ 真球</b>；<b>H&gt;0 ⇒ 沿极轴贯通成环</b>；<b>S→0 ⇒ 扁平</b>
+      </div>
+      <div class="eq warm"><span class="n">R3</span>
+        呼吸律（本页动画自设 smoothstep）：前半 H:0.85→0、S:0.06→1；后半反向。<br>
+        <b class="w">p=0 与 p=1 完全同形 ⇒ 闭合循环</b>
+      </div>
+      <div class="eq warm"><span class="n">R4</span>
+        罗素原文定律（文字，<b>无方程</b>）：mass appears from the plane, becomes a sphere by way of the cone, and returns to the plane；生成 / 辐射、吸气 / 呼气、+4 碳振幅、<b>Oblating Spheres</b>
+      </div>
+      <p class="note">罗素反对熵与热死、主张零和循环 ⇒ 他的呼吸<b class="w">不是耗散吸引子</b>，更像一个自设的守恒摆；但同样没有场方程、没有洛伦兹协变性、没有可证伪的数值预言。</p>
+    </div>
+
+    <div class="panel">
+      <div class="spacebar R">右栏 · 相空间体积元 δΓ · Lorenz 线性化谱 · 刘维尔定理</div>
+      <div class="eq"><span class="n">L1</span>
+        刘维尔定理：<span class="frac"><i>d</i><i>dt</i></span> ln δΓ = ∇·<b>f</b> ，
+        δΓ(t) = δΓ<sub>0</sub> exp[∫<sub>0</sub><sup>t</sup>∇·<b>f</b> dτ]
+      </div>
+      <div class="eq bad"><span class="n">L2</span>
+        Lorenz：<b>f</b>=(σ(y−x), x(ρ−z)−y, xy−βz) ⇒ ∇·<b>f</b> = −(σ+1+β) = <b class="bad">−13.667</b> &lt; 0
+      </div>
+      <div class="eq"><span class="n">L3</span>
+        线性化映射 M(t)=diag(e<sup>λ₁t</sup>, e<sup>λ₂t</sup>, e<sup>λ₃t</sup>)，Σλ<sub>i</sub> = ∇·<b>f</b>；<br>
+        谱 (+0.906, 0, −14.572) ⇒ <b class="g">一拉伸、一不变、两压缩 ⇒ 压成薄片</b>
+      </div>
+      <div class="eq blue"><span class="n">L4</span>
+        哈密顿 / KAM：∇·<b>f</b>≡0 ⇒ δΓ(t)≡δΓ<sub>0</sub>；可以混沌，但<b class="blue">没有吸引域</b>、不收敛到薄片
+      </div>
+      <p class="note">右栏的「扁」是<b class="p">相体积指数收缩</b>（概率 / 信息在相空间被压到低维集合），不是任何物体变扁。洛伦兹标量真空连相轨道都没有，δΓ 不适用。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============== ② 动画主体 ============== -->
+<div class="card">
+  <h2>② 并排动画：全程撞脸，但「回升」那一步不可能 <span class="tag bad">可拖拽 / 会动</span></h2>
+
+  <div class="btnrow">
+    <button class="btn on" id="play">⏸ 暂停</button>
+    <div style="flex:1"></div>
+    <span class="readout" id="rL">左：相位 p = <b>0.000</b> · 帧 <b>12</b></span>
+    <span class="readout" id="rR">右：t = <b>0.000</b> · δΓ/δΓ₀ = <b>1.000</b></span>
+  </div>
+
+  <div class="ctl">
+    <div><label>呼吸相位 p = <span class="val" id="v_p">0.00</span></label>
+      <input type="range" id="p" min="0" max="1" step="0.002" value="0"></div>
+    <div><label>动画速度 = <span class="val" id="v_s">1.00</span> ×</label>
+      <input type="range" id="spd" min="0.2" max="3" step="0.05" value="1"></div>
+    <div><label>右栏时间轴</label>
+      <select id="rmode">
+        <option value="sync" selected>同步同一相位（仅几何对比）</option>
+        <option value="mono">单向耗散演化（真实）</option>
+        <option value="manual">手动独立 t</option>
+      </select></div>
+    <div><label>右栏手动 t = <span class="val" id="v_tR">0.30</span></label>
+      <input type="range" id="tR" min="0" max="0.60" step="0.005" value="0.30"></div>
+  </div>
+
+  <div class="warn" id="warnBox">⚠ <b>同步模式是故意设的「几何对照」</b>：右栏 t 被绑到左栏扁率 1−S，于是两栏全程同步做「扁(t≈0.56) → 球(t=0) → 扁(t≈0.56)」。看着一模一样，但右栏 δΓ 会在 p:0→0.5 段从 <b class="bad">≈4.5×10⁻⁴ 回升到 1（涨约 2200 倍）</b> —— ∇·f&lt;0 要求 δΓ 单调不增，这一步<b class="bad">物理上不可能</b>。切到「单向耗散演化」才看到真实行为：只降不升、永不回到球。</div>
+
+  <div class="duo">
+    <div class="panel">
+      <div class="spacebar L">左 · 实空间：物质形态的生灭循环</div>
+      <span class="tag w">3D · 旋转曲面（拖旋转 · 双击复位）</span>
+      <canvas id="L3" width="540" height="400"></canvas>
+      <div class="big" id="Lname" style="font-size:17px">静止波场边界 · 平面</div>
+      <div class="note" id="Lnum"></div>
+      <span class="tag w" style="margin-top:10px">2D · 母线剖面 + H(t) / S(t) 呼吸曲线</span>
+      <canvas id="L2" width="540" height="460"></canvas>
+      <p class="cap">上：过轴截面 ρ=±[H+(1−H)sin v]，z=S cos v；金色双圆是沿极轴贯通的「洞」。下：H(洞) 与 S(扁率) 随相位走一个闭合循环，竖虚线是 16 帧刻度（帧 12 → 27）。<b class="w">p=0 与 p=1 同形 ⇒ 循环闭合、零和。</b></p>
+    </div>
+
+    <div class="panel">
+      <div class="spacebar R">右 · 相空间：初始球被谱压成薄片</div>
+      <span class="tag bad">3D · 相体积元 δΓ（拖旋转 · 双击复位）</span>
+      <canvas id="R3" width="540" height="400"></canvas>
+      <div class="big" id="Rname" style="font-size:17px;color:var(--purple)">耗散吸引子 · 拉伸 + 折叠 + 收缩</div>
+      <div class="note" id="Rnum"></div>
+      <span class="tag bad" style="margin-top:10px">2D · log₁₀(δΓ/δΓ₀) 与薄片厚度</span>
+      <canvas id="R2" width="540" height="460"></canvas>
+      <p class="cap">上：δΓ 按 L1 解析积分，对固定的 t 只会单调衰减（灰平线＝哈密顿 / KAM 恒 1）。下：薄片厚度 e<sup>λ₃t</sup>→0。点＝当前时刻。<b class="p">同步模式下点会「沿曲线往回走」＝非物理的回升；单向模式只往右走，永不回到球。</b></p>
+    </div>
+  </div>
+</div>
+
+<!-- ============== ③ 三条判据 ============== -->
+<div class="card">
+  <h2>③ 为什么「撞脸」不能当成同一件事</h2>
+  <div class="duo">
+    <div>
+      <h3>① 几何同构 ≠ 对象相同</h3>
+      <p class="note">两栏都在一根单轴上做「扁 ↔ 圆」的往返：左栏靠 S:0.06↔1，右栏靠 e<sup>λ₃t</sup> 在薄片与球之间来回。但左栏压的是<b class="w">实空间里的表面</b>（ρ、z 有长度含义），右栏压的是<b class="p">相空间里的一团示踪点</b>（坐标是 q、p，没有长度）。把两根轴当成同一根，是这一步偷换的。</p>
+      <h3>② 驱动完全不同</h3>
+      <p class="note">左栏是<b class="w">自设的 smoothstep 呼吸律</b>，原文只给文字定律，没有方程、没有作用量；右栏是<b class="p">∇·f=−13.667</b> 直接积分出来的，可以拿数值轨道对拍。一个靠叙述推进，一个靠散度推进。</p>
+    </div>
+    <div>
+      <h3>③ 最锋利的一刀：把「回升」看清楚</h3>
+      <p class="note">左栏 <b class="w">p=0≡p=1</b> 是闭合循环（罗素零和、反对热死）；右栏 <b class="p">δΓ 只降不升</b>，趋近低维吸引子且永不回头。同步模式里两栏一起从「扁」走回「球」，看着一模一样，但右栏这一步等于让 δΓ 从 4.5×10⁻⁴ 涨回 1 —— 把「球→薄片」<b class="bad">倒放</b>。耗散不可逆，倒放即违规。<b>撞脸的是形状，分叉的是方向性。</b></p>
+      <h3>④ 两边都不洛伦兹不变？</h3>
+      <p class="note">不完全对称：左栏挑了<b class="w">固定极轴 + 全场同一呼吸相位</b>（绝对同时性），确实不协变；右栏的 Lorenz ODE 是<b class="p">非相对论动力系统</b>，也不协变。但区别在于：右栏从不自称真空模型，而 SM 真空 ⟨Φ⟩=常数那一栏，两者都进不去。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============== ④ 对照表 ============== -->
+<div class="card">
+  <h2>④ 逐项对照表</h2>
+  <div class="cmp">
+    <div class="h">项目</div><div class="h">左 · 罗素 / Pat 形态循环</div><div class="h">右 · δΓ 相体积元</div>
+    <div class="k">所在空间</div><div><b class="w">实空间 (x,y,z)</b></div><div><b class="p">相空间 (q,p) 的体积元</b></div>
+    <div class="k">画的对象</div><div>物质表面 / 波场边界</div><div>一团初始示踪点的集合</div>
+    <div class="k">「压扁」是什么</div><div>极轴缩短、赤道鼓出 → 扁球 / 环</div><div>两个 Lyapunov 方向指数收缩</div>
+    <div class="k">驱动</div><div>自设 smoothstep 呼吸（无方程）</div><div>∇·f = −13.667（可数值对拍）</div>
+    <div class="k">时间</div><div>全局同步的呼吸相位 p</div><div>线性化演化参数 t</div>
+    <div class="k">可逆 / 循环</div><div><b class="w">✓ 闭合循环，p=0≡p=1</b></div><div><b class="bad">✗ 单向收敛，永不回升</b></div>
+    <div class="k">耗散 / 吸引子</div><div><b class="w">✗ 罗素反对熵，零和守恒摆</b></div><div><b class="bad">✓ 奇怪吸引子的必要条件</b></div>
+    <div class="k">洛伦兹不变</div><div><b class="bad">✗</b> 固定轴 + 绝对同时性</div><div><b class="bad">✗</b> 非相对论 ODE（但也不自称真空）</div>
+    <div class="k">可证伪数值</div><div><b class="bad">无</b>（原文为文字定律）</div><div><b class="ok">有</b>：谱、散度、δΓ(t)</div>
+    <div class="k">定位</div><div><b class="w">造形 / 动画 / 形态直觉（很强）</b></div><div><b class="p">动力系统示意（线性化，非完整流）</b></div>
+  </div>
+</div>
+
+<!-- ============== ⑤ 出处 ============== -->
+<div class="card">
+  <h2>⑤ 左栏的出处：来自你的 ima 知识库 <span class="tag b">Walter Russell 资料</span></h2>
+  <div class="src">
+    <p style="margin:0 0 8px"><b>《fulcrum_v3n4_july_1995 zh.docx.docx》</b> — Pat Flaugher, <i>Vortex Graphics</i>：在 486/33 上用 Micro-Lathe + 画笔「在二维屏幕上一丝不苟地定位点，再通过电脑『车削』生成三维表面」，做了 <b>16 帧</b>、地下室耗两个多月；编辑评语「看着运动中的波浪，我不禁脊背发凉」。帧 12 静止波场边界平面；帧 16–17「环形表面出现……环状体变得越来越扁平（扁球体指赤道直径超过极轴直径）」；帧 18–19「甜甜圈洞正在缩小」；帧 20–22「形成了一个真正的球面」、碳 +4 振幅；帧 23 起「球形表面开始扁平化，因为内部钻出了一个洞……物质通过赤道面返回太空」。</p>
+    <p style="margin:0 0 8px"><b>《fulcrum_v4n1_january_1996 zh.docx.docx》</b> — 图题 <i>EVOLUTION OF MASS FROM PLANE TO SPHERE</i>（OCR 作 EV0 LUTIO N O 5 MASS FtOM PLAN E TO SPN ERE），图上标注 <i>OBLATENESS DECREASE</i>。</p>
+    <p style="margin:0 0 8px"><b>《fulcrum_v3n2_december_1994 zh.docx.docx》</b> — Chester Hatstat：「当离心力在压缩运动中心钻孔时，球体变成环体」。</p>
+    <p style="margin:0"><b>《A New Concept of the Universe》</b> 第 XXXIV 章 <i>Oblating Spheres</i>（prolating sun / oblating earth、抛出巨环）；<b>《The Secret of Light》</b>「球是立方收缩、立方是球膨胀」的呼吸说。<b class="w">这 16 帧确实是「动态随 t 变化的示意动图」——你说对了。</b></p>
+  </div>
+</div>
+
+<div class="card">
+  <h2>⑥ 边界声明</h2>
+  <p class="foot">
+    ① 左栏 R1/R2/R3 的 ρ(v)、z(v)、smoothstep 呼吸律是<b class="w">本页为可视化自设的参数化</b>，不是罗素原方程——原文给的是文字定律与手绘帧，没有代数式；3D 曲面不是 16 帧图像的逐帧重建。<br>
+    ② 右栏 M(t)=diag(e<sup>λt</sup>) 是<b class="p">线性化示意</b>（叠加 det=1 的剪切只为看清拉伸折叠，不改变体积），不是完整 Lorenz 流积分；谱 (+0.906, 0, −14.572) 为标准参数文献值，谱和 −13.667 与 ∇·f 一致。<br>
+    ③ 「同步模式」把右栏 t 绑到左栏扁率 1−S，纯属<b class="bad">几何对照装置</b>：两栏一起做「扁→圆→扁」，但 δΓ 在 p:0→0.5 段从 ≈4.5×10⁻⁴ 回升到 1，违反 ∇·f&lt;0 的单调性，页面已用红框标出；真实耗散行为请切「单向耗散演化」。<br>
+    ④ 两栏都不洛伦兹不变；SM 真空 ⟨Φ⟩=v/√2 是洛伦兹标量、无轨道、无相体积，<b>两栏都不代表它</b>。把罗素帧序列认作「希格斯场内部运动」属于范畴跨越。<br>
+    ⑤ 本页不改动此前任何网页，为独立单文件、零外部依赖。
+  </p>
+</div>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+var OK="#4fd1c5",BAD="#ff9166",GOLD="#ffd479",BLUE="#7db3ff",DIM="#9fb0c8",
+    GRID="#223149",WARM="#ffb066",PURPLE="#a98bd6";
+var PI=Math.PI,TAU=2*PI,LN10=Math.LN10;
+function $(id){return document.getElementById(id);}
+function num(id){return parseFloat($(id).value);}
+function fmt(x,n){return x.toFixed(n===undefined?2:n);}
+function clamp(x,a,b){return Math.max(a,Math.min(b,x));}
+function lerp(a,b,t){return a+(b-a)*t;}
+function smooth(a,b,x){var t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t);}
+function lerpColor(a,b,t){
+  function hx(c){return [parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];}
+  var A=hx(a),B=hx(b);
+  return "rgb("+Math.round(A[0]+(B[0]-A[0])*t)+","+Math.round(A[1]+(B[1]-A[1])*t)+","+
+         Math.round(A[2]+(B[2]-A[2])*t)+")";
+}
+function canvasOf(cv){
+  var dpr=window.devicePixelRatio||1;
+  var w=cv.clientWidth||cv.width,h=Math.round(w*(cv.height/cv.width));
+  cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);
+  var ctx=cv.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,w,h);ctx.fillStyle="#0a1120";ctx.fillRect(0,0,w,h);
+  return {ctx:ctx,w:w,h:h};
+}
+
+/* ---------- 通用 2D 多面板 ---------- */
+function plot2D(cv,panels){
+  var o=canvasOf(cv),ctx=o.ctx,w=o.w,h=o.h;
+  var n=panels.length,gap=14,totW=0;
+  panels.forEach(function(p){totW+=(p.hw||1);});
+  var unit=(h-16-gap*(n-1))/totW,acc=8;
+  for(var pi=0;pi<n;pi++){
+    var P=panels[pi],ph=unit*(P.hw||1),L=48,R=w-14,T=acc,B=T+ph-12;
+    acc=T+ph+gap;
+    var xmin=P.xmin,xmax=P.xmax,ymin=P.ymin,ymax=P.ymax;
+    var sx0=(R-L)/(xmax-xmin),sy0=(B-T)/(ymax-ymin);
+    var sc=P.equal?Math.min(sx0,sy0):null;
+    function X(v){return sc?((L+R)/2+(v-(xmin+xmax)/2)*sc):L+(v-xmin)*sx0;}
+    function Y(v){return sc?((T+B)/2-(v-(ymin+ymax)/2)*sc):B-(v-ymin)*sy0;}
+    var GX0=sc?X(xmin):L, GX1=sc?X(xmax):R, GY0=sc?Y(ymax):T, GY1=sc?Y(ymin):B;
+    ctx.strokeStyle=GRID;ctx.lineWidth=1;
+    var nx=P.nx||5,ny=P.ny||4;
+    for(var i=0;i<=nx;i++){var gx=GX0+(GX1-GX0)*i/nx;
+      ctx.beginPath();ctx.moveTo(gx,GY0);ctx.lineTo(gx,GY1);ctx.stroke();}
+    for(var j=0;j<=ny;j++){var gy=GY0+(GY1-GY0)*j/ny;
+      ctx.beginPath();ctx.moveTo(GX0,gy);ctx.lineTo(GX1,gy);ctx.stroke();}
+    (P.bands||[]).forEach(function(bd){
+      ctx.fillStyle=bd.color||"rgba(159,176,200,.10)";
+      ctx.fillRect(X(bd.a),T,X(bd.b)-X(bd.a),B-T);
+    });
+    (P.series||[]).forEach(function(S){
+      ctx.strokeStyle=S.color;ctx.lineWidth=S.width||2;ctx.setLineDash(S.dash||[]);
+      ctx.beginPath();
+      S.pts.forEach(function(p,k){var yy=clamp(p[1],ymin,ymax);
+        if(k===0)ctx.moveTo(X(p[0]),Y(yy));else ctx.lineTo(X(p[0]),Y(yy));});
+      ctx.stroke();ctx.setLineDash([]);
+    });
+    (P.vlines||[]).forEach(function(vl){
+      ctx.strokeStyle=vl.color;ctx.setLineDash(vl.dash||[4,4]);ctx.lineWidth=vl.width||1.2;
+      ctx.beginPath();ctx.moveTo(X(vl.x),T);ctx.lineTo(X(vl.x),B);ctx.stroke();ctx.setLineDash([]);
+      if(vl.label){ctx.fillStyle=vl.color;ctx.font="10px 'WenQuanYi Micro Hei',sans-serif";
+        ctx.fillText(vl.label,X(vl.x)+3,T+26);}
+    });
+    (P.hlines||[]).forEach(function(hl){
+      ctx.strokeStyle=hl.color;ctx.setLineDash(hl.dash||[4,4]);ctx.lineWidth=1.3;
+      ctx.beginPath();ctx.moveTo(L,Y(hl.y));ctx.lineTo(R,Y(hl.y));ctx.stroke();ctx.setLineDash([]);
+      if(hl.label){ctx.fillStyle=hl.color;ctx.font="10px 'WenQuanYi Micro Hei',sans-serif";
+        ctx.fillText(hl.label,L+6,Y(hl.y)-5);}
+    });
+    (P.dots||[]).forEach(function(D){
+      ctx.fillStyle=D.color;ctx.beginPath();ctx.arc(X(D.x),Y(clamp(D.y,ymin,ymax)),D.r||4,0,TAU);ctx.fill();
+      if(D.label){ctx.fillStyle=D.color;ctx.font="10px 'WenQuanYi Micro Hei',sans-serif";
+        ctx.fillText(D.label,X(D.x)+6,Y(clamp(D.y,ymin,ymax))-7);}
+    });
+    (P.texts||[]).forEach(function(t){
+      ctx.fillStyle=t.color||DIM;ctx.font=t.font||"10px 'WenQuanYi Micro Hei',sans-serif";
+      ctx.fillText(t.text,X(t.x),Y(t.y));
+    });
+    if(P.legend&&P.legend.length){
+      var lw=126,lh=P.legend.length*15+10,lx=R-lw-6,ly=T+18;
+      ctx.fillStyle="rgba(10,17,32,.84)";ctx.fillRect(lx,ly,lw,lh);
+      ctx.strokeStyle=GRID;ctx.lineWidth=1;ctx.strokeRect(lx,ly,lw,lh);
+      P.legend.forEach(function(lg,k){
+        var yy=ly+13+k*15;
+        ctx.strokeStyle=lg.color;ctx.lineWidth=2.4;ctx.setLineDash(lg.dash||[]);
+        ctx.beginPath();ctx.moveTo(lx+7,yy-3);ctx.lineTo(lx+25,yy-3);ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle=lg.color;ctx.font="10px 'WenQuanYi Micro Hei',sans-serif";
+        ctx.fillText(lg.text,lx+30,yy);
+      });
+    }
+    ctx.fillStyle=DIM;ctx.font="10.5px 'WenQuanYi Micro Hei',sans-serif";
+    ctx.fillText(P.title||"",L,T+12);
+    if(P.xlabel)ctx.fillText(P.xlabel,GX1-64,B+11);
+    ctx.fillStyle="rgba(159,176,200,.75)";
+    ctx.fillText(fmt(xmin,1),GX0-2,B+11);ctx.fillText(fmt(xmax,1),GX1-24,B+11);
+  }
+}
+
+/* ===================== 状态 ===================== */
+var S={p:0,playing:true,speed:1,rmode:"sync",tManual:0.30,tMono:0,
+       raf:0,last:0};
+var LST={yaw:0.55,pitch:0.30,drag:false,lx:0,ly:0};
+var RST={yaw:0.72,pitch:0.22,drag:false,lx:0,ly:0};
+
+function shapeAt(p){
+  var H,Sq;
+  if(p<=0.5){var q=smooth(0,0.5,p);H=lerp(0.85,0,q);Sq=lerp(0.06,1,q);}
+  else{var q2=smooth(0.5,1,p);H=lerp(0,0.85,q2);Sq=lerp(1,0.06,q2);}
+  return {H:H,S:Sq};
+}
+function shapeName(H,Sq){
+  if(H<0.025&&Sq>0.965)return "真正的球面 · 碳 +4 振幅";
+  if(H>0.72&&Sq<0.15)return "静止波场边界 · 平面";
+  if(Sq<0.34)return "扁平环体 · 扁球体";
+  if(H<0.34)return "甜甜圈洞缩小 / 开始钻孔";
+  return "过渡：锥 → 球 → 锥";
+}
+function tRight(){
+  // 同步＝把右栏 t 绑到左栏的「扁率」1−S：两栏全程一起做 扁→圆→扁
+  // （这正是撞脸的来源），代价是 δΓ 在 p:0→0.5 段被迫回升 → 违反 ∇·f<0
+  if(S.rmode==="sync")return (1-shapeAt(S.p).S)*0.60;
+  if(S.rmode==="mono")return S.tMono;
+  return S.tManual;
+}
+
+/* ===================== 3D 投影 ===================== */
+function proj(x,y,z,st,cx,cy,s){
+  var cyw=Math.cos(st.yaw),syw=Math.sin(st.yaw),cp=Math.cos(st.pitch),sp=Math.sin(st.pitch);
+  var X=x*cyw-y*syw,Y=x*syw+y*cyw;
+  return {x:cx+X*s,y:cy-z*s*cp+Y*s*sp,d:Y*cp+z*sp};
+}
+
+/* ===================== 左 3D：罗素旋转曲面 ===================== */
+var GRIDU=44,GRIDV=22;
+function drawL3(){
+  var cv=$("L3"),o=canvasOf(cv),ctx=o.ctx,w=o.w,h=o.h;
+  var cx=w/2,cy=h*0.52,scl=Math.min(w,h)*0.33;
+  var sh=shapeAt(S.p),H=sh.H,Sq=sh.S;
+  function rho(v){return H+(1-H)*Math.sin(v);}
+  function zz(v){return Sq*Math.cos(v);}
+  function P3(u,v){
+    var r=rho(v),z=zz(v);
+    return proj(r*Math.cos(u),r*Math.sin(u),z,LST,cx,cy,scl);
+  }
+  // 极轴
+  var O=proj(0,0,0,LST,cx,cy,scl),T0=proj(0,0,1.18,LST,cx,cy,scl),B0=proj(0,0,-1.18,LST,cx,cy,scl);
+  ctx.strokeStyle="rgba(255,212,121,.35)";ctx.lineWidth=1;ctx.setLineDash([4,5]);
+  ctx.beginPath();ctx.moveTo(T0.x,T0.y);ctx.lineTo(B0.x,B0.y);ctx.stroke();ctx.setLineDash([]);
+
+  // 赤道「波场边界平面」参考网格（罗素语境；也让扁平态不显空）
+  ctx.strokeStyle="rgba(125,179,255,.17)";ctx.lineWidth=1;ctx.setLineDash([3,5]);
+  [0.40,0.90,1.40].forEach(function(rr){
+    ctx.beginPath();
+    for(var k=0;k<=72;k++){
+      var u=TAU*k/72,pg=proj(rr*Math.cos(u),rr*Math.sin(u),0,LST,cx,cy,scl);
+      if(k===0)ctx.moveTo(pg.x,pg.y);else ctx.lineTo(pg.x,pg.y);
+    }
+    ctx.stroke();
+  });
+  for(var q=0;q<12;q++){
+    var ag=TAU*q/12,
+        pA=proj(0,0,0,LST,cx,cy,scl),
+        pB=proj(1.40*Math.cos(ag),1.40*Math.sin(ag),0,LST,cx,cy,scl);
+    ctx.beginPath();ctx.moveTo(pA.x,pA.y);ctx.lineTo(pB.x,pB.y);ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // 纬线（固定 v）
+  ctx.lineWidth=1;
+  for(var j=0;j<=GRIDV;j++){
+    var v=PI*j/GRIDV;
+    ctx.strokeStyle=j===Math.round(GRIDV/2)?"rgba(255,176,102,.72)":"rgba(255,176,102,.22)";
+    ctx.beginPath();
+    for(var i=0;i<=GRIDU;i++){
+      var u=TAU*i/GRIDU,p=P3(u,v);
+      if(i===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y);
+    }
+    ctx.stroke();
+  }
+  // 经线（固定 u）
+  for(var i2=0;i2<14;i2++){
+    var u2=TAU*i2/14;
+    ctx.strokeStyle="rgba(255,212,121,.20)";
+    ctx.beginPath();
+    for(var j2=0;j2<=GRIDV;j2++){
+      var v2=PI*j2/GRIDV,p2=P3(u2,v2);
+      if(j2===0)ctx.moveTo(p2.x,p2.y);else ctx.lineTo(p2.x,p2.y);
+    }
+    ctx.stroke();
+  }
+  // 上下洞口金圆（强调「沿极轴贯通」）
+  if(H>0.012){
+    [0,PI].forEach(function(vv){
+      var r=rho(vv);
+      ctx.strokeStyle="rgba(255,212,121,.85)";ctx.lineWidth=2;
+      ctx.beginPath();
+      for(var k=0;k<=64;k++){
+        var u3=TAU*k/64,p3=P3(u3,vv);
+        if(k===0)ctx.moveTo(p3.x,p3.y);else ctx.lineTo(p3.x,p3.y);
+      }
+      ctx.stroke();
+    });
+  }
+  // 表面点云（按深度排序着色）
+  var items=[];
+  for(var a=0;a<900;a++){
+    var u=TAU*((a*0.6180339887)%1);
+    var v=PI*((a*0.4142135624)%1);
+    var pp=P3(u,v);
+    items.push({p:pp,d:pp.d,z:zz(v)});
+  }
+  items.sort(function(X,Y){return X.d-Y.d;});
+  items.forEach(function(it){
+    var f=clamp((it.d+1.6)/3.2,0,1);
+    ctx.fillStyle=lerpColor("#6b3f22",WARM,f);
+    ctx.globalAlpha=0.72;
+    ctx.beginPath();ctx.arc(it.p.x,it.p.y,1.5,0,TAU);ctx.fill();
+  });
+  ctx.globalAlpha=1;
+  ctx.fillStyle=WARM;ctx.font="11px 'WenQuanYi Micro Hei',sans-serif";
+  ctx.fillText("实空间表面：ρ(v)=H+(1−H)sin v , z(v)=S cos v",12,20);
+  ctx.fillStyle=GOLD;ctx.font="10px 'WenQuanYi Micro Hei',sans-serif";
+  ctx.fillText("H=洞半径 · S=极轴/赤道 · 金圆=沿 z 贯通的洞",12,37);
+  ctx.fillStyle="rgba(125,179,255,.85)";ctx.font="10px 'WenQuanYi Micro Hei',sans-serif";
+  ctx.fillText("蓝虚线＝赤道波场边界平面（参考，非曲面）",12,54);
+  ctx.fillStyle=DIM;ctx.font="10.5px 'WenQuanYi Micro Hei',sans-serif";
+  ctx.fillText("yaw "+fmt(LST.yaw)+" / pitch "+fmt(LST.pitch)+"  · 拖旋转 / 双击复位",10,h-10);
+}
+
+/* ===================== 左 2D：母线剖面 + 呼吸曲线 ===================== */
+function drawL2(){
+  var sh=shapeAt(S.p),H=sh.H,Sq=sh.S;
+  // 上：过轴截面（两面板合一，用 plot2D 的自定义 series）
+  var right=[],left=[],N=120;
+  for(var i=0;i<=N;i++){
+    var v=PI*i/N,r=H+(1-H)*Math.sin(v),z=Sq*Math.cos(v);
+    right.push([r,z]);left.push([-r,z]);
+  }
+  var holeTop=[],holeBot=[];
+  for(var k=0;k<=40;k++){
+    var a=TAU*k/40;
+    holeTop.push([H*Math.cos(a),Sq]);
+    holeBot.push([H*Math.cos(a),-Sq]);
+  }
+  // 下：H(p) / S(p)
+  var hp=[],sp=[],M=200;
+  for(var j=0;j<=M;j++){
+    var p=j/M,s2=shapeAt(p);
+    hp.push([p,s2.H]);sp.push([p,s2.S]);
+  }
+  var vl=[];
+  for(var f=12;f<=27;f+=3){
+    vl.push({x:(f-12)/15,color:"rgba(255,212,121,.30)",dash:[2,4],
+             label:f===12||f===22||f===27?("帧"+f):""});
+  }
+  plot2D($("L2"),[
+    {title:"过轴截面：ρ = ±[H+(1−H)sin v] , z = S cos v",
+     xmin:-1.15,xmax:1.15,ymin:-1.15,ymax:1.15,equal:true,hw:1.6,nx:4,ny:4,xlabel:"ρ",
+     series:[
+       {pts:right,color:WARM,width:2.6},
+       {pts:left,color:"rgba(255,176,102,.72)",width:2.2},
+       {pts:holeTop,color:GOLD,width:1.6},
+       {pts:holeBot,color:GOLD,width:1.6}
+     ],
+     hlines:[{y:0,color:"rgba(159,176,200,.4)",dash:[4,4]}],
+     texts:[{x:-1.08,y:-1.02,text:"H="+fmt(H,3)+"  ·  S="+fmt(Sq,3),color:GOLD}]},
+    {title:"呼吸律：H(洞) 与 S(扁率) 走一个闭合循环",
+     xmin:0,xmax:1,ymin:0,ymax:1.05,nx:5,ny:4,xlabel:"相位 p",
+     series:[
+       {pts:hp,color:GOLD,width:2.4},
+       {pts:sp,color:WARM,width:2.4}
+     ],
+     vlines:vl.concat([{x:S.p,color:OK,width:2,dash:[],label:"当前 p"}]),
+     dots:[{x:S.p,y:H,color:GOLD,r:4},{x:S.p,y:Sq,color:WARM,r:4}],
+     legend:[{text:"H 洞半径",color:GOLD},{text:"S 极轴/赤道",color:WARM}]}
+  ]);
+}
+
+/* ===================== 右 3D：相体积元 ===================== */
+var SPH=[];
+(function(){
+  var n=420,ga=PI*(3-Math.sqrt(5));
+  for(var i=0;i<n;i++){
+    var z=1-2*(i+0.5)/n,r=Math.sqrt(Math.max(0,1-z*z)),a=ga*i;
+    SPH.push([r*Math.cos(a),r*Math.sin(a),z]);
+  }
+})();
+var SPEC=[0.9056,0,-14.5723];
+function drawR3(){
+  var cv=$("R3"),o=canvasOf(cv),ctx=o.ctx,w=o.w,h=o.h;
+  var cx=w/2,cy=h*0.52,scl=Math.min(w,h)*0.30;
+  var t=tRight();
+  // 初始球线框（灰）
+  ctx.strokeStyle="rgba(159,176,200,.28)";ctx.lineWidth=1;
+  for(var ring=1;ring<=3;ring++){
+    var z0=-1+2*ring/4,rr=Math.sqrt(Math.max(0,1-z0*z0));
+    ctx.beginPath();
+    for(var k=0;k<=72;k++){
+      var a=TAU*k/72,p=proj(rr*Math.cos(a),rr*Math.sin(a),z0,RST,cx,cy,scl);
+      if(k===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y);
+    }
+    ctx.stroke();
+  }
+  for(var m=0;m<6;m++){
+    var ph=TAU*m/6;ctx.beginPath();
+    for(var q=0;q<=48;q++){
+      var th=PI*q/48,p2=proj(Math.sin(th)*Math.cos(ph),Math.sin(th)*Math.sin(ph),Math.cos(th),RST,cx,cy,scl);
+      if(q===0)ctx.moveTo(p2.x,p2.y);else ctx.lineTo(p2.x,p2.y);
+    }
+    ctx.stroke();
+  }
+  // 线性化映射 + det=1 剪切
+  var shf=0.55*Math.sin(t*3.1),items=[];
+  SPH.forEach(function(p0,i){
+    var X=p0[0]*Math.exp(SPEC[0]*t),
+        Y=p0[1]*Math.exp(SPEC[1]*t),
+        Z=p0[2]*Math.exp(SPEC[2]*t);
+    var pr=proj(X+shf*Z,Y,Z,RST,cx,cy,scl);
+    items.push({p:pr,d:pr.d});
+  });
+  items.sort(function(a,b){return a.d-b.d;});
+  items.forEach(function(it){
+    var f=clamp((it.d+1.7)/3.4,0,1);
+    ctx.fillStyle=lerpColor("#5a3b6e",BAD,f);
+    ctx.globalAlpha=0.88;
+    ctx.beginPath();ctx.arc(it.p.x,it.p.y,2.0,0,TAU);ctx.fill();
+  });
+  ctx.globalAlpha=1;
+  // 主轴
+  ctx.strokeStyle="rgba(255,212,121,.5)";ctx.lineWidth=1.2;
+  var O=proj(0,0,0,RST,cx,cy,scl);
+  [[Math.exp(SPEC[0]*t),0,0],[0,1,0],[0,0,Math.exp(SPEC[2]*t)]].forEach(function(v){
+    var E=proj(v[0],v[1],v[2],RST,cx,cy,scl);
+    ctx.beginPath();ctx.moveTo(O.x,O.y);ctx.lineTo(E.x,E.y);ctx.stroke();
+  });
+  ctx.fillStyle=PURPLE;ctx.font="11px 'WenQuanYi Micro Hei',sans-serif";
+  ctx.fillText("相空间体积元：拉伸 + 折叠 + 体积收缩",12,20);
+  ctx.fillStyle=GOLD;ctx.font="10px 'WenQuanYi Micro Hei',sans-serif";
+  ctx.fillText("M(t)=diag(e^{λ₁t},e^{λ₂t},e^{λ₃t}) · Σλ=−13.667",12,37);
+  ctx.fillStyle=DIM;ctx.font="10.5px 'WenQuanYi Micro Hei',sans-serif";
+  ctx.fillText("yaw "+fmt(RST.yaw)+" / pitch "+fmt(RST.pitch)+"  · 拖旋转 / 双击复位",10,h-10);
+}
+
+/* ===================== 右 2D：δΓ 与薄片厚度 ===================== */
+function drawR2(){
+  var t=tRight(),D=-13.6667,L3=SPEC[2];
+  var g=[],th=[],ham=[],N=200,TMAX=0.60;
+  for(var i=0;i<=N;i++){
+    var tt=TMAX*i/N;
+    g.push([tt,D*tt/LN10]);
+    th.push([tt,Math.exp(L3*tt)]);
+    ham.push([tt,0]);
+  }
+  var ymin=Math.min(-4,D*TMAX/LN10-0.4);
+  plot2D($("R2"),[
+    {title:"log₁₀(δΓ/δΓ₀) · 刘维尔定理（L1）",
+     xmin:0,xmax:TMAX,ymin:ymin,ymax:0.5,nx:6,ny:4,xlabel:"t",
+     series:[
+       {pts:ham,color:"rgba(159,176,200,.8)",width:1.8,dash:[5,4]},
+       {pts:g,color:BAD,width:2.7}
+     ],
+     vlines:[{x:t,color:OK,width:2,dash:[]}],
+     dots:[{x:t,y:D*t/LN10,color:OK,r:4.5}],
+     texts:S.rmode==="sync"?[{x:0.04,y:-1.35,text:"⚠ 点沿曲线往返 ⇒ δΓ 回升（非物理）",color:BAD}]:[],
+     legend:[{text:"Lorenz ∇·f<0",color:BAD},
+             {text:"哈密顿/KAM =0",color:"rgba(159,176,200,.8)",dash:[5,4]}]},
+    {title:"薄片厚度 e^{λ₃t} → 0（λ₃ = −14.572）",
+     xmin:0,xmax:TMAX,ymin:0,ymax:1.05,nx:6,ny:4,xlabel:"t",
+     series:[{pts:th,color:PURPLE,width:2.7}],
+     vlines:[{x:t,color:OK,width:2,dash:[]}],
+     dots:[{x:t,y:Math.exp(L3*t),color:OK,r:4.5}],
+     texts:[{x:0.28,y:0.80,text:"曲线只降不升 · 无「回到球」分支",color:PURPLE}]}
+  ]);
+}
+
+/* ===================== 读数 ===================== */
+function updateRead(){
+  var sh=shapeAt(S.p),t=tRight();
+  var frame=12+Math.round(S.p*15);
+  $("rL").innerHTML="左：相位 p = <b>"+fmt(S.p,3)+"</b> · 帧 <b>"+frame+"</b>";
+  $("rR").innerHTML="右：t = <b>"+fmt(t,3)+"</b> · δΓ/δΓ₀ = <b>"+Math.exp(-13.6667*t).toExponential(2)+"</b>";
+  $("Lname").textContent=shapeName(sh.H,sh.S);
+  $("Lnum").innerHTML="H(洞) = <b class='w'>"+fmt(sh.H,3)+"</b>　S(极轴/赤道) = <b class='w'>"+fmt(sh.S,3)+
+    "</b>　赤道半径 = 1　｜　<b class='w'>闭合循环：p=0 与 p=1 同形</b>";
+  $("Rname").textContent=S.rmode==="sync"?"同步对照（δΓ 回升 = 非物理）":"耗散吸引子 · 单向收敛";
+  $("Rnum").innerHTML="Σλ = <b class='bad'>−13.667</b> = ∇·f　谱 (+0.906, 0, −14.572)　｜　"+
+    "<b class='p'>δΓ 只降不升，无「回到球」的半程</b>";
+  var wb=$("warnBox");
+  wb.style.display=S.rmode==="sync"?"block":"none";
+  $("v_p").textContent=fmt(S.p);
+  $("v_s").textContent=fmt(S.speed);
+  $("v_tR").textContent=fmt(S.tManual);
+}
+function drawAll(){drawL3();drawL2();drawR3();drawR2();updateRead();}
+
+/* ===================== 动画 ===================== */
+function tick(ts){
+  var dt=S.last?Math.min(0.05,(ts-S.last)/1000):0.016;
+  S.last=ts;
+  if(S.playing){
+    S.p=(S.p+dt*S.speed*0.13)%1;
+    $("p").value=String(S.p);
+    if(S.rmode==="mono"){
+      S.tMono+=dt*S.speed*0.10;
+      if(S.tMono>0.60)S.tMono=0;
+    }
+  }
+  drawAll();
+  S.raf=requestAnimationFrame(tick);
+}
+function setPlay(on){
+  S.playing=on;$("play").textContent=on?"⏸ 暂停":"▶ 播放";
+  $("play").classList.toggle("on",on);
+  if(on){S.last=0;if(!S.raf)S.raf=requestAnimationFrame(tick);}
+  else{if(S.raf){cancelAnimationFrame(S.raf);S.raf=0;}drawAll();}
+}
+/* 拖拽绑定 */
+function bindDrag(cv,st){
+  function down(e){st.drag=true;var p=e.touches?e.touches[0]:e;st.lx=p.clientX;st.ly=p.clientY;}
+  function move(e){if(!st.drag)return;var p=e.touches?e.touches[0]:e;
+    st.yaw+=(p.clientX-st.lx)*0.008;
+    st.pitch=clamp(st.pitch+(p.clientY-st.ly)*0.006,0.08,1.32);
+    st.lx=p.clientX;st.ly=p.clientY;drawAll();e.preventDefault();}
+  function up(){st.drag=false;}
+  cv.addEventListener("mousedown",down);window.addEventListener("mousemove",move);window.addEventListener("mouseup",up);
+  cv.addEventListener("touchstart",down,{passive:true});
+  cv.addEventListener("touchmove",move,{passive:false});cv.addEventListener("touchend",up);
+  cv.addEventListener("dblclick",function(){st.yaw=cv.id==="L3"?0.55:0.72;
+    st.pitch=cv.id==="L3"?0.30:0.22;drawAll();});
+}
+bindDrag($("L3"),LST);bindDrag($("R3"),RST);
+
+/* 控件 */
+$("play").addEventListener("click",function(){setPlay(!S.playing);});
+$("p").addEventListener("input",function(){S.p=num("p");drawAll();});
+$("spd").addEventListener("input",function(){S.speed=num("spd");$("v_s").textContent=fmt(S.speed);});
+$("rmode").addEventListener("change",function(){
+  S.rmode=this.value;
+  if(S.rmode==="manual")S.tManual=num("tR");
+  if(S.rmode==="mono")S.tMono=0;
+  drawAll();
+});
+$("tR").addEventListener("input",function(){
+  S.tManual=num("tR");$("v_tR").textContent=fmt(S.tManual);
+  if(S.rmode!=="manual"){$("rmode").value="manual";S.rmode="manual";}
+  drawAll();
+});
+window.addEventListener("resize",drawAll);
+drawAll();
+setPlay(true);
+})();
+</script>
+
+<!-- CD_INLINE_DOCK · SOUL F13 独立单文件右浮窗（原控件与事件一字不改） -->
+<style id="cdInlineCSS">
+/* inline-dock.css — 注入到独立单文件，使其自身也具备右浮窗参数面板
+   仅在 JS 判定「不是 iframe」并加上 html.cd-inline-on 后生效，
+   因此被宿主 dock-core 收纳时这些规则全部不匹配，宿主 .ctl{display:none} 照常生效。 */
+html.cd-inline-on{--cd-w:340px;--cd-top:58px;--cd-right:14px}
+html.cd-inline-on body{padding-right:calc(var(--cd-w) + 26px) !important;
+  transition:padding-right .18s ease}
+#cdDockInline{position:fixed;top:var(--cd-top);right:var(--cd-right);width:var(--cd-w);
+  max-height:calc(100vh - var(--cd-top) - 18px);z-index:9000;box-sizing:border-box;
+  background:#141838;border:1px solid #2f3568;border-radius:12px;
+  box-shadow:0 16px 48px rgba(0,0,0,.55);display:flex;flex-direction:column;overflow:hidden;
+  color:#dfe3f5;font-family:"Segoe UI","Microsoft YaHei",sans-serif;line-height:1.6}
+#cdDockInline.cd-collapsed{height:auto}
+#cdDockInline.cd-collapsed #cdBodyInline,#cdDockInline.cd-collapsed #cdFootInline{display:none}
+#cdHeadInline{display:flex;align-items:center;gap:8px;padding:9px 11px;cursor:move;
+  background:linear-gradient(90deg,#1d2148,#171b3c);border-bottom:1px solid #2f3568;
+  user-select:none;flex:none;font-size:12.5px}
+#cdHeadInline .cd-t{flex:1;color:#d4af6a;font-weight:600;letter-spacing:.5px}
+#cdHeadInline button{background:none;border:1px solid #2f3568;color:#9aa0c9;
+  border-radius:6px;cursor:pointer;font-size:11px;padding:2px 7px}
+#cdHeadInline button:hover{color:#dfe3f5;border-color:#d4af6a}
+#cdGripInline{position:absolute;left:0;top:0;bottom:0;width:7px;cursor:ew-resize;z-index:3}
+#cdGripInline:hover{background:rgba(212,175,106,.30)}
+#cdBodyInline{overflow:auto;padding:10px 12px 6px;flex:1;min-height:60px}
+#cdFootInline{border-top:1px solid #2f3568;padding:7px 11px;font-size:11px;color:#9aa0c9;
+  display:flex;gap:5px;align-items:center;flex:none;flex-wrap:wrap}
+/* 状态文字独占一行，宽度档按钮整齐排在下一行 */
+#cdFootInline .cd-state-inline{flex-basis:100%;line-height:1.5}
+#cdFootInline button{cursor:pointer;border:1px solid #2f3568;border-radius:5px;
+  padding:1px 6px;background:none;color:#9aa0c9;font-size:11px}
+#cdFootInline button:hover{color:#d4af6a;border-color:#d4af6a}
+#cdHudInline{position:fixed;top:10px;right:var(--cd-right);width:var(--cd-w);
+  z-index:9200;box-sizing:border-box;display:flex;align-items:center;gap:8px;
+  background:rgba(20,24,56,.92);border:1px solid #2f3568;border-radius:9px;
+  padding:6px 10px;font-size:11.5px;color:#9aa0c9}
+#cdHudInline b{color:#d4af6a;font-weight:600}
+#cdHudInline span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#cdHudInline.min #cdHudInlineBody{display:none}
+#cdHudInline button{background:none;border:1px solid #2f3568;color:#9aa0c9;
+  border-radius:6px;cursor:pointer;font-size:11px;padding:2px 7px;flex:none}
+#cdErrInline{position:fixed;right:14px;bottom:14px;z-index:9900;max-width:440px;display:none;
+  background:#3a1418;border:1px solid #e24b4a;color:#ffd7d7;border-radius:8px;
+  padding:9px 12px;font:12px/1.5 Consolas,monospace;white-space:pre-wrap}
+
+/* 原控件条：从横铺改为浮窗内单列；控件本身与事件一律不动 */
+html.cd-inline-on .ctl{position:static !important;display:block !important;
+  grid-template-columns:1fr !important;gap:0 !important;margin:0 !important;
+  padding:0 !important;background:none !important;border:0 !important;
+  box-shadow:none !important;width:100% !important;max-height:none !important;
+  overflow:visible !important}
+html.cd-inline-on .ctl > div{margin:0 0 11px}
+html.cd-inline-on .ctl label{display:flex;justify-content:space-between;align-items:baseline;
+  gap:6px;font-size:11.5px;color:#9aa0c9;margin-bottom:3px}
+html.cd-inline-on .ctl .val{display:none}
+html.cd-inline-on .ctl input[type=range]{width:100%;accent-color:#d4af6a;margin:0;cursor:pointer}
+html.cd-inline-on .ctl select{width:100%;background:#0b0f28;border:1px solid #2f3568;
+  border-radius:6px;color:#dfe3f5;font-size:11.5px;padding:4px 6px;cursor:pointer}
+html.cd-inline-on .ctl button{background:#1c2149;border:1px solid #2f3568;color:#dfe3f5;
+  border-radius:6px;font-size:11px;padding:5px 9px;cursor:pointer;margin:0 6px 8px 0}
+html.cd-inline-on .ctl button:hover{border-color:#d4af6a;color:#d4af6a}
+html.cd-inline-on .cd-num{width:72px;flex:none;text-align:right;background:#0b0f28;
+  border:1px solid #2f3568;border-radius:5px;color:#d4af6a;font-size:11.5px;
+  padding:2px 5px;font-variant-numeric:tabular-nums;font-family:inherit}
+html.cd-inline-on .cd-num:focus{outline:none;border-color:#d4af6a}
+html.cd-inline-on .cd-btnrow{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+
+/* F14：散装控制条（.btnrow 播放/单步/复位等）搬进浮窗后的版式。
+   弹簧 div 要隐藏，读数换行，否则窄浮窗里会把按钮挤到看不见。 */
+html.cd-inline-on #cdBodyInline > .btnrow,
+html.cd-inline-on #cdBodyInline > .cd-extra{
+  display:flex;flex-wrap:wrap;gap:6px;align-items:center;
+  margin:0 0 12px;padding:0 0 10px;border-bottom:1px dashed #2f3568}
+html.cd-inline-on #cdBodyInline > .btnrow > div[style*="flex"]{display:none}
+html.cd-inline-on #cdBodyInline > .btnrow button,
+html.cd-inline-on #cdBodyInline > .cd-extra button{
+  background:#1c2149;border:1px solid #2f3568;color:#dfe3f5;
+  border-radius:6px;font-size:11px;padding:5px 9px;cursor:pointer;margin:0}
+html.cd-inline-on #cdBodyInline > .btnrow button:hover,
+html.cd-inline-on #cdBodyInline > .cd-extra button:hover{border-color:#d4af6a;color:#d4af6a}
+html.cd-inline-on #cdBodyInline > .btnrow button.on{
+  background:#173a3a;border-color:#4ec9a8;color:#4ec9a8}
+html.cd-inline-on #cdBodyInline > .btnrow .readout{
+  flex-basis:100%;font-size:11px;color:#9aa0c9}
+html.cd-inline-on #cdBodyInline > .btnrow .readout b{color:#d4af6a}
+html.cd-inline-on #cdBodyInline > .cd-extra input[type=range],
+html.cd-inline-on #cdBodyInline > .cd-extra select{width:100%;accent-color:#d4af6a}
+/* 参数多的页面（如 higgs_core 17 个控件）浮窗内可滚动，滚动条要看得见 */
+html.cd-inline-on #cdBodyInline{scrollbar-width:thin;scrollbar-color:#d4af6a #0b0f28}
+html.cd-inline-on #cdBodyInline::-webkit-scrollbar{width:9px}
+html.cd-inline-on #cdBodyInline::-webkit-scrollbar-thumb{background:#3a4173;border-radius:5px}
+html.cd-inline-on #cdBodyInline::-webkit-scrollbar-thumb:hover{background:#d4af6a}
+
+/* 顺带修 grid 的 1fr auto-min 撑宽（长公式页实测 scrollWidth 1915 > iframe 1080） */
+html.cd-inline-on .duo{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
+html.cd-inline-on .trio{grid-template-columns:repeat(3,minmax(0,1fr)) !important}
+html.cd-inline-on .cmp{grid-template-columns:138px minmax(0,1fr) minmax(0,1fr) !important}
+html.cd-inline-on .map{grid-template-columns:1.05fr minmax(0,1fr) minmax(0,1fr) !important}
+html.cd-inline-on .eq,html.cd-inline-on .note,html.cd-inline-on .panel{overflow-wrap:anywhere;word-break:break-word}
+html.cd-inline-on .eq{overflow-x:auto}
+html.cd-inline-on canvas{max-width:100%}
+
+@media(max-width:760px){
+  html.cd-inline-on{--cd-w:270px;--cd-top:52px}
+  html.cd-inline-on body{padding-right:0 !important}
+  #cdDockInline{position:relative;top:auto;right:auto;width:100%;max-height:none;margin:8px 0;border-radius:8px}
+  #cdHudInline{display:none}
+  #cdGripInline{display:none}
+}
+
+</style>
+<script id="cdInlineDock">
+/* inline-dock.js — 注入到独立单文件：把原 .ctl 包进自带右浮窗
+   SOUL F13：独立文件自身必须有右浮窗；被宿主 iframe 加载时自动让位，避免双重浮窗。
+   F11 同源：控件还是原来那批，事件一个不改；只改它们所在的容器。 */
+(function () {
+  'use strict';
+  /* 宿主 dock-core 会注入 .ctl{display:none} 并镜像收纳，这里必须完全不启用 */
+  if (window.self !== window.top) return;
+  /* ⚠️ 多数页面有「多个 .ctl」（每段图一条控件条），必须全部搬进浮窗，
+     只搬第一个的话其余控件条仍横铺在正文里 = F13 没做完 */
+  var ctls = Array.prototype.slice.call(document.querySelectorAll('.ctl'));
+  if (!ctls.length) return;
+  var root = document.documentElement, body = document.body;
+  root.classList.add('cd-inline-on');
+
+  var $ = function (s, b) { return (b || document).querySelector(s); };
+  var $$ = function (s, b) { return Array.prototype.slice.call((b || document).querySelectorAll(s)); };
+
+  /* N51：全局报错红框 */
+  var err = document.createElement('div'); err.id = 'cdErrInline'; body.appendChild(err);
+  function showErr(m) { err.style.display = 'block'; err.textContent = '[JS 错误] ' + m; }
+  window.onerror = function (m, s, l, c) { showErr(m + ' @' + (s || '').split('/').pop() + ':' + l + ':' + c); };
+
+  /* N184：右上角 HUD，只放标签、可收起；放在浮窗正上方右侧让位区，不遮正文 */
+  var hud = document.createElement('div'); hud.id = 'cdHudInline';
+  var title = (document.title || '可视化').split('｜')[0].slice(0, 26);
+  hud.innerHTML = '<b>张祥前素材库</b><span id="cdHudInlineBody">· ' + title + '</span>' +
+                  '<button data-act="hudInline">收起</button>';
+  body.appendChild(hud);
+
+  /* 浮窗外壳：把「所有」带可调参数的控件条按原文档顺序整个搬进去，
+     DOM 节点不重建 ⇒ 事件与状态原样保留。
+     F14：只认 .ctl 会漏掉播放控制条（.btnrow 的 暂停 / 单步 / 复位），
+     它们会留在正文里、紧挨着图 ⇒ 参数与图同侧，违反右浮窗铁律。 */
+  var dock = document.createElement('div'); dock.id = 'cdDockInline';
+  ctls[0].parentNode.insertBefore(dock, ctls[0]);
+  var grip = document.createElement('div'); grip.id = 'cdGripInline';
+  grip.title = '拖动调整浮窗宽度'; dock.appendChild(grip);
+  var head = document.createElement('div'); head.id = 'cdHeadInline';
+  head.innerHTML = '<span class="cd-t">⚙ 参数面板</span><button data-act="collapseInline">收起</button>';
+  dock.appendChild(head);
+  var bd = document.createElement('div'); bd.id = 'cdBodyInline';
+  dock.appendChild(bd);
+
+  /* 扫描 .ctl 之外仍留在正文的可调控件，按「控制条整组」或「单控件包一层」收纳 */
+  var CTRL_SEL = 'input[type=range],input[type=number],select,button';
+  var extra = [];
+  $$(CTRL_SEL, document.body).forEach(function (el) {
+    if (dock.contains(el) || hud.contains(el) || err.contains(el)) return;
+    if (ctls.some(function (c) { return c.contains(el); })) return;  // .ctl 内的已单独收纳
+    var p = el.parentElement;
+    if (!p) return;
+    var isBar = /(?:btnrow|btnbar|toolbar|controls?|ctrl|playbar|ops)/i.test(String(p.className || ''));
+    if (isBar && !p.querySelector('canvas') && !p.querySelector('h1,h2,h3')) {
+      if (extra.indexOf(p) < 0) extra.push(p);            // 整条控制条搬走，读数随行
+    } else {
+      var w = document.createElement('div'); w.className = 'cd-extra';
+      p.insertBefore(w, el); w.appendChild(el); extra.push(w);  // 散控件包一层再搬
+    }
+  });
+
+  /* 按原文档顺序合并，保证「播放按钮在上、参数在下」 */
+  var all = ctls.concat(extra);
+  all.sort(function (a, b) {
+    if (a === b) return 0;
+    return (a.compareDocumentPosition(b) & 4) ? -1 : 1;  // 4 = DOCUMENT_POSITION_FOLLOWING
+  });
+  all.forEach(function (c) { bd.appendChild(c); });
+
+  var ft = document.createElement('div'); ft.id = 'cdFootInline';
+  ft.innerHTML = '<span class="cd-state-inline"></span><span style="flex:1"></span><span>宽度</span>' +
+    '<button data-w="280">窄</button><button data-w="360">中</button><button data-w="460">宽</button>';
+  dock.appendChild(ft);
+
+  var ranges = $$('input[type=range]', bd);
+  var discrete = $$('select,button', bd).length;
+  /* 参数多时浮窗内部要滚动；明确标出来，避免被误读成「参数没全放进去」 */
+  var stateEl = $('.cd-state-inline', ft);
+  function refreshState() {
+    var more = bd.scrollHeight > bd.clientHeight + 4;
+    stateEl.textContent = ranges.length + ' 滑条 / ' + discrete + ' 开关 · ' +
+      all.length + ' 组控件' + (more ? ' · ↕ 可滚动' : '') + ' · 可拖可收';
+    stateEl.style.color = more ? '#d4af6a' : '';
+  }
+  refreshState();
+  window.addEventListener('resize', refreshState);
+
+  /* N241：滑条右侧数字是输入口，不是标签（隐藏原只读 .val，换成可输入） */
+  function nice(v, step) {
+    var dec = (String(step || '0.01').split('.')[1] || '').length;
+    return Number(v).toFixed(Math.min(4, dec));
+  }
+  ranges.forEach(function (rg) {
+    var holder = rg.parentElement;
+    var lab = holder ? holder.querySelector('label') : null;
+    var valEl = holder ? holder.querySelector('.val') : null;
+    if (valEl) valEl.style.display = 'none';
+    var num = document.createElement('input');
+    num.type = 'text'; num.className = 'cd-num'; num.title = '可直接输入数值（与滑条同源）';
+    num.value = nice(rg.value, rg.step);
+    (lab || holder).appendChild(num);
+
+    function apply(v, scroll) {
+      var x = parseFloat(v);
+      if (!isFinite(x)) { num.value = nice(rg.value, rg.step); return; }
+      x = Math.min(parseFloat(rg.max || '1'), Math.max(parseFloat(rg.min || '0'), x));
+      rg.value = nice(x, rg.step);
+      rg.dispatchEvent(new Event('input', { bubbles: true }));
+      rg.dispatchEvent(new Event('change', { bubbles: true }));
+      num.value = nice(rg.value, rg.step);
+      /* N207：改完参数把对应那张图送到眼前 */
+      if (scroll) {
+        var n = dock.nextElementSibling;
+        for (var k = 0; k < 4 && n; k++, n = n.nextElementSibling) {
+          var cv = n.querySelector ? n.querySelector('canvas') : null;
+          if (cv) { try { cv.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {} break; }
+        }
+      }
+    }
+    rg.addEventListener('input', function () { num.value = nice(rg.value, rg.step); });
+    num.addEventListener('change', function () { apply(num.value, true); });
+    num.addEventListener('keydown', function (e) { if (e.key === 'Enter') { apply(num.value, true); num.blur(); } });
+    num.addEventListener('dblclick', function () { num.select(); });
+  });
+
+  /* N196 可拖；N199 尺寸可调 */
+  var dragging = null;
+  head.addEventListener('mousedown', function (e) {
+    if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+    dragging = { x: e.clientX, y: e.clientY, top: dock.offsetTop,
+                 right: root.clientWidth - dock.offsetLeft - dock.offsetWidth };
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', function (e) {
+    if (!dragging) return;
+    dock.style.top = Math.max(0, dragging.top + e.clientY - dragging.y) + 'px';
+    dock.style.right = Math.max(0, dragging.right - (e.clientX - dragging.x)) + 'px';
+  });
+  document.addEventListener('mouseup', function () { dragging = null; });
+
+  var resizing = null;
+  grip.addEventListener('mousedown', function (e) {
+    resizing = { x: e.clientX, w: dock.offsetWidth };
+    e.preventDefault(); e.stopPropagation();
+  });
+  document.addEventListener('mousemove', function (e) {
+    if (!resizing) return;
+    var w = Math.min(560, Math.max(258, resizing.w + resizing.x - e.clientX));
+    root.style.setProperty('--cd-w', w + 'px');
+  });
+  document.addEventListener('mouseup', function () { resizing = null; });
+
+  $$('#cdDockInline [data-act], #cdHudInline [data-act]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var a = b.getAttribute('data-act');
+      if (a === 'collapseInline') {
+        dock.classList.toggle('cd-collapsed');
+        b.textContent = dock.classList.contains('cd-collapsed') ? '展开' : '收起';
+      } else {
+        hud.classList.toggle('min');
+        b.textContent = hud.classList.contains('min') ? '展开' : '收起';
+      }
+    });
+  });
+  $$('#cdFootInline [data-w]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      root.style.setProperty('--cd-w', b.getAttribute('data-w') + 'px');
+      setTimeout(refreshState, 80);
+    });
+  });
+})();
+
+</script>
+</body>
+</html>

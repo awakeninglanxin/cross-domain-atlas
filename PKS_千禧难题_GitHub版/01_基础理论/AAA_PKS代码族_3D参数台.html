@@ -853,6 +853,9 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
     <button id="btnExp" type="button" title="导出当前参数的 3D 物件（STL / OBJ / STP）">⤓ 导出 3D</button>
     <div id="viewbtns">
       <div class="vrow">
+        <button type="button" id="btnNodeAxis" title="显示每颗节点的中轴线：把「顶点—底点」这条轴延长出去，默认档下全部汇聚到蛋心原点 (0,0,0)">节点中轴线</button>
+      </div>
+      <div class="vrow">
         <button type="button" data-v="xy2d" title="正视图的 2D 正投影：沿 −z 正交投到 xy 平面，无透视、无遮挡，可直接量长径与最大宽">正视投影 2D</button>
         <button type="button" data-v="xz2d" title="俯视图的 2D 正投影：沿 −y 正交投到 xz 平面，看回转体的圆度与沿周向的分布">俯视投影 2D</button>
       </div>
@@ -13625,10 +13628,15 @@ function f0NodeTpl(shape) {
    返回行主序 3×3：R·v = 顶点坐标。
    ⚠ 「径向」≠「蛋面外法向」：蛋是椭球，两者只在赤道与两极重合，中间纬度不重合；
      这里按老师原话取【指向原点】的径向，不是表面法向。 */
-function f0RadRot(q) {
-  var L = Math.sqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2]);
+function f0RadRot(q, oy) {
+  /* v9.67（老师 2026-11-12）：方向必须朝向【真正的原点】(0, oy, 0)，不是 mesh 的 (0,0,0)。
+     求解坐标 y = z₀ − t·sinα ⇒ 原点（斜切平面 ∩ 双曲锥中轴，也是焦点）⟺ t=0；
+     而 mesh 把 t 的中点摆到 y=0 ⇒ 原点在 mesh y = −tMid·sc（黄金蛋实测 −0.351 单位、
+     −15.96% 蛋高、离 mesh 原点 28.7 mm）。拿 q/|q| 当径向等于指向错的那一点。 */
+  var dy0 = q[1] - (oy || 0);
+  var L = Math.sqrt(q[0] * q[0] + dy0 * dy0 + q[2] * q[2]);
   if (!(L > 1e-12)) return [1, 0, 0, 0, 1, 0, 0, 0, 1];   /* 落在原点上没有径向可言 */
-  var tx = q[0] / L, d = q[1] / L, tz = q[2] / L;
+  var tx = q[0] / L, d = dy0 / L, tz = q[2] / L;
   var nx = Math.sqrt(tx * tx + tz * tz);
   if (nx < 1e-9) {
     return d > 0 ? [1, 0, 0, 0, 1, 0, 0, 0, 1]        /* 顶极点：+Y 已经是径向 */
@@ -13653,6 +13661,9 @@ function f0HexBuild(P) {
   var st = net.stats, g = new THREE.Group(), i, j, k;
 
   var H = st.H;
+  /* v9.67：真正的原点在 mesh 坐标里的 y = −tMid·sc（见 f0RadRot 上的推导）。
+     ⚠ 别用 st.H 的比例去凑：tMid 与 sc 都是解出来的，α/z₀ 一改两者都变。 */
+  var Oy = -((st.t0 + st.t1) / 2) * st.sc;
   var nodeK = Math.max(0.6, Math.min(3.5, (P.hxNode === undefined ? 1.35 : P.hxNode)));
   /* 杆径（cells[].rr 与 struts[].r）已在 f0HexNet 里算好 —— 读数与几何必须同一份，
      否则屏上印的数与画出来的杆是两套口径。 */
@@ -13696,7 +13707,7 @@ function f0HexBuild(P) {
     var R3 = Math.max(0.0006, triR[i] * nodeK);
     var q2 = capMarkB[i] || net.triC[i];
     var cN = useC ? f0CmapColor(P, f0MapVal(P, q2, st)) : null;
-    var nM3 = nAx ? null : f0RadRot(q2);
+    var nM3 = nAx ? null : f0RadRot(q2, Oy);
     for (k = 0; k < TVN; k++) {
       var nVx = TV[k][0], nVy = TV[k][1], nVz = TV[k][2];
       if (nM3) {
@@ -13721,6 +13732,49 @@ function f0HexBuild(P) {
       shininess: glassy ? 92 : 30, specular: glassy ? 0xdfeaf8 : 0x8899a8, side: THREE.DoubleSide }));
     nm.name = 'hexNodes';
     g.add(nm);
+  }
+
+  /* ---- v9.65 节点中轴线：把「顶点—底点」这条轴延长，用来判它是否穿过原点 (0,0,0) ----
+     只换【画什么】，不动任何几何：节点位置、杆、格、六棱账一律不碰。
+     axL 用蛋高的倍数，所以换蛋高（hxHcm）时延长量跟着走，不会一会儿穿出一会儿够不着。 */
+  var axMode = (P.hxAxis === undefined ? 0 : (P.hxAxis | 0));
+  if (axMode > 0) {
+    var axMul = Math.max(0.2, Math.min(8, (P.hxAxLen === undefined ? 1.0 : +P.hxAxLen)));
+    var axL = axMul * H;
+    var AX0 = (axMode >= 2) ? [[1, 0, 0], [0, 1, 0], [0, 0, 1]] : [[0, 1, 0]];
+    var avp = [];
+    for (i = 0; i < net.T.length; i++) {
+      if (capMarkB[i] && capRepB.indexOf(i) < 0) continue;
+      var qa = capMarkB[i] || net.triC[i];
+      var Ma = nAx ? null : f0RadRot(qa, Oy);
+      for (var ai = 0; ai < AX0.length; ai++) {
+        var d0x = AX0[ai][0], d0y = AX0[ai][1], d0z = AX0[ai][2];
+        var d1x = d0x, d1y = d0y, d1z = d0z;
+        if (Ma) {
+          d1x = Ma[0] * d0x + Ma[1] * d0y + Ma[2] * d0z;
+          d1y = Ma[3] * d0x + Ma[4] * d0y + Ma[5] * d0z;
+          d1z = Ma[6] * d0x + Ma[7] * d0y + Ma[8] * d0z;
+        }
+        avp.push(qa[0] - d1x * axL, qa[1] - d1y * axL, qa[2] - d1z * axL,
+                 qa[0] + d1x * axL, qa[1] + d1y * axL, qa[2] + d1z * axL);
+      }
+    }
+    if (avp.length) {
+      var ag2 = new THREE.BufferGeometry();
+      ag2.setAttribute('position', new THREE.Float32BufferAttribute(avp, 3));
+      var am = new THREE.LineSegments(ag2, new THREE.LineBasicMaterial({
+        color: 0x7a35c8, transparent: true, opacity: 0.55, depthWrite: false }));
+      am.name = 'hexNodeAxis';   /* ⚠ 不能叫 hexAxis：页面 13864 行已有一个同名对象（2 顶点）*/ 
+      am.renderOrder = 6;
+      g.add(am);
+      /* 原点标记：所有轴线是不是真的穿过这一颗，眼睛一望即知（别让人对着屏幕猜） */
+      var hb = new THREE.Mesh(new THREE.SphereGeometry(Math.max(0.008, H * 0.016), 18, 12),
+        new THREE.MeshBasicMaterial({ color: 0xd81f2a }));
+      hb.name = 'hexNodeAxisHub';
+      hb.position.set(0, Oy, 0);   /* 真原点，不是 mesh 原点（差 28.7 mm，肉眼看得出来）*/
+      hb.renderOrder = 7;
+      g.add(hb);
+    }
   }
 
   /* ---- 薄壳：每格一片半透明面板（按面积占比上色），换 cutSkin=2 才出 ---- */
@@ -13786,7 +13840,7 @@ function f0HexBuild(P) {
     var ir = Math.max(0.0006, L2.stats.rMax * 1.25);
     for (i = 0; i < L2.V2.length; i++) {
       var v2p = L2.V2[i], cn2 = useC ? f0CmapColor(P, f0MapVal(P, v2p, st)) : null;
-      var iM3 = nAx ? null : f0RadRot(v2p);   /* 内外必须同一朝向，否则交界处两种花纹打架 */
+      var iM3 = nAx ? null : f0RadRot(v2p, Oy);   /* 内外必须同一朝向，否则交界处两种花纹打架 */
       for (k = 0; k < TVN; k++) {
         var iVx = TV[k][0], iVy = TV[k][1], iVz = TV[k][2];
         if (iM3) {
@@ -13913,6 +13967,29 @@ function f0HexProf2D(ctx,W,H,P){
   ctx.strokeStyle='#d6dde8';ctx.lineWidth=1;
   ctx.beginPath();ctx.moveTo(X(0),8);ctx.lineTo(X(0),H-20);ctx.stroke();
 
+  /* 原点 (0,0) —— 【不是图心】，v9.67 已按老师的定义改正。
+     原点 = 斜切平面 ∩ 双曲锥中轴（也是这条蛋形曲线的焦点）。
+     求解坐标 y = z₀ − t·sinα ⇒ 原点 ⟺ t=0；而这张图把 t 的中点摆在纵向正中（t=tMid）。
+     黄金蛋实测 tMid=0.2844、跨 1.7823 ⇒ 原点比图心高 15.96% 蛋高，肉眼差得出来。
+     ⚠ 三个数别混：原点（焦点，t=0）／图心（t=tMid，= mesh 的 y=0）／质心（偏 cyC）。 */
+  (function () {
+    var ox = X(0), oy = T(0);
+    ctx.save();
+    ctx.beginPath(); ctx.arc(ox, oy, 5.2, 0, Math.PI * 2);
+    ctx.fillStyle = '#d81f2a'; ctx.fill();
+    ctx.lineWidth = 1.6; ctx.strokeStyle = '#ffffff'; ctx.stroke();
+    ctx.fillStyle = '#d81f2a'; ctx.font = '10.5px sans-serif';
+    ctx.fillText('原点 (0,0) · 焦点', ox + 8, oy + 4);
+    ctx.restore();
+    /* 顺手把「图心 = mesh 的 y=0」标成一条淡灰虚线：不然红点偏离正中会被当成画错。 */
+    ctx.save();
+    ctx.setLineDash([3, 4]); ctx.strokeStyle = '#c8d0dc'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(X(0) - 26, T(tMid)); ctx.lineTo(X(0) + 26, T(tMid)); ctx.stroke();
+    ctx.setLineDash([]); ctx.fillStyle = '#9aa6b6'; ctx.font = '9.5px sans-serif';
+    ctx.fillText('mesh 0', X(0) + 30, T(tMid) + 3);
+    ctx.restore();
+  })();
+
   /* 纬圈：每条一行，长度 = 该行半径（左右对称画） */
   ctx.strokeStyle='#9fb6d6';ctx.lineWidth=1.1;
   for(i2=0;i2<net.ringT.length;i2++){
@@ -13968,6 +14045,10 @@ function f0HexProf2D(ctx,W,H,P){
   ctx.fillStyle='#12305e';ctx.font='11px sans-serif';
   ctx.fillText('M='+st.nRings+' 行　q='+st.q.toFixed(2)+'　赤道 : 极点 行距 = '+
     st.hRatio.toFixed(2)+'×　格 '+st.n+'（六 '+st.n6+'）',6,H-6);
+  /* 供探针核验「红点画在哪」：这一帧的两套坐标映射。只记录，不改任何画法。
+     ox/oy = 原点 (t=0)；oyMid = 图心 (t=tMid = mesh 的 y=0)。两者相差 tMid·sc。 */
+  if (typeof window !== 'undefined') window.__f0p2d = { ox: X(0), oy: T(0), oyMid: T(tMid),
+    tMid: tMid, sc: sc, W: W, H: H };
 }
 
 /* ---- 蛋面钢架 · 读数 ---- */
@@ -14411,10 +14492,23 @@ var FAMS=[
    opts:[{v:0,t:'八面体（原样 · 棱角分明 · 最省）'},
          {v:1,t:'★ 球（八面体细分一次 · 32 面 · 三杆交汇处像个焊球 · 默认）'}]},
   /* v9.64：中轴朝向 —— 八面体的「顶点—底点」就是模板里的 ±Y 轴。 */
-  {k:'hxNodeAx',label:'节点中轴朝向（顶点—底点 这条轴）',type:'choice',
+  {k:'hxNodeAx',label:'节点中轴朝向（顶点—底点 这条轴 · 中轴线穿过原点）',type:'choice',
    when:function(P){return (P.cutSkin|0)>0;},
    opts:[{v:0,t:'★ 沿径向（顶点朝外 · 底点朝蛋心）'},
          {v:1,t:'朝世界轴（原样 · 全模型同向）'}]},
+
+  /* v9.65（老师 2026-11-12）：把中轴线延长出来，用眼睛判「是不是都穿过原点 (0,0,0)」。
+     只画一条时画的是模板 +Y —— 也就是「顶点—底点」这条中轴；默认档它正好是「节点→原点」那条，
+     1934 条同时延长必然汇成一点。切到「朝世界轴」档，同一条线变成全模型平行竖线 ⇒ 不汇聚，一眼看出。
+     线用 LineSegments（1px 细线），不用细圆柱：1934×3 根管子会拖垮主线程。 */
+  {k:'hxAxis',label:'节点中轴线（延长后看是否都穿过原点 = 切平面∩锥轴 · 焦点）',type:'choice',
+   when:function(P){return (P.cutSkin|0)>0;},
+   opts:[{v:0,t:'★ 不显示'},
+         {v:1,t:'只画顶点—底点这条轴（默认档 = 指向原点那条）'},
+         {v:2,t:'全部 3 条主轴（x / y / z）'}]},
+  {k:'hxAxLen',label:'中轴线延长到 ±几倍蛋高（1.0 = 每端甩出蛋壳一倍蛋高）',
+   min:0.3,max:4,step:0.05,dp:2,
+   when:function(P){return (P.cutSkin|0)>0 && (P.hxAxis|0)>0;}},
   /* v9.62：蛋尖细杆是【长度】决定的，不是【粗细】决定的 —— 只能动拓扑。
      判定用「含极点顶点的那一圈三角面」，是纯拓扑定义，没有可调阈值。 */
   {k:'hxTip',label:'蛋尖极点（极点那一圈三角面的重心全挤在 0.2mm 内 ⇒ 杆长只有 1.2mm，杆径被 0.45×杆长 钉死；并成一颗节点后杆长 ×2，φ 才上得来）',
@@ -14459,13 +14553,13 @@ var FAMS=[
          {v:3,t:'全建 · 每个三角面一个锥（最费料最刚 · 旧版就是这个）'}]},
   {k:'hxCmap',label:'配色色表（cmap · 顶点色渐变）',type:'choice',
    when:function(P){return (P.cutSkin|0)>0;},
-   opts:[{v:0,t:'★ plasma（金黄 → 橙红 → 紫）'},
+   opts:[{v:0,t:'plasma（金黄 → 橙红 → 紫）'},
          {v:1,t:'viridis（紫 → 绿 → 黄）'},
          {v:2,t:'inferno（黑 → 红 → 金）'},
          {v:3,t:'turbo（彩虹增强）'},
          {v:4,t:'HSV 色环（紫蓝 → 青 → 黄橙）'},
          {v:5,t:'单色钢灰（原来的素色）'},
-         {v:6,t:'马卡龙幻彩（珠光琉璃 · 按相位算 · 螺旋无缝）'}]},
+         {v:6,t:'★ 马卡龙幻彩（珠光琉璃 · 按相位算 · 螺旋无缝）'}]},
   {k:'hxMapT',label:'颜色沿什么走（渐变方向）',type:'choice',
    when:function(P){return (P.cutSkin|0)>0&&(P.hxCmap|0)!==5;},
    opts:[{v:0,t:'★ 沿蛋轴高度（从尖到钝一条渐变）'},
@@ -14486,8 +14580,8 @@ var FAMS=[
       cutPhi:0,
       cutMode:0,cutTint:0,cutShow:0,
       cutSkin:4,hxRow:32,hxQ:0.22,hxHcm:18,hxDo:2.50,hxDf:1.00,hxG:0.00,hxNode:1.50,hxNodeShape:1,hxTip:1,
-      hxNodeAx:0,
-      hxL2mode:0,hxL2:68,hxTetK:1.00,hxCore:2,hxCmap:0,hxMapT:0,hxSpiral:2.4,hxView:0,
+      hxNodeAx:0,hxAxis:0,hxAxLen:1.00,
+      hxL2mode:0,hxL2:68,hxTetK:1.00,hxCore:2,hxCmap:6,hxMapT:0,hxSpiral:2.4,hxView:0,
       hxWeb:1,hxL2phase:0,hxSec:0,hxSecOff:0,hxSecSide:0,hxSecFace:1},
  build:f0Build,read:f0Read,prof:f0Prof,zAxis:'y',
  empty:'平面与这张曲面没有交点 —— 换母线、把 α 调小、或把 z₀ 挪回曲面所在的 y 区间',
@@ -14581,7 +14675,7 @@ var FAMS=[
           {t:'27 号 内化',v:{n:5,mode:1}},
           {t:'k=0.78 尖钝差拉大',v:{n:5,mode:0,k:0.78,b:1.95}}]},
 
-{id:'eggspiral',label:'② 蛋螺旋',title:'蛋螺旋 · 斐波那契蛋叠层',
+{id:'eggspiral',label:'② 蛋螺旋',title:'蛋螺旋 · 斐波那契蛋叠层',noSpin:true,
  pyLine:'代码_蛋形曲线/舒伯格蛋Die Ei-Kurve -蛋螺旋 缩放sqrt(n).py',
  badge:function(P){
   var sh=(P.shape|0);
@@ -14813,7 +14907,7 @@ var FAMS=[
       '读数栏新增「层距律」「实际层距 最小/最大」「截面律」「第 N 层截面最大半径」四行 ——'+
       '最后一行是按当前律<b>实测</b>的外接半径，不再是拿 φ 写死的 b 去反推。'},
 
-{id:'epi',label:'④ 蛋形均轮',title:'蛋形均轮 · 托勒密偏心模型',
+{id:'epi',label:'④ 蛋形均轮',title:'蛋形均轮 · 托勒密偏心模型',noSpin:true,
  pyLine:'代码_外摆线均轮/egg_epicycle_interactive.py（配套 md：为什么蛋形均轮不是真蛋形.md）',
  badge:function(P){return '蛋形均轮 · R='+P.R.toFixed(1)+' r='+P.r.toFixed(1)+' w='+P.w.toFixed(1);},
  params:[
@@ -16914,6 +17008,7 @@ function bindValEdit(f,p,bv,inp){
 }
 function buildUI(){
   var f=FAMS[curFam];
+  syncNodeAxisBtn();   /* 切族 / 改 cutSkin 后，左上那个「节点中轴线」键要跟着灰/亮 */
   document.getElementById('famTitle').textContent=f.title;
   document.getElementById('famPy').textContent=f.pyLine;
   document.getElementById('famNote').innerHTML=f.note;
@@ -17958,6 +18053,10 @@ function selectFam(i){
      于是"默认等轴"只在首屏成立，一点子页标签就被打回原形。
      现在统一走 setView('iso')，站位只有一处定义（ISO_AZ / ISO_EL）。 */
   setView('iso');
+  /* v9.65（老师 2026-11-12）：「② 蛋螺旋 / ④ 蛋形均轮 这两个子页的图开启时 不需要自转」。
+     这两族要看的是「层与层 / 轮与轮」的对齐关系，一自转就判不准固定相位的形态。
+     只在这两族（noSpin:true）关掉，别的族沿用当前状态 —— 既不强行打开也不强行关掉。 */
+  if (f.noSpin && autoRot) setAutoRot(false);
   buildUI();rebuild();
 }
 document.getElementById('tabs').innerHTML=FAMS.map(function(f,i){
@@ -18264,7 +18363,28 @@ function setAutoRot(v){
     b.title=v?'当前正在自转，点击暂停':'当前已暂停，点击继续自转';
   }
 }
-var btnPause=document.getElementById('btnPause');
+/* v9.66（老师 2026-11-12）：「显示节点中轴线」这个按钮放在视角键最上面一行（红线上）。
+   它和参数面板里的「节点中轴线」是同一个开关 P.hxAxis —— 两处永远同步，
+   不做两个状态（那是最典型的「屏上两个数各说各话」）。 */
+var btnNAxis=document.getElementById('btnNodeAxis');
+function syncNodeAxisBtn(){
+  if(!btnNAxis) return;
+  var ok=((P.cutSkin===undefined?0:(P.cutSkin|0))>0), on=ok&&((P.hxAxis|0)>0);
+  var mul=(P.hxAxLen===undefined?1:+P.hxAxLen);
+  btnNAxis.disabled=!ok;
+  btnNAxis.className=on?'on':'';
+  btnNAxis.title=ok
+    ? (on ? ('节点中轴线已显示（±'+mul.toFixed(2)+' 倍蛋高）· 再点收起')
+          : '显示每颗节点的中轴线：默认档下 1934 条全部汇聚到蛋心原点 (0,0,0)')
+    : '只有「蛋面钢架」这几档有节点球 —— 先把面板里的 cutSkin 调到 ≥1';
+}
+if(btnNAxis)btnNAxis.addEventListener('click',function(e){
+  e.stopPropagation();
+  if((P.cutSkin|0)<=0) return;
+  P.hxAxis=((P.hxAxis|0)>0)?0:1;
+  rebuild(); buildUI();
+});
+var btnPause=document.getElementById('btnPause');
 if(btnPause)btnPause.addEventListener('click',function(e){e.stopPropagation();setAutoRot(!autoRot);});
 window.addEventListener('keydown',function(e){
   if(e.code==='Space'){setAutoRot(!autoRot);e.preventDefault();}
