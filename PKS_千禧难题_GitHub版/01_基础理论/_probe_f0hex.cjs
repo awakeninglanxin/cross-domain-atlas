@@ -6,7 +6,10 @@ const { decodeFirstFrame } = require('./_gifdec.cjs');
 const os = require('os'), path = require('path'), fs = require('fs');
 const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const PORT = 9343, DIR = __dirname;
-const URL = 'http://127.0.0.1:8899/01_%E5%9F%BA%E7%A1%80%E7%90%86%E8%AE%BA/AAA_PKS%E4%BB%A3%E7%A0%81%E6%97%8F_3D%E5%8F%82%E6%95%B0%E5%8F%B0.html';
+const BASE = 'http://127.0.0.1:8899/01_%E5%9F%BA%E7%A1%80%E7%90%86%E8%AE%BA/';
+/* PAGE=_mut_xx.html 换页跑变异体（与 _probe_hxrod.cjs 同一套约定） */
+const URL = process.env.PAGE ? BASE + process.env.PAGE
+  : BASE + 'AAA_PKS%E4%BB%A3%E7%A0%81%E6%97%8F_3D%E5%8F%82%E6%95%B0%E5%8F%B0.html';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const J = JSON.stringify;
 let pass = 0, fail = 0, skipped = 0;
@@ -94,9 +97,20 @@ function chk(c, label, extra) {
       await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: r.x, y: r.y, button: 'left', clickCount: cnt });
     }
   }
+  async function openPanel() {
+    /* 🔴 浮窗每次控件改动都会自己收起（回到 fxp-min）⇒ 里面所有 rect 恒 0×0，
+       鼠标事件落在页面正文上，双击静默失效。量 rect / 真双击前必须重新展开，
+       并断言 #rows 真的有了宽度（只 remove class 不量，等于没展开）。 */
+    await ev(`(function(){var p=document.getElementById('fxp');if(p)p.classList.remove('fxp-min');return 1;})()`);
+    await sleep(400);
+    const w = await ev(`(function(){var r=document.getElementById('rows');return r?Math.round(r.getBoundingClientRect().width):0;})()`);
+    if (!(w > 100)) console.log('  [openPanel] ⚠ #rows 宽度只有 ' + w + 'px');
+    return w;
+  }
   async function typeIn(key, text) {
     /* 面板是 fixed + 内部滚动：目标行可能在视口外，先滚进来再量 rect，
        否则鼠标事件落在别的元素上，双击静默失效（看起来像"这参数不能改"）。 */
+    await openPanel();
     await ev("(function(){var rs=[].slice.call(document.querySelectorAll('#rows .row'));" +
       "for(var i=0;i<rs.length;i++){var s=rs[i].querySelector('label span');" +
       "if(s&&s.textContent.indexOf(" + J(key) + ")>=0){rs[i].scrollIntoView({block:'center'});return 1;}}" +
@@ -160,7 +174,17 @@ function chk(c, label, extra) {
 
   await send('Page.enable'); await send('Runtime.enable');
   await send('Page.navigate', { url: URL });
-  await sleep(5200);
+  /* 🔴 不许固定 sleep（Pages 冷加载 17.5 s、本地也可能 6 s）：没就绪就点 tab，
+     点空之后 hexGeo 里 `root` 未定义，整片红看起来像功能坏了。改成轮询就绪。 */
+  let ready = false;
+  for (let i = 0; i < 160; i++) {
+    ready = await ev(`!!(typeof root!=='undefined' && typeof FAMS!=='undefined' && FAMS.length &&
+      typeof selectFam==='function' && typeof P!=='undefined' && typeof rebuild==='function')`);
+    if (ready) break;
+    await sleep(250);
+  }
+  console.log('就绪轮询：' + (ready ? '通过（' + '已就绪' + '）' : '⚠ 40s 内没就绪'));
+  await sleep(1200);
   console.log('页面：' + await ev('document.title'));
   await ev(`(function(){var p=document.getElementById('fxp');if(p)p.classList.remove('fxp-min');return 1;})()`);
   await sleep(700);
@@ -180,8 +204,72 @@ function chk(c, label, extra) {
       return {n:bs.length,on:bs.map(function(b){return b.className==='on';}),
               p:(P.hxCore===undefined?null:(P.hxCore|0))};}
     return null;})()`);
-  chk(coreDef && coreDef.n === 4 && coreDef.p === 1 && coreDef.on[1] === true,
-    '刚进页面：内芯密度默认 = 第 2 档「★ 稀疏」（4 个档里亮着第 2 个，P.hxCore = 1）', J(coreDef));
+  /* 🔴 这一条只能判「刚进页面」——[J] 段会把 hxCore 拉到「全建」，之后再读就是被改过的值。
+     2026-11-09 老师把默认从「稀疏(1)」改成「★ 中(2)」：内芯太稀打印出来会塌。 */
+  chk(coreDef && coreDef.n === 4 && coreDef.p === 2 && coreDef.on[2] === true,
+    '刚进页面：内芯密度默认 = 第 3 档「★ 中 · 每 2 个三角面留 1 个锥」（4 个档里亮着第 3 个，P.hxCore = 2）', J(coreDef));
+  /* 默认 γ=0（老师 2026-11-09：外层蜂窝要一律 φ2.5，渐变只按【层】走）——
+     这一条只能在刚进页面时判，后面 [γ] 段会把它设成 0/1.4。 */
+  const gDef = await ev('(P.hxG===undefined)?null:P.hxG');
+  chk(gDef === 0, '刚进页面：面积→杆径指数 γ 默认 = 0（外层蜂窝一律最外层 φ，不看格子大小）', String(gDef));
+
+  /* 老师 2026-11-09 定的三个默认（截图指定）：母线分行 M=32 / 两端加密 q=0.00 / 蛋高 18.0cm。
+     🔴 三个都读【屏上的字】+ P 双源：只看 P 会漏掉「def 改了但面板 b 没刷新」，
+        只看屏会漏掉「盘面写着 32、几何里还是 26」。 */
+  const panelVal = async (key) => ev(`(function(){
+    var ws=[].slice.call(document.querySelectorAll('#rows > div'));
+    for(var i=0;i<ws.length;i++){
+      var lab=ws[i].firstElementChild;
+      if(!lab||(lab.textContent||'').indexOf(${JSON.stringify(key)})<0)continue;
+      var b=ws[i].querySelector('b');
+      return b?b.textContent.replace(/\\s+/g,'').trim():null;}
+    return null;})()`);
+  const vM = await panelVal('\u6bcd\u7ebf\u5206\u884c\u6570'), vQ = await panelVal('\u4e24\u7aef\u52a0\u5bc6'), vH = await panelVal('\u86cb\u9ad8\uff08cm');
+  const dM = await ev('(P.hxRow===undefined)?null:P.hxRow');
+  const dQ = await ev('(P.hxQ===undefined)?null:P.hxQ');
+  const dH = await ev('(P.hxHcm===undefined)?null:P.hxHcm');
+  chk(dM === 32 && String(vM) === '32',
+    '刚进页面：母线分行 M 默认 = 32（P.hxRow=32 · 面板写「' + vM + '」）', String(vM));
+  chk(Math.abs(dQ - 0.22) < 1e-9 && String(vQ) === '0.22',
+    '刚进页面：两端加密 q 默认 = 0.22（M=32 下六棱最匀点 · P.hxQ=' + dQ +
+    ' · 面板写「' + vQ + '」）', String(vQ));
+  chk(dH === 18 && String(vH) === '18.0',
+    '刚进页面：蛋高默认 = 18.0 cm（P.hxHcm=18 · 面板写「' + vH + '」）', String(vH));
+  /* v9.62 的默认值也只能在这里判：hxrod 的 [G] 段会自己 setP({hxTip:1})，
+     在那儿读默认永远读到 1 —— 把默认改成 0 的变异体在那边【不会红】（实测 m1 全绿）。
+     同一个事实写两处就查两处：这里判「刚进页面亮的是哪一档」。 */
+  const dTip = await ev('(P.hxTip===undefined)?null:P.hxTip');
+  chk(dTip === 1,
+    '刚进页面：蛋尖极点默认 = 1（合并 · 老师 2026-11-10 要求蛋尖不许细于 φ1mm · P.hxTip=' + dTip + '）',
+    String(dTip));
+  const tipTxt = await choicesTxt();
+  chk(tipTxt.indexOf('极点合并') >= 0,
+    '刚进页面：面板上确实有「极点合并成一颗节点」这一档可切', tipTxt.slice(0, 80));
+  /* v9.64 同理：hxrod 的 [H] 段会自己 setP({hxNodeAx:0/1})，默认值只能在这里判。 */
+  const dAx = await ev('(P.hxNodeAx===undefined)?null:P.hxNodeAx');
+  chk(dAx === 0,
+    '刚进页面：节点中轴默认 = 0（沿径向 · 顶点朝外、底点朝蛋心 · P.hxNodeAx=' + dAx + '）', String(dAx));
+  const axTxt = await choicesTxt();
+  chk(axTxt.indexOf('沿径向') >= 0 && axTxt.indexOf('朝世界轴') >= 0,
+    '刚进页面：面板上确实有「沿径向 / 朝世界轴」两档可切', axTxt.slice(0, 80));
+  /* 几何真吃到这三个默认：实得行数、q、世界尺度都要对上，不只是 P 里躺着 32/0/18 */
+  /* ⚠ 取统计只能走 f0HexNet(P).stats：页内的 F0H_CACHE 在闭包里，外面读不到
+     （写 F0HEX 会 ReferenceError，被 ev 吞掉后返回 undefined ⇒ 看着像「几何没吃到」）。 */
+  const gDef0 = await ev(`(function(){
+    var n=f0HexNet(P); if(!n||!n.stats) return null;
+    var st=n.stats;
+    return {nRings:st.nRings, mTarget:st.mTarget, q:st.q, Hcm:st.Hcm, mmw:st.mmw, H:st.H};})()`);
+  chk(!!gDef0 && gDef0.mTarget === 32 && Math.abs(gDef0.q - 0.22) < 1e-9 && gDef0.Hcm === 18 &&
+      gDef0.nRings >= 26,
+    '几何层真吃到默认：目标 M=' + (gDef0 ? gDef0.mTarget : '?') + ' ⇒ 实得 ' +
+    (gDef0 ? gDef0.nRings : '?') + ' 行 · q=' + (gDef0 ? gDef0.q : '?') +
+    ' · 蛋高 ' + (gDef0 ? gDef0.Hcm : '?') + 'cm（1mm = ' +
+    (gDef0 ? gDef0.mmw.toFixed(5) : '?') + ' 世界单位）', J(gDef0));
+  /* 默认档的实得行数必须跟 M 目标接近（差 1~3 行是列数量化的正常损耗，差一半就是没吃到） */
+  chk(!!gDef0 && Math.abs(gDef0.nRings - 32) <= 4,
+    'M=32 的量化损耗 ' + (gDef0 ? Math.abs(gDef0.nRings - 32) : '?') +
+    ' 行（应为 0~4：列数要量化到 6 的倍数）', gDef0 ? gDef0.nRings : '?');
+
   const cs0 = await choicesTxt();
   console.log('  选择器：' + cs0.slice(0, 220));
   chk(cs0.indexOf('\u539f\u6837\uff08\u9525\u9762') >= 0 && cs0.indexOf('\u5355\u5c42\u94a2\u67b6\uff08') >= 0 &&
@@ -230,10 +318,25 @@ function chk(c, label, extra) {
   console.log('  屏上：' + rp + '　⇒ 杆 ' + nS + ' / 节点 ' + nN);
   chk(nS > 100, '读数面板报出了杆数与节点数', J(rp));
   chk(g1.strutsVerts === nS * 72, 'hexStruts 顶点数 = 屏上 ' + nS + ' 杆 × 72（24 三角/杆 · 含六边形端盖）', g1.strutsVerts);
-  /* 八面体 8 面 × 3 顶点 = 24（toNonIndexed 之后） */
-  chk(g1.nodes === 1 && g1.nodesVerts === nN * 24, '节点八面体 = 屏上 ' + nN + ' 个 × 24 = ' + (nN * 24) + ' 顶点', g1.nodesVerts);
+  /* 节点：八面体 8 面 × 3 = 24 顶点；球（八面体 1→4 细分归一）32 面 × 3 = 96。
+     ⚠ 必须按面数×3 判，不能按索引态的 6 / 18 —— 屏上提交的是 toNonIndexed 之后的。
+     2026-11-09 起默认是球（hxNodeShape=1），所以期望值要跟着 P 走，不写死 24。 */
+  const nodeShape = await ev('(P.hxNodeShape|0)');
+  const vPer = nodeShape === 1 ? 96 : 24;
+  chk(g1.nodes === 1 && g1.nodesVerts === nN * vPer,
+    '节点' + (nodeShape === 1 ? '球（细分 32 面）' : '八面体（8 面）') + ' = 屏上 ' + nN +
+    ' 个 × ' + vPer + ' = ' + (nN * vPer) + ' 顶点', g1.nodesVerts + '（P.hxNodeShape=' + nodeShape + '）');
   chk(g1.axis === 1, '有一根 hexAxis（z 轴穿过两极格中心）');
-  chk(Math.abs(g1.ySpan - 2.2) < 0.02, '钢架 y 跨度 = 蛋高 2.2（只统计杆件，轴没算进来）', g1.ySpan);
+  /* v9.62 起杆端踩在【极点】上（不再是三角面重心），所以 y 跨度 = 蛋高 + 杆端外凸
+     （管子的圆头伸出端点一个半径，实测 0.0262 = 2×0.0131）。
+     ⚠ 两条分开判：下界证「杆真的够到极点」，上界证「没有凭空超出杆半径」。
+     旧写法 |ySpan−2.2|<0.02 在合并前是「重心差 1mm 也过」，在合并后是「外凸就红」，
+     两头都不成立 —— 换量纲必须同时换判据。 */
+  chk(g1.ySpan >= 2.2 - 0.002,
+    '杆端踩到极点：y 跨度 ' + g1.ySpan.toFixed(4) + ' ≥ 蛋高 2.2（v9.62 前是重心，够不到极点）', g1.ySpan);
+  chk(g1.ySpan <= 2.2 + 0.045,
+    '外凸只有杆端圆头：y 跨度 ' + g1.ySpan.toFixed(4) + ' ≤ 2.2 + 2×杆半径（实测 +' +
+    (g1.ySpan - 2.2).toFixed(4) + '，杆半径 0.0131）', g1.ySpan);
   /* 蛋最大半宽 r_max=0.638788（平面内）· sc=2.2/1.782321 ⇒ 直径 1.5767 */
   const xExp = 2 * 0.638788 * (2.2 / 1.782321);
   chk(Math.abs(g1.xSpan - xExp) < 0.06, 'x 跨度 = 蛋最大直径 ' + xExp.toFixed(4), g1.xSpan);
@@ -260,9 +363,24 @@ function chk(c, label, extra) {
   const mCell = rCells.match(/(\d+) \u683c/), mHex = rCells.match(/\u516d\u8fb9\u5f62 (\d+)/);
   chk(!!mCell && Number(mCell[1]) > 300, '格数 > 300', rCells);
   chk(!!mHex && Number(mHex[1]) > 250, '六边形 > 250（拓扑上绝大多数是六边形）', rCells);
-  chk(!!mHex && Number(mHex[1]) / Number(mCell[1]) > 0.9,
-    '六边形占比 > 90%（只有段界那一圈出 5/7 边）',
-    mHex[1] + '/' + mCell[1]);
+  /* 🔴 这一条原来卡 >90%，那只在 q=1（每行格数多、段界少）时成立。
+     q=0 + M=32 实测 888/1010 = 87.9% —— 不是网格坏了，是【每多一道纬圈就多一圈 5/7 过渡格】，
+     而 q 越大行数反而越少（q=1 时 M=26 只剩 24 行）。所以：
+     占比只判「绝大多数是六边形」的下限，拓扑正确性交给 n5−n7 ≡ 12 这条硬恒等式。 */
+  const m5 = rCells.match(/五边形 (\d+)/), m7 = rCells.match(/七边形 (\d+)/);
+  chk(!!mHex && Number(mHex[1]) / Number(mCell[1]) > 0.85,
+    '六边形占比 > 85%（其余是段界的 5/7 过渡格；q 越小行数越多、过渡格占比越高）',
+    mHex[1] + '/' + mCell[1] + ' = ' + (mHex[1] / mCell[1] * 100).toFixed(1) + '%');
+  /* 🔴 判「n5 − n7 === 12」只在 q=0 时成立：q>0 的档会多出 1 个【八边形】，
+     于是 61−47 = 14，但 61 + 2·n4 − 47 − 2·1 = 12 —— 账是平的，是我的式子漏了 4/8 边形。
+     恒等式必须写全：Σ(6−k)·n_k ≡ 12。 */
+  const m4 = rCells.match(/四边形 (\d+)/), m8 = rCells.match(/八边形 (\d+)/);
+  const n4c = m4 ? Number(m4[1]) : 0, n8c = m8 ? Number(m8[1]) : 0;
+  const eulSum = (m5 ? Number(m5[1]) : 0) + 2 * n4c - (m7 ? Number(m7[1]) : 0) - 2 * n8c;
+  chk(!!m5 && !!m7 && eulSum === 12,
+    'Σ(6−边数) ≡ 12（全账：五边 ' + (m5 ? m5[1] : '?') + ' ＋2×四边 ' + n4c +
+    ' − 七边 ' + (m7 ? m7[1] : '?') + ' −2×八边 ' + n8c + ' = ' + eulSum + '）',
+    String(eulSum));
 
   /* 「正六边形」不能只数边数 —— 数边数是拓扑，形状还得看六条棱等不等长。
      这一行读的是每格 poly 上相邻对偶顶点的真实距离，与构造公式无关
@@ -292,8 +410,12 @@ function chk(c, label, extra) {
   console.log('  行距比：' + rRow);
   const qDef = await valOf('\u4e24\u7aef\u52a0\u5bc6\u6307\u6570');
   const mRatio = rRow.match(/([\d.]+)\u00d7/);
-  chk(!!mRatio && Number(mRatio[1]) > 4,
-    '默认 q=' + qDef + ' ⇒ 赤道:极点 行距 > 4×（两端确实更密）', rRow);
+  /* 🔴 2026-11-09：默认 q 从 1.00 改成 0.00（老师截图指定），这一条原来写「>4×」是 q=1 的特征。
+     q=0 是【等弧长】档，实测 M=32 时 1.31×——若这里还卡 >4×，改默认值当场假红。
+     真正的「q 真接在几何上」由下面「q=1 ⇒ >8×」那一条把守，两条合起来才证明单调。 */
+  chk(!!mRatio && Number(mRatio[1]) < 1.8,
+    '默认 q=' + qDef + '（偏等弧长一侧）⇒ 赤道:极点 行距 ' + (mRatio ? mRatio[1] : '?') +
+    '× < 1.8（q=1 时才到 11× 上下，见下面那条）', rRow);
 
   const rDia = await rowTxt('\u68f1\u6746\u5f84');
   console.log('  杆径：' + rDia);
@@ -318,9 +440,17 @@ function chk(c, label, extra) {
   const rErg0 = await rowTxt('\u516d\u68f1\u7b49\u957f\u6bd4');
   const mErg0 = rErg0.match(/\u4e2d\u4f4d ([\d.]+)/);
   console.log('  q=0 六棱等长比：' + rErg0);
-  chk(!!mErg0 && Number(mErg0[1]) < Number(mErg ? mErg[1] : 1.3) - 0.05,
-    'q=0 ⇒ 六棱等长比明显小于 q=1.0（q 真接在几何上，不是摆设）',
-    'q=0 ' + (mErg0 ? mErg0[1] : '?') + ' vs q=1 ' + (mErg ? mErg[1] : '?'));
+  /* 🔴 这里原来判「q=0 的中位比默认(q=1) 小 0.05 以上」。
+     默认 q 改成 0 之后，两个样本变成同一个值（q=0 vs q=0）⇒ 必然失败。
+     重新实测三个 M 档（26/32/40）发现它【不是单调关系】：
+       M=26: q0 1.089 ／ q.5 1.117 ／ q1 1.216  ← q=0 最匀
+       M=32: q0 1.096 ／ q.5 1.057 ／ q1 1.157  ← q≈.5 最匀
+       M=40: q0 1.111 ／ q.5 1.065 ／ q1 1.099  ← q=1 反而比 q=0 好
+     ⇒ 断言方向就是断言一条假定律。只判「落在合理带内」，方向交给屏上读数给人看。 */
+  chk(!!mErg0 && Number(mErg0[1]) >= 1.0 && Number(mErg0[1]) < 1.30,
+    'q=0 档六棱中位 ' + (mErg0 ? mErg0[1] : '?') + ' 落在 1.00~1.30' +
+    '（⚠ 与 q 非单调，本探针不断言方向：实测最匀点会随 M 在 q=0 与 q≈0.5 之间漂）',
+    rErg0);
 
   const q1 = await setRange('\u4e24\u7aef\u52a0\u5bc6\u6307\u6570', 1.0);
   await sleep(2000);
@@ -334,17 +464,26 @@ function chk(c, label, extra) {
   const dA = await rowTxt('\u68f1\u6746\u5f84');
   const mmA = dA.match(/([\d.]+) ~ ([\d.]+)/);
   chk(gA === '0', '滑条设到 γ=0', gA);
-  /* γ=0 时单格杆径全等于基准 3.20‰；最粗那根还会被「短杆上限」压低，
-     所以判据不能写「全部相等」，要写「最粗 = 基准」。 */
-  chk(!!mmA && Math.abs(Number(mmA[2]) - 3.20) < 0.06,
-    'γ=0 ⇒ 最粗杆径 = 基准 3.20‰（面积不再调粗细）', dA);
-  chk(!!mmA && Number(mmA[2]) / Number(mmA[1]) < 2.5,
-    'γ=0 ⇒ 最粗/最细 < 2.5×（差异只来自短杆上限）', dA);
+  /* γ=0 时单格杆径全等于基准；最粗那根还会被「短杆上限」压低，
+     所以判据不能写「全部相等」，要写「最粗 = 基准」。
+     🔴 2026-11-09 v9.57 起基准口径是【φ(mm)】而读数印的是【半径 ‰蛋高】
+        （1‰ = 1mm 直径，因为 φ = 2r）⇒ 期望值 = φ/2，且必须从 P 现算，
+        写死 3.20 会随 hxDo 默认值变动而假红。 */
+  /* 🔴 2026-11-09 v9.59 起「棱杆径」这一行改成 mm φ（原来印 ‰蛋高）。
+     判据必须跟着换量纲：期望值 = P.hxDo（mm），不是 φ/2 的 ‰。
+     原来那条写死 phiDo/2 的判据在换量纲后必假红 —— 它量的是单位，不是功能。 */
+  const phiDo = await ev('(P.hxDo===undefined)?P.hxR*2:P.hxDo');
+  const ratA = dA.match(/最粗\/最细 = ([\d.]+)×/);
+  chk(!!mmA && Math.abs(Number(mmA[2]) - phiDo) < phiDo * 0.02,
+    'γ=0 ⇒ 最粗杆 φ' + mmA[2] + ' mm = 面板设的 ' + phiDo + ' mm（面积不再调粗细）', dA);
+  chk(!!ratA && Number(ratA[1]) < 2.6,
+    'γ=0 ⇒ 最粗/最细 ' + (ratA ? ratA[1] : '?') + '× < 2.6（差异只来自短杆上限，不是 γ）', dA);
 
   const gB = await setRange('\u9762\u79ef\u2192\u6746\u5f84\u6307\u6570', 1.4);
   await sleep(2000);
   const dB = await rowTxt('\u68f1\u6746\u5f84');
-  const mB = dB.match(/比 ([\d.]+)×/);
+  /* v9.59 起这一行改写「最粗/最细 = X×」（原来写「比 X×」）——判据跟着屏上的字走 */
+  const mB = dB.match(/最粗\/最细 = ([\d.]+)×/) || dB.match(/比 ([\d.]+)×/);
   chk(gB === '1.4', '滑条设到 γ=1.4', gB);
   chk(!!mB && Number(mB[1]) > 3, 'γ=1.4 ⇒ 最粗/最细 > 3×（大格明显更粗）', dB);
 
@@ -1350,7 +1489,8 @@ function chk(c, label, extra) {
     return out;})()`);
   chk(mUI && mUI.max === 48 && mUI.min === 8,
     '母线分行数 M 的滑杆夹在 8~48（老师要求：上限 48，再高页面会卡死）', J(mUI));
-  chk(mUI && mUI.val === 26, '默认仍是 26（黄金蛋的档，没被上限改动波及）', mUI && mUI.val);
+  /* 老师 2026-11-09 截图指定默认 M=32（原 26）。上限仍是 48，这一条守的是「默认值在夹取范围内」。 */
+  chk(mUI && mUI.val === 32, '默认 M = 32（老师在截图里定的档；上限仍 48）', mUI && mUI.val);
 
   /* ---- R2 内核 clamp 同源：P.hxRow=60 必须被夹到 48 ---- */
   const mClamp = await ev(`(function(){

@@ -78,6 +78,29 @@ li{margin:5px 0}
 #chkList li::before{content:"✓ ";color:var(--pdl);font-weight:700}
 #chkList li.f::before{content:"✗ ";color:var(--rd)}
 footer{max-width:1180px;margin:0 auto;padding:0 22px 50px;color:var(--ink3);font-size:12.5px}
+/* ===== 音频播放条：声音 = cvTime 那条实线（同源合成） ===== */
+.abar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+  padding:11px 13px;margin:14px 0 0;border:1px solid var(--line);
+  border-left:4px solid var(--pp);border-radius:0 8px 8px 0;background:#faf9f5}
+.abar button{font:13.5px system-ui,"Microsoft YaHei";padding:7px 13px;border:1px solid var(--line);
+  border-radius:6px;background:#fff;color:var(--ink);cursor:pointer;white-space:nowrap}
+.abar button:hover{border-color:var(--pp);color:var(--pp)}
+.abar button.pri{background:var(--pp);border-color:var(--pp);color:#fff;font-weight:600;min-width:138px}
+.abar button.pri:hover{background:#433aa0;color:#fff}
+.abar .ck,.abar .vl{display:flex;align-items:center;gap:5px;font-size:13px;color:var(--ink2);cursor:pointer}
+.abar input[type=range]{width:88px;accent-color:var(--pp)}
+.abar .vl em{font-style:normal;color:var(--pp);font-variant-numeric:tabular-nums;font-weight:600;min-width:34px}
+.abar a{color:var(--pp)}
+#ast{font-size:12.6px;color:var(--ink3);margin-left:auto;font-variant-numeric:tabular-nums}
+#ast.on{color:var(--pdl);font-weight:600}
+#ast.warn{color:var(--am)}
+.anote{font-size:12.6px;color:var(--ink2);line-height:1.72;margin:9px 0 0;
+  background:#faf9f5;border-left:3px solid var(--ppl);padding:8px 12px;border-radius:0 6px 6px 0}
+.anote code{font-size:12.2px}
+#secPlot figure{position:relative}
+.playhead{position:absolute;top:0;width:2px;background:#c05a4a;opacity:.85;
+  pointer-events:none;display:none;z-index:3}
+@media(max-width:640px){#ast{margin-left:0;width:100%}}
 </style>
 </head>
 <body>
@@ -103,9 +126,26 @@ footer{max-width:1180px;margin:0 auto;padding:0 22px 50px;color:var(--ink3);font
 
 <section class="card" id="secPanel">
   <h2>参数面板</h2>
+  <div class="abar" id="abar">
+    <button id="btnPlay" class="pri" type="button">▶ 播放本页波形</button>
+    <button id="btnStop" type="button">■ 停止</button>
+    <label class="ck"><input type="checkbox" id="ckLoop" checked> 循环</label>
+    <label class="vl">音量 <input type="range" id="rgVol" min="0" max="100" value="45"><em id="vVol">45%</em></label>
+    <button id="btnWav" type="button">↓ 下载 WAV</button>
+    <a href="./幻方波包_播放器.html" style="font-size:12.6px">完整播放器 →</a>
+    <span id="ast">就绪 · 未播放</span>
+  </div>
+  <p class="anote" id="anote"><b>声音就是右边「时域」那条紫色实线</b>：
+  <code>y(t)=Σ w·cos(2πf·t+φ)·exp(−(t−T/2)²/2σ²)</code>，与本页四张图读同一份 <code>ST</code>
+  参数、同一套公式实时合成（22050 Hz 口径，浏览器自动重采样到设备采样率）。
+  <b>不是外加背景音乐</b>，也不是另一页播放器的 level/step 模型。
+  循环接缝：σ=T/8 时首尾包络 exp(−8)≈3.4×10⁻⁴，幅度已趋零，听不出折点；但频率未锁定为 1/T 的整数倍，
+  <b>数学上不是严格周期</b>（页首那句「严格周期」说的是另一页的做法）。
+  极端档（偶数阶 + 旋转叠加 + ±π 交错）会被对称性完全抹平成静音，此时明确提示而不放大数值噪声。
+  拖动任一参数会停止播放并提示重新合成，避免边拖边重算。</p>
   <div class="ctl">
     <div class="fld">
-      <label for="selN">阶数 n <em id="vN">15</em></label>
+      <label for="selN">阶数 n <em id="vN">16</em></label>
       <select id="selN">
         <option value="3">3　阶（标准 1..9，S=15）</option>
         <option value="4">4　阶（标准 1..16，S=34）</option>
@@ -115,17 +155,17 @@ footer{max-width:1180px;margin:0 auto;padding:0 22px 50px;color:var(--ink3);font
         <option value="8">8　阶（标准 1..64，S=260）</option>
         <option value="9">9　阶（标准 1..81，S=369）</option>
         <option value="12">12 阶（标准 1..144，S=870）</option>
-        <option value="15" selected>15 阶（标准 1..225，S=1695）</option>
-        <option value="16">16 阶（标准 1..256，S=2056）</option>
+        <option value="15">15 阶（标准 1..225，S=1695）</option>
+        <option value="16" selected>16 阶（标准 1..256，S=2056）</option>
         <option value="27">27 阶（标准 1..729，S=9855）</option>
       </select>
     </div>
 
     <div class="fld">
-      <label for="selMap">频率映射 <em id="vMap">八度·±3</em></label>
+      <label for="selMap">频率映射 <em id="vMap">线性</em></label>
       <select id="selMap">
-        <option value="linear">线性：f = 格值（代码原样，Hz）</option>
-        <option value="oct" selected>八度：f = f₀·2^(±3·相对位置)</option>
+        <option value="linear" selected>线性：f = 格值（代码原样，Hz）</option>
+        <option value="oct">八度：f = f₀·2^(±3·相对位置)</option>
         <option value="phi">黄金比：f = f₀·φ^(±4·相对位置)</option>
       </select>
     </div>
@@ -161,19 +201,19 @@ footer{max-width:1180px;margin:0 auto;padding:0 22px 50px;color:var(--ink3);font
     <div class="fld">
       <label>相位规则</label>
       <div class="radios">
-        <label><input type="radio" name="ph" value="zero"> 全同相 φ=0</label>
-        <label><input type="radio" name="ph" value="grid" checked> 格序 φ=idx·2π/n²</label>
+        <label><input type="radio" name="ph" value="zero" checked> 全同相 φ=0</label>
+        <label><input type="radio" name="ph" value="grid"> 格序 φ=idx·2π/n²</label>
         <label><input type="radio" name="ph" value="alt"> ±π 交错</label>
       </div>
     </div>
 
     <div class="fld">
-      <label for="selSup">对称叠加（D4 轨道求和）<em id="vSup">不叠加</em></label>
+      <label for="selSup">对称叠加（D4 轨道求和）<em id="vSup">5 重</em></label>
       <select id="selSup">
-        <option value="off" selected>不叠加（只留一份场）</option>
+        <option value="off">不叠加（只留一份场）</option>
         <option value="d4">8 重：4 旋转 + 4 镜像</option>
         <option value="rot">4 重：只叠旋转</option>
-        <option value="mir">5 重：恒等 + 4 镜像</option>
+        <option value="mir" selected>5 重：恒等 + 4 镜像</option>
       </select>
     </div>
 
@@ -181,12 +221,12 @@ footer{max-width:1180px;margin:0 auto;padding:0 22px 50px;color:var(--ink3);font
       <label>开关</label>
       <div class="radios">
         <label><input type="checkbox" id="ckWrap"> 环面卷绕（泛对角）</label>
-        <label><input type="checkbox" id="ckDecay"> 分形衰减 2^(−½·八度)</label>
+        <label><input type="checkbox" id="ckDecay" checked> 分形衰减 2^(−½·八度)</label>
       </div>
     </div>
   </div>
   <p id="noteP">面板里每一档都会立刻重算四张图与下表。<b>σ</b> 是包络的时间标准差，<b>B</b> 是它的频域标准差，两者被 <b>σ·B = 1/(2π)</b> 死锁，所以"由带宽定"和"由时长定"是同一个旋钮的两种刻度，拖其中一个另一个必反着动（面板会把闲置的那个变灰）。默认走 T/8，因为按 py 里 σ=1/(2πB)、B=50 Hz 来算，1 秒窗里的高斯只有 <b>3.2 ms</b> 宽，画出来是一根针、听上去是一声咔哒，不是"波包"。相位规则是整张映射的关键：只有全同相时，"线和"才等于"中心时刻的相干和"。</p>
-  <p id="noteSup"><b>对称叠加</b>：把 n 阶幻方的 8 个等距变体（4 旋转 + 4 镜像）当成 8 个波场在空间里相加。线性叠加对每个频率分量独立，所以它等价于把每格的振幅换成 <span class="eq">a<sub>k</sub> = |Σ<sub>v</sub> e<sup>iφ<sub>v</sub>(k)</sup>| / m</span>、相位换成 <span class="eq">ψ<sub>k</sub> = arg(Σ<sub>v</sub> e<sup>iφ<sub>v</sub>(k)</sup>)</span>。两个后果值得先知道：<b>奇数阶的中心格是唯一不动点</b>（8 个变体都把它放在同一处 ⇒ 权重恒为 1），<b>偶数阶没有不动点</b>（所有权重都被轨道平均压过，6 阶甚至出现权重为 0 的频率——那个 agent 的心跳被对称性彻底抹平）。m 是<b>去重后</b>的场数，小于名义值就说明这个幻方自身带对称性。</p>
+  <p id="noteSup"><b>对称叠加</b>：把 n 阶幻方的 8 个等距变体（4 旋转 + 4 镜像）当成 8 个波场在空间里相加。线性叠加对每个频率分量独立，所以它等价于把每格的振幅换成 <span class="eq">a<sub>k</sub> = |Σ<sub>v</sub> e<sup>iφ<sub>v</sub>(k)</sup>| / m</span>、相位换成 <span class="eq">ψ<sub>k</sub> = arg(Σ<sub>v</sub> e<sup>iφ<sub>v</sub>(k)</sup>)</span>。两个后果值得先知道：<b>奇数阶的中心格是唯一不动点</b>（8 个变体都把它放在同一处 ⇒ 权重恒为 1），<b>偶数阶没有不动点</b>（在格序 φ=idx·2π/n² 这类与格位有关的相位规则下，所有权重都被轨道平均压过，6 阶甚至出现权重为 0 的频率——那个 agent 的心跳被对称性彻底抹平；若取<b>全同相 φ=0</b>，相位与格位无关，叠加退化为恒等复制，权重恒为 1，本页默认档「16 阶 + 全同相」即如此，左上图会显示 a_k = 1.000 ~ 1.000）。m 是<b>去重后</b>的场数，小于名义值就说明这个幻方自身带对称性。</p>
 </section>
 
 <section class="card" id="secPlot">
@@ -201,7 +241,7 @@ footer{max-width:1180px;margin:0 auto;padding:0 22px 50px;color:var(--ink3);font
     </figure>
     <figure>
       <canvas id="cvLine" height="360"></canvas>
-      <figcaption id="capLine">2n+2 条线的相干和。紫 = 行，绿 = 列，橙 = 两条对角。幻方保证"权重相等"，但<b>相位规则</b>决定它们是否真的等幅：当前格序相位下<b>每一根列柱</b>的高度都严格为 0，<b>看不见才是对的</b>。</figcaption>
+      <figcaption id="capLine">2n+2 条线的相干和。紫 = 行，绿 = 列，橙 = 两条对角。幻方保证"权重相等"，但<b>相位规则</b>决定它们是否真的等幅：<span id="capLinePh">当前取全同相 φ=0，2n+2 条柱严格等幅（相干 = 1），幻方的各向同性完整保留</span>。</figcaption>
     </figure>
     <figure>
       <canvas id="cvTheta" height="360"></canvas>
@@ -291,7 +331,7 @@ footer{max-width:1180px;margin:0 auto;padding:0 22px 50px;color:var(--ink3);font
   <p>反过来说：<b>相位规则一改，这句话就废了。</b>项目里用的是"按格序均分一圈"<code>φ_ij = (i·n+j)·2π/n²</code>，它有一个解析后果——同一列里相邻格的相位差恰好是 <code>n·2π/n² = 2π/n</code>，n 个相位正好绕满一整圈：</p>
   <pre>列相干 = |Σ_{i=0}^{n−1} e^{i·i·2π/n}| = <b>0</b>   （n ≥ 2，严格为零，不是"很小"）
 行相干 = |Σ_{j=0}^{n−1} e^{i·j·2π/n²}| / n = sin(π/n) / [n·sin(π/n²)]  → n=15 时 0.9927</pre>
-  <p>换句话说：<b>现行相位规则把幻方的各向同性单向打穿了</b>——行还剩 99.3%，列被严格清零，对角只剩 6%。幻和 1695 在这儿一分钱都不剩。这不是小数点问题，是性质问题。</p>
+  <p>换句话说：<b>格序相位规则把幻方的各向同性单向打穿了</b>——行还剩 99.3%，列被严格清零，对角只剩 6%。幻和 1695 在这儿一分钱都不剩。这不是小数点问题，是性质问题。</p>
   <table>
     <thead><tr><th style="width:24%">相位规则</th><th>行相干</th><th>列相干</th><th>对角</th><th>M2 是否成立</th></tr></thead>
     <tbody>
@@ -346,7 +386,7 @@ footer{max-width:1180px;margin:0 auto;padding:0 22px 50px;color:var(--ink3);font
     <li><b>斜率+ 族：n 不被 3 整除时，n 条全部等于幻和</b>（n=5,7,11,13,17,25 实测全 0 坏）；n 被 3 整除时坏 <b>2n/3</b> 条（n=9→6，15→10，21→14，27→18）。</li>
     <li><b>斜率− 族：永远只成立 1 条</b>（就是副对角），坏 <b>n−1</b> 条。这条与 n 无关，10 个阶数逐个实测全中。</li>
   </ul>
-  <p>所以 de la Loubère 最好也只是"半泛对角"（n+1 条折对角成立），而 <b>n=15 恰好是 3 的倍数——连那一半都保不住，30 条折对角里只有 6 条成立</b>。这就是为什么"高阶幻方 = 波包"这个印象在 15 阶上特别容易出问题：默认那张表本身就不是各向同性的。</p>
+  <p>所以 de la Loubère 最好也只是"半泛对角"（n+1 条折对角成立），而 <b>n=15 恰好是 3 的倍数——连那一半都保不住，30 条折对角里只有 6 条成立</b>。这就是为什么"高阶幻方 = 波包"这个印象在 15 阶上特别容易出问题：原先默认的 15 阶表本身就不是各向同性的。</p>
 
   <h4>要真泛对角，得换构造——而 n=15 正好卡在无解的那一类</h4>
   <p>最省事的一族是<b>线性拉丁族</b>：<code>M[i][j] = n·((i + t·j) mod n) + ((s·i + j) mod n) + 1</code>。它要成为泛对角，四个条件同时成立：</p>
@@ -417,8 +457,8 @@ var PHI = (1+Math.sqrt(5))/2;
 var TAU = Math.PI*2;
 var NYQ = 22050;
 
-var ST = { n:15, map:'oct', f0:432.081, env:'win', B:50, sigr:0.125, T:1.0,
-           phase:'grid', wrap:false, decay:false, sup:'off' };
+var ST = { n:16, map:'linear', f0:432.081, env:'win', B:50, sigr:0.125, T:1.0,
+           phase:'zero', wrap:false, decay:true, sup:'mir' };
 var SUPW = null;   /* 叠加后的等效权重/相位：{m, a:{k:..}, psi:{k:..}} */
 
 /* ================= 幻方构造 ================= */
@@ -1192,7 +1232,11 @@ function runChecks(M,F,A,C){
     chk(sw.sumA<=N+1e-9,
         '叠加后权重总和 Σa_k = '+sw.sumA.toFixed(4)+' ≤ n² = '+N+'（叠加只会削弱，不会凭空增强）');
 
-    if(nn%2===1){
+    if(ST.phase==='zero'){
+      chk(Math.abs(sw.maxA-1)<1e-9 && Math.abs(sw.sumA-N)<1e-9,
+          '相位全同相 φ=0：每个变体贡献的相位都是 0 ⇒ 叠加退化为恒等复制，'
+          +'n² 个频率权重恒为 1（Σa = n²，与 n 奇偶无关）');
+    } else if(nn%2===1){
       var ci=(nn-1)/2, cn=M[ci][ci];
       chk(Math.abs(sw.a[cn]-1)<1e-12,
           '奇数阶：中心数字 '+cn+' 是 D4 的<b>唯一固定点</b> ⇒ 权重恰好 = '+sw.a[cn].toFixed(9)+'（不是近似，8 次全落同一格）');
@@ -1291,10 +1335,27 @@ function draw(){
     drawLine(C,ST.n,A.S);
     drawTheta();
     drawTable(M,F,A,C);
+    syncCapLine();
     runChecks(M,F,A,C);
+    audioDirty();          /* 参数一变就停止旧合成，避免听到的与看到的不一致 */
   });
 }
 
+/* 图注随相位规则走：换了默认档也不许文字说谎（A2） */
+function syncCapLine(){
+  var e=$('capLinePh'); if(!e){ return; }
+  var txt;
+  if(ST.phase==='zero'){
+    txt='当前取<b>全同相 φ=0</b>，2n+2 条柱严格等幅（相干 = 1），幻方的各向同性完整保留';
+  } else if(ST.phase==='grid'){
+    txt='当前格序相位下<b>每一根列柱</b>的高度都严格为 0，<b>看不见才是对的</b>';
+  } else {
+    txt=(ST.n%2===0)
+      ? '当前 ±π 交错且 n 为偶数，行柱与列柱全部抵消为 0'
+      : '当前 ±π 交错且 n 为奇数，行柱相干 = 1/n';
+  }
+  e.innerHTML=txt;
+}
 /* ================= 绑定 ================= */
 $('selN').addEventListener('change',function(){ ST.n=parseInt(this.value,10); $('vN').textContent=this.value; draw(); });
 $('selMap').addEventListener('change',function(){
@@ -1328,13 +1389,195 @@ $('selSup').addEventListener('change',function(){
   $('vSup').textContent=SUPTXT[this.value]||this.value;
   draw();
 });
-window.addEventListener('resize',function(){ draw(); });
+/* ================= 音频：把 cvTime 那条实线原样变成 PCM =================
+   公式与 drawTime() 完全一致：y(t)=Σ actW·cos(2πF·t+actP)·exp(−(t−T/2)²/2σ²)
+   只把取样口径从绘图用的 T·k/(NX−1) 换成严格的 t=k/SR_AUD。
+   每格一个复数旋转子，避免 n²×采样率 次 Math.cos。                        */
+var SR_AUD = 22050;      /* 与文件头 NYQ 同口径；AudioBufferSource 自动重采样 */
+var PEAK_MIN = 1e-6;    /* 低于此值判为「对称性抹平」的数值零，不许放大成噪声 */
+var AU = { ctx:null, src:null, gain:null, r:null, t0:0, playing:false, head:null };
+
+function setAst(txt, cls){ var e=$('ast'); e.textContent=txt; e.className=cls||''; }
+
+function atomTable(M,F){
+  var n=F.length, out=[], i, j, f, p, w, om;
+  for(i=0;i<n;i++){
+    for(j=0;j<n;j++){
+      f=F[i][j]; p=actP(i,j,n,M); w=actW(i,j,M,F);
+      if(!(f>0) || f>SR_AUD*0.45 || w===0){ continue; } /* 防混叠 / 跳过被对称性抹平的原子 */
+      om=TAU*f/SR_AUD;
+      out.push({ zr:w*Math.cos(p), zi:w*Math.sin(p), rr:Math.cos(om), ri:Math.sin(om) });
+    }
+  }
+  return out;
+}
+function renderPCM(){
+  var M=buildSquare(ST.n), F=buildFreq(M,ST.map,ST.f0);
+  SUPW = (ST.sup==='off') ? null : supWeights(M, ST.n, ST.sup, ST.phase); /* 与图同源 */
+  var sig=envOf(), T=ST.T, t0=T/2, len=Math.max(64,Math.round(T*SR_AUD));
+  var atoms=atomTable(M,F), pcm=new Float32Array(len), peak=0, k, a, q, s, t, env, nr, ni;
+  for(k=0;k<len;k++){
+    t=k/SR_AUD;
+    env=Math.exp(-Math.pow(t-t0,2)/(2*sig*sig));
+    s=0;
+    for(q=0;q<atoms.length;q++){
+      a=atoms[q];
+      s+=a.zr;
+      nr=a.zr*a.rr-a.zi*a.ri; ni=a.zr*a.ri+a.zi*a.rr;
+      a.zr=nr; a.zi=ni;
+    }
+    pcm[k]=s*env;
+    if(Math.abs(pcm[k])>peak){ peak=Math.abs(pcm[k]); }
+  }
+  return { pcm:pcm, len:len, T:T, sig:sig, peak:peak, atoms:atoms.length, sr:SR_AUD };
+}
+/* 验收用：把每格实际参与合成的 (f, w, φ) 摊开，
+   供外部用 Math.cos 独立复算 PCM，覆盖叠加 / 衰减档（不参与页面绘制） */
+function atomSpec(){
+  var M=buildSquare(ST.n), F=buildFreq(M,ST.map,ST.f0), n=ST.n, out=[], i, j, f, w, p;
+  SUPW=(ST.sup==='off')?null:supWeights(M,n,ST.sup,ST.phase);
+  for(i=0;i<n;i++)for(j=0;j<n;j++){
+    f=F[i][j]; w=actW(i,j,M,F); p=actP(i,j,n,M);
+    if(!(f>0)||f>SR_AUD*0.45||w===0){ continue; }
+    out.push({f:f,w:w,p:p});
+  }
+  return out;
+}
+function headEl(){
+  if(!AU.head){
+    var fig=$('cvTime').parentNode;
+    fig.style.position='relative';
+    AU.head=document.createElement('div');
+    AU.head.className='playhead';
+    fig.appendChild(AU.head);
+  }
+  return AU.head;
+}
+function hideHead(){ if(AU.head){ AU.head.style.display='none'; } }
+function tickHead(){
+  if(!AU.playing || !AU.src || !AU.r){ hideHead(); return; }
+  var cv=$('cvTime'), rc=cv.getBoundingClientRect(), h=headEl();
+  var el=AU.ctx.currentTime-AU.t0;
+  var frac=(((el % AU.r.T)+AU.r.T)%AU.r.T)/AU.r.T;
+  h.style.display='block';
+  h.style.height=rc.height+'px';
+  h.style.left=Math.max(34,Math.min(rc.width-12, 34+(rc.width-46)*frac))+'px';
+  requestAnimationFrame(tickHead);
+}
+function stopAudio(silent){
+  if(AU.src){
+    try{ AU.src.onended=null; AU.src.stop(0); }catch(e){}
+    try{ AU.src.disconnect(); }catch(e){}
+    AU.src=null;
+  }
+  if(AU.gain){ try{ AU.gain.disconnect(); }catch(e){} AU.gain=null; }
+  AU.playing=false; hideHead(); $('btnPlay').textContent='▶ 播放本页波形';
+  if(!silent){ setAst('已停止',''); }
+}
+function audioDirty(){
+  if(AU.src){ stopAudio(true); setAst('参数已改变 · 点 ▶ 用新参数重新合成','warn'); }
+}
+function playAudio(){
+  stopAudio(true);
+  var Ctor=window.AudioContext||window.webkitAudioContext;
+  if(!Ctor){ setAst('此浏览器不支持 Web Audio',''); return; }
+  if(!AU.ctx){ try{ AU.ctx=new Ctor(); }catch(e){ setAst('AudioContext 创建失败：'+e.message,''); return; } }
+  var ctx=AU.ctx;
+  if(ctx.state==='suspended'){ try{ ctx.resume(); }catch(e){} }
+  setAst('合成中…','');
+  setTimeout(function(){
+    var r;
+    try{ r=renderPCM(); }catch(e){ setAst('合成失败：'+e.message,''); return; }
+    if(!(r.peak>PEAK_MIN)){
+      setAst('这一档被对称性完全抹平 → 静音（峰值 '+r.peak.toExponential(1)+'，不放大数值噪声）','warn');
+      return;
+    }
+    var buf;
+    try{ buf=ctx.createBuffer(1,r.len,SR_AUD); }catch(e){ setAst('createBuffer 失败：'+e.message,''); return; }
+    var ch=buf.getChannelData(0), g=0.88/r.peak, i;
+    for(i=0;i<r.len;i++){ ch[i]=r.pcm[i]*g; }
+    var gn=ctx.createGain(); gn.gain.value=parseInt($('rgVol').value,10)/100;
+    var s=ctx.createBufferSource();
+    s.buffer=buf; s.loop=$('ckLoop').checked;
+    s.connect(gn); gn.connect(ctx.destination);
+    s.onended=function(){
+      if(AU.src===s){
+        AU.src=null; AU.playing=false; hideHead();
+        $('btnPlay').textContent='▶ 播放本页波形';
+        setAst('单次播放结束','');
+      }
+    };
+    try{ s.start(0); }catch(e){ setAst('start 失败：'+e.message,''); return; }
+    AU.src=s; AU.gain=gn; AU.r=r; AU.playing=true; AU.t0=ctx.currentTime;
+    $('btnPlay').textContent='❚❚ 暂停';
+    setAst('播放中　'+r.atoms+' 原子　T='+r.T.toFixed(3)+' s　σ='+(r.sig*1000).toFixed(1)+' ms　峰值 '+r.peak.toFixed(2),'on');
+    window.__au={ sr:SR_AUD, len:r.len, T:r.T, sig:r.sig, peak:r.peak, atoms:r.atoms,
+                  loop:s.loop, state:ctx.state, deviceRate:ctx.sampleRate };
+    tickHead();
+  },20);
+}
+function togglePause(){
+  if(!AU.src || !AU.ctx){ playAudio(); return; }
+  var ctx=AU.ctx;
+  if(ctx.state==='suspended'){
+    try{ ctx.resume(); }catch(e){}
+    $('btnPlay').textContent='❚❚ 暂停';
+    setAst('播放中（续）','on');
+  }else{
+    try{ ctx.suspend(); }catch(e){}
+    $('btnPlay').textContent='▶ 继续';
+    setAst('已暂停（游标停在当前时刻）','');
+  }
+}
+function wavBytes(r){
+  var n=r.len, b=new ArrayBuffer(44+n*2), v=new DataView(b), off=44, i, x, g=0.88/r.peak;
+  function str(o,s){ for(var q=0;q<s.length;q++){ v.setUint8(o+q,s.charCodeAt(q)); } }
+  str(0,'RIFF'); v.setUint32(4,36+n*2,true); str(8,'WAVE'); str(12,'fmt ');
+  v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+  v.setUint32(24,SR_AUD,true); v.setUint32(28,SR_AUD*2,true);
+  v.setUint16(32,2,true); v.setUint16(34,16,true);
+  str(36,'data'); v.setUint32(40,n*2,true);
+  for(i=0;i<n;i++){
+    x=Math.max(-1,Math.min(1,r.pcm[i]*g));
+    v.setInt16(off, x<0 ? x*32768 : x*32767, true); off+=2;
+  }
+  return b;
+}
+function exportWav(){
+  var r;
+  try{ r=renderPCM(); }catch(e){ setAst('合成失败：'+e.message,''); return; }
+  if(!(r.peak>PEAK_MIN)){
+    setAst('这一档是静音，不导出 WAV（峰值 '+r.peak.toExponential(1)+'）','warn');
+    return;
+  }
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([wavBytes(r)],{type:'audio/wav'}));
+  a.download='幻方波包_n'+ST.n+'_'+ST.map+'_T'+ST.T.toFixed(2)+'s.wav';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(a.href); },2000);
+  setAst('已导出 WAV　'+r.len+' 样本 / '+(r.len/SR_AUD).toFixed(3)+' s','on');
+  window.__au={ sr:SR_AUD, len:r.len, T:r.T, sig:r.sig, peak:r.peak, atoms:r.atoms,
+                loop:false, state:'wav', deviceRate:(AU.ctx?AU.ctx.sampleRate:0) };
+}
+$('btnPlay').addEventListener('click',togglePause);
+$('btnStop').addEventListener('click',function(){ stopAudio(); });
+$('btnWav').addEventListener('click',exportWav);
+$('rgVol').addEventListener('input',function(){
+  $('vVol').textContent=this.value+'%';
+  if(AU.gain){ AU.gain.gain.value=parseInt(this.value,10)/100; }
+});
+$('ckLoop').addEventListener('change',function(){
+  if(AU.src){ AU.src.loop=this.checked; }
+});
 
 window.__gb={ST:ST, buildSquare:buildSquare, audit:audit, coherence:coherence,
              panAudit:panAudit, linPan:linPan, siamese:siamese, doublyEven:doublyEven,
              envOf:envOf, bEffOf:bEffOf, last:function(){ return LAST; },
              chkCount:function(){ return CHK.length; },
-             setPhase:function(p){ ST.phase=p; draw(); }};
+             setPhase:function(p){ ST.phase=p; draw(); },
+             renderPCM:renderPCM, exportWav:exportWav, play:playAudio, stop:stopAudio,
+             atomSpec:atomSpec,
+             audio:function(){ return window.__au||null; }};
 
 setEnv(ST.env);
 fillT2Table();          /* 必须在 draw 之前：自检要读这两张表 */

@@ -52,6 +52,16 @@ function chk(c, label, extra) {
     for(var i=0;i<bs.length;i++){if((bs[i].textContent||'').indexOf(${J(txt)})>=0){bs[i].click();return bs[i].textContent.trim();}}
     return '';})()`);
   const badge = () => ev('document.getElementById("badge").textContent.trim()');
+  const clickTab = (txt) => ev(`(function(){var bs=[].slice.call(document.querySelectorAll('#tabs button'));
+    for(var i=0;i<bs.length;i++){if((bs[i].textContent||'').indexOf(${J(txt)})>=0){bs[i].click();return bs[i].textContent.trim();}}
+    return '';})()`);
+
+  /* 🔴🔴 页面默认族已改成 ⑦ tube2 ⇒ ⓪ 的预设按钮根本不在 DOM 里，
+     不显式切族的话下面 8 条预设全部「找不到」，会变成 14 条假红。 */
+  const __t0 = await clickTab('\u24EA \u53cc\u9525');
+  await sleep(1500);
+  console.log('  ' + (__t0 ? '\u2713' : '\u2717') + ' 切到 ⓪ 子页（默认族现为 ⑦ tube2）：' + J(__t0));
+  if (!__t0) { console.log('  ⚠ 切族失败，下面读到的预设都属于 ⑦，全部判据无效'); }
 
   const RESID = `(function(){
     var P=window.P, R=f0Solve(P), S=R.def, c=(P.cutC===undefined?0.5:P.cutC);

@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:,">
+<title>大衍占卜 · 诸家视图版</title>
+<style>
+  body{background:#faf9f6;color:#2b2620;font-family:"Noto Serif SC",serif;margin:0;padding:24px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  h1{letter-spacing:.3em;font-weight:400;border-bottom:1px solid #57482c;padding-bottom:8px;}
+  button{background:#57482c;color:#f5ecd7;border:none;padding:10px 22px;font-size:16px;cursor:pointer;border-radius:4px;margin-right:10px;margin-bottom:8px;}
+  button:hover{background:#6f5a2a;}
+  button.mini{font-size:12px;padding:5px 12px;margin:0 6px 0 0;}
+  .log{white-space:pre-wrap;font-family:monospace;font-size:13px;color:#6a5f48;background:#f4f1ea;padding:12px;border-radius:6px;max-height:220px;overflow-y:auto;}
+  .hex{font-size:34px;letter-spacing:2px;line-height:1.5;}
+  .line{position:relative;width:280px;height:16px;margin:14px auto;}
+  .yang{background:#2b2620;height:14px;width:100%;}
+  .yin{display:flex;justify-content:space-between;width:100%;}
+  .yin span{background:#2b2620;height:14px;width:42%;}
+  .mov{color:#9a6410;font-size:14px;text-align:center;margin-top:2px;}
+  .result{text-align:center;margin:16px 0;}
+  .meta{font-size:13px;color:#5c5342;margin-top:6px;line-height:1.7;}
+  .meta a{color:#6a5f48;text-decoration:none;border-bottom:1px dotted #57482c;}
+  table{font-size:13px;color:#6a5f48;border-collapse:collapse;margin-top:8px;}
+  td{padding:2px 10px;}
+  .opts,.vbar{background:#f4f1ea;border:1px solid #b9a98a;border-radius:6px;padding:12px 14px;margin:14px 0;font-size:13px;color:#6a5f48;line-height:2.1;}
+  .opts label,.vbar label{margin-right:16px;white-space:nowrap;cursor:pointer;}
+  .opts label,.vbar label{display:inline-block;}
+  input[type=checkbox]{accent-color:#6f5a2a;vertical-align:-2px;margin-right:4px;}
+  select{background:#fdfcf9;color:#2b2620;border:1px solid #57482c;border-radius:4px;padding:4px 8px;font-size:13px;}
+  .ttl{color:#9a6410;letter-spacing:.15em;margin-right:10px;}
+  .glyph-wrap{text-align:center;margin:18px 0 6px;}
+  #glyph{display:block;margin:0 auto;border-radius:50%;}
+  .glyph-meta{font-family:monospace;font-size:12px;color:#5c5342;margin-top:8px;line-height:1.8;white-space:pre-wrap;}
+  .vsec{border-top:1px solid #b9a98a;margin-top:22px;padding-top:14px;}
+  .vsec h2{font-size:16px;font-weight:400;letter-spacing:.2em;color:#2b2620;margin:0 0 2px;}
+  .vsec .sub{font-size:12px;color:#5c5342;margin-bottom:10px;line-height:1.7;}
+  .vgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-top:14px;}
+  .vcard{background:#f4f1ea;border:1px solid #b9a98a;border-radius:8px;padding:10px;}
+  .vcard h3{font-size:14px;font-weight:400;color:#2b2620;margin:2px 0 1px;letter-spacing:.08em;}
+  .vsrc{font-size:11px;color:#6f5a2a;margin-bottom:8px;line-height:1.5;}
+  .vcard canvas{display:block;width:100%;height:auto;background:#faf9f6;border-radius:4px;}
+  .vmeta{font-family:monospace;font-size:11px;color:#5c5342;margin-top:6px;white-space:pre-wrap;line-height:1.6;word-break:break-all;}
+  .foot{border-top:1px solid #b9a98a;margin-top:18px;padding-top:10px;}
+  /* ===== 浅底深字 · 高对比覆盖层（增量，不改原版结构） ===== */
+  body{font-family:"Microsoft YaHei","PingFang SC","Segoe UI",system-ui,sans-serif;color:#241f18;line-height:1.75;}
+  .wrap{max-width:1000px;}
+  h1{color:#1f1b15;border-bottom-color:#c4b99c;}
+  .meta,.vsec .sub,.qa .sub,.glyph-meta,.vmeta,.qdisc,.qcard .qm,.qcard .qf{color:#463e30;font-size:12.5px;line-height:1.85;}
+  .log{color:#2f2a20;background:#f1eee5;font-size:12.5px;}
+  table,.opts,.vbar,.qhead{color:#3b3427;}
+  .qreply{color:#1f1b15;font-size:15px;line-height:2.05;}
+  .qreply .qq,.qhead{color:#4a4234;}
+  .qtable td,.qtable th{color:#40382a;font-size:11.5px;}
+  .foot{color:#463e30;}
+  button{font-family:inherit;}
+  select,textarea{font-family:inherit;}
+
+  /* ===== 右浮窗 CtrlDock（所有控件单一来源，物理搬入） ===== */
+  #ctrlDock{position:fixed;right:16px;top:16px;width:300px;max-height:calc(100vh - 32px);
+    display:flex;flex-direction:column;background:#ffffff;border:1px solid #cfc8b6;
+    border-radius:10px;box-shadow:0 8px 28px rgba(60,50,30,.18);z-index:1000;overflow:hidden;}
+  #dockBar{display:flex;align-items:center;gap:8px;padding:9px 11px;cursor:move;
+    background:#57482c;color:#f5ecd7;font-size:13px;letter-spacing:.1em;user-select:none;flex:0 0 auto;}
+  #dockBar .sp{flex:1;}
+  #dockBar button{background:transparent;color:#f5ecd7;border:1px solid rgba(245,236,215,.55);
+    padding:1px 8px;font-size:13px;margin:0;line-height:1.5;border-radius:4px;}
+  #dockGroups{overflow:auto;padding:10px 12px 16px;flex:1 1 auto;}
+  .dockGrp{margin-bottom:11px;border-bottom:1px dashed #ddd6c4;padding-bottom:9px;}
+  .dockCap{font-size:11px;color:#8a6a12;letter-spacing:.12em;margin-bottom:6px;}
+  #ctrlDock .qrow{gap:6px;margin:6px 0;}
+  #ctrlDock .qrow label{display:block;width:100%;white-space:normal;}
+  #ctrlDock button{font-size:12px;padding:6px 10px;margin:0 5px 5px 0;}
+  #ctrlDock button.mini{font-size:12px;padding:6px 10px;}
+  #ctrlDock .opts,#ctrlDock .vbar{margin:0;padding:0;background:transparent;border:0;font-size:12px;line-height:1.95;}
+  #ctrlDock .opts label,#ctrlDock .vbar label{display:block;margin:0;white-space:normal;}
+  #ctrlDock #qText{font-size:13px;min-height:74px;}
+  #dockGrip{position:absolute;right:0;bottom:0;width:17px;height:17px;cursor:nwse-resize;
+    background:linear-gradient(135deg,transparent 50%,#b9ad8e 50%);}
+  #ctrlDock.collapsed{display:none;}
+  #dockOpen{position:fixed;right:16px;top:16px;z-index:1001;display:none;cursor:pointer;
+    background:#57482c;color:#f5ecd7;border-radius:8px;padding:9px 13px;font-size:13px;
+    box-shadow:0 4px 16px rgba(60,50,30,.2);user-select:none;}
+  #ctrlDock.collapsed + #dockOpen{display:block;}
+  body{padding-right:324px;}
+  /* ===== 问对 · 结果区 ===== */
+  .qa{background:#ffffff;border:1px solid #d9d3c3;border-radius:8px;padding:14px 16px;margin:16px 0 22px;color:#3b3427;}
+  .qa h2{font-size:16px;font-weight:400;letter-spacing:.2em;color:#1f1b15;margin:0 0 4px;}
+  #qText{width:100%;box-sizing:border-box;background:#fdfcf9;color:#241f18;border:1px solid #b9ad8e;border-radius:5px;padding:9px 11px;font-size:13px;line-height:1.7;resize:vertical;min-height:74px;}
+  #qText:focus{outline:none;border-color:#9a6410;}
+  #qText::placeholder{color:#8a8271;}
+  .qrow{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin:10px 0;font-size:13px;color:#463e30;}
+  .qrow label{white-space:nowrap;}
+  .qdisc{font-size:12px;color:#5a5140;line-height:1.9;border-top:1px dashed #d9d3c3;margin-top:12px;padding-top:8px;}
+  .qdisc b{color:#3b3427;font-weight:600;}
+  .qres{margin-top:14px;}
+  .qhead{font-size:13px;color:#463e30;line-height:1.9;border-left:3px solid #9a6410;padding-left:10px;margin:12px 0;}
+  .qhead b{color:#8a6a12;}
+  .qgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:12px 0;}
+  .qcard{background:#fdfcf9;border:1px solid #ddd6c4;border-radius:7px;padding:9px 8px;text-align:center;}
+  .qcard h3{font-size:18px;font-weight:600;color:#1f1b15;margin:0 0 2px;letter-spacing:.12em;}
+  .qcard .qk{font-size:11px;color:#8a6a12;letter-spacing:.1em;}
+  .qcard .qm{font-family:monospace;font-size:11px;color:#463e30;line-height:1.7;margin-top:5px;text-align:left;white-space:pre-wrap;}
+  .qcard .qf{font-family:monospace;font-size:10.5px;color:#6f5a2a;margin-top:4px;word-break:break-all;}
+  .minihex .line{width:92px;height:7px;margin:4px auto;}
+  .minihex .yang{height:6px;}
+  .minihex .yin span{height:6px;}
+  .qreply{background:#fdfcf9;border:1px solid #ddd6c4;border-left:3px solid #9a6410;border-radius:0 7px 7px 0;padding:12px 14px;margin:14px 0;font-size:15px;line-height:2.05;color:#1f1b15;}
+  .qreply p{margin:0 0 7px;}
+  .qreply b{color:#8a5c0c;font-weight:600;}
+  .qreply .qq{color:#5a5140;}
+  .qtable{width:100%;font-size:11.5px;color:#40382a;border-collapse:collapse;margin-top:8px;}
+  .qtable td,.qtable th{border-bottom:1px solid #e5e0d2;padding:4px 6px;text-align:left;vertical-align:top;}
+  .qtable th{color:#8a6a12;font-weight:600;}
+  .qlevel{display:inline-block;font-size:10px;padding:0 5px;border:1px solid currentColor;border-radius:3px;margin-right:4px;}
+  .lv1{color:#1f7047;} .lv2{color:#8a5c0c;} .lv3{color:#6a5f48;}
+  .qok{color:#1f7047;font-weight:600;} .qbad{color:#b5451f;font-weight:600;}
+  .qhint{font-size:13px;color:#8a5c0c;line-height:1.8;}
+</style>
+</head>
+<body>
+<aside id="ctrlDock">
+  <div id="dockBar"><span>⚙ 参数面板</span><span class="sp"></span><button id="dockToggle" title="收起／展开">−</button></div>
+  <div id="dockGroups"></div>
+  <div id="dockGrip" title="拖动改尺寸"></div>
+</aside>
+<div id="dockOpen" title="展开参数面板">⚙ 参数</div>
+<div class="wrap">
+<h1>大衍占卜</h1>
+<section class="qa" id="qa">
+  <h2>问对 · 一卦四观</h2>
+  <div class="sub">在右侧参数面板输入问题 → 用<b>原版同一起卦器</b>随机起<b>一个本卦</b> → 按「<b>错综复杂</b>」展开<b>四卦</b> → 依四卦给出结构化回应。起卦结果与下方卦纹、九种视图<b>共用同一状态</b>，不另开随机源。</div>
+  <div id="qaCtrl">
+    <textarea id="qText" placeholder="例：这件事现在该推进，还是先停一停？"></textarea>
+    <div class="qrow">
+      <label>起卦 <select id="qMode"><option value="fast">快速模式（16 桶拒绝采样）</option><option value="stalk">正宗模拟（十八变）</option></select></label>
+      <label>四卦口径 <select id="qScheme"><option value="four">错 · 综 · 复 · 杂（本卦为体，不计入）</option><option value="withRoot">本卦 · 错 · 综 · 杂（本卦计入）</option></select></label>
+      <button class="mini" id="qGo">起卦并作答</button>
+      <button class="mini" id="qCopy">复制给 AI 深度解读</button>
+      <button class="mini" id="qClear">清空</button>
+    </div>
+  </div>
+  <div class="qres" id="qOut"></div>
+  <div class="qdisc" id="qDisc">
+    <b>口径三分（互不替代）：</b><br>
+    <span class="qlevel lv1">有原文</span>八卦卦德取《说卦传》「乾健、坤顺、震动、巽入、坎陷、离丽、艮止、兑说」；爻位取《系辞下》「二多誉、四多惧、三多凶、五多功」「其初难知，其上易知」。<br>
+    <span class="qlevel lv2">能复算</span>四卦的 6-bit 码、文王序号、两两汉明距离、动爻数、Klein 四元群闭合性，全部由本页 Q₆ 变换<b>现算并列在「复算表」里逐项打勾</b>，不是写死的文案。<br>
+    <span class="qlevel lv3">立论</span>四卦之名历代有异说：<b>错</b>（六爻全变）、<b>综</b>（上下颠倒）各家一致；<b>复</b>或指六爻重卦／八纯卦、或指互卦；<b>杂</b>或指交互卦、或指八纯之外的五十六卦；亦有「错综复杂实只三变」之说。本页取可复算的一套：<b>错 = code^63、综 = rev6(code)、复 = rev6(code^63)（错而复综，Klein 四元群第四元）、杂 = 中爻互体（二三四为下、三四五为上）</b>。<b>此为本页编排，非古法定论。</b><br>
+    本页回应是<b>象数推演</b>，不是事实判断，也不构成医疗、法律、投资建议；四卦的吉凶语义不进入任何数字计算。
+  </div>
+</section>
+<p class="meta">大衍之数五十，其用四十有九。分二 · 挂一 · 揲四 · 归奇，三变成一爻，十有八变而成卦。</p>
+<div id="origBtns">
+  <button onclick="cast('stalk')">正宗模拟（十八变）</button>
+  <button onclick="cast('fast')">快速模式（古典分布）</button>
+  <button onclick="document.getElementById('log').textContent='';">清空记录</button>
+</div>
+
+<div class="opts" id="optsBox">
+  <span class="ttl">卦纹</span>
+  <label><input type="checkbox" id="gOn" checked>显示圆形卦纹</label>
+  <label>曲线 <select id="gMode">
+    <option value="liss">李萨如（圆轮廓）</option>
+    <option value="harm">Harmonograph 摆锤纹</option>
+  </select></label>
+  <label><input type="checkbox" id="gSwap">上下卦纵横对调</label>
+  <label><input type="checkbox" id="gGhost" checked>叠加之卦虚影</label>
+  <label><input type="checkbox" id="gAnim">缓慢呼吸动画</label>
+  <label><input type="checkbox" id="gClosed" checked>闭合周期</label>
+</div>
+
+<div class="result" id="out"></div>
+<div class="glyph-wrap" id="gWrap"><canvas id="glyph"></canvas><div class="glyph-meta" id="gMeta"></div></div>
+<div class="log" id="log"></div>
+<table id="stats"></table>
+
+<div class="vsec">
+  <h2>诸家视图</h2>
+  <div class="sub">把网上几套不同路数的《易经》可视化作品，各自抽象成一张程序化示意图，都挂到同一卦上。勾选即显示，可叠加对照。全部本地生成，无外部图片与依赖。</div>
+  <div class="vbar" id="vbar"></div>
+  <div id="viewBtns" style="margin-top:8px;"><button class="mini" id="vAll">全选九种</button><button class="mini" id="vNone">全部收起</button><button class="mini" id="vCast">重起一卦</button></div>
+  <div class="vgrid" id="vgrid"></div>
+</div>
+
+<p class="meta foot">熵源：crypto.getRandomValues（CSPRNG）。快速模式按古典四象 1/16 : 3/16 : 7/16 : 5/16 精确采样（16 桶拒绝采样，无模偏差），并记录熵消耗。正宗模拟为分二揲四过程模拟，其真实分布与古典值有系统偏差（均匀分裂下 P(6)≈1.28%）。<br>
+卦纹映射：下卦三爻作横向频率码、上卦三爻作纵向频率码，各取 0–7 映射为 1–8 档；动爻数定相位 δ；之卦低透明度叠影。李萨如外接框本是方形，用 tanh 径向压缩内接进单位圆并裁剪，故外轮廓恒为圆形。上下卦同码的 8 卦改画 18 条相位递增椭圆，包络成圆。<strong>闭合周期</strong>开启时，Harmonograph 去掉阻尼与无理失谐、改用整数倍频双摆叠加，在 t∈[0,2π] 严格闭合；关闭时保留 exp 阻尼与微失谐，是向内收束、不闭合的摆锤衰减轨迹。<br>
+诸家视图为程序化致敬，非原作截图，对应关系：<a href="https://akanezer.eu.org/sunhonghua1/iching-64-motion" target="_blank">六十四卦结构动画</a>（加一倍生成树 / 伏羲方圆图 / 文王序长卷·消息卦）、<a href="https://forum.trae.cn/t/topic/152481" target="_blank">爻变 · AR 易经</a>（逐层生长·意象）、Yijing Explorer（6-bit 超立方节点）、<a href="https://akikoys.github.io/YichingWebapp/" target="_blank">YichingWebapp</a> 与 <a href="https://yimatrix.ai/daily-hexagram" target="_blank">YiMatrix 每日一卦</a>（抽签转盘）、<a href="https://qianfei11.github.io/I-Ching-Fortune-Teller/" target="_blank">I-Ching Fortune Teller</a>（三枚铜币）、<a href="http://www.gzgjkj.cn/hetuluoshu.html" target="_blank">洛阳《河图洛书》沉浸式舞台剧</a>（光笔实时绘卦）、<a href="https://tsight.io/articles/17694316" target="_blank">太极八卦动图</a>（阴阳鱼呼吸）。此为视觉映射实验，不对应传统易学定则。<br>
+<strong>2026-11-09 增量升级</strong>：① 页面改<b>浅底深字</b>，九张 canvas 视图与卦纹同步换色（只换颜色常量，绘图逻辑一字未动）；② <b>所有控件收进右侧参数浮窗</b>（可拖动、可收起、右下角可改尺寸），正文只留结果；③ 新增「问对 · 一卦四观」：输入问题 → 同一个起卦器起一个本卦 → 按「错综复杂」展开四卦 → 依四卦给结构化回应，并附逐项复算表与供 AI 深度解读的 Markdown。取卦与渲染拆为 <code>drawHex()</code> / <code>applyHex()</code>，问对与原版共用同一个状态 <code>S</code>，不另开随机源。四卦术语异说与「有原文／能复算／立论」三分口径写在上方问对面板内。</p>
+</div>
+<script>
+const NAMES=["乾","坤","屯","蒙","需","讼","师","比","小畜","履","泰","否","同人","大有","谦","豫","随","蛊","临","观","噬嗑","贲","剥","复","无妄","大畜","颐","大过","坎","离","咸","恒","遁","大壮","晋","明夷","家人","睽","蹇","解","损","益","夬","姤","萃","升","困","井","革","鼎","震","艮","渐","归妹","丰","旅","巽","兑","涣","节","中孚","小过","既济","未济"];
+// 三爻索引 v = 阳1阴0，自下而上按位权 1/2/4；v=0坤 1震 2坎 3兑 4艮 5离 6巽 7乾
+const TRI=["坤","震","坎","兑","艮","离","巽","乾"];
+// 文王卦序表：行=下卦、列=上卦，行列次序按先天序 乾兑离震巽坎艮坤
+const KW=[[1,43,14,34,9,5,26,11],[10,58,38,54,61,60,41,19],[13,49,30,55,37,63,22,36],[25,17,21,51,42,3,27,24],[44,28,50,32,57,48,18,46],[6,47,64,40,59,29,4,7],[33,31,56,62,53,39,52,15],[12,45,35,16,20,8,23,2]];
+// v → 先天序位置（KW 行列索引）
+const V2IDX=[7,3,5,1,6,2,4,0];
+const IMG={乾:'龙',坤:'地',震:'雷',坎:'水',艮:'山',离:'火',巽:'风',兑:'泽'};
+const MSG=[[24,1],[19,2],[11,3],[34,4],[43,5],[1,6],[44,5],[33,4],[12,3],[20,2],[23,1],[2,0]];
+let bytesUsed=0,rejects=0,counts={6:0,7:0,8:0,9:0};
+function byte(){bytesUsed++;const a=new Uint8Array(1);crypto.getRandomValues(a);return a[0];}
+function bits(lines,s){return lines[s]+2*lines[s+1]+4*lines[s+2];}
+function triName(lines,s){return TRI[bits(lines,s)];}
+function hexName(lines){return NAMES[KW[V2IDX[bits(lines,0)]][V2IDX[bits(lines,3)]]-1];}
+function nameOf(code){return NAMES[KW[V2IDX[code&7]][V2IDX[(code>>3)&7]]-1];}
+function noOf(code){return KW[V2IDX[code&7]][V2IDX[(code>>3)&7]];}
+// —— 快速模式：16 桶拒绝采样（权重 老阴1 老阳3 少阴7 少阳5）——
+function fastLine(){let b;do{b=byte();rejects++;}while(b>=240);rejects--;const v=b%16;counts[v<1?6:v<4?9:v<11?8:7]++;return v<1?6:v<4?9:v<11?8:7;}
+// —— 正宗模拟：分二挂一揲四归奇 ——
+function stalkChange(n,log){
+  const left=1+Math.floor(Math.random()*(n-1));let right=n-left;
+  const hung=right;right-=1;
+  const r1=left%4===0?4:left%4, r2=right%4===0?4:right%4;
+  const qi=r1+r2;log.push(`  分二：${left} | ${hung}；挂一 → ${right}；左奇${r1}+右奇${r2}＝归奇 ${qi}`);
+  return qi;
+}
+function stalkLine(log){
+  let n=49,removed=0;
+  for(let i=1;i<=3;i++){const qi=stalkChange(n-removed,log);removed+=qi;log.push(`  第${i}变后余 ${n-removed}`);}
+  const v=(n-removed)/4;counts[v]++;return v;
+}
+let S=null;
+/* 取卦与渲染分离：原 cast() 行为不变，问对复用同一取卦器与同一状态 S（根因单点） */
+function drawHex(mode){
+  const log=[`—— ${new Date().toLocaleTimeString()} · ${mode==='stalk'?'正宗模拟':'快速模式'} ——`];
+  const lines=[],moving=[],vals=[];
+  for(let i=0;i<6;i++){
+    const v=mode==='stalk'?stalkLine(log):fastLine();
+    vals.push(v);lines.push(v%2===0?0:1);
+    if(v===6||v===9)moving.push(i);
+    log.push(`第${['初','二','三','四','五','上'][i]}爻 → ${v}（${v===9?'老阳○':v===6?'老阴×':v===7?'少阳':'少阴'}）`);
+  }
+  const orig=lines.slice();
+  const changed=lines.map((v,i)=>moving.includes(i)?1-v:v);
+  const code=bits(orig,0)|(bits(orig,3)<<3);
+  const s={orig,changed,moving,vals,code,no:noOf(code),mode};
+  log.push(`本卦：${hexName(orig)}　动爻：${moving.length?moving.map(i=>'第'+(i+1)+'爻').join('、'):'无'}　之卦：${hexName(changed)}`);
+  return {s,log};
+}
+function applyHex(s,log){
+  S=s;
+  document.getElementById('out').innerHTML=render(s.orig,s.changed,s.moving,s.mode);
+  const logEl=document.getElementById('log');logEl.textContent=log.join('\n')+'\n'+logEl.textContent;
+  renderStats();
+  updateGlyph(s.orig,s.changed,s.moving);
+  updateViews();
+}
+function cast(mode){const r=drawHex(mode);applyHex(r.s,r.log);}
+function render(orig,changed,moving,mode){
+  let s=`<div class="hex">${hexName(orig)}</div>`;
+  for(let i=5;i>=0;i--){
+    const y=orig[i]===1;
+    s+=`<div class="line">${y?'<div class="yang"></div>':'<div class="yin"><span></span><span></span></div>'}${moving.includes(i)?`<div class="mov">${orig[i]===1?'○ 老阳 → 阴':'× 老阴 → 阳'}</div>`:''}</div>`;
+  }
+  s+=`<div class="meta">本卦 ${hexName(orig)}（${triName(orig,0)}下${triName(orig,3)}上）`;
+  if(moving.length)s+=`　→　之卦 ${hexName(changed)}（${triName(changed,0)}下${triName(changed,3)}上）`;
+  s+=`</div><div class="meta">熵记账：本卦消耗 ${bytesUsed} 字节${mode==='fast'?`，拒绝采样 ${rejects} 次`:'（过程模拟，另用 Math.random 分二）'}</div>`;
+  return s;
+}
+function renderStats(){
+  const t=document.getElementById('stats');
+  const P={6:'1/16',9:'3/16',8:'7/16',7:'5/16'};
+  t.innerHTML='<tr><td>爻象</td><td>古典概率</td><td>本次实测频率</td></tr>'+[6,7,8,9].map(v=>{
+    const n=Object.values(counts).reduce((a,b)=>a+b,0);
+    return `<tr><td>${v}</td><td>${P[v]}</td><td>${n?(counts[v]/n*100).toFixed(2)+'%':'—'}</td></tr>`;
+  }).join('');
+}
+
+/* ============ 圆形卦纹 ============ */
+const cv=document.getElementById('glyph'),cx2=cv.getContext('2d');
+const F=[1,2,3,4,5,6,7,8];
+let G=null,raf=0,drift=0,GSIZE=480;
+function fitCanvas(){
+  const dpr=Math.min(2,window.devicePixelRatio||1);
+  const box=document.getElementById('gWrap').clientWidth||480;
+  const sz=Math.max(240,Math.min(480,box));
+  GSIZE=sz;
+  cv.style.width=sz+'px';cv.style.height=sz+'px';
+  cv.width=Math.round(sz*dpr);cv.height=Math.round(sz*dpr);
+  cx2.setTransform(dpr,0,0,dpr,0,0);
+}
+function gParams(lines,moving,swap){
+  let vl=bits(lines,0),vu=bits(lines,3);
+  if(swap){const t=vl;vl=vu;vu=t;}
+  const fx=F[vl],fy=F[vu];
+  return {vl,vu,fx,fy,same:fx===fy,
+    delta:Math.PI/8*(moving.length+1)+(moving.length?moving[0]:0)*Math.PI/24};
+}
+function curve(p,mode,alpha,color,width,phase){
+  const R=GSIZE*0.415,c=GSIZE/2;
+  const closed=document.getElementById('gClosed').checked;
+  const tMax=(mode==='harm'&&!closed)?Math.PI*2*18:Math.PI*2;
+  const steps=(mode==='harm'&&!closed)?7200:2600;
+  const norm=Math.tanh(1.12*Math.SQRT2);
+  const passes=(mode==='liss'&&p.same)?18:((mode==='harm'&&closed)?5:1);
+  cx2.strokeStyle=color;cx2.lineWidth=width;cx2.lineJoin='round';
+  for(let j=0;j<passes;j++){
+    const ph=phase+(passes>1?(mode==='harm'?j*Math.PI*2/passes:j*Math.PI/passes):0);
+    cx2.beginPath();
+    for(let i=0;i<=steps;i++){
+      const t=tMax*i/steps;
+      let X,Y;
+      if(mode==='harm'){
+        if(closed){ // 整数倍频谐波叠加 → 每一条都在 2π 严格闭合
+          X=Math.sin(p.fx*t+p.delta+ph)+0.34*Math.sin((p.fx+1)*t+0.7)+0.16*Math.sin((p.fx+3)*t+1.9);
+          Y=Math.sin(p.fy*t)+0.34*Math.sin((p.fy+2)*t+1.1)+0.16*Math.sin((p.fy+4)*t+0.4);
+        }else{      // 阻尼 + 微失谐 → 不闭合的衰减编织
+          const damp=Math.exp(-1.15*t/tMax);
+          X=(Math.sin(p.fx*t+p.delta+ph)+0.32*Math.sin((p.fx+0.021)*t+0.7))*damp;
+          Y=(Math.sin(p.fy*t)+0.32*Math.sin((p.fy+0.017)*t+1.1))*damp;
+        }
+      }else{
+        X=Math.sin(p.fx*t+p.delta+ph);
+        Y=Math.sin(p.fy*t);
+      }
+      const d=Math.hypot(X,Y)||1e-9;
+      const k=Math.tanh(d*1.12)/d/norm;
+      const px=c+X*k*R,py=c-Y*k*R;
+      i?cx2.lineTo(px,py):cx2.moveTo(px,py);
+    }
+    cx2.globalAlpha=alpha*(passes>1?(mode==='harm'?0.42:0.55):1);cx2.stroke();
+  }
+  cx2.globalAlpha=1;
+}
+function drawGlyph(){
+  if(!document.getElementById('gOn').checked)return;
+  const c=GSIZE/2,R=GSIZE*0.415;
+  cx2.clearRect(0,0,GSIZE,GSIZE);
+  const g=cx2.createRadialGradient(c,c,0,c,c,R*1.05);
+  g.addColorStop(0,'#ffffff');g.addColorStop(1,'#faf9f6');
+  cx2.fillStyle=g;cx2.fillRect(0,0,GSIZE,GSIZE);
+  const mode=document.getElementById('gMode').value;
+  if(G){
+    cx2.save();
+    cx2.beginPath();cx2.arc(c,c,R+3,0,Math.PI*2);cx2.clip();
+    if(document.getElementById('gGhost').checked&&G.changed){
+      curve(gParams(G.changed,G.moving,G.swap),mode,0.28,'#9a6410',0.8,drift);
+    }
+    curve(G.p,mode,0.82,'#2b2620',1.15,drift);
+    cx2.restore();
+  }else{
+    cx2.fillStyle='#57482c';cx2.font='14px serif';cx2.textAlign='center';
+    cx2.fillText('起一卦，见其纹',c,c+5);
+  }
+  cx2.strokeStyle='#57482c';cx2.lineWidth=1.2;
+  cx2.beginPath();cx2.arc(c,c,R+3,0,Math.PI*2);cx2.stroke();
+  cx2.strokeStyle='#b9a98a';cx2.lineWidth=1;
+  cx2.beginPath();cx2.arc(c,c,R+9,0,Math.PI*2);cx2.stroke();
+  for(let i=0;i<8;i++){
+    const a=-Math.PI/2+i*Math.PI/4;
+    cx2.beginPath();
+    cx2.moveTo(c+Math.cos(a)*(R+4),c+Math.sin(a)*(R+4));
+    cx2.lineTo(c+Math.cos(a)*(R+9),c+Math.sin(a)*(R+9));
+    cx2.stroke();
+  }
+  cx2.fillStyle='#9a6410';cx2.globalAlpha=0.5;
+  cx2.beginPath();cx2.arc(c,c,1.8,0,Math.PI*2);cx2.fill();cx2.globalAlpha=1;
+}
+function glyphMeta(orig,changed,moving,p,swap){
+  const lo=TRI[bits(orig,0)],up=TRI[bits(orig,3)];
+  const head=swap
+    ? `上卦 ${up}（码 ${bits(orig,3)}）→ 横向 fx=${p.fx}　｜　下卦 ${lo}（码 ${bits(orig,0)}）→ 纵向 fy=${p.fy}　[已对调]`
+    : `下卦 ${lo}（码 ${bits(orig,0)}）→ 横向 fx=${p.fx}　｜　上卦 ${up}（码 ${bits(orig,3)}）→ 纵向 fy=${p.fy}`;
+  const cl=document.getElementById('gClosed').checked?'闭合 2π':'阻尼衰减·不闭合';
+  return head+`\n频率比 ${p.fx}:${p.fy}${p.same?'（同频椭圆族）':''}　相位 δ=${(p.delta/Math.PI).toFixed(3)}π　${cl}　动爻 ${moving.length}　之卦 ${hexName(changed)}`;
+}
+function updateGlyph(orig,changed,moving){
+  const swap=document.getElementById('gSwap').checked;
+  G={orig,changed,moving,swap,p:gParams(orig,moving,swap)};
+  document.getElementById('gMeta').textContent=glyphMeta(orig,changed,moving,G.p,swap);
+  fitCanvas();drawGlyph();
+}
+function loop(){
+  if(!document.getElementById('gAnim').checked){raf=0;return;}
+  drift+=0.006;drawGlyph();raf=requestAnimationFrame(loop);
+}
+['gOn','gMode','gSwap','gGhost','gClosed'].forEach(id=>document.getElementById(id).addEventListener('change',()=>{
+  const on=document.getElementById('gOn').checked;
+  document.getElementById('gWrap').style.display=on?'block':'none';
+  if(G){
+    G.swap=document.getElementById('gSwap').checked;
+    G.p=gParams(G.orig,G.moving,G.swap);
+    document.getElementById('gMeta').textContent=glyphMeta(G.orig,G.changed,G.moving,G.p,G.swap);
+  }
+  fitCanvas();drawGlyph();
+}));
+document.getElementById('gAnim').addEventListener('change',()=>{
+  if(document.getElementById('gAnim').checked){if(!raf)raf=requestAnimationFrame(loop);}
+  else{if(raf)cancelAnimationFrame(raf);raf=0;drift=0;drawGlyph();}
+});
+
+/* ============ 诸家视图 ============ */
+const INK='#2b2620',GOLD='#9a6410',DIM='#57482c',FAINT='#b9a98a',MID='#5c5342',BG='#faf9f6';
+const VW=360,VH=280;
+function txt(g,s,x,y,col,size,align){
+  g.fillStyle=col||MID;g.font=(size||11)+'px monospace';g.textAlign=align||'left';g.fillText(s,x,y);
+}
+function dot(g,x,y,r,col,alpha){
+  g.globalAlpha=alpha===undefined?1:alpha;g.fillStyle=col;
+  g.beginPath();g.arc(x,y,r,0,Math.PI*2);g.fill();g.globalAlpha=1;
+}
+function ring(g,x,y,r,col,lw,alpha){
+  g.globalAlpha=alpha===undefined?1:alpha;g.strokeStyle=col;g.lineWidth=lw||1;
+  g.beginPath();g.arc(x,y,r,0,Math.PI*2);g.stroke();g.globalAlpha=1;
+}
+function line(g,x1,y1,x2,y2,col,lw,alpha){
+  g.globalAlpha=alpha===undefined?1:alpha;g.strokeStyle=col;g.lineWidth=lw||1;
+  g.beginPath();g.moveTo(x1,y1);g.lineTo(x2,y2);g.stroke();g.globalAlpha=1;
+}
+function rev6(code){let r=0;for(let k=0;k<6;k++)if((code>>k)&1)r|=1<<(5-k);return r;}
+function relCodes(code){
+  return {cuo:code^63,zong:rev6(code),
+    hu:(((code>>2)&7)<<3)|((code>>1)&7)};
+}
+function bg(g){g.fillStyle=BG;g.fillRect(0,0,VW,VH);}
+
+// 1 加一倍生成树 —— 《易经·六十四卦结构动画》
+function drawTree(g,t,S){
+  bg(g);
+  const labels=['太极','两仪','四象','八卦','十六','卅二','六十四'];
+  const x0=54,x1=VW-12,w=x1-x0;
+  let prev=null;
+  for(let r=0;r<=6;r++){
+    const n=1<<r,y=22+r*34,cw=w/n;
+    const idx=r===0?0:(S.code>>(6-r))&((1<<r)-1);
+    for(let k=0;k<n;k++){
+      const cx=x0+cw*(k+0.5),hot=k===idx;
+      g.fillStyle=hot?(r===6?GOLD:'#dcc079'):'#ded7c5';
+      g.fillRect(cx-Math.min(cw/2-0.6,9),y-6,Math.min(cw-1.2,18),12);
+      if(hot&&r===6)g.fillStyle=GOLD;
+    }
+    txt(g,labels[r],8,y+4,r===6?GOLD:DIM,10);
+    const cur=x0+cw*(idx+0.5);
+    if(prev!==null)line(g,prev[0],prev[1]+6,cur,y-6,GOLD,1.1,0.8);
+    prev=[cur,y];
+  }
+  txt(g,`6 bit = ${S.code.toString(2).padStart(6,'0')}  →  文王第 ${S.no} 卦「${nameOf(S.code)}」`,10,VH-12,GOLD,11);
+}
+
+// 2 伏羲方圆图 —— 结构动画·方圆 / Yijing Explorer 多序列
+function drawSquare(g,t,S){
+  bg(g);
+  const cx=VW/2,cy=124,R=112;
+  const lo=S.code&7,up=(S.code>>3)&7;
+  const row=V2IDX[lo],col=V2IDX[up];
+  const kian=V2IDX[up]*8+V2IDX[lo];
+  // 圆图 64 点
+  ring(g,cx,cy,R,DIM,1,0.55);
+  for(let k=0;k<64;k++){
+    const a=-Math.PI/2+2*Math.PI*k/64;
+    const x=cx+Math.cos(a)*R,y=cy+Math.sin(a)*R;
+    const hot=k===kian,opp=k===((kian+32)%64);
+    dot(g,x,y,hot?4.2:1.5,hot?GOLD:(opp?'#6f5a2a':DIM),hot?1:(opp?0.8:0.5));
+  }
+  const a0=-Math.PI/2+2*Math.PI*kian/64,a1=-Math.PI/2+2*Math.PI*((kian+32)%64)/64;
+  line(g,cx+Math.cos(a0)*R,cy+Math.sin(a0)*R,cx+Math.cos(a1)*R,cy+Math.sin(a1)*R,GOLD,0.8,0.35);
+  // 方图 8x8
+  const q=76,s=q/8,bx=cx-q/2,by=cy-q/2;
+  g.strokeStyle=FAINT;g.lineWidth=0.6;g.strokeRect(bx,by,q,q);
+  for(let i=0;i<8;i++)for(let j=0;j<8;j++){
+    const hot=i===col&&j===row; // 行=上卦先天序，列=下卦先天序
+    g.fillStyle=hot?GOLD:'#c9bfa6';
+    g.fillRect(bx+j*s+1,by+i*s+1,s-2,s-2);
+    if(!hot){g.fillStyle='#f4f1ea';g.fillRect(bx+j*s+2,by+i*s+2,s-4,s-4);}
+  }
+  txt(g,`圆图第 ${kian} 位 · 错卦在对径`,10,VH-24,MID,10);
+  txt(g,`方图 上${TRI[up]} 下${TRI[lo]} →「${nameOf(S.code)}」`,10,VH-9,GOLD,11);
+}
+
+// 3 6-bit 超立方节点 —— Yijing Explorer
+const HRAD=[1,1.18,0.85,1.32,0.95,1.12];
+const HANG=[0,1,2,3,4,5].map(k=>-Math.PI/2+k*Math.PI/3);
+function hproj(code){
+  let x=0,y=0;
+  for(let k=0;k<6;k++)if((code>>k)&1){x+=Math.cos(HANG[k])*HRAD[k];y+=Math.sin(HANG[k])*HRAD[k];}
+  return [x,y];
+}
+function drawHyper(g,t,S){
+  bg(g);
+  const cx=VW/2,cy=118,sc=64;
+  const P=[];for(let c=0;c<64;c++){const p=hproj(c);P.push([cx+p[0]*sc,cy+p[1]*sc]);}
+  for(let c=0;c<64;c++)for(let k=0;k<6;k++){
+    const d=c^(1<<k);if(d<c)continue;
+    line(g,P[c][0],P[c][1],P[d][0],P[d][1],DIM,0.5,0.16);
+  }
+  const R=relCodes(S.code);
+  const pairs=[[R.cuo,'#6f5a2a'],[R.zong,'#6a5f48'],[R.hu,'#9a6410']];
+  pairs.forEach(([c,col])=>line(g,P[S.code][0],P[S.code][1],P[c][0],P[c][1],col,1,0.5));
+  for(let c=0;c<64;c++)dot(g,P[c][0],P[c][1],1.5,DIM,0.55);
+  ring(g,P[R.cuo][0],P[R.cuo][1],4,'#6f5a2a',1,0.9);
+  ring(g,P[R.zong][0],P[R.zong][1],4,INK,1,0.9);
+  ring(g,P[R.hu][0],P[R.hu][1],4,GOLD,1,0.9);
+  dot(g,P[S.code][0],P[S.code][1],5,GOLD,1);
+  txt(g,`${S.code.toString(2).padStart(6,'0')}  6-bit 节点`,10,VH-30,MID,10);
+  txt(g,`错 ${nameOf(R.cuo)} · 综 ${nameOf(R.zong)} · 互 ${nameOf(R.hu)}`,10,VH-15,GOLD,10);
+  txt(g,`金点=本卦　暗金圈=错　白圈=综　金圈=互`,10,VH-3,DIM,9);
+}
+
+// 4 逐层生长·意象 —— 爻变 AR 易经
+function drawAR(g,t,S){
+  bg(g);
+  const cy=196,s=30,p=Math.min(1,((t%4200)/1700));
+  const lo=TRI[S.code&7],up=TRI[(S.code>>3)&7];
+  for(let i=0;i<6;i++){
+    const grow=Math.max(0,Math.min(1,p*6-i));
+    const z=i*20*grow,ox=VW/2,oy=cy-z;
+    const px=(x,y)=>[ox+(x-y)*0.866*s,oy+(x+y)*0.5*s];
+    const a=px(-1,-1),b=px(1,-1),c=px(1,1),d=px(-1,1);
+    g.globalAlpha=0.28+0.6*grow;g.strokeStyle=i===5?GOLD:DIM;g.lineWidth=1;
+    g.beginPath();g.moveTo(...a);g.lineTo(...b);g.lineTo(...c);g.lineTo(...d);g.closePath();g.stroke();
+    g.globalAlpha=1;
+    if(grow>0.35){
+      const y=oy,yy=px(0,0)[1];
+      g.strokeStyle=INK;g.lineWidth=3;g.globalAlpha=0.85;
+      if(S.orig[i]===1){
+        const l=px(-0.8,0),r=px(0.8,0);
+        g.beginPath();g.moveTo(l[0],l[1]);g.lineTo(r[0],r[1]);g.stroke();
+      }else{
+        const l1=px(-0.8,0),r1=px(-0.15,0),l2=px(0.15,0),r2=px(0.8,0);
+        g.beginPath();g.moveTo(l1[0],l1[1]);g.lineTo(r1[0],r1[1]);g.stroke();
+        g.beginPath();g.moveTo(l2[0],l2[1]);g.lineTo(r2[0],r2[1]);g.stroke();
+      }
+      g.globalAlpha=1;
+      for(let k=0;k<4;k++){
+        const a2=t/700+k*1.7+i;
+        dot(g,ox+Math.cos(a2)*(36+k*5),oy-8+Math.sin(a2*0.7)*7,1.2,GOLD,0.35*grow);
+      }
+    }
+    txt(g,['初','二','三','四','五','上'][i],14,oy+3,DIM,9);
+  }
+  txt(g,`意象：下${lo}→${IMG[lo]}　上${up}→${IMG[up]}`,10,VH-24,GOLD,11);
+  txt(g,`六爻逐层生长 · 平面「长」出立体卦象`,10,VH-9,DIM,10);
+}
+
+// 5 抽签转盘 —— YichingWebapp Lottie / YiMatrix 每日一卦
+function drawSpinner(g,t,S){
+  bg(g);
+  const cx=VW/2,cy=124,R=96;
+  const target=-Math.PI/2+2*Math.PI*(S.no-1)/64;
+  const p=Math.min(1,(t%7000)/2600),ease=1-Math.pow(1-p,3);
+  const ang=(Math.PI*2*4+target)*ease;
+  const hotK=(64-(S.no-1))%64; // 停下时正好转到顶部指针下的扇区
+  for(let k=0;k<64;k++){
+    const a0=-Math.PI/2+2*Math.PI*k/64+ang,a1=-Math.PI/2+2*Math.PI*(k+1)/64+ang;
+    g.fillStyle=k===hotK?'#dcc079':(k%2?'#e2dcc9':'#d7cfb9');
+    g.beginPath();g.moveTo(cx,cy);g.arc(cx,cy,R,a0,a1);g.closePath();g.fill();
+    g.strokeStyle=FAINT;g.lineWidth=0.5;g.stroke();
+  }
+  ring(g,cx,cy,R,DIM,1.2,0.8);ring(g,cx,cy,R+5,FAINT,1,1);
+  for(let k=0;k<8;k++){
+    const a=-Math.PI/2+k*Math.PI/4;
+    line(g,cx+Math.cos(a)*(R+1),cy+Math.sin(a)*(R+1),cx+Math.cos(a)*(R+6),cy+Math.sin(a)*(R+6),DIM,1,0.8);
+  }
+  // 固定指针
+  g.fillStyle=GOLD;g.beginPath();g.moveTo(cx,cy-R-12);g.lineTo(cx-6,cy-R-24);g.lineTo(cx+6,cy-R-24);g.closePath();g.fill();
+  g.fillStyle=BG;g.beginPath();g.arc(cx,cy,38,0,Math.PI*2);g.fill();
+  ring(g,cx,cy,38,DIM,1,0.7);
+  txt(g,nameOf(S.code),cx,cy+8,p>0.98?GOLD:INK,22,'center');
+  txt(g,`有限抽签动画 · 停在第 ${S.no} 卦`,10,VH-24,MID,10);
+  txt(g,`卡片分合 / 洗牌两次 / gather & reveal`,10,VH-9,DIM,10);
+}
+
+// 6 三枚铜币 —— I-Ching Fortune Teller
+function drawCoins(g,t,S){
+  bg(g);
+  const pat={9:[3,3,3],8:[3,3,2],7:[3,2,2],6:[2,2,2]};
+  txt(g,'字=2　背=3　三枚之和 → 6/7/8/9',10,18,MID,10);
+  for(let i=0;i<6;i++){
+    const row=5-i,y=44+row*34,v=S.vals[i];
+    const arr=pat[v]||[3,3,3];
+    for(let k=0;k<3;k++){
+      const x=76+k*54;
+      if(arr[k]===3){dot(g,x,y,13,INK,0.92);dot(g,x,y,4.5,BG,1);}
+      else{ring(g,x,y,13,GOLD,1.4,0.85);dot(g,x,y,4.5,BG,1);}
+      g.strokeStyle=arr[k]===3?'#6f5a2a':GOLD;g.lineWidth=0.9;
+      g.strokeRect(x-4,y-4,8,8);
+    }
+    const nm=v===9?'老阳○':v===6?'老阴×':v===7?'少阳':'少阴';
+    txt(g,`第${['初','二','三','四','五','上'][i]}爻  ${v} ${nm}`,232,y+4,(v===6||v===9)?GOLD:INK,10);
+  }
+  txt(g,`本卦 ${nameOf(S.code)}　动爻 ${S.moving.length}`,10,VH-9,GOLD,11);
+}
+
+// 7 文王序长卷 · 十二消息卦 —— 结构动画·序卦/消息
+function drawScroll(g,t,S){
+  bg(g);
+  txt(g,'文王卦序 1–64（4×16 长卷）',10,18,MID,10);
+  const bw=(VW-20)/16,bh=17;
+  for(let n=1;n<=64;n++){
+    const r=Math.floor((n-1)/16),c=(n-1)%16,x=10+c*bw,y=28+r*(bh+3);
+    g.fillStyle=n===S.no?GOLD:(n%2?'#e0d9c6':'#d3cbb4');
+    g.fillRect(x,y,bw-2,bh);
+  }
+  txt(g,'▲ 当前卦',10+VW-80,18,GOLD,9);
+  const y0=118;
+  txt(g,'十二消息卦 · 阴阳消长',10,y0-6,MID,10);
+  const cw=(VW-20)/12;
+  MSG.forEach(([no,yang],i)=>{
+    const x=10+i*cw;
+    for(let k=0;k<6;k++){
+      const y=y0+(5-k)*10;
+      const yy=(5-k)<yang; // 自下而上：最下 yang 条为阳
+      g.fillStyle=no===S.no?GOLD:(yy?INK:DIM);
+      if(yy)g.fillRect(x+2,y,cw-5,3.5);
+      else{g.fillRect(x+2,y,(cw-5)*0.38,3.5);g.fillRect(x+2+(cw-5)*0.62,y,(cw-5)*0.38,3.5);}
+    }
+    if(no===S.no){g.strokeStyle=GOLD;g.lineWidth=1;g.strokeRect(x,y0-1,cw-2,55);}
+    txt(g,String(i+1),x+cw/2,y0+66,no===S.no?GOLD:DIM,9,'center');
+  });
+  let yang=0;for(let k=0;k<6;k++)yang+=(S.code>>k)&1;
+  txt(g,`本卦「${nameOf(S.code)}」文王第 ${S.no} 卦 · 阳爻 ${yang}`,10,VH-9,GOLD,10);
+}
+
+// 8 光笔实时绘卦 —— 洛阳《河图洛书》舞台剧
+function drawBrush(g,t,S){
+  bg(g);
+  const prog=(t%5200)/5200*6;
+  txt(g,'人动则天动 · 逐爻实时生成',10,18,MID,10);
+  for(let i=0;i<6;i++){
+    const row=5-i,y=48+row*30,p=Math.max(0,Math.min(1,prog-i));
+    const x0=76,x1=250,w=x1-x0;
+    g.strokeStyle=S.orig[i]===1?INK:GOLD;g.lineWidth=3;g.globalAlpha=0.22;
+    if(S.orig[i]===1){g.beginPath();g.moveTo(x0,y);g.lineTo(x1,y);g.stroke();}
+    else{g.beginPath();g.moveTo(x0,y);g.lineTo(x0+w*0.42,y);g.moveTo(x0+w*0.58,y);g.lineTo(x1,y);g.stroke();}
+    g.globalAlpha=1;
+    g.strokeStyle=S.orig[i]===1?INK:GOLD;g.lineWidth=3.4;
+    if(S.orig[i]===1&&p>0){g.beginPath();g.moveTo(x0,y);g.lineTo(x0+w*p,y);g.stroke();dot(g,x0+w*p,y,4,GOLD,0.9);}
+    if(S.orig[i]===0&&p>0){
+      g.beginPath();g.moveTo(x0,y);g.lineTo(x0+w*0.42*Math.min(1,p*2),y);
+      if(p>0.5){g.moveTo(x0+w*0.58,y);g.lineTo(x0+w*0.58+w*0.42*(p-0.5)*2,y);}
+      g.stroke();dot(g,p>0.5?x0+w*0.58+w*0.42*(p-0.5)*2:x0+w*0.42*p*2,y,4,GOLD,0.9);
+    }
+    txt(g,['初','二','三','四','五','上'][i],30,y+4,DIM,10);
+  }
+  // 脚下阴阳鱼
+  const cx=VW-42,cy=VH-32,r=17,a=t/1600;
+  g.save();g.translate(cx,cy);g.rotate(a);
+  g.fillStyle=INK;g.beginPath();g.arc(0,0,r,-Math.PI/2,Math.PI/2);g.arc(0,r/2,r/2,Math.PI/2,-Math.PI/2,true);g.arc(0,-r/2,r/2,Math.PI/2,-Math.PI/2);g.fill();
+  g.restore();
+  dot(g,cx,cy-r/2,2.5,BG,1);dot(g,cx,cy+r/2,2.5,INK,1);
+  txt(g,`本卦 ${nameOf(S.code)} · 第 ${Math.min(6,Math.floor(prog)+1)} 笔`,10,VH-9,GOLD,10);
+}
+
+// 9 阴阳鱼呼吸 —— 太极八卦动图
+function drawTaiji(g,t,S){
+  bg(g);
+  const cx=VW/2,cy=128;
+  const breathe=1+0.045*Math.sin(t/1100),r=84*breathe,a=t/2600;
+  g.save();g.translate(cx,cy);g.rotate(a);
+  g.fillStyle=INK;
+  g.beginPath();g.arc(0,0,r,-Math.PI/2,Math.PI/2,false);
+  g.arc(0,r/2,r/2,Math.PI/2,-Math.PI/2,true);
+  g.arc(0,-r/2,r/2,Math.PI/2,-Math.PI/2,false);
+  g.closePath();g.fill();
+  dot(g,0,-r/2,r/8,BG,1);dot(g,0,r/2,r/8,INK,1);
+  dot(g,0,-r/2,r/20,INK,1);dot(g,0,r/2,r/20,BG,1);
+  g.restore();
+  for(let k=0;k<8;k++){
+    const ang=-Math.PI/2+k*Math.PI/4;
+    line(g,cx+Math.cos(ang)*(r+8),cy+Math.sin(ang)*(r+8),cx+Math.cos(ang)*(r+15),cy+Math.sin(ang)*(r+15),DIM,1,0.65);
+  }
+  ring(g,cx,cy,r+6,DIM,1,0.45);
+  for(let k=0;k<18;k++){
+    const px=(k*71%VW),py=(VH+((t*0.02+k*37)%(VH+20)))%VH;
+    dot(g,px,py,1,GOLD,0.12+0.16*Math.abs(Math.sin(t/900+k)));
+  }
+  txt(g,`ease-in-out 呼吸 · 静中有动`,10,VH-24,MID,10);
+  txt(g,`本卦 ${nameOf(S.code)}　上${TRI[(S.code>>3)&7]} 下${TRI[S.code&7]}`,10,VH-9,GOLD,11);
+}
+
+const VIEWS=[
+ {id:'tree',   name:'加一倍生成树',   src:'《易经·六十四卦结构动画》· 生成章（React+SVG+three.js+Remotion）', anim:0, def:1, draw:drawTree},
+ {id:'square', name:'伏羲方圆图',     src:'结构动画·方圆章 / Yijing Explorer 多序列视图', anim:0, def:1, draw:drawSquare},
+ {id:'hyper',  name:'6-bit 超立方节点',src:'Yijing Explorer（64 卦作 6-bit 节点与变换路径）', anim:0, def:1, draw:drawHyper},
+ {id:'ar',     name:'逐层生长·意象',   src:'爻变 · AR 易经（Three.js 逐层生长 / 乾龙坎水）', anim:1, def:0, draw:drawAR},
+ {id:'spinner',name:'抽签转盘',        src:'YichingWebapp（Lottie）· YiMatrix 每日一卦（有限洗牌）', anim:1, def:0, draw:drawSpinner},
+ {id:'coins',  name:'三枚铜币',        src:'I-Ching Fortune Teller（三钱六掷）', anim:0, def:1, draw:drawCoins},
+ {id:'scroll', name:'文王序长卷·消息卦',src:'结构动画·序卦 / 消息章', anim:0, def:0, draw:drawScroll},
+ {id:'brush',  name:'光笔实时绘卦',    src:'洛阳《河图洛书》沉浸式舞台剧（LED 地屏实时生成 64 卦）', anim:1, def:0, draw:drawBrush},
+ {id:'taiji',  name:'阴阳鱼呼吸',      src:'太极八卦动图（缓动旋转 / 阴阳转换节奏）', anim:1, def:0, draw:drawTaiji}
+];
+document.getElementById('vbar').innerHTML='<span class="ttl">视图</span>'+
+  VIEWS.map(v=>`<label><input type="checkbox" id="vb_${v.id}" ${v.def?'checked':''}>${v.name}</label>`).join('');
+document.getElementById('vgrid').innerHTML=VIEWS.map(v=>
+  `<div class="vcard" id="vc_${v.id}"><h3>${v.name}</h3><div class="vsrc">${v.src}</div>`+
+  `<canvas id="cv_${v.id}"></canvas><div class="vmeta" id="vm_${v.id}"></div></div>`).join('');
+function vctx(id){
+  const c=document.getElementById('cv_'+id);
+  const dpr=Math.min(2,window.devicePixelRatio||1);
+  if(c.width!==Math.round(VW*dpr)){c.width=Math.round(VW*dpr);c.height=Math.round(VH*dpr);}
+  const g=c.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);
+  g.clearRect(0,0,VW,VH);g.fillStyle=BG;g.fillRect(0,0,VW,VH);
+  return g;
+}
+function vmeta(id,s){document.getElementById('vm_'+id).textContent=s||'';}
+function drawOne(v,t){
+  const g=vctx(v.id);
+  if(!S){txt(g,'起一卦，见其象',VW/2,VH/2,DIM,13,'center');vmeta(v.id,'');return;}
+  try{v.draw(g,t,S);}catch(e){txt(g,'绘制异常：'+e.message,10,20,GOLD,10);}
+}
+function updateViews(){
+  VIEWS.forEach(v=>{
+    const on=document.getElementById('vb_'+v.id).checked;
+    document.getElementById('vc_'+v.id).style.display=on?'block':'none';
+    if(on)drawOne(v,0);
+  });
+  syncAnim();
+}
+let vraf=0,vt0=Date.now();
+function viewsTick(){
+  const t=Date.now()-vt0;
+  VIEWS.forEach(v=>{
+    if(v.anim&&document.getElementById('vb_'+v.id).checked)drawOne(v,t);
+  });
+  vraf=requestAnimationFrame(viewsTick);
+}
+function syncAnim(){
+  const need=VIEWS.some(v=>v.anim&&document.getElementById('vb_'+v.id).checked)&&!!S;
+  if(need&&!vraf){vt0=Date.now();vraf=requestAnimationFrame(viewsTick);}
+  if(!need&&vraf){cancelAnimationFrame(vraf);vraf=0;}
+}
+VIEWS.forEach(v=>document.getElementById('vb_'+v.id).addEventListener('change',updateViews));
+document.getElementById('vAll').onclick=()=>{VIEWS.forEach(v=>document.getElementById('vb_'+v.id).checked=true);updateViews();};
+document.getElementById('vNone').onclick=()=>{VIEWS.forEach(v=>document.getElementById('vb_'+v.id).checked=false);updateViews();};
+document.getElementById('vCast').onclick=()=>cast(S?S.mode:'fast');
+
+/* ============ 问对 · 一卦四观（错综复杂） ============ */
+const TRI_DE={乾:'健',坤:'顺',震:'动',巽:'入',坎:'陷',离:'丽',艮:'止',兑:'说'};
+const YAO=['初','二','三','四','五','上'];
+const YAO_DE=['其初难知','二多誉','三多凶','四多惧','五多功','其上易知'];
+const FOUR=[
+ {k:'cuo', t:'错', full:'错卦 · 旁通', f:'code ^ 63', calc:c=>c^63, lv:1,
+  src:'各家一致：六爻阴阳全变（乾坤、震巽、坎离、艮兑互为错）',
+  why:'同一局面整个翻过来看 —— 立场未动，阴阳尽反'},
+ {k:'zong',t:'综', full:'综卦 · 覆卦', f:'rev6(code)', calc:rev6, lv:1,
+  src:'各家一致：六爻上下颠倒（文王序「非覆即变」之覆）',
+  why:'换到对方的位置看 —— 还是这件事，视角倒置'},
+ {k:'fu',  t:'复', full:'复卦 · 错而复综', f:'rev6(code ^ 63)', calc:c=>rev6(c^63), lv:3,
+  src:'本页取义：Klein 四元群第四元；古注「复」或指六爻重卦、或指互卦',
+  why:'反复其道 —— 既换阴阳又换上下之后，走一圈回到哪一面'},
+ {k:'za',  t:'杂', full:'杂卦 · 中爻互体', f:'hu(code)', calc:c=>relCodes(c).hu, lv:2,
+  src:'《系辞下》「杂物撰德……非其中爻不备」；交互卦（二三四为下、三四五为上）',
+  why:'看里子 —— 抛开初、上两端，中间四爻藏着的内部格局'}
+];
+function ham(a,b){let x=a^b,n=0;while(x){n+=x&1;x>>=1;}return n;}
+function bitsOf(code){return [0,1,2,3,4,5].map(i=>(code>>i)&1);}
+function deOf(code){
+  const lo=TRI[code&7],up=TRI[(code>>3)&7];
+  return {lo,up,dlo:TRI_DE[lo],dup:TRI_DE[up],yang:bitsOf(code).reduce((a,b)=>a+b,0)};
+}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function miniHex(code){
+  let s='<div class="minihex">';
+  for(let i=5;i>=0;i--){
+    const y=((code>>i)&1)===1;
+    s+=`<div class="line">${y?'<div class="yang"></div>':'<div class="yin"><span></span><span></span></div>'}</div>`;
+  }
+  return s+'</div>';
+}
+function fourOf(S,scheme){
+  const c=S.code;
+  if(scheme==='withRoot'){
+    const root={k:'root',t:'体',full:'本卦（体）',f:'identity(code)',calc:c=>c,code:c,name:nameOf(c),no:noOf(c),lv:1,
+      src:'原版起卦器，问对与下方九视图共用同一状态',why:'问题落下那一刻的当前态势',root:1};
+    return [root].concat(FOUR.filter(v=>v.k!=='fu').map(v=>{
+      const cc=v.calc(c);return Object.assign({},v,{code:cc,name:nameOf(cc),no:noOf(cc)});
+    }));
+  }
+  return FOUR.map(v=>{const cc=v.calc(c);return Object.assign({},v,{code:cc,name:nameOf(cc),no:noOf(cc)});});
+}
+function lvTag(n){return `<span class="qlevel lv${n}">${n===1?'有原文':n===2?'能复算':'立论'}</span>`;}
+function makeReply(q,S,views,scheme){
+  const R=deOf(S.code),L=[],bin=c=>c.toString(2).padStart(6,'0');
+  L.push(`<p><span class="qq">问：</span>${esc(q)}</p>`);
+  L.push(`<p><b>体｜${hexName(S.orig)}</b>（文王第 ${S.no} 卦，6-bit ${bin(S.code)}）：下${R.lo}「${R.dlo}」、上${R.up}「${R.dup}」，阳爻 ${R.yang} 条${S.moving.length?`，动爻在 ${S.moving.map(i=>YAO[i]).join('、')}，之卦 ${hexName(S.changed)}`:'，六爻皆静、无之卦'}。${lvTag(2)}卦德引《说卦传》，码与序号页内现算。</p>`);
+  views.forEach(v=>{
+    const d=deOf(v.code);
+    L.push(`<p><b>${v.t}｜${v.name}</b>（第 ${v.no} 卦，${bin(v.code)}，距体 ${ham(S.code,v.code)} 爻）：下${d.lo}「${d.dlo}」上${d.up}「${d.dup}」——${v.why}。${lvTag(v.lv)}<span class="qq">${esc(v.f)}</span></p>`);
+  });
+  const ds=views.map(v=>ham(S.code,v.code));
+  const avg=(ds.reduce((a,b)=>a+b,0)/ds.length).toFixed(2);
+  const flipU=views.filter(v=>(v.code&56)!==(S.code&56)).length;
+  const flipL=views.filter(v=>(v.code&7)!==(S.code&7)).length;
+  L.push(`<p><b>综断一 · 着力处</b>${lvTag(1)}：${S.moving.length
+    ? `动爻落 ${S.moving.map(i=>YAO[i]+'（'+YAO_DE[i]+'）').join('、')}，《系辞下》说的是位势不是吉凶；之卦 ${hexName(S.changed)}（${bin(S.code)} → ${bin(bits(S.changed,0)|(bits(S.changed,3)<<3))}）。`
+    : '六爻皆静，本页不据此推断变化；其余信息只从四观的结构关系取。'}</p>`);
+  L.push(`<p><b>综断二 · 变化幅度</b>${lvTag(2)}：四卦距体分别 ${ds.join(' / ')} 爻，均值 ${avg}；上卦被改动 ${flipU} 次、下卦被改动 ${flipL} 次 ⇒ 本次推演的重心偏<b>${flipU>flipL?'外（上卦）':flipL>flipU?'内（下卦）':'内外均等'}</b>。此判据只看 6-bit 的位差，不含吉凶。</p>`);
+  if(scheme==='four'){
+    const c=S.code,C=c^63,Z=rev6(c),F=rev6(c^63);
+    const closed=(rev6(rev6(c))===c)&&((C^63)===c)&&(rev6(C)===F)&&(rev6(c)^63===F)&&(ham(c,C)===6);
+    L.push(`<p><b>综断三 · 关系骨架</b>${lvTag(2)}：体 ${bin(c)} / 错 ${bin(C)} / 综 ${bin(Z)} / 复 ${bin(F)} —— 错与综可交换、各自平方为恒等，构成 <b>Klein 四元群</b>；页内断言 <b>${closed?'全部成立 ✓':'有不成立项 ✗'}</b>。杂（中爻互体）不在这个群里，它是把中间四爻单另提出的第五种视角。</p>`);
+  }else{
+    L.push(`<p><b>综断三 · 关系骨架</b>${lvTag(2)}：本口径四卦为「体 + 错 + 综 + 杂」，其中错恒距体 6 爻，综为上下颠倒，杂取中爻互体；复（错而复综）在此口径不列入四卦，仍列在下方复算表供对照。</p>`);
+  }
+  const tail=views.map(v=>`${v.t}「${v.name}·${deOf(v.code).dlo}${deOf(v.code).dup}」`).join(' → ');
+  L.push(`<p><b>一句收束</b>${lvTag(3)}：以 ${hexName(S.orig)} 为体，沿 ${tail} 四面看过，<b>「${R.dlo}」在内、「${R.dup}」在外</b>是当前这一问的结构描述；把它读成建议之前，请回到问题本身核对条件。<span class="qq">以上为象数推演，不是事实判断。</span></p>`);
+  return L.join('');
+}
+function qaChecks(S,views){
+  const c=S.code,rows=[];
+  const add=(a,b,d)=>rows.push([d,String(a),String(b),String(a)===String(b)]);
+  add(bits(S.orig,0)|(bits(S.orig,3)<<3),c,'本卦码 ↔ 六爻重算');
+  add(nameOf(c),hexName(S.orig),'本卦名 ↔ nameOf(code)');
+  add(noOf(c),S.no,'文王序号 ↔ noOf(code)');
+  add(bits(S.changed,0)|(bits(S.changed,3)<<3),S.moving.reduce((a,i)=>a^(1<<i),c),'之卦码 ↔ 按动爻翻位');
+  add(ham(c,c^63),6,'错卦距体恒为 6');
+  add(rev6(rev6(c)),c,'综卦两次回本');
+  add(rev6(c^63),rev6(c)^63,'错与综可交换（Klein）');
+  add(relCodes(c).hu,(((c>>2)&7)<<3)|((c>>1)&7),'杂卦 ↔ 独立互体算式');
+  views.forEach(v=>{
+    add(v.calc(c),v.code,`${v.t}：${v.f} ↔ 卡面码`);
+    add(nameOf(v.code),v.name,`${v.t}：卦名 ↔ nameOf`);
+    add(noOf(v.code),v.no,`${v.t}：序号 ↔ noOf`);
+    add(ham(c,v.code),bitsOf(c^v.code).reduce((a,b)=>a+b,0),`${v.t}：汉明距离 ↔ 逐位重算`);
+  });
+  return rows;
+}
+let QM='';
+function mdForAI(q,S,views,scheme,checks){
+  const bin=c=>c.toString(2).padStart(6,'0'),R=deOf(S.code);
+  const a=[
+    '# 一卦四观 · 问对记录（供 AI 深度解读）','',
+    `- 时间：${new Date().toLocaleString()}`,
+    `- 起卦：${S.mode==='stalk'?'正宗模拟（十八变，过程模拟）':'快速模式（16 桶拒绝采样，古典分布 1/16:3/16:7/16:5/16）'}`,
+    `- 问题：${q}`,
+    `- 口径：${scheme==='four'?'错·综·复·杂（本卦为体）':'本卦·错·综·杂（本卦计入）'}`,
+    '', '## 体（本卦）','', '| 项 | 值 |','|---|---|',
+    `| 卦名 | ${hexName(S.orig)}（文王第 ${S.no} 卦） |`,
+    `| 6-bit | ${bin(S.code)} |`,
+    `| 下卦 / 上卦 | ${R.lo}（${R.dlo}） / ${R.up}（${R.dup}） |`,
+    `| 阳爻数 | ${R.yang} |`,
+    `| 动爻 | ${S.moving.length?S.moving.map(i=>YAO[i]+'（'+YAO_DE[i]+'）').join('、'):'无'} |`,
+    `| 之卦 | ${S.moving.length?hexName(S.changed):'无（六爻皆静）'} |`,
+    '', '## 四观','',
+    '| 观 | 卦名 | 文王序 | 6-bit | 距体(爻) | 算式 | 出处／确信度 |',
+    '|---|---|---|---|---|---|---|'
+  ];
+  views.forEach(v=>a.push(`| ${v.t}·${v.full} | ${v.name} | ${v.no} | ${bin(v.code)} | ${ham(S.code,v.code)} | \`${v.f}\` | ${v.src} |`));
+  a.push('','## 可复算字段（页内逐项自检）','','| 断言 | 页面值 | 独立复算 | 结论 |','|---|---|---|---|');
+  checks.forEach(r=>a.push(`| ${r[0]} | ${r[1]} | ${r[2]} | ${r[3]?'✓':'✗'} |`));
+  a.push('','## 口径三分（互不替代）','',
+    '1. **有原文**：八卦卦德《说卦传》；爻位断语《系辞下》「二多誉、四多惧、三多凶、五多功」「其初难知，其上易知」。',
+    '2. **能复算**：上表所有 6-bit 码、序号、汉明距离、Klein 闭合性，均由页面现算，与卡面逐项对勾。',
+    '3. **立论**：「错综复杂」四卦历代有异说 —— 错、综各家一致；复或指六爻重卦／八纯卦、或指互卦；杂或指交互卦、或指八纯外五十六卦；亦有「实只三变」之说。本页取「错=code^63、综=rev6(code)、复=rev6(code^63)、杂=中爻互体」，**此为本页编排，非古法定论**。',
+    '', '## 给 AI 的请求','',
+    '> 请基于以上结构化字段做深度解读：严格区分「有原文／能复算／立论」三层，不要把象数推演当事实断言；引用卦德或爻位请注明出处；对「复／杂」的异说如有不同取法，请先声明口径再展开。回应请落到问题本身的可核对条件，不给医疗、法律、投资结论。',
+    '');
+  return a.join('\n');
+}
+function renderQA(q,S,mode,scheme){
+  const views=fourOf(S,scheme),checks=qaChecks(S,views);
+  const ops=checks.filter(r=>r[3]).length,bin=c=>c.toString(2).padStart(6,'0');
+  let h=`<div class="qhead">问题：<b>${esc(q)}</b><br>${new Date().toLocaleString()} · ${mode==='stalk'?'正宗模拟（十八变）':'快速模式（16 桶拒绝采样）'} · 本卦 <b>${hexName(S.orig)}</b>（第 ${S.no} 卦，${bin(S.code)}） · 四卦口径「${scheme==='four'?'错·综·复·杂（体不计入）':'本卦·错·综·杂'}」</div>`;
+  h+='<div class="qgrid">'+views.map(v=>{
+    const d=deOf(v.code);
+    return `<div class="qcard"><div class="qk">${v.t} · ${v.full}</div><h3>${v.name}</h3>`+miniHex(v.code)+
+      `<div class="qm">文王第 ${v.no} 卦　6-bit ${bin(v.code)}\n下${d.lo}「${d.dlo}」 上${d.up}「${d.dup}」\n阳爻 ${d.yang}　距体 ${ham(S.code,v.code)} 爻</div>`+
+      `<div class="qf">${esc(v.f)}</div><div class="qm">${lvTag(v.lv)}${esc(v.src)}</div></div>`;
+  }).join('')+'</div>';
+  h+=`<div class="qreply">${makeReply(q,S,views,scheme)}</div>`;
+  h+=`<div class="qhead">复算表 · <b class="${ops===checks.length?'qok':'qbad'}">${ops}/${checks.length} 项通过</b>（右侧「独立复算」用另一条算式重算，不是抄左侧）</div>`;
+  h+='<table class="qtable"><tr><th>断言</th><th>页面值</th><th>独立复算</th><th>结论</th></tr>'+
+    checks.map(r=>`<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td><td class="${r[3]?'qok':'qbad'}">${r[3]?'✓':'✗'}</td></tr>`).join('')+'</table>';
+  document.getElementById('qOut').innerHTML=h;
+  QM=mdForAI(q,S,views,scheme,checks);
+  return {views,checks,ops};
+}
+function qFallback(done){
+  const ta=document.createElement('textarea');ta.value=QM;
+  ta.style.position='fixed';ta.style.left='-9999px';document.body.appendChild(ta);
+  ta.select();try{if(document.execCommand('copy'))done();}catch(e){}
+  document.body.removeChild(ta);
+}
+function qCopy(){
+  if(!QM){document.getElementById('qOut').innerHTML='<div class="qhint">请先输入问题并「起卦并作答」，再复制。</div>';return;}
+  const done=()=>{const b=document.getElementById('qCopy'),t=b.textContent;b.textContent='已复制 ✓';setTimeout(()=>b.textContent=t,1600);};
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(QM).then(done,()=>qFallback(done));
+  else qFallback(done);
+}
+document.getElementById('qGo').onclick=()=>{
+  const q=document.getElementById('qText').value.trim();
+  if(!q){document.getElementById('qOut').innerHTML='<div class="qhint">请先在右侧参数面板把问题写进输入框 —— 没有问题就不起卦，本页不替你编一个。</div>';return;}
+  const mode=document.getElementById('qMode').value,scheme=document.getElementById('qScheme').value;
+  const r=drawHex(mode);
+  applyHex(r.s,r.log);                 // 与原版共用同一状态，卦纹 / 九视图同步
+  const out=renderQA(q,r.s,mode,scheme);
+  window.__QA__={q,mode,scheme,views:out.views,checks:out.checks,ops:out.ops,S:r.s,md:QM};
+};
+document.getElementById('qCopy').onclick=qCopy;
+document.getElementById('qClear').onclick=()=>{
+  document.getElementById('qText').value='';document.getElementById('qOut').innerHTML='';QM='';window.__QA__=null;
+};
+document.getElementById('qText').addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='Enter')document.getElementById('qGo').click();
+});
+
+/* ============ 右浮窗 CtrlDock：控件物理搬入，状态单一来源 ============ */
+(function(){
+  const dock=document.getElementById('ctrlDock'),grp=document.getElementById('dockGroups'),PAD=24;
+  const CAPS={qaCtrl:'问对 · 输入与起卦',origBtns:'起卦',optsBox:'卦纹参数',vbar:'诸家视图 · 勾选',viewBtns:'诸家视图 · 操作'};
+  Object.keys(CAPS).forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    const box=document.createElement('div');box.className='dockGrp';
+    const cap=document.createElement('div');cap.className='dockCap';cap.textContent=CAPS[id];
+    box.appendChild(cap);box.appendChild(el);grp.appendChild(box);
+  });
+  function layout(){
+    document.body.style.paddingRight=(dock.classList.contains('collapsed')?PAD:dock.offsetWidth+PAD)+'px';
+  }
+  document.getElementById('dockToggle').onclick=()=>{dock.classList.toggle('collapsed');layout();};
+  document.getElementById('dockOpen').onclick=()=>{dock.classList.remove('collapsed');layout();};
+  const bar=document.getElementById('dockBar');let drag=null;
+  bar.addEventListener('mousedown',e=>{
+    if(e.target.closest('button'))return;
+    const r=dock.getBoundingClientRect();drag={dx:e.clientX-r.left,dy:e.clientY-r.top};
+    dock.style.left=r.left+'px';dock.style.top=r.top+'px';dock.style.right='auto';e.preventDefault();
+  });
+  const grip=document.getElementById('dockGrip');let rz=null;
+  grip.addEventListener('mousedown',e=>{rz={x:e.clientX,y:e.clientY,w:dock.offsetWidth,h:dock.offsetHeight};e.preventDefault();e.stopPropagation();});
+  document.addEventListener('mousemove',e=>{
+    if(drag){
+      const w=dock.offsetWidth,h=dock.offsetHeight;
+      dock.style.left=Math.max(0,Math.min(innerWidth-w,e.clientX-drag.dx))+'px';
+      dock.style.top=Math.max(0,Math.min(innerHeight-h,e.clientY-drag.dy))+'px';
+    }
+    if(rz){
+      dock.style.width=Math.max(240,Math.min(560,rz.w+e.clientX-rz.x))+'px';
+      dock.style.height=Math.max(180,Math.min(innerHeight-32,rz.h+e.clientY-rz.y))+'px';
+      layout();
+    }
+  });
+  document.addEventListener('mouseup',()=>{drag=null;rz=null;});
+  window.addEventListener('resize',layout);
+  layout();
+  // 可重复断言：所有 button 都必须在右浮窗内
+  window.__DOCK_CHECK__=()=>{
+    const all=[...document.querySelectorAll('button')];
+    const out=all.filter(b=>!dock.contains(b)).map(b=>b.id||b.textContent.trim());
+    return {total:all.length,inDock:all.length-out.length,outside:out};
+  };
+})();
+
+window.addEventListener('resize',()=>{fitCanvas();drawGlyph();updateViews();});
+fitCanvas();drawGlyph();updateViews();
+</script>
+</body>
+</html>

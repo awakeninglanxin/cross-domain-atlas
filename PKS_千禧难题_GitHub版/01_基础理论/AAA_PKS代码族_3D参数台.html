@@ -193,8 +193,17 @@ a.mdlink:hover{border-bottom-style:solid}
    为什么不做成"3D 相机摆正"：那是透视投影，杆有近大远小、还被前面的挡住；
    平面投影图要的是【正交、无遮挡、能直接量长宽】的工程图。 */
 #cv2d{position:absolute;left:0;top:0;width:100%;height:100%;display:none;z-index:1}
-#badge{position:absolute;left:12px;top:48px;font-size:12px;color:#12305e;max-width:78%;
- background:rgba(255,255,255,.92);border:1px solid #d6dfec;border-radius:4px;padding:3px 9px;font-weight:600;line-height:1.5}
+/* 读数条（v9.59 老师 2026-11-09 第二次：「这文字挡住我看图了」）——
+   搬出画布、放到舞台上方，成为正文里的一行。默认只留一行、超出省略、点一下展开：
+   折叠交给 -webkit-line-clamp（不靠 JS 量高度 ⇒ 换族/改参数不闪、没布局时也不会读到 0）。
+   ⚠ 别再放回 #cvbox：自转键在左上、导出键在右上、视图按钮在左下、提示条在右下，
+     四个角全被占，剩下中间正好是蛋尖。 */
+#badge{position:relative;margin:0 2px 10px;font-size:12px;color:#12305e;
+ cursor:pointer;user-select:none;background:rgba(255,255,255,.92);border:1px solid #d6dfec;
+ border-radius:4px;padding:3px 10px;font-weight:600;line-height:1.55;
+ display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;overflow:hidden}
+#badge:hover{background:#eaf2fc;border-color:#2f6fb5}
+#badge.exp{-webkit-line-clamp:9}
 /* 暂停/继续自转：放在 3D 图形的左上角，方便直接点 */
 #btnPause{position:absolute;left:12px;top:10px;z-index:5;font:inherit;font-size:12px;cursor:pointer;
  color:#12305e;background:rgba(255,255,255,.94);border:1px solid #b9cde6;border-radius:5px;
@@ -829,6 +838,12 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
 <h2>二 · 参数台</h2>
 <div class="tabs" id="tabs"></div>
 
+<!-- 读数条（v9.59）：从画布里搬到这里。
+     🔴 老师 2026-11-09 第二次说「这文字挡住我看图了」——上一版只把它压成一行，
+        但蛋尖正好在 top:48px 那一带，压成一行照样压住尖端。画布里没有不被图形
+        占到的位置（四角分别是自转键、导出键、视图按钮、提示条），所以干脆搬到画外。 -->
+<div id="badge">—</div>
+
 <div class="stage">
   <div id="cvbox">
     <canvas id="cv3d"></canvas>
@@ -836,7 +851,6 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
     <button id="btnPause" class="paused" type="button" title="暂停 / 继续自转（快捷键：空格）">▶ 继续自转</button>
     <!-- 导出入口：调参浮窗默认收起，这个按钮负责"展开浮窗 + 滚到导出块" -->
     <button id="btnExp" type="button" title="导出当前参数的 3D 物件（STL / OBJ / STP）">⤓ 导出 3D</button>
-    <div id="badge">—</div>
     <div id="viewbtns">
       <div class="vrow">
         <button type="button" data-v="xy2d" title="正视图的 2D 正投影：沿 −z 正交投到 xy 平面，无透视、无遮挡，可直接量长径与最大宽">正视投影 2D</button>
@@ -875,7 +889,10 @@ body.theme-night .fxp-note::before{ color:#7ea6ff }
       </div>
       <div class="exp-row"><label for="expScale">尺度</label>
         <select id="expScale">
-          <option value="auto">自动（最长边 ≈ 100 mm）</option>
+          <!-- 实际尺寸 = 不缩放。k 由 calib() 现算（本族「1 世界单位 = 多少 mm」），
+               有实标的族（⓪ 钢架：蛋高 cm）才成立；没有实标的族退回 1 单位 = 1 mm。 -->
+          <option value="real" id="expScaleReal">实际尺寸（1:1 不缩放）</option>
+          <option value="auto">自动（缩到最长边 ≈ 100 mm · 会缩放）</option>
           <option value="1">1 单位 = 1 mm</option>
           <option value="10">1 单位 = 10 mm</option>
           <option value="25">1 单位 = 25 mm</option>
@@ -1368,7 +1385,7 @@ k_E  = max(M_y) / |min(M_y)|</div>
       <button type="button" data-v="0" class="on">+ 法向侧</button>
       <button type="button" data-v="1">− 法向侧</button>
     </div>
-    <label class="sp-chk"><input type="checkbox" id="spFace"> 加半透膜<span class="sp-tip">（只有 ⓪ 蛋面钢架算得出真实截面）</span></label>
+    <label class="sp-chk"><input type="checkbox" id="spFace" checked> 加半透膜<span class="sp-tip">（只有 ⓪ 蛋面钢架算得出真实截面）</span></label>
     <div class="sp-row2">
       <button type="button" class="sp-go" id="spPlay" title="自动从 −100 滑到 +100（约 4 秒）· 再点一次中途停">▶ 播放</button>
       <button type="button" class="sp-go2" id="spGif" title="把上面那一遍录成 GIF · 自动压到 5MB 以内">         ⤓ 导出 GIF</button>
@@ -1450,6 +1467,9 @@ k_E  = max(M_y) / |min(M_y)|</div>
         偏移成有厚度的壳，再缝合边界）。
      ② 尺度：①④⑥ 这些族的坐标是归一化的（r∈[0,1]），按 1 单位 = 1mm
         导出只有 2mm 大。→ 提供「自动缩放到最长边 ≈ 100mm」，并报出真实尺寸。
+        ⚠ 自动档会把比例吸附成整数（1/2/5/10 ×10ⁿ），所以「≈100」实测可能是 110.6；
+        要有实标的族（⓪ 蛋高）1:1 出件，必须走 real 档 —— 那里 k = 1/stats.mmw，
+        蛋高 18cm ⇒ 1 单位 = 81.82 mm ⇒ 文件高 180 mm（老师 2026-11-09）。
      ③ 朝向：本页视图 Y 向上，切片机的床 Z 向上。
         → 默认把 Y 转到 Z（纯旋转，不改手性）。
    ========================================================================== */
@@ -2138,13 +2158,54 @@ function autoK(maxDim){
   if(!(maxDim>0))return 1;
   /* 已经是"毫米量级"的族（管径 40~200mm 那种）就别动它 */
   if(maxDim>=40&&maxDim<=300)return 1;
+  /* ⚠ 这里把比例【吸附到 1/2/5/10 × 10^n】，是为了让「1 单位 = N mm」是个整数，
+     好让人在切片软件里核对。代价是「≈100 mm」并不真等于 100：
+     ⓪ 族的包围盒高 2.212 单位，100/2.212 = 45.2 ⇒ 吸附到 50 ⇒ 实际 110.6 mm。
+     老师 2026-11-09 截图里的 80.2 × 110.6 × 80.2 mm（1 单位 = 50.0 mm）就是这一行给的。
+     ⇒ 想要真尺寸必须走 real 档（calib()），自动档天生会缩放。 */
   var raw=100/maxDim,p=Math.pow(10,Math.floor(Math.log10(raw))),m=raw/p;
   var nice=m<1.5?1:(m<3.5?2:(m<7.5?5:10));
   return nice*p;
 }
+/* 数字短写：81.818181… → 81.82；50 → 50。R() 是给 STEP 的定点 9 位，别用在这里。 */
+function fmtK(v){
+  if(!(v>0))return '—';
+  var t=(v>=10)?v.toFixed(2):v.toFixed(3);
+  t=t.replace(/0+$/,'');if(t.charAt(t.length-1)==='.')t=t.slice(0,-1);
+  return t;
+}
+/* 本族「1 世界单位 = 多少真实 mm」的唯一入口。
+   🔴 只认真有标定的族：⓪ 双锥钢架的蛋高由 hxHcm 给，f0HexNet 的 stats.mmw = H/(hxHcm·10)，
+      所以 1 单位 = 1/m mw 毫米 —— 数值不在这里二次推导，直接读那唯一一处算好的 mmw。
+   其它族的坐标是归一化的（r∈[0,1]），没有物理标定 ⇒ 返回 0，只能走自动缩放。
+   返回 {k:mm/单位, eggMm:蛋高 mm}；k=0 表示本族没实标。 */
+function calib(){
+  var o={k:0,eggMm:0};
+  try{
+    var id=(typeof FAMS!=='undefined'&&FAMS[curFam])?FAMS[curFam].id:'';
+    if(id!=='cutcone')return o;
+    if(typeof P==='undefined'||!P||(P.cutSkin|0)<=0)return o;
+    var net=(typeof f0HexNet==='function')?f0HexNet(P):null;
+    var st=net&&net.stats;
+    if(st&&st.mmw>0&&st.Hcm>0){o.k=1/st.mmw;o.eggMm=st.Hcm*10;}
+  }catch(e){}
+  return o;
+}
+/* 尺度档的 UI 同步：① 下拉里 real 那行按当前实标改字；
+   ② 有实标的族【默认就落在 real】—— 否则「设了 18cm、导出 110mm」每回重演；
+   ③ 只有老师手动换过档（S.scaleTouched）才不再自动切，免得抢方向盘。 */
+function syncScaleUI(){
+  var sel=$('expScale');if(!sel)return;
+  var cal=calib();
+  /* 🔴 下拉框只有 296 px：标签里塞「1 单位 = 81.82 mm」会被截成「… 1 单位 = 81.82」，
+     半句话比不写更糟（2026-11-09 截图实拍）。乘数与蛋高一律交给下面那行尺寸读数报。 */
+  if(!S.scaleTouched)S.scale=(cal.k>0)?'real':'auto';
+  if(sel.value!==S.scale)sel.value=S.scale;
+}
 function blankRes(c,sel){
   return {parts:sel,shells:[],tris:0,closed:false,openN:0,sheetN:0,cappedN:0,
     thickN:0,comps:0,vol:0,area:0,k:1,scaleVal:1,size:[0,0,0],
+    mpu:0,eggMm:0,          /* 本族实标：mm/单位 与 蛋高 mm（calib 现算，0 = 无实标） */
     lines:c.lines,points:c.points,annot:c.annot,hidden:c.hidden,wire:c.wire,
     src:sel.length,srcAll:c.parts.length};
 }
@@ -2163,7 +2224,12 @@ function analyze(rootObj){
   /* 尺度先定：加厚填的是毫米，得先知道 1 单位 = 多少 mm 才能换回原始单位。
      用"焊完但还没加厚"的包围盒定 k —— 加厚只让尺寸变大一点点，不至于翻档。 */
   var raw=bbox(m),maxDim=Math.max(raw[0],raw[1],raw[2]);
-  var k=(S.scale==='auto')?autoK(maxDim):numScale(S.scale);
+  /* 三档：auto=缩到 ≈100 mm；real=按本族实标 1:1（不缩放）；其余=固定「1 单位 = N mm」。
+     🔴 real 在没有实标的族里不许【假装】成功：退回 1 单位 = 1 mm，并在读数里明说，
+        悄悄退回 auto 会让人以为 1:1，其实又被缩了一遍。 */
+  var cal=calib();
+  res.mpu=cal.k;res.eggMm=cal.eggMm;
+  var k=(S.scale==='auto')?autoK(maxDim):(S.scale==='real'?(cal.k>0?cal.k:1):numScale(S.scale));
   var thickRaw=(S.thick>0&&k>0)?(S.thick/k):0;
   var shells=processMesh(m,sel,{capOn:S.capOn,thick:thickRaw,tol:1e-4});
   var tot=0,vol=0,area=0,openN=0,sheetN=0,cappedN=0,thickN=0,size=[0,0,0];
@@ -2254,9 +2320,18 @@ function render(res,c){
     }
   }
   if(dim){
-    dim.textContent=res.tris?
-      (res.size.map(function(x){return x.toFixed(1);}).join(' × ')+' mm'+
-       (S.scale==='auto'?('（1 单位 = '+R(res.k)+' mm）'):'')):'';
+    if(!res.tris)dim.textContent='';
+    else{
+      var tm=res.size.map(function(x){return x.toFixed(1);}).join(' × ')+' mm',tl;
+      /* 🔴 每一档都要报乘数：老师看到 110.6 却没看到「1 单位 = 50 mm」时，
+         只会怀疑蛋高参数坏了（2026-11-09 的真实反应）。 */
+      if(S.scale==='real')tl=(res.mpu>0)
+        ?('（1:1 实标 · 1 单位 = '+fmtK(res.k)+' mm · 蛋高 '+fmtK(res.eggMm)+' mm，'
+           +'外廓含杆半径 +'+Math.max(0,Math.max(res.size[0],res.size[1],res.size[2])-res.eggMm).toFixed(1)+' mm）')
+        :'（本族没有实标 · 按 1 单位 = 1 mm 原样导出）';
+      else tl='（1 单位 = '+fmtK(res.k)+' mm'+(S.scale==='auto'?' · 自动档会缩放':'')+'）';
+      dim.textContent=tm+tl;
+    }
   }
   if(sz){
     var b=estSize(res,S.fmt);
@@ -2287,6 +2362,19 @@ function render(res,c){
       if(res.size[0]>250||res.size[1]>250||res.size[2]>250)
         L.push('<span class="exp-bad">⚠ 最长边 '+Math.max.apply(null,res.size).toFixed(0)+
                ' mm，超过多数桌面机 250 mm 的成型尺寸</span>');
+      /* 实标族被缩放档改尺寸时必须当场说（老师 2026-11-09：「设了 18cm 却导出 110mm」）：
+         判据用【相对容差 1%】，不写死 180/110 —— 蛋高一改，这两个数都不该再对。 */
+      if(res.mpu>0&&res.k>0){
+        var curMax=Math.max(res.size[0],res.size[1],res.size[2]);
+        /* 🔴 判据用【两个乘数之比】而不是「raw×mpu 对 size」：
+           res.size 是【壳】的包围盒，res.raw 是合并后还没处理的那份，实测差 1.5mm/0.8%
+           —— 拿 raw 当「1:1 该多大」，0.8% 的差会一直踩在阈值上（探针 B3/B4 抓出来的）。
+           k/mpu 只跟档位有关，几何怎么变都不影响，恒等成立。 */
+        var ratio=res.k/res.mpu;
+        if(Math.abs(ratio-1)>0.01)
+          L.push('<span class="exp-bad">⚠ 这一族有实标：蛋高 '+fmtK(res.eggMm)+' mm，'+
+                 '当前档却导出成 '+curMax.toFixed(1)+' mm（×'+ratio.toFixed(3)+'）。要 1:1 打印请把「尺度」换成「实际尺寸」</span>');
+      }
       if(S.fmt==='stp'&&res.tris>60000)
         L.push('<span class="exp-bad">⚠ STEP 逐片展开：'+fmtN(res.tris)+' 个面，文件会很大、CAD 打开很慢</span>');
     }
@@ -2295,6 +2383,9 @@ function render(res,c){
   renderList(res,c);
 }
 function refresh(force){
+  /* 先同步尺度档：换族 / 改蛋高都会改实标，下拉里的字与选中项得跟着走。
+     放在 force 判断之前 —— 面板收起时也要把字改对，否则展开瞬间是旧标定。 */
+  try{syncScaleUI();}catch(e){}
   var r=null;
   try{r=(typeof root!=='undefined')?root:null;}catch(e){r=null;}
   if(!r)return null;
@@ -2380,7 +2471,7 @@ function mount(){
   _mounted=true;
   function bind(id,ev,fn){var el=$(id);if(el)el.addEventListener(ev,fn);}
   bind('expFmt','change',function(){S.fmt=this.value;refresh();});
-  bind('expScale','change',function(){S.scale=this.value;refresh();});
+  bind('expScale','change',function(){S.scale=this.value;S.scaleTouched=true;refresh();});
   bind('expVis','change',function(){S.visOnly=!!this.checked;refresh();});
   bind('expCap','change',function(){S.capOn=!!this.checked;refresh();});
   bind('expRim','change',function(){S.zUp=!!this.checked;refresh();});
@@ -2426,6 +2517,7 @@ var API={collect:collect,weld:weldMesh,orient:orientMesh,loops:boundaryLoops,
   stlBinary:stlBinary,stlAscii:stlAscii,objText:objText,stepText:stepText,
   exportMeshes:exportMeshes,xfMesh:xfMesh,mount:mount,refresh:refresh,
   onRebuild:onRebuild,doExport:doExport,autoK:autoK,estSize:estSize,
+  calib:calib,syncScaleUI:syncScaleUI,fmtK:fmtK,
   state:S,famHint:famHint,STEP_MAX_TRI:STEP_MAX_TRI,R:R};
 try{mount();}catch(e){}
 return API;
@@ -12369,16 +12461,44 @@ function f0HexNet(P) {
   /* ⚠ 上限 48（不是 60）：M=50 时四面体芯与节点球已经把主线程卡到近崩
      （2026-11-04 老师实测「太大会导致网页崩溃，太卡」）。clamp 与滑杆 max 必须同源，
      否则旧 URL / localStorage 里存着 M=50 的会绕过界面继续把页面拖死。 */
-  var M = Math.max(8, Math.min(48, Math.round(P.hxRow === undefined ? 26 : P.hxRow)));
-  var q = Math.max(0, Math.min(1.2, (P.hxQ === undefined ? 1.0 : P.hxQ)));
+  var M = Math.max(8, Math.min(48, Math.round(P.hxRow === undefined ? 32 : P.hxRow)));
+  var q = Math.max(0, Math.min(1.2, (P.hxQ === undefined ? 0.22 : P.hxQ)));
   var hxR = P.hxR === undefined ? 3.2 : P.hxR;
-  var hxG = Math.max(-2, Math.min(2, P.hxG === undefined ? 0.8 : P.hxG));
+  /* γ=0（v9.59 起为默认）：外层蜂窝一律 φ=hxDo，冷暖只看【层】，不看格的大小。
+     🔴 为什么把默认从 0.8 改成 0：老师要的是「最外层 2.5mm 一条线，朝内才变细」，
+        而 γ=0.8 是按【格面积】调杆径 —— 蛋尖那圈格子面积小 ⇒ 杆被压到 1mm，
+        中段大格子 ⇒ 反而涨到 5.2mm（实测 2.016 根外层杆跨 1.00~5.24mm）。
+        同一个「最外层 2.5mm」在屏上变成 1.0~5.2 的一大片，这不是他要的渐变。
+        γ 仍然留着：想让大格更粗（结构上确实更合理）就自己拉起来。 */
+  var hxG = Math.max(-2, Math.min(2, P.hxG === undefined ? 0 : P.hxG));
+  /* ★★ 2026-11-09 老师：「从里到外的钢架最细杆都要至少 1mm 粗以上」「最粗杆 2.5mm
+     对应最外层的蛋形蜂窝六边形钢架，朝内走自动渐变变细到最内层 1mm，允许连接杆变径」。
+     ⇒ 杆径改用【毫米直径】口径，一条渐变律管到底：
+        hxDo = 最外层杆 φ（mm）      —— 外层蜂窝就用它（再乘面积占比^γ）
+        hxDf = 最细杆 φ 下限（mm）    —— 同时也是【最内层】的 φ
+     🔴 蛋高记作 1000 mm：世界单位 H=2.2 对应 1000 mm ⇒ r = φ/2 · H/1000。
+        这个换算只在这里做一次，别处一律读算好的 r（单一来源）。
+     🔴 兼容：老存档 / 预设只有 hxR（半径 ‰蛋高）⇒ hxDo 缺省时按 2·hxR 换算，
+        视觉与改前逐像素一致。
+     🔴 这两行必须在 cache key 之前 —— 写在下面（mm→r 那处）虽然 var 会提升，
+        但提升的是【声明】不是【赋值】，key 里拿到的会是 undefined，
+        于是改了 φ 反而命中旧缓存（屏幕上一点没变，最难查的那类）。 */
+  var hxDo = (P.hxDo === undefined || !(P.hxDo > 0)) ? (hxR * 2) : P.hxDo;
+  var hxDf = (P.hxDf === undefined || !(P.hxDf > 0)) ? 1.0 : P.hxDf;
+  /* 蛋高（cm）：v9.58 老师 2026-11-09「限制正视 xy 的蛋高是 18cm（可调）」。
+     🔴 它不是标签、是【换算系数】：φ(mm) → 世界半径 就按它折算（见下面 mmw）。
+        蛋高 18cm 时 φ2.5 占蛋高 1.39%；旧的「蛋高记作 1000mm」口径只占 0.25%
+        ⇒ 同一条 φ 会粗 5.6 倍。老师已明确选「按真 mm 标定」，所以屏上就该粗。
+     ⚠ 和 hxDo/hxDf 一样必须在 key 之前解析，否则 key 里拿到 undefined（var 提升的坑）。 */
+  var hxHc = (P.hxHcm === undefined || !(P.hxHcm > 0)) ? 18 : Math.max(4, Math.min(60, +P.hxHcm));
   /* ⚠ cutSurf 必须进 key：只按 α/z₀/M/q 缓存的话，母线从「单叶双曲面」换成
      「直圆锥」时 α、z₀ 没变 ⇒ 命中旧缓存 ⇒ 屏幕上还在画上一颗蛋的钢架，
      而读数与 badge 也跟着旧数据走（2026-11-03 探针第 E 段抓出来的）。 */
   var key = [(P.cutSurf | 0),
              (P.cutA === undefined ? 31.7175 : P.cutA),
-             (P.cutZ0 === undefined ? 1.618034 : P.cutZ0), M, q, hxR, hxG].join('|');
+             (P.cutZ0 === undefined ? 1.618034 : P.cutZ0), M, q, hxDo, hxDf, hxHc, hxG,
+             /* v9.62 极点合并开关也进 key：不进的话切开关会命中旧缓存，屏上「点了没反应」 */
+             (P.hxTip === undefined ? 1 : (P.hxTip | 0))].join('|');
   if (F0H_CACHE.k === key && F0H_CACHE.v) return F0H_CACHE.v;
 
   var pf = f0HexProf(P);
@@ -12648,6 +12768,39 @@ function f0HexNet(P) {
   cells[0].pole = 'tip';
   cells[cells.length - 1].pole = 'base';
 
+  /* ---- v9.62 极点帽合并（老师 2026-11-10：「蛋尖那 24 根 φ1.000 要动极点拓扑加粗」）----
+     病根不在 φ、不在 γ、也不在下限，而在【杆长】：
+       极点顶点把第一圈三角面扇化，这一圈三角面的重心全挤在极点 0.2mm 内
+       ⇒ 格心间距最短只剩 1.201mm；而杆径上限 0.45·len 是【半径】上限
+       ⇒ 直径最多 0.9×杆长 = 1.081mm。0.45 已经是「两根管刚好相切」的几何极限，
+       再抬就成了球串。所以 1.081mm 是拓扑给的死数 —— 调 φ、调 γ、抬下限都改不动它。
+     做法（网壳 apex node 的标准做法）：把「含极点顶点的那一圈三角面」判为一顶帽子，
+       杆端点一律改用轴上极点。帽子内部的杆两端重合 ⇒ 退化丢弃；
+       帽子 → 外圈的杆长回到第二圈量级（实测 2.308mm）⇒ φ 才有空间（实测 2.077mm）。
+     ⚠ 只换【杆端点】，triC / cells.poly 一个对象都不动：
+       poly 还指着原来的重心对象 ⇒ 六棱比、面积占比、薄壳板全不受影响。
+     开关 hxTip：0 = 原始拓扑（旧图逐字节可复现）／1 = 合并（默认）。 */
+  var hxTipOn = (P.hxTip === undefined ? 1 : (P.hxTip | 0)) === 1;
+  /* nCapMerge = 被并掉的三角面数（每顶帽子 N 个面并成 1 颗节点 ⇒ 少画 N−1 颗）。
+     节点计数必须减它，否则屏上的「N 个节点」比场景里真建出来的多 N−1 颗 —— 
+     这正是 v9.62 留下的账（探针当场抓出 1944 vs 1934）。 */
+  var capMark = {}, capRep = [], capN = [0, 0], nCapDrop = 0, nCapMerge = 0;
+  if (hxTipOn) {
+    for (var ai2 = 0; ai2 < 2; ai2++) {
+      var apIdx = (ai2 === 0) ? 0 : (V.length - 1), apP = V[apIdx], reps2 = [], f5;
+      for (f5 = 0; f5 < T.length; f5++) {
+        var t5 = T[f5];
+        if (t5[0] === apIdx || t5[1] === apIdx || t5[2] === apIdx) reps2.push(f5);
+      }
+      capN[ai2] = reps2.length;
+      if (reps2.length >= 2) {
+        nCapMerge += reps2.length - 1;
+        capRep.push(reps2[0]);
+        for (var r5 = 0; r5 < reps2.length; r5++) capMark[reps2[r5]] = apP;
+      }
+    }
+  }
+
   /* 杆：对偶边（两端是三角面重心），并记下它挨着哪两个三角面 ⇒ 节点半径用 */
   var struts = [];
   var vIdx = {};
@@ -12656,7 +12809,9 @@ function f0HexNet(P) {
     if (ts.length !== 2) return;
     var ab = key2.split('_'), ca = vIdx[ab[0]], cb = vIdx[ab[1]];
     if (ca === undefined || cb === undefined) return;
-    struts.push({ a: triC[ts[0]], b: triC[ts[1]], ca: ca, cb: cb, f1: ts[0], f2: ts[1], r: 0.001 });
+    var aP = capMark[ts[0]] || triC[ts[0]], bP = capMark[ts[1]] || triC[ts[1]];
+    if (aP === bP) { nCapDrop++; return; }   /* 帽子内部：两端已并到同一个极点，退化成零长 */
+    struts.push({ a: aP, b: bP, ca: ca, cb: cb, f1: ts[0], f2: ts[1], r: 0.001 });
   });
 
   /* 每行的实际弧长步长（×sc 换成蛋高单位）：读数要拿它证明「两端真的更密」 */
@@ -12699,15 +12854,30 @@ function f0HexNet(P) {
      读数也要报杆径范围，若只在 Build 里算，f0HexRead 拿到的是 undefined ⇒ 屏上印 NaN。
      r = r0·(该格面积占比 / 平均占比)^γ，夹在 0.35~2.8 倍；
      一条棱被两格共有 ⇒ 取两格平均（不可能一条棱两个粗细）。 */
-  var r0 = Math.max(0.0004, hxR * H / 1000), meanPct = 100 / Math.max(1, cells.length);
+  /* 唯一换算点：φ(mm) → 世界半径
+     mmw = 1mm 折成多少世界单位。旧版把蛋高钉死成 1000mm（H/1000）；
+     v9.58 起由 hxHcm 给真实高度：18cm ⇒ mmw = H/180。
+     ⇒ 屏上粗细 = φ ÷ 蛋高(mm)：同一颗 18cm 的蛋，φ2.5 看上去就该比 1m 的蛋上粗 5.6 倍
+        —— 那是同一件实物，不是画法变了（老师 2026-11-09 确认走这条口径）。 */
+  var mmw = H / Math.max(1e-6, hxHc * 10);
+  var rf = Math.max(0.0002, hxDf * 0.5 * mmw);          /* 最细杆半径 = 芯的半径 */
+  var r0 = Math.max(rf, hxDo * 0.5 * mmw), meanPct = 100 / Math.max(1, cells.length);
   var rMin = 1e9, rMax = -1e9, ic;
   for (ic = 0; ic < cells.length; ic++) {
     var cR = cells[ic], tR = cR.pct / meanPct;
     cR.rr = r0 * Math.min(2.8, Math.max(0.35, Math.pow(Math.max(1e-6, tR), hxG)));
+    /* γ 的 0.35 下限与「最细 1mm」是两码事：γ 只管格间差，floor 管绝对下限。
+       两句都得留 —— 删掉任何一句都会在某一档翻车（γ=-1.5 时 0.35×r0 比 1mm 细）。 */
+    if (cR.rr < rf) cR.rr = rf;
     if (cR.rr < rMin) rMin = cR.rr;
     if (cR.rr > rMax) rMax = cR.rr;
   }
-  var strutR = [], nLenClamp = 0, minLen = 1e9, maxLen = 0;
+  var strutR = [], nLenClamp = 0, nFloorUp = 0, minLen = 1e9, maxLen = 0;
+  /* 蛋尖区单独记账（老师 2026-11-10「φ1.000 要保证蛋尖的架构 1mm 粗」）：
+     全模型最细杆那个数会被赤道的大杆平衡掉，看不出尖上到底多粗 ⇒ 必须单独报。
+     口径：杆【中点】到任一极点的距离 < 5% 蛋高。开关两态都能算，可直接对比。 */
+  var nTipStrut = 0, tipPhiMin = 1e9, tipPhiMax = -1e9, tipLenMin = 1e9;
+  var vTipB = V[V.length - 1], rhoT2 = (0.05 * H) * (0.05 * H);
   for (ic = 0; ic < struts.length; ic++) {
     var S0 = struts[ic];
     var dx0 = S0.b[0] - S0.a[0], dy0 = S0.b[1] - S0.a[1], dz0 = S0.b[2] - S0.a[2];
@@ -12715,14 +12885,31 @@ function f0HexNet(P) {
     S0.len = len;
     if (len < minLen) minLen = len;
     if (len > maxLen) maxLen = len;
-    /* 杆径 = 两格平均，但不得超过杆长的 0.32 倍。
-       理由：极点附近的格子小、杆很短（实测最短 0.0141），而面积占比夹紧后的
-       最大杆径能到 0.0130 —— 直径几乎等于长度，那画出来是球不是杆。
-       工程上短杆本来也不可能比自身长度还粗。被夹的根数读数里如实报。 */
+    /* 杆径 = 两格平均，但不得超过杆长的 0.45 倍。
+       理由：极点附近的格子小、杆很短（实测最短 0.0141），不夹的话直径会超过长度，
+       画出来是球不是杆。0.5 是几何极限（直径=杆长，两根管刚好相切），取 0.45 留一点余量。
+       🔴 v9.58 之前是 0.32 —— 老师圈着蛋尖说「这圈钢架很细」就是它：
+          φ2.5 的杆被压到 0.32 倍再抬回 1mm 下限，蛋尖那 4% 高度里 660 根全落在 1mm，
+          和下面的 2.5mm 摆在一起就是一圈细铁丝。0.45 让它们回到 1.4mm 上下。
+       被夹的根数读数里如实报。 */
     var rr2 = 0.5 * (cells[S0.ca].rr + cells[S0.cb].rr);
-    if (rr2 > 0.32 * len) { rr2 = 0.32 * len; nLenClamp++; }
+    if (rr2 > 0.45 * len) { rr2 = 0.45 * len; nLenClamp++; }
+    /* 🔴 旧 0.32·len 这条上限会把极点附近的杆夹到 r0 的 0.48 倍（实测 0.00336 / 0.00704），
+       这正是老师「即使所有杆一样粗，外层还是有细的」看到的那些（2026-11-09 提到 0.45）。
+       夹完再抬回 floor：宁可让极短杆略粗于 0.45 杆长，也不许细于 1mm。 */
+    if (rr2 < rf) { rr2 = rf; nFloorUp++; }
     S0.r = rr2;
     strutR.push(rr2);
+    /* 蛋尖分账：中点落在极点 5% 蛋高内就算「蛋尖架构」 */
+    var mxT = 0.5 * (S0.a[0] + S0.b[0]), myT = 0.5 * (S0.a[1] + S0.b[1]), mzT = 0.5 * (S0.a[2] + S0.b[2]);
+    var dT0 = (mxT - V[0][0]) * (mxT - V[0][0]) + (myT - V[0][1]) * (myT - V[0][1]) + (mzT - V[0][2]) * (mzT - V[0][2]);
+    var dT1 = (mxT - vTipB[0]) * (mxT - vTipB[0]) + (myT - vTipB[1]) * (myT - vTipB[1]) + (mzT - vTipB[2]) * (mzT - vTipB[2]);
+    if (Math.min(dT0, dT1) < rhoT2) {
+      nTipStrut++;
+      if (rr2 < tipPhiMin) tipPhiMin = rr2;
+      if (rr2 > tipPhiMax) tipPhiMax = rr2;
+      if (len < tipLenMin) tipLenMin = len;
+    }
   }
   strutR.sort(function (a, b) { return a - b; });
 
@@ -12767,8 +12954,15 @@ function f0HexNet(P) {
     n: cells.length, n4: sidesCnt[4] || 0, n5: sidesCnt[5] || 0, n6: sidesCnt[6] || 0,
     n7: sidesCnt[7] || 0, n8: sidesCnt[8] || 0, euler: pen,
     tris: T.length, verts: V.length, struts: struts.length,
-    nRings: tt.length, q: q, H: H, areaTotal: totA, mTarget: M,
-    r0: r0, rMin: rMin, rMax: rMax,
+    nRings: tt.length, q: q, H: H, Hcm: hxHc, mmw: mmw, areaTotal: totA, mTarget: M,
+    r0: r0, rf: rf, nFloorUp: nFloorUp, rMin: rMin, rMax: rMax,
+    capOn: hxTipOn ? 1 : 0, capN0: capN[0], capN1: capN[1], nCapDrop: nCapDrop,
+    capMerge: nCapMerge,
+    /* 真画出来的节点数 = 三角面数 − 被并掉的面数（渲染里被 skip 的那些不建球） */
+    nNode: T.length - nCapMerge,
+    tipStrut: nTipStrut,
+    tipPhiMin: nTipStrut ? tipPhiMin : 0, tipPhiMax: nTipStrut ? tipPhiMax : 0,
+    tipLenMin: nTipStrut ? tipLenMin : 0,
     srMin: strutR.length ? strutR[0] : 0,
     srMax: strutR.length ? strutR[strutR.length - 1] : 0,
     lenMin: minLen, lenMax: maxLen, nLenClamp: nLenClamp,
@@ -12782,6 +12976,7 @@ function f0HexNet(P) {
     ergOk: ergOk, ergN: eRat.length
   };
   var out = { V: V, T: T, triC: triC, cells: cells, struts: struts, stats: stats, pf: pf,
+              capMark: capMark, capRep: capRep,
               ringT: tt, ringU: uu, ringN: N, ringS: rs, ck: key };
   F0H_CACHE = { k: key, v: out };
   return out;
@@ -12969,6 +13164,9 @@ function f0StrutGeo(list, sides, P, st) {
   var useC = f0CmapKind(P) !== 5;
   for (i = 0; i < list.length; i++) {
     var S = list[i], A = S.a, B = S.b, r = S.r;
+    /* 变径（v9.57）：两端各自取半径。缺省都取 r ⇒ 与旧几何逐顶点一致。 */
+    var rAe = (S.rA === undefined) ? r : S.rA;
+    var rBe = (S.rB === undefined) ? r : S.rB;
     var dx = B[0] - A[0], dy = B[1] - A[1], dz = B[2] - A[2];
     var L = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1e-9;
     dx /= L; dy /= L; dz /= L;
@@ -12980,9 +13178,11 @@ function f0StrutGeo(list, sides, P, st) {
     var cA = useC ? f0CmapColor(P, f0MapVal(P, A, st)) : null;
     var cB = useC ? f0CmapColor(P, f0MapVal(P, B, st)) : null;
     for (k = 0; k < sides; k++) {
-      var an = TAU * k / sides, cs = Math.cos(an) * r, sn = Math.sin(an) * r;
-      pos.push(A[0] + ux * cs + vx * sn, A[1] + uy * cs + vy * sn, A[2] + uz * cs + vz * sn);
-      pos.push(B[0] + ux * cs + vx * sn, B[1] + uy * cs + vy * sn, B[2] + uz * cs + vz * sn);
+      var an = TAU * k / sides, ca2 = Math.cos(an), sa2 = Math.sin(an);
+      pos.push(A[0] + (ux * ca2 + vx * sa2) * rAe, A[1] + (uy * ca2 + vy * sa2) * rAe,
+               A[2] + (uz * ca2 + vz * sa2) * rAe);
+      pos.push(B[0] + (ux * ca2 + vx * sa2) * rBe, B[1] + (uy * ca2 + vy * sa2) * rBe,
+               B[2] + (uz * ca2 + vz * sa2) * rBe);
       if (useC) col.push(cA[0], cA[1], cA[2], cB[0], cB[1], cB[2]);
     }
     var icA = pos.length / 3; pos.push(A[0], A[1], A[2]);
@@ -13019,12 +13219,13 @@ function f0HexL2(P) {
   var web = (P.hxWeb === undefined ? 1 : (P.hxWeb | 0));
   /* 内芯密度（2026-11-04 老师：内部支撑杆太密，3D 打印要省料又得够稳）
      0 = 不建内芯（只剩 外层蜂窝 + 层间腹杆 + 内层三角网：双层壳，最省）
-     1 = 每 4 个三角面留 1 个锥（稀疏加强筋） 2 = 每 2 个留 1 个 3 = 全建（原样）
+     1 = 每 4 个三角面留 1 个锥（稀疏加强筋） 2 = 每 2 个留 1 个（v9.58 起为默认，老师 2026-11-09）
+     3 = 全建（原样）
      抽稀用的是【三角面索引取模】这种确定规则，不用随机：同一组参数每次出来一模一样，
      判据才可复现；而且三角面是按格逐行生成的，取模相当于隔行隔列，视觉上均匀，
      不会出现「半边有芯、半边秃」。留下的每个锥底座仍压在三角网上 ⇒ 与壳连通，
      不是孤立悬空的柱子。 */
-  var core = Math.max(0, Math.min(3, (P.hxCore === undefined ? 1 : (P.hxCore | 0))));
+  var core = Math.max(0, Math.min(3, (P.hxCore === undefined ? 2 : (P.hxCore | 0))));
   var coreStep = [0, 4, 2, 1][core];
   /* 第二层绕长轴（数学 y）的相位角，度。蜂窝有 6 次对称、三角网有 3 次对称，
      所以相位周期是 120°，给 −60~+60 就够把「内层杆与外层杆错开」的所有情形走遍。 */
@@ -13087,6 +13288,42 @@ function f0HexL2(P) {
     V2.push([x1 * cph - z1 * sph, y1, x1 * sph + z1 * cph]);
   }
 
+  /* ══ 杆径渐变（v9.57，老师 2026-11-09）════════════════════════════════
+     旧版内层是「外层 × 手工系数」：tie/in2 ×0.46、apex ×0.44、brace/spoke ×0.30
+     —— 五个系数各写各的，而且全都写死。于是 γ=0「所有杆一样粗」时，内层照样只有
+     外层的一半，屏上看着永远是「外层粗、内层细」（实测中位 0.003238 / 0.007040
+     = 0.4600，透视只差 0.5%，所以那 54% 全是这几个系数）。
+     现在改成按【径向深度 u】插值，u=0 在外表面、u=1 在内层壳或更内：
+        φ(P) = φo + (φf − φo)·smoothstep(u)
+     外层蜂窝 u≈0 ⇒ φo；内层三角网 u≈1 ⇒ φf；层间腹杆两端一外一内 ⇒ 天然锥形。
+     🔴 Rref / Rin 都取【实测】：外层顶点、内层顶点各自到【质心】的最大距离。
+        不拿 λ 近似 —— V2 是绕原点缩放的，而质心不在原点（cyC≠0），用 λ 会系统性偏。 */
+  var rfL = st.rf || 0.001;
+  /* ---- 三层归一化径向深度 uIn（v9.58 老师 2026-11-09：「从外到内层到芯都要自动变细」）----
+     三层：外层蜂窝 u=0 ／ 内层正三角网 u=uIn ／ 芯（四面体侧棱 + 内顶点互连）u=1。
+     uIn 不是拍脑袋写的 0.5，是【几何推出来的】：
+       外层→内层的落差  dIn   = (1−λ)·Req            （层间距）
+       内层→芯顶点的落差 dCore = √(2/3)·λa·tetK       （四面体高，底边是内层边长 λa）
+       uIn = dIn / (dIn + dCore)
+     λ 自洽档（hxL2mode=0）里 dCore = λ·dIn ⇒ uIn = 1/(1+λ) ≈ 0.579（λ=72.8%）。
+     手动 λ 档一改，uIn 跟着动 ⇒ 三层的相对粗细永远与真实层距一致，不用另设滑条。 */
+  var dIn = Math.max(1e-9, (1 - lam) * Req);
+  var dCore = Math.max(1e-9, K824 * lam * aRef * tetK);
+  var uIn = Math.max(0.02, Math.min(0.98, dIn / (dIn + dCore)));
+  /* u = 归一化径向深度：0 外层（取该格自己的 rr，含 γ）· 1 芯（一律取最细 φ）· 中间插值
+     🔴 为什么不用「到质心的距离」当 u：试过，会翻车。
+        外层钢架的可见节点是三角面重心 triC，它比顶点面【往里】一个曲率弓高
+        （实测 triC 到质心 1.03，而顶点 1.14）⇒ u=0.30、smoothstep 后 φ 掉 21%，
+        外层腹杆的蛋端只剩 φ1.96（探针 B2 抓到的）。而且弓高随纬度变，
+        同一层里赤道与极点会漂成两个粗细 —— 那不是「层」，是「纬度」。
+        层归属是确定的：外层端就是外层，内层端就是内层。跨层杆两端各自取值 ⇒ 天然锥形。 */
+  function rGrad(base, u) {
+    if (!(base > rfL)) base = rfL;
+    if (!(u > 0)) return base;
+    if (u >= 1) return rfL;
+    return base + (rfL - base) * (u * u * (3 - 2 * u));   /* smoothstep：中段过渡柔和 */
+  }
+
   var vc = {};
   for (i = 0; i < net.cells.length; i++) vc[net.cells[i].v] = i;
   function cR(v) { var ci = vc[v]; return ci === undefined ? st.r0 : net.cells[ci].rr; }
@@ -13110,14 +13347,24 @@ function f0HexL2(P) {
 
   /* 杆集合：全部过 pushS ⇒ 短杆上限与杆径范围只有一处口径 */
   var tie = [], spoke = [], in2 = [], brace = [], apexS = [], innerS = [];
-  var rMin = 1e9, rMax = -1e9, nClamp = 0;
-  function pushS(arr, A, B, r) {
+  var rMin = 1e9, rMax = -1e9, nClamp = 0, nFloorMin = 0;
+  /* r2 省略 ⇒ 等径直杆（与旧几何逐字节一致）；给了 ⇒ 变径锥杆（老师允许，层间腹杆就是它）。 */
+  function pushS(arr, A, B, r, r2) {
     var L = d2(A, B);
     if (!(L > 1e-9)) return;
-    if (r > 0.32 * L) { r = 0.32 * L; nClamp++; }
+    if (r2 === undefined) r2 = r;
+    var rmx = r > r2 ? r : r2;
+    /* 短杆上限：按【粗的那端】同比缩小两端，锥度不变（各夹各的会把锥度夹歪）
+       ⚠ 与外层同一个 0.45：两处口径必须一致，否则同一根杆在两层里两种夹法 */
+    if (rmx > 0.45 * L) { var fq = 0.45 * L / rmx; r *= fq; r2 *= fq; nClamp++; }
+    /* 最细 φ 下限：短杆被上限夹到 floor 以下时，floor 优先（老师：不许细于 1mm） */
+    if (r < rfL) { r = rfL; nFloorMin++; }
+    if (r2 < rfL) { r2 = rfL; nFloorMin++; }
     if (r < rMin) rMin = r;
     if (r > rMax) rMax = r;
-    arr.push({ a: A, b: B, r: r });
+    if (r2 < rMin) rMin = r2;
+    if (r2 > rMax) rMax = r2;
+    arr.push({ a: A, b: B, r: rmx, rA: r, rB: r2 });
   }
 
   /* ---- 层间连接：三种接法（2026-11-03 老师指出的「没连上节点」就是这里） ----
@@ -13137,19 +13384,22 @@ function f0HexL2(P) {
     for (i = 0; i < V.length; i++) {
       var ci = vc[i];
       var A0 = (ci === undefined) ? V[i] : cellCtr[ci];
-      pushS(tie, A0, V2[i], cR(i) * 0.46);
+      pushS(tie, A0, V2[i], rGrad(cR(i), 0), rGrad(cR(i), uIn));
     }
     if (web === 2) {
       for (i = 0; i < net.cells.length; i++) {
-        var pl1 = net.cells[i].poly, rS = Math.max(0.0004, net.cells[i].rr * 0.30);
-        for (j = 0; j < pl1.length; j++) pushS(spoke, cellCtr[i], pl1[j], rS);
+        /* 辐条同样走渐变：它在格内（u≈0）⇒ 就是外层 φ。原来又乘 0.30，等于
+           同一根「外层格心连到六个节点」的杆被偷偷做细 —— 那是把「层」和「粗细」混为一谈。 */
+        var pl1 = net.cells[i].poly, rS = Math.max(rfL, net.cells[i].rr);
+        for (j = 0; j < pl1.length; j++) pushS(spoke, cellCtr[i], pl1[j], rGrad(rS, 0), rGrad(rS, 0));
       }
     }
   }
 
   /* ---- 内层三角杆：三角网的每一条边 ---- */
   em.forEach(function (E) {
-    pushS(in2, V2[E.u], V2[E.v], 0.5 * (cR(E.u) + cR(E.v)) * 0.46);
+    var rb0 = 0.5 * (cR(E.u) + cR(E.v));
+    pushS(in2, V2[E.u], V2[E.v], rGrad(rb0, uIn), rGrad(rb0, uIn));
   });
 
   /* ---- 四面体：内层每个三角面作底座，向蛋内立第 4 点 ---- */
@@ -13209,6 +13459,14 @@ function f0HexL2(P) {
     var outDot = fnx*(A[0]+B[0]+C[0]) + fny*(A[1]+B[1]+C[1]) + fnz*(A[2]+B[2]+C[2]);
     var sgn = outDot > 0 ? -1 : 1;
     var P4 = [cx + sgn*fnx*hF, cy + sgn*fny*hF, cz + sgn*fnz*hF];
+    /* 🔴 v9.58 尖刺钳制（老师 2026-11-09 圈的「蛋尖钢架很细」就是它）——
+       极点那圈三角形是【针状】（外接圆半径 ≈ 边长的 7 倍），顶点沿法向推出去
+       会戳到壳外：实测 216 / 672 个顶点到原点的距离 > 全网最大半径，屏上就是
+       蛋尖周围一圈又长又细的针（φ1mm 的锥侧棱 ⇒ 看着"钢架很细"）。
+       约束：顶点必须留在壳内 —— 局部壳半径取【底座三顶点到原点的最大距离】Rv
+       （内层壳是同心缩放的蛋面，三个底座顶点本来就贴在壳上，Rv 就是那一刻的壳半径）。
+       超了按比例缩 h：只缩长度、不改方向 ⇒ 三条侧棱仍严格等长（apexR 判据不受影响）。 */
+
     /* 用【索引赋值】而不是 push：抽稀后 ap 会是稀疏数组，但 ap[i] 永远对应 T[i]，
        下面 innerS 用 ap[E.f[0]]/ap[E.f[1]] 才不会错位（push 会让整条链往前挤）。 */
     ap[i] = P4; hSum += hF;
@@ -13224,9 +13482,10 @@ function f0HexL2(P) {
     apexR.push(apHi / Math.max(1e-12, apLo));
     var rB = (cR(ia) + cR(ib) + cR(ic)) / 3;
     if (skin >= 4) {
-      pushS(apexS, A, P4, rB * 0.44);
-      pushS(apexS, B, P4, rB * 0.44);
-      pushS(apexS, C, P4, rB * 0.44);
+      /* 中层 → 芯：这才是老师要看的那一段「往蛋里再走一层就再细一档」 */
+      pushS(apexS, A, P4, rGrad(rB, uIn), rGrad(rB, 1));
+      pushS(apexS, B, P4, rGrad(rB, uIn), rGrad(rB, 1));
+      pushS(apexS, C, P4, rGrad(rB, uIn), rGrad(rB, 1));
     }
   }
 
@@ -13242,11 +13501,12 @@ function f0HexL2(P) {
   var nZeroIn = 0;
   if (doBrace) {
     em.forEach(function (E) {
-      var rA = 0.5 * (cR(E.u) + cR(E.v)) * 0.30;
+      var rA = 0.5 * (cR(E.u) + cR(E.v));
       for (var q = 0; q < E.f.length; q++) {
         var tc = net.triC[E.f[q]];
-        pushS(brace, tc, V2[E.u], rA);
-        pushS(brace, tc, V2[E.v], rA);
+        /* 这四根就是「连接杆」：外层端 φo、内层端 φf ⇒ 天然锥形（老师要的那种变径） */
+        pushS(brace, tc, V2[E.u], rGrad(rA, 0), rGrad(rA, uIn));
+        pushS(brace, tc, V2[E.v], rGrad(rA, 0), rGrad(rA, uIn));
       }
     });
     /* ---- 内顶点互连：相邻两个四面体的内顶点相连 ⇒ 内层三正则网 ----
@@ -13262,7 +13522,8 @@ function f0HexL2(P) {
          极点那几圈的三角形是针状（外接圆半径 ≈ 边长的 7 倍），相邻两个锥的第 4 点
          落到同一个点上（实测 1e-18 量级），杆画不出来。这里分开计数。 */
       if (!(d2(P1, P2) > 1e-9)) { nZeroIn++; return; }
-      pushS(innerS, P1, P2, 0.5 * (cR(E.u) + cR(E.v)) * 0.40);
+      var rb1 = 0.5 * (cR(E.u) + cR(E.v));
+      pushS(innerS, P1, P2, rGrad(rb1, 1), rGrad(rb1, 1));
     });
   }
 
@@ -13296,6 +13557,8 @@ function f0HexL2(P) {
     nFace: T.length,
     nBrace: brace.length, nApex: apexS.length, nInner: innerS.length, nZeroIn: nZeroIn,
     web: web, phase: phase, nSpoke: spoke.length,
+    /* 三层深度与【中层】基准杆径：屏上要能直接读「外 φ → 中 φ → 芯 φ」三个数 */
+    uIn: uIn, dIn: dIn, dCore: dCore, rMid: rGrad(st.r0, uIn),
     core: core, coreStep: coreStep,
     lenOut: lenOut, lenIn: lenIn, lenCore: lenCore,
     lenAll: lenOut + lenIn,
@@ -13311,12 +13574,70 @@ function f0HexL2(P) {
     tetHi: tetR.length ? tetR[tetR.length - 1] : 0,
     apexMed: apexR.length ? apexR[(apexR.length / 2) | 0] : 0,
     apexHi: apexR.length ? apexR[apexR.length - 1] : 0,
-    rMin: rMin === 1e9 ? 0 : rMin, rMax: rMax === -1e9 ? 0 : rMax, nClamp: nClamp
+    rMin: rMin === 1e9 ? 0 : rMin, rMax: rMax === -1e9 ? 0 : rMax,
+    nClamp: nClamp, nFloorMin: nFloorMin
   };
   var out = { V2: V2, tets: tets, ap: ap, tie: tie, spoke: spoke, in2: in2, brace: brace,
               apexS: apexS, innerS: innerS, stats: stats };
   F0L2_CACHE = { k: key, v: out };
   return out;
+}
+
+/* ---- 节点形状模板（老师 2026-11-09：「这儿的八面体可以换成球体可选」）----
+   0 = 八面体（原样：6 顶点 / 8 面，棱角分明，像钣金节点）
+   1 = 球（八面体做一次 1→4 细分、顶点归一化到球面 ⇒ 18 顶点 / 32 面）
+       为什么不用 UV 球：UV 球在极轴挤成一撮、三角大小差几倍；细分八面体的三角几乎等大，
+       而且只有 32 面（UV 球 8×6 是 96 面）—— M 高时节点上千个，省下来的是主线程。
+   模板只建一次，循环里只做「平移 + 缩放 + 拷色」。 */
+var F0_NTPL = {};
+function f0NodeTpl(shape) {
+  var kk = shape ? 1 : 0;
+  if (F0_NTPL[kk]) return F0_NTPL[kk];
+  var OCT = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+  var OF = [[0, 2, 4], [2, 1, 4], [1, 3, 4], [3, 0, 4], [2, 0, 5], [1, 2, 5], [3, 1, 5], [0, 3, 5]];
+  if (!kk) { F0_NTPL[0] = { v: OCT, f: OF }; return F0_NTPL[0]; }
+  var V = [], F = [], mid = {}, i2, f2;
+  for (i2 = 0; i2 < 6; i2++) V.push(OCT[i2]);
+  function midp(a, b) {
+    var k2 = a < b ? (a + '_' + b) : (b + '_' + a);
+    if (mid[k2] !== undefined) return mid[k2];
+    var pa = V[a], pb = V[b];
+    var x = pa[0] + pb[0], y = pa[1] + pb[1], z = pa[2] + pb[2];
+    var l = Math.sqrt(x * x + y * y + z * z) || 1;
+    V.push([x / l, y / l, z / l]);
+    mid[k2] = V.length - 1;
+    return mid[k2];
+  }
+  for (f2 = 0; f2 < 8; f2++) {
+    var a2 = OF[f2][0], b2 = OF[f2][1], c2 = OF[f2][2];
+    var ab = midp(a2, b2), bc = midp(b2, c2), ca = midp(c2, a2);
+    F.push([a2, ab, ca], [ab, b2, bc], [ca, bc, c2], [ab, bc, ca]);
+  }
+  F0_NTPL[1] = { v: V, f: F };
+  return F0_NTPL[1];
+}
+
+/* v9.64 节点中轴朝向：八面体的「顶点—底点」轴（模板里的 +Y）必须沿【径向】——
+   顶点朝外、底点朝蛋的原点。不做这一步，每颗节点的 6 个尖全长在世界的 ±X/±Y/±Z 上，
+   赤道环上就是一片朝向完全一致、与蛋面毫无关系的菱形花纹（实测最近尖与径向平均差 31.5°）。
+   旋转取「把 +Y 沿最短路径转到 r̂」那一个（Rodrigues），不带额外扭转；
+   两极 r̂=±Y 时退化：顶极点恒等、底极点绕 X 转 180°（连续，无奇点）。
+   返回行主序 3×3：R·v = 顶点坐标。
+   ⚠ 「径向」≠「蛋面外法向」：蛋是椭球，两者只在赤道与两极重合，中间纬度不重合；
+     这里按老师原话取【指向原点】的径向，不是表面法向。 */
+function f0RadRot(q) {
+  var L = Math.sqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2]);
+  if (!(L > 1e-12)) return [1, 0, 0, 0, 1, 0, 0, 0, 1];   /* 落在原点上没有径向可言 */
+  var tx = q[0] / L, d = q[1] / L, tz = q[2] / L;
+  var nx = Math.sqrt(tx * tx + tz * tz);
+  if (nx < 1e-9) {
+    return d > 0 ? [1, 0, 0, 0, 1, 0, 0, 0, 1]        /* 顶极点：+Y 已经是径向 */
+                 : [1, 0, 0, 0, -1, 0, 0, 0, -1];    /* 底极点：绕 X 轴转 180° */
+  }
+  var kx = tz / nx, kz = -tx / nx, om = 1 - d;          /* k 是旋转轴（单位），s = nx */
+  return [ d + om * kx * kx, -nx * kz,          om * kx * kz,
+           nx * kz,           d,                -nx * kx,
+           om * kz * kx,      nx * kx,           d + om * kz * kz ];
 }
 
 /* ---- 蛋面钢架 · 建几何 ---- */
@@ -13362,18 +13683,32 @@ function f0HexBuild(P) {
     if (S2.r > triR[S2.f2]) triR[S2.f2] = S2.r;
   }
   var np = [], ni = [], ncol = [], nbase = 0;
-  var OCT = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
-  var OF = [[0, 2, 4], [2, 1, 4], [1, 3, 4], [3, 0, 4], [2, 0, 5], [1, 2, 5], [3, 1, 5], [0, 3, 5]];
+  var nShape = (P.hxNodeShape === undefined ? 0 : (P.hxNodeShape | 0));
+  /* v9.64：0 = 中轴沿径向（默认，顶点朝外）；1 = 朝世界轴（原样，全模型同向） */
+  var nAx = (P.hxNodeAx === undefined ? 0 : (P.hxNodeAx | 0));
+  var TPLN = f0NodeTpl(nShape), TV = TPLN.v, TF = TPLN.f;
+  var TVN = TV.length, TFN = TF.length;
+  /* 帽子里的三角面重心已被合并到同一个极点：只画代表点那一颗，
+     其余跳过 —— 全画就是同位置叠 N 颗球（视觉一模一样，白烧 N×96 个三角）。 */
+  var capMarkB = net.capMark || {}, capRepB = net.capRep || [];
   for (i = 0; i < net.T.length; i++) {
+    if (capMarkB[i] && capRepB.indexOf(i) < 0) continue;
     var R3 = Math.max(0.0006, triR[i] * nodeK);
-    var q2 = net.triC[i];
+    var q2 = capMarkB[i] || net.triC[i];
     var cN = useC ? f0CmapColor(P, f0MapVal(P, q2, st)) : null;
-    for (k = 0; k < 6; k++) {
-      np.push(q2[0] + OCT[k][0] * R3, q2[1] + OCT[k][1] * R3, q2[2] + OCT[k][2] * R3);
+    var nM3 = nAx ? null : f0RadRot(q2);
+    for (k = 0; k < TVN; k++) {
+      var nVx = TV[k][0], nVy = TV[k][1], nVz = TV[k][2];
+      if (nM3) {
+        var nRx = nM3[0] * nVx + nM3[1] * nVy + nM3[2] * nVz;
+        var nRy = nM3[3] * nVx + nM3[4] * nVy + nM3[5] * nVz;
+        nVz = nM3[6] * nVx + nM3[7] * nVy + nM3[8] * nVz; nVx = nRx; nVy = nRy;
+      }
+      np.push(q2[0] + nVx * R3, q2[1] + nVy * R3, q2[2] + nVz * R3);
       if (useC) ncol.push(cN[0], cN[1], cN[2]);
     }
-    for (k = 0; k < 8; k++) ni.push(nbase + OF[k][0], nbase + OF[k][1], nbase + OF[k][2]);
-    nbase += 6;
+    for (k = 0; k < TFN; k++) ni.push(nbase + TF[k][0], nbase + TF[k][1], nbase + TF[k][2]);
+    nbase += TVN;
   }
   if (np.length) {
     var ng = new THREE.BufferGeometry();
@@ -13451,12 +13786,19 @@ function f0HexBuild(P) {
     var ir = Math.max(0.0006, L2.stats.rMax * 1.25);
     for (i = 0; i < L2.V2.length; i++) {
       var v2p = L2.V2[i], cn2 = useC ? f0CmapColor(P, f0MapVal(P, v2p, st)) : null;
-      for (k = 0; k < 6; k++) {
-        ip.push(v2p[0] + OCT[k][0] * ir, v2p[1] + OCT[k][1] * ir, v2p[2] + OCT[k][2] * ir);
+      var iM3 = nAx ? null : f0RadRot(v2p);   /* 内外必须同一朝向，否则交界处两种花纹打架 */
+      for (k = 0; k < TVN; k++) {
+        var iVx = TV[k][0], iVy = TV[k][1], iVz = TV[k][2];
+        if (iM3) {
+          var iRx = iM3[0] * iVx + iM3[1] * iVy + iM3[2] * iVz;
+          var iRy = iM3[3] * iVx + iM3[4] * iVy + iM3[5] * iVz;
+          iVz = iM3[6] * iVx + iM3[7] * iVy + iM3[8] * iVz; iVx = iRx; iVy = iRy;
+        }
+        ip.push(v2p[0] + iVx * ir, v2p[1] + iVy * ir, v2p[2] + iVz * ir);
         if (useC) ic2.push(cn2[0], cn2[1], cn2[2]);
       }
-      for (k = 0; k < 8; k++) ii.push(ib2 + OF[k][0], ib2 + OF[k][1], ib2 + OF[k][2]);
-      ib2 += 6;
+      for (k = 0; k < TFN; k++) ii.push(ib2 + TF[k][0], ib2 + TF[k][1], ib2 + TF[k][2]);
+      ib2 += TVN;
     }
     if (ip.length) {
       var ig = new THREE.BufferGeometry();
@@ -13676,8 +14018,9 @@ function f0HexRead(P) {
   /* 行距比：赤道最疏、极点最密 —— 这行是「非线性采样真生效」的证据 */
   rows.push(['纬圈行距 赤道 : 极点', st.hEq.toFixed(4) + ' : ' + st.hPole.toFixed(4) +
     '　= <b>' + st.hRatio.toFixed(2) + '×</b>' +
-    '（q=0 等弧长档会退回 1 附近；回不到 1.00 是因为两极的列数被压到 6 的下限，'
-    + '末几圈仍然偏密 —— 实测 q=0 是 1.27×，写「必然 1.0×」是拿旧实现当标准）']);
+    '（q=0 等弧长档本该退回 1.00；回不到 1.00 是因为两极的列数被压到 6 的下限，'
+    + '末几圈仍然偏密 —— 本档实测 <b>' + st.hRatio.toFixed(2) + '×</b>，写死「q=0 必然 1.0×」'
+    + '是拿理想实现当标准，不是这一个 M 的读数）']);
   rows.push(['格数', st.n + ' 格　（六边形 ' + st.n6 + ' · 五边形 ' + st.n5 +
     ' · 七边形 ' + st.n7 + (st.n4 ? ' · 四边形 ' + st.n4 : '') + (st.n8 ? ' · 八边形 ' + st.n8 : '') + '）']);
   rows.push(['欧拉账 Σ(6−边数)',
@@ -13686,16 +14029,25 @@ function f0HexRead(P) {
   rows.push(['下极格（钝端）', st.baseSides + ' 边 · 格心到轴 <b>' + st.baseR.toFixed(6) + '</b>']);
   rows.push(['格面积占比', '最小 ' + st.min.toFixed(3) + '% ／ 中位 ' + st.med.toFixed(3) +
     '% ／ 最大 ' + st.max.toFixed(3) + '%（Σ=100%）']);
-  rows.push(['棱杆径（∝ 面积占比^γ）', (st.srMin / st.H * 1000).toFixed(2) + ' ~ ' +
-    (st.srMax / st.H * 1000).toFixed(2) + ' ‰蛋高　（比 ' +
-    (st.srMax / Math.max(1e-9, st.srMin)).toFixed(2) + '×）']);
+  rows.push(['蛋高（正视 xy）', '<b>' + st.Hcm.toFixed(1) + ' cm</b>　·　杆径 φ(mm) 就按这个高度折算' +
+    '（1 mm = ' + st.mmw.toFixed(5) + ' 世界单位）⇒ 同一条 φ 在 ' + st.Hcm.toFixed(0) +
+    'cm 蛋上比在 1m 蛋上粗 ' + (1000 / (st.Hcm * 10)).toFixed(1) + ' 倍，' +
+    '那是实物口径，不是画法差别；构图/取景不受影响']);
+  /* 2026-11-09：这一行原来是 ‰蛋高，和上面「杆径渐变（三层）」的 mm φ 两套单位，
+     同一屏两个口径本身就是坑（探针按 mm 判会假红、人按 ‰ 读会算错）。统一成 mm φ。 */
+  rows.push(['棱杆径（∝ 面积占比^γ）', '<b>φ' + (st.srMin / st.mmw * 2).toFixed(2) + ' ~ ' +
+    (st.srMax / st.mmw * 2).toFixed(2) + ' mm</b>　（最粗/最细 = ' +
+    (st.srMax / Math.max(1e-9, st.srMin)).toFixed(2) + '×　γ=0 时期望 1.00×；' +
+    '实测大于 1 的部分全部来自「0.45×杆长」短杆上限，与 γ 无关）']);
   rows.push(['杆长', (st.lenMin / st.H * 1000).toFixed(1) + ' ~ ' +
     (st.lenMax / st.H * 1000).toFixed(1) + ' ‰蛋高　（比 ' +
     (st.lenMax / Math.max(1e-9, st.lenMin)).toFixed(1) + '×　格子大小不一是本意）']);
-  rows.push(['短杆上限 0.32×杆长', st.nLenClamp > 0
+  rows.push(['短杆上限 0.45×杆长', st.nLenClamp > 0
     ? '夹住了 <b>' + st.nLenClamp + '</b> 根（集中在两极：那里格小杆短，不限就会糊成球）'
     : '本档没有杆碰到上限']);
-  rows.push(['杆 / 节点', st.struts + ' 根杆 ／ ' + st.tris + ' 个节点（三杆交汇）']);
+  rows.push(['杆 / 节点', st.struts + ' 根杆 ／ ' + st.nNode + ' 个节点（三杆交汇）' +
+    (st.capMerge > 0 ? '　·　极点帽 <b>' + st.capMerge + '</b> 个三角面已并成 2 颗极点节点'
+      + '（三角面 ' + st.tris + ' 个，节点少 ' + st.capMerge + ' 颗）' : '')]);
   /* 「是不是真的正六边形」—— 量测不看构造公式，读每格六条棱的真实长度。
      1.000 = 完美正六边形。缺陷圈（5/7 边）与极点格不计入。 */
   rows.push(['六棱等长比（正六边形 = 1.000）',
@@ -13707,9 +14059,12 @@ function f0HexRead(P) {
     '每一圈的宽高比 d/行距 ≡ 1.1547（正六边形的值，读数下面一行是实测）。' +
     '但半径是【逐圈在变】的：相邻两圈差 ' + (st.hRatio > 1.001 ? '十几' : '不到一') +
     '个百分点时，每格的「上边」与「下边」本来就一边宽一边窄 —— ' +
-    '这是把蜂窝铺到旋转面上绕不过去的事。两条改善路：加密 M（到上限 48 时中位约 1.06）' +
-    '或把 q 调小（q=0 等弧长时中位 ≈ 1.05，但两端就不密了）。' +
-    '「每格一样大」与「两端更密」本来就不能同时成立，本页选了后者 —— 这是老师要的那一条。']);
+    '这是把蜂窝铺到旋转面上绕不过去的事。两条改善路：加密 M（行距变细），或调 q。' +
+    '⚠ q 与这个比值【不是单调关系】—— 实测 M=26 时 q=0 最匀（1.089），' +
+    'M=32 与 M=40 时反而 q≈0.5 最匀（1.057 / 1.065），而 M=40 的 q=1（1.099）' +
+    '还比 q=0（1.111）略好。原因是 q 改的是【每行格数】的量化结果，不是连续的形状参数。' +
+    '所以别把某个 q 当“最优”记住，每换一个 M 都可能挪 —— 看上一行的实测中位。' +
+    '能确定的一条：q 越大两端越密、赤道格子越扁（行距比单调上涨）。']);
 
   /* 逐圈 d/h：正六边形的行距比 1/(√3/2) = 1.15470。这一行是「行距真服从列数」的证据，
      读的是 ringS 的弧长差，不是构造公式（构造公式只能自证）。 */
@@ -13758,8 +14113,10 @@ function f0HexRead(P) {
       ((s2.core | 0) < 3 ? '　·　本档只给其中 <b>' + s2.nTet + '</b> 个面立锥（' +
         (s2.nTet / Math.max(1, s2.nFace) * 100).toFixed(1) + '%），<b>三角网本身没动</b>' : '')]);
     /* ---- 层间连接：这一行是本轮（2026-11-03）改动的核心，必须讲清「哪一端是节点」---- */
-    rows.push(['外层节点在哪', '钢架的节点是 <b>三角面重心 triC</b>（3 根杆交汇），共 ' + st.tris +
-      ' 个；六边形的几何中心 V 只是参数点，上面<b>没有杆</b>。' +
+    rows.push(['外层节点在哪', '钢架的节点是 <b>三角面重心 triC</b>（3 根杆交汇），共 ' + st.nNode +
+      ' 个' + (st.capMerge > 0 ? '（两极那 ' + st.capMerge + ' 个面并到极点上，'
+        + '所以是 ' + st.tris + ' 个面 / ' + st.nNode + ' 颗节点）' : '') +
+      '；六边形的几何中心 V 只是参数点，上面<b>没有杆</b>。' +
       '两者差一个曲率弓高（本档最大 ' + (s2.ctrOff / st.H * 1000).toFixed(2) +
       ' ‰蛋高）—— M 越小格子越大、差得越多，这正是旧版径向杆看着"从六边形中央戳出来"的原因']);
     if (s2.web === 1) {
@@ -13837,19 +14194,70 @@ function f0HexRead(P) {
       rows.push(['⚠ 这一档没有斜腹杆', '芯只有径向杆/辐条：抗压可以、抗剪为零（两层能相对面内滑移）。' +
         '把「层间连接」切到「节点斜腹杆」，或升到「★ 双层 + 斜撑 + 四面体芯」才是完整桁架']);
     }
-    rows.push(['芯杆径', (s2.rMin / st.H * 1000).toFixed(2) + ' ~ ' +
-      (s2.rMax / st.H * 1000).toFixed(2) + ' ‰蛋高（外层杆的 0.42~0.58 倍，细一档好分层）' +
-      (s2.nClamp ? '　短杆上限夹住 ' + s2.nClamp + ' 根' : '')]);
+    rows.push(['芯/内层杆径', (s2.rMin / st.mmw * 2).toFixed(2) + ' ~ ' +
+      (s2.rMax / st.mmw * 2).toFixed(2) + ' mm φ（按归一化径向深度从外层 φ 渐变到芯 φ；' +
+      '两端一外一内的杆是变径锥杆）' +
+      (s2.nClamp ? '　短杆上限夹住 ' + s2.nClamp + ' 根' : '') +
+      (s2.nFloorMin ? '　抬回最细下限 ' + s2.nFloorMin + ' 端' : '')]);
+    /* 杆径口径总账：老师要的是「外层 2.5 → 内层 1.0，最细不破 1mm」，屏上必须能直接核。
+       两个数都由 P 现算（不读缓存），单位 mm φ。 */
+    var phiOut = (st.r0 / st.mmw * 2).toFixed(2);
+    var phiMid = (s2.rMid / st.mmw * 2).toFixed(2);
+    var phiIn = (st.rf / st.mmw * 2).toFixed(2);
+    rows.push(['杆径渐变（三层）', '外层蜂窝 <b>φ' + phiOut + '</b> → 内层三角网 <b>φ' + phiMid +
+      '</b> → 芯（四面体 + 内顶点）<b>φ' + phiIn + '</b> mm' +
+      '（u 归一化径向深度：外层 0 / 内层 <b>' + s2.uIn.toFixed(3) + '</b> / 芯 1，' +
+      'uIn = 层间距 ÷（层间距＋四面体高）由 λ 现算；跨层的腹杆与锥侧棱两端各取各的 ⇒ 真锥形）' +
+      '　·　任何一根都不细于 φ' + phiIn + '；γ 会把大格再放大，最多 2.8 倍' +
+      (st.nFloorUp ? '　·　外层抬回下限 ' + st.nFloorUp + ' 根' : '') +
+      (s2.nClamp ? '　·　' + s2.nClamp + ' 根被短杆上限压过' : '')]);
+    /* 老师 2026-11-09：「注意最新的杆不能小于 1mm」。屏上必须能一眼核，而且要把
+       外层（net.struts 不走 pushS）也算进来 —— 只查 L2 的 rMin 会漏掉最大那一层。 */
+    var allLo = st.rMin, allHi = st.rMax;
+    if (s2.rMin < allLo) allLo = s2.rMin;
+    if (s2.rMax > allHi) allHi = s2.rMax;
+    /* 老师 2026-11-10：蛋尖要单独报 —— 全模型最细那个数被赤道的大杆一平均，
+       看不出尖上到底多粗。这一行两个态都能读（关掉合并时它自己会说该开）。 */
+    rows.push(['蛋尖极点（拓扑补强）', st.capOn
+      ? ('<b>已合并</b>：极点帽 <b>' + st.capN0 + '</b> / <b>' + st.capN1 +
+        '</b> 个三角面并成 1 颗节点，丢掉 <b>' + st.nCapDrop + '</b> 根零长杆（两个极点合计）' +
+        '　·　蛋尖区（极点 5% 蛋高内）<b>' + st.tipStrut + '</b> 根：φ<b>' +
+        (st.tipPhiMin / st.mmw * 2).toFixed(3) + ' ~ ' + (st.tipPhiMax / st.mmw * 2).toFixed(2) +
+        '</b> mm，最短杆 <b>' + (st.tipLenMin / st.mmw).toFixed(3) + '</b> mm' +
+        ((st.tipPhiMin / st.mmw * 2) >= 1 - 1e-9
+          ? '　⇒ <b>没有一根细于 φ1.000 mm</b>'
+          : '　<span style="color:#b03020">⚠ 有杆细于 φ1.000 mm！</span>'))
+      : ('<b>未合并</b>（原始拓扑）：极点那一圈三角面的重心挤在极点 0.2mm 内，杆长只有 ' +
+        (st.tipLenMin / st.mmw).toFixed(3) + ' mm ⇒ 杆径被 0.45×杆长 钉死在 φ' +
+        (st.tipPhiMin / st.mmw * 2).toFixed(3) + ' mm（0.45 是「两管刚好相切」的极限，' +
+        '再粗就成球串）。要加粗把「蛋尖极点」切到「合并」')]);
+    rows.push(['全模型最细杆（实测）', '<b>φ' + (allLo / st.mmw * 2).toFixed(3) + '</b> mm ' +
+      '（最粗 φ' + (allHi / st.mmw * 2).toFixed(2) + ' mm）　·　下限 φ' +
+      (st.rf / st.mmw * 2).toFixed(2) + ' mm ⇒ ' +
+      (allLo >= st.rf - 1e-9 ? '<b>没有一根低于下限</b>' : '<b style="color:#b03020">有杆低于下限！</b>') +
+      '　·　被抬回下限的：外层 ' + st.nFloorUp + ' 根、内层与芯 ' + s2.nFloorMin + ' 端' +
+      '　（被压的只有两类：① γ>0 时小格子被乘小；② 蛋尖那圈杆短，被「0.45×杆长」的上限压下来。' +
+      /* ⚠ stats 里没有 γ（它只在 f0HexNet 的入参处），这里直接读 P —— 写 st.gVal 是凭空造的字段，
+         运行到这一行会是 NaN.toFixed 不报错但印出「NaN」，比报错更难发现。 */
+      '当前 γ=' + (P.hxG === undefined ? 0 : +P.hxG).toFixed(2) + '，所以压细的全部来自 ②，不是 γ；' +
+      '无论哪一类，抬回后都不低于 φ' + (st.rf / st.mmw * 2).toFixed(2) + '）']);
     rows.push(['二层总杆数', '<b>' + s2.nStruts2 + '</b> 根（＋外层 ' + st.struts + ' 根 = ' +
       (s2.nStruts2 + st.struts) + ' 根）']);
     /* 顶点合计：不是拍脑袋的「大概」，而是按建几何的定值算 ——
        外层杆 6 棱柱 = 24 三角 = 72 顶点/根，节点八面体 = 8 面 = 24 顶点/个，
        内层与芯全用 4 棱柱 = 16 三角 = 48 顶点/根。M 一推高它涨得很快，
        所以这一行是给「会不会卡」一个可核的数（不含薄壳）。 */
-    var vOuter = st.struts * 72 + st.tris * 24;
-    if (L2) vOuter += s2.nStruts2 * 48 + s2.nV2 * 24;
-    rows.push(['顶点合计', '<b>' + vOuter + '</b> 个（M=26 时约 56 万；M=58 约 415 万、构建约 1.4 秒' +
-      '　·　按 外层杆×72 ＋ 节点×24 ＋ 内层/芯杆×48 ＋ 内层节点×24 现算，不含薄壳）']);
+    /* 节点是球时 18 顶点 / 32 面 = 96 个非索引顶点（八面体是 6 顶点 → 24） */
+    var vNode = ((P.hxNodeShape | 0) === 1) ? 96 : 24;
+    /* v9.63：节点必须按 nNode（真画出来的）算。按 st.tris 算会在极点帽合并后多算
+       Σ(capN−1)×vNode 个顶点 —— f0hex 的「顶点合计 = 场景顶点和」当场差 960。 */
+    var vOuter = st.struts * 72 + st.nNode * vNode;
+    if (L2) vOuter += s2.nStruts2 * 48 + s2.nV2 * vNode;
+    rows.push(['顶点合计', '<b>' + vOuter + '</b> 个（顶点数 ≈ ∝ M²；本档 M=' + st.mTarget +
+      ' ⇒ 实得 ' + st.nRings + ' 行，上限 M=48' +
+      '　·　按 外层杆×72 ＋ 节点×' + vNode + '（节点数已扣掉极点帽合并的 '
+      + st.capMerge + ' 颗）＋ 内层/芯杆×48 ＋ 内层节点×' + vNode +
+      ' 现算（节点' + (vNode === 96 ? '球 32 面' : '八面体 8 面') + '），不含薄壳）']);
   }
 
   /* ---------------- 剖面（2026-11-04 老师：左侧 3D 图要能看剖面）----------------
@@ -13930,7 +14338,9 @@ var FAMS=[
       var sk=(P.cutSkin|0);
       s='蛋面钢架 · '+H2.nRings+' 行 · '+H2.n+' 格（六 '+H2.n6+' / 五 '+H2.n5+' / 七 '+H2.n7+
         '）· 六棱等长中位 '+H2.ergMed.toFixed(3)+
-        ' · 杆径 '+(H2.srMin/H2.H*1000).toFixed(2)+'~'+(H2.srMax/H2.H*1000).toFixed(2)+' ‰';
+        /* v9.57：杆径口径换成 φ(mm) —— 屏上这句话必须跟着实现改，否则读的还是「半径‰」那套 */
+        ' · 杆径 φ'+(H2.srMin/H2.mmw*2).toFixed(2)+'~'+(H2.srMax/H2.mmw*2).toFixed(2)+' mm'+
+        ' · 蛋高 '+H2.Hcm.toFixed(0)+'cm';
       if(sk>=3){
         var L2b=null;try{L2b=f0HexL2(P);}catch(e){}
         if(L2b){var B2=L2b.stats;
@@ -13979,14 +14389,39 @@ var FAMS=[
          {v:5,t:'双层 + 斜撑 + 四面体芯 + 薄壳'}]},
   {k:'hxRow',label:'母线分行数 M（目标值 · 沿蛋轴分多少道纬圈；实得见读数 · 上限 48，再高页面会卡死）',min:8,max:48,step:1,dp:0,
    when:function(P){return (P.cutSkin|0)>0;}},
-  {k:'hxQ',label:'两端加密指数 q（0=等弧长；1=行距 ∝ 半径 ⇒ 越靠尖/钝越密）',min:0,max:1.2,step:0.02,dp:2,
+  {k:'hxQ',label:'两端加密指数 q（0=等弧长；1=行距 ∝ 半径 ⇒ 越靠尖/钝越密；实测 M=32 时 0.22 六棱最匀——换成别的 M 最匀点会挪）',min:0,max:1.2,step:0.02,dp:2,
    when:function(P){return (P.cutSkin|0)>0;}},
-  {k:'hxR',label:'杆径基准 r₀（‰蛋高 · 再乘面积占比^γ）',min:0.8,max:9,step:0.05,dp:2,
+  /* 旧滑条 hxR（半径 ‰蛋高）已由「最外层杆 φ」接管：留着会让同一件事有两个来源
+     （违反「公式单一来源」）。字段仍在，只是不再出现在面板上，供老预设/老 URL 兼容。 */
+  {k:'hxR',label:'杆径基准 r₀（旧口径 · 已被「最外层杆 φ」接管）',min:0.8,max:9,step:0.05,dp:2,
+   when:function(P){return false;}},
+  {k:'hxHcm',label:'蛋高（cm · 正视 xy 里顶端到底端的真实高度 · 杆径 mm 就按它折算；改它等于改整颗蛋的物理标定，不动构图）',
+   min:6,max:40,step:0.5,dp:1,
    when:function(P){return (P.cutSkin|0)>0;}},
-  {k:'hxG',label:'面积→杆径指数 γ（大格粗杆；0=所有杆一样粗）',min:-1.5,max:2,step:0.05,dp:2,
+  {k:'hxDo',label:'最外层杆 φ（mm 实标 · 按上一行「蛋高 cm」折算 · γ=0 时外层蜂窝一律此值）',min:0.6,max:18,step:0.05,dp:2,
    when:function(P){return (P.cutSkin|0)>0;}},
-  {k:'hxNode',label:'节点球倍数（三杆交汇处的八面体）',min:0.7,max:3.2,step:0.05,dp:2,
+  {k:'hxDf',label:'最细杆 φ 下限（mm · 也是【芯】的 φ；外层 → 内层 → 芯 三级渐变，跨层杆变径）',min:0.3,max:8,step:0.05,dp:2,
    when:function(P){return (P.cutSkin|0)>0;}},
+  {k:'hxG',label:'面积→杆径指数 γ（大格粗杆；0 = 外层蜂窝一律 φ=最外层杆。默认 0：渐变只按【层】走，不按格大小）',min:-1.5,max:2,step:0.05,dp:2,
+   when:function(P){return (P.cutSkin|0)>0;}},
+  {k:'hxNode',label:'节点球倍数（三杆交汇处的节点 · 形状见下一行）',min:0.7,max:3.2,step:0.05,dp:2,
+   when:function(P){return (P.cutSkin|0)>0;}},
+  {k:'hxNodeShape',label:'节点形状（球比八面体费 4 倍三角；M 很高时更吃主线程）',type:'choice',
+   when:function(P){return (P.cutSkin|0)>0;},
+   opts:[{v:0,t:'八面体（原样 · 棱角分明 · 最省）'},
+         {v:1,t:'★ 球（八面体细分一次 · 32 面 · 三杆交汇处像个焊球 · 默认）'}]},
+  /* v9.64：中轴朝向 —— 八面体的「顶点—底点」就是模板里的 ±Y 轴。 */
+  {k:'hxNodeAx',label:'节点中轴朝向（顶点—底点 这条轴）',type:'choice',
+   when:function(P){return (P.cutSkin|0)>0;},
+   opts:[{v:0,t:'★ 沿径向（顶点朝外 · 底点朝蛋心）'},
+         {v:1,t:'朝世界轴（原样 · 全模型同向）'}]},
+  /* v9.62：蛋尖细杆是【长度】决定的，不是【粗细】决定的 —— 只能动拓扑。
+     判定用「含极点顶点的那一圈三角面」，是纯拓扑定义，没有可调阈值。 */
+  {k:'hxTip',label:'蛋尖极点（极点那一圈三角面的重心全挤在 0.2mm 内 ⇒ 杆长只有 1.2mm，杆径被 0.45×杆长 钉死；并成一颗节点后杆长 ×2，φ 才上得来）',
+   type:'choice',
+   when:function(P){return (P.cutSkin|0)>0;},
+   opts:[{v:0,t:'原始拓扑（极点帽各自成格 · 尖上一圈 φ1.08 的短杆）'},
+         {v:1,t:'★ 极点合并成一颗节点（默认 · 蛋尖 φ 由 1.08 提到 2.16 mm · 网壳 apex node 做法）'}]},
   {k:'hxView',label:'显示层次（只看某层便于检查 · 只藏不建，读数不受影响）',type:'choice',
    when:function(P){return (P.cutSkin|0)>=3;},
    opts:[{v:0,t:'★ 全部（外层六边形 + 内层三角 + 芯）'},
@@ -14019,8 +14454,8 @@ var FAMS=[
    type:'choice',
    when:function(P){return (P.cutSkin|0)>=4;},
    opts:[{v:0,t:'不建内芯 · 双层壳 + 腹杆（最省料 · 芯里全空）'},
-         {v:1,t:'★ 稀疏 · 每 4 个三角面留 1 个锥（默认 · 省料且仍抗剪）'},
-         {v:2,t:'中 · 每 2 个三角面留 1 个锥'},
+         {v:1,t:'稀疏 · 每 4 个三角面留 1 个锥（省料且仍抗剪）'},
+         {v:2,t:'★ 中 · 每 2 个三角面留 1 个锥（默认 · 老师 2026-11-09 定）'},
          {v:3,t:'全建 · 每个三角面一个锥（最费料最刚 · 旧版就是这个）'}]},
   {k:'hxCmap',label:'配色色表（cmap · 顶点色渐变）',type:'choice',
    when:function(P){return (P.cutSkin|0)>0;},
@@ -14050,9 +14485,10 @@ var FAMS=[
  def:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutZ0s:0,cutTheta:30,cutC:0.5,
       cutPhi:0,
       cutMode:0,cutTint:0,cutShow:0,
-      cutSkin:4,hxRow:26,hxQ:1.00,hxR:3.20,hxG:0.80,hxNode:1.35,
-      hxL2mode:0,hxL2:68,hxTetK:1.00,hxCore:1,hxCmap:0,hxMapT:0,hxSpiral:2.4,hxView:0,
-      hxWeb:1,hxL2phase:0,hxSec:0,hxSecOff:0,hxSecSide:0,hxSecFace:0},
+      cutSkin:4,hxRow:32,hxQ:0.22,hxHcm:18,hxDo:2.50,hxDf:1.00,hxG:0.00,hxNode:1.50,hxNodeShape:1,hxTip:1,
+      hxNodeAx:0,
+      hxL2mode:0,hxL2:68,hxTetK:1.00,hxCore:2,hxCmap:0,hxMapT:0,hxSpiral:2.4,hxView:0,
+      hxWeb:1,hxL2phase:0,hxSec:0,hxSecOff:0,hxSecSide:0,hxSecFace:1},
  build:f0Build,read:f0Read,prof:f0Prof,zAxis:'y',
  empty:'平面与这张曲面没有交点 —— 换母线、把 α 调小、或把 z₀ 挪回曲面所在的 y 区间',
  note:'<b>这一格是原「蛋形双锥斜切_3D交互对照」页的两个视图（Ⅰ 超双曲面斜切→蛋形、Ⅱ 直圆锥斜切→圆锥曲线），'+
@@ -14096,8 +14532,8 @@ var FAMS=[
   {t:'只看交线（藏起曲面，看曲线本身）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutMode:0,cutShow:1}},
   {t:'曲率着色（原 ⑥ 那张色图的做法）',v:{cutSurf:2,cutA:40,cutZ0:1.40,cutTint:1,cutShow:0}},
   {t:'★ 椭圆体（直锥 z=x 斜切 · α=30° ⇒ 长短轴 √2）',v:{cutSurf:5,cutA:30,cutZ0:1.618033988749895,cutMode:0,cutShow:0}},
-  {t:'★ 椭圆体钢架 · 马卡龙幻彩（径向×螺旋 2.4 圈 · 琉璃）',v:{cutSurf:5,cutA:30,cutZ0:1.618033988749895,cutMode:0,cutSkin:4,hxRow:26,hxQ:1.00,hxR:3.20,hxG:0.80,hxNode:1.35,hxL2mode:0,hxL2:68,hxTetK:1.00,hxCore:1,hxCmap:6,hxMapT:5,hxSpiral:2.4,hxWeb:1,hxL2phase:0}},
-  {t:'★ 黄金蛋 · 马卡龙幻彩（径向×螺旋 2.4 圈 · 琉璃）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutMode:0,cutSkin:4,hxRow:26,hxQ:1.00,hxR:3.20,hxG:0.80,hxNode:1.35,hxL2mode:0,hxL2:68,hxTetK:1.00,hxCore:1,hxCmap:6,hxMapT:5,hxSpiral:2.4,hxWeb:1,hxL2phase:0}},
+  {t:'★ 椭圆体钢架 · 马卡龙幻彩（径向×螺旋 2.4 圈 · 琉璃）',v:{cutSurf:5,cutA:30,cutZ0:1.618033988749895,cutMode:0,cutSkin:4,hxRow:26,hxQ:1.00,hxDo:1.15,hxG:0.80,hxNode:1.35,hxL2mode:0,hxL2:68,hxTetK:1.00,hxCore:1,hxCmap:6,hxMapT:5,hxSpiral:2.4,hxWeb:1,hxL2phase:0}},
+  {t:'★ 黄金蛋 · 马卡龙幻彩（径向×螺旋 2.4 圈 · 琉璃）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutMode:0,cutSkin:4,hxRow:26,hxQ:1.00,hxDo:1.15,hxG:0.80,hxNode:1.35,hxL2mode:0,hxL2:68,hxTetK:1.00,hxCore:1,hxCmap:6,hxMapT:5,hxSpiral:2.4,hxWeb:1,hxL2phase:0}},
   {t:'蛋 · 从质心往外（plasma · 内层落进低色段）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:4,hxRow:26,hxQ:1.00,hxCmap:0,hxMapT:3}},
   {t:'蛋 · 螺旋 4 圈（plasma · 会看到一道接缝）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:4,hxRow:26,hxQ:1.00,hxCmap:0,hxMapT:4,hxSpiral:4}},
   {t:'★ 直圆锥 α=45°（β=45 > θ=30 ⇒ 椭圆）',v:{cutSurf:1,cutTheta:30,cutA:45,cutZ0:1.35,cutShow:0}},
@@ -14106,17 +14542,17 @@ var FAMS=[
   {t:'双曲锥 · 对数母线斜切（原 ⑥ 第一档）',v:{cutSurf:2,cutA:35,cutZ0:1.40,cutShow:0}},
   {t:'舒伯格锥面斜切（原 ⑥ 第二档）',v:{cutSurf:3,cutC:0.5,cutA:30,cutZ0s:0.00,cutTint:0}},
   {t:'双叶双曲面斜切（原 ⑥ 第四档）',v:{cutSurf:4,cutA:55,cutZ0:1.00,cutShow:0}},
-  {t:'★ 蛋面钢架 · 正六边形（q=1.0 · M=26）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutMode:0,cutSkin:1,hxRow:26,hxQ:1.00,hxR:3.20,hxG:0.80,hxNode:1.35}},
-  {t:'蛋面钢架 + 薄壳（看每格的面积占比）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:2,hxRow:22,hxQ:0.80,hxR:3.20}},
+  {t:'★ 蛋面钢架 · 正六边形（q=1.0 · M=26）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutMode:0,cutSkin:1,hxRow:26,hxQ:1.00,hxDo:1.15,hxG:0.80,hxNode:1.35}},
+  {t:'蛋面钢架 + 薄壳（看每格的面积占比）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:2,hxRow:22,hxQ:0.80,hxDo:6.40}},
   {t:'钢架 · 等弧长对照 q=0（行距拉平 · 六棱更等长 ~1.05）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:1,hxRow:26,hxQ:0.00}},
   {t:'钢架 · 更细密（M=44 · 六棱更等长 1.10）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:1,hxRow:44,hxQ:1.00}},
-  {t:'钢架 · 粗杆 γ=1.4（大格明显更粗 · 能看出面积比）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:1,hxRow:24,hxQ:0.80,hxR:4.20,hxG:1.40}},
+  {t:'钢架 · 粗杆 γ=1.4（大格明显更粗 · 能看出面积比）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutMode:0,cutSkin:1,hxRow:24,hxQ:0.80,hxDo:1.51,hxG:1.40}},
   {t:'八度蛋钢架（α=33.69° · z₀=5/3）',v:{cutSurf:0,cutA:33.690067525979787,cutZ0:5/3,cutSkin:1,hxRow:26,hxQ:0.80}},
-  {t:'★ 双层 + 四面体芯（λ 由正四面体定 · plasma · 腹杆接节点）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutMode:0,cutSkin:4,hxRow:26,hxQ:1.00,hxR:3.20,hxG:0.80,hxNode:1.35,hxL2mode:0,hxL2:68,hxTetK:1.00,hxCmap:0,hxMapT:0,hxWeb:1,hxL2phase:0}},
+  {t:'★ 双层 + 四面体芯（λ 由正四面体定 · plasma · 腹杆接节点）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutMode:0,cutSkin:4,hxRow:26,hxQ:1.00,hxDo:1.15,hxG:0.80,hxNode:1.35,hxL2mode:0,hxL2:68,hxTetK:1.00,hxCmap:0,hxMapT:0,hxWeb:1,hxL2phase:0}},
   {t:'双层 · 只有节点腹杆（无四面体芯 · 看两层怎么连）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:3,hxRow:26,hxQ:1.00,hxCmap:0,hxWeb:1}},
   {t:'双层 · 反例：格心径向杆（两端都不是节点 · 会戳出来）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:3,hxRow:26,hxQ:1.00,hxCmap:0,hxWeb:0}},
   {t:'双层 · 径向 + 格心辐条（把格心做成真节点）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:3,hxRow:26,hxQ:1.00,hxCmap:0,hxWeb:2}},
-  {t:'双层 · 细网格 M=40（层间距自动变薄）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:4,hxRow:40,hxQ:1.00,hxR:2.60,hxL2mode:0,hxCmap:0,hxWeb:1}},
+  {t:'双层 · 细网格 M=40（层间距自动变薄）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:4,hxRow:40,hxQ:1.00,hxDo:5.20,hxL2mode:0,hxCmap:0,hxWeb:1}},
   {t:'双层 · viridis 配色',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:4,hxRow:26,hxQ:1.00,hxCmap:1,hxWeb:1}},
   {t:'双层 · 扁芯（四面体高 ×0.55 · 层间更薄）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:4,hxRow:26,hxQ:1.00,hxTetK:0.55,hxL2mode:1,hxL2:86,hxCmap:0,hxWeb:1}},
   {t:'双层 + 四面体 + 薄壳（金色壳 + 芯）',v:{cutSurf:0,cutA:31.71747441146101,cutZ0:1.618033988749895,cutSkin:5,hxRow:24,hxQ:1.00,hxCmap:0,hxMapT:0,hxWeb:1}}]},
@@ -16277,8 +16713,10 @@ function buildF0SecFace(ax,d,force){
   }
   F0SEC.key=key;
   if(!F0SEC.face){
+    /* 2026-11-09：老师要「加半透膜」当默认，但 0.10 的白底上等于没有（截图上完全看不出膜）。
+       0.22 既能看出是一层膜，又不至于把开口里的三角网糊掉。 */
     F0SEC.face=new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({
-      color:0x2f6fb5, transparent:true, opacity:0.10, side:THREE.DoubleSide, depthWrite:false }));
+      color:0x2f6fb5, transparent:true, opacity:0.22, side:THREE.DoubleSide, depthWrite:false }));
     F0SEC.face.name='f0secFace'; F0SEC.face.renderOrder=4; root.add(F0SEC.face);
   }
   var g2=F0SEC.face.geometry;
@@ -16353,7 +16791,11 @@ function rebuild(){
   }
   document.getElementById('readout').innerHTML=html;
   try{ f10RhCardPaint(f,P); }catch(e){ console.error(e); }
-  document.getElementById('badge').textContent=f.badge(P);
+  var bdEl=document.getElementById('badge');
+  bdEl.textContent=f.badge(P);
+  /* 只挂一次：点读数条 = 展开/收起（默认收起，见 #badge 的 line-clamp） */
+  if(!bdEl.__bd){bdEl.__bd=1;bdEl.title='点击展开 / 收起完整读数';
+    bdEl.addEventListener('click',function(){bdEl.classList.toggle('exp');});}
   /* 横截面 2D 预览：放在 rebuild() 里 ⇒ 任何参数变更路径（下拉 / 滑条 / 预设 /
      程序直接改 P）都会同步刷新，不会出现"3D 换了截面、2D 还是上一条曲线"。
      没有 secCv 画布的族，drawSecPreview() 内部直接返回，零开销。 */
