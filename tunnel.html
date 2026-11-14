@@ -492,7 +492,12 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 6px
         隔行（行交错偏振显示器）、左右 / 上下压缩（双投影 + 偏振片，或 VR 盒）、棋盘（DLP Link）。
         必须配合对应的偏振硬件与偏振眼镜才有效果；在普通屏幕上，隔行/棋盘会表现为细横纹或格子，这是<b>正常现象</b>，不是 bug。<br>
         · <b>性能</b>：红青 / 红蓝要算两遍场景，帧率约降一半；偏光四格式每像素只算一遍，性能与裸眼相同。<br>
-        · Canvas2D 降级模式下眼镜功能不可用（需逐像素双采样，2D 后端不实现）。
+        · Canvas2D 降级模式下眼镜功能不可用（需逐像素双采样，2D 后端不实现）。<br>
+        · <b>三档引擎自动降级</b>：① <b>WebGL · GLSL</b> 完整着色器 → ② <b>WebGL · 精简</b>
+        （完整版在你机器的驱动 / ANGLE 上编译不过时自动换成这一档，<b>仍是真 WebGL 实时动画</b>）
+        → ③ <b>Canvas2D 降级</b>（浏览器完全拿不到 WebGL 时才用，画面是简化同构版）。
+        顶部状态条里的「引擎」显示当前档位，<b>鼠标悬停可看到具体失败原因</b>，便于排查。
+        三档共用同一套参数与预设，切档不丢设置。
       </div>
     </details>
 
@@ -1430,27 +1435,91 @@ var FRAG=[
 
 function compile(type,src){
   var s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);
-  if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));
+  if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error((gl.getShaderInfoLog(s)||'着色器编译失败（驱动未返回 infoLog）').slice(0,600));
   return s;
 }
+function buildProgram(fragSrc){
+  var p=gl.createProgram();
+  gl.attachShader(p,compile(gl.VERTEX_SHADER,VERT));
+  gl.attachShader(p,compile(gl.FRAGMENT_SHADER,fragSrc));
+  gl.linkProgram(p);
+  if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));
+  return p;
+}
+var glTier='';
+/* 精简版片元着色器：只保证「光隧道」这一件事。
+   当完整 shader 在某些驱动/ANGLE 上编译或链接失败时，这一档仍能给出真 WebGL 动画，
+   不至于一路掉到 Canvas2D。只用 WebGL1 最基础特性，无噪声函数、无多层循环。 */
+var FRAG_LITE=[
+'precision highp float;',
+'uniform vec2 uRes;uniform float uTime,uClock,uSpeed,uSpin,uTwist,uRings,uSectors,uCX,uCY;',
+'uniform float uPal,uHue,uHueSpd,uGlow,uBright,uVig,uCore,uCoreKind,uSunSize,uSunRays,uSoft;',
+'vec3 pal(float t){',
+'  vec3 a,b,d;',
+'  if(uPal<0.5){a=vec3(0.56,0.30,0.50);b=vec3(0.44,0.34,0.46);d=vec3(0.0,0.14,0.28);}',
+'  else if(uPal<1.5){a=vec3(0.20,0.32,0.46);b=vec3(0.30,0.36,0.46);d=vec3(0.0,0.33,0.67);}',
+'  else if(uPal<2.5){a=vec3(0.30,0.48,0.42);b=vec3(0.34,0.40,0.42);d=vec3(0.20,0.45,0.70);}',
+'  else if(uPal<3.5){a=vec3(0.90,0.88,0.93);b=vec3(0.09,0.07,0.10);d=vec3(0.0,0.10,0.20);}',
+'  else {a=vec3(0.52,0.42,0.24);b=vec3(0.42,0.34,0.18);d=vec3(0.08,0.16,0.26);}',
+'  vec3 c=a+b*cos(6.2831853*(vec3(t)+d));',
+'  if(uPal<0.5)c*=vec3(1.18,0.76,1.04);',
+'  return c;',
+'}',
+'void main(){',
+'  vec2 q=(gl_FragCoord.xy-0.5*uRes)/min(uRes.x,uRes.y)*2.0;',
+'  vec2 cq=q-vec2(uCX,-uCY);',
+'  float r=length(cq)+1e-4;',
+'  float th=atan(cq.y,cq.x);',
+'  float z=0.30/r+uTime*(uSpeed*1.20);',
+'  float kA=floor(uTwist*2.6+0.5);',
+'  float kS=max(2.0,floor(uSectors+0.5));',
+'  float ring=0.5+0.5*sin(z*(2.0+uRings*1.15)+th*kA+uSpin*uTime*0.30);',
+'  float sec=0.5+0.5*sin(th*kS+uSpin*uTime*0.30+uTwist*2.0*log(r));',
+'  float streak=0.5+0.5*sin(th*kS*0.5-uSpin*uTime*0.45-uTwist*3.0*log(r));',
+'  float band=pow(ring,1.9)*(0.74+0.26*pow(sec,1.3))*(0.84+0.16*streak);',
+'  float wash=0.42/(1.0+r*r*3.4);',
+'  float near=1.0/(1.0+r*1.8);',
+'  vec3 col=pal(uHue+z*0.075+uClock*0.02)*band*uGlow*2.30*near;',
+'  col+=pal(uHue+0.55)*wash*0.80;',
+'  float core=exp(-r*r*90.0)*uCore*2.0;',
+'  col+=vec3(1.0,0.96,0.92)*core;',
+'  if(uCoreKind>0.5&&uCoreKind<1.5){',
+'    float ssz=max(0.05,uSunSize)*1.8;',
+'    float disc=1.0-smoothstep(ssz*0.85,ssz*1.45,r);',
+'    col=mix(col,vec3(1.0,0.74,0.16)*1.5,disc*0.85);',
+'  }',
+'  float vig=1.0-uVig*smoothstep(0.55,1.90,r)*0.80;',
+'  col*=max(0.0,uBright);',
+'  gl_FragColor=vec4(clamp(col*vig,0.0,1.0),1.0);',
+'}'
+].join('\n');
 function initGL(){
   try{
     /* 多组参数重试：关硬件加速 / 软件 WebGL 被禁的环境常会拒绝带
        preserveDrawingBuffer 的上下文，宽松参数有机会救回来 */
     var _glOpts=[{alpha:false,antialias:false,preserveDrawingBuffer:true},
                  {alpha:false,antialias:false},{alpha:false},{}];
-    var _glKinds=['webgl','experimental-webgl'];
+    var _glKinds=['webgl','experimental-webgl','webgl2'];
     for(var _i=0;_i<_glOpts.length&&!gl;_i++){
       for(var _j=0;_j<_glKinds.length&&!gl;_j++){
         try{gl=canvas.getContext(_glKinds[_j],_glOpts[_i]);}catch(_e){gl=null;}
       }
     }
     if(!gl)throw new Error('浏览器未提供 WebGL 上下文（硬件加速关闭或软件 WebGL 被禁用）');
-    prog=gl.createProgram();
-    gl.attachShader(prog,compile(gl.VERTEX_SHADER,VERT));
-    gl.attachShader(prog,compile(gl.FRAGMENT_SHADER,FRAG));
-    gl.linkProgram(prog);
-    if(!gl.getProgramParameter(prog,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(prog));
+    /* 两档：先完整 shader，编不过再退到精简 shader。
+       把真实失败原因留下来（window.__glFail / 引擎标识的 title），
+       以后一眼就能知道是「没上下文」还是「驱动拒了 shader」。 */
+    var _tiers=[['WebGL · GLSL',FRAG],['WebGL · 精简',FRAG_LITE]];
+    var _lastErr=null;
+    for(var _ti=0;_ti<_tiers.length&&!prog;_ti++){
+      try{prog=buildProgram(_tiers[_ti][1]);glTier=_tiers[_ti][0];}
+      catch(_e3){
+        _lastErr=_e3;prog=null;
+        window.__glFail=String((_e3&&_e3.message)||_e3);
+        try{console.warn('[隧道训练台] '+_tiers[_ti][0]+' 编译失败：'+window.__glFail);}catch(_e4){}
+      }
+    }
+    if(!prog)throw _lastErr||new Error('着色器编译失败');
     gl.useProgram(prog);
     var buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);
     gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
@@ -1466,7 +1535,9 @@ function initGL(){
      'uCoreKind','uSunSize','uSunRays'].forEach(function(n){
       U[n]=gl.getUniformLocation(prog,n);
     });
-    document.getElementById('hEng').textContent='WebGL · GLSL';
+    document.getElementById('hEng').textContent=glTier;
+    document.getElementById('hEng').title=window.__glFail?('完整 shader 失败，已用精简版：'+window.__glFail):'完整 GLSL 渲染';
+    window.__glTier=glTier;
     return true;
   }catch(err){
     /* 根因修复：canvas 一旦被申请过 WebGL 上下文（哪怕失败或 shader 编译报错），
@@ -1481,6 +1552,7 @@ function initGL(){
     canvas=fresh;
     ctx2=canvas.getContext('2d');
     document.getElementById('hEng').textContent='Canvas2D 降级';
+    document.getElementById('hEng').title='WebGL 不可用：'+(err&&err.message?err.message:'未知原因');
     console.info('[隧道训练台] WebGL 不可用，已切换 Canvas2D 降级：'+err.message);
     if(ctx2){
       toast('WebGL 不可用 · 已自动切换 Canvas2D 降级（参数仍全部可调）');
@@ -1635,6 +1707,224 @@ function drawVfx2D(c,W,H,cx,cy,R,t){
 }
 /* Canvas2D 降级：同一套参数，同心环 + 螺旋臂 + 中心涟漪（N44 全画布清空） */
 /* ctx2 已在顶部声明；降级时由 initGL 在全新 canvas 上初始化 */
+/* ===== Canvas2D 降级渲染器（v2）：对齐 GLSL 柔和光隧道的观感 =====
+   旧版是「按扇区数画正多边形边」，一眼就是廉价线框。新版改用：
+   ① 大量细密圆弧 + 加性混合 ⇒ 自然叠出中心亮、外周暗的光晕；
+   ② 线型虚线按半径换算成「扇区分段」，旋转时形成螺旋错动；
+   ③ IQ 余弦调色板与 GLSL 同源，颜色不再自己编；
+   ④ 对数螺旋臂 + 中心核（白核 / 金黄太阳）+ 暗角，凑齐原版骨架。 */
+function paletteJS(t){
+  var a,b,d;
+  if(P.pal<0.5){a=[0.56,0.30,0.50];b=[0.44,0.34,0.46];d=[0.00,0.14,0.28];}
+  else if(P.pal<1.5){a=[0.20,0.32,0.46];b=[0.30,0.36,0.46];d=[0.00,0.33,0.67];}
+  else if(P.pal<2.5){a=[0.30,0.48,0.42];b=[0.34,0.40,0.42];d=[0.20,0.45,0.70];}
+  else if(P.pal<3.5){a=[0.90,0.88,0.93];b=[0.09,0.07,0.10];d=[0.00,0.10,0.20];}
+  else {a=[0.52,0.42,0.24];b=[0.42,0.34,0.18];d=[0.08,0.16,0.26];}
+  var c=[0,0,0],TAU=6.283185307;
+  for(var i=0;i<3;i++)c[i]=a[i]+b[i]*Math.cos(TAU*(t+d[i]));
+  if(P.pal<0.5){c[0]*=1.18;c[1]*=0.76;c[2]*=1.04;}
+  /* 浅底调色板（pal=3）里 palette 出的是浅灰，直接画在白底上看不见，
+     按亮度反相成中灰紫，保持可辨 */
+  if(P.pal>=2.5&&P.pal<3.5){
+    c=[0.34-c[0]*0.22,0.30-c[1]*0.22,0.44-c[2]*0.22];
+    for(var j=0;j<3;j++)if(c[j]<0)c[j]=0;
+  }
+  return c;
+}
+function rgbaJS(col,al){
+  function q(v){v=Math.round(Math.max(0,Math.min(1,v))*255);return v;}
+  return 'rgba('+q(col[0])+','+q(col[1])+','+q(col[2])+','+
+         Math.max(0,Math.min(1,al)).toFixed(3)+')';
+}
+function drawTunnel2D(c,W,H,cx,cy,R,t){
+  var TAU=6.283185307;
+  R=R*1.32;   /* 2D 版的图案半径放大，让结构像 GLSL 那样冲出画面四边，而不是缩成一个小圆盘 */
+  var dark=P.pal!==3;
+  var glow=Math.max(0,Number(P.glow)),vig=Math.max(0,Math.min(1.2,Number(P.vig)));
+  var flick=1+(Number(P.flick)||0)*Math.sin(t*TAU*(Number(P.flickHz)||10));
+  var am=Math.max(0,Number(P.bright))*flick;
+  var fx=(P.flip===1||P.flip===3)?-1:1, fy=(P.flip===2||P.flip===3)?-1:1;
+
+  /* 底色：中心受光、四周压暗，对应 GLSL 的 1/r 深度 */
+  var bg=c.createRadialGradient(cx,cy,R*0.02,cx,cy,R*1.45);
+  if(dark){
+    bg.addColorStop(0,'rgba(26,15,32,1)');
+    bg.addColorStop(0.42,'rgba(14,8,20,1)');
+    bg.addColorStop(1,'rgba(3,2,5,1)');
+  }else{
+    bg.addColorStop(0,'rgba(253,251,246,1)');
+    bg.addColorStop(0.50,'rgba(244,239,248,1)');
+    bg.addColorStop(1,'rgba(206,197,216,1)');
+  }
+  c.globalCompositeOperation='source-over';
+  c.globalAlpha=1;
+  c.fillStyle=bg;c.fillRect(0,0,W,H);
+
+  c.save();
+  c.translate(cx,cy);
+  c.scale(fx,fy);
+  c.globalCompositeOperation=dark?'lighter':'source-over';
+
+  /* 底层柔光：GLSL 里由 1/r 累积出来的整体光晕，2D 用一层径向渐变补上，
+     否则纯靠细环叠加会偏暗、偏「线框」 */
+  if(dark){
+    var wcol=paletteJS(Number(P.hue)+0.55+t*Number(P.hueSpd)*0.02);
+    var wg=c.createRadialGradient(0,0,0,0,0,R*1.15);
+    wg.addColorStop(0,rgbaJS(wcol,0.62*am));
+    wg.addColorStop(0.30,rgbaJS(wcol,0.20*am));
+    wg.addColorStop(0.70,rgbaJS(wcol,0.055*am));
+    wg.addColorStop(1,rgbaJS(wcol,0));
+    c.fillStyle=wg;
+    c.beginPath();c.arc(0,0,R*1.15,0,TAU);c.fill();
+  }
+
+  var spinA=(Number(P.spin)||0)*0.0174533*t;
+  var depthPhase=t*(Number(P.speed)||0)*1.35;
+  var DEPTH=8.0;
+  var rings=Math.round(56+Number(P.rings)*5);
+  if(rings<64)rings=64;
+  if(rings>180)rings=180;
+  var seg=Math.max(3,Math.round(Number(P.sectors)||8));
+  var step0=TAU/seg;
+  var dual=P.dual>0.5;
+  var passes=dual?2:1;
+
+  for(var pass=0;pass<passes;pass++){
+    var dir=pass?-1:1;
+    var mul=pass?0.55:1.0;
+    for(var i=0;i<rings;i++){
+      var depth=((i/rings)*DEPTH+depthPhase)%DEPTH;
+      var rr=R*Math.exp(-depth*0.40);
+      if(rr<1.4||rr>R*1.32)continue;
+      var fade=Math.pow(1-depth/DEPTH,1.35);
+      var edge=rr<R*0.07?rr/(R*0.07):1;
+      var ct=Number(P.hue)+depth*0.085+t*Number(P.hueSpd)*0.03;
+      var al=(0.088+0.235*fade)*glow*mul*edge*am;
+      if(al<0.004)continue;
+      var ang=spinA*dir+Number(P.twist)*0.45*depth;
+      var alen=step0*rr;
+      /* 线宽必须跟着「相邻环的径向间距」走：间距 dr≈0.40*rr*DEPTH/rings。
+         以前固定 0.9+rr*0.022，在 rr≈400 处宽达 10px、是间距的 1.1 倍，
+         相邻环互相盖住又相位不齐 ⇒ 满屏细密杂点（摩尔纹）。
+         取间距的 0.62 倍，环与环之间留缝，杂点自然消失。 */
+      var dr=0.40*rr*DEPTH/rings;
+      if(rr<R*0.30){
+        c.setLineDash([alen*0.78,alen*0.22]);
+        c.lineDashOffset=(-(ang*rr))%alen;
+      }else{
+        c.setLineDash([]);   /* 外圈改实线：虚线在大半径处会变成一颗颗「珠子」 */
+      }
+      c.lineWidth=Math.max(0.7,Math.min(6,dr*0.62));
+      c.strokeStyle=rgbaJS(paletteJS(ct),al);
+      /* 螺旋缝：圆环不画满，留一个随深度前进的缺口。
+         缺口相位随 depth 递增 ⇒ 相邻环的缺口沿角向错开，连起来就是一条盘绕的螺旋，
+         画面不再是「同心唱片」。 */
+      var gap=0.0;   /* 缺口归零：试过 0.05~0.35 各种值，都会读成「裂纹」而不是盘绕 */
+      var a0=ang;
+      c.beginPath();c.arc(0,0,rr,a0,a0+TAU*(1-gap));c.stroke();
+    }
+  }
+  c.setLineDash([]);
+
+  /* 宽带层：GLSL 的明暗不是细线，而是宽条带。这里每隔 4 环用 2.4 倍线宽、
+     低透明度再铺一遍，让细环「糊」成连续的宽光带 */
+  for(var wi=0;wi<rings;wi+=4){
+    var dw=((wi/rings)*DEPTH+depthPhase)%DEPTH;
+    var rw2=R*Math.exp(-dw*0.40);
+    if(rw2<3||rw2>R*1.3)continue;
+    var fw=Math.pow(1-dw/DEPTH,1.1);
+    var aw=(0.10+0.30*fw)*glow*am*(P.dual>0.5?0.6:1);
+    var drw=0.40*rw2*DEPTH/rings;
+    c.lineWidth=Math.max(1.6,drw*2.4);
+    c.strokeStyle=rgbaJS(paletteJS(Number(P.hue)+dw*0.085+t*Number(P.hueSpd)*0.03),aw);
+    c.beginPath();c.arc(0,0,rw2,0,TAU);c.stroke();
+  }
+
+  /* 色散（split>0.5）：红/青各偏 1.6px 叠一层，模拟原版边缘彩边 */
+  if(P.split>0.5){
+    for(var sp=0;sp<rings;sp+=3){
+      var d2=((sp/rings)*DEPTH+depthPhase)%DEPTH;
+      var r2=R*Math.exp(-d2*0.40);
+      if(r2<3||r2>R*1.2)continue;
+      c.lineWidth=Math.max(0.8,1+r2*0.012);
+      c.strokeStyle=rgbaJS([1,0.16,0.26],0.045*glow*am);
+      c.beginPath();c.arc(1.6,0,r2,0,TAU);c.stroke();
+      c.strokeStyle=rgbaJS([0.20,0.86,1],0.045*glow*am);
+      c.beginPath();c.arc(-1.6,0,r2,0,TAU);c.stroke();
+    }
+  }
+
+  /* 对数螺旋臂：GLSL 里由 twist 决定的走向，这里画实体线补上「隧道」的骨架 */
+  var arms=Math.max(2,Math.min(12,Math.round((Math.abs(Number(P.turn))||1)*3)));
+  var armCol=paletteJS(Number(P.hue)+0.35+t*Number(P.hueSpd)*0.02);
+  for(var a=0;a<arms;a++){
+    var th0=a/arms*TAU+spinA;
+    var started=false;
+    c.beginPath();
+    for(var q=0;q<=72;q++){
+      var f=q/72;
+      var r3=R*Math.pow(f,1.15)*1.02;
+      if(r3<2)continue;
+      var a2=th0+Number(P.twist)*0.75*Math.log(r3/(R*0.03))+r3*0.0016;
+      var x2=Math.cos(a2)*r3,y2=Math.sin(a2)*r3;
+      if(!started){c.moveTo(x2,y2);started=true;}else c.lineTo(x2,y2);
+    }
+    c.lineWidth=Math.max(1.4,2.2+R*0.008);
+    c.strokeStyle=rgbaJS(armCol,0.20*glow*am);
+    c.stroke();
+  }
+
+  /* 中心核：0=白核+凝视靶点 1=金黄太阳 2=纯白核 */
+  var coreAmt=Math.max(0,Number(P.core))*am;
+  if(P.coreKind>0.5&&P.coreKind<1.5){
+    var sunR=R*Math.max(0.02,Number(P.sunSize))*2.6;
+    var sg=c.createRadialGradient(0,0,0,0,0,sunR);
+    sg.addColorStop(0,'rgba(255,250,232,'+(0.95*coreAmt).toFixed(3)+')');
+    sg.addColorStop(0.26,'rgba(255,206,92,'+(0.82*coreAmt).toFixed(3)+')');
+    sg.addColorStop(0.60,'rgba(255,124,22,'+(0.34*coreAmt).toFixed(3)+')');
+    sg.addColorStop(1,'rgba(255,80,0,0)');
+    c.fillStyle=sg;c.beginPath();c.arc(0,0,sunR,0,TAU);c.fill();
+    var rays=Math.max(6,Math.round(8+8*Number(P.sunRays)));
+    c.lineWidth=1.6;
+    for(var k=0;k<rays;k++){
+      var ak=k/rays*TAU;
+      var len=sunR*((k%2)?1.7:3.0);
+      c.strokeStyle='rgba(255,216,146,'+(0.09*coreAmt).toFixed(3)+')';
+      c.beginPath();
+      c.moveTo(Math.cos(ak)*sunR*0.25,Math.sin(ak)*sunR*0.25);
+      c.lineTo(Math.cos(ak)*len,Math.sin(ak)*len);
+      c.stroke();
+    }
+  }else{
+    var cr=R*0.30,pts=6;
+    var cg=c.createRadialGradient(0,0,0,0,0,cr);
+    cg.addColorStop(0,'rgba(255,255,255,'+(0.92*coreAmt).toFixed(3)+')');
+    cg.addColorStop(0.16,'rgba(255,246,240,'+(0.50*coreAmt).toFixed(3)+')');
+    cg.addColorStop(0.52,'rgba(222,204,255,'+(0.15*coreAmt).toFixed(3)+')');
+    cg.addColorStop(1,'rgba(180,160,220,0)');
+    c.fillStyle=cg;c.beginPath();c.arc(0,0,cr,0,TAU);c.fill();
+    if(P.coreKind>1.5){
+      c.fillStyle='rgba(255,255,255,'+(0.95*coreAmt).toFixed(3)+')';
+      c.beginPath();c.arc(0,0,R*0.035,0,TAU);c.fill();
+    }else{
+      /* 凝视靶点：一圈细白环，帮助校对视点 */
+      c.lineWidth=Math.max(1,R*0.0035);
+      c.strokeStyle='rgba(255,255,255,'+(0.42*coreAmt).toFixed(3)+')';
+      c.beginPath();c.arc(0,0,R*0.055,0,TAU);c.stroke();
+    }
+  }
+
+  c.restore();
+  c.globalCompositeOperation='source-over';
+
+  if(vig>0.01&&dark){
+    var vg=c.createRadialGradient(cx,cy,R*0.38,cx,cy,R*1.28);
+    vg.addColorStop(0,'rgba(0,0,0,0)');
+    vg.addColorStop(1,'rgba(0,0,0,'+(0.72*vig).toFixed(3)+')');
+    c.fillStyle=vg;c.fillRect(0,0,W,H);
+  }
+}
+
 function draw2D(t){
   if(!ctx2)ctx2=canvas.getContext('2d');
   if(!ctx2){showErr('Canvas2D 降级失败：无法获取 2D 上下文');return;}
@@ -1646,41 +1936,7 @@ function draw2D(t){
   var cx=W/2+P.cx*W*0.25, cy=H/2-P.cy*H*0.25, R=Math.min(W,H)*0.47;
   if(P.style>0){drawStyle2D(c,W,H,cx,cy,R,t);return;}
   if(P.vfx>0 && P.vfxMix>0.01){drawVfx2D(c,W,H,cx,cy,R,t);c.globalCompositeOperation='source-over';return;}
-  c.globalCompositeOperation=dark?'lighter':'source-over';
-  c.save();
-  var fx=(P.flip===1||P.flip===3)?-1:1, fy=(P.flip===2||P.flip===3)?-1:1;
-  c.translate(cx,cy);c.scale(fx,fy);c.translate(-cx,-cy);
-  var N=Math.max(2,Math.round(P.N)), rings=Math.max(8,Math.round(P.rings*3));
-  var nPass=P.dual>0.5?2:1;
-  for(var pass=0;pass<nPass;pass++){
-    var dir=pass?-1:1;
-    if(nPass===2)c.globalAlpha=0.62;
-    for(var i=0;i<rings;i++){
-    var u=i/rings, depth=(u*8+t*P.speed*1.4)%8;
-    var rr=R*Math.exp(-depth*0.34); if(rr<2)continue;
-    var ang=(t*P.spin*0.0174533*P.turn+P.twist*Math.log(Math.max(rr,2))*0.12)*dir;
-    c.strokeStyle=dark?'hsla('+((t*20+i*7+P.hue*360)%360)+',85%,62%,'+(0.10+0.5*u)+')'
-                      :'hsla('+((t*20+i*7)%360)+',45%,42%,'+(0.10+0.4*u)+')';
-    c.lineWidth=Math.max(1,rr*0.012);c.beginPath();
-    for(var j=0;j<=N;j++){
-      var a=ang+j/N*Math.PI*2, x=cx+Math.cos(a)*rr, y=cy+Math.sin(a)*rr;
-      if(j)c.lineTo(x,y);else c.moveTo(x,y);
-    }
-    c.stroke();
-  }
-  }
-  c.globalAlpha=1;
-  for(var q=0;q<6;q++){
-    var pr=R*0.55*((q/6+t*P.ripSpd*0.12)%1);
-    c.strokeStyle=dark?'rgba(255,180,255,'+(0.28*(1-q/6)*P.ripAmp)+')':'rgba(120,60,120,'+(0.25*(1-q/6)*P.ripAmp)+')';
-    c.lineWidth=2;c.beginPath();c.arc(cx,cy,Math.max(1,pr),0,Math.PI*2);c.stroke();
-  }
-  var g=c.createRadialGradient(cx,cy,0,cx,cy,R*0.28);
-  g.addColorStop(0,dark?'rgba(255,255,255,'+(0.9*P.core)+')':'rgba(255,240,200,'+(0.9*P.core)+')');
-  g.addColorStop(1,'rgba(255,255,255,0)');
-  c.fillStyle=g;c.beginPath();c.arc(cx,cy,R*0.28,0,Math.PI*2);c.fill();
-  c.restore();
-  c.globalCompositeOperation='source-over';
+  drawTunnel2D(c,W,H,cx,cy,R,t);
 }
 
 /* ===================== 双耳节拍 · 音频实验室 =====================
