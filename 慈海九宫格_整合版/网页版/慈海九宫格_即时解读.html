@@ -269,6 +269,40 @@ tr.sumrow td{background:#faf7f0;font-weight:600}
 .chip{font-family:var(--mono);font-size:11.5px;line-height:1.6;padding:1px 6px;border:1px solid var(--line);
   border-radius:5px;background:#f8f5ef;color:var(--ink2);white-space:nowrap}
 
+/* ===== 历史档案 · 生辰参数数据表 ===== */
+.hist-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0 10px}
+.hist-bar .count{font-size:12.5px;color:var(--ink3);white-space:nowrap;margin-right:4px}
+.hist-sw{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--ink2);white-space:nowrap;cursor:pointer}
+.hist-sw input{margin:0;accent-color:var(--accent)}
+.hist-sel{font:inherit;font-size:12.5px;padding:3px 6px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink2)}
+.hist-bar .btn:disabled{opacity:.45;cursor:not-allowed}
+#histStat{margin-top:-4px;color:var(--ink3)}
+.hist-tbl{min-width:1180px;font-size:12.5px}
+.hist-tbl th{background:#f7f3ea;white-space:nowrap;font-weight:600}
+.hist-tbl td{white-space:nowrap;vertical-align:middle}
+.hist-tbl td .btn{padding:3px 9px;font-size:11.5px}
+.hist-tbl .nowrap{white-space:nowrap}
+.hist-tbl.is-empty{min-width:0}
+.hist-tbl.is-empty .empty{text-align:left}
+/* ── 表头排序（2026-11-14 加）：数值列先降序排行、文字列先升序，第三次回默认 ── */
+.hist-tbl th.s-th{cursor:pointer;user-select:none;position:relative;padding-right:15px}
+.hist-tbl th.s-th:hover{background:#efe6d6;color:var(--accent)}
+.hist-tbl th.s-th .ar{position:absolute;right:3px;top:50%;transform:translateY(-50%);
+  font-size:10px;line-height:1;color:var(--ink3);opacity:.28;pointer-events:none}
+.hist-tbl th.s-th:hover .ar{opacity:.6}
+.hist-tbl th.s-th.on{background:var(--accent-soft);color:var(--accent)}
+.hist-tbl th.s-th.on .ar{opacity:1;color:var(--accent);font-size:9px}
+.hist-tbl th.no-sort{color:var(--ink3);font-weight:400}
+.hist-tbl .hunit{font-size:10px;color:var(--gold);margin-left:1px}
+.hist-tbl td.hist-rar{font-variant-numeric:tabular-nums}
+.hist-tbl td.hist-rar b{font-weight:600}
+.hist-tbl td.hist-rar .b{font-size:10.5px;font-weight:400;color:var(--ink3);margin-left:3px}
+.hist-tbl tr.rank-top td{background:#fdf8ec}
+#histSortNow{color:var(--accent)}
+#histSortReset{border-bottom-style:dotted}
+@media(max-width:700px){.hist-bar{gap:6px}}
+@media print{.hist-tbl{min-width:0}}
+
 @media print{
   nav.tabs,.panel,header.top .lead,.btn,.no-print{display:none!important}
   body{background:#fff;font-size:11pt}
@@ -586,6 +620,72 @@ tr.sumrow td{background:#faf7f0;font-weight:600}
       <div class="card">
         <h3><span class="n">10.3</span>移植时发现的六个源侧问题</h3>
         <div id="al-issues"></div>
+      </div>
+    </section>
+
+    <!-- ============ 11 历史档案 · 生辰参数数据表 ============ -->
+    <section class="tab" id="tab-11">
+      <div class="card">
+        <h3><span class="n">11</span>查询记录 · 生辰参数数据表 <span class="tag">自动保存</span></h3>
+        <p class="sub">
+          每次完成一次解读（点「开始解读」、回车或改动生辰参数）后，<b>7 项生辰参数与结果摘要自动存入本表</b>。
+          <b>默认按名单去重：同名只留最新一条</b>（全表查重，不只是跟最近一条比），合并后累加查询次数；
+          开机、每次查询、导入 JSON 时都会自动跑一遍，历史遗留的重复名单一并清掉。
+          需要保留同一人不同生辰的命盘时，把「去重口径」切到「名单 + 生辰信息」。
+          点「载入」把参数调回上方表单，重新算出完整 11 页结果。
+        </p>
+        <div class="hist-bar">
+          <span class="count" id="histCount">—</span>
+          <label class="hist-sw"><input type="checkbox" id="histAuto" checked> 自动保存</label>
+          <label class="hist-sw">去重口径
+            <select id="histMode" class="hist-sel">
+              <option value="name" selected>仅名单（同名留最新，默认）</option>
+              <option value="full">名单 + 生辰信息</option>
+            </select>
+          </label>
+          <button class="btn ghost sm" id="histDedup" type="button">立即去重</button>
+          <button class="btn ghost sm" id="histUndo" type="button" disabled>撤销去重</button>
+          <button class="btn ghost sm" id="histCsv" type="button">导出 CSV</button>
+          <button class="btn ghost sm" id="histJson" type="button">导出 JSON</button>
+          <button class="btn ghost sm" id="histImport" type="button">导入 JSON</button>
+          <button class="btn ghost sm" id="histClear" type="button">清空</button>
+          <input type="file" id="histFile" accept=".json,application/json" hidden>
+        </div>
+        <p class="hint" id="histHint"></p>
+        <p class="hint" id="histStat"></p>
+        <p class="hint" id="histSortHint">
+          表头可点排序：<b>数值列先降序排行</b>（稀有度、灵魂★、次数、查询时间），
+          <b>文字列先升序</b>（姓名按姓名拼音首字母 A→Z）。同一表头再点一次反向，点第三次恢复默认「查询时间从新到旧」。
+          <a href="#" id="histSortReset">还原默认排序</a>　当前排序：<b id="histSortNow">查询时间 ↓（默认）</b>
+        </p>
+        <p class="hint"><b>隐私（C8）：</b>本表只存在本机浏览器 localStorage，<b>不上传任何服务器</b>；
+          导出的 CSV / JSON 含私人信息，<b>请勿上传到 GitHub、网盘或分享链接</b>。
+          清缓存会丢，跨设备请用「导出 JSON → 导入」迁移。</p>
+        <div class="tw"><table class="hist-tbl" id="histTable"><thead><tr>
+          <th class="no-sort">操作</th>
+          <th class="s-th" data-sort="ts" title="点一次从新到旧，再点从旧到新">查询时间</th>
+          <th class="s-th" data-sort="name" title="按姓名拼音首字母排序（A→Z）">姓名</th>
+          <th class="s-th" data-sort="birth" title="按生日先后">阳历生日</th>
+          <th class="s-th" data-sort="shichen">时辰</th>
+          <th class="s-th" data-sort="gender">性别</th>
+          <th class="s-th" data-sort="clock">出生钟点</th>
+          <th class="s-th" data-sort="city" title="按出生地拼音排序">出生地</th>
+          <th class="s-th" data-sort="rule">子时规则</th>
+          <th class="s-th" data-sort="yang">阳格</th>
+          <th class="s-th" data-sort="yin">阴格</th>
+          <th class="s-th" data-sort="yangQue">阳缺</th>
+          <th class="s-th" data-sort="yinQue">阴缺</th>
+          <th class="s-th" data-sort="type">类型</th>
+          <th class="s-th" data-sort="soul" title="按灵魂积分（★ 数，6 最高）排行">灵魂<span class="hunit">★</span></th>
+          <th class="s-th" data-sort="rar" title="按稀有度打分（0–100，越高越稀）排行">稀有度</th>
+          <th class="s-th" data-sort="hits" title="按查询次数排行">次数</th>
+        </tr></thead><tbody id="histBody"></tbody></table></div>
+        <p class="hint">
+          数据只保存在<b>本机浏览器 localStorage</b>，不上传任何服务器；换浏览器、清缓存或隐私模式会读不到，
+          建议定期「导出 JSON」备份，换设备时用「导入 JSON」恢复。CSV 可直接用 Excel 打开。
+          <b>去重不会静默丢数据</b>：每次合并前会在本机留一份「撤销去重」快照（保留最近一次），
+          恢复后口径自动回到最保守的「名单 + 生辰信息」；若需长期保留同名但不同生辰的多条记录，请先导出 JSON。
+        </p>
       </div>
     </section>
 
@@ -2220,7 +2320,8 @@ window.__DATA__={"_meta":{"生成时间":"2026-10-27 10:57:53","来源":["查询
   var TABS = [
     ['命盘概要', '0'], ['详细解读', '1'], ['跌落路径', '2'], ['命理报告', '3'],
     ['中医建议', '4'], ['食疗动功', '5'], ['时空行运', '6'], ['阴阳周期', '7'],
-    ['灵魂图腾库', '8'], ['频率·稀有度', '9'], ['算法与校验', '10']
+    ['灵魂图腾库', '8'], ['频率·稀有度', '9'], ['算法与校验', '10'],
+    ['历史档案', '11']
   ];
 
   var SHICHEN_ALL = ['子时', '丑时', '寅时', '卯时', '辰时', '巳时', '午时', '未时',
@@ -2232,7 +2333,7 @@ window.__DATA__={"_meta":{"生成时间":"2026-10-27 10:57:53","来源":["查询
   };
   var TREND_CLS = { '偏阴': 'n', '偏阳': 'y', '平衡': '', '无': '' };
 
-  var state = { f: null, res: null, md: {}, tab: 0 };
+  var state = { f: null, res: null, md: {}, tab: 0, saveNext: false, suppressSave: false, histOk: true };
 
   function $(id) { return document.getElementById(id); }
   function esc(s) { return MD.esc(s == null ? '' : s); }
@@ -2264,6 +2365,7 @@ window.__DATA__={"_meta":{"生成时间":"2026-10-27 10:57:53","来源":["查询
     for (var k = 0; k < btns.length; k++) btns[k].classList.toggle('on', +btns[k].getAttribute('data-tab') === i);
     var secs = document.querySelectorAll('#views section.tab');
     for (var j = 0; j < secs.length; j++) secs[j].classList.toggle('on', secs[j].id === 'tab-' + i);
+    if (i === 11) renderHist();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -2287,6 +2389,490 @@ window.__DATA__={"_meta":{"生成时间":"2026-10-27 10:57:53","来源":["查询
       city: ($('fCity').value || '').trim(),
       rule: $('fRule').value
     };
+  }
+
+  /* ══════════ 历史档案 · 生辰参数数据表（localStorage） ══════════ */
+  var HIST_KEY = 'cihai9_records_v1';
+  var HIST_AUTO_KEY = 'cihai9_autosave_v1';
+  var HIST_DEDUP_KEY = 'cihai9_dedup_mode_v2';   /* name（默认）| full；v1 旧键不继承 */
+  var HIST_UNDO_KEY = 'cihai9_dedup_undo_v1';    /* 最近一次去重前的快照 */
+  var HIST_MAX = 500;
+  var HIST_FIELDS = ['name', 'birth', 'shichen', 'gender', 'clock', 'city', 'rule'];
+  var HIST_IDS = {
+    name: 'fName', birth: 'fBirth', shichen: 'fShichen', gender: 'fGender',
+    clock: 'fClock', city: 'fCity', rule: 'fRule'
+  };
+  var RULE_TXT = { book: '原书', query: '查询工具', v5: '核心引擎 v5' };
+
+  /* ══════════ 表头排序（2026-11-14） ══════════
+     老师要求：点清单表头就能按「稀有度 / 灵魂积分 / 姓名首字母」排行。
+     口径说明（写死在代码里，避免以后又靠字段名猜）：
+       · 稀有度 = 第 9 页同一个 rarity() 打分（0–100，越高越稀），由该条的阳格×阴格现算，不落库；
+       · 灵魂积分 = 灵魂积分库里那条记录的 ★ 个数（1–6，'★☆☆☆☆' 记 1 分），不是名称字符串；
+         若该格在库里查不到（三态里的「未收录」），记为空值、排序时永远垫底，不冒充 0 分；
+       · 姓名 / 出生地 = 中文按拼音排（Intl.Collator 'zh-Hans-CN'，Chrome 用的是 pinyin 排序规则），
+         等价于「姓名首字母 A→Z」；取不到 Collator 时退回 localeCompare。
+     方向：数值列第一次点降序（排行榜直觉：最高分在最上面），文字列第一次点升序；
+           同一表头再点反向，第三次回默认「查询时间从新到旧」。排序状态存 localStorage。 */
+  var HIST_SORT_KEY = 'cihai9_hist_sort_v1';
+  var HIST_SORT_NUM = { ts: 1, rar: 1, soul: 1, hits: 1 };
+  var HIST_SORT_TXT = {
+    ts: '查询时间', name: '姓名（拼音）', birth: '阳历生日', shichen: '时辰', gender: '性别',
+    clock: '出生钟点', city: '出生地', rule: '子时规则', yang: '阳格', yin: '阴格',
+    yangQue: '阳缺', yinQue: '阴缺', type: '类型', soul: '灵魂积分', rar: '稀有度', hits: '次数'
+  };
+  var HIST_COLL = null;
+  try { HIST_COLL = new Intl.Collator('zh-Hans-CN', { numeric: true, sensitivity: 'base' }); }
+  catch (e) { HIST_COLL = null; }
+  var histSort = { key: null, dir: -1 };   /* key=null 即默认：ts 倒序 */
+  var RAR_CACHE = {};                       /* 阳格|阴格 → rarity 结果，同一组合不重算 */
+
+  function histSortRead() {
+    try {
+      var o = JSON.parse(localStorage.getItem(HIST_SORT_KEY) || 'null');
+      if (o && typeof o === 'object' && (o.key === null || HIST_SORT_TXT[o.key])) {
+        histSort = { key: o.key || null, dir: o.dir === 1 ? 1 : -1 };
+      }
+    } catch (e) { }
+  }
+  function histSortSave() {
+    try { localStorage.setItem(HIST_SORT_KEY, JSON.stringify(histSort)); } catch (e) { }
+  }
+  /* 行内稀有度：与第 9 页算的是同一个函数，保证「表里 87.3 分」和「详情页 87.3 分」一致 */
+  function histRarity(s) {
+    var yg = s && s.yang, ig = s && s.yin;
+    if (!yg || !ig) return null;
+    var k = yg + '|' + ig;
+    if (Object.prototype.hasOwnProperty.call(RAR_CACHE, k)) return RAR_CACHE[k];
+    var x = null;
+    try { x = M.rarity(yg, ig, D.FREQ, D.JOINT); } catch (e) { x = null; }
+    RAR_CACHE[k] = x;
+    return x;
+  }
+  function histSoulStar(s) {
+    var v = (s && s.soul) || '';
+    var m = String(v).match(/★/g);
+    return m ? m.length : null;            /* 未收录 → null（不冒充 0 分） */
+  }
+  function histVal(rec, key) {
+    var f = rec.f || {}, s = rec.s || {};
+    switch (key) {
+      case 'ts': return String(rec.ts || '');
+      case 'rar': var x = histRarity(s); return x ? x.score : null;
+      case 'soul': return histSoulStar(s);
+      case 'hits': return rec.hits || 1;
+      case 'name': return f.name || '';
+      case 'birth': return f.birth || '';
+      case 'shichen': return f.shichen || '';
+      case 'gender': return f.gender === 'female' ? '女' : '男';
+      case 'clock': return f.clock || '';
+      case 'city': return f.city || '';
+      case 'rule': return RULE_TXT[f.rule] || f.rule || '';
+      default: return s[key] || '';
+    }
+  }
+  function histCmpText(a, b) {
+    if (/^\d+$/.test(a) && /^\d+$/.test(b)) {          /* 纯数字按数值比，别让 '10' < '9' */
+      var na = parseInt(a, 10), nb = parseInt(b, 10);
+      if (na !== nb) return na - nb;
+    }
+    if (HIST_COLL) return HIST_COLL.compare(a, b);
+    return a < b ? -1 : (a > b ? 1 : 0);
+  }
+  function histSortArr(a) {
+    var key = histSort.key, dir = histSort.dir;
+    var out = a.slice();
+    if (!key) {   /* 默认：查询时间从新到旧（稳定排序，同秒保持原顺序） */
+      return out.map(function (r, i) { return { r: r, i: i }; })
+        .sort(function (x, y) {
+          var c = String(y.r.ts || '').localeCompare(String(x.r.ts || ''));
+          return c || (x.i - y.i);
+        }).map(function (o) { return o.r; });
+    }
+    return out.map(function (r, i) { return { r: r, i: i, v: histVal(r, key) }; })
+      .sort(function (x, y) {
+        var na = (x.v === null || x.v === ''), nb = (y.v === null || y.v === '');
+        if (na && nb) return x.i - y.i;
+        if (na) return 1;                                /* 空值永远垫底，正反向都不翻上来 */
+        if (nb) return -1;
+        var c = (typeof x.v === 'number' && typeof y.v === 'number')
+          ? (x.v - y.v) : histCmpText(String(x.v), String(y.v));
+        return c ? c * dir : (x.i - y.i);
+      }).map(function (o) { return o.r; });
+  }
+  function histPaintHead() {
+    var tbl = $('histTable');
+    if (!tbl || !tbl.tHead) return;
+    var ths = tbl.tHead.querySelectorAll('th[data-sort]');
+    [].forEach.call(ths, function (th) {
+      var k = th.getAttribute('data-sort'), on = (histSort.key === k);
+      th.classList.toggle('on', on);
+      var ar = th.querySelector('.ar');
+      if (!ar) { ar = document.createElement('span'); ar.className = 'ar'; th.appendChild(ar); }
+      ar.textContent = on ? (histSort.dir < 0 ? '▼' : '▲') : '⇅';
+      ar.setAttribute('aria-hidden', 'true');
+    });
+    var now = $('histSortNow');
+    if (now) {
+      now.textContent = histSort.key
+        ? HIST_SORT_TXT[histSort.key] + (histSort.dir < 0 ? ' ↓（高→低）' : ' ↑（低→高）')
+        : '查询时间 ↓（默认）';
+    }
+  }
+
+  function histRead() {
+    try {
+      var raw = localStorage.getItem(HIST_KEY);
+      if (!raw) return [];
+      var a = JSON.parse(raw);
+      if (!Array.isArray(a)) return [];
+      var m = histMode();
+      /* 旧数据里的 key 是旧口径（birth 格式 / 无字段前缀），一律按当前口径重算，
+         否则同一人在导入后与自动保存后会被判成两条不同的记录。 */
+      return a.filter(function (r) { return r && r.f && typeof r.f === 'object'; })
+        .map(function (r) { r.key = histKey(r.f, m); return r; });
+    } catch (e) { return []; }
+  }
+  function histWrite(a) {
+    try { localStorage.setItem(HIST_KEY, JSON.stringify(a)); return true; }
+    catch (e) { return false; }
+  }
+  function histAutoOn() {
+    try { return localStorage.getItem(HIST_AUTO_KEY) !== '0'; }
+    catch (e) { return true; }
+  }
+  /* 归一化：去空白（含全角）、生日统一 YYYY/MM/DD、字段带名前缀。
+     师命 2026-11-14「重复名单 + 生辰信息就要去除」：**默认按【名单】去重**，同名只留最新一条
+     —— 老师截图里 28 条正是同一批人反复试生日 / 时辰 / 性别留下的，7 项全等口径一条都合并不掉。
+     另保留「名单 + 生辰信息」口径，供需要保留同一人不同命盘时切换。
+     ⚠️ 口径键升到 v2：旧 v1 里存过 full 的浏览器刷新后一律回落到新默认 name，
+     否则只改代码默认不生效（2026-11-14 实坑）。 */
+  function normVal(v) {
+    return String(v == null ? '' : v).replace(/[\s\u3000]/g, '');
+  }
+  function normBirth(v) {
+    var s = normVal(v).replace(/[.\-\/]/g, '/');
+    var m = /^(\d{4})\/(\d{1,2})\/(\d{1,2})$/.exec(s);
+    return m ? (m[1] + '/' + ('0' + m[2]).slice(-2) + '/' + ('0' + m[3]).slice(-2)) : s;
+  }
+  function histMode() {
+    try { return localStorage.getItem(HIST_DEDUP_KEY) === 'full' ? 'full' : 'name'; }
+    catch (e) { return 'name'; }
+  }
+  function histSetMode(m) {
+    try { localStorage.setItem(HIST_DEDUP_KEY, m === 'full' ? 'full' : 'name'); } catch (e) { }
+  }
+  function histKey(f, mode) {
+    f = f || {};
+    if (mode === 'name') return 'N:' + normVal(f.name);
+    return 'F:' + HIST_FIELDS.map(function (k) {
+      return k + '=' + (k === 'birth' ? normBirth(f[k]) : normVal(f[k]));
+    }).join('\u0001');
+  }
+  /* 全表去重：按 ts 倒序保留最新一条，同组合并 hits。返回 {records, merged} */
+  function histDedup(a, mode) {
+    var seen = {}, out = [], merged = 0;
+    a.sort(function (x, y) { return String(y.ts || '').localeCompare(String(x.ts || '')); });
+    a.forEach(function (rec) {
+      var k = histKey(rec.f || {}, mode);
+      rec.key = k;
+      if (seen[k]) { seen[k].hits = (seen[k].hits || 1) + (rec.hits || 1); merged++; return; }
+      seen[k] = rec;
+      out.push(rec);
+    });
+    return { records: out, merged: merged };
+  }
+  /* 自动去重：写盘前留一份可撤销快照，绝不静默丢数据 */
+  function histAutoDedup(silent) {
+    var a = histRead();
+    if (a.length < 2) return 0;
+    /* 快照必须在去重前深拷贝：histDedup 会原地排序并累加 hits */
+    var snap = JSON.parse(JSON.stringify(a));
+    var res = histDedup(a, histMode());
+    if (!res.merged) return 0;
+    try {
+      localStorage.setItem(HIST_UNDO_KEY, JSON.stringify({
+        at: new Date().toISOString(), mode: histMode(), records: snap
+      }));
+    } catch (e) { }
+    state.histOk = histWrite(res.records);
+    state.histMerged = res.merged;   /* 只报最近一次，避免切口径后显示累计值误导 */
+    if (!silent && state.tab === 11) renderHist();
+    return res.merged;
+  }
+  function histUndo() {
+    var snap = null;
+    try { snap = JSON.parse(localStorage.getItem(HIST_UNDO_KEY) || 'null'); } catch (e) { }
+    if (!snap || !Array.isArray(snap.records)) { window.alert('没有可撤销的去重记录。'); return; }
+    if (!window.confirm('恢复上次去重前的 ' + snap.records.length + ' 条记录？当前表会被替换。')) return;
+    state.histOk = histWrite(snap.records);
+    try { localStorage.removeItem(HIST_UNDO_KEY); } catch (e) { }
+    histSetMode('full');           /* 撤销后临时切最保守口径，避免刷新又合并；要按名单再切回来 */
+    state.histMerged = 0;
+    renderHist();
+  }
+  function histSummary(r) {
+    var soul = '';
+    try {
+      var sc = M.lookupSoulScore(r.yang, D.SOUL_SCORE_DB);
+      if (sc && sc.rec) soul = (sc.rec.name || '') + (sc.rec.stars ? '（' + sc.rec.stars + '）' : '');
+    } catch (e) { }
+    return {
+      yang: r.yang || '', yin: r.yin || '',
+      yangQue: r.yangQue || '', yinQue: r.yinQue || '',
+      type: r.type || '', half: r.half || '',
+      soul: soul,
+      trueSolar: state.ts ? (state.ts.iso + ' / ' + state.ts.shichen) : ''
+    };
+  }
+  /* 用户完成一次解读后自动落盘；全表查同组合并（不再只比 a[0]），并顺带做一次全表去重 */
+  function autoSave(f, r) {
+    if (!histAutoOn() || state.suppressSave) return;
+    var mode = histMode(), a = histRead();
+    var key = histKey(f, mode), now = new Date().toISOString(), sum = histSummary(r);
+    var idx = -1;
+    for (var i = 0; i < a.length; i++) {
+      if ((a[i].key || histKey(a[i].f || {}, mode)) === key) { idx = i; break; }
+    }
+    if (idx >= 0) {
+      var rec = a.splice(idx, 1)[0];
+      rec.ts = now; rec.hits = (rec.hits || 1) + 1; rec.s = sum; rec.key = key;
+      a.unshift(rec);
+    } else {
+      a.unshift({
+        id: 'r' + Date.now() + Math.random().toString(36).slice(2, 6),
+        key: key, ts: now, hits: 1, f: f, s: sum, v: 1
+      });
+    }
+    var res = histDedup(a, mode);
+    if (res.records.length > HIST_MAX) { res.records.length = HIST_MAX; state.histTrimmed = true; }
+    state.histOk = histWrite(res.records);
+    if (state.tab === 11) renderHist();
+  }
+
+  function renderHist() {
+    var a = histRead(), box = $('histBody'), mode = histMode();
+    $('histCount').textContent = '共 ' + a.length + ' 条记录' +
+      (a.length >= HIST_MAX ? '（已达上限 ' + HIST_MAX + '，最旧的会被淘汰）' : '');
+    $('histAuto').checked = histAutoOn();
+    $('histMode').value = mode;
+    var undoSnap = null;
+    try { undoSnap = JSON.parse(localStorage.getItem(HIST_UNDO_KEY) || 'null'); } catch (e) { }
+    $('histUndo').disabled = !(undoSnap && Array.isArray(undoSnap.records));
+    /* 两种口径各能剩多少，直接摆出来，老师不用猜 */
+    var nFull = a.length ? histDedup(JSON.parse(JSON.stringify(a)), 'full').records.length : 0;
+    var nName = a.length ? histDedup(JSON.parse(JSON.stringify(a)), 'name').records.length : 0;
+    $('histStat').innerHTML = '当前口径 <b>' +
+      (mode === 'name' ? '仅名单（同名留最新）' : '名单 + 生辰信息') +
+      '</b>；口径预览：仅名单剩 <b>' + nName + '</b> 人，名单 + 生辰信息剩 <b>' + nFull + '</b> 条。' +
+      ' 切换口径立即自动重跑，重复记录可撤销恢复。' +
+      '<br><span style="color:#a8452a">为什么还有这么多条：</span>「名单 + 生辰信息」口径要求姓名与 7 项' +
+      '生辰参数<b>全部相同</b>才算重复；同一人反复试生日 / 时辰 / 性别时每项都不同，' +
+      '一条都不会合并 —— 要按人收敛请切「仅名单」（本页默认）。';
+    var msg = '';
+    if (state.histOk === false)
+      msg = '<b style="color:#a8452a">本机存储写入失败</b>（隐私模式或空间满），请及时导出 JSON 备份。';
+    else if (state.histTrimmed)
+      msg = '记录已达 ' + HIST_MAX + ' 条上限，最旧的已自动淘汰，建议导出 JSON 留存。';
+    if (state.histMerged)
+      msg += (msg ? '<br>' : '') + '已自动合并 <b>' + state.histMerged + '</b> 条重复记录，' +
+        '可点「撤销去重」恢复（恢复后临时切到「名单 + 生辰信息」，避免刷新又合并；' +
+        '要按名单去重请切回「仅名单」）。';
+    $('histHint').innerHTML = msg;
+    /* 空态不设表格最小宽度，窄屏下提示文字才不会被推到滚动区外 */
+    $('histTable').classList.toggle('is-empty', !a.length);
+    histPaintHead();
+    if (!a.length) {
+      box.innerHTML = '<tr><td colspan="17"><div class="empty">暂无记录。填好生辰参数点「开始解读」，本表会自动保存。</div></td></tr>';
+      return;
+    }
+    var rows = histSortArr(a);
+    box.innerHTML = rows.map(function (rec, ri) {
+      var f = rec.f || {}, s = rec.s || {};
+      var ts = String(rec.ts || '').replace('T', ' ').slice(0, 19);
+      /* 稀有度现算（口径与第 9 页同一个 rarity()）：查不到就直说，不填 0 分骗人 */
+      var xr = histRarity(s);
+      var rarCell = (s.yang && s.yin)
+        ? (xr ? '<b>' + xr.score.toFixed(1) + '</b><span class="b">' + esc(xr.band.t) + '</span>'
+              : '<span style="color:var(--ink3)">区间外</span>')
+        : '—';
+      var cls = (histSort.key === 'rar' && ri === 0 && xr) ? ' class="rank-top"' : '';
+      /* 操作列放最左：17 列宽表在 1300 甚至 758 下横向滚动时，载入/删除始终可见 */
+      return '<tr' + cls + '>' +
+        '<td class="nowrap">' +
+          '<button class="btn ghost sm" type="button" data-hist-load="' + esc(rec.id || '') + '">载入</button> ' +
+          '<button class="btn ghost sm" type="button" data-hist-del="' + esc(rec.id || '') + '">删除</button>' +
+        '</td>' +
+        '<td class="nowrap">' + esc(ts) + '</td>' +
+        '<td>' + esc(f.name || '—') + '</td>' +
+        '<td>' + esc(f.birth || '') + '</td>' +
+        '<td>' + esc(f.shichen || '') + '</td>' +
+        '<td>' + esc(f.gender === 'female' ? '女' : '男') + '</td>' +
+        '<td>' + esc(f.clock || '—') + '</td>' +
+        '<td>' + esc(f.city || '—') + '</td>' +
+        '<td>' + esc(RULE_TXT[f.rule] || f.rule || '') + '</td>' +
+        '<td><code>' + esc(s.yang) + '</code></td>' +
+        '<td><code>' + esc(s.yin) + '</code></td>' +
+        '<td>' + esc(s.yangQue || '无') + '</td>' +
+        '<td>' + esc(s.yinQue || '无') + '</td>' +
+        '<td>' + esc(s.type || '—') + '</td>' +
+        '<td>' + esc(s.soul || '—') + '</td>' +
+        '<td class="hist-rar">' + rarCell + '</td>' +
+        '<td>' + (rec.hits || 1) + '</td></tr>';
+    }).join('');
+  }
+
+  /* 载入 = 把生辰参数调回表单并重新算出 11 页结果；不新增记录 */
+  function histLoad(id) {
+    var rec = histRead().filter(function (r) { return r.id === id; })[0];
+    if (!rec) return;
+    HIST_FIELDS.forEach(function (k) {
+      var el = $(HIST_IDS[k]);
+      if (!el) return;
+      var v = rec.f[k] == null ? '' : rec.f[k];
+      /* run() 把生日改成 1990/05/08，而 date input 只收 YYYY-MM-DD ⇒ 载入时转回 ISO */
+      el.value = (k === 'birth') ? isoFromSlash(v) : v;
+    });
+    state.suppressSave = true;
+    try { run(); } finally { state.suppressSave = false; }
+    switchTab(0);
+  }
+  function histDel(id) {
+    var a = histRead().filter(function (r) { return r.id !== id; });
+    state.histOk = histWrite(a);
+    renderHist();
+  }
+  function histClear() {
+    if (!window.confirm('确定清空全部查询记录？此操作不可撤销，建议先导出 JSON 备份。')) return;
+    state.histOk = histWrite([]);
+    state.histTrimmed = false;
+    renderHist();
+  }
+  function histDownload(text, mime, filename) {
+    var blob = new Blob([text], { type: mime });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+  }
+  function csvQ(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; }
+  function histCsv() {
+    var a = histRead();
+    var head = ['查询时间', '姓名', '阳历生日', '时辰', '性别', '出生钟点', '出生地', '子时规则',
+      '阳格', '阴格', '阳缺', '阴缺', '类型', '半补', '灵魂', '灵魂★', '稀有度', '真太阳时', '次数'];
+    var rows = [head.map(csvQ).join(',')];
+    a.forEach(function (rec) {
+      var f = rec.f || {}, s = rec.s || {}, xr = histRarity(s), st = histSoulStar(s);
+      rows.push([
+        rec.ts, f.name, f.birth, f.shichen, (f.gender === 'female' ? '女' : '男'),
+        f.clock, f.city, (RULE_TXT[f.rule] || f.rule), s.yang, s.yin,
+        s.yangQue, s.yinQue, s.type, s.half, s.soul,
+        (st == null ? '' : st), (xr ? xr.score.toFixed(1) : ''),
+        s.trueSolar, rec.hits || 1
+      ].map(csvQ).join(','));
+    });
+    histDownload('\ufeff' + rows.join('\r\n') + '\r\n', 'text/csv;charset=utf-8',
+      '慈海九宫格_查询记录_' + todayISO().replace(/-/g, '') + '.csv');
+  }
+  function histJson() {
+    histDownload(JSON.stringify({ v: 1, app: '慈海九宫格 · 即时解读', exportedAt: new Date().toISOString(), records: histRead() }, null, 2),
+      'application/json;charset=utf-8',
+      '慈海九宫格_查询记录_' + todayISO().replace(/-/g, '') + '.json');
+  }
+  function histImport(file) {
+    var fr = new FileReader();
+    fr.onload = function () {
+      try {
+        var obj = JSON.parse(String(fr.result));
+        var inc = Array.isArray(obj) ? obj : (obj && Array.isArray(obj.records) ? obj.records : null);
+        if (!inc) throw new Error('文件里没有 records 数组');
+        var mode = histMode(), a = histRead(), seen = {}, added = 0, dup = 0;
+        a.forEach(function (r) { seen[histKey(r.f || {}, mode)] = 1; });
+        inc.forEach(function (r) {
+          if (!r || !r.f || typeof r.f !== 'object' || !r.f.birth) return;
+          var k = histKey(r.f, mode);       /* 忽略文件里的旧 key，按当前口径重算 */
+          if (seen[k]) { dup++; return; }
+          seen[k] = 1;
+          a.push({
+            id: r.id || ('r' + Date.now() + Math.random().toString(36).slice(2, 6)),
+            key: k, ts: r.ts || new Date().toISOString(), hits: r.hits || 1,
+            f: r.f, s: r.s || {}, v: 1
+          });
+          added++;
+        });
+        var snap = JSON.parse(JSON.stringify(a));
+        var res = histDedup(a, mode);
+        if (res.merged) {
+          try {
+            localStorage.setItem(HIST_UNDO_KEY, JSON.stringify({
+              at: new Date().toISOString(), mode: mode, records: snap
+            }));
+          } catch (e) { }
+          state.histMerged = res.merged;
+        }
+        if (res.records.length > HIST_MAX) { res.records.length = HIST_MAX; state.histTrimmed = true; }
+        state.histOk = histWrite(res.records);
+        renderHist();
+        window.alert('导入完成：新增 ' + added + ' 条，跳过重复 ' + (dup + res.merged) +
+          ' 条，当前共 ' + res.records.length + ' 条。');
+      } catch (e) {
+        window.alert('导入失败：' + e.message);
+      }
+    };
+    fr.readAsText(file, 'utf-8');
+  }
+  function bindHist() {
+    $('histAuto').addEventListener('change', function () {
+      try { localStorage.setItem(HIST_AUTO_KEY, this.checked ? '1' : '0'); } catch (e) { }
+    });
+    $('histCsv').addEventListener('click', histCsv);
+    $('histJson').addEventListener('click', histJson);
+    $('histImport').addEventListener('click', function () { $('histFile').click(); });
+    $('histFile').addEventListener('change', function () {
+      if (this.files && this.files[0]) histImport(this.files[0]);
+      this.value = '';
+    });
+    $('histClear').addEventListener('click', histClear);
+    $('histMode').addEventListener('change', function () {
+      histSetMode(this.value);
+      var n = histAutoDedup(true);
+      renderHist();
+      if (n) window.alert('已按新口径合并 ' + n + ' 条重复记录，可点「撤销去重」恢复。');
+    });
+    $('histDedup').addEventListener('click', function () {
+      var n = histAutoDedup(true);
+      renderHist();
+      window.alert(n ? ('已合并 ' + n + ' 条重复记录，可点「撤销去重」恢复。') : '当前没有重复记录。');
+    });
+    $('histUndo').addEventListener('click', histUndo);
+    /* 表头排序：数值列先降序（稀有度最高、灵魂★最多、次数最多在最上面），文字列先升序；
+       同一列再点反向，第三次回默认。排序只改显示顺序，不动 localStorage 里的记录顺序。 */
+    $('histTable').addEventListener('click', function (e) {
+      var th = e.target.closest('th[data-sort]');
+      if (th) {
+        var k = th.getAttribute('data-sort'), start = HIST_SORT_NUM[k] ? -1 : 1;
+        if (histSort.key !== k) histSort = { key: k, dir: start };
+        else if (histSort.dir === start) histSort = { key: k, dir: -start };
+        else histSort = { key: null, dir: -1 };
+        histSortSave();
+        renderHist();
+        return;
+      }
+      var l = e.target.closest('[data-hist-load]');
+      if (l) { histLoad(l.getAttribute('data-hist-load')); return; }
+      var d = e.target.closest('[data-hist-del]');
+      if (d) {
+        if (window.confirm('删除这条查询记录？')) histDel(d.getAttribute('data-hist-del'));
+      }
+    });
+    var rl = $('histSortReset');
+    if (rl) rl.addEventListener('click', function (e) {
+      e.preventDefault();
+      histSort = { key: null, dir: -1 };
+      histSortSave();
+      renderHist();
+    });
   }
 
   /* ══════════ 主流程 ══════════ */
@@ -2331,6 +2917,13 @@ window.__DATA__={"_meta":{"生成时间":"2026-10-27 10:57:53","来源":["查询
     $('paramTail').innerHTML = '<span class="tag ok">已计算</span> ' +
       esc(f.birth) + ' ' + esc(f.shichen) + ' · ' + (f.gender === 'male' ? '男' : '女') +
       (state.ts ? ' · 真太阳时 ' + esc(state.ts.iso) + '（' + esc(state.ts.shichen) + '）' : '');
+    if (state.saveNext) autoSave(Object.assign({}, f), r);
+  }
+
+  /* 用户主动查询才留痕；init() 的自动试算、载入历史重算都不写表 */
+  function userRun() {
+    state.saveNext = true;
+    try { run(); } finally { state.saveNext = false; }
   }
 
   /* ══════════ 0 命盘概要 ══════════ */
@@ -3238,7 +3831,7 @@ window.__DATA__={"_meta":{"生成时间":"2026-10-27 10:57:53","来源":["查询
   }
 
   function bind() {
-    $('btnRun').addEventListener('click', run);
+    $('btnRun').addEventListener('click', userRun);
     $('btnDemo').addEventListener('click', function () {
       $('fName').value = '小李';
       $('fBirth').value = '2012-12-21';
@@ -3251,9 +3844,10 @@ window.__DATA__={"_meta":{"生成时间":"2026-10-27 10:57:53","来源":["查询
     });
 
     ['fName', 'fBirth', 'fShichen', 'fGender', 'fClock', 'fCity', 'fRule'].forEach(function (id) {
-      $(id).addEventListener('change', run);
+      $(id).addEventListener('change', userRun);
     });
-    $('fBirth').addEventListener('keydown', function (e) { if (e.key === 'Enter') run(); });
+    $('fBirth').addEventListener('keydown', function (e) { if (e.key === 'Enter') userRun(); });
+    bindHist();
 
     $('btnDay').addEventListener('click', renderEx);
     $('fDay').addEventListener('change', renderEx);
@@ -3298,6 +3892,7 @@ window.__DATA__={"_meta":{"生成时间":"2026-10-27 10:57:53","来源":["查询
   /* ══════════ 启动 ══════════ */
   function init() {
     M.lunarInit(window.__LUNAR__);
+    histSortRead();          /* 排序偏好要在第一次 renderHist 之前读回来 */
     buildTabs();
     fillCities();
     $('fDay').value = todayISO();
@@ -3308,6 +3903,8 @@ window.__DATA__={"_meta":{"生成时间":"2026-10-27 10:57:53","来源":["查询
     renderSt();
     stSearch('');
     run();
+    histAutoDedup(true);      /* 开机自动清掉历史遗留的重复名单（默认按名单） */
+    renderHist();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
