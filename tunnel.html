@@ -16,6 +16,9 @@ button{cursor:pointer}
 /* 画布铺满左侧，右侧为参数浮窗实打实让位（F13/F14/N200） */
 #stage{position:absolute;inset:0;padding:14px calc(var(--cd-w) + 26px) 14px 14px;transition:padding .18s}
 #gl{display:block;width:100%;height:100%;border:1px solid var(--line);border-radius:12px;background:#0b0610}
+#boot{position:absolute;left:0;right:calc(var(--cd-w) + 26px);top:50%;transform:translateY(-50%);
+  text-align:center;color:#c9b8e6;font-size:13px;letter-spacing:.6px;pointer-events:none;
+  text-shadow:0 0 18px rgba(170,130,255,.35)}
 #toast{position:absolute;left:28px;bottom:28px;background:rgba(255,255,255,.94);border:1px solid var(--line);
   border-radius:8px;padding:6px 12px;color:var(--ink);opacity:0;pointer-events:none;transition:opacity .25s;
   box-shadow:0 3px 14px rgba(0,0,0,.10)}
@@ -96,6 +99,7 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 6px
 
 <div id="stage">
   <canvas id="gl"></canvas>
+  <div id="boot">正在初始化渲染引擎…</div>
   <div id="hud"><span>引擎 <b id="hEng">—</b></span><span>FPS <b id="hFps">—</b></span><span>速度 <b id="hSpd">—</b></span><span>中心 <b id="hCenter">居中</b></span><button id="hudMin">收起</button></div>
   <div id="toast"></div>
 </div>
@@ -2261,9 +2265,23 @@ function frame(now){
 }
 
 P.audioOn=0; /* 浏览器要求用户手势，刷新后一律从「关闭」开始，避免假开无声 */
-initGL();syncUI();resize();refreshSchemes();
-if(CENTER_FIXED)setTimeout(function(){toast('检测到上次保存的中心偏移，已自动复位到屏幕正中');},700);
-requestAnimationFrame(frame);
+/* 先让浏览器把 UI 画出来，再初始化 WebGL。
+   原因：完整 shader 第一次编译在软件渲染或弱 GPU 上可能要几十秒，若这段同步跑在
+   脚本里，浏览器连一帧都画不出来 —— 用户看到的就是「双击后一直白屏、打不开」。
+   双 rAF 保证真的画过一帧，再 setTimeout 让出主线程。 */
+function boot(){
+  window.__bootAt=performance.now();   /* 埋点：boot 开始时刻，便于和 FCP 对比 */
+  try{initGL();}catch(e){showErr('初始化异常：'+e.message);}
+  syncUI();resize();refreshSchemes();
+  if(CENTER_FIXED)setTimeout(function(){toast('检测到上次保存的中心偏移，已自动复位到屏幕正中');},700);
+  window.__glAt=performance.now();     /* 埋点：WebGL 真正就绪时刻 */
+  var ov=document.getElementById('boot');
+  if(ov&&ov.parentNode)ov.parentNode.removeChild(ov);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(function(){
+  requestAnimationFrame(function(){setTimeout(boot,0);});
+});
 </script>
 </body>
 </html>
