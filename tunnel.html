@@ -506,9 +506,17 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 6px
 <script>
 "use strict";
 /* ===================== 错误可见（N51） ===================== */
+var _errSeen=Object.create(null);
 function showErr(msg){
   var box=document.getElementById('errbox');
-  document.getElementById('errmsg').textContent += (document.getElementById('errmsg').textContent?'\n':'')+msg;
+  var el=document.getElementById('errmsg');
+  if(_errSeen[msg]){                    /* 同一条错误只显示一次，避免每帧刷屏 */
+    _errSeen[msg]++;
+    if(_errSeen[msg]%200===0)console.warn('[重复错误 ×'+_errSeen[msg]+'] '+msg);
+    return;
+  }
+  _errSeen[msg]=1;
+  el.textContent += (el.textContent?'\n':'')+msg;
   box.style.display='block';
 }
 window.onerror=function(m,s,l,c){showErr('JS 错误: '+m+' @'+l+':'+c);};
@@ -919,7 +927,7 @@ window.addEventListener('mouseup',function(){drag=null;});
 
 /* ===================== WebGL 渲染 ===================== */
 var canvas=document.getElementById('gl');
-var gl=null, prog=null, U={}, mode2D=false;
+var gl=null, prog=null, U={}, mode2D=false, ctx2=null;
 var VERT='attribute vec2 aPos; void main(){gl_Position=vec4(aPos,0.0,1.0);}';
 var FRAG=[
 '#ifdef GL_FRAGMENT_PRECISION_HIGH','precision highp float;','#else','precision mediump float;','#endif',
@@ -1427,9 +1435,17 @@ function compile(type,src){
 }
 function initGL(){
   try{
-    gl=canvas.getContext('webgl',{alpha:false,antialias:false,preserveDrawingBuffer:true})||
-       canvas.getContext('experimental-webgl',{alpha:false,preserveDrawingBuffer:true});
-    if(!gl)throw new Error('浏览器未提供 WebGL 上下文');
+    /* 多组参数重试：关硬件加速 / 软件 WebGL 被禁的环境常会拒绝带
+       preserveDrawingBuffer 的上下文，宽松参数有机会救回来 */
+    var _glOpts=[{alpha:false,antialias:false,preserveDrawingBuffer:true},
+                 {alpha:false,antialias:false},{alpha:false},{}];
+    var _glKinds=['webgl','experimental-webgl'];
+    for(var _i=0;_i<_glOpts.length&&!gl;_i++){
+      for(var _j=0;_j<_glKinds.length&&!gl;_j++){
+        try{gl=canvas.getContext(_glKinds[_j],_glOpts[_i]);}catch(_e){gl=null;}
+      }
+    }
+    if(!gl)throw new Error('浏览器未提供 WebGL 上下文（硬件加速关闭或软件 WebGL 被禁用）');
     prog=gl.createProgram();
     gl.attachShader(prog,compile(gl.VERTEX_SHADER,VERT));
     gl.attachShader(prog,compile(gl.FRAGMENT_SHADER,FRAG));
@@ -1453,9 +1469,24 @@ function initGL(){
     document.getElementById('hEng').textContent='WebGL · GLSL';
     return true;
   }catch(err){
-    showErr('WebGL 初始化失败，已切换 Canvas2D 降级模式：\n'+err.message);
-    gl=null;mode2D=true;
+    /* 根因修复：canvas 一旦被申请过 WebGL 上下文（哪怕失败或 shader 编译报错），
+       Chrome 就拒绝再返回 2d context —— 旧版因此每帧抛 setTransform of null、
+       画布全白。这里换一个全新的 canvas 元素，2D 降级才真正拿得到上下文。 */
+    gl=null;mode2D=true;ctx2=null;
+    var fresh=document.createElement('canvas');
+    fresh.id='gl';                                /* 同 id ⇒ 继承 #gl 的 CSS 尺寸与边框 */
+    fresh.className=canvas.className;
+    if(canvas.style.cssText)fresh.style.cssText=canvas.style.cssText;
+    canvas.parentNode.replaceChild(fresh,canvas);
+    canvas=fresh;
+    ctx2=canvas.getContext('2d');
     document.getElementById('hEng').textContent='Canvas2D 降级';
+    console.info('[隧道训练台] WebGL 不可用，已切换 Canvas2D 降级：'+err.message);
+    if(ctx2){
+      toast('WebGL 不可用 · 已自动切换 Canvas2D 降级（参数仍全部可调）');
+    }else{
+      showErr('Canvas2D 降级失败：浏览器未提供 2D 上下文');
+    }
     return false;
   }
 }
@@ -1603,9 +1634,10 @@ function drawVfx2D(c,W,H,cx,cy,R,t){
   c.restore();
 }
 /* Canvas2D 降级：同一套参数，同心环 + 螺旋臂 + 中心涟漪（N44 全画布清空） */
-var ctx2=null;
+/* ctx2 已在顶部声明；降级时由 initGL 在全新 canvas 上初始化 */
 function draw2D(t){
   if(!ctx2)ctx2=canvas.getContext('2d');
+  if(!ctx2){showErr('Canvas2D 降级失败：无法获取 2D 上下文');return;}
   resize();
   var W=canvas.width,H=canvas.height,c=ctx2;
   c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,W,H);
