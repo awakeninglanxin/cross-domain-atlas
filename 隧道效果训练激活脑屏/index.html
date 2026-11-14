@@ -1,0 +1,1981 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>隧道螺旋 · 凝视训练台（log-polar / 1/r / 对数摆线）</title>
+<link rel="icon" href="data:,">
+<style>
+:root{--cd-w:344px;--ink:#1d1d20;--muted:#6b6b74;--line:#dcdce2;--accent:#0f7a6c;--accent2:#7b3fa1}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#fff;color:var(--ink);
+  font:13px/1.55 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+button,input,select{font-family:inherit;font-size:12px;color:inherit}
+button{cursor:pointer}
+
+/* 画布铺满左侧，右侧为参数浮窗实打实让位（F13/F14/N200） */
+#stage{position:absolute;inset:0;padding:14px calc(var(--cd-w) + 26px) 14px 14px;transition:padding .18s}
+#gl{display:block;width:100%;height:100%;border:1px solid var(--line);border-radius:12px;background:#0b0610}
+#toast{position:absolute;left:28px;bottom:28px;background:rgba(255,255,255,.94);border:1px solid var(--line);
+  border-radius:8px;padding:6px 12px;color:var(--ink);opacity:0;pointer-events:none;transition:opacity .25s;
+  box-shadow:0 3px 14px rgba(0,0,0,.10)}
+#toast.on{opacity:1}
+#hud{position:absolute;right:calc(var(--cd-w) + 30px);top:26px;z-index:8;background:rgba(255,255,255,.94);
+  border:1px solid var(--line);border-radius:20px;padding:5px 8px 5px 12px;display:flex;align-items:center;gap:8px;
+  box-shadow:0 2px 10px rgba(0,0,0,.07);font-size:11px;color:var(--muted);white-space:nowrap}
+#hud b{color:var(--accent);font-weight:600}
+#hud.min span{display:none}
+#hud button{border:none;background:#f1f1f4;border-radius:12px;padding:1px 8px;color:var(--muted)}
+#immExit{display:none;position:absolute;right:16px;top:16px;z-index:30;background:rgba(255,255,255,.92);
+  border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+
+/* 右浮窗 */
+#dock{position:fixed;right:12px;top:12px;bottom:12px;width:var(--cd-w);z-index:20;background:#fff;
+  border:1px solid var(--line);border-radius:12px;box-shadow:0 6px 28px rgba(0,0,0,.10);
+  display:flex;flex-direction:column;overflow:hidden}
+#dockHead{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 9px;
+  border-bottom:1px solid var(--line);background:#fafafc;cursor:ns-resize;user-select:none;flex:none}
+#dockHead .t{font-weight:600;font-size:13px}
+#dockHead .s{font-size:10px;color:var(--muted);font-weight:400;margin-left:6px}
+#dockHead button{border:1px solid var(--line);background:#fff;border-radius:6px;width:24px;height:22px;line-height:1}
+#dockBody{overflow-y:auto;overflow-x:hidden;padding:4px 12px 18px;flex:1;scrollbar-width:thin}
+#dockBody::-webkit-scrollbar{width:9px}
+#dockBody::-webkit-scrollbar-thumb{background:#c9c9d2;border-radius:6px}
+#dockResize{position:absolute;left:0;bottom:0;width:16px;height:16px;cursor:nesw-resize;
+  background:linear-gradient(135deg,transparent 55%,#b9b9c4 56%,#b9b9c4 66%,transparent 67%,transparent 78%,#b9b9c4 79%,#b9b9c4 89%,transparent 90%)}
+#dockPill{display:none;position:fixed;right:12px;top:12px;z-index:21;background:#fff;border:1px solid var(--line);
+  border-radius:20px;padding:7px 14px;box-shadow:0 3px 14px rgba(0,0,0,.10);font-weight:600}
+body.dock-min #dock{display:none}
+body.dock-min #dockPill{display:block}
+body.dock-min{--cd-w:0px}
+body.immersive #dock,body.immersive #dockPill,body.immersive #hud{display:none}
+body.immersive{--cd-w:0px}
+body.immersive #immExit{display:block}
+body.immersive #gl{border-color:#fff}
+
+.sec{border-bottom:1px solid #eeeef2;padding:9px 0 11px}
+.sec:last-child{border-bottom:none}
+.sec>summary{list-style:none;cursor:pointer;font-weight:600;font-size:12px;padding:3px 0 7px;color:var(--ink)}
+.sec>summary::-webkit-details-marker{display:none}
+.sec>summary:before{content:"▾";display:inline-block;width:14px;color:var(--accent)}
+.sec:not([open])>summary:before{content:"▸"}
+.fld{margin:7px 0 10px}
+.lab{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:3px;font-size:11.5px}
+.lab span{color:#3a3a42}
+.lab b{font-variant-numeric:tabular-nums;color:var(--accent);font-weight:600;cursor:text;
+  border-bottom:1px dashed #b9dbd5;padding:0 2px;min-width:38px;text-align:right}
+.lab b:hover{background:#eef8f6}
+.numedit{width:64px;text-align:right;border:1px solid var(--accent);border-radius:4px;padding:1px 4px;outline:none}
+input[type=range]{width:100%;height:16px;margin:0;accent-color:var(--accent);cursor:pointer}
+.row{display:flex;flex-wrap:wrap;gap:5px;margin:5px 0 9px}
+.row button,.btnrow button{border:1px solid var(--line);background:#fff;border-radius:6px;padding:4px 9px;font-size:11px}
+.row button.on,.btnrow button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.row button:hover,.btnrow button:hover{border-color:var(--accent)}
+.btnrow{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
+.btnrow button{flex:1 1 auto;min-width:60px;padding:6px 8px}
+select{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 6px;background:#fff}
+#schemeName{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 6px;background:#fff;margin-bottom:6px}
+#schemeSel{margin-top:2px}
+.read{background:#f4f8f7;border:1px solid #dceae7;border-radius:7px;padding:7px 9px;font-size:11px;
+  color:#3c4a48;line-height:1.7;margin:6px 0 9px}
+.read b{color:var(--accent)}
+.note{font-size:11px;color:var(--muted);line-height:1.75}
+.note a{color:var(--accent2)}
+.warn{background:#fff6f4;border:1px solid #f3d2cb;border-radius:7px;padding:8px 10px;
+  color:#7a3a2c;font-size:11px;line-height:1.7;margin-top:9px}
+#errbox{display:none;position:fixed;right:14px;bottom:14px;z-index:99;max-width:520px;max-height:220px;
+  overflow:auto;background:#fff2f0;border:2px solid #d33;border-radius:8px;padding:9px 12px;
+  color:#8a1c1c;font:12px/1.5 Consolas,monospace;white-space:pre-wrap;box-shadow:0 6px 24px rgba(0,0,0,.18)}
+#errbox .x{float:right;cursor:pointer;font-weight:700;margin-left:10px}
+#spectrum{display:block;width:100%;height:92px;border:1px solid var(--line);border-radius:7px;background:#fff;margin:6px 0 9px}
+#bAudio.on{background:#b23b6d;border-color:#b23b6d;color:#fff}
+.aband{font-size:10.5px;color:var(--muted);margin:-4px 0 9px;line-height:1.6}
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <canvas id="gl"></canvas>
+  <div id="hud"><span>引擎 <b id="hEng">—</b></span><span>FPS <b id="hFps">—</b></span><span>速度 <b id="hSpd">—</b></span><span>中心 <b id="hCenter">居中</b></span><button id="hudMin">收起</button></div>
+  <div id="toast"></div>
+</div>
+<button id="immExit">退出沉浸 (Esc)</button>
+
+<div id="dockPill">⚙ 参数</div>
+<div id="dock">
+  <div id="dockHead"><div><span class="t">参数 · 全部可调</span><span class="s">↕ 可滚动</span></div><button id="dockMin" title="收起">−</button></div>
+  <div id="dockBody">
+
+    <details class="sec" open><summary>① 播放 / 控制</summary>
+      <div class="btnrow" data-k="__act">
+        <button data-v="pause" id="bPause">⏸ 暂停</button>
+        <button data-v="reset">↺ 复位</button>
+        <button data-v="center">⌖ 屏幕居中</button>
+        <button data-v="full">⛶ 全屏</button>
+        <button data-v="imm">◐ 沉浸</button>
+      </div>
+      <div class="lab"><span>预设方案</span></div>
+      <select id="preset">
+        <option value="chakra">品红 · 脉轮（默认，贴近视频封面）</option>
+        <option value="deep">深空隧道</option>
+        <option value="calm">舒缓凝视</option>
+        <option value="logcyc">对数摆线（DDD 参数复现）</option>
+        <option value="white">素白 · 白昼</option>
+        <option value="weave">双向编织 · 顺逆同时</option>
+        <option value="strobe">光诱导 · 10Hz（谨慎）</option>
+        <option value="vfxRing">特效 · 地包天圆环</option>
+        <option value="vfxSpiral">特效 · 黄金比螺旋分形</option>
+        <option value="vfxRipple">特效 · 黄金涟漪</option>
+        <option value="biliCloud">B站光云 · 粉紫（对齐原片）</option>
+        <option value="biliWhite">B站光云 · 素白（对齐原片）</option>
+        <option value="d3deep">3D 深隧 · 裸眼（体积感最强）</option>
+        <option value="d3redcyan">3D 深隧 · 红青眼镜</option>
+        <option value="d3polar">3D 深隧 · 偏光（左右压缩）</option>
+        <option value="sunGaze">金阳凝视 · 中心金黄太阳</option>
+      </select>
+      <div class="note" style="margin-top:8px">参数自动记忆在本机浏览器（localStorage）；双击滑条右侧数字可直接键入数值。</div>
+      <div class="lab" style="margin-top:12px"><span>我的方案 · 另存 / 导出 / 导入</span></div>
+      <input id="schemeName" type="text" placeholder="给当前参数起个名字，如：金阳深隧 0.9">
+      <div class="btnrow">
+        <button id="schemeSave">另存当前</button>
+        <button id="schemeDel">删除此方案</button>
+        <button id="schemeOut">导出 JSON</button>
+        <button id="schemeIn">导入 JSON</button>
+      </div>
+      <select id="schemeSel"><option value="">— 我的方案（0）—</option></select>
+      <input id="schemeFile" type="file" accept=".json,application/json" style="display:none">
+      <div class="note" id="schemeState" style="margin-top:6px">还没有保存过方案；在下拉里选一项即立刻载入。</div>
+    </details>
+
+    <details class="sec" open><summary>② 隧道 · 飞行（外网 shader 参数）</summary>
+      <div class="fld"><div class="lab"><span>进入速度（1/r 深度推进）</span><b class="num" data-k="speed">0.80</b></div><input type="range" data-k="speed" min="0" max="4" step="0.01" value="0.8"></div>
+      <div class="fld"><div class="lab"><span>旋转速度（°/s）</span><b class="num" data-k="spin">18</b></div><input type="range" data-k="spin" min="-90" max="90" step="1" value="18"></div>
+      <div class="fld"><div class="lab"><span>螺旋扭曲 twist（Droste 剪切）</span><b class="num" data-k="twist">0.90</b></div><input type="range" data-k="twist" min="-3" max="3" step="0.01" value="0.90"></div>
+      <div class="fld"><div class="lab"><span>环密度 rings</span><b class="num" data-k="rings">12</b></div><input type="range" data-k="rings" min="2" max="40" step="0.5" value="12"></div>
+      <div class="fld"><div class="lab"><span>扇区数 sectors</span><b class="num" data-k="sectors">8</b></div><input type="range" data-k="sectors" min="2" max="32" step="1" value="8"></div>
+      <div class="fld"><div class="lab"><span>中心 X（尽头偏移，0 = 屏幕正中）</span><b class="num" data-k="cx">0.00</b></div><input type="range" data-k="cx" min="-0.6" max="0.6" step="0.01" value="0"></div>
+      <div class="fld"><div class="lab"><span>中心 Y（尽头偏移，0 = 屏幕正中）</span><b class="num" data-k="cy">0.00</b></div><input type="range" data-k="cy" min="-0.6" max="0.6" step="0.01" value="0"></div>
+      <div class="note" style="margin:-2px 0 10px">尽头不在正中时，HUD 会显示「偏移」；点顶部 <b>⌖ 屏幕居中</b> 一键归零。</div>
+      <div class="lab"><span>镜像模式（整幅画面）</span></div>
+      <div class="row" data-k="flip">
+        <button data-v="0" class="on">原像</button><button data-v="1">水平镜像</button>
+        <button data-v="2">垂直镜像</button><button data-v="3">180° 旋转</button>
+      </div>
+      <div class="lab"><span>顺时针 / 逆时针 双影像重叠</span></div>
+      <div class="row" data-k="dual">
+        <button data-v="0" class="on">单向</button><button data-v="1">叠加 · 混合</button><button data-v="2">叠加 · 取亮</button>
+      </div>
+      <div class="fld"><div class="lab"><span>反向影像权重</span><b class="num" data-k="dualMix">0.50</b></div><input type="range" data-k="dualMix" min="0" max="1" step="0.01" value="0.5"></div>
+      <div class="lab"><span>相位缝方向（atan 分支切割）</span></div>
+      <div class="row" data-k="seamDir">
+        <button data-v="0" class="on">朝上</button><button data-v="1">朝左</button>
+        <button data-v="2">朝下</button><button data-v="3">朝右</button>
+      </div>
+      <div class="note" style="margin:-2px 0 10px">默认把相位不连续线移到正上方；「朝左」即旧版行为，可用于对照。</div>
+      <div class="lab"><span>视口</span></div>
+      <div class="row" data-k="split"><button data-v="0" class="on">整屏隧道</button><button data-v="1">左右双眼分屏（VR）</button></div>
+    </details>
+
+    <details class="sec" open><summary>③ 对数螺旋 / 对数摆线（DDD 参数整合）</summary>
+      <div class="lab"><span>幻视图案（沿用 DDD 六模式）</span></div>
+      <div class="row" data-k="pattern">
+        <button data-v="0" class="on">隧道</button><button data-v="1">螺旋</button><button data-v="2">同心圆</button>
+        <button data-v="3">棋盘</button><button data-v="4">对数摆线</button><button data-v="5">双摆线叠加</button>
+      </div>
+      <div class="fld"><div class="lab"><span>摆线幅度分离 a</span><b class="num" data-k="a">1.00</b></div><input type="range" data-k="a" min="0.05" max="3" step="0.01" value="1"></div>
+      <div class="fld"><div class="lab"><span>螺旋扩张 k（r = a·e^{kθ}）</span><b class="num" data-k="k">0.080</b></div><input type="range" data-k="k" min="0" max="0.15" step="0.001" value="0.08"></div>
+      <div class="fld"><div class="lab"><span>摆线密度 N（每圈瓣数）</span><b class="num" data-k="N">17</b></div><input type="range" data-k="N" min="2" max="24" step="1" value="17"></div>
+      <div class="read" id="readout">—</div>
+      <div class="lab"><span>旋转方向（视觉观感）</span></div>
+      <div class="row" data-k="turn"><button data-v="1" class="on">逆时针</button><button data-v="-1">顺时针</button></div>
+      <div class="note" style="margin:-2px 0 8px">若观感与标签不符，用上面的「镜像模式」翻转即可；开启「双影像叠加」则两个方向同时出现。</div>
+      <div class="row" data-k="mirror"><button data-v="1" class="on">分屏右眼镜像（默认）</button><button data-v="0">两屏同向</button></div>
+      <div class="lab"><span>双眼相位差（仅「两屏同向」时生效）</span></div>
+      <div class="row" data-k="phase"><button data-v="0" class="on">0°</button><button data-v="90">90°</button><button data-v="180">180°</button><button data-v="270">270°</button></div>
+      <div class="note" style="margin:-2px 0 6px">镜像模式下为保证左右严格互为镜像，相位差自动屏蔽为 0°；颜色相位始终两屏同源。</div>
+      <div class="note">DDD 原式：x = (cos t + sin(Nt)/a)·e^{kt}，y = (sin t + cos(Nt)/a)·e^{kt}，t ∈ [−6·2π, 6·2π]；
+        螺旋相位场 g = 5.4·ln r + 2θ·turn。本页把 ln r 与 θ 送进同一套 log-polar 坐标，故 a / k / N 与隧道 twist 共用一条数学链。</div>
+    </details>
+
+    <details class="sec" open><summary>④ 尽头 · 波纹涟漪</summary>
+      <div class="fld"><div class="lab"><span>涟漪波数</span><b class="num" data-k="ripW">12</b></div><input type="range" data-k="ripW" min="1" max="40" step="0.5" value="12"></div>
+      <div class="fld"><div class="lab"><span>涟漪振幅</span><b class="num" data-k="ripAmp">0.80</b></div><input type="range" data-k="ripAmp" min="0" max="2" step="0.01" value="0.8"></div>
+      <div class="fld"><div class="lab"><span>涟漪扩散速度</span><b class="num" data-k="ripSpd">1.00</b></div><input type="range" data-k="ripSpd" min="0" max="4" step="0.01" value="1"></div>
+      <div class="fld"><div class="lab"><span>中心光核 / 凝视靶点</span><b class="num" data-k="core">0.90</b></div><input type="range" data-k="core" min="0" max="2" step="0.01" value="0.9"></div>
+      <div class="lab"><span>中心光核形态</span></div>
+      <div class="row" data-k="coreKind">
+        <button data-v="0" class="on">白光核 + 凝视点</button><button data-v="1">金黄太阳</button><button data-v="2">纯白核</button>
+      </div>
+      <div class="fld"><div class="lab"><span>太阳半径（金色光核模式下生效）</span><b class="num" data-k="sunSize">0.09</b></div><input type="range" data-k="sunSize" min="0.02" max="0.35" step="0.005" value="0.09"></div>
+      <div class="fld"><div class="lab"><span>太阳光芒强度（12 道星芒）</span><b class="num" data-k="sunRays">0.55</b></div><input type="range" data-k="sunRays" min="0" max="1.5" step="0.01" value="0.55"></div>
+      <div class="note">封面那个「中心白光核 + 黑点」在这里复现为可调光核与凝视靶点。
+        把形态切到<b>金黄太阳</b>，中心就不再是黑洞：日面由近白核心过渡到橙红边缘，外圈是 <code>exp(-1.35·r)</code> 日冕，
+        再叠 12 道整数角系数星芒 <code>cos(12θ)</code>（偶数系数保证 atan 分支处无缝）与 1.7 Hz 呼吸脉动。</div>
+    </details>
+
+    <details class="sec" open><summary>⑤ 炫彩 / 光诱导</summary>
+      <div class="lab"><span>余弦调色板（IQ palette）</span></div>
+      <div class="row" data-k="pal"><button data-v="0" class="on">品红·脉轮</button><button data-v="1">深空青蓝</button><button data-v="2">极光</button><button data-v="3">素白白昼</button><button data-v="4">单色金</button></div>
+      <div class="fld"><div class="lab"><span>色相相位</span><b class="num" data-k="hue">0.00</b></div><input type="range" data-k="hue" min="0" max="1" step="0.01" value="0"></div>
+      <div class="fld"><div class="lab"><span>色彩流动速度</span><b class="num" data-k="hueSpd">0.60</b></div><input type="range" data-k="hueSpd" min="0" max="2" step="0.01" value="0.6"></div>
+      <div class="fld"><div class="lab"><span>发光强度</span><b class="num" data-k="glow">1.00</b></div><input type="range" data-k="glow" min="0" max="2" step="0.01" value="1"></div>
+      <div class="fld"><div class="lab"><span>峰值亮度</span><b class="num" data-k="bright">1.00</b></div><input type="range" data-k="bright" min="0.1" max="1.5" step="0.01" value="1"></div>
+      <div class="fld"><div class="lab"><span>边缘渐晕</span><b class="num" data-k="vig">0.85</b></div><input type="range" data-k="vig" min="0" max="1" step="0.01" value="0.85"></div>
+      <div class="fld"><div class="lab"><span>呼吸调制（速度随呼吸起伏）</span><b class="num" data-k="breath">0</b></div><input type="range" data-k="breath" min="0" max="1" step="1" value="0"></div>
+      <div class="fld"><div class="lab"><span>呼吸周期（秒）</span><b class="num" data-k="breathPeriod">6</b></div><input type="range" data-k="breathPeriod" min="3" max="12" step="0.5" value="6"></div>
+      <div class="fld"><div class="lab"><span>闪烁频率 Hz（AVS）</span><b class="num" data-k="flickHz">10</b></div><input type="range" data-k="flickHz" min="1" max="30" step="0.5" value="10"></div>
+      <div class="fld"><div class="lab"><span>闪烁强度（0 = 关闭）</span><b class="num" data-k="flick">0</b></div><input type="range" data-k="flick" min="0" max="1" step="0.01" value="0"></div>
+      <div class="lab" style="margin-top:14px"><span>背景渲染样式 · B站光云（对齐原片实测）</span></div>
+      <div class="row" data-k="style">
+        <button data-v="0" class="on">几何（原样）</button><button data-v="1">光云 · 粉紫</button><button data-v="2">光云 · 素白</button>
+      </div>
+      <div class="fld"><div class="lab"><span>径向拉丝强度（缩放模糊感）</span><b class="num" data-k="rays">0.85</b></div><input type="range" data-k="rays" min="0" max="1" step="0.01" value="0.85"></div>
+      <div class="fld"><div class="lab"><span>颗粒噪点</span><b class="num" data-k="grain">0.12</b></div><input type="range" data-k="grain" min="0" max="1" step="0.01" value="0.12"></div>
+      <div class="fld"><div class="lab"><span>柔焦 / 去饱和</span><b class="num" data-k="soft">0.55</b></div><input type="range" data-k="soft" min="0" max="1" step="0.01" value="0.55"></div>
+      <div class="note" style="margin:-2px 0 4px">「光云」不是几何隧道：原片 96 分钟里<b>没有</b>几何隧道，整段是同一个 AI 母题
+        叠加强烈<b>径向缩放拉丝</b>，才被人眼读成隧道。此样式复刻它的<b>顶光 + 长条拉丝 + 粉紫色带 + 中心暗核</b>，
+        调色板取自参考帧量化值（玫瑰 #ED9ACE / 品红 #BF4EA4 / 薰衣草 #AD96B8 / 长春花蓝 #8FA8E8 / 珊瑚 #E89988），
+        径向亮度按实测做成 0.40–0.68 的<b>高调不压边</b>（关掉渐晕）。几何的 twist / spin / sectors 仍然生效。</div>
+    </details>
+
+    <details class="sec" open><summary>⑥ 三视频特效 · 算法复现（可选）</summary>
+      <div class="lab"><span>特效模式（0 = 回到原隧道）</span></div>
+      <div class="row" data-k="vfx">
+        <button data-v="0" class="on">原隧道</button><button data-v="1">地包天圆环</button>
+        <button data-v="2">黄金比螺旋</button><button data-v="3">黄金涟漪</button>
+      </div>
+      <div class="fld"><div class="lab"><span>与原隧道混合（0 = 纯原图，1 = 纯特效）</span><b class="num" data-k="vfxMix">1.00</b></div><input type="range" data-k="vfxMix" min="0" max="1" step="0.01" value="1"></div>
+      <div class="fld"><div class="lab"><span>① 主结构密度 / 亮弧数 / 环频</span><b class="num" data-k="vfxA">1.00</b></div><input type="range" data-k="vfxA" min="0" max="3" step="0.01" value="1"></div>
+      <div class="fld"><div class="lab"><span>② 次级结构：花心瓣数 / 分室数 / 焦散强度</span><b class="num" data-k="vfxB">1.00</b></div><input type="range" data-k="vfxB" min="0" max="3" step="0.01" value="1"></div>
+      <div class="fld"><div class="lab"><span>③ 径向色差 / 域扭曲强度</span><b class="num" data-k="vfxC">1.00</b></div><input type="range" data-k="vfxC" min="0" max="3" step="0.01" value="1"></div>
+      <div class="fld"><div class="lab"><span>④ 亮度偏置 / 球面折射 / 金色增益</span><b class="num" data-k="vfxD">1.00</b></div><input type="range" data-k="vfxD" min="0" max="2" step="0.01" value="1"></div>
+      <div class="fld"><div class="lab"><span>特效自身速度倍率</span><b class="num" data-k="vfxSpd">1.00</b></div><input type="range" data-k="vfxSpd" min="0" max="4" step="0.01" value="1"></div>
+      <div class="read" id="vfxRead">—</div>
+      <div class="note">三种模式来自本地 mp4 逐帧真看后的结构归纳 + 外网可验证公式：
+        <b>1/r 极坐标隧道 + 球面折射 + RGB 径向色差</b>、
+        <b>v = ln r /(4 ln φ) − a/2π 的黄金对数螺旋 + TRS 递归自相似 + Vogel 分室</b>、
+        <b>contour rings + Rocaille 域扭曲 + 多波源焦散</b>。公式与出处见 ⑨；
+        分屏右屏的位置镜像、两屏同源配色在特效模式下同样成立。</div>
+    </details>
+
+    <details class="sec" open><summary>⑦ 双耳节拍 · 音频实验室（需耳机）</summary>
+      <div class="btnrow" data-k="__act">
+        <button data-v="audio" id="bAudio">▶ 开启音频</button>
+      </div>
+      <div class="warn" style="margin-top:0"><b>⚠ 必须戴立体声耳机</b>：双耳节拍由脑干上橄榄复合体合成，
+      用音箱或单耳播放时两路声波在空气里先混合，效果消失。默认音量很低；有癫痫史、精神病性障碍史、
+      易解离倾向者请勿使用；出现头晕、不适立即停止。<b>本页不宣称任何疗效、脑波夹带保证或超常能力。</b></div>
+      <div class="lab"><span>音频预设（只改音频参数，不动画面）</span></div>
+      <select id="apreset">
+        <option value="alpha">α 放松 10 Hz（默认）</option>
+        <option value="theta">θ 冥想 6 Hz</option>
+        <option value="delta">δ 深睡 2 Hz</option>
+        <option value="beta">β 专注 18 Hz</option>
+        <option value="gamma">γ 40 Hz（ASSR 研究用，双耳有效性存疑）</option>
+        <option value="sbagen">SBaGen 原式 200+10/50</option>
+        <option value="sbagenTheta">SBaGen theta6：pink/40 150+6/30</option>
+        <option value="monroe">门罗式多层叠加 + 相位调制（结构近似）</option>
+        <option value="sleep">睡前渐进扫描 18 → 2 Hz / 12 min</option>
+        <option value="f10">Focus 10 结构近似（非官方配方）</option>
+        <option value="f12">Focus 12 结构近似（非官方配方）</option>
+        <option value="f15">Focus 15 结构近似（非官方配方）</option>
+        <option value="f21">Focus 21 结构近似（非官方配方）</option>
+        <option value="av">光声同步 · 视觉跟随拍频</option>
+      </select>
+      <canvas id="spectrum"></canvas>
+      <div class="aband">实时频谱（0–2 kHz，AnalyserNode FFT 2048）· 白底绿线</div>
+      <div class="read" id="aRead">音频未开启 · 点上方按钮后浏览器才会允许出声</div>
+      <div class="fld"><div class="lab"><span>载波基频 Hz（40–1000，&lt;400 效果较好）</span><b class="num" data-k="aCarrier">200</b></div><input type="range" data-k="aCarrier" min="40" max="1000" step="1" value="200"></div>
+      <div class="fld"><div class="lab"><span>目标拍频 Hz（Δf，0.5–40）</span><b class="num" data-k="aBeat">10.00</b></div><input type="range" data-k="aBeat" min="0.5" max="40" step="0.1" value="10"></div>
+      <div class="lab"><span>合成方式</span></div>
+      <div class="row" data-k="aMode">
+        <button data-v="0" class="on">双耳</button><button data-v="1">单耳</button>
+        <button data-v="2">等时</button><button data-v="3">双耳+单耳</button>
+      </div>
+      <div class="lab"><span>频率约定（两套开源实现并列）</span></div>
+      <div class="row" data-k="aConv">
+        <button data-v="0" class="on">SBaGen 对称（c ± Δf/2）</button><button data-v="1">Wundark 左基准（c, c+Δf）</button>
+      </div>
+      <div class="fld"><div class="lab"><span>叠加层数（Monroe 多层思想）</span><b class="num" data-k="aLayers">3</b></div><input type="range" data-k="aLayers" min="1" max="6" step="1" value="3"></div>
+      <div class="fld"><div class="lab"><span>层间载波间隔 Hz</span><b class="num" data-k="aSpread">36</b></div><input type="range" data-k="aSpread" min="0" max="120" step="1" value="36"></div>
+      <div class="fld"><div class="lab"><span>层间拍频倍率</span><b class="num" data-k="aBeatRatio">1.00</b></div><input type="range" data-k="aBeatRatio" min="0.5" max="2" step="0.05" value="1"></div>
+      <div class="fld"><div class="lab"><span>声道分离度（1 = 硬分左右）</span><b class="num" data-k="aPan">1.00</b></div><input type="range" data-k="aPan" min="0" max="1" step="0.01" value="1"></div>
+      <div class="fld"><div class="lab"><span>主音量（上限 0.5，建议 0.1–0.2）</span><b class="num" data-k="aToneVol">0.18</b></div><input type="range" data-k="aToneVol" min="0" max="0.5" step="0.01" value="0.18"></div>
+      <div class="fld"><div class="lab"><span>淡入淡出（秒，防爆音）</span><b class="num" data-k="aFade">3.00</b></div><input type="range" data-k="aFade" min="0.2" max="10" step="0.1" value="3"></div>
+      <div class="note">单耳 = 两频率先在信号里相加（物理拍，音箱也有效）；等时 = 单载波 + 100% 脉冲包络；
+      双耳 = 左右分送、脑内合成。Orozco Perez 2020（eNeuro）报告单耳在「原始夹带」上更强、
+      双耳则有独有的跨频/跨半球连接模式 —— 故四种方式都保留供对照。</div>
+    </details>
+
+    <details class="sec"><summary>⑧ 频谱 / 时间轴 / 视听联动（高级）</summary>
+      <div class="lab"><span>载波波形 / 复杂频谱</span></div>
+      <div class="row" data-k="aWave">
+        <button data-v="0" class="on">正弦</button><button data-v="1">谐波叠加</button><button data-v="2">三角</button>
+      </div>
+      <div class="fld"><div class="lab"><span>谐波数（PeriodicWave）</span><b class="num" data-k="aHarm">5</b></div><input type="range" data-k="aHarm" min="2" max="16" step="1" value="5"></div>
+      <div class="fld"><div class="lab"><span>谐波衰减指数（1/n^α）</span><b class="num" data-k="aHarmFall">1.20</b></div><input type="range" data-k="aHarmFall" min="0.5" max="3" step="0.05" value="1.2"></div>
+      <div class="lab"><span>噪声掩蔽谱（斜率近似，非校准级）</span></div>
+      <div class="row" data-k="aNoise">
+        <button data-v="0" class="on">无</button><button data-v="1">白</button><button data-v="2">粉</button>
+        <button data-v="3">棕</button><button data-v="4">蓝</button><button data-v="5">紫</button>
+      </div>
+      <div class="fld"><div class="lab"><span>噪声音量</span><b class="num" data-k="aNoiseVol">0.08</b></div><input type="range" data-k="aNoiseVol" min="0" max="0.4" step="0.01" value="0.08"></div>
+      <div class="fld"><div class="lab"><span>噪声低通截止 Hz</span><b class="num" data-k="aNoiseLP">1200</b></div><input type="range" data-k="aNoiseLP" min="100" max="12000" step="50" value="1200"></div>
+      <div class="fld"><div class="lab"><span>振幅调制深度 AM（等时模式自动拉满）</span><b class="num" data-k="aAM">0.00</b></div><input type="range" data-k="aAM" min="0" max="0.5" step="0.01" value="0"></div>
+      <div class="fld"><div class="lab"><span>相位调制 PM：左右反向延迟 µs（SBaGen spin）</span><b class="num" data-k="aPM">0</b></div><input type="range" data-k="aPM" min="0" max="600" step="10" value="0"></div>
+      <div class="aband">SBaGen 原文：<code>spin:&lt;µs&gt;:&lt;beat&gt;/&lt;amp&gt;</code> 以左右相反方向的延迟偏移粉红噪声造双耳效应，
+      建议 100–500 µs；门罗 MSS 只公开提到 phase modulation，具体参数保密 —— 此处为可验证的结构近似，不是配方复现。</div>
+      <div class="lab"><span>时间轴扫描（SBaGen -&gt; / Wundark 线性插值）</span></div>
+      <div class="row" data-k="aRamp">
+        <button data-v="0" class="on">固定</button><button data-v="1">线性</button>
+        <button data-v="2">指数</button><button data-v="3">S 曲线</button>
+      </div>
+      <div class="fld"><div class="lab"><span>扫描起始拍频 Hz</span><b class="num" data-k="aRampFrom">18.00</b></div><input type="range" data-k="aRampFrom" min="0.5" max="40" step="0.1" value="18"></div>
+      <div class="fld"><div class="lab"><span>扫描结束拍频 Hz</span><b class="num" data-k="aRampTo">4.00</b></div><input type="range" data-k="aRampTo" min="0.5" max="40" step="0.1" value="4"></div>
+      <div class="fld"><div class="lab"><span>扫描时长（分钟）</span><b class="num" data-k="aRampMin">12</b></div><input type="range" data-k="aRampMin" min="1" max="60" step="1" value="12"></div>
+      <div class="lab"><span>视听联动</span></div>
+      <div class="row" data-k="aAV"><button data-v="0" class="on">关</button><button data-v="1">画面跟随拍频</button></div>
+      <div class="note">联动只改变送入 shader 的 spin / speed / ripSpd 有效值，<b>不改写用户参数</b>；
+      关闭即完全回到原值。频谱与噪声谱均在本地实时合成，不加载任何外部音频文件。</div>
+    </details>
+
+    <details class="sec"><summary>⑨ 原理 / 开源出处 / 安全声明</summary>
+      <div class="note">
+      <b>数学链（三层同源）</b><br>
+      ① 视皮层映射：视网膜 (r, θ) → V1 的 Schwartz 复对数近似 x = ln r, y = θ；远场密度 ∝ 1/r² 使复对数成为唯一保密度共形映射。
+      皮层上的平行条纹经逆映射即为 Klüver 形式常量中的<b>隧道 / 漏斗 / 螺旋</b>（Ermentrout–Cowan 1979；Bressloff, Cowan, Golubitsky, Thomas &amp; Wiener 2002）。<br>
+      ② 工程实现：隧道深度 z = 1/r + t·speed（透视消失点）；Droste 剪切 θ′ = θ + twist·ln r 把直条纹卷成螺旋；
+      颜色用 Iñigo Quílez 余弦调色板 c = a + b·cos(2π(c·t + d))。<br>
+      ③ 本地整合：对数螺旋 r = a·e^{kθ} ⇔ ln r = ln a + kθ，在 log-polar 里是斜率 k 的直线 ——
+      因此 DDD 的「螺旋扩张 k」与 shader 的 twist 是同一坐标变换的两个旋钮。<br>
+      ④ <b>镜像 / 双向 / 缝方向</b>：水平镜像即 θ → π−θ，手性反转而 ln r 不变 ——
+      颜色相位 ct 只依赖 z、ln r 与 sin θ，故两屏天然同色；分屏右屏直接对 uv.x 取负做几何镜像，
+      不再用「旋向反号」代替镜像（旧做法会把颜色相位也反号，造成一紫一红）。
+      反向影像层取 a2B = (π−θ) + twist·ln r − spin·t，与原层各算一次图案场后混合或取亮，
+      即顺、逆时针同时叠加的编织纹。GLSL atan(y,x) 的 ±π 分支切割默认落在 −x（屏幕左），
+      把输入坐标旋转 −(β−π) 后分支即落到方位角 β，默认 β = π/2（屏幕正上方）。<br><br>
+      <b>B站原片取证与「光云」样式（2026-11-13 新增）</b><br>
+      取证方式：<code>yt-dlp --download-sections "*783-800"</code> 只抓 17 秒（2.66 MiB，640×360 / 30fps），
+      另在 96 分钟全长上按 60 / 300 / 600 / 900 / 1500 / 2400 / 3600 / 4800 秒抽 8 帧，逐帧真看。<br>
+      <b>结论（必须说清）</b>：原片<b>没有几何隧道</b>。整段是同一个 AI 生成母题 —— 闭眼人面线描、
+      眉心一处小螺旋（第三眼）—— 叠加强烈的<b>径向缩放拉丝（zoom blur）</b>，人眼把放射条读成「隧道壁」，
+      中心暗核读成「隧道尽头」，「涟漪」实为拉丝的疏密与色相漂移。因此把几何环数调多调少都不会更像原片。<br>
+      <b>量化靶子</b>：主色玫瑰 <code>#ED9ACE</code>／品红 <code>#BF4EA4</code>／薰衣草 <code>#AD96B8</code>／
+      长春花蓝 <code>#8FA8E8</code>／珊瑚 <code>#E89988</code>，色相集中在 260–355°；
+      径向亮度 0.42–0.69 属<b>高调</b>且到边缘不压黑（故本样式自动关掉渐晕）；
+      角向分布为<b>顶光</b>：60–120° 近白 (0.97,0.93,0.98)，180–240° 暗紫红 (0.54,0.24,0.46)，300–330° 偏蓝 (0.34,0.40,0.64)。<br>
+      <b>实现</b>：<code>style</code> 三档（几何 / 光云·粉紫 / 光云·素白）；<code>rayField</code> 用 3 组整数角系数
+      <code>cos(a2·arms·k + lnr·m − t·v)</code> 造长短不一的径向拉丝（整数系数保证 atan 分支处无缝）；
+      <code>biliPal</code> 按上式实测色带插值；亮度 = 0.36 + 0.40·顶光 + 0.20·拉丝 + 0.13·云 + 0.10·几何，
+      再扣中心暗核与左下暗紫；最后叠颗粒噪点。原片的人面线描<b>不复制</b>（那是作品题材，不是光效）。<br><br>
+      <b>三视频特效 · 可验证算法链（本地 mp4 逐帧真看 + 外网公式）</b><br>
+      ① <b>地包天圆环</b>：demoscene 3D tunnel 的极坐标查找表 <code>depth = R / r</code>（即 1/z 透视消失点）生成同心环带；
+      球面折射把中心区 <code>uv.y</code> 按 <code>exp(−1.3r)</code> 权重翻转，得到「下半过曝、上半暗」的地包天构图；
+      上方亮弧用高斯环带 <code>exp(−((r−r₀)·k)²)</code>，中心花心用 <code>cos(N·θ)</code> 瓣；
+      红蓝金散边是 R/G/B 三通道分别按 <code>uv·(1±ca)</code> 采样（径向色差）。<br>
+      ② <b>黄金比螺旋分形结构</b>：Shadertoy 社区相位场
+      <code>v = ln(l)/(4·ln φ) − a/2π</code>（<code>l=|U|</code>，<code>a=−atan(U.x,U.y)</code>），
+      等值线 <code>abs(fract(v)−0.5)</code> 即每转 90° 半径 ×φ = 1.618 的对数螺旋；
+      本页再用 <b>TRS 递归</b>（每层缩放 φⁱ、旋转 i·90°，3 层叠加）做离散自相似，
+      用 <b>Vogel 叶序</b> θ = n·π(3−√5) = 137.507°、r = c√n 的 Fibonacci 分室近似外壳放射分格；
+      整数角系数保证 <code>atan</code> 分支处无可见缝。<br>
+      ③ <b>黄金涟漪</b>：<code>sin(d·k − t)</code> 同心等值环；Rocaille 式 <b>domain warping</b>
+      （<code>p += a·sin(p.yx·k + t)</code> 两级）把环带扭成熔金流纹；
+      3×3 波源按 <code>sin(d·10 − t·5)·exp(−2.2d)</code> 叠加（Vanta RIPPLE / Godot caustics 的结构），
+      再用 3 阶值噪声的 <code>sin((px+py)·5 + n·7 − t)</code> 高次幂做细密焦散高光。
+      <b>调参备注</b>：初版两级 warp 取 0.42 / 0.18 时同心环被扯成火焰漩涡，逐张实拍后降到 0.22 / 0.08
+      并把环频 9 → 15、环权重 0.34 → 0.46，才恢复素材里可数的 3–4 圈低频同心环。<br>
+      <b>⚠ 口径</b>：三个 mp4 是本地素材，只做了逐帧抽图与视觉结构归纳，<b>没有原工程文件</b>；
+      上列公式是可独立查证的开源 / 文献算法，用来<b>复现同类结构</b>，不等于原视频的精确实现；
+      「地包天」「门罗式」均为结构近似。<br><br>
+      <b>开源 / 资料出处</b><br>
+      · <a href="https://plus.maths.org/how-do-we-hallucinate" target="_blank">plus.maths.org · How do we hallucinate（复对数与形式常量）</a><br>
+      · <a href="https://www.asc.ohio-state.edu/golubitsky.4/reprintweb-0.5/output/papers/Symmetry_methods_math_bio.pdf" target="_blank">Golubitsky · Symmetry methods in mathematical biology（Schwartz 映射式 54）</a><br>
+      · <a href="https://shaderkit.com/s/Xa7jnq" target="_blank">ShaderKit · Droste / log-spiral（log-polar shear 源码）</a><br>
+      · <a href="https://www.mysimulator.uk/generative-art/neon-tunnel/sim.html" target="_blank">Neon Tunnel · 1/r 深度 + 余弦调色板参数说明</a><br>
+      · <a href="https://www.originkit.dev/components/checker-vortex" target="_blank">Originkit · Checker Vortex（sectors/twist/spin/speed 参数体系）</a><br>
+      · <a href="https://github.com/QC20/hallucinatory-phantasmagoria" target="_blank">GitHub · QC20/hallucinatory-phantasmagoria（WebGL2 log-polar，MIT）</a><br>
+      · <a href="https://github.com/BrainAV/Audio-Visualizer" target="_blank">GitHub · BrainAV/Audio-Visualizer（对数螺旋参数化，MIT）</a><br>
+      · 本地参照：<span style="font-family:Consolas,monospace">D:\AAA我的文件\类脑干细胞连接ai\DDD_闭眼闪光眼罩_VR形态_3D结构与工序.html</span><br><br>
+      <b>音频数学链（双耳节拍 / 门罗技术与后续研究）</b><br>
+      ① <b>现象与边界</b>：Dove 1839 发现、Oster 1973《Auditory Beats in the Brain》(Sci. Am.) 使之成为研究工具。
+      左耳 f<sub>L</sub>、右耳 f<sub>R</sub> ⇒ 脑内感知 |f<sub>L</sub>−f<sub>R</sub>| 的拍音；空气里并不存在该频率，
+      故必须耳机。Licklider 等 1950 给出边界：载波明显低于 1000 Hz（400 Hz 以下更好，3 kHz 以上 ASSR 基本测不到）、
+      拍频约 1–35 Hz。神经通路：上橄榄复合体（第一个双侧汇聚核团）→ 下丘 → 内侧膝状体 → 听皮层，
+      EEG 上表现为 ASSR / FFR。<br>
+      ② <b>门罗 Hemi-Sync</b>：Robert Monroe 1975 起注册专利，把「两耳整合」解释为 hemispheric synchronization。
+      关键不是单一拍频，而是 <b>complex layered combinations of binaural beats and other sound signals</b>
+      （官网原文）：多对载波/拍频叠加 + 粉红噪声 + 引导语，按 Focus 10/12/15/21… 层级编排。
+      后续 <b>Monroe Sound Science (MSS)</b> 官网明确说包含「binaural beats plus many other types of sound technology
+      (i.e. <b>phase modulation</b>)」，目标是 Focus 间更平滑的过渡、克服双耳节拍难以夹带 Gamma 的局限，
+      并加入「随练习时长动态变化的时间维度」；<b>具体技术参数保密</b>。
+      故本页只做「多层叠加 + 相位调制 + 扫描」的<b>结构性近似</b>，Focus 预设均为社区推测，不是官方配方。<br>
+      ③ <b>开源算法</b>：SBaGen 的 tone-set <code>carrier±beat/2 / amp</code>（振幅 0–100 且总和 ≤100）、
+      <code>pink/amp</code>、<code>spin:&lt;µs&gt;:&lt;beat&gt;/&lt;amp&gt;</code> 左右反向延迟粉噪、<code>-&gt;</code> 整段渐变；
+      Wundark 用 <code>左 f / 右 f+Δf</code> 并在时间轴相邻点<b>线性插值</b>；
+      Gnaural 用独立左右频率 + 分段 session + 淡入淡出；brain-beats 把噪声按 ±6 dB/octave 分成 13 色、
+      单耳=先相加、等时=脉冲 AM。本页把两套频率约定、四种合成、6 色噪声、AM/PM 都做成可对照的旋钮。<br>
+      ④ <b>证据边界（必须如实说）</b>：Ingendoh / Posny / Heine 2023（PLOS ONE）系统综述 14 项 EEG 研究，
+      <b>5 项支持夹带、8 项矛盾、1 项混合</b>，异质性过大无法定量合并；且<b>所有把节拍嵌入粉红噪声的研究都报告无夹带</b>。
+      Garcia-Argibay 2019 荟萃分析（22 研究 / 35 效应量）行为层面 Hedges' g ≈ 0.45，「任务前听」优于「任务中听」；
+      Orozco Perez 2020（eNeuro）发现单耳拍夹带更强、双耳拍产生独有跨频/跨半球连接模式；
+      Gao 2014 未测到夹带但测到脑区间相位锁定值变化 —— 即门罗可能「结论对、机制错」。
+      2025 年一项约千人居家研究反而发现通用双耳节拍<b>降低</b>复杂学习任务成绩。<br><br>
+      <b>音频开源 / 资料出处</b><br>
+      · <a href="https://www.monroeinstitute.org/pages/the-history-of-sound-at-the-monroe-institute" target="_blank">Monroe Institute · The History of Sound（Hemi-Sync → Monroe Sound Science 原文）</a><br>
+      · <a href="https://gist.github.com/nk23x/9538cecd1214d320a656" target="_blank">SBaGen 原始文档（tone-set / spin / 时间轴语法，Jim Peters）</a><br>
+      · <a href="https://github.com/Wundark/binaural-beats" target="_blank">GitHub · Wundark/binaural-beats（Go，YAML 时间轴线性插值 + SBaGen 转换）</a><br>
+      · <a href="https://github.es/Gnaural-Web" target="_blank">Gnaural-Web（HTML5/Web Audio 分段 session，GPL-3）</a><br>
+      · <a href="https://github.com/Mr-Kumar-Abhishek/brain-beats" target="_blank">GitHub · brain-beats（13 色噪声谱 / 单耳 / 等时 / Dreamachine，AGPLv3）</a><br>
+      · <a href="https://github.com/aat440hz/BrainWaveGenerator" target="_blank">GitHub · aat440hz/BrainWaveGenerator（Web Audio 双振荡器 + LFO + AnalyserNode）</a><br>
+      · <a href="https://github.com/philtrem/neurosync" target="_blank">GitHub · philtrem/neurosync（载波 100–800 Hz / 拍频 1–50 Hz 参数体系）</a><br>
+      · <a href="https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0286023" target="_blank">PLOS ONE 2023 · Binaural beats to entrain the brain?（系统综述）</a><br>
+      · <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC2741401/" target="_blank">PMC · Cortical Evoked Potentials to an Auditory Illusion: Binaural Beats（250/1000 Hz 载波、3/6 Hz 拍频 ERP）</a><br><br>
+      <b>三视频特效资料出处</b><br>
+      · <a href="https://lodev.org/cgtutor/tunnel.html" target="_blank">Lode's Computer Graphics Tutorial · Tunnel Effect（1/r 极坐标 LUT，逐行推导）</a><br>
+      · <a href="https://en.wikipedia.org/wiki/Logarithmic_spiral" target="_blank">Wikipedia · Logarithmic spiral（r = a·e^{kθ}；黄金螺旋转 90° ×φ 的特例）</a><br>
+      · <a href="https://www.shadertoy.com/view/wtlGD4" target="_blank">Shadertoy · wtlGD4 golden spiral（v = ln l/(4 ln φ) − a/2π 的社区写法）</a><br>
+      · <a href="https://www.shadertoy.com/view/tscBDH" target="_blank">Shadertoy · tscBDH（TRS 递归缩放自相似）</a><br>
+      · <a href="https://en.wikipedia.org/wiki/Vogel_model" target="_blank">Wikipedia · Vogel model（θ = n·137.507°、r = c√n，Fibonacci parastichy）</a><br>
+      · <a href="https://iquilezles.org/articles/warp/" target="_blank">Inigo Quilez · Domain Warping（Rocaille 类两级扭曲）</a><br>
+      · <a href="https://en.wikipedia.org/wiki/Caustic_(optics)" target="_blank">Wikipedia · Caustics（焦散与面积压缩）</a><br>
+      · <a href="https://en.wikipedia.org/wiki/Chromatic_aberration" target="_blank">Wikipedia · Chromatic aberration（RGB 径向偏移）</a><br>
+      · 本地素材：<code>地包天圆环.mp4</code> / <code>黄金比螺旋分形结构.mp4</code> / <code>黄金涟漪.mp4</code>（同目录，逐帧抽图见工作日志）<br><br>
+      <b>检索口径说明</b>：以「脑屏 / 松果体激活 / 开天眼 / 开发灵视力」检索，中文结果主要是权威媒体对相关商业培训的辟谣报道，
+      <b>没有</b>可复用的算法；改用「光诱导视觉 / 入睡前几何幻觉 / 形式常量 / 视皮层 log-polar」才找到上述可验证的数学模型。
+      两者不可混为一谈。
+      <div class="warn"><b>⚠ 光敏安全：</b>闪烁功能（尤其 10–20 Hz）可能诱发光敏性不适或癫痫，有相关病史、癫痫史、
+      偏头痛史者请勿开启；默认强度为 0。长时间凝视强光/高对比旋转图案也可能引起疲劳或眩晕，请自行控制时长。<br>
+      <b>⚠ 音频安全：</b>双耳节拍须戴立体声耳机；音量宜低、时长不宜过长。有癫痫或癫痫史、精神病性障碍史、
+      偏头痛史、易解离倾向者请勿使用；出现头晕、焦虑、不适立即停止。不要把本页当作焦虑障碍、失眠、
+      慢性疼痛等疾病的替代诊疗。<br>
+      <b>本页仅供视觉放松、凝视练习与图形/音频算法演示，不含任何医疗功效，也不宣称能「激活松果体」「开发灵视力」、
+      保证脑波夹带或产生任何超常感知能力。</b>「脑波夹带」在文献中证据分裂（见上文 ④），本页把它作为可检验的假设而非结论。</div>
+      </div>
+    </details>
+    <details class="sec" open><summary>⑩ 立体眼镜 · 3D 隧道深度</summary>
+      <div class="lab"><span>观看方式（0 = 裸眼直看，不影响既有预设）</span></div>
+      <div class="row" data-k="glass">
+        <button data-v="0" class="on">裸眼</button><button data-v="1">红青眼镜</button>
+        <button data-v="2">红蓝眼镜</button><button data-v="3">偏光·隔行</button>
+        <button data-v="4">偏光·左右</button><button data-v="5">偏光·上下</button>
+        <button data-v="6">偏光·棋盘</button>
+      </div>
+      <div class="fld"><div class="lab"><span>视差强度（双眼错位量）</span><b class="num" data-k="gSep">1.00</b></div><input type="range" data-k="gSep" min="0" max="3" step="0.01" value="1"></div>
+      <div class="fld"><div class="lab"><span>串色补偿（红青重影抑制）</span><b class="num" data-k="gGhost">0.30</b></div><input type="range" data-k="gGhost" min="0" max="1" step="0.01" value="0.3"></div>
+      <div class="fld"><div class="lab"><span>色彩保真（0 = 纯亮度立体，1 = 全彩）</span><b class="num" data-k="gSat">0.55</b></div><input type="range" data-k="gSat" min="0" max="1" step="0.01" value="0.55"></div>
+      <div class="lab"><span>左右眼交换（戴反了就用它，不用摘眼镜）</span></div>
+      <div class="row" data-k="gSwap"><button data-v="0" class="on">正常</button><button data-v="1">交换</button></div>
+      <div class="read" id="glassRead">—</div>
+
+      <div class="lab" style="margin-top:14px"><span>3D 隧道深度增强</span></div>
+      <div class="fld"><div class="lab"><span>3D 总强度（0 = 关闭，回到原来的平面感）</span><b class="num" data-k="d3">0.60</b></div><input type="range" data-k="d3" min="0" max="1" step="0.01" value="0.6"></div>
+      <div class="fld"><div class="lab"><span>管壁光源方位 °（决定管子哪侧亮）</span><b class="num" data-k="d3Light">20</b></div><input type="range" data-k="d3Light" min="0" max="360" step="5" value="20"></div>
+      <div class="fld"><div class="lab"><span>管壁凹凸（环脊扰动法线）</span><b class="num" data-k="d3Bump">0.55</b></div><input type="range" data-k="d3Bump" min="0" max="1" step="0.01" value="0.55"></div>
+      <div class="fld"><div class="lab"><span>大气透视（远端没入雾色 = 纵深）</span><b class="num" data-k="d3Fog">0.55</b></div><input type="range" data-k="d3Fog" min="0" max="1.5" step="0.01" value="0.55"></div>
+      <div class="fld"><div class="lab"><span>透视视差（相机游移，近动多远动少）</span><b class="num" data-k="d3Par">0.00</b></div><input type="range" data-k="d3Par" min="0" max="1" step="0.01" value="0"></div>
+      <div class="fld"><div class="lab"><span>管壁半径起伏（不是完美旋转面）</span><b class="num" data-k="d3Rip">0.60</b></div><input type="range" data-k="d3Rip" min="0" max="1" step="0.01" value="0.6"></div>
+      <div class="note">
+        <b>3D 感从哪来（都是可算的深度线索，不是滤镜）</b><br>
+        ① <b>管壁明暗</b>：从管内看，内壁法线 <code>N = (−cosθ, −sinθ, 0)</code>，与光源方向做 <code>max(dot(N,L),0)</code>
+        即 Lambert 漫反射 —— 一侧亮一侧暗，这是圆柱体积感的<b>主因</b>；再叠环脊 <code>sin(z·rings·0.3 + 2θ)</code> 扰动法线做出凹凸。<br>
+        ② <b>大气透视</b>：<code>exp(−z·0.026·fog)</code> 让远端（r→0，z 大）退入雾色，符合真实空气散射的纵深规律。<br>
+        ③ <b>管壁半径起伏</b>：把深度场写成 <code>z = z₀ + 0.42·sin(3θ+z₀·0.55) + 0.24·sin(6.5θ−z₀·0.8)</code>，
+        隧道壁不再是完美旋转面，接近岩洞 / 血管的有机形态。<br>
+        ④ <b>透视视差</b>：真实相机横移时，屏幕位移 ∝ 1/深度，故写成 <code>uv += drift·(0.20+0.80·r)</code> ——
+        近端动得多、远端几乎不动。<b>默认关闭</b>，因为它会让画面中心轻微游移；需要手持感时再开。<br><br>
+        <b>眼镜格式说明（照实写，不夸大）</b><br>
+        · <b>红青 / 红蓝</b>：标准 anaglyph，左眼取 +sep、右眼取 −sep 两套视角，按 R / GB 通道合成。
+        <code>gSat</code> 在「纯亮度立体（重影最小）→ 全彩立体（色彩最好）」之间连续插值；
+        <code>gGhost</code> 按 crosstalk 反向扣除红镜漏的绿蓝、青镜漏的红。<b>淘宝几块钱的红青眼镜即可观看。</b><br>
+        · <b>偏光四格式</b>：网页<b>无法</b>自己产生偏振光。这里生成的是偏振三维系统所需的<b>视图排布格式</b> ——
+        隔行（行交错偏振显示器）、左右 / 上下压缩（双投影 + 偏振片，或 VR 盒）、棋盘（DLP Link）。
+        必须配合对应的偏振硬件与偏振眼镜才有效果；在普通屏幕上，隔行/棋盘会表现为细横纹或格子，这是<b>正常现象</b>，不是 bug。<br>
+        · <b>性能</b>：红青 / 红蓝要算两遍场景，帧率约降一半；偏光四格式每像素只算一遍，性能与裸眼相同。<br>
+        · Canvas2D 降级模式下眼镜功能不可用（需逐像素双采样，2D 后端不实现）。
+      </div>
+    </details>
+
+
+  </div>
+  <div id="dockResize" title="拖动调整浮窗宽度"></div>
+</div>
+
+<div id="errbox"><span class="x" onclick="this.parentNode.style.display='none'">×</span><span id="errmsg"></span></div>
+
+<script>
+"use strict";
+/* ===================== 错误可见（N51） ===================== */
+function showErr(msg){
+  var box=document.getElementById('errbox');
+  document.getElementById('errmsg').textContent += (document.getElementById('errmsg').textContent?'\n':'')+msg;
+  box.style.display='block';
+}
+window.onerror=function(m,s,l,c){showErr('JS 错误: '+m+' @'+l+':'+c);};
+window.addEventListener('unhandledrejection',function(e){showErr('Promise: '+e.reason);});
+
+/* ===================== 参数（唯一来源） ===================== */
+var DEF={
+  speed:0.80, spin:18, twist:0.90, rings:12, sectors:8, cx:0, cy:0, split:0,
+  pattern:0, a:1.00, k:0.080, N:17, turn:1, mirror:1, phase:0,
+  flip:0, dual:0, dualMix:0.50, seamDir:0,
+  ripW:12, ripAmp:0.80, ripSpd:1.00, core:0.90,
+  pal:0, hue:0.00, hueSpd:0.60, glow:1.00, bright:1.00, vig:0.85,
+  breath:0, breathPeriod:6, flickHz:10, flick:0,
+  /* 音频实验室：全部为 number，走同一套 syncUI / apply / localStorage */
+  audioOn:0, aCarrier:200, aBeat:10, aMode:0, aConv:0, aLayers:3, aSpread:36,
+  aBeatRatio:1.00, aPan:1.00, aToneVol:0.18, aFade:3.00,
+  aWave:0, aHarm:5, aHarmFall:1.20, aNoise:0, aNoiseVol:0.08, aNoiseLP:1200,
+  aAM:0.00, aPM:0, aRamp:0, aRampFrom:18, aRampTo:4, aRampMin:12, aAV:0,
+  /* 三视频特效：与视觉参数同走 syncUI / apply / localStorage */
+  vfx:0, vfxMix:1.00, vfxA:1.00, vfxB:1.00, vfxC:1.00, vfxD:1.00, vfxSpd:1.00,
+  /* B站光云渲染样式 */
+  style:0, rays:0.62, grain:0.12, soft:0.72,
+  /* 立体眼镜 + 3D 深度：glass 0=裸眼 1=红青 2=红蓝 3=偏光隔行 4=偏光左右 5=偏光上下 6=偏光棋盘 */
+  glass:0, gSep:1.00, gGhost:0.30, gSat:0.55, gSwap:0,
+  d3:0.60, d3Light:20, d3Fog:0.55, d3Bump:0.55, d3Par:0.00, d3Rip:0.60,
+  /* 中心光核形态：0=白光核+凝视靶点（原样） 1=金黄太阳 2=纯白核（无黑洞） */
+  coreKind:0, sunSize:0.09, sunRays:0.55
+};
+var NUMK={}; Object.keys(DEF).forEach(function(k){NUMK[k]=typeof DEF[k]==='number';});
+var KEY='tunnelTrainingP_v1';
+var P=(function(){
+  try{var o=JSON.parse(localStorage.getItem(KEY)||'null'); if(o&&typeof o==='object'){
+    var r={}; Object.keys(DEF).forEach(function(k){r[k]=(k in o)?o[k]:DEF[k];}); return r;
+  }}catch(e){} return Object.assign({},DEF);
+})();
+function saveP(){try{localStorage.setItem(KEY,JSON.stringify(P));}catch(e){}}
+/* 老师反馈「螺旋中心不在屏幕中心」：根因是旧会话把 cx/cy 存成了非零值。
+   加载时若检测到历史偏移，自动归零并提示；用户之后主动调整仍照常记忆。 */
+var CENTER_FIXED=false;
+(function(){
+  try{
+    var raw=JSON.parse(localStorage.getItem(KEY)||'null');
+    if(raw && (Math.abs(Number(raw.cx)||0)>1e-6 || Math.abs(Number(raw.cy)||0)>1e-6)){
+      P.cx=0;P.cy=0;CENTER_FIXED=true;saveP();
+    }
+  }catch(e){}
+})();
+
+var PRESETS={
+  chakra:{speed:0.80,spin:18,twist:0.90,rings:12,sectors:8,pattern:0,pal:0,hue:0,hueSpd:0.60,
+          glow:1.00,bright:1.00,vig:0.85,ripW:12,ripAmp:0.80,ripSpd:1.00,core:0.90,flick:0,breath:0,split:0},
+  deep:{speed:1.35,spin:-12,twist:1.35,rings:22,sectors:14,pattern:0,pal:1,hue:0.2,hueSpd:0.35,
+        glow:1.25,bright:1.00,vig:0.95,ripW:20,ripAmp:0.35,ripSpd:1.4,core:0.45,flick:0,breath:0,split:0},
+  calm:{speed:0.22,spin:4,twist:0.25,rings:7,sectors:5,pattern:0,pal:4,hue:0.1,hueSpd:0.12,
+        glow:0.72,bright:0.82,vig:0.7,ripW:6,ripAmp:0.55,ripSpd:0.35,core:1.20,flick:0,breath:1,breathPeriod:6,split:0},
+  logcyc:{speed:0.45,spin:18,twist:0.55,rings:12,sectors:8,pattern:4,a:1.00,k:0.080,N:17,turn:1,mirror:1,
+          phase:0,pal:0,ripW:9,ripAmp:0.30,ripSpd:0.6,core:0.55,flick:0,split:1},
+  white:{speed:0.60,spin:10,twist:0.45,rings:10,sectors:8,pattern:0,pal:3,hue:0,hueSpd:0.20,
+         glow:0.85,bright:1.00,vig:0.55,ripW:10,ripAmp:0.45,ripSpd:0.8,core:0.90,flick:0,split:0},
+  strobe:{speed:0.70,spin:18,twist:0.90,rings:12,sectors:8,pattern:0,pal:0,ripW:12,ripAmp:0.6,
+          ripSpd:1,core:0.8,flickHz:10,flick:0.35,breath:0,split:0},
+  weave:{speed:0.55,spin:22,twist:1.10,rings:14,sectors:9,pattern:0,pal:0,hue:0,hueSpd:0.45,
+         dual:2,dualMix:0.55,flip:0,seamDir:0,phase:0,ripW:11,ripAmp:0.70,ripSpd:0.90,
+         core:0.90,flick:0,breath:0,split:0},
+  vfxRing:{speed:0.60,spin:8,twist:0.35,rings:14,sectors:8,pattern:0,pal:2,
+           vfx:1,vfxMix:1.00,vfxA:1.00,vfxB:1.00,vfxC:1.10,vfxD:1.00,vfxSpd:1.00,
+           ripAmp:0.25,core:0.35,vig:0.70,glow:1.00,bright:1.00,flick:0,split:0},
+  vfxSpiral:{speed:0.35,spin:6,twist:0.40,rings:10,sectors:8,pattern:0,pal:4,
+           vfx:2,vfxMix:1.00,vfxA:1.00,vfxB:1.00,vfxC:1.00,vfxD:1.00,vfxSpd:0.80,
+           ripAmp:0.15,core:0.30,vig:0.65,glow:1.00,bright:1.00,flick:0,split:0},
+  vfxRipple:{speed:0.30,spin:0,twist:0.20,rings:8,sectors:8,pattern:0,pal:4,
+           vfx:3,vfxMix:1.00,vfxA:1.00,vfxB:1.00,vfxC:1.00,vfxD:1.00,vfxSpd:1.00,
+           ripAmp:0.20,core:0.25,vig:0.60,glow:1.00,bright:1.00,flick:0,split:0},
+  /* B站光云：与参考帧实测比对的起点值，后续按截图回测微调 */
+  biliCloud:{speed:0.55,spin:9,twist:0.62,rings:14,sectors:11,pattern:0,pal:0,
+           style:1,rays:0.62,grain:0.10,soft:0.72,
+           vfx:0,vfxMix:0,ripW:9,ripAmp:0.22,ripSpd:0.7,core:0.55,
+           hue:0.02,hueSpd:0.10,glow:1.00,bright:1.00,vig:0.00,
+           breath:0,breathPeriod:6,flick:0,split:0,flip:0,dual:0},
+  biliWhite:{speed:0.50,spin:7,twist:0.48,rings:12,sectors:10,pattern:0,pal:0,
+           style:2,rays:0.58,grain:0.08,soft:0.74,
+           vfx:0,vfxMix:0,ripW:8,ripAmp:0.18,ripSpd:0.6,core:0.70,
+           hue:0.04,hueSpd:0.08,glow:1.00,bright:1.00,vig:0.00,
+           breath:0,breathPeriod:6,flick:0,split:0,flip:0,dual:0},
+  /* 3D 深隧：在几何隧道上开满 3D 深度线索（管壁明暗 + 大气透视 + 半径起伏 + 透视视差） */
+  d3deep:{speed:0.70,spin:16,twist:0.85,rings:14,sectors:9,pattern:0,pal:0,hue:0,hueSpd:0.40,
+           glow:1.00,bright:1.00,vig:0.70,ripW:11,ripAmp:0.45,ripSpd:0.9,core:0.75,
+           vfx:0,vfxMix:0,style:0,glass:0,
+           d3:0.95,d3Light:25,d3Fog:0.62,d3Bump:0.70,d3Par:0.55,d3Rip:0.75,
+           flick:0,breath:0,split:0,flip:0,dual:0},
+  d3redcyan:{speed:0.62,spin:14,twist:0.78,rings:15,sectors:9,pattern:0,pal:0,hue:0,hueSpd:0.35,
+           glow:1.05,bright:1.00,vig:0.65,ripW:10,ripAmp:0.40,ripSpd:0.8,core:0.85,
+           vfx:0,vfxMix:0,style:0,glass:1,gSep:1.25,gGhost:0.30,gSat:0.55,gSwap:0,
+           d3:0.95,d3Light:25,d3Fog:0.60,d3Bump:0.70,d3Par:0.35,d3Rip:0.75,
+           flick:0,breath:0,split:0,flip:0,dual:0},
+  d3polar:{speed:0.62,spin:14,twist:0.78,rings:15,sectors:9,pattern:0,pal:0,hue:0,hueSpd:0.35,
+           glow:1.05,bright:1.00,vig:0.65,ripW:10,ripAmp:0.40,ripSpd:0.8,core:0.85,
+           vfx:0,vfxMix:0,style:0,glass:4,gSep:1.20,gGhost:0.00,gSat:1.00,gSwap:0,
+           d3:0.95,d3Light:25,d3Fog:0.60,d3Bump:0.70,d3Par:0.35,d3Rip:0.75,
+           flick:0,breath:0,split:0,flip:0,dual:0},
+  /* 金阳凝视：中心换成金黄太阳，无黑洞 */
+  sunGaze:{speed:0.55,spin:12,twist:0.72,rings:13,sectors:8,pattern:0,pal:4,hue:0.06,hueSpd:0.30,
+           glow:1.05,bright:1.00,vig:0.75,ripW:10,ripAmp:0.55,ripSpd:0.8,core:1.05,
+           coreKind:1,sunSize:0.10,sunRays:0.70,
+           vfx:0,vfxMix:0,style:0,glass:0,
+           d3:0.85,d3Light:25,d3Fog:0.55,d3Bump:0.60,d3Par:0.00,d3Rip:0.65,
+           flick:0,breath:0,split:0,flip:0,dual:0}
+};
+
+/* ===================== UI 同步（状态单一来源） ===================== */
+var body=document.getElementById('dockBody');
+var toastEl=document.getElementById('toast'), toastTimer=null;
+function toast(txt){
+  toastEl.textContent=txt; toastEl.classList.add('on');
+  clearTimeout(toastTimer); toastTimer=setTimeout(function(){toastEl.classList.remove('on');},1400);
+}
+function fmt(k,v){
+  if(k==='k')return Number(v).toFixed(3);
+  if(k==='N'||k==='spin'||k==='phase'||k==='flickHz'||k==='breath'||k==='split'||k==='pattern'||k==='pal'||k==='turn'||k==='mirror'||k==='breathPeriod'||k==='flip'||k==='dual'||k==='seamDir'
+    ||k==='audioOn'||k==='aCarrier'||k==='aLayers'||k==='aSpread'||k==='aMode'||k==='aConv'
+    ||k==='aWave'||k==='aHarm'||k==='aNoise'||k==='aNoiseLP'||k==='aPM'||k==='aRamp'
+    ||k==='aRampMin'||k==='aAV'||k==='vfx'||k==='style'
+    ||k==='glass'||k==='gSwap'||k==='d3Light'||k==='coreKind')return String(v);
+  return Number(v).toFixed(2);
+}
+function readout(){
+  var T=6*2*Math.PI, ratio=Math.exp(P.k*T);
+  document.getElementById('readout').innerHTML=
+    '外圈 / 中心半径比 <b>'+ratio.toFixed(1)+'×</b>（e^'+(P.k*T).toFixed(2)+'）<br>'+
+    '6 圈基础螺旋 · 每圈 <b>'+Math.round(P.N)+'</b> 个摆线瓣 · a = <b>'+Number(P.a).toFixed(2)+'</b><br>'+
+    'log-polar：ln r = ln a + kθ ｜ g = 5.4·ln r + 2θ·turn';
+  var gr=document.getElementById('glassRead');
+  if(gr){
+    var g=Number(P.glass), dsp=Number(P.gSep).toFixed(2);
+    gr.innerHTML = g<0.5
+      ? '观看：<b>裸眼直看</b> ｜ 3D 深度增强 <b>'+(Number(P.d3)>0.01?'开 '+Number(P.d3).toFixed(2):'关')+'</b>'+(Number(P.d3>0.01)?'（管壁明暗 + 大气透视 + 半径起伏'+(Number(P.d3Par)>0.01?' + 透视视差':'')+'）':'')
+      : g<1.5 ? '<b>红青眼镜</b>（左红右青）· 视差 '+dsp+' · 串色补偿 '+Number(P.gGhost).toFixed(2)+' · 色彩保真 '+Number(P.gSat).toFixed(2)
+      : g<2.5 ? '<b>红蓝眼镜</b>（左红右蓝）· 视差 '+dsp+' · 色彩保真 '+Number(P.gSat).toFixed(2)
+      : g<3.5 ? '<b>偏光 · 隔行</b>（行交错）· 视差 '+dsp+' · 需偏振显示器或偏振投影，普通屏幕会看到细横纹'
+      : g<4.5 ? '<b>偏光 · 左右压缩 SBS</b> · 视差 '+dsp+' · 双投影偏振 / VR 盒用，画面横向压 50%'
+      : g<5.5 ? '<b>偏光 · 上下压缩 TB</b> · 视差 '+dsp+' · 双投影偏振 / VR 盒用，画面纵向压 50%'
+      : '<b>偏光 · 棋盘交错</b>（DLP Link / checkerboard）· 视差 '+dsp;
+  }
+  var vr=document.getElementById('vfxRead');
+  if(vr){
+    var m=Number(P.vfx);
+    vr.innerHTML = m<0.5 ? '当前：<b>原隧道</b>（三视频特效关闭）'
+      : m<1.5 ? '<b>地包天圆环</b> · 玻璃球下方打光：上部双翼弧 + 贯穿球心的极细竖线 + 垂心火苗 + 底部过曝白光「地包天」+ 四瓣小花；火苗大小 '+Number(P.vfxB).toFixed(2)+'；窄色散 '+Number(P.vfxC).toFixed(2)+' · 整体倍率 '+Number(P.vfxD).toFixed(2)
+      : m<2.5 ? '<b>黄金比螺旋</b> · 每转 90° 半径 ×φ = 1.618；TRS 递归 3 层自相似；Vogel 137.507° 排列 → Fibonacci 分室 '+Math.max(3,Math.round(Number(P.vfxB)*13))+' 条'
+      : '<b>黄金涟漪</b> · sin(d·k − t) 同心环；Rocaille 域扭曲；3×3 波源 e^(−2.2d) 衰减；细密焦散噪声高光';
+  }
+}
+function syncUI(){
+  body.querySelectorAll('input[type=range][data-k]').forEach(function(el){
+    var k=el.dataset.k; if(k in P) el.value=P[k];
+  });
+  body.querySelectorAll('b.num[data-k]').forEach(function(el){
+    var k=el.dataset.k; el.textContent=fmt(k,P[k]);
+  });
+  body.querySelectorAll('.row[data-k]').forEach(function(row){
+    var k=row.dataset.k;
+    row.querySelectorAll('button[data-v]').forEach(function(b){
+      b.classList.toggle('on', String(P[k])===String(b.dataset.v));
+    });
+  });
+  readout();
+  document.getElementById('hSpd').textContent=Number(P.speed).toFixed(2)+'×';
+  var off=Math.abs(Number(P.cx))+Math.abs(Number(P.cy));
+  document.getElementById('hCenter').textContent=off<0.0001?'居中':'偏移 '+Number(P.cx).toFixed(2)+','+Number(P.cy).toFixed(2);
+  var ab=document.getElementById('bAudio');
+  if(ab){ab.textContent=P.audioOn?'⏹ 关闭音频':'▶ 开启音频';ab.classList.toggle('on',!!P.audioOn);}
+  if(typeof audioTune==='function')audioTune();
+}
+function apply(k,v,silent){
+  if(!(k in DEF))return;
+  var el=body.querySelector('input[type=range][data-k="'+k+'"]');
+  if(el){v=Math.max(parseFloat(el.min),Math.min(parseFloat(el.max),v));}
+  P[k]=v; saveP(); syncUI(); resize();
+  if(typeof AUDIO_KEYS==='object' && (k in AUDIO_KEYS) && P.audioOn){
+    if(typeof STRUCT_KEYS==='object' && (k in STRUCT_KEYS))audioBuild();else audioTune();
+  }
+  if(!silent)toast(labelOf(k)+' = '+fmt(k,v));
+}
+function labelOf(k){
+  var el=body.querySelector('b.num[data-k="'+k+'"]');
+  return el?el.closest('.fld').querySelector('.lab span').textContent:k;
+}
+
+/* 滑条 */
+body.addEventListener('input',function(e){
+  var t=e.target;
+  if(t.matches('input[type=range][data-k]'))apply(t.dataset.k,parseFloat(t.value));
+});
+/* 按钮组 + 动作按钮 + 数字输入口（N241） */
+body.addEventListener('click',function(e){
+  var b=e.target.closest('button[data-v]');
+  if(b){
+    var row=b.closest('.row[data-k]');
+    if(row){apply(row.dataset.k,NUMK[row.dataset.k]?parseFloat(b.dataset.v):b.dataset.v);return;}
+    var act=b.closest('.btnrow');
+    if(act){doAction(b.dataset.v);return;}
+  }
+  var num=e.target.closest('b.num[data-k]');
+  if(num)editNum(num);
+});
+function editNum(num){
+  if(num.querySelector('input'))return;
+  var k=num.dataset.k, range=body.querySelector('input[type=range][data-k="'+k+'"]');
+  var inp=document.createElement('input');
+  inp.type='number'; inp.className='numedit'; inp.value=P[k];
+  inp.step=range?range.step:'0.01'; inp.min=range?range.min:''; inp.max=range?range.max:'';
+  num.textContent=''; num.appendChild(inp); inp.focus(); inp.select();
+  function done(commit){
+    var v=parseFloat(inp.value);
+    if(commit&&isFinite(v))apply(k,v); else syncUI();
+  }
+  inp.addEventListener('keydown',function(ev){
+    if(ev.key==='Enter'){done(true);} else if(ev.key==='Escape'){done(false);} ev.stopPropagation();
+  });
+  inp.addEventListener('blur',function(){done(true);});
+}
+function doAction(v){
+  if(v==='audio'){if(P.audioOn)audioStop();else audioStart();return;}
+  if(v==='pause'){paused=!paused;document.getElementById('bPause').textContent=paused?'▶ 继续':'⏸ 暂停';toast(paused?'已暂停':'继续播放');}
+  else if(v==='center'){P.cx=0;P.cy=0;saveP();syncUI();resize();toast('隧道尽头已复位到屏幕正中');}
+  else if(v==='reset'){P=Object.assign({},DEF);saveP();T=0;clock=0;syncUI();resize();document.getElementById('preset').value='';toast('已复位为默认参数');}
+  else if(v==='full'){if(!document.fullscreenElement){(document.documentElement.requestFullscreen||function(){}).call(document.documentElement);}else{document.exitFullscreen();}}
+  else if(v==='imm'){document.body.classList.add('immersive');setTimeout(resize,220);toast('沉浸模式 · 按 Esc 退出');}
+}
+document.getElementById('preset').addEventListener('change',function(e){
+  var p=PRESETS[e.target.value]; if(!p)return;
+  P=Object.assign({},DEF,p);saveP();syncUI();resize();toast('已载入预设：'+e.target.options[e.target.selectedIndex].text.split('（')[0]);
+});
+
+/* ===================== 我的方案：另存 / 载入 / 删除 / 导出 / 导入 =====================
+   与「自动记忆」的关系：
+     · 自动记忆（KEY）永远只保存"最后一刻的参数"，刷新即恢复 —— 不用任何操作；
+     · 我的方案（MKEY）是命名的快照库，可存多套、可导出成文件带走、可导入回来。
+   两者互不覆盖：载入方案会同时写回自动记忆，所以"载入后刷新"仍停留在该方案。 */
+var MKEY='tunnelTraining_schemes_v1';
+function escH(t){
+  return String(t).replace(/[&<>"']/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function getSchemes(){
+  try{var o=JSON.parse(localStorage.getItem(MKEY)||'{}');
+      return (o&&typeof o==='object'&&!Array.isArray(o))?o:{};}catch(e){return {};}
+}
+function setSchemes(o){try{localStorage.setItem(MKEY,JSON.stringify(o));}catch(e){toast('保存失败：浏览器存储不可用');}}
+function schemeSelEl(){return document.getElementById('schemeSel');}
+function schemePayload(){
+  var o={}; Object.keys(DEF).forEach(function(k){o[k]=P[k];}); return o;
+}
+function refreshSchemes(keep){
+  var all=getSchemes(), names=Object.keys(all).sort(), sel=schemeSelEl();
+  if(!sel)return;
+  var html='<option value="">— 我的方案（'+names.length+'）—</option>';
+  for(var i=0;i<names.length;i++){
+    html+='<option value="'+escH(names[i])+'">'+escH(names[i])+'</option>';
+  }
+  sel.innerHTML=html;
+  if(keep&&names.indexOf(keep)>=0)sel.value=keep;
+  var st=document.getElementById('schemeState');
+  if(st)st.textContent=names.length
+    ? '已存 '+names.length+' 个方案：'+names.join(' / ')+'；在下拉里选一项即立刻载入。'
+    : '还没有保存过方案；在下拉里选一项即立刻载入。';
+}
+/* 校验 + 钳制：只认 DEF 里存在的键，数字键必须有限，并按滑条 min/max、步长取整 */
+function validPayload(raw){
+  if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
+  var o={}, n=0;
+  Object.keys(DEF).forEach(function(k){
+    if(!(k in raw))return;
+    var v=raw[k];
+    if(NUMK[k]){
+      v=Number(v);
+      if(!isFinite(v))return;
+      var el=body.querySelector('input[type=range][data-k="'+k+'"]');
+      if(el){
+        var st=parseFloat(el.step)||0.01;
+        v=Math.max(parseFloat(el.min),Math.min(parseFloat(el.max),v));
+        if(st>=1)v=Math.round(v);
+      }else{
+        /* 按钮组参数（pal / flip / dual / seamDir / glass / coreKind …）按取值集合钳制，
+           否则 pal=99 这类越界值会被原样放行，落到未定义分支 */
+        var row=body.querySelector('.row[data-k="'+k+'"]');
+        if(row){
+          var vs=[].map.call(row.querySelectorAll('button[data-v]'),function(b){return Number(b.dataset.v);})
+                   .filter(function(x){return isFinite(x);});
+          if(vs.length)v=Math.max(Math.min.apply(null,vs),Math.min(Math.max.apply(null,vs),v));
+        }
+        if(DEF[k]===Math.round(DEF[k]))v=Math.round(v);
+      }
+    }else{
+      v=String(v);
+    }
+    o[k]=v; n++;
+  });
+  return n?o:null;
+}
+function applyPayload(o,quiet){
+  Object.keys(o).forEach(function(k){if(k in DEF)P[k]=o[k];});
+  saveP(); syncUI(); resize();
+  var ps=document.getElementById('preset'); if(ps)ps.value='';
+  if(!quiet)toast('参数已应用');
+}
+/* 另存：同名直接覆盖（不弹 confirm，避免打断凝视） */
+document.getElementById('schemeSave').onclick=function(){
+  var box=document.getElementById('schemeName');
+  var nm=(box.value||'').trim();
+  if(!nm){toast('先在上面给方案起个名字');box.focus();return;}
+  if(nm.length>24)nm=nm.slice(0,24);
+  var all=getSchemes(), over=Object.prototype.hasOwnProperty.call(all,nm);
+  all[nm]=schemePayload(); setSchemes(all); refreshSchemes(nm);
+  box.value='';
+  toast(over?('已覆盖方案：'+nm):('已另存为方案：'+nm));
+};
+/* 删除 */
+document.getElementById('schemeDel').onclick=function(){
+  var nm=schemeSelEl().value;
+  if(!nm){toast('先在下拉里选一个方案');return;}
+  var all=getSchemes();
+  if(!Object.prototype.hasOwnProperty.call(all,nm)){toast('这个方案已不存在');refreshSchemes();return;}
+  delete all[nm]; setSchemes(all); refreshSchemes();
+  toast('已删除方案：'+nm);
+};
+/* 下拉选择即载入 */
+schemeSelEl().addEventListener('change',function(e){
+  var nm=e.target.value; if(!nm)return;
+  var all=getSchemes(), o=validPayload(all[nm]);
+  if(!o){toast('方案「'+nm+'」数据无效');return;}
+  applyPayload(o,true); toast('已载入方案：'+nm);
+});
+/* 导出 JSON */
+document.getElementById('schemeOut').onclick=function(){
+  var nm=(document.getElementById('schemeName').value||'').trim()||schemeSelEl().value||'隧道参数';
+  var doc={
+    __app:'隧道效果训练激活脑屏', __ver:1, __name:nm,
+    __time:new Date().toISOString().replace('T',' ').slice(0,19),
+    params:schemePayload()
+  };
+  var blob=new Blob([JSON.stringify(doc,null,2)],{type:'application/json;charset=utf-8'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='隧道参数_'+nm.replace(/[\\/:*?"<>|\s]+/g,'_')+'.json';
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href); if(a.parentNode)a.parentNode.removeChild(a);},500);
+  toast('已导出：'+a.download);
+};
+/* 导入 JSON */
+var schemeFile=document.getElementById('schemeFile');
+document.getElementById('schemeIn').onclick=function(){schemeFile.value='';schemeFile.click();};
+schemeFile.addEventListener('change',function(){
+  var f=schemeFile.files&&schemeFile.files[0]; if(!f)return;
+  var rd=new FileReader();
+  rd.onload=function(){
+    var j=null;
+    try{j=JSON.parse(String(rd.result));}catch(err){toast('导入失败：不是合法 JSON');return;}
+    var raw=(j&&typeof j==='object'&&j.params&&typeof j.params==='object')?j.params:j;
+    var o=validPayload(raw);
+    if(!o){toast('导入失败：文件里没有识别到参数');return;}
+    applyPayload(o,true);
+    var nm=(j&&j.__name?String(j.__name):f.name.replace(/\.json$/i,'')).slice(0,24)||'导入方案';
+    var all=getSchemes(); all[nm]=schemePayload(); setSchemes(all); refreshSchemes(nm);
+    toast('已导入并另存为方案：'+nm);
+  };
+  rd.onerror=function(){toast('导入失败：读取文件出错');};
+  rd.readAsText(f,'utf-8');
+});
+/* 首次进入刷新列表 */
+refreshSchemes();
+
+window.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){document.body.classList.remove('immersive');setTimeout(resize,220);}
+  if(e.key===' '&&!e.target.matches('input,select,button')){e.preventDefault();doAction('pause');}
+});
+
+/* HUD / 浮窗：可收起、上下可拖、宽度可调 */
+var dock=document.getElementById('dock'), dockHead=document.getElementById('dockHead');
+document.getElementById('dockMin').onclick=function(){document.body.classList.add('dock-min');setTimeout(resize,200);};
+document.getElementById('dockPill').onclick=function(){document.body.classList.remove('dock-min');setTimeout(resize,200);};
+document.getElementById('hudMin').onclick=function(){
+  var h=document.getElementById('hud');h.classList.toggle('min');
+  this.textContent=h.classList.contains('min')?'展开':'收起';
+};
+document.getElementById('immExit').onclick=function(){document.body.classList.remove('immersive');setTimeout(resize,220);};
+var drag=null;
+dockHead.addEventListener('mousedown',function(e){
+  if(e.target.closest('button'))return;
+  drag={y:e.clientY,top:dock.offsetTop,mode:'move'};e.preventDefault();
+});
+document.getElementById('dockResize').addEventListener('mousedown',function(e){
+  drag={x:e.clientX,w:parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cd-w')),mode:'size'};
+  e.preventDefault();e.stopPropagation();
+});
+window.addEventListener('mousemove',function(e){
+  if(!drag)return;
+  if(drag.mode==='move'){
+    var nt=Math.max(6,Math.min(window.innerHeight-dock.offsetHeight-6,drag.top+e.clientY-drag.y));
+    dock.style.top=nt+'px';dock.style.bottom='auto';
+  }else{
+    var nw=Math.max(260,Math.min(560,drag.w-(e.clientX-drag.x)));
+    document.documentElement.style.setProperty('--cd-w',nw+'px');resize();
+  }
+});
+window.addEventListener('mouseup',function(){drag=null;});
+
+/* ===================== WebGL 渲染 ===================== */
+var canvas=document.getElementById('gl');
+var gl=null, prog=null, U={}, mode2D=false;
+var VERT='attribute vec2 aPos; void main(){gl_Position=vec4(aPos,0.0,1.0);}';
+var FRAG=[
+'#ifdef GL_FRAGMENT_PRECISION_HIGH','precision highp float;','#else','precision mediump float;','#endif',
+'uniform vec2 uRes;','uniform float uTime,uClock;',
+'uniform float uSpeed,uSpin,uTwist,uRings,uSectors,uCX,uCY,uSplit;',
+'uniform float uPattern,uA,uK,uN,uTurn,uMirror,uPhase;',
+'uniform float uFlip,uDual,uDualMix,uSeamAng;',
+'uniform float uRipW,uRipAmp,uRipSpd,uCore;',
+'uniform float uPal,uHue,uHueSpd,uGlow,uBright,uVig,uFlickHz,uFlick;',
+'uniform float uVfx,uVfxMix,uVfxA,uVfxB,uVfxC,uVfxD,uVfxSpd;',
+'uniform float uStyle,uRays,uGrain,uSoft;',
+'uniform float uGlass,uGSep,uGGhost,uGSat,uGSwap;',
+'uniform float uD3,uD3Light,uD3Fog,uD3Bump,uD3Par,uD3Rip;',
+'uniform float uCoreKind,uSunSize,uSunRays;',
+'const float PI=3.14159265359;','const float TAU=6.28318530718;',
+'/* ===== B站光云：径向拉丝 + 顶光 + 实测粉紫色带（对齐参考帧量化值） ===== */',
+'float rayField(float a2,float lnr,float t,float arms){',
+'  float acc=0.0;',
+'  for(int i=0;i<3;i++){',
+'    float fi=float(i);',
+'    float sd=sin(a2*arms*(1.0+fi*0.55) + fi*2.13 + lnr*(0.16+fi*0.11) - t*(0.30+fi*0.17));',
+'    acc+=pow(0.5+0.5*sd, 2.0+fi)*0.52;',
+'  }',
+'  return acc;',
+'}',
+'vec3 biliPal(float h){',
+'  vec3 rose=vec3(0.95,0.52,0.74), magenta=vec3(0.86,0.20,0.62),',
+'       lav=vec3(0.64,0.54,0.84), peri=vec3(0.46,0.56,0.92),',
+'       coral=vec3(0.98,0.62,0.36);',
+'  vec3 c=mix(rose,magenta,clamp(h*2.2,0.0,1.0));',
+'  c=mix(c,lav,clamp((h-0.28)*2.1,0.0,1.0));',
+'  c=mix(c,peri,clamp((h-0.62)*2.6,0.0,1.0));',
+'  c=mix(c,coral,clamp((0.16-h)*5.5,0.0,1.0));',
+'  return c;',
+'}',
+'/* ===== 三视频特效：可验证算法（本地 mp4 结构归纳 + 外网公式） ===== */',
+'float hash21(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }',
+'float vnoise(vec2 p){ vec2 i=floor(p),f=fract(p); f=f*f*(3.0-2.0*f);',
+'  return mix(mix(hash21(i),hash21(i+vec2(1.0,0.0)),f.x),',
+'             mix(hash21(i+vec2(0.0,1.0)),hash21(i+vec2(1.0,1.0)),f.x),f.y); }',
+'float fbm(vec2 p){ float v=0.0,a=0.5; for(int i=0;i<3;i++){v+=a*vnoise(p);p*=2.03;a*=0.5;} return v; }',
+'vec3 goldRamp(float x){',
+'  x=clamp(x,0.0,1.0);',
+'  vec3 c0=vec3(0.085,0.030,0.012), c1=vec3(0.46,0.18,0.035),',
+'       c2=vec3(0.94,0.58,0.14),   c3=vec3(1.00,0.95,0.76);',
+'  if(x<0.35) return mix(c0,c1,x/0.35);',
+'  if(x<0.72) return mix(c1,c2,(x-0.35)/0.37);',
+'  return mix(c2,c3,(x-0.72)/0.28);',
+'}',
+'/* ① 地包天圆环 —— 第七次重做。七轮对照后确认的骨架是：',
+'     一层层套着的硬边亮环（可数 6~8 圈）+ 冷暗深蓝腔 + 中心一小片放射丝',
+'     + 贯穿球心的极亮竖直光柱 + 底部一大片白光成穹顶向上包住球（地包天）',
+'     + 球顶一道细亮弧、球壁一圈暗环、球外暖褐虚焦底。',
+'   全部按 |x| 构造 → 天然左右镜像，与原片一致。',
+'   时间变化：结构缓慢缩放呼吸 + 上下漂移 + 环相位游走（实测原片无旋转）。 */',
+'vec3 globeField(vec2 p,float t){',
+'  float rr=length(p);',
+'  float inside=1.0-smoothstep(0.985,1.020,rr);',
+'  float nz=sqrt(max(1.0-min(rr,1.0)*min(rr,1.0),0.0));',
+'  /* 呼吸缩放 + 上下漂移：只动球内结构，球壁轮廓不动 */',
+'  float zs=1.0+0.050*sin(t*1.05)+0.016*sin(t*2.70+1.10);',
+'  vec2 q=p/zs;',
+'  q.y+=0.026*sin(t*0.95);',
+'  float ax=abs(q.x);',
+'  float rq=length(q);',
+'  float aq=atan(ax,max(q.y,-0.995));',
+'',
+'  float w1=fbm(vec2(aq*2.20, rq*1.55-t*0.22));',
+'  float w2=fbm(vec2(aq*4.90+7.0, rq*3.10-t*0.38));',
+'',
+'  /* ---- 冷暗底：原片的暗腔是蓝绿偏冷，不是暖褐 ---- */',
+'  vec3 col=vec3(0.175,0.195,0.235)*(0.45+0.55*pow(nz,0.50));',
+'',
+'  /* ---- 主结构：硬边同心亮环，pow(rq,0.78) 让环在中心密、往外疏 ---- */',
+'  float rph=pow(max(rq,0.0),0.78)*44.0+(w1-0.5)*2.6+(w2-0.5)*1.0',
+'            +2.2*sin(aq*3.0+rq*5.0+t*0.18)-t*0.85;',
+'  float rv=0.5+0.5*sin(rph);',
+'  float ringW=smoothstep(0.40,0.86,rv);       /* 宽亮弧身 */',
+'  float ringC=pow(rv,10.0);                    /* 弧上的亮芯，也要宽 */',
+'  float rings=ringW*0.50+ringC*0.62;',
+'  rings*=0.30+0.70*smoothstep(0.02,0.42,rq);',
+'  rings*=1.0-0.30*smoothstep(0.80,1.00,rq);',
+'  /* 环不是整圈都亮：用碎片遮罩打断，才像碎冰而不是靶子 */',
+'  float shard=smoothstep(0.24,0.76,fbm(vec2(aq*2.60+1.7, rq*2.10-t*0.10)));',
+'  rings*=0.42+0.78*shard;',
+'  vec3 arcTint=mix(vec3(0.66,0.96,1.22),vec3(1.24,0.72,0.88),0.5+0.5*sin(aq*5.0+rq*7.0-t*0.30));',
+'  arcTint=mix(arcTint,vec3(1.12,1.02,0.80),0.30);',
+'  col=mix(col,arcTint*1.06,clamp(rings,0.0,1.0)*0.94);',
+'',
+'  /* ---- 中心一小片放射丝（只在 rq<0.55 才看得见） ---- */',
+'  float sph=aq*26.0+(w2-0.5)*3.0-t*0.55;',
+'  float st=pow(0.5+0.5*sin(sph),20.0)*(0.30+0.70*shard);',
+'  st*=exp(-rq*3.10)*0.48;',
+'  col+=vec3(0.85,0.82,0.88)*clamp(st,0.0,1.0);',
+'',
+'  /* ---- 大尺度柔光：让环与环之间不是死黑 ---- */',
+'  float gA=fbm(vec2(aq*1.30+2.0, rq*1.90-t*0.18));',
+'  col+=vec3(0.46,0.40,0.44)*pow(gA,1.40)*1.05;',
+'',
+'  /* ---- 中心偏下那簇白花（全图最亮点） ---- */',
+'  float cy=q.y+0.115;',
+'  float cd=length(vec2(ax*1.15,cy));',
+'  float clu=1.0-smoothstep(0.014,0.125,cd);',
+'  float cluB=pow(0.5+0.5*cos(aq*9.0+t*0.90),1.6);',
+'  col=mix(col,vec3(1.08,1.05,1.02),clamp(clu*(0.70+0.30*cluB),0.0,1.0)*0.95);',
+'',
+'  /* ---- 球外：暖褐虚焦底 + 径向暗角 ---- */',
+'  float outg=1.0-inside;',
+'  vec3 bg=mix(vec3(0.27,0.19,0.16),vec3(0.20,0.17,0.22),0.5+0.5*sin(aq*1.7+rr*2.0));',
+'  bg*=0.80+0.42*fbm(vec2(aq*1.20,rr*1.05+t*0.06));',
+'  bg*=exp(-max(rr-0.98,0.0)*0.55);',
+'  col=mix(col,bg,outg);',
+'',
+'  /* ---- 竖直光柱：贯穿球心并冲出球顶 ---- */',
+'  float bw=0.020+0.026*smoothstep(0.0,1.05,q.y);',
+'  float beam=exp(-pow(ax/bw,2.0));',
+'  beam*=smoothstep(-0.22,0.06,q.y);',
+'  beam*=0.55+0.45*smoothstep(0.0,0.90,q.y);',
+'  col=mix(col,vec3(1.10,1.08,1.06),clamp(beam,0.0,1.0)*0.96);',
+'',
+'  /* ---- 底部过曝：穹顶白光向上包球，边缘羽状撕裂 ---- */',
+'  float ragged=(fbm(vec2(aq*3.4, rq*3.2-t*0.25))-0.5);',
+'  float cup=clamp((-q.y-0.02-0.44*ax*ax)/0.56+ragged*0.24+0.10*sin(t*1.10),0.0,1.0);',
+'  float wash=pow(cup,1.35)*inside;',
+'  wash*=0.82+0.18*fbm(vec2(aq*6.0, rq*5.0-t*0.30));',
+'  col=mix(col,vec3(1.10,1.09,1.07),clamp(wash,0.0,1.0)*0.97);',
+'',
+'  /* ---- 球顶细亮弧 + 球壁暗环 ---- */',
+'  float top=exp(-pow((rr-0.930)*10.0,2.0))*(0.30+0.70*smoothstep(0.30,1.00,p.y));',
+'  col=mix(col,vec3(1.02,1.00,0.98),clamp(top,0.0,1.0)*0.72);',
+'  float rimD=exp(-pow((rr-0.968)*15.0,2.0));',
+'  col=mix(col,vec3(0.085,0.045,0.072),clamp(rimD,0.0,1.0)*0.55);',
+'',
+'  return col;',
+'}',
+'vec3 vfxRingCol(vec2 uv,float z,float t){',
+'  /* 色散：玻璃对各波长折射率不同 → 三个略不同半径的球分别取样，各取一个通道 */',
+'  float ca=0.004+0.014*uVfxC;',
+'  vec3 a=globeField(uv*(1.0-ca),t);',
+'  vec3 b=globeField(uv,t);',
+'  vec3 c=globeField(uv*(1.0+ca),t);',
+'  vec3 raw=vec3(a.r,b.g,c.b);',
+'  /* 暗部染冷紫、亮部保持暖白：原片色边只有 1~2% 宽，不能整颗染成彩虹 */',
+'  float lum=dot(raw,vec3(0.3333));',
+'  vec3 tint=mix(vec3(0.82,0.74,1.02),vec3(1.05,1.01,0.97),smoothstep(0.06,0.50,lum));',
+'  return raw*tint*(0.82+0.30*uVfxD);',
+'}',
+'/* ② 黄金比螺旋：逐帧真看后重做 —— 原片是「实心菊石壳 + 22~26 条放射肋 + 光滑暗金壳缘',
+'   + 背景宽放射光」，并且整颗壳在持续放大。旧版画的是细线等值线，所以是一张静态图。 */',
+'vec3 vfxSpiralCol(vec2 uv,float th,float lnr,float r,float t){',
+'  float PHI=1.61803398875;',
+'  /* 5 秒内持续放大约 1.8 倍 + 缓慢自转 */',
+'  float zoom=0.62+0.52*(0.5+0.5*sin(t*0.52-1.15));',
+'  float rot=t*0.11;',
+'  vec2 q=uv/zoom;',
+'  float cr=cos(rot), sr=sin(rot);',
+'  q=vec2(cr*q.x+sr*q.y,-sr*q.x+cr*q.y);',
+'  q.x+=0.16;                       /* 壳心偏左：原片小旋在圆内偏左中 */',
+'  float l=length(q);',
+'  float a=atan(q.y,q.x);',
+'  /* 壳缘：近似圆，但左下留一道螺旋卷曲缺口 —— 菊石壳的「6 字」轮廓 */',
+'  float notch=exp(-pow((a+2.05)*1.10,2.0));',
+'  float Rb=1.00*(1.0+0.050*cos(a-0.9)-0.30*notch);',
+'  float inS=1.0-smoothstep(Rb*0.980,Rb*1.012,l);',
+'  /* 宽放射肋：原片 10~12 条宽扇形，不是几十条细线 */',
+'  float ribN=max(5.0,floor(6.0*uVfxA+5.0));',
+'  float rib=pow(0.5+0.5*cos(a*ribN+sin(a*2.0+rot)*0.45),0.85);',
+'  float lr=clamp(l/max(Rb,0.001),0.0,1.0);',
+'  float lum=0.55+0.45*sin(lr*PI*0.80+0.20);',
+'  lum*=0.44+0.76*rib*smoothstep(0.08,0.62,lr);',
+'  float grow=pow(0.5+0.5*sin(log(max(l,0.02))*14.0-a*2.0+t*0.20),6.0);',
+'  lum*=0.88+0.16*grow;',
+'  lum*=1.0-0.28*smoothstep(0.72,1.0,lr);',
+'  /* 中心小旋：2~3 圈对数螺旋，原片最显眼的识别特征 */',
+'  float sv=log(max(l,0.006))*0.95 - a/TAU + t*0.30;',
+'  float sw=abs(fract(sv)-0.5);',
+'  float coil=1.0-smoothstep(0.03,0.115,sw);',
+'  coil*=1.0-smoothstep(0.06,0.46,l);',
+'  /* 壳缘暗金厚带 + 背景宽柔放射光 */',
+'  float rimW=13.0-6.0*exp(-pow((a+1.30)*1.40,2.0));',
+'  float rim=exp(-pow((l-Rb)*rimW,2.0));',
+'  float rayN=max(4.0,floor(5.0*uVfxB+4.0));',
+'  float bgRay=pow(0.5+0.5*cos(a*rayN+rot*0.4+t*0.12),1.3);',
+'  vec3 cIn =mix(vec3(0.88,0.64,0.20), vec3(1.10,1.00,0.68), clamp(lum,0.0,1.0));',
+'  vec3 cBg =mix(vec3(0.86,0.60,0.22), vec3(1.12,1.00,0.62), bgRay);',
+'  vec3 cRim=vec3(0.66,0.42,0.10);',
+'  vec3 c=mix(cBg,cIn,inS);',
+'  c=mix(c,cRim,rim*0.85);',
+'  c=mix(c,vec3(0.50,0.28,0.05),coil*0.80);',
+'  c=mix(c,vec3(0.44,0.24,0.04),1.0-smoothstep(0.010,0.030,l));',
+'  float lit=clamp(-(q.x+q.y)*0.55+0.20,-1.0,1.0);',
+'  c*=0.90+0.10*lit;',
+'  c*=0.78+0.42*uVfxD;',
+'  return c;',
+'}',
+'/* ③ 黄金涟漪：contour rings + Rocaille 域扭曲 + 多波源焦散 + 细密噪声高光 */',
+'vec3 vfxRippleCol(vec2 uv,float th,float lnr,float r,float t){',
+'  vec2 p=uv*2.2;',
+'  vec2 q=vec2(sin(p.y*1.7+t*0.55), cos(p.x*1.9-t*0.42));',
+'  p+=0.22*uVfxC*q;',
+'  vec2 w2=vec2(sin(p.y*2.3+t*0.80), cos(p.x*2.1-t*0.60));',
+'  p+=0.08*uVfxC*w2;',
+'  float rw=length(uv)*uVfxA*15.0 - t*1.60;',
+'  float rings=pow(0.5+0.5*sin(rw),3.0);',
+'  float rings2=pow(0.5+0.5*sin(rw+1.10),8.0);',
+'  float wave=0.0;',
+'  for(int i=0;i<3;i++){',
+'    for(int j=0;j<3;j++){',
+'      vec2 src=(vec2(float(i),float(j))-1.0)*0.72;',
+'      float d=length(uv-src);',
+'      wave+=sin(d*10.0-t*5.0)*exp(-d*2.2)*0.045;',
+'    }',
+'  }',
+'  float n=fbm(p*6.5+vec2(t*0.12,-t*0.09));',
+'  float caus=pow(0.5+0.5*sin((p.x+p.y)*5.0+n*7.0-t*1.10),6.0);',
+'  float center=exp(-r*r*3.2)*0.90;',
+'  float x=0.10 + rings*0.46 + rings2*0.16 + wave*0.34 + caus*0.34*uVfxB + center*0.46 + n*0.10;',
+'  x*=0.72+0.42*uVfxD;',
+'  vec3 c=goldRamp(x);',
+'  c+=vec3(1.0,0.92,0.74)*caus*0.20*uVfxB;',
+'  return c;',
+'}',
+'vec3 palette(float t){',
+'  vec3 a,b,d;',
+'  if(uPal<0.5){ a=vec3(0.56,0.30,0.50); b=vec3(0.44,0.34,0.46); d=vec3(0.00,0.14,0.28); }',
+'  else if(uPal<1.5){ a=vec3(0.20,0.32,0.46); b=vec3(0.30,0.36,0.46); d=vec3(0.00,0.33,0.67); }',
+'  else if(uPal<2.5){ a=vec3(0.30,0.48,0.42); b=vec3(0.34,0.40,0.42); d=vec3(0.20,0.45,0.70); }',
+'  else if(uPal<3.5){ a=vec3(0.90,0.88,0.93); b=vec3(0.09,0.07,0.10); d=vec3(0.00,0.10,0.20); }',
+'  else { a=vec3(0.52,0.42,0.24); b=vec3(0.42,0.34,0.18); d=vec3(0.08,0.16,0.26); }',
+'  vec3 c=a + b*cos(TAU*(vec3(1.0)*t + d));',
+'  if(uPal<0.5) c*=vec3(1.18,0.76,1.04);',
+'  return c;',
+'}',
+'/* 图案相位场：抽成函数，供原像层与反向影像层各调用一次 */',
+'float calcBand(float a2, float ph, float lnr, float z, float ls, float r){',
+'  float g=0.0, band=0.0;',
+'  if(uPattern<0.5){',
+'    float ringB=0.5+0.5*sin(TAU*(z*uRings*0.30));',
+'    float armB=0.5+0.5*cos(a2*uSectors+ph);',
+'    float spiralB=0.5+0.5*sin(TAU*(a2*uSectors*0.15915 + lnr*uRings*0.16 + z*0.20));',
+'    band=clamp((0.40*ringB + 0.60*armB)*(0.52+0.48*spiralB),0.0,1.0);',
+'  } else if(uPattern<1.5){',
+'    g=5.4*lnr + 2.0*a2*uTurn + uTime*uSpeed*3.0 + ph;',
+'    band=0.5+0.5*sin(g*2.0);',
+'  } else if(uPattern<2.5){',
+'    g=13.5*r - uTime*uSpeed*8.0 + ph;',
+'    band=0.5+0.5*sin(g*3.0);',
+'  } else if(uPattern<3.5){',
+'    vec2 cq=vec2(lnr*2.4, a2*1.9);',
+'    band=mod(floor(cq.x)+floor(cq.y)+floor(ph),2.0);',
+'  } else if(uPattern<4.5){',
+'    g=ls*3.0 + sin(uN*a2)/max(uA,0.05)*2.0 + uTime*uSpeed*2.0 + ph;',
+'    band=0.5+0.5*sin(g*PI);',
+'  } else {',
+'    float b1=0.5+0.5*sin(ls*3.0 + uN*a2);',
+'    float b2=0.5+0.5*sin(ls*3.0 - (uN+uK*40.0)*a2);',
+'    band=max(b1,b2)*0.85;',
+'  }',
+'  return pow(clamp(band,0.0,1.0),1.6);',
+'}',
+'/* ===== 场景着色：屏幕坐标 uv0 -> 最终颜色。抽成函数是为了立体眼镜要两只眼各算一次 ===== */',
+'vec3 renderAt(vec2 uv0, float eyeR){',
+'  vec2 uv=uv0;',
+'  uv-=vec2(uCX,uCY);',
+'  /* 3D 透视视差：相机横移在屏幕上产生的位移随深度递减 —— 近端(r大)动多、远端(r小)几乎不动 */',
+'  if(uD3>0.001 && uD3Par>0.001){',
+'    float rp=length(uv);',
+'    uv+=vec2(sin(uTime*0.31),cos(uTime*0.23))*0.055*uD3*uD3Par*(0.20+0.80*rp);',
+'  }',
+'  /* 全局镜像：0 原像 / 1 水平 / 2 垂直 / 3 双轴(180°) */',
+'  if(uFlip>0.5 && uFlip<1.5) uv.x=-uv.x;',
+'  else if(uFlip>1.5 && uFlip<2.5) uv.y=-uv.y;',
+'  else if(uFlip>2.5){ uv.x=-uv.x; uv.y=-uv.y; }',
+'  float r=length(uv);',
+'  /* 相位缝方向：把 atan 的 ±PI 分支切割旋转到指定方位（默认朝上） */',
+'  float sb=uSeamAng-PI, cb=cos(sb), sbb=sin(sb);',
+'  vec2 qs=vec2(cb*uv.x+sbb*uv.y, -sbb*uv.x+cb*uv.y);',
+'  float th=atan(qs.y,qs.x)+sb;',
+'  /* ① 复对数 / log-polar：Schwartz 视皮层映射远场近似 x=ln r, y=θ */',
+'  float lnr=log(max(r,0.0015));',
+'  /* ② Droste shear：θ′=θ+twist·ln r，把直条纹卷成螺旋 */',
+'  float spinT=uSpin*0.0174533*uTime*uTurn;',
+'  float angC=uTwist*lnr + spinT;',
+'  float angB=uTwist*lnr - spinT;',
+'  float a2 =th + angC;',
+'  float a2B=(PI-th) + angB;',
+'  /* ③ 1/r 隧道深度 + 前进 */',
+'  float z0=0.35/max(r,0.004) + uTime*uSpeed*1.4;',
+'  /* 3D 管壁半径起伏：隧道壁不是完美旋转面（岩洞/血管感），只改深度场、不动几何映射 */',
+'  float z=z0 + uD3*uD3Rip*(0.42*sin(th*3.0+z0*0.55) + 0.24*sin(th*6.5-z0*0.80));',
+'  /* ④ 对数螺旋 r=a·e^{kθ} ⇔ ln r = ln a + kθ */',
+'  float ls=lnr - uK*TAU*(angC + sin(th)) - log(max(uA,0.02));',
+'  /* 镜像模式下屏蔽相位差，保证左右严格互为镜像（含旧会话保存的 180°） */',
+'  float ph=(uSplit>0.5 && uMirror>0.5)?0.0:(eyeR*uPhase*0.0174533);',
+'  float band=calcBand(a2, ph, lnr, z, ls, r);',
+'  /* 顺时针 + 逆时针 双影像重叠：a2B 用镜像手性 + 反向时间旋转 */',
+'  if(uDual>0.5){',
+'    float bb=calcBand(a2B, ph, lnr, z, ls, r);',
+'    if(uDual<1.5) band=mix(band, bb, uDualMix);',
+'    else band=max(band, bb*(0.55+uDualMix));',
+'  }',
+'  float fog=smoothstep(0.05,0.45,r);',
+'  float ct=z*0.16 + angC*0.08 + 0.055*sin(th) + uHue + uTime*uHueSpd*0.08;',
+'  float isW=step(2.5,uPal)*step(uPal,3.5);',
+'  vec3 col=palette(ct);',
+'  col*=0.25+1.35*band;',
+'  col*=0.06+0.94*fog;',
+'  /* 素白白昼：把亮条纹翻成浅底深线（F1 白底偏好） */',
+'  if(isW>0.5){',
+'    vec3 bg=vec3(0.995,0.994,0.998);',
+'    vec3 deep=vec3(0.50,0.48,0.53);',
+'    col=mix(deep,bg,band);',
+'    col*=0.86+0.14*fog;',
+'  }',
+'  col*=mix(uGlow*uBright, max(1.0,uGlow*uBright), isW);',
+'  /* 三视频特效：在已镜像的 uv 空间计算，故分屏镜像 / 两屏同色自动继承 */',
+'  float vfxW=step(0.5,uVfx)*uVfxMix;',
+'  float vt=uTime*uVfxSpd*(0.35+0.65*uSpeed);',
+'  if(vfxW>0.001){',
+'    vec3 vcol=vec3(0.0);',
+'    if(uVfx<1.5) vcol=vfxRingCol(uv,z,vt);',
+'    else if(uVfx<2.5) vcol=vfxSpiralCol(uv,th,lnr,r,vt);',
+'    else vcol=vfxRippleCol(uv,th,lnr,r,vt);',
+'    col=mix(col,vcol,vfxW);',
+'  }',
+'  /* B站光云样式：替换明暗结构与配色；几何仍受 twist/spin/sectors 控制 */',
+'  float styleW=step(0.5,uStyle);',
+'  if(styleW>0.5){',
+'    float arms=max(3.0,floor(uSectors*1.45+0.5));',
+'    float cloud=fbm(vec2(th*1.10+3.10, lnr*0.90 - uTime*0.14));',
+'    float cloud2=fbm(vec2(th*2.40+11.0, lnr*2.10 - uTime*0.30));',
+'    /* 用云团把拉丝打碎：原片是粗短团块，不是等长细丝 */',
+'    float rays=rayField(a2,lnr,uTime*0.60,arms)*uRays*(1.0-0.35*uSoft)*(0.35+1.10*cloud);',
+'    float dy=uv.y/max(r,0.0001), dx=uv.x/max(r,0.0001);',
+'    float upw=0.5+0.5*dy;',
+'    /* 明暗由云团主导：原片是"云块状"明暗，不是均匀底 + 轻纹理 */',
+'    float lum=0.14 + 0.20*upw + 0.40*cloud + 0.16*rays + 0.09*cloud2 + 0.05*band;',
+'    lum-=0.33*pow(clamp(1.0-upw,0.0,1.0),1.40);',
+'    lum-=0.04*exp(-r*r*30.0);',
+'    /* 色相同样由云团主导：一朵云偏品红，另一朵偏薰衣草 / 长春花蓝 */',
+'    float hv=0.10 + 0.52*cloud + 0.30*sin(atan(dy,dx)+1.05) + 0.18*upw;',
+'    vec3 sc=biliPal(clamp(hv,0.0,1.0));',
+'    sc*=0.54+0.92*clamp(lum,0.0,1.0);',
+'    /* 阴影是「紫灰」而非黑紫：参考暗部 (0.34,0.28,0.36) 的 G/R≈0.82 */',
+'    sc=mix(vec3(0.300,0.250,0.310), sc, clamp(0.38+1.00*lum,0.0,1.0));',
+'    sc=mix(sc, vec3(0.920,0.875,0.930), 0.45*pow(upw,2.5));',
+'    float rayPk=pow(max(rays*uRays-0.30,0.0),1.70);',
+'    sc+=vec3(0.90,0.72,0.82)*rayPk*0.50;',
+'    sc+=vec3(1.00,0.64,0.40)*pow(max(rays*uRays-0.55,0.0),1.20)*0.55;',
+'    /* 左右两侧收紫味，靠近参考的玫瑰 / 砖红 */',
+'    float wRs=smoothstep(-0.10,0.90,dx), wLs=1.0-smoothstep(-0.90,-0.10,dx);',
+'    sc=mix(sc, vec3(sc.r*1.06, sc.g*0.98, sc.b*0.80), 0.45*wRs);',
+'    sc=mix(sc, vec3(sc.r*1.02, sc.g*0.93, sc.b*0.72), 0.46*wLs);',
+'    /* 参考帧四角比内部略亮（内部 0.56 / 四角 0.67） */',
+'    sc*=1.0+0.45*smoothstep(0.75,1.75,r);',
+'    /* 只对细节做轻微柔化，不再动整体对比 */',
+'    sc=mix(sc, vec3(dot(sc,vec3(0.333))), 0.10*uSoft);',
+'    /* 饱和度按亮度调制：中间饱和、两端去饱和（对齐参考的紫灰暗部与淡薰衣草亮部） */',
+'    float satAmt=0.42+0.48*smoothstep(0.16,0.62,clamp(lum,0.0,1.0));',
+'    sc=mix(vec3(dot(sc,vec3(0.333))), sc, satAmt);',
+'    sc=clamp(sc,0.0,1.0);',
+'    if(uStyle>1.5){',
+'      sc=mix(sc, vec3(0.900,0.895,0.925), 0.50);',
+'      sc=mix(vec3(0.54,0.52,0.61), sc, clamp(0.28+1.55*dot(sc,vec3(0.333)),0.0,1.0));',
+'      sc*=0.87;',
+'      sc=pow(max(sc,vec3(0.0)), vec3(0.95));',
+'    }',
+'    col=sc;',
+'  }',
+'  /* 尽头波纹涟漪：特效模式下压低原隧道涟漪，避免两层水波打架 */',
+'  float rip=0.5+0.5*sin(r*uRipW*2.4 - uTime*uRipSpd*4.0);',
+'  rip=pow(rip,3.0)*exp(-r*2.2)*uRipAmp*(1.0-0.90*vfxW)*(1.0-0.88*styleW);',
+'  if(isW>0.5) col=mix(col, vec3(0.52,0.50,0.55), clamp(rip*0.75,0.0,1.0));',
+'  else col += palette(ct+0.25)*rip*1.25 + vec3(0.90,0.72,1.0)*rip*0.45;',
+'  /* 中心光核三形态：0=白光核+凝视靶点（封面构图，原样） 1=金黄太阳 2=纯白核（无黑洞） */',
+'  float core=exp(-r*7.0);',
+'  if(uCoreKind<0.5){',
+'    if(isW>0.5) col=mix(col, vec3(1.0,0.975,0.92), clamp(core*uCore*0.72,0.0,1.0));',
+'    else col += vec3(1.0,0.97,1.0)*core*(0.82+0.18*sin(uTime*1.3))*uCore*1.20*(1.0-0.82*styleW);',
+'    float dotm=1.0-smoothstep(0.006,0.011,r);',
+'    col=mix(col,vec3(0.10,0.04,0.14),dotm*uCore*0.55*(1.0-styleW));',
+'  } else if(uCoreKind<1.5){',
+'    /* 金黄太阳：日面（中心近白、边缘橙红）+ 日冕 + 12 道整数角系数星芒，中心不再是黑洞 */',
+'    float sr=r/max(uSunSize,0.008);',
+'    float disc=1.0-smoothstep(0.86,1.02,sr);',
+'    float limb=1.0-smoothstep(0.92,1.10,sr);',
+'    /* 白热核只占最中心 30% 半径，其余是饱和金黄 —— 否则整颗太阳被冲成白盘 */',
+'    float crown=1.0-smoothstep(0.00,0.30,sr);',
+'    float corona=exp(-max(sr-1.0,0.0)*1.9);',
+'    float star=pow(0.5+0.5*cos(th*12.0+uTime*0.28),7.0);',
+'    star*=1.0-smoothstep(0.20,1.95,sr);',
+'    float halo=pow(0.5+0.5*cos(th*2.0-uTime*0.16),3.0)*exp(-sr*0.85)*0.40;',
+'    float puls=0.93+0.07*sin(uTime*1.7);',
+'    /* 色阶：外橙红 -> 饱和金 -> 最中心白热核。全部正向 smoothstep，禁止反向边界 */',
+'    vec3 sunC=mix(vec3(1.00,0.34,0.02), vec3(1.00,0.72,0.10), 1.0-smoothstep(0.18,1.02,sr));',
+'    sunC=mix(sunC, vec3(1.00,0.97,0.82), crown*0.92);',
+'    float sunA=clamp((disc*1.00+corona*0.42+halo)*uCore*puls,0.0,1.0);',
+'    col=mix(col,sunC*1.06,sunA);',
+'    col+=vec3(1.00,0.80,0.34)*(star*uSunRays*1.30+limb*0.30)*uCore*(1.0-0.55*styleW);',
+'  } else {',
+'    if(isW>0.5) col=mix(col, vec3(1.0,0.985,0.95), clamp(core*uCore*0.85,0.0,1.0));',
+'    else col += vec3(1.0,0.98,0.93)*core*(0.86+0.14*sin(uTime*1.3))*uCore*1.25*(1.0-0.82*styleW);',
+'  }',
+'  col*=1.0-uVig*smoothstep(0.55,1.5,r)*0.75*(1.0-isW*0.85)*(1.0-styleW)*(1.0-0.88*vfxW);',
+'  /* 颗粒噪点：模拟原片低码率颗粒 */',
+'  if(uGrain>0.001){',
+'    float gr=hash21(gl_FragCoord.xy*0.71+fract(uTime)*137.0);',
+'    col+=(gr-0.5)*uGrain*0.16;',
+'  }',
+'  /* AVS 闪烁：默认关闭，uClock 用真实时钟不受呼吸调制影响 */',
+'  float fl=1.0-uFlick*(0.5+0.5*sin(TAU*uFlickHz*uClock));',
+'  col*=mix(1.0,fl,step(0.0001,uFlick));',
+'  if(uSplit>0.5){',
+'    float seam=abs(gl_FragCoord.x-uRes.x*0.5);',
+'    col*=smoothstep(0.0,2.0,seam);',
+'  }',
+'  /* ===== 3D 圆柱管壁明暗：从管内看，内壁法线 N=(-cosθ,-sinθ,0)，侧光造成一侧亮一侧暗 ===== */',
+'  /* styleW / vfxW 时减弱，避免推翻光云与三特效已调好的明暗模型 */',
+'  if(uD3>0.001){',
+'    float d3=clamp(uD3,0.0,1.0)*(1.0-0.65*styleW)*(1.0-0.55*vfxW);',
+'    vec3 N=vec3(-cos(th),-sin(th),0.0);',
+'    vec3 Ld=normalize(vec3(cos(uD3Light*0.0174533),sin(uD3Light*0.0174533),-0.62));',
+'    float lam=max(dot(N,Ld),0.0);',
+'    /* 环脊凹凸：沿深度的起伏扰动法线，让管壁有起伏而不是光滑塑料 */',
+'    float ridge=0.5+0.5*sin(z*uRings*0.30+th*2.0);',
+'    lam=clamp(lam+(ridge-0.5)*0.55*uD3Bump,0.0,1.0);',
+'    /* 环境光 0.44 + 漫反射 1.06：背光面不至于全黑，受光面明显提亮 */',
+'    col*=mix(1.0, 0.44+1.06*lam, d3);',
+'    /* 大气透视：远端（r→0，z 大）退入管壁雾色，产生纵深 */',
+'    float fogD=exp(-z0*0.026*uD3Fog);',
+'    vec3 fogC=palette(uHue+0.55)*0.52;',
+'    col=mix(col, fogC, d3*(1.0-fogD)*0.72);',
+'  }',
+'  return clamp(col,0.0,1.0);',
+'}',
+'/* ===== 立体眼镜：红青 / 红蓝 / 偏光（隔行·左右·上下·棋盘） ===== */',
+'void main(){',
+'  vec2 uv=(gl_FragCoord.xy-0.5*uRes)/min(uRes.x,uRes.y)*2.0;',
+'  float eyeR=0.0;',
+'  if(uSplit>0.5){',
+'    float hw=uRes.x*0.5; eyeR=step(hw,gl_FragCoord.x);',
+'    float lx=gl_FragCoord.x-eyeR*hw;',
+'    vec2 lr=vec2(hw,uRes.y);',
+'    uv=(vec2(lx,gl_FragCoord.y)-0.5*lr)/min(lr.x,lr.y)*2.0;',
+'    /* 右屏 = 左屏的水平位置镜像：几何真镜像，颜色相位保持同源 */',
+'    if(eyeR>0.5 && uMirror>0.5) uv.x=-uv.x;',
+'  }',
+'  float vA=max(1.0,uRes.x/min(uRes.x,uRes.y));',
+'  /* 视差：屏幕归一化单位。0.0125 时 gSep=1 约合屏幕宽 0.6%，接近影院立体强度 */',
+'  float sep=uGSep*0.0125*(uGSwap>0.5?-1.0:1.0);',
+'  vec3 col;',
+'  if(uGlass<0.5){',
+'    col=renderAt(uv,eyeR);',
+'  } else if(uGlass<2.5){',
+'    /* 红青 / 红蓝 anaglyph：左眼取 +sep、右眼取 -sep，再按通道合成 */',
+'    vec3 cL=renderAt(uv+vec2(sep,0.0),eyeR);',
+'    vec3 cR=renderAt(uv-vec2(sep,0.0),eyeR);',
+'    /* 串色补偿：红镜会漏绿蓝、青镜会漏红，按 crosstalk 反向扣除 */',
+'    cL=max(vec3(0.0), cL-vec3(0.0,cR.g,cR.b)*uGGhost*0.55);',
+'    cR=max(vec3(0.0), cR-vec3(cL.r,0.0,0.0)*uGGhost*0.55);',
+'    float lm=dot(cL,vec3(0.299,0.587,0.114));',
+'    float rm=dot(cR,vec3(0.299,0.587,0.114));',
+'    float sat=clamp(uGSat,0.0,1.0);',
+'    /* gSat=0 纯亮度立体（重影最小）→ 1 全彩立体（色彩最好）：连续插值 */',
+'    if(uGlass<1.5){',
+'      col=mix(vec3(lm,rm,rm), vec3(lm*0.30+cL.r*0.70, cR.g, cR.b), sat);',
+'    } else {',
+'      col=mix(vec3(lm,rm*0.35,rm*0.85), vec3(lm*0.30+cL.r*0.70, cR.g*0.55, cR.b), sat);',
+'    }',
+'  } else if(uGlass<3.5){',
+'    /* 偏光·隔行：奇数行左眼 / 偶数行右眼（行交错偏振显示器的原生格式） */',
+'    float sgn=(mod(floor(gl_FragCoord.y),2.0)<0.5)?1.0:-1.0;',
+'    col=renderAt(uv+vec2(sgn*sep,0.0),eyeR);',
+'  } else if(uGlass<4.5){',
+'    /* 偏光·左右压缩 SBS：左半屏左眼、右半屏右眼（双投影偏振 / VR 盒） */',
+'    float hw2=uRes.x*0.5;',
+'    float eR=step(hw2,gl_FragCoord.x);',
+'    float sx=(gl_FragCoord.x-eR*hw2)/hw2;',
+'    vec2 uvs=vec2((sx*2.0-1.0)*vA, (gl_FragCoord.y/uRes.y)*2.0-1.0);',
+'    col=renderAt(uvs+vec2((eR>0.5?-1.0:1.0)*sep*2.0,0.0),eR);',
+'  } else if(uGlass<5.5){',
+'    /* 偏光·上下压缩 TB：gl_FragCoord.y 自下而上，故 eT=0 为下半屏 */',
+'    float hh2=uRes.y*0.5;',
+'    float eT=step(hh2,gl_FragCoord.y);',
+'    float sy2=(gl_FragCoord.y-eT*hh2)/hh2;',
+'    vec2 uvt=vec2((gl_FragCoord.x/uRes.x*2.0-1.0)*vA, sy2*2.0-1.0);',
+'    col=renderAt(uvt+vec2((eT>0.5?-1.0:1.0)*sep*2.0,0.0),eT);',
+'  } else {',
+'    /* 偏光·棋盘交错（DLP Link / checkerboard 格式），8px 格子 */',
+'    float chk=mod(floor(gl_FragCoord.x/8.0)+floor(gl_FragCoord.y/8.0),2.0);',
+'    col=renderAt(uv+vec2((chk>0.5?-1.0:1.0)*sep,0.0),eyeR);',
+'  }',
+'  if(uSplit>0.5){',
+'    float seam=abs(gl_FragCoord.x-uRes.x*0.5);',
+'    col*=smoothstep(0.0,2.0,seam);',
+'  }',
+'  gl_FragColor=vec4(clamp(col,0.0,1.0),1.0);',
+'}'
+].join('\n');
+
+function compile(type,src){
+  var s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);
+  if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+function initGL(){
+  try{
+    gl=canvas.getContext('webgl',{alpha:false,antialias:false,preserveDrawingBuffer:true})||
+       canvas.getContext('experimental-webgl',{alpha:false,preserveDrawingBuffer:true});
+    if(!gl)throw new Error('浏览器未提供 WebGL 上下文');
+    prog=gl.createProgram();
+    gl.attachShader(prog,compile(gl.VERTEX_SHADER,VERT));
+    gl.attachShader(prog,compile(gl.FRAGMENT_SHADER,FRAG));
+    gl.linkProgram(prog);
+    if(!gl.getProgramParameter(prog,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(prog));
+    gl.useProgram(prog);
+    var buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+    var loc=gl.getAttribLocation(prog,'aPos');gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+    ['uRes','uTime','uClock','uSpeed','uSpin','uTwist','uRings','uSectors','uCX','uCY','uSplit',
+     'uPattern','uA','uK','uN','uTurn','uMirror','uPhase','uFlip','uDual','uDualMix','uSeamAng',
+     'uRipW','uRipAmp','uRipSpd','uCore',
+     'uPal','uHue','uHueSpd','uGlow','uBright','uVig','uFlickHz','uFlick',
+     'uVfx','uVfxMix','uVfxA','uVfxB','uVfxC','uVfxD','uVfxSpd',
+     'uStyle','uRays','uGrain','uSoft',
+     'uGlass','uGSep','uGGhost','uGSat','uGSwap',
+     'uD3','uD3Light','uD3Fog','uD3Bump','uD3Par','uD3Rip',
+     'uCoreKind','uSunSize','uSunRays'].forEach(function(n){
+      U[n]=gl.getUniformLocation(prog,n);
+    });
+    document.getElementById('hEng').textContent='WebGL · GLSL';
+    return true;
+  }catch(err){
+    showErr('WebGL 初始化失败，已切换 Canvas2D 降级模式：\n'+err.message);
+    gl=null;mode2D=true;
+    document.getElementById('hEng').textContent='Canvas2D 降级';
+    return false;
+  }
+}
+
+function resize(){
+  var dpr=Math.min(2,window.devicePixelRatio||1);
+  var w=Math.max(1,Math.round(canvas.clientWidth*dpr));
+  var h=Math.max(1,Math.round(canvas.clientHeight*dpr));
+  if(canvas.width!==w||canvas.height!==h){
+    canvas.width=w;canvas.height=h;
+    if(gl)gl.viewport(0,0,w,h);
+  }
+}
+window.addEventListener('resize',resize);
+
+var UMAP={uSpeed:'speed',uSpin:'spin',uTwist:'twist',uRings:'rings',uSectors:'sectors',
+  uCX:'cx',uCY:'cy',uSplit:'split',uPattern:'pattern',uA:'a',uK:'k',uN:'N',uTurn:'turn',
+  uMirror:'mirror',uPhase:'phase',uFlip:'flip',uDual:'dual',uDualMix:'dualMix',
+  uRipW:'ripW',uRipAmp:'ripAmp',uRipSpd:'ripSpd',uCore:'core',
+  uPal:'pal',uHue:'hue',uHueSpd:'hueSpd',uGlow:'glow',uBright:'bright',uVig:'vig',
+  uFlickHz:'flickHz',uFlick:'flick',
+  uVfx:'vfx',uVfxMix:'vfxMix',uVfxA:'vfxA',uVfxB:'vfxB',uVfxC:'vfxC',uVfxD:'vfxD',uVfxSpd:'vfxSpd',
+  uStyle:'style',uRays:'rays',uGrain:'grain',uSoft:'soft',
+  uGlass:'glass',uGSep:'gSep',uGGhost:'gGhost',uGSat:'gSat',uGSwap:'gSwap',
+  uD3:'d3',uD3Light:'d3Light',uD3Fog:'d3Fog',uD3Bump:'d3Bump',uD3Par:'d3Par',uD3Rip:'d3Rip',
+  uCoreKind:'coreKind',uSunSize:'sunSize',uSunRays:'sunRays'};
+
+function drawGL(t,clk){
+  resize();
+  gl.uniform2f(U.uRes,canvas.width,canvas.height);
+  gl.uniform1f(U.uTime,t);gl.uniform1f(U.uClock,clk);
+  for(var n in UMAP){if(U[n])gl.uniform1f(U[n],avParam(UMAP[n],P[UMAP[n]]));}
+  /* seamDir 0/1/2/3 -> 方位角 PI/2, PI, 3PI/2, 2PI（上/左/下/右） */
+  gl.uniform1f(U.uSeamAng,(Number(P.seamDir)*0.5+0.5)*Math.PI);
+  gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+}
+
+/* Canvas2D 降级：B站光云（径向拉丝 + 顶光 + 粉紫色带） */
+function drawStyle2D(c,W,H,cx,cy,R,t){
+  var white=Number(P.style)>1.5;
+  c.save();c.translate(cx,cy);
+  var bg=c.createLinearGradient(0,-R,0,R);
+  if(white){ bg.addColorStop(0,'#fdf7fc');bg.addColorStop(0.45,'#e9e2ee');bg.addColorStop(1,'#cfc6d4'); }
+  else { bg.addColorStop(0,'#f6d8ea');bg.addColorStop(0.35,'#c98fb6');bg.addColorStop(0.7,'#6d4a72');bg.addColorStop(1,'#33203a'); }
+  c.fillStyle=bg;c.fillRect(-W,-H,W*3,H*3);
+  c.globalCompositeOperation='lighter';
+  var n=Math.max(24,Math.round(P.sectors*5));
+  for(var i=0;i<n;i++){
+    var a=i/n*Math.PI*2 + Math.sin(i*2.13)*0.11 + t*0.05*P.spin*0.0174533;
+    var len=R*(0.45+0.55*Math.abs(Math.sin(i*1.7+t*0.2)));
+    var wdt=R*0.012*(0.6+0.8*Math.abs(Math.cos(i*3.1)));
+    var al=(0.06+0.16*Math.abs(Math.sin(i*0.9+t*0.35)))*Number(P.rays);
+    var hue=315+38*Math.sin(a+1.2);
+    var lum=white?'78%,92%':'62%,72%';
+    var g2=c.createLinearGradient(0,0,Math.cos(a)*len,Math.sin(a)*len);
+    g2.addColorStop(0,'hsla('+hue+','+(white?'40%':'62%')+','+(white?'86%':'74%')+','+(al*1.5)+')');
+    g2.addColorStop(1,'hsla('+hue+','+(white?'40%':'62%')+','+lum+',0)');
+    c.fillStyle=g2;c.beginPath();
+    c.moveTo(0,0);
+    c.lineTo(Math.cos(a-0.06)*len,Math.sin(a-0.06)*len);
+    c.lineTo(Math.cos(a+0.06)*len,Math.sin(a+0.06)*len);
+    c.closePath();c.fill();
+  }
+  c.globalCompositeOperation='source-over';
+  var core=c.createRadialGradient(0,0,0,0,0,R*0.30);
+  core.addColorStop(0,'rgba(255,250,252,'+(white?0.85:0.42)+')');
+  core.addColorStop(1,'rgba(255,250,252,0)');
+  c.fillStyle=core;c.beginPath();c.arc(0,0,R*0.30,0,Math.PI*2);c.fill();
+  c.restore();
+}
+/* Canvas2D 降级：三视频特效的简化同构版本（无 GLSL 时仍可切换） */
+function drawVfx2D(c,W,H,cx,cy,R,t){
+  var m=Number(P.vfx), mix=Math.min(1,Number(P.vfxMix));
+  var fx=(P.flip===1||P.flip===3)?-1:1, fy=(P.flip===2||P.flip===3)?-1:1;
+  c.save();c.translate(cx,cy);c.scale(fx,fy);c.translate(-cx,-cy);
+  c.globalAlpha=mix;
+  if(m<1.5){
+    var g=c.createLinearGradient(0,cy-R,0,cy+R);
+    g.addColorStop(0,'#160b1e');g.addColorStop(0.48,'#4a2440');g.addColorStop(1,'#fff1d8');
+    c.fillStyle=g;c.fillRect(-W,-H,W*3,H*3);
+    var arcs=Math.max(1,Math.round(P.vfxA*4)), pet=Math.max(2,Math.round(P.vfxB*5));
+    for(var i=0;i<30;i++){
+      var u=i/30, depth=(u*6+t*P.speed*0.8*P.vfxSpd)%6;
+      var rr=R*Math.exp(-depth*0.40);if(rr<2)continue;
+      c.strokeStyle='hsla('+((i*13+t*24)%360)+',72%,'+(52+18*u)+'%,'+(0.12+0.45*u)+')';
+      c.lineWidth=Math.max(1,rr*0.02);c.beginPath();c.arc(cx,cy,rr,0,Math.PI*2);c.stroke();
+    }
+    for(var a=0;a<arcs;a++){
+      var ar=R*(0.30+a*0.19)+0.04*R*Math.sin(t*1.1+a*1.7);
+      c.strokeStyle='rgba(255,224,170,'+(0.55/(a+1))+')';c.lineWidth=2.5;
+      c.beginPath();c.arc(cx,cy,ar,Math.PI,Math.PI*2);c.stroke();
+    }
+    for(var p2=0;p2<pet;p2++){
+      var ang=p2/pet*Math.PI*2+t*0.35*P.vfxSpd;
+      c.fillStyle='rgba(255,236,200,0.30)';c.beginPath();
+      c.ellipse(cx+Math.cos(ang)*R*0.055,cy+Math.sin(ang)*R*0.055,R*0.075,R*0.028,ang,0,Math.PI*2);c.fill();
+    }
+    var lg=c.createLinearGradient(cx,cy-R,cx,cy+R);
+    lg.addColorStop(0,'rgba(255,240,200,0.55)');lg.addColorStop(1,'rgba(255,180,120,0)');
+    c.fillStyle=lg;c.fillRect(cx-3,cy-R,6,2*R);
+  } else if(m<2.5){
+    c.fillStyle='#1a0e05';c.fillRect(-W,-H,W*3,H*3);
+    var nch=Math.max(3,Math.round(P.vfxB*13));
+    for(var k=0;k<3;k++){
+      c.beginPath();
+      for(var a2=0;a2<Math.PI*10;a2+=0.04){
+        var r2=R*0.0065*Math.exp(0.3063*a2)*Math.pow(1/1.618,k);
+        if(r2>R*1.1)break;
+        var x2=cx+Math.cos(a2+t*0.10*P.vfxSpd)*r2, y2=cy+Math.sin(a2+t*0.10*P.vfxSpd)*r2;
+        if(a2)c.lineTo(x2,y2);else c.moveTo(x2,y2);
+      }
+      c.strokeStyle='rgba(255,'+Math.round(200-k*22)+','+Math.round(110-k*20)+',0.85)';
+      c.lineWidth=Math.max(1,3-k);c.stroke();
+    }
+    c.globalAlpha=mix*0.55;
+    for(var s2=0;s2<nch;s2++){
+      var sa=s2/nch*Math.PI*2+t*0.06*P.vfxSpd;
+      c.strokeStyle='rgba(255,190,90,0.32)';c.lineWidth=1.2;
+      c.beginPath();c.moveTo(cx,cy);c.lineTo(cx+Math.cos(sa)*R,cy+Math.sin(sa)*R);c.stroke();
+    }
+    c.globalAlpha=mix;
+  } else {
+    c.fillStyle='#1c0f04';c.fillRect(-W,-H,W*3,H*3);
+    for(var q=0;q<70;q++){
+      var rr2=R*0.05+q/70*R*1.05;
+      var wob=Math.sin(q*0.7+t*1.6*P.vfxSpd)*R*0.012*P.vfxC;
+      var cg=Math.round(120+60*Math.sin(q*0.2+1));
+      c.strokeStyle='rgba(255,'+cg+','+Math.round(45+35*q/70)+','+(0.10+0.28*Math.abs(Math.sin(q*0.5-t*P.vfxSpd)))+')';
+      c.lineWidth=1+2*Math.abs(Math.sin(q*0.5-t*P.vfxSpd));
+      c.beginPath();c.arc(cx,cy,Math.max(1,rr2+wob),0,Math.PI*2);c.stroke();
+    }
+    c.globalAlpha=mix*0.8;
+    for(var d=0;d<160;d++){
+      var ha=Math.sin(d*12.9898)*43758.5453, hb=Math.sin(d*78.233)*23421.631;
+      var px=(ha-Math.floor(ha))*W, py=(hb-Math.floor(hb))*H;
+      var rr3=Math.sqrt((px-cx)*(px-cx)+(py-cy)*(py-cy))/R;
+      if(rr3>1)continue;
+      c.fillStyle='rgba(255,240,190,'+(0.10+0.35*Math.exp(-rr3*2.2))+')';
+      c.fillRect(px,py,1.6,1.6);
+    }
+    var rg=c.createRadialGradient(cx,cy,0,cx,cy,R*0.55);
+    rg.addColorStop(0,'rgba(255,245,205,0.85)');rg.addColorStop(1,'rgba(255,180,60,0)');
+    c.globalAlpha=mix;c.fillStyle=rg;c.beginPath();c.arc(cx,cy,R*0.55,0,Math.PI*2);c.fill();
+  }
+  c.restore();
+}
+/* Canvas2D 降级：同一套参数，同心环 + 螺旋臂 + 中心涟漪（N44 全画布清空） */
+var ctx2=null;
+function draw2D(t){
+  if(!ctx2)ctx2=canvas.getContext('2d');
+  resize();
+  var W=canvas.width,H=canvas.height,c=ctx2;
+  c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,W,H);
+  var dark=P.pal!==3;
+  c.fillStyle=dark?'#0b0612':'#f7f5fa';c.fillRect(0,0,W,H);
+  var cx=W/2+P.cx*W*0.25, cy=H/2-P.cy*H*0.25, R=Math.min(W,H)*0.47;
+  if(P.style>0){drawStyle2D(c,W,H,cx,cy,R,t);return;}
+  if(P.vfx>0 && P.vfxMix>0.01){drawVfx2D(c,W,H,cx,cy,R,t);c.globalCompositeOperation='source-over';return;}
+  c.globalCompositeOperation=dark?'lighter':'source-over';
+  c.save();
+  var fx=(P.flip===1||P.flip===3)?-1:1, fy=(P.flip===2||P.flip===3)?-1:1;
+  c.translate(cx,cy);c.scale(fx,fy);c.translate(-cx,-cy);
+  var N=Math.max(2,Math.round(P.N)), rings=Math.max(8,Math.round(P.rings*3));
+  var nPass=P.dual>0.5?2:1;
+  for(var pass=0;pass<nPass;pass++){
+    var dir=pass?-1:1;
+    if(nPass===2)c.globalAlpha=0.62;
+    for(var i=0;i<rings;i++){
+    var u=i/rings, depth=(u*8+t*P.speed*1.4)%8;
+    var rr=R*Math.exp(-depth*0.34); if(rr<2)continue;
+    var ang=(t*P.spin*0.0174533*P.turn+P.twist*Math.log(Math.max(rr,2))*0.12)*dir;
+    c.strokeStyle=dark?'hsla('+((t*20+i*7+P.hue*360)%360)+',85%,62%,'+(0.10+0.5*u)+')'
+                      :'hsla('+((t*20+i*7)%360)+',45%,42%,'+(0.10+0.4*u)+')';
+    c.lineWidth=Math.max(1,rr*0.012);c.beginPath();
+    for(var j=0;j<=N;j++){
+      var a=ang+j/N*Math.PI*2, x=cx+Math.cos(a)*rr, y=cy+Math.sin(a)*rr;
+      if(j)c.lineTo(x,y);else c.moveTo(x,y);
+    }
+    c.stroke();
+  }
+  }
+  c.globalAlpha=1;
+  for(var q=0;q<6;q++){
+    var pr=R*0.55*((q/6+t*P.ripSpd*0.12)%1);
+    c.strokeStyle=dark?'rgba(255,180,255,'+(0.28*(1-q/6)*P.ripAmp)+')':'rgba(120,60,120,'+(0.25*(1-q/6)*P.ripAmp)+')';
+    c.lineWidth=2;c.beginPath();c.arc(cx,cy,Math.max(1,pr),0,Math.PI*2);c.stroke();
+  }
+  var g=c.createRadialGradient(cx,cy,0,cx,cy,R*0.28);
+  g.addColorStop(0,dark?'rgba(255,255,255,'+(0.9*P.core)+')':'rgba(255,240,200,'+(0.9*P.core)+')');
+  g.addColorStop(1,'rgba(255,255,255,0)');
+  c.fillStyle=g;c.beginPath();c.arc(cx,cy,R*0.28,0,Math.PI*2);c.fill();
+  c.restore();
+  c.globalCompositeOperation='source-over';
+}
+
+/* ===================== 双耳节拍 · 音频实验室 =====================
+   纯 Web Audio 实时合成，零外部音频文件。算法依据见 ⑨ 原理与出处。
+   节点链：osc(×层) -> gain -> StereoPanner -> aAMGain -> aMaster -> Analyser -> destination
+                     噪声 buffer -> Biquad -> [PM 左右反向 Delay] -> noiseGain -> aAMGain
+   aMaster 只做淡入淡出包络（0..1）；各层 gain 承载 aToneVol。
+   本地旧工程教训（2026-10-24）：音源必须各自独立 gain 再汇入总线，共用同一 gain 会互相归零。
+*/
+var AC=null, aMaster=null, aAnalyser=null, aAMGain=null, aLFO=null, aLFOGain=null;
+var aNodes=[], aSources=[], aVoices=[], aPanNodes=[];
+var aNoiseGain=null, aNoiseFilter=null, aPMgainL=null, aPMgainR=null;
+var aStartAt=0, aLastTick=0, aSpecData=null, aSpecCtx=null, aSpecFrames=0;
+var aGen=0, aNoiseCache={};
+var AUDIO_KEYS={audioOn:1,aCarrier:1,aBeat:1,aMode:1,aConv:1,aLayers:1,aSpread:1,
+  aBeatRatio:1,aPan:1,aToneVol:1,aFade:1,aWave:1,aHarm:1,aHarmFall:1,aNoise:1,
+  aNoiseVol:1,aNoiseLP:1,aAM:1,aPM:1,aRamp:1,aRampFrom:1,aRampTo:1,aRampMin:1,aAV:1};
+/* 改变这些键需要重建节点图；其余只改 AudioParam */
+var STRUCT_KEYS={aMode:1,aConv:1,aLayers:1,aWave:1,aHarm:1,aHarmFall:1,aNoise:1,aPM:1};
+
+var APRESETS={
+  alpha:{aCarrier:200,aBeat:10,aLayers:3,aSpread:36,aMode:0,aNoise:2,aNoiseVol:0.08,aToneVol:0.18,aRamp:0},
+  theta:{aCarrier:150,aBeat:6,aLayers:2,aSpread:30,aMode:0,aNoise:2,aNoiseVol:0.10,aToneVol:0.16,aRamp:0},
+  delta:{aCarrier:120,aBeat:2,aLayers:2,aSpread:24,aMode:0,aNoise:3,aNoiseVol:0.06,aToneVol:0.14,aRamp:0},
+  beta:{aCarrier:240,aBeat:18,aLayers:3,aSpread:40,aMode:0,aNoise:1,aNoiseVol:0.05,aToneVol:0.18,aRamp:0},
+  gamma:{aCarrier:300,aBeat:40,aLayers:4,aSpread:48,aMode:0,aNoise:0,aNoiseVol:0,aToneVol:0.16,aRamp:0},
+  sbagen:{aCarrier:200,aBeat:10,aLayers:1,aMode:0,aConv:0,aNoise:0,aNoiseVol:0,aAM:0,aPM:0,aToneVol:0.18,aRamp:0,aPan:1},
+  sbagenTheta:{aCarrier:150,aBeat:6,aLayers:1,aMode:0,aConv:0,aNoise:2,aNoiseVol:0.12,aToneVol:0.14,aRamp:0},
+  monroe:{aCarrier:180,aBeat:8,aLayers:4,aSpread:42,aBeatRatio:1.00,aMode:0,aConv:0,
+          aNoise:2,aNoiseVol:0.10,aPM:200,aToneVol:0.16,aRamp:0},
+  sleep:{aCarrier:180,aBeat:18,aRamp:1,aRampFrom:18,aRampTo:2,aRampMin:12,aFade:6,
+         aLayers:3,aSpread:30,aNoise:3,aNoiseVol:0.07,aMode:0},
+  f10:{aCarrier:180,aBeat:8,aLayers:3,aSpread:36,aBeatRatio:1.00,aNoise:2,aNoiseVol:0.09,aPM:150,aRamp:0},
+  f12:{aCarrier:160,aBeat:6,aLayers:4,aSpread:38,aBeatRatio:1.05,aNoise:2,aNoiseVol:0.09,aPM:220,aRamp:0},
+  f15:{aCarrier:140,aBeat:4,aLayers:4,aSpread:40,aBeatRatio:1.10,aNoise:2,aNoiseVol:0.08,aPM:300,aRamp:0},
+  f21:{aCarrier:120,aBeat:2.5,aLayers:5,aSpread:42,aBeatRatio:1.10,aNoise:3,aNoiseVol:0.07,aPM:400,aRamp:0},
+  av:{aCarrier:200,aBeat:10,aLayers:3,aSpread:36,aMode:0,aNoise:2,aNoiseVol:0.08,aRamp:0,aAV:1}
+};
+
+function reg(n){aNodes.push(n);return n;}
+function regSrc(n){aSources.push(n);aNodes.push(n);return n;}
+
+function audioEnsure(){
+  if(AC)return true;
+  try{
+    var C=window.AudioContext||window.webkitAudioContext;
+    if(!C){showErr('此浏览器不支持 Web Audio API');return false;}
+    AC=new C();
+    aMaster=AC.createGain();aMaster.gain.value=0;
+    aAnalyser=AC.createAnalyser();aAnalyser.fftSize=2048;aAnalyser.smoothingTimeConstant=0.78;
+    aSpecData=new Uint8Array(aAnalyser.frequencyBinCount);
+    aMaster.connect(aAnalyser);aAnalyser.connect(AC.destination);
+    return true;
+  }catch(e){showErr('音频初始化失败：'+e.message);return false;}
+}
+
+function makeWave(){
+  var w=Number(P.aWave);
+  if(w===0)return 'sine';
+  if(w===2)return 'triangle';
+  var n=Math.max(2,Math.min(16,Math.round(P.aHarm))),fall=Math.max(0.3,Number(P.aHarmFall));
+  var real=new Float32Array(n+1),imag=new Float32Array(n+1);
+  for(var h=1;h<=n;h++)imag[h]=1/Math.pow(h,fall);
+  return AC.createPeriodicWave(real,imag,{disableNormalization:false});
+}
+function setWave(o,w){if(typeof w==='string')o.type=w;else o.setPeriodicWave(w);}
+
+/* 两套开源频率约定 + 多层倍率 */
+function layerFreqs(i,b){
+  var c=Number(P.aCarrier)+i*Number(P.aSpread);
+  var bi=b*Math.pow(Math.max(0.25,Number(P.aBeatRatio)),i);
+  bi=Math.max(0.2,Math.min(60,bi));
+  if(Number(P.aConv)<0.5)return [Math.max(20,c-bi/2),Math.max(20,c+bi/2)]; /* SBaGen 对称 */
+  return [Math.max(20,c),Math.max(20,c+bi)];                                /* Wundark 左基准 */
+}
+
+function beatNow(){
+  var b=Number(P.aBeat),r=Number(P.aRamp);
+  if(!r||!AC)return b;
+  var dur=Math.max(10,Number(P.aRampMin)*60),p=Math.min(1,Math.max(0,(AC.currentTime-aStartAt)/dur));
+  var f=Number(P.aRampFrom),t=Number(P.aRampTo);
+  if(r===2&&f>0&&t>0)return f*Math.pow(t/f,p);
+  if(r===3)p=p*p*(3-2*p);
+  return f+(t-f)*p;
+}
+
+/* 噪声谱：Paul Kellet instrumentation（粉）/ 积分白噪（棕）/ 差分近似（蓝、紫） */
+function makeNoise(kind,sec){
+  var key=kind+'@'+AC.sampleRate;
+  if(aNoiseCache[key])return aNoiseCache[key];
+  var sr=AC.sampleRate,n=Math.floor(sr*sec),buf=AC.createBuffer(2,n,sr);
+  for(var ch=0;ch<2;ch++){
+    var d=buf.getChannelData(ch);
+    var b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0,last=0,p1=0,p2=0;
+    for(var i=0;i<n;i++){
+      var w=Math.random()*2-1,v;
+      if(kind===1)v=w;
+      else if(kind===2){
+        b0=0.99886*b0+w*0.0555179;b1=0.99332*b1+w*0.0750759;
+        b2=0.96900*b2+w*0.1538520;b3=0.86650*b3+w*0.3104856;
+        b4=0.55000*b4+w*0.5329522;b5=-0.7616*b5-w*0.0168980;
+        v=(b0+b1+b2+b3+b4+b5+b6+w*0.5362)*0.11;b6=w*0.115926;
+      }else if(kind===3){last=(last+0.02*w)/1.02;v=last*3.5;}
+      else if(kind===4){v=(w-p1)*0.6;p1=w;}
+      else {v=(w-2*p1+p2)*0.35;p2=p1;p1=w;}
+      d[i]=Math.max(-1,Math.min(1,v));
+    }
+  }
+  aNoiseCache[key]=buf;
+  return buf;
+}
+
+function audioStopAll(){
+  aSources.forEach(function(x){try{x.stop();}catch(e){}});
+  aNodes.forEach(function(x){try{x.disconnect();}catch(e){}});
+  aNodes=[];aSources=[];aVoices=[];aPanNodes=[];
+  aAMGain=null;aLFO=null;aLFOGain=null;aNoiseGain=null;aNoiseFilter=null;aPMgainL=null;aPMgainR=null;
+}
+
+function audioBuild(){
+  if(!AC||!P.audioOn)return;
+  if(!AC.createStereoPanner){showErr('此浏览器缺少 StereoPannerNode，无法做左右声道分离');return;}
+  aGen++;
+  audioStopAll();
+  var now=AC.currentTime,b=beatNow(),w=Number(P.aPan);
+  var wave=makeWave(),mode=Number(P.aMode);
+  var nL=Math.max(1,Math.min(6,Math.round(P.aLayers)));
+  var amp=Number(P.aToneVol)/nL;
+  aAMGain=reg(AC.createGain());
+  aAMGain.gain.value=(mode===2)?0.5:(1-Number(P.aAM));
+  aAMGain.connect(aMaster);
+  /* 全局 LFO：驱动 AM 包络与 PM 左右反向延迟 */
+  aLFO=regSrc(AC.createOscillator());aLFO.type='sine';aLFO.frequency.value=Math.max(0.2,b);
+  aLFOGain=reg(AC.createGain());aLFOGain.gain.value=(mode===2)?0.5:Number(P.aAM);
+  aLFO.connect(aLFOGain);aLFOGain.connect(aAMGain.gain);aLFO.start(now);
+
+  for(var i=0;i<nL;i++){
+    var f=layerFreqs(i,b);
+    var isBin=(mode===0)||(mode===3&&i%2===0);
+    var isMono=(mode===1)||(mode===3&&i%2===1);
+    var oL=regSrc(AC.createOscillator());setWave(oL,wave);oL.frequency.value=f[0];
+    var gL=reg(AC.createGain());gL.gain.value=amp;
+    var pL=reg(AC.createStereoPanner());pL.pan.value=isMono?0:-w;pL.__tg=isMono?0:-1;
+    oL.connect(gL);gL.connect(pL);pL.connect(aAMGain);oL.start(now);
+    aPanNodes.push(pL);
+    var oR=null,gR=null,pR=null;
+    if(isBin){
+      oR=regSrc(AC.createOscillator());setWave(oR,wave);oR.frequency.value=f[1];
+      gR=reg(AC.createGain());gR.gain.value=amp;
+      pR=reg(AC.createStereoPanner());pR.pan.value=+w;pR.__tg=1;
+      oR.connect(gR);gR.connect(pR);pR.connect(aAMGain);oR.start(now);
+      aPanNodes.push(pR);
+    }else if(isMono){
+      /* 单耳：第二个频率也送到两耳，物理叠加成拍 */
+      oR=regSrc(AC.createOscillator());setWave(oR,wave);oR.frequency.value=f[1];
+      gR=reg(AC.createGain());gR.gain.value=amp;
+      pR=reg(AC.createStereoPanner());pR.pan.value=0;pR.__tg=0;
+      oR.connect(gR);gR.connect(pR);pR.connect(aAMGain);oR.start(now);
+      aPanNodes.push(pR);
+    }
+    /* mode=2 等时：单载波 + 100% 脉冲 AM，不创建第二振荡器 */
+    aVoices.push({oL:oL,oR:oR,gL:gL,gR:gR});
+  }
+  buildNoise();
+  audioTune();
+}
+
+function buildNoise(){
+  var kind=Number(P.aNoise);
+  if(kind<1)return;
+  var src=regSrc(AC.createBufferSource());src.buffer=makeNoise(kind,3.0);src.loop=true;
+  aNoiseFilter=reg(AC.createBiquadFilter());aNoiseFilter.type='lowpass';
+  aNoiseFilter.frequency.value=Number(P.aNoiseLP);aNoiseFilter.Q.value=0.7;
+  aNoiseGain=reg(AC.createGain());aNoiseGain.gain.value=Number(P.aNoiseVol);
+  var pm=Number(P.aPM);
+  if(pm>1){
+    /* SBaGen spin：左右粉噪反向延迟；MSS 只公开提到 phase modulation，此处为结构近似 */
+    var sp=reg(AC.createChannelSplitter(2)),mg=reg(AC.createChannelMerger(2));
+    var dL=reg(AC.createDelay(0.05)),dR=reg(AC.createDelay(0.05));
+    dL.delayTime.value=0.003;dR.delayTime.value=0.003;
+    var dep=Math.min(0.0006,pm/1e6);
+    aPMgainL=reg(AC.createGain());aPMgainL.gain.value=dep;
+    aPMgainR=reg(AC.createGain());aPMgainR.gain.value=-dep;
+    src.connect(aNoiseFilter);aNoiseFilter.connect(sp);
+    sp.connect(dL,0);sp.connect(dR,1);
+    dL.connect(mg,0,0);dR.connect(mg,0,1);
+    aLFO.connect(aPMgainL);aPMgainL.connect(dL.delayTime);
+    aLFO.connect(aPMgainR);aPMgainR.connect(dR.delayTime);
+    mg.connect(aNoiseGain);
+  }else{
+    src.connect(aNoiseFilter);aNoiseFilter.connect(aNoiseGain);
+  }
+  aNoiseGain.connect(aAMGain);
+  src.start();
+}
+
+function audioTune(){
+  if(!AC||!P.audioOn||!aVoices.length)return;
+  var now=AC.currentTime,b=beatNow(),w=Number(P.aPan);
+  var amp=Number(P.aToneVol)/aVoices.length;
+  aVoices.forEach(function(v,i){
+    var f=layerFreqs(i,b);
+    v.oL.frequency.setTargetAtTime(f[0],now,0.04);
+    if(v.oR)v.oR.frequency.setTargetAtTime(f[1],now,0.04);
+    if(v.gL)v.gL.gain.setTargetAtTime(amp,now,0.04);
+    if(v.gR)v.gR.gain.setTargetAtTime(amp,now,0.04);
+  });
+  if(aLFO)aLFO.frequency.setTargetAtTime(Math.max(0.2,b),now,0.04);
+  if(Number(P.aMode)!==2){
+    if(aAMGain)aAMGain.gain.setTargetAtTime(1-Number(P.aAM),now,0.04);
+    if(aLFOGain)aLFOGain.gain.setTargetAtTime(Number(P.aAM),now,0.04);
+  }
+  if(aNoiseGain)aNoiseGain.gain.setTargetAtTime(Number(P.aNoiseVol),now,0.04);
+  if(aNoiseFilter)aNoiseFilter.frequency.setTargetAtTime(Number(P.aNoiseLP),now,0.04);
+  if(aPMgainL)aPMgainL.gain.setTargetAtTime(Math.min(0.0006,Number(P.aPM)/1e6),now,0.04);
+  if(aPMgainR)aPMgainR.gain.setTargetAtTime(-Math.min(0.0006,Number(P.aPM)/1e6),now,0.04);
+  aPanNodes.forEach(function(p){p.pan.setTargetAtTime((p.__tg||0)*w,now,0.04);});
+  var el=document.getElementById('aRead');
+  if(el){
+    var f0=layerFreqs(0,b),names=['关','白','粉','棕','蓝','紫'],modes=['双耳','单耳','等时','双耳+单耳'];
+    var prog=Number(P.aRamp)?Math.min(1,Math.max(0,(now-aStartAt)/Math.max(10,Number(P.aRampMin)*60))):0;
+    el.innerHTML='左耳 <b>'+f0[0].toFixed(1)+' Hz</b> ｜ 右耳 <b>'+(Number(P.aMode)===2?'—':f0[1].toFixed(1)+' Hz')+'</b><br>'+
+      '当前拍频 <b>'+b.toFixed(2)+' Hz</b> · '+modes[Number(P.aMode)]+' · '+Math.round(P.aLayers)+' 层 · 噪声 '+names[Number(P.aNoise)]+'<br>'+
+      (Number(P.aRamp)?'扫描进度 <b>'+Math.round(prog*100)+'%</b>（'+Number(P.aRampFrom).toFixed(1)+' → '+Number(P.aRampTo).toFixed(1)+' Hz / '+Number(P.aRampMin)+' min）<br>':'')+
+      '音量 <b>'+Number(P.aToneVol).toFixed(2)+'</b> · AudioContext <b>'+AC.state+'</b> @ '+Math.round(AC.sampleRate)+' Hz';
+  }
+}
+
+function audioStart(){
+  if(!audioEnsure())return;
+  if(AC.state==='suspended')AC.resume();
+  P.audioOn=1;saveP();syncUI();
+  aStartAt=AC.currentTime;
+  audioBuild();
+  var now=AC.currentTime,fade=Math.max(0.2,Number(P.aFade));
+  aMaster.gain.cancelScheduledValues(now);
+  aMaster.gain.setValueAtTime(0.0001,now);
+  aMaster.gain.linearRampToValueAtTime(1,now+fade);
+  toast('音频已开启 · 请戴立体声耳机，音量宜低');
+}
+function audioStop(){
+  if(!AC)return;
+  var now=AC.currentTime,fade=Math.max(0.1,Number(P.aFade)*0.5);
+  aMaster.gain.cancelScheduledValues(now);
+  aMaster.gain.setValueAtTime(aMaster.gain.value,now);
+  aMaster.gain.linearRampToValueAtTime(0,now+fade);
+  var myGen=++aGen;
+  setTimeout(function(){
+    if(myGen!==aGen)return; /* 淡出期间若又开启音频，别误停新节点 */
+    audioStopAll();
+  },fade*1000+80);
+  P.audioOn=0;saveP();syncUI();
+  var el=document.getElementById('aRead');if(el)el.textContent='音频已停止';
+  toast('音频已停止');
+}
+
+/* 视听联动：只改写送进 shader 的有效值，不污染 P */
+function avParam(k,v){
+  if(!P.aAV||!AC||!P.audioOn)return v;
+  var b=beatNow();
+  if(k==='spin')return Number(v)+(b-10)*1.6;
+  if(k==='speed')return Math.max(0,Number(v)*(0.6+b/20));
+  if(k==='ripSpd')return Math.max(0,Number(v)*(0.5+b/12));
+  if(k==='vfxSpd')return Math.max(0,Number(v)*(0.6+b/18));
+  return v;
+}
+
+function drawSpectrum(){
+  var cv=document.getElementById('spectrum');
+  if(!cv||!aAnalyser||cv.clientWidth<2)return;
+  aSpecFrames++;if(aSpecFrames%2)return;
+  if(!aSpecCtx)aSpecCtx=cv.getContext('2d');
+  var dpr=Math.min(2,window.devicePixelRatio||1);
+  var w=Math.round(cv.clientWidth*dpr),h=Math.round(cv.clientHeight*dpr);
+  if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;}
+  var c=aSpecCtx;
+  c.setTransform(1,0,0,1,0,0);c.fillStyle='#ffffff';c.fillRect(0,0,w,h);
+  c.strokeStyle='#ececf0';c.lineWidth=1;c.beginPath();
+  for(var g=1;g<4;g++){c.moveTo(w*g/4,0);c.lineTo(w*g/4,h);}c.stroke();
+  aAnalyser.getByteFrequencyData(aSpecData);
+  var binHz=AC.sampleRate/aAnalyser.fftSize;
+  var maxBin=Math.min(aSpecData.length,Math.floor(2000/binHz));
+  c.strokeStyle='#0f7a6c';c.lineWidth=Math.max(1,dpr);c.beginPath();
+  for(var i=0;i<maxBin;i++){
+    var x=i/maxBin*w,y=h-(aSpecData[i]/255)*h*0.92;
+    if(i)c.lineTo(x,y);else c.moveTo(x,y);
+  }
+  c.stroke();
+  c.fillStyle='#6b6b74';c.font=Math.round(9*dpr)+'px sans-serif';
+  c.fillText('0',2,h-3);c.fillText('1k',w/2-8*dpr,h-3);c.fillText('2k Hz',w-28*dpr,h-3);
+}
+function audioTick(){
+  if(!AC||!P.audioOn)return;
+  var t=AC.currentTime;
+  if(t-aLastTick>=0.09){aLastTick=t;audioTune();}
+  drawSpectrum();
+}
+document.getElementById('apreset').addEventListener('change',function(e){
+  var p=APRESETS[e.target.value];if(!p)return;
+  P=Object.assign({},P,p);saveP();syncUI();
+  if(P.audioOn)audioBuild();
+  toast('已载入音频预设：'+e.target.options[e.target.selectedIndex].text);
+});
+
+/* ===================== 主循环 ===================== */
+var T=0, clock=0, last=performance.now(), paused=false;
+var frames=0, fpsAcc=0;
+function frame(now){
+  var dt=Math.min(0.05,(now-last)/1000);last=now;
+  if(!paused){
+    var f=1.0;
+    if(P.breath)f=0.55+0.45*(0.5+0.5*Math.sin(2*Math.PI*clock/P.breathPeriod));
+    T+=dt*f;clock+=dt;
+  }
+  try{
+    if(mode2D)draw2D(T);else drawGL(T,clock);
+  }catch(err){showErr('渲染异常：'+err.message);}
+  audioTick();
+  frames++;fpsAcc+=dt;
+  if(fpsAcc>=0.5){document.getElementById('hFps').textContent=Math.round(frames/fpsAcc);frames=0;fpsAcc=0;}
+  requestAnimationFrame(frame);
+}
+
+P.audioOn=0; /* 浏览器要求用户手势，刷新后一律从「关闭」开始，避免假开无声 */
+initGL();syncUI();resize();refreshSchemes();
+if(CENTER_FIXED)setTimeout(function(){toast('检测到上次保存的中心偏移，已自动复位到屏幕正中');},700);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
