@@ -16,6 +16,9 @@ button{cursor:pointer}
 /* 画布铺满左侧，右侧为参数浮窗实打实让位（F13/F14/N200） */
 #stage{position:absolute;inset:0;padding:14px calc(var(--cd-w) + 26px) 14px 14px;transition:padding .18s}
 #gl{display:block;width:100%;height:100%;border:1px solid var(--line);border-radius:12px;background:#0b0610}
+#boot{position:absolute;left:0;right:calc(var(--cd-w) + 26px);top:50%;transform:translateY(-50%);
+  text-align:center;color:#c9b8e6;font-size:13px;letter-spacing:.6px;pointer-events:none;
+  text-shadow:0 0 18px rgba(170,130,255,.35)}
 #toast{position:absolute;left:28px;bottom:28px;background:rgba(255,255,255,.94);border:1px solid var(--line);
   border-radius:8px;padding:6px 12px;color:var(--ink);opacity:0;pointer-events:none;transition:opacity .25s;
   box-shadow:0 3px 14px rgba(0,0,0,.10)}
@@ -96,6 +99,7 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 6px
 
 <div id="stage">
   <canvas id="gl"></canvas>
+  <div id="boot">正在初始化渲染引擎…</div>
   <div id="hud"><span>引擎 <b id="hEng">—</b></span><span>FPS <b id="hFps">—</b></span><span>速度 <b id="hSpd">—</b></span><span>中心 <b id="hCenter">居中</b></span><button id="hudMin">收起</button></div>
   <div id="toast"></div>
 </div>
@@ -2241,4 +2245,23 @@ document.getElementById('apreset').addEventListener('change',function(e){
   toast('已载入音频预设：'+e.target.options[e.target.selectedIndex].text);
 });
 
-/* ==============
+/* ===================== 主循环 ===================== */
+var T=0, clock=0, last=performance.now(), paused=false;
+var frames=0, fpsAcc=0;
+function frame(now){
+  var dt=Math.min(0.05,(now-last)/1000);last=now;
+  if(!paused){
+    var f=1.0;
+    if(P.breath)f=0.55+0.45*(0.5+0.5*Math.sin(2*Math.PI*clock/P.breathPeriod));
+    T+=dt*f;clock+=dt;
+  }
+  try{
+    if(mode2D)draw2D(T);else drawGL(T,clock);
+  }catch(err){showErr('渲染异常：'+err.message);}
+  audioTick();
+  frames++;fpsAcc+=dt;
+  if(fpsAcc>=0.5){document.getElementById('hFps').textContent=Math.round(frames/fpsAcc);frames=0;fpsAcc=0;}
+  requestAnimationFrame(frame);
+}
+
+P.audioOn=0; /* 浏览器要求用户手势�
