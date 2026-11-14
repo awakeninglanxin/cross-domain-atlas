@@ -250,7 +250,7 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 6px
       </div>
       <div class="fld"><div class="lab"><span>与原隧道混合（0 = 纯原图，1 = 纯特效）</span><b class="num" data-k="vfxMix">1.00</b></div><input type="range" data-k="vfxMix" min="0" max="1" step="0.01" value="1"></div>
       <div class="fld"><div class="lab"><span>① 主结构密度 / 亮弧数 / 环频</span><b class="num" data-k="vfxA">1.00</b></div><input type="range" data-k="vfxA" min="0" max="3" step="0.01" value="1"></div>
-      <div class="fld"><div class="lab"><span>② 次级结构：花心瓣数 / 分室数 / 焦散强度</span><b class="num" data-k="vfxB">1.00</b></div><input type="range" data-k="vfxB" min="0" max="3" step="0.01" value="1"></div>
+      <div class="fld"><div class="lab"><span>② 球顶坍塌·内卷深度 / 花心瓣数 / 焦散强度</span><b class="num" data-k="vfxB">1.00</b></div><input type="range" data-k="vfxB" min="0" max="3" step="0.01" value="1"></div>
       <div class="fld"><div class="lab"><span>③ 径向色差 / 域扭曲强度</span><b class="num" data-k="vfxC">1.00</b></div><input type="range" data-k="vfxC" min="0" max="3" step="0.01" value="1"></div>
       <div class="fld"><div class="lab"><span>④ 亮度偏置 / 球面折射 / 金色增益</span><b class="num" data-k="vfxD">1.00</b></div><input type="range" data-k="vfxD" min="0" max="2" step="0.01" value="1"></div>
       <div class="fld"><div class="lab"><span>特效自身速度倍率</span><b class="num" data-k="vfxSpd">1.00</b></div><input type="range" data-k="vfxSpd" min="0" max="4" step="0.01" value="1"></div>
@@ -374,7 +374,7 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 6px
       再扣中心暗核与左下暗紫；最后叠颗粒噪点。原片的人面线描<b>不复制</b>（那是作品题材，不是光效）。<br><br>
       <b>三视频特效 · 可验证算法链（本地 mp4 逐帧真看 + 外网公式）</b><br>
       ① <b>地包天圆环</b>：demoscene 3D tunnel 的极坐标查找表 <code>depth = R / r</code>（即 1/z 透视消失点）生成同心环带；
-      球面折射把中心区 <code>uv.y</code> 按 <code>exp(−1.3r)</code> 权重翻转，得到「下半过曝、上半暗」的地包天构图；
+      球面折射把中心区 <code>uv.y</code> 按 <code>exp(−1.3r)</code> 权重翻转，得到「下半过曝、上半暗」的地包天构图；上半球坐标另做一次向心变形（<code>y</code> 压下、<code>x</code> 收窄，幅度随高度递增），使同一套环场自然塌成漏斗、环被内卷吸入球心；球心向上的白光为「神光」，穿过塌口射出球顶（参数②可调坍塌深度）；
       上方亮弧用高斯环带 <code>exp(−((r−r₀)·k)²)</code>，中心花心用 <code>cos(N·θ)</code> 瓣；
       红蓝金散边是 R/G/B 三通道分别按 <code>uv·(1±ca)</code> 采样（径向色差）。<br>
       ② <b>黄金比螺旋分形结构</b>：Shadertoy 社区相位场
@@ -673,7 +673,7 @@ function readout(){
   if(vr){
     var m=Number(P.vfx);
     vr.innerHTML = m<0.5 ? '当前：<b>原隧道</b>（三视频特效关闭）'
-      : m<1.5 ? '<b>地包天圆环</b> · 玻璃球下方打光：上部双翼弧 + 贯穿球心的极细竖线 + 垂心火苗 + 底部过曝白光「地包天」+ 四瓣小花；火苗大小 '+Number(P.vfxB).toFixed(2)+'；窄色散 '+Number(P.vfxC).toFixed(2)+' · 整体倍率 '+Number(P.vfxD).toFixed(2)
+      : m<1.5 ? '<b>地包天圆环</b> · 玻璃球下方打光：上部双翼弧 + 贯穿球心的极细竖线 + 垂心火苗 + 底部过曝白光「地包天」+ 四瓣小花；球顶坍塌内卷 '+Number(P.vfxB).toFixed(2)+'；窄色散 '+Number(P.vfxC).toFixed(2)+' · 整体倍率 '+Number(P.vfxD).toFixed(2)
       : m<2.5 ? '<b>黄金比螺旋</b> · 每转 90° 半径 ×φ = 1.618；TRS 递归 3 层自相似；Vogel 137.507° 排列 → Fibonacci 分室 '+Math.max(3,Math.round(Number(P.vfxB)*13))+' 条'
       : '<b>黄金涟漪</b> · sin(d·k − t) 同心环；Rocaille 域扭曲；3×3 波源 e^(−2.2d) 衰减；细密焦散噪声高光';
   }
@@ -1001,9 +1001,20 @@ var FRAG=[
 '  float zs=1.0+0.050*sin(t*1.05)+0.016*sin(t*2.70+1.10);',
 '  vec2 q=p/zs;',
 '  q.y+=0.026*sin(t*0.95);',
+'  vec2 qr=q;                       /* 未变形坐标：神光 / 底部白光 / 塌口折痕用它 */',
+'  /* ---- ① 球顶坍塌：上半球坐标被吸向球心（y 压下、x 收窄），同一套环场随之塌成漏斗；',
+'         塌陷深度带缓慢呼吸，看起来是「一吸一吸地往里卷」而不是静止的坑 ---- */',
+'  float sink=clamp(uVfxB,0.0,3.0)*0.62;',
+'  float rimY=0.40+0.18*sink;',
+'  float pull=smoothstep(rimY-0.50,1.03,qr.y)*sink*(0.86+0.14*sin(t*0.80));',
+'  pull=min(pull,0.86);                       /* 参数拉到顶也只是「塌到底」，不会把半球压成一点 */',
+'  q.y-=0.620*pull;',
+'  q.x*=1.0-0.420*pull;',
 '  float ax=abs(q.x);',
 '  float rq=length(q);',
+
 '  float aq=atan(ax,max(q.y,-0.995));',
+'  float aqS=atan(q.x,max(q.y,-0.995));        /* 带符号的角度：让环真正绕着球面卷，而不是左右镜像的斜纹 */',
 '',
 '  float w1=fbm(vec2(aq*2.20, rq*1.55-t*0.22));',
 '  float w2=fbm(vec2(aq*4.90+7.0, rq*3.10-t*0.38));',
@@ -1012,25 +1023,28 @@ var FRAG=[
 '  vec3 col=vec3(0.175,0.195,0.235)*(0.45+0.55*pow(nz,0.50));',
 '',
 '  /* ---- 主结构：硬边同心亮环，pow(rq,0.78) 让环在中心密、往外疏 ---- */',
-'  float rph=pow(max(rq,0.0),0.78)*44.0+(w1-0.5)*2.6+(w2-0.5)*1.0',
-'            +2.2*sin(aq*3.0+rq*5.0+t*0.18)-t*0.85;',
+'  /* 环相位加角向偏移 → 同心环变成向心螺旋（「内卷」的读数）；-t 让螺旋向球心流动 */',
+'  float rph=pow(max(rq,0.0),0.78)*44.0+aqS*3.1+(w1-0.5)*2.6+(w2-0.5)*1.0',
+'            +2.2*sin(aq*3.0+rq*5.0+t*0.18)-t*1.30;',
 '  float rv=0.5+0.5*sin(rph);',
-'  float ringW=smoothstep(0.40,0.86,rv);       /* 宽亮弧身 */',
-'  float ringC=pow(rv,10.0);                    /* 弧上的亮芯，也要宽 */',
+'  float ringW=smoothstep(0.50,0.88,rv);       /* 亮弧身收窄 */',
+'  float ringC=pow(rv,13.0);                    /* 弧上亮芯 */',
 '  float rings=ringW*0.50+ringC*0.62;',
 '  rings*=0.30+0.70*smoothstep(0.02,0.42,rq);',
 '  rings*=1.0-0.30*smoothstep(0.80,1.00,rq);',
 '  /* 环不是整圈都亮：用碎片遮罩打断，才像碎冰而不是靶子 */',
-'  float shard=smoothstep(0.24,0.76,fbm(vec2(aq*2.60+1.7, rq*2.10-t*0.10)));',
-'  rings*=0.42+0.78*shard;',
+'  float shard=smoothstep(0.24,0.76,fbm(vec2(aq*4.30+1.7, rq*3.10-t*0.10)));',
+'  rings*=0.26+0.96*shard;',
 '  vec3 arcTint=mix(vec3(0.66,0.96,1.22),vec3(1.24,0.72,0.88),0.5+0.5*sin(aq*5.0+rq*7.0-t*0.30));',
 '  arcTint=mix(arcTint,vec3(1.12,1.02,0.80),0.30);',
 '  col=mix(col,arcTint*1.06,clamp(rings,0.0,1.0)*0.94);',
+'  /* 塌陷阴影：只做纵向渐变，不画任何椭圆边界 —— 球顶到球心是一条干净通道 */',
+'  col*=1.0-0.34*smoothstep(0.10,1.05,qr.y)*sink;',
 '',
 '  /* ---- 中心一小片放射丝（只在 rq<0.55 才看得见） ---- */',
 '  float sph=aq*26.0+(w2-0.5)*3.0-t*0.55;',
 '  float st=pow(0.5+0.5*sin(sph),20.0)*(0.30+0.70*shard);',
-'  st*=exp(-rq*3.10)*0.48;',
+'  st*=exp(-rq*3.60)*0.28;',
 '  col+=vec3(0.85,0.82,0.88)*clamp(st,0.0,1.0);',
 '',
 '  /* ---- 大尺度柔光：让环与环之间不是死黑 ---- */',
@@ -1050,25 +1064,28 @@ var FRAG=[
 '  bg*=0.80+0.42*fbm(vec2(aq*1.20,rr*1.05+t*0.06));',
 '  bg*=exp(-max(rr-0.98,0.0)*0.55);',
 '  col=mix(col,bg,outg);',
+
 '',
-'  /* ---- 竖直光柱：贯穿球心并冲出球顶 ---- */',
-'  float bw=0.020+0.026*smoothstep(0.0,1.05,q.y);',
-'  float beam=exp(-pow(ax/bw,2.0));',
-'  beam*=smoothstep(-0.22,0.06,q.y);',
-'  beam*=0.55+0.45*smoothstep(0.0,0.90,q.y);',
-'  col=mix(col,vec3(1.10,1.08,1.06),clamp(beam,0.0,1.0)*0.96);',
+'  /* ---- ⑦ 神光：自球心向上发出的一道白光，穿过塌口射出球顶 ---- */',
+'  float gy=max(qr.y,0.0);',
+'  float bw=0.007+0.026*pow(gy,1.35);',
+'  float onUp=smoothstep(-0.04,0.03,qr.y);',
+'  float beam=exp(-pow(ax/bw,2.0))*onUp;',
+'  float bcore=exp(-pow(ax/(bw*0.34),2.0))*onUp;',
+'  col=mix(col,vec3(1.10,1.09,1.06),clamp(beam,0.0,1.0)*0.92);',
+'  col=mix(col,vec3(1.13,1.12,1.08),clamp(bcore,0.0,1.0)*0.82);',
 '',
 '  /* ---- 底部过曝：穹顶白光向上包球，边缘羽状撕裂 ---- */',
 '  float ragged=(fbm(vec2(aq*3.4, rq*3.2-t*0.25))-0.5);',
-'  float cup=clamp((-q.y-0.02-0.44*ax*ax)/0.56+ragged*0.24+0.10*sin(t*1.10),0.0,1.0);',
-'  float wash=pow(cup,1.35)*inside;',
+'  float cup=clamp((-qr.y-0.06-0.62*ax*ax)/0.40+ragged*0.32+0.06*sin(t*1.10),0.0,1.0);',
+'  float wash=pow(cup,1.85)*inside;',
 '  wash*=0.82+0.18*fbm(vec2(aq*6.0, rq*5.0-t*0.30));',
 '  col=mix(col,vec3(1.10,1.09,1.07),clamp(wash,0.0,1.0)*0.97);',
 '',
 '  /* ---- 球顶细亮弧 + 球壁暗环 ---- */',
-'  float top=exp(-pow((rr-0.930)*10.0,2.0))*(0.30+0.70*smoothstep(0.30,1.00,p.y));',
-'  col=mix(col,vec3(1.02,1.00,0.98),clamp(top,0.0,1.0)*0.72);',
-'  float rimD=exp(-pow((rr-0.968)*15.0,2.0));',
+'  float top=exp(-pow((rq-0.930)*10.0,2.0))*(0.30+0.70*smoothstep(0.30,1.00,p.y));',
+'  col=mix(col,vec3(1.02,1.00,0.98),clamp(top,0.0,1.0)*0.26);',
+'  float rimD=exp(-pow((rq-0.968)*15.0,2.0));',
 '  col=mix(col,vec3(0.085,0.045,0.072),clamp(rimD,0.0,1.0)*0.55);',
 '',
 '  return col;',
@@ -1619,7 +1636,7 @@ function ensureProg(){
   if(mode2D||!gl)return;
   var want=desiredKind();
   if(want!=='base')buildVariant('base',30000);
-  buildVariant(want,want==='ring'?30000:25000);
+  buildVariant(want,want==='ring'?60000:25000);
   applyBest();refreshEngineHint();
 }
 
