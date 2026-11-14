@@ -2264,4 +2264,24 @@ function frame(now){
   requestAnimationFrame(frame);
 }
 
-P.audioOn=0; /* 浏览器要求用户手势�
+P.audioOn=0; /* 浏览器要求用户手势，刷新后一律从「关闭」开始，避免假开无声 */
+/* 先让浏览器把 UI 画出来，再初始化 WebGL。
+   原因：完整 shader 第一次编译在软件渲染或弱 GPU 上可能要几十秒，若这段同步跑在
+   脚本里，浏览器连一帧都画不出来 —— 用户看到的就是「双击后一直白屏、打不开」。
+   双 rAF 保证真的画过一帧，再 setTimeout 让出主线程。 */
+function boot(){
+  window.__bootAt=performance.now();   /* 埋点：boot 开始时刻，便于和 FCP 对比 */
+  try{initGL();}catch(e){showErr('初始化异常：'+e.message);}
+  syncUI();resize();refreshSchemes();
+  if(CENTER_FIXED)setTimeout(function(){toast('检测到上次保存的中心偏移，已自动复位到屏幕正中');},700);
+  window.__glAt=performance.now();     /* 埋点：WebGL 真正就绪时刻 */
+  var ov=document.getElementById('boot');
+  if(ov&&ov.parentNode)ov.parentNode.removeChild(ov);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(function(){
+  requestAnimationFrame(function(){setTimeout(boot,0);});
+});
+</script>
+</body>
+</html>
