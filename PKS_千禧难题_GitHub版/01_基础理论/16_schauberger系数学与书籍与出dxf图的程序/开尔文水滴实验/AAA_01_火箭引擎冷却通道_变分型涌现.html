@@ -86,6 +86,40 @@ footer{border-top:1px solid var(--line);padding:18px 0;color:var(--mut);font-siz
 .modebar label{display:flex;align-items:center;gap:4px;font-size:12.5px;cursor:pointer;white-space:nowrap}
 .modebar .sep{width:1px;height:20px;background:var(--line);margin:0 2px}
 button.on{background:#eaf3fd;border-color:#b9d7f6;color:var(--acc);font-weight:700}
+/* ③-b 剖面浮窗（2026-11-12 老师：要像参数台那样能滑、能选三个基准面） */
+.cvwrap{position:relative}
+#secPanel{position:absolute;left:9px;top:9px;width:272px;background:rgba(255,255,255,.965);
+  border:1px solid #cfdcea;border-radius:10px;box-shadow:0 4px 16px rgba(20,40,80,.14);
+  font-size:12.5px;color:#2b3a4a;z-index:6}
+#secPanel .sp-hd{display:flex;align-items:center;gap:7px;padding:6px 9px;cursor:pointer;user-select:none}
+#secPanel .sp-hd b{font-size:13px;color:#123a6b;flex:0 0 auto}
+#secPanel .sp-sum{flex:1 1 auto;min-width:0;color:#5a6b80;font-size:11.5px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#secPanel .sp-tg{border:1px solid #c9dcf5;background:#fff;color:#2f6fb5;border-radius:4px;
+  padding:1px 6px;font-size:11.5px;flex:0 0 auto;line-height:1.5}
+#secPanel .sp-tg:hover{background:#e9f2ff}
+#secPanel .sp-bd{padding:0 9px 9px;border-top:1px solid #e6eef7}
+#secPanel.min .sp-bd{display:none}
+#secPanel .sp-lab{font-size:11.5px;color:#41546c;margin:7px 0 4px;line-height:1.6}
+#secPanel .sp-lab b{color:#0d2f63}
+.sp-seg{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 4px}
+.sp-seg button{padding:2px 7px;font-size:11.5px;border-radius:5px;line-height:1.7}
+.sp-seg button.on{background:#123a6b;border-color:#123a6b;color:#fff;font-weight:600}
+#spOff{width:100%;margin:1px 0 0;accent-color:#123a6b}
+.sp-chk{display:flex;align-items:center;gap:5px;font-size:11.5px;color:#41546c;margin-top:7px;cursor:pointer}
+.sp-chk input{accent-color:#123a6b}
+#secPanel .sp-st{font-size:11px;color:#7a8698;border-top:1px dashed #e3e9f1;margin-top:7px;
+  padding-top:5px;line-height:1.5}
+/* 视角键（等轴 / 正视 / 俯视 / 两种 2D 正投影） */
+.viewbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:7px 0 0;font-size:12.5px;color:var(--mut)}
+.viewbar .vl{font-weight:700;color:#33465e;margin-right:2px}
+.viewbar button{padding:4px 10px;font-size:12.5px}
+.viewbar .sep{width:1px;height:18px;background:var(--line);margin:0 3px}
+@media(max-width:640px){
+  #secPanel{width:calc(100% - 18px);max-width:296px}
+  .sp-seg button{font-size:11px;padding:2px 5px}
+  .viewbar button{padding:3px 8px;font-size:12px}
+}
 .srcbox{font-size:13px;line-height:1.85}
 </style>
 </head>
@@ -142,7 +176,35 @@ button.on{background:#eaf3fd;border-color:#b9d7f6;color:var(--acc);font-weight:7
     </div>
     <div class="view3d">
       <div class="viewttl"><span>③ 3D 剖切发动机 · <b id="gl3dMode">LEAP 71 原版构型</b>（拖动旋转 · 滚轮缩放 · 双击归位）</span><span id="gl3dTxt">—</span></div>
-      <canvas id="gl3d"></canvas>
+      <div class="cvwrap">
+        <canvas id="gl3d"></canvas>
+        <div id="secPanel" class="min">
+          <div class="sp-hd" id="spHd">
+            <span style="color:#9aa6b6">⠿</span><b>剖面</b>
+            <span class="sp-sum" id="spSum">不剖</span>
+            <button class="sp-tg" id="spTg" type="button" aria-expanded="false">展开 ▾</button>
+          </div>
+          <div class="sp-bd">
+            <div class="sp-lab">剖开看内部：三个基准面任选。切面由 <b>GPU 材质裁剪</b>算出 ——
+              通道是真的被切断（断面是空管口），不是少画几根。</div>
+            <div class="sp-seg" id="spAxis">
+              <button type="button" data-v="0" class="on">不剖</button>
+              <button type="button" data-v="1">xy 面 · 法向 z</button>
+              <button type="button" data-v="2">yz 面 · 法向 x</button>
+              <button type="button" data-v="3">xz 面 · 法向 y</button>
+            </div>
+            <div class="sp-lab">滑动位置 <b id="spOffV">0</b>％<span style="color:#8a95a5">（0 = 过中心；±100 = 滑到边缘）</span></div>
+            <input id="spOff" type="range" min="-100" max="100" step="1" value="0" aria-label="剖面滑动位置">
+            <div class="sp-lab">保留哪一侧</div>
+            <div class="sp-seg" id="spKeep">
+              <button type="button" data-v="1">＋法向侧</button>
+              <button type="button" data-v="-1" class="on">－法向侧</button>
+            </div>
+            <label class="sp-chk"><input type="checkbox" id="spFace" checked> 加半透膜（真实壁厚截面）</label>
+            <div class="sp-st" id="spSt">不剖 · 整机。与「楔形剖切」二选一，不叠用。</div>
+          </div>
+        </div>
+      </div>
       <div class="btns" style="margin:8px 0 0">
         <button id="spin3d" class="on">自动旋转</button>
         <button id="cut3d">楔形剖切 120°</button>
@@ -150,6 +212,23 @@ button.on{background:#eaf3fd;border-color:#b9d7f6;color:var(--acc);font-weight:7
         <span style="flex:1"></span>
         <button id="modeLeap" class="pri">LEAP 71 原版构型</button>
         <button id="modeTree">本页分叉树构型</button>
+      </div>
+      <div class="btns" style="margin:8px 0 0">
+        <span style="color:#5b6470;font-size:12.5px;font-weight:700">整机方案</span>
+        <button id="schemeBell" class="pri" title="钟形（de Laval）喷管：只在设计高度上最优 —— LEAP 71 TKL-5 就是这一类">A · 钟形喷管 TKL-5</button>
+        <button id="schemeAero" title="环形气动塞：燃气贴着中心锥膨胀、外壁由外界大气充当，海平面到真空不用换喷管">B · 环形气动塞 Aerospike</button>
+        <span style="flex:1"></span>
+        <span class="grp2" style="color:#8a95a5">当前方案 <b id="vScheme" style="color:var(--acc)">A · 钟形 TKL-5</b></span>
+      </div>
+      <div class="viewbar" id="viewbar">
+        <span class="vl">视角</span>
+        <button type="button" data-v="iso" class="on" title="等轴视图：x/y/z 三轴等比例（默认，判读比例的标准位）">等轴 xyz</button>
+        <button type="button" data-v="xy" title="正视图：沿 −z 正对看 xy 平面（透视，有近大远小）">正视 xy</button>
+        <button type="button" data-v="xz" title="俯视图：沿 −y 往下看 xz 平面（透视）">俯视 xz</button>
+        <button type="button" data-v="down" title="仰视图：从模型下方沿 +y 往上仰看（看喷管出口端面、底部法兰与集流环）">仰视 −y</button>
+        <span class="sep"></span>
+        <button type="button" data-v="xy2d" title="正视的 2D 正投影：正交相机沿 −z 投到 xy 平面，无透视、无近大远小，可直接量比例">正视投影 2D</button>
+        <button type="button" data-v="xz2d" title="俯视的 2D 正投影：正交相机沿 −y 投到 xz 平面，看回转体圆度与周向分布">俯视投影 2D</button>
       </div>
       <div class="modebar">
         <span class="grp2">构型 <b id="vMode" style="color:var(--acc)">LEAP 71 原版</b></span>
@@ -164,6 +243,45 @@ button.on{background:#eaf3fd;border-color:#b9d7f6;color:var(--acc);font-weight:7
       <div class="glhint"><b>这一版按 LEAP 71 官方图重画了三处根子上的东西</b>：① 整机是<b>铜色（CuCrZr）单体 3D 打印件</b>，不再是浅蓝玻璃罩；② 冷却通道是<b>连续、等距、单向斜螺旋的流线族</b>，整根埋在 <code>0.84R~1.00R</code> 的<b>壁厚内部</b>（中心 <code>0.92R</code>），不是贴在内衬外表面的一层树；③ 流线遇到机身接口会<b>自动绕开成同心涡</b>（可关掉对照），喉部热流最大处通道收细到 <code>0.8 mm</code>、两端放宽到 <code>1.2 mm</code>。<br>
       <b>剖切</b>是切掉正对镜头 <b>120° 的一块楔形</b>（外壳留 240°，和官方半剖图一样），缺口两条铜质断面上那一排小方孔就是通道被切断后的<b>横截面</b>（官方剖面图里就是长这样）；合拢态外表面那些细斜沟是通道的可见痕迹。顶部加了<b>喷注器面</b>（密封环 + 18 个同轴涡流喷注孔 + 花瓣法兰）、<b>推进剂入口</b>、<b>测量端口与探针</b>、底部<b>集流环/法兰</b>，内壁近喷注器一圈是<b>薄膜冷却小孔</b>。橙色粒子＝煤油从出口端逆流吸热、回到喷注器；青色＝液氧路。<br>
       默认展示<b>合拢态</b>（最像官方整机照），点「楔形剖切」才打开看壁厚内部。点「<b>本页分叉树构型</b>」可切回原来的 Murray 分叉树（① 展开图逐段卷到壁上），两种构型共用同一台相机与剖切开关。<b>③ 是照真图与公开参数做的可交互示意，不是 Noyron 复刻、不是 CFD、不是可打印几何</b>；真图与逐条事实见 <a href="#s10">§10</a>。</div>
+      <div class="glhint" style="border-left:3px solid #b9d7f6;padding-left:9px;background:#f7fbff">
+        <b>2026-11-12 追加 · 滑动剖面 + 五个视角键</b>：③ 左上那扇「剖面」小窗可选
+        <code>xy 面（法向 z）</code>／<code>yz 面（法向 x）</code>／<code>xz 面（法向 y）</code>
+        三个基准面，<b>滑条 −100…+100%</b> 逐帧只改裁剪平面的 normal / constant（<b>不重建几何</b>，所以跟手），
+        可切「保留哪一侧」、可加<b>半透膜</b>。膜按 <code>radiusAt(t)</code> 真算壁厚截面
+        （横剖＝两条 0.84R~1.00R 的带，平切＝一个环带），<b>不是拿个圆去冒充</b>；
+        法兰／凸台／探针这些壁外零件不进膜，因为那能编的只有假的。
+        切是 <b>GPU 材质级裁剪</b>：通道被切断后是<b>空管口</b>，不是「少画几根」。
+        视角键：<b>等轴 xyz</b>／<b>正视 xy</b>／<b>俯视 xz</b>／<b>仰视 −y</b> 是透视
+        （仰视是这轮补的：原来仰角被钳在 93°，<b>永远转不到模型下方</b>，所以底视图一直看不到；
+        现在一路能转到底，转下去时地面网格会自动收起，免得整片挡在镜头前），
+        <b>正视投影 2D</b>／<b>俯视投影 2D</b> 换成<b>正交相机</b>（无近大远小，屏上可直接量比例），
+        且 2D 档会自动停自转 —— 正投影还在转就量不到东西。剖面与「楔形剖切」二选一、不叠用。
+      </div>
+      <div class="glhint" style="border-left:3px solid #f0c9a0;padding-left:9px;background:#fffaf4">
+        <b>2026-11-12 追加 · 两套整机方案可切</b>：右上多了一条「整机方案」按钮 ——
+        <b>A · 钟形喷管 TKL-5</b>（原样保留）与 <b>B · 环形气动塞 Aerospike</b>（本轮新增），
+        两套共用同一台相机、同一套剖面滑条与视角键，切过去不用重新学操作。<br>
+        <b>B 是照同目录两张真图重建的</b>：<code>fig_leap71_aerospike_mesh.jpg</code>（整机照）＋
+        <code>fig_leap71_aerospike_section.jpg</code>（半剖照）。结构<b>从下往上</b>是：
+        <b>外撇的锯齿底裙</b>（14 片弧形柱块叶瓣＋长圆孔，机加出来的承力／对接面）→
+        <b>筒身三明治厚壁</b>（壁厚 <b>0.197 ＝ 外径 11.4%</b>，拆成内皮 0.055 ＋ 通道带 ＋ 外皮 0.072；
+        通道带被 0.022 的<b>环肋</b>按 0.072 节距隔成 <b>15 格方孔</b> —— 剖开就是一排密排方孔，
+        这是原版剖面最强的签名）→ <b>外蒙皮交叉菱形点阵</b>（两族反向斜螺旋筋）→
+        <b>略微外伸的厚台肩</b>（一圈下垂支耳＋<b>盘面 8 组成对的矩形开口／凸台</b>，机加集液口
+        就是这个样子）→ 台肩正中那圈<b>环形喉缝</b> →
+        <b>短而钝的中心塞锥</b>（高度只占整机约 1/3、根部半径约筒身的 0.4，<b>不是一根细长针</b>；
+        真机就是这么短粗，塞锥太长会让"外壁由大气充当"这件事读不出来）。
+        内腔里有 <b>44 片从内壁伸入的短肋</b>、燃烧室内壁 <b>32 条竖向冷却槽</b>；
+        塞锥表面是 <b>两族反向斜槽交成的鱼骨纹</b>（不是一竖到底的直槽）——
+        这些全都是剖开才看得见的东西。
+        为什么值得单独做一个方案：<b>钟形喷管只在设计高度上最合适</b>，压力一偏就过膨胀／欠膨胀；
+        <b>气动塞把外壁换成外界大气本身</b>，燃气贴着锥面膨胀，外压多少气柱就自己"长"到哪儿 ——
+        一台塞式机从海平面到真空不用换喷管。代价是整根锥面都泡在燃气里，<b>冷却比钟形更狠</b>。<br>
+        <b>注意：B 方案的出口在顶上（塞锥周围那一圈环形缝），底下那块是喷注器／承力盘，
+        本来就该是实的</b>（所以「仰视 −y」看到一块实心盘是对的，跟 A 钟形那台不是一回事）；
+        想看出口，用「俯视 xz」或转到顶上。
+        ⚠ 两套都是<b>照公开实拍重建的几何示意 + 降阶物理</b>，不是 Noyron 复刻、不是 CFD、不是可打印件。
+      </div>
       <div id="gl3dErr" class="gl3derr" style="display:none"></div>
     </div>
   </div>
@@ -285,7 +403,10 @@ button.on{background:#eaf3fd;border-color:#b9d7f6;color:var(--acc);font-weight:7
 
 <section id="s10">
   <h2>10 · 对照 LEAP 71 真家伙：我这版错在哪、改了什么</h2>
-  <div class="card lead"><b>先认错</b>：上一版 ③ 把冷却通道画成<b>贴在内衬外表面的 Murray 分叉树</b>，外面套一层浅蓝玻璃罩。对照官方图，这两点都不对——真机是<b>铜色（CuCrZr）单体 3D 打印件</b>，通道是<b>连续的斜螺旋流线族、整根埋在壁厚里</b>；而且纹路遇到机身接口会绕成同心涡，不是血管那样逐级分叉。本轮按真图重画了 ③，分叉树构型保留为可切换的对照。</div>
+  <div class="card lead"><b>先认错</b>：上一版 ③ 把冷却通道画成<b>贴在内衬外表面的 Murray 分叉树</b>，外面套一层浅蓝玻璃罩。对照官方图，这两点都不对——真机是<b>铜色（CuCrZr）单体 3D 打印件</b>，通道是<b>连续的斜螺旋流线族、整根埋在壁厚里</b>；而且纹路遇到机身接口会绕成同心涡，不是血管那样逐级分叉。本轮按真图重画了 ③，分叉树构型保留为可切换的对照。<br>
+    <b>2026-11-12 补做</b>：真图里<b>还有第二个型号</b>（aerospike，外表是交叉菱形桁架网格），上一版只把它当"别混"的注记。
+    本轮干脆把两台都做出来 —— 右上「整机方案」在 <b>A 钟形 TKL-5</b> 与 <b>B 环形气动塞</b> 之间切换，
+    两套共用同一台相机、剖面滑条与六个视角键；<b>B 的外形按 ⑥ 整机照的比例重排</b>（外撇锯齿底裙、短而钝的塞锥、略外伸的台肩），不再是一根长针顶在罐子上。</div>
 
   <div class="card">
     <table><tr><th style="width:16%">部位</th><th style="width:28%">官方图里实际长什么样（我逐张看过）</th><th>上一版 / 这一版</th></tr>
@@ -293,6 +414,8 @@ button.on{background:#eaf3fd;border-color:#b9d7f6;color:var(--acc);font-weight:7
       <tr><td>冷却通道</td><td>密集、等距、<b>单向斜螺旋细纹</b>；L71_04 左半与 L71_03 机身上看得最清楚</td><td>上一版＝血管状分叉树；<b>这一版＝96 条（可调）连续螺旋流线</b></td></tr>
       <tr><td>通道位置</td><td><b>嵌在壁厚内部</b>；DF_03 / SP_01 / DF_05 剖面里是沿母线一排排<b>小方孔</b>（横截面）</td><td>上一版＝贴在内衬外表面；<b>这一版＝0.84R~1.00R 壁内，中心 0.92R，剖口补小方孔列</b></td></tr>
       <tr><td>遇接口</td><td>纹路绕开圆形凸台，形成<b>同心涡／等高线状</b>绕流（L71_04、L71_03、DF_05 都看得到）</td><td>这一版给 8 个接口加了避障偏转，<b>可用「接口绕流」开关对照</b></td></tr>
+      <tr><td>喷注器面</td><td>同轴涡流喷注头：中心元 + <b>同心环阵列</b>，密封大圆环</td><td>中心 1 ＋ 内环 6 ＋ 外环 12（错半格 15°）＝ <b>19 个单元</b>；上一版 1/6/6/5 再叠 0.37 rad 错相，才是「零散不对称」的病根</td></tr>
+      <tr><td>测量端口</td><td>官方件外壁插满测点，<b>集中在筒身与喉部附近，同层周向等分</b></td><td>三层：筒身 4 点（90°）＋筒身下 2 点（180°）＋喉部上游 2 点（180°），层间错 45°；扩张段只留 1 个。上一版沿母线随手撒 8 个，转过去就是「悬在轮廓外的几根棍」</td></tr>
       <tr><td>截面</td><td>公开原文：<code>variable cross sections as thin as 0.8mm</code>（0.8–1.2 mm）</td><td>这一版喉部最热处收到 0.8 mm、两端放到 1.2 mm；<b>只是标度示意，斜率是凑的，不是传热解</b></td></tr>
       <tr><td>喷注器</td><td>同轴涡流喷注头；L71_05 特写是密封大圆环里约 18 个喷注单元，环外花瓣凸台与大法兰孔</td><td>这一版补了喷注器面、密封环、18 个同轴单元、3 根推进剂入口管</td></tr>
       <tr><td>薄膜冷却</td><td>公开原文：<code>tiny holes near the wall of the combustion chamber</code></td><td>这一版内壁近喷注器加一圈 48 个小孔</td></tr>
@@ -309,11 +432,11 @@ button.on{background:#eaf3fd;border-color:#b9d7f6;color:var(--acc);font-weight:7
     <figure class="refig"><img src="fig_leap71_injector_face.jpg" alt="LEAP 71 喷注器面特写" onclick="window.open(this.src,'_blank')">
       <figcaption><b>③ 喷注器面特写</b>（LEAP 71 官网）。银色同心车削纹面板，中央一圈铜色密封环，环内约 18 个<b>同轴涡流喷注单元</b>（每个都是外环＋中心孔，排成几圈）；环外是花瓣状凸台与若干大圆孔。③ 的喷注器面照这个做。</figcaption></figure>
     <figure class="refig"><img src="fig_leap71_aerospike_section.jpg" alt="LEAP 71 aerospike 剖面渲染" onclick="window.open(this.src,'_blank')">
-      <figcaption><b>④ Aerospike 剖面渲染</b>（Designfax 转载，Credit: LEAP 71）。壁厚剖面上是<b>一排排小方孔</b>＝通道横截面；中央尖锥表面是<b>人字 V 形斜肋</b>；顶部一圈<b>六边形蜂窝腔</b>。③ 剖口那排小方孔就来自这里。<i>注意这是 aerospike 型，与 ①② 的钟形喷管不是同一台。</i></figcaption></figure>
+      <figcaption><b>④ Aerospike 剖面渲染</b>（Designfax 转载，Credit: LEAP 71）。壁厚剖面上是<b>一排排小方孔</b>＝通道横截面；中央尖锥表面是<b>人字 V 形斜肋</b>；顶部一圈<b>六边形蜂窝腔</b>。③ 剖口那排小方孔就来自这里。<i>注意这是 aerospike 型，与 ①② 的钟形喷管不是同一台；本页 B 方案（环形气动塞）的中心塞锥、壁内斜通道与环形喉缝，就是照这张剖面加上面那张整机照一起重建的。</i></figcaption></figure>
     <figure class="refig"><img src="fig_leap71_half_section.jpg" alt="LEAP 71 半剖整机渲染" onclick="window.open(this.src,'_blank')">
       <figcaption><b>⑤ 半剖整机</b>（Designfax 转载）。左侧剖开露出壁厚内梯子般的小方孔列与斜向肋片；右侧外表面是<b>围绕接口绕行的等高线纹</b>；底部法兰一圈花瓣凸台＋竖椭圆孔；顶部有斜向推进剂入口管。</figcaption></figure>
     <figure class="refig"><img src="fig_leap71_aerospike_mesh.jpg" alt="LEAP 71 aerospike 交叉网格外壳" onclick="window.open(this.src,'_blank')">
-      <figcaption><b>⑥ Aerospike 实拍</b>（Designfax 转载）。这台外表是<b>双向交叉的菱形桁架网格</b>，与 ①② 的单向斜纹明显不同——正是它让我在联系表上差点误判，放大逐张看完才分清两个型号。<i>本页 ③ 做的是钟形喷管 TKL-5 构型，没有把这套网格混进来。</i></figcaption></figure>
+      <figcaption><b>⑥ Aerospike 实拍</b>（Designfax 转载）。这台外表是<b>双向交叉的菱形桁架网格</b>，与 ①② 的单向斜纹明显不同——正是它让我在联系表上差点误判，放大逐张看完才分清两个型号。<i>本页现在把两个型号做成<b>两套互不污染的几何</b>：A 钟形 TKL-5 走单向斜螺旋细纹、不掺这套网格；B 环形气动塞则照这张整机照重建了交叉菱形点阵与短塞锥 —— 右上「整机方案」一键切换。</i></figcaption></figure>
   </div>
 
   <h3>公开事实与出处</h3>
@@ -565,7 +688,7 @@ function draw(){
       不是 CFD、不是可打印几何。分叉树构型仍保留为本页原创降阶模型。
    ========================================================================== */
 var G3={ready:false,cut:false,spin:true,H:4.2,builtSegs:-1,builtKey:'',lastBuild:0,
-        mode:'leap',nCh:96,turns:0.84,swirl:true,film:true,ports:true,tris:0};
+        mode:'leap',scheme:'bell',nCh:96,turns:0.84,swirl:true,film:true,ports:true,tris:0};
 var O3={r:9.6,th:0.42,ph:1.05,tgtY:2.10};
 
 /* 壁厚三层：燃气侧内壁 0.84R ｜ 通道中心 0.92R ｜ 外壳 1.00R
@@ -594,17 +717,229 @@ function heatAt(t){ return Math.exp(-Math.pow((t-0.60)/0.16,2)); }
 function chRadAt(t){ return 0.019+0.013*(1-heatAt(t)); }   /* 0.019~0.032 → 0.8~1.2 mm */
 function chMidR(t){ return radiusAt(t)*W_MID; }
 
+/* ==================== ③-b 滑动剖面：三个基准面 + GPU 材质裁剪面 ====================
+   与「楔形剖切」不是同一件事：
+     · 楔形剖切 = 几何层面少画 120° 一块（为了像官方半剖照）；
+     · 这里 = 数学平面，切在哪就在哪：滑条逐帧只改 normal / constant，不重建几何，
+       所以跟手（几十万三角形重建一次要几百毫秒，拖不动）。
+   切面是【真截面】：通道被切断后是空管口，不是「少画几根」。
+   ⚠ 裁剪只挂在【本页自己的 mesh 材质】上，不用 renderer.clippingPlanes（全局会把半透膜
+     一起切掉，膜就永远看不见 —— 那正是「状态没分清」的假绿）。
+   ⚠ 平面用【世界坐标】。本页模型就摆在原点、轴向＝+y ⇒ 「0 = 过中心」「±100% = 滑到边缘」
+     都不用回算任何尺寸。
+   ⚠ material.clippingPlanes 的 normal/constant 是每帧传进着色器的：直接改字段即可，
+     不必 needsUpdate；只有「有没有裁剪面」变了（NUM_CLIPPING_PLANES 0↔1）才要 needsUpdate，
+     否则每拖一格滑条就把几十个材质重编译一遍，卡成幻灯片。
+   ============================================================ */
+var SEC={axis:0,off:0,keep:-1,face:true,plane:null,planes:[],faceMesh:null,edgeMesh:null,key:'',RMAX:1.34};
+function secNorm(ax,out){
+  out=out||new THREE.Vector3();
+  if(ax===1)return out.set(0,0,1);   /* xy 面：法向 z —— 正视过去就是一张横剖图 */
+  if(ax===2)return out.set(1,0,0);   /* yz 面：法向 x —— 同上，转 90° */
+  return out.set(0,1,0);             /* xz 面：法向 y —— 水平切一刀，看壁厚环带 */
+}
+/* 滑条的 ±100% 对应多远：横剖用最大半径（喷管出口 1.12 + 法兰余量），平切用半高 */
+function curH(){ return G3.scheme==='aero' ? AE.H : G3.H; }
+function secHalf(){ return SEC.axis===3 ? curH()/2 : SEC.RMAX; }
+function secMid(){  return SEC.axis===3 ? curH()/2 : 0; }
+function secD(){    return SEC.off/100*secHalf()+secMid(); }
+
+/* 把一份材质挂上 / 摘掉裁剪面（递归整棵子树；膜与标签不在这些组里） */
+function eachMat(g,cb){
+  if(!g)return;
+  var f=function(o){
+    if(!o||!o.material)return;
+    var ms=Array.isArray(o.material)?o.material:[o.material];
+    for(var k=0;k<ms.length;k++)if(ms[k])cb(ms[k]);
+  };
+  f(g);if(g.traverse)g.traverse(f);
+}
+function secApply(){
+  if(!G3.rd)return;
+  if(!SEC.plane){
+    SEC.plane=new THREE.Plane(new THREE.Vector3(0,0,1),0);
+    SEC.planes=[SEC.plane];
+  }
+  var arr=(SEC.axis>0)?SEC.planes:null;
+  var grp=[G3.wallG,G3.hwG,G3.chMesh,G3.fo,G3.ft];
+  for(var i=0;i<grp.length;i++){
+    (function(g){
+      if(!g)return;
+      eachMat(g,function(m){
+        if((m.clippingPlanes||null)!==arr){
+          m.clippingPlanes=arr;m.clipIntersection=false;m.needsUpdate=true;
+        }
+      });
+    })(grp[i]);
+  }
+}
+
+/* 半透膜＝真实壁厚截面：
+   横剖（xy / yz）＝两条壁厚带（近侧 + 远侧），带的内外边界由 |d| 与 R(t) 解出来；
+   平切（xz）    ＝该高度上的一个环带（0.84R ~ 1.00R）。
+   ⚠ 膜只画【回转壁】本身，不含法兰、接口凸台、探针这些壁外零件 —— 那些不是回转体，
+     硬画只能编，编出来的截面比不画更误导。 */
+function secDrop(){
+  if(SEC.faceMesh){
+    G3.secG.remove(SEC.faceMesh);SEC.faceMesh.geometry.dispose();
+    SEC.faceMesh.material.dispose();SEC.faceMesh=null;
+  }
+  if(SEC.edgeMesh){
+    G3.secG.remove(SEC.edgeMesh);SEC.edgeMesh.geometry.dispose();
+    SEC.edgeMesh.material.dispose();SEC.edgeMesh=null;
+  }
+  SEC.key='';
+}
+function secFace(force){
+  if(!G3.secG)return;
+  if(G3.scheme==='aero'){aeFace(force);return;}
+  if(!SEC.axis||!SEC.face){secDrop();return;}
+  var d=secD(),key=SEC.axis+'|'+d.toFixed(4);
+  if(!force&&SEC.key===key){
+    if(SEC.faceMesh)SEC.faceMesh.visible=true;
+    if(SEC.edgeMesh)SEC.edgeMesh.visible=true;
+    return;
+  }
+  SEC.key=key;
+  var P=[],I=[],L=[],i,j,S=76,ax=SEC.axis;
+  if(ax===3){
+    if(d<-1e-6||d>G3.H+1e-6){secDrop();return;}
+    var t3=Math.max(0,Math.min(1,d/G3.H)),R=radiusAt(t3),Ri=R*W_IN;
+    for(i=0;i<=S;i++){
+      var a=i/S*Math.PI*2,ca=Math.cos(a),sa=Math.sin(a);
+      P.push(ca*Ri,d,sa*Ri, ca*R,d,sa*R);
+    }
+    for(i=0;i<S;i++){var b=i*2;I.push(b,b+2,b+1, b+1,b+2,b+3);}
+    for(i=0;i<S;i++){
+      var a1=i/S*Math.PI*2,a2=(i+1)/S*Math.PI*2;
+      L.push(Math.cos(a1)*R,d,Math.sin(a1)*R, Math.cos(a2)*R,d,Math.sin(a2)*R);
+    }
+  }else{
+    var N=64, pt=function(sg,rr,y){
+      return ax===1?[sg*rr,y,d]:[d,y,sg*rr];
+    };
+    for(i=0;i<N;i++){
+      var t1=i/N,t2=(i+1)/N;
+      var R1=radiusAt(t1),R2=radiusAt(t2);
+      var o1=Math.sqrt(Math.max(0,R1*R1-d*d)),o2=Math.sqrt(Math.max(0,R2*R2-d*d));
+      var i1=Math.sqrt(Math.max(0,R1*W_IN*R1*W_IN-d*d)),i2=Math.sqrt(Math.max(0,R2*W_IN*R2*W_IN-d*d));
+      if(o1<1e-4||o2<1e-4)continue;      /* 这一小段平面落在壁外，没有材料 */
+      for(j=0;j<2;j++){
+        var sg=j? -1:1;
+        var A=pt(sg,i1,t1*G3.H),B=pt(sg,o1,t1*G3.H),
+            C=pt(sg,i2,t2*G3.H),D=pt(sg,o2,t2*G3.H);
+        var base=P.length/3;
+        P.push(A[0],A[1],A[2], B[0],B[1],B[2], C[0],C[1],C[2], D[0],D[1],D[2]);
+        I.push(base,base+1,base+2, base+2,base+1,base+3);
+        if(i%2===0){
+          L.push(A[0],A[1],A[2],C[0],C[1],C[2]);
+          L.push(B[0],B[1],B[2],D[0],D[1],D[2]);
+        }
+      }
+    }
+    if(!I.length){secDrop();return;}
+  }
+  secCommit(P,I,L);
+}
+/* 膜的几何统一在这里挂到 SEC.faceMesh / SEC.edgeMesh 上：钟形与气动塞共用，
+   免得两套方案各写一份材质、颜色还会漂。 */
+function secCommit(P,I,L){
+  if(!SEC.faceMesh){
+    SEC.faceMesh=new THREE.Mesh(new THREE.BufferGeometry(),
+      /* 铜色件上再铺一层琥珀色＝跟本体糊在一起，屏上只剩"一块阴影"；
+         浅奶油色（0xffe9cd）是铜的补色方向，0.74 既能看出是实心切面，也还能透出后面的通道。 */
+      new THREE.MeshBasicMaterial({color:0xffe9cd,transparent:true,opacity:0.74,
+        side:THREE.DoubleSide,depthWrite:false}));
+    SEC.faceMesh.renderOrder=3;G3.secG.add(SEC.faceMesh);
+  }
+  if(!SEC.edgeMesh){
+    SEC.edgeMesh=new THREE.LineSegments(new THREE.BufferGeometry(),
+      new THREE.LineBasicMaterial({color:0x8f4a1c,transparent:true,opacity:0.80}));
+    SEC.edgeMesh.renderOrder=4;G3.secG.add(SEC.edgeMesh);
+  }
+  /* 气动塞的断面要读成【实心材料】：浅奶油色 0.74 是为钟形的内部通道留透光，
+     塞式的壁本来就厚、通道埋在壁里，再透光就只剩一层薄影子 ⇒ 换深一档、0.93、开 depthWrite。 */
+  var isAero=(G3.scheme==='aero');
+  SEC.faceMesh.material.color.set(isAero?0xdda061:0xffe9cd);
+  SEC.faceMesh.material.opacity=isAero?0.93:0.74;
+  SEC.faceMesh.material.depthWrite=isAero;
+  var g2=SEC.faceMesh.geometry;
+  g2.setAttribute('position',new THREE.Float32BufferAttribute(P,3));
+  g2.setIndex(I);g2.computeVertexNormals();g2.computeBoundingSphere();
+  var g3=SEC.edgeMesh.geometry;
+  g3.setAttribute('position',new THREE.Float32BufferAttribute(L,3));
+  g3.computeBoundingSphere();
+  SEC.faceMesh.visible=true;SEC.edgeMesh.visible=true;
+}
+
+function secName(ax){ return ['不剖','xy 面','yz 面','xz 面'][ax]||'不剖'; }
+function secUI(){
+  var bs=document.querySelectorAll('#spAxis button'),i;
+  for(i=0;i<bs.length;i++)bs[i].className=(+bs[i].getAttribute('data-v')===SEC.axis)?'on':'';
+  bs=document.querySelectorAll('#spKeep button');
+  for(i=0;i<bs.length;i++)bs[i].className=(+bs[i].getAttribute('data-v')===SEC.keep)?'on':'';
+  var ov=document.getElementById('spOffV');if(ov)ov.textContent=SEC.off;
+  var su=document.getElementById('spSum');
+  if(su)su.textContent=SEC.axis?(secName(SEC.axis)+' · '+SEC.off+'%'):'不剖';
+  var st=document.getElementById('spSt');
+  if(st){
+    if(!SEC.axis){
+      st.innerHTML='不剖 · 整机。与「楔形剖切」二选一，不叠用。';
+    }else{
+      var d=secD(),nv=(SEC.axis===1?'z':(SEC.axis===2?'x':'y'));
+      var cut=(SEC.keep>0)?('切掉 '+nv+' &lt; '+d.toFixed(2)):('切掉 '+nv+' &gt; '+d.toFixed(2));
+      st.innerHTML=secName(SEC.axis)+' · 位置 '+SEC.off+'％（'+nv+' = '+d.toFixed(2)+'）· '
+        +cut+' · '+(SEC.face?'已加半透膜':'无膜');
+    }
+  }
+}
+function secText(){
+  var vn={iso:'等轴',xy:'正视 xy',xz:'俯视 xz',down:'仰视 −y',xy2d:'正视投影 2D',xz2d:'俯视投影 2D'}[G3.view]||'等轴';
+  var s2=(G3.scheme==='aero'
+      ?('气动塞 · 筒壁 '+Math.max(24,G3.nCh)+' 条轴向直槽 ＋ 塞锥面 24 条')
+      :(G3.mode==='leap'?'螺旋通道 '+G3.nCh+' 条 × 64 段':'分叉树 '+segs.length+' 段'))
+    +' · '+(G3.cut?(G3.mode==='leap'?'楔形剖切 120°':'半剖 180°'):'合拢');
+  if(SEC.axis)s2+=' · 剖面 '+secName(SEC.axis)+' '+SEC.off+'%';
+  s2+=' · '+vn+(G3.ortho?'（正交·无近大远小）':'（透视）');
+  var e=document.getElementById('gl3dTxt');if(e)e.textContent=s2;
+}
+function secUpdate(force){
+  if(!G3.ready)return;
+  if(!SEC.plane){
+    SEC.plane=new THREE.Plane(new THREE.Vector3(0,0,1),0);SEC.planes=[SEC.plane];
+  }
+  if(SEC.axis>0){
+    var pl=SEC.plane,d=secD();
+    secNorm(SEC.axis,pl.normal);
+    if(SEC.keep>0){ pl.constant=-d; }                                  /* 保留 n·p ≥ d */
+    else { pl.normal.multiplyScalar(-1); pl.constant=d; }               /* 保留 n·p ≤ d */
+  }
+  secApply();secFace(force);secUI();secText();
+}
+
 /* 机身接口/凸台：位置 (t, φ)、影响半径、强度。
    每个接口会把附近的流线推开，形成 L71_03/L71_04 上那种「等高线同心涡」。 */
+/* 测量端口 / 接口（2026-11-12 重排）
+   上一版是「沿母线随手撒 8 个」，毛病有三条，都是照图就能看出来的：
+     ① 扩张段（t<0.55）外表面在官方图上基本是干净的螺旋纹，测点几乎全在燃烧室筒身与喉部附近；
+     ② 同一层的测点本该【周向等分】（真实件是一圈一圈钻的），随手撒会看着像坏了；
+     ③ 撒在扩张段大半径处，转过去就成了「悬在轮廓外的几根棍」，最刺眼。
+   于是改成三层：筒身 4 点（90° 均分，整体转 45° 避开两根入口）＋筒身下 2 点（180°）＋喉部上游 2 点，
+   层与层之间错开相位，避免母线方向连成一条直线；扩张段只留一个排液/压力测点。 */
 var PORTS=[
-  {t:0.17,ph:0.55,r:0.30,a:1.00,R:0.085,k:'fuel'},
-  {t:0.27,ph:2.45,r:0.26,a:0.85,R:0.065,k:'port'},
-  {t:0.40,ph:4.05,r:0.30,a:1.00,R:0.085,k:'fuel'},
-  {t:0.48,ph:1.35,r:0.24,a:0.80,R:0.060,k:'port'},
-  {t:0.68,ph:3.20,r:0.28,a:0.95,R:0.075,k:'port'},
-  {t:0.77,ph:5.35,r:0.28,a:0.95,R:0.075,k:'fuel'},
-  {t:0.86,ph:0.95,r:0.24,a:0.85,R:0.060,k:'port'},
-  {t:0.90,ph:3.95,r:0.24,a:0.85,R:0.060,k:'port'}
+  /* 筒身 A 层：4 点，90° 均分，整体 +45°（避开顶部两根入口所在的 0.55 / 3.69 rad） */
+  {t:0.900,ph:0.785,r:0.26,a:0.95,R:0.058,k:'port'},
+  {t:0.900,ph:2.356,r:0.26,a:0.95,R:0.058,k:'port'},
+  {t:0.900,ph:3.927,r:0.26,a:0.95,R:0.058,k:'port'},
+  {t:0.900,ph:5.498,r:0.26,a:0.95,R:0.058,k:'port'},
+  /* 筒身 B 层：2 点，180°，与 A 层错 45° */
+  {t:0.812,ph:0.000,r:0.24,a:0.85,R:0.052,k:'port'},
+  {t:0.812,ph:3.142,r:0.24,a:0.85,R:0.052,k:'port'},
+  /* 喉部上游 C 层：2 点，180°，再错 45° */
+  {t:0.700,ph:1.571,r:0.22,a:0.80,R:0.046,k:'port'},
+  {t:0.700,ph:4.712,r:0.22,a:0.80,R:0.046,k:'port'},
+  /* 扩张段唯一一个：排液/回压测点（官方图这里也能看到一个） */
+  {t:0.430,ph:3.60,r:0.26,a:0.80,R:0.050,k:'fuel'}
 ];
 function angDiff(a,b){
   var d=(a-b)%(Math.PI*2);
@@ -696,6 +1031,7 @@ function setGeo(geo,P,N,C,I){
 /* ---- 通道几何：LEAP 螺旋流线族 / 本页分叉树 ---- */
 function rebuildChannels(force){
   if(!G3.ready)return;
+  if(G3.scheme==='aero'){ aeChannels(force); return; }
   var now=performance.now();
   var key=[G3.mode,G3.nCh,G3.turns,G3.swirl?1:0,segs.length].join('|');
   if(!force&&(now-G3.lastBuild<130||key===G3.builtKey))return;
@@ -730,12 +1066,12 @@ function rebuildChannels(force){
     G3.builtSegs=segs.length;
   }
   setGeo(G3.chGeo,P,N,C,I);
-  document.getElementById('gl3dTxt').textContent=
-    (G3.mode==='leap'?'螺旋通道 '+G3.nCh+' 条 × 64 段':'分叉树 '+segs.length+' 段')+' · '+(G3.cut?(G3.mode==='leap'?'楔形剖切 120°':'半剖 180°'):'合拢');
+  secApply();secText();
 }
 
 /* ---- 壳体 / 内衬 / 剖切面（铜色单体件） ---- */
 function buildWall(){
+  if(G3.scheme==='aero'){ buildAeroBody(); return; }
   while(G3.wallG.children.length){
     var c=G3.wallG.children.pop();
     if(c.geometry)c.geometry.dispose();
@@ -797,6 +1133,7 @@ function buildWall(){
       t.rotation.x=Math.PI/2;t.position.y=y;G3.wallG.add(t);
     });
   }
+  secApply();   /* 重建出来的材质默认没有裁剪面：这里必须补挂，否则剖面会「半边不切」 */
 }
 /* 外表面斜螺旋沟纹：把流线抬到 1.004R，画成深色细线 */
 function buildGrooves(start,len){
@@ -827,7 +1164,32 @@ function cyl(r1,r2,h,col,metal){
   return new THREE.Mesh(new THREE.CylinderGeometry(r1,r2,h,14),
     new THREE.MeshStandardMaterial({color:col,metalness:metal===undefined?0.55:metal,roughness:0.42}));
 }
+/* 环形实体（法兰＝环，不是盘）：把矩形截面绕轴回转，得到有厚度的圆环 */
+function annulus(rOut,rIn,h,col,metal){
+  var p=[new THREE.Vector2(rIn,0),new THREE.Vector2(rOut,0),
+         new THREE.Vector2(rOut,h),new THREE.Vector2(rIn,h),new THREE.Vector2(rIn,0)];
+  return new THREE.Mesh(new THREE.LatheGeometry(p,72),
+    new THREE.MeshStandardMaterial({color:col,metalness:metal===undefined?0.55:metal,
+      roughness:0.42,side:THREE.DoubleSide}));
+}
+/* 出口端面那一圈壁厚：把 Lathe 的开口端封成一条环带（0.84R→1.00R），
+   角度与壳体的 start/len 对齐，剖切时不会留半圈悬空的环。 */
+function exitCap(rIn,rOut,y,start,len,col){
+  var N=90,P=[],I=[],i;
+  for(i=0;i<=N;i++){
+    var a=start+len*i/N,sa=Math.sin(a),ca=Math.cos(a);
+    P.push(sa*rIn,y,ca*rIn, sa*rOut,y,ca*rOut);
+  }
+  for(i=0;i<N;i++){var b0=i*2;I.push(b0,b0+1,b0+3, b0,b0+3,b0+2);}
+  var g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(P),3));
+  g.setIndex(I);g.computeVertexNormals();
+  return new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:col,metalness:0.5,
+    roughness:0.45,side:THREE.DoubleSide}));
+}
+
 function buildHardware(){
+  if(G3.scheme==='aero'){ buildAeroHW(); return; }
   while(G3.hwG.children.length){
     var c=G3.hwG.children.pop();
     if(c.geometry)c.geometry.dispose();
@@ -851,22 +1213,60 @@ function buildHardware(){
   var seal=new THREE.Mesh(new THREE.TorusGeometry(rr*0.80,0.014,8,64),
     new THREE.MeshStandardMaterial({color:0xd08048,metalness:0.8,roughness:0.3}));
   seal.rotation.x=Math.PI/2;seal.position.y=y+0.099;G3.hwG.add(seal);
-  var spec=[[1,0.0],[6,0.30],[6,0.55],[5,0.72]];
-  for(var s=0;s<spec.length;s++){
-    var cnt=spec[s][0],radf=spec[s][1];
+  /* 同轴涡流喷注单元（2026-11-12 重排）：官方件是【同心环阵列】，不是随手撒。
+     上一版用 1 / 6 / 6 / 5 四组且每组再叠一个 0.37 rad 的错相，凑出「零散、不对称」的观感 ——
+     那不是"计算生成的花纹"，是排布没规矩。现在改成：中心 1 ＋ 内环 6（60° 均分）＋ 外环 12（30° 均分，
+     错开 15° 落在内环两颗之间），共 19 个单元 ≈ 公开图上的「约 18 个」。
+     每个单元画三层：外杯（8 边形，读作同轴涡流件的旋流杯）＋ 内孔（深色，才是喷口）＋ 杯口薄唇。 */
+  function injEl(cx,cz,dOut,dIn,lip){
+    var cup=new THREE.Mesh(new THREE.CylinderGeometry(dOut,dOut,0.014,8),
+      new THREE.MeshStandardMaterial({color:0x8d6746,metalness:0.62,roughness:0.38}));
+    cup.position.set(cx,y+0.101,cz);G3.hwG.add(cup);
+    var rim=new THREE.Mesh(new THREE.TorusGeometry(dOut,0.005,6,16),
+      new THREE.MeshStandardMaterial({color:0x6b4a30,metalness:0.7,roughness:0.32}));
+    rim.rotation.x=Math.PI/2;rim.position.set(cx,y+0.108,cz);G3.hwG.add(rim);
+    var hole=cyl(dIn,dIn*0.86,0.020,DARK,0.15);
+    hole.position.set(cx,y+0.106,cz);G3.hwG.add(hole);
+    if(lip){/* 中心元多一圈点火/隔离小环 */
+      var lg=new THREE.Mesh(new THREE.TorusGeometry(dOut*1.55,0.006,6,20),
+        new THREE.MeshStandardMaterial({color:0xa9703e,metalness:0.75,roughness:0.3}));
+      lg.rotation.x=Math.PI/2;lg.position.set(cx,y+0.101,cz);G3.hwG.add(lg);
+    }
+  }
+  var INJ=[[1,0.00],[6,0.34],[12,0.66]];
+  for(var s=0;s<INJ.length;s++){
+    var cnt=INJ[s][0],radf=INJ[s][1];
+    var ph0=(s===2?Math.PI/12:0);          /* 外环错半格 15°，落在内环两颗之间 */
     for(i=0;i<cnt;i++){
-      var ang=(i/cnt)*Math.PI*2+s*0.37, rx=Math.cos(ang)*rr*radf, rz=Math.sin(ang)*rr*radf;
-      var outer=cyl(0.043,0.043,0.013,0x8d6746,0.6);outer.position.set(rx,y+0.102,rz);G3.hwG.add(outer);
-      var hole=cyl(0.024,0.024,0.016,DARK,0.2);hole.position.set(rx,y+0.110,rz);G3.hwG.add(hole);
+      var ang=ph0+(i/cnt)*Math.PI*2;
+      var rx=Math.cos(ang)*rr*radf, rz=Math.sin(ang)*rr*radf;
+      if(s===0) injEl(rx,rz,0.062,0.034,true);
+      else      injEl(rx,rz,0.044,0.024,false);
     }
   }
   /* ③ 顶部推进剂入口（两根斜向大管，对应 L71_04 顶部一堆圆柱凸台） */
-  for(i=0;i<3;i++){
-    var a2=i/3*Math.PI*2+0.4, px=Math.cos(a2)*rr*0.82,pz=Math.sin(a2)*rr*0.82;
-    var pipe=cyl(0.075,0.088,0.30,CU);
-    pipe.position.set(px*1.16,y+0.20,pz*1.16);pipe.rotation.z=Math.cos(a2)*0.34;pipe.rotation.x=-Math.sin(a2)*0.34;
+  /* 推进剂入口：两根（煤油 / 液氧）对置，斜插在【筒身上端侧壁】。
+     上一版把它们放在 rr*0.80 的半径上、只抬 0.20 m —— 那个位置正好落在喷注器盘（rr*0.96）的
+     盘面上，俯视看就是「两根管子从喷注器面孔里长出来」，这是画错了。真机是侧壁接管。 */
+  for(i=0;i<2;i++){
+    var a2=(i===0?0.55:3.69);
+    var tP=0.952,Rp=radiusAt(tP)*W_OUT;
+    var dx=Math.cos(a2),dz=Math.sin(a2),tilt=0.62;      /* 与径向夹角：向外上方 35° */
+    var dir=new THREE.Vector3(dx*Math.cos(tilt),Math.sin(tilt),dz*Math.cos(tilt)).normalize();
+    var base=new THREE.Vector3(dx*Rp*0.97,tP*G3.H,dz*Rp*0.97);
+    var pipe=cyl(0.070,0.086,0.34,CU);
+    pipe.position.copy(base.clone().addScaledVector(dir,0.155));
+    pipe.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir);
     G3.hwG.add(pipe);
-    var mouth=cyl(0.048,0.048,0.02,DARK,0.2);mouth.position.set(px*1.16,y+0.355,pz*1.16);G3.hwG.add(mouth);
+    var mouth=cyl(0.050,0.050,0.022,DARK,0.2);
+    mouth.position.copy(base.clone().addScaledVector(dir,0.322));
+    mouth.quaternion.copy(pipe.quaternion);G3.hwG.add(mouth);
+    /* 管根焊接凸台：一圈厚环，管口才不会像直接插在蒙皮上 */
+    var col2=new THREE.Mesh(new THREE.TorusGeometry(0.082,0.016,8,22),
+      new THREE.MeshStandardMaterial({color:CU_D,metalness:0.55,roughness:0.45}));
+    col2.position.copy(base.clone().addScaledVector(dir,0.020));
+    col2.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),dir);
+    G3.hwG.add(col2);
   }
   /* ④ 机身接口凸台：径向小圆柱 + 中心孔；流线在它们附近绕行 */
   if(G3.ports){
@@ -874,20 +1274,22 @@ function buildHardware(){
       var o=PORTS[i],R=radiusAt(o.t)*W_OUT;
       var dir=new THREE.Vector3(Math.sin(o.ph),0,Math.cos(o.ph));
       var base=new THREE.Vector3(dir.x*R,o.t*G3.H,dir.z*R);
-      var boss=cyl(o.R,o.R*0.92,0.16,o.k==='fuel'?CU:CU_D);
-      boss.position.copy(base.clone().addScaledVector(dir,0.075));
+      var bl=0.11;                          /* 凸台露头：短一点，贴壁才像机加工出来的 */
+      var boss=cyl(o.R,o.R*0.90,bl,o.k==='fuel'?CU:CU_D);
+      boss.position.copy(base.clone().addScaledVector(dir,bl/2-0.012));
       boss.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir);
       G3.hwG.add(boss);
-      var bore=cyl(o.R*0.42,o.R*0.42,0.012,DARK,0.2);
-      bore.position.copy(base.clone().addScaledVector(dir,0.158));
+      var bore=cyl(o.R*0.40,o.R*0.40,0.010,DARK,0.2);
+      bore.position.copy(base.clone().addScaledVector(dir,bl-0.008));
       bore.quaternion.copy(boss.quaternion);G3.hwG.add(bore);
-      /* 测量探针：细杆 + 棕色小方块（L71_03 里插满的那些） */
+      /* 测量探针：细杆 + 棕色小方块（L71_03 里插满的那些）。
+         长度按 R 折一半：原来固定 0.26 m，放在喉部小半径处就是一根扎眼的棍。 */
       if(o.k==='port'){
-        var tip=base.clone().addScaledVector(dir,0.30);
-        var rod=cyl(0.008,0.008,0.26,STEEL,0.8);
-        rod.position.copy(base.clone().addScaledVector(dir,0.24));
+        var pl2=0.10+0.10*(R/1.12), tip=base.clone().addScaledVector(dir,bl+pl2);
+        var rod=cyl(0.007,0.007,pl2,STEEL,0.8);
+        rod.position.copy(base.clone().addScaledVector(dir,bl+pl2/2));
         rod.quaternion.copy(boss.quaternion);G3.hwG.add(rod);
-        var box=new THREE.Mesh(new THREE.BoxGeometry(0.075,0.05,0.11),
+        var box=new THREE.Mesh(new THREE.BoxGeometry(0.058,0.042,0.086),
           new THREE.MeshStandardMaterial({color:0x6b3f28,roughness:0.8}));
         box.position.copy(tip);G3.hwG.add(box);
       }
@@ -895,14 +1297,24 @@ function buildHardware(){
   }
   /* ⑤ 底部法兰：一圈花瓣凸台 + 竖椭圆孔（DF_05 / DF_06 底部那圈） */
   rr=radiusAt(0);
-  var bf=cyl(rr*1.06,rr*1.06,0.055,CU);bf.position.y=0.028;G3.hwG.add(bf);
+  /* ⚠ 2026-11-12 纠错：这里原来是一块【实心圆柱】cyl(rr*1.06,rr*1.06,0.055)，
+     它把整个出口（内径 0.336）严丝合缝地盖住了 —— 「底部看是封闭的口、看不到里面」
+     就是它。法兰是【环】不是【盘】：
+       · 环的内径取 1.00R，正好贴住壳体外表面，环体只落在壁外，一根都不进流道；
+       · 螺栓孔也一并从 0.90R（那已经在出口里了）挪到环带中线 1.085R；
+       · 再把出口端面 0.84R→1.00R 那圈壁厚封成环带，仰视时才看得到"壁有多厚"，
+         否则内外两张面片之间只剩一条发丝缝，像张纸。 */
+  var bfR=annulus(rr*1.16,rr*1.00,0.058,CU);bfR.position.y=0.002;G3.hwG.add(bfR);
+  var capS=G3.cut?(G3.mode==='leap'?Math.PI/3:Math.PI/2):0,
+      capSt=0.42+2*capS,capLen=Math.PI*2-2*capS;
+  G3.hwG.add(exitCap(rr*W_IN,rr*W_OUT,0.0015,capSt,capLen,0x9a6236));
   for(i=0;i<12;i++){
-    var a3=i/12*Math.PI*2,pr3=rr*1.02;
+    var a3=i/12*Math.PI*2,pr3=rr*1.085;
     var lug3=new THREE.Mesh(new THREE.BoxGeometry(0.10,0.13,0.07),
       new THREE.MeshStandardMaterial({color:CU,metalness:0.5,roughness:0.45}));
     lug3.position.set(Math.cos(a3)*pr3,0.045,Math.sin(a3)*pr3);lug3.rotation.y=-a3;G3.hwG.add(lug3);
     var eh=cyl(0.037,0.037,0.10,DARK,0.2);
-    eh.rotation.x=Math.PI/2;eh.position.set(Math.cos(a3)*rr*0.90,0.05,Math.sin(a3)*rr*0.90);
+    eh.rotation.x=Math.PI/2;eh.position.set(Math.cos(a3)*pr3,0.05,Math.sin(a3)*pr3);
     G3.hwG.add(eh);
   }
   /* ⑥ 出口集流环（两路：煤油橙 / 液氧青），箍在喷管出口端 */
@@ -929,6 +1341,689 @@ function buildHardware(){
   var glow=new THREE.Mesh(new THREE.TorusGeometry(radiusAt(0)*W_IN*0.98,0.012,6,72),
     new THREE.MeshBasicMaterial({color:0xff8a3c,transparent:true,opacity:0.55}));
   glow.rotation.x=Math.PI/2;glow.position.y=0.012;G3.hwG.add(glow);
+  secApply();
+}
+
+
+/* ==================== ③-c 方案 B：环形气动塞（Aerospike）====================
+   照同目录两张 LEAP 71 真图逐段重建。2026-11-12 第二轮大改：上一版把整机【读反了】——
+   顶上那个锥不是塞锥，是【喷注器端盖中央的分流鼻锥】；塞锥在筒内、锥尖朝【下游（下）】。
+     fig_leap71_aerospike_mesh.jpg    自下而上：环形底环 → 一圈竖向叶瓣的裙座（每瓣一个长圆孔，
+                                      瓣间是深 V 槽）→ 交叉菱形点阵筒身 → 外伸圆盘（盘缘一圈
+                                      下垂支耳，盘面一个漏斗形孔座）→ 盘心截锥鼻锥
+     fig_leap71_aerospike_section.jpg 半剖：筒壁很厚、里面是【沿母线方向的直槽】（剖开成一排排
+                                      梯子孔），不是斜螺旋；喷注器在顶盘底面朝下；中心体＝塞锥，
+                                      锥尖朝下；环缝在喉部收成一道薄环
+   气动塞的道理一句话：钟形喷管只在【一个设计高度】上最合适，飞到别的压力不是过膨胀就是欠膨胀；
+   气动塞把「外壁」换成【外界大气本身】—— 燃气贴着中心锥膨胀，外压多少，气柱就自己"长"到哪，
+   所以一台塞式机从海平面到真空不用换喷管。代价是整根锥面都泡在燃气里，冷却比钟形更狠。
+   ⚠ 与钟形方案同口径：几何是照公开实拍重建的示意，物理仍是降阶方程，不是 CFD、不是可打印件。
+   ============================================================ */
+var AE={
+  H:2.36,                                   /* 底环面 → 鼻锥顶 */
+  yPad:0.085, yBody0:0.72, yBody1:1.92, yDeck:2.11, yNose:2.33,
+  rPad:0.952, rPadIn:0.760, rBody0:0.862, rBody1:0.849, rDeck:0.988,
+  rIn:0.665, rSkirtIn:0.755,                /* 筒壁内表面：壁厚 0.197＝外径 11.4%（三明治夹层壁）*/
+  rNose0:0.352, rNose1:0.118,               /* 鼻锥：底 0.302、顶截平 0.092（矮截锥，不是尖头） */
+  yTh:1.500, rThO:0.478,                    /* 环形喉部：外沿（环缝宽 0.168，剖面才看得见）*/
+  rCowl:1.055, rCowlO:0.472, rCowlIn:0.448, /* 扩张段唇口（向下游张一小段就结束） */
+  rCore:0.310, yTip:0.500, rTip:0.072,      /* 塞锥：喉部 0.310 → 锥尖 0.058 */
+  yInj:1.920, rNeck:0.338                   /* 喷注器面（顶盘底面）/ 穿过顶盘的颈 */
+};
+var A0_TAB=0.20;                            /* 叶瓣/支耳起始相位：避开正前方剖切缝 */
+function v2(r,y){ return new THREE.Vector2(r,y); }
+/* 环形扇块：一段有厚度的弧形凸块（叶瓣／增强块）。手写六个面 ——
+   CylinderGeometry 的开口弧片只有外表面、两端全敞，侧看就是一张纸（上一版叶瓣
+   在裙座上显成一堆斜飘的细片，就是这个原因）。 */
+function arcBlock(a0,aLen,rIn,rOut,y0,y1,mat,K){
+  var KK=K||12,P=[],i,a1,a2;
+  var fI=(typeof rIn==='function')?rIn:function(){return rIn;};
+  var fO=(typeof rOut==='function')?rOut:function(){return rOut;};
+  function pt(o,y,a){var r=o?fO(y):fI(y);return [Math.cos(a)*r,y,Math.sin(a)*r];}
+  function quad(p,q,s,t){
+    P.push(p[0],p[1],p[2], q[0],q[1],q[2], s[0],s[1],s[2], t[0],t[1],t[2]);
+  }
+  for(i=0;i<KK;i++){
+    a1=a0+aLen*i/KK; a2=a0+aLen*(i+1)/KK;
+    quad(pt(1,y0,a1),pt(1,y0,a2),pt(1,y1,a2),pt(1,y1,a1));   /* 外弧面 */
+    quad(pt(0,y0,a2),pt(0,y0,a1),pt(0,y1,a1),pt(0,y1,a2));   /* 内弧面 */
+    quad(pt(0,y1,a1),pt(1,y1,a1),pt(1,y1,a2),pt(0,y1,a2));   /* 顶面 */
+    quad(pt(0,y0,a2),pt(1,y0,a2),pt(1,y0,a1),pt(0,y0,a1));   /* 底面 */
+  }
+  quad(pt(0,y0,a0),pt(1,y0,a0),pt(1,y1,a0),pt(0,y1,a0));     /* 端面 1 */
+  a1=a0+aLen;
+  quad(pt(1,y0,a1),pt(0,y0,a1),pt(0,y1,a1),pt(1,y1,a1));     /* 端面 2 */
+  var g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(P),3));
+  g.computeVertexNormals();
+  return new THREE.Mesh(g,mat);
+}
+
+/* 外轮廓：底环直边 → 外撇裙座 → 近直筒身 → 顶盘（水平跳出） */
+function aeOuter(y){
+  var u;
+  if(y<=0.16)return AE.rPad;
+  if(y<=AE.yBody0){
+    u=Math.pow((y-0.16)/(AE.yBody0-0.16),0.70);
+    return AE.rPad+(AE.rBody0-AE.rPad)*u;
+  }
+  if(y<=AE.yBody1){
+    u=(y-AE.yBody0)/(AE.yBody1-AE.yBody0);
+    return AE.rBody0+(AE.rBody1-AE.rBody0)*u;
+  }
+  return AE.rDeck;
+}
+/* ==== 三明治壁：内皮 / 通道带 / 外皮（2026-11-13 中档重做）====
+   壁厚 = aeOuter - aeInner = 0.197（外径 11.4%），拆成
+     内皮 0.035 ＋ 通道带 0.120 ＋ 外皮 0.042
+   通道带被 0.033 的环肋按 0.095 的节距隔成一格一格（格高 0.062）。
+   剖开时 aeBands 在格内吐【两条带】、在肋上吐【一条整带】⇒ 断面上就是一排方孔，
+   这是原版照片里最强的签名。上一版一条 Lathe 把 0.117 全填实，剖面只能是块板。 */
+var tw={inT:0.055, outT:0.072, ribW:0.022, pitch:0.072, y0:0.745, y1:1.840};  /* 压密后 15 格方孔 */
+function wI1(y){ return aeInner(y)+tw.inT; }      /* 内皮外表面＝通道内壁 */
+function wI2(y){ return aeOuter(y)-tw.outT; }     /* 外皮内表面＝通道外壁 */
+function chRib(y){                                 /* 该高度是否落在环肋上 */
+  if(y<tw.y0-1e-9||y>tw.y1+1e-9)return false;
+  var u=(y-tw.y0)%tw.pitch;
+  return u<tw.ribW;
+}
+
+/* 壳体内表面：底环内沿 → 裙座内壁 → 筒壁内壁 */
+function aeInner(y){
+  var u;
+  if(y<=0.16)return AE.rPadIn;
+  if(y<=AE.yBody1){
+    u=(y-0.16)/(AE.yBody1-0.16);
+    return AE.rPadIn+(AE.rIn-AE.rPadIn)*Math.min(1,u*4.0);
+  }
+  return AE.rCore+0.002;                    /* 顶盘内孔：中心体从这儿穿上来 */
+}
+/* 中心体（塞锥 + 燃烧室内壁 + 穿越顶盘的颈） */
+function aePlug(y){
+  var u;
+  if(y<AE.yTip-1e-9||y>2.09+1e-9)return 0;
+  if(y<=AE.yTh){
+    u=(y-AE.yTip)/(AE.yTh-AE.yTip);
+    return AE.rTip+(AE.rCore-AE.rTip)*Math.pow(u,1.12);
+  }
+  if(y<=AE.yInj){
+    u=(y-AE.yTh)/(AE.yInj-AE.yTh);
+    return AE.rCore+(AE.rNose0-AE.rCore)*u;
+  }
+  u=(y-AE.yInj)/(2.09-AE.yInj);
+  return AE.rNose0+(AE.rNeck-AE.rNose0)*u;
+}
+/* 鼻锥：底 0.302 → 顶截平 0.084，母线略内凹 */
+function aeNose(y){
+  var u;
+  if(y<AE.yDeck-1e-9||y>AE.yNose+1e-9)return 0;
+  u=(y-AE.yDeck)/(AE.yNose-AE.yDeck);
+  return AE.rNose0+(AE.rNose1-AE.rNose0)*Math.pow(u,1.02);
+}
+/* 燃烧室/扩张段薄壳：外半径、内半径 */
+function aeCowlO(y){
+  if(y<AE.rCowl-1e-9||y>AE.yInj+1e-9)return 0;
+  if(y<=AE.yTh)return AE.rCowlO+(AE.rThO-AE.rCowlO)*(y-AE.rCowl)/(AE.yTh-AE.rCowl);
+  return AE.rThO+(0.640-AE.rThO)*(y-AE.yTh)/(AE.yInj-AE.yTh);   /* 顶 0.640 < 内皮 0.665，留 0.025 环缝 */
+}
+function aeCowlI(y){
+  if(y<AE.rCowl-1e-9||y>AE.yInj+1e-9)return 0;
+  if(y<=AE.yTh)return AE.rCowlIn+(0.422-AE.rCowlIn)*(y-AE.rCowl)/(AE.yTh-AE.rCowl);
+  return 0.422+(0.572-0.422)*(y-AE.yTh)/(AE.yInj-AE.yTh);
+}
+/* 某一高度上的「实心材料带」清单：[rIn,rOut] 若干条 —— 膜与剖面都吃这一份 */
+function aeBands(y){
+  var b=[],rp,co;
+  if(y<-1e-9||y>AE.H+1e-9)return b;
+  if(y<=AE.yDeck+1e-9){
+    if(y>=AE.yBody1-1e-9){
+      b.push([AE.rCore+0.002,aeOuter(y)]);          /* 顶盘下沿：中心体穿过的那段 */
+    }else{
+      /* 恒定三条带：内皮 / 通道带 / 外皮。通道格里中间那条退化成零厚（＝空腔，
+         剖面就是一个方孔）；环肋与实心段里它是满的。带数不变，膜才不会在肋边界断线。 */
+      var solid=(y<tw.y0-1e-9||y>tw.y1+1e-9)?true:chRib(y);
+      var a1=aeInner(y),a2=wI1(y),a3=wI2(y),a4=aeOuter(y);
+      b.push([a1,a2]);
+      b.push(solid?[a2,a3]:[a2,a2]);
+      b.push([a3,a4]);
+    }
+  }
+  rp=aePlug(y);        if(rp>1e-4)b.push([0,rp]);
+  co=aeCowlO(y);       if(co>1e-4)b.push([aeCowlI(y),co]);
+  if(y>AE.yDeck&&y<=AE.yNose){var rn=aeNose(y);if(rn>1e-4)b.push([0,rn]);}
+  b.sort(function(a,c){return a[0]-c[0];});
+  return b;
+}
+
+/* 剖切端面的实心断面：拿 aeBands(y)（膜与剖面共用的那一份权威材料带）逐行扫，
+   在 φ 平面上把每一层 [rIn,rOut] 连成四边形。⚠ 不能用 ShapeGeometry(母线) 一把 earcut ——
+   外罩母线是 C 形凹多边形，earcut 会把中间那圈空腔一起填实，屏上就是一面假墙。 */
+function cutCapBands(phi,mat){
+  /* 楔形缺口的两片端面：在 φ 平面上把【每一条材料带】都封成实心。
+     ⚠ 上一版只 pick 了 rIn 最大的那条（＝外皮），内皮与通道全敞着 ⇒ 缺口里是一堵
+     参差的破墙。现在按「肋边界精确插点」扫，带数一变就断开（比硬连更诚实）。 */
+  var P=[],I=[],i,q,k,kk;
+  var f=function(r,y){return [Math.sin(phi)*r,y,Math.cos(phi)*r];};
+  var ys=[],ky;
+  for(kk=0;kk<=240;kk++)ys.push(AE.H*kk/240);
+  for(ky=tw.y0;ky+tw.ribW<=tw.y1+1e-9;ky+=tw.pitch){ys.push(ky,ky+tw.ribW);}
+  ys.push(tw.y0,tw.y1,AE.yBody1,AE.yDeck,AE.yNose);
+  ys.sort(function(a,b){return a-b;});
+  var yl=[ys[0]];
+  for(kk=1;kk<ys.length;kk++)if(ys[kk]-yl[yl.length-1]>1e-5)yl.push(ys[kk]);
+  for(i=0;i<yl.length-1;i++){
+    var ya=yl[i],yb=yl[i+1];
+    var b1=aeBands(ya),b2=aeBands(yb);
+    if(b1.length!==b2.length)continue;
+    for(q=0;q<b1.length;q++){
+      var A0=b1[q][0],A1=b1[q][1],B0=b2[q][0],B1=b2[q][1];
+      if(A1-A0<1e-5&&B1-B0<1e-5)continue;
+      var p1=f(A0,ya),p2=f(A1,ya),p3=f(B1,yb),p4=f(B0,yb);
+      var base=P.length/3;
+      P.push(p1[0],p1[1],p1[2], p2[0],p2[1],p2[2], p3[0],p3[1],p3[2], p4[0],p4[1],p4[2]);
+      I.push(base,base+1,base+2, base,base+2,base+3);
+    }
+  }
+  var geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(P),3));
+  geo.setIndex(I);
+  /* ⚠ 法线必须整片统一（断面的法线就是切向 [cosφ,0,-sinφ]）。
+     交给 computeVertexNormals 逐段算的话，240 段各自的四边形法线有微小差异，
+     掠射角下明暗跳变 —— 缺口里那片"马赛克碎块"就是这么来的。 */
+  var nrm=new Float32Array(P.length);
+  for(i=0;i<P.length;i+=3){nrm[i]=Math.cos(phi);nrm[i+1]=0;nrm[i+2]=-Math.sin(phi);}
+  geo.setAttribute('normal',new THREE.BufferAttribute(nrm,3));
+  return new THREE.Mesh(geo,mat);
+}
+
+function buildAeroBody(){
+  var g=G3.wallG,o,i;
+  while(g.children.length){o=g.children.pop();if(o.geometry)o.geometry.dispose();if(o.material)o.material.dispose();}
+  /* 回转面在 θ=start 与 θ=start+2π 两处顶点不合并、法线不连续，屏上就是一条竖直亮/暗线。
+     不剖切时把这条缝转到【背面】(start+π)，剖切时仍让缺口正对镜头(0.42 rad≈+z 前右)。 */
+  var gapHalf=G3.cut?Math.PI/3:0, len=Math.PI*2-2*gapHalf,
+      start=G3.cut?(0.42+2*gapHalf):(0.42+Math.PI), SEG=112;
+  /* 楔形缺口那一扇区里「没有壁」：支耳、叶瓣、壁内冷却槽都要跟着让开，
+     否则剖切一开，缺口处会冒出一圈悬空的螺栓柱和一把裸管（上一版就是这样）。 */
+  var inWall=function(ph){ return (!G3.cut)||Math.abs(angDiff(ph,start+len/2))<=len/2; };
+  var matWall=new THREE.MeshStandardMaterial({color:0x9a6437,metalness:0.44,roughness:0.62,side:THREE.DoubleSide});
+  var matFin =new THREE.MeshStandardMaterial({color:0xa26b3c,metalness:0.46,roughness:0.60,side:THREE.DoubleSide});
+  var matCore=new THREE.MeshStandardMaterial({color:0xa8703e,metalness:0.46,roughness:0.58,side:THREE.DoubleSide});
+  var matDeck=new THREE.MeshStandardMaterial({color:0xac7442,metalness:0.44,roughness:0.58,side:THREE.DoubleSide});
+  var matLip =new THREE.MeshStandardMaterial({color:0xba8452,metalness:0.58,roughness:0.40,side:THREE.DoubleSide});
+  var matDark=new THREE.MeshStandardMaterial({color:0x2b1a0e,metalness:0.22,roughness:0.94,side:THREE.DoubleSide});
+
+  /* ① 外罩 + 顶盘：一条闭合母线（底环 → 裙座 → 筒身 → 盘缘 → 盘顶 → 内孔 → 内壁 → 回底）
+        ⚠ 拐角必须【补重复点】做硬边，否则 Lathe 会把台肩抹成鼓起的圆肩（上一版踩过）。 */
+  var matRib=new THREE.MeshStandardMaterial({color:0xa06a3a,metalness:0.46,roughness:0.60,side:THREE.DoubleSide});
+  /* ⚠ 燃烧室壳必须单独一档暗色：它被剖开后内表面正对镜头，用与壁同色的亮铜
+     会在腔内糊成"一片挡板"（这一版差点又栽在这儿）。 */
+  var matCowl=new THREE.MeshStandardMaterial({color:0x8a5a30,metalness:0.34,roughness:0.78,side:THREE.DoubleSide});
+  /* 外皮筒：外轮廓 → 顶面内折到 wI2 → 沿 wI2 下行 → 底环顶面 → 内壁回底 */
+  var bp=[v2(AE.rPadIn,0),v2(AE.rPad,0),v2(AE.rPad,AE.yPad),v2(AE.rPad,AE.yPad),v2(AE.rPad,0.16)];
+  for(i=1;i<=9;i++){var ys=0.16+(AE.yBody0-0.16)*i/9;bp.push(v2(aeOuter(ys),ys));}
+  bp.push(v2(AE.rBody0,AE.yBody0),v2(AE.rBody0,AE.yBody0));
+  for(i=1;i<=4;i++){var yb=AE.yBody0+(AE.yBody1-AE.yBody0)*i/4;bp.push(v2(aeOuter(yb),yb));}
+  bp.push(v2(AE.rBody1,AE.yBody1),v2(AE.rBody1,AE.yBody1));
+  bp.push(v2(wI2(AE.yBody1),AE.yBody1));
+  for(i=1;i<=10;i++){var yi=AE.yBody1-(AE.yBody1-0.16)*i/10;bp.push(v2(wI2(yi),yi));}
+  bp.push(v2(AE.rPadIn,0.16),v2(AE.rPadIn,0));
+  g.add(new THREE.Mesh(new THREE.LatheGeometry(bp,SEG,start,len),matWall));
+
+  /* 内皮筒：外表面 wI1、内表面 aeInner，上下封边（薄环筒，不是实心） */
+  var ip=[v2(aeInner(0.16),0.16),v2(wI1(0.16),0.16)];
+  for(i=1;i<=12;i++){var yi2=0.16+(1.912-0.16)*i/12;ip.push(v2(wI1(yi2),yi2));}
+  ip.push(v2(wI1(1.912),1.912),v2(aeInner(1.912),1.912));
+  for(i=11;i>=0;i--){var yi3=0.16+(1.912-0.16)*i/12;ip.push(v2(aeInner(yi3),yi3));}
+  ip.push(v2(aeInner(0.16),0.16));
+  g.add(new THREE.Mesh(new THREE.LatheGeometry(ip,SEG,start,len),matCore));
+
+  /* 顶盘：一整块实心环盘（内孔 rNeck → 外缘 rDeck，厚 0.19），压在筒顶 */
+  var dp=[v2(AE.rNeck,AE.yBody1),v2(AE.rDeck,AE.yBody1),v2(AE.rDeck,AE.yBody1),
+          v2(AE.rDeck,AE.yDeck),v2(AE.rDeck,AE.yDeck),
+          v2(AE.rNeck,AE.yDeck),v2(AE.rNeck,AE.yDeck),v2(AE.rNeck,AE.yBody1)];
+  g.add(new THREE.Mesh(new THREE.LatheGeometry(dp,SEG,start,len),matDeck));
+
+  /* 环肋：把通道带隔成一格格方孔。段数 56 —— arcBlock 默认 12 段整圈会切成多边形 */
+  var ribF=function(y){return wI1(y);}, ribG=function(y){return wI2(y);};
+  g.add(arcBlock(start,len,ribF,ribG,0.16,tw.y0,matRib,56));            /* 裙座段填实 */
+  g.add(arcBlock(start,len,ribF,ribG,tw.y1,AE.yBody1,matRib,56));       /* 顶盘下封环 */
+  for(var ky=tw.y0;ky+tw.ribW<=tw.y1+1e-9;ky+=tw.pitch){
+    g.add(arcBlock(start,len,ribF,ribG,ky,ky+tw.ribW,matRib,56));
+  }
+  /* 通道暗衬：贴着通道内壁的一圈深色筒面。没有它，从方孔望进去看到的是被灯照亮的
+     对面壁，孔就显成"亮窗框"；加上之后孔才是【黑的口】，与原版照片一致。 */
+  var lp=[];for(i=0;i<=14;i++){var yl2=0.745+(1.84-0.745)*i/14;lp.push(v2(wI1(yl2)+0.004,yl2));}
+  var lin=new THREE.Mesh(new THREE.LatheGeometry(lp,64,start,len),
+    new THREE.MeshStandardMaterial({color:0x3a2414,metalness:0.20,roughness:0.92,side:THREE.DoubleSide}));
+  g.add(lin);
+
+  /* 内腔的径向加强肋 + 三道环向腰带：原版剖开后腔内是一格一格的，不是一片空。
+     肋是薄板（径向长 × 0.016 厚），按 θ 均布；落在楔形缺口里的整根不做。 */
+  /* 肋：从【内壁伸进来的短肋】，密排 44 片 —— 不是从锥面通到壁的长隔板。
+     ⚠ 长隔板在正视剖面里必然有一片正对镜头，0.30×0.62 的大面糊在中央，
+     读起来就是“挡板”。短肋只占腔宽 1/3，且 44 片密排，屏上是一圈梳齿。 */
+  var nR=28, rP1=aeInner(1.32)-0.026, rL=0.158, rP0=rP1-rL, rM=(rP0+rP1)/2;
+  for(i=0;i<nR;i++){
+    var ar=(i+0.5)/nR*Math.PI*2+A0_TAB;
+    if(!inWall(ar-0.02)||!inWall(ar+0.02))continue;
+    var rib2=new THREE.Mesh(new THREE.BoxGeometry(rL,0.62,0.009),matFin);
+    rib2.position.set(Math.cos(ar)*rM,1.32,Math.sin(ar)*rM);
+    rib2.rotation.y=-ar;
+    g.add(rib2);
+  }
+  /* ⚠ 不再加环向腰带：整圈弧块在大腔里读成两块"托盘"，原版照片里腔内只有径向肋。 */
+
+  /* ② 中心体：塞锥（尖朝下）→ 燃烧室内壁 → 穿越顶盘的颈 */
+  var cp=[v2(0,AE.yTip),v2(AE.rTip,AE.yTip),v2(AE.rTip,AE.yTip)];
+  for(i=1;i<=26;i++){var yc=AE.yTip+(AE.yTh-AE.yTip)*i/26;cp.push(v2(aePlug(yc),yc));}
+  for(i=1;i<=8;i++){var yc2=AE.yTh+(AE.yInj-AE.yTh)*i/8;cp.push(v2(aePlug(yc2),yc2));}
+  for(i=1;i<=3;i++){var uu=i/3;cp.push(v2(AE.rNose0+(AE.rNeck-AE.rNose0)*uu,AE.yInj+(2.09-AE.yInj)*uu));}
+  cp.push(v2(AE.rNeck,2.09),v2(AE.rNeck,2.09),v2(0,2.09));
+  g.add(new THREE.Mesh(new THREE.LatheGeometry(cp,SEG,start,len),matCore));
+
+  /* ③ 鼻锥（截平顶） */
+  var np=[v2(0,AE.yNose),v2(AE.rNose1,AE.yNose),v2(AE.rNose1,AE.yNose)];
+  for(i=1;i<=14;i++){var yn=AE.yNose+(AE.yDeck-AE.yNose)*i/14;np.push(v2(aeNose(yn),yn));}
+  /* ⚠ 锥底与盘面交界必须补重复点做硬边：不补的话 Lathe 把侧面法线与盘面平均，
+     锥根被抹成一圈「鼓起再收进去」的喇叭口，俯视就是个火山口。 */
+  np.push(v2(AE.rNose0,AE.yDeck),v2(AE.rNose0,AE.yDeck),v2(0,AE.yDeck));
+  g.add(new THREE.Mesh(new THREE.LatheGeometry(np,SEG,start,len),matCore));
+
+  /* ④ 燃烧室壳 + 扩张段短唇：一圈薄环壁（剖面里就是"两片带竖槽的厚壁"之间那层） */
+  var wp=[v2(0.640,AE.yInj),v2(0.640,AE.yInj)];
+  for(i=1;i<=8;i++){var yw=AE.yInj+(AE.yTh-AE.yInj)*i/8;wp.push(v2(aeCowlO(yw),yw));}
+  for(i=1;i<=5;i++){var yw2=AE.yTh+(AE.rCowl-AE.yTh)*i/5;wp.push(v2(aeCowlO(yw2),yw2));}
+  wp.push(v2(AE.rCowlO,AE.rCowl),v2(AE.rCowlO,AE.rCowl));
+  wp.push(v2(AE.rCowlIn,AE.rCowl),v2(AE.rCowlIn,AE.rCowl));
+  for(i=1;i<=5;i++){var yw3=AE.rCowl+(AE.yTh-AE.rCowl)*i/5;wp.push(v2(aeCowlI(yw3),yw3));}
+  for(i=1;i<=8;i++){var yw4=AE.yTh+(AE.yInj-AE.yTh)*i/8;wp.push(v2(aeCowlI(yw4),yw4));}
+  wp.push(v2(0.572,AE.yInj),v2(0.640,AE.yInj));
+  g.add(new THREE.Mesh(new THREE.LatheGeometry(wp,SEG,start,len),matCowl));
+
+  /* ④b 燃烧室内壁的再生冷却槽：32 条沿母线的浅槽。
+     ⚠ 这层壳剖开后内表面正对镜头，是一片纯色大曲面 —— 不给纹理就读成"挡板"。
+     加了竖槽之后它才读得出是"带冷却通道的燃烧室壁"。 */
+  var gP=[],gN=[],gC=[],gI=[],gp=null;
+  for(i=0;i<20;i++){
+    var ag2=i/20*Math.PI*2+A0_TAB*0.5;gp=null;
+    if(!inWall(ag2))continue;
+    for(var kg=0;kg<=16;kg++){
+      var yg2=1.075+(2.045-1.075)*kg/16, rg2=Math.max(0.02,aeCowlI(yg2)-0.0075);
+      var pg2=new THREE.Vector3(Math.sin(ag2)*rg2,yg2,Math.cos(ag2)*rg2);
+      if(gp)pushTube(gP,gN,gC,gI,gp,pg2,0.0095,(i%4===0)?[0.44,0.27,0.14]:[0.40,0.24,0.12]);
+      gp=pg2;
+    }
+  }
+  if(gI.length){
+    var gg=new THREE.BufferGeometry();setGeo(gg,gP,gN,gC,gI);
+    g.add(new THREE.Mesh(gg,new THREE.MeshStandardMaterial({vertexColors:true,metalness:0.30,roughness:0.82,side:THREE.DoubleSide})));
+  }
+
+  /* ⑤ 唇口加强环：扩张段末端那道真实存在的厚边 */
+  var lipR=(AE.rCowlO+AE.rCowlIn)/2;
+  g.add(arcBlock(start,len,lipR-0.020,lipR+0.020,AE.rCowl-0.020,AE.rCowl+0.020,matLip));
+  /* ⑤b 裙座上沿三道水平波纹肋（照片里叶瓣上方那一圈细环）＋ 顶盘下沿一道凸缘 */
+  /* ⚠ 加强环一律用 arcBlock 扇形段、按 start/len 生成，不用整圈 Torus：
+     整圈环不吃楔形缺口，剖切一开就变成悬在空中的铁丝圈（上一版就是这么露的）。 */
+  [0.545,0.588,0.631].forEach(function(yy){
+    var rb=aeOuter(yy)+0.010;
+    g.add(arcBlock(start,len,rb-0.011,rb+0.011,yy-0.011,yy+0.011,matFin));
+  });
+  /* ⚠ 顶盘下沿那道小凸缘已删：楔形缺口处它会被截成一段悬空的 C 形钩，
+     远看像破片；盘缘本身够厚，有没有这道线视觉上无差别。 */
+
+  /* ⑥ 顶盘：盘缘一圈下垂支耳（每只一个竖向钻孔）＋ 盘面一个漏斗形孔座 */
+  var nLug=10;
+  for(i=0;i<nLug;i++){
+    var al=i/nLug*Math.PI*2+A0_TAB, lr=AE.rDeck-0.030;   /* 支耳贴在盘缘内侧、只露一小截，别飘到盘外 */
+    if(!inWall(al-0.10)||!inWall(al+0.10))continue;
+    var lug=new THREE.Mesh(new THREE.BoxGeometry(0.130,0.140,0.064),matDeck);
+    lug.position.set(Math.cos(al)*lr,AE.yBody1-0.055,Math.sin(al)*lr);
+    lug.rotation.y=Math.PI/2-al;               /* 局部 +x 转到切向 */
+    g.add(lug);
+    var bore=new THREE.Mesh(new THREE.CylinderGeometry(0.024,0.024,0.105,12),matDark);
+    bore.position.set(Math.cos(al)*lr,AE.yBody1-0.055,Math.sin(al)*lr);g.add(bore);
+  }
+  var ab=A0_TAB+0.92;                          /* 漏斗孔座（照片里最显眼那个凹孔） */
+  if(!inWall(ab-0.13)||!inWall(ab+0.13))ab=-99;  /* 落在缺口里整只不做，免得悬空 */
+  var fun=new THREE.Mesh(new THREE.CylinderGeometry(0.118,0.046,0.070,22,1,true),matDeck);
+  if(ab>-90){
+    fun.position.set(Math.cos(ab)*0.585,AE.yDeck+0.028,Math.sin(ab)*0.585);g.add(fun);
+    var funB=new THREE.Mesh(new THREE.CylinderGeometry(0.046,0.046,0.012,18),matDark);
+    funB.position.set(Math.cos(ab)*0.585,AE.yDeck+0.012,Math.sin(ab)*0.585);g.add(funB);
+  }
+  for(i=0;i<2;i++){                            /* 盘面两个小孔座 */
+    var aq=A0_TAB+2.35+i*1.15;
+    if(!inWall(aq-0.07)||!inWall(aq+0.07))continue;
+    var seat=new THREE.Mesh(new THREE.CylinderGeometry(0.048,0.052,0.026,18),matDeck);
+    seat.position.set(Math.cos(aq)*0.80,AE.yDeck+0.010,Math.sin(aq)*0.80);g.add(seat);
+    var sbb=new THREE.Mesh(new THREE.CylinderGeometry(0.021,0.021,0.014,12),matDark);
+    sbb.position.set(Math.cos(aq)*0.80,AE.yDeck+0.020,Math.sin(aq)*0.80);g.add(sbb);
+  }
+
+  /* ⑥c 盘面成对矩形窗口 + 凸台 —— 原版顶盘上最抢眼的一圈"方窗"（集液腔／阀座开口）。
+     ⚠ 盘体是 Lathe 实体，真挖孔要换 CSG；这里用「压暗的面板 + 高出 0.014 的亮边框」
+     造凹陷错觉：俯视读成真孔，剖面不受影响（全在盘面之上）。 */
+  var nWin=8, wW=0.132, wL=0.120, wGap=0.136;
+  for(i=0;i<nWin;i++){
+    var aw=i/nWin*Math.PI*2+A0_TAB+0.34;
+    if(!inWall(aw-0.30)||!inWall(aw+0.30))continue;
+    for(var sd=-1;sd<=1;sd+=2){
+      var aw2=aw+sd*wGap, rw=0.706;
+      var cxp=Math.cos(aw2)*rw, czp=Math.sin(aw2)*rw;
+      var ux=Math.sin(aw2), uz=-Math.cos(aw2);     /* 局部 x ＝ 切向 */
+      var rx=Math.cos(aw2), rz=Math.sin(aw2);      /* 局部 z ＝ 径向 */
+      /* 窗心：深色面板，顶面压到边框下 0.012 */
+      var pan=new THREE.Mesh(new THREE.BoxGeometry(wW,0.016,wL),matDark);
+      pan.position.set(cxp,AE.yDeck+0.003,czp);pan.rotation.y=Math.PI/2-aw2;g.add(pan);
+      /* 四边框（切向两条 + 径向两条），亮铜、高出盘面 */
+      for(var q=-1;q<=1;q+=2){
+        var f1=new THREE.Mesh(new THREE.BoxGeometry(wW+0.046,0.030,0.024),matDeck);
+        f1.position.set(cxp+rx*(q*(wL/2+0.012)),AE.yDeck+0.014,czp+rz*(q*(wL/2+0.012)));
+        f1.rotation.y=Math.PI/2-aw2;g.add(f1);
+        var f2=new THREE.Mesh(new THREE.BoxGeometry(0.024,0.030,wL+0.040),matDeck);
+        f2.position.set(cxp+ux*(q*(wW/2+0.012)),AE.yDeck+0.014,czp+uz*(q*(wW/2+0.012)));
+        f2.rotation.y=Math.PI/2-aw2;g.add(f2);
+      }
+    }
+    /* 两窗之间一只矩形凸台（螺丝座／管接头底座），带一个向下的小沉孔 */
+    var bp2=new THREE.Mesh(new THREE.BoxGeometry(0.056,0.040,0.080),matWall);
+    var cxb=Math.cos(aw)*rw, czb=Math.sin(aw)*rw;
+    bp2.position.set(cxb,AE.yDeck+0.018,czb);bp2.rotation.y=Math.PI/2-aw;g.add(bp2);
+    var bh=new THREE.Mesh(new THREE.CylinderGeometry(0.017,0.017,0.020,12),matDark);
+    bh.position.set(cxb,AE.yDeck+0.036,czb);g.add(bh);
+  }
+
+  /* ⑦ 裙座叶瓣：14 片有厚度的弧形柱块（内弧随锥面走，上端不悬空、下端不埋进壳里），
+        每片正面一个长圆孔 + 上下两道孔口凸唇 —— 照片里最抓眼的特征就是这一圈"带孔立柱" */
+  var nFin=14, yF0=0.165, yF1=0.505, finW=2*Math.PI/nFin*0.60;
+  for(i=0;i<nFin;i++){
+    var af=i/nFin*Math.PI*2+A0_TAB+0.14;
+    if(!inWall(af-0.16)||!inWall(af+0.16))continue;
+    g.add(arcBlock(af-finW/2,finW,
+      function(y){return aeOuter(y)-0.006;},
+      function(y){return aeOuter(y)+0.050;},yF0,yF1,matFin));
+    var hr=aeOuter(0.335)+0.047;
+    var hole=new THREE.Mesh(new THREE.CylinderGeometry(0.033,0.033,0.250,14),matDark);
+    hole.position.set(Math.cos(af)*hr,0.335,Math.sin(af)*hr);g.add(hole);
+    var rimT=new THREE.Mesh(new THREE.CylinderGeometry(0.046,0.042,0.034,14),matFin);
+    rimT.position.set(Math.cos(af)*(hr-0.008),0.448,Math.sin(af)*(hr-0.008));g.add(rimT);
+    var rimB=new THREE.Mesh(new THREE.CylinderGeometry(0.042,0.046,0.034,14),matFin);
+    rimB.position.set(Math.cos(af)*(hr-0.008),0.222,Math.sin(af)*(hr-0.008));g.add(rimB);
+  }
+
+  /* ⑧ 菱形点阵 + 上下两道箍 */
+  buildAeroLattice(start,len);
+
+  /* ⑨ 底部钢环盘（照片里整机就站在一块亮银色的圆环基板上） */
+  var plate=new THREE.Mesh(new THREE.CylinderGeometry(AE.rPad+0.062,AE.rPad+0.062,0.012,96,1,true),
+    new THREE.MeshStandardMaterial({color:0x93a0ad,metalness:0.78,roughness:0.34,side:THREE.DoubleSide}));
+  plate.position.y=0.006;g.add(plate);
+  var plateTop=new THREE.Mesh(new THREE.RingGeometry(AE.rPadIn-0.030,AE.rPad+0.062,96,1),
+    new THREE.MeshStandardMaterial({color:0xa6b2be,metalness:0.72,roughness:0.36,side:THREE.DoubleSide}));
+  plateTop.rotation.x=-Math.PI/2;plateTop.position.y=0.013;g.add(plateTop);
+
+  /* ⑩ 楔形剖切的两片端面：把四条母线各自封成实心断面 */
+  if(G3.cut){
+    [start,start+len].forEach(function(ph){
+      g.add(cutCapBands(ph,matCore));
+    });
+  }
+
+  secApply();
+}
+
+/* 外蒙皮的交叉菱形：两族反向斜螺旋管，交出来就是一格一格的 X。
+   比例是照照片数出来的：周向 32 格（每族 16 条）、纵向约 6 排，菱形接近正方，
+   斜筋与水平约 49°。上一版 fam=16 只出 16 格、纵向 3 排，格子大了整整一倍。 */
+function buildAeroLattice(start,len){
+  var P=[],N=[],C=[],I=[],f,i,k;
+  var colA=[0.70,0.47,0.27], colB=[0.62,0.40,0.23];
+  var fam=36, y0=0.730, y1=1.900, turns=0.172, K=30, rad=0.0175;
+  for(f=0;f<2;f++){
+    for(i=0;i<fam;i++){
+      var ph0=i/fam*Math.PI*2+(f?Math.PI/fam:0), prev=null;
+      for(k=0;k<=K;k++){
+        var u=k/K, y=y0+(y1-y0)*u;
+        var ph=ph0+(f?-1:1)*turns*Math.PI*2*u;
+        var vis=(!G3.cut)||Math.abs(angDiff(ph,start+len/2))<=len/2-0.12;
+        var R=aeOuter(y)+0.012;
+        var p=new THREE.Vector3(Math.sin(ph)*R,y,Math.cos(ph)*R);
+        if(vis&&prev)pushTube(P,N,C,I,prev,p,rad,f?colB:colA);
+        prev=vis?p:null;
+      }
+    }
+  }
+  var geo=new THREE.BufferGeometry();
+  setGeo(geo,P,N,C,I);
+  G3.wallG.add(new THREE.Mesh(geo,new THREE.MeshStandardMaterial({vertexColors:true,metalness:0.42,roughness:0.62})));
+  /* 上下两道箍：点阵不是凭空长在蒙皮上的，两头得有实心环收口 */
+  var bandMat=new THREE.MeshStandardMaterial({color:0xb07a46,metalness:0.52,roughness:0.46});
+  [y0-0.035,y1-0.012].forEach(function(yy){
+    var rb=aeOuter(yy)+0.014;
+    G3.wallG.add(arcBlock(start,len,rb-0.016,rb+0.018,yy-0.020,yy+0.020,bandMat));
+  });
+}
+
+function buildAeroHW(){
+  var g=G3.hwG,o,i;
+  while(g.children.length){o=g.children.pop();if(o.geometry)o.geometry.dispose();if(o.material)o.material.dispose();}
+  var CU=0xb98455,CU_D=0x8a5530,DARK=0x2b1a0e;
+  /* 接口/凸台也要让开楔形缺口，否则剖切一开，缺口里悬着几个无主的凸台 */
+  var gH=G3.cut?Math.PI/3:0, cL=Math.PI*2-2*gH, cS=G3.cut?(0.42+2*gH):(0.42+Math.PI);
+  var hwOK=function(a){ return (!G3.cut)||Math.abs(angDiff(a,cS+cL/2))<=cL/2; };
+  /* ① 筒身左侧那一组圆形接口（照片里最显眼：一个带同心环的大口 + 两根短管） */
+  var aIn=Math.PI*0.98, yIn=1.16, rIn0=aeOuter(yIn);
+  /* ⚠ 兜底不能只 +2.0：缺口是 144°~384°，+2.0 从 176° 落到 291° 又在缺口里，
+     于是这只接口悬在缺口正中。改成小步试探，直到落到保留侧。 */
+  var tries=0;while(!hwOK(aIn)&&tries++<30){aIn+=0.24;}
+  var base=new THREE.Mesh(new THREE.CylinderGeometry(0.150,0.158,0.045,28),
+    new THREE.MeshStandardMaterial({color:CU_D,metalness:0.50,roughness:0.50}));
+  base.position.set(Math.cos(aIn)*(rIn0+0.010),yIn,Math.sin(aIn)*(rIn0+0.010));
+  base.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),new THREE.Vector3(Math.cos(aIn),0,Math.sin(aIn)));
+  g.add(base);
+  var ring2=new THREE.Mesh(new THREE.CylinderGeometry(0.112,0.120,0.038,26),
+    new THREE.MeshStandardMaterial({color:CU,metalness:0.55,roughness:0.42}));
+  ring2.position.set(Math.cos(aIn)*(rIn0+0.040),yIn,Math.sin(aIn)*(rIn0+0.040));
+  ring2.quaternion.copy(base.quaternion);g.add(ring2);
+  var pipe=new THREE.Mesh(new THREE.CylinderGeometry(0.052,0.058,0.150,20),
+    new THREE.MeshStandardMaterial({color:CU,metalness:0.56,roughness:0.40}));
+  pipe.position.set(Math.cos(aIn)*(rIn0+0.108),yIn,Math.sin(aIn)*(rIn0+0.108));
+  pipe.quaternion.copy(base.quaternion);g.add(pipe);
+  var mouth=new THREE.Mesh(new THREE.CylinderGeometry(0.040,0.040,0.012,18),
+    new THREE.MeshStandardMaterial({color:DARK,metalness:0.2,roughness:0.9}));
+  mouth.position.set(Math.cos(aIn)*(rIn0+0.184),yIn,Math.sin(aIn)*(rIn0+0.184));
+  mouth.quaternion.copy(base.quaternion);g.add(mouth);
+  /* ② 上方两根小凸管（照片里在接口左上、右上各一截） */
+  for(i=0;i<2;i++){
+    var aS=aIn+(i?0.42:-0.46), yS=1.55+i*0.10, rS=aeOuter(yS);
+    if(!hwOK(aS))continue;
+    var sp=new THREE.Mesh(new THREE.CylinderGeometry(0.046,0.052,0.115,18),
+      new THREE.MeshStandardMaterial({color:CU_D,metalness:0.50,roughness:0.50}));
+    sp.position.set(Math.cos(aS)*(rS+0.042),yS,Math.sin(aS)*(rS+0.042));
+    sp.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),new THREE.Vector3(Math.cos(aS),0,Math.sin(aS)));
+    g.add(sp);
+    var sb=new THREE.Mesh(new THREE.CylinderGeometry(0.028,0.028,0.014,14),
+      new THREE.MeshStandardMaterial({color:DARK,metalness:0.2,roughness:0.9}));
+    sb.position.set(Math.cos(aS)*(rS+0.102),yS,Math.sin(aS)*(rS+0.102));
+    sb.quaternion.copy(sp.quaternion);g.add(sb);
+  }
+  /* ③ 裙座背后两根推进剂入口（从下方斜插进裙座，真机就在这里） */
+  for(i=0;i<2;i++){
+    var a2=(i===0?0.58:3.72), dx=Math.cos(a2),dz=Math.sin(a2), tilt=0.62;
+    if(!hwOK(a2))continue;
+    var dir=new THREE.Vector3(dx*Math.cos(tilt),-Math.sin(tilt),dz*Math.cos(tilt)).normalize();
+    var pB=new THREE.Vector3(dx*0.70,0.46,dz*0.70);
+    var tp=new THREE.Mesh(new THREE.CylinderGeometry(0.058,0.070,0.26,18),
+      new THREE.MeshStandardMaterial({color:CU,metalness:0.54,roughness:0.44}));
+    tp.position.copy(pB.clone().addScaledVector(dir,0.13));
+    tp.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir);g.add(tp);
+    var tm=new THREE.Mesh(new THREE.CylinderGeometry(0.040,0.040,0.014,16),
+      new THREE.MeshStandardMaterial({color:DARK,metalness:0.2,roughness:0.9}));
+    tm.position.copy(pB.clone().addScaledVector(dir,0.262));
+    tm.quaternion.copy(tp.quaternion);g.add(tm);
+  }
+  /* ④ 喷注器：顶盘底面（y=yInj）一圈朝下的喷注单元（剖面里能看到它们）
+        ⚠ 必须挂在 wallG 之外但同样吃裁剪面 —— hwG 的材质由 secApply 统一挂 */
+  var nI=16;
+  for(i=0;i<nI;i++){
+    var ai=i/nI*Math.PI*2+A0_TAB*0.5, ri=0.545;
+    var pin=new THREE.Mesh(new THREE.CylinderGeometry(0.030,0.024,0.075,12),
+      new THREE.MeshStandardMaterial({color:0x8f5c33,metalness:0.5,roughness:0.55}));
+    pin.position.set(Math.cos(ai)*ri,AE.yInj-0.038,Math.sin(ai)*ri);g.add(pin);
+    var po=new THREE.Mesh(new THREE.CylinderGeometry(0.013,0.013,0.010,10),
+      new THREE.MeshStandardMaterial({color:0x140c06,metalness:0.2,roughness:0.95}));
+    po.position.set(Math.cos(ai)*ri,AE.yInj-0.077,Math.sin(ai)*ri);g.add(po);
+  }
+  secApply();
+}
+
+/* 气动塞的冷却：筒壁里 n 条【沿母线的直槽】（原版剖面上就是那一排排"梯子孔"，不是斜螺旋）
+   ＋ 塞锥内部 24 条顺着母线的通道 */
+function aeChannels(force){
+  var now=performance.now();
+  var key=['aero',G3.nCh,G3.turns,G3.cut?1:0].join('|');   /* ⚠ cut 必须进 key：不进就沿用合拢态的 24 条满圈管，剖开缺口里一把裸管 */
+  if(!force&&(now-G3.lastBuild<130||key===G3.builtKey))return;
+  G3.lastBuild=now;G3.builtKey=key;
+  var P=[],N=[],C=[],I=[],i,k,f;
+  var CO=[0.42,0.23,0.11],HI=[0.60,0.33,0.15];
+  var n=Math.max(24,G3.nCh), STEP=30;
+  /* 楔形缺口里不长冷却槽 —— 与 buildAeroBody 里同一套判据，缺口处才不会冒出一把裸管 */
+  var gHalf=G3.cut?Math.PI/3:0, cLen=Math.PI*2-2*gHalf,
+      cStart=G3.cut?(0.42+2*gHalf):(0.42+Math.PI);
+  var inWall=function(ph){ return (!G3.cut)||Math.abs(angDiff(ph,cStart+cLen/2))<=cLen/2; };
+  /* ⚠ 壁内的圆管已删除：壁改成三明治后，通道带本身就是那条环向通道，
+     再塞一圈管子只会悬在空腔中央（上一版那些"裸管"就是这么来的）。 */
+  /* 塞锥的再生冷却槽：两族反向斜槽，在锥面上交成【鱼骨／人字纹】（原版剖面与实物都是这个走向，
+     一竖到底的直槽是没有的）。槽做深色半埋管：R 压到锥面内侧、只露 0.005，
+     屏上读作一条暗沟，而不是一根凸起的棱。 */
+  var nG=18, yA=0.62, yB=1.42, sweep=0.175;
+  for(f=0;f<2;f++){
+    for(i=0;i<nG;i++){
+      var pa0=i/nG*Math.PI*2+(f?Math.PI/nG:0), pre=null;
+      for(k=0;k<=26;k++){
+        var u2=k/26, y2=yA+(yB-yA)*u2;
+        var ph2=pa0+(f?-1:1)*sweep*u2;                  /* 沿母线边走边转 = 斜槽 */
+        var vis2=(!G3.cut)||Math.abs(angDiff(ph2,cStart+cLen/2))<=cLen/2;
+        var R2=Math.max(0.010,aePlug(y2)-0.0045);
+        var p2=new THREE.Vector3(Math.sin(ph2)*R2,y2,Math.cos(ph2)*R2);
+        if(vis2&&pre)pushTube(P,N,C,I,pre,p2,0.0110,(i%3===0)?HI:CO);
+        pre=vis2?p2:null;
+      }
+    }
+  }
+  setGeo(G3.chGeo,P,N,C,I);
+  G3.builtSegs=0;
+  secApply();secText();
+}
+
+/* 粒子：喷注器 → 环形燃烧室 → 喉部环缝 → 贴着塞锥面向下游膨胀 */
+function aeFlowPoint(ch,t){
+  var n=Math.max(24,G3.nCh), i=ch%n, ph=i/n*Math.PI*2;
+  var rMid=(AE.rThO+AE.rCore)/2;
+  if(t<0.30){
+    var u=t/0.30;
+    var y=(AE.yInj-0.06)+((AE.yTh+0.03)-(AE.yInj-0.06))*u;
+    var r=0.605+(rMid-0.605)*u;
+    return new THREE.Vector3(Math.sin(ph)*r,y,Math.cos(ph)*r);
+  }
+  if(t<0.42){
+    var u2=(t-0.30)/0.12, y2=(AE.yTh+0.03)-0.075*u2;
+    return new THREE.Vector3(Math.sin(ph)*rMid,y2,Math.cos(ph)*rMid);
+  }
+  var u3=(t-0.42)/0.58;
+  var y3=(AE.yTh-0.045)+((AE.yTip+0.03)-(AE.yTh-0.045))*u3;
+  var r3=aePlug(y3)+0.032;
+  return new THREE.Vector3(Math.sin(ph)*r3,y3,Math.cos(ph)*r3);
+}
+
+/* 气动塞的半透膜：横剖＝（底盘 ∪ 筒壁环 ∪ 塞锥圆盘）各自成带；竖剖＝同一条带沿高度扫 */
+function aeFace(force){
+  if(!G3.secG)return;
+  if(!SEC.axis||!SEC.face){secDrop();return;}
+  var d=secD(),key='A'+SEC.axis+'|'+d.toFixed(4);
+  if(!force&&SEC.key===key){
+    if(SEC.faceMesh)SEC.faceMesh.visible=true;
+    if(SEC.edgeMesh)SEC.edgeMesh.visible=true;
+    return;
+  }
+  SEC.key=key;
+  var P=[],I=[],L=[],i,j,bi,q,ax=SEC.axis;
+  if(ax===3){
+    if(d<-1e-6||d>AE.H+1e-6){secDrop();return;}
+    var bs=aeBands(d),S=76;
+    for(bi=0;bi<bs.length;bi++){
+      var ri=bs[bi][0],ro=bs[bi][1];
+      if(ro<1e-4)continue;
+      var base=P.length/3;
+      for(i=0;i<=S;i++){
+        var a=i/S*Math.PI*2,ca=Math.cos(a),sa=Math.sin(a);
+        P.push(ca*ri,d,sa*ri, ca*ro,d,sa*ro);
+      }
+      for(i=0;i<S;i++){var b1=base+i*2;I.push(b1,b1+2,b1+1, b1+1,b1+2,b1+3);}
+      for(i=0;i<S;i++){
+        var a1=i/S*Math.PI*2,a2=(i+1)/S*Math.PI*2;
+        L.push(Math.cos(a1)*ro,d,Math.sin(a1)*ro, Math.cos(a2)*ro,d,Math.sin(a2)*ro);
+        if(ri>1e-4)L.push(Math.cos(a1)*ri,d,Math.sin(a1)*ri, Math.cos(a2)*ri,d,Math.sin(a2)*ri);
+      }
+    }
+  }else{
+    /* 采样点＝均匀细扫 ＋【每道环肋的两条边界精确插入】。
+       不插边界的话粗扫会整条漏掉 0.033 厚的环肋，通道带就成了一条通长的槽，
+       而不是一排方孔 —— 这一版成不成，就在这几行。 */
+    var ys=[],kk,ky2;
+    for(kk=0;kk<=260;kk++)ys.push(AE.H*kk/260);
+    for(ky2=tw.y0;ky2+tw.ribW<=tw.y1+1e-9;ky2+=tw.pitch){ys.push(ky2,ky2+tw.ribW);}
+    ys.push(tw.y0,tw.y1,AE.yBody1,AE.yDeck,AE.yNose);
+    ys.sort(function(a,b){return a-b;});
+    var yl=[ys[0]];
+    for(kk=1;kk<ys.length;kk++)if(ys[kk]-yl[yl.length-1]>1e-5)yl.push(ys[kk]);
+    var M=yl.length-1, pt=function(sg,x,y){ return ax===1?[sg*x,y,d]:[d,y,sg*x]; };
+    for(i=0;i<M;i++){
+      var y1=yl[i], y2=yl[i+1];
+      var b1=aeBands(y1), b2=aeBands(y2);
+      if(b1.length!==b2.length)continue;      /* 带数变了＝跨过底盘/塞锥起点，断开比硬连更诚实 */
+      for(q=0;q<b1.length;q++){
+        var ri1=b1[q][0],ro1=b1[q][1],ri2=b2[q][0],ro2=b2[q][1];
+        var o1=Math.sqrt(Math.max(0,ro1*ro1-d*d)),o2=Math.sqrt(Math.max(0,ro2*ro2-d*d));
+        var n1=Math.sqrt(Math.max(0,ri1*ri1-d*d)),n2=Math.sqrt(Math.max(0,ri2*ri2-d*d));
+        if(o1<1e-4||o2<1e-4)continue;
+        for(j=0;j<2;j++){
+          var sg=j?-1:1;
+          var A=pt(sg,n1,y1),B=pt(sg,o1,y1),C=pt(sg,n2,y2),D=pt(sg,o2,y2);
+          var base2=P.length/3;
+          P.push(A[0],A[1],A[2], B[0],B[1],B[2], C[0],C[1],C[2], D[0],D[1],D[2]);
+          I.push(base2,base2+1,base2+2, base2+2,base2+1,base2+3);
+          if(i%2===0){
+            L.push(A[0],A[1],A[2],C[0],C[1],C[2]);
+            L.push(B[0],B[1],B[2],D[0],D[1],D[2]);
+          }
+        }
+      }
+    }
+    if(!I.length){secDrop();return;}
+  }
+  secCommit(P,I,L);
+}
+
+function setScheme(sc){
+  G3.scheme=sc;
+  var isA=(sc==='aero');
+  document.getElementById('schemeBell').className=isA?'':'pri';
+  document.getElementById('schemeAero').className=isA?'pri':'';
+  document.getElementById('vScheme').textContent=isA?'B · 环形气动塞':'A · 钟形 TKL-5';
+  document.getElementById('modeLeap').disabled=isA;
+  document.getElementById('modeTree').disabled=isA;
+  document.getElementById('gl3dMode').textContent=isA?'环形气动塞 Aerospike'
+    :(G3.mode==='leap'?'LEAP 71 原版构型':'本页分叉树构型');
+  /* 标签坐标是按钟形母线写死的，气动塞的构造位置完全不同 ⇒ 整组收起，宁可不标也别标错 */
+  if(G3.labels)G3.labels.forEach(function(l,i){
+    l.visible=isA?false:(i===7?(G3.mode==='tree'):(i===4||i===5?(G3.mode==='leap'):true));
+  });
+  O3.tgtY=isA?1.22:2.10;
+  O3.r=isA?5.15:9.6;
+  buildWall();buildHardware();rebuildChannels(true);secUpdate(true);
 }
 
 function init3D(){
@@ -943,15 +2038,23 @@ function init3D(){
   rd.setClearColor(0xfdfdfe,1);
   var sc=new THREE.Scene();
   var cam=new THREE.PerspectiveCamera(34,1,0.6,70);
-  G3.rd=rd;G3.sc=sc;G3.cam=cam;G3.cv=cv;
+  /* 正交相机：同一台机器、同一套裁剪，只是把透视换成平行投影 ⇒ 「2D 正投影」是真投影，
+     不是另画一张示意图（近大远小为 0，屏上长度可直接量比例） */
+  var camO=new THREE.OrthographicCamera(-3,3,3,-3,0.05,200);
+  rd.localClippingEnabled=true;   /* 材质级裁剪的总开关，漏了它材质上的 clippingPlanes 一律无效 */
+  G3.rd=rd;G3.sc=sc;G3.camP=cam;G3.camO=camO;G3.cam=cam;G3.cv=cv;G3.aspect=1;
   sc.add(new THREE.HemisphereLight(0xffffff,0xdbe4ee,0.95));
   var d1=new THREE.DirectionalLight(0xffffff,0.72);d1.position.set(6,10,7);sc.add(d1);
   var d2=new THREE.DirectionalLight(0xffffff,0.32);d2.position.set(-7,4,-6);sc.add(d2);
   var d3=new THREE.DirectionalLight(0xffd9b0,0.30);d3.position.set(2,-4,6);sc.add(d3);
   var inner=new THREE.PointLight(0xff8a3c,0.30,3.2);inner.position.set(0,0.35,0);sc.add(inner);
+  /* 底光：仰视（底视图）时喷管内壁全靠它，否则整片是黑的、看不出收敛到喉部 */
+  var d4=new THREE.DirectionalLight(0xffe8cf,0.42);d4.position.set(1.5,-7,3);sc.add(d4);
   var grid=new THREE.GridHelper(14,14,0xe9eef5,0xf3f6fa);grid.position.y=-0.02;sc.add(grid);
+  G3.grid=grid;
   G3.wallG=new THREE.Group();sc.add(G3.wallG);
   G3.hwG=new THREE.Group();sc.add(G3.hwG);
+  G3.secG=new THREE.Group();sc.add(G3.secG);   /* 半透膜：不挂裁剪面，否则自己把自己切掉 */
   /* 通道合并几何 */
   G3.chGeo=new THREE.BufferGeometry();
   G3.chMesh=new THREE.Mesh(G3.chGeo,new THREE.MeshStandardMaterial({
@@ -983,8 +2086,8 @@ function init3D(){
     label('燃烧室',1.42,3.62,0,'#5b6470'),
     label('喉部',1.18,2.48,0,'#b3261e'),
     label('钟形扩张段',1.55,1.15,0,'#5b6470'),
-    label('壁内螺旋通道',-1.55,3.10,0,'#a85c0d'),
-    label('接口绕流',-1.42,1.95,0,'#a85c0d'),
+    label('壁内螺旋通道',-1.56,2.34,0,'#a85c0d'),
+    label('测量端口（三层）',-1.66,3.46,0,'#a85c0d'),
     label('集流环 / 法兰',-1.48,0.30,0,'#0b6b75'),
     label('壁内分叉树',-1.55,3.10,0,'#a85c0d')
   ];
@@ -995,27 +2098,46 @@ function init3D(){
   window.addEventListener('mousemove',function(e){
     if(!dr)return;
     O3.th=dr.th-(e.clientX-dr.x)*0.007;
-    O3.ph=Math.max(0.12,Math.min(1.62,dr.ph-(e.clientY-dr.y)*0.006));
+    /* 上限原来是 1.62 rad≈93°，也就是【永远到不了模型下方】——「底视图看不到」就是这个原因。
+       现在放到 π−0.02（≈178.9°），可以一路转到下面仰视；极点留 0.02 防 lookAt 退化。 */
+    O3.ph=Math.max(0.02,Math.min(Math.PI-0.02,dr.ph-(e.clientY-dr.y)*0.006));
   });
   window.addEventListener('mouseup',function(){if(dr){dr=null;cv.style.cursor='grab';}});
   cv.addEventListener('wheel',function(e){
     e.preventDefault();O3.r=Math.max(4.2,Math.min(22,O3.r*(1+(e.deltaY>0?0.09:-0.09))));
   },{passive:false});
-  cv.addEventListener('dblclick',function(){O3.r=9.6;O3.th=0.42;O3.ph=1.05;});
+  cv.addEventListener('dblclick',function(){setView('iso');});
   G3.ready=true;
   size3D();updateCam();buildWall();buildHardware();rebuildChannels(true);
+  secUpdate(true);
 }
 function size3D(){
   if(!G3.ready)return;
   var r=G3.cv.getBoundingClientRect();
   var w=Math.max(300,r.width),h=Math.max(200,r.height||470);
   G3.rd.setSize(w,h,false);
-  G3.cam.aspect=w/h;G3.cam.updateProjectionMatrix();
+  G3.aspect=w/h;
+  G3.camP.aspect=G3.aspect;G3.camP.updateProjectionMatrix();
+  sizeOrtho();
+}
+/* 正交档：把 O3.r 折算成半高。tan17° 正是透视 34° 视场的一半 ⇒
+   「滚轮缩一档」在两种投影下看起来一样大，切投影不会突然放大/缩小。 */
+function sizeOrtho(){
+  if(!G3.camO)return;
+  var hh=Math.max(0.4,O3.r*0.3057),hw=hh*(G3.aspect||1),c=G3.camO;
+  c.left=-hw;c.right=hw;c.top=hh;c.bottom=-hh;
+  c.near=0.05;c.far=260;c.updateProjectionMatrix();
 }
 function updateCam(){
   var sp=Math.sin(O3.ph),cp=Math.cos(O3.ph);
-  G3.cam.position.set(O3.r*sp*Math.sin(O3.th),O3.r*cp+O3.tgtY,O3.r*sp*Math.cos(O3.th));
-  G3.cam.lookAt(0,O3.tgtY,0);
+  var cam=G3.ortho?G3.camO:G3.camP;
+  cam.position.set(O3.r*sp*Math.sin(O3.th),O3.r*cp+O3.tgtY,O3.r*sp*Math.cos(O3.th));
+  cam.lookAt(0,O3.tgtY,0);
+  /* 镜头钻到地面以下（看底视图）时把 14×14 网格收起来：
+     那张网就铺在 y≈0，不收的话整片挡在镜头和底面之间，屏上只剩一片白。 */
+  if(G3.grid)G3.grid.visible=(cam.position.y>0.18);
+  if(G3.ortho)sizeOrtho();
+  G3.cam=cam;
 }
 var _fm=new THREE.Object3D(),_lastT=0;
 function update3D(){
@@ -1028,7 +2150,9 @@ function update3D(){
     var f=G3.flow[i];f.t+=dt*f.v*0.55;
     if(f.t>=1){f.t=0;f.ch=Math.floor(Math.random()*120);}
     var p=null;
-    if(G3.mode==='leap'){
+    if(G3.scheme==='aero'){
+      p=aeFlowPoint(f.ch,f.t);
+    }else if(G3.mode==='leap'){
       var phi0=(f.ch%G3.nCh)/G3.nCh*Math.PI*2;
       var t=0.025+0.95*f.t;
       p=flowPoint(phi0,t);
@@ -1092,9 +2216,82 @@ document.getElementById('spin3d').addEventListener('click',function(){
  G3.spin=!G3.spin;this.className=G3.spin?'on':'';
 });
 document.getElementById('cut3d').addEventListener('click',function(){
- G3.cut=!G3.cut;this.className=G3.cut?'on':'';buildWall();rebuildChannels(true);
+ G3.cut=!G3.cut;this.className=G3.cut?'on':'';
+ /* 与平面剖面二选一：打开楔形就把滑动剖面收回「不剖」 */
+ if(G3.cut&&SEC.axis){SEC.axis=0;secUI();secFace(true);}
+ buildWall();rebuildChannels(true);
 });
-document.getElementById('reset3d').addEventListener('click',function(){O3.r=9.6;O3.th=0.42;O3.ph=1.05;O3.tgtY=2.10;});
+document.getElementById('reset3d').addEventListener('click',function(){O3.tgtY=2.10;setView('iso');});
+
+/* ---- 视角：等轴 / 正视 / 俯视（透视）＋ 正视 2D / 俯视 2D（正交） ----
+   2D 档顺手停自转：正投影还在转，屏上就永远量不到比例，那个"2D"等于白给。 */
+function setView(k){
+  G3.view=k;
+  G3.ortho=(k==='xy2d'||k==='xz2d');
+  if(k==='xy'){O3.th=0;O3.ph=Math.PI/2;O3.r=9.6;}
+  else if(k==='xy2d'){O3.th=0;O3.ph=Math.PI/2;O3.r=9.1;}
+  else if(k==='xz'){O3.th=0;O3.ph=0.03;O3.r=9.6;}
+  else if(k==='xz2d'){O3.th=0;O3.ph=0.03;O3.r=9.4;}
+  /* 仰视：从下面往上看。th 给一点偏心（0.35）让底面的花瓣法兰有立体感，
+     纯正下方看着会像一张俯视投影。 */
+  /* 仰视：别贴着正下方（正下方看到的是内锥一个近乎均匀的圆盘，读不出"这是个通孔"）；
+     π−0.62≈145° 的"底下四分之三"能把出口端面看成一个椭圆孔，法兰花瓣也有层次。 */
+  else if(k==='down'){O3.th=0.35;O3.ph=Math.PI-0.62;O3.r=9.0;}
+  else {k='iso';O3.th=0.42;O3.ph=1.05;O3.r=9.6;}
+  /* 气动塞整机比钟形矮一档（H 3.14 vs 4.4），上面这些距离是照钟形定的量，
+     直接套会把模型缩在画面正中一小坨 —— 按高度比例缩一次，两种方案视角才等价。 */
+  if(G3.scheme==='aero'){O3.r*=0.70;O3.tgtY=1.55;}
+  if(G3.ortho&&G3.spin){
+    G3.spin=false;document.getElementById('spin3d').className='';
+  }
+  var bs=document.querySelectorAll('#viewbar button[data-v]'),i;
+  for(i=0;i<bs.length;i++)bs[i].className=(bs[i].getAttribute('data-v')===k)?'on':'';
+  sizeOrtho();updateCam();secText();
+}
+(function(){
+  var bs=document.querySelectorAll('#viewbar button[data-v]');
+  for(var i=0;i<bs.length;i++){
+    bs[i].addEventListener('click',function(){setView(this.getAttribute('data-v'));});
+  }
+  /* ---- 剖面浮窗 ---- */
+  var panel=document.getElementById('secPanel'),tg=document.getElementById('spTg');
+  function secMin(m){
+    panel.classList.toggle('min',m);
+    tg.textContent=m?'展开 ▾':'收起 ▴';
+    tg.setAttribute('aria-expanded',m?'false':'true');
+  }
+  tg.addEventListener('click',function(e){e.stopPropagation();secMin(!panel.classList.contains('min'));});
+  document.getElementById('spHd').addEventListener('click',function(e){
+    if(e.target===tg)return;secMin(!panel.classList.contains('min'));
+  });
+  var ax=document.querySelectorAll('#spAxis button');
+  for(i=0;i<ax.length;i++){
+    ax[i].addEventListener('click',function(){
+      var v=+this.getAttribute('data-v');
+      SEC.axis=v;
+      /* 两个剖切机制不叠用：开了平面剖面就把楔形剖切关掉（否则两块缺口互相咬，看不出切在哪） */
+      if(v&&G3.cut){
+        G3.cut=false;document.getElementById('cut3d').className='';
+        buildWall();rebuildChannels(true);
+      }
+      if(v&&panel.classList.contains('min'))secMin(false);
+      secUpdate(true);
+    });
+  }
+  var kp=document.querySelectorAll('#spKeep button');
+  for(i=0;i<kp.length;i++){
+    kp[i].addEventListener('click',function(){
+      SEC.keep=+this.getAttribute('data-v');secUpdate(true);
+    });
+  }
+  document.getElementById('spOff').addEventListener('input',function(){
+    SEC.off=+this.value;secUpdate(false);
+  });
+  document.getElementById('spFace').addEventListener('change',function(){
+    SEC.face=this.checked;secUpdate(true);
+  });
+  G3.view='iso';G3.ortho=false;
+})();
 function setMode(m){
  G3.mode=m;
  document.getElementById('modeLeap').className=m==='leap'?'pri':'';
@@ -1107,6 +2304,8 @@ function setMode(m){
  G3.labels[7].visible=(m==='tree');
  buildWall();buildHardware();rebuildChannels(true);
 }
+document.getElementById('schemeBell').addEventListener('click',function(){setScheme('bell');});
+document.getElementById('schemeAero').addEventListener('click',function(){setScheme('aero');});
 document.getElementById('modeLeap').addEventListener('click',function(){setMode('leap');});
 document.getElementById('modeTree').addEventListener('click',function(){setMode('tree');});
 document.getElementById('nCh').addEventListener('input',function(){
@@ -1125,10 +2324,24 @@ document.getElementById('turns').addEventListener('input',function(){
 });
 /* 验证钩子（只读） */
 window.__E3={get:function(){return {ready:G3.ready,segs:segs.length,built:G3.builtSegs,cut:G3.cut,
-  mode:G3.mode,nCh:G3.nCh,turns:G3.turns,swirl:G3.swirl,
-  chTris:G3.chGeo?G3.chGeo.index.count/3:0,
+  mode:G3.mode,scheme:G3.scheme,nCh:G3.nCh,turns:G3.turns,swirl:G3.swirl,
+  view:G3.view,ortho:!!G3.ortho,
+  sec:{axis:SEC.axis,off:SEC.off,keep:SEC.keep,face:SEC.face,d:+secD().toFixed(3),
+       faceTris:SEC.faceMesh&&SEC.faceMesh.geometry.index?SEC.faceMesh.geometry.index.count/3:0,
+       clippedMats:(function(){var n=0;eachMat(G3.wallG,function(m){if(m.clippingPlanes)n++;});
+         eachMat(G3.hwG,function(m){if(m.clippingPlanes)n++;});return n;})()},
   tris:G3.rd?G3.rd.info.render.triangles:0,calls:G3.rd?G3.rd.info.render.calls:0};},
+  setView:function(k){setView(k);},
+  setSec:function(ax,off,keep,face){
+    SEC.axis=ax|0;
+    if(off!==undefined)SEC.off=off;
+    if(keep!==undefined)SEC.keep=keep;
+    if(face!==undefined)SEC.face=!!face;
+    secUpdate(true);
+  },
   setMode:function(m){setMode(m);},
+  setScheme:function(sc){setScheme(sc);},
+  scheme:function(){return G3.scheme;},
   setNCh:function(n){G3.nCh=n;buildWall();rebuildChannels(true);},
   setTurns:function(v){G3.turns=v;buildWall();rebuildChannels(true);},
   setSwirl:function(v){G3.swirl=v;buildWall();rebuildChannels(true);},

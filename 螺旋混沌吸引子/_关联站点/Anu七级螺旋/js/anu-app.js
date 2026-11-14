@@ -48,6 +48,11 @@
          1st-order spirillae（1680 匝）与其余中间各阶**不画散点**，只有发亮的 spirillae 曲线。 */
     pearlsPerTurn: 7,         /* koilon 珍珠：**最细一级每匝**几颗（默认 7；7 匝 ⇒ 49 颗/丝） */
     lineBright: 0.92,         /* 螺旋线亮度（2026-10-19 老师：「太细不够亮」0.55→0.92） */
+    /* 🔴 2026-11-14 老师：「螺旋线太暗，线太细，不够粗，要调粗些表达」
+       ＋「注意这个 anu 的**七级放大**的螺旋线也要调粗」。
+       ⇒ `anu-scene.js` 的层级线已从「1 px 折线」换成**屏幕空间四边形带**（真加粗），
+          这里只给默认线宽（**屏幕 CSS 像素**）。滑块 `#rngLineWidth` 单位 0.1 px。 */
+    lineWidthPx: 2.6,
     /* 🔴 2026-10-08 老师：「**两族的动力学公式是一样的**，两族就是旋转了 180 度。」
        所以**没有任何「两族各自的相位参数」** —— 10 根丝共用 `anu-heart.js` 里那**一个**
        ω = turnsPerLeg。粗 / 细的区别只在几何半径（coilRThick vs coilR、外壁 vs 内壁）。 */
@@ -128,7 +133,10 @@
     splineSub: state.splineSub,
     pearlsPerTurn: state.pearlsPerTurn,
     viewDrop: state.viewDrop,
-    showAxes: state.showAxes
+    showAxes: state.showAxes,
+    /* 🔴 2026-11-14：线宽（屏幕像素）必须在**建线之前**就传进去，
+       否则首帧是默认值、之后要等一次 applyDisplay 才改正（会闪一下）。 */
+    lineWidthPx: state.lineWidthPx
   });
   var model = null;
   var ui = null;
@@ -825,6 +833,11 @@
     }
     scene.setBubbleSize(d.bubbleSize);
     scene.setLineBright(state.lineBright);
+    /* 🔴 2026-11-14：线宽只改 uniform，不重建几何 ⇒ 拖滑块零卡顿（与亮度同一条轻量通道） */
+    if (state.lineWidthPx !== d.lineWidth) {
+      state.lineWidthPx = d.lineWidth;
+      if (scene.setLineWidth) { scene.setLineWidth(d.lineWidth); }
+    }
     /* 🔴 第 ⑨ 条：原点下移量（屏高比例）—— 纯取景参数，只调相机，**不重建几何** */
     if (state.viewDrop !== d.viewDrop) {
       state.viewDrop = d.viewDrop;
@@ -850,6 +863,7 @@
     var ss = document.getElementById('rngSplineSub');
     var pr = document.getElementById('rngPearls');
     var lb = document.getElementById('rngLineBright');
+    var lw = document.getElementById('rngLineWidth');   /* 🔴 2026-11-14 线宽（0.1 px 单位） */
     var st = document.getElementById('selSurface');
     var vd = document.getElementById('rngViewDrop');
     var spr = document.getElementById('rngSpread');
@@ -874,6 +888,8 @@
       pearls: pr ? parseInt(pr.value, 10) : state.pearlsPerTurn,
       bubbleSize: parseInt(document.getElementById('rngBubble').value, 10) / 10,
       lineBright: lb ? (parseInt(lb.value, 10) / 100) : state.lineBright,
+      /* 🔴 2026-11-14：线宽滑块单位 0.1 px（值 26 = 2.6 px） */
+      lineWidth: lw ? (parseInt(lw.value, 10) / 10) : state.lineWidthPx,
       surfaceTangent: st ? st.value : state.surfaceTangent,
       /* 🔴 第 ⑥ 条「双丝分离」：壁不动、只把两族丝相对拉开（也改几何，触发重建） */
       spread: spr ? (parseInt(spr.value, 10) / 1000) : state.spread,

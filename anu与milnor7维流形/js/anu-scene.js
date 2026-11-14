@@ -103,6 +103,11 @@
          其它各级一律不画散点 —— 老师：「只要求能看到明显发亮的 spirillae 曲线」。 */
       pearlsPerTurn: (opts.pearlsPerTurn == null ? 7 : opts.pearlsPerTurn),
       lineBright: (opts.lineBright == null ? 0.92 : opts.lineBright),
+      /* 🔴 2026-11-14 老师（第二次提「线太细」）：「螺旋线太暗，线太细，不够粗，要调粗些表达」，
+         并追加「注意这个 anu 的七级放大的螺旋线也要调粗」。
+         ⇒ 粗细不再靠「叠加层假装」：改成**屏幕空间真加粗**（见下面的 fat-line 着色器）。
+         单位 = **屏幕 CSS 像素**（与像素比无关），默认 2.6 px（原来恒 1 px）。 */
+      lineWidthPx: (opts.lineWidthPx == null ? 2.6 : opts.lineWidthPx),
       dimInactive: (opts.dimInactive == null ? 0.12 : opts.dimInactive),
       rotate: opts.rotate !== false, autoSpeed: 0.22,
       growth: 1,
@@ -271,9 +276,11 @@
       w.levelObjs.forEach(function (o) {
         /* 🔴 叠加层与主线**共享 lineGeo** ⇒ 只能 remove + 删材质，绝不能 dispose 几何，
            否则会把主线一起弄坏。必须在 o.lineGeo.dispose() 之前处理。 */
-        if (o.halo) { o.halo.material.dispose(); gWires.remove(o.halo); o.halo = null; }
+        if (o.halo) { dropFatMat(o.halo.material); gWires.remove(o.halo); o.halo = null; }
         o.lineGeo.dispose();
-        o.line.material.dispose();
+        /* 🔴 2026-11-14：主线材质是自定义 ShaderMaterial，必须从 fatMats 注册表摘掉，
+           否则下一次 resize 会去写一个已 dispose 的 uniform（Three 会抛错）。 */
+        dropFatMat(o.line.material);
         gWires.remove(o.line);
         /* 🔴 只有最细一级才有 ptsGeo / points（koilon 珍珠），其余各级为 null —— 必须判空 */
         if (o.ptsGeo) { o.ptsGeo.dispose(); }
@@ -394,6 +401,198 @@
       return { ptsGeo: geo, points: points, pMat: mt, spacing: sp, npPearl: np };
     }
 
+    /* ==================================================================
+       屏幕空间「真加粗」线（fat line）
+       ------------------------------------------------------------------
+       🔴 为什么必须换掉 `THREE.Line`：`LineBasicMaterial.linewidth` 在 WebGL 里
+          **被绝大多数平台忽略**（ANGLE/D3D 恒为 1 px）。2026-10-19 曾用「同几何再画一遍
+          + additive 叠加」假装加粗 —— 那只是**更亮**，线宽仍是 1 px。
+       老师 2026-11-14 第二次提（「线太细，不够粗」，并追加「七级放大的螺旋线也要粗」）
+       ⇒ 正解 = 把折线**扩成屏幕空间的四边形带**：每段两个三角形，在顶点着色器里
+          沿「该段在屏幕上的法向」偏移 `uWidth/2` 像素 ⇒ **任何缩放/任何视角下都是同一个像素宽**。
+          这也正好解决「逐级放大后线看着更细」的问题（放大不改线宽，只改几何尺度）。
+
+       代价：顶点数 = 段数 × 6（原来是点数 × 1）。实测阶梯模式最大一级 33600 点
+             ⇒ 约 20 万顶点，对 GPU 完全不是负担（对比：原来那个 halo 反而多一次 draw call）。
+       ================================================================== */
+    var FAT_VERT = [
+      'attribute vec3 aDir;',      /* 该段的世界方向（单位向量），6 个顶点共用同一个值 */
+      'attribute float aSide;',    /* −1 / +1：落在法向的哪一侧 */
+      /* 🔴🔴 2026-11-14 事故复盘：这里原来写的是 `vColor = color;`（依赖内置属性名 color），
+         而 ShaderMaterial **只有在材质开了 `vertexColors: true` 时**才会注入
+         `attribute vec3 color;`（three 的 prefix 里被包在 `#if defined(USE_COLOR)` 内）。
+         我们没开这个开关 ⇒ 属性没声明 ⇒ 顶点着色器编译失败：
+             ERROR: 0:80: 'color' : undeclared identifier
+         ⇒ 14 条线（7 级主线 + 7 级光晕）**全部不画**，画面上只剩最细一级的 koilon 珍珠。
+         教训：自定义着色器里**不要依赖框架的条件注入**；自己用的属性一律自己显式声明。 */
+      'attribute vec3 aColor;',    /* 该顶点的颜色（与几何里的 aColor 属性同名） */
+      'uniform vec2 uRes;',        /* 画布尺寸（CSS 像素） */
+      'uniform float uWidth;',     /* 线宽（CSS 像素） */
+      'varying vec3 vColor;',
+      'varying float vSide;',      /* 横向距离（像素），给片元做抗锯齿羽化 */
+      'void main() {',
+      '  vec4 c0 = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+      /* 把世界方向也投到裁剪空间，取屏幕方向（乘 0.01 只为数值稳定，方向与尺度无关） */
+      '  vec4 c1 = projectionMatrix * modelViewMatrix * vec4(position + aDir * 0.01, 1.0);',
+      '  vec2 s0 = c0.xy / max(abs(c0.w), 1e-6) * uRes;',
+      '  vec2 s1 = c1.xy / max(abs(c1.w), 1e-6) * uRes;',
+      '  vec2 d = s1 - s0;',
+      '  float L = length(d);',
+      /* 段正对着相机时屏幕投影退化成点 ⇒ 退化方向给 (1,0)，不至于除零出 NaN */
+      '  vec2 dir = (L > 1e-5) ? d / L : vec2(1.0, 0.0);',
+      '  vec2 nrm = vec2(-dir.y, dir.x);',
+      '  float halfPx = uWidth * 0.5 + 0.75;',   /* +0.75 px = 抗锯齿羽化带 */
+      '  vec2 off = nrm * aSide * halfPx * 2.0 / uRes;',  /* 像素 → NDC */
+      '  vec4 cp = c0;',
+      '  cp.xy += off * c0.w;',                   /* 乘 w 才是透视正确的 NDC 偏移 */
+      '  gl_Position = cp;',
+      '  vColor = aColor;',
+      '  vSide = aSide * halfPx;',
+      '}'
+    ].join('\n');
+
+    var FAT_FRAG = [
+      'uniform float uWidth;',
+      'uniform float uOpacity;',
+      'varying vec3 vColor;',
+      'varying float vSide;',
+      'void main() {',
+      '  float halfPx = uWidth * 0.5;',
+      '  float a = 1.0 - smoothstep(halfPx - 0.75, halfPx + 0.75, abs(vSide));',
+      '  if (a <= 0.002) { discard; }',
+      '  gl_FragColor = vec4(vColor, a * uOpacity);',
+      '}'
+    ].join('\n');
+
+    /* 所有 fat-line 材质（主线 + 光晕）：resize 时统一刷新 uRes */
+    var fatMats = [];
+
+    /** 画布尺寸（CSS 像素）。线宽也按 CSS 像素算 ⇒ 换到 2× 屏不会变粗一倍。 */
+    function fatRes() {
+      return [canvas.clientWidth || canvas.width || 800,
+              canvas.clientHeight || canvas.height || 600];
+    }
+    function syncFatRes() {
+      var r = fatRes();
+      for (var i = 0; i < fatMats.length; i++) {
+        fatMats[i].uniforms.uRes.value.set(r[0], r[1]);
+      }
+    }
+    /**
+     * @param {number} widthPx 线宽（CSS 像素）
+     * @param {number} opacity 不透明度
+     * @param {boolean} [additive] true = 叠加发光（用于光晕），默认 **普通混合**
+     *
+     * 🔴🔴 2026-11-14 第二个事故点：加粗后画面**糊成一片纯白**，螺旋圈看不出边界。
+     *   原因不是线宽，是**混合模式**：7 级螺旋（+10 根丝）在同一处交错，
+     *   `AdditiveBlending` 会把每条线的亮度**相加** —— 1 px 时叠不满还能看出层次，
+     *   一加粗（每根线覆盖的像素多了 2.6 倍）就处处 > 1 ⇒ 颜色被冲成白色、层次全丢。
+     *   ⇒ 主线改 **NormalBlending**：重叠处「后画的盖前面」，不再相加，
+     *      每级各保各的颜色（老师要的是「看得见每一级」，不是「一团白光」）。
+     *   发光感由单独那层 光晕（仍 additive、很淡）来给。
+     */
+    function makeFatMat(widthPx, opacity, additive) {
+      var r = fatRes();
+      var m = new THREE.ShaderMaterial({
+        uniforms: {
+          uRes: { value: new THREE.Vector2(r[0], r[1]) },
+          uWidth: { value: widthPx },
+          uOpacity: { value: opacity }
+        },
+        vertexShader: FAT_VERT, fragmentShader: FAT_FRAG,
+        transparent: true, depthWrite: false, depthTest: true,
+        blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
+        side: THREE.DoubleSide
+      });
+      /* 让老代码里的 `o.mat.opacity = …` 仍然有效（写成 setter 同步到 uniform）：
+         `setLineBright()` 与 `clearWires()` 都还在用 `.opacity` 这个字段。 */
+      Object.defineProperty(m, 'opacity', {
+        configurable: true, enumerable: true,
+        get: function () { return m.uniforms.uOpacity.value; },
+        set: function (v) { m.uniforms.uOpacity.value = v; }
+      });
+      fatMats.push(m);
+      return m;
+    }
+    /** 材质销毁时从注册表摘掉，避免 resize 摸到已 dispose 的对象 */
+    function dropFatMat(m) {
+      var i = fatMats.indexOf(m);
+      if (i >= 0) { fatMats.splice(i, 1); }
+      if (m) { m.dispose(); }
+    }
+
+    /**
+     * 「每点颜色」→「每段 6 顶点颜色」。
+     * 顶点的拆分顺序必须与 `makeFatGeometry` 完全一致，否则颜色会串位。
+     * @param {Float32Array} pc 每点 RGB（count × 3）
+     * @param {number} count 点数
+     */
+    function fatExpandColors(pc, count) {
+      var segs = Math.max(0, count - 1), nv = segs * 6;
+      var col = new Float32Array(nv * 3);
+      var order = [0, 0, 1, 0, 1, 1];      /* 0 = p_s，1 = p_{s+1} */
+      var s, i, b, a;
+      for (s = 0; s < segs; s++) {
+        for (i = 0; i < 6; i++) {
+          b = (s * 6 + i) * 3;
+          a = (order[i] ? (s + 1) : s) * 3;
+          col[b] = pc[a]; col[b + 1] = pc[a + 1]; col[b + 2] = pc[a + 2];
+        }
+      }
+      return col;
+    }
+
+    /**
+     * 折线 → 屏幕空间四边形带。
+     * @param {Float32Array} arr   位置（count 个点 × 3）
+     * @param {number} count       点数
+     * @param {Float32Array} colIn 每点 RGB（count × 3）
+     * @return {THREE.BufferGeometry} 非索引几何，每段 6 顶点 ⇒ drawRange 单位是**顶点**
+     */
+    function makeFatGeometry(arr, count, colIn) {
+      var segs = Math.max(0, count - 1);
+      var nv = segs * 6;
+      var pos = new Float32Array(nv * 3);
+      var dir = new Float32Array(nv * 3);
+      var sid = new Float32Array(nv);
+      var dx, dy, dz, L, i, s, b, o3;
+
+      for (s = 0; s < segs; s++) {
+        var a0 = s * 3, a1 = (s + 1) * 3;
+        dx = arr[a1] - arr[a0]; dy = arr[a1 + 1] - arr[a0 + 1]; dz = arr[a1 + 2] - arr[a0 + 2];
+        L = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (L > 1e-12) { dx /= L; dy /= L; dz /= L; } else { dx = 1; dy = 0; dz = 0; }
+        /* 6 顶点：tri1 = (p0,−1)(p0,+1)(p1,−1)　tri2 = (p0,+1)(p1,+1)(p1,−1) */
+        var order = [0, 0, 1, 0, 1, 1];      /* 0 = 用 p0 作 position，1 = 用 p1 */
+        var side = [-1, 1, -1, 1, 1, -1];
+        for (i = 0; i < 6; i++) {
+          b = s * 6 + i;
+          var src = order[i] ? a1 : a0;
+          o3 = b * 3;
+          pos[o3] = arr[src]; pos[o3 + 1] = arr[src + 1]; pos[o3 + 2] = arr[src + 2];
+          dir[o3] = dx; dir[o3 + 1] = dy; dir[o3 + 2] = dz;
+          sid[b] = side[i];
+        }
+      }
+      var g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      g.setAttribute('aDir', new THREE.BufferAttribute(dir, 3));
+      g.setAttribute('aSide', new THREE.BufferAttribute(sid, 1));
+      /* 🔴 属性名必须是 `aColor`，与 FAT_VERT 里的声明一致。
+         （曾用内置名 `color`，但 ShaderMaterial 关闭 vertexColors 时不会声明它 ⇒ 编译失败。） */
+      g.setAttribute('aColor', new THREE.BufferAttribute(fatExpandColors(colIn, count), 3));
+      /* 段数 = 顶点数 / 6，由调用方按「点数 − 1」记在 `o.segCount` 上（不挂 userData，
+         免得单测桩里 Geometry 没有这个字段就得跟着改桩）。 */
+      return g;
+    }
+
+    /** 一层线的两个材质（主线 + 光晕）按亮度一起刷新 */
+    function applyLineOpacity(o) {
+      var lb = state.lineBright;
+      if (o.mat) { o.mat.opacity = o.base * lb; }
+      if (o.halo) { o.halo.material.opacity = Math.min(1, o.base * lb * 0.22); }
+    }
+
     function buildLevelObjects(level, color, opacity, lineWidth, kind, pearlTurns) {
       var n = level.count;
       var pos = level.pts;
@@ -412,39 +611,42 @@
 
       /* ---------------- ② 线：B-spline 重采样后的光滑曲线 ---------------- */
       var sm = smoothPositions(rawArr, n, closed, sub);
-      var lineGeo = new THREE.BufferGeometry();
-      lineGeo.setAttribute('position', new THREE.BufferAttribute(sm.arr, 3));
-      lineGeo.setAttribute('color', new THREE.BufferAttribute(colorArray(sm.count, rgbFnFor(color, kind)), 3));
+      var smCol = colorArray(sm.count, rgbFnFor(color, kind));
+      /* 🔴 2026-11-14：由「1 px 折线」改为**屏幕空间四边形带**（见 makeFatGeometry 上的长注释） */
+      var lineGeo = makeFatGeometry(sm.arr, sm.count, smCol);
 
       /* 线亮度 = 层级不透明度 × 全局线亮度（老师可调：调低才看得见泡泡） */
-      var lineMat = new THREE.LineBasicMaterial({
-        vertexColors: true, transparent: true, opacity: opacity * state.lineBright,
-        depthWrite: false, blending: THREE.AdditiveBlending,
-        /* 🔴 2026-10-19 老师：「七级螺旋线太细」。
-           WebGL 里 LineBasicMaterial.linewidth 在多数平台被忽略（永远 1px），写上无害；
-           真正让它"看起来粗"的是下面那条**叠加层**（同几何再画一遍，additive 叠加 ⇒ 更亮更厚）。 */
-        linewidth: 2
-      });
-      var line = new THREE.Line(lineGeo, lineMat);
+      var lineMat = makeFatMat(state.lineWidthPx, opacity * state.lineBright);
+      var line = new THREE.Mesh(lineGeo, lineMat);
       line.frustumCulled = false;
       line.renderOrder = 1;
+      /* 🔴 2026-11-14：现在主线是 Mesh 而不是 Line，`isLine` 不再由构造函数给。
+         保留这个标记（光晕是 `isHalo`），让「一阶一条线」的计数/筛选语义不变。 */
+      line.isLine = true;
+      /* 同一份曲线点列挂到对象上（只存引用，不复制）：
+         `line.curve` 给外部/单测用，`o.curve` 在 return 里再挂一次。 */
+      line.curve = sm.arr;
+      line.curveCount = sm.count;
       gWires.add(line);
 
-      /* ---- 叠加层（模拟"加粗"）----
-         同一条几何再画一遍，用更低的 opacity 做 additive 叠加：
-         两条 1px 线完全重合 ⇒ 亮度相加，视觉上更实、更"粗"，
-         且**不会像 scale 那样让不居中的曲线错位**。
-         只在最细一级（kind==='thin' 且该级为 L7）额外加，避免把所有层级一起点亮。 */
+      /* ---- 光晕层（2026-11-14 改语义）----
+         旧版：拿**同样的 1 px 线**再画一遍做 additive 叠加 —— 只变亮、不变粗（已被老师
+               连着两次指出「还是细」）。
+         新版：真加粗已由几何完成，这一层改成**更宽更暗**的柔光（唯一保留 additive 的地方），
+               让线的边缘有自然衰减、像一根「发光的丝」，而不再是硬边。
+         ⚠️ 主线是 NormalBlending（防止 7 级叠加冲成白光），只有这一层 additive ⇒
+            重叠再多也只是"柔光稍亮"，不会把螺旋结构糊掉。
+         共享同一份几何 ⇒ 只多一次 draw call，不多占顶点缓冲。 */
       if (state.lineHalo !== false) {
-        var haloMat = new THREE.LineBasicMaterial({
-          vertexColors: true, transparent: true,
-          opacity: Math.min(1, opacity * state.lineBright * 0.55),
-          depthWrite: false, blending: THREE.AdditiveBlending, linewidth: 2
-        });
-        var halo = new THREE.Line(lineGeo, haloMat);
+        var haloMat = makeFatMat(state.lineWidthPx * 2.2 + 1.0,
+                                 Math.min(1, opacity * state.lineBright * 0.22), true);
+        var halo = new THREE.Mesh(lineGeo, haloMat);
         halo.frustumCulled = false;
-        halo.renderOrder = 1;
+        halo.renderOrder = 0;
         halo.name = 'halo';
+        /* 🔴 2026-11-14：给光晕一个独立标记。它与主线同为 `THREE.Mesh`（都算 `isLine`），
+           若不区分，「7 阶 = 7 条线」这类计数断言会把光晕也算进去（第 4 步单测曾因此误报）。 */
+        halo.isHalo = true;
         gWires.add(halo);
       }
 
@@ -470,7 +672,13 @@
       }
 
       return { lineGeo: lineGeo, ptsGeo: ptsGeo, line: line, points: points, halo: (typeof halo!=='undefined'?halo:null),
-               count: sm.count, rawCount: npPearl, logical: n, sub: sub,
+               count: sm.count, segCount: Math.max(0, sm.count - 1),
+               /* 🔴 2026-11-14：曲线的**点**数组单独留一份引用。
+                  渲染几何已经扩成「每段 6 顶点」的四边形带 ⇒ 顶点数 ≠ 点数，
+                  再拿 geometry.position 当点列去验 B-spline 就不对了（第 4 步单测靠这个）。
+                  这里与 `sm.arr` 共享同一个 Float32Array，不额外占内存。 */
+               curve: sm.arr, curveCount: sm.count,
+               rawCount: npPearl, logical: n, sub: sub,
                rawArr: rawArr, pos: pos, closed: closed, color: color,
                mat: lineMat, pmat: pMat, base: opacity, spacing: spacing, kind: kind,
                pearlTurns: pearlTurns };
@@ -509,12 +717,21 @@
           var sub = smoothSubFor(o.logical);
           var sm = smoothPositions(o.rawArr, o.logical, o.closed, sub);
           o.line.geometry.dispose();
-          var g = new THREE.BufferGeometry();
-          g.setAttribute('position', new THREE.BufferAttribute(sm.arr, 3));
-          g.setAttribute('color', new THREE.BufferAttribute(colorArray(sm.count, rgbFnFor(o.color, o.kind)), 3));
+          /* 🔴 2026-11-14：几何改由 makeFatGeometry 生成（屏幕空间加粗带）。
+             ⚠️ 光晕层与主线**共享同一份几何** —— 换几何时必须两边一起换，
+                否则 halo 还指着刚 dispose 掉的旧 buffer（画面直接报错/消失）。 */
+          var g = makeFatGeometry(sm.arr, sm.count,
+                                  colorArray(sm.count, rgbFnFor(o.color, o.kind)));
           o.line.geometry = g;
+          if (o.halo) { o.halo.geometry = g; }
           o.lineGeo = g;
           o.count = sm.count;
+          o.segCount = Math.max(0, sm.count - 1);
+          o.curve = sm.arr;
+          o.curveCount = sm.count;
+          /* 两个引用保持同源：`line.curve`（给外部/单测）与 `o.curve`（给内部） */
+          o.line.curve = sm.arr;
+          o.line.curveCount = sm.count;
           o.sub = sub;
         });
       });
@@ -655,7 +872,10 @@
         w.levelObjs.forEach(function (o) {
           /* 同时保留少量"收尾"重叠，避免末点孤立 */
           var n = Math.max(2, Math.floor(o.count * g) + 1);
-          o.lineGeo.setDrawRange(0, Math.min(o.count, n));
+          /* 🔴 2026-11-14：fat-line 几何是**非索引、每段 6 顶点** ⇒ drawRange 单位是「顶点」，
+             不是「点」。这里必须换算成 段数×6，否则生长动画会画到 6 倍长度。 */
+          var segs = Math.max(0, Math.min(o.segCount == null ? o.count - 1 : o.segCount, n - 1));
+          o.lineGeo.setDrawRange(0, segs * 6);
           /* koilon 珍珠也随生长逐颗浮现（只有最细一级有 ptsGeo） */
           if (o.ptsGeo) {
             var nr = Math.max(1, Math.floor(o.rawCount * g) + (g > 0 ? 1 : 0));
@@ -812,6 +1032,9 @@
         renderer.setSize(w, h, false);
         camera.aspect = w / Math.max(1, h);
         camera.updateProjectionMatrix();
+        /* 🔴 2026-11-14：fat-line 的线宽是**屏幕像素**，靠 uRes 换算成 NDC ⇒
+           画布一变就必须刷新，否则线宽会随窗口大小漂（窗口变窄 → 线看着变粗）。 */
+        syncFatRes();
       }
     }
 
@@ -886,8 +1109,26 @@
       setLineBright: function (v) {
         state.lineBright = Math.max(0.03, Math.min(1, v));
         wires.forEach(function (w) {
-          w.levelObjs.forEach(function (o) { o.mat.opacity = o.base * state.lineBright; });
+          w.levelObjs.forEach(applyLineOpacity);
         });
+      },
+      /**
+       * 螺旋线线宽（屏幕像素，0.6–10）。
+       * 🔴 2026-11-14 老师：「螺旋线太暗，线太细，不够粗，要调粗些表达」＋
+       *    「anu 的**七级放大**的螺旋线也要调粗」。
+       * 实现是屏幕空间四边形带 ⇒ **放大/缩小都不改线宽**，逐级放大后依然是这个像素宽
+       * （旧版 THREE.Line 恒 1 px，一放大就显得更细 —— 这正是老师第二次提的原因）。
+       * 只改 uniform，不重建几何 ⇒ 拖滑块零卡顿。
+       */
+      setLineWidth: function (px) {
+        state.lineWidthPx = Math.max(0.6, Math.min(10, px));
+        wires.forEach(function (w) {
+          w.levelObjs.forEach(function (o) {
+            if (o.mat) { o.mat.uniforms.uWidth.value = state.lineWidthPx; }
+            if (o.halo) { o.halo.material.uniforms.uWidth.value = state.lineWidthPx * 2.2 + 1.0; }
+          });
+        });
+        return state.lineWidthPx;
       },
       setRotate: function (v) { state.rotate = v; },
       setAutoSpeed: function (s) { state.autoSpeed = s; },
@@ -981,14 +1222,25 @@
     function rebuildColors() {
       wires.forEach(function (w) {
         w.levelObjs.forEach(function (o, idx) {
-          /* 线（平滑后）与 koilon 珍珠（最细一级才有）两套几何共用同一套取色规则 */
-          [o.lineGeo, o.ptsGeo].forEach(function (g) {
-            if (!g) { return; }
-            var n = g.getAttribute('position').count;
-            g.setAttribute('color', new THREE.BufferAttribute(colorArray(n, rgbFnFor(
-              state.colorMode === 'level' ? LEVEL_COLORS[(idx + 1) % LEVEL_COLORS.length] : w.color, w.kind
-            )), 3));
-          });
+          var col = state.colorMode === 'level'
+            ? LEVEL_COLORS[(idx + 1) % LEVEL_COLORS.length] : w.color;
+          var fn = rgbFnFor(col, w.kind);
+          /* 线（fat 四边形带）与 koilon 珍珠（Points）两套几何的**顶点数语义不同**：
+             · fat 带：顶点数 = 段数 × 6，颜色也必须按这个拆分顺序展开；
+             · 珍珠：顶点数 = 颗数，直接一一对应。
+             🔴 2026-11-14 修：原先两者都按 `position.count` 直接写，fat 带会拿到
+                「按顶点数生成的色带」而不是「按点数生成的色带」——宽度色序错位；
+                加上属性名换成 `aColor`，这里若不同步，切配色会**完全没反应**。 */
+          if (o.lineGeo) {
+            var pc = colorArray(o.curveCount, fn);
+            o.lineGeo.setAttribute('aColor',
+              new THREE.BufferAttribute(fatExpandColors(pc, o.curveCount), 3));
+          }
+          if (o.ptsGeo) {
+            var g = o.ptsGeo;
+            g.setAttribute('color', new THREE.BufferAttribute(
+              colorArray(g.getAttribute('position').count, fn), 3));
+          }
         });
       });
     }

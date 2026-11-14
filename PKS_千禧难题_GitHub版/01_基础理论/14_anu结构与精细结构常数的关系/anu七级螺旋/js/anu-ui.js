@@ -40,6 +40,7 @@
       rngBubble: $('rngBubble'), vBubble: $('vBubble'),
       rngPearls: $('rngPearls'), vPearls: $('vPearls'),
       rngLineBright: $('rngLineBright'), vLineBright: $('vLineBright'),
+      rngLineWidth: $('rngLineWidth'), vLineWidth: $('vLineWidth'),
       rngSpread: $('rngSpread'), vSpread: $('vSpread'),
       rngField: $('rngField'), vField: $('vField'),
       rngTubeAngle: $('rngTubeAngle'), vTubeAngle: $('vTubeAngle'),
@@ -352,7 +353,10 @@
           bubbleSize: parseInt(el.rngBubble.value, 10) / 10,
           /* koilon 珍珠：**最细一级每匝**几颗。🔴 默认 7（老师 2026-10-08 第 ④ 条） */
           pearls: el.rngPearls ? parseInt(el.rngPearls.value, 10) : 7,
-          lineBright: el.rngLineBright ? (parseInt(el.rngLineBright.value, 10) / 100) : 0.55,
+          /* 🔴 2026-11-14 订正：这里原先是 0.55，而 `state.lineBright` 默认是 0.92 ——
+             兜底值与真实默认不一致，会让「没读到滑块」时悄悄退回旧值。跟随 0.92。 */
+          lineBright: el.rngLineBright ? (parseInt(el.rngLineBright.value, 10) / 100) : 0.92,
+          lineWidth: el.rngLineWidth ? (parseInt(el.rngLineWidth.value, 10) / 10) : 2.6,
           /* 🔴 2026-10-08：原「苹果壳厚」滑块已**并入**「双丝分离」（两者在 radOffsets() 里
              对同一个量 `layer` 的导数完全相同 ⇒ 是同一个旋钮）。
              壳厚从此是**内部常量** = 参考壳厚 2·coilRThick = 0.072（两层恰好相切），不再由 UI 上报。 */
@@ -375,6 +379,16 @@
     if (el.rngLineBright) {
       el.rngLineBright.addEventListener('input', function () {
         if (el.vLineBright) { el.vLineBright.textContent = (parseInt(el.rngLineBright.value, 10) / 100).toFixed(2); }
+        emitDisplay();
+      });
+    }
+    /* 🔴 2026-11-14 线宽（屏幕像素）：与亮度同一条轻量通道 —— 只改 uniform，不重建几何。
+       单位 0.1 px（滑块 6..100 ⇒ 0.6..10.0 px），读数显示成「2.6 px」。 */
+    if (el.rngLineWidth) {
+      el.rngLineWidth.addEventListener('input', function () {
+        if (el.vLineWidth) {
+          el.vLineWidth.textContent = (parseInt(el.rngLineWidth.value, 10) / 10).toFixed(1) + ' px';
+        }
         emitDisplay();
       });
     }
