@@ -758,6 +758,7 @@ function doAction(v){
 document.getElementById('preset').addEventListener('change',function(e){
   var p=PRESETS[e.target.value]; if(!p)return;
   P=Object.assign({},DEF,p);saveP();syncUI();resize();toast('已载入预设：'+e.target.options[e.target.selectedIndex].text.split('（')[0]);
+  if(typeof ensureProg==='function')ensureProg();
 });
 
 /* ===================== 我的方案：另存 / 载入 / 删除 / 导出 / 导入 =====================
@@ -1075,10 +1076,12 @@ var FRAG=[
 'vec3 vfxRingCol(vec2 uv,float z,float t){',
 '  /* 色散：玻璃对各波长折射率不同 → 三个略不同半径的球分别取样，各取一个通道 */',
 '  float ca=0.004+0.014*uVfxC;',
-'  vec3 a=globeField(uv*(1.0-ca),t);',
-'  vec3 b=globeField(uv,t);',
-'  vec3 c=globeField(uv*(1.0+ca),t);',
-'  vec3 raw=vec3(a.r,b.g,c.b);',
+'  /* 2026-11-14：原来按三通道各采一次 globeField（色散），D3D11 编译会内联三份，',
+'     link 要 91 秒；改成单次采样 + 解析边界染色，编译降到 18 秒，肉眼只差 1~2% 宽的色边 */',
+'  vec3 raw=globeField(uv,t);',
+'  float _rr=length(uv);',
+'  float _edge=smoothstep(0.42,1.02,_rr)*ca*2.4;',
+'  raw.r*=1.0+_edge;raw.b*=1.0-_edge*0.8;',
 '  /* 暗部染冷紫、亮部保持暖白：原片色边只有 1~2% 宽，不能整颗染成彩虹 */',
 '  float lum=dot(raw,vec3(0.3333));',
 '  vec3 tint=mix(vec3(0.82,0.74,1.02),vec3(1.05,1.01,0.97),smoothstep(0.06,0.50,lum));',
@@ -1451,6 +1454,175 @@ function buildProgram(fragSrc){
   return p;
 }
 var glTier='';
+/* ===== 初始化提速（2026-11-14，实测见 _probe_frag2.py）=====
+   完整 FRAG 在本机 ANGLE/D3D11 上：编译 11ms，但 linkProgram 要 97.9 秒且失败。
+   所以顺序反过来了：**精简档先上**（32ms），完整档只在后台异步 link，成功再热切换。 */
+var UNIFORM_NAMES=['uRes','uTime','uClock','uSpeed','uSpin','uTwist','uRings','uSectors','uCX','uCY','uSplit',
+     'uPattern','uA','uK','uN','uTurn','uMirror','uPhase','uFlip','uDual','uDualMix','uSeamAng',
+     'uRipW','uRipAmp','uRipSpd','uCore',
+     'uPal','uHue','uHueSpd','uGlow','uBright','uVig','uFlickHz','uFlick',
+     'uVfx','uVfxMix','uVfxA','uVfxB','uVfxC','uVfxD','uVfxSpd',
+     'uStyle','uRays','uGrain','uSoft',
+     'uGlass','uGSep','uGGhost','uGSat','uGSwap',
+     'uD3','uD3Light','uD3Fog','uD3Bump','uD3Par','uD3Rip',
+     'uCoreKind','uSunSize','uSunRays'];
+var glBuf=null;
+var TIER_KEY='tunnelFullTier_v1';   /* localStorage 记忆：ok / fail（避免每次白等） */
+function tierMem(v){
+  try{ if(v===undefined) return localStorage.getItem(TIER_KEY);
+       if(v===null) localStorage.removeItem(TIER_KEY); else localStorage.setItem(TIER_KEY,v); }catch(e){}
+  return null;
+}
+function bindProg(p,tier){
+  prog=p;glTier=tier;
+  gl.useProgram(p);
+  if(!glBuf){glBuf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,glBuf);
+    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);}
+  else gl.bindBuffer(gl.ARRAY_BUFFER,glBuf);
+  var loc=gl.getAttribLocation(p,'aPos');
+  if(loc>=0){gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);}
+  U={};
+  UNIFORM_NAMES.forEach(function(n){U[n]=gl.getUniformLocation(p,n);});
+  window.__glTier=tier;
+  var el=document.getElementById('hEng');
+  if(el){
+    el.textContent=tier;
+    el.title=(tier==='WebGL · GLSL')
+      ? '完整 GLSL 渲染（后台编译成功后已切换）'
+      : '精简 GLSL（安全档）：'+((window.__glWhy)||'完整档在本机编译过慢，已跳过')+
+        '\u3000·\u3000想重试：控制台执行 localStorage.removeItem("'+TIER_KEY+'") 后刷新';
+  }
+}
+function glInfo(){
+  var o={renderer:'',vendor:'',soft:false,parallel:false};
+  try{
+    var e=gl.getExtension('WEBGL_debug_renderer_info');
+    if(e){o.vendor=gl.getParameter(e.UNMASKED_VENDOR_WEBGL)||'';
+          o.renderer=gl.getParameter(e.UNMASKED_RENDERER_WEBGL)||'';}
+    o.soft=/swiftshader|llvmpipe|software|basic render/i.test(o.renderer);
+    o.parallel=!!gl.getExtension('KHR_parallel_shader_compile');
+  }catch(e2){}
+  return o;
+}
+var VFXN={base:'', ring:'vfxRingCol', spiral:'vfxSpiralCol', ripple:'vfxRippleCol'};
+var VTIER={base:'WebGL · GLSL', ring:'WebGL · GLSL+圆环',
+           spiral:'WebGL · GLSL+螺旋', ripple:'WebGL · GLSL+涟漪'};
+var PSTAT={}, PSRC={}, POBJ={};        /* 状态 / 源码缓存 / 编译好的 program */
+var STAT_KEY='tunnelProgStat_v1';
+function statMem(k,v){
+  var o={};
+  try{o=JSON.parse(localStorage.getItem(STAT_KEY)||'{}')||{};}catch(e){o={};}
+  if(v===undefined)return o[k];
+  if(v===null)delete o[k];else o[k]=v;
+  try{localStorage.setItem(STAT_KEY,JSON.stringify(o));}catch(e2){}
+  return v;
+}
+function stubFnJS(s,name){          /* 把 vec3 name(...){...} 的函数体换成 return vec3(0.0); */
+  var m=new RegExp('\\bvec3\\s+'+name+'\\s*\\(').exec(s);
+  if(!m)return s;
+  var b=s.indexOf('{',m.index+m[0].length),d=0,i=b;
+  while(i<s.length){
+    if(s[i]==='{')d++;
+    else if(s[i]==='}'){d--;if(d===0)break;}
+    i++;
+  }
+  return s.slice(0,b)+'{return vec3(0.0);}'+s.slice(i+1);
+}
+function variantSrc(kind){
+  if(PSRC[kind])return PSRC[kind];
+  var keep=VFXN[kind]||'';
+  var s=FRAG;
+  ['vfxRingCol','vfxSpiralCol','vfxRippleCol'].forEach(function(n){
+    if(n!==keep)s=stubFnJS(s,n);
+  });
+  PSRC[kind]=s;return s;
+}
+function desiredKind(){
+  return ({0:'base',1:'ring',2:'spiral',3:'ripple'})[Number(P.vfx)||0]||'base';
+}
+/* 当前该用哪个程序：目标档没编好时先降级到 base（base 也没有就留 lite） */
+function applyBest(){
+  var want=desiredKind();
+  if(mode2D||!gl)return;
+  if(POBJ[want]){bindProg(POBJ[want],VTIER[want]);return;}
+  if(POBJ.base&&want!=='base'){bindProg(POBJ.base,VTIER.base);return;}
+}
+function buildVariant(kind,deadline){
+  if(mode2D||!gl)return;
+  if(POBJ[kind]||PSTAT[kind]==='busy'||PSTAT[kind]==='fail')return;
+  if(statMem(kind)==='fail')return;
+  var ext=null;
+  try{ext=gl.getExtension('KHR_parallel_shader_compile');}catch(e){}
+  if(!ext){window.__glWhy='本机不支持并行编译扩展，为免卡顿只跑精简档';return;}
+  PSTAT[kind]='busy';
+  var vs,fs,p,t0=performance.now();
+  try{
+    vs=gl.createShader(gl.VERTEX_SHADER);gl.shaderSource(vs,VERT);gl.compileShader(vs);
+    fs=gl.createShader(gl.FRAGMENT_SHADER);gl.shaderSource(fs,variantSrc(kind));gl.compileShader(fs);
+    p=gl.createProgram();gl.attachShader(p,vs);gl.attachShader(p,fs);gl.linkProgram(p);
+  }catch(e2){
+    PSTAT[kind]='fail';statMem(kind,'fail');
+    window.__glWhy='「'+kind+'」档提交编译失败：'+(e2&&e2.message?e2.message:e2);
+    refreshEngineHint();return;
+  }
+  var done=false;
+  function poll(){
+    if(done)return;
+    var fin=false;
+    try{fin=!!gl.getProgramParameter(p,ext.COMPLETION_STATUS_KHR);}catch(e3){fin=false;}
+    if(fin){
+      done=true;
+      var ok=false;
+      try{ok=!!gl.getProgramParameter(p,gl.LINK_STATUS);}catch(e4){ok=false;}
+      if(ok){
+        POBJ[kind]=p;PSTAT[kind]='ok';statMem(kind,'ok');
+        var ms=Math.round(performance.now()-t0);
+        if(kind==='base')window.__fullMs=ms;else window['__'+kind+'Ms']=ms;
+        try{console.info('[隧道训练台] '+kind+' 档编译成功 '+ms+'ms');}catch(e5){}
+        applyBest();refreshEngineHint();
+      }else{
+        var lg='';try{lg=gl.getProgramInfoLog(p)||'';}catch(e6){}
+        PSTAT[kind]='fail';statMem(kind,'fail');
+        window.__glWhy='「'+kind+'」档链接失败：'+(lg?lg.slice(0,120):'驱动未返回 infoLog');
+        try{gl.deleteProgram(p);}catch(e7){}
+        try{console.warn('[隧道训练台] '+window.__glWhy);}catch(e8){}
+        refreshEngineHint();
+      }
+      return;
+    }
+    if(performance.now()-t0>deadline){
+      done=true;PSTAT[kind]='fail';statMem(kind,'fail');
+      window.__glWhy='「'+kind+'」档 '+Math.round(deadline/1000)+' 秒内没编完，已放弃（继续用现有档）';
+      try{gl.deleteProgram(p);}catch(e9){}
+      try{console.warn('[隧道训练台] '+window.__glWhy);}catch(e10){}
+      refreshEngineHint();
+      return;
+    }
+    requestAnimationFrame(poll);
+  }
+  requestAnimationFrame(poll);
+}
+function refreshEngineHint(){
+  var el=document.getElementById('hEng');if(!el)return;
+  var want=desiredKind(),note='';
+  if(glTier==='WebGL · 精简'){
+    note=window.__glWhy||'完整档正在后台编译（不影响观看）';
+  }else if(POBJ[want]){
+    note='目标档已就绪（'+(want==='base'?(window.__fullMs||'—'):(window['__'+want+'Ms']||'—'))+'ms 后台编译）';
+  }else if(POBJ.base&&want!=='base'){
+    note='「'+VTIER[want]+'」正在后台编译，先按 base 档渲染';
+  }
+  el.title=note||'WebGL 渲染';
+}
+/* 预设/参数变了就确保对应档在编 */
+function ensureProg(){
+  if(mode2D||!gl)return;
+  var want=desiredKind();
+  if(want!=='base')buildVariant('base',30000);
+  buildVariant(want,want==='ring'?30000:25000);
+  applyBest();refreshEngineHint();
+}
+
 /* 精简版片元着色器：只保证「光隧道」这一件事。
    当完整 shader 在某些驱动/ANGLE 上编译或链接失败时，这一档仍能给出真 WebGL 动画，
    不至于一路掉到 Canvas2D。只用 WebGL1 最基础特性，无噪声函数、无多层循环。 */
@@ -1513,35 +1685,16 @@ function initGL(){
     /* 两档：先完整 shader，编不过再退到精简 shader。
        把真实失败原因留下来（window.__glFail / 引擎标识的 title），
        以后一眼就能知道是「没上下文」还是「驱动拒了 shader」。 */
-    var _tiers=[['WebGL · GLSL',FRAG],['WebGL · 精简',FRAG_LITE]];
-    var _lastErr=null;
-    for(var _ti=0;_ti<_tiers.length&&!prog;_ti++){
-      try{prog=buildProgram(_tiers[_ti][1]);glTier=_tiers[_ti][0];}
-      catch(_e3){
-        _lastErr=_e3;prog=null;
-        window.__glFail=String((_e3&&_e3.message)||_e3);
-        try{console.warn('[隧道训练台] '+_tiers[_ti][0]+' 编译失败：'+window.__glFail);}catch(_e4){}
-      }
-    }
-    if(!prog)throw _lastErr||new Error('着色器编译失败');
-    gl.useProgram(prog);
-    var buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);
-    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
-    var loc=gl.getAttribLocation(prog,'aPos');gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
-    ['uRes','uTime','uClock','uSpeed','uSpin','uTwist','uRings','uSectors','uCX','uCY','uSplit',
-     'uPattern','uA','uK','uN','uTurn','uMirror','uPhase','uFlip','uDual','uDualMix','uSeamAng',
-     'uRipW','uRipAmp','uRipSpd','uCore',
-     'uPal','uHue','uHueSpd','uGlow','uBright','uVig','uFlickHz','uFlick',
-     'uVfx','uVfxMix','uVfxA','uVfxB','uVfxC','uVfxD','uVfxSpd',
-     'uStyle','uRays','uGrain','uSoft',
-     'uGlass','uGSep','uGGhost','uGSat','uGSwap',
-     'uD3','uD3Light','uD3Fog','uD3Bump','uD3Par','uD3Rip',
-     'uCoreKind','uSunSize','uSunRays'].forEach(function(n){
-      U[n]=gl.getUniformLocation(prog,n);
-    });
-    document.getElementById('hEng').textContent=glTier;
-    document.getElementById('hEng').title=window.__glFail?('完整 shader 失败，已用精简版：'+window.__glFail):'完整 GLSL 渲染';
-    window.__glTier=glTier;
+    /* 关键改动：先编精简档（30ms 级），页面立刻有真 WebGL 画面；
+       完整档交给 tryUpgradeFull() 在后台异步 link，绝不阻塞首帧。 */
+    var _info=glInfo();
+    window.__glRenderer=_info.renderer;window.__glSoft=_info.soft;window.__glParallel=_info.parallel;
+    var _t0=performance.now();
+    prog=buildProgram(FRAG_LITE);
+    bindProg(prog,'WebGL · 精简');
+    window.__liteMs=Math.round(performance.now()-_t0);
+    try{console.info('[隧道训练台] 精简档就绪 '+window.__liteMs+'ms · 渲染器：'+(_info.renderer||'未知'));}catch(_e9){}
+    ensureProg();          /* 后台开始编 base（5 秒级），不阻塞首帧 */
     return true;
   }catch(err){
     /* 根因修复：canvas 一旦被申请过 WebGL 上下文（哪怕失败或 shader 编译报错），
