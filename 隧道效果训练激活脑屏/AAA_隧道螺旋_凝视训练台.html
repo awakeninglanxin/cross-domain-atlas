@@ -23,6 +23,20 @@ button{cursor:pointer}
   border-radius:8px;padding:6px 12px;color:var(--ink);opacity:0;pointer-events:none;transition:opacity .25s;
   box-shadow:0 3px 14px rgba(0,0,0,.10)}
 #toast.on{opacity:1}
+/* 折叠档快速切换条（2026-11-15）：A/B/C + 侧视/俯视 + 白光锥，一眼可见、一点即切
+   只在这个档（vfx=4 共形折叠）出现，不干扰其它预设 */
+#foldBar{position:absolute;left:50%;bottom:24px;transform:translateX(-50%) translateY(6px);
+  display:flex;align-items:center;gap:6px;padding:7px 9px;border-radius:999px;
+  background:rgba(255,255,255,.90);border:1px solid var(--line);
+  box-shadow:0 6px 22px rgba(70,50,90,.16);z-index:9;white-space:nowrap;
+  opacity:0;pointer-events:none;transition:opacity .22s,transform .22s}
+#foldBar.on{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
+#foldBar button{border:1px solid transparent;background:#f2f1f6;color:var(--ink);
+  padding:5px 10px;border-radius:999px;font-size:12px;cursor:pointer;transition:.15s}
+#foldBar button:hover{background:#e9e7ef}
+#foldBar button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+#foldBar .fb-lab{font-size:11px;color:var(--muted);padding:0 3px 0 5px;letter-spacing:.5px}
+#foldBar .fb-sep{width:1px;height:16px;background:var(--line);margin:0 2px}
 #hud{position:absolute;right:calc(var(--cd-w) + 30px);top:26px;z-index:8;background:rgba(255,255,255,.94);
   border:1px solid var(--line);border-radius:20px;padding:5px 8px 5px 12px;display:flex;align-items:center;gap:8px;
   box-shadow:0 2px 10px rgba(0,0,0,.07);font-size:11px;color:var(--muted);white-space:nowrap}
@@ -102,6 +116,18 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 6px
   <div id="boot">正在初始化渲染引擎…</div>
   <div id="hud"><span>引擎 <b id="hEng">—</b></span><span>FPS <b id="hFps">—</b></span><span>速度 <b id="hSpd">—</b></span><span>中心 <b id="hCenter">居中</b></span><button id="hudMin">收起</button></div>
   <div id="toast"></div>
+  <div id="foldBar">
+    <span class="fb-lab">折叠</span>
+    <button data-fk="foldMode" data-fv="1">A · 平移</button>
+    <button data-fk="foldMode" data-fv="2">B · 反演</button>
+    <button data-fk="foldMode" data-fv="3">C · 抛物</button>
+    <i class="fb-sep"></i>
+    <button data-fk="view3d" data-fv="0">侧视</button>
+    <button data-fk="view3d" data-fv="1">俯视 3D</button>
+    <i class="fb-sep"></i>
+    <button data-fk="beam" data-fv="1">锥 开</button>
+    <button data-fk="beam" data-fv="0">锥 关</button>
+  </div>
 </div>
 <button id="immExit">退出沉浸 (Esc)</button>
 
@@ -133,6 +159,7 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 6px
         <option value="biliWhite">B站光云 · 素白（对齐原片）</option>
         <option value="maca">马卡龙流光 · 梦幻（柔光炫彩 · 无暗角）</option>
         <option value="fold">地包天 · 共形折叠（莲花底图 · A/B/C 三模式）</option>
+        <option value="foldtop">俯视 · 3D 球面（共形折叠的同心圆视角）</option>
         <option value="d3deep">3D 深隧 · 裸眼（体积感最强）</option>
         <option value="d3redcyan">3D 深隧 · 红青眼镜</option>
         <option value="d3polar">3D 深隧 · 偏光（左右压缩）</option>
@@ -281,6 +308,11 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 6px
       <div class="row" data-k="beam"><button data-v="1" class="on">开</button><button data-v="0">关</button></div>
       <div class="fld"><div class="lab"><span>锥半角（标签为全角）</span><b class="num" data-k="beamA">14</b></div><input type="range" data-k="beamA" min="2" max="45" step="0.5" value="14"></div>
       <div class="fld"><div class="lab"><span>锥亮度</span><b class="num" data-k="beamI">0.85</b></div><input type="range" data-k="beamI" min="0" max="1.6" step="0.01" value="0.85"></div>
+      <div class="lab" style="margin-top:12px"><span>视角 · 不动点轴指向（θ=0° 俯视 ⇒ 同心圆 · θ=90° 侧视 ⇒ 原共轴圆束）</span></div>
+      <div class="row" data-k="view3d"><button data-v="0" class="on">侧视</button><button data-v="1">俯视 · 3D 球面</button></div>
+      <div class="fld"><div class="lab"><span>轴倾角 θ（3D 模型连续旋转）</span><b class="num" data-k="tilt">0</b></div><input type="range" data-k="tilt" min="0" max="90" step="1" value="0"></div>
+      <div class="row" data-k="tiltAuto"><button data-v="0" class="on">θ 手动</button><button data-v="1">θ 自动扫描</button></div>
+      <div class="row" data-k="foldGrid"><button data-v="0" class="on">圆束网格 关</button><button data-v="1">圆束网格 开</button></div>
       <div class="read" id="foldRead">—</div>
       <div class="note">算法来自 2026-11-15 元宝版单文件网页（<code>莫比乌斯内卷_三模式.html</code>，已另存到本目录 <code>参考_莫比乌斯内卷_三模式.html</code>），
         公式逐行照搬：<code>ζ=(z−z₁)/(z−z₂)</code>、<code>s=mod(±ln|ζ|/d + κt, L)+L/4</code>、
@@ -587,6 +619,11 @@ var DEF={
   /* 共形折叠（地包天）：模式 1=A 平移 2=B 反演 3=C 抛物退化 */
   foldMode:1, foldD:1.00, foldKap:2.40, foldL:0.90, foldRad:1.00, foldMix:1.00,
   beam:1, beamA:14, beamI:0.85,
+  /* 视角：view3d 0=侧视（屏幕平面内的共轴圆束） 1=俯视·3D 球面（不动点轴转到深度方向）
+     tilt 轴倾角 θ：0° 俯视 → 90° 侧视；tiltAuto=1 时 θ 自动来回扫 */
+  view3d:0, tilt:0, tiltAuto:0,
+  /* 圆束网格：等 Re u 的层（青）+ 等 arg ζ 的流线（橙），俯视档最需要它 */
+  foldGrid:0,
   /* 立体眼镜 + 3D 深度：glass 0=裸眼 1=红青 2=红蓝 3=偏光隔行 4=偏光左右 5=偏光上下 6=偏光棋盘 */
   glass:0, gSep:1.00, gGhost:0.30, gSat:0.55, gSwap:0,
   d3:0.60, d3Light:20, d3Fog:0.55, d3Bump:0.55, d3Par:0.00, d3Rip:0.60,
@@ -663,7 +700,16 @@ var PRESETS={
   fold:{speed:0.60,spin:0,twist:0.30,rings:10,sectors:8,pattern:0,pal:0,
         vfx:4,vfxMix:1.00,vfxSpd:1.00,
         foldMode:1,foldD:1.00,foldKap:2.40,foldL:0.90,foldRad:1.00,foldMix:1.00,
-        beam:1,beamA:14,beamI:0.85,
+        beam:1,beamA:14,beamI:0.85,view3d:0,tilt:0,tiltAuto:0,foldGrid:0,
+        ripAmp:0.10,core:0.00,vig:0.00,glow:1.00,bright:1.00,
+        style:0,d3:0,flick:0,breath:0,split:0,flip:0,dual:0},
+  /* 俯视 · 3D 球面（2026-11-15 新增）：不动点轴从屏幕 y 轴转到深度 z 轴，
+     正交反投影到球面 + 球极投影 ⇒ 共轴圆束退化成同心圆、流线变径向直线；
+     白光锥沿视线射来 ⇒ 退化成中心圆斑（半径 ∝ sin 半角）。L 取 0.4 让环更密。 */
+  foldtop:{speed:0.60,spin:0,twist:0.30,rings:10,sectors:8,pattern:0,pal:0,
+        vfx:4,vfxMix:1.00,vfxSpd:1.00,
+        foldMode:1,foldD:1.00,foldKap:2.40,foldL:0.40,foldRad:1.00,foldMix:1.00,
+        beam:1,beamA:14,beamI:0.85,view3d:1,tilt:0,tiltAuto:0,foldGrid:1,
         ripAmp:0.10,core:0.00,vig:0.00,glow:1.00,bright:1.00,
         style:0,d3:0,flick:0,breath:0,split:0,flip:0,dual:0},
   /* 3D 深隧：在几何隧道上开满 3D 深度线索（管壁明暗 + 大气透视 + 半径起伏 + 透视视差） */
@@ -704,7 +750,7 @@ function fmt(k,v){
     ||k==='audioOn'||k==='aCarrier'||k==='aLayers'||k==='aSpread'||k==='aMode'||k==='aConv'
     ||k==='aWave'||k==='aHarm'||k==='aNoise'||k==='aNoiseLP'||k==='aPM'||k==='aRamp'
     ||k==='aRampMin'||k==='aAV'||k==='vfx'||k==='style'||k==='foldMode'||k==='beam'
-    ||k==='glass'||k==='gSwap'||k==='d3Light'||k==='coreKind')return String(v);
+    ||k==='glass'||k==='gSwap'||k==='view3d'||k==='tiltAuto'||k==='foldGrid'||k==='d3Light'||k==='coreKind')return String(v);
   return Number(v).toFixed(2);
 }
 function readout(){
@@ -731,7 +777,10 @@ function readout(){
     fr.innerHTML=(fm<1.5?'<b>A 平移</b> · 球形保持':fm<2.5?'<b>B 反演</b> · 层序倒置（地包天）':'<b>C 抛物退化</b> · 包络出尖')+
       ' ｜ 间距 d=<b>'+Number(P.foldD).toFixed(2)+'</b> ｜ 卷动 κ='+Number(P.foldKap).toFixed(2)+
       ' ｜ 层距 L='+Number(P.foldL).toFixed(2)+' ｜ 球半径 '+Number(P.foldRad).toFixed(2)+
-      ' ｜ 白光锥 '+(Number(P.beam)>0.5?('开 · 全角 '+(Number(P.beamA)*2).toFixed(0)+'°'):'关');
+      ' ｜ 白光锥 '+(Number(P.beam)>0.5?('开 · 全角 '+(Number(P.beamA)*2).toFixed(0)+'°'):'关')+
+      ' ｜ 视角 '+(Number(P.view3d)>0.5
+        ? ('<b>俯视 3D</b> · θ='+Number(P.tilt).toFixed(0)+'°'+(Number(P.tiltAuto)>0.5?'（自动扫描）':''))
+        : '侧视');
   }
   var vr=document.getElementById('vfxRead');
   if(vr){
@@ -761,6 +810,7 @@ function syncUI(){
   var ab=document.getElementById('bAudio');
   if(ab){ab.textContent=P.audioOn?'⏹ 关闭音频':'▶ 开启音频';ab.classList.toggle('on',!!P.audioOn);}
   if(typeof audioTune==='function')audioTune();
+  if(typeof syncFoldBar==='function')syncFoldBar();
 }
 function apply(k,v,silent){
   if(!(k in DEF))return;
@@ -780,6 +830,43 @@ function labelOf(k){
   var el=body.querySelector('b.num[data-k="'+k+'"]');
   return el?el.closest('.fld').querySelector('.lab span').textContent:k;
 }
+/* ===== 折叠档快速切换条（2026-11-15 新增）=====
+   老师反馈「三种模式怎么切，没看见方便的按钮」——原来 A/B/C 埋在 ⑥ 折叠面板里，
+   得先展开面板再往下翻。这里在画布底部放一条常驻浮条，只在本档（vfx=4）出现，
+   一点即切；同时给键盘 1/2/3、T（俯视）、B（白光锥）。 */
+function syncFoldBar(){
+  var bar=document.getElementById('foldBar'); if(!bar)return;
+  var on=Number(P.vfx)>3.5;
+  bar.classList.toggle('on',on);
+  if(!on)return;
+  bar.querySelectorAll('button[data-fk]').forEach(function(b){
+    b.classList.toggle('on',String(P[b.dataset.fk])===String(b.dataset.fv));
+  });
+}
+(function(){
+  var bar=document.getElementById('foldBar'); if(!bar)return;
+  bar.addEventListener('click',function(e){
+    var b=e.target.closest('button[data-fk]'); if(!b)return;
+    var k=b.dataset.fk, v=parseFloat(b.dataset.fv);
+    apply(k,v,true);
+    toast('已切到 '+(k==='foldMode'
+      ? (v===1?'A · 平移（球形保持）':v===2?'B · 反演（层序倒置 · 地包天）':'C · 抛物退化（包络出尖）')
+      : k==='view3d' ? (v>0.5?'俯视 · 3D 球面（同心圆）':'侧视（共轴圆束）')
+      : (v>0.5?'白光锥 开':'白光锥 关')));
+  });
+  window.addEventListener('keydown',function(e){
+    if(Number(P.vfx)<=3.5)return;
+    var t=e.target;
+    if(t&&/^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName))return;
+    if(t&&t.isContentEditable)return;
+    var K=e.key;
+    if(K==='1'){apply('foldMode',1,true);toast('A · 平移（球形保持）');}
+    else if(K==='2'){apply('foldMode',2,true);toast('B · 反演（层序倒置 · 地包天）');}
+    else if(K==='3'){apply('foldMode',3,true);toast('C · 抛物退化（包络出尖）');}
+    else if(K==='t'||K==='T'){var nv=Number(P.view3d)>0.5?0:1;apply('view3d',nv,true);toast(nv>0.5?'俯视 · 3D 球面（同心圆）':'侧视（共轴圆束）');}
+    else if(K==='b'||K==='B'){var nb=Number(P.beam)>0.5?0:1;apply('beam',nb,true);toast(nb>0.5?'白光锥 开':'白光锥 关');}
+  });
+})();
 
 /* 滑条 */
 body.addEventListener('input',function(e){
@@ -1018,7 +1105,7 @@ var FRAG=[
 'uniform float uStyle,uRays,uGrain,uSoft,uEdge;',
 'uniform sampler2D uTex;',
 'uniform float uImgAsp;',
-'uniform float uFoldMode,uFoldD,uFoldKap,uFoldL,uFoldRad,uFoldMix,uBeam,uBeamA,uBeamI;',
+'uniform float uFoldMode,uFoldD,uFoldKap,uFoldL,uFoldRad,uFoldMix,uBeam,uBeamA,uBeamI,uView3d,uTilt,uFoldGrid;',
 'uniform float uGlass,uGSep,uGGhost,uGSat,uGSwap;',
 'uniform float uD3,uD3Light,uD3Fog,uD3Bump,uD3Par,uD3Rip;',
 'uniform float uCoreKind,uSunSize,uSunRays;',
@@ -1063,6 +1150,16 @@ var FRAG=[
 '   空间域与图片域各一个 Möbius 变换，复合结果仍是共形映射（圆→广义圆）。 */',
 'vec2 fdiv(vec2 a,vec2 b){ float dd=max(dot(b,b),1e-9); return vec2(a.x*b.x+a.y*b.y,a.y*b.x-a.x*b.y)/dd; }',
 'vec2 fmul(vec2 a,vec2 b){ return vec2(a.x*b.x-a.y*b.y,a.x*b.y+a.y*b.x); }',
+'/* 球极投影反解：ζ → 黎曼球面上的点 → 绕 x 轴转回 θ → 正交投影回屏幕 z（与本页折叠帧同向，y 朝下）',
+'   m2=|ζ|²+1；q2=(2x/m2, 2y/m2, (|ζ|²−1)/m2)；Q2=R_x(−θ)·q2；z=(Q2.x, Q2.y)',
+'   参考「俯视 · 3D 球面」：不动点轴由屏幕 y 轴转到深度 z 轴，两点沿视线重合 ⇒ 共轴圆束退化成同心圆。 */',
+'vec2 inv3D(vec2 zp,float ct,float st){',
+'  float m2=dot(zp,zp)+1.0;',
+'  vec3 q2=vec3(2.0*zp.x/m2,2.0*zp.y/m2,(dot(zp,zp)-1.0)/m2);',
+'  vec3 Q2=vec3(q2.x,q2.y*ct+q2.z*st,-q2.y*st+q2.z*ct);',
+'  vec2 z=Q2.xy;',
+'  return z*min(1.0,24.0/max(length(z),1e-4));',
+'}',
 '/* 屏幕坐标 q（本页单位：y 半高 = 1）→ 底图 UV：cover 铺满 + 镜像折叠，边缘不会出缝 */',
 'vec2 foldUV(vec2 q){',
 '  float Ai=max(uImgAsp,0.05);',
@@ -1088,20 +1185,57 @@ var FRAG=[
 '  float gap=d*1.2361;',
 '  vec2 z1=z0-vec2(0.0,0.5*gap);',
 '  vec2 z2=z0+vec2(0.0,0.5*gap);',
-'  vec2 zeta=fdiv(z-z1,z-z2);',
+'  /* ζ 的两种算法：侧视 = 屏幕平面内的交叉比；俯视 = 正交反投影到球面再球极投影 */',
+'  float thv=radians(clamp(uTilt,0.0,90.0));',
+'  float ct=cos(thv),stv=sin(thv);',
+'  vec2 zeta;',
+'  if(uView3d>0.5){',
+'    vec3 Q=vec3(z.x,z.y,sqrt(max(1.0-dot(z,z),0.0)));',
+'    vec3 q=vec3(Q.x,Q.y*ct-Q.z*stv,Q.y*stv+Q.z*ct);',
+'    zeta=q.xy/(1.0-q.z+0.045);',
+'  } else {',
+'    zeta=fdiv(z-z1,z-z2);',
+'  }',
 '  float rho=max(length(zeta),1e-6);',
 '  vec2 unit=zeta/rho;',
 '  if(fl>0.5) unit=vec2(unit.x,-unit.y);',
 '  float L=max(uFoldL,0.08);',
-'  float s=mod(sg*log(rho)/d+uFoldKap*t,L)+0.25*L;',
-'  vec2 zp=exp(d*s)*unit;',
-'  vec2 zsrc=fdiv(z1-fmul(zp,z2),vec2(1.0,0.0)-zp);',
-'  zsrc*=min(1.0,24.0/max(length(zsrc),1e-4));',
+'  float tau=mod(sg*log(rho)/d+uFoldKap*t,L);',        /* [0,L) 层相位 */
 '  float inside=1.0-smoothstep(0.955,1.015,r);',
-'  vec3 warped=texture2D(uTex,foldUV(vec2(zsrc.x,-zsrc.y)*R)).rgb;   /* 翻回 y 朝上再取样 */',
+'  vec3 warped;',
+'  if(uView3d>0.5){',
+'    /* 任意底图都不自相似，硬取模会在 τ=L→0 处拉出一道硬缝。',
+'       取相邻两层 crossfade：τ 小用 A、τ 大用 B，而 B(L)=A(0)，故两端天然连续。 */',
+'    float w=tau/L;',
+'    float g=smoothstep(0.35,0.65,w);',
+'    vec2 zpA=exp(d*(tau+0.25*L))*unit;',
+'    vec2 zpB=exp(d*(tau+0.25*L-L))*unit;',
+'    vec2 pA=inv3D(zpA,ct,stv);',
+'    vec2 pB=inv3D(zpB,ct,stv);',
+'    warped=mix(texture2D(uTex,foldUV(vec2(pA.x,-pA.y)*R)).rgb,',
+'               texture2D(uTex,foldUV(vec2(pB.x,-pB.y)*R)).rgb, g);',
+'  } else {',
+'    float s=tau+0.25*L;',
+'    vec2 zp=exp(d*s)*unit;',
+'    vec2 zsrc=fdiv(z1-fmul(zp,z2),vec2(1.0,0.0)-zp);',
+'    zsrc*=min(1.0,24.0/max(length(zsrc),1e-4));',
+'    warped=texture2D(uTex,foldUV(vec2(zsrc.x,-zsrc.y)*R)).rgb;   /* 翻回 y 朝上再取样 */',
+'  }',
 '  vec3 col=mix(base,warped,inside*uFoldMix);',
 '  /* 球缘：|z|=1 始终是同一族圆的成员，所以轮廓逐帧不动 */',
 '  col+=(1.0-smoothstep(0.0,0.010,abs(r-1.0)))*0.20*vec3(1.0,0.95,0.86);',
+'  /* 圆束网格：青线 = 等 Re u（层），橙线 = 等 arg ζ（流线）。',
+'     角向用 16 条整倍流线，故 atan 在 ±π 处的跳变 16→0 仍连续，不出竖缝。 */',
+'  if(uFoldGrid>0.5){',
+'    float re=sg*log(rho)/d;',
+'    float im=atan(zeta.y,zeta.x)/d;',
+'    float f1=fract(re/L); float l1=1.0-smoothstep(0.0,0.035,min(f1,1.0-f1));',
+'      float f2=fract(im*0.15915494*16.0); float l2=1.0-smoothstep(0.0,0.040,min(f2,1.0-f2));',
+'    /* 用 mix 而不是相加：底图本来就接近纯白（天光 + 金环），相加只会更白，',
+'       混色才能在白底上仍看出青/橙两组线。 */',
+'    col=mix(col,vec3(0.24,0.84,1.00),l1*0.52*inside);',
+'    col=mix(col,vec3(1.00,0.58,0.20),l2*0.46*inside);',
+'  }',
 '  col+=exp(-r*r*7.0)*0.06*vec3(1.0,0.94,0.88);',
 '  col*=1.0-0.10*smoothstep(0.75,1.35,r);',
 '  /* 白光锥：顶点钉在球心，沿 −y 向球顶张开；它是叠在最后一层的静态光，不参与 ζ 的折叠 */',
@@ -1115,10 +1249,15 @@ var FRAG=[
 '    float body=(1.0-smoothstep(halfA*0.25,halfA,ang))*upM*fall*1.65*gn;',
 '    float core=(1.0-smoothstep(0.0,max(halfA*0.12,0.0025),ang))*upM*(0.30+0.70*fall)*0.60;',
 '    float halo=(1.0-smoothstep(halfA,halfA*2.0,ang))*upM*fall*0.18;',
-'    float bm=(body+core+exp(-r*r*45.0)*0.60)*uBeamI;',
+'    float cone=body+core+exp(-r*r*45.0)*0.60;',
+'    /* 俯视：锥轴转到视线方向，看到的是横截面 ⇒ 中心圆斑，半径 ∝ sin(半角) */',
+'    float disc=(1.0-smoothstep(sin(halfA)*0.25,sin(halfA)*0.95,r))*exp(-r*r*1.15)*1.25*gn;',
+'    float w3=(uView3d>0.5)?(1.0-stv):0.0;   /* 俯视 stv=0 → 1；侧视 stv=1 → 0 */',
+'    float bm=mix(cone,disc,w3)*uBeamI;',
 '    /* 往白插值而非相加：亮底图上也能看出锥形，不会一加就过曝消失 */',
 '    col=mix(col,vec3(1.0,0.985,0.955),clamp(bm,0.0,1.0));',
-'    col+=halo*uBeamI*vec3(0.60,0.75,1.0);',
+'    float hl=mix(halo,(1.0-smoothstep(sin(halfA)*1.2,sin(halfA)*2.2,r))*0.12,w3);',
+'    col+=hl*uBeamI*vec3(0.60,0.75,1.0);',
 '  }',
 '  return clamp(col,0.0,1.0);',
 '}',
@@ -1541,7 +1680,7 @@ var UNIFORM_NAMES=['uRes','uTime','uClock','uSpeed','uSpin','uTwist','uRings','u
      'uVfx','uVfxMix','uVfxA','uVfxB','uVfxC','uVfxD','uVfxSpd',
      'uStyle','uRays','uGrain','uSoft','uEdge',
      'uTex','uImgAsp','uFoldMode','uFoldD','uFoldKap','uFoldL','uFoldRad','uFoldMix',
-     'uBeam','uBeamA','uBeamI',
+     'uBeam','uBeamA','uBeamI','uView3d','uTilt','uFoldGrid',
      'uGlass','uGSep','uGGhost','uGSat','uGSwap',
      'uD3','uD3Light','uD3Fog','uD3Bump','uD3Par','uD3Rip',
      'uCoreKind','uSunSize','uSunRays'];
@@ -1859,7 +1998,7 @@ var UMAP={uSpeed:'speed',uSpin:'spin',uTwist:'twist',uRings:'rings',uSectors:'se
   uVfx:'vfx',uVfxMix:'vfxMix',uVfxA:'vfxA',uVfxB:'vfxB',uVfxC:'vfxC',uVfxD:'vfxD',uVfxSpd:'vfxSpd',
   uStyle:'style',uRays:'rays',uGrain:'grain',uSoft:'soft',uEdge:'edge',
   uFoldMode:'foldMode',uFoldD:'foldD',uFoldKap:'foldKap',uFoldL:'foldL',
-  uFoldRad:'foldRad',uFoldMix:'foldMix',uBeam:'beam',uBeamA:'beamA',uBeamI:'beamI',
+  uFoldRad:'foldRad',uFoldMix:'foldMix',uBeam:'beam',uBeamA:'beamA',uBeamI:'beamI',uView3d:'view3d',uTilt:'tilt',uFoldGrid:'foldGrid',
   uGlass:'glass',uGSep:'gSep',uGGhost:'gGhost',uGSat:'gSat',uGSwap:'gSwap',
   uD3:'d3',uD3Light:'d3Light',uD3Fog:'d3Fog',uD3Bump:'d3Bump',uD3Par:'d3Par',uD3Rip:'d3Rip',
   uCoreKind:'coreKind',uSunSize:'sunSize',uSunRays:'sunRays'};
@@ -1869,6 +2008,8 @@ function drawGL(t,clk){
   gl.uniform2f(U.uRes,canvas.width,canvas.height);
   gl.uniform1f(U.uTime,t);gl.uniform1f(U.uClock,clk);
   for(var n in UMAP){if(U[n])gl.uniform1f(U[n],avParam(UMAP[n],P[UMAP[n]]));}
+  /* 轴倾角自动扫描：θ 在 0°(俯视) ↔ 90°(侧视) 之间往返，不走 P，避免每帧写 localStorage */
+  if(U.uTilt)gl.uniform1f(U.uTilt,(Number(P.tiltAuto)>0.5)?(45.0+45.0*Math.sin(t*0.32)):Number(P.tilt));
   /* 共形折叠底图：单文件内嵌图，载入后挂在 0 号纹理单元 */
   if(foldTex&&U.uTex){
     gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,foldTex);
