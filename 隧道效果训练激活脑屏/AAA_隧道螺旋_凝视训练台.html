@@ -1013,6 +1013,45 @@ function doAction(v){
   else if(v==='full'){if(!document.fullscreenElement){(document.documentElement.requestFullscreen||function(){}).call(document.documentElement);}else{document.exitFullscreen();}}
   else if(v==='imm'){document.body.classList.add('immersive');setTimeout(resize,220);toast('沉浸模式 · 按 Esc 退出');}
 }
+/* ===== URL 直达（2026-11-15 新增，供三个入口页一键链到具体预设）=====
+   写法两种，效果一样：
+     …/AAA_隧道螺旋_凝视训练台.html#fold        ← 纯锚点，链接最短
+     …/AAA_隧道螺旋_凝视训练台.html?p=fold      ← 查询串
+   还可叠加可选覆盖（都能省）：&bg=0|1|2 底图、&spin=0|1|2 旋转方向、
+   &view=0|1 侧视/俯视、&tri=0|1 三栏对比、&beam=0|1 白光锥。
+   只认 PRESETS 里真实存在的 key；未知键忽略，本机记忆里的其它参数不动。 */
+function urlWanted(){
+  var q=location.search||'', h=location.hash||'';
+  var m=q.match(/[?&]p=([^&?#]+)/);
+  var key;
+  try{ key=m?decodeURIComponent(m[1]):decodeURIComponent(h.replace(/^#/,'')); }catch(e){ key=''; }
+  if(!key||!PRESETS[key])return null;
+  return {key:key,q:q};
+}
+function applyURLDirect(){
+  var w=urlWanted(); if(!w)return false;
+  P=Object.assign({},DEF,PRESETS[w.key]);
+  function num(n){var m=w.q.match(new RegExp('[?&]'+n+'=(-?[0-9.]+)'));return m?parseFloat(m[1]):null;}
+  var v;
+  v=num('bg');   if(v!==null){ P.foldImg=Math.max(0,Math.min(2,Math.round(v)));
+                 /* 底图换了就把对比拉伸一起换成该图对应的值，否则高调白底的图② 会一片惨白 */
+                 if(typeof FOLD_CMP==='object')P.foldCmp=FOLD_CMP[P.foldImg]; }
+  v=num('spin'); if(v!==null)P.tiltSpin=v;
+  v=num('view'); if(v!==null)P.view3d=v;
+  v=num('tri');  if(v!==null)P.foldTri=v;
+  v=num('beam'); if(v!==null)P.beam=v;
+  saveP();syncUI();resize();
+  var sel=document.getElementById('preset'); if(sel)sel.value=w.key;
+  if(typeof ensureProg==='function')ensureProg();
+  window.__urlPreset=w.key;
+  try{
+    var op=document.querySelector('#preset option[value="'+w.key+'"]');
+    toast('按链接直达：'+(op?op.textContent.split('（')[0]:w.key));
+  }catch(e){}
+  return true;
+}
+window.addEventListener('hashchange',function(){ try{ if(urlWanted())applyURLDirect(); }catch(e){} });
+
 document.getElementById('preset').addEventListener('change',function(e){
   var p=PRESETS[e.target.value]; if(!p)return;
   P=Object.assign({},DEF,p);saveP();syncUI();resize();toast('已载入预设：'+e.target.options[e.target.selectedIndex].text.split('（')[0]);
@@ -2900,6 +2939,8 @@ function boot(){
   window.__bootAt=performance.now();   /* 埋点：boot 开始时刻，便于和 FCP 对比 */
   try{initGL();}catch(e){showErr('初始化异常：'+e.message);}
   syncUI();resize();refreshSchemes();
+  /* 放最后：入口页带 #fold / ?p=fold 进来时覆盖本机记忆，直接落在该预设 */
+  try{applyURLDirect();}catch(e){}
   if(CENTER_FIXED)setTimeout(function(){toast('检测到上次保存的中心偏移，已自动复位到屏幕正中');},700);
   window.__glAt=performance.now();     /* 埋点：WebGL 真正就绪时刻 */
   var ov=document.getElementById('boot');
