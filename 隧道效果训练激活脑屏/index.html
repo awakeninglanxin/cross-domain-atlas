@@ -319,6 +319,14 @@ select{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 6px
       <div class="row" data-k="foldSquare"><button data-v="0" class="on">画布：横屏</button><button data-v="1">画布：方形</button></div>
       <div class="row" data-k="foldTri"><button data-v="0" class="on">单画面</button><button data-v="1">三栏对比 A · B · C</button></div>
       <div class="btnrow"><button id="bShot">下载当前帧（PNG）</button></div>
+      <div class="btnrow" style="gap:6px;align-items:center">
+        <button id="bGif" style="flex:1">导出 GIF · 一轮循环</button>
+        <input id="gifSec" type="number" min="0.3" max="12" step="0.1" placeholder="自动"
+               title="留空 = 按当前参数自动算（折叠档取整数个周期，接缝像素重合）"
+               style="width:68px;padding:6px 7px;border:1px solid var(--line);border-radius:6px;font:12px/1.2 inherit;color:#39414f">
+        <span style="font-size:11.5px;color:#7a8394">秒</span>
+      </div>
+      <div class="lab" style="margin:-2px 0 10px"><span id="gifTip" style="font-size:11px;line-height:1.55">GIF —</span></div>
       <div class="lab" style="margin-top:12px"><span>白光锥 · 顶点在球心，朝球顶射出（静态叠光层，不参与折叠）</span></div>
       <div class="row" data-k="beam"><button data-v="1" class="on">开</button><button data-v="0">关</button></div>
       <div class="fld"><div class="lab"><span>锥半角（标签为全角）</span><b class="num" data-k="beamA">1</b></div><input type="range" data-k="beamA" min="0.5" max="45" step="0.5" value="1"></div>
@@ -839,6 +847,7 @@ function syncUI(){
   if(typeof audioTune==='function')audioTune();
   var _bi=document.getElementById('bFoldImg');
   if(_bi&&typeof FOLD_NAMES==='object')_bi.textContent=FOLD_NAMES[foldIdx()];
+  if(window.__gifTip)try{window.__gifTip();}catch(e){}
   if(typeof syncFoldBar==='function')syncFoldBar();
 }
 function apply(k,v,silent){
@@ -2951,5 +2960,511 @@ requestAnimationFrame(function(){
   requestAnimationFrame(function(){setTimeout(boot,0);});
 });
 </script>
+<script>
+/* ==================== GIF 导出 · 一轮循环（2026-11-15 新增） ====================
+   为什么自己写编码器：这个页面是「单文件、离线可用」，不能引外部库（gif.js 要 worker 脚本、
+   gifenc 要 CDN）。所以内置一个最小 GIF89a 写入器 + LZW 编码 + 中位切分调色板。
+
+   取帧方式（保证可复现）：
+     · 不靠 setInterval 抓屏（会掉帧、会带上节流），而是**逐帧直接调 drawGL(t)**，
+       时间戳由 i/frames*时长 精确给定，抓完立刻 gl.readPixels —— 同一次任务里没有合成清屏，
+       所以拿到的就是刚画的那一帧。
+     · 2D 降级档同理，走 draw2D(t) + drawImage。
+
+　 「一轮循环」怎么算：
+     折叠档的相位是 s=mod(…+κ·t, L)，视觉上 κ·t 前进 L 就回到同一状态 ⇒ 周期 = L/(κ·vtPerSec)，
+     其中 vtPerSec = uVfxSpd·(0.35+0.65·uSpeed)（着色器里 vt 的换算）。
+     取它的**整数倍**且总长落在 1.2~6 s，这样接缝处像素完全重合，GIF 循环播放不跳。
+     非折叠档（经典螺旋）本身没有严格周期 ⇒ 固定取 3 s，并在提示里标「近似」。
+
+   ⚠ 10 ms 栅格（2026-11-15 修）：GIF 的每帧延迟只能是「厘秒」整数，
+     所以「总时长」被钉死在 10 ms 栅格上。若只把秒数四舍五入，内容取 1.52 s、
+     实际播放 1.44 s ⇒ 接缝处整整跳掉 5% 周期（实测肉眼可见）。
+     因此这里反过来做：先在 (帧数, 厘秒/帧) 网格上搜出「帧数×厘秒 恰好等于 k 个周期」
+     的组合（误差容忍 < 5 ms 即半格），再按这个组合去取帧 ⇒ 取多少放多少，接缝严丝合缝。
+
+   体积：默认 520 px 宽 / ≈16 fps / 256 色，编完若 > 4.8 MB 就自动退化（先降分辨率，再抽帧），
+         直到压进 5 MB 以内，最多 6 轮。抽帧时延迟翻倍，总时长不变 ⇒ 周期仍是整数倍。
+   ================================================================================ */
+(function(){
+  var MAXBYTES = 4800000;          /* 目标 < 4.8 MB，给 5 MB 留余量 */
+  var busy = false;
+
+  /* ---------- 字节缓冲 ---------- */
+  function ByteBuf(){ this.a = new Uint8Array(65536); this.n = 0; }
+  ByteBuf.prototype.ensure = function(k){
+    if(this.n + k <= this.a.length) return;
+    var t = new Uint8Array(Math.max(this.a.length * 2, this.n + k));
+    t.set(this.a.subarray(0, this.n)); this.a = t;
+  };
+  ByteBuf.prototype.push = function(b){ this.ensure(1); this.a[this.n++] = b & 255; };
+  ByteBuf.prototype.push2 = function(v){ this.ensure(2); this.a[this.n++] = v & 255; this.a[this.n++] = (v >> 8) & 255; };
+  ByteBuf.prototype.pushBytes = function(src, off, len){ this.ensure(len); this.a.set(src.subarray(off, off + len), this.n); this.n += len; };
+  ByteBuf.prototype.sub = function(){ return this.a.subarray(0, this.n); };
+
+  /* ---------- 8×8 Bayer（有序抖动，不会跨帧传播误差，动画不闪） ---------- */
+  var BAY = (function(){
+    var m = [[ 0,32, 8,40, 2,34,10,42],[48,16,56,24,50,18,58,26],
+             [12,44, 4,36,14,46, 6,38],[60,28,52,20,62,30,54,22],
+             [ 3,35,11,43, 1,33, 9,41],[51,19,59,27,49,17,57,25],
+             [15,47, 7,39,13,45, 5,37],[63,31,55,23,61,29,53,21]];
+    var a = new Uint8Array(64);
+    for(var y = 0; y < 8; y++) for(var x = 0; x < 8; x++) a[y*8+x] = m[y][x];
+    return a;
+  })();
+
+  /* ---------- 中位切分：从实际画面取 256 色，比固定色立方体准得多 ---------- */
+  function buildPalette(frames, W, H, maxColors){
+    var hist = new Uint32Array(32768);
+    var sr = new Float64Array(32768), sg = new Float64Array(32768), sb = new Float64Array(32768);
+    for(var f = 0; f < frames.length; f++){
+      var d = frames[f];
+      for(var i = 0; i < d.length; i += 16){          /* 每 4 个像素取 1 个 */
+        var r = d[i], g = d[i+1], b = d[i+2];
+        var key = ((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3);
+        hist[key]++; sr[key] += r; sg[key] += g; sb[key] += b;
+      }
+    }
+    var keys = [];
+    for(var k = 0; k < 32768; k++) if(hist[k]) keys.push(k);
+    if(!keys.length) return { pal: new Uint8Array(768), n: 1 };
+
+    function box(arr){
+      var cnt = 0, sR = 0, sG = 0, sB = 0;
+      var rmin = 31, rmax = 0, gmin = 31, gmax = 0, bmin = 31, bmax = 0;
+      for(var i = 0; i < arr.length; i++){
+        var kk = arr[i], c = hist[kk];
+        cnt += c; sR += sr[kk]; sG += sg[kk]; sB += sb[kk];
+        var r = (kk >> 10) & 31, g = (kk >> 5) & 31, b = kk & 31;
+        if(r < rmin) rmin = r; if(r > rmax) rmax = r;
+        if(g < gmin) gmin = g; if(g > gmax) gmax = g;
+        if(b < bmin) bmin = b; if(b > bmax) bmax = b;
+      }
+      return { a: arr, cnt: cnt, sR: sR, sG: sG, sB: sB,
+               rmin: rmin, rmax: rmax, gmin: gmin, gmax: gmax, bmin: bmin, bmax: bmax };
+    }
+    var boxes = [box(keys)];
+    while(boxes.length < maxColors){
+      var bi = -1, best = 0;
+      for(var i = 0; i < boxes.length; i++){
+        var b = boxes[i];
+        if(b.a.length < 2 || b.cnt < 2) continue;
+        var mx = Math.max(b.rmax - b.rmin, b.gmax - b.gmin, b.bmax - b.bmin);
+        if(mx <= 0) continue;
+        var score = mx * Math.log(1 + b.cnt);
+        if(score > best){ best = score; bi = i; }
+      }
+      if(bi < 0) break;
+      var bb = boxes[bi];
+      var dr = bb.rmax - bb.rmin, dg = bb.gmax - bb.gmin, db = bb.bmax - bb.bmin;
+      var ch = (dr >= dg && dr >= db) ? 0 : (dg >= db ? 1 : 2);
+      var sh = ch === 0 ? 10 : (ch === 1 ? 5 : 0);
+      bb.a.sort(function(x, y){ return (((x >> sh) & 31)) - (((y >> sh) & 31)); });
+      var half = bb.cnt / 2, acc = 0, cut = 1;
+      for(var j = 0; j < bb.a.length - 1; j++){ acc += hist[bb.a[j]]; if(acc >= half){ cut = j + 1; break; } }
+      if(cut < 1) cut = 1;
+      if(cut > bb.a.length - 1) cut = bb.a.length - 1;
+      boxes.splice(bi, 1, box(bb.a.slice(0, cut)), box(bb.a.slice(cut)));
+    }
+    var pal = new Uint8Array(768), n = 0;
+    for(var i2 = 0; i2 < boxes.length && n < maxColors; i2++){
+      var b2 = boxes[i2]; if(!b2.cnt) continue;
+      pal[n*3]   = Math.round(b2.sR / b2.cnt);
+      pal[n*3+1] = Math.round(b2.sG / b2.cnt);
+      pal[n*3+2] = Math.round(b2.sB / b2.cnt);
+      n++;
+    }
+    return { pal: pal, n: Math.max(1, n) };
+  }
+
+  /* 5-5-5 查表：32768 项一次建好，逐像素只做一次数组访问 */
+  function buildLUT(pal, n){
+    var lut = new Uint8Array(32768);
+    for(var k = 0; k < 32768; k++){
+      var r = ((k >> 10) & 31) * 8 + 4, g = ((k >> 5) & 31) * 8 + 4, b = (k & 31) * 8 + 4;
+      var best = 0, bd = 1e18;
+      for(var i = 0; i < n; i++){
+        var dr = r - pal[i*3], dg = g - pal[i*3+1], db = b - pal[i*3+2];
+        var dd = dr*dr + dg*dg + db*db;
+        if(dd < bd){ bd = dd; best = i; }
+      }
+      lut[k] = best;
+    }
+    return lut;
+  }
+
+  function mapFrame(data, lut, W, H, dith){
+    var out = new Uint8Array(W * H);
+    for(var y = 0; y < H; y++){
+      var row = y * W * 4, o = y * W, brow = (y & 7) * 8;
+      for(var x = 0; x < W; x++){
+        var i = row + x * 4;
+        var r = data[i], g = data[i+1], b = data[i+2];
+        if(dith){
+          var dv = (BAY[brow + (x & 7)] / 64 - 0.5) * dith;
+          r = r + dv; g = g + dv; b = b + dv;
+          r = r < 0 ? 0 : (r > 255 ? 255 : r | 0);
+          g = g < 0 ? 0 : (g > 255 ? 255 : g | 0);
+          b = b < 0 ? 0 : (b > 255 ? 255 : b | 0);
+        }
+        out[o + x] = lut[((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3)];
+      }
+    }
+    return out;
+  }
+
+  /* ---------- LZW（GIF 变体，LSB 先行；字典用版本戳，免每次 clear） ---------- */
+  var DICT = new Int32Array(1 << 20);
+  var VERS = new Int32Array(1 << 20);
+  var STAMP = 1;
+
+  function lzwEncode(idx, mcs){
+    var clear = 1 << mcs, eoi = clear + 1;
+    var codeSize = mcs + 1, next = clear + 2;
+    var out = new ByteBuf();
+    var cur = 0, bits = 0;
+
+    /* ⚠ 每调用一次就换版本戳：DICT/VERS 是跨帧共享的大数组，上一帧（或上一次导出）
+       留下的条目如果不失效，这一帧的查表会命中并不存在的「词」，LZW 立刻脱轨。
+       用版本戳而不用 fill(0)，是为了不把 1M 项清零（每帧都清会明显拖慢）。 */
+    STAMP++;
+    if(STAMP > 2000000000){ VERS.fill(0); STAMP = 1; }
+
+    function put(code){
+      cur |= code << bits; bits += codeSize;
+      while(bits >= 8){ out.push(cur & 255); cur >>= 8; bits -= 8; }
+    }
+    put(clear);
+    var prefix = idx[0];
+    for(var i = 1; i < idx.length; i++){
+      var k = idx[i];
+      var key = (prefix << 8) | k;
+      var found = (VERS[key] === STAMP) ? DICT[key] : -1;
+      if(found >= 0){ prefix = found; }
+      else{
+        put(prefix);
+        if(next < 4096){
+          VERS[key] = STAMP; DICT[key] = next++;
+          /* ⚠ 必须是 next > 2^codeSize（「写完这一码之后」才进位），不能写 >=。
+             解码器读完当前码才建表，码宽要跟它对齐；写成 >= 会早一码，字典满 4096
+             项时整段 LZW 报废（2026-11-15 用 ffmpeg 定位：<4096 像素的小图看不出）。 */
+          if(next > (1 << codeSize) && codeSize < 12) codeSize++;
+        }else{
+          put(clear);
+          STAMP++;
+          if(STAMP > 2000000000){ VERS.fill(0); STAMP = 1; }
+          next = clear + 2; codeSize = mcs + 1;
+        }
+        prefix = k;
+      }
+    }
+    put(prefix); put(eoi);
+    if(bits > 0) out.push(cur & 255);
+    return out.sub();
+  }
+
+  function buildGIF(W, H, pal, nColors, idxFrames, delays){
+    var b = new ByteBuf(), i;
+    var hdr = 'GIF89a';
+    for(i = 0; i < 6; i++) b.push(hdr.charCodeAt(i));
+    b.push2(W); b.push2(H); b.push(0xF7); b.push(0); b.push(0);   /* 0xF7 = 有全局色表、256 色 */
+    for(i = 0; i < 768; i++) b.push(i < nColors * 3 ? pal[i] : 0);
+    /* NETSCAPE2.0：无限循环 */
+    b.push(0x21); b.push(0xFF); b.push(0x0B);
+    var ns = 'NETSCAPE2.0';
+    for(i = 0; i < 11; i++) b.push(ns.charCodeAt(i));
+    b.push(0x03); b.push(0x01); b.push2(0); b.push(0);
+
+    for(var f = 0; f < idxFrames.length; f++){
+      /* 图形控制扩展：disposal=1（不处置），无透明；延迟可逐帧不同 */
+      var dly = (typeof delays === 'number') ? delays : (delays[f] || delays[delays.length - 1] || 6);
+      b.push(0x21); b.push(0xF9); b.push(0x04); b.push(0x04);
+      b.push2(dly); b.push(0); b.push(0);
+      /* 图像描述符：整幅、无局部色表、不隔行 */
+      b.push(0x2C); b.push2(0); b.push2(0); b.push2(W); b.push2(H); b.push(0);
+      b.push(8);
+      var dat = lzwEncode(idxFrames[f], 8);
+      for(var p = 0; p < dat.length; p += 255){
+        var len = Math.min(255, dat.length - p);
+        b.push(len);
+        b.pushBytes(dat, p, len);
+      }
+      b.push(0);
+    }
+    b.push(0x3B);
+    return b.sub();
+  }
+
+  /* ---------- 周期推算（只用于面板提示，真正的时长靠实测校准） ---------- */
+  function periodInfo(){
+    var spd = Number(P.vfxSpd) || 1, sp = Number(P.speed) || 1;
+    var vtPerSec = Math.max(0.05, spd * (0.35 + 0.65 * sp));
+    var folded = Number(P.vfx) > 3.5;
+    var per = 0, kap = 0.1;
+    if(folded){
+      var L = Math.max(Number(P.foldL), 0.08);
+      kap = Math.max(Number(P.foldKap), 0.08);
+      per = (L / kap) / vtPerSec;
+    }
+    var note = folded
+      ? '折叠相位周期约 ' + per.toFixed(2) + ' s（含噪声分量，实际以导出前的实测为准）'
+      : '非折叠档没有严格周期，导出前会实测最短接缝';
+    if(folded && Number(P.tiltSpin) > 0 && Number(P.view3d) > 0.5){
+      note += '；旋转开着，接缝角度会跳一点（旋转一圈约 ' + (28.6 / kap / vtPerSec).toFixed(1) + ' s，已超出可取范围）';
+    }
+    return { per: per, note: note };
+  }
+
+  /* 把总时长（厘秒）摊到各帧：余数均匀撒开，避免末尾一堆长帧；总时长分毫不差。
+     帧数取偶数 —— 体积超标时要抽帧（取隔帧 + 相邻延迟相加），偶数才不丢时长。 */
+  function spreadDelays(totalCs, fr){
+    var base = Math.floor(totalCs / fr), rem = totalCs - base * fr;
+    var a = [], prev = 0;
+    for(var i = 0; i < fr; i++){
+      var cur = Math.floor((i + 1) * rem / fr);
+      a.push(base + (cur > prev ? 1 : 0));
+      prev = cur;
+    }
+    if(base < 2) for(var j = 0; j < a.length; j++) a[j] = Math.max(2, a[j]);
+    return a;
+  }
+
+  /* ---------- 循环时长：实测校准 ----------
+     为什么不能只按公式算：折叠相位确实是 L/(κ·vt) 一个周期，但画面里还有云层 fbm、
+     放射条纹、颗粒等分量，各自按不同速率推进，彼此永不同步 —— 理论周期处实测差 46，
+     真正最像的位置在别处（本机参数下 0.64 s，实测差 10）。
+     所以导出前直接把「隔 s 秒再画一次」跟当前帧比一遍，取最像的那个 s。 */
+  function calibrateLoop(lo, hi, onStep){
+    if(mode2D) return null;                     /* 2D 降级档太慢，直接跳过校准 */
+    var W = canvas.width, H = canvas.height;
+    if(!_buf || _buf.length < W * H * 4) _buf = new Uint8Array(W * H * 4);
+    var t0 = T, c0 = clock;
+    function snap(s){
+      drawGL(t0 + s, c0 + s);
+      gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, _buf);
+      return _buf;
+    }
+    var ref = new Uint8Array(snap(0));
+    function dist(buf){
+      var sum = 0, n = 0;
+      for(var i = 0; i < ref.length; i += 64){ sum += Math.abs(buf[i] - ref[i]); n++; }  /* 每 16 像素取 1 */
+      return sum / n;
+    }
+    /* 每次「画+读」在弱机上要上百毫秒，所以两步走：粗扫 50 ms → 只在最像的位置附近细扫 10 ms */
+    var coarse = 0.05, best = null, cnt = 0, total = Math.ceil((hi - lo) / coarse) + 21;
+    for(var s = lo; s <= hi + 1e-9; s += coarse){
+      var d = dist(snap(s));
+      if(!best || d < best[1]) best = [s, d];
+      cnt++;
+      if(onStep && (cnt & 3) === 0) onStep(cnt / total);
+    }
+    for(var f = -coarse + 0.01; f <= coarse - 0.001; f += 0.01){
+      var s2 = best[0] + f;
+      if(s2 < lo || s2 > hi) continue;
+      var d2 = dist(snap(s2));
+      if(d2 < best[1]) best = [s2, d2];
+      cnt++;
+    }
+    if(onStep) onStep(1);
+    var sec = Math.round(best[0] * 100) / 100;
+    return { sec: sec, diff: best[1], scanned: cnt };
+  }
+
+  /* ---------- 取帧 ---------- */
+  var _tmp = null, _cap = null, _buf = null;
+  function grab(W, H){
+    if(mode2D){
+      if(!_tmp) _tmp = document.createElement('canvas');
+      _tmp.width = W; _tmp.height = H;
+      var tc = _tmp.getContext('2d');
+      tc.clearRect(0, 0, W, H);
+      tc.drawImage(canvas, 0, 0, W, H);
+      return tc.getImageData(0, 0, W, H).data;
+    }
+    var gw = canvas.width, gh = canvas.height, need = gw * gh * 4;
+    if(!_buf || _buf.length < need) _buf = new Uint8Array(need);
+    gl.readPixels(0, 0, gw, gh, gl.RGBA, gl.UNSIGNED_BYTE, _buf);
+    if(!_tmp) _tmp = document.createElement('canvas');
+    _tmp.width = gw; _tmp.height = gh;
+    var t2 = _tmp.getContext('2d');
+    var id = t2.createImageData(gw, gh), dst = id.data;
+    for(var y = 0; y < gh; y++){                    /* readPixels 是左下原点，翻过来 */
+      var s = (gh - 1 - y) * gw * 4;
+      dst.set(_buf.subarray(s, s + gw * 4), y * gw * 4);
+    }
+    t2.putImageData(id, 0, 0);
+    if(!_cap) _cap = document.createElement('canvas');
+    _cap.width = W; _cap.height = H;
+    var cc = _cap.getContext('2d');
+    cc.clearRect(0, 0, W, H);
+    cc.drawImage(_tmp, 0, 0, W, H);
+    return cc.getImageData(0, 0, W, H).data;
+  }
+
+  function rescale(data, W, H, cw, ch){
+    var src = document.createElement('canvas');
+    src.width = W; src.height = H;
+    src.getContext('2d').putImageData(new ImageData(data, W, H), 0, 0);
+    var o = document.createElement('canvas');
+    o.width = cw; o.height = ch;
+    var oc = o.getContext('2d');
+    oc.imageSmoothingEnabled = true;
+    oc.drawImage(src, 0, 0, cw, ch);
+    return oc.getImageData(0, 0, cw, ch).data;
+  }
+
+  function yieldUI(){ return new Promise(function(r){ setTimeout(r, 0); }); }
+
+  /* ---------- 主流程 ---------- */
+  async function exportGIF(){
+    if(busy) return;
+    if(!canvas || (!gl && !mode2D)){ toast('渲染还没就绪'); return; }
+    busy = true;
+    var btn = document.getElementById('bGif');
+    var oldLabel = btn ? btn.textContent : '';
+    function setBtn(t){ if(btn) btn.textContent = t; }
+    function tip(html){ var e = document.getElementById('gifTip'); if(e) e.innerHTML = html; }
+
+    try{
+      var info = periodInfo();
+      var box = document.getElementById('gifSec');
+      var want = box ? Number(box.value) : NaN;
+      var manual = isFinite(want) && want > 0;
+      var sec, frames, delays, cal = null;
+      if(manual){
+        /* 手填秒数：同样走「总厘秒数摊到偶数帧」的路子，保证取的时长 = 播的时长 */
+        var wsec = Math.max(0.3, Math.min(12, want));
+        frames = Math.max(4, Math.min(60, Math.round(wsec * 16 / 2) * 2));
+        var tc = Math.max(frames * 2, Math.round(wsec * 100));
+        sec = tc / 100;
+        delays = spreadDelays(tc, frames);
+      }else{
+        setBtn('测循环…');
+        await yieldUI();
+        cal = calibrateLoop(0.35, (Number(P.vfx) > 3.5) ? 2.80 : 3.60, function(p){
+          setBtn('测循环 ' + Math.round(p * 100) + '%');
+        });
+        sec = cal ? cal.sec : 3.0;
+        /* 短循环多给几帧，别让它显得一格一格跳；长循环封顶 48 帧控体积 */
+        frames = Math.max(8, Math.min(48, Math.round(sec * 18 / 2) * 2));
+        var tc2 = Math.max(frames * 2, Math.round(sec * 100));
+        sec = tc2 / 100;
+        delays = spreadDelays(tc2, frames);
+        setBtn('取帧 0%');
+      }
+
+      var W = Math.max(160, Math.round(Math.min(520, canvas.width || 520) / 2) * 2);
+      var H = Math.max(60, Math.round(W * (canvas.height || 1) / (canvas.width || 1) / 2) * 2);
+
+      var t0 = T, c0 = clock;
+      var imgs = [];
+      for(var i = 0; i < frames; i++){
+        var tt = t0 + (i / frames) * sec, cc2 = c0 + (i / frames) * sec;
+        try{ if(mode2D) draw2D(tt); else drawGL(tt, cc2); }catch(e){}
+        imgs.push(grab(W, H));
+        if((i & 1) === 0) setBtn('取帧 ' + Math.round((i + 1) / frames * 100) + '%');
+        await yieldUI();
+      }
+
+      setBtn('配颜色…');
+      await yieldUI();
+      var q = buildPalette(imgs, W, H, 256);
+      var lut = buildLUT(q.pal, q.n);
+
+      setBtn('编码…');
+      var idxs = [];
+      for(i = 0; i < imgs.length; i++){
+        idxs.push(mapFrame(imgs[i], lut, W, H, 10));
+        if((i & 7) === 7) await yieldUI();
+      }
+
+      var cw = W, ch = H, cur = idxs, out = null, dly = delays;
+      for(var attempt = 0; attempt < 6; attempt++){
+        out = buildGIF(cw, ch, q.pal, q.n, cur, dly);
+        if(out.length <= MAXBYTES) break;
+        if(cw > 300){
+          cw = Math.max(280, Math.round(cw * 0.78 / 2) * 2);
+          ch = Math.max(140, Math.round(cw * H / W / 2) * 2);
+          cur = [];
+          for(i = 0; i < imgs.length; i++) cur.push(mapFrame(rescale(imgs[i], W, H, cw, ch), lut, cw, ch, 10));
+        }else{
+          /* 抽帧：取隔帧 + 相邻延迟相加 ⇒ 总时长分毫不差，周期仍是整数倍 */
+          var half = [], hd = [];
+          for(i = 0; i + 1 < cur.length; i += 2){ half.push(cur[i]); hd.push(dly[i] + dly[i + 1]); }
+          if(half.length < 3) break;
+          cur = half; dly = hd;
+        }
+        setBtn('压缩 ' + (attempt + 1) + '…');
+        await yieldUI();
+      }
+
+      var totSec = 0;
+      for(i = 0; i < (typeof dly === 'number' ? cur.length : dly.length); i++) totSec += (typeof dly === 'number' ? dly : dly[i]) / 100;
+      var mb = out.length / 1048576;
+      var seamTxt = manual
+        ? '你指定的 ' + sec.toFixed(2) + ' 秒（不是实测周期，接缝可能跳）'
+        : (cal
+            ? '实测循环 <b>' + sec.toFixed(2) + ' s</b>（接缝差 ' + cal.diff.toFixed(1) + '，越小越连续；已扫 ' + cal.scanned + ' 个候选）'
+            : info.note);
+      if(out.length > MAXBYTES){
+        tip('已尽力压到 ' + mb.toFixed(2) + ' MB（仍略大），建议把「圈长」调短或改用方画布');
+      }else{
+        tip('已导出 <b>' + cw + '×' + ch + '</b> · ' + cur.length + ' 帧 · ' + totSec.toFixed(2) +
+            ' s · <b>' + mb.toFixed(2) + ' MB</b> · ' + seamTxt);
+      }
+
+      var blob = new Blob([out], { type: 'image/gif' });
+      var d = new Date(), z = function(n){ return (n < 10 ? '0' : '') + n; };
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = '隧道GIF_' + d.getFullYear() + z(d.getMonth() + 1) + z(d.getDate()) + '_' +
+                   z(d.getHours()) + z(d.getMinutes()) + z(d.getSeconds()) + '.gif';
+      document.body.appendChild(a); a.click();
+      setTimeout(function(){ try{ URL.revokeObjectURL(a.href); a.remove(); }catch(e){} }, 2500);
+      toast('GIF 已导出：' + cw + '×' + ch + ' · ' + cur.length + ' 帧 · ' + mb.toFixed(2) + ' MB');
+
+      /* 抓完把画面还给实时渲染 */
+      try{ if(mode2D) draw2D(T); else drawGL(T, clock); }catch(e){}
+    }catch(err){
+      tip('导出失败：' + (err && err.message ? err.message : err));
+      toast('GIF 导出失败：' + (err && err.message ? err.message : err));
+    }finally{
+      busy = false;
+      if(btn) btn.textContent = oldLabel || '导出 GIF · 一轮循环';
+    }
+  }
+
+  /* ---------- 面板提示随参数刷新 ---------- */
+  window.__gifTip = function(){
+    var e = document.getElementById('gifTip');
+    if(!e) return;
+    var box = document.getElementById('gifSec');
+    if(box && box.value && Number(box.value) > 0) return;     /* 用户手填了就以他为准，别覆盖 */
+    var info = periodInfo();
+    e.innerHTML = '留空 = 自动：先<b>实测</b>最连续的循环时长（约 1 秒扫描），再取帧 · ' + info.note;
+  };
+
+  function wire(){
+    var btn = document.getElementById('bGif');
+    if(!btn){ setTimeout(wire, 400); return; }
+    btn.addEventListener('click', exportGIF);
+    var box = document.getElementById('gifSec');
+    if(box){
+      box.addEventListener('input', function(){
+        var v = Number(box.value);
+        var e = document.getElementById('gifTip');
+        if(!e) return;
+        if(!box.value) { window.__gifTip(); return; }
+        e.innerHTML = '按你指定 <b>' + (isFinite(v) ? v.toFixed(2) : '—') + '</b> 秒取（不是自动周期，接缝可能跳）';
+      });
+    }
+    window.__gifTip();
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
+  else wire();
+  window.__exportGIF = exportGIF;
+})();
+</script>
+
 </body>
 </html>
