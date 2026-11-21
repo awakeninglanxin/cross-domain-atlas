@@ -199,6 +199,10 @@ th,td{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-alig
 th{background:#f7f4ee;font-weight:600;color:var(--ink2);white-space:nowrap}
 tbody tr:nth-child(even){background:#fcfbf8}
 td.num,th.num{font-family:var(--mono);text-align:center;white-space:nowrap}
+/* 6.4 双系统五行共鸣：低饱和行底色 */
+tr.res-good{background:#eef7f1!important}
+tr.res-warn{background:#fdf1ee!important}
+tr.res-mid{background:#eff4f9!important}
 
 /* ===== 报告正文（markdown 渲染） ===== */
 .md{font-size:14.5px;line-height:1.85}
@@ -445,6 +449,7 @@ tr.sumrow td{background:#faf7f0;font-weight:600}
 .acu-sub{font-size:11.5px;color:var(--ink3);margin:10px 0 6px}
 .acu-sec-n-sub{font-family:var(--serif);font-weight:700;font-size:14px;color:#4a3fbf;
   margin:16px 0 8px;padding-top:10px;border-top:1px dashed #e0daf7}
+.acu-red{color:#c0261b}
 
 </style>
 </head>
@@ -5860,6 +5865,10 @@ window.__DATA__={"_meta":{"生成时间":"2026-10-27 10:57:53","来源":["查询
     var favor = (strength >= 2)
       ? [keOf(dayWx), SHENG[dayWx], KE[dayWx]].filter(Boolean)
       : [yinStar, dayWx].filter(Boolean);
+    /* 忌神 = 喜用的反面：身强忌生扶（印/比劫），身弱忌克泄耗（官杀/食伤/财） */
+    var avoid = (strength >= 2)
+      ? [yinStar, dayWx].filter(Boolean)
+      : [keOf(dayWx), SHENG[dayWx], KE[dayWx]].filter(Boolean);
 
     /* ---- 阴阳统计（四柱天干 + 地支）---- */
     var yang = 0, yin = 0, yangList = [], yinList = [];
@@ -5878,13 +5887,417 @@ window.__DATA__={"_meta":{"生成时间":"2026-10-27 10:57:53","来源":["查询
       wangOf: wangOf, wangApplied: wangApplied,
       raw: raw, weighted: weighted, pct: pct, detail: detail,
       ranked: ranked, dominant: dominant, weakest: weakest,
-      strength: strength, body: body, reasons: reasons, favor: favor,
+      strength: strength, body: body, reasons: reasons, favor: favor, avoid: avoid,
       yang: yang, yin: yin, yangList: yangList, yinList: yinList, yyTrend: yyTrend,
       note: '排盘依据 lunar-javascript（九龙道长 zydx.top 同款）；五行量化含藏干与月令旺衰，身强身弱按得令/得地/得生三项计。仅供传统文化研究参考。'
     };
   }
 
-  G.BAZI = { analyze: analyze, WUXING: WUXING, SHENG: SHENG, KE: KE };
+  /* ---- 五行后天开运对照表（公开子平共识：颜色/数字/方位/饮食/养生/饰品/作息/行业）----
+     来源交叉核对：dskfs.com、yi958.com、ordoslfy.com、g5u.cn 等，取各来源一致部分。
+     仅作传统文化研究参考。 */
+  var OPEN = {
+    '木': { color: '青色、绿色', num: '3、8', dir: '正东、东南', taste: '酸、温性',
+      food: '绿色蔬菜、动物肝胆、青梅、柠檬、豆类', organ: '肝、胆',
+      jade: '木质手串、绿幽灵/翡翠', act: '晨间公园散步、庭院种植、拉伸',
+      life: '居室多绿植、木制品，少戴金属', trade: '园林、木材、教育、出版、医药' },
+    '火': { color: '红色、紫色、橙色', num: '2、7', dir: '正南、东南', taste: '苦、热性',
+      food: '红色果蔬（草莓/番茄/车厘子）、动物的心与小肠、辣椒', organ: '心、小肠、血脉',
+      jade: '红玛瑙、紫水晶', act: '晒太阳、下厨、写作创作',
+      life: '居室温暖明亮，少熬夜护眼，控制情绪', trade: '艺术、餐饮、美容、营销、石化' },
+    '土': { color: '黄色、棕色、卡其', num: '5、0', dir: '中央、本地、西南/东北', taste: '甘、中性',
+      food: '黄色食物（小米/南瓜/山药）、动物脾胃、蛋白质', organ: '脾、胃、消化',
+      jade: '玉石、黄水晶、陶瓷', act: '散步、站桩、规律作息',
+      life: '居室宜近山/平原，黄色家居，多读经典', trade: '地产、农业、陶瓷、仓储、教育' },
+    '金': { color: '白色、银色、金色', num: '4、9', dir: '正西、西北', taste: '辛、凉性',
+      food: '白色食物（梨/百合/银耳/白萝卜）、动物大肠、润肺', organ: '肺、大肠、呼吸道',
+      jade: '金银首饰、白金、金属饰品', act: '深呼吸、有氧运动',
+      life: '居室可用大理石/瓷砖，随身带钱币，少食辛辣', trade: '金融、机械、珠宝、医疗、法律' },
+    '水': { color: '黑色、蓝色、灰色', num: '1、6', dir: '正北、西北', taste: '咸、寒性',
+      food: '黑色食物（黑木耳/黑豆/海带）、鱼、动物肾、滋阴补肾', organ: '肾、膀胱、泌尿',
+      jade: '水晶、黑曜石、珍珠', act: '游泳、静坐冥想',
+      life: '居室近水，多喝水，亥时（21-23点）前入睡', trade: '水利、物流、贸易、旅游、水产' }
+  };
+  /* ---- 二十四节气食养库（师命 2026-11-21：养生饮食须结合节气）----
+     依据（单文件零外链，仅标注机构与篇名，不含 URL）：
+       ① 国家中医药管理局主管《中国中医药报》/中国中医药网：清明、谷雨、白露、霜降、小雪专题；
+       ② 新华网/央视网：中国中医科学院西苑医院、广安门医院专家节气养生解读；
+       ③ 北京中医药大学东方医院《二十四节气食疗方》（2025 服贸会发布）；
+       ④ 人民网健康时报《二十四节气养生表》。
+     只取各家一致或权威单篇明示内容，作为传统文化研究参考，不替代专业医嘱。
+     字段：n 节气 / wx 时令五行 / organ 重点脏腑 / pr 养生原则 / food 当令食材 /
+           avoid 忌口 / recipe 代表食疗 */
+  var JIEQI = {
+    '立春': { wx: '木', organ: '肝、胆', pr: '助阳升发，增辛减酸，护阳春捂', food: '韭菜、葱、香菜、豆芽、春笋、山药、芡实、白扁豆', avoid: '酸收过度、生冷油腻', recipe: '芡实扁豆山药粥（健脾益气、化湿和胃）' },
+    '雨水': { wx: '木', organ: '肝、脾', pr: '健脾祛湿，防倒春寒，少酸多甘', food: '山药、薏苡仁、小米、南瓜、韭菜、豆芽、蜂蜜', avoid: '辛辣燥热、卤制品、生冷', recipe: '山药薏米粥（健脾祛湿）' },
+    '惊蛰': { wx: '木', organ: '肝、肺', pr: '疏肝润燥，清淡甘平微辛，助阳勿助火', food: '茵陈、梨（熟食）、百合、菠菜、荸荠、山药', avoid: '辛辣助火、过酸、生冷', recipe: '茵陈粥/冰糖炖梨（清湿热、润春燥）' },
+    '春分': { wx: '木', organ: '肝、脾', pr: '调和阴阳，清热疏肝，勿偏寒偏热', food: '香椿、荠菜、春笋、菠菜、山药、蜂蜜、豆类', avoid: '大寒大热、过油腻', recipe: '香椿拌豆腐/荠菜煮鸡蛋（清热解毒、健胃理气）' },
+    '清明': { wx: '木', organ: '肝、脾', pr: '平肝养阴、祛湿防风，慎发物', food: '银耳、薏仁、黄芪、山药、桑葚、杏仁、黄豆、燕麦、扁豆', avoid: '猪头肉/公鸡肉/鹅肉等发物、辛辣、海腥、过腻过酸煎炸', recipe: '银耳薏仁黄芪汤/青蒿蹄花汤（利水渗湿、清热滋补）' },
+    '谷雨': { wx: '木', organ: '肝、脾', pr: '养肝清肝、健脾祛湿，为入夏打底', food: '菠菜、白扁豆、赤小豆、薏仁、山药、荷叶、芡实、冬瓜、陈皮、鲫鱼', avoid: '过度寒凉伤脾、暴饮暴食、对胃有刺激之物', recipe: '银耳怀山药排骨汤（健胃益气）' },
+    '立夏': { wx: '火', organ: '心、脾', pr: '清补为主、兼顾祛湿，养心护脾', food: '乌梅、山楂、苦瓜、莲子、薏苡仁、赤小豆、茯苓、山药、绿叶菜', avoid: '油腻辛辣、冷饮冰品伤脾阳', recipe: '猪肝绿豆粥（养肝补血、利水消肿）' },
+    '小满': { wx: '火', organ: '脾、胃', pr: '清热化湿、健脾和胃，南北有别', food: '白扁豆、赤小豆、薏苡仁、苦瓜、黄豆、冬瓜、鲫鱼、木棉花', avoid: '油腻、生冷、辛辣；脾胃虚寒者勿久食寒凉', recipe: '苦瓜黄豆排骨汤（清热益气、健脾和胃）' },
+    '芒种': { wx: '火', organ: '脾、胃', pr: '防暑湿、护脾胃，宜清淡祛湿酸甘', food: '苦瓜、赤小豆、乌梅、薏米、山药、冬瓜、荷叶', avoid: '油腻、生冷、辛辣（三宜三忌）', recipe: '乌梅汤/薏米山药粥（生津祛湿）' },
+    '夏至': { wx: '火', organ: '心、脾', pr: '顺时养阳、健脾化湿、滋养心阴宁心', food: '山药、茯苓、莲子、冬瓜、薏苡仁、百合、麦冬、银耳、乌梅、苦瓜、苦菊', avoid: '生冷寒凉、肥甘厚味、过咸过燥', recipe: '莲子茯苓糕/百合银耳羹（补益心脾、益气安神）' },
+    '小暑': { wx: '火', organ: '心、脾', pr: '清热解暑、健脾化湿，勿贪凉伤阳', food: '绿豆、荷叶、莲子、冬瓜、薏苡仁、山药、生姜（空调房）', avoid: '冰品过度、油腻厚味', recipe: '荷叶粥/绿豆汤（清暑化湿）' },
+    '大暑': { wx: '火', organ: '心、脾', pr: '暑湿热并重，化湿健脾、清心除烦', food: '苦瓜、冬瓜、西瓜、绿豆、荷叶、莲子心、淡竹叶、薏苡仁', avoid: '脾胃虚弱者勿长期寒凉、生冷油腻', recipe: '莲子茯苓糕（补益心脾、益气安神）' },
+    '立秋': { wx: '金', organ: '肺、脾', pr: '润肺防燥、健脾祛湿，慎贴秋膘', food: '薏苡仁、冬瓜、豆芽、菠菜、胡萝卜、芹菜、雪梨、百合、山药', avoid: '辛辣燥热、肥甘厚腻；江南暑湿未退勿盲目进补', recipe: '薏苡仁冬瓜汤（健脾祛湿、润肺止渴）' },
+    '处暑': { wx: '金', organ: '肺', pr: '滋阴润燥、收敛阳气，早睡早起', food: '百合、银耳、梨、莲子、山药、蜂蜜、乌梅、石榴', avoid: '辛辣、生冷、海鲜过敏者慎食', recipe: '莲子百合粥（润肺安神）' },
+    '白露': { wx: '金', organ: '肺、肝', pr: '养阴润燥、省辛增酸、少凉多温', food: '黑芝麻、核桃、杏仁、蜂蜜、银耳、麦冬、沙参、百合、乌梅、山楂、龙眼肉、乌鸡、鸭肉', avoid: '辛辣发散、寒凉、燥热、肥甘厚腻', recipe: '百合银耳雪梨羹（润肺止咳、滋阴润燥）' },
+    '秋分': { wx: '金', organ: '肺、胃', pr: '暖胃护胃、润肺安神，昼夜均调', food: '南瓜、小米、山药、银耳、百合、梨、柑橘、莲藕', avoid: '生冷瓜果过度、辛辣燥热', recipe: '小米南瓜粥/银耳百合羹（补中益气、滋阴润肺）' },
+    '寒露': { wx: '金', organ: '肺、胃', pr: '防寒防燥、收敛阳气，饮食温润', food: '银耳、百合、山药、梨、蜂蜜水、淡茶、柿子（每日不超一个）', avoid: '生冷、辣椒/花椒/白酒等辛辣发散', recipe: '银耳百合山药羹（滋阴润燥）' },
+    '霜降': { wx: '金', organ: '肺、脾', pr: '防寒润燥、淡补脾胃，补冬不如补霜降', food: '牛肉、羊肉、鸡肉、生姜、红枣、紫苏、山药、桂圆、枸杞、百合、银耳、梨、葡萄、莲藕、柑橘、石榴', avoid: '生冷、辛辣燥热、秋瓜过度、过早用肉桂等大热之品', recipe: '姜枣茶/山药羊肉汤（温补脾胃、滋阴润燥）' },
+    '立冬': { wx: '水', organ: '肾', pr: '敛阴护阳、补肾藏精，冬补之始', food: '黑豆、黑芝麻、羊肉、核桃、栗子、山药、莲藕、黑米', avoid: '生冷、过燥大汗', recipe: '黑芝麻糊/当归生姜羊肉汤（温阳祛寒）' },
+    '小雪': { wx: '水', organ: '脾、肾', pr: '温养为要：温而不燥、补而不滞，温中健脾兼温润', food: '生姜、葱、红枣、山药、莲子、羊肉、鲫鱼、桂圆、黑米/黑豆/黑芝麻、银耳、百合、雪梨', avoid: '冰淇淋/冰镇饮料/生冷海鲜、西瓜苦瓜等寒凉、盲目重油厚腻', recipe: '桂圆姜枣茶；山药红枣茯苓粥；银耳百合莲子羹' },
+    '大雪': { wx: '水', organ: '肾、脾', pr: '藏阳固气、散寒祛湿、温补脾胃', food: '羊肉、牛肉、桂圆、核桃、栗子、山药、薏米、红枣、莲藕', avoid: '生冷寒凉；实热体质宜清淡防内火', recipe: '莲藕粥（健脾开胃、止泻固精）' },
+    '冬至': { wx: '水', organ: '肾', pr: '冬至一阳生，温阳补肾、防寒保暖', food: '羊肉、饺子（驱寒活血）、黑芝麻、枸杞、核桃、山药', avoid: '生冷、剧烈运动大汗泄阳', recipe: '枸杞芝麻粥/当归生姜羊肉汤（温补肝肾）' },
+    '小寒': { wx: '水', organ: '肾', pr: '防寒保暖，按气虚/阳虚/血虚分型温补', food: '黄芪牛肉汤（气虚）、干姜肉桂羊肉汤（阳虚）、鸡丝阿胶汤（血虚）、山药、栗子', avoid: '生冷、过度辛燥', recipe: '黄芪牛肉汤/干姜肉桂羊肉汤（驱寒取暖）' },
+    '大寒': { wx: '水', organ: '肾、肝', pr: '防风寒、护肝，温补兼疏导，勿过补', food: '防风、葱白、生姜、大枣、羊肉、山药、粳米', avoid: '生冷、过度进补、熬夜', recipe: '防风粥（祛风解表、散寒止痛）' }
+  };
+  var JIEQI_SRC = '节气依据：国家中医药管理局主管《中国中医药报》/中国中医药网（清明/谷雨/白露/霜降/小雪专题）、' +
+    '新华网与央视网（中国中医科学院西苑医院、广安门医院专家解读）、北京中医药大学东方医院二十四节气食疗方、' +
+    '人民网健康时报《二十四节气养生表》。长期公益更新可查：中国中医药网「养生中国」专栏（节气养生/食疗药膳/每周药食/应地药膳）、' +
+    '国家中医药管理局官网、中国公众健康网；命盘底色依据公开子平共识。资料策略：开发时联网查证公益网页，' +
+    '若网页失效、不可达或查询失败，退回本页内嵌节气资料库（本表），确保离线与分享页仍给出完整建议。' +
+    '仅供传统文化研究参考，不替代专业医嘱。';
+  function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+  function jqName(key) {
+    var map = { 'DONG_ZHI': '冬至', 'DA_HAN': '大寒', 'XIAO_HAN': '小寒', 'LI_CHUN': '立春',
+      'DA_XUE': '大雪', 'YU_SHUI': '雨水', 'JING_ZHE': '惊蛰' };
+    return map[key] || key;
+  }
+  /* 公历日期 → 当前所处节气（交节当日归新节气）。
+     用 lunar-javascript 的节气表（天文算法，含交节时刻）按年月日比对，
+     兼容跨年（查上年与当年两张表），失败返回 null。 */
+  function jieqiOf(dateISO) {
+    var m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(dateISO || '').trim());
+    if (!m) return null;
+    var y = +m[1], target = y + '-' + pad2(+m[2]) + '-' + pad2(+m[3]);
+    var bestName = '', bestYmd = '';
+    [y - 1, y].forEach(function (yy) {
+      var table = G.Solar.fromYmd(yy, 6, 1).getLunar().getJieQiTable();
+      for (var k in table) {
+        var s = table[k];
+        var ymd = s.getYear() + '-' + pad2(s.getMonth()) + '-' + pad2(s.getDay());
+        if (ymd <= target && ymd > bestYmd) { bestYmd = ymd; bestName = jqName(k); }
+      }
+    });
+    if (!JIEQI[bestName]) return null;
+    return { name: bestName, ymd: bestYmd, info: JIEQI[bestName] };
+  }
+  /* 节气时令 × 命盘喜忌 × 九宫脏腑共振 的饮食合参。
+     ⚠️ 硬约束：只用「五行/脏腑」作桥梁，绝不比对两套系统的数字。
+     nine = { l1:[九宫一级共振数字], l2:[二级], digitOrgan:{数字→脏腑} } */
+  function dietOf(jq, best, avoid, o, favor, bavoid, nine, bazi, region) {
+    var info = jq.info, blend;
+    if (info.wx === best) {
+      blend = '天时与命盘同向（节气属' + info.wx + '、今日亦宜补' + best + '）：' +
+        '以节气食材为底盘，按命盘口味略增' + o.taste + '之品即可。';
+    } else if (info.wx === avoid) {
+      blend = '天时属' + info.wx + '，而命盘今日宜避' + avoid + '：' +
+        '顺节气但取清淡做法、减量，勿重补厚味。';
+    } else {
+      blend = '以节气时令为底盘（重点养' + info.organ + '），' +
+        '再以命盘宜补' + best + '的' + o.taste + '之品作日常加减。';
+    }
+    if (best === '火' && /辛辣|燥热/.test(info.avoid)) {
+      blend += ' 节气忌辛辣燥热，火行之品改用温和清补（莲子、百合、红色果蔬），勿以辣椒进补。';
+    }
+    if (best === '水' && /生冷|寒凉/.test(info.avoid)) {
+      blend += ' 节气忌生冷寒凉，肾水之品宜煮熟温食（黑豆、黑芝麻、山药），勿食冰镇。';
+    }
+    /* 九宫：共振数字 → 脏腑 → 中医五行（与 6.4 同源映射） */
+    nine = nine || {};
+    var l1 = Array.isArray(nine.l1) ? nine.l1 : (nine.l1 ? String(nine.l1).split('') : []);
+    var l2 = Array.isArray(nine.l2) ? nine.l2 : (nine.l2 ? String(nine.l2).split('') : []);
+    var digitOrgan = nine.digitOrgan || {};
+    var nineRows = [], seen = {}, nineWx = [];
+    l1.concat(l2).forEach(function (d) {
+      d = String(d);
+      var wx = DIGIT_WX[d];
+      if (!wx || seen[d]) return;
+      seen[d] = 1;
+      nineRows.push({ digit: d, organ: digitOrgan[d] || '', wx: wx });
+      if (nineWx.indexOf(wx) < 0) nineWx.push(wx);
+    });
+    var focus = nineWx.slice(0, 2).map(function (w) {
+      var f = OPEN[w] ? OPEN[w].food.split('、').slice(0, 3).join('、') : '';
+      return w + '：' + f;
+    });
+    var nineText;
+    if (!nineRows.length) {
+      nineText = '九宫今日无缺格共振，饮食以节气时令与八字喜忌为准。';
+    } else {
+      nineText = '九宫今日共振 ' + nineRows.map(function (r) {
+        return r.digit + (r.organ ? '（' + r.organ + '）' : '') + '属' + r.wx;
+      }).join('、') + '；';
+      var inBest = nineWx.filter(function (w) { return w === best; });
+      var inSeason = nineWx.filter(function (w) { return w === info.wx; });
+      var inAvoid = nineWx.filter(function (w) { return w === avoid; });
+      if (inBest.length) nineText += inBest.join('、') + '与八字今日宜补同向，可优先取相应食材；';
+      if (inSeason.length) nineText += '与节气同令（' + inSeason.join('、') + '），顺时食材可侧重该脏腑；';
+      if (inAvoid.length) nineText += '与八字宜避相悖，相关脏腑只作温和观察、勿重补；';
+      if (!inBest.length && !inSeason.length && !inAvoid.length) nineText += '与节气、八字无强交点，各按本系统提示分别调理；';
+      nineText += '侧重食材 ' + focus.join('；') + '。';
+    }
+    var baseBlend = blend;
+    return {
+      name: jq.name, ymd: jq.ymd, wx: info.wx, organ: info.organ,
+      principle: info.pr, food: info.food, avoid: info.avoid, recipe: info.recipe,
+      constitution: o.taste + ' · ' + o.food,
+      favor: (favor || []).slice(), bavoid: (bavoid || []).slice(),
+      baseBlend: baseBlend,
+      nineRows: nineRows, nineText: nineText, focus: focus,
+      regional: regionText(region, jq.name, best),
+      therapy: therapyOf(bazi, best).text,
+      weekly: weeklyText(weeklyOf(jq.name, best)),
+      blend: blend + ' ' + nineText,
+      warning: '两套系统的数字含义不同：九宫数字是脏腑编号，八字数字是河图数理；本建议只以五行/脏腑为桥梁，不比对数字。',
+      src: JIEQI_SRC
+    };
+  }
+  /* ═══ 养生中国四栏目（资料源：中国中医药网「养生中国」/《中国中医药报》）═══
+     节气养生 → 上方 JIEQI 表；此处补：应地药膳 / 食疗药膳 / 每周药食。
+     应地药膳：按中国气候区给地域化食养，依据「应地药膳」系列（如重庆南川猪排品鲜果）
+               及广东省中医院关于小满南北地域差异的论述。 */
+  var REGIONS = {
+    '东北': { climate: '严寒干燥、冬长夏短', pr: '温补藏阳、散寒护胃，忌生冷',
+      dish: '当归生姜羊肉汤（温阳祛寒）；山药小米粥（健脾养肺）',
+      cities: ['沈阳', '长春', '哈尔滨', '大连'] },
+    '华北': { climate: '秋冬干冷、春夏多风', pr: '润燥兼温补，春捂防风',
+      dish: '银耳百合雪梨羹（润燥）；姜枣茶（温中散寒）',
+      cities: ['北京', '天津', '石家庄', '太原', '济南', '郑州', '青岛'] },
+    '西北': { climate: '干寒少雨、昼夜温差大', pr: '温润并重，滋阴不腻',
+      dish: '黑芝麻糊（补肾润燥）；莲藕粥（健脾开胃）',
+      cities: ['呼和浩特', '西安', '兰州', '西宁', '银川', '乌鲁木齐', '拉萨'] },
+    '江南': { climate: '梅雨潮湿、夏热冬湿冷', pr: '健脾祛湿、清淡甘平',
+      dish: '芡实薏米粥（健脾祛湿）；薏苡仁冬瓜汤',
+      cities: ['上海', '南京', '杭州', '合肥', '苏州', '南昌', '福州', '厦门', '台北'] },
+    '华中': { climate: '湿热交错、夏季闷热', pr: '清热化湿、顾护脾胃',
+      dish: '苦瓜黄豆排骨汤（清热益气）；赤小豆薏米水（祛湿）',
+      cities: ['武汉', '长沙'] },
+    '华南': { climate: '长夏湿热、地气蒸腾', pr: '清热化湿、健脾益气，少辛燥',
+      dish: '五指毛桃煲汤（健脾祛湿）；苦瓜黄豆排骨汤（清热和胃）',
+      cities: ['广州', '深圳', '南宁', '海口', '香港', '澳门'] },
+    '西南': { climate: '湿重多雾、寒湿交织', pr: '散寒祛湿、温中健脾',
+      dish: '猪排品鲜果（重庆南川，补中益气、健脾开胃、生津润肺）；山药羊肉汤',
+      cities: ['重庆', '成都', '贵阳', '昆明'] }
+  };
+  var REGION_DEFAULT = { climate: '未指定地域', pr: '按节气时令与体质调理，因地制宜可再选城市',
+    dish: '山药小米粥（健脾养肺）；银耳百合羹（滋阴润燥）', cities: [] };
+  function regionOfCity(city) {
+    city = String(city || '').replace(/[市区县省]/g, '').trim();
+    if (!city) return '';
+    for (var r in REGIONS) if (REGIONS[r].cities.indexOf(city) >= 0) return r;
+    return '';
+  }
+  /* 经纬度 → 最近城市（城市库由页面内嵌 D.CITY 提供，纯本地计算，不联网） */
+  function regionOfLatLon(lat, lon, cityTable) {
+    cityTable = cityTable || {};
+    var best = '', bd = 1e9;
+    for (var c in cityTable) {
+      var p = cityTable[c];
+      if (!p || p.length < 2) continue;
+      var d = Math.pow(p[0] - lat, 2) + Math.pow(p[1] - lon, 2);
+      if (d < bd) { bd = d; best = c; }
+    }
+    return bd < 36 ? (regionOfCity(best) || best) : '';   /* 约 6° 以外视为不匹配 */
+  }
+  function regionText(region, jqName, best) {
+    var r = REGIONS[region] || REGION_DEFAULT;
+    return '【' + (REGIONS[region] ? region : '全国通用') + '】' + r.climate + '：' + r.pr +
+      '。应地药膳：' + r.dish + '。与' + jqName + '合参：以本地气候为底盘，' +
+      '叠加' + jqName + '当令食材与命盘宜补' + best + '之品。';
+  }
+  /* 食疗药膳：四型体质经典方（据《中国中医药报·从餐桌开始筑牢健康根基》） */
+  var THERAPY = [
+    { key: '气虚', wx: '土', text: '黄芪山药小米粥（黄芪10g、山药20g、小米50g）——补气升阳、健脾养胃，适合乏力易感冒。' },
+    { key: '阴虚', wx: '水', text: '百合银耳雪梨汤（百合15g、银耳10g、雪梨1个）——滋阴润燥、清心安神，适合口干皮肤燥。' },
+    { key: '痰湿', wx: '火', text: '薏苡仁赤小豆冬瓜汤（薏苡仁20g、赤小豆15g、冬瓜200g、陈皮5g）——利水祛湿，适合身重苔腻。' },
+    { key: '肝郁', wx: '木', text: '解郁三花茶（玫瑰花、茉莉花、合欢花）——疏肝解郁，适合情绪郁结、胸闷叹息。' }
+  ];
+  function therapyOf(bazi, best) {
+    var body = String((bazi && bazi.body) || '');
+    if (/身弱/.test(body)) return (best === '金' || best === '土') ? THERAPY[0] : THERAPY[1];
+    if (best === '木') return THERAPY[3];
+    if (best === '土' || best === '火') return THERAPY[2];
+    return THERAPY[1];
+  }
+  /* 每周药食：药食同源食材（据《每周药食》栏目，性味归经据《中国药典》2025版） */
+  var WEEKLY = [
+    { n: '紫苏', wx: '木', s: '辛温，归肺脾经', f: '解表散寒、行气和胃、解鱼蟹毒',
+      r: '紫苏粥：粳米100g、紫苏叶15g、红糖适量', c: '气虚慎用，阴虚内热忌用' },
+    { n: '小茴香', wx: '土', s: '辛温，归肝肾脾胃经', f: '散寒止痛、理气和胃',
+      r: '茴香姜枣粥：小茴香6g、生姜6g、红枣15g、粳米150g', c: '热证及阴虚火旺者慎用' },
+    { n: '益智仁', wx: '水', s: '辛温，归脾肾经', f: '温脾暖肾、固精缩尿',
+      r: '益智仁粥：益智仁10g、大米50g、白糖适量', c: '阴虚火旺者忌用' },
+    { n: '黄精', wx: '土', s: '甘平，归脾肺肾经', f: '补气养阴、健脾润肺益肾',
+      r: '黄精粥/黄精元蹄：黄精配粳米或瘦肉慢炖', c: '脾虚湿滞、咳嗽痰多者慎用' },
+    { n: '芡实', wx: '土', s: '甘涩平，归脾肾经', f: '益肾固精、健脾止泻、除湿止带',
+      r: '芡实扁豆山药粥：芡实、白扁豆、山药、粳米同煮', c: '便秘、消化不良者不宜多食' },
+    { n: '杏仁', wx: '金', s: '苦微温/甘平，归肺大肠经', f: '降气止咳平喘、润肠通便',
+      r: '杏仁雪梨羹：杏仁、雪梨、冰糖炖煮', c: '苦杏仁有小毒，须炮制且不宜过量' },
+    { n: '山茱萸', wx: '木', s: '酸涩微温，归肝肾经', f: '补益肝肾、收涩固脱',
+      r: '山茱萸粥：山茱萸10g、粳米50g', c: '命门火炽、湿热者忌用' },
+    { n: '五指毛桃', wx: '土', s: '甘平，归脾肺经', f: '健脾补肺、行气利湿（南方常用）',
+      r: '五指毛桃煲汤：配瘦肉/排骨慢炖', c: '孕妇及实热证请咨询医师' },
+    { n: '百合', wx: '金', s: '甘寒，归心肺经', f: '养阴润肺、清心安神',
+      r: '百合银耳雪梨羹：润肺止咳、清心安神', c: '风寒咳嗽、脾胃虚寒者慎用' },
+    { n: '生姜', wx: '火', s: '辛微温，归肺脾胃经', f: '解表散寒、温中止呕',
+      r: '桂圆姜枣茶：桂圆5粒、红枣3枚、生姜3片煮10分钟', c: '阴虚内热、热盛者忌用' },
+    { n: '黑芝麻', wx: '水', s: '甘平，归肝肾大肠经', f: '补肝肾、益精血、润肠燥',
+      r: '枸杞芝麻粥：黑芝麻、枸杞、大米同煮', c: '脾虚便溏者不宜多食' },
+    { n: '山药', wx: '土', s: '甘平，归脾肺肾经', f: '补脾养胃、生津益肺、补肾涩精',
+      r: '山药小米粥：山药100g、小米50g', c: '湿盛中满、有实邪者慎用' }
+  ];
+  function weeklyOf(jqName, best) {
+    var jq = JIEQI[jqName], wx = jq ? jq.wx : best;
+    var hit = WEEKLY.filter(function (x) { return x.wx === best; });
+    if (!hit.length) hit = WEEKLY.filter(function (x) { return x.wx === wx; });
+    return hit[0] || WEEKLY[11];
+  }
+  function weeklyText(h) {
+    return '【' + h.n + '】' + h.s + '；' + h.f + '。食疗：' + h.r + '。注意：' + h.c + '。';
+  }
+  /* 取某公历日期的日柱干支（用Solar，不含时辰） */
+  function dayGanZhi(dateISO) {
+    var m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(dateISO || '').trim());
+    if (!m) return null;
+    var s = G.Solar.fromYmd(+m[1], +m[2], +m[3]);
+    var ec = s.getLunar().getEightChar();
+    var gz = ec.getDay(), gan = ec.getDayGan(), zhi = ec.getDayZhi();
+    return { gz: gz, gan: gan, zhi: zhi, wx: WXG[gan], zhiWx: WXZ[zhi] };
+  }
+  /* 今日衣食住行开运建议：本命喜用忌神 + 当日干支五行 综合。
+     计分（让当日真正左右结论）：
+       · 本命喜用各 +3、本命忌神各 −2（长期底色）；
+       · 当日日干五行 +2、日支五行 +1.5（若在本命喜用内），落忌神则取负；
+       · 当日五行若「生本命喜用」额外 +1（顺势助喜）。
+     得分最高为「今日宜补」，最低（且为忌）为「今日宜避」。 */
+  function dayAdvice(bazi, dateISO, nine, region) {
+    if (!bazi || !bazi.ok) return null;
+    var dg = dayGanZhi(dateISO);
+    if (!dg) return null;
+    var favor = bazi.favor || [], bavoid = bazi.avoid || [];
+    var score = initScore();
+    favor.forEach(function (wx) { if (wx in score) score[wx] += 3; });
+    bavoid.forEach(function (wx) { if (wx in score) score[wx] -= 2; });
+    /* 当日日干、日支五行——落喜用加分、落忌神减分 */
+    function dayWxScore(wx, weight) {
+      if (favor.indexOf(wx) >= 0) score[wx] += weight;
+      else if (bavoid.indexOf(wx) >= 0) score[wx] -= weight;
+      else score[wx] += 0.5;                       /* 中性五行小幅加，避免全 0 */
+      /* 当日五行若生本命喜用，顺势再加 */
+      favor.forEach(function (fw) { if (SHENG[wx] === fw) score[wx] += 1; });
+    }
+    dayWxScore(dg.wx, 2);
+    if (dg.zhiWx !== dg.wx) dayWxScore(dg.zhiWx, 1.5);
+    var ranked = WUXING.slice().sort(function (a, b) { return score[b] - score[a]; });
+    var best = ranked[0], second = ranked[1];
+    var avoid = ranked[ranked.length - 1];
+    if (bavoid.indexOf(best) >= 0) {               /* 若最高分仍落忌神，降为次选 */
+      var alt = ranked.find(function (w) { return bavoid.indexOf(w) < 0; });
+      if (alt) { second = best; best = alt; }
+    }
+    var o = OPEN[best];
+    var jq = jieqiOf(dateISO);
+    return {
+      ok: true, date: dateISO, dayGz: dg.gz, dayWx: dg.wx, dayZhiWx: dg.zhiWx,
+      best: best, second: second, avoid: avoid, score: score, open: o,
+      favor: favor, bavoid: bavoid, body: bazi.body,
+      jieqi: jq ? { name: jq.name, ymd: jq.ymd, wx: jq.info.wx } : null,
+      diet: jq ? dietOf(jq, best, avoid, o, favor, bavoid, nine, bazi, region) : null,
+      note: '依据：本命四柱喜用（' + favor.join('、') + '）忌神（' + bavoid.join('、') + '，' + bazi.body +
+        '）结合当日 ' + dg.gz + '（日干' + dg.wx + '、日支' + dg.zhiWx +
+        '）综合；五行开运对照取公开子平共识，仅供传统文化研究参考，不替代专业建议。'
+    };
+  }
+
+  /* ══════ 双系统五行共鸣（师命 2026-11-21：6.2 共振表 × 6.3 开运建议 关联）══════
+     ⚠️ 硬约束：两套系统的「数字」功能不同，绝不直接比对数字！
+       · 九宫数字 = 脏腑编号：1肺 2大肠 3心 4肝 5胆 6肾 7胃 8脾 9膀胱 0小肠
+       · 八字开运数字 = 河图数理：1/6水 2/7火 3/8木 4/9金 5/0土（仅「吉利数字」建议）
+       例如九宫「3」=心(火)，八字「3」=木 —— 直接比对必错。
+     桥梁 = 五行/脏腑：九宫共振数字 → 脏腑 → 中医五行，再与八字宜补/宜避五行比对。
+       九宫数字→五行依据中医脏腑配属，与 OPEN 表 organ 字段同源：
+       肝胆=木、心小肠=火、脾胃=土、肺大肠=金、肾膀胱=水。 */
+  var DIGIT_WX = {
+    '1': '金', '2': '金', '3': '火', '0': '火',
+    '4': '木', '5': '木', '6': '水', '9': '水',
+    '7': '土', '8': '土'
+  };
+  /* l1/l2：6.2 共振表的一级/二级共振数字串；adv：6.3 的 dayAdvice 结果；
+     digitOrgan：九宫数字→脏腑映射（ui.js 传 D.DIGIT_ORGAN） */
+  function resonance(adv, l1, l2, digitOrgan) {
+    if (!adv || !adv.ok) return null;
+    /* l1/l2 兼容数组（analyzeYun 实际返回）与字符串两种形态 */
+    if (!Array.isArray(l1)) l1 = l1 ? String(l1).split('') : [];
+    if (!Array.isArray(l2)) l2 = l2 ? String(l2).split('') : [];
+    digitOrgan = digitOrgan || {};
+    var best = adv.best, avoid = adv.avoid;
+    var favor = adv.favor || [], bavoid = adv.bavoid || [];
+    var rows = [], seen = {};
+    /* 一级共振优先，二级次之；同一数字可两级都有，分别列出 */
+    function add(d, level) {
+      var wx = DIGIT_WX[d];
+      if (!wx) return;
+      var k = d + '@' + level;
+      if (seen[k]) return;
+      seen[k] = 1;
+      var rel, tone, desc;
+      if (wx === best) {
+        rel = 'sync'; tone = 'good';
+        desc = '九宫共振脏腑属' + wx + '，八字今日亦宜补' + wx + ' —— 两套系统同向，重点强化。';
+      } else if (wx === avoid) {
+        rel = 'clash'; tone = 'warn';
+        desc = '九宫共振脏腑属' + wx + '，八字今日却宜避' + wx + ' —— 信号相悖，养护宜温和、勿过补。';
+      } else if (favor.indexOf(wx) >= 0) {
+        rel = 'favor'; tone = 'mid';
+        desc = '九宫共振脏腑属' + wx + '，为命盘长期喜用 —— 长期同向，日常可常养。';
+      } else if (bavoid.indexOf(wx) >= 0) {
+        rel = 'taboo'; tone = 'warn';
+        desc = '九宫共振脏腑属' + wx + '，为命盘长期忌神 —— 今日共振仅作观察，不宜重补。';
+      } else {
+        rel = 'neutral'; tone = 'plain';
+        desc = '九宫共振脏腑属' + wx + '，八字今日无明确喜忌 —— 各按本系统建议即可。';
+      }
+      rows.push({ digit: d, wx: wx, level: level, organ: digitOrgan[d] || '',
+        rel: rel, tone: tone, desc: desc, open: OPEN[wx] });
+    }
+    var i;
+    for (i = 0; i < l1.length; i++) add(String(l1[i]), 1);
+    for (i = 0; i < l2.length; i++) add(String(l2[i]), 2);
+    /* 排序：同频 > 相悖 > 喜用 > 忌神 > 中性；同级一级优先 */
+    var rank = { sync: 0, clash: 1, favor: 2, taboo: 3, neutral: 4 };
+    rows.sort(function (a, b) { return (rank[a.rel] - rank[b.rel]) || (a.level - b.level); });
+    var nSync = rows.filter(function (x) { return x.rel === 'sync'; }).length;
+    var nClash = rows.filter(function (x) { return x.rel === 'clash'; }).length;
+    function wxList(rel) {
+      var out = [];
+      rows.filter(function (x) { return x.rel === rel; }).forEach(function (x) {
+        if (out.indexOf(x.wx) < 0) out.push(x.wx);
+      });
+      return out.join('、');
+    }
+    var summary;
+    if (!rows.length) {
+      summary = '今日 6.2 无缺格共振，两套系统无五行交点；各按本系统建议执行即可。';
+    } else if (nSync && !nClash) {
+      summary = '两套系统在 ' + wxList('sync') + ' 上同频共振，可把 6.3 的颜色/饮食/养护 与 6.2 共振脏腑调理合一施行。';
+    } else if (nClash && !nSync) {
+      summary = '两套系统在 ' + wxList('clash') + ' 上信号相悖：九宫提示共振、八字建议回避，宜以八字宜补五行为主、共振脏腑温和观察。';
+    } else if (nSync && nClash) {
+      summary = '两套系统部分同频、部分相悖：' + wxList('sync') + ' 可强化，' + wxList('clash') + ' 宜回避，分而处之。';
+    } else {
+      summary = '今日两套系统各有指向、无强交点；按各自建议分别执行。';
+    }
+    return { ok: true, best: best, avoid: avoid, favor: favor, bavoid: bavoid,
+      rows: rows, nSync: nSync, nClash: nClash, summary: summary };
+  }
+
+  G.BAZI = { analyze: analyze, dayGanZhi: dayGanZhi, dayAdvice: dayAdvice, resonance: resonance,
+    jieqiOf: jieqiOf, dietOf: dietOf, JIEQI: JIEQI,
+    REGIONS: REGIONS, regionOfCity: regionOfCity, regionOfLatLon: regionOfLatLon,
+    DIGIT_WX: DIGIT_WX, WUXING: WUXING, SHENG: SHENG, KE: KE, OPEN: OPEN };
 })(window);
 
 </script>
@@ -5915,7 +6328,38 @@ window.__DATA__={"_meta":{"生成时间":"2026-10-27 10:57:53","来源":["查询
   };
   var TREND_CLS = { '偏阴': 'n', '偏阳': 'y', '平衡': '', '无': '' };
 
-  var state = { f: null, res: null, md: {}, tab: 0, saveNext: false, suppressSave: false, histOk: true };
+  var state = { f: null, res: null, md: {}, tab: 0, saveNext: false, suppressSave: false, histOk: true,
+    region: '', regionSource: '' };
+  try {
+    state.region = localStorage.getItem('ch_region') || '';
+    state.regionSource = localStorage.getItem('ch_region_src') || '';
+  } catch (e) { }
+  /* 应地药膳定位：浏览器定位 → 内嵌城市经纬度表 → 气候区；全程零网络请求 */
+  function saveRegion(r, src) {
+    state.region = r || '';
+    state.regionSource = src || '';
+    try {
+      localStorage.setItem('ch_region', state.region);
+      localStorage.setItem('ch_region_src', state.regionSource);
+    } catch (e) { }
+    if (state.f) userRun();
+  }
+  function geoLocate() {
+    if (!navigator.geolocation) { saveRegion('', '浏览器不支持定位，请用手选'); return; }
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      var B = window.BAZI;
+      var r = B ? B.regionOfLatLon(pos.coords.latitude, pos.coords.longitude, D.CITY) : '';
+      saveRegion(r, r ? '自动定位到' + r : '定位成功但未匹配城市，用全国通用');
+    }, function () {
+      saveRegion(state.region || '', '定位未授权/失败，退回通用或手选');
+    }, { timeout: 8000, maximumAge: 86400000 });
+  }
+  function setRegionFromInput() {
+    var v = ($('fRegionCity') || {}).value || '';
+    var B = window.BAZI;
+    var r = B ? B.regionOfCity(v) : '';
+    saveRegion(r, r ? '手选：' + v : '城市未识别，用全国通用');
+  }
 
   function $(id) { return document.getElementById(id); }
   function esc(s) { return MD.esc(s == null ? '' : s); }
@@ -6460,7 +6904,7 @@ window.__DATA__={"_meta":{"生成时间":"2026-10-27 10:57:53","来源":["查询
     var r = M.calc(f.birth, f.shichen, f.gender, f.rule);
     state.res = r;
     /* 四柱八字阴阳五行倾向（2026-11-21 师命替换旧数字→脏腑判法） */
-    try { state.bazi = (G.BAZI ? G.BAZI.analyze(f.birth, f.clock, f.gender, f.shichen) : null); }
+    try { state.bazi = (window.BAZI ? window.BAZI.analyze(f.birth, f.clock, f.gender, f.shichen) : null); }
     catch (e) { state.bazi = null; }
     state.lunar = r.a.lunar;
 
@@ -6617,8 +7061,8 @@ window.__DATA__={"_meta":{"生成时间":"2026-10-27 10:57:53","来源":["查询
       h += '<div class="big ' + (isDay ? 'yang' : '') + '" style="margin:0;padding:8px 6px;text-align:center">' +
         '<div class="k" style="letter-spacing:1px">' + p.name + (isDay ? ' · 日主' : '') + '</div>' +
         '<div class="v" style="font-size:24px">' + esc(p.gan) + '<br>' + esc(p.zhi) + '</div>' +
-        '<div class="m" style="font-size:11px">' + esc((G.LunarUtil ? G.LunarUtil.WU_XING_GAN[p.gan] : '') + '·' +
-          (G.LunarUtil ? G.LunarUtil.WU_XING_ZHI[p.zhi] : '')) + '</div>' +
+        '<div class="m" style="font-size:11px">' + esc((window.LunarUtil ? window.LunarUtil.WU_XING_GAN[p.gan] : '') + '·' +
+          (window.LunarUtil ? window.LunarUtil.WU_XING_ZHI[p.zhi] : '')) + '</div>' +
         '<div class="m" style="font-size:10.5px;color:var(--ink3)">藏 ' + esc(p.hide.join('')) + '</div>' +
         '</div>';
     });
@@ -6859,7 +7303,7 @@ window.__DATA__={"_meta":{"生成时间":"2026-10-27 10:57:53","来源":["查询
       html += '</div>';
 
       html += '<div class="acu-sec"><div class="acu-sec-n-sub">' + esc(plabel) +
-        ' · 后天灵穴 · 补漏培元　缺数 ' + esc(q || '无') + '</div>';
+        ' · 后天灵穴 · <span class="acu-red">补漏培元</span>　缺数 ' + esc(q || '无') + '</div>';
       if (!q) {
         html += '<p class="sub">' + esc(plabel) + '无缺数，无需补漏。</p>';
       } else {
@@ -7405,7 +7849,145 @@ window.__DATA__={"_meta":{"生成时间":"2026-10-27 10:57:53","来源":["查询
     }
     html += '</div>';
 
+    /* 6.3 今日衣食住行开运建议（四柱八字 + 当日行运，师命 2026-11-21） */
+    html += '<div class="card"><h3><span class="n">6.3</span>今日衣食住行 · 四柱开运建议</h3>';
+    var adv = null;
+    try {
+      adv = (window.BAZI && state.bazi)
+        ? window.BAZI.dayAdvice(state.bazi, day,
+          { l1: y.l1, l2: y.l2, digitOrgan: D.DIGIT_ORGAN }, state.region) : null;
+    }
+    catch (e) { adv = null; }
+    if (!adv) {
+      html += '<p class="sub">需先填时辰或出生钟点排出四柱，方可给开运建议。</p>';
+    } else {
+      var o = adv.open;
+      html += '<p class="sub">本命 <b>' + esc(adv.body) + '</b>，喜用 ' + esc(adv.favor.join('、')) +
+        '；当日 <b>' + esc(adv.dayGz) + '</b>（日干' + esc(adv.dayWx) + '）。' +
+        '综合今日宜补 <b style="color:var(--accent)">' + esc(adv.best) + '</b>' +
+        (adv.second !== adv.best ? '，次宜 ' + esc(adv.second) : '') +
+        '，宜避 <b>' + esc(adv.avoid) + '</b>。</p>';
+      /* 养生饮食：节气 × 四柱喜忌 × 九宫脏腑 三方合参（师命 2026-11-21） */
+      var dt = adv.diet;
+      var dietRow = function (label, text) {
+        return '<div style="display:grid;grid-template-columns:70px 1fr;gap:8px;margin:4px 0;' +
+          'font-size:12.5px;line-height:1.65;align-items:start">' +
+          '<b style="color:var(--accent);white-space:nowrap;font-weight:600">' + esc(label) + '</b>' +
+          '<span style="color:var(--ink2)">' + esc(text) + '</span></div>';
+      };
+      if (dt) {
+        html += '<div id="dietBlock" style="border:1px solid var(--line);border-left:4px solid var(--accent);' +
+          'border-radius:8px;padding:10px 12px;background:#fafbfc;margin-bottom:10px">' +
+          '<div style="font-size:13px;font-weight:700;margin-bottom:7px;color:var(--ink)">🍲 养生饮食 · ' +
+          esc(dt.name) + '食养' +
+          '<span style="font-weight:400;color:var(--ink3);font-size:12px">　交节 ' + esc(dt.ymd.slice(5).replace('-', '/')) +
+          ' · 时令属' + esc(dt.wx) + ' · 重点养' + esc(dt.organ) + '</span></div>' +
+          '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 8px;' +
+          'font-size:12px;color:var(--ink3)">' +
+          '<b style="color:var(--ink2)">📍 应地定位：</b>' +
+          '<button type="button" id="btnGeo" class="btn" style="padding:3px 9px;font-size:12px">自动定位</button>' +
+          '<input id="fRegionCity" list="cityList" placeholder="或输入城市" ' +
+          'style="width:116px;padding:3px 6px;border:1px solid var(--line);border-radius:5px;font-size:12px">' +
+          '<button type="button" id="btnRegionSet" class="btn" style="padding:3px 9px;font-size:12px">应用</button>' +
+          '<span>' + (state.region ? '当前：' + esc(state.region) : '当前：全国通用') +
+          (state.regionSource ? '（' + esc(state.regionSource) + '）' : '') + '</span></div>' +
+          dietRow('时令原则', dt.principle) +
+          dietRow('当令食材', dt.food) +
+          dietRow('食疗方', dt.recipe) +
+          dietRow('节气忌口', dt.avoid) +
+          dietRow('命盘底色', dt.constitution + '（八字宜补' + adv.best + '、宜避' + adv.avoid + '）') +
+          dietRow('九宫加减', dt.nineText) +
+          dietRow('合参结论', dt.baseBlend) +
+          dietRow('应地药膳', dt.regional) +
+          dietRow('食疗药膳', dt.therapy) +
+          dietRow('每周药食', dt.weekly) +
+          '<div class="hint" style="margin-top:8px;line-height:1.6">' + esc(dt.warning) + '<br>' + esc(dt.src) + '</div>' +
+          '</div>';
+      }
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">';
+      var rows = [
+        ['👕 穿衣颜色', o.color], ['🔢 吉利数字', o.num], ['🧭 利运方位', o.dir],
+        ['🫀 重点养护', o.organ],
+        ['💎 饰品材质', o.jade], ['🏃 运动作息', o.act + ' · ' + o.life],
+        ['💼 适宜行业', o.trade]
+      ];
+      rows.forEach(function (r) {
+        html += '<div style="border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff">' +
+          '<div style="font-size:12px;color:var(--ink3);margin-bottom:3px">' + r[0] + '</div>' +
+          '<div style="font-size:13px;line-height:1.5">' + esc(r[1]) + '</div></div>';
+      });
+      html += '</div>';
+      html += '<p class="hint" style="margin-top:10px">' + esc(adv.note) + '</p>';
+    }
+    html += '</div>';
+
+    /* 6.4 双系统五行共鸣（6.2 共振表 × 6.3 四柱开运，师命 2026-11-21） */
+    html += '<div class="card"><h3><span class="n">6.4</span>双系统五行共鸣 · 九宫 × 四柱</h3>';
+    html += '<p class="sub">把 6.2 的共振脏腑与 6.3 的宜补/宜避五行放在一起看，找两套系统的交点。' +
+      '<b>注意：两套系统的数字含义不同，不可直接比对</b>——九宫数字是脏腑编号（3＝心），' +
+      '八字开运数字是河图数理（3＝木）；本表只以<b>五行/脏腑</b>作桥梁。</p>';
+    if (adv && adv.jieqi) {
+      html += '<p class="hint">当前行运节气：<b>' + esc(adv.jieqi.name) + '</b>（时令属' +
+        esc(adv.jieqi.wx) + '）——节气、四柱喜忌、九宫脏腑已在 6.3「养生饮食」中三方合参。</p>';
+    }
+    var res = null;
+    try {
+      res = (window.BAZI && window.BAZI.resonance && adv)
+        ? window.BAZI.resonance(adv, y.l1, y.l2, D.DIGIT_ORGAN) : null;
+    } catch (e) { res = null; }
+    if (!res) {
+      html += '<p class="sub">需先排出四柱并查出共振，方可做双系统关联。</p>';
+    } else {
+      html += '<p class="sub">六二共振 <b>' + esc(rowsDigest(y)) + '</b>；' +
+        '八字宜补 <b style="color:var(--accent)">' + esc(res.best) + '</b>、宜避 <b>' + esc(res.avoid) + '</b>。' +
+        '其中九宫数字只作脏腑编号，经中医脏腑配属转为五行：' +
+        '肝胆木·心小肠火·脾胃土·肺大肠金·肾膀胱水。</p>';
+      if (!res.rows.length) {
+        html += '<div class="note blue">' + esc(res.summary) + '</div>';
+      } else {
+        html += '<div class="tw"><table><thead><tr><th>共振级</th><th>九宫数字·脏腑</th>' +
+          '<th>转属五行</th><th>八字判定</th></tr></thead><tbody>';
+        var toneCls = { good: 'res-good', warn: 'res-warn', mid: 'res-mid', plain: '' };
+        var relLbl = { sync: '🟢 同频加持', clash: '🟠 信号相悖', favor: '🔵 喜用同向',
+          taboo: '🟣 忌神留意', neutral: '⚪ 各自独立' };
+        res.rows.forEach(function (x) {
+          html += '<tr class="' + toneCls[x.tone] + '">' +
+            '<td>' + (x.level === 1 ? '<span class="tag lv1">一级</span>' : '<span class="tag lv2">二级</span>') + '</td>' +
+            '<td class="num"><b>' + esc(x.digit) + '</b>' + (x.organ ? ' ' + esc(x.organ) : '') + '</td>' +
+            '<td>' + esc(x.wx) + '</td>' +
+            '<td style="white-space:nowrap">' + relLbl[x.rel] + '</td></tr>';
+        });
+        html += '</tbody></table></div>';
+        html += '<div style="margin-top:12px"><b style="font-size:12.5px;color:var(--ink2)">逐条关联：</b>' +
+          '<ul style="margin:5px 0 0;padding-left:18px;font-size:13px;line-height:1.7">' +
+          res.rows.map(function (x) {
+            return '<li>' + (x.level === 1 ? '一级' : '二级') + ' ' + esc(x.digit) +
+              (x.organ ? '（' + esc(x.organ) + '）' : '') + '：' + esc(x.desc) + '</li>';
+          }).join('') + '</ul></div>';
+        var resNote = res.nSync
+          ? 'note warn'
+          : (res.nClash ? 'note' : 'note blue');
+        html += '<div class="' + resNote + '" style="margin-top:12px"><b>综合结论</b><br>' + esc(res.summary) + '</div>';
+      }
+      html += '<p class="hint" style="margin-top:10px">五行开运对照取公开子平共识；双系统关联为传统文化研究性推演，' +
+        '两套体系原理不同（九宫重经络脏腑共振、四柱重命局喜用），交点仅供参照，不替代专业建议。</p>';
+    }
+    html += '</div>';
+
     $('ex-body').innerHTML = html;
+    var gb = $('btnGeo'); if (gb) gb.onclick = function () { geoLocate(); };
+    var rb = $('btnRegionSet'); if (rb) rb.onclick = function () { setRegionFromInput(); };
+  }
+  /* 共振数字串摘要：一级/二级各列，如「一级 2、4；二级 7」 */
+  function rowsDigest(y) {
+    var a = [], b = [];
+    if (y && y.l1) a = Array.isArray(y.l1) ? y.l1.map(String) : String(y.l1).split('');
+    if (y && y.l2) b = (Array.isArray(y.l2) ? y.l2.map(String) : String(y.l2).split(''))
+      .filter(function (d) { return a.indexOf(d) < 0; });
+    var s = [];
+    if (a.length) s.push('一级 ' + a.join('、'));
+    if (b.length) s.push('二级 ' + b.join('、'));
+    return s.length ? s.join('；') : '无';
   }
 
   /* ══════════ 7 阴阳周期 ══════════ */

@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>φ / Fibonacci 倍频谐波试听台</title>
+<style>
+body{background:#fff;color:#1b1b1b;font:14px/1.65 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;margin:0;padding:26px 32px;max-width:1200px}
+h1{font-size:23px;margin:0 0 4px}h2{font-size:17px;margin:24px 0 10px;border-bottom:2px solid #e5e5e5;padding-bottom:6px}
+.sub{color:#666;font-size:13px}.wrap{display:grid;grid-template-columns:340px 1fr;gap:28px}
+@media(max-width:900px){.wrap{grid-template-columns:1fr}}
+.card{border:1px solid #dcdcdc;border-radius:9px;padding:14px 16px;background:#fafafa}
+label{display:block;font-size:12.5px;color:#3b4654;margin:9px 0 2px}
+label b{color:#0b57a4;font-weight:600}
+input[type=range]{width:100%;accent-color:#0b57a4}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+button{border:1px solid #b9c6d6;background:#fff;color:#17375e;border-radius:7px;padding:7px 14px;cursor:pointer;font-size:13px}
+button:hover{background:#eef4fc}button.primary{background:#0b57a4;color:#fff;border-color:#0b57a4}
+button.on{background:#5b3fa8;color:#fff;border-color:#5b3fa8}
+table{border-collapse:collapse;width:100%;font-size:12.5px;margin-top:8px}th,td{border:1px solid #ddd;padding:4px 8px;text-align:left}
+th{background:#f4f4f4}.num{text-align:right;font-family:Consolas,monospace}
+.note{background:#fff8e8;border-left:4px solid #e0a800;padding:9px 13px;margin:12px 0;font-size:12.5px}
+code{background:#f1f1f1;padding:1px 4px;border-radius:3px}
+.bar{height:9px;background:#e9eef5;border-radius:5px;overflow:hidden;margin-top:7px}.bar i{display:block;height:100%;background:#0b57a4;width:0}
+</style>
+</head>
+<body>
+<h1>φ / Fibonacci 倍频谐波试听台</h1>
+<div class="sub">公式取自 <code>E:\rhino9脚本与gh插件大全\我创造的py文件</code> 的 10 个音乐脚本；Web Audio 实时合成，不依赖外部音频文件。</div>
+
+<div class="wrap">
+<div class="card">
+  <h2 style="margin-top:4px">参数（源码实测）</h2>
+  <label>基准 A4 频率 <b id="vBase">432 Hz</b></label>
+  <input type="range" id="base" min="400" max="460" step="1" value="432">
+  <label>基音（Fibonacci 第 n 项） <b id="vFib">第 12 项 = 144</b></label>
+  <input type="range" id="fib" min="2" max="24" step="1" value="12">
+  <label>八度谐波范围 <b id="vOct">4</b></label>
+  <input type="range" id="oct" min="0" max="6" step="1" value="4">
+  <label>Fib / φ 谐波范围 <b id="vHar">4</b></label>
+  <input type="range" id="har" min="0" max="6" step="1" value="4">
+  <label>谐波振幅衰减 k <b id="vDecay">0.50</b></label>
+  <input type="range" id="decay" min="0" max="1" step="0.05" value="0.5">
+  <label>音符时长 <b id="vDur">0.73 s</b></label>
+  <input type="range" id="dur" min="0.2" max="2" step="0.05" value="0.725">
+  <div class="row">
+    <button id="mFib" class="on">Fibonacci 半音偏移（+13）</button>
+    <button id="mPhi">φ 倍频</button>
+  </div>
+  <div class="row">
+    <button class="primary" id="play">▶ 试听这一音</button>
+    <button id="seq">▶ 连播前 12 音</button>
+    <button id="stop">■ 停止</button>
+  </div>
+  <div class="bar"><i id="prog"></i></div>
+  <div class="sub" id="status" style="margin-top:8px">就绪</div>
+</div>
+
+<div>
+  <div class="note">
+    <b>两套谐波，来自两份不同的源脚本</b><br>
+    <b>Fibonacci 半音版</b>（<code>fibonacci数列音乐+2的倍频谐波.py</code>）：<br>
+    基频由 <code>A0=A4/16</code>、<code>f=A0·2^(semitone/12)</code> 确定；Fib 谐波取 <code>(fib_num + h·13) mod 144</code> 落到半音表，13 是源码注释「接近黄金比例相关」的步长。<br>
+    <b>φ 倍频版</b>（<code>黄金比音乐+2的倍频谐波.py</code>）：<br>
+    <code>f = base · φ^h · [1 + ((fib_num mod 8)+1)/8 · 0.5]</code>，φ=1.61803398875。<br>
+    两版共同：八度谐波 <code>base·2^k</code> 振幅 <code>max(0.3, 1−|k|/range·0.7)</code>；Fib 谐波振幅 <code>exp(−|h|·k)·[1 + ln(fib+1)/ln144·0.5]</code>；
+    八度用纯 sin，Fib 用 <code>tanh(sin·1.5)·0.8</code> 软削波；ADSR 取源码 attack .02 / decay .2 / sustain .6 / release .8。
+  </div>
+
+  <h2>本音的谐波清单（实时按上面参数重算）</h2>
+  <table><thead><tr><th>类型</th><th>序号</th><th class="num">频率 Hz</th><th class="num">振幅</th><th>波形</th></tr></thead>
+  <tbody id="tbl"></tbody></table>
+  <p class="sub" id="sum"></p>
+
+  <h2>源脚本（10 个）</h2>
+  <p class="sub">
+    fibonacci数列音乐+2的倍频谐波.py · 黄金比音乐+2的倍频谐波.py · fibonacci音乐+2的倍频谐波 波振幅衰减示意图.py ·<br>
+    fibonacci+2的倍频谐波的音乐 castle_in_the_sky.py · fibonacci+2的倍频谐波的音乐 天空之城.py ·<br>
+    phi值+2的倍频谐波的音乐 天空之城 -ai纯音 高品质钢琴 纯音.py · 同系列 轻微失谐 / -ai纯音 / -ai颤音 · 螺旋波3d.py 相关振幅稿。
+  </p>
+</div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var $=function(x){return document.getElementById(x);};
+var PHI=1.61803398875;
+var FIB=[1,1];for(var q=2;q<160;q++)FIB[q]=FIB[q-1]+FIB[q-2];
+var mode=0,ctx=null,cur=null,timer=null;
+
+function U(id,vid,fmt){var e=$(id);e.addEventListener('input',function(){$(vid).textContent=fmt(e.value);render();});}
+function fibText(n){return '第 '+n+' 项 = '+FIB[n];}
+U('base','vBase',function(v){return v+' Hz';});
+U('fib','vFib',fibText);
+U('oct','vOct',function(v){return v;});
+U('har','vHar',function(v){return v;});
+U('decay','vDecay',function(v){return (+v).toFixed(2);});
+U('dur','vDur',function(v){return (+v).toFixed(2)+' s';});
+$('mFib').onclick=function(){mode=0;$('mFib').classList.add('on');$('mPhi').classList.remove('on');render();};
+$('mPhi').onclick=function(){mode=1;$('mPhi').classList.add('on');$('mFib').classList.remove('on');render();};
+
+function linDecay(k,R){return R===0?1:Math.max(.3,1-Math.abs(k)/R*.7);}
+function fibDecay(fib,h,k){var f=Math.log(fib+1)/Math.log(144);return Math.exp(-Math.abs(h)*k)*(1+f*.5);}
+function harmonics(){
+ var A4=+$('base').value,fi=+$('fib').value,fib=FIB[fi],
+     R=+$('oct').value,H=+$('har').value,k=+$('decay').value,
+     A0=A4/16,base=A0*Math.pow(2,((fib%144)/12)),out=[],h,i;
+ /* 源码基础音：八度谐波的 base_freq 取半音映射后的基音 */
+ for(h=-R;h<=R;h++)if(h!==0||R===0){
+   out.push({type:'octave',i:h,f:base*Math.pow(2,h),a:linDecay(h,R),w:'sin'});}
+ for(h=-H;h<=H;h++){
+   var f;
+   if(mode===0){var off=((fib+h*13)%144+144)%144;f=A0*Math.pow(2,off/12);}
+   else{f=base*Math.pow(PHI,h)*(1+(((fib%8)+1)/8)*.5);}
+   out.push({type:mode===0?'fib13':'phi',i:h,f:f,a:fibDecay(fib,h,k),w:'tanh(sin·1.5)·0.8'});
+ }
+ return out.filter(function(x){return x.f>=20&&x.f<=20000;});
+}
+function render(){
+ var list=harmonics(),s='';
+ for(var i=0;i<list.length;i++){var x=list[i];
+  s+='<tr><td>'+x.type+'</td><td>'+x.i+'</td><td class="num">'+x.f.toFixed(2)+'</td><td class="num">'+x.a.toFixed(4)+'</td><td>'+x.w+'</td></tr>';}
+ $('tbl').innerHTML=s;
+ $('sum').textContent='共 '+list.length+' 个谐波；最高频 '+Math.max.apply(null,list.map(function(x){return x.f;})).toFixed(0)+' Hz';
+}
+function envelope(t,dur){
+ var at=.02,dc=.2,su=.6,rl=.8;
+ if(t<at)return t/at;
+ if(t<at+dc)return 1-(1-su)*(1-Math.exp(-3*(t-at)/dc));
+ if(t<dur-rl)return su;
+ return Math.max(0,su*(1-(t-(dur-rl))/rl));
+}
+function makeBuffer(list,dur){
+ var sr=ctx.sampleRate,len=Math.max(1,Math.floor(sr*dur)),buf=ctx.createBuffer(1,len,sr),d=buf.getChannelData(0);
+ var peak=0,i,j;
+ for(i=0;i<len;i++){
+  var t=i/sr,v=0;
+  for(j=0;j<list.length;j++){var x=list[j],raw=Math.sin(2*Math.PI*x.f*t);
+    v+=x.a*(x.type==='octave'?raw:Math.tanh(raw*1.5)*.8);}
+  d[i]=v*envelope(t,dur);
+  if(Math.abs(d[i])>peak)peak=Math.abs(d[i]);
+ }
+ if(peak>0)for(i=0;i<len;i++)d[i]/=Math.max(1,peak);
+ return buf;
+}
+function playOne(dur,onDone){
+ if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();
+ var list=harmonics(),buf=makeBuffer(list,dur),src=ctx.createBufferSource(),g=ctx.createGain();
+ src.buffer=buf;g.gain.value=.42;src.connect(g);g.connect(ctx.destination);
+ src.onended=function(){if(onDone)onDone();};
+ src.start();cur=src;return src;
+}
+$('play').onclick=function(){
+ stopSeq();$('status').textContent='播放中…';
+ $('prog').style.transition='none';$('prog').style.width='0%';
+ setTimeout(function(){$('prog').style.transition='width '+(+$('dur').value)+'s linear';$('prog').style.width='100%';},20);
+ playOne(+$('dur').value,function(){$('status').textContent='完成';});
+};
+function stopSeq(){if(timer){clearTimeout(timer);timer=null;}if(cur){try{cur.onended=null;cur.stop();}catch(e){}cur=null;}$('prog').style.transition='none';$('prog').style.width='0%';}
+$('stop').onclick=function(){stopSeq();$('status').textContent='已停止';};
+$('seq').onclick=function(){
+ stopSeq();var n=12,step=Math.max(.35,$('dur').value+.08),i=0;
+ function next(){
+  if(i>=n){$('status').textContent='连播完成';return;}
+  $('fib').value=String(i+2);$('vFib').textContent=fibText(i+2);render();
+  $('status').textContent='连播 '+(i+1)+'/'+n+' · '+FIB[i+2];
+  playOne(step-.08,function(){i++;timer=setTimeout(next,40);});
+ }
+ next();
+};
+render();
+})();
+</script>
+</body>
+</html>
