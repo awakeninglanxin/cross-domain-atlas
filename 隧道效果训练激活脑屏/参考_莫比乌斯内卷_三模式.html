@@ -82,6 +82,13 @@ input[type=file]{display:none}
 #cv3{display:block;width:100%;aspect-ratio:1.55/1;touch-action:none}
 .ov3{position:absolute;right:10px;bottom:8px;font-size:10.5px;color:var(--dim);
   background:rgba(8,6,20,.55);padding:3px 8px;border-radius:999px;pointer-events:none}
+.v3views{position:absolute;left:10px;bottom:10px;display:flex;gap:5px;z-index:3}
+.v3views button{font-size:11px;line-height:1;padding:6px 10px;border-radius:8px;cursor:pointer;
+  border:1px solid rgba(169,140,255,.35);background:rgba(12,8,26,.72);color:var(--dim);
+  backdrop-filter:blur(6px);transition:all .16s}
+.v3views button:hover{background:rgba(169,140,255,.22);color:var(--fg);transform:translateY(-1px)}
+.v3views button.on{border-color:var(--vio);color:#fff;
+  background:linear-gradient(135deg,rgba(169,140,255,.5),rgba(102,224,255,.28));box-shadow:0 0 12px rgba(169,140,255,.3)}
 .hint3{font-size:11.5px;color:var(--dim);line-height:1.7;margin:9px 2px 0}
 .hint3 code{color:var(--cyan);background:rgba(102,224,255,.09);padding:1px 5px;border-radius:4px}
 .hint3 b{color:var(--fg);font-weight:600}
@@ -150,7 +157,14 @@ body{ padding-right:calc(var(--cd-w) + 30px) }
       <button id="v3spin">自动旋转</button>
     </div>
   </div>
-  <div class="stage3"><canvas id="cv3"></canvas><div class="ov3">拖动旋转 · 滚轮缩放</div></div>
+  <div class="stage3"><canvas id="cv3"></canvas>
+    <div class="v3views" id="v3views">
+      <button data-v="iso" class="on" title="斜视：通用观察角度">◈ 斜视</button>
+      <button data-v="top" title="俯视：环套环看得最清楚">⊙ 俯视</button>
+      <button data-v="front" title="正视：沿赤道正面看">◐ 正视</button>
+    </div>
+    <div class="ov3">拖动旋转 · 滚轮缩放</div>
+  </div>
   <p class="hint3">球心那根竖直<b>中轴线（旋转轴）</b>就是双曲流的轴：青色「源」在轴上端、金色「汇」在下端，<b>两极间距 = 层距 L</b>。拖 <b>L→0</b> 两极沿轴合拢，球面腰部收紧成洞、两极展开成环顶/底——<b>球形退化为圆环（甜甜圈）</b>，即抛物型极限（出尖 / 环化）。金色赤道大圆 <code>|z|=1</code> 垂直于轴；青经圈过两极、紫纬圈绕轴成正交网；青色粒子从源螺旋涌向汇（<code>ζ→e^{κt}ζ</code>）。<b>彩色尾迹</b>是首尾相接的<b>闭合环流线</b>（不再断在边缘），右侧参数台可调：总量开关、粗细、亮度与 <b>cmap 配色渐变</b>（含自定义头/尾色）；<b>尾迹长度</b>控制整圈中「亮部占比」（其余段压暗但连续，闭环不断）。</p>
 </div>
 
@@ -847,6 +861,7 @@ Hopf 纤维 ψ=ψ₀+skew·φ (S³→S² 球极投影)</span>
       b.classList.add('on'); S.mode=b.dataset.m;
       // C 抛物：环面从上方看最清楚，自动切到较高仰角（A/B 回到斜视）
       V3.el = S.mode==='C' ? 1.05 : 0.22;
+      setView(S.mode==='C'?'top':'iso');
       S.d=MODE[S.mode].d; $('d').value=S.d; syncLabels();
       updateBadge(); renderExplain();
     });
@@ -1420,11 +1435,22 @@ Hopf 纤维 ψ=ψ₀+skew·φ (S³→S² 球极投影)</span>
   // 测试钩子：headless 校验用，正式页面无副作用
   window.__gifTest={grab:gifGrab,pack:gifPack};
 
+  // 一键三视图：斜视 / 俯视 / 正视（改 V3 相机角，不改数学模式）
+  const VIEWS={iso:{az:-0.30,el:0.22},top:{az:-0.30,el:1.05},front:{az:0,el:0}};
+  function setView(key){
+    const v=VIEWS[key]; if(!v)return;
+    V3.az=v.az; V3.el=v.el; V3.zoom=1;
+    document.querySelectorAll('#v3views button').forEach(b=>b.classList.toggle('on',b.dataset.v===key));
+  }
+  function clearViewHL(){document.querySelectorAll('#v3views button').forEach(b=>b.classList.remove('on'));}
+  document.querySelectorAll('#v3views button').forEach(b=>{
+    b.addEventListener('click',()=>setView(b.dataset.v));
+  });
   $('v3spin').addEventListener('click',function(){V3.spin=!V3.spin;this.classList.toggle('on',V3.spin);});
-  $('v3reset').addEventListener('click',()=>{V3.az=-0.30;V3.el=0.22;V3.zoom=1;});
+  $('v3reset').addEventListener('click',()=>setView('iso'));
   $('v3preset').addEventListener('click',()=>{
     S.mode='C'; document.querySelectorAll('#modes button').forEach(x=>x.classList.toggle('on',x.dataset.m==='C'));
-    V3.el=1.05; V3.az=-0.30; V3.zoom=1;      // 抛物环面：俯视看得最清楚
+    setView('top');                             // 抛物环面：俯视看得最清楚
     S.speed=2.00; S.L=0.85; S.d=1.15; S.R=0.55; S.mix=1.00;
     $('speed').value=S.speed; $('L').value=S.L; $('d').value=S.d; $('R').value=S.R; $('mix').value=S.mix;
     syncLabels(); updateBadge(); renderExplain();
@@ -1433,7 +1459,7 @@ Hopf 纤维 ψ=ψ₀+skew·φ (S³→S² 球极投影)</span>
   c3.addEventListener('pointermove',e=>{
     if(!V3.drag)return;
     V3.az+=(e.clientX-V3.px)*0.008; V3.el=Math.max(-1.4,Math.min(1.4,V3.el+(e.clientY-V3.py)*0.006));
-    V3.px=e.clientX;V3.py=e.clientY;
+    V3.px=e.clientX;V3.py=e.clientY; clearViewHL();   // 手动拖动后取消预设高亮
   });
   c3.addEventListener('pointerup',e=>{V3.drag=false;try{c3.releasePointerCapture(e.pointerId);}catch(_){} });
   c3.addEventListener('wheel',e=>{e.preventDefault();V3.zoom=Math.max(0.6,Math.min(1.8,V3.zoom*(e.deltaY>0?0.94:1.06)));},{passive:false});
