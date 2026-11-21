@@ -6329,7 +6329,7 @@ window.__DATA__={"_meta":{"生成时间":"2026-10-27 10:57:53","来源":["查询
   var TREND_CLS = { '偏阴': 'n', '偏阳': 'y', '平衡': '', '无': '' };
 
   var state = { f: null, res: null, md: {}, tab: 0, saveNext: false, suppressSave: false, histOk: true,
-    region: '', regionSource: '' };
+    region: '', regionSource: '', regionTried: false };
   try {
     state.region = localStorage.getItem('ch_region') || '';
     state.regionSource = localStorage.getItem('ch_region_src') || '';
@@ -6345,14 +6345,17 @@ window.__DATA__={"_meta":{"生成时间":"2026-10-27 10:57:53","来源":["查询
     if (state.f) userRun();
   }
   function geoLocate() {
+    state.regionTried = true;
     if (!navigator.geolocation) { saveRegion('', '浏览器不支持定位，请用手选'); return; }
-    navigator.geolocation.getCurrentPosition(function (pos) {
-      var B = window.BAZI;
-      var r = B ? B.regionOfLatLon(pos.coords.latitude, pos.coords.longitude, D.CITY) : '';
-      saveRegion(r, r ? '自动定位到' + r : '定位成功但未匹配城市，用全国通用');
-    }, function () {
-      saveRegion(state.region || '', '定位未授权/失败，退回通用或手选');
-    }, { timeout: 8000, maximumAge: 86400000 });
+    try {
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        var B = window.BAZI;
+        var r = B ? B.regionOfLatLon(pos.coords.latitude, pos.coords.longitude, D.CITY) : '';
+        saveRegion(r, r ? '自动定位到' + r : '定位成功但未匹配城市，用全国通用');
+      }, function () {
+        saveRegion(state.region || '', '定位未授权/失败，保留当前选择');
+      }, { timeout: 8000, maximumAge: 86400000 });
+    } catch (e) { saveRegion(state.region || '', '定位不可用，保留当前选择'); }
   }
   function setRegionFromInput() {
     var v = ($('fRegionCity') || {}).value || '';
@@ -7890,7 +7893,8 @@ window.__DATA__={"_meta":{"生成时间":"2026-10-27 10:57:53","来源":["查询
           'style="width:116px;padding:3px 6px;border:1px solid var(--line);border-radius:5px;font-size:12px">' +
           '<button type="button" id="btnRegionSet" class="btn" style="padding:3px 9px;font-size:12px">应用</button>' +
           '<span>' + (state.region ? '当前：' + esc(state.region) : '当前：全国通用') +
-          (state.regionSource ? '（' + esc(state.regionSource) + '）' : '') + '</span></div>' +
+          (state.regionSource ? '（' + esc(state.regionSource) + '）' : '') +
+          '<span style="margin-left:4px">位置仅存本机</span></div>' +
           dietRow('时令原则', dt.principle) +
           dietRow('当令食材', dt.food) +
           dietRow('食疗方', dt.recipe) +
@@ -7977,6 +7981,11 @@ window.__DATA__={"_meta":{"生成时间":"2026-10-27 10:57:53","来源":["查询
     $('ex-body').innerHTML = html;
     var gb = $('btnGeo'); if (gb) gb.onclick = function () { geoLocate(); };
     var rb = $('btnRegionSet'); if (rb) rb.onclick = function () { setRegionFromInput(); };
+    /* 默认自动定位：仅顶层窗口（本地直接打开）尝试一次；
+       分享页在 iframe 内不主动请求设备权限，由访客自行点击，避免打扰。 */
+    if (!state.region && !state.regionTried && window.self === window.top) {
+      setTimeout(function () { geoLocate(); }, 300);
+    }
   }
   /* 共振数字串摘要：一级/二级各列，如「一级 2、4；二级 7」 */
   function rowsDigest(y) {
