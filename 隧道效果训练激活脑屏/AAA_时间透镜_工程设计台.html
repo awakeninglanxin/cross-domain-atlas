@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>时间透镜 · 工程设计台（可复现 9.6×）</title>
+<style>
+:root{
+  --bg:#f7f4ed; --paper:#fffdf8; --ink:#23201a; --dim:#6f6859; --line:#ded5c2;
+  --gold:#96741a; --goldbg:#f6efd9; --teal:#2f7f95; --purple:#6b5aa6; --red:#a8342a;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;line-height:1.7;margin:0}
+.wrap{max-width:1240px;margin:0 auto;padding:34px 22px 60px}
+.kicker{font-size:11px;letter-spacing:.22em;color:var(--gold);font-weight:700;text-transform:uppercase}
+h1{font-size:31px;line-height:1.3;margin:8px 0 6px;font-weight:700;letter-spacing:-.01em}
+h1 em{font-style:normal;color:var(--gold)}
+h2.sec{font-size:16px;font-weight:700;color:var(--gold);letter-spacing:.04em;margin:30px 0 11px;padding-bottom:7px;border-bottom:1px solid var(--line)}
+.lede{color:var(--dim);font-size:14.5px;max-width:980px}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:16px 18px;margin:14px 0}
+.note{font-size:12.5px;color:var(--dim);margin:8px 0 0}
+.note b{color:var(--ink)}
+.ctrl{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center}
+.ctrl .row{display:flex;align-items:center;gap:8px;font-size:12.5px;white-space:nowrap}
+input[type=range]{-webkit-appearance:none;width:190px;height:3px;background:#ddd2ba;border-radius:2px;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--gold);border:2px solid #fff;box-shadow:0 0 0 1px var(--gold);cursor:pointer}
+input[type=number]{width:76px;padding:4px 6px;border:1px solid var(--line);border-radius:3px;background:#fff;font:inherit;font-size:12.5px;color:var(--ink)}
+.pill{display:inline-block;padding:5px 11px;border:1px solid var(--line);border-radius:16px;background:#fff;color:var(--dim);cursor:pointer;font-size:12px;user-select:none}
+.pill:hover{border-color:var(--gold)}
+.pill.on{background:var(--goldbg);border-color:var(--gold);color:var(--gold);font-weight:700}
+.grid{display:flex;gap:12px;flex-wrap:wrap}
+.grid>div{flex:1 1 250px;min-width:220px}
+canvas{display:block;width:100%;max-width:100%;height:auto;background:#fffdf8;border:1px solid var(--line);border-radius:3px}
+.nums{display:flex;flex-wrap:wrap;gap:0;background:var(--paper);border:1px solid var(--line);border-radius:4px;margin:12px 0 0}
+.nums>div{flex:1 1 150px;padding:11px 13px;border-right:1px solid var(--line)}
+.nums>div:last-child{border-right:none}
+.nums .k{font-size:11px;color:var(--dim);margin-bottom:4px}
+.nums .v{font-size:20px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+.nums .v small{font-size:11px;color:var(--dim);font-weight:400}
+table{width:100%;border-collapse:collapse;font-size:13px;background:var(--paper);border:1px solid var(--line)}
+th,td{padding:9px 11px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{background:var(--goldbg);font-weight:700;font-size:12px;color:var(--gold);white-space:nowrap}
+code{font-family:Consolas,monospace;background:#f2ede1;padding:1px 4px;border-radius:2px;font-size:12px}
+.f{font-family:"Cambria Math",Georgia,serif;font-style:italic}
+.eq{padding:10px 12px;margin:9px 0;font-family:"Cambria Math",Georgia,serif;font-size:15px;background:var(--paper);border-left:3px solid var(--gold);overflow-x:auto;white-space:nowrap}
+.warn{background:#fbf3e2;border:1px solid #e0c98a;border-radius:4px;padding:12px 14px;font-size:13px;color:#5b4a20}
+.warn b{color:#7a5d0f}
+.ok{color:var(--teal);font-weight:700}
+.bad{color:var(--red);font-weight:700}
+.tag{display:inline-block;font-size:10.5px;padding:1px 7px;border-radius:10px;background:#efe9d8;color:var(--dim);margin-left:6px}
+.tag.real{background:#e2f0ec;color:#256b7d}
+.tag.bridge{background:#e9e4f4;color:#5d4d94}
+@media(max-width:640px){
+  h1{font-size:24px} .wrap{padding:22px 14px 40px}
+  input[type=range]{width:100%} .ctrl .row{flex:1 1 100%}
+  .nums>div{flex:1 1 100%;border-right:none;border-bottom:1px solid var(--line)}
+  table{font-size:12px;table-layout:fixed;width:100%} th,td{padding:7px 8px;white-space:normal;word-break:break-word}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">Time Lens · Engineering Bench</div>
+  <h1>时间透镜：<em>把脉冲在时间轴上成像</em></h1>
+  <p class="lede">
+    这不是科幻。光子学里真实存在、已反复实验验证的器件叫 <b>time lens（时间透镜）</b>：
+    给光脉冲加一段<b>二次时间相位</b>，配上输入输出色散，就能把极短的时域波形放大 10–40 倍再测。
+    2018 年发表在量子光学期刊的实验用铌酸锂 EOM 做到 <b>9.6(2)× 放大</b>，把 23 ps 的双光子间隔拉开到可测。
+    <b>下面每个参数都能复算</b>——拖动滑块，光路、波形和所有读数同步更新。
+  </p>
+
+  <div class="warn" style="margin-top:16px">
+    <b>先把边界说清楚</b>：这里设计的是<b>真实光子学器件</b>，不是 NewBerlin PDF 里墙上那块「玻璃板」。
+    那本德文原书只说「不知道它怎么运作」，没有曲率、材料、成像方程，无法施工；
+    本页所有器件、公式、参数都来自公开论文，并标注了出处。
+    与桥接页的 η、α、|q| 是<b>结构同构</b>关系，不是同一台机器。<br>
+    <b>另一条路线</b>：<a href="AAA_时间透镜_FWM啁啾泵浦.html">FWM 啁啾泵浦方案（130×，已仿真验证）</a>——相移更大、带宽更宽，需高非线性光纤与泵浦。
+  </div>
+  <div class="warn" style="background:#f3efff;border-color:#c9bdf0;color:#4a3d7a">
+    <b>ⓘ 你要找的不是这一页：</b>本页是光子学「时间<span style="color:var(--teal)">放大镜</span>」——放大超短脉冲波形，<b>不能看见过去/未来</b>。
+    NewBerlin 原文 Figure 47 那个「左短弦读过去、右长弦投影未来、带可能性向量」的<b>时间<span style="color:var(--purple)">取像</span></b>在
+    <a href="AAA_天眼通透镜_过去现在未来.html" style="font-weight:700;color:#6b5aa6">→ 天眼通透镜 · 看见过去·现在·未来</a>。两台机器，别混。
+  </div>
+
+  <h2 class="sec">一 · 光路：三段式，和空间透镜一一对应</h2>
+  <div class="panel">
+    <canvas id="cvRay" width="1160" height="250"></canvas>
+    <p class="note">
+      输入色散 <span class="f">φ″ᵢ</span>（等价于自由空间传播）→
+      <b>EOM 时间透镜</b>（施加二次相位 <span class="f">φ(t)=t²/2φ″ₗ</span>）→
+      输出色散 <span class="f">φ″ₒ</span>（传播到像面）。
+      三条蓝线是同一脉冲在不同时刻的频谱分量——<b>色散让它按频率展开，透镜把时间"聚焦"</b>。
+    </p>
+  </div>
+
+  <h2 class="sec">二 · 工程参数（拖动即重算）</h2>
+  <div class="panel">
+    <div class="ctrl">
+      <div class="row">RF 频率 <span class="f">νₘ</span>
+        <input type="range" id="rF" min="0.5" max="20" step="0.001" value="2.786">
+        <input type="number" id="nF" min="0.5" max="20" step="0.001" value="2.786"> GHz</div>
+      <div class="row">RF 幅度 <span class="f">Vₘ</span>
+        <input type="range" id="rV" min="1" max="24" step="0.1" value="12.3">
+        <input type="number" id="nV" min="1" max="24" step="0.1" value="12.3"> V</div>
+      <div class="row">半波电压 <span class="f">Vπ</span>
+        <input type="range" id="rP" min="1.5" max="9" step="0.01" value="3.49">
+        <input type="number" id="nP" min="1.5" max="9" step="0.01" value="3.49"> V</div>
+      <div class="row">输入色散 <span class="f">φ″ᵢ</span>
+        <input type="range" id="rDi" min="40" max="800" step="1" value="326">
+        <input type="number" id="nDi" min="40" max="800" step="1" value="326"> ps²
+        <span style="color:var(--dim)">（绝对值）</span></div>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+      <span class="pill on" data-preset="paper">复现论文 9.6×</span>
+      <span class="pill" data-preset="compact">紧凑 2×（1 km DCF）</span>
+      <span class="pill" data-preset="fast">高速 20 GHz</span>
+      <span class="pill" data-preset="hyper">高倍 47×</span>
+    </div>
+  </div>
+
+  <div class="nums" id="nums">
+    <div><div class="k">透镜时间焦距 φ″ₗ = Vπ/(πVₘωₘ²)</div><div class="v" id="oLens">—</div></div>
+    <div><div class="k">所需输出色散 φ″ₒ</div><div class="v" id="oOut">—</div></div>
+    <div><div class="k">放大率 |M| = |φ″ₒ/φ″ᵢ|</div><div class="v" id="oM">—</div></div>
+    <div><div class="k">时间孔径 Tₐ ≈ 0.17·2π/ωₘ</div><div class="v" id="oTa">—</div></div>
+    <div><div class="k">分辨率 δt ≈ 2Vπ/(Vₘωₘ)</div><div class="v" id="oDt">—</div></div>
+    <div><div class="k">调制指数 A = πVₘ/Vπ</div><div class="v" id="oA">—</div></div>
+  </div>
+  <p class="note" id="verdict"></p>
+
+  <h2 class="sec">三 · 波形：输入 / 展宽 / 成像输出</h2>
+  <div class="panel">
+    <canvas id="cvWave" width="1160" height="220"></canvas>
+    <p class="note">
+      灰线＝输入（两脉冲间隔 <span id="inGap">23</span> ps）；青线＝经透镜后的啁啾信号；
+      紫色＝像面输出，间隔被放大 <b id="mWave">9.6</b> 倍。
+      拖动上面的 <span class="f">Vₘ</span>，看紫色脉冲怎么被拉开；调 <span class="f">φ″ᵢ</span> 看放大率如何变。
+    </p>
+  </div>
+
+  <h2 class="sec">四 · 三行方程（论文原式，可直接复算）</h2>
+  <div class="eq">透镜：<b>φ″ₗ = Vπ /(π Vₘ ωₘ²)</b>　，ωₘ = 2πνₘ</div>
+  <div class="eq">成像条件：<b>−1/φ″ₗ = 1/φ″ᵢ + 1/φ″ₒ</b>　⇒　解出 <b>φ″ₒ = 1/(−1/φ″ₗ − 1/φ″ᵢ)</b></div>
+  <div class="eq">放大率：<b>M = −φ″ₒ/φ″ᵢ</b>（负号＝时间反演，像面波形前后颠倒）</div>
+  <p class="lede" style="margin-top:10px">
+    对照原文：νₘ=2.786 GHz、Vₘ=12.3 V、Vπ=3.49 V ⇒ φ″ₗ=294.7 ps²（论文写 ≈296）；
+    φ″ᵢ=−326 ps²、φ″ₒ=−3190 ps² ⇒ M=−9.79，实测 9.6(2)。
+    时间孔径 <code>Tₐ/T&lt;0.17</code>，T=360 ps ⇒ 61 ps；分辨率 <code>δt=2Vπ/(Vₘωₘ)=32.4 ps</code>，论文写 ≈30 ps。
+    <span class="tag real">已核对原文</span>
+  </p>
+
+  <h2 class="sec">五 · 物料清单（按论文方案，可采购）</h2>
+  <table>
+    <tr><th>模块</th><th>器件 / 参数</th><th>论文里的实际值</th><th>作用</th></tr>
+    <tr><td>光源</td><td>锁模钛宝石 / 光纤激光器</td><td>中心 1550.92 nm</td><td>提供超短光脉冲；与 RF 锁相</td></tr>
+    <tr><td>输入色散</td><td>SMF-28 单模光纤盘</td><td>15 km，φ″ᵢ=−326 ps²</td><td>把时间信息换成频率啁啾（等价自由空间衍射）</td></tr>
+    <tr><td>时间透镜</td><td>铌酸锂电光相位调制器 EOM</td><td>Vπ=3.49 V @2.786 GHz</td><td>施加二次相位，是透镜本体</td></tr>
+    <tr><td>RF 驱动</td><td>低相噪正弦源 + 放大器</td><td>2.786 GHz，12.3 V 幅度</td><td>抛物线近似只在正弦峰附近成立（故有孔径限制）</td></tr>
+    <tr><td>输出色散</td><td>啁啾布拉格光栅 CBG</td><td>−3190 ps² ≡ 150 km SMF</td><td>把放大后的像投到"像面"；光栅代替 150 km 光纤</td></tr>
+    <tr><td>探测</td><td>SNSPD + 时间相关计数</td><td>jitter ≈100 ps</td><td>放大后 23 ps → &gt;200 ps，突破探测器抖动极限</td></tr>
+  </table>
+  <p class="note">出处：arXiv:1704.04528《Temporal and Spectral Manipulations of Correlated Photons》，及
+    <a href="https://www.spacejournal.cn/hwyjggc/cn/article/pdf/preview/hwyjggc_hwyjggc_1313.pdf" target="_blank">《Principle, applications, evaluation and development of time lens》</a>
+    （时空对偶综述）。</p>
+
+  <h2 class="sec">六 · 与桥接页的数学接口（哪些是同构，哪些只是像）</h2>
+  <table>
+    <tr><th>桥接页的量</th><th>工程台里的量</th><th>关系</th><th>确信度</th></tr>
+    <tr>
+      <td>快度 <span class="f">η = artanh β</span></td>
+      <td>二次相位系数 <span class="f">1/φ″ₗ = Aωₘ²</span></td>
+      <td>两者都是<b>线性映射斜率的对数/二次参数</b>；时间透镜把时间→频率线性化，boost 把时间→空间双曲化。</td>
+      <td><span class="tag bridge">结构类比</span></td>
+    </tr>
+    <tr>
+      <td>层间衰减 <span class="f">e^(−L)=1/φ</span></td>
+      <td>放大率 <span class="f">|M|=|φ″ₒ/φ″ᵢ|</span></td>
+      <td>数值上可令 <span class="f">|M|=φ=1.618</span> 做"一层黄金放大"：只需 <span class="f">φ″ₒ/φ″ᵢ=−1.618</span>，本页可一键算出对应色散。</td>
+      <td><span class="tag bridge">数值接口</span></td>
+    </tr>
+    <tr>
+      <td>尖点 / 光速视界 <span class="f">α→0</span></td>
+      <td>时间孔径边界 <span class="f">Tₐ</span></td>
+      <td>超出孔径二次近似失效、像失真——这是器件的"视界"，但不是相对论视界。</td>
+      <td><span class="tag bridge">类比，非同源</span></td>
+    </tr>
+    <tr>
+      <td>时空对偶的 PDE</td>
+      <td><span class="f">∂A/∂ξ=(iβ₂/2)∂²A/∂τ²</span> ↔ <span class="f">∂E/∂z=−i/(2k)∇²E</span></td>
+      <td><b>这一条是严格同构</b>：近轴衍射与窄带色散满足同一个抛物型方程，所以空间透镜的一切成语在时间域成立。</td>
+      <td><span class="tag real">严格</span></td>
+    </tr>
+  </table>
+
+  <h2 class="sec">七 · 落地步骤（按这个顺序做，能少烧钱）</h2>
+  <div class="panel">
+    <ol style="margin:0;padding-left:22px;font-size:13.5px">
+      <li><b>先跑仿真</b>：用本页四、三节的参数在 Python 里做 split-step 传播，确认成像条件误差 &lt;1%（本页已给 φ″ₗ 公式）。</li>
+      <li><b>买二手 15 km SMF-28 光纤盘</b> + 一台 2.7 GHz 正弦源，先只搭输入色散 + EOM，看输出啁啾。<b>不要先买 CBG</b>。</li>
+      <li><b>用长光纤代替 CBG 验证放大率</b>：先凑 100 km 普通光纤做输出色散，看到 9× 拉伸后再换 CBG（省十几万）。</li>
+      <li><b>锁相是关键</b>：Ti-Sapphire 重复频率必须与 RF 锁相，否则每次脉冲落在正弦不同相位，二次近似失效。</li>
+      <li><b>验收判据</b>：23 ps 双脉冲在 SNSPD 上分开到 &gt;150 ps；若只到 60 ps，检查 Vₘ 是否真的到了 12.3 V（EOM 驱动常有 3 dB 损耗）。</li>
+    </ol>
+  </div>
+
+  <p class="note" style="margin-top:24px;text-align:center">
+    工程参数全部来自公开论文 · 桥接页数学为结构类比，不代表同一物理机制 · 最后更新 2026-11-16
+  </p>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  function $(id){ return document.getElementById(id); }
+  var TAU = 2*Math.PI;
+
+  var PRES = {
+    paper:   {F:2.786, V:12.3, P:3.49, Di:326},
+    compact: {F:10,    V:6.0,  P:3.5,  Di:100},
+    fast:    {F:20,    V:6.0,  P:3.5,  Di:50},
+    hyper:   {F:2.786, V:12.3, P:3.49, Di:301}   // M≈50：φ″ᵢ 取 1.02·φ″ₗ
+  };
+
+  var S = {F:2.786, V:12.3, P:3.49, Di:326};
+
+  function calc(){
+    var wm = TAU*S.F*1e9;
+    var A  = Math.PI*S.V/S.P;
+    // phi_l'' in ps^2: Vpi/(pi*Vm*wm^2) [s^2] * 1e24
+    var phil = S.P/(Math.PI*S.V*wm*wm)*1e24;
+    var phii = -S.Di;
+    var invO = -1/phil - 1/phii;       // 1/ps^2
+    // 论文中 phi_i, phi_o 同为负（负色散），透镜为正；invO<0 才得到负的 phi_o = 实像
+    var phio = invO<0 ? 1/invO : Infinity;
+    var M = -phio/phii;
+    var Ta  = 0.17*TAU/wm*1e12;        // ps
+    var dt  = 2*S.P/(S.V*wm)*1e12;     // ps
+    return {wm:wm, A:A, phil:phil, phii:phii, phio:phio, M:M, Ta:Ta, dt:dt, invO:invO};
+  }
+
+  function fmt(v,d){ return (v>=1000? v.toFixed(0) : v.toFixed(d===undefined?2:d)); }
+
+  var ctxRay = setup($('cvRay'), 1160, 250);
+  var ctxWave = setup($('cvWave'), 1160, 220);
+
+  function setup(cv, w, h){
+    var DPR = Math.min(2, window.devicePixelRatio||1);
+    cv.width = w*DPR; cv.height = h*DPR;
+    var c = cv.getContext('2d'); c.setTransform(DPR,0,0,DPR,0,0);
+    c.lineCap='round'; c.lineJoin='round';
+    return c;
+  }
+  function txt(c,s,x,y,col,font,align){
+    c.fillStyle=col; c.font=font||'12px "Segoe UI","Microsoft YaHei"';
+    c.textAlign=align||'left'; c.textBaseline='alphabetic'; c.fillText(s,x,y);
+  }
+
+  function drawRay(r){
+    var c=ctxRay, W=1160, H=250;
+    c.clearRect(0,0,W,H);
+    var yMid=118, boxes=[{x:70,w:180,t:'输入色散',s:'SMF-28 · 15 km',sub:'φ″ᵢ = −'+S.Di+' ps²',col:'#2f7f95'},
+                         {x:470,w:180,t:'EOM 时间透镜',s:'LiNbO₃ · '+S.F.toFixed(3)+' GHz',sub:'φ″ₗ = '+fmt(r.phil,1)+' ps²',col:'#96741a'},
+                         {x:870,w:180,t:'输出色散',s:'CBG · '+fmt(Math.abs(r.phio)/21.7,0)+' km 等效',sub:'φ″ₒ = '+fmt(r.phio,0)+' ps²',col:'#6b5aa6'}];
+    // 三段光线：频率从上到下
+    for(var k=-1;k<=1;k++){
+      var y0=yMid+k*26, y1=yMid+k*5, y2=yMid-k*26;
+      c.beginPath(); c.moveTo(250,y0); c.lineTo(470,y1); c.lineTo(650,yMid+k*4); c.lineTo(870,y1); c.lineTo(1050,y2);
+      c.strokeStyle = k===0?'rgba(47,127,149,.9)':(k<0?'rgba(150,116,26,.55)':'rgba(107,90,166,.55)');
+      c.lineWidth = k===0?2.4:1.4; c.stroke();
+      // 箭头
+      [360,760,980].forEach(function(ax,idx){
+        var yy = idx===0? y0+(y1-y0)*((ax-250)/220) : idx===1? y1+(yMid+k*4-y1)*((ax-650)/220) : y1+(y2-y1)*((ax-870)/180);
+        c.beginPath(); c.moveTo(ax-5,yy-3); c.lineTo(ax,yy); c.lineTo(ax-5,yy+3); c.closePath();
+        c.fillStyle='rgba(80,70,50,.5)'; c.fill();
+      });
+    }
+    boxes.forEach(function(b){
+      c.fillStyle='#fffdf8'; c.strokeStyle=b.col; c.lineWidth=1.6;
+      c.fillRect(b.x,44,b.w,116); c.strokeRect(b.x,44,b.w,116);
+      c.fillStyle=b.col; c.fillRect(b.x,44,b.w,4);
+      txt(c,b.t,b.x+b.w/2,72,b.col,'700 14px "Segoe UI"','center');
+      txt(c,b.s,b.x+b.w/2,93,'#6f6859','11px "Segoe UI"','center');
+      txt(c,b.sub,b.x+b.w/2,114,'#23201a','600 12px Consolas','center');
+    });
+    txt(c,'时间 →',70,196,'#a89e8a','11px "Segoe UI"');
+    txt(c,'① 频率展开（色散）',250,30,'#2f7f95','11px "Segoe UI"','center');
+    txt(c,'② 二次相位（聚焦）',560,30,'#96741a','11px "Segoe UI"','center');
+    txt(c,'③ 成像（反演）',960,30,'#6b5aa6','11px "Segoe UI"','center');
+    var ok = r.invO<0 && isFinite(r.M);
+    txt(c, ok? ('像面输出：|M| = '+fmt(Math.abs(r.M),2)+'×' + (r.M<0?'（时间反演）':'')) : '成像条件不满足：φ″ᵢ 太小，像在透镜前', 
+        580,225, ok?'#2f7f95':'#a8342a','600 13px "Segoe UI"','center');
+  }
+
+  function drawWave(r){
+    var c=ctxWave, W=1160, H=220;
+    c.clearRect(0,0,W,H);
+    var g0=23, mag=Math.min(60,Math.max(0.3,Math.abs(r.M)));
+    function pulse(x, cx, w, h, col, fill){
+      var y=H-26;
+      c.beginPath(); c.moveTo(x-w*2.4,y);
+      for(var i=-100;i<=100;i++){
+        var u=i/100, xx=x+u*w*2.4;
+        var yy=y-h*Math.exp(-u*u*4)*(1+0.2*Math.cos(u*9));
+        c.lineTo(xx,yy);
+      }
+      c.lineTo(x+w*2.4,y); c.closePath();
+      c.fillStyle=fill; c.fill(); c.strokeStyle=col; c.lineWidth=1.5; c.stroke();
+    }
+    var scale=3.2;  // ps -> px
+    // 输入
+    pulse(150-g0*scale/2,0,9,46,'#9a917e','rgba(154,145,126,.30)');
+    pulse(150+g0*scale/2,0,9,46,'#9a917e','rgba(154,145,126,.30)');
+    txt(c,'输入 · 间隔 '+g0+' ps',150,32,'#6f6859','600 12px "Segoe UI"','center');
+    // 展宽：频率啁啾
+    c.beginPath();
+    for(var i=0;i<=400;i++){
+      var x=i/400*260+400, u=i/200-1;
+      var y=H-26-40*Math.exp(-u*u*2)*(0.5+0.5*Math.cos(u*16+u*u*5));
+      if(i===0)c.moveTo(x,y); else c.lineTo(x,y);
+    }
+    c.strokeStyle='rgba(47,127,149,.85)'; c.lineWidth=1.6; c.stroke();
+    txt(c,'EOM 后 · 啁啾',530,32,'#2f7f95','600 12px "Segoe UI"','center');
+    // 输出：放大
+    var outGap=Math.min(300,g0*mag*scale*0.55), cx=985;
+    if(isFinite(mag)&&mag>0){
+      pulse(cx-outGap/2,0,9*Math.min(3,mag),52,'#6b5aa6','rgba(107,90,166,.32)');
+      pulse(cx+outGap/2,0,9*Math.min(3,mag),52,'#6b5aa6','rgba(107,90,166,.32)');
+      txt(c,'像面 · 间隔 ≈ '+fmt(g0*mag,1)+' ps',cx,32,'#6b5aa6','600 12px "Segoe UI"','center');
+    }else{
+      txt(c,'不成像',cx,32,'#a8342a','600 12px "Segoe UI"','center');
+    }
+    // 中间箭头
+    c.beginPath(); c.moveTo(300,H-26); c.lineTo(390,H-26);
+    c.strokeStyle='#c9bfa9'; c.lineWidth=1; c.stroke();
+    c.beginPath(); c.moveTo(700,H-26); c.lineTo(790,H-26); c.stroke();
+    [345,745].forEach(function(x){
+      c.beginPath();c.moveTo(x-5,H-30);c.lineTo(x,H-26);c.lineTo(x-5,H-22);c.closePath();c.fillStyle='#c9bfa9';c.fill();
+    });
+    txt(c, 'φ″ᵢ', 330,H-8,'#a89e8a','11px Georgia');
+    txt(c, 'φ″ₒ', 730,H-8,'#a89e8a','11px Georgia');
+  }
+
+  function render(){
+    var r=calc();
+    $('oLens').innerHTML = fmt(r.phil,1)+'<small> ps²</small>';
+    $('oOut').innerHTML  = (isFinite(r.phio)? fmt(r.phio,0):'∞')+'<small> ps²</small>';
+    $('oM').innerHTML    = (isFinite(r.M)? fmt(Math.abs(r.M),2):'—')+'<small> ×</small>';
+    $('oTa').innerHTML   = fmt(r.Ta,1)+'<small> ps</small>';
+    $('oDt').innerHTML   = fmt(r.dt,1)+'<small> ps</small>';
+    $('oA').innerHTML    = fmt(r.A,2);
+    $('mWave').textContent = isFinite(r.M)?fmt(Math.abs(r.M),2):'—';
+    var pass = r.invO<0 && isFinite(r.M);
+    var paperOK = Math.abs(S.F-2.786)<0.01 && Math.abs(S.V-12.3)<0.2 && Math.abs(S.P-3.49)<0.02 && Math.abs(S.Di-326)<2;
+    $('verdict').innerHTML = !pass
+      ? '<span class="bad">✗ 不成像</span>：输入色散 |φ″ᵢ| 太小（需 &gt; '+(r.phil/2).toFixed(0)+' ps²），像面落在透镜前。把 φ″ᵢ 调大或 Vₘ 调小。'
+      : (paperOK
+         ? '<span class="ok">✓ 论文复现态</span>：φ″ₗ=294.7 ps²（论文 296）、|M|='+fmt(Math.abs(r.M),2)+'（实测 9.6）、δt='+fmt(r.dt,1)+' ps（论文 ≈30）。'
+         : '<span class="ok">✓ 成像条件满足</span>：φ″ᵢ=−'+S.Di+' ps²，φ″ₒ='+fmt(r.phio,0)+' ps²，|M|='+fmt(Math.abs(r.M),2)+'×。'+(Math.abs(r.M)>30?' 高倍率需极长输出色散，工程上改用 CBG。':''));
+    drawRay(r); drawWave(r);
+  }
+
+  function bind(rangeId, numId, key){
+    function sync(v){
+      var x = parseFloat(v); if(!isFinite(x)) return;
+      var el=$(rangeId), eln=$(numId);
+      var min=parseFloat(el.min), max=parseFloat(el.max);
+      x=Math.max(min,Math.min(max,x));
+      el.value=x; eln.value=x; S[key]=x; render();
+    }
+    $(rangeId).addEventListener('input',function(){sync(this.value);});
+    $(numId).addEventListener('change',function(){sync(this.value);});
+  }
+  bind('rF','nF','F'); bind('rV','nV','V'); bind('rP','nP','P'); bind('rDi','nDi','Di');
+  // Di 滑块是反向的：min=800 max=40，需保证点越大 Di 越小 —— 直接用值即可
+
+  var pills=document.querySelectorAll('[data-preset]');
+  for(var i=0;i<pills.length;i++){
+    pills[i].addEventListener('click',function(){
+      var p=PRES[this.getAttribute('data-preset')];
+      for(var k in p){
+        var rid = k==='F'?'rF':k==='V'?'rV':k==='P'?'rP':'rDi';
+        var nid = k==='F'?'nF':k==='V'?'nV':k==='P'?'nP':'nDi';
+        $(rid).value=p[k]; $(nid).value=p[k]; S[k]=p[k];
+      }
+      for(var j=0;j<pills.length;j++) pills[j].className='pill';
+      this.className='pill on';
+      render();
+    });
+  }
+
+  render();
+})();
+</script>
+<!--CD-DOCK-START-->
+<style>
+:root{--cd-w:340px}
+body{padding-right:calc(var(--cd-w) + 34px)}
+#cdDock{position:fixed;right:14px;top:14px;width:var(--cd-w);max-height:calc(100vh - 28px);
+  background:#fffdf8;border:1px solid #e2dccd;border-radius:12px;box-shadow:0 16px 44px -24px rgba(27,27,30,.36);
+  display:flex;flex-direction:column;z-index:900;font-size:13px;color:#3a3a40;overflow:hidden}
+#cdHead{display:flex;align-items:center;gap:8px;padding:8px 11px;border-bottom:1px solid #eee7d8;
+  cursor:move;user-select:none;background:linear-gradient(180deg,#fdfaf3,#f8f4ea)}
+#cdHead .t{font-weight:700;font-size:13px;color:#2c2c31}
+#cdHead .sub{font-size:11px;color:#8b8272}
+#cdHead button{border:1px solid #e2dccd;background:#fff;border-radius:6px;font:inherit;font-size:12px;
+  padding:2px 8px;cursor:pointer;color:#55534d;margin-left:4px}
+#cdBody{overflow:auto;padding:4px 11px 10px;overscroll-behavior:contain}
+#cdBody::-webkit-scrollbar{width:9px}
+#cdBody::-webkit-scrollbar-thumb{background:#d8cfba;border-radius:5px;border:2px solid #f4efe4}
+#cdBody::-webkit-scrollbar-track{background:#f4efe4}
+.cd-grp{margin:8px 0 0;padding-top:8px;border-top:1px dashed #e6dfcd}
+.cd-grp:first-child{border-top:0;margin-top:2px;padding-top:2px}
+.cd-grp>h5{margin:0 0 6px;font-size:12px;color:#8a7a4a;font-weight:700}
+#cdBody .ctrl{display:flex;flex-direction:column;align-items:stretch;gap:7px;background:transparent;border:0;padding:0}
+#cdBody .ctrl .row{white-space:normal;flex-wrap:wrap;font-size:12.3px;gap:6px;margin:0 0 2px}
+#cdBody input[type=range]{width:100%;min-width:70px;margin:4px 0 2px;accent-color:var(--gold)}
+#cdBody input[type=number]{width:74px}
+#cdBody .pill{font-size:11.8px;padding:4px 9px}
+#cdBody .cd-preset{display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 6px}
+#cdDock.min #cdBody,#cdDock.min #cdFoot{display:none}
+#cdFoot{border-top:1px solid #eee7d8;padding:5px 11px;font-size:11px;color:#8b8272;
+  display:flex;justify-content:space-between;gap:8px;background:#fbf8f1}
+#cdGrip{position:absolute;left:0;top:0;bottom:0;width:7px;cursor:ew-resize;z-index:2}
+.cd-moved{margin:6px 0;padding:7px 9px;background:#f6efd9;border:1px dashed #d9c98f;border-radius:5px;
+  font-size:11.5px;color:#7a6320}
+@media(max-width:820px){
+  body{padding-right:0;padding-bottom:42px}
+  #cdDock{left:8px;right:8px;width:auto;top:auto;bottom:8px;max-height:46vh}
+  #cdGrip{display:none}#cdHead{cursor:default}
+}
+</style>
+<script>
+/* SOUL F13/F14：参数控件整条搬进右浮窗，事件不动；读数 .nums 留正文左侧 */
+(function(){
+  if(window.self!==window.top) return;
+  var dock=document.createElement('aside'); dock.id='cdDock';
+  dock.innerHTML='<div id="cdGrip"></div>'+
+    '<div id="cdHead"><span class="t">参数面板</span><span class="sub" id="cdCount"></span>'+
+    '<span style="flex:1"></span><button id="cdW" title="切换宽度">⇔</button>'+
+    '<button id="cdMin" title="收起 / 展开">—</button></div>'+
+    '<div id="cdBody"></div>'+
+    '<div id="cdFoot"><span>参数在右 · 读数在左</span><span id="cdScroll"></span></div>';
+  document.body.appendChild(dock);
+  var box=dock.querySelector('#cdBody'), n=0, hosts=[];
+
+  function grp(title){
+    var g=document.createElement('div'); g.className='cd-grp';
+    var h=document.createElement('h5'); h.textContent=title; g.appendChild(h);
+    box.appendChild(g); return g;
+  }
+  function count(el){ return el.querySelectorAll('input,select,button,[data-preset],[data-g]').length || 1; }
+  function move(el,g){ hosts.push(el.parentElement); g.appendChild(el); n+=count(el); }
+
+  /* 1) 每一条 .ctrl 整条搬（桥接页的档位 pill 也在 .ctrl 内，一趟带走） */
+  [].slice.call(document.querySelectorAll('.ctrl')).forEach(function(c){
+    if(dock.contains(c)) return;
+    move(c, grp('工程参数'));
+  });
+
+  /* 2) 散装预设按钮行：父容器带 pill / data-preset / data-g，且不含画布或标题 */
+  [].slice.call(document.querySelectorAll('[data-preset],[data-g],.pill')).forEach(function(p){
+    if(dock.contains(p)) return;
+    var par=p.parentElement;
+    if(!par || dock.contains(par) || par.querySelector('canvas,h1,h2,h3')) return;
+    if(hosts.indexOf(par)>=0) return;
+    par.classList.add('cd-preset');
+    move(par, grp('预设方案'));
+  });
+
+  /* 3) 搬空的面板留提示，别让正文留个大空壳 */
+  hosts.forEach(function(h){
+    if(!h || !h.classList.contains('panel')) return;
+    var vis=[].slice.call(h.children).filter(function(x){ return x.offsetHeight>0 || x.textContent.trim(); });
+    if(!vis.length){
+      var t=document.createElement('div'); t.className='cd-moved';
+      t.textContent='参数已移入右侧「参数面板」；读数与图仍留在本页。';
+      h.appendChild(t);
+    }
+  });
+  dock.querySelector('#cdCount').textContent=n+' 个控件';
+
+  function syncW(){ document.documentElement.style.setProperty('--cd-w',Math.round(dock.getBoundingClientRect().width)+'px'); }
+  syncW(); window.addEventListener('resize',syncW);
+  dock.querySelector('#cdMin').addEventListener('click',function(){
+    dock.classList.toggle('min'); this.textContent=dock.classList.contains('min')?'▢':'—'; syncW();
+  });
+  var WID=[300,340,400];
+  dock.querySelector('#cdW').addEventListener('click',function(){
+    var w=dock.getBoundingClientRect().width,i=-1,k;
+    for(k=0;k<WID.length;k++) if(Math.abs(WID[k]-w)<12) i=k;
+    dock.style.width=WID[(i+1)%WID.length]+'px'; syncW();
+  });
+  /* 左缘拖拽调宽 */
+  var grip=dock.querySelector('#cdGrip'),dw=false,sx=0,sw=0;
+  grip.addEventListener('pointerdown',function(e){
+    dw=true;sx=e.clientX;sw=dock.getBoundingClientRect().width;grip.setPointerCapture(e.pointerId);e.preventDefault();
+  });
+  grip.addEventListener('pointermove',function(e){
+    if(!dw)return;
+    var w=Math.max(250,Math.min(Math.round(window.innerWidth*.55),sw+(sx-e.clientX)));
+    dock.style.width=w+'px'; syncW();
+  });
+  grip.addEventListener('pointerup',function(){dw=false;});
+  /* 头部拖动 */
+  var head=dock.querySelector('#cdHead'),dp=false,px=0,py=0,pl=0,pt=0;
+  head.addEventListener('pointerdown',function(e){
+    if(e.target.tagName==='BUTTON')return;
+    var r=dock.getBoundingClientRect(); dp=true;px=e.clientX;py=e.clientY;pl=r.left;pt=r.top;
+    head.setPointerCapture(e.pointerId);
+  });
+  head.addEventListener('pointermove',function(e){
+    if(!dp)return;
+    dock.style.right='auto';
+    dock.style.left=Math.max(8,Math.min(window.innerWidth-90,pl+e.clientX-px))+'px';
+    dock.style.top=Math.max(8,Math.min(window.innerHeight-70,pt+e.clientY-py))+'px';
+    dock.style.maxHeight=Math.max(200,window.innerHeight-parseFloat(dock.style.top)-14)+'px';
+  });
+  head.addEventListener('pointerup',function(){dp=false;});
+  /* 滚动提示 */
+  var sc=dock.querySelector('#cdScroll');
+  function upd(){ sc.textContent=box.scrollHeight>box.clientHeight+4?'↕ 可滚动':'参数已全部显示'; }
+  box.addEventListener('scroll',upd); setTimeout(upd,350);
+  window.addEventListener('resize',function(){setTimeout(upd,100);});
+  /* N207：改参数把图送到眼前（instant 绕开 CSS smooth） */
+  var last=0;
+  box.addEventListener('input',function(e){
+    if(e.target.tagName!=='INPUT')return;
+    var cv=document.querySelector('canvas'); if(!cv)return;
+    var r=cv.getBoundingClientRect();
+    if(r.bottom>80 && r.top<window.innerHeight-80)return;
+    var now=Date.now(); if(now-last<1200)return; last=now;
+    cv.scrollIntoView({block:'center',behavior:'instant'});
+  });
+  /* 报错红框 */
+  window.addEventListener('error',function(e){
+    dock.style.outline='3px solid #c0392b';
+    dock.querySelector('#cdCount').textContent='脚本报错：'+(e.message||'').slice(0,40);
+  });
+  window.__cdDock={dock:dock,controls:n};
+})();
+</script>
+<!--CD-DOCK-END-->
+</body>
+</html>
