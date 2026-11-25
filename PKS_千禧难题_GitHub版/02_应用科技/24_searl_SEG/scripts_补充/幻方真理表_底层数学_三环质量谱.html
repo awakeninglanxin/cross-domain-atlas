@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>幻方真理表的底层数学 · 一张同余表如何生成三环质量谱</title>
+<style>
+:root{
+  --pur:#6b1e9e; --pur2:#8f1f9e; --mag:#b8268f;
+  --ink:#1a1a1a; --sub:#5c5c6b; --line:#e6e0ee; --bg:#ffffff; --soft:#faf7fd;
+  --ok:#1d9e75; --warn:#c2410c; --blue:#1f5fa9;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.72 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 26px 90px}
+code,.mono{font-family:Consolas,"SF Mono",Menlo,monospace;font-size:.92em}
+code{background:#f4eefb;color:#4a1063;padding:1px 5px;border-radius:3px}
+
+/* ── hero ── */
+header{padding:44px 0 22px;border-bottom:3px solid var(--pur)}
+.kicker{font-size:12.5px;letter-spacing:.16em;color:var(--pur);font-weight:700;margin-bottom:10px}
+h1{font-size:31px;line-height:1.28;margin:0 0 12px;font-weight:800;letter-spacing:-.4px}
+h1 em{font-style:normal;color:var(--pur)}
+.lead{font-size:15.4px;color:var(--sub);margin:0 0 6px;max-width:960px}
+.lead b{color:var(--ink)}
+.parambox{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+.pchip{font:12.5px Consolas,monospace;background:var(--soft);border:1px solid var(--line);
+  color:#4a1063;border-radius:999px;padding:4px 11px}
+.pchip b{color:var(--pur)}
+
+/* ── kpi ── */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px;margin:26px 0 8px}
+.kpi{background:var(--soft);border:1px solid var(--line);border-radius:9px;padding:12px 14px}
+.kpi .t{font-size:11.5px;color:var(--sub);letter-spacing:.04em}
+.kpi .v{font-size:25px;font-weight:800;color:var(--pur);line-height:1.15;margin-top:2px;
+  font-variant-numeric:tabular-nums}
+.kpi .n{font-size:11.5px;color:var(--sub);margin-top:1px}
+.kpi.alt .v{color:var(--ok)} .kpi.warn .v{color:var(--warn)}
+
+/* ── toc ── */
+nav.toc{margin:26px 0 8px;padding:14px 18px;background:#fcfafd;border:1px solid var(--line);
+  border-left:4px solid var(--pur);border-radius:0 8px 8px 0}
+nav.toc b{display:block;font-size:12px;letter-spacing:.12em;color:var(--pur);margin-bottom:7px}
+nav.toc ol{margin:0;padding-left:20px;columns:2;column-gap:34px;font-size:13.6px}
+nav.toc li{margin:2px 0;break-inside:avoid}
+nav.toc a{color:#3a2a4a;text-decoration:none;border-bottom:1px dotted #c9b6dd}
+nav.toc a:hover{color:var(--pur);border-bottom-color:var(--pur)}
+
+/* ── sections ── */
+section{margin-top:42px;scroll-margin-top:16px}
+h2{font-size:21px;margin:0 0 4px;font-weight:800;letter-spacing:-.2px;
+  padding-bottom:9px;border-bottom:2px solid var(--pur);display:flex;align-items:baseline;gap:10px}
+h2 .no{font:700 13px/1 Consolas,monospace;color:#fff;background:var(--pur);
+  border-radius:4px;padding:4px 7px;flex:0 0 auto}
+h3{font-size:15.6px;margin:24px 0 8px;font-weight:700;color:#3a1a52}
+h3 .s{color:var(--pur);font-family:Consolas,monospace;font-size:13.5px;margin-right:5px}
+p{margin:9px 0}
+ul,ol{margin:9px 0;padding-left:22px}
+li{margin:4px 0}
+.sub{color:var(--sub);font-size:13.6px}
+
+/* ── formula ── */
+.fml{margin:13px 0;padding:14px 18px;background:#fbf8fe;border:1px solid #e3d3f2;
+  border-left:4px solid var(--pur);border-radius:0 7px 7px 0;
+  font:15px/1.95 Consolas,"SF Mono",monospace;color:#2b1440;overflow-x:auto}
+.fml .c{color:#8a7f96;font-family:system-ui;font-size:12.6px}
+.fml b{color:var(--pur)}
+
+/* ── table ── */
+.tw{overflow-x:auto;margin:14px 0}
+table{border-collapse:collapse;width:100%;font-size:13.4px}
+th,td{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top}
+th{background:#f6f1fb;color:#3a1a52;font-weight:700;font-size:12.8px;white-space:nowrap}
+td.num{text-align:right;font-family:Consolas,monospace;font-variant-numeric:tabular-nums}
+tbody tr:nth-child(even){background:#fdfbff}
+td .y{color:var(--ok);font-weight:700}
+td .n{color:#b3aabf}
+tr.hl td{background:#f3e8ff}
+tr.hl td:first-child{box-shadow:inset 3px 0 0 var(--pur)}
+caption{caption-side:top;text-align:left;font-size:12.6px;color:var(--sub);padding:0 0 6px}
+
+/* ── canvas ── */
+.fig{margin:16px 0;border:1px solid var(--line);border-radius:9px;padding:12px 12px 6px;background:#fff}
+.fig canvas{display:block;width:100%;height:auto}
+.fig .cap{font-size:12.4px;color:var(--sub);margin-top:7px;line-height:1.6}
+.fig .cap b{color:var(--ink)}
+
+/* ── boxes ── */
+.fig svg{width:100%;height:auto;display:block}
+.box{margin:14px 0;padding:12px 16px;border-radius:8px;font-size:13.9px;line-height:1.72}
+.ok{background:#f0faf5;border:1px solid #bfe6d4;border-left:4px solid var(--ok)}
+.warn{background:#fff7f0;border:1px solid #f5d6bf;border-left:4px solid var(--warn)}
+.note{background:#f6f9fe;border:1px solid #cfe0f5;border-left:4px solid var(--blue)}
+.box b{font-weight:700}
+.box .h{display:block;font-size:12.2px;letter-spacing:.08em;margin-bottom:4px;opacity:.85}
+
+ol.cl{margin:12px 0;padding-left:0;list-style:none;counter-reset:c}
+ol.cl>li{counter-increment:c;position:relative;padding:9px 0 9px 42px;border-bottom:1px dashed var(--line)}
+ol.cl>li:last-child{border-bottom:0}
+ol.cl>li::before{content:counter(c);position:absolute;left:0;top:10px;width:26px;height:26px;
+  border-radius:50%;background:var(--pur);color:#fff;font:700 13px/26px Consolas,monospace;text-align:center}
+ol.cl>li b{color:#3a1a52}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;margin-left:6px;
+  vertical-align:1px;font-weight:700;letter-spacing:.03em}
+.tag.p{background:#eaf7f1;color:#136e52;border:1px solid #bfe6d4}
+.tag.t{background:#fff1e6;color:#9a3b0c;border:1px solid #f5d6bf}
+
+footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-size:12.6px;color:var(--sub)}
+@media(max-width:760px){
+  h1{font-size:24px} .wrap{padding:0 16px 60px}
+  nav.toc ol{columns:1} h2{font-size:18px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">SEARL 幻方真理表 · 底层数学复核</div>
+  <h1>幻方真理表的底层数学：<em>一张同余表</em>，如何生成三环质量谱</h1>
+  <p class="lead">把「n 阶幻方能不能承载线和 S」剥掉幻方这层壳，剩下的只有一句同余：<b>S ≡ T(n) (mod n)</b>。这一句话决定了 1566 个可共享的 S、167 个「含 3/4/5」的 S，以及从它们里挑出的 1107 组等差三环质量。</p>
+  <p class="lead">本页的目标不是再讲一遍幻方，而是回答三问：<b>4410 从哪来、6090/7770 怎么由它展开</b>、<b>为什么必须是等差</b>、<b>Searl 为什么要用这张表</b>。每条结论都给了可复算的判据与反例计数。</p>
+  <div class="parambox">
+    <span class="pchip">阶数 a..b = <b>3..55</b></span>
+    <span class="pchip">线和 c..d = <b>12..80000</b></span>
+    <span class="pchip">共享个数 e = <b>8</b>（恰好）</span>
+    <span class="pchip">维度 d<sub>im</sub> = <b>2</b>（幻方 n×n）</span>
+    <span class="pchip">T(n) = n(n²−1)/2</span>
+  </div>
+</header>
+
+<div class="kpis">
+  <div class="kpi"><div class="t">幻方团 |N(S)| = 8</div><div class="v">1,566</div><div class="n">S ∈ [12, 80000]</div></div>
+  <div class="kpi"><div class="t">含 {3,4,5} 的 S（SEG）</div><div class="v">167</div><div class="n">按钮「seg含345」</div></div>
+  <div class="kpi"><div class="t">含 {3,5,6} 的 S（IGV）</div><div class="v">309</div><div class="n">按钮「igv含356」</div></div>
+  <div class="kpi alt"><div class="t">SEG 池等差三项</div><div class="v">1,107</div><div class="n">167 个 S 里挑出来的</div></div>
+  <div class="kpi alt"><div class="t">IGV 池等差三项</div><div class="v">2,890</div><div class="n">309 个 S 里挑出来的</div></div>
+  <div class="kpi warn"><div class="t">三个断言的反例数</div><div class="v">0</div><div class="n">闭式解 / 2-adic / 交集判据</div></div>
+</div>
+
+<nav class="toc">
+  <b>目录</b>
+  <ol>
+    <li><a href="#s1">结论先行：六句话</a></li>
+    <li><a href="#s2">一行公式：从幻方定义到同余</a></li>
+    <li><a href="#s3">闭式解：阶集合 = S 的因式分解</a></li>
+    <li><a href="#s4">2-adic 锁定：为什么 6/10/14/18 整体出局</a></li>
+    <li><a href="#s5">幻方团 e=8：参数不是随便填的</a></li>
+    <li><a href="#s6">等差三环谱：公差就是共享开关</a></li>
+    <li><a href="#s7">坐标化：4410/6090/7770 只是其中一组</a></li>
+    <li><a href="#s8">Searl 为什么用这套算法</a></li>
+  </ol>
+</nav>
+
+<!-- ══════════════ §1 ══════════════ -->
+<section id="s1">
+  <h2><span class="no">01</span>结论先行：六句话</h2>
+  <ol class="cl">
+    <li><b>幻方真理表 ≡ 一张同余表。</b> n 阶幻方每条线和 S 必须满足 S = T(n) + n·k，即 S ≡ T(n) (mod n)。<span class="sub">（T(n)=n(n²−1)/2 是「最小行和」）</span></li>
+    <li><b>T(n) mod n 只有两个值：</b>n 奇 → 0；n 偶 → n/2。<span class="sub">所以判据退化成「奇数阶整除 S」「偶数阶半整除 S」。</span></li>
+    <li><b>N(S) 有闭式解，只由 S 的因式分解决定：</b>奇数阶 = oddPart(S) 的因子；偶数阶 = 2<sup>v₂(S)+1</sup>·d（d | oddPart(S)，d 奇）。<b>3,997 组零反例。</b></li>
+    <li><b>偶数阶被 2-adic 赋值锁死：</b>凡是承载同一个 S 的偶数阶，v₂(n) 全部相等且 = v₂(S)+1。<b>这就是 6/10/14/18 整体出局的真正原因</b>，不是「筛掉了」，而是「不可能在」。<b>零反例。</b></li>
+    <li><b>等差三环共享哪些阶，只由公差决定：</b>∩N = { n ∈ N(首环) : n | 公差 }。<b>3,997 组零反例</b> —— 一行就能验算，与几何侧的「等壁厚 / 等间隙」互为印证。</li>
+    <li><b>4410/6090/7770 是「4410 锚点下的数论上限」：</b>公差 1680 保住 7 个阶、唯独丢掉 9；想保住 9 需要公差被 1260 整除，而 4410+1260=5670 根本不在池里。<b>所以 7 已经是它能拿到的最高分。</b></li>
+  </ol>
+</section>
+
+<!-- ══════════════ §2 ══════════════ -->
+<section id="s2">
+  <h2><span class="no">02</span>一行公式：从幻方定义到同余</h2>
+  <p>n 阶幻方填 n² 个连续整数（0…n²−1），每条线 n 格。全部 n² 个数的和是 n²(n²−1)/2，共 n 条线（每格被数两次的细节先不管，它是常数项），<b>把「最小排布」的每条线和记作 T(n)</b>：</p>
+  <div class="fml">
+T(n) = n·(n² − 1) / 2        <span class="c">// 每条线的最小和：把 0..n²−1 排成最「均匀」的情形</span><br>
+S = T(n) + n·k ,  k ∈ ℤ, k ≥ 0<br>
+<b>⟹  S ≡ T(n)  (mod n)</b>   <span class="c">// 承载判据：只有这一句，全部筛选都从这里来</span>
+  </div>
+
+  <h3><span class="s">2.1</span>定理：T(n) mod n 只有两种值</h3>
+  <div class="fml">
+T(n)/n = (n² − 1)/2<br>
+n 为奇数 ⟹ n²−1 偶 ⟹ (n²−1)/2 整 ⟹ <b>T(n) ≡ 0 (mod n)</b><br>
+n 为偶数 ⟹ n²−1 奇 ⟹ T(n)/n = (n²−1)/2 是「半整数」⟹ <b>T(n) ≡ n/2 (mod n)</b>
+  </div>
+  <p>这条定理把「查表」变成了「两个整除条件」。原页面代码里的 <code>residue(n) = (n%2===1) ? 0 : n/2</code> 就是它（第 1900 行）。</p>
+
+  <div class="tw">
+    <table>
+      <caption>n = 3…10 的门槛与余数（d<sub>im</sub>=2）。注意偶数行的余数恒为 n/2，与 n 无关地「错开半格」。</caption>
+      <thead><tr><th>n</th><th>T(n)</th><th>T(n) mod n</th><th>判据（简化后）</th><th>S=4410 时</th></tr></thead>
+      <tbody>
+        <tr><td>3</td><td class="num">12</td><td class="num">0</td><td>3 | S</td><td class="y">4410/3=1470 ✓</td></tr>
+        <tr><td>4</td><td class="num">30</td><td class="num">2</td><td>S ≡ 2 (mod 4)</td><td class="y">4410 mod 4 = 2 ✓</td></tr>
+        <tr><td>5</td><td class="num">60</td><td class="num">0</td><td>5 | S</td><td class="y">882 ✓</td></tr>
+        <tr><td>6</td><td class="num">105</td><td class="num">3</td><td>S ≡ 3 (mod 6)</td><td class="n">4410 mod 6 = 0 ✗</td></tr>
+        <tr><td>7</td><td class="num">168</td><td class="num">0</td><td>7 | S</td><td class="y">630 ✓</td></tr>
+        <tr><td>8</td><td class="num">252</td><td class="num">4</td><td>S ≡ 4 (mod 8)</td><td class="n">4410 mod 8 = 2 ✗</td></tr>
+        <tr><td>9</td><td class="num">360</td><td class="num">0</td><td>9 | S</td><td class="y">490 ✓</td></tr>
+        <tr class="hl"><td>12</td><td class="num">858</td><td class="num">6</td><td>S ≡ 6 (mod 12)</td><td class="y">4410 mod 12 = 6 ✓</td></tr>
+        <tr><td>15</td><td class="num">1680</td><td class="num">0</td><td>15 | S</td><td class="y">294 ✓</td></tr>
+        <tr><td>20</td><td class="num">3990</td><td class="num">10</td><td>S ≡ 10 (mod 20)</td><td class="y">4410 mod 20 = 10 ✓</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="sub">注意 6 与 8 被划掉的原因完全不同：6 是「余数不对」（4410 是 4 的倍数而不是 6 的倍数），8 是「2-adic 层不对」——见 §4。而 12 之所以能进，是因为 4410 ≡ 6 (mod 12)，正好差半格。</p>
+</section>
+
+<!-- ══════════════ §3 ══════════════ -->
+<section id="s3">
+  <h2><span class="no">03</span>闭式解：阶集合 = S 的因式分解</h2>
+  <p>把 §2 的两个条件分别解到底，就得到一条<b>不需要遍历阶数</b>的公式。它说明：<b>「一个 S 能被哪些阶承载」这件事，本质上不是幻方问题，而是因数问题。</b></p>
+
+  <h3><span class="s">3.1</span>两条通道</h3>
+  <div class="fml">
+设 S = 2^v · u ，u 为奇数（v = v₂(S)，u = oddPart(S)）<br><br>
+<b>奇数阶通道</b>：n 奇，判据 n | S ⟺ n | u（因 n 与 2^v 互素）<br>
+　　　　　　 ⟹ n ∈ { u 的奇因子 }，再被门槛 T(n) ≤ S 截一次<br><br>
+<b>偶数阶通道</b>：n = 2m，判据 S ≡ m (mod 2m) ⟺ S = m(2k+1)<br>
+　　　　　　 ⟹ v₂(S) = v₂(m)　<b>（2k+1 是奇数，不贡献 2 的幂）</b><br>
+　　　　　　 ⟹ m = 2^v · d，d | u，d 奇　⟹ <b>n = 2^(v+1) · d</b>
+  </div>
+  <p>这就是原页面 <code>ordersClosed()</code> 的实现（第 1860 行）：<code>m0 = 2**(v+1)</code>，偶数阶取 <code>n % m0 === 0</code> 且 <code>u % (n/m0) === 0</code>。本页把它和暴力法逐 S 比对了 79,989 个 S：<b>反例 0</b>。</p>
+
+  <h3><span class="s">3.2</span>逐阶验算 S = 4410</h3>
+  <p>4410 = 2¹ · 3² · 5 · 7²。所以 v=1、u=2205=3²·5·7²、m0=4。奇数阶只能取 2205 的因子，偶数阶只能取 4d（d 取 2205 的奇因子）。门槛 T(n) ≤ 4410 再砍一刀。</p>
+  <div class="tw">
+    <table>
+      <caption>S = 4410 的八个承载阶，逐条复算。最后一列是「如果没有门槛会被多算进来的阶」——门槛的作用是把大阶挡住，这也是为什么 b=55 与 d=80000 必须配套（§5.2）。</caption>
+      <thead><tr><th>n</th><th>T(n)</th><th>S − T(n)</th><th>(S−T)/n</th><th>通道</th><th>判定</th></tr></thead>
+      <tbody>
+        <tr><td>3</td><td class="num">12</td><td class="num">4398</td><td class="num">1466</td><td>奇：3 | 2205</td><td class="y">✓</td></tr>
+        <tr><td>4</td><td class="num">30</td><td class="num">4380</td><td class="num">1095</td><td>偶：4=4·1</td><td class="y">✓</td></tr>
+        <tr><td>5</td><td class="num">60</td><td class="num">4350</td><td class="num">870</td><td>奇：5 | 2205</td><td class="y">✓</td></tr>
+        <tr><td>7</td><td class="num">168</td><td class="num">4242</td><td class="num">606</td><td>奇：7 | 2205</td><td class="y">✓</td></tr>
+        <tr><td>9</td><td class="num">360</td><td class="num">4050</td><td class="num">450</td><td>奇：9 | 2205</td><td class="y">✓</td></tr>
+        <tr class="hl"><td>12</td><td class="num">858</td><td class="num">3552</td><td class="num">296</td><td>偶：12=4·3</td><td class="y">✓</td></tr>
+        <tr><td>15</td><td class="num">1680</td><td class="num">2730</td><td class="num">182</td><td>奇：15 | 2205</td><td class="y">✓</td></tr>
+        <tr><td>20</td><td class="num">3990</td><td class="num">420</td><td class="num">21</td><td>偶：20=4·5</td><td class="y">✓</td></tr>
+        <tr><td colspan="6" style="background:#fbf7ff;color:#8a7f96;font-size:12.6px">
+          被门槛挡掉的合格阶：21（T=4620 &gt; 4410）、28、36、44、52…—— 它们整除性都对，只是「入场费」不够。</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="box ok">
+    <span class="h">这一节最值钱的一句</span>
+    <b>幻方真理表 = 因数表。</b> 给定一个质量值 S，它能被哪些阶的幻方承载，等价于「S 的奇数部分有几个因子、且这些因子对应的门槛够不够」。所以 Searl 那张表看起来在算幻方，实际上在<b>算 S 的因子格</b>。
+  </div>
+</section>
+
+<!-- ══════════════ §4 ══════════════ -->
+<section id="s4">
+  <h2><span class="no">04</span>2-adic 锁定：为什么 6/10/14/18 整体出局</h2>
+  <p>§3 的偶数通道推出一条比「整除」更狠的约束：</p>
+  <div class="fml">
+凡是承载同一个 S 的偶数阶 n，必须满足 <b>v₂(n) = v₂(S) + 1</b>　<span class="c">// v₂ = 因子中 2 的幂次</span><br><br>
+4410 = 2·3²·5·7² ⟹ v₂(S)=1 ⟹ 所有偶数阶必须 v₂(n)=2 ⟹ n 是 <b>4 的倍数但不是 8 的倍数</b><br>
+⟹ {4, 12, 20, 28, 36, 44, 52} 可以；<b>{6, 10, 14, 18, 22, 26} 永远不行</b>
+  </div>
+  <p>这不是「筛掉」，是<b>结构性不可能</b>：6=2·3，v₂=1，要承载 S 就得让 S = 3·奇数，于是 v₂(S)=0，与 v₂(S)=1 矛盾。所以原页面上那句「6/10/14/18 整体出局」背后是一条定理，而不是一次实验。</p>
+
+  <div class="tw">
+    <table>
+      <caption>同一个 S 的阶集合里，偶数阶的 v₂ 全部落在同一层。表中 4410 的三个偶数阶都是 4 的倍数、都不是 8 的倍数。</caption>
+      <thead><tr><th>S</th><th>v₂(S)</th><th>偶数阶（v₂ 应 = v₂(S)+1）</th><th>实测 v₂</th><th>被排除的偶数阶</th></tr></thead>
+      <tbody>
+        <tr class="hl"><td class="num">4410</td><td class="num">1</td><td>4, 12, 20</td><td class="num">2, 2, 2</td><td>6,10,14,18（v₂=1）；8,24,40（v₂≥3）</td></tr>
+        <tr><td class="num">6090</td><td class="num">1</td><td>4, 12, 20</td><td class="num">2, 2, 2</td><td>同上</td></tr>
+        <tr><td class="num">2205</td><td class="num">0</td><td>6, 10, 14</td><td class="num">1, 1, 1</td><td>4,12,20（v₂=2）；8（v₂=3）</td></tr>
+        <tr><td class="num">10605</td><td class="num">0</td><td>6, 10, 14</td><td class="num">1, 1, 1</td><td>同上</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="sub">这解释了 SEG 与 IGV 两套为什么天生「不同轨」：SEG 锚点 4410 是偶的（v₂=1），走 4 倍数阶那一层；IGV 锚点 2205 是奇的（v₂=0），走 2 mod 4 那一层。两套的共享阶集合永远不会重合——<b>这不是设计选择，是奇偶性决定的</b>。</p>
+</section>
+
+<!-- ══════════════ §5 ══════════════ -->
+<section id="s5">
+  <h2><span class="no">05</span>幻方团 e=8：参数不是随便填的</h2>
+  <p>「幻方团」= 恰好被 e 个阶承载的 S 的集合。e=8、a=3、b=55、c=12、d=80000 时，团里有 <b>1,566</b> 个 S；其中同时含 {3,4,5} 的 <b>167</b> 个，含 {3,5,6} 的 <b>309</b> 个。这三个数与页面实时重算逐位吻合。</p>
+
+  <div class="fig">
+    <canvas id="cvHist" width="1060" height="300"></canvas>
+    <div class="cap"><b>图 1</b>　|N(S)| 的分布（S ∈ [12, 80000]，共 79,989 个 S）。紫色柱 = e=8 这一层（1,566 个）。分布不是钟形而是<b>长尾</b>：|N| 最大能到 20（S=69,615），因为大 S 既有更多因子、门槛又几乎不截断。<b>e=8 落在下降段</b>——这意味着「恰好 8 阶」是一个相当稀缺的事件。</div>
+  </div>
+
+  <h3><span class="s">5.1</span>为什么 e 恰好是 8</h3>
+  <p>这不是先验设定，而是<b>从 4410 数出来的</b>：Searl 原文 Exercise 5 说「8 个 square 共享 value 4410」，而 N(4410) 恰有 8 个元素。所以因果链是：</p>
+  <div class="fml">
+4410 = <b>147 × T(4)</b> = 147 × 30　<span class="c">// 147 个磁体单元 × 4 阶幻方基数</span><br>
+⟹ N(4410) = {3,4,5,7,9,12,15,20}，<b>|N| = 8</b><br>
+⟹ 「8 个 square」= 「8 个承载阶」⟹ e = 8 被固定下来
+  </div>
+  <div class="box warn">
+    <span class="h">口径提醒（会影响结论的方向）</span>
+    页面把 e 当<b>输入参数</b>，但历史上它是<b>输出</b>。做考古时把 e 当输入没问题（能扫出 1566 个同构点）；但若要问「Searl 为什么选 8」，答案不是「他设了 8」，而是「4410 恰好有 8 个承载阶」。这两句话的方向相反。
+  </div>
+
+  <h3><span class="s">5.2</span>参数为什么是 b=55 与 d=80000 这一对</h3>
+  <div class="fml">
+T(54) = 54·(54²−1)/2 = <b>78,705</b> ≤ 80,000 &lt; T(55) = <b>83,160</b><br>
+⟹ S 上限 80,000 的自然阶上限就是 54（55 已越界）
+  </div>
+  <p>所以 <b>b=55、d=80000 不是两个独立旋钮，是同一条边界</b>。谁把 d 改成 200,000 而 b 不动，就会把 55 以上的阶全部人为排除；反之把 b 加到 100 而 d 不动，新增的阶压根承载不了任何 S，白算。原表的这组参数本身自洽。</p>
+  <h3><span class="s">5.3</span>反过来问：e 能不能不是 8？（能 —— 而且 8 不是最优）</h3>
+  <p>5.1 说的是「历史上 e 是输出」。但老师问得对：<b>如果反过来把 e 当目标，8 是不是最好的选择？</b>
+  把 e 从 4 扫到 13，只量三件与工程有关的事 —— 这一层有多少个 S（供给）、其中几个能同时承载 {3,4,5}（SEG 口径）、
+  这些 S 能凑出多少组三项等差（＝ 能派生多少套三环方案）。规模上限沿用原表（S ≤ 80,000、n ≤ 55）。</p>
+
+  <div class="fig">
+    <svg viewBox="0 0 1000 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="e 与可用三环方案数的倒 U 曲线">
+      <rect x="0" y="0" width="1000" height="420" fill="#fff"/>
+      <line x1="92.0" y1="340.0" x2="950.0" y2="340.0" stroke="#e6e0ee" stroke-width="1"/>
+      <text x="86.0" y="344.0" font-size="11" fill="#8a7f96" text-anchor="end">1</text>
+      <line x1="92.0" y1="273.5" x2="950.0" y2="273.5" stroke="#e6e0ee" stroke-width="1"/>
+      <text x="86.0" y="277.5" font-size="11" fill="#8a7f96" text-anchor="end">10</text>
+      <line x1="92.0" y1="207.0" x2="950.0" y2="207.0" stroke="#e6e0ee" stroke-width="1"/>
+      <text x="86.0" y="211.0" font-size="11" fill="#8a7f96" text-anchor="end">100</text>
+      <line x1="92.0" y1="140.5" x2="950.0" y2="140.5" stroke="#e6e0ee" stroke-width="1"/>
+      <text x="86.0" y="144.5" font-size="11" fill="#8a7f96" text-anchor="end">1,000</text>
+      <line x1="92.0" y1="74.0" x2="950.0" y2="74.0" stroke="#e6e0ee" stroke-width="1"/>
+      <text x="86.0" y="78.0" font-size="11" fill="#8a7f96" text-anchor="end">10,000</text>
+      <line x1="100.0" y1="340.0" x2="950.0" y2="340.0" stroke="#6b1e9e" stroke-width="1.4"/>
+      <rect x="117.8" y="279.9" width="49.3" height="60.1" rx="3" fill="#c9aede"/>
+      <text x="142.5" y="272.9" font-size="11" font-weight="700" fill="#6b5a7a" text-anchor="middle">8</text>
+      <text x="142.5" y="360" font-size="12" fill="#3a1a52" text-anchor="middle">4</text>
+      <rect x="202.8" y="223.7" width="49.3" height="116.3" rx="3" fill="#c9aede"/>
+      <text x="227.5" y="216.7" font-size="11" font-weight="700" fill="#6b5a7a" text-anchor="middle">56</text>
+      <text x="227.5" y="360" font-size="12" fill="#3a1a52" text-anchor="middle">5</text>
+      <rect x="287.9" y="84.5" width="49.3" height="255.5" rx="3" fill="#1d9e75"/>
+      <text x="312.5" y="77.5" font-size="11" font-weight="700" fill="#1d9e75" text-anchor="middle">6,961</text>
+      <text x="312.5" y="360" font-size="12" fill="#3a1a52" text-anchor="middle">6</text>
+      <rect x="372.9" y="104.2" width="49.3" height="235.8" rx="3" fill="#c9aede"/>
+      <text x="397.5" y="97.2" font-size="11" font-weight="700" fill="#6b5a7a" text-anchor="middle">3,516</text>
+      <text x="397.5" y="360" font-size="12" fill="#3a1a52" text-anchor="middle">7</text>
+      <rect x="457.9" y="137.6" width="49.3" height="202.4" rx="3" fill="#b8268f"/>
+      <text x="482.5" y="130.6" font-size="11" font-weight="700" fill="#b8268f" text-anchor="middle">1,107</text>
+      <text x="482.5" y="360" font-size="12" fill="#3a1a52" text-anchor="middle">8</text>
+      <rect x="542.9" y="147.3" width="49.3" height="192.7" rx="3" fill="#c9aede"/>
+      <text x="567.5" y="140.3" font-size="11" font-weight="700" fill="#6b5a7a" text-anchor="middle">789</text>
+      <text x="567.5" y="360" font-size="12" fill="#3a1a52" text-anchor="middle">9</text>
+      <rect x="627.9" y="157.2" width="49.3" height="182.8" rx="3" fill="#c9aede"/>
+      <text x="652.5" y="150.2" font-size="11" font-weight="700" fill="#6b5a7a" text-anchor="middle">560</text>
+      <text x="652.5" y="360" font-size="12" fill="#3a1a52" text-anchor="middle">10</text>
+      <rect x="712.9" y="192.7" width="49.3" height="147.3" rx="3" fill="#c9aede"/>
+      <text x="737.5" y="185.7" font-size="11" font-weight="700" fill="#6b5a7a" text-anchor="middle">164</text>
+      <text x="737.5" y="360" font-size="12" fill="#3a1a52" text-anchor="middle">11</text>
+      <rect x="797.9" y="228.8" width="49.3" height="111.2" rx="3" fill="#c9aede"/>
+      <text x="822.5" y="221.8" font-size="11" font-weight="700" fill="#6b5a7a" text-anchor="middle">47</text>
+      <text x="822.5" y="360" font-size="12" fill="#3a1a52" text-anchor="middle">12</text>
+      <rect x="882.9" y="270.7" width="49.3" height="69.3" rx="3" fill="#c9aede"/>
+      <text x="907.5" y="263.7" font-size="11" font-weight="700" fill="#6b5a7a" text-anchor="middle">11</text>
+      <text x="907.5" y="360" font-size="12" fill="#3a1a52" text-anchor="middle">13</text>
+      <line x1="482.5" y1="123.6" x2="488.5" y2="60" stroke="#b8268f" stroke-width="1.2" stroke-dasharray="4 3"/>
+      <text x="492.5" y="54" font-size="12" font-weight="700" fill="#b8268f">e=8：1,107 组（4410 在这层）</text>
+      <text x="92.0" y="26" font-size="12.5" font-weight="700" fill="#6b1e9e">含 {3,4,5} 的 S 能凑出多少组三项等差（对数轴）</text>
+      <text x="92.0" y="44" font-size="11.5" fill="#5c5c6b">横轴 = 幻方团大小 e（这一层的 S 恰好有 e 个承载阶）</text>
+    </svg>
+    <div class="cap"><b>图 4</b>　e 与「可用三环方案数」的关系。<b>这是一条倒 U，峰值在 e=6（6,961 组）</b>，
+    e=8 只剩 <b>1,107</b> 组（峰值的 16%），e=4 只剩 <b>8</b> 组。<b>「e 越大越好」是错的。</b></div>
+  </div>
+
+  <div class="tw"><table>
+      <caption>同一口径扫 e（S ∈ [12, 80,000]、n ∈ [3, 55]）。「组数」＝这些 S 里三项全含 {3,4,5} 的等差组数，也就是「能派生多少套三环方案」。</caption>
+      <thead><tr><th>e</th><th>这层的 S 数</th><th>含 3&#8202;4&#8202;5</th><th>最小含345的 S</th><th>三等差组</th><th>其中公差≥1680</th></tr></thead>
+      <tbody>
+        <tr><td class="num">4</td><td class="num">8,476</td><td class="num">10</td><td class="num">210</td><td class="num">8</td><td class="num">0</td></tr>
+        <tr><td class="num">5</td><td class="num">4,719</td><td class="num">25</td><td class="num">630</td><td class="num">56</td><td class="num">0</td></tr>
+        <tr class="hl"><td class="num">6</td><td class="num">3,930</td><td class="num">374</td><td class="num">990</td><td class="num">6,961 <span class="sub">← 峰值</span></td><td class="num">6,436</td></tr>
+        <tr><td class="num">7</td><td class="num">2,373</td><td class="num">274</td><td class="num">1,890</td><td class="num">3,516</td><td class="num">3,248</td></tr>
+        <tr class="hl"><td class="num">8</td><td class="num">1,566</td><td class="num">167</td><td class="num">3,990</td><td class="num">1,107 <span class="sub">← 4410 在这层</span></td><td class="num">995</td></tr>
+        <tr><td class="num">9</td><td class="num">875</td><td class="num">149</td><td class="num">5,670</td><td class="num">789</td><td class="num">745</td></tr>
+        <tr><td class="num">10</td><td class="num">569</td><td class="num">137</td><td class="num">6,930</td><td class="num">560</td><td class="num">527</td></tr>
+        <tr><td class="num">11</td><td class="num">491</td><td class="num">79</td><td class="num">11,550</td><td class="num">164</td><td class="num">149</td></tr>
+        <tr><td class="num">12</td><td class="num">149</td><td class="num">45</td><td class="num">22,050</td><td class="num">47</td><td class="num">45</td></tr>
+        <tr><td class="num">13</td><td class="num">93</td><td class="num">26</td><td class="num">20,790</td><td class="num">11</td><td class="num">9</td></tr>
+      </tbody>
+    </table></div>
+
+  <p>三个结论，都不利于「e 越大越好」：</p>
+  <ol class="cl">
+    <li><b>峰值在 6，不在 8。</b><span class="tag p">可证</span> e=6 有 <b>6,961</b> 组可用三环方案
+    （其中公差 ≥1680 的还有 <b>6,436</b> 组，三环差异并不比 1680 小），是 e=8 的 <b>6.3 倍</b>；
+    而它的质量门槛只要 <b>990</b>，是 e=8（3,990）的 <b>1/4</b>。
+    峰值落在 6 的原因很直白：e &lt; 5 时连 {3,4,5} 都放不下（供给再大也没用）；
+    e &gt; 6 之后「恰好 e 个阶」的 S 数量塌得更快（3,930 → 1,566 → 149）⟹ <b>供给衰减压倒了自由度增长</b>。</li>
+    <li><b>e=4 不是「更便宜」，是「几乎没有选择」。</b><span class="tag p">可证</span>
+    全窗口只有 <b>10</b> 个 S 含 {3,4,5}，凑出 <b>8</b> 组等差，最大公差只到 <b>600</b>
+    （三环质量几乎一样，机械上没有意义）；扣掉 345 只剩 <b>1</b> 个自由阶 ⟹ 做不出「一个质量、多种结构」。
+    e=5 也弱（25 个 S / 56 组 / 最大公差 1,560）。</li>
+    <li><b>e=8 买到的是「单个 S 的内部自由度」，不是「方案数量」。</b><span class="tag p">可证</span>
+    e=8 比 e=6 多 2 个共享阶（8 个 vs 6 个，扣掉 345 后 <b>5 vs 3</b>）⟹ 同一个 4410 能同时被更多结构承载；
+    代价是可选 S 少 2.5 倍、质量门槛贵 4 倍。一句话：<b>e=8 是「把一个质量榨到最深」，e=6 是「用最少的质量铺最宽的选择面」</b>。</li>
+  </ol>
+
+  <div class="box warn">
+    <span class="h">那 Searl 为什么偏偏是 8？—— 数学给不出答案，三条线索都在数学之外</span>
+    ① <b>4410 = 147 × T(4)</b>：147 个磁体单元 × 4 阶幻方基数，这个分解本身就把 S 钉死在 4410，
+    而 N(4410) 恰好 8 个阶 —— <b>先有 4410，e=8 是被数出来的</b>，不是被挑的。<br>
+    ② <b>原文 Exercise 5 说「8 个 square 共享 4410」</b>：若 square 就是阶，8 是他数出来的结果，不是参数。<br>
+    ③ <b>8 是他的母题</b>（老师补充的传记线索）：多次梦境里出现的「跳房子」就是 <b>8 格</b>。
+    这一条无法验证，但它解释了「为什么所有落在 8 附近的选择，他都会觉得对」。<br>
+    ⟹ 结论：<b>e=8 不是数学最优，是「4410 的既成事实 + 个人母题」叠出来的一个点</b>。
+    今天若从零设计，<b>e=6 更划算</b>（方案多 6.3 倍、质量省 3/4），代价是每个质量少 2 个共享阶；
+    若目标是「同一块铁里塞进尽可能多的结构」，那 e 越大越好 —— 只要接受 S 指数变贵（e=12 的门槛 22,050，是 e=6 的 22 倍）。
+  </div>
+
+</section>
+
+<!-- ══════════════ §6 ══════════════ -->
+<section id="s6">
+  <h2><span class="no">06</span>等差三环谱：公差就是共享开关</h2>
+  <p>三环质量取 a, b, c 且成等差（b−a = c−b = d）。这件事在幻方语言里有确切含义，而且只需要一行判据。</p>
+
+  <h3><span class="s">6.1</span>判据：三环共享的阶 = 公差在首环阶集合里的因子</h3>
+  <div class="fml">
+N(a) ∩ N(b) ∩ N(c) = <b>{ n ∈ N(a) : d mod n == 0 }</b>　<span class="c">// d = (c−a)/2</span><br>
+<span class="c">已在 SEG 1107 组 + IGV 2890 组 = 3,997 组上全量验证：反例 0。</span>
+  </div>
+  <p>推导很短：b = a+d、c = a+2d，所以对任何 n，<b>n | d ⟹ a、b、c 三者在 mod n 下同余</b>，判据 S ≡ T(n) 的成立与否完全一致；反过来若 n ∤ d，三者的余数必然错开，最多只有一个能命中。于是「共享阶数」完全由 d 的因子决定。</p>
+
+  <div class="box ok">
+    <span class="h">这就是「等差」在数论上的功能</span>
+    公差 d 是一次「<b>同步位移</b>」。d 被哪些阶整除，那些阶就在三环上同时成立。所以 <b>d 的因子集 = 三环的公共阶集</b>。这与几何侧的结论（等壁厚 ⟺ 等间隙 ⟺ 质量等差 ⟺ 同一把刀）是同一件事的两个投影：<b>几何说「同一把刀」，数论说「同一个同余类」。</b>
+  </div>
+
+  <div class="fig">
+    <canvas id="cvInter" width="1060" height="290"></canvas>
+    <div class="cap"><b>图 2</b>　两个池里全部等差三项的「三环共享阶数」分布。<b>SEG</b>（167 个 S → 1,107 组）分成 6/7/8 三档；<b>IGV</b>（309 个 S → 2,890 组）分成 5/6/7/8 四档，因为含 {3,5,6} 的池子里有一批 S 的 |N| 结构更松。共享阶数越高，三环在幻方层面越「同构」。</div>
+  </div>
+
+  <div class="tw">
+    <table>
+      <caption>两个池的规模与共享阶分布。注意 SEG 池里没有「共享 5 阶」这一档 —— 因为含 {3,4,5} 已经把交集的下界顶到 6。</caption>
+      <thead><tr><th>池</th><th>S 个数</th><th>等差组</th><th>∩=8</th><th>∩=7</th><th>∩=6</th><th>∩=5</th></tr></thead>
+      <tbody>
+        <tr><td>SEG（含 3,4,5）</td><td class="num">167</td><td class="num">1,107</td><td class="num">136</td><td class="num">312</td><td class="num">659</td><td class="num">—</td></tr>
+        <tr><td>IGV（含 3,5,6）</td><td class="num">309</td><td class="num">2,890</td><td class="num">823</td><td class="num">505</td><td class="num">998</td><td class="num">564</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ══════════════ §7 ══════════════ -->
+<section id="s7">
+  <h2><span class="no">07</span>坐标化：4410/6090/7770 只是其中一组</h2>
+  <p>把三环放进坐标系，这个组合的全部信息就是三行字 —— 但<b>先别把这三行当成「唯一解」</b>：
+  它们只是把「三项等差」<b>归一化</b>之后的写法，换一组同样合法（本节末尾给出四组同形式的实例）。</p>
+  <div class="fml">
+4410 = 210 × <b>21</b>　　6090 = 210 × <b>29</b>　　7770 = 210 × <b>37</b>　　<span class="c">// 公差 1680 = 210 × 8</span><br>
+N(4410) = {3,4,5,7,<b>9</b>,12,15,20}　N(6090) = N(7770) = {3,4,5,7,12,15,20,<b>21</b>}<br>
+∩ = {3,4,5,7,12,15,20}（<b>7 个</b>）　内环私有阶 = {9}　中/外环私有阶 = ∅
+  </div>
+
+  <div class="box">
+    <span class="h">这三行不是硬编码 —— 换成任意一组三项等差，形式一个字都不用改</span>
+    4410 / 6090 / 7770 写成 <code>210 × (21, 29, 37)</code>，只是把它<b>归一化</b>：把三个数的公因子提出来，
+    剩下的三个数恰好差 8。任意一组三项等差都能这么写 ——
+    <code>(a, a+d, a+2d) ＝ g·(k, k+j, k+2j)</code>，其中 <code>g ＝ gcd(a, d)</code>。
+    <b>上面那三行同余式的结构完全不变</b>，变的只是数字，以及交集里还剩哪几个阶。<br>
+    下表三组都能直接用（都在 §7.2 那 20 组里）：
+    <div class="tw" style="margin:10px 0 4px">
+      <table>
+        <thead><tr><th>g ＝ gcd(a,d)</th><th>j</th><th>k</th><th>三环 a / a+d / a+2d</th><th>公差 d</th><th>三环共享阶</th></tr></thead>
+        <tbody>
+          <tr><td class="num">210</td><td class="num">2</td><td class="num">21</td><td class="mono">4410 / 4830 / 5250</td><td class="num">420</td><td>3,4,5,<b>7</b>,12,15,20</td></tr>
+          <tr class="hl"><td class="num">210</td><td class="num">8</td><td class="num">21</td><td class="mono">4410 / 6090 / 7770</td><td class="num">1680</td><td>3,4,5,<b>7</b>,12,15,20 <span class="sub">← 老师选的这组</span></td></tr>
+          <tr><td class="num">90</td><td class="num">8</td><td class="num">49</td><td class="mono">4410 / 5130 / 5850</td><td class="num">720</td><td>3,4,5,<b>9</b>,12,15,20</td></tr>
+        </tbody>
+      </table>
+    </div>
+    ⟹ 数学只规定两件事：<b>三项必须等差</b>、<b>必须过 §6.1 的共享判据</b>。
+    它<b>不</b>规定首项是 4410，也<b>不</b>规定公差是 1680。<b>4410 / 6090 / 7770 只是老师那台机器落在的一个坐标</b>；
+    本页后面所有等式依赖的都只是这个<b>形式</b>，换组只换数 —— §7.2 的 20 组、§7.4 的 IGV 侧（2205 / 6405 / 10605，
+    同样是 <code>g·(k, k+j, k+2j)</code>，g ＝ 105、j ＝ 40）全部适用。
+  </div>
+
+  <div class="fig">
+    <canvas id="cvSets" width="1060" height="320"></canvas>
+    <div class="cap"><b>图 3</b>　三环的阶集合矩阵（实心 = 承载）。<b>中环与外环完全同构</b>（同为 {3,4,5,7,12,15,20,21}），<b>内环只差一格</b>：多一个 9、少一个 21。橙色短线只画在相关行上：<b>9 列的红线只在内环行</b>（内环独有），<b>21 列的红线只在中/外环行</b>（中/外环独有）。差别的来源是两个不同机制 —— 9 丢是因为 1680 ≢ 0 (mod 9)（缺 3²）；21 缺是因为门槛 T(21)=4,620 &gt; 4,410。</div>
+  </div>
+
+  <h3><span class="s">7.1</span>为什么恰好丢 9 不丢 7</h3>
+  <div class="fml">
+1680 = 2⁴ · 3 · 5 · 7　⟹ 1680 mod 9 = <b>6 ≠ 0</b>　（1680 只带 3¹，9 要 3²）<br>
+　　　　　　　　　　　　　1680 mod 21 = 0　（21 = 3·7，只要各一个）<br>
+⟹ 9 阶在三环上「不同余」，掉出交集；7 与 21 保住<br>
+⟹ 21 在内环缺席是<b>另一回事</b>：T(21)=4,620 &gt; 4,410，门槛没放行
+  </div>
+
+  <h3><span class="s">7.2</span>7 与 9 不可兼得：20 组解里的二选一</h3>
+  <p>把「以 4410 为内环」的<b>全部 20 组</b>按公差从小到大排出来，会看到一个整齐的交替：交集要么「含 7 缺 9」，要么「含 9 缺 7」，<b>没有一组能同时保住两者</b>。</p>
+  <div class="tw">
+    <table>
+      <caption>4410 锚点的 20 组里挑出 8 组。第四、五列是「公差能不能被 7 / 9 整除」——它直接决定交集里有没有 7 / 9（判据见 §6.1）。</caption>
+      <thead><tr><th>公差 d</th><th>三环</th><th>7 &#8739; d</th><th>9 &#8739; d</th><th>三环共享阶</th><th>结果</th></tr></thead>
+      <tbody>
+        <tr><td class="num">420</td><td class="mono">4410 / 4830 / 5250</td><td class="y">✓</td><td class="n">✗</td><td>3,4,5,<b>7</b>,12,15,20</td><td>保 7 缺 9</td></tr>
+        <tr><td class="num">720</td><td class="mono">4410 / 5130 / 5850</td><td class="n">✗</td><td class="y">✓</td><td>3,4,5,<b>9</b>,12,15,20</td><td>保 9 缺 7</td></tr>
+        <tr><td class="num">840</td><td class="mono">4410 / 5250 / 6090</td><td class="y">✓</td><td class="n">✗</td><td>3,4,5,<b>7</b>,12,15,20</td><td>保 7 缺 9</td></tr>
+        <tr class="hl"><td class="num">1680</td><td class="mono">4410 / 6090 / 7770</td><td class="y">✓</td><td class="n">✗</td><td>3,4,5,<b>7</b>,12,15,20</td><td><b>本项目采用</b><span class="sub">（非 Searl 原文）</span></td></tr>
+        <tr><td class="num">2100</td><td class="mono">4410 / 6510 / 8610</td><td class="y">✓</td><td class="n">✗</td><td>3,4,5,<b>7</b>,12,15,20</td><td>保 7 缺 9</td></tr>
+        <tr><td class="num">2940</td><td class="mono">4410 / 7350 / 10290</td><td class="y">✓</td><td class="n">✗</td><td>3,4,5,<b>7</b>,12,15,20</td><td>保 7 缺 9</td></tr>
+        <tr><td class="num">3240</td><td class="mono">4410 / 7650 / 10890</td><td class="n">✗</td><td class="y">✓</td><td>3,4,5,<b>9</b>,12,15,20</td><td>保 9 缺 7</td></tr>
+        <tr><td class="num">9840</td><td class="mono">4410 / 14250 / 24090</td><td class="n">✗</td><td class="n">✗</td><td>3,4,5,12,15,20</td><td>两者都丢（只剩 6 个）</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="box note">
+    <span class="h">这条二选一是可证的；1680 是本项目定的，不是 Searl 原文</span>
+    <b>不可兼得</b>：要同时保住 7 与 9，公差必须同时被 63（=3²·7）与 4、5 整除，即 d 是 <b>lcm = 1260</b> 的倍数；而 4410+1260 = 5670 不在池里（§7.3 已验证）。所以 4410 锚点下<b>数学上只能二选一</b>。<br>
+    <b>20 组的完整分布</b>：保 7 缺 9 的 <b>5 组</b>、保 9 缺 7 的 <b>9 组</b>、两者都丢的 <b>6 组</b>（5+9+6 = 20）—— 探针逐组锁定了这个分布。<br>
+    <b>那 1680 是谁选的？——是本项目。</b>老师指定的公差（也是老师偏好的数字），<b>不是 Searl 原文</b>。
+    Searl 在书里反复举例的幻和只有两种：<b>2205</b> 与 <b>4410</b> —— 正好落在 v₂ 的两层（§4 的分层律），
+    也就是 §7.4 的 IGV 锚点与本节的内环锚点。<b>原文给的是「锚点」，把三环按公差展开是本项目的构造。</b>
+    把 1680 换成 420 / 720 / 2100，「二选一」的结论<b>一行都不变</b>（上表每一行都成立），
+    变的只是「保 7 还是保 9」以及三环质量有多大。
+    选保 7 这一侧与 7 在体系里的地位相合（4410 含 7²，147 = 3·7²），但这条只是动机，不是判据。
+  </div>
+
+  <h3><span class="s">7.3</span>一般判据：∩=8 什么时候可能</h3>
+  <p>把上面的二选一推广成一条判据：<b>要让三环共享全部 8 个阶，公差必须是 <code>lcm(N(首环))</code> 的倍数</b>。4410 的 lcm = lcm{3,4,5,7,9,12,15,20} = <b>1,260</b>，最小候选 d = 1260 即 (4410, 5670, 6930)：</p>
+  <div class="tw">
+    <table>
+      <caption>三个锚点的「∩=8 可行性」。判据：d 必须是 lcm(N(锚点)) 的倍数，且三个数都得落在池里。</caption>
+      <thead><tr><th>锚点 a</th><th>N(a)</th><th>lcm</th><th>d 必须是</th><th>候选组</th><th>结论</th></tr></thead>
+      <tbody>
+        <tr class="hl"><td class="num">4410</td><td>{3,4,5,7,9,12,15,20}</td><td class="num">1,260</td><td>1260 的倍数</td><td>d=1260 ⟹ 5670 / 6930 <b>均不在池</b></td><td><b>∩=8 无解</b>，7 是上限</td></tr>
+        <tr><td class="num">2205</td><td>{3,5,6,7,9,10,14,15}</td><td class="num">630</td><td>630 的倍数</td><td>d=630 ⟹ 2835 <b>在池</b>、3465 <b>不在</b></td><td><b>∩=8 无解</b>，7 是上限（差最后一格）</td></tr>
+        <tr><td class="num">4830</td><td>{3,4,5,7,12,15,20,21}</td><td class="num">420</td><td>420 的倍数</td><td>d=1260 ⟹ (4830,6090,7350)</td><td>∩=8 <b>可达</b></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="box note">
+    <span class="h">这里必须诚实</span>
+    <b>4410/6090/7770 不是 1,107 组里的数论最优</b>（按「交集降序、跨度升序」排在第 167 位，前面全是 ∩=8 的 136 组）。它的价值是<b>「锚点 4410 下的上限」</b>：4410 被原书钉死（147×T(4)），而 4410 恰好含 3²（9 ∈ N），公差 1680 不含 3²，于是 9 必然掉出。换句话说 —— <b>147 里的那个 3²，代价就是一个 9 阶。</b>
+  </div>
+
+  <h3><span class="s">7.4</span>IGV 侧是同一个结构</h3>
+  <p><b>2205 是 Searl 原文另一个反复举例的幻和</b>（与 4410 并列，正好落在 v₂ 的另一层）；
+  6405 / 10605 则是本项目按公差 4200 展开的。三环与 SEG 侧<b>完全同型</b>：</p>
+  <div class="fml">
+2205 = 105×21　6405 = 105×61　10605 = 105×101　<span class="c">// 公差 4200 = 105×40</span><br>
+N(2205) = {3,5,6,7,<b>9</b>,10,14,15}　N(6405) = N(10605) = {3,5,6,7,10,14,15,<b>21</b>}<br>
+4200 mod 9 = 6 ⟹ <b>同样是「丢 9 保 7」</b>，∩ = 7，内环私有阶 {9}
+  </div>
+  <p class="sub">两个锚点的公差都只带 3¹（1680=2⁴·3·5·7，4200=2³·3·5²·7），所以<b>都恰好缺一个 9 阶</b>。这不是巧合，是同一个判据在两套数字上的同一次作用。SEG 与 IGV 的真正分岔在 §4 的奇偶层：4410 偶（走 4 倍数阶），2205 奇（走 2 mod 4 阶）。</p>
+</section>
+
+<!-- ══════════════ §8 ══════════════ -->
+<section id="s8">
+  <h2><span class="no">08</span>Searl 为什么用这套算法</h2>
+  <p>把「可证」与「推测」分开写，前者能给判据，后者只能给动机。</p>
+
+  <h3><span class="s">8.1</span>四条可证的</h3>
+  <ol class="cl">
+    <li><b>它不是「选」的，是幻方定义强加的。</b><span class="tag p">可证</span> S = T(n) + n·k 是幻方行和的唯一形式，所以 S ≡ T(n) (mod n) 没有第二种可能。任何「用幻方做设计」的人<b>都只能</b>得到这张同余表。</li>
+    <li><b>它其实在算因子。</b><span class="tag p">可证</span> 闭式解说明 N(S) 由 S 的奇偶分解完全决定（零反例）。所以这套表的价值不是「幻方美学」，而是<b>把整数 S 的因子格翻译成「能同时做几种幻方」</b>。</li>
+    <li><b>它自带一条硬分层。</b><span class="tag p">可证</span> 偶数阶被 v₂ 锁在同一层（零反例）。这给了一个天然分层：v₂(S)=0 的只能用 v₂(n)=1（2 mod 4 的阶）；v₂(S)=1 的只能用 v₂(n)=2（4 的倍数但非 8 的倍数）；一般地 <b>v₂(n) = v₂(S)+1</b>。<b>一台机器不可能跨层</b> —— 这正是 SEG（偶）与 IGV（奇）两套谱系不重合的根源。</li>
+    <li><b>等差把「共享」变成可调节的量。</b><span class="tag p">可证</span> ∩N = {n ∈ N(a) : n | d}（零反例）。所以选公差就是在选「三环要共享哪些阶」。这与机械侧的约束（等壁厚 ⟹ 极距恒定 ⟹ 一把刀）指向同一个解，两条完全独立的路径收敛到「等差」，这才使等差成为一个可靠的设计传统，而不是审美偏好。</li>
+  </ol>
+
+  <div class="fig">
+    <svg viewBox="0 0 1000 520" xmlns="http://www.w3.org/2000/svg" role="img"
+           aria-label="极距 tau 的定义与三环同 tau 的示意">
+      <rect x="0" y="0" width="1000" height="520" fill="#fff"/>
+      <text x="20" y="30" font-size="13" font-weight="700" fill="#6b1e9e">① 极距是什么：圆上的量</text>
+      <text x="528" y="30" font-size="13" font-weight="700" fill="#6b1e9e">② 三环为什么共用一把刀</text>
+      <circle cx="208" cy="245" r="150" fill="#fff" stroke="#6b1e9e" stroke-width="2"/>
+      <circle cx="208" cy="245" r="108" fill="#faf7fd" stroke="#6b1e9e" stroke-width="1.6"/>
+      <path d="M196.71,137.59 L192.32,95.82 A150,150 0 0 1 223.68,95.82 L219.29,137.59 A108,108 0 0 0 196.71,137.59 Z" fill="#e9dcf7" stroke="#6b1e9e" stroke-width="1.1"/>
+      <path d="M251.93,146.34 L269.01,107.97 A150,150 0 0 1 296.17,123.65 L271.48,157.63 A108,108 0 0 0 251.93,146.34 Z" fill="#e9dcf7" stroke="#6b1e9e" stroke-width="1.1"/>
+      <path d="M295.37,181.52 L329.35,156.83 A150,150 0 0 1 345.03,183.99 L306.66,201.07 A108,108 0 0 0 295.37,181.52 Z" fill="#e9dcf7" stroke="#6b1e9e" stroke-width="1.1"/>
+      <path d="M315.41,233.71 L357.18,229.32 A150,150 0 0 1 357.18,260.68 L315.41,256.29 A108,108 0 0 0 315.41,233.71 Z" fill="#e9dcf7" stroke="#6b1e9e" stroke-width="1.1"/>
+      <path d="M306.66,288.93 L345.03,306.01 A150,150 0 0 1 329.35,333.17 L295.37,308.48 A108,108 0 0 0 306.66,288.93 Z" fill="#e9dcf7" stroke="#6b1e9e" stroke-width="1.1"/>
+      <path d="M271.48,332.37 L296.17,366.35 A150,150 0 0 1 269.01,382.03 L251.93,343.66 A108,108 0 0 0 271.48,332.37 Z" fill="#e9dcf7" stroke="#6b1e9e" stroke-width="1.1"/>
+      <path d="M219.29,352.41 L223.68,394.18 A150,150 0 0 1 192.32,394.18 L196.71,352.41 A108,108 0 0 0 219.29,352.41 Z" fill="#e9dcf7" stroke="#6b1e9e" stroke-width="1.1"/>
+      <path d="M164.07,343.66 L146.99,382.03 A150,150 0 0 1 119.83,366.35 L144.52,332.37 A108,108 0 0 0 164.07,343.66 Z" fill="#e9dcf7" stroke="#6b1e9e" stroke-width="1.1"/>
+      <path d="M120.63,308.48 L86.65,333.17 A150,150 0 0 1 70.97,306.01 L109.34,288.93 A108,108 0 0 0 120.63,308.48 Z" fill="#e9dcf7" stroke="#6b1e9e" stroke-width="1.1"/>
+      <path d="M100.59,256.29 L58.82,260.68 A150,150 0 0 1 58.82,229.32 L100.59,233.71 A108,108 0 0 0 100.59,256.29 Z" fill="#e9dcf7" stroke="#6b1e9e" stroke-width="1.1"/>
+      <path d="M109.34,201.07 L70.97,183.99 A150,150 0 0 1 86.65,156.83 L120.63,181.52 A108,108 0 0 0 109.34,201.07 Z" fill="#e9dcf7" stroke="#6b1e9e" stroke-width="1.1"/>
+      <path d="M144.52,157.63 L119.83,123.65 A150,150 0 0 1 146.99,107.97 L164.07,146.34 A108,108 0 0 0 144.52,157.63 Z" fill="#e9dcf7" stroke="#6b1e9e" stroke-width="1.1"/>
+      <line x1="208" y1="245" x2="208" y2="69" stroke="#1f5fa9" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <line x1="208" y1="245" x2="296" y2="92.58" stroke="#1f5fa9" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <path d="M208,169 A76,76 0 0 1 246,179.18" fill="none" stroke="#1f5fa9" stroke-width="1.4"/>
+      <text x="232.85" y="152.27" font-size="11.5" fill="#1f5fa9" text-anchor="middle">360°/N</text>
+      <path d="M208,122 A123,123 0 0 1 269.5,138.48" fill="none" stroke="#1d9e75" stroke-width="6" stroke-linecap="round"/>
+      <line x1="208" y1="132" x2="208" y2="112" stroke="#1d9e75" stroke-width="1.6"/>
+      <line x1="264.5" y1="147.14" x2="274.5" y2="129.82" stroke="#1d9e75" stroke-width="1.6"/>
+      <line x1="239.83" y1="126.19" x2="299" y2="87.38" stroke="#1d9e75" stroke-width="1.2"/>
+      <text x="306" y="75.26" font-size="17" font-weight="700" fill="#1d9e75">τ</text>
+      <text x="290.92" y="146.18" font-size="11.5" fill="#5c5c6b" text-anchor="middle">R</text>
+      <text x="293.3" y="210.54" font-size="11.5" fill="#5c5c6b" text-anchor="middle">r</text>
+      <text x="196" y="261" font-size="11.5" fill="#5c5c6b" text-anchor="middle">O</text>
+      <line x1="555" y1="100" x2="555" y2="388" stroke="#1d9e75" stroke-width="1" stroke-dasharray="3 4" opacity=".75"/>
+      <line x1="569" y1="100" x2="569" y2="388" stroke="#1d9e75" stroke-width="1" stroke-dasharray="3 4" opacity=".75"/>
+      <line x1="583" y1="100" x2="583" y2="388" stroke="#1d9e75" stroke-width="1" stroke-dasharray="3 4" opacity=".75"/>
+      <rect x="548" y="126" width="168" height="22" rx="3" fill="#f4eefb" stroke="#d9c8ec" stroke-width="1"/>
+      <rect x="551.08" y="129" width="7.84" height="16" fill="#6b1e9e" opacity=".85"/>
+      <rect x="565.08" y="129" width="7.84" height="16" fill="#6b1e9e" opacity=".85"/>
+      <rect x="579.08" y="129" width="7.84" height="16" fill="#6b1e9e" opacity=".85"/>
+      <rect x="593.08" y="129" width="7.84" height="16" fill="#6b1e9e" opacity=".85"/>
+      <rect x="607.08" y="129" width="7.84" height="16" fill="#6b1e9e" opacity=".85"/>
+      <rect x="621.08" y="129" width="7.84" height="16" fill="#6b1e9e" opacity=".85"/>
+      <rect x="635.08" y="129" width="7.84" height="16" fill="#6b1e9e" opacity=".85"/>
+      <rect x="649.08" y="129" width="7.84" height="16" fill="#6b1e9e" opacity=".85"/>
+      <rect x="663.08" y="129" width="7.84" height="16" fill="#6b1e9e" opacity=".85"/>
+      <rect x="677.08" y="129" width="7.84" height="16" fill="#6b1e9e" opacity=".85"/>
+      <rect x="691.08" y="129" width="7.84" height="16" fill="#6b1e9e" opacity=".85"/>
+      <rect x="705.08" y="129" width="7.84" height="16" fill="#6b1e9e" opacity=".85"/>
+      <text x="548" y="164" font-size="11.5" fill="#5c5c6b">内环 · 12 只 · 12τ ＝ 86.9 cm</text>
+      <rect x="548" y="238" width="280" height="22" rx="3" fill="#f4eefb" stroke="#d9c8ec" stroke-width="1"/>
+      <rect x="551.08" y="241" width="7.84" height="16" fill="#8f1f9e" opacity=".85"/>
+      <rect x="565.08" y="241" width="7.84" height="16" fill="#8f1f9e" opacity=".85"/>
+      <rect x="579.08" y="241" width="7.84" height="16" fill="#8f1f9e" opacity=".85"/>
+      <rect x="593.08" y="241" width="7.84" height="16" fill="#8f1f9e" opacity=".85"/>
+      <rect x="607.08" y="241" width="7.84" height="16" fill="#8f1f9e" opacity=".85"/>
+      <rect x="621.08" y="241" width="7.84" height="16" fill="#8f1f9e" opacity=".85"/>
+      <rect x="635.08" y="241" width="7.84" height="16" fill="#8f1f9e" opacity=".85"/>
+      <rect x="649.08" y="241" width="7.84" height="16" fill="#8f1f9e" opacity=".85"/>
+      <rect x="663.08" y="241" width="7.84" height="16" fill="#8f1f9e" opacity=".85"/>
+      <rect x="677.08" y="241" width="7.84" height="16" fill="#8f1f9e" opacity=".85"/>
+      <rect x="691.08" y="241" width="7.84" height="16" fill="#8f1f9e" opacity=".85"/>
+      <rect x="705.08" y="241" width="7.84" height="16" fill="#8f1f9e" opacity=".85"/>
+      <rect x="719.08" y="241" width="7.84" height="16" fill="#8f1f9e" opacity=".85"/>
+      <rect x="733.08" y="241" width="7.84" height="16" fill="#8f1f9e" opacity=".85"/>
+      <rect x="747.08" y="241" width="7.84" height="16" fill="#8f1f9e" opacity=".85"/>
+      <rect x="761.08" y="241" width="7.84" height="16" fill="#8f1f9e" opacity=".85"/>
+      <rect x="775.08" y="241" width="7.84" height="16" fill="#8f1f9e" opacity=".85"/>
+      <rect x="789.08" y="241" width="7.84" height="16" fill="#8f1f9e" opacity=".85"/>
+      <rect x="803.08" y="241" width="7.84" height="16" fill="#8f1f9e" opacity=".85"/>
+      <rect x="817.08" y="241" width="7.84" height="16" fill="#8f1f9e" opacity=".85"/>
+      <text x="548" y="276" font-size="11.5" fill="#5c5c6b">中环 · 20 只 · 20τ ＝ 144.8 cm</text>
+      <rect x="548" y="350" width="392" height="22" rx="3" fill="#f4eefb" stroke="#d9c8ec" stroke-width="1"/>
+      <rect x="551.08" y="353" width="7.84" height="16" fill="#b8268f" opacity=".85"/>
+      <rect x="565.08" y="353" width="7.84" height="16" fill="#b8268f" opacity=".85"/>
+      <rect x="579.08" y="353" width="7.84" height="16" fill="#b8268f" opacity=".85"/>
+      <rect x="593.08" y="353" width="7.84" height="16" fill="#b8268f" opacity=".85"/>
+      <rect x="607.08" y="353" width="7.84" height="16" fill="#b8268f" opacity=".85"/>
+      <rect x="621.08" y="353" width="7.84" height="16" fill="#b8268f" opacity=".85"/>
+      <rect x="635.08" y="353" width="7.84" height="16" fill="#b8268f" opacity=".85"/>
+      <rect x="649.08" y="353" width="7.84" height="16" fill="#b8268f" opacity=".85"/>
+      <rect x="663.08" y="353" width="7.84" height="16" fill="#b8268f" opacity=".85"/>
+      <rect x="677.08" y="353" width="7.84" height="16" fill="#b8268f" opacity=".85"/>
+      <rect x="691.08" y="353" width="7.84" height="16" fill="#b8268f" opacity=".85"/>
+      <rect x="705.08" y="353" width="7.84" height="16" fill="#b8268f" opacity=".85"/>
+      <rect x="719.08" y="353" width="7.84" height="16" fill="#b8268f" opacity=".85"/>
+      <rect x="733.08" y="353" width="7.84" height="16" fill="#b8268f" opacity=".85"/>
+      <rect x="747.08" y="353" width="7.84" height="16" fill="#b8268f" opacity=".85"/>
+      <rect x="761.08" y="353" width="7.84" height="16" fill="#b8268f" opacity=".85"/>
+      <rect x="775.08" y="353" width="7.84" height="16" fill="#b8268f" opacity=".85"/>
+      <rect x="789.08" y="353" width="7.84" height="16" fill="#b8268f" opacity=".85"/>
+      <rect x="803.08" y="353" width="7.84" height="16" fill="#b8268f" opacity=".85"/>
+      <rect x="817.08" y="353" width="7.84" height="16" fill="#b8268f" opacity=".85"/>
+      <rect x="831.08" y="353" width="7.84" height="16" fill="#b8268f" opacity=".85"/>
+      <rect x="845.08" y="353" width="7.84" height="16" fill="#b8268f" opacity=".85"/>
+      <rect x="859.08" y="353" width="7.84" height="16" fill="#b8268f" opacity=".85"/>
+      <rect x="873.08" y="353" width="7.84" height="16" fill="#b8268f" opacity=".85"/>
+      <rect x="887.08" y="353" width="7.84" height="16" fill="#b8268f" opacity=".85"/>
+      <rect x="901.08" y="353" width="7.84" height="16" fill="#b8268f" opacity=".85"/>
+      <rect x="915.08" y="353" width="7.84" height="16" fill="#b8268f" opacity=".85"/>
+      <rect x="929.08" y="353" width="7.84" height="16" fill="#b8268f" opacity=".85"/>
+      <text x="548" y="388" font-size="11.5" fill="#5c5c6b">外环 · 28 只 · 28τ ＝ 202.7 cm</text>
+      <text x="548" y="92" font-size="12.5" font-weight="700" fill="#6b1e9e">三环摊平：格宽 τ 相同，格数 12 / 20 / 28</text>
+      <text x="548" y="110" font-size="11.5" fill="#1d9e75">绿色虚线 = 同一个 τ 的位置，三条都对得上</text>
+      <text x="20" y="432" font-size="12" fill="#5c5c6b">两条蓝虚线 = 相邻两极中心线；</text>
+      <text x="20" y="450" font-size="12" fill="#5c5c6b">它们夹的圆心角 360°/N；绿色弧长 = τ。</text>
+      <text x="20" y="478" font-size="12.5" font-weight="700" fill="#1d9e75">τ ＝ πD/N ＝ 2πR/N</text>
+      <text x="20" y="497" font-size="11.5" fill="#5c5c6b">＝ 极宽 + 齿槽宽（一个完整周节）</text>
+    </svg>
+    <p class="cap"><b>极距 τ（pole pitch）＝ 相邻两个磁极中心线之间、沿气隙圆周量出的弧长。</b>
+    标准写法 <code>τ = πD / 2p</code>（D 外径、2p 极数），等价于 <code>τ = 2πR / N</code>——
+    两条中心线夹的圆心角是 360°/N，落在中径上的那段弧就是 τ，它同时等于「一个极宽 + 一个齿槽宽」，
+    也就是「走一格」的完整周节。<b>右图把三环圆周摊平</b>：横条长度不同（12τ / 20τ / 28τ），
+    但每一格的宽度是同一个 <b>τ ＝ π·Yr ＝ 7.24 cm</b>（方案 10：Yr ＝ 2.3041 cm，
+    <code>2π·BR/num</code> 逐环算 = 7.239 / 7.239 / 7.239 cm），所以三条的格子能对齐。</p>
+  </div>
+
+  <div class="box">
+    <span class="h">为什么「τ 恒定」比「壁厚恒定」更基本 —— 方案 11 正好是反例</span>
+    在方案 10 这副骨架上，下面四条<b>同时成立、互为等价写法</b>：
+    等壁厚 <code>t ≡ 3.61</code> ⟺ 恒间隙 <code>5.61 / 5.61</code> ⟺ <code>BR/num ≡ Yr/2</code> ⟺ <code>τ ≡ 7.24</code>。
+    而<b>方案 11 把等壁厚放开了</b>（壁厚变成 4.87 / 3.61 / 3.19 三个数、间隙 5.61 / 6.03 也不再相等），
+    <b>但 τ 仍然是 7.24</b>——因为它的 Yr 没动（2.3041）、num 仍是 12/20/28。
+    ⟹ <b>「等壁厚」不是 τ 恒定的原因，二者是同一条「半径与极数按比例同步」的两个投影</b>；
+    真正决定「能不能共用一把刀 / 一套绕线节距」的是 τ，而不是壁厚。<br>
+    工程含义（推断，不是可证）：τ 一样 ⟹ 齿形、冲片模、绕线节距、刀具周进给全部通用，
+    换环只是「多转几格」；τ 不一样 ⟹ 三个环三套工装。这就是「等差」在机械上买到的东西，
+    也是 8.2 那条推测里「一个质量派生出多种极数方案」能落地的前提。<br>
+    <span class="sub">口径提醒：图上 12 / 20 / 28 是<b>滚筒沿轨道的等分数</b>（与 3D 页 <code>num</code> 同口径）；
+    定子侧 <code>τ<sub>s</sub> = 2π·BR/num</code> 数值相同，因为本骨架恒有 <code>BR ≡ Yr·num/2</code>。</span>
+  </div>
+
+  <h3><span class="s">8.2</span>两条推测（标明是推测）</h3>
+  <ol class="cl">
+    <li><b>e=8 是「8 个 square」的数论翻译。</b><span class="tag t">推测</span> 原书说 8 个 square 共享 4410，本页算出 N(4410) 恰好 8 个阶。「square」与「阶」是不是同一个东西，取决于原书语境；但从数字上看，二者一一对应，且 4410 = 147×T(4) 也自洽。</li>
+    <li><b>他真正要的是「一个质量，多重结构」。</b><span class="tag t">推测</span> e 越大，同一个 S 能被越多阶的幻方阵列承载，意味着「同一批磁体可以按多种极数排布而幻和守恒」。这在工程上等价于<b>模块化</b>：一个质量基准能派生出多种极数方案。三环等差再把这个性质锁成「三份拷贝 + 可调的共享子集」，与前面解出的几何闭式解（等壁厚 ⟹ 极距恒定）正好互锁。</li>
+  </ol>
+
+  <h3><span class="s">8.3</span>边界与对账</h3>
+  <div class="box warn">
+    <span class="h">3D 页那两份历史列表，口径要交代清楚</span>
+    <code>seg_orbit_spin.html</code> 的 <code>MASS_SEG</code> 有 <b>5,319</b> 条、<code>MASS_IGV</code> 有 <b>86</b> 条，都<b>不是</b>本页这套口径的全集导出：
+    <ul style="margin:6px 0 0">
+      <li><b>MASS_SEG</b>：其中三项全含 {3,4,5} 的只有 <b>1,083</b> 条，比数学全集 1,107 少 <b>24</b> 条（例：(3990,4290,4590)、(5130,5610,6090)——3D 页早期做几何校验时被剔掉，原因未留档，推测是小质量或极端跨度）；剩下 <b>4,236</b> 条是把口径放宽到「含 3、4」而不要求 5 的产物。所以它是<b>数学全集 + 工程过滤 + 口径放宽</b>三层叠出来的，不能直接当成「含345 的等差表」。</li>
+      <li><b>MASS_IGV</b>：86 条里三项全含 {3,5,6} 的 <b>52</b> 条，公差被压在 <b>4002–4452</b> 这个窄窗内 —— 这是 IGV 六层几何给出的工程窗口，不是数论约束。数学全集是 2,890 组。</li>
+    </ul>
+    结论：<b>下拉列表是工程筛过的子集，不是数学全集</b>。要研究算法本身，用本页的 1,107 / 2,890；要用下拉，得知道它被砍过。
+  </div>
+
+  <div class="box ok">
+    <span class="h">一句话收口</span>
+    这套算法的全部内容是：<b>一条同余判据（S ≡ T(n) mod n）、一条闭式解（阶 = S 的因子）、一条分层律（v₂ 锁定）、一条共享律（∩ = d 的因子）</b>。四条都是可验算的恒等式。Searl 用它，是因为它把「质量」这个连续量换成了「能被几种结构同时承载」这个离散量 —— 这正是模块化设计需要的那个离散坐标。
+  </div>
+</section>
+
+<footer>
+  数据来源：<code>瑟尔幻方真理表_即时生成.html</code>（第 ② 子页「幻方团呈现」，参数 a=3 b=55 c=12 d=80000 e=8 恰好）× 本页复现脚本 <code>_magic_truth.py</code>。<br>
+  三环质量与几何判据的接合见 <code>SEG十一方案对比_为何默认方案9.html</code>（闭式解链：恒定间隙 ⟺ 恒定壁厚 ⟺ 质量等差）。<br>
+  复算日期 2026-11-24 · 全部数字由脚本现算，页面内不预存中间结果。
+</footer>
+
+</div>
+
+<script>
+'use strict';
+var D = {"param":{"a":3,"b":55,"c":12,"d":80000,"e":8,"T54":78705,"T55":83160},"nEns":1566,"nSeg":167,"nIgv":309,"nSA":1107,"nIA":2890,"badClosed":0,"bad2ad":0,"badCrit":0,"hist":{"0":12975,"1":14036,"2":18957,"3":10557,"4":8476,"5":4719,"6":3930,"7":2373,"8":1566,"9":875,"10":569,"11":491,"12":149,"13":93,"14":123,"15":57,"16":22,"17":11,"19":9,"20":1},"distS":{"8":136,"7":312,"6":659},"distI":{"8":823,"7":505,"6":998,"5":564},"orders":{"2205":[3,5,6,7,9,10,14,15],"4410":[3,4,5,7,9,12,15,20],"4830":[3,4,5,7,12,15,20,21],"5250":[3,4,5,7,12,15,20,21],"6090":[3,4,5,7,12,15,20,21],"6405":[3,5,6,7,10,14,15,21],"7350":[3,4,5,7,12,15,20,21],"7770":[3,4,5,7,12,15,20,21],"9750":[3,4,5,12,13,15,20,25],"10605":[3,5,6,7,10,14,15,21]},"searl":{"trio":[4410,6090,7770],"d":1680,"g":210,"norm":[21,29,37],"nd":8,"inter":[3,4,5,7,12,15,20],"priv":[9],"pos":167,"nSA":1107},"igvTrio":{"trio":[2205,6405,10605],"d":4200,"g":105,"norm":[21,61,101],"nd":40,"inter":[3,5,6,7,10,14,15],"priv":[9],"pos":902,"nIA":2890},"mass":{"ms":5319,"ms345":1083,"mi":86,"mi356":52,"never":[[3990,4290,4590],[3990,4410,4830],[5130,5610,6090],[5610,5850,6090],[5850,6630,7410],[7350,43350,79350],[7410,7590,7770],[7590,8250,8910],[8250,8610,8970],[8250,8970,9690],[8910,8970,9030],[9690,9990,10290],[9690,10290,10890],[9750,9870,9990],[10890,11070,11250],[10890,11250,11610],[17250,17670,18090],[21390,21750,22110],[23250,23670,24090],[34110,34410,34710],[34410,34710,35010],[39870,39930,39990],[39930,40170,40410],[41910,42510,43110]]}};
+
+/* ── 图 1：|N(S)| 分布 ─────────────────────────────────── */
+function niceStep(maxV, n){
+  var raw = maxV / n, p = Math.pow(10, Math.floor(Math.log(raw)/Math.LN10)), m = raw/p;
+  var q = (m<=1)?1:((m<=2)?2:((m<=2.5)?2.5:((m<=5)?5:10)));
+  return q*p;
+}
+function drawHist(){
+  var cv = document.getElementById('cvHist'), ctx = cv.getContext('2d');
+  var W = cv.width, H = cv.height, L = 66, R = 16, T = 18, Bm = 40;
+  ctx.clearRect(0,0,W,H);
+  var keys = [], k;
+  for (k in D.hist) keys.push(+k);
+  keys.sort(function(a,b){return a-b;});
+  var maxV = 0, i;
+  for (i=0;i<keys.length;i++) maxV = Math.max(maxV, D.hist[keys[i]]);
+  var st = niceStep(maxV, 4), top = Math.ceil(maxV/st)*st;
+  var n = keys.length, iw = (W-L-R)/n, bw = Math.max(6, iw*0.66);
+  function Y(v){ return H-Bm-(v/top)*(H-T-Bm); }
+  /* 网格 */
+  ctx.strokeStyle = '#eee6f5'; ctx.lineWidth = 1;
+  var g, cnt = Math.round(top/st);
+  for (g=0; g<=cnt; g++){
+    var yv = st*g, y = Y(yv);
+    ctx.beginPath(); ctx.moveTo(L,y); ctx.lineTo(W-R,y); ctx.stroke();
+    ctx.fillStyle = '#8a7f96'; ctx.font = '11px Consolas,monospace'; ctx.textAlign = 'right';
+    ctx.fillText(Math.round(yv).toLocaleString('en-US'), L-8, y+4);
+  }
+  /* 柱 */
+  for (i=0;i<n;i++){
+    var v = D.hist[keys[i]], x = L + iw*i + (iw-bw)/2, y = Y(v);
+    var hit = (keys[i] === 8);
+    ctx.fillStyle = hit ? '#6b1e9e' : '#d9c6e8';
+    ctx.fillRect(x, y, bw, H-Bm-y);
+    ctx.fillStyle = hit ? '#4a1063' : '#a493b5';
+    ctx.font = (hit?'bold ':'')+'10.5px Consolas,monospace'; ctx.textAlign = 'center';
+    if (keys[i] % 2 === 0 || hit) ctx.fillText(keys[i], x+bw/2, H-Bm+15);
+  }
+  /* e=8 标注 */
+  var x8 = L + iw*keys.indexOf(8) + iw/2, y8 = Y(D.hist[8]);
+  ctx.strokeStyle = '#c2410c'; ctx.lineWidth = 1.4; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(x8, T); ctx.lineTo(x8, H-Bm); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#c2410c'; ctx.font = 'bold 12px system-ui'; ctx.textAlign = 'left';
+  ctx.fillText('e = 8 ⟹ 1,566 个 S', x8+8, T+12);
+  /* 轴 */
+  ctx.strokeStyle = '#b9a8c9'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(L,H-Bm); ctx.lineTo(W-R,H-Bm); ctx.stroke();
+  ctx.fillStyle = '#5c5c6b'; ctx.font = '12px system-ui'; ctx.textAlign = 'center';
+  ctx.fillText('共享个数 |N(S)|', (L+W-R)/2, H-10);
+  ctx.save(); ctx.translate(17, (T+H-Bm)/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText('S 的个数', 0, 0); ctx.restore();
+}
+
+/* ── 图 2：交集分布 ───────────────────────────────────── */
+function drawInter(){
+  var cv = document.getElementById('cvInter'), ctx = cv.getContext('2d');
+  var W = cv.width, H = cv.height, L = 54, R = 16, T = 22, Bm = 42;
+  ctx.clearRect(0,0,W,H);
+  var cats = [5,6,7,8], sS = D.distS, sI = D.distI;
+  var maxV = 0, i;
+  for (i=0;i<cats.length;i++){
+    maxV = Math.max(maxV, sS[cats[i]]||0, sI[cats[i]]||0);
+  }
+  var st = niceStep(maxV, 4), top = Math.ceil(maxV/st)*st;
+  var n = cats.length, iw = (W-L-R)/n, bw = Math.min(56, iw*0.26);
+  function Y(v){ return H-Bm-(v/top)*(H-T-Bm); }
+  ctx.strokeStyle = '#eee6f5';
+  var g, cnt = Math.round(top/st);
+  for (g=0; g<=cnt; g++){
+    var yv = st*g, y = Y(yv);
+    ctx.beginPath(); ctx.moveTo(L,y); ctx.lineTo(W-R,y); ctx.stroke();
+    ctx.fillStyle = '#8a7f96'; ctx.font = '11px Consolas,monospace'; ctx.textAlign = 'right';
+    ctx.fillText(Math.round(yv), L-8, y+4);
+  }
+  for (i=0;i<cats.length;i++){
+    var cx = L + iw*i + iw/2, b = cats[i];
+    var vS = sS[b]||0, vI = sI[b]||0;
+    var x1 = cx - bw - 4, x2 = cx + 4;
+    if (vS){
+      ctx.fillStyle = '#6b1e9e'; ctx.fillRect(x1, Y(vS), bw, H-Bm-Y(vS));
+      ctx.fillStyle = '#4a1063'; ctx.font = 'bold 11px Consolas,monospace'; ctx.textAlign = 'center';
+      ctx.fillText(vS, x1+bw/2, Y(vS)-5);
+    } else {
+      /* SEG 没有这一档：灰虚线占位，别让人以为是漏画 */
+      ctx.strokeStyle = '#cfc6d8'; ctx.lineWidth = 1.3; ctx.setLineDash([4,3]);
+      ctx.strokeRect(x1, T+6, bw, H-Bm-T-6); ctx.setLineDash([]);
+      ctx.fillStyle = '#a493b5'; ctx.font = '11px system-ui'; ctx.textAlign = 'center';
+      ctx.fillText('无', x1+bw/2, (T+6+H-Bm)/2);
+    }
+    if (vI){
+      ctx.fillStyle = '#1d9e75'; ctx.fillRect(x2, Y(vI), bw, H-Bm-Y(vI));
+      ctx.fillStyle = '#136e52'; ctx.font = 'bold 11px Consolas,monospace'; ctx.textAlign = 'center';
+      ctx.fillText(vI, x2+bw/2, Y(vI)-5);
+    }
+    ctx.fillStyle = '#5c5c6b'; ctx.font = '12.5px system-ui';
+    ctx.fillText('共享 ' + b + ' 阶', cx, H-Bm+17);
+  }
+  /* 图例 */
+  ctx.textAlign = 'left'; ctx.font = '12px system-ui';
+  ctx.fillStyle = '#6b1e9e'; ctx.fillRect(W-268, T-14, 11, 11);
+  ctx.fillStyle = '#4a1063'; ctx.fillText('SEG（含 3,4,5）· 1,107 组', W-252, T-4);
+  ctx.fillStyle = '#1d9e75'; ctx.fillRect(W-268, T+4, 11, 11);
+  ctx.fillStyle = '#136e52'; ctx.fillText('IGV（含 3,5,6）· 2,890 组', W-252, T+14);
+  ctx.strokeStyle = '#b9a8c9';
+  ctx.beginPath(); ctx.moveTo(L,H-Bm); ctx.lineTo(W-R,H-Bm); ctx.stroke();
+}
+
+/* ── 图 3：三环阶集合矩阵 ─────────────────────────────── */
+function drawSets(){
+  var cv = document.getElementById('cvSets'), ctx = cv.getContext('2d');
+  var W = cv.width, H = cv.height;
+  ctx.clearRect(0,0,W,H);
+  var trio = D.searl.trio, orders = D.orders;
+  var cols = [3,4,5,7,9,12,15,20,21];
+  var rows = ['内环 4410','中环 6090','外环 7770'];
+  var L = 122, T = 42, cw = (W-L-24)/cols.length, ch = 56;
+  var i, j;
+  /* 表头 */
+  ctx.fillStyle = '#3a1a52'; ctx.font = 'bold 12.5px system-ui'; ctx.textAlign = 'center';
+  for (j=0;j<cols.length;j++){
+    ctx.fillText('阶 ' + cols[j], L + cw*j + cw/2, T-14);
+  }
+  /* 行 */
+  for (i=0;i<3;i++){
+    var N = orders[String(trio[i])] || [], y = T + i*ch;
+    ctx.fillStyle = '#3a1a52'; ctx.font = 'bold 12.5px Consolas,monospace'; ctx.textAlign = 'right';
+    ctx.fillText(rows[i], L-12, y+ch/2+4);
+    for (j=0;j<cols.length;j++){
+      var has = N.indexOf(cols[j]) >= 0;
+      var cx = L + cw*j + cw/2, cy = y + ch/2;
+      if (has){
+        ctx.beginPath(); ctx.arc(cx, cy, 11, 0, Math.PI*2);
+        ctx.fillStyle = '#6b1e9e'; ctx.fill();
+      } else {
+        ctx.beginPath(); ctx.arc(cx, cy, 11, 0, Math.PI*2);
+        ctx.strokeStyle = '#d9c6e8'; ctx.lineWidth = 1.6; ctx.stroke();
+      }
+      /* 中/外环同构：连一条淡线示意 */
+    }
+    /* 行分隔 */
+    ctx.strokeStyle = '#f2eaf9'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(L-6, y+ch); ctx.lineTo(W-24, y+ch); ctx.stroke();
+  }
+  /* 标注：9 只在内环行；21 只在中/外环行 —— 语义对齐，别让竖线穿过无关行 */
+  var x9 = L + cw*4 + cw/2, x21 = L + cw*8 + cw/2;
+  ctx.strokeStyle = '#c2410c'; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(x9, T+4); ctx.lineTo(x9, T+ch-4); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x21, T+ch+4); ctx.lineTo(x21, T+3*ch-4); ctx.stroke();
+  /* 文字不画在矩阵里（会压住点阵），语义交给 HTML 图注 */
+  ctx.fillStyle = '#5c5c6b'; ctx.font = '11.5px system-ui'; ctx.textAlign = 'left';
+  ctx.fillText('实心 = 该阶能承载该环的质量（S ≡ T(n) mod n 且 T(n) ≤ S）', L-6, H-12);
+}
+
+function drawAll(){ try{ drawHist(); drawInter(); drawSets(); }catch(e){ if(!window.__jsErr) window.__jsErr = String(e); } }
+drawAll();
+window.addEventListener('resize', function(){ drawAll(); });
+</script>
+</body>
+</html>
